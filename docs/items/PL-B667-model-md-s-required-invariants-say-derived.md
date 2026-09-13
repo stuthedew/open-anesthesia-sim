@@ -4,7 +4,7 @@ title: MODEL.md's required invariants say derived fractions stay finite and nonn
 priority: P2
 effort: S
 status: ready
-classes: defect, docs
+classes: docs
 feature: core-domain-language
 touches: docs/MODEL.md
 added: 2026-09-13
@@ -82,8 +82,25 @@ Not a `blocked-by` edge, deliberately: neither item needs the other to start,
 and declaring one would take this out of `bin/docket next` for the wrong reason.
 It is a pairing note, and `PL-FZ6T`'s brief carries the matching one.
 
-**Not classed `safety`.** The invariant it corrects is a safety invariant, but
-the reader misled by the current wording is a developer auditing `core/` against
-the spec, not a clinician reading a displayed value - and `docket check` pins
-`safety` to P1, where the band has to keep meaning "a clinician could be
-misled".
+**Classed `docs`, and the two classes it is not are both deliberate.**
+
+Not `defect`: the invariant line is not *wrong*, it is *incomplete*. "Derived
+concentration fractions remain finite and nonnegative" is a true statement that
+omits a second guarantee. That is `PL-212V`'s shape - a Symbols table with no
+row for the stored coefficient - and `PL-212V` and `PL-H46J` are both classed
+`docs` alone. `defect` in this queue marks a statement that is false, as in
+`PL-KBJT`, whose citation named a function that does not exist. Following the
+precedent matters beyond tidiness here: `defect` is one of the classes
+`ROADMAP.md`'s debt gate reads, so mis-classing an omission as a defect makes
+it debt, and Gate 1's disposition rule then owes it an answer it should never
+have been asked. `tools/doc_check.py`'s check caught exactly that.
+
+Not `safety`: the invariant it corrects *is* a safety invariant, but the reader
+the current wording misleads is a developer auditing `core/` against the spec,
+not a clinician reading a displayed value - and `docket check` pins `safety` to
+P1, a band that has to keep meaning "a clinician could be misled".
+
+**It is not Gate 1's, and needs no disposition there.** `feature:
+core-domain-language` puts it in the `v0.4.x` track, "the code is the model",
+with `PL-FZ6T` and `PL-9SH6`; `ROADMAP.md`'s row for that track records that it
+"freezes no gate and takes no section of its own" (project owner, 2026-09-05).
