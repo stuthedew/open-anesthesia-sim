@@ -1,8 +1,14 @@
 ---
 id: PL-NB35
 title: Give docket a bounded startup tier carrying failed approaches and why they failed
-status: untriaged
+status: needs-decision
 added: 2026-09-13
+priority: P2
+effort: M
+classes: infra
+feature: worker-instructions
+touches: docs/dead-ends.md, tools/dead_ends.py, .claude/hooks/docket-digest.sh, Makefile, docket.toml, docs/ARCHITECTURE.md, tests/unit/test_dead_ends.py
+verify: python3 tools/dead_ends.py check && grep -q 'dead_ends.py" emit' .claude/hooks/docket-digest.sh
 ---
 
 **Problem.** Every reference design for memoryless multi-session work splits
@@ -51,3 +57,46 @@ bare decision record would not.
 **Done when.** A session starts with a bounded, line-capped tier naming the
 approaches already tried and refuted, and the retrieval path to the full record
 is one command rather than one traversal.
+
+**Decision needed — the mechanism is built and green, and it has an eviction
+hole the project owner has been asked to close (2026-09-13).**
+
+What is built: `docs/dead-ends.md`, emitted at session start by
+`.claude/hooks/docket-digest.sh` through `tools/dead_ends.py emit`, capped at
+30 entries and 4,000 bytes of *emitted* text by `tools/dead_ends.py check` in
+`make check`, with 12 seeded entries at 2,521 bytes and tests in
+`tests/unit/test_dead_ends.py`.
+
+What is missing is a curation policy. The cap is an eviction trigger with no
+rule behind it: at 30 entries `make check` goes red and whoever trips it drops
+something, mid-task, with no evidence about which entry has ever been worth
+anything. A high-yield entry - the `GITHUB_TOKEN` one, which otherwise costs a
+session a CI cycle to rediscover - is indistinguishable from a stale one to a
+session scanning for something to cut. That is the same failure the evidence
+behind this item names: curation policy, not store size, drove the threefold
+accuracy difference in Xu et al.
+
+**The proposal.** Each entry names its own expiry condition, carried in the
+cited item rather than in the emitted line, so it costs the always-loaded half
+nothing:
+
+    stale-when: src/anesthesia_sim/app/ no longer exists
+    stale-when: docket no longer stores items as files
+    stale-when: never - the constraint is GitHub's, not ours
+
+`dead_ends.py check` resolves the path-shaped and item-shaped conditions
+deterministically and reports candidates *with evidence*; the `never` case is
+explicit, which is what defends a high-yield entry. The cap then becomes a
+review trigger - red means the expiry pass is overdue - rather than an
+eviction trigger. This is `CLAUDE.md`'s decidable/judgment split: the tool
+never decides whether an approach could recur, and the person who refuted it
+writes down what would make it moot at the one moment anybody has that context.
+
+**The second question, which is the owner's and not this session's:** whether
+an entry carrying no expiry condition is refused or merely flagged. Refusing
+keeps the list honest; flagging lets a session record a dead end at the moment
+it finds one without stopping to work out what would make it moot. This session
+leans flagging, on the same ground that capture is cheap everywhere else here.
+
+**Until that is answered the entries stand and the cap holds.** The list is at
+12 of 30, so nothing is forced.

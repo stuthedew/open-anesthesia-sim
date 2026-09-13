@@ -1,13 +1,14 @@
 ---
 id: PL-MHQK
 title: The contrast checker prints its known-shortfall detail on every run, where the verify advisory was narrowed to what a session is about to trip over
-status: done
 priority: P3
 effort: S
+status: done
 classes: session-cost, infra
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py
 added: 2026-09-03
 closed: 2026-09-13
+pr: 515
 verify: uv run python tools/contrast_check.py && grep -qF 'Decided 2026-09-13' docs/items/PL-MHQK-the-contrast-checker-prints-its-known-shortfall.md
 ---
 

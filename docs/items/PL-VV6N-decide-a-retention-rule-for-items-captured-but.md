@@ -3,6 +3,12 @@ id: PL-VV6N
 title: Decide a retention rule for items captured but never worked
 status: needs-decision
 added: 2026-09-13
+priority: P3
+effort: S
+classes: infra
+feature: planning-cadence
+blocked-by: PL-YVV4
+touches: docs/items
 ---
 
 **Problem.** The capture rule files every finding, and nothing ever expires.
@@ -48,10 +54,21 @@ effect — which is an argument that capture is doing real cognitive work.
 **Open question the data cannot settle.** 27% of the open set (64 items) is
 `needs-decision` — owner-blocked, not worker-blocked. A retention rule aimed at
 P3 would not touch these, and they may be the larger share of the problem.
+**Why it matters.** Capture is unbounded by rule and nothing expires, so the
+question of whether the queue needs a forcing function is real. But the two
+props the original framing rested on are gone (see the update below), and the
+direct evidence on pruning runs the other way - the only study to test deletion
+found it detrimental to retrieval. Acting without the count is how `PL-LKGL`
+went wrong.
+
+**Done when.** Either an expiry rule is adopted with the break-even stated and
+counted, or capture is declared deliberately unbounded and this is dropped with
+that reason recorded.
+
 
 ---
 
-**UPDATE 2026-09-13, after the research sweep. Two of the props under the
+**UPDATE**UPDATE 2026-09-13, after the research sweep. Two of the props under the
 original framing are gone, and the project's own rules block acting on it.**
 
 1. **A fabricated benchmark was removed.** The "~50% discard rate is common in

@@ -129,6 +129,15 @@ check: sync
 # declared scope is the one it will actually get. Reads only the frontmatter of
 # `.claude/rules/*.md`, so it costs nothing. `PL-LLWN`.
 	python3 tools/rules_paths_check.py
+# Beside the two guards above, and the same category one level further out:
+# those ask whether this branch's work is visible and whether a rule's declared
+# scope is the one it gets, this asks whether the always-loaded context a
+# session starts with is still inside the budget that makes it safe to load.
+# `.claude/hooks/docket-digest.sh` emits `docs/dead-ends.md`'s entry lines at
+# session start, and a `SessionStart` hook's output is resent on every turn -
+# so an entry added without a thought for the cap is paid by every session
+# forever. Reads two files, so it costs milliseconds. `PL-NB35`.
+	python3 tools/dead_ends.py check
 	python3 tools/doc_check.py check
 # Under `uv run`, both of them, unlike the bare-`python3` lines above, and for
 # a reason about the *input* rather than about the tool. These two read `app/`
