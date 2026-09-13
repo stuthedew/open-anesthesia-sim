@@ -1,8 +1,14 @@
 ---
 id: PL-6ZQY
 title: Consolidate the workflow lane: verify each open item still reproduces, merge duplicates, drop what no longer applies
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: docs, infra
+feature: queue-hygiene
+touches: docs/items
 added: 2026-09-12
+not-delegable: The work is a per-item judgment against the tree for 134 items - does this defect still reproduce, does this brief still describe the code. No command can prove that pass was made, and each drop or merge it produces is proven by the item it closes. What can be checked afterwards is make docket and that every dropped item carries a reason.
 ---
 
 **Problem.** Consolidate the workflow lane: verify each open item still reproduces, merge duplicates, drop what no longer applies
@@ -69,3 +75,27 @@ Re-run the verification phase before acting: each drop must be refuted or confir
 against the tree, and each merge must be checked for a brief that genuinely covers
 what it absorbs. The workflow script is saved and resumable; the map phase replays
 from cache, so only the verification agents re-run.
+
+**Why it matters.** 43 of 134 items - 32% - are dead or overstated, and nothing
+in the project noticed or can. `PL-LKGL` carries the measurement of why: a
+`verify:` command tests for the presence of the fix, never for the presence of
+the fault, so an item whose problem was solved another way fails forever and
+reads as outstanding work. Six of the twelve dead items carry a `verify:` and
+all six still fail. A churn advisory was tested against the sweep's verdicts and
+does not separate the classes, so there is no cheap mechanical substitute for
+this pass.
+
+The cost of leaving it is paid by every session that opens the queue. A third of
+the workflow lane is work nobody should do, and it is not marked, so it is
+ranked, offered by `bin/docket next`, counted into the debt gate, and read past
+by each session in turn. It also corrupts the one measurement the project uses
+to judge the lane: the 0.69 self-generation rate is computed over items a third
+of which are not real.
+
+**Done when.** The adversarial verification phase has run over all 134 mapped
+items; every drop candidate above is confirmed against the tree or refuted, and
+the confirmed ones are `status: dropped` with a `reason`; each proposed merge is
+checked for a brief that genuinely covers what it absorbs before either item
+closes; the 31 partly-overtaken briefs say what is actually left; and the map's
+counts are restated against what the pass found, so the self-generation figure is
+computed over the surviving set.
