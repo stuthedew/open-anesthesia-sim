@@ -3,11 +3,12 @@ id: PL-KJ63
 title: doc_check reads any double-quoted phrase in a doc as a section citation, so quoting a measured figure hard-fails the check
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
+closed: 2026-09-13
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_quoted_measurement_before_above_is_not_a_citation' tests/unit/test_doc_check.py
 ---
 

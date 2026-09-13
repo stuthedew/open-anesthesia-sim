@@ -3,11 +3,13 @@ id: PL-MGF9
 title: The process-work grooming advisory only examines the top band, so it cannot fire for the P2 and P3 bands where all the process work actually sits
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-02
+closed: 2026-09-13
+reason: Superseded by `bin/docket trend` (PL-QPJZ, #424), which landed 2026-09-07, five days after this was captured, and already reports the process-to-product balance over the whole open queue - the Done when's own requirement. It places an item by its `touches` rather than by its `classes`, which docket.toml records as the better reading (the classes reading put 33 of 145 open items on the wrong side), and it carries a seven-day history this item never asked for. The advisory specified here also could not fire: measured 2026-09-13, 74 of 244 open items are process-classed and a majority needs 123, so building it as written would add a permanently silent advisory - the shape CLAUDE.md calls a defect in the check. Project owner, 2026-09-13. The one residual - that `trend` answers only on demand, and the session-start digest does not carry its balance line - is recorded in the re-measurement section below and deliberately not refiled.
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_process_majority_is_measured_over_the_open_queue' subprojects/docket/tests/test_checks.py
 ---
 
@@ -85,3 +87,63 @@ command reports them — which is the finding.
 whole open queue rather than of the top band alone, the advisory fires against
 the current store, and a test pins it against a store whose top band is
 entirely product work and whose lower bands are entirely process work.
+
+## Re-measured 2026-09-13: `bin/docket trend` has since answered this, and better
+
+This item was captured 2026-09-02. `bin/docket trend` landed 2026-09-07
+(`PL-QPJZ`, #424), five days later, and it reports exactly what the **Done
+when** asks for — the process-to-product balance of the whole open queue
+rather than of the top band. On this store it prints:
+
+```
+Open now           107 workflow, 107 product, 29 crossing, 1 unplaced
+P1 band            0 workflow, 10 product, 3 crossing, 0 unplaced
+```
+
+with a seven-day history beside it and three separate measures, because no
+one of them is honest alone. It is a better instrument than the one this
+item specifies, on the reading `docket.toml` itself already settled: `trend`
+places an item by its `touches`, and the comment beside `workflow_paths`
+records that the `classes` reading this item would use put **33 of 145** open
+items on the wrong side, because `classes` says what *kind* of work an item
+is and a defect in the tooling carries the same `defect` label as a defect in
+the simulator.
+
+**The advisory this item specifies also cannot fire.** Measured 2026-09-13
+against the live store: 74 of 244 open items are process-classed under
+`process_classes`. A majority test needs it to exceed 122. So implementing
+this as written would add an advisory that is silent today and whose own
+**Done when** ("the advisory fires against the current store") is unmeetable.
+
+This is the shape `PL-LKGL` describes: an item whose problem was solved
+another way stays red forever and reads as outstanding work.
+
+**What is genuinely left is smaller than this item.** `trend` answers on
+demand; nothing pushes the balance in front of a session that did not think
+to ask. The session-start digest does not carry it. So the residual is one
+line in the digest, not a classes-based majority advisory — which is a
+different and much cheaper item than the one this brief describes.
+
+**Decided 2026-09-13: dropped.** Three dispositions were put to the project
+owner and the first was taken:
+
+1. **Drop**, `reason:` superseded by `bin/docket trend` (`PL-QPJZ`) — taken.
+   Clears a Gate 1 entry honestly.
+2. **Re-scope** to "the session-start digest carries `trend`'s open-queue
+   balance line", `S`, rewriting the **Done when** accordingly.
+3. Build as written — it adds a permanently silent advisory on the reading
+   this project has already measured as the worse one.
+
+**The residual is recorded here rather than refiled, deliberately.** Option 2
+was the alternative on the table and was not chosen, so filing it as a fresh
+item would reintroduce as work what was just declined. The finding is not lost
+— it is the paragraph above, and this file is never deleted, which is what
+`docket`'s drop semantics are for. Anyone reaching for it again should start
+by re-measuring rather than by reviving this brief: the counts here are dated
+2026-09-13 and the balance moves with every release.
+
+**What this drop does not say.** It takes no position on the apparatus-to-
+product balance itself, which is the project owner's judgment and is now
+reportable by `bin/docket trend` at any time. It says only that *this
+mechanism*, a `classes`-based majority advisory over the open queue, is the
+wrong instrument for measuring it and could not have fired in any case.

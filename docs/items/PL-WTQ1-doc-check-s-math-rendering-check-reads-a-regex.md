@@ -3,11 +3,12 @@ id: PL-WTQ1
 title: doc_check's math-rendering check reads a regex in an item's verify: command as LaTeX and hard-fails
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-03
+closed: 2026-09-13
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_frontmatter_is_not_scanned_for_math_delimiters' tests/unit/test_doc_check.py
 ---
 

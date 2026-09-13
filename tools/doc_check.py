@@ -290,9 +290,22 @@ BRACE_RE = re.compile(r"\{([^{}]*)\}")
 # already reads without examining one of them. The bound replaces the newline
 # as the thing that stops a runaway match, and `_normalized` puts the term
 # back on one line before it is compared.
+#
+# The `directed` branch must open on a letter or a code span, which is what a
+# section heading or a `**Bold.**` marker does and what a quoted *measurement*
+# does not. Without that bound, ordinary prose contrasting a figure with the
+# one it replaced - `"~88-256 B each" above` - was read as a citation of a
+# heading and hard-failed the run, so the repair was to reword prose that was
+# not wrong (`PL-KJ63`). `QUOTED_SOURCE_RE` below already carries the same
+# guard for the same reason. Measured across the documents this reads on
+# 2026-09-13: 40 directed citations, none of which opens on anything else.
+#
+# Only the `directed` branch is bounded. `see` and `under` say outright that a
+# citation is being made, so there is nothing to infer and nothing to guard
+# against.
 CITATION_RE = re.compile(
     r'(?:\b(?:see|under)\s+"(?P<named>[^"]{1,160}?)")'
-    r'|(?:"(?P<directed>[^"]{1,160}?)"[ \n]+(?:above|below)\b)',
+    r'|(?:"(?P<directed>[`A-Za-z][^"]{0,159}?)"[ \n]+(?:above|below)\b)',
     re.IGNORECASE | re.DOTALL,
 )
 DIRECTION_RE = re.compile(r"^[ \n]*(?:above|below)\b", re.IGNORECASE)
@@ -2379,7 +2392,17 @@ def check_math_delimiters(root: Path, report: Report) -> None:
         except UNREADABLE:
             continue
         relative = path.relative_to(root)
+        # GitHub does not render frontmatter as prose - it hides it or shows
+        # it as a table - so there is no math there to render wrongly. Scanning
+        # it read a `verify:` command whose regex escapes a parenthesis as
+        # LaTeX and failed the run, whose only available repair was to contort
+        # a working shell command (`PL-WTQ1`, hit on `PL-6194`). The body of
+        # the same document is still scanned: the skip is the frontmatter's
+        # line span and nothing else.
+        skip_to = _frontmatter_end(text)
         for number, line in enumerate(_without_code(text), 1):
+            if number <= skip_to:
+                continue
             for match in TEX_DELIMITER_RE.finditer(line):
                 report.errors.append(
                     f"{relative}:{number} writes math as `{match.group(0)}`, which GitHub "
@@ -2390,6 +2413,17 @@ def check_math_delimiters(root: Path, report: Report) -> None:
                     f"{relative}:{number} leaves `{match.group(0)}` unpaired, so an inline "
                     "expression is split across a line break and renders as literal text"
                 )
+
+
+def _frontmatter_end(text: str) -> int:
+    """The 1-based line number the frontmatter's closing `---` sits on, or 0.
+
+    Beside `_frontmatter` rather than derived from it by the caller, because
+    what a caller skipping the block needs is the span, and recomputing that
+    from the block's contents is the arithmetic that goes wrong by one.
+    """
+    block = _frontmatter(text)
+    return 0 if block is None else len(block) + 2
 
 
 def _frontmatter(text: str) -> list[str] | None:
@@ -2819,6 +2853,23 @@ def mentions(term: str, line: str) -> bool:
     return False
 
 
+def _more_specific(candidate: str, incumbent: str, distinctive: bool) -> bool:
+    """Which of two matching terms better explains why a line was chosen.
+
+    A line is kept once however many terms hit it, so one of them has to be
+    the label - and keeping whichever arrived first labelled it by the sort
+    order instead. A changed `render.py` contributes both `render` and
+    `render.py`, `render` sorts first, and two `ROADMAP.md` lines plainly
+    about the module printed as `(render)` (`PL-Z0G0`).
+
+    Distinctive first, then longest. The distinctive half carries more than
+    length does: since `PL-B2NS` the label also tells the reader whether the
+    term was one the tool had to narrow to code context, and an ordinary
+    English word that happens to be longer would hide that.
+    """
+    return (distinctive, len(candidate)) > (is_distinctive(incumbent), len(incumbent))
+
+
 def format_candidates(root: Path, base: str) -> str:
     """Print the documentation lines a close-out sweep would grep for."""
     documents = read_docs(root)
@@ -2852,7 +2903,9 @@ def format_candidates(root: Path, base: str) -> str:
                 )
                 continue
             for key in found:
-                hits.setdefault(key, token)
+                incumbent = hits.get(key)
+                if incumbent is None or _more_specific(token, incumbent, distinctive):
+                    hits[key] = token
         if not hits and not crowded:
             continue
         total += len(hits)
