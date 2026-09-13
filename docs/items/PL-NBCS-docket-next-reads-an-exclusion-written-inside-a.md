@@ -3,9 +3,10 @@ id: PL-NBCS
 title: docket next reads an exclusion written inside a Required scope bullet as membership, so PL-B9PY is ranked in scope for v0.4.0 when ROADMAP.md sends it to Gate 1
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: defect
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_an_id_a_scope_bullet_names_only_to_exclude_it' subprojects/docket/tests/test_roadmap.py
 added: 2026-09-05
 ---
 **Problem.** `bin/docket next product` ranks `PL-B9PY` (decompose
@@ -79,3 +80,80 @@ exclude it.
 
 **Found.** 2026-09-05, answering "what is left for 0.4.0". The reply that found
 it had to override the ranker by hand.
+
+## Decided 2026-09-13: the second candidate — the exclusion moves, and a check holds it there
+
+**First, the reported symptom no longer reproduces, and the reason is structural
+rather than lucky.** `milestone_scope` skips every section at or below the anchor
+(`subprojects/docket/src/docket/roadmap.py`, `if section.version <= anchor.version:
+continue`). The anchor is now v0.5.0, so v0.4.0's `Required scope` places nothing at
+all, and `bin/docket next product` no longer marks `PL-B9PY` (decompose
+`SimulationView` so two runs can be rendered at once) as in scope for v0.4.0 — it
+reports the Gate 1 placement, which is correct. Confirmed against `bin/docket wave`
+and `bin/docket next product` on 2026-09-13. The anchor only moves forward, so this
+particular bullet can never place anything again.
+
+**The parser defect is still live, though, and it is worth one test.** Measured
+against a synthetic section whose own `Required scope` names an id in order to
+exclude it, with the id on no gate:
+
+| id, and how the bullet names it | `Scope.placement` |
+| --- | --- |
+| genuinely in scope | `in-scope` — correct |
+| named **only to be excluded** | `in-scope` — the defect |
+| under `### Explicitly out of scope` | `unplaced` — `PL-6P9Y`'s finding, confirmed |
+
+So the wrong direction is still reachable: an exclusion written inside the *anchor's
+own* scope bullet, for an id the gate does not list, reads as in scope.
+
+**The exposure is one bullet.** Counted across the whole of `ROADMAP.md`: 59 ids are
+named under `Required scope` headings, and exactly **one** bullet carries exclusion
+language — `ROADMAP.md:1160`, the `PL-B9PY` bullet this item was filed against. That
+number is what chooses between the three candidates, and it was counted before the
+choice rather than after.
+
+**Why the second candidate, and why the other two lose on the count.**
+
+- **The first** — read a bullet's ids only where it carries no exclusion marker — is
+  the grammar guess `CLAUDE.md` says not to script, and it would be fitted to n=1.
+  Worse, the guess would drive the placement itself, so a phrasing it misses prints a
+  wrong marking silently. That is the failure mode this item exists to remove.
+- **The third** — report an id named in both a scope bullet and an exclusion as
+  `ambiguous` — has **zero** instances to work on: `PL-B9PY` is not named in
+  v0.4.0's `### Explicitly out of scope for v0.4.0` list, so there is no contradiction
+  for a decidable rule to find. Making it detectable means moving the exclusion into
+  that list first, which is the second candidate. It is not an alternative to it; it
+  is what the second candidate enables.
+- **The second** moves the work out of the model permanently, which is `CLAUDE.md`'s
+  standing approval rather than a case to be argued, and it needs no grammar guess for
+  the part that fails hard.
+
+**What gets built, in three parts and one of them marginal.**
+
+1. **Move the exclusion.** `ROADMAP.md:1160`'s sentence sending `PL-B9PY` to Gate 1
+   moves into `### Explicitly out of scope for v0.4.0`, keeping its reasoning and its
+   attribution verbatim. One edit, and it is the whole of the live fix.
+2. **An exact check, hard-failing.** An id named under a milestone's `Required scope`
+   **and** under the same milestone's `Explicitly out of scope` is a contradiction:
+   decidable, no judgment, an error. This is what stops part 1 being undone silently
+   later, and it is the half that earns a hard failure under `CLAUDE.md`'s "reserve
+   hard failure for exact rules".
+3. **A keyword advisory, and it is the marginal part.** A `Required scope` bullet
+   naming an id alongside `not in scope`, `out of scope` or `stays at Gate` is
+   reported for a human to move. This *is* an imperfect grammar guess — but the
+   failure direction inverts from the first candidate's: it changes no placement and
+   only asks an author to rewrite a line, so a miss leaves the status quo and a false
+   positive costs one rephrase. Named against the rule it enforces: worth building
+   only if a future milestone writes another such bullet, base rate 1 in 59 ids across
+   seven scoped milestones. Low, not zero, and the cost of a miss is a silent wrong
+   marking in the command every session reads first.
+
+A one-line writing convention in `ROADMAP.md` — exclusions go under the out-of-scope
+heading, never inside a scope bullet — is what parts 2 and 3 cite. That sentence is
+the project owner's to approve, being a convention for their own document.
+
+**`PL-6P9Y`** (a milestone's `Explicitly out of scope` list is read as silence)
+is the companion, and it is what makes part 1 produce the *right* answer rather than
+merely not the wrong one: without it, moving the bullet turns `in-scope` into
+`unplaced`; with it, into "excluded by v0.4.0", which is what the roadmap actually
+says. It is `ready` at P3 and should land with this.

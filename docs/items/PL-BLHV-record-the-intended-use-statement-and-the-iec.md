@@ -80,3 +80,65 @@ not a reason to build one now.
 
 **Done when.** The decision is recorded, and if the section is written,
 `make doc-check` passes and the reply says which documents were swept.
+
+## Worked 2026-09-13: parts 2 and 3 are settled, part 1 is drafted, one clause needs the owner
+
+**Part 3's framing needs no fresh judgment — the precedent is in this same
+document, and it is quotable.** `docs/MODEL.md` § "Color contrast, and the standard
+this interface is held to" already makes exactly the move: "none of those instruments
+binds this project — AA is chosen as the right engineering bar for a teaching tool,
+not as a compliance obligation." The classification section copies that sentence's
+shape, so the risk of reading as a claimed regulatory status is handled by an
+in-document convention rather than by new wording.
+
+**One claim in this brief did not survive checking, and it would have gone into a
+document that cites standards.** The brief states that "IEC 62304's own convention is
+that an *undocumented* classification defaults to Class C". The sources reachable here
+do not say that. What they do say is the § 4.3 decision flow — death or serious injury
+possible is Class C, non-serious injury Class B, no injury possible Class A — together
+with Annex B.4.3's rule that where software is in the chain leading to a hazardous
+situation, the probability of the software failing is set to 1 rather than estimated.
+That pair supports the Class C decision at least as strongly and is checkable, so it
+is what the section should cite. The "defaults to C" phrasing must not be written into
+`docs/MODEL.md` as a statement about the standard.
+
+**The FDA support is stronger than the brief has it.** FDA's published list of software
+functions that are not devices includes, as a worked example, "games that simulate
+various cardiac arrest scenarios to train health professionals in advanced
+cardiopulmonary resuscitation (CPR) skills" — a direct analogue to this project, not a
+distant one. The carve-out rests on the software not "facilitating a health
+professional's assessment of a specific patient, replacing the judgment of clinical
+personnel, or performing any clinical assessment".
+
+**That last phrase is what makes the intended-use wording load-bearing rather than
+decorative, and it is why the brief's proposed exclusion clause is the wrong line to
+draw.** The brief proposed excluding "use with or in the presence of an actual
+patient". Physical proximity is simultaneously too broad and too narrow:
+
+- **Too broad.** It forbids a resident running the simulator on a workstation during a
+  case, which is one of the better teaching moments available and carries no hazard of
+  its own.
+- **Too narrow.** It permits entering a real patient's weight, age and cardiac output
+  from the chart at a desk, which is the thing FDA's carve-out is actually conditioned
+  against and the thing `ROADMAP.md` item 30 makes reachable once covariates land.
+
+The boundary that tracks both the hazard and the carve-out is **the patient's data,
+not the patient's location**: the tool is for teaching with hypothetical or
+illustrative parameters, and is not for entering or reproducing an identifiable
+patient's values, nor for informing the management of a specific patient. That is a
+recommendation on the direction of the statement, so it is the project owner's to
+accept or replace; the section is not written until they have.
+
+**Sources checked 2026-09-13**, and each is the current version:
+
+- IEC 62304 § 4.3 safety classes and Annex B.4.3's probability-of-failure rule
+  (secondary summaries; the standard itself is paywalled and was not reached from
+  here, which the section should say rather than implying a reading of the text).
+- ISO 14971:2019 § 5.2, reasonably foreseeable misuse as a defined term.
+- FDA, "Examples of Software Functions That Are NOT Medical Devices"
+  (https://www.fda.gov/medical-devices/device-software-functions-including-mobile-medical-applications/examples-software-functions-are-not-medical-devices),
+  and "Policy for Device Software Functions and Mobile Medical Applications".
+
+**Still open, and only this:** the scope of the exclusion clause — the data-boundary
+wording recommended above, or the proximity wording the brief first proposed. Parts 2
+and 3 are answered and need nothing further.
