@@ -100,6 +100,7 @@ from anesthesia_sim.app.theme import (
     CONTROL_MARK_STROKE_WIDTH,
     CONTROL_MARK_SWATCH_HEIGHT,
     CONTROL_MARK_SWATCH_WIDTH,
+    ELAPSED_VALUE_WIDTH,
     EQUILIBRIUM_LINE_COLOR,
     EQUILIBRIUM_LINE_DASH_PATTERN,
     EQUILIBRIUM_LINE_STROKE_WIDTH,
@@ -611,7 +612,12 @@ class SimulationView:
         self._pending_agent_id: str | None = None
         self._new_case_dialog: ft.AlertDialog | None = None
         self._notice_text = ft.Text("", color=WARNING, weight=ft.FontWeight.BOLD, visible=False)
-        self._elapsed_time_text = self._build_metric_value("0.0 s")
+        # From the formatter, not a literal - the same rule the comment below
+        # states for the compartment placeholders, which this line was quietly
+        # breaking. Width reserved because the compound form changes length as
+        # components appear and fall away; see `ELAPSED_VALUE_WIDTH`.
+        self._elapsed_time_text = self._build_metric_value(format_elapsed(0.0))
+        self._elapsed_time_text.width = ELAPSED_VALUE_WIDTH
         # Placeholders come from the formatter rather than from literals, so
         # a change to the displayed resolution cannot leave the pre-run
         # reading disagreeing with every reading after it.
@@ -1587,8 +1593,9 @@ class SimulationView:
         rendering the running app at each step.
 
         Returns:
-            Seven responsive panels containing simulated time in
-            seconds and compartment values in percent.
+            Seven responsive panels containing simulated time in the
+            compound form the chart's axis uses and compartment values in
+            percent.
         """
 
         return ft.ResponsiveRow(

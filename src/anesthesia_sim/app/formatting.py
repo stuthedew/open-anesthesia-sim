@@ -625,30 +625,48 @@ def format_flow(flow_l_min: float) -> str:
 def format_elapsed(elapsed_s: float) -> str:
     """Render simulated time as the interface states it everywhere.
 
-    Seconds, one decimal, matching the simulation step the run advances by.
-    The clock, and every recorded control change stamped against it, come
-    through here: a timeline reading in one time format beside a clock
-    reading in another would leave the reader converting between two
-    displayed times of the same quantity.
+    The compound, self-describing form - `45s`, `1m30s`, `1h23m45.6s`,
+    `24h` - so that the clock, every recorded control change stamped
+    against it, and the chart's own axis state one quantity one way.
 
-    Seconds do not read well across a whole case, which is what v0.4.0's
-    case-length time base is for. That is a change to how this project
-    states simulated time rather than to one panel, so it belongs here, at
-    the one place that decides it, and not in whichever display happens to
-    be built first.
+    **This function used to render `5400.0 s` and the reasoning for it was
+    wrong in a checkable way** (`PL-Q4M4`, `PL-CZFY`). It said the two forms
+    could not be one function because "a compound duration form would round
+    the stamp away", and that is not true of the compound form that shipped:
+    `_duration_components` returns the seconds as a float and the label
+    formats them with `:g`, so the tenth the simulation steps at survives -
+    `1h23m45.6s`. With the stamp's requirement met by both, the argument for
+    two forms was only that one of them had been written first.
 
-    The time base landed as `format_chart_time_label` below, and this
-    function deliberately did *not* become it. The two render the same
-    quantity for different readings and cannot be one function: a stamp
-    beside a recorded control change has to resolve the simulation step it
-    was taken at, which is a tenth of a second, while an axis tick on a
-    twelve-hour span has to be legible at seven characters. A compound
-    duration form would round the stamp away; a one-decimal second count
-    would label that axis `43200.0 s`. See `format_chart_time_label` for
-    which is used where.
+    What was left was a reader converting between them. `PL-SSBP` gave the
+    chart a time base spanning a case, so locating a control mark stamped
+    `5400.0 s` on an axis reading `1h30m` meant dividing by 3600 by hand,
+    on a screen showing both at once; and `PL-Y5WR` declared a 24-hour
+    envelope, so the clock's top reading became `86400.0 s` - seven
+    characters of tenths on a quantity a reader thinks about in hours, which
+    `format_supported_run_length` below had already refused to reuse for
+    exactly that reason.
+
+    **Raises rather than rendering a negative or non-finite time**, through
+    `_duration_components`. The previous form would have printed `-1.0 s`
+    quite happily. Simulated time cannot run backwards, so a value that does
+    is a fault upstream, and `CLAUDE.md` prefers an obvious failure to a
+    plausible-looking displayed number.
+
+    `format_chart_time_label` is the same form with one deliberate
+    difference, stated there: the axis origin is a bare `0`.
+
+    Args:
+        elapsed_s: Simulated time since the run began, in seconds.
+
+    Returns:
+        The duration in compound form, `0s` at the run's start.
+
+    Raises:
+        ValueError: If `elapsed_s` is negative or not finite.
     """
 
-    return f"{elapsed_s:.1f} s"
+    return _format_duration_compound(elapsed_s, zero="0s")
 
 
 def format_supported_run_length() -> str:
@@ -656,11 +674,17 @@ def format_supported_run_length() -> str:
 
     Hours, from `core.supported_ranges.MAXIMUM_ELAPSED_SIMULATION_TIME_S`
     rather than from a number written here, so the interface cannot state a
-    limit the model does not enforce. `format_elapsed` above is deliberately
-    not reused: it renders an instant to a tenth of a second, which is right
-    for a clock beside a control change and reads as false precision on a
-    boundary declared in hours - "86400.0 s" also asks a reader to divide
-    before they can tell whether it is a plausible case length.
+    limit the model does not enforce.
+
+    Still not `format_elapsed`, but no longer for the reason first recorded
+    here. That reason was false precision - `format_elapsed` rendered
+    "86400.0 s" and this had to say "24 hours" instead - and it stopped
+    applying when `PL-CZFY` moved the clock onto the compound form, where
+    the same instant reads "24h". What remains is register: this string
+    goes into a sentence a reader reads ("runs are supported to 24 hours"),
+    where the spelled-out unit belongs, exactly as `format_time_base` spells
+    out "15 minutes" for a selector entry whose axis tick reads "15m". The
+    two now agree about the quantity and differ only in how they are read.
     """
 
     return f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} hours"
@@ -726,6 +750,54 @@ def _duration_components(duration_s: float) -> tuple[int, int, float]:
     return hours, minutes, duration_s - hours * 3600.0 - minutes * 60.0
 
 
+def _format_duration_compound(duration_s: float, *, zero: str) -> str:
+    """Render a duration as `1h23m45.6s`, dropping components that are zero.
+
+    The one place the compound form is built, so the clock, the recorded
+    control-change stamps and the chart's axis ticks cannot drift into
+    stating one quantity two ways (`PL-Q4M4`). Every component carries its
+    own unit: the axis under a time base spans anything from a minute to
+    half a day, so a bare number would mean seconds on one scale and hours
+    on another while looking identical on both.
+
+    Seconds are formatted with `:g`, which keeps a tenth where there is one
+    and drops a trailing `.0` where there is not - so a stamp resolves the
+    `0.1 s` step the simulation advances by, and a tick sitting on a whole
+    number of seconds is not padded with a digit that says nothing.
+
+    Args:
+        duration_s: A duration in seconds.
+        zero: What to return when the duration is exactly zero. The two
+            callers want different things here and it is the only way they
+            differ, which is why it is a parameter rather than a branch at
+            each site.
+
+    Returns:
+        The duration in compound form.
+
+    Raises:
+        ValueError: If the duration is negative or not finite.
+    """
+
+    hours, minutes, seconds = _duration_components(duration_s)
+
+    if hours == 0 and minutes == 0 and seconds == 0.0:
+        return zero
+
+    parts = []
+
+    if hours:
+        parts.append(f"{hours}h")
+
+    if minutes:
+        parts.append(f"{minutes}m")
+
+    if seconds:
+        parts.append(f"{seconds:g}s")
+
+    return "".join(parts)
+
+
 def format_chart_time_label(elapsed_s: float) -> str:
     """Render one tick on the chart's simulated-time axis.
 
@@ -741,11 +813,14 @@ def format_chart_time_label(elapsed_s: float) -> str:
     Bare `0` for the run's start, deliberately. `0s` invites reading the
     whole axis as seconds, and the origin needs no unit to be understood.
 
-    Not `format_elapsed`, which stamps a recorded time to the tenth of a
-    second the simulation steps at. This rounds to whole seconds for whole
-    values and shows a tenth only where one is present, because the ladder
-    in `app/chart_time_base.py` places every tick on a whole number of
-    seconds and a trailing `.0` on every label is noise.
+    The same form as `format_elapsed`, which is the point: a reader
+    locating a control mark stamped `1h30m` on this axis reads the stamp and
+    the tick in one register rather than converting between two
+    (`PL-Q4M4`). Both show a tenth only where one is present - right here
+    because the ladder in `app/chart_time_base.py` places every tick on a
+    whole number of seconds and a trailing `.0` on every label is noise, and
+    right there because a stamp has to resolve the `0.1 s` step the
+    simulation advances by.
 
     Args:
         elapsed_s: Simulated time of the tick, in seconds since the run
@@ -761,23 +836,7 @@ def format_chart_time_label(elapsed_s: float) -> str:
             standard prefers a failure to.
     """
 
-    hours, minutes, seconds = _duration_components(elapsed_s)
-
-    if hours == 0 and minutes == 0 and seconds == 0.0:
-        return "0"
-
-    parts = []
-
-    if hours:
-        parts.append(f"{hours}h")
-
-    if minutes:
-        parts.append(f"{minutes}m")
-
-    if seconds:
-        parts.append(f"{seconds:g}s")
-
-    return "".join(parts)
+    return _format_duration_compound(elapsed_s, zero="0")
 
 
 def format_time_base(span_s: float) -> str:

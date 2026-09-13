@@ -141,7 +141,7 @@ def test_a_single_change_reads_as_the_instant_it_was() -> None:
 
     (adjustment,) = group_adjustments(timeline)
 
-    assert format_adjustment(adjustment) == "12.0 s · Fresh gas flow 4.0 L/min -> 2.0 L/min"
+    assert format_adjustment(adjustment) == "12s · Fresh gas flow 4.0 L/min -> 2.0 L/min"
 
 
 def test_a_multi_setting_adjustment_states_its_span_and_its_count() -> None:
@@ -153,7 +153,7 @@ def test_a_multi_setting_adjustment_states_its_span_and_its_count() -> None:
     (adjustment,) = group_adjustments(timeline)
 
     assert format_adjustment(adjustment) == (
-        "10.0 s–10.2 s · Delivered agent 2.00% -> 4.00% (2 settings)"
+        "10s–10.2s · Delivered agent 2.00% -> 4.00% (2 settings)"
     )
 
 

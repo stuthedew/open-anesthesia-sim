@@ -3,11 +3,13 @@ id: PL-CZFY
 title: The elapsed-time readout states seconds, so a run at the newly declared 24-hour limit reads '86400.0 s' - seven characters of tenths on a quantity a reader thinks about in hours
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/control_timeline.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_formatting.py, tests/unit/test_simulation_view.py
 added: 2026-09-07
+closed: 2026-09-13
+verify: uv run pytest tests/unit/test_formatting.py && grep -q 'def test_the_clock_reads_the_supported_limit_the_way_the_limit_is_stated' tests/unit/test_formatting.py
 ---
 
 **Problem.** The elapsed-time readout states seconds, so a run at the newly
@@ -58,3 +60,33 @@ reasoning recorded in `format_elapsed`'s docstring, with the "would round the
 stamp away" sentence corrected either way; and if the form changes, the
 control-timeline stamps and `format_chart_time_label`'s "which is used where"
 note agree with it.
+
+**Decided 2026-09-13 by the project owner: option 1.** Route the clock and
+the control-change stamps through the chart axis's form. `86400.0 s` becomes
+`24h`. Closed together with `PL-Q4M4` in one commit, being the same decision
+approached from the other end.
+
+Option 3 (leave it, on the grounds that a 24-hour run is not the teaching
+case) was the strongest alternative and was refused on the shorter runs
+rather than the long one: at 90 minutes the clock read `5400.0 s` beside an
+axis reading `1h30m`, so the conversion this item describes is not confined
+to the envelope's edge. Option 2 (a separate form for the clock) gives up the
+one-format invariant rather than satisfying it, which is the thing both items
+are about.
+
+**The stale sentence is corrected, as the brief required.**
+`format_elapsed`'s docstring claimed "a compound duration form would round
+the stamp away". It now records that this was false of the form that
+shipped, and why that mattered: it was the whole argument for two forms, and
+with it gone the only remaining reason was that one of them had been written
+first. `format_chart_time_label`'s "which is used where" note and
+`format_supported_run_length`'s reason for not reusing `format_elapsed` are
+both rewritten to match - the latter's stated reason was false precision,
+which stopped applying the moment the clock moved, leaving register as the
+real and much narrower distinction.
+
+**`format_elapsed` now raises on a negative or non-finite time**, through
+`_duration_components`, where the old one-decimal form would have rendered
+`-1.0 s`. Not asked for by either brief; it arrives with the shared renderer
+and is the behaviour `CLAUDE.md` prefers, so it is kept and tested rather
+than suppressed.
