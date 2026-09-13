@@ -3,7 +3,8 @@ id: PL-3355
 title: The 'Simulated time' and compartment readouts wrap their value onto a second line at some window widths
 priority: P2
 effort: S
-status: ready
+status: blocked
+blocked-by: v0.5.1
 classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
@@ -43,3 +44,8 @@ to `flet_web`'s local copies, since this container cannot reach gstatic.com.
 width the layout selects, and what holds it there is a measurement against the
 widest *value* a panel must show - the same measurement `PL-8M05` made against
 the widest label - rather than against a frame somebody happened to render.
+
+**Deferred to v0.5.1, 2026-09-13 (`PL-D143`, project owner).** `status:
+blocked`, `blocked-by: v0.5.1`, so `bin/docket next` stops offering work that
+cannot be done until the Qt port. The owner's 2026-09-10 note above is the
+decision; this only makes the queue agree with it.

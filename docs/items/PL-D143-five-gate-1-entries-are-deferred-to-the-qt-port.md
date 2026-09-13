@@ -3,7 +3,8 @@ id: PL-D143
 title: Five Gate 1 entries are deferred to the Qt port at v0.5.1 by owner decision but still count as open gate debt, so the gate that v0.5.0 waits on cannot close until after v0.5.1
 priority: P2
 effort: S
-status: needs-decision
+status: done
+closed: 2026-09-13
 classes: defect, planning
 touches: docs/items/, ROADMAP.md
 added: 2026-09-13
@@ -64,3 +65,17 @@ list under option 2, or left as they are with `ROADMAP.md` saying plainly that
 Gate 1 does not reach zero before v0.5.0 under option 3 - and `bin/docket gate`
 and `bin/docket next` both report something a session can act on without
 opening the five files to find out.
+
+**Answered 2026-09-13: option 1** (project owner). The five entries are
+`status: blocked`, `blocked-by: v0.5.1`, and each carries a line under the
+owner's 2026-09-10 note saying so. `bin/docket next` no longer offers them.
+
+**What this does not do, stated so the next session does not expect it.**
+`bin/docket gate` counts a `blocked` item as open debt - `PL-GS3R` and
+`PL-8PS6` are already in the list on that footing - so Gate 1 still reads 75
+open rather than 70. The contradiction this item named is therefore narrowed
+rather than removed: a session clearing the gate can no longer *pick* these
+five, which was the concrete harm, but the gate's own count still cannot reach
+zero before v0.5.1. Whether the frozen list should shed them is option 2 and
+was not taken; if the count itself becomes misleading, that is the item to
+reopen.

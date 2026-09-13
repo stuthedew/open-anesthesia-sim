@@ -3,7 +3,8 @@ id: PL-THXF
 title: The trace legend swatch is a solid bar for a trace that is dashed, so the legend's own redundant channel is words only
 priority: P2
 effort: S
-status: ready
+status: blocked
+blocked-by: v0.5.1
 classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
@@ -68,3 +69,8 @@ a test fails if a swatch's geometry stops matching its series' `dash_pattern`.
 printout get, and `docs/MODEL.md` § "The six compartment traces" records the
 style table. This adds the visual channel beside them rather than replacing
 them.
+
+**Deferred to v0.5.1, 2026-09-13 (`PL-D143`, project owner).** `status:
+blocked`, `blocked-by: v0.5.1`, so `bin/docket next` stops offering work that
+cannot be done until the Qt port. The owner's 2026-09-10 note above is the
+decision; this only makes the queue agree with it.

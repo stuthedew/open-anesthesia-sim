@@ -3,7 +3,8 @@ id: PL-TG60
 title: Stop printing six decimals of an exhaust integral good to three
 priority: P3
 effort: S
-status: ready
+status: blocked
+blocked-by: v0.5.1
 classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, tests/unit/test_simulation_view.py
@@ -93,3 +94,8 @@ residual is now 1.0e-12 L to 1.3e-11 L over an hour depending on the agent
 than this item assumed — but the *displayed* question it raises is untouched:
 six decimals of an exhaust total is still more precision than a reader can use,
 whatever the value is good to. Re-measure and re-argue on the new figure.
+
+**Deferred to v0.5.1, 2026-09-13 (`PL-D143`, project owner).** `status:
+blocked`, `blocked-by: v0.5.1`, so `bin/docket next` stops offering work that
+cannot be done until the Qt port. The owner's 2026-09-10 note above is the
+decision; this only makes the queue agree with it.

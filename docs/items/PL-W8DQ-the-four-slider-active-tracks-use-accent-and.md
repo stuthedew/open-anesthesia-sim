@@ -3,7 +3,8 @@ id: PL-W8DQ
 title: The four slider active tracks use ACCENT and miss the non-text minimum
 priority: P3
 effort: S
-status: ready
+status: blocked
+blocked-by: v0.5.1
 classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, tools/contrast_check.py
@@ -68,3 +69,8 @@ reader knows whether `ACCENT` is still shared with the chart.
 **Depends on.** Nothing. It sequenced after `PL-GVXP` (separate the six chart
 traces by more than colour) to avoid picking a value that item would replace;
 that item closed on 2026-09-07 and this one is unblocked.
+
+**Deferred to v0.5.1, 2026-09-13 (`PL-D143`, project owner).** `status:
+blocked`, `blocked-by: v0.5.1`, so `bin/docket next` stops offering work that
+cannot be done until the Qt port. The owner's 2026-09-10 note above is the
+decision; this only makes the queue agree with it.

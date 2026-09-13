@@ -3,7 +3,8 @@ id: PL-Q4VH
 title: The compartment chart labels its percent axis at a different interval from the gridlines it rules
 priority: P2
 effort: S
-status: ready
+status: blocked
+blocked-by: v0.5.1
 classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
@@ -49,3 +50,8 @@ is on `origin/main` - and the fix is the one this item already names: explicit
 `labels`, `label_spacing` equal to the gridline interval, and a `label_size`
 wide enough for what those labels say. Screenshots are not kept; re-run the
 app to see it.
+
+**Deferred to v0.5.1, 2026-09-13 (`PL-D143`, project owner).** `status:
+blocked`, `blocked-by: v0.5.1`, so `bin/docket next` stops offering work that
+cannot be done until the Qt port. The owner's 2026-09-10 note above is the
+decision; this only makes the queue agree with it.
