@@ -9,6 +9,7 @@ feature: planning-cadence
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-05
 closed: 2026-09-13
+pr: 515
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_ready_item_waiting_on_open_work_is_an_error' subprojects/docket/tests/test_checks.py
 ---
 

@@ -9,6 +9,7 @@ feature: release-process
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-13
 closed: 2026-09-13
+pr: 513
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_a_cut_interrupted_inside_the_stamp_loop_is_resumed_whole' subprojects/docket/tests/test_cli.py
 ---
 

@@ -3,11 +3,13 @@ id: PL-74R0
 title: core/ still holds four compartment-level advance methods that the coupled step no longer calls
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect, refactor
 feature: numerical-domain
-touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/patient.py, docs/MODEL.md, tests/unit/test_circuit.py, tests/unit/test_tissue.py, tests/unit/test_blood.py, tests/unit/test_patient.py, tests/reference/test_circuit_wash_in.py
+touches: src/anesthesia_sim/core/__init__.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/patient.py, tests/unit/test_compartment_primitives.py, tests/unit/test_patient.py, tests/reference/test_sevo_patient.py
 added: 2026-09-06
+closed: 2026-09-13
+verify: uv run pytest tests/unit/test_compartment_primitives.py tests/unit/test_patient.py -q
 ---
 
 **Problem.** `PL-GS5X` replaced the five composed sub-steps with one exact
@@ -95,3 +97,77 @@ docstring saying it is a single-compartment closed form and not how a run
 advances; a method that goes takes its unit test with it only if the property
 that test held is still verified somewhere. `PL-9SH6`'s renames land in the same
 pass or immediately after it, not before.
+
+**Decided 2026-09-13: option 3 — the three single-compartment closed forms
+stay, documented; `PatientCompartments.advance()` goes. The line between the
+two groups turned out to be measurable rather than a judgement call.**
+
+**What the measurement was.** One 60 s step against six hundred 0.1 s steps,
+on the sevoflurane reference patient at an arterial fraction of 0.08:
+
+| Method | One 60 s step | 600 × 0.1 s | Relative difference |
+| --- | --- | --- | --- |
+| `BreathingCircuit.advance_fresh_gas` | — | — | 2.3e-14 |
+| `TissueGroup.advance` | — | — | 1.1e-14 |
+| `VenousBloodCompartment.advance` | — | — | 8.5e-16 |
+| `PatientCompartments.advance` (mixed venous) | 0.018770 | 0.014969 | **0.254** |
+
+The first three are exact at any step size, which is what a closed form means.
+The fourth is a first-order operator split — it steps the three tissue groups
+and then mixes their *end-of-step* return into venous blood, which is the
+scheme `PL-GS5X` replaced — and it carried no documented error bound, no
+production caller, and a docstring ("Advance tissues and venous blood") that
+gave a reader nothing to suspect. That is the plausible-looking number
+`CLAUDE.md` reserves "prefer an obvious failure" for.
+
+**The criterion was already written down, in `alveolar.py`.** "Nothing outside
+the governing equations may move agent between two modelled compartments."
+Solving one compartment against a stated boundary input does not; composing
+several of them does, and `PatientCompartments.advance()` moved agent from the
+tissues into the venous pool. So this is `PL-LKRP`'s rule applied a second
+time rather than a new one, and it decides the five methods without appeal to
+taste.
+
+**`BreathingCircuit.advance` stays as a name.** `docs/MODEL.md` § "Preserved
+circuit reference tests" requires the v0.0.2 analytic tests to pass
+*unchanged*, and `tests/reference/test_circuit_wash_in.py` calls the circuit by
+that name. Its docstring now says so, instead of "Preserve the original v0.0.2
+circuit interface" with no reason attached.
+
+**Where the verification went, which is the half the brief was right to
+insist on.** Six tests called the deleted method. Two properties moved *up* to
+the coupled system, where both are stronger than they were:
+
+- `test_mixed_venous_blood_lags_the_flow_weighted_tissue_return` — the
+  patient-side step held the tissue return constant across a step, so it could
+  only ever show the lag at the size of one step. Against the coupled run the
+  return is rising continuously and the pool is chasing it.
+- `test_higher_cardiac_output_increases_early_uptake_and_lowers_alveolar_fraction`
+  — the compartment-level version could assert only the first half, because it
+  took the arterial fraction as an argument. The fall in `F_A` is the feedback
+  it structurally could not produce, and it is the half a learner is looking
+  at.
+
+`test_zero_cardiac_output_prevents_uptake` was already covered at the system
+level by `tests/reference/test_sevo_patient.py::test_zero_cardiac_output_prevents_patient_uptake`,
+which is `docs/MODEL.md`'s required zero-cardiac-output test; the duplicate
+went. Two tests that only needed *a loaded patient* now load it with the
+setters. `test_reported_change_matches_patient_storage` tested the deleted
+method's own return contract and went with it.
+
+The three survivors' verification is stronger than before, not merely
+preserved: `tests/unit/test_compartment_primitives.py` holds the step-size
+property for all three at once, where `test_blood.py` had never had one.
+
+**`docs/MODEL.md` needed no edit, checked rather than assumed.** § "Breathing
+circuit" states the closed form `advance_fresh_gas` implements and it is still
+reachable; § "Tissue uptake and return" and § "Venous blood" state the two
+ODEs and their time constants, both still implemented; § "Preserved circuit
+reference tests" is unchanged and still passing. Nothing in `docs/MODEL.md`,
+`docs/ARCHITECTURE.md` or `README.md` named `PatientCompartments.advance`.
+`docs/ARCHITECTURE.md`:99 already said the step is "one exact propagation
+rather than … a sequence of sub-exchanges", which this makes true of the
+public surface as well as of the step.
+
+**`PL-9SH6`'s renames are unblocked and land after this**, as the brief asked.
+This pass renames nothing.

@@ -218,7 +218,19 @@ class BreathingCircuit:
         self.circuit_concentration_fraction = agent_amount_l / self.circuit_volume_l
 
     def advance_fresh_gas(self, simulation_step_s: float) -> FreshGasExchange:
-        """Advance exact circuit wash-in and report external exchange."""
+        """Advance exact circuit wash-in and report external exchange.
+
+        The circuit's own closed form with no patient connected, and not how a
+        run advances: a connected patient adds the ventilation term
+        `docs/MODEL.md` § "Breathing circuit" carries beside this one, and the
+        step that solves both is `AgentUptakeSystem.advance()`. The package
+        docstring in `core/__init__.py` states the distinction and the
+        zero-flow branch below.
+
+        Raises:
+            SimulationConfigurationError: `simulation_step_s` is not positive
+                and finite. Nothing is changed when it is refused.
+        """
 
         require_positive_finite("simulation_step_s", simulation_step_s)
 
@@ -250,7 +262,15 @@ class BreathingCircuit:
         )
 
     def advance(self, simulation_step_s: float) -> None:
-        """Preserve the original v0.0.2 circuit interface."""
+        """Preserve the original v0.0.2 circuit interface.
+
+        Kept as a name rather than as a second behaviour: `docs/MODEL.md`
+        § "Preserved circuit reference tests" requires the v0.0.2 analytic
+        wash-in and washout tests to pass *unchanged*, and
+        `tests/reference/test_circuit_wash_in.py` calls the circuit by this
+        name. Discarding the exchange `advance_fresh_gas()` reports is what
+        the v0.0.2 signature was; a caller who needs it calls that instead.
+        """
 
         self.advance_fresh_gas(simulation_step_s)
 

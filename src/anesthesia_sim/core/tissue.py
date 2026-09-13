@@ -138,9 +138,21 @@ class TissueGroup:
     def advance(self, arterial_fraction: float, simulation_step_s: float) -> float:
         """Advance exactly for constant arterial fraction and blood flow.
 
+        This tissue group's own closed form, and not how a run advances: the
+        arterial fraction a run presents changes continuously, and the step
+        that follows it is `AgentUptakeSystem.advance()`. The package
+        docstring in `core/__init__.py` states the distinction and the zero-
+        flow branch below; `docs/MODEL.md` § "Tissue uptake and return" is
+        the equation.
+
         Returns the signed change in tissue agent amount. A positive value
         represents uptake by the tissue. A negative value represents return
         from the tissue to blood.
+
+        Raises:
+            SimulationConfigurationError: `arterial_fraction` is not a finite
+                number in [0, 1], or `simulation_step_s` is not positive and
+                finite. Both are checked before anything changes.
         """
 
         require_concentration_fraction("arterial_fraction", arterial_fraction)

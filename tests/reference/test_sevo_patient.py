@@ -176,6 +176,53 @@ def test_zero_cardiac_output_prevents_patient_uptake() -> None:
     assert system.agent_simulation_validation.passes_validation is True
 
 
+def test_mixed_venous_blood_lags_the_flow_weighted_tissue_return() -> None:
+    """Venous blood is a pool, so it trails what drains into it.
+
+    Held against the coupled run rather than against a patient-side step:
+    `PL-74R0` deleted `PatientCompartments.advance()`, which held the tissue
+    return constant across a step and so could only ever show this lag at the
+    size of one step. Here the return is rising continuously and the pool is
+    chasing it, which is the property `docs/MODEL.md` § "Venous blood" states
+    and the one a reader of the mixed-venous trace is looking at.
+    """
+
+    system = AgentUptakeSystem.default()
+
+    _run_for(system, duration_s=120.0, simulation_step_s=0.1)
+
+    assert system.patient.mixed_venous_fraction > 0.0
+    assert system.patient.mixed_venous_fraction < system.patient.tissue_return_fraction
+
+
+def test_higher_cardiac_output_increases_early_uptake_and_lowers_alveolar_fraction() -> None:
+    """Both halves of the cardiac-output lesson, on one pair of runs.
+
+    More perfusion carries more agent away from the lung per unit time, so
+    the patient stores more of it and the alveolar fraction rises more
+    slowly. The second assertion is what makes this a coupled-model test
+    rather than a compartment one: the fall in `F_A` is the feedback the
+    patient-side step `PL-74R0` deleted could not produce, because it took
+    the arterial fraction as an argument instead of solving for it.
+    """
+
+    lower_output = AgentUptakeSystem.default()
+    higher_output = AgentUptakeSystem.default()
+
+    lower_output.set_cardiac_output(2.5)
+    higher_output.set_cardiac_output(7.5)
+
+    _run_for(lower_output, duration_s=60.0, simulation_step_s=0.1)
+    _run_for(higher_output, duration_s=60.0, simulation_step_s=0.1)
+
+    assert higher_output.patient.total_agent_amount_l > lower_output.patient.total_agent_amount_l
+    assert (
+        higher_output.alveoli.concentration_fraction < lower_output.alveoli.concentration_fraction
+    )
+    assert higher_output.agent_simulation_validation.passes_validation is True
+    assert lower_output.agent_simulation_validation.passes_validation is True
+
+
 def test_higher_ventilation_increases_early_alveolar_fraction() -> None:
     lower_ventilation = AgentUptakeSystem.default()
     higher_ventilation = AgentUptakeSystem.default()
