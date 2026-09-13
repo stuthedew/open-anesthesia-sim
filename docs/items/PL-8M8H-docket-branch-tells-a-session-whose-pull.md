@@ -165,3 +165,41 @@ forward.
 **Sequencing.** `render.py` was being edited on `claude/gracious-noether-xjcvju`
 (`PL-VFVW`, `PL-F4JS`) when this was decided, and those are smaller changes. They
 land first; this resolves against them.
+
+## Observed live 2026-09-13, minutes after part one was decided
+
+The session that recorded the decision above hit the defect itself, on
+`claude/focused-carson-ji73cn` immediately after `#541` squash-merged. `bin/docket
+branch` printed, verbatim and in this order:
+
+```text
+Branch: claude/focused-carson-ji73cn is 2 behind origin/main and 1 ahead.
+  Merge origin/main before your first edit, not at push time:
+  git merge origin/main
+  Landed on origin/main since this branch forked: PL-BLHV, PL-FDBK, PL-8M8H, PL-NBCS, ...
+```
+
+**The advice and its own refutation are two lines apart.** The four ids on the
+`Landed` line are this branch's own — the very items `#541` carried. Verified before
+acting: all four item files were byte-identical to `origin/main`'s copies, and `git
+diff --diff-filter=A origin/main HEAD` was empty, so the branch held nothing of its
+own. `RESTART` was correct and `MERGE` was wrong, exactly as this item says.
+
+**A design point this adds.** `BranchState.landed` is already computed, already on the
+state object, and already contradicts the advice printed above it. It must **not**
+become the detector — it is subject-derived (`_landed_since` reads leading ids off the
+base's new subjects), so it proves nothing about content and cannot satisfy the
+part-two qualifier; and it lists ids from every branch that merged, not just this one.
+What it does establish is that `format_branch_state` is printing a self-contradiction
+*today*, from data it already holds. That is the strongest available argument for part
+one's answer: the problem is not that the reader lacks evidence, it is that the advice
+is not derived from the evidence already beside it. A line added beside `MERGE` would
+make that two contradictions instead of one.
+
+**And the wrong advice was caught here only by an accident that will not recur.** A
+concurrent session cut v0.4.20 while the branch was open, stamping `milestone:` onto
+five items the branch had also touched. `bin/docket check` then reported five errors —
+the stale branch appearing to *remove* a release stamp — which is what sent the session
+to look at the branch at all. Nothing about that check knows anything about merged
+branches. Without the coincident release, the `MERGE` line would have been followed,
+which is the path that lost `#284`'s commit.
