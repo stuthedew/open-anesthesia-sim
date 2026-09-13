@@ -1,7 +1,12 @@
 ---
 id: PL-65HT
 title: A core/ dataclass numeric field default other than 0 or 1 that appears in no provenance-table value is an unsourced scientific constant, and nothing checks for one
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: infra, docs
+feature: provenance
+touches: tools, tests/unit, Makefile
 added: 2026-09-13
 ---
 
@@ -64,3 +69,16 @@ to pin — which is real, and is why this item exists rather than being dropped.
 and its interpreter floor decided and its screen-not-proof limit stated where a
 reader of its output can see it; or the item is closed with the reasoning for
 declining it, on the counting above.
+**Why it matters.** The population is four constants today and two of them are
+unpinned (`PL-DJYF`), so what this check would buy is small and measurable and
+what its absence costs is not: a scientific constant that enters `core/` without
+passing through a data file is structurally invisible to `check_provenance`,
+which walks data files in both directions. The only thing standing between that
+and the tree is somebody remembering to look, which is exactly the kind of
+guarantee `CLAUDE.md` says to move out of the model and into a script. Against
+it, the same file's tooling gate asks whether a check will genuinely run again
+and whether upkeep costs more than the passes it saves - and the identifier
+mapping this one would need is an allowlist with upkeep. That is why it is a
+decision rather than a build, and the counting above is what the decision reads.
+
+**Decision needed.** Is the screen worth building at a governed population of four - and if so, does it live in `tools/core_vocabulary_check.py` (where provenance is off-topic), in `tools/doc_check.py` (which would gain an interpreter dependency it was built to avoid), or in a third tool?

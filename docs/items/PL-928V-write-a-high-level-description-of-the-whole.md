@@ -1,8 +1,14 @@
 ---
 id: PL-928V
 title: Write a high-level description of the whole working method as one document
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: docs
+feature: project-introduction
+touches: docs/workflow.md, README.md, docs/consultant-brief.md
 added: 2026-09-13
+verify: python3 tools/doc_check.py check && test -f docs/workflow.md && grep -q 'workflow.md' README.md
 ---
 
 **Problem.** No document describes the working method end to end. The rules are
@@ -50,3 +56,11 @@ tour at the front breaks its spine).
 **Done when** `docs/workflow.md` exists, is linked from `README.md` and
 `docs/consultant-brief.md`, restates no rule it does not cite, and `make check`
 passes with the resident character total unchanged.
+**Why it matters.** Three readers need the shape and none of them can get it
+today. `docs/consultant-brief.md` hands a cold outside reviewer no workflow map
+at all, so the first thing a paid review spends its attention on is
+reconstructing how the project runs rather than reviewing it. The project owner
+returning after a gap has the same problem at lower stakes. And a session
+proposing a new mechanism has no way to check whether one already exists, which
+is how the apparatus grows a second answer to a question it had already
+answered. Verified 2026-09-13: `docs/workflow.md` does not exist.
