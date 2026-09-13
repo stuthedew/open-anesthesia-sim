@@ -69,7 +69,13 @@ class TissueGroup:
 
     @property
     def capacity_l(self) -> float:
-        """Equivalent gas capacity at a tissue fraction of one."""
+        """Equivalent gas capacity at a tissue fraction of one, $`V_i\\lambda_{i:g}`$.
+
+        `docs/MODEL.md` § "Tissue compartments" is the definition. The stored
+        coefficient is tissue:gas rather than tissue:blood, so this is one
+        multiplication and the blood-referenced form is derived from it below
+        rather than the other way round.
+        """
 
         return self.volume_l * self.tissue_gas_partition_coefficient
 
@@ -93,7 +99,19 @@ class TissueGroup:
 
     @property
     def time_constant_s(self) -> float:
-        """Return the perfusion-limited tissue time constant."""
+        """The perfusion-limited tissue time constant $`\\tau_i = V_i\\lambda_{i:b}/Q_i`$.
+
+        `docs/MODEL.md` § "Tissue uptake and return" defines it, and gives the
+        zero-flow case this returns `inf` for: an unperfused tissue exchanges
+        nothing, so it never reaches equilibrium. The seconds-per-minute factor
+        is here because $`Q_i`$ is held in litres per minute at this boundary
+        while every time in the model is in seconds.
+
+        The step does not read this. `core/governing_equations.py` carries the
+        same quantity as `washin_rate_s`, its reciprocal, which states the
+        zero-flow case without a branch; this is the form a reader of the
+        specification is looking for.
+        """
 
         if self.blood_flow_l_min == 0.0:
             return inf

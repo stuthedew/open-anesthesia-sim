@@ -158,7 +158,7 @@ directional tests on solubility and ventilation, and a deterministic-replay
 test.
 
 Validation is one test, and it is deliberately not oversold:
-`tests/reference/test_published_wash_in.py` compares each agent's $`F_A/F_I`$
+`tests/reference/test_published_wash_in_and_elimination.py` compares each agent's $`F_A/F_I`$
 at 30 minutes against the volunteer measurements of Yasuda et al., and all
 three land inside the measured spread. That module states its own caveats at
 length — the published subjects were breathing nitrous oxide, which this model

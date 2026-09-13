@@ -22,8 +22,8 @@ user picks* rather than *a designed theme*, and item 32 is the repository's
 human-facing documents. The words *polish*, *styling*, *typography*, *dark
 mode* and *look and feel* do not occur in the file.
 
-It is not merely absent. `docs/WORKING_NOTES.md` § "Shelved: UI structure/form
-mockups" records the thread as explicitly shelved on the project owner's call,
+It is not merely absent. `docs/WORKING_NOTES.md` § "Shelved, then resumed: UI
+structure/form mockups" records the thread as explicitly shelved on the project owner's call,
 closing with "Do not resume this without the project owner asking again." The
 project owner asked on 2026-09-08, which is that condition met.
 
@@ -50,7 +50,7 @@ where a session implementing v0.5.0 would read it.
   could not do before. A numbered row would also freeze a gate of its own,
   which § "Why the gates are on this list and not behind it" makes the
   consequence of adding one.
-- `docs/WORKING_NOTES.md` § "Shelved: UI structure/form mockups" — the
+- `docs/WORKING_NOTES.md` § "Shelved, then resumed: UI structure/form mockups" — the
   resumption condition is met and the note should say so, and say where the
   thread went.
 

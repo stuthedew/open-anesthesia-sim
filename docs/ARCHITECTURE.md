@@ -49,7 +49,7 @@ src/anesthesia_sim/
 │   ├── governing_equations.py     # MODEL.md's balance equations as one system matrix
 │   ├── matrix_exponential.py      # exp(A dt) for a compartment system; no physiology in it
 │   ├── uptake_system.py      # couples circuit + alveoli + patient; advances one step
-│   ├── run_score.py               # a run as its settings over time; any state in closed form
+│   ├── run_definition.py               # a run as its settings over time; any state in closed form
 │   ├── agent_simulation_validation.py  # mass-balance / agent-accounting tracker
 │   └── simulation.py              # SimulationState: explicit elapsed time (bounded) + AgentUptakeSystem
 ├── app/                  # Flet user interface
@@ -146,16 +146,17 @@ bounded by how often a user touches a control rather than by how long they
 watch.
 
 **A run is its inputs, and its states are derived from them** (PL-T691).
-Beside the recorded history the controller holds a `core/run_score.py`
-`RunScore`: the settings in force at each moment, plus one keyframe — the
+Beside the recorded history the controller holds a `core/run_definition.py`
+`RunDefinition`: the settings in force at each moment, plus one keyframe — the
 state at that instant — per change. Because the equations are linear and
 time-invariant while the settings hold, the propagator is exact over any
 horizon and not only over a step, so every state the run passed through is
 one propagation from the keyframe bracketing it and none of them has to have
 been recorded. `evaluate_window(start_s, stop_s, columns)` is that read, and
-`score_segments` hands the record itself out as frozen segments — readable
+`run_segments` hands the record itself out as frozen segments — readable
 without being advanceable, so nothing above the controller can move the
-score's reach past where the run actually got to and have a prediction come
+run definition's reach past where the run actually got to and have a prediction
+come
 back drawn on the run's own axis. `docs/MODEL.md` § "The run is that record,
 and every state is derived from it" carries the measurements, and § "The
 canonical evaluation rule" states which of the two evaluation paths a stored,
@@ -164,7 +165,7 @@ exported, replayed or branched value may be taken from.
 **That boundary is a type rather than a convention.** `evaluate_window` hands
 back `DisplayState` values, which are not state vectors, so a drawn column
 cannot become a keyframe, an exported figure or a branch's opening state by
-being the same nine numbers in the same order; `RunScore` refuses one as an
+being the same nine numbers in the same order; `RunDefinition` refuses one as an
 opening state by name. A layer above the controller therefore cannot cross
 that boundary by forgetting it is there, which is the only way a boundary
 stated in prose is ever crossed.
@@ -172,7 +173,7 @@ stated in prose is ever crossed.
 Both records are live in this release and the chart still draws from the
 recorded one; § "Closed-form agreement test" is what holds them to each
 other while that is true. Which representation the interface reads is not a
-question the layering leaves open — the score is the run and the samples are
+question the layering leaves open — the run definition is the run and the samples are
 a second copy of it — so this is a transition rather than a choice, and
 PL-2FM6 is what finishes it.
 `app/simulation_view.py` reads only those two — it builds the
@@ -251,7 +252,7 @@ failure — they are started once, at mount, so a loop that exited could
 never be restarted.
 
 Drawing that full record every frame is what made the render payload grow
-with run length. The run no longer keeps a record to draw: `core/run_score.py`
+with run length. The run no longer keeps a record to draw: `core/run_definition.py`
 answers the state at any instant in closed form, so the view asks the
 controller for the states at the instants it is about to plot
 (`SimulationController.drawn_window`) and there is nothing to subset. Which

@@ -38,7 +38,7 @@ re-affirmed the resolution on 2026-08-30 against a widened measurement that
 moved the extreme from about one count to about two, `docs/MODEL.md` was
 updated, and this sentence was not.
 
-**Where.** `README.md` § "Current status", the paragraph beginning
+**Where.** `README.md`'s then-current `Current status` section, the paragraph beginning
 "Concentrations are displayed to 0.01 percentage points". The authority is
 `docs/MODEL.md` § "Displayed precision", whose table and the sentence beneath it
 carry both figures.
