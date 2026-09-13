@@ -1,7 +1,12 @@
 ---
 id: PL-TP5M
 title: PL-ZBRB's advisory names blocked-by to work around a checker that did not read it, and PL-KBD0's check now does
-status: untriaged
+priority: P3
+effort: S
+status: needs-decision
+classes: infra
+feature: planning-cadence
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-13
 ---
 
@@ -35,3 +40,10 @@ advisory may not be about to trip the error. Check what the two messages
 actually read like together on one item before deciding; it may be that they
 compose fine and the honest answer is to change nothing but the docstring's
 note.
+
+**Done when.** The two messages have been read side by side on one item that
+trips both - which is the step the answer rests on and which nobody has taken -
+and `PL-ZBRB`'s advisory and its docstring say what is true after `PL-KBD0`:
+either naming only `blocked-by`, or keeping both with the reason they still
+fire in different situations, or changing nothing but the docstring's stale
+note that no checker reads the field.

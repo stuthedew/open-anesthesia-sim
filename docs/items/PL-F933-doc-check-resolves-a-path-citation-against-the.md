@@ -1,7 +1,12 @@
 ---
 id: PL-F933
 title: doc_check resolves a path citation against the working tree, so a citation to a gitignored path passes locally and reddens CI
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, infra
+feature: dev-tooling
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-13
 ---
 
@@ -48,3 +53,10 @@ Worth weighing against how often it can fire. Most citations are to tracked
 source paths, which cannot drift this way; the exposure is prose about build
 artifacts, caches and environments, which is rare but is exactly what a
 `## Running the tests` section is made of.
+
+**Done when.** `tools/doc_check.py` gives the same answer on a path citation
+in a developer's working tree as it gives in a clean checkout - either by
+consulting `.gitignore` and refusing a citation to an ignored path whether or
+not it happens to resolve, or by recording in the module that the divergence is
+deliberate, what its class is, and what a session meeting the CI failure should
+do. A test covers a citation to a path that exists only because it is ignored.

@@ -1,8 +1,14 @@
 ---
 id: PL-XP6W
 title: MODEL.md's Symbols table has no row for f_i, the stored per-group perfusion fraction its own Tissue groups section uses in Q_i = f_i Q
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs
+feature: core-domain-language
+touches: docs/MODEL.md
 added: 2026-09-13
+verify: python3 tools/doc_check.py check && grep -qF 'TissueGroup.perfusion_fraction' docs/MODEL.md
 ---
 
 **Problem.** MODEL.md's Symbols table has no row for f_i, the stored per-group perfusion fraction its own Tissue groups section uses in Q_i = f_i Q
@@ -30,3 +36,7 @@ in the Code column, dimensionless, and the same "for group $`i`$" phrasing the
 other indexed rows use.
 
 **Found.** Writing the Code column for `PL-H46J`, 2026-09-13.
+
+**Done when.** § "Symbols" carries a row for $`f_i`$ - dimensionless, with
+`TissueGroup.perfusion_fraction` in the Code column and the same "for group
+$`i`$" phrasing the other indexed rows use - and `make doc-check` passes.
