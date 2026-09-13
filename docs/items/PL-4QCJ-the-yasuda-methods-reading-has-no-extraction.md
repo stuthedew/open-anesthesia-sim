@@ -1,0 +1,65 @@
+---
+id: PL-4QCJ
+title: The Yasuda methods reading has no extraction note in docs/references/, so the facts PL-RFLN's conclusion rests on live only as prose in docs/MODEL.md
+status: untriaged
+feature: provenance
+added: 2026-09-13
+---
+
+**Problem.** The Yasuda methods reading has no extraction note in docs/references/, so the facts PL-RFLN's conclusion rests on live only as prose in docs/MODEL.md
+
+**Where this came from.** `PL-XJ5P` (adopt the private reference corpus as the
+route) merged as `#531` while `PL-RFLN` was in flight, and it established a new
+obligation: "Reading a source from the corpus therefore owes an extraction note
+in this directory." The Yasuda methods reading is the first reading that falls
+under it and predates it by hours.
+
+**What is unrecorded, and what rests on it.** The facts the reading produced
+live only as prose in `docs/MODEL.md` § "Desflurane's residual, and why the
+parameter file was not changed" and in the briefs of `PL-RFLN`, `PL-ZDWL` and
+`PL-03ZG`:
+
+- about **50 ml** of corrugated Teflon between the tracheal end-tidal sampling
+  port and the connection to the nonrebreathing valve, stated to protect the
+  end-tidal sample from contamination with inspired gas;
+- the end-tidal port sited **at the tracheal tube**, with mixed expired gas
+  sampled **separately** from a 1-l aluminium mixing chamber on the expiratory
+  limb and reported as `F_M`;
+- a nonrebreathing circuit, **exchanged for a fresh inspiratory and expiratory
+  one at exactly 30 min**, so the potent agents' inspired fraction during
+  elimination is zero by construction;
+- minute ventilation measured and the alveolar fraction **derived** from
+  `F_M = f_A x F_A + f_D x F_I`, averaged over the 10-, 15- and 20-minute
+  samples;
+- all three potent agents given simultaneously from one cylinder (2.0%
+  desflurane, 0.4% isoflurane, 0.2% halothane, balance 35% O2 / 65% N2O), with
+  65% nitrous oxide continued through the first 150 min of elimination.
+
+`PL-RFLN`'s whole conclusion — that the published apparatus's dead space is an
+alveolar-ventilation decrement and cannot carry desflurane's residual — rests
+on the first two. None carries a page locator.
+
+**Why it matters.** This is exactly the failure `PL-XJ5P` names: without a
+note, the corpus is consulted once per *session* rather than once per *source*.
+It has already happened twice for these two papers. `PL-ZDWL` is about to open
+them a third time, and it is the natural session to write the note from, since
+it will have the PDFs attached.
+
+**Blocked on.** `PL-Z3V5`, which decides what an extraction note contains and
+writes the first worked example. `docs/references/README.md` says so
+explicitly: "What a note contains, and the first worked example, are
+`PL-Z3V5`'s and are deliberately not fixed here." Do not invent the format
+here. `PL-Z3V5` currently exists only on `origin/claude/vibrant-curie-0x11e4`
+and needs recovering - `bin/docket stranded` prints the `git checkout` line.
+
+**Also worth doing in the same pass.** `docs/MODEL.md` says of these two papers
+that "neither is in PubMed Central, and neither is held in this repository".
+Still true, and now incomplete: they *are* in the private companion corpus, and
+a reader of the specification has no way to learn that from the sentence. One
+clause pointing at `docs/references/README.md` § "Where owner-supplied full
+texts live now" closes it.
+
+**Done when.** The Yasuda methods facts above carry page locators in an
+extraction note under `docs/references/`, in whatever shape `PL-Z3V5` settles,
+and `docs/MODEL.md`'s "not held in this repository" sentence points a reader at
+where they now are.

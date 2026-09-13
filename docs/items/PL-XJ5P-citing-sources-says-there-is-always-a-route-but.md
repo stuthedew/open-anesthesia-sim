@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: .claude/rules/citing-sources.md, docs/references/README.md
 added: 2026-09-06
 closed: 2026-09-13
+pr: 531
 verify: python3 tools/doc_check.py check && grep -qF 'open-anesthesia-sim-references' .claude/rules/citing-sources.md && grep -qF 'Where owner-supplied full texts live now' docs/references/README.md
 ---
 

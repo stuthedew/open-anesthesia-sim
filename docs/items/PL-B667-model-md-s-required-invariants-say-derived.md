@@ -9,6 +9,7 @@ feature: core-domain-language
 touches: docs/MODEL.md
 added: 2026-09-13
 closed: 2026-09-13
+pr: 532
 verify: python3 tools/doc_check.py check && grep -qF 'derived partial-pressure-equivalent fractions remain finite and within 0 through 1' docs/MODEL.md
 ---
 
