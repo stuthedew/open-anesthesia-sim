@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, ux
 feature: scenario-branching
+milestone: v0.4.19
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/formatting.py, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-09-13
