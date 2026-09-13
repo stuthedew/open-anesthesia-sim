@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-06
 closed: 2026-09-12
+pr: 504
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_whose_only_landed_commit_is_docket_record_output_is_not_merged' subprojects/docket/tests/test_vcs.py
 ---
 

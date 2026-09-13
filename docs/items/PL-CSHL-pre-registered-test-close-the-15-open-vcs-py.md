@@ -1,14 +1,15 @@
 ---
 id: PL-CSHL
 title: Pre-registered test: close the 15 open vcs.py items as one root-cause round and count what they spawn against the cluster's own baseline of 1.05
-status: done
-feature: parallel-sessions
 priority: P3
 effort: S
+status: done
 classes: infra
+feature: parallel-sessions
 touches: docs/items
 added: 2026-09-12
 closed: 2026-09-13
+pr: 504
 verify: python3 tools/doc_check.py check && grep -q '^RESULT: N=' docs/items/PL-CSHL-pre-registered-test-close-the-15-open-vcs-py.md
 ---
 
