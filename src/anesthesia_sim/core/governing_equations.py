@@ -211,7 +211,7 @@ class UptakeEquationSettings:
     alveolar_ventilation_l_s: float
     cardiac_output_l_s: float
     blood_gas_partition_coefficient: float
-    delivered_concentration_fraction: float
+    delivered_partial_pressure_fraction: float
     tissues: tuple[TissueGroupEquationSettings, ...]
 
     def __post_init__(self) -> None:
@@ -225,7 +225,7 @@ class UptakeEquationSettings:
             "blood_gas_partition_coefficient", self.blood_gas_partition_coefficient
         )
         require_concentration_fraction(
-            "delivered_concentration_fraction", self.delivered_concentration_fraction
+            "delivered_partial_pressure_fraction", self.delivered_partial_pressure_fraction
         )
 
         if len(self.tissues) != TISSUE_GROUP_COUNT:
@@ -280,7 +280,7 @@ def build_system_matrix(settings: UptakeEquationSettings) -> Matrix:
     ventilation_l_s = settings.alveolar_ventilation_l_s
     cardiac_output_l_s = settings.cardiac_output_l_s
     blood_gas = settings.blood_gas_partition_coefficient
-    delivered_fraction = settings.delivered_concentration_fraction
+    delivered_fraction = settings.delivered_partial_pressure_fraction
 
     pulmonary_blood_flow_l_s = cardiac_output_l_s * blood_gas
 

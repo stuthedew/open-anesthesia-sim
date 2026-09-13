@@ -74,9 +74,9 @@ def _compartments(system: AgentUptakeSystem) -> tuple[float, ...]:
     """The six compartment fractions the run records, in state order."""
 
     return (
-        system.circuit.circuit_concentration_fraction,
-        system.alveoli.concentration_fraction,
-        system.patient.mixed_venous_fraction,
+        system.circuit.inspired_partial_pressure_fraction,
+        system.alveoli.partial_pressure_fraction,
+        system.patient.mixed_venous_partial_pressure_fraction,
         *(tissue.partial_pressure_fraction for tissue in system.patient.tissues),
     )
 
@@ -94,7 +94,7 @@ def _stepped_run(
 
     if changes is None:
         changes = {
-            300: ("set_delivered_concentration", 0.04),
+            300: ("set_delivered_partial_pressure_fraction", 0.04),
             1200: ("set_alveolar_ventilation", 6.0),
         }
 
@@ -209,7 +209,7 @@ def test_a_window_reads_only_the_segments_it_covers(monkeypatch: pytest.MonkeyPa
 
     for change in range(1, 1501):
         definition.advance_to(change * total_s / 1501)
-        system.set_delivered_concentration(0.01 + 0.005 * (change % 4))
+        system.set_delivered_partial_pressure_fraction(0.01 + 0.005 * (change % 4))
         definition.record_change(system.equation_settings())
 
     definition.advance_to(total_s)
@@ -249,7 +249,7 @@ def test_two_changes_at_one_instant_are_one_segment() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(system.equation_settings(), system.state_vector())
     definition.advance_to(10.0)
-    system.set_delivered_concentration(0.03)
+    system.set_delivered_partial_pressure_fraction(0.03)
     definition.record_change(system.equation_settings())
     system.set_cardiac_output(4.0)
     definition.record_change(system.equation_settings())
@@ -257,7 +257,9 @@ def test_two_changes_at_one_instant_are_one_segment() -> None:
     assert len(definition.segments) == 2
     assert definition.segments[-1].opening.elapsed_s == 10.0
     assert definition.segments[-1].settings.cardiac_output_l_s == pytest.approx(4.0 / 60.0)
-    assert definition.segments[-1].settings.delivered_concentration_fraction == pytest.approx(0.03)
+    assert definition.segments[-1].settings.delivered_partial_pressure_fraction == pytest.approx(
+        0.03
+    )
 
 
 def test_a_change_opens_a_segment_at_the_run_s_own_reach() -> None:
@@ -520,12 +522,12 @@ def test_a_change_undone_before_a_step_runs_leaves_no_segment() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(system.equation_settings(), system.state_vector())
     definition.advance_to(10.0)
-    system.set_delivered_concentration(0.03)
+    system.set_delivered_partial_pressure_fraction(0.03)
     definition.record_change(system.equation_settings())
 
     assert len(definition.segments) == 2
 
-    system.set_delivered_concentration(0.02)
+    system.set_delivered_partial_pressure_fraction(0.02)
     definition.record_change(system.equation_settings())
 
     assert len(definition.segments) == 1
@@ -542,11 +544,13 @@ def test_the_first_stretch_is_kept_even_when_a_change_returns_to_it() -> None:
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(system.equation_settings(), system.state_vector())
-    system.set_delivered_concentration(0.05)
+    system.set_delivered_partial_pressure_fraction(0.05)
     definition.record_change(system.equation_settings())
 
     assert len(definition.segments) == 1
-    assert definition.segments[0].settings.delivered_concentration_fraction == pytest.approx(0.05)
+    assert definition.segments[0].settings.delivered_partial_pressure_fraction == pytest.approx(
+        0.05
+    )
 
 
 def test_anchored_columns_land_on_multiples_of_the_spacing() -> None:

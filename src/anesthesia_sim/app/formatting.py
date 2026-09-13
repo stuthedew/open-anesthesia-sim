@@ -206,8 +206,8 @@ CHART_GRID_INTERVAL_MAC: Final = 0.5
 WASH_IN_DISPLAY_DECIMALS: Final = 2
 
 
-def format_percent(concentration_fraction: Fraction) -> str:
-    """Convert a concentration fraction to display percent.
+def format_percent(partial_pressure_fraction: Fraction) -> str:
+    """Convert a partial-pressure-equivalent fraction to display percent.
 
     Renders at `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT`, the resolution
     `docs/MODEL.md` § "Displayed precision" derives.
@@ -226,7 +226,7 @@ def format_percent(concentration_fraction: Fraction) -> str:
     be absorbed into a plausible-looking reading.
 
     Args:
-        concentration_fraction: Dimensionless concentration
+        partial_pressure_fraction: Dimensionless partial-pressure-equivalent
             fraction from zero through one.
 
     Returns:
@@ -234,7 +234,7 @@ def format_percent(concentration_fraction: Fraction) -> str:
         below-resolution form for a positive value that rounds to zero.
     """
 
-    percent = percent_from_fraction(concentration_fraction)
+    percent = percent_from_fraction(partial_pressure_fraction)
     rendered = f"{percent:.{CONCENTRATION_DISPLAY_DECIMALS}f}"
 
     if percent > 0.0 and float(rendered) == 0.0:
@@ -245,8 +245,8 @@ def format_percent(concentration_fraction: Fraction) -> str:
     return f"{rendered}%"
 
 
-def mac_multiple(concentration_fraction: Fraction, mac_percent: Percent) -> float:
-    """Convert a concentration fraction to multiples of the agent's 1 MAC.
+def mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percent) -> float:
+    """Convert a partial-pressure-equivalent fraction to multiples of 1 MAC.
 
     The whole arithmetic of the second display unit, in one place, so the
     transformation `docs/MODEL.md` § "MAC multiples as a display unit"
@@ -264,8 +264,8 @@ def mac_multiple(concentration_fraction: Fraction, mac_percent: Percent) -> floa
     no age, no second agent, and no depth-of-anesthesia endpoint.
 
     Args:
-        concentration_fraction: Dimensionless concentration fraction
-            from zero through one.
+        partial_pressure_fraction: Dimensionless partial-pressure-equivalent
+            fraction from zero through one.
         mac_percent: The running agent's 1 MAC as a percent of one
             atmosphere, from `SimulationSnapshot.agent_mac_percent`.
             Passed in rather than looked up: the divisor is what makes
@@ -288,11 +288,11 @@ def mac_multiple(concentration_fraction: Fraction, mac_percent: Percent) -> floa
     if not mac_percent > 0.0:
         raise ValueError(f"mac_percent must be strictly positive, got {mac_percent!r}")
 
-    return percent_from_fraction(concentration_fraction) / mac_percent
+    return percent_from_fraction(partial_pressure_fraction) / mac_percent
 
 
-def format_mac_multiple(concentration_fraction: Fraction, mac_percent: Percent) -> str:
-    """Render a concentration fraction as a MAC multiple with its unit.
+def format_mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percent) -> str:
+    """Render a partial-pressure-equivalent fraction as a MAC multiple.
 
     The same three rules `format_percent` follows, for the same reasons,
     at this unit's own derived resolution: round rather than truncate,
@@ -308,8 +308,8 @@ def format_mac_multiple(concentration_fraction: Fraction, mac_percent: Percent) 
     two readouts contradicting each other.
 
     Args:
-        concentration_fraction: Dimensionless concentration fraction
-            from zero through one.
+        partial_pressure_fraction: Dimensionless partial-pressure-equivalent
+            fraction from zero through one.
         mac_percent: The running agent's 1 MAC as a percent of one
             atmosphere.
 
@@ -322,7 +322,7 @@ def format_mac_multiple(concentration_fraction: Fraction, mac_percent: Percent) 
         ValueError: If `mac_percent` is not strictly positive.
     """
 
-    multiple = mac_multiple(concentration_fraction, mac_percent)
+    multiple = mac_multiple(partial_pressure_fraction, mac_percent)
     rendered = f"{multiple:.{MAC_DISPLAY_DECIMALS}f}"
 
     if multiple > 0.0 and float(rendered) == 0.0:

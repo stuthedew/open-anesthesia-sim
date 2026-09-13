@@ -93,8 +93,31 @@ class TissueGroup:
         return self.agent_amount_l / self.capacity_l
 
     @property
-    def venous_outflow_fraction(self) -> float:
-        """Return blood partial-pressure fraction leaving the tissue."""
+    def venous_outflow_partial_pressure_fraction(self) -> float:
+        """The partial-pressure fraction of the blood leaving this tissue.
+
+        Returns `partial_pressure_fraction` unchanged, and is kept as a
+        separate name rather than folded into its one caller because that
+        equality is an assumption rather than an identity: `docs/MODEL.md`
+        § "Assumptions" carries it as "tissue venous blood equilibrates with
+        its tissue group", which holds because each group is perfusion
+        limited. A diffusion-limited group would need a real calculation
+        here, so the site that relies on the assumption is the site that
+        should name it.
+
+        It is a *second* quantity on this class rather than an alias, which
+        is why it takes a prefix where the tissue's own fraction does not.
+        The two agree only in partial pressure: the concentrations either
+        side of the tissue-blood boundary differ by
+        `tissue_blood_partition_coefficient`. That is the whole reason this
+        model states every compartment in partial-pressure-equivalent
+        fractions, and this property is where the choice pays for itself -
+        written in concentrations, the same physiology would need the
+        coefficient applied here.
+
+        `PatientCompartments.tissue_return_partial_pressure_fraction` is the
+        one caller, which flow-weights this across the three groups.
+        """
 
         return self.partial_pressure_fraction
 
@@ -136,7 +159,9 @@ class TissueGroup:
         require_concentration_fraction("partial_pressure_fraction", partial_pressure_fraction)
         self.agent_amount_l = self.capacity_l * partial_pressure_fraction
 
-    def advance(self, arterial_fraction: Fraction, simulation_step_s: float) -> float:
+    def advance(
+        self, arterial_partial_pressure_fraction: Fraction, simulation_step_s: float
+    ) -> float:
         """Advance exactly for constant arterial fraction and blood flow.
 
         This tissue group's own closed form, and not how a run advances: the
@@ -151,12 +176,14 @@ class TissueGroup:
         from the tissue to blood.
 
         Raises:
-            SimulationConfigurationError: `arterial_fraction` is not a finite
-                number in [0, 1], or `simulation_step_s` is not positive and
-                finite. Both are checked before anything changes.
+            SimulationConfigurationError: the arterial fraction is not a
+                finite number in [0, 1], or `simulation_step_s` is not
+                positive and finite. Both are checked before anything changes.
         """
 
-        require_concentration_fraction("arterial_fraction", arterial_fraction)
+        require_concentration_fraction(
+            "arterial_partial_pressure_fraction", arterial_partial_pressure_fraction
+        )
         require_positive_finite("simulation_step_s", simulation_step_s)
 
         if self.blood_flow_l_min == 0.0:
@@ -167,7 +194,8 @@ class TissueGroup:
         initial_fraction = self.partial_pressure_fraction
 
         next_fraction = (
-            arterial_fraction + (initial_fraction - arterial_fraction) * fraction_remaining
+            arterial_partial_pressure_fraction
+            + (initial_fraction - arterial_partial_pressure_fraction) * fraction_remaining
         )
 
         self.agent_amount_l = self.capacity_l * next_fraction

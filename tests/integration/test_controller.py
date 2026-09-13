@@ -46,7 +46,7 @@ def test_default_controller_starts_with_sevoflurane() -> None:
     assert snapshot.agent_id == "sevoflurane"
     assert snapshot.agent_display_name == "Sevoflurane"
     assert snapshot.max_delivered_concentration_percent == 8.0
-    assert snapshot.delivered_concentration_fraction == pytest.approx(0.02)
+    assert snapshot.delivered_partial_pressure_fraction == pytest.approx(0.02)
 
 
 def test_default_controller_starts_each_agent_at_its_own_one_mac() -> None:
@@ -56,13 +56,13 @@ def test_default_controller_starts_each_agent_at_its_own_one_mac() -> None:
 
     assert SimulationController(
         agent_id="sevoflurane"
-    ).snapshot().delivered_concentration_fraction == pytest.approx(0.02)
+    ).snapshot().delivered_partial_pressure_fraction == pytest.approx(0.02)
     assert SimulationController(
         agent_id="isoflurane"
-    ).snapshot().delivered_concentration_fraction == pytest.approx(0.012)
+    ).snapshot().delivered_partial_pressure_fraction == pytest.approx(0.012)
     assert SimulationController(
         agent_id="desflurane"
-    ).snapshot().delivered_concentration_fraction == pytest.approx(0.06)
+    ).snapshot().delivered_partial_pressure_fraction == pytest.approx(0.06)
 
 
 def test_explicit_delivered_concentration_above_the_agent_max_is_rejected() -> None:
@@ -75,7 +75,7 @@ def test_explicit_delivered_concentration_above_the_agent_max_is_rejected() -> N
     """
 
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
-        SimulationController(agent_id="isoflurane", delivered_concentration_fraction=0.08)
+        SimulationController(agent_id="isoflurane", delivered_partial_pressure_fraction=0.08)
 
 
 def test_setting_a_delivered_concentration_above_the_agent_max_is_rejected() -> None:
@@ -88,21 +88,21 @@ def test_setting_a_delivered_concentration_above_the_agent_max_is_rejected() -> 
     controller = SimulationController(agent_id="isoflurane")
 
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
-        controller.set_delivered_concentration(0.50)
+        controller.set_delivered_partial_pressure_fraction(0.50)
 
     snapshot = controller.snapshot()
 
     assert snapshot.max_delivered_concentration_percent == 5.0
-    assert snapshot.delivered_concentration_fraction == pytest.approx(0.012)
+    assert snapshot.delivered_partial_pressure_fraction == pytest.approx(0.012)
 
 
 def test_delivered_concentration_exactly_at_the_agent_max_is_accepted() -> None:
     """The boundary is inclusive: 5.0% is a real isoflurane dial position."""
 
     controller = SimulationController(agent_id="isoflurane")
-    controller.set_delivered_concentration(0.05)
+    controller.set_delivered_partial_pressure_fraction(0.05)
 
-    assert controller.snapshot().delivered_concentration_fraction == pytest.approx(0.05)
+    assert controller.snapshot().delivered_partial_pressure_fraction == pytest.approx(0.05)
 
 
 def test_delivered_concentration_can_be_turned_off() -> None:
@@ -111,9 +111,9 @@ def test_delivered_concentration_can_be_turned_off() -> None:
     """
 
     controller = SimulationController(agent_id="isoflurane")
-    controller.set_delivered_concentration(0.0)
+    controller.set_delivered_partial_pressure_fraction(0.0)
 
-    assert controller.snapshot().delivered_concentration_fraction == 0.0
+    assert controller.snapshot().delivered_partial_pressure_fraction == 0.0
 
 
 def test_patient_defaults_come_from_the_data_file() -> None:
@@ -172,13 +172,15 @@ def test_set_agent_resets_delivered_concentration_to_the_new_agent_one_mac() -> 
     is 1 MAC of sevoflurane but only about a third of a MAC of desflurane).
     """
 
-    controller = SimulationController(agent_id="sevoflurane", delivered_concentration_fraction=0.08)
+    controller = SimulationController(
+        agent_id="sevoflurane", delivered_partial_pressure_fraction=0.08
+    )
 
     controller.set_agent("isoflurane")
     snapshot = controller.snapshot()
 
     assert snapshot.max_delivered_concentration_percent == 5.0
-    assert snapshot.delivered_concentration_fraction == pytest.approx(0.012)
+    assert snapshot.delivered_partial_pressure_fraction == pytest.approx(0.012)
 
 
 def test_controller_can_be_constructed_for_a_different_agent() -> None:
@@ -200,7 +202,7 @@ def test_set_agent_starts_fresh_preserving_flow_settings_but_not_concentration()
         agent_id="sevoflurane",
         circuit_volume_l=5.0,
         fresh_gas_flow_l_min=3.0,
-        delivered_concentration_fraction=0.03,
+        delivered_partial_pressure_fraction=0.03,
         alveolar_ventilation_l_min=5.5,
         cardiac_output_l_min=6.0,
     )
@@ -221,7 +223,7 @@ def test_set_agent_starts_fresh_preserving_flow_settings_but_not_concentration()
 
     assert snapshot.circuit_volume_l == 5.0
     assert snapshot.fresh_gas_flow_l_min == 3.0
-    assert snapshot.delivered_concentration_fraction == pytest.approx(0.06)
+    assert snapshot.delivered_partial_pressure_fraction == pytest.approx(0.06)
     assert snapshot.alveolar_ventilation_l_min == 5.5
     assert snapshot.cardiac_output_l_min == 6.0
 
@@ -344,9 +346,11 @@ def test_the_window_ends_on_the_sample_the_readouts_were_built_from() -> None:
         return window.compartment_fractions(RecordedSeries(snapshot.agent_id, quantity))[-1]
 
     assert window.times_s[-1] == pytest.approx(snapshot.elapsed_s)
-    assert drawn(RecordedQuantity.CIRCUIT) == pytest.approx(snapshot.circuit_concentration_fraction)
+    assert drawn(RecordedQuantity.CIRCUIT) == pytest.approx(
+        snapshot.inspired_partial_pressure_fraction
+    )
     assert drawn(RecordedQuantity.ALVEOLAR) == pytest.approx(
-        snapshot.alveolar_concentration_fraction
+        snapshot.alveolar_partial_pressure_fraction
     )
     assert drawn(RecordedQuantity.FAT) == pytest.approx(snapshot.fat_partial_pressure_fraction)
 
@@ -378,9 +382,9 @@ def test_each_drawn_quantity_reads_the_state_of_the_compartment_it_names() -> No
     assert {
         quantity: state[COMPARTMENT_STATE_INDEX[quantity]] for quantity in COMPARTMENT_STATE_INDEX
     } == {
-        RecordedQuantity.CIRCUIT: system.circuit.circuit_concentration_fraction,
-        RecordedQuantity.ALVEOLAR: system.alveoli.concentration_fraction,
-        RecordedQuantity.MIXED_VENOUS: system.patient.mixed_venous_fraction,
+        RecordedQuantity.CIRCUIT: system.circuit.inspired_partial_pressure_fraction,
+        RecordedQuantity.ALVEOLAR: system.alveoli.partial_pressure_fraction,
+        RecordedQuantity.MIXED_VENOUS: system.patient.mixed_venous_partial_pressure_fraction,
         RecordedQuantity.VESSEL_RICH: system.patient.vessel_rich.partial_pressure_fraction,
         RecordedQuantity.MUSCLE: system.patient.muscle.partial_pressure_fraction,
         RecordedQuantity.FAT: system.patient.fat.partial_pressure_fraction,
@@ -455,8 +459,8 @@ def test_reset_pauses_and_clears_concentration_history() -> None:
 
     assert snapshot.is_running is False
     assert snapshot.elapsed_s == 0.0
-    assert snapshot.circuit_concentration_fraction == 0.0
-    assert snapshot.alveolar_concentration_fraction == 0.0
+    assert snapshot.inspired_partial_pressure_fraction == 0.0
+    assert snapshot.alveolar_partial_pressure_fraction == 0.0
     assert snapshot.stored_agent_l == 0.0
 
     window = controller.drawn_window(0.0, 0.0, 150)
@@ -470,14 +474,14 @@ def test_parameter_changes_do_not_reset_dynamic_state() -> None:
     before = controller.snapshot()
 
     controller.set_fresh_gas_flow(3.0)
-    controller.set_delivered_concentration(0.06)
+    controller.set_delivered_partial_pressure_fraction(0.06)
 
     after = controller.snapshot()
 
     assert after.elapsed_s == before.elapsed_s
     assert after.stored_agent_l == pytest.approx(before.stored_agent_l)
     assert after.fresh_gas_flow_l_min == 3.0
-    assert after.delivered_concentration_fraction == 0.06
+    assert after.delivered_partial_pressure_fraction == 0.06
     # The circuit volume is a fixed model parameter, so a settings change
     # must leave it exactly where the session was built with it (`PL-GYH2`).
     assert after.circuit_volume_l == before.circuit_volume_l
@@ -623,13 +627,13 @@ def test_a_refused_setting_does_not_fail_the_session() -> None:
     before = controller.snapshot()
 
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
-        controller.set_delivered_concentration(0.50)
+        controller.set_delivered_partial_pressure_fraction(0.50)
 
     after = controller.snapshot()
 
     assert after.failure_reason is None
     assert after.is_running is True
-    assert after.delivered_concentration_fraction == before.delivered_concentration_fraction
+    assert after.delivered_partial_pressure_fraction == before.delivered_partial_pressure_fraction
 
 
 class _FatThatRefusesTheStep(TissueGroup):
@@ -720,9 +724,11 @@ def test_a_failed_step_leaves_every_displayed_value_bit_identical() -> None:
 
     after = controller.snapshot()
 
-    assert after.circuit_concentration_fraction == before.circuit_concentration_fraction
-    assert after.alveolar_concentration_fraction == before.alveolar_concentration_fraction
-    assert after.mixed_venous_concentration_fraction == (before.mixed_venous_concentration_fraction)
+    assert after.inspired_partial_pressure_fraction == before.inspired_partial_pressure_fraction
+    assert after.alveolar_partial_pressure_fraction == before.alveolar_partial_pressure_fraction
+    assert after.mixed_venous_partial_pressure_fraction == (
+        before.mixed_venous_partial_pressure_fraction
+    )
     assert after.vessel_rich_partial_pressure_fraction == (
         before.vessel_rich_partial_pressure_fraction
     )
@@ -764,7 +770,7 @@ def test_every_control_records_under_its_own_stable_identifier() -> None:
     controller = SimulationController()
 
     controller.set_fresh_gas_flow(3.0)
-    controller.set_delivered_concentration(0.03)
+    controller.set_delivered_partial_pressure_fraction(0.03)
     controller.set_alveolar_ventilation(5.0)
     controller.set_cardiac_output(4.0)
 
@@ -780,7 +786,7 @@ def test_every_recorded_control_carries_its_declared_unit() -> None:
     controller = SimulationController()
 
     controller.set_fresh_gas_flow(3.0)
-    controller.set_delivered_concentration(0.03)
+    controller.set_delivered_partial_pressure_fraction(0.03)
     controller.set_alveolar_ventilation(5.0)
     controller.set_cardiac_output(4.0)
 
@@ -799,11 +805,13 @@ def test_the_delivered_dial_is_recorded_as_the_fraction_the_core_holds() -> None
 
     controller = SimulationController()
 
-    controller.set_delivered_concentration(0.03)
+    controller.set_delivered_partial_pressure_fraction(0.03)
 
     (change,) = controller.snapshot().control_timeline
     assert change.new_value == pytest.approx(0.03)
-    assert change.new_value == pytest.approx(controller.snapshot().delivered_concentration_fraction)
+    assert change.new_value == pytest.approx(
+        controller.snapshot().delivered_partial_pressure_fraction
+    )
 
 
 def test_a_setting_equal_to_the_one_in_place_records_nothing() -> None:
@@ -828,7 +836,7 @@ def test_a_refused_setting_records_nothing() -> None:
     controller = SimulationController()
 
     with pytest.raises(SimulationConfigurationError):
-        controller.set_delivered_concentration(0.5)
+        controller.set_delivered_partial_pressure_fraction(0.5)
 
     assert controller.snapshot().control_timeline == ()
     assert not controller.has_failed
@@ -846,8 +854,8 @@ def test_changes_within_one_step_collapse_to_what_the_model_integrated() -> None
     controller.start()
     _advance_for(controller, 1.0)
 
-    controller.set_delivered_concentration(0.03)
-    controller.set_delivered_concentration(0.04)
+    controller.set_delivered_partial_pressure_fraction(0.03)
+    controller.set_delivered_partial_pressure_fraction(0.04)
 
     (change,) = controller.snapshot().control_timeline
     assert change.previous_value == pytest.approx(0.02)
@@ -860,8 +868,8 @@ def test_a_change_undone_within_one_step_leaves_no_entry() -> None:
 
     controller = SimulationController()
 
-    controller.set_delivered_concentration(0.03)
-    controller.set_delivered_concentration(0.02)
+    controller.set_delivered_partial_pressure_fraction(0.03)
+    controller.set_delivered_partial_pressure_fraction(0.02)
 
     assert controller.snapshot().control_timeline == ()
 
@@ -872,9 +880,9 @@ def test_the_same_control_changed_across_two_steps_records_both() -> None:
     controller = SimulationController()
     controller.start()
 
-    controller.set_delivered_concentration(0.03)
+    controller.set_delivered_partial_pressure_fraction(0.03)
     _advance_for(controller, 1.0)
-    controller.set_delivered_concentration(0.04)
+    controller.set_delivered_partial_pressure_fraction(0.04)
 
     first, second = controller.snapshot().control_timeline
     assert (first.previous_value, first.new_value) == pytest.approx((0.02, 0.03))
@@ -1181,7 +1189,7 @@ def _run_with_two_changes(controller: SimulationController) -> None:
 
     controller.start()
     _advance_for(controller, duration_s=30.0)
-    controller.set_delivered_concentration(0.04)
+    controller.set_delivered_partial_pressure_fraction(0.04)
     _advance_for(controller, duration_s=30.0)
     controller.set_alveolar_ventilation(6.0)
     _advance_for(controller, duration_s=60.0)
@@ -1218,7 +1226,7 @@ def test_a_refused_setting_leaves_the_run_definition_describing_the_run() -> Non
     _advance_for(controller, duration_s=10.0)
 
     with pytest.raises(SimulationConfigurationError):
-        controller.set_delivered_concentration(0.5)
+        controller.set_delivered_partial_pressure_fraction(0.5)
 
     assert len(controller.run_segments) == 1
     assert controller.snapshot().control_timeline == ()
@@ -1395,7 +1403,7 @@ def test_a_control_change_is_drawn_at_every_time_base_the_reader_can_select() ->
     controller.start()
     _advance_for(controller, duration_s=60.0)
     # Turned *up* mid-rise: the case a selection of extremes could not reach.
-    controller.set_delivered_concentration(0.04)
+    controller.set_delivered_partial_pressure_fraction(0.04)
     change_s = controller.snapshot().elapsed_s
     _advance_for(controller, duration_s=60.0)
 

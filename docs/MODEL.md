@@ -346,11 +346,11 @@ get through the code is a defect in the code rather than a use for the table.
 | --- | --- | --- | --- |
 | $`t`$ | Explicit simulation time | s | `SimulationState.elapsed_s` |
 | $`\Delta t`$ | Simulation step | s | `SimulationState.simulation_step_s` |
-| $`F_D`$ | Delivered fresh-gas agent fraction | dimensionless | `BreathingCircuit.delivered_concentration_fraction` |
-| $`F_I`$ | Inspired agent fraction, which is the gas in the breathing circuit (see "Model boundary") | dimensionless | `BreathingCircuit.circuit_concentration_fraction` |
-| $`F_A`$ | Alveolar agent fraction | dimensionless | `AlveolarCompartment.concentration_fraction` |
-| $`F_a`$ | Arterial partial-pressure-equivalent fraction (flow-limited: $`F_a \equiv F_A`$; not an independent state) | dimensionless | — no attribute: the code reads `AlveolarCompartment.concentration_fraction` wherever an arterial fraction is required |
-| $`F_v`$ | Venous blood partial-pressure-equivalent fraction | dimensionless | `VenousBloodCompartment.concentration_fraction` |
+| $`F_D`$ | Delivered fresh-gas agent fraction | dimensionless | `BreathingCircuit.delivered_partial_pressure_fraction` |
+| $`F_I`$ | Inspired agent fraction, which is the gas in the breathing circuit (see "Model boundary") | dimensionless | `BreathingCircuit.inspired_partial_pressure_fraction` |
+| $`F_A`$ | Alveolar agent fraction | dimensionless | `AlveolarCompartment.partial_pressure_fraction` |
+| $`F_a`$ | Arterial partial-pressure-equivalent fraction (flow-limited: $`F_a \equiv F_A`$; not an independent state) | dimensionless | — no attribute: the code reads `AlveolarCompartment.partial_pressure_fraction` wherever an arterial fraction is required |
+| $`F_v`$ | Venous blood partial-pressure-equivalent fraction | dimensionless | `VenousBloodCompartment.partial_pressure_fraction` |
 | $`F_i`$ | Tissue group $`i`$ partial-pressure-equivalent fraction | dimensionless | `TissueGroup.partial_pressure_fraction` |
 | $`V_C`$ | Mixed breathing-circuit volume | L gas | `BreathingCircuit.circuit_volume_l` |
 | $`V_A`$ | Modeled alveolar gas volume | L gas | `AlveolarCompartment.gas_volume_l` |

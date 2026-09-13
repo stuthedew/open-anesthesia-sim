@@ -37,12 +37,14 @@ class ControlInput(StrEnum):
 
     The *value* of each member is what a recorded run stores, so it is
     chosen from the domain rather than from whatever the accessor happens
-    to be called this release. `PL-9SH6` and `PL-3TLK` rename two of the
-    forwarding setters in v0.4.1 - `set_delivered_concentration` becomes a
-    `_partial_pressure_fraction` form, and the circuit fraction becomes
-    `inspired_` - and a timeline that had stored accessor names would carry
-    retired ones in the history of every run recorded before the rename.
-    The member names may follow the code; the strings may not.
+    to be called this release. That separation has now been paid for:
+    `PL-3TLK` and `PL-9SH6` renamed both of the forwarding setters these
+    members stand for - `set_delivered_concentration` became
+    `set_delivered_partial_pressure_fraction`, and the circuit fraction
+    became `inspired_partial_pressure_fraction` - and a timeline that had
+    stored accessor names would now carry two retired ones in the history
+    of every run recorded before the rename. The member names followed the
+    code; the strings did not move.
 
     `DELIVERED` is the vaporizer dial: the concentration delivered into the
     circuit, which is not the same quantity as the inspired concentration
@@ -393,12 +395,12 @@ class SimulationSnapshot:
     """
     circuit_volume_l: float
     fresh_gas_flow_l_min: float
-    delivered_concentration_fraction: Fraction
+    delivered_partial_pressure_fraction: Fraction
     alveolar_ventilation_l_min: float
     cardiac_output_l_min: float
-    circuit_concentration_fraction: Fraction
-    alveolar_concentration_fraction: Fraction
-    mixed_venous_concentration_fraction: Fraction
+    inspired_partial_pressure_fraction: Fraction
+    alveolar_partial_pressure_fraction: Fraction
+    mixed_venous_partial_pressure_fraction: Fraction
     vessel_rich_partial_pressure_fraction: Fraction
     muscle_partial_pressure_fraction: Fraction
     fat_partial_pressure_fraction: Fraction
@@ -478,7 +480,7 @@ class SimulationController:
         agent_id: str = "sevoflurane",
         circuit_volume_l: float | None = None,
         fresh_gas_flow_l_min: float | None = None,
-        delivered_concentration_fraction: Fraction | None = None,
+        delivered_partial_pressure_fraction: Fraction | None = None,
         alveolar_ventilation_l_min: float | None = None,
         cardiac_output_l_min: float | None = None,
     ) -> None:
@@ -499,7 +501,7 @@ class SimulationController:
             agent_id=agent_id,
             circuit_volume_l=circuit_volume_l,
             fresh_gas_flow_l_min=fresh_gas_flow_l_min,
-            delivered_concentration_fraction=delivered_concentration_fraction,
+            delivered_partial_pressure_fraction=delivered_partial_pressure_fraction,
             alveolar_ventilation_l_min=alveolar_ventilation_l_min,
             cardiac_output_l_min=cardiac_output_l_min,
         )
@@ -509,7 +511,7 @@ class SimulationController:
         agent_id: str,
         circuit_volume_l: float | None,
         fresh_gas_flow_l_min: float | None,
-        delivered_concentration_fraction: Fraction | None,
+        delivered_partial_pressure_fraction: Fraction | None,
         alveolar_ventilation_l_min: float | None,
         cardiac_output_l_min: float | None,
     ) -> None:
@@ -532,8 +534,10 @@ class SimulationController:
         if fresh_gas_flow_l_min is not None:
             uptake_system.set_fresh_gas_flow(fresh_gas_flow_l_min)
 
-        if delivered_concentration_fraction is not None:
-            uptake_system.set_delivered_concentration(delivered_concentration_fraction)
+        if delivered_partial_pressure_fraction is not None:
+            uptake_system.set_delivered_partial_pressure_fraction(
+                delivered_partial_pressure_fraction
+            )
 
         if alveolar_ventilation_l_min is not None:
             uptake_system.set_alveolar_ventilation(alveolar_ventilation_l_min)
@@ -669,7 +673,7 @@ class SimulationController:
             agent_id=agent_id,
             circuit_volume_l=current.circuit_volume_l,
             fresh_gas_flow_l_min=current.fresh_gas_flow_l_min,
-            delivered_concentration_fraction=None,
+            delivered_partial_pressure_fraction=None,
             alveolar_ventilation_l_min=current.alveolar_ventilation_l_min,
             cardiac_output_l_min=current.cardiac_output_l_min,
         )
@@ -693,12 +697,14 @@ class SimulationController:
             agent_mac_awake=self._agent_mac_awake,
             circuit_volume_l=circuit.circuit_volume_l,
             fresh_gas_flow_l_min=circuit.fresh_gas_flow_l_min,
-            delivered_concentration_fraction=(circuit.delivered_concentration_fraction),
+            delivered_partial_pressure_fraction=(circuit.delivered_partial_pressure_fraction),
             alveolar_ventilation_l_min=(alveoli.alveolar_ventilation_l_min),
             cardiac_output_l_min=patient.cardiac_output_l_min,
-            circuit_concentration_fraction=(circuit.circuit_concentration_fraction),
-            alveolar_concentration_fraction=(Fraction(alveoli.concentration_fraction)),
-            mixed_venous_concentration_fraction=(Fraction(patient.mixed_venous_fraction)),
+            inspired_partial_pressure_fraction=(circuit.inspired_partial_pressure_fraction),
+            alveolar_partial_pressure_fraction=(Fraction(alveoli.partial_pressure_fraction)),
+            mixed_venous_partial_pressure_fraction=(
+                Fraction(patient.mixed_venous_partial_pressure_fraction)
+            ),
             vessel_rich_partial_pressure_fraction=(
                 Fraction(patient.vessel_rich.partial_pressure_fraction)
             ),
@@ -887,12 +893,16 @@ class SimulationController:
             ControlInput.FRESH_GAS_FLOW, previous_value, circuit.fresh_gas_flow_l_min
         )
 
-    def set_delivered_concentration(self, delivered_concentration_fraction: Fraction) -> None:
+    def set_delivered_partial_pressure_fraction(
+        self, delivered_partial_pressure_fraction: Fraction
+    ) -> None:
         circuit = self._state.uptake_system.circuit
-        previous_value = circuit.delivered_concentration_fraction
-        self._state.uptake_system.set_delivered_concentration(delivered_concentration_fraction)
+        previous_value = circuit.delivered_partial_pressure_fraction
+        self._state.uptake_system.set_delivered_partial_pressure_fraction(
+            delivered_partial_pressure_fraction
+        )
         self._record_control_change(
-            ControlInput.DELIVERED, previous_value, circuit.delivered_concentration_fraction
+            ControlInput.DELIVERED, previous_value, circuit.delivered_partial_pressure_fraction
         )
 
     def set_alveolar_ventilation(self, alveolar_ventilation_l_min: float) -> None:

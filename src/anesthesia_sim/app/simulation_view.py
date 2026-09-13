@@ -662,14 +662,14 @@ class SimulationView:
             format_flow(initial_snapshot.fresh_gas_flow_l_min), color=INK
         )
         self._delivered_concentration_text = ft.Text(
-            format_percent(initial_snapshot.delivered_concentration_fraction), color=INK
+            format_percent(initial_snapshot.delivered_partial_pressure_fraction), color=INK
         )
         # The dial in the same two units as the compartments it fills. Without
         # it the one control a reader sets would be the only value on screen
         # they could not compare with the traces it produces.
         self._delivered_concentration_mac_text = ft.Text(
             format_mac_multiple(
-                initial_snapshot.delivered_concentration_fraction,
+                initial_snapshot.delivered_partial_pressure_fraction,
                 initial_snapshot.agent_mac_percent,
             ),
             color=MUTED,
@@ -1182,7 +1182,7 @@ class SimulationView:
         self._delivered_concentration_slider = ft.Slider(
             min=MIN_DELIVERED_CONCENTRATION_PERCENT,
             max=initial_snapshot.max_delivered_concentration_percent,
-            value=(percent_from_fraction(initial_snapshot.delivered_concentration_fraction)),
+            value=(percent_from_fraction(initial_snapshot.delivered_partial_pressure_fraction)),
             label="{value}%",
             # The drag label is the same clinical value as the readout beside
             # it and must be read at the same resolution. Flet rounds this
@@ -2234,7 +2234,7 @@ class SimulationView:
 
         self._delivered_concentration_slider.max = snapshot.max_delivered_concentration_percent
         self._delivered_concentration_slider.value = percent_from_fraction(
-            snapshot.delivered_concentration_fraction
+            snapshot.delivered_partial_pressure_fraction
         )
         # The ceiling and the rules move with the agent because both are
         # multiples of its 1 MAC - which is exactly what keeps the *scale*
@@ -2292,13 +2292,13 @@ class SimulationView:
         self._refresh_notice(snapshot.failure_reason, snapshot.supported_limit_reason)
         self._elapsed_time_text.value = format_elapsed(snapshot.elapsed_s)
         self._circuit_concentration_text.value = format_percent(
-            snapshot.circuit_concentration_fraction
+            snapshot.inspired_partial_pressure_fraction
         )
         self._alveolar_concentration_text.value = format_percent(
-            snapshot.alveolar_concentration_fraction
+            snapshot.alveolar_partial_pressure_fraction
         )
         self._mixed_venous_concentration_text.value = format_percent(
-            snapshot.mixed_venous_concentration_fraction
+            snapshot.mixed_venous_partial_pressure_fraction
         )
         self._vessel_rich_concentration_text.value = format_percent(
             snapshot.vessel_rich_partial_pressure_fraction
@@ -2313,13 +2313,13 @@ class SimulationView:
         # MAC. `_refresh_view` is the only writer of both.
         mac_percent = snapshot.agent_mac_percent
         self._circuit_mac_text.value = format_mac_multiple(
-            snapshot.circuit_concentration_fraction, mac_percent
+            snapshot.inspired_partial_pressure_fraction, mac_percent
         )
         self._alveolar_mac_text.value = format_mac_multiple(
-            snapshot.alveolar_concentration_fraction, mac_percent
+            snapshot.alveolar_partial_pressure_fraction, mac_percent
         )
         self._mixed_venous_mac_text.value = format_mac_multiple(
-            snapshot.mixed_venous_concentration_fraction, mac_percent
+            snapshot.mixed_venous_partial_pressure_fraction, mac_percent
         )
         self._vessel_rich_mac_text.value = format_mac_multiple(
             snapshot.vessel_rich_partial_pressure_fraction, mac_percent
@@ -2333,10 +2333,10 @@ class SimulationView:
 
         self._fresh_gas_flow_text.value = format_flow(snapshot.fresh_gas_flow_l_min)
         self._delivered_concentration_text.value = format_percent(
-            snapshot.delivered_concentration_fraction
+            snapshot.delivered_partial_pressure_fraction
         )
         self._delivered_concentration_mac_text.value = format_mac_multiple(
-            snapshot.delivered_concentration_fraction, mac_percent
+            snapshot.delivered_partial_pressure_fraction, mac_percent
         )
         self._alveolar_ventilation_text.value = format_flow(snapshot.alveolar_ventilation_l_min)
         self._cardiac_output_text.value = format_flow(snapshot.cardiac_output_l_min)
@@ -2616,7 +2616,7 @@ class SimulationView:
         """
 
         reading = read_wash_in(
-            snapshot.alveolar_concentration_fraction, snapshot.circuit_concentration_fraction
+            snapshot.alveolar_partial_pressure_fraction, snapshot.inspired_partial_pressure_fraction
         )
 
         if reading.plotted_ratio is not None:
@@ -3230,11 +3230,13 @@ class SimulationView:
         if event.control.value is None:
             return
 
-        delivered_concentration_fraction = fraction_from_percent(
+        delivered_partial_pressure_fraction = fraction_from_percent(
             Percent(float(event.control.value))
         )
         self._apply_setting(
-            lambda: self._controller.set_delivered_concentration(delivered_concentration_fraction),
+            lambda: self._controller.set_delivered_partial_pressure_fraction(
+                delivered_partial_pressure_fraction
+            ),
             coalesce=True,
         )
 
