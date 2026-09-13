@@ -33,6 +33,17 @@ from pydantic import ValidationError as PydanticValidationError
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 SUPPORTED_SCHEMA_VERSION = 2
+
+#: How far the tissue perfusion fractions may sum from 1 before the sum is
+#: called wrong. Two guards enforce that rule and both should keep doing so -
+#: this module guards the data file, `PatientCompartments.__post_init__`
+#: guards direct construction, and defence in depth is the point. What must
+#: not be duplicated is the *number*: it is a policy value that could
+#: reasonably be retuned, unlike `SECONDS_PER_MINUTE`, and two copies would
+#: let the two guards disagree about what "sums to 1" means with nothing to
+#: say so (`PL-TCW5`). `core/patient.py` imports this one rather than
+#: declaring its own; it already imports `AgentParameters` from here, so the
+#: single definition costs no new edge between the two modules.
 FLOW_FRACTION_TOLERANCE = 1e-12
 
 #: The closed vocabulary a `sources` entry's `tier` is drawn from, in the
@@ -575,10 +586,57 @@ def parse_reference_adult_parameters(payload: object) -> ReferenceAdultParameter
 
 
 def _load_packaged_json(package: str, filename: str) -> object:
+    """Read one packaged JSON data file, raising only at this module's boundary.
+
+    The wrapping is load-bearing rather than tidy. This module's docstring
+    states that every raise it makes to a caller is a
+    `SimulationConfigurationError`, and callers are written against that:
+    `app/simulation_view.py` catches the project hierarchy and reports a
+    refused setting. Unwrapped, `resource.open()` raises `OSError` and
+    `json.load()` raises `UnicodeDecodeError` or `JSONDecodeError` - none of
+    them an `AnesthesiaSimulationError` - so a missing, unreadable or
+    truncated data file escaped as though it were a programming error and the
+    stated boundary was false for every one of them (`PL-B32L`).
+
+    Three types rather than the two the audit named: the file is opened as
+    text, so a data file holding bytes that are not UTF-8 fails in the read
+    inside `json.load()` with a `UnicodeDecodeError`, which is a `ValueError`
+    and not a `JSONDecodeError`. Catching only the two named would have left
+    the third escaping and the docstring still false.
+
+    The cause is chained rather than discarded: which file and what was wrong
+    with it is the whole diagnostic content, and a corrupted install is
+    exactly the case where a reader needs it.
+
+    Args:
+        package: The data package to read from.
+        filename: The file to read within it.
+
+    Returns:
+        The decoded JSON payload, unvalidated.
+
+    Raises:
+        SimulationConfigurationError: The resource could not be read, or did
+            not decode as UTF-8 JSON.
+    """
+
     resource = files(package).joinpath(filename)
 
-    with resource.open("r", encoding="utf-8") as stream:
-        payload: object = json.load(stream)
+    try:
+        with resource.open("r", encoding="utf-8") as stream:
+            payload: object = json.load(stream)
+    except OSError as error:
+        raise SimulationConfigurationError(
+            f"could not read packaged data file {package}/{filename}: {error}"
+        ) from error
+    except UnicodeDecodeError as error:
+        raise SimulationConfigurationError(
+            f"packaged data file {package}/{filename} is not valid UTF-8: {error}"
+        ) from error
+    except json.JSONDecodeError as error:
+        raise SimulationConfigurationError(
+            f"packaged data file {package}/{filename} is not valid JSON: {error}"
+        ) from error
 
     return payload
 

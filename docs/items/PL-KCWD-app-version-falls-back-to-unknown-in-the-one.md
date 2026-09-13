@@ -1,12 +1,14 @@
 ---
 id: PL-KCWD
 title: APP_VERSION falls back to 'unknown' in the one line tying a displayed value to the model that produced it
-status: needs-decision
+status: done
 priority: P3
 effort: S
 classes: anticipated, defect
 touches: src/anesthesia_sim/app_metadata.py, src/anesthesia_sim/app/formatting.py, tests/unit/test_app_metadata.py
 added: 2026-09-02
+closed: 2026-09-13
+verify: uv run pytest tests/unit/test_formatting.py tests/unit/test_app_metadata.py && grep -q 'def test_the_subtitle_declares_an_unidentified_build_instead_of_naming_one' tests/unit/test_formatting.py
 ---
 
 **Problem.** `app_metadata.py` falls back to `APP_VERSION = "unknown"` when
@@ -71,3 +73,35 @@ Worth recording how the first probe failed, because it is a trap: patching
 `from importlib.metadata import ... version`, which overwrites the patch, and
 the probe reports the real version and a false all-clear. The patch has to be
 on `importlib.metadata.version` itself.
+
+**Decided 2026-09-13: option 2, now rather than at packaging time.**
+The brief calls option 3 - defer to item 23 - defensible, and it is, but it
+was rejected on two counts. The first is queue mechanics: deferring does not
+get this out of Gate 1. Packaging is not a scoped milestone with a version to
+wait on, so the honest status would have stayed `needs-decision`, which
+`bin/docket gate` counts as debt somebody can resolve, and it would have sat
+there being re-read. The second is that option 2 costs about fifteen lines
+and is testable today, where option 1 (stamping the version in at build time)
+cannot be written or tested until a build exists to stamp - and option 1 does
+not actually remove the fallback, it only makes one path unreachable, leaving
+a corrupted install still rendering "Version unknown".
+
+So the fallback's policy stays - failing visibly beats crashing on launch -
+and only where the visible failure lands changes.
+`app_metadata.py` gains `UNKNOWN_VERSION` and `APP_VERSION_IS_KNOWN`, the
+fact kept with the metadata it is read from; `format_subtitle` owns the
+words, so the one on-screen statement of provenance is composed in the module
+that owns presentation rather than assembled from a sentinel that leaked into
+it. An unidentified build now reads "Version unavailable (this build is not
+traceable)" rather than "Version unknown".
+
+The regression test patches `importlib.metadata.version` rather than the
+module's own imported name, which is the trap this item's own measurement
+recorded: the reload re-executes `from importlib.metadata import ... version`
+and overwrites a patch applied to `anesthesia_sim.app_metadata.version`,
+reporting the real version and a false all-clear.
+
+The adjacent finding the brief deliberately did not fold in - that the
+*parameter set* has no version of its own, so editing a partition coefficient
+changes every displayed number and bumps nothing - is untouched here and
+remains open.

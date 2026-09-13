@@ -8,13 +8,27 @@ DISTRIBUTION_NAME = "anesthesia-sim"
 APP_DISPLAY_NAME = "Open Anesthesia Simulator"
 APP_AUTHOR = "Open Anesthesia Simulator contributors"
 
+#: What `APP_VERSION` holds when installed-package metadata is absent. A
+#: sentinel rather than a literal at each site, because the interface has to
+#: be able to *ask* whether the running build is identified: rendered
+#: verbatim into a provenance line, "unknown" is a version-shaped string and
+#: reads as an answer rather than as the absence of one (`PL-KCWD`).
+UNKNOWN_VERSION = "unknown"
+
 try:
     # Sourced from pyproject.toml; do not hardcode here.
     APP_VERSION = version(DISTRIBUTION_NAME)
 except PackageNotFoundError:
     # A frozen/bundled build (see ROADMAP.md item 24) may not preserve
     # installed-package metadata; fail visibly rather than crash on launch.
-    APP_VERSION = "unknown"
+    APP_VERSION = UNKNOWN_VERSION
+
+#: Whether the running build could be identified at all. The fact, kept here
+#: with the metadata it is read from; the words a reader sees are
+#: `app/formatting.py`'s, so the one on-screen statement of provenance is
+#: composed in the module that owns presentation rather than assembled from a
+#: sentinel that leaked into it.
+APP_VERSION_IS_KNOWN = APP_VERSION != UNKNOWN_VERSION
 
 # `APP_VERSION` moves only when a release is cut, so every build between two
 # releases displays the same string - including a build from before a fix and a

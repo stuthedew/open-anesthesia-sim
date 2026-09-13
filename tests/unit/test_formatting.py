@@ -12,9 +12,11 @@ is where a displayed value can be read off the control that carries it.
 """
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 
+from anesthesia_sim.app import formatting as formatting_module
 from anesthesia_sim.app.formatting import (
     CHART_AXIS_TOP_MAC,
     CHART_GRID_INTERVAL_MAC,
@@ -889,3 +891,39 @@ def test_the_supported_run_length_is_stated_from_the_model_s_own_constant() -> N
 
     assert format_supported_run_length() == "24 hours"
     assert format_supported_run_length() == (f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} hours")
+
+
+def test_the_subtitle_declares_an_unidentified_build_instead_of_naming_one(
+    monkeypatch: Any,
+) -> None:
+    """`PL-KCWD`: a provenance field must not state a version-shaped non-answer.
+
+    `app_metadata.py` falls back to `UNKNOWN_VERSION` where installed-package
+    metadata is missing, and that policy is right - failing visibly beats
+    crashing on launch. The objection was where the visible failure landed.
+    Substituted into this sentence it read "Version unknown", and this
+    subtitle is the interface's only link between a displayed number and the
+    model that produced it, so a reader was given an answer where there was
+    none. `CLAUDE.md` requires a displayed value to be traceable to the exact
+    version behind it; a build that cannot offer that has to say so, because
+    an unidentified build is precisely the one whose numbers must not later
+    be quoted back as having come from a known version.
+    """
+
+    monkeypatch.setattr(formatting_module, "APP_VERSION_IS_KNOWN", False)
+
+    subtitle = format_subtitle("Sevoflurane")
+
+    assert subtitle == (
+        "Version unavailable (this build is not traceable) — Sevoflurane patient model"
+    )
+    assert "unknown" not in subtitle
+    assert subtitle.endswith("Sevoflurane patient model")
+
+
+def test_an_identified_build_still_names_its_version() -> None:
+    """The other half of `PL-KCWD`: the ordinary path is unchanged."""
+
+    assert format_subtitle("Sevoflurane") == (
+        f"Version {APP_BUILD_VERSION} — Sevoflurane patient model"
+    )

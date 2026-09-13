@@ -95,7 +95,11 @@ from anesthesia_sim.app.simulation_view import (
 from anesthesia_sim.app.theme import ACCENT_TEXT, AGENT_COLOR_SCHEMES, INK, MUTED, WARNING
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, read_wash_in, wash_in_ratio
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
-from anesthesia_sim.core.exceptions import SimulationDomainLimitError, SimulationNumericalError
+from anesthesia_sim.core.exceptions import (
+    SimulationConfigurationError,
+    SimulationDomainLimitError,
+    SimulationNumericalError,
+)
 from anesthesia_sim.core.governing_equations import STATE_SIZE, UNIT_STATE
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
@@ -3782,6 +3786,57 @@ def test_halt_run_survives_a_render_failure_and_leaves_the_run_stopped() -> None
 
     assert controller.failures == ["ValueError: mass balance violated"]
     assert controller.is_running is False
+
+
+def test_a_settings_raise_outside_the_project_hierarchy_halts_the_run() -> None:
+    """`PL-YK2V`: the settings path now applies the timer loops' policy.
+
+    The two timer loops catch bare `Exception` and route to `_halt_run`,
+    deliberately - a `TypeError` from a future refactor kills the loop
+    exactly as silently as a modelling failure does. `_apply_setting` caught
+    `AnesthesiaSimulationError` only, so the same exception escaped into
+    Flet's event dispatch, the `_refresh_and_render()` on its last line never
+    ran, and the interface was left showing the agent the reader picked in
+    the dropdown while the badge and all six readouts still showed the
+    previous one, with the run silently paused. That is a display labelled
+    with the wrong patient model, which `CLAUDE.md` treats as a safety
+    failure rather than a missing log line.
+    """
+
+    controller = _recording_controller(is_running=True)
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    def _explode() -> None:
+        raise TypeError("a future refactor changed a signature")
+
+    view._apply_setting(_explode)
+
+    assert controller.failures == ["TypeError: a future refactor changed a signature"]
+    assert controller.is_running is False
+    assert view._rejected_setting_notice is None
+
+
+def test_a_refused_setting_is_still_a_notice_and_not_a_halt() -> None:
+    """The other half of `PL-YK2V`, and the reason the widening is not a rewrite.
+
+    A `SimulationConfigurationError` means the core rejected a value and
+    changed nothing: the run is untouched and must not be marked failed.
+    Widening the catch must not collapse that distinction, so this pins the
+    narrow case against the test above - same method, same doubles, opposite
+    outcome.
+    """
+
+    controller = _recording_controller(is_running=True)
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    def _refuse() -> None:
+        raise SimulationConfigurationError("a value the core refused")
+
+    view._apply_setting(_refuse)
+
+    assert controller.failures == []
+    assert controller.is_running is True
+    assert view._rejected_setting_notice == "Setting refused — a value the core refused"
 
 
 def test_a_built_in_agent_without_an_identification_colour_fails_at_import() -> None:

@@ -41,7 +41,7 @@ the interface displays.
 from math import isfinite
 from typing import Final
 
-from anesthesia_sim.app_metadata import APP_BUILD_VERSION
+from anesthesia_sim.app_metadata import APP_BUILD_VERSION, APP_VERSION_IS_KNOWN
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
 __all__ = [
@@ -877,12 +877,33 @@ def format_subtitle(agent_display_name: str) -> str:
     `APP_BUILD_VERSION` adds the commit on anything that is not a clean
     checkout of the released tag, and adds nothing on a release.
 
+    **Where the version could not be read at all, the line says so rather
+    than naming it.** `app_metadata.py` falls back to `UNKNOWN_VERSION` when
+    installed-package metadata is missing - a frozen or bundled build, or a
+    corrupted install - and that fallback policy is right: failing visibly
+    beats crashing on launch. What was wrong was where the visible failure
+    landed. Substituted into the sentence below it produced "Version
+    unknown", and this subtitle is the interface's only link between a
+    displayed number and the model that produced it, so a reader had a
+    provenance field stating a version-shaped answer where there was no
+    answer (`PL-KCWD`). `CLAUDE.md` requires a displayed value to be
+    traceable to the exact model and version behind it; a build that cannot
+    offer that has to say it cannot, because an unidentified build is
+    precisely the one whose numbers must not be quoted back later as having
+    come from a known version.
+
     Args:
         agent_display_name: The running agent, as it is named to a reader.
 
     Returns:
         The header subtitle.
     """
+
+    if not APP_VERSION_IS_KNOWN:
+        return (
+            "Version unavailable (this build is not traceable) — "
+            f"{agent_display_name} patient model"
+        )
 
     return f"Version {APP_BUILD_VERSION} — {agent_display_name} patient model"
 

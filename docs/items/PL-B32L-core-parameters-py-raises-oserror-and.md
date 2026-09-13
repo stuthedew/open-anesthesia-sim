@@ -1,12 +1,14 @@
 ---
 id: PL-B32L
 title: core/parameters.py raises OSError and JSONDecodeError outside the exception hierarchy its own docstring promises
-status: needs-decision
+status: done
 priority: P2
 effort: S
 classes: defect
 touches: src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py
 added: 2026-09-02
+closed: 2026-09-13
+verify: uv run pytest tests/unit/test_parameters.py && grep -q 'def test_a_missing_data_file_raises_the_boundary_type_this_module_promises' tests/unit/test_parameters.py
 ---
 
 **Problem.** `_load_packaged_json()` calls `resource.open()` and
@@ -52,3 +54,26 @@ the raised type.
 it raises `json.decoder.JSONDecodeError`. Neither is an
 `AnesthesiaSimulationError` - asserted directly, `isinstance(...)` is
 `False`. The module's stated boundary is false for both.
+
+**Decided 2026-09-13: option 1, and it needed a third exception type.**
+Close the gap rather than narrow the claim. The choice was not close: the
+docstring's boundary is relied on by code that is already written -
+`app/simulation_view.py` catches `AnesthesiaSimulationError` and reports a
+refused setting - so narrowing the claim (option 2) would have meant auditing
+every caller to split I/O handling back out, against a wrapper that is
+fourteen lines. `CLAUDE.md`'s safety-critical standard decides the tie
+independently: a stated invariant that is false is the kind of thing
+downstream code is written against, and the failure mode here is a corrupted
+or truncated data file reaching a caller disguised as a programming error.
+
+**The audit named two types and there are three.** The file is opened as
+text, so a data file holding bytes that are not UTF-8 fails in the read
+inside `json.load()` with a `UnicodeDecodeError` - a `ValueError`, not a
+`JSONDecodeError`, and not an `OSError` either. Catching only the two listed
+would have left the third escaping and the module docstring still false,
+which is the whole defect restated one type smaller.
+`test_a_data_file_that_is_not_utf8_raises_the_boundary_type_too` covers it
+separately for that reason.
+
+`load_reference_adult_parameters` shares the same loader and so is covered by
+the same change; it has its own test rather than being assumed.
