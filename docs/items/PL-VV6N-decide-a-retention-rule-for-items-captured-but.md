@@ -48,3 +48,41 @@ effect — which is an argument that capture is doing real cognitive work.
 **Open question the data cannot settle.** 27% of the open set (64 items) is
 `needs-decision` — owner-blocked, not worker-blocked. A retention rule aimed at
 P3 would not touch these, and they may be the larger share of the problem.
+
+---
+
+**UPDATE 2026-09-13, after the research sweep. Two of the props under the
+original framing are gone, and the project's own rules block acting on it.**
+
+1. **A fabricated benchmark was removed.** The "~50% discard rate is common in
+   upstream Kanban" figure could not be sourced anywhere and should be treated
+   as unsourced. That discarding is *expected* upstream is canonical ("discard
+   rate" is a named metric reviewed at replenishment); no published typical or
+   healthy percentage exists. Any comparison of this store's drop rate against a
+   canonical 50% must be struck, not softened.
+2. **The stale-bot evidence is mixed, not negative, and does not transfer.** The
+   paper is Khatoonabadi S, Costa DE, Mujahid S, Shihab E, ACM TOSEM 33(2) art.
+   36, 2024, doi 10.1145/3624739 (arXiv:2305.18150) - not Wessel et al. Its own
+   abstract credits the bot with clearing backlog *and* speeding review; the
+   negative conclusion is conditioned on "relying solely" on it. The measured
+   harm is loss of active external contributors, which a solo project does not
+   have.
+3. **Direct evidence against pruning exists, though it is weak.** Englefield P,
+   Beale R, "Deletion Considered Harmful", BCS HCI 2025, doi
+   10.14236/ewic/BCSHCI2025.19 (n=51, self-report, correlational): deletion is
+   under-adopted and "vigorous deletion is in fact detrimental, leading to lost
+   information and diminished retrieval effectiveness", while filing correlates
+   positively with retrieval success. Weakest design in the set, but it is the
+   only direct test.
+4. **Reinertsen W7 is a portfolio principle.** "When WIP is high, purge low value
+   projects" (Principles of Product Development Flow, Celeritas 2009, p. 151) is
+   stated for a multi-project portfolio alongside W6 (block demand) and W8 (shed
+   requirements). Reading it across to dropping queue items at triage is
+   inference, not citation.
+
+**Blocked on a prerequisite.** `.claude/rules/expert-review.md` requires naming
+what the suppressed side would have to be worth for a tightening to be wrong,
+and then counting it. `PL-LKGL` and `PL-27S8` record the last time that ran: an
+apparatus capture-bar proposal died because 67% of what it would have suppressed
+were still-real findings. This item is the same proposal shape and no such count
+has been run. See the count item filed alongside this update.
