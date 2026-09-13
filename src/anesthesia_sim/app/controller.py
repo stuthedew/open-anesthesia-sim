@@ -129,9 +129,11 @@ class RecordedQuantity(StrEnum):
     What a chart trace is bound to, and the key a drawn window is read by.
     Members are named for the compartment or the quantity rather than for
     whichever field or accessor currently spells it, for the reason
-    `ControlInput`'s are: `PL-9SH6` and `PL-3TLK` rename two of the fields
-    these read from, and a key that had followed the code would have to be
-    renamed with them while meaning the same thing throughout.
+    `ControlInput`'s are: `PL-3TLK` and `PL-9SH6` renamed two of the fields
+    these read from, and a key that had followed the code would have had to
+    be renamed with them while meaning the same thing throughout. `CIRCUIT`
+    is the one to look at - the field behind it is now
+    `inspired_partial_pressure_fraction`, and this key did not move.
 
     `WASH_IN_RATIO` is the one derived member. It is not a compartment state
     but the quotient `app/wash_in.py` specifies, named here so that the plot
