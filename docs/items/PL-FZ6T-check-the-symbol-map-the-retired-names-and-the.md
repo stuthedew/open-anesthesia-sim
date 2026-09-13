@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: core-domain-language
+milestone: v0.4.19
 touches: tools, tests/unit, Makefile, .github/workflows, docs/ARCHITECTURE.md, docket.toml
 blocked-by: PL-9SH6
 added: 2026-09-03

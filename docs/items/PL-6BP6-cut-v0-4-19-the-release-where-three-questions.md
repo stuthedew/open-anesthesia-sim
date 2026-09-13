@@ -3,11 +3,12 @@ id: PL-6BP6
 title: "Cut v0.4.19: the release where three questions were answered and core/ did not change a line"
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning, docs
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items/
 added: 2026-09-13
+closed: 2026-09-13
 verify: python3 tools/doc_check.py check && grep -q '^version = "0.4.19"' pyproject.toml && test -f docs/releases/v0.4.19.md
 ---
 

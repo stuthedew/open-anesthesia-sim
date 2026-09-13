@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: safety, ux
 feature: scenario-branching
+milestone: v0.4.19
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/formatting.py, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-09-13
+pr: 535
 verify: python3 tools/doc_check.py check && grep -qF 'While two runs are shown, every readout names the run it describes' docs/MODEL.md
 ---
 
