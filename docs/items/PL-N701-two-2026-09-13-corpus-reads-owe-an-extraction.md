@@ -1,7 +1,13 @@
 ---
 id: PL-N701
 title: Two 2026-09-13 corpus reads owe an extraction note under docs/references/README.md, once PL-Z3V5 settles what one contains
-status: untriaged
+priority: P2
+effort: S
+status: blocked
+classes: docs
+feature: provenance
+touches: docs/references, docs/MODEL.md
+blocked-by: PL-Z3V5
 added: 2026-09-13
 ---
 
@@ -33,3 +39,23 @@ repository, not the readings.
 **Done when.** `PL-Z3V5` has fixed the note's shape and both reads have one; or
 this item records that the corpus README entry is sufficient and the public-side
 note is dropped, with the reasoning.
+**Why it matters.** `docs/references/README.md` states the cost in its own
+words: without a note "the corpus is consulted once per *session* instead of
+once per *source*, and each later session re-reads the same PDF at full
+context." That has already happened to the neighbouring paper - the
+*Anesthesiology* 1991 kinetics paper was opened by more than one session before
+`PL-4QCJ` recorded its page locators. The second cost is public and does not go
+away with sessions: this repository cannot hold the PDFs, so a reader outside it
+has no way to learn from the specification that these readings happened or what
+page carries each fact, which is the traceability the safety-critical standard
+asks for.
+
+**Related, and cheapest taken together.** `PL-4QCJ` (the Yasuda methods reading
+has no extraction note) is the same obligation for the third paper - the
+*Anesthesiology* 1991 desflurane/isoflurane/halothane study - and is blocked on
+the same `PL-Z3V5` format decision. Three papers across two items; whoever takes
+one should take both, since the shape is settled once and applied three times.
+
+**Triaged 2026-09-13** in the pass that could not reach this item the first
+time: its file was being retitled on `origin/claude/determined-hamilton-atx5bi`,
+which has since merged (`PL-JYR4`).

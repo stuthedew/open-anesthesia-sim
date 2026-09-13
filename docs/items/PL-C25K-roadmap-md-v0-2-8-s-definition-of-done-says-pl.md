@@ -1,8 +1,14 @@
 ---
 id: PL-C25K
 title: ROADMAP.md v0.2.8's definition of done says PL-J786 and PL-S4M2 are both confirmed in effect on a real pull request, but PL-J786 is dropped
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
+feature: release-roadmap-seam
+touches: ROADMAP.md
 added: 2026-09-13
+verify: python3 tools/doc_check.py check && ! grep -q 'PL-J786 (a green .checks. run required before merge) and PL-S4M2' ROADMAP.md
 ---
 
 **Problem.** ROADMAP.md v0.2.8's definition of done says PL-J786 and PL-S4M2 are both confirmed in effect on a real pull request, but PL-J786 is dropped
@@ -33,3 +39,10 @@ shipped release, and `PL-GLBF` decided they stay for that reason. This wants
 the sentence corrected, not removed.
 
 **Where.** `ROADMAP.md:820-824`; `docs/items/PL-J786-*.md` for the reason.
+**Done when.** `ROADMAP.md:820-824` no longer asserts that `PL-J786` (require a
+green `checks` run before any merge into main) is in effect. The replacement
+says what actually happened to it, read from that item's own `reason` rather
+than inferred - dropped as unnecessary, dropped as superseded and dropped as
+never achievable are three different sentences and only one of them is true.
+`PL-S4M2` (squash-merge) is untouched: it is `done` and the clause about it is
+correct, so the fix separates the two rather than rewriting the pair.
