@@ -55,3 +55,46 @@ mechanism is the cause.
 proposes giving the shipped simulator a dispersed lung - `docs/MODEL.md`
 specifies one perfectly mixed alveolar compartment with `F_a == F_A`, and
 changing that is a milestone-sized decision the roadmap has not reached.
+
+## The dispersion the existing figures were computed at is broader than measured normals (2026-09-13)
+
+`docs/MODEL.md`'s candidate 1 quotes its retention understatement - 44% for
+desflurane, 30% for sevoflurane, 15% for isoflurane - from "a log-normal
+perfusion distribution at log SD 1.0 with a 5% shunt". Checked against the
+primary source for what normal human V/Q dispersion actually is, and **log SD
+1.0 is above even the older cohort's measured value**, so those percentages are
+an upper bound rather than a typical figure:
+
+> Wagner PD, Laravuso RB, Uhl RR, West JB. *Continuous distributions of
+> ventilation-perfusion ratios in normal subjects breathing air and 100 per
+> cent O2.* J Clin Invest 1974;54(1):54-68. PMID 4601004,
+> DOI [10.1172/JCI107750](https://doi.org/10.1172/JCI107750).
+
+Twelve normal subjects by the multiple inert gas elimination technique. Four
+young semirecumbent subjects (21-24 y) gave mean log SD of **0.43 for blood
+flow and 0.35 for ventilation**, with no intrapulmonary shunt breathing air;
+five older subjects (39-60 y) gave **0.76 and 0.44**, again no shunt on air,
+developing a mean 3.2% shunt only on 100% oxygen. Read from the abstract and
+checked against PubMed 2026-09-13.
+
+The method's own theory paper, which is the reference for the retention
+framework this item's bound is built on:
+
+> Wagner PD, Saltzman HA, West JB. *Measurement of continuous distributions of
+> ventilation-perfusion ratios: theory.* J Appl Physiol 1974;36(5):588-99.
+> PMID 4826323,
+> DOI [10.1152/jappl.1974.36.5.588](https://doi.org/10.1152/jappl.1974.36.5.588).
+
+**What this changes for the work.** The bound should be computed across the
+measured range rather than at one assumed dispersion - 0.35 to 0.76 log SD is
+what normal anaesthetized-age adults actually show, and Yasuda's volunteers sit
+inside it. If the end-tidal-weighted bias at log SD 0.76 already fails to carry
+2.33 SD, the candidate is closed without needing an argument about which
+dispersion to assume. Running it only at 1.0, as the existing figures do, risks
+the opposite error: reporting a bias large enough to matter at a dispersion
+broader than the subjects had.
+
+**Do not read this as correcting the fifth candidate row.** That row rejected
+the *flow-weighted* reading, and its rejection does not depend on the
+dispersion - it moves every agent the wrong way at any width. What is bounded
+here is the end-tidal-weighted reading, which is the one still open.
