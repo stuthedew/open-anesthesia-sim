@@ -230,8 +230,8 @@ class AgentUptakeSystem:
 
         return cls(
             circuit=BreathingCircuit(
-                delivered_concentration_fraction=(fraction_from_percent(agent.mac_percent)),
-                max_delivered_concentration_fraction=(
+                delivered_partial_pressure_fraction=(fraction_from_percent(agent.mac_percent)),
+                max_delivered_partial_pressure_fraction=(
                     fraction_from_percent(agent.max_delivered_concentration_percent)
                 ),
             ),
@@ -263,8 +263,10 @@ class AgentUptakeSystem:
     def set_fresh_gas_flow(self, fresh_gas_flow_l_min: float) -> None:
         self.circuit.set_fresh_gas_flow(fresh_gas_flow_l_min)
 
-    def set_delivered_concentration(self, delivered_concentration_fraction: Fraction) -> None:
-        self.circuit.set_delivered_concentration(delivered_concentration_fraction)
+    def set_delivered_partial_pressure_fraction(
+        self, delivered_partial_pressure_fraction: Fraction
+    ) -> None:
+        self.circuit.set_delivered_partial_pressure_fraction(delivered_partial_pressure_fraction)
 
     def set_alveolar_ventilation(self, alveolar_ventilation_l_min: float) -> None:
         self.alveoli.set_alveolar_ventilation(alveolar_ventilation_l_min)
@@ -289,7 +291,7 @@ class AgentUptakeSystem:
         anything else. Enumerating exception types instead left exactly
         that hole, measured before this changed: raising a `BaseException`
         after the circuit had been written left
-        `circuit_concentration_fraction` at 0.0020183972008138854 against
+        `inspired_partial_pressure_fraction` at 0.0020183972008138854 against
         0.0020003856996684967 before the step, which is the partly applied
         step this method exists to prevent, surviving in the live system
         (PL-BNPY).
@@ -469,7 +471,7 @@ class AgentUptakeSystem:
             alveolar_ventilation_l_s=(self.alveoli.alveolar_ventilation_l_min / SECONDS_PER_MINUTE),
             cardiac_output_l_s=(patient.cardiac_output_l_min / SECONDS_PER_MINUTE),
             blood_gas_partition_coefficient=(venous_blood.blood_gas_partition_coefficient),
-            delivered_concentration_fraction=(self.circuit.delivered_concentration_fraction),
+            delivered_partial_pressure_fraction=(self.circuit.delivered_partial_pressure_fraction),
             tissues=tuple(
                 TissueGroupEquationSettings(
                     name=tissue.name,
@@ -524,9 +526,9 @@ class AgentUptakeSystem:
 
         state = [0.0] * STATE_SIZE
 
-        state[INSPIRED_FRACTION] = self.circuit.circuit_concentration_fraction
-        state[ALVEOLAR_FRACTION] = self.alveoli.concentration_fraction
-        state[VENOUS_FRACTION] = self.patient.mixed_venous_fraction
+        state[INSPIRED_FRACTION] = self.circuit.inspired_partial_pressure_fraction
+        state[ALVEOLAR_FRACTION] = self.alveoli.partial_pressure_fraction
+        state[VENOUS_FRACTION] = self.patient.mixed_venous_partial_pressure_fraction
 
         for offset, tissue in enumerate(self.patient.tissues):
             state[FIRST_TISSUE_FRACTION + offset] = tissue.partial_pressure_fraction
@@ -553,9 +555,9 @@ class AgentUptakeSystem:
         does not guarantee.
         """
 
-        self.circuit.set_circuit_concentration_fraction(Fraction(state[INSPIRED_FRACTION]))
-        self.alveoli.set_concentration_fraction(Fraction(state[ALVEOLAR_FRACTION]))
-        self.patient.venous_blood.set_concentration_fraction(Fraction(state[VENOUS_FRACTION]))
+        self.circuit.set_inspired_partial_pressure_fraction(Fraction(state[INSPIRED_FRACTION]))
+        self.alveoli.set_partial_pressure_fraction(Fraction(state[ALVEOLAR_FRACTION]))
+        self.patient.venous_blood.set_partial_pressure_fraction(Fraction(state[VENOUS_FRACTION]))
 
         for offset, tissue in enumerate(self.patient.tissues):
             tissue.set_partial_pressure_fraction(Fraction(state[FIRST_TISSUE_FRACTION + offset]))

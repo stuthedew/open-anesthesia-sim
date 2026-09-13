@@ -72,7 +72,7 @@ def test_tissue_return_is_flow_weighted() -> None:
 
     expected = 0.76 * 0.08 + 0.18 * 0.04 + 0.06 * 0.01
 
-    assert patient.tissue_return_fraction == pytest.approx(expected)
+    assert patient.tissue_return_partial_pressure_fraction == pytest.approx(expected)
 
 
 def _load_patient_stores(patient: PatientCompartments) -> None:
@@ -88,7 +88,7 @@ def _load_patient_stores(patient: PatientCompartments) -> None:
     patient.vessel_rich.set_partial_pressure_fraction(0.08)
     patient.muscle.set_partial_pressure_fraction(0.04)
     patient.fat.set_partial_pressure_fraction(0.01)
-    patient.venous_blood.set_concentration_fraction(0.05)
+    patient.venous_blood.set_partial_pressure_fraction(0.05)
 
 
 def test_the_patient_side_exposes_no_step_of_its_own() -> None:
@@ -121,7 +121,7 @@ def test_reset_clears_all_patient_stores() -> None:
     patient.reset()
 
     assert patient.total_agent_amount_l == 0.0
-    assert patient.mixed_venous_fraction == 0.0
+    assert patient.mixed_venous_partial_pressure_fraction == 0.0
     assert patient.cardiac_output_l_min == 5.0
 
 

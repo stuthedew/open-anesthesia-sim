@@ -54,7 +54,7 @@ class AlveolarCompartment:
             )
 
     @property
-    def concentration_fraction(self) -> float:
+    def partial_pressure_fraction(self) -> float:
         """The alveolar fraction $`F_A = M_A/V_A`$.
 
         `docs/MODEL.md` § "Gas compartments" is the definition. The alveolar
@@ -75,11 +75,11 @@ class AlveolarCompartment:
         require_supported_alveolar_ventilation(alveolar_ventilation_l_min)
         self.alveolar_ventilation_l_min = alveolar_ventilation_l_min
 
-    def set_concentration_fraction(self, concentration_fraction: Fraction) -> None:
-        """Set alveolar state from a concentration fraction."""
+    def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
+        """Set alveolar state from a partial-pressure-equivalent fraction."""
 
-        require_concentration_fraction("concentration_fraction", concentration_fraction)
-        self.agent_amount_l = self.gas_volume_l * concentration_fraction
+        require_concentration_fraction("partial_pressure_fraction", partial_pressure_fraction)
+        self.agent_amount_l = self.gas_volume_l * partial_pressure_fraction
 
     def capture_state(self) -> AlveolarCompartmentState:
         """Record run state so a failed step can be rolled back."""

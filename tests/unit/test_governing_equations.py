@@ -66,7 +66,7 @@ def _settings(**overrides: object) -> UptakeEquationSettings:
         "alveolar_ventilation_l_s": ALVEOLAR_VENTILATION_L_S,
         "cardiac_output_l_s": CARDIAC_OUTPUT_L_S,
         "blood_gas_partition_coefficient": BLOOD_GAS,
-        "delivered_concentration_fraction": DELIVERED_FRACTION,
+        "delivered_partial_pressure_fraction": DELIVERED_FRACTION,
         "tissues": tuple(
             TissueGroupEquationSettings(
                 name=name,
@@ -350,9 +350,9 @@ def test_a_zero_tissue_flow_leaves_that_group_alone() -> None:
             "^blood_gas_partition_coefficient must be positive and finite$",
         ),
         (
-            "delivered_concentration_fraction",
+            "delivered_partial_pressure_fraction",
             1.5,
-            "^delivered_concentration_fraction must be between 0 and 1$",
+            "^delivered_partial_pressure_fraction must be between 0 and 1$",
         ),
     ],
 )
@@ -441,7 +441,7 @@ def test_equal_settings_compare_equal_so_the_propagator_cache_is_keyed_by_value(
     """
 
     assert _settings() == _settings()
-    assert _settings() != _settings(delivered_concentration_fraction=0.03)
+    assert _settings() != _settings(delivered_partial_pressure_fraction=0.03)
 
     fatter = tuple(
         TissueGroupEquationSettings(

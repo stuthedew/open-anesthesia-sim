@@ -274,14 +274,14 @@ def test_the_maximum_simulation_step_does_not_bind_a_bare_compartment() -> None:
     misstate what the bound is about.
     """
 
-    circuit = BreathingCircuit(delivered_concentration_fraction=1.0)
+    circuit = BreathingCircuit(delivered_partial_pressure_fraction=1.0)
     step_s = 60.0
 
     assert step_s > MAXIMUM_SIMULATION_STEP_S
 
     circuit.advance_fresh_gas(step_s)
 
-    assert circuit.circuit_concentration_fraction > 0.0
+    assert circuit.inspired_partial_pressure_fraction > 0.0
 
 
 @pytest.mark.parametrize("simulation_step_s", [0.0, -0.1, inf, nan])
@@ -308,12 +308,12 @@ def test_a_rejected_setting_stays_a_configuration_error() -> None:
     """A refused vaporizer dial must not be reported as a broken run."""
 
     system = _sevoflurane_at_one_mac()
-    before = system.circuit.delivered_concentration_fraction
+    before = system.circuit.delivered_partial_pressure_fraction
 
     with pytest.raises(SimulationConfigurationError, match="vaporizer maximum"):
-        system.set_delivered_concentration(0.5)
+        system.set_delivered_partial_pressure_fraction(0.5)
 
-    assert system.circuit.delivered_concentration_fraction == before
+    assert system.circuit.delivered_partial_pressure_fraction == before
 
 
 def test_the_ordinary_step_is_unaffected() -> None:
@@ -411,8 +411,8 @@ def test_a_failed_step_leaves_every_dynamic_value_bit_identical() -> None:
     # Named individually as well, so that a state class that quietly stopped
     # covering a compartment cannot make the comparison above pass by
     # comparing less. These are the eight floats a step can move.
-    assert system.circuit.circuit_concentration_fraction == (
-        before.circuit.circuit_concentration_fraction
+    assert system.circuit.inspired_partial_pressure_fraction == (
+        before.circuit.inspired_partial_pressure_fraction
     )
     assert system.alveoli.agent_amount_l == before.alveoli.agent_amount_l
     assert system.patient.vessel_rich.agent_amount_l == before.patient.vessel_rich.agent_amount_l
@@ -554,8 +554,8 @@ def test_a_rolled_back_run_can_still_be_read_and_reset() -> None:
     with pytest.raises(SimulationNumericalError):
         system.advance(MAXIMUM_SIMULATION_STEP_S)
 
-    assert 0.0 < system.alveoli.concentration_fraction <= 1.0
-    assert 0.0 < system.circuit.circuit_concentration_fraction <= 1.0
+    assert 0.0 < system.alveoli.partial_pressure_fraction <= 1.0
+    assert 0.0 < system.circuit.inspired_partial_pressure_fraction <= 1.0
     assert system.agent_simulation_validation.passes_validation
 
     system.reset()
@@ -655,7 +655,7 @@ def test_reset_anchors_accounting_to_what_the_compartments_actually_hold() -> No
         gas_volume_l=system.alveoli.gas_volume_l,
         alveolar_ventilation_l_min=system.alveoli.alveolar_ventilation_l_min,
     )
-    retained.set_concentration_fraction(0.02)
+    retained.set_partial_pressure_fraction(0.02)
     system.alveoli = retained
 
     system.reset()
@@ -751,7 +751,7 @@ def test_a_nonlocal_unwind_mid_step_is_rolled_back_too() -> None:
     """Regression test for PL-BNPY.
 
     Measured against the shipped code before the fix: with the unwind armed
-    after the circuit had been written, `circuit_concentration_fraction` was
+    after the circuit had been written, `inspired_partial_pressure_fraction` was
     left at 0.0020183972008138854 against 0.0020003856996684967 before the
     step - a partly applied step surviving in the live system, which
     `advance()`'s docstring says cannot happen.
@@ -767,7 +767,7 @@ def test_a_nonlocal_unwind_mid_step_is_rolled_back_too() -> None:
 
     # Not a vacuous comparison: 10 s of run leaves every dynamic value
     # distinct and nonzero, so a partial write shows up as a difference.
-    assert state_before_step.circuit.circuit_concentration_fraction > 0.0
+    assert state_before_step.circuit.inspired_partial_pressure_fraction > 0.0
     assert state_before_step.alveoli.agent_amount_l > 0.0
 
     system.patient.fat.unwind_on_next_write = True

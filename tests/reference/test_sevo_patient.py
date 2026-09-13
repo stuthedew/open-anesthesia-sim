@@ -125,8 +125,8 @@ def _build_system_with_blood_gas_coefficient(
 
     return AgentUptakeSystem(
         circuit=BreathingCircuit(
-            delivered_concentration_fraction=(agent.mac_percent / 100.0),
-            max_delivered_concentration_fraction=(
+            delivered_partial_pressure_fraction=(agent.mac_percent / 100.0),
+            max_delivered_partial_pressure_fraction=(
                 agent.max_delivered_concentration_percent / 100.0
             ),
         ),
@@ -140,7 +140,7 @@ def _build_system_with_blood_gas_coefficient(
 
 def test_no_delivered_agent_keeps_every_store_zero() -> None:
     system = AgentUptakeSystem.default()
-    system.set_delivered_concentration(0.0)
+    system.set_delivered_partial_pressure_fraction(0.0)
 
     _run_for(system, duration_s=300.0, simulation_step_s=0.1)
 
@@ -159,7 +159,7 @@ def test_zero_ventilation_prevents_patient_delivery() -> None:
 
     _run_for(system, duration_s=120.0, simulation_step_s=0.1)
 
-    assert system.circuit.circuit_concentration_fraction > 0.0
+    assert system.circuit.inspired_partial_pressure_fraction > 0.0
     assert system.alveoli.agent_amount_l == 0.0
     assert system.patient.total_agent_amount_l == 0.0
     assert system.agent_simulation_validation.passes_validation is True
@@ -171,7 +171,7 @@ def test_zero_cardiac_output_prevents_patient_uptake() -> None:
 
     _run_for(system, duration_s=120.0, simulation_step_s=0.1)
 
-    assert system.alveoli.concentration_fraction > 0.0
+    assert system.alveoli.partial_pressure_fraction > 0.0
     assert system.patient.total_agent_amount_l == 0.0
     assert system.agent_simulation_validation.passes_validation is True
 
@@ -191,8 +191,11 @@ def test_mixed_venous_blood_lags_the_flow_weighted_tissue_return() -> None:
 
     _run_for(system, duration_s=120.0, simulation_step_s=0.1)
 
-    assert system.patient.mixed_venous_fraction > 0.0
-    assert system.patient.mixed_venous_fraction < system.patient.tissue_return_fraction
+    assert system.patient.mixed_venous_partial_pressure_fraction > 0.0
+    assert (
+        system.patient.mixed_venous_partial_pressure_fraction
+        < system.patient.tissue_return_partial_pressure_fraction
+    )
 
 
 def test_higher_cardiac_output_increases_early_uptake_and_lowers_alveolar_fraction() -> None:
@@ -217,7 +220,8 @@ def test_higher_cardiac_output_increases_early_uptake_and_lowers_alveolar_fracti
 
     assert higher_output.patient.total_agent_amount_l > lower_output.patient.total_agent_amount_l
     assert (
-        higher_output.alveoli.concentration_fraction < lower_output.alveoli.concentration_fraction
+        higher_output.alveoli.partial_pressure_fraction
+        < lower_output.alveoli.partial_pressure_fraction
     )
     assert higher_output.agent_simulation_validation.passes_validation is True
     assert lower_output.agent_simulation_validation.passes_validation is True
@@ -234,8 +238,8 @@ def test_higher_ventilation_increases_early_alveolar_fraction() -> None:
     _run_for(higher_ventilation, duration_s=30.0, simulation_step_s=0.1)
 
     assert (
-        higher_ventilation.alveoli.concentration_fraction
-        > lower_ventilation.alveoli.concentration_fraction
+        higher_ventilation.alveoli.partial_pressure_fraction
+        > lower_ventilation.alveoli.partial_pressure_fraction
     )
 
 
@@ -246,9 +250,9 @@ def _states_after_one_minute(simulation_step_s: float) -> dict[str, float]:
     _run_for(system, duration_s=STEP_REFINEMENT_HORIZON_S, simulation_step_s=simulation_step_s)
 
     return {
-        "alveolar": system.alveoli.concentration_fraction,
+        "alveolar": system.alveoli.partial_pressure_fraction,
         "vessel rich": system.patient.vessel_rich.partial_pressure_fraction,
-        "mixed venous": system.patient.mixed_venous_fraction,
+        "mixed venous": system.patient.mixed_venous_partial_pressure_fraction,
     }
 
 
@@ -320,7 +324,7 @@ def test_long_wash_in_and_washout_validate_agent_simulation() -> None:
 
     _run_for(system, duration_s=600.0, simulation_step_s=0.1)
 
-    system.set_delivered_concentration(0.0)
+    system.set_delivered_partial_pressure_fraction(0.0)
 
     _run_for(system, duration_s=600.0, simulation_step_s=0.1)
 
@@ -356,7 +360,7 @@ def test_washout_never_increases_total_system_mass() -> None:
     by construction whatever the transfer rates are, because every internal
     transfer is applied as an equal-and-opposite pair. Confirmed by mutation
     2026-09-07 rather than argued: dropping the write-back in
-    `AgentUptakeSystem.set_delivered_concentration`, so that the dial never
+    `AgentUptakeSystem.set_delivered_partial_pressure_fraction`, so that the dial never
     actually reaches zero, fails this test at the first washout step while
     `test_long_wash_in_and_washout_validate_agent_simulation` still passes.
 
@@ -382,7 +386,7 @@ def test_washout_never_increases_total_system_mass() -> None:
 
     assert loaded_agent_l > 0.0
 
-    system.set_delivered_concentration(0.0)
+    system.set_delivered_partial_pressure_fraction(0.0)
 
     previous_agent_l = loaded_agent_l
     step_count = round(WASHOUT_DURATION_S / WASHOUT_STEP_S)
@@ -442,11 +446,11 @@ def test_equilibrium_produces_no_net_internal_transfer() -> None:
     equilibrium_fraction = 0.05
 
     system.circuit.set_agent_amount(system.circuit.circuit_volume_l * equilibrium_fraction)
-    system.alveoli.set_concentration_fraction(equilibrium_fraction)
+    system.alveoli.set_partial_pressure_fraction(equilibrium_fraction)
     system.patient.vessel_rich.set_partial_pressure_fraction(equilibrium_fraction)
     system.patient.muscle.set_partial_pressure_fraction(equilibrium_fraction)
     system.patient.fat.set_partial_pressure_fraction(equilibrium_fraction)
-    system.patient.venous_blood.set_concentration_fraction(equilibrium_fraction)
+    system.patient.venous_blood.set_partial_pressure_fraction(equilibrium_fraction)
 
     # Re-baseline agent accounting: the compartment stores above were set
     # directly rather than delivered, so the validator's initial reference
@@ -459,14 +463,16 @@ def test_equilibrium_produces_no_net_internal_transfer() -> None:
         0.0, abs=EQUILIBRIUM_FRACTION_TOLERANCE
     )
     assert result.patient_agent_change_l == pytest.approx(0.0, abs=EQUILIBRIUM_FRACTION_TOLERANCE)
-    assert system.circuit.circuit_concentration_fraction == pytest.approx(equilibrium_fraction)
-    assert system.alveoli.concentration_fraction == pytest.approx(equilibrium_fraction)
+    assert system.circuit.inspired_partial_pressure_fraction == pytest.approx(equilibrium_fraction)
+    assert system.alveoli.partial_pressure_fraction == pytest.approx(equilibrium_fraction)
     assert system.patient.vessel_rich.partial_pressure_fraction == pytest.approx(
         equilibrium_fraction
     )
     assert system.patient.muscle.partial_pressure_fraction == pytest.approx(equilibrium_fraction)
     assert system.patient.fat.partial_pressure_fraction == pytest.approx(equilibrium_fraction)
-    assert system.patient.mixed_venous_fraction == pytest.approx(equilibrium_fraction)
+    assert system.patient.mixed_venous_partial_pressure_fraction == pytest.approx(
+        equilibrium_fraction
+    )
     assert system.agent_simulation_validation.passes_validation is True
 
 
@@ -485,12 +491,12 @@ def test_higher_blood_gas_solubility_slows_alveolar_to_circuit_rise() -> None:
     _run_for(high_solubility, duration_s=60.0, simulation_step_s=0.1)
 
     low_ratio = (
-        low_solubility.alveoli.concentration_fraction
-        / low_solubility.circuit.circuit_concentration_fraction
+        low_solubility.alveoli.partial_pressure_fraction
+        / low_solubility.circuit.inspired_partial_pressure_fraction
     )
     high_ratio = (
-        high_solubility.alveoli.concentration_fraction
-        / high_solubility.circuit.circuit_concentration_fraction
+        high_solubility.alveoli.partial_pressure_fraction
+        / high_solubility.circuit.inspired_partial_pressure_fraction
     )
 
     assert high_ratio < low_ratio

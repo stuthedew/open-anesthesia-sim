@@ -2016,7 +2016,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 78 entries
+### Declined to Gate 2 on the refilling-queue ground — 79 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -2196,6 +2196,23 @@ question only the project owner can answer, about whether a frozen `Required
 scope` line is corrected or annotated when it turns out to be wrong; holding
 v0.5.0 open would not produce that answer.
 
+**One more from the 2026-09-13 article-review triage pass, on the same ground.** `PL-DG84`
+(`docs/WORKING_NOTES.md` asks for resolved threads to be deleted and nothing
+reads that policy) was captured that day and triaged to `needs-decision`, which
+is what makes it debt this gate has to dispose of; it is `P2`, neither `safety`
+nor `science`, and wholly apparatus. The accumulation it describes predates the
+2026-09-06 freeze and so passes the presence test as squarely as the first
+twenty-nine, and it is declined for the reason they were: it makes no remaining
+entry cheaper, so it fails the arithmetic the presence rule asks for, and Gate 1
+stands at 52 open entries it can clear.
+
+Its five filed instances need no disposition of their own and are not listed
+here - `PL-5748`, `PL-60CQ`, `PL-BHJW` and `PL-75R0` are `docs`-classed at
+`ready`, which is not a debt class, and `PL-C92D` is already above on its `perf`
+class. That asymmetry is worth naming rather than looking like an omission: the
+systemic item reaches the gate only because its next step is a decision, while
+the concrete defects it generalises do not reach it at all.
+
 - PL-0M32 (S) Nothing can tell an item finished under a renamed test from one nobody has started
 - PL-0VFF (S) ROADMAP.md's 'Declined to Gate 2' list names PL-483K, PL-69JZ and PL-L09X as deferred, but all three closed done in v0.4.14, and nothing distinguishes a still-open entry from a closed one
 - PL-12P8 (S) PL-JBZK's lane check assumes every file under tests/ is a test file, so a shared non-test helper is told to declare itself apparatus
@@ -2227,6 +2244,7 @@ v0.5.0 open would not produce that answer.
 - PL-BQ46 (S) MacAwakeReference.fraction_of_mac and formatting.mac_multiple are a third and fourth dimensionless convention beside Fraction, and neither is distinguished from a concentration fraction at the type level
 - PL-C92D (S) PL-YSZN's Flet frame table predates PL-2FM6 and measures a tree that no longer exists in two of its three stages, so the Qt/Flet comparison rests on one row
 - PL-CNCF (M) controller.drawn_window costs 6.2 ms a frame at the shipped 150-column budget - 99% of the frame's read and about eighty times the simulation at 1x
+- PL-DG84 (M) docs/WORKING_NOTES.md asks for resolved threads to be deleted and nothing reads that policy
 - PL-F48B (S) Nothing ever repairs a clone's tags after a history rewrite: fetch_remote runs git fetch without --tags --force, so release tags keep pointing at purged commits
 - PL-F933 (S) doc_check resolves a path citation against the working tree, so a citation to a gitignored path passes locally and reddens CI
 - PL-G8TR (S) no-prune-guard is evaded by the form it recommends - git branch -dr driven from a generated list is a prune
@@ -2622,8 +2640,16 @@ thrown away.
   After the port the question is `QAccessible`'s, which is a different
   investigation against a different backend.
 - **`PL-7J96`** ("nothing in this repository draws the interface") is what
-  `PL-YCWZ` now does. One of them supersedes the other and it is worth deciding
-  which rather than working both.
+  `PL-YCWZ` now does. **Decided for `PL-YCWZ` (project owner, 2026-09-13), and
+  `PL-7J96` is `dropped` as superseded.** `PL-YCWZ`'s capability is demonstrated
+  rather than assumed - `spikes/qt/qt_spike.py --screenshot` already renders the
+  interface offscreen inside the web container - where `PL-7J96` would have built
+  a Playwright renderer for the interface this milestone replaces. What that
+  accepts is that the shipped Flet build gets no automated wrapping check before
+  the port; the two defects `PL-7J96` records are filed and dispositioned
+  separately, so what is given up is the gate rather than the fixes. Its Gate 1
+  line stays written where the freeze put it, per § "The gate is a snapshot, not
+  a moving target". `PL-MBP6` was blocked on it and is re-pointed at `PL-YCWZ`.
 - **`PL-NC2P`** and **`PL-YMY7`** are coverage items over `app/main.py` and
   `app/simulation_view.py`'s Flet-construction paths - files this milestone
   replaces.
@@ -2680,6 +2706,17 @@ and say why. `PL-B9PY` is not moved, for the reason in its entry above.
 - Keep each milestone narrow. New ideas belong below until promoted into a
   scoped release — or in `docs/items/` when they are a task rather
   than a release.
+- **A Goal is frozen at scoping and dated there.** It records the problem the
+  release was taken on to solve, in the tense and the state of that day, and
+  closing items do not amend it. What a milestone achieved is recorded in its
+  Required scope and its Definition of done, which is where a reader looking
+  for current state should be sent. Rewriting a Goal into the past one clause
+  at a time leaves the section describing neither the problem nor the product,
+  and it puts an edit to this file on the critical path of every closure.
+  `PL-DXQC` is why this is written down rather than left to imitation: two of
+  v0.4.0's three Goal bullets were fixed while the section still asserted them
+  in the present tense, and one had been stale for two releases before anybody
+  noticed there was no convention to breach.
 
 ## Keeping the toolchain current
 

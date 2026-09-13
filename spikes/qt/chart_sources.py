@@ -228,9 +228,9 @@ def snapshot_percents(snapshot: SimulationSnapshot) -> tuple[float, ...]:
     """
 
     return (
-        snapshot.circuit_concentration_fraction * 100.0,
-        snapshot.alveolar_concentration_fraction * 100.0,
-        snapshot.mixed_venous_concentration_fraction * 100.0,
+        snapshot.inspired_partial_pressure_fraction * 100.0,
+        snapshot.alveolar_partial_pressure_fraction * 100.0,
+        snapshot.mixed_venous_partial_pressure_fraction * 100.0,
         snapshot.vessel_rich_partial_pressure_fraction * 100.0,
         snapshot.muscle_partial_pressure_fraction * 100.0,
         snapshot.fat_partial_pressure_fraction * 100.0,

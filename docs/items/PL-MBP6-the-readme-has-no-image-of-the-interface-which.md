@@ -7,7 +7,7 @@ status: blocked
 classes: docs, ux
 feature: project-introduction
 touches: README.md, assets/branding
-blocked-by: PL-7J96
+blocked-by: PL-YCWZ
 added: 2026-09-06
 ---
 
@@ -59,7 +59,23 @@ recorded how it was produced and when it is retaken.
 there: producing a screenshot needs the app rendered, which is `PL-7J96`'s
 open decision, and the item was the document rather than the tooling under it.
 
-**Blocked on `PL-7J96`** (make the interface renderable in a check so a session
-can look at it), transcribing this item's own reasoning rather than adding a
-judgment: producing the image needs the app rendered, and growing a second
-screenshot mechanism here is the outcome the brief refuses.
+**Blocked on `PL-YCWZ`** (headless rendering tests over the real Qt interface),
+re-pointed 2026-09-13 when `PL-7J96` was dropped as superseded by it. The
+reasoning is unchanged: producing the image needs the app rendered, and growing a
+second screenshot mechanism here is the outcome this brief refuses.
+
+**What the re-point changes, and it is not nothing.** `PL-7J96` would have
+rendered the *shipped* Flet interface, so this item could have been worked before
+the port. `PL-YCWZ` renders Qt, and a README image is - by this brief's own
+paragraph 2 - a displayed clinical value that "will be read as representative",
+so a Qt screenshot cannot ship while the built interface is Flet without
+asserting a display that does not exist yet. In effect this item now waits for
+`v0.5.1` to *land*, not merely for `PL-YCWZ` to be built.
+
+**One route does not wait, and is not taken here.** This item's "Done when" asks
+that "the project has recorded how it was produced and when it is retaken" - not
+that a tool produced it. The project owner can run `make run` and capture the
+shipped interface by hand today, which satisfies that wording and needs no
+mechanism. That is a live option for the owner rather than a decision this
+re-point takes: `PL-2QMK` records that no session in the web container can render
+Flet at all, so no session can do it for them.
