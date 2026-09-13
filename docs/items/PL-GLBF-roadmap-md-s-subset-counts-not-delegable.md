@@ -6,7 +6,8 @@ effort: S
 classes: defect, docs
 feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
-status: needs-decision
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_not_delegable_subset_count' tests/unit/test_doc_check.py
+status: ready
 added: 2026-09-01
 ---
 
@@ -67,3 +68,92 @@ across the gate.
 
 No `verify:` yet, and that is correct rather than missing: the command depends
 on which answer is taken, and `docket check` owes one only at `ready`.
+
+## Decided 2026-09-13: build the one decidable count, and record why the other two are neither checked nor removed
+
+**The decision asked which of two — the counts come out of the prose, or an item
+gains a field. The measured answer is neither, and the third option is better
+than both.**
+
+### The premise this brief rests on is wrong, and the field it asks for exists
+
+The brief says the two work-describing counts "describe what an entry's *work*
+touches, which no field records". `touches:` records exactly that, on 208 of 236
+open items (88%). So the question is not whether to add a field — it is whether
+the field already there can decide these counts. **It cannot, and the proof is
+this item's own example.**
+
+`ROADMAP.md:827` says "Three entries reach into `src/` and `tests/`", naming
+PL-020, PL-ZN0N and PL-69J3. By `touches:`:
+
+| entry | `touches:` reaches `src/` or `tests/` |
+| --- | --- |
+| PL-020 | yes — `src/anesthesia_sim/py.typed`, `tests/unit/test_bootstrap.py` |
+| **PL-ZN0N** | **no — `pyproject.toml` and nothing else** |
+| PL-69J3 | yes — `simulation_view.py` and four `tests/` files |
+
+A checker over `touches:` computes **2** and the prose says **3**, and the prose
+is right. The two fields answer different questions: `touches:` records the files
+an item is *expected to change*, while the definition-of-done sentence records
+the scope an item is *permitted to reach* — PL-ZN0N may "add, remove or annotate
+`noqa` directives", which live in `src/`, without that being a file it plans to
+edit. A check built on the near-miss field would fail a correct sentence, which
+is `CLAUDE.md`'s own warning: "a tool that guesses at the judgment half is worse
+than no tool, because its output looks authoritative and is not."
+
+The second count fails for a different reason. "The two entries that change
+repository configuration rather than the tree" — PL-J786 and PL-S4M2 — both
+carry an **empty** `touches:`, which is correct for them. But 28 open items also
+carry an empty `touches:` because nobody filled it in, so emptiness conflates
+"changes nothing in the tree" with "unmeasured" and can decide nothing.
+
+### And they cannot go stale, because the list they describe is closed
+
+The brief's harm model is that each count "goes stale the next time an entry
+with that property is admitted or closed". All three live examples are in the
+**v0.2.8** section — a `Completed` release. Every id the three counts name was
+checked today:
+
+PL-J786 `dropped`; PL-S4M2, PL-8HJ2, PL-ZQ9C, PL-1Q3S, PL-H7XN, PL-CMCB,
+PL-020, PL-ZN0N, PL-69J3 all `done`, every one stamped `milestone: v0.2.8`.
+
+Ten of ten closed, on a frozen list, in a shipped release. Nothing will ever be
+admitted to it or closed out of it again, so the staleness these counts were
+filed for has a probability of zero. `PL-H8MQ`'s rule — a count nothing can
+decide should not be written down — is aimed at a number that can *drift*.
+Deleting correct history from a shipped release's section to satisfy a rule
+about live ones is a loss, not a tidy-up.
+
+### So the work is the one count that is genuinely decidable
+
+`ROADMAP.md:723`, "**Seven entries are marked `not-delegable`**", is a query
+over a field `docket` already reads, on a list `check_gate_counts` already
+parses. It needs no judgment, it is the count this brief itself identified as
+the one worth doing first, and — unlike the other two — the same check keeps
+working on every future section, which is where the risk actually lives.
+
+Scope, and nothing beyond it:
+
+1. Extend `tools/doc_check.py`'s `check_gate_counts` to verify a
+   `**N entries are marked `not-delegable`**` sentence against the items the
+   section's frozen list names.
+2. Record in `ROADMAP.md`, beside the two counts left unchecked, that they are
+   deliberately not checkable and why — the `touches:`/permitted-scope mismatch
+   above — so this is not rediscovered and re-filed a third time.
+
+**Effort stays `S`.** One check against an existing parse, plus two sentences.
+
+### Left for the owner, and it is not this item's to take
+
+The same *shape* recurs about fifteen times in the **live** sections — Gate 1's
+declines and v0.5.1's dispositions — and those lists are still growing, so
+unlike v0.2.8's they genuinely can drift. Sampling them shows three kinds, and
+they do not want one answer: some are decidable from `classes:` ("Four further
+`safety`/`science` items"), some from `blocked-by:` ("Four are waiting on the
+port"), and a good number are already anchored in time ("Eleven more from the
+2026-09-12 triage pass"), which is a record of what a pass found on a date and
+cannot go stale for the same reason a shipped section cannot.
+
+Whether that is worth a second pass is a scoping call rather than a defect, and
+it is deliberately not folded in here: doing so would turn an `S` item about
+three dead numbers into an open-ended audit of the roadmap's live prose.
