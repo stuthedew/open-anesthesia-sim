@@ -53,3 +53,19 @@ an extraction note, and whether that obligation belongs in
 `.claude/rules/citing-sources.md` beside the routes, or in
 `docs/references/README.md` beside the redistribution rule. `PL-XJ5P` is
 deciding the surrounding question and touches both files.
+
+## Approved by the project owner, 2026-09-13
+
+The obligation is approved in principle: reading an owner-supplied source writes
+its numbers and locators back into the public repository. Not implemented here —
+both candidate homes, `.claude/rules/citing-sources.md` and
+`docs/references/README.md`, are in `PL-XJ5P`'s `touches` and `PL-XJ5P` is in
+flight on `origin/claude/lucid-mendel-6kavwt`. It lands with that item's decision.
+
+**A first target exists rather than a hypothetical one.** The corpus now holds
+Yasuda et al. 1991, whose five-minute elimination vectors
+`tests/reference/test_published_wash_in_and_elimination.py` already depends on.
+An extraction note for that paper would record what the test file currently
+asserts without a holdable source: the two vectors, their SDs, n = 7 volunteers,
+the FA/FI values at 30 min, and the pages each sits on. That is the smallest
+worked example of the convention and it is owed to a file already in `tests/`.

@@ -113,3 +113,46 @@ cold session has no way to learn the corpus exists. The right home is
 "Redistribution" section is what closed the old route. That file is in
 `PL-XJ5P`'s `touches` and `PL-XJ5P` is in flight, so editing it from here would
 collide; the pointer is left for that item to write alongside its own decision.
+
+## Corpus populated and indexed, 2026-09-13
+
+Four papers were added by the project owner and are now named, indexed and
+pushed. Citations verified against PubMed the same day; two of the four are
+sources `PL-XJ5P` had measured as having no reachable route at all:
+
+- Mapleson WW. *J Appl Physiol* 1963;18:197–204. PMID 13932730,
+  DOI 10.1152/jappl.1963.18.1.197. On `PL-XJ5P`'s terminal list; `PL-6Q8N`'s
+  primary lineage for the reference adult.
+- Smith NT, Zwart A, Beneken JEW. *Anesthesiology* 1972;37(1):47–58.
+  PMID 5050101, DOI 10.1097/00000542-197207000-00008. On `PL-XJ5P`'s terminal
+  list via `PL-8SDL`. A scan with no text layer, so it needs page-image reading.
+  PubMed's stored title misspells "distribution" as "disribution".
+- Yasuda N, et al. *Anesth Analg* 1991;72(3):316–24. PMID 1994760,
+  DOI 10.1213/00000539-199103000-00007.
+- Nickalls RWD, Mapleson WW. *Br J Anaesth* 2003;91(2):170–4. PMID 12878613,
+  DOI 10.1093/bja/aeg132.
+
+**The corpus paid for itself on arrival.**
+`tests/reference/test_published_wash_in_and_elimination.py` already uses
+Yasuda's five-minute elimination vectors — sevoflurane 0.157 ± 0.020,
+isoflurane 0.223 ± 0.024, n = 7 — as reference values, and until now cited them
+with no holdable source behind them. The same file records the model at +3.79 SD
+and +4.15 SD against those two, which is the discrepancy family `PL-RFLN` is
+trying to settle for desflurane. `PL-RFLN` is in flight and did not have this
+paper when it started.
+
+**Correction to this item's earlier reasoning about the setup script.** The
+setup script cannot fetch the corpus, which stands. But it is exactly the right
+place for the *reader*: `poppler-utils` is **not** in the base image, and
+without it every PDF read fails with `pdftoppm is not installed`. Installing it
+costs an `apt-get update` plus install in every session that skips it, and the
+environment cache "keeps what the setup script writes to disk", so one line in
+the setup script pays it once per snapshot instead:
+
+```bash
+apt-get update -qq && apt-get install -y -qq poppler-utils || true
+```
+
+`|| true` because a failed install must not stop the session from starting.
+`pdftotext -layout FILE -` is then far cheaper than page-image rendering and
+works for every holding except the Smith 1972 scan.
