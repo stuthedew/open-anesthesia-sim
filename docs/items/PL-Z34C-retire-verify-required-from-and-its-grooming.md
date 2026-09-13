@@ -69,3 +69,81 @@ item can no longer be closed without gaining a command.
 **Done when.** The advisory, `_verify_required`, the config field and the
 skill paragraph are gone; the closing gate and its date remain; and
 `docket check` still refuses an item closed without a command.
+
+## Worked 2026-09-13: retire is the right answer, the trigger is measurably close, and one question is left that is not this item's to answer
+
+**Decided: retire, on this project's own retirement test.** `CLAUDE.md`: "A
+check earns its place every run, or it is retired… an advisory nobody acts on is
+a candidate for retirement rather than promotion." An advisory that *cannot*
+fire is the limiting case of one nobody acts on, and the two costs it would keep
+charging are both real: a second date in `docket.toml` that a reader has to
+distinguish from the permanent one, and a paragraph in
+`.claude/skills/docket/SKILL.md` explaining a grandfathering that no longer
+grandfathers anything. `PL-5YK8` (done) and this item are the durable record
+that it existed.
+
+**The counter-argument, and why it loses.** Keeping it as a standing record puts
+the record in the place least able to carry it: a config key and a branch in
+`checks.py` say *that* a cutover happened and nothing about why, whereas an item
+says both and costs no run time. Nothing reads a retired advisory to learn
+history.
+
+**The trigger is measurably close, and the trajectory is the evidence.**
+Recounted today by the same rule the advisory uses — `status: ready`, `added`
+before `verify_required_from` (2026-08-30), carrying neither `verify:` nor
+`not-delegable:`:
+
+| date | grandfathered `ready` items |
+| --- | --- |
+| 2026-08-31 | 39 |
+| 2026-09-03 | 22 |
+| **2026-09-13** | **15** |
+
+PL-005, PL-024, PL-027, PL-029, PL-036, PL-038, PL-043, PL-41YP, PL-8LDF,
+PL-LJVD, PL-NC2P, PL-RZPX, PL-YMY7, PL-Z7LY, PL-ZBR6 — every one added
+2026-08-23 to 2026-08-26, so the set is closed and can only shrink. `PL-J49T`
+(done) is what drains it: a grandfathered item can no longer be closed without
+gaining a command.
+
+**Two of the fifteen will not drain by being worked.** `PL-NC2P` and `PL-YMY7`
+are coverage items over `app/main.py` and `app/simulation_view.py`'s
+Flet-construction paths, which `ROADMAP.md` § "Items this port moots or
+transforms" names as files `v0.5.1` replaces. They will most likely close as
+`dropped`, which still removes them from the set — noted because it means the
+count reaching zero does not require all fifteen to be *done*.
+
+**What must not be retired with it is unchanged and was re-checked**, not
+assumed: `verify_required_at_close_from` and `_verify_required_at_close` stay,
+for both reasons this brief records. The opening gate fires on `status ==
+"ready"`, so an item going `needs-decision` to `done` in one commit is never
+asked by it — and this batch produced exactly that case again today, in
+`PL-H1JD`, which was `needs-decision` at the start of the session and `done` at
+the end of it without ever holding `ready`. The closing gate is what asked it
+for a command.
+
+## Still open, and it is a store-design question rather than this item's
+
+The decision above is made, and this item **still cannot be worked**, because
+the set is 15 rather than 0. That leaves it in a state the store has no name
+for: *decided, waiting on a measurable condition*.
+
+The three available statuses each say something false about it. `needs-decision`
+says the next step is a decision, which it no longer is — and `bin/docket gate`
+counts it as Gate 1 debt on that basis, so a gate that must clear before v0.5.0
+is held open by an item whose question is answered. `ready` says a session may
+pick it up, and a session that does will find the count is 15 and put it back
+down. `blocked` was refused by `docket check`, correctly: that status names a
+blocking *item*, and `PL-J49T` — the item that drains the set — is already done,
+so there is nothing for `blocked-by` to point at.
+
+This brief already noted the gap and declined to file it, "since nothing else in
+the store has wanted it". Something else now does, which is what changes the
+answer: `PL-GLBF` in this same batch is decided on its cheap half and gated on a
+question, and the general shape — a decision recorded against a trigger nobody
+is tracking — is what `bin/docket` has no representation for.
+
+It is left `needs-decision` rather than moved, deliberately: choosing what the
+store should represent is a store-design call, and picking `ready` to clear the
+gate count would put unworkable work in front of `bin/docket next`, which is the
+failure `.claude/skills/docket/SKILL.md` names for `L` items arriving in the
+queue.
