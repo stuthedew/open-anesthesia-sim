@@ -1,12 +1,13 @@
-"""Load and validate agent and reference-patient parameter files.
+"""Load and validate agent, reference-patient and apparatus parameter files.
 
-Public types (`AgentParameters`, `ReferenceAdultParameters`) are plain,
-frozen dataclasses with no dependency on the validation library, so the
-rest of the core never imports Pydantic. The `_AgentPayload`/
-`_ReferenceAdultPayload` Pydantic models exist only to validate
-`data/agents/*.json` and `data/patients/*.json` on load and are never
-exposed outside this module; `parse_agent_parameters()` and
-`parse_reference_adult_parameters()` are the seam between the two.
+Public types (`AgentParameters`, `ReferenceAdultParameters`,
+`BreathingCircuitParameters`) are plain, frozen dataclasses with no dependency
+on the validation library, so the rest of the core never imports Pydantic. The
+`_AgentPayload`/`_ReferenceAdultPayload`/`_BreathingCircuitPayload` Pydantic
+models exist only to validate `data/agents/*.json`, `data/patients/*.json` and
+`data/machines/*.json` on load and are never exposed outside this module;
+`parse_agent_parameters()`, `parse_reference_adult_parameters()` and
+`parse_breathing_circuit_parameters()` are the seam between the two.
 
 Every payload model is strict: it inherits `_StrictPayload`, which forbids
 keys the schema does not declare, so a misspelled or obsolete key in a data
@@ -205,6 +206,36 @@ class ReferenceAdultParameters:
             + self.muscle_perfusion_fraction
             + self.fat_perfusion_fraction
         )
+
+
+@dataclass(frozen=True, slots=True)
+class BreathingCircuitParameters:
+    """Validated apparatus parameters: the breathing system, not the patient.
+
+    A third kind beside `AgentParameters` and `ReferenceAdultParameters`,
+    because circuit volume and fresh gas flow belong to neither. They are
+    properties of the anesthesia machine in front of the patient, and a file
+    that filed them under either would say something false about where they
+    came from - the reference adult's eleven values are one product's default
+    *patient*, and these are its default *apparatus*.
+
+    Both were hardcoded as `BreathingCircuit` field defaults until `PL-4YY1`.
+    That put them outside `tools/doc_check.py`'s `check_provenance`, which
+    walks data files in both directions and therefore cannot see a constant
+    that never entered one - so the only tool built to catch a missing
+    citation was structurally blind to the two constants setting the machine's
+    own wash-in time constant.
+    """
+
+    schema_version: int
+    id: str
+    display_name: str
+    circuit_volume_l: float
+    default_fresh_gas_flow_l_min: float
+    sources: tuple[SourceReference, ...]
+    # Why no primary source is adopted, where none is; `None` where one is.
+    # Neither value here adopts one at all, which the file's own entry says.
+    provenance_gap: str | None
 
 
 def _validate_nonempty_string(value: object) -> str:
@@ -513,6 +544,31 @@ class _ReferenceAdultPayload(_StrictPayload):
         return value
 
 
+class _BreathingCircuitPayload(_StrictPayload):
+    """Load-time schema for `data/machines/*.json`, discarded into `BreathingCircuitParameters`.
+
+    See `_StrictPayload` for why the pair exists and is not duplication. This
+    is the one payload whose shape and its public type's shape do agree, there
+    being nothing nested to flatten; the pair is kept anyway, because the
+    reason for it is the Pydantic boundary rather than the reshaping.
+
+    `default_fresh_gas_flow_l_min` is checked as positive and finite here and
+    not against `core/supported_ranges.py`, matching how the reference
+    patient's flows are handled: the range guard belongs to the compartment
+    that will hold the value, so a data file naming an unsupported flow is
+    refused by `BreathingCircuit.__post_init__` with the message that names
+    the interval, rather than by a second copy of the interval here.
+    """
+
+    schema_version: SchemaVersion
+    id: NonEmptyString
+    display_name: NonEmptyString
+    circuit_volume_l: PositiveFinite
+    default_fresh_gas_flow_l_min: PositiveFinite
+    sources: Sources
+    provenance_gap: OptionalNonEmptyString = None
+
+
 def _sources_to_tuple(sources: list[_SourcePayload]) -> tuple[SourceReference, ...]:
     return tuple(
         SourceReference(
@@ -581,6 +637,25 @@ def parse_reference_adult_parameters(payload: object) -> ReferenceAdultParameter
         muscle_perfusion_fraction=tissue_groups.muscle.perfusion_fraction,
         fat_volume_l=tissue_groups.fat.volume_l,
         fat_perfusion_fraction=tissue_groups.fat.perfusion_fraction,
+        sources=_sources_to_tuple(model.sources),
+        provenance_gap=model.provenance_gap,
+    )
+
+
+def parse_breathing_circuit_parameters(payload: object) -> BreathingCircuitParameters:
+    """Validate a breathing-circuit payload and return immutable parameters."""
+
+    try:
+        model = _BreathingCircuitPayload.model_validate(payload)
+    except PydanticValidationError as error:
+        raise SimulationConfigurationError(str(error)) from error
+
+    return BreathingCircuitParameters(
+        schema_version=model.schema_version,
+        id=model.id,
+        display_name=model.display_name,
+        circuit_volume_l=model.circuit_volume_l,
+        default_fresh_gas_flow_l_min=model.default_fresh_gas_flow_l_min,
         sources=_sources_to_tuple(model.sources),
         provenance_gap=model.provenance_gap,
     )
@@ -681,3 +756,16 @@ def load_reference_adult_parameters() -> ReferenceAdultParameters:
 
     payload = _load_packaged_json("anesthesia_sim.data.patients", "reference_adult.json")
     return parse_reference_adult_parameters(payload)
+
+
+def load_reference_circle_system_parameters() -> BreathingCircuitParameters:
+    """Load and validate the built-in reference circle breathing system.
+
+    The apparatus half of what `AgentUptakeSystem.for_agent()` builds, beside
+    the agent and the reference adult. Its two values were `BreathingCircuit`
+    field defaults until `PL-4YY1`, so a run took them from `core/` and no
+    provenance row could name them.
+    """
+
+    payload = _load_packaged_json("anesthesia_sim.data.machines", "reference_circle_system.json")
+    return parse_breathing_circuit_parameters(payload)

@@ -1417,15 +1417,19 @@ Man, and Meybohm et al. 2021 is a Gas Man simulation study describing the
 product's standard 70 kg patient. Citing either as though the value had been
 measured is the specific failure this section exists to prevent.
 
-**Where this project stands, stated rather than implied.** Of the 35 rows in
-the provenance table below, 25 are tier 3, one is tier 2 and nine are tier 1.
-All twelve partition coefficients are the Gas Man set as published by De Wolf
+**Where this project stands, stated rather than implied.** Of the 37 rows in
+the provenance table below, 25 are tier 3, one is tier 2, nine are tier 1, and
+two adopt no source of any tier. All twelve partition coefficients are the Gas
+Man set as published by De Wolf
 et al.; ten of the eleven physiologic parameters in
 `src/anesthesia_sim/data/patients/reference_adult.json` are the Gas Man default
 patient; and the three `mac_percent` values are the MAC values De Wolf et al.
 state they used in their Gas Man simulations, with two tier-2 sources cited
 alongside but not adopted — Mapleson's 1996 meta-analysis and the age-related
-iso-MAC charts built on it.
+iso-MAC charts built on it. The two unadopted rows are the machine parameters
+in `src/anesthesia_sim/data/machines/reference_circle_system.json`: a circuit
+volume that departs deliberately from the published Gas Man figure, and a
+default fresh gas flow with no published counterpart at all.
 
 **The ten exceptions are of three kinds**, and naming them is the point of the
 counts above. The eleventh reference-patient parameter, `venous_pool_volume_l`,
@@ -2010,6 +2014,8 @@ in the places a reader trusts most.
 | Fat flow fraction | 0.06 | dimensionless | `data/patients/reference_adult.json` · `tissue_groups.fat.perfusion_fraction` |
 | Default alveolar ventilation | 4.0 | L/min | `data/patients/reference_adult.json` · `default_alveolar_ventilation_l_min` |
 | Default cardiac output | 5.0 | L/min | `data/patients/reference_adult.json` · `default_cardiac_output_l_min` |
+| Breathing-circuit volume | 6.0 | L | `data/machines/reference_circle_system.json` · `circuit_volume_l` |
+| Default fresh gas flow | 4.0 | L/min | `data/machines/reference_circle_system.json` · `default_fresh_gas_flow_l_min` |
 | Maximum delivered concentration (sevoflurane) | 8.0 | percent | `data/agents/sevoflurane.json` · `max_delivered_concentration_percent` |
 | Maximum delivered concentration (isoflurane) | 5.0 | percent | `data/agents/isoflurane.json` · `max_delivered_concentration_percent` |
 | Maximum delivered concentration (desflurane) | 18.0 | percent | `data/agents/desflurane.json` · `max_delivered_concentration_percent` |
@@ -2047,6 +2053,36 @@ The consequence of the difference is 0.26% on the vessel-rich time constant,
 which is inside anything a learner reads off the curve; the provenance is the
 finding, not the arithmetic. `reference_adult.json`'s De Wolf entry carries it
 in full (`PL-0NQ1`).
+
+**The two machine rows adopt no source at all, which is a stronger statement
+than the reference patient's gap and is meant to be.** They are the apparatus
+in front of the patient rather than the patient, so they live in
+`data/machines/reference_circle_system.json` — a third kind of parameter file,
+added by `PL-4YY1`, which moved both out of `core/circuit.py` field defaults
+where no provenance row could reach them and changed neither value.
+
+- **Circuit volume, 6.0 L.** The Workbook's own page-168 table publishes 8.0 L,
+  and De Wolf et al. 2012's Methods print the same 8 L for the simulations
+  their Table 1 supplied the coefficients to. This project keeps 6.0
+  deliberately, on the project owner's ruling of 2026-09-01 that which value is
+  used is not critical. What the departure changes is the machine's own share
+  of the early rise: $`\tau_C = V_C/\dot V_F`$ is 90 s here against 120 s at
+  8.0 L and the same flow, a 25% shorter apparatus lag. That lag is the part of
+  the inspired curve a learner is most likely to attribute to uptake, so a run
+  reproducing a published Gas Man trajectory has to set 8.0 L rather than
+  assume it.
+  <!-- derived: 90 s from data/machines/reference_circle_system.json circuit_volume_l = 6, default_fresh_gas_flow_l_min = 4 -->
+- **Default fresh gas flow, 4.0 L/min.** No published counterpart exists for
+  this one anywhere this project has reached. The Workbook's parameter table
+  gives the circuit row a volume and no flow, its interface defaults are
+  described without numbers, and the two Gas Man simulation studies read here
+  chose flows for their own purposes (De Wolf et al. 1 L/min; Meybohm et al.
+  10 L/min for washout). It is a project convention: a routine mid-range
+  clinical flow, well inside the supported interval, that puts the circuit time
+  constant at 90 s — long enough for the machine lag to read as a distinct
+  phase of the early rise, short enough to resolve within the first minutes of
+  a teaching run. That is a design rationale, and the data file labels it as
+  one rather than as a measurement.
 
 There is no "arterial blood-pool volume" row: arterial blood is flow-limited
 and holds no independent state (see "Model boundary"). Tissue:blood
@@ -3629,13 +3665,15 @@ The two do not have the same provenance, and the difference is worth stating
 rather than smoothing over. The alveolar gas volume is a patient parameter,
 2.5 L, read from `data/patients/reference_adult.json` and carried in the
 provenance table above with the FRC measurement it is reconciled against.
-The circuit volume is a *machine* parameter and is not in a data file at all:
-it is the default `circuit_volume_l: float = 6.0` on `BreathingCircuit`, and
-it has no recorded source. That is a real gap in this document's provenance
-coverage rather than a property of the parameter — the value sets the
-fresh-gas wash-in time constant that every displayed concentration passes
-through — and it is queue item `PL-4YY1`, which moves the constant into a
-data file and gives it a row above without changing it.
+The circuit volume is a *machine* parameter, 6.0 L, read since `PL-4YY1` from
+`data/machines/reference_circle_system.json` — a third kind of parameter file
+beside the agent and the patient, because the breathing system belongs to
+neither — and carried in the same table with what is known about where it came
+from, which is that no source is adopted for it. Until that item it was the
+field default `circuit_volume_l: float = 6.0` on `BreathingCircuit` and had no
+row here at all, so the only tool that checks this document against the data
+files could not see it: `check_provenance` walks data files in both
+directions, and a constant that never entered one is invisible to it.
 <!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
 
 **Why neither gets a supported range.** A supported range describes an

@@ -17,8 +17,10 @@ from anesthesia_sim.core.parameters import (
     SOURCE_TIERS,
     load_agent_parameters,
     load_reference_adult_parameters,
+    load_reference_circle_system_parameters,
     load_sevoflurane_parameters,
     parse_agent_parameters,
+    parse_breathing_circuit_parameters,
     parse_reference_adult_parameters,
 )
 
@@ -464,7 +466,7 @@ def test_every_payload_model_documents_why_it_exists() -> None:
 
 
 def test_every_payload_model_forbids_unknown_keys() -> None:
-    """Strictness must hold for models added later, not just today's six.
+    """Strictness must hold for models added later, not just today's eight.
 
     Inheriting `_StrictPayload` is what makes a new payload model strict by
     default; this walks the subclass tree so that a model which opts back
@@ -476,7 +478,7 @@ def test_every_payload_model_forbids_unknown_keys() -> None:
     strict_base = parameters_module._StrictPayload
     subclasses = strict_base.__subclasses__()
 
-    assert len(subclasses) == 7, "a payload model was added or removed; update this count"
+    assert len(subclasses) == 8, "a payload model was added or removed; update this count"
 
     for model in subclasses:
         assert model.model_config.get("extra") == "forbid", model.__name__
@@ -713,7 +715,11 @@ def test_doc_check_holds_the_same_source_tier_vocabulary() -> None:
 
 def test_every_shipped_source_declares_a_tier_and_an_adoption() -> None:
     loaded = [load_agent_parameters(agent_id) for agent_id in AGENT_DATA_FILENAMES]
-    parameter_sets: list[Any] = [*loaded, load_reference_adult_parameters()]
+    parameter_sets: list[Any] = [
+        *loaded,
+        load_reference_adult_parameters(),
+        load_reference_circle_system_parameters(),
+    ]
 
     for parameters in parameter_sets:
         assert parameters.sources
@@ -842,3 +848,100 @@ def test_the_perfusion_tolerance_is_defined_once_for_both_guards() -> None:
     )
 
     assert definitions == ["src/anesthesia_sim/core/parameters.py"]
+
+
+def _valid_breathing_circuit_payload() -> dict[str, object]:
+    return {
+        "schema_version": 2,
+        "id": "test-circle-system",
+        "display_name": "Test circle system",
+        "circuit_volume_l": 7.0,
+        "default_fresh_gas_flow_l_min": 2.0,
+        "sources": [
+            {
+                "citation": "Test source.",
+                "url": "https://example.invalid/",
+                "tier": "reference-implementation",
+                "adopted": False,
+                "note": "test only",
+            }
+        ],
+        "provenance_gap": "test only",
+    }
+
+
+def test_the_shipped_run_takes_its_circuit_volume_and_flow_from_the_data_file() -> None:
+    """`PL-4YY1`: both were `BreathingCircuit` field defaults, and unciteable.
+
+    `tools/doc_check.py`'s `check_provenance` walks data files in both
+    directions, so a scientific constant that never entered one is invisible
+    to the only tool built to catch a missing citation. This is the load side
+    of moving them into one; `test_the_bare_circuit_defaults_match_the_shipped_machine_file`
+    in `tests/unit/test_circuit.py` is the other side, and asserts that the
+    literals still in `core/circuit.py` agree with what this loads.
+
+    The values are asserted rather than only their provenance: this item was
+    required not to change a modelled number, and 6.0 L with 4.0 L/min is what
+    the model ran on before the file existed.
+    """
+
+    machine = load_reference_circle_system_parameters()
+
+    assert machine.id == "reference_circle_system"
+    assert machine.circuit_volume_l == 6.0
+    assert machine.default_fresh_gas_flow_l_min == 4.0
+
+
+def test_the_reference_circle_system_records_its_provenance_gap() -> None:
+    """It adopts nothing at all, which is stronger than adopting no primary.
+
+    Its circuit volume departs deliberately from the Workbook's published
+    8.0 L, and its fresh gas flow has no published counterpart anywhere this
+    project has reached, so both `sources` entries are cited and not adopted.
+    `check_source_tiers` requires the gap for the weaker case; this asserts
+    the stronger one the file actually states.
+    """
+
+    machine = load_reference_circle_system_parameters()
+
+    assert machine.sources
+    assert not any(source.adopted for source in machine.sources)
+    assert machine.provenance_gap is not None
+    assert machine.provenance_gap.strip()
+
+
+def test_rejects_a_machine_payload_whose_volume_is_not_positive() -> None:
+    payload = _valid_breathing_circuit_payload()
+    payload["circuit_volume_l"] = 0.0
+
+    with pytest.raises(SimulationConfigurationError):
+        parse_breathing_circuit_parameters(payload)
+
+
+def test_rejects_a_machine_payload_carrying_a_key_the_schema_does_not_declare() -> None:
+    """The strictness walk covers the model; this covers the file's own shape.
+
+    A units-suffixed variant of a real key is the failure mode `_StrictPayload`
+    exists for, and `fresh_gas_flow_l_min` without the `default_` prefix is the
+    one a reader of `BreathingCircuit` would reach for first.
+    """
+
+    payload = _valid_breathing_circuit_payload()
+    payload["fresh_gas_flow_l_min"] = 4.0
+
+    with pytest.raises(SimulationConfigurationError):
+        parse_breathing_circuit_parameters(payload)
+
+
+def test_the_breathing_circuit_loader_shares_the_boundary_type_too(
+    monkeypatch: Any, tmp_path: Path
+) -> None:
+    """The third caller of `_load_packaged_json`, added with the machine file."""
+
+    _loader_pointed_at(monkeypatch, tmp_path)
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        load_reference_circle_system_parameters()
+
+    assert "reference_circle_system.json" in str(raised.value)
+    assert isinstance(raised.value.__cause__, OSError)

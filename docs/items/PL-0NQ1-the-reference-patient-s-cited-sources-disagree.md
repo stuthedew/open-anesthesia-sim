@@ -3,11 +3,12 @@ id: PL-0NQ1
 title: The reference patient's cited sources disagree on vessel-rich perfusion
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
 added: 2026-09-01
+closed: 2026-09-13
 verify: uv run pytest tests/unit/test_parameters.py && grep -q '75.8' src/anesthesia_sim/data/patients/reference_adult.json
 ---
 
@@ -93,3 +94,31 @@ https://doi.org/10.1186/1471-2253-12-22) in this session.
 perfusion fraction comes from, that the published 75.8 sums to 99.8% and that
 the sum-to-one constraint is why it was not used verbatim; the cited sources
 match the numbers actually drawn from them; and no stored value changed.
+
+
+**Closed 2026-09-13.** The Workbook branch of the Approach is the one that
+holds: page 168's table gives the vessel-rich relative flow as 0.76, verified
+at the source 2026-09-06 and recorded in the file's first `sources` entry, so
+the stored value is sourced and the two published statements of the same Gas
+Man parameter set simply differ. De Wolf et al. 2012 was added as a `sources`
+entry rather than as a sentence in the Workbook note - read at full text from
+PubMed Central 2026-09-13, tables included - because it earns a citation of its
+own beyond the reconciliation: the Workbook is publisher-copyright and not open
+access, so until now no citation in this file let a reader check the stored
+volumes and flows against a document they could open. Eight of the eleven
+stored values appear in it unchanged.
+
+The note records the discrepancy, that 75.8 + 18 + 6 = 99.8, that both
+sum-to-one guards reject anything outside 1e-12 of 1.0 so the published triple
+cannot be stored as printed, and that the difference is worth 0.26% on the
+vessel-rich time constant. `FLOW_FRACTION_TOLERANCE` was left alone, as the
+Approach required. It also records what must *not* be taken from that paper -
+its FGF of 1 L/min, alveolar ventilation of 5 L/min and circuit volume of 8 L
+are that study's chosen operating point, stated as such, not Gas Man defaults.
+
+Two riders inside the same file: the Workbook entry gained a pointer to the
+disagreeing figure, and the Meybohm entry's claim that the PubMed full-text
+service returns no table contents was narrowed to that article, since De Wolf's
+Table 1 came through the same service on the same day.
+
+No stored value changed.

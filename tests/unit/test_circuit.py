@@ -4,7 +4,9 @@ import pytest
 
 from anesthesia_sim.core.circuit import BreathingCircuit
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
+from anesthesia_sim.core.parameters import load_reference_circle_system_parameters
 from anesthesia_sim.core.supported_ranges import MAXIMUM_FRESH_GAS_FLOW_L_MIN
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 
 def test_rejects_agent_amount_above_circuit_capacity() -> None:
@@ -266,3 +268,47 @@ def test_a_bare_circuit_starts_with_the_vaporizer_off() -> None:
     circuit.advance(60.0)
 
     assert circuit.inspired_partial_pressure_fraction == 0.0
+
+
+def test_the_bare_circuit_defaults_match_the_shipped_machine_file() -> None:
+    """`PL-4YY1`: the literals in `core/circuit.py` are a checked restatement.
+
+    `data/machines/reference_circle_system.json` is the authority, and
+    `AgentUptakeSystem.for_agent()` passes both values from it explicitly, so
+    the field defaults below are reached only by a bare unit-test
+    construction. They are kept so that a test of circuit physics need not
+    load package data — but a reader meeting `circuit_volume_l: float = 6.0`
+    in `core/circuit.py` will take it for the model's circuit volume whatever
+    the docstring says, so the two are not allowed to drift apart silently.
+
+    Deliberately not solved by importing the loader into `core/circuit.py`:
+    `core/parameters.py` is the one module permitted to import Pydantic
+    (`tools/import_boundary_check.py` enforces it), and reading package data
+    at class-definition time would make a pure physics class depend on the
+    installed distribution's files.
+    """
+
+    machine = load_reference_circle_system_parameters()
+    circuit = BreathingCircuit()
+
+    assert circuit.circuit_volume_l == machine.circuit_volume_l
+    assert circuit.fresh_gas_flow_l_min == machine.default_fresh_gas_flow_l_min
+
+
+def test_for_agent_builds_the_circuit_at_the_machine_file_s_values() -> None:
+    """The shipped path reads the file rather than falling through to a default.
+
+    Before `PL-4YY1` `for_agent()` named neither, so a run took its circuit
+    volume and fresh gas flow from `core/circuit.py`'s field defaults and no
+    provenance row could name where they came from. Asserting the wash-in time
+    constant as well as the two inputs is the point of the pair: the 90 s
+    machine lag is the quantity a learner reads off the early rise, and it is
+    what a silent change to either value would move.
+    """
+
+    machine = load_reference_circle_system_parameters()
+    circuit = AgentUptakeSystem.for_agent("sevoflurane").circuit
+
+    assert circuit.circuit_volume_l == machine.circuit_volume_l
+    assert circuit.fresh_gas_flow_l_min == machine.default_fresh_gas_flow_l_min
+    assert circuit.time_constant_s == pytest.approx(90.0)

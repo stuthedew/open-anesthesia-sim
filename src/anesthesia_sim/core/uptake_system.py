@@ -1,6 +1,6 @@
 """Couples the breathing circuit, alveolar compartment, and patient
-compartments into one steppable system, and builds that system from agent
-and reference-patient parameter files via `for_agent()`.
+compartments into one steppable system, and builds that system from the agent,
+reference-patient and apparatus parameter files via `for_agent()`.
 
 Named for uptake rather than for anatomy. What this module owns is agent
 moving from the circuit through the alveoli into blood and tissue, which is
@@ -42,7 +42,11 @@ from anesthesia_sim.core.governing_equations import (
     build_system_matrix,
 )
 from anesthesia_sim.core.matrix_exponential import Matrix, matrix_exponential, propagate
-from anesthesia_sim.core.parameters import load_agent_parameters, load_reference_adult_parameters
+from anesthesia_sim.core.parameters import (
+    load_agent_parameters,
+    load_reference_adult_parameters,
+    load_reference_circle_system_parameters,
+)
 from anesthesia_sim.core.patient import PatientCompartments, PatientCompartmentsState
 from anesthesia_sim.core.validation import require_positive_finite
 
@@ -223,13 +227,22 @@ class AgentUptakeSystem:
         the corresponding real device does not have. The MAC start is
         guaranteed to be within the maximum by the cross-field check in
         `core/parameters.py`.
+
+        Its volume and fresh gas flow are passed explicitly from
+        `data/machines/reference_circle_system.json` rather than left to
+        `BreathingCircuit`'s field defaults, so that every scientific constant
+        a run uses comes from a cited data file (`PL-4YY1`). The alveolar
+        compartment's two are passed the same way and for the same reason.
         """
 
         agent = load_agent_parameters(agent_id)
         patient_parameters = load_reference_adult_parameters()
+        circuit_parameters = load_reference_circle_system_parameters()
 
         return cls(
             circuit=BreathingCircuit(
+                circuit_volume_l=circuit_parameters.circuit_volume_l,
+                fresh_gas_flow_l_min=(circuit_parameters.default_fresh_gas_flow_l_min),
                 delivered_partial_pressure_fraction=(fraction_from_percent(agent.mac_percent)),
                 max_delivered_partial_pressure_fraction=(
                     fraction_from_percent(agent.max_delivered_concentration_percent)
