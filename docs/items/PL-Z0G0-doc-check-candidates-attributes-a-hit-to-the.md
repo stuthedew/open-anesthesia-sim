@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
 closed: 2026-09-13
+pr: 506
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_candidate_line_is_labelled_with_the_most_specific_term' tests/unit/test_doc_check.py
 ---
 

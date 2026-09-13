@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-03
 closed: 2026-09-13
+pr: 506
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_an_overfull_top_band_says_how_much_of_it_is_demotable' subprojects/docket/tests/test_checks.py
 ---
 

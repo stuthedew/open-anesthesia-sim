@@ -9,6 +9,7 @@ feature: release-roadmap-seam
 touches: ROADMAP.md
 added: 2026-09-08
 closed: 2026-09-13
+pr: 507
 verify: python3 tools/doc_check.py check && sed -n '/^30\. Add patient factors/,/^31\./p' ROADMAP.md | grep -q 'cardiac output'
 ---
 

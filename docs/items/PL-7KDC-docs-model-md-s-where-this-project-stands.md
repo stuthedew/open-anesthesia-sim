@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-07
 closed: 2026-09-13
+pr: 507
 verify: python3 tools/doc_check.py check && grep -q 'ten of the eleven' docs/MODEL.md
 ---
 

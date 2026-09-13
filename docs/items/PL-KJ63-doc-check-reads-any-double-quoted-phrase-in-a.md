@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-05
 closed: 2026-09-13
+pr: 506
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_quoted_measurement_before_above_is_not_a_citation' tests/unit/test_doc_check.py
 ---
 

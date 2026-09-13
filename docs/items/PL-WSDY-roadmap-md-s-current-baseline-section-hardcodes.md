@@ -9,6 +9,7 @@ feature: planning-cadence
 touches: ROADMAP.md
 added: 2026-09-08
 closed: 2026-09-13
+pr: 507
 verify: python3 tools/doc_check.py check && ! sed -n '/^## Current baseline/,/^## /p' ROADMAP.md | grep -qE 'Gate [0-9]+ (remains|stands) open at|[0-9]+ of its [0-9]+ entries'
 ---
 
