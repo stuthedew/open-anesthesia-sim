@@ -98,3 +98,56 @@ broader than the subjects had.
 the *flow-weighted* reading, and its rejection does not depend on the
 dispersion - it moves every agent the wrong way at any width. What is bounded
 here is the end-tidal-weighted reading, which is the one still open.
+
+## A measured human anchor for this candidate, found 2026-09-13 in Yasuda's own discussion
+
+Reading the *Anesthesiology* paper for `PL-ZDWL` turned up the authors flagging
+this item's mechanism themselves, at page 497:
+
+> "The data may be suspect in that there is an underlying assumption that the
+> FA accurately indicates the anesthetic partial pressures in arterial blood.
+> Although there appears to be a good correlation between the two, gradients
+> exist. These will be larger during periods of considerable change in
+> concentration (i.e., during the periods of initial administration and
+> elimination) and thus may confound our ability to accurately predict volumes
+> and time constants for the lungs and the VRG."
+
+That is candidate 1 stated by the people who produced the measurement, and
+their citation for it is a human study by the same group:
+
+> Carpenter RL, Eger EI II. *Alveolar-to-arterial-to-venous anesthetic partial
+> pressure differences in humans.* Anesthesiology 1989;70(4):630-5.
+> PMID 2930000,
+> DOI [10.1097/00000542-198904000-00014](https://doi.org/10.1097/00000542-198904000-00014).
+
+Retrieved from PubMed and verified against the abstract 2026-09-13; not held in
+the corpus.
+
+**Why it matters more than the modelled bound this item was written around.**
+The abstract reports two things this item currently has no measurement for.
+First, a **size**: "The difference between PA and Pa was approximately 20% of
+the difference between inspired gas (PI) and Pa", in eight surgical patients
+given isoflurane or halothane. Second, and more useful, a **cause**: "The
+differences between PA and Pa appear to be due primarily to **contamination of
+alveolar gas by physiologic dead space gas**" - not ventilation-perfusion
+dispersion as such.
+
+That reframes the work. This item's brief builds its bound from a log-normal
+V/Q distribution; the primary measurement attributes the gradient chiefly to
+dead-space dilution of the sampled alveolar gas, which is a different mechanism
+with a different dependence on solubility and a different sign through an
+elimination, where the diluting gas is agent-free. **Compute the bound against
+what was measured rather than only against the assumed distribution**, and say
+which of the two the model's `F_a == F_A` actually violates.
+
+**One caution before this is treated as settling anything.** `PL-RFLN`
+established that Yasuda interposed about 50 ml of apparatus dead space at the
+tracheal port expressly "to protect the end-tidal sample from contamination
+with inspired gas", so the published protocol was guarding against exactly
+Carpenter's mechanism. Whether that guard works, and what it leaves, is the
+question - not whether the mechanism exists.
+
+**Route.** Carpenter 1989 is not in the corpus and PubMed carries an abstract
+but no PubMed Central record, so the methods and the gradient's direction
+through elimination need the full text - a request to the project owner, per
+`.claude/rules/citing-sources.md`.

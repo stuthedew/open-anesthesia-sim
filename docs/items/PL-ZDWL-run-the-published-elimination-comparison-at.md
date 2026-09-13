@@ -1,9 +1,15 @@
 ---
 id: PL-ZDWL
 title: Run the published elimination comparison at Yasuda's own measured alveolar ventilation, which the methods text states and this project has not read out
-status: untriaged
+status: done
+closed: 2026-09-13
+priority: P1
+effort: S
+classes: science
 feature: model-spec-accuracy
+touches: docs/MODEL.md
 added: 2026-09-13
+verify: python3 tools/doc_check.py check && grep -qF 'Both papers have since been read at full text, and the study publishes no' docs/MODEL.md
 ---
 
 **Problem.** Run the published elimination comparison at Yasuda's own measured alveolar ventilation, which the methods text states and this project has not read out
@@ -127,3 +133,75 @@ read, or this item closes as answered: the ventilation is not published in
 either abstract or in the one full text held, the nearest published analogue is
 a fitted clearance that cannot be used without circularity, and `docs/MODEL.md`
 says so beside the second candidate row.
+
+## The Anesthesiology paper supplied and read 2026-09-13, and this item is answered
+
+The project owner supplied Yasuda et al. *Anesthesiology* 1991;74:489-98 (PMID
+2001028) the same day and it is now corpus holding
+`yasuda-1991-kinetics-of-desflurane-isoflurane-and-halothane-in-humans.pdf`.
+**Read as page images at full text** - `pdftotext` returns an empty file, it
+being a scan with no text layer, and it exits zero while doing so.
+
+**The ventilation is not published in this one either, and for the same
+reason.** Page 490: "Ventilation was controlled via a nonrebreathing system to
+produce normocapnea (end-tidal carbon dioxide of 5.5-6.5%)". Titrated per
+subject to a CO2 target, so there is no single figure to read out. "Minute
+ventilation (V_E) was measured and mixed expired and inspired samples were
+collected at 5, 7.5, 10, 12.5, 15, 20, 25, and 29 min" - measured, used in the
+mass balance, **never reported**. Tables 1-6 carry A_i coefficients, hybrid and
+mammillary time constants, transit times, blood flows, tissue volumes and
+recovery. **There is no ventilation row anywhere in the paper.**
+
+So both papers are now read at full text and neither prints V_E or f_A. The
+premise in this item's title is wrong for the study as a whole, not just for one
+of the pair.
+
+**What page 492 does settle, and it is what `PL-RFLN`'s derivation needed.**
+The paper defines the quantity explicitly, in the total-body-clearance method:
+doses "delivered to the alveoli (calculated as `F_I x V_A x 30 min`, where
+`V_A = f_A x V_E`)". So `f_A` is the alveolar fraction of **total minute
+ventilation**, and `V_A` is `f_A x V_E` - which is the assumption `PL-RFLN`'s
+series-dead-space derivation rests on, now confirmed at the source rather than
+inferred from the `F_M` formula alone.
+
+**The nearest published analogue, and it changes the desflurane picture.**
+Page 494, pulmonary elimination clearances (`V_1 x k_10`) for the n=8 cohort:
+
+| Agent | Pulmonary elimination clearance | Total body clearance |
+| --- | --- | --- |
+| Desflurane | 4.11 +/- 0.45 L/min | 4.6 +/- 0.9 L/min |
+| Isoflurane | 3.94 +/- 0.34 L/min | 4.0 +/- 0.5 L/min |
+| Halothane  | 3.94 +/- 0.33 L/min | 4.8 +/- 0.5 L/min |
+
+Against the n=7 cohort's 3.58 and 3.62 L/min recorded above. **The model runs
+at 4.0 L/min, so for the cohort desflurane's residual belongs to it is already
+at the study's own effective pulmonary clearance** - if anything a shade below
+desflurane's 4.11.
+
+**That is a second and independent argument against the apparatus dead space,
+and it is stronger than the common-mode one.** A dead-space decrement *lowers*
+the model's alveolar ventilation. For the n=8 cohort that moves it **away** from
+4.11, not toward it. So the mechanism `PL-RFLN` rejected for being common-mode
+is also pointed the wrong way for the one cohort it would need to help.
+
+**How much weight these clearances bear, measured from the paper itself.** The
+same eight subjects breathed all three agents **simultaneously** from one
+cylinder, so their ventilation was physically identical across the three rows.
+The fitted clearances still come out 4.11, 3.94 and 3.94 - about 4% spread on a
+quantity that cannot differ. That is the method's own precision, and it is why
+these figures are worth quoting as a consistency check on the operating point
+and **not** worth adopting as one: they are fitted to the same elimination
+curves the comparison scores against, which would be circular. The paper says as
+much itself at page 497 - "the opposite change in `V_1` resulted in the absence
+of a difference" in clearance despite a threefold solubility range.
+
+**Verified in passing, since the section cites them.** Table 6 recovery:
+desflurane 105 +/- 25%, isoflurane 102 +/- 13%, halothane 64 +/- 9%, matching
+`docs/MODEL.md` exactly. Subjects: eight healthy males, age 25 +/- 5 yr, weight
+**76 +/- 7 kg**, height 182 +/- 4 cm - the source of the "76 kg" the section
+uses, against this model's 70 kg reference adult.
+
+**Done.** The ventilation is not published in either paper; the nearest
+analogue is a fitted clearance that cannot be adopted without circularity but
+does place the n=8 cohort at ~4.1 L/min against the model's 4.0; and
+`docs/MODEL.md` now records that beside the candidate table.

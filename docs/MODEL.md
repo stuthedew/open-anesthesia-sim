@@ -2854,10 +2854,38 @@ $`(V_T - V_{D,\text{anat}} - V_{D,\text{app}})/V_T`$, already netting the
 apparatus out. A comparison run at *their* alveolar ventilation must therefore
 not subtract it again. This model runs at 4.0 L/min, which
 `data/patients/reference_adult.json` records as a program default with no
-primary source behind it, and which is neither quantity. Reading the
-study's own figure out of the methods text is `PL-ZDWL`, and it is the
-strongest move left: it would convert the second row from a free-parameter
-sweep into a sourced operating point.
+primary source behind it, and which is neither quantity.
+
+**Both papers have since been read at full text, and the study publishes no
+ventilation at all** (`PL-ZDWL`, supplied by the project owner and read
+2026-09-13). Ventilation was titrated per subject to normocapnia — end-tidal
+carbon dioxide of 5.5–6.5% — rather than set to a figure, and while minute
+ventilation was measured and used in the mass balance, **no $`\dot V_E`$ and no
+$`f_A`$ is reported in either paper**, and neither carries a ventilation table.
+What the *Anesthesiology* paper does settle, at its total-body-clearance
+method, is the definition the derivation above needs: doses delivered to the
+alveoli are computed as $`F_I \dot V_A \times 30`$ min "where
+$`\dot V_A = f_A \dot V_E`$", so $`f_A`$ is the alveolar fraction of *total*
+minute ventilation.
+
+**The nearest published analogue points the seventh row the wrong way.** The
+paper reports pulmonary elimination clearances $`V_1 k_{10}`$ for the eight
+volunteers desflurane's residual belongs to: desflurane 4.11 ± 0.45, isoflurane
+3.94 ± 0.34 and halothane 3.94 ± 0.33 L/min, against 3.58 and 3.62 L/min in the
+seven-volunteer *Anesth Analg* cohort. This model runs at 4.0 L/min, so for the
+cohort in question it is already at the study's own effective clearance — and a
+dead-space decrement *lowers* alveolar ventilation, moving it **away** from
+4.11 rather than toward it. That is independent of the common-mode argument and
+stronger, because it is specific to the one cohort the mechanism would have to
+help.
+
+**These clearances are a consistency check on the operating point and must not
+be adopted as one.** They are fitted to the very elimination curves this
+comparison is scored against, so running the model at them would be circular.
+Their precision is also readable from the paper itself: the same eight subjects
+breathed all three agents simultaneously from one cylinder, so their ventilation
+was physically identical across those three rows, and the fitted values still
+spread about 4%.
 
 The fourth row's volumes are round physiologic figures — 1 kg of lung tissue
 at a tissue:blood ratio of 1.2, and 1.8 L of pulmonary and arterial blood —
