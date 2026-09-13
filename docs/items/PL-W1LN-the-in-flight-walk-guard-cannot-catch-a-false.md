@@ -9,8 +9,10 @@ feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-08-31
 closed: 2026-09-13
+pr: 505
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_flight_reports_below_an_uneven_horizon_which_is_the_accepted_limit' subprojects/docket/tests/test_cli.py
 ---
+
 **Problem.** `PL-MGNC` made `_unmerged_commits` refuse a walk that ran off the
 end of the history, detecting it by the commit with no parents such a walk
 ends on. That catches every shape observed and the reproduction built for it,

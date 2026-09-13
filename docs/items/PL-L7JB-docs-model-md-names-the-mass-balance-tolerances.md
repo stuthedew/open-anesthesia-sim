@@ -9,6 +9,7 @@ feature: core-domain-language
 touches: docs/MODEL.md, src/anesthesia_sim/core/agent_simulation_validation.py, tests/unit/test_agent_simulation_validation.py
 added: 2026-09-06
 closed: 2026-09-13
+pr: 507
 verify: python3 tools/doc_check.py check && python3 -c "import re,pathlib; doc=pathlib.Path('docs/MODEL.md').read_text(); code=''.join(p.read_text() for d in ('src','tests') for p in pathlib.Path(d).rglob('*.py')); names=set(re.findall(r'(?:MASS_BALANCE|AGENT_ACCOUNTING)_[A-Z_]+', doc)); raise SystemExit(0 if names and all(n in code for n in names) else 1)"
 ---
 

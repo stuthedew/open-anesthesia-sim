@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: docs/MODEL.md, src/anesthesia_sim/data/patients/reference_adult.json
 added: 2026-09-07
 closed: 2026-09-13
+pr: 507
 verify: python3 tools/doc_check.py check && ! grep -qF 'A review measures nothing and cannot be the authority for a stored value' src/anesthesia_sim/data/patients/reference_adult.json
 ---
 

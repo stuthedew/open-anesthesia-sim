@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-09-04
 closed: 2026-09-13
+pr: 506
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_filename_that_does_not_match_its_title_is_reported' subprojects/docket/tests/test_checks.py
 ---
 

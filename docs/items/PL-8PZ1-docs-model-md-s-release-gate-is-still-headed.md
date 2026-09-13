@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-02
 closed: 2026-09-13
+pr: 507
 verify: python3 tools/doc_check.py check && ! grep -q 'Version v0.1.0 is complete only when' docs/MODEL.md
 ---
 

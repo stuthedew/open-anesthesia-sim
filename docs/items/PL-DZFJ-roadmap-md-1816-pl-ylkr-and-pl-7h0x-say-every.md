@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: ROADMAP.md, docs/items/PL-YLKR-design-what-a-chart-tooltip-says-fl-chart-s.md
 added: 2026-09-12
 closed: 2026-09-13
+pr: 507
 verify: python3 tools/doc_check.py check && ! grep -qF 'Every drawn point is an M4 representative' ROADMAP.md
 ---
 
