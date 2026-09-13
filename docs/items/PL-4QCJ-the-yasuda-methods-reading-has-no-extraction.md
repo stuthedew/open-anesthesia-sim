@@ -63,3 +63,37 @@ texts live now" closes it.
 extraction note under `docs/references/`, in whatever shape `PL-Z3V5` settles,
 and `docs/MODEL.md`'s "not held in this repository" sentence points a reader at
 where they now are.
+
+## Page locators now available, 2026-09-13
+
+The *Anesthesiology* paper is now corpus holding
+`yasuda-1991-kinetics-of-desflurane-isoflurane-and-halothane-in-humans.pdf` and
+was read at full text as page images. The facts this item lists can now carry
+locators, which was the gap:
+
+- **p. 490**, § Materials and Methods - the end-tidal port, the dead space and
+  its purpose, verbatim: "End-tidal gas was sampled from a port at the tracheal
+  tube. A small (about 50-ml) dead space composed of corrugated Teflon tubing
+  was interposed between this sampling site and the connection to the
+  nonrebreathing valve. The dead space served to protect the end-tidal sample
+  from contamination with inspired gas. Inspired gas was collected from a port
+  on the nonrebreathing valve just before the valve assembly." Also on the same
+  page: the 1-l aluminium mixing chamber on the expiratory limb supplying `F_M`;
+  the circuit "exchanged with a fresh inspiratory and expiratory circuit" at
+  precisely 30 min; ventilation controlled to normocapnea at end-tidal CO2
+  5.5-6.5%; the cylinder mixture; and the subjects, eight healthy males aged
+  25 +/- 5 yr, 76 +/- 7 kg, 182 +/- 4 cm.
+- **p. 491** - the `F_M = f_A x F_A + f_D x F_I` formula and the 10-, 15- and
+  20-min averaging.
+- **p. 492** - `V_A = f_A x V_E`, in the total-body-clearance method.
+- **p. 494** - pulmonary elimination clearances and total body clearances.
+- **p. 497, Table 6** - recovery: desflurane 105 +/- 25%, isoflurane
+  102 +/- 13%, halothane 64 +/- 9%.
+
+**`PL-RFLN`'s foundation is now verified at the source rather than transcribed.**
+The 50 ml figure and the port siting its conclusion rests on were read from the
+paper directly and match what the earlier session recorded.
+
+This does not unblock the item: `PL-Z3V5` still decides what an extraction note
+contains, and the locators above are raw material for one rather than the note
+itself.

@@ -1127,12 +1127,24 @@ would invert the measured solubility ordering of the three shipped agents, so
 coefficient raised to the measurement's own ceiling still misses. Five other
 candidates were ruled out the same way.
 
-What is still open is the cause, which `PL-RFLN` carries. Two candidates
-survive - end-tidal sampling in a lung with ventilation-perfusion dispersion,
-and the published value itself - and separating them needs the methods sections
-of the two Yasuda 1991 papers, which are not in PubMed Central and not held in
-`docs/references/`. That is a decision for the project owner before any work is
-scheduled, not a task waiting to be picked up.
+**Closed 2026-09-13.** `PL-RFLN` read the methods sections, which the project
+owner supplied into the private reference corpus, and excluded the published
+apparatus: its 50 ml of Teflon is a series dead space, which in this model is an
+alveolar-ventilation decrement rather than a non-zero `F_I`, and applied as one
+it is common-mode - it never closes desflurane without pushing both isoflurane
+cohorts out of their spreads. `PL-ZDWL` then found the study publishes no
+ventilation at all, and that its own pulmonary clearance for the desflurane
+cohort is 4.11 L/min against this model's 4.0, so the decrement points away from
+the study rather than toward it.
+
+`PL-03ZG` struck the second candidate. End-tidal sampling in a dispersed lung
+needed a bias growing as solubility *falls* and raising `F_A/F_A0`; Carpenter &
+Eger 1989, the one human measurement of that gradient, has it larger for *more*
+soluble agents and negative through an elimination, which deepens the residual
+rather than explaining it.
+
+What is left is the published value itself, which nothing this project runs can
+settle. `docs/MODEL.md` records that as the single remaining candidate.
 
 ## Measured and answered: a server-rendered chart is not the way out - PL-YDKJ, PL-2FM6, PL-2QMK, PL-YSZN (2026-09-08)
 

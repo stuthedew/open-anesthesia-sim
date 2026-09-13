@@ -2777,7 +2777,7 @@ side.
 | 1.39, its own measured mean + 2 SD | 0.0998 | −2.01 SD |
 | 1.70, sevoflurane's, the highest of the three | 0.1167 | −1.17 SD |
 
-**Seven other candidates were tested, and each fails the same way**: it moves
+**Eight other candidates were tested, and each fails the same way**: it moves
 sevoflurane and isoflurane as much as desflurane or more, and the published
 rows have no room for that, or it moves desflurane the wrong way. Rows one to
 six were measured 2026-09-08, rows four to six on an independent forward-Euler
@@ -2797,6 +2797,7 @@ the sixth.
 | A non-ideal lung — shunt or ventilation-perfusion dispersion, both excluded by $`F_a \equiv F_A`$ | moves the wrong way | a 20% shunt takes desflurane from −2.29 to −2.66 SD; a log-normal V/Q distribution at log SD 1.0 takes it to −2.91 |
 | Circuit-style rebreathing in the published apparatus, at an assumed ratio | $`F_I/F_A`$ = 0.30 | sevoflurane +2.72 SD, isoflurane +3.29 and +4.10 |
 | The published apparatus's own dead space, sourced — 50 ml re-inspired each breath, which in this model is a ventilation decrement rather than an $`F_I`$ | more than the wash-in rows will bear | at the largest admissible decrement desflurane is still −1.48 SD while both isoflurane cohorts leave their spread, at +1.69 and +2.17 |
+| End-tidal sampling bias in a lung with ventilation-perfusion dispersion — a correction to the *published* value rather than to this model | a bias upward at both ends, growing as solubility falls | the one human measurement of that gradient has it larger for *more* soluble agents and negative through an elimination, so it moves the published value down and deepens the residual — struck below |
 
 **The sixth row measured circuit-style rebreathing at an assumed ratio, and
 the apparatus turns out not to be that shape at all.** Yasuda 1991
@@ -2854,10 +2855,38 @@ $`(V_T - V_{D,\text{anat}} - V_{D,\text{app}})/V_T`$, already netting the
 apparatus out. A comparison run at *their* alveolar ventilation must therefore
 not subtract it again. This model runs at 4.0 L/min, which
 `data/patients/reference_adult.json` records as a program default with no
-primary source behind it, and which is neither quantity. Reading the
-study's own figure out of the methods text is `PL-ZDWL`, and it is the
-strongest move left: it would convert the second row from a free-parameter
-sweep into a sourced operating point.
+primary source behind it, and which is neither quantity.
+
+**Both papers have since been read at full text, and the study publishes no
+ventilation at all** (`PL-ZDWL`, supplied by the project owner and read
+2026-09-13). Ventilation was titrated per subject to normocapnia — end-tidal
+carbon dioxide of 5.5–6.5% — rather than set to a figure, and while minute
+ventilation was measured and used in the mass balance, **no $`\dot V_E`$ and no
+$`f_A`$ is reported in either paper**, and neither carries a ventilation table.
+What the *Anesthesiology* paper does settle, at its total-body-clearance
+method, is the definition the derivation above needs: doses delivered to the
+alveoli are computed as $`F_I \dot V_A \times 30`$ min "where
+$`\dot V_A = f_A \dot V_E`$", so $`f_A`$ is the alveolar fraction of *total*
+minute ventilation.
+
+**The nearest published analogue points the seventh row the wrong way.** The
+paper reports pulmonary elimination clearances $`V_1 k_{10}`$ for the eight
+volunteers desflurane's residual belongs to: desflurane 4.11 ± 0.45, isoflurane
+3.94 ± 0.34 and halothane 3.94 ± 0.33 L/min, against 3.58 and 3.62 L/min in the
+seven-volunteer *Anesth Analg* cohort. This model runs at 4.0 L/min, so for the
+cohort in question it is already at the study's own effective clearance — and a
+dead-space decrement *lowers* alveolar ventilation, moving it **away** from
+4.11 rather than toward it. That is independent of the common-mode argument and
+stronger, because it is specific to the one cohort the mechanism would have to
+help.
+
+**These clearances are a consistency check on the operating point and must not
+be adopted as one.** They are fitted to the very elimination curves this
+comparison is scored against, so running the model at them would be circular.
+Their precision is also readable from the paper itself: the same eight subjects
+breathed all three agents simultaneously from one cylinder, so their ventilation
+was physically identical across those three rows, and the fitted values still
+spread about 4%.
 
 The fourth row's volumes are round physiologic figures — 1 kg of lung tissue
 at a tissue:blood ratio of 1.2, and 1.8 L of pulmonary and arterial blood —
@@ -2870,55 +2899,78 @@ together and cannot produce a residual in one of them.
 **So the cause is not identified. This is a recorded disagreement, and the
 sign and the size are what is recorded.** What survives the eliminations above
 is a mechanism acting on the least soluble agent alone, in the direction of
-holding its alveolar fraction up. Two candidates, neither demonstrated:
+holding its alveolar fraction up. **One candidate remains, and this project
+cannot test it:**
 
-1. *End-tidal sampling in a lung with ventilation-perfusion dispersion.* The
-   published $`F_A`$ is end-tidal gas from an anaesthetized volunteer; this
-   model's is one perfectly mixed compartment. In a dispersed lung, a unit
-   with ventilation-perfusion ratio $`r`$ sits at
-   $`P_A/P_{\bar v} = \lambda_{b:g}/(\lambda_{b:g} + r)`$ through an
-   elimination, so the last units to empty carry the highest partial pressure
-   during washout and the lowest during wash-in, and a ratio of the two is
-   biased upward at both ends by an amount that grows as solubility falls. On
-   a log-normal perfusion distribution at log SD 1.0 with a 5% shunt, the
-   arterial retention this model fixes at
-   $`\lambda_{b:g}/(\lambda_{b:g} + \dot V_A/Q)`$ is understated by 44% for
-   desflurane, 30% for sevoflurane and 15% for isoflurane — the rank order the
-   residuals have. What stopped it being the answer was the fifth row of the
-   table above: the flow-weighted alveolar reading of that same calculation
-   moves every agent the wrong way, so the hypothesis rests entirely on the
-   end-tidal weighting.
-
-   **The methods sections settle that weighting, and it is the one the
-   hypothesis needs** (both papers supplied by the project owner and read
-   2026-09-13; neither is in PubMed Central, and neither is held in this
-   repository — see "Source hierarchy"). Yasuda 1991 *Anesthesiology*
-   § "Materials and Methods" sites the end-tidal port **at the tracheal tube**,
-   with about 50 ml of corrugated Teflon dead space interposed between that
-   port and the connection to the nonrebreathing valve, stated to protect the
-   end-tidal sample from contamination with inspired gas; mixed expired gas is
-   sampled **separately**, from the 1-l aluminium mixing chamber on the
-   expiratory limb, and is reported as $`F_M`$. So the published $`F_A`$ is
-   the last gas at the airway opening rather than the flow-weighted mixture:
-   the reading the fifth row rules out is the one the study reports as
-   $`F_M`$, not the one it reports as $`F_A`$.
-
-   This removes the obstacle rather than demonstrating the mechanism. What the
-   hypothesis still needs is the end-tidal-weighted bias computed instead of
-   the flow-weighted one, and a bound on how much of 2.33 SD it could carry;
-   that is bounded work this project can do, and `PL-03ZG` carries it. The
-   *Anesth Analg* paper states only that ports permitted sampling of end-tidal,
-   mixed expired and inspired gas, without siting them or naming a dead space,
-   so it neither confirms nor contradicts this. The two studies describe the
-   same apparatus otherwise — nonrebreathing circuit, corrugated Teflon
-   expiratory limb, 1-l aluminium mixing chamber, circuit exchanged for a fresh
-   one at 30 min, 65% nitrous oxide continued through the first 150 min of
-   elimination — so the difference is one of description and **must not be read
-   as a cohort-specific difference in equipment**.
-2. *The published value.* Desflurane's recovery — agent recovered over agent
+1. *The published value.* Desflurane's recovery — agent recovered over agent
    taken up — was 105 ± 25% in those eight volunteers, against 102 ± 13% for
    isoflurane measured in the same sitting: the wider spread of the two, and
    centred above complete recovery.
+
+**End-tidal sampling was the second candidate, and it is struck** (project
+owner, 2026-09-13). It is recorded here rather than deleted, because it was the
+leading explanation for a week and a reader meeting the eighth table row is
+owed why.
+
+*What it proposed.* The published $`F_A`$ is end-tidal gas from an
+anaesthetized volunteer; this model's is one perfectly mixed compartment. In a
+dispersed lung a unit with ventilation-perfusion ratio $`r`$ sits at
+$`P_A/P_{\bar v} = \lambda_{b:g}/(\lambda_{b:g} + r)`$ through an elimination,
+so the last units to empty carry the highest partial pressure during washout
+and the lowest during wash-in, and a ratio of the two would be biased upward at
+both ends by an amount growing as solubility falls. On a log-normal perfusion
+distribution at log SD 1.0 with a 5% shunt the arterial retention this model
+fixes at $`\lambda_{b:g}/(\lambda_{b:g} + \dot V_A/Q)`$ is understated by 44%
+for desflurane, 30% for sevoflurane and 15% for isoflurane — the rank order the
+residuals have, which is what made it attractive.
+
+*What the methods sections settled, and it was in its favour.* The fifth table
+row rules out the **flow-weighted** alveolar reading, so the hypothesis rested
+entirely on the published $`F_A`$ being an end-tidal sample instead. Yasuda
+1991 *Anesthesiology* § "Materials and Methods" sites that port **at the
+tracheal tube**, with the 50 ml of Teflon the seventh row analyses interposed
+to protect it from inspired gas, and samples mixed expired gas **separately**
+from the 1-l mixing chamber, reporting it as $`F_M`$. So the reading the fifth
+row excludes is $`F_M`$, not $`F_A`$, and the obstacle was removed.
+
+*What struck it.* The one primary human measurement of that gradient
+disagrees on both counts. Yasuda's own discussion flags the assumption "that
+the $`F_A`$ accurately indicates the anesthetic partial pressures in arterial
+blood" and cites Carpenter RL, Eger EI II, *Alveolar-to-arterial-to-venous
+anesthetic partial pressure differences in humans*, Anesthesiology
+1989;70(4):630–5, PMID 2930000 — eight surgical patients with simultaneous
+arterial, end-tidal and inspired sampling (supplied by the project owner and
+read 2026-09-13).
+
+- **Solubility runs the other way.** Measured $`P_A/P_a`$ is 1.23 ± 0.13 for
+  halothane against 1.11 ± 0.09 for isoflurane, P = .009, and its authors state
+  the rule: the difference "should be greater with anesthetics having higher
+  blood solubility". Desflurane is the least soluble agent in the comparison,
+  so it should show the *smallest* gradient where the hypothesis needs the
+  largest.
+- **The sign reverses through an elimination.** The mechanism is contamination
+  of the end-tidal sample by physiologic dead space gas — "unchanged inspired
+  gas" — at $`(P_A - P_a) = 0.22 (P_I - P_a) + 0.02`$, a slope its authors read
+  as the sample being about 20% dead space gas. The bias therefore follows
+  $`F_I`$: upward during administration, where $`F_{A0}`$ is measured, and
+  **downward through an elimination run at $`F_I = 0`$**. Both push the
+  published $`F_A/F_{A0}`$ *down*, so the measured 0.140 understates the true
+  arterial ratio and this model's 0.0935 sits further from it, not nearer.
+
+*Two things that would reopen it, neither sufficient to hold it open.*
+Carpenter's regression was fitted over positive $`P_I - P_a`$ only and never at
+$`F_I = 0`$, so applying it to an elimination extrapolates the mechanism rather
+than the fitted line; and his patients were 52 ± 16 years old against Yasuda's
+25 ± 5, with physiologic dead space being age-dependent. Both would have to
+resolve in the hypothesis's favour *and* reverse the measured solubility
+ordering, which no argument here proposes. Yasuda's 50 ml guard does not
+answer it either: that protects against contamination from the **apparatus**,
+where Carpenter's 20% is physiologic dead space inside the patient.
+
+*One consequence worth stating plainly.* If the sampling bias is real and
+signed as measured, the published 0.140 is **low** — so every reading of this
+section that treats the model as washing desflurane out too fast is
+conservative rather than optimistic.
 
 Whatever the explanation is, it has to fit the whole published set and not
 desflurane alone. The same eight volunteers gave halothane 0.25 ± 0.02, so
@@ -5498,10 +5550,12 @@ early washout as a physiologic prediction would expect a faster fall than
 Yasuda's volunteers showed. "Desflurane's residual, and why the parameter file
 was not changed" carries what was ruled out — the tissue and blood
 solubilities, the operating point, the fast capacity this model omits, a
-non-ideal lung, and both readings of the published apparatus, circuit-style
+non-ideal lung, both readings of the published apparatus (circuit-style
 rebreathing and the 50 ml of series dead space its methods section actually
-describes — and which of this section's omissions the two surviving hypotheses
-rest on. It is
+describes), and end-tidal sampling bias, struck on a human measurement of that
+gradient which runs the other way with solubility and reverses sign through an
+elimination. One hypothesis is left and this project cannot test it: the
+published value itself. It is
 recorded rather than corrected because every value that would close it is
 outside what the human measurements support.
 
