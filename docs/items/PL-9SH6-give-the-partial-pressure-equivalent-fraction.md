@@ -3,7 +3,7 @@ id: PL-9SH6
 title: Give the partial-pressure-equivalent fraction one accessor name across every compartment in core/
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: refactor
 feature: core-domain-language
 touches: src/anesthesia_sim/core, src/anesthesia_sim/app, tests
