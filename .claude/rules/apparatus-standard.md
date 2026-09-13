@@ -32,3 +32,23 @@ invites and this one refuses.
 It is scaffolding, not product; nobody evaluating this project will read it.
 Polishing it past sufficient is the most common way this project wastes a
 session. Where the two standards compete for a session, the simulator wins.
+
+## What a test on this side is for
+
+A test here exists to keep the apparatus working, and a wrong answer costs a
+session rather than a patient. So the bar is the one the simulator's standard
+refuses: a test here earns its place if its **absence would let a real defect
+through**. A script's own rule, the failure path it reports on, and the input
+that once broke it are worth pinning; a getter, a constructor, or the standard
+library's own behaviour are not. That is the whole bar, and nothing stricter
+applies to the fifteen apparatus tests under `tests/unit/` or to
+`subprojects/docket/tests/`.
+
+**It does not reach a test that imports the product package.** That test is the
+simulator's, and `CLAUDE.md`'s safety-critical standard asks of it what the
+paragraph above does not: boundary, invalid-input, pathological-input and
+regression tests, and validation against published reference cases or
+independently calculated test vectors. The line is mechanical rather than a
+judgment made per file — `tools/workflow_paths_check.py` decides it by exactly
+that import, on the rule that "A test file under `tests/` is apparatus when it
+does not import the product package, and product when it does."
