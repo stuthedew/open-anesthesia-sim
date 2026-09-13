@@ -26,9 +26,9 @@ from .model import (
     SELECTABLE_LANES,
     Item,
 )
-from .plan import Feature, Gate, effort_total, recommend, set_aside
+from .plan import PLACEMENT_MARKS, Feature, Gate, effort_total, placement_mark, recommend, set_aside
 from .release import PLANNED, RESERVED, Readiness, release_offer
-from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Wave
+from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Scope, Wave
 from .trend import APPARATUS, BY_DAY, EFFORT_POINTS, LANES, PRODUCT_BUCKETS, QUEUE, Trend
 from .vcs import (
     CURRENT,
@@ -1193,6 +1193,17 @@ def format_status(
     flight = in_flight or FlightReport()
     grouped = group_features(report.items)
     lines: list[str] = []
+    scope = plan.scope if plan is not None else None
+    # First-use order, so the legend reads in the order the marks are met.
+    used: dict[str, None] = {}
+
+    def placed(identifier: str) -> str:
+        """The plan's mark for one id, recorded so the legend can define it."""
+        mark = placement_mark(scope, identifier)
+        if not mark:
+            return ""
+        used.setdefault(mark, None)
+        return f" {mark}"
 
     underway = [f for f in grouped.values() if f.is_underway]
     not_started = [f for f in grouped.values() if f.open_items and not f.done]
@@ -1206,7 +1217,9 @@ def format_status(
             return "all remaining work is blocked"
         item = candidates[0]
         mark = " [IN FLIGHT]" if item.identifier in flight.ids else ""
-        return f"next: {item.identifier} {item.title} ({item.effort}){mark}"
+        return (
+            f"next: {item.identifier}{placed(item.identifier)} {item.title} ({item.effort}){mark}"
+        )
 
     if underway:
         lines.append("Underway")
@@ -1231,7 +1244,10 @@ def format_status(
         lines.append("Outside any feature - picked on priority alone")
         for item in sorted(loose, key=lambda i: i.sort_key())[:5]:
             note = f" - {item.model_guidance}" if item.model_guidance else ""
-            lines.append(f"  {item.priority} {item.identifier} {item.title} ({item.effort}{note})")
+            lines.append(
+                f"  {item.priority} {item.identifier}{placed(item.identifier)} "
+                f"{item.title} ({item.effort}{note})"
+            )
 
     if complete:
         lines.append("")
@@ -1259,7 +1275,37 @@ def format_status(
     if unread := format_unread(flight):
         lines.append("")
         lines.append(unread)
-    return "\n".join(lines)
+    return "\n".join(_plan_header(scope, tuple(used)) + lines)
+
+
+def _plan_header(scope: Scope | None, used: tuple[str, ...]) -> list[str]:
+    """Which step the survey below belongs to, and what its marks mean.
+
+    Two lines, and the second is why the first exists. `format_status` is what
+    the queue skill tells a session to lead with, and it ranked `numerical-domain`
+    beside `delegation` with nothing saying which of them the current step
+    included - a survey that cannot be read against the plan without running a
+    second command (`PL-BZCM`).
+
+    The legend defines only the marks actually drawn, plus the blank. Defining
+    the blank is the load-bearing half: an unmarked row would otherwise be
+    indistinguishable from one nobody looked at, which is the silence `PL-J790`
+    named in `docket next`'s reason lines and fixed there with a sentence. A
+    sentence per row does not fit two dozen of them, so the legend carries it
+    once instead.
+    """
+    if scope is None or not scope.anchor:
+        return []
+    beat = (
+        f"clearing the debt gate recorded under {scope.anchor}"
+        if scope.clearing
+        else f"{scope.anchor}, the step the project is on"
+    )
+    glosses = [
+        f"{mark} {PLACEMENT_MARKS.get(mark, 'placed by that later milestone')}" for mark in used
+    ]
+    glosses.append("unmarked, no section of the roadmap places the id")
+    return [f"Plan: {beat}.", f"      {'; '.join(glosses)}.", ""]
 
 
 def format_wave(plan: Wave) -> str:
@@ -1306,12 +1352,39 @@ def format_wave(plan: Wave) -> str:
                 f"          not in the store, so not countable: {', '.join(gate.unknown_ids)}"
             )
 
+    lines.extend(_scope_lines(plan))
     lines.append(f"Beat      {_beat_line(plan)}")
     if plan.problems:
         lines.append("")
         lines.append("The timeline table does not parse cleanly, so the step above may be wrong:")
         lines.extend(f"  {problem}" for problem in plan.problems)
     return "\n".join(lines)
+
+
+def _scope_lines(plan: Wave) -> list[str]:
+    """The gated milestone's own `Required scope`, counted - once the gate is clear.
+
+    Withheld while the gate is open, deliberately. `format_wave`'s budget is
+    five lines read beside the digest rather than studied, and while the beat is
+    `clear` the gate block above already says what is due; the scope is work the
+    step has not reached, which `docket next` marks per item. Once the gate
+    clears, the scope *is* the remaining question - `implement` or `release`
+    turns on nothing else - and this is the count that makes the beat checkable,
+    the same job the gate's own split does above it (`PL-KD98`).
+    """
+    own = plan.own_scope
+    if own is None or not own.ids or plan.beat not in (IMPLEMENT, RELEASE):
+        return []
+    lines = [
+        f"Scope     the Required scope of {own.milestone.label} "
+        f"({_plural(len(own.ids), 'id', 'ids')})",
+        f"          {len(own.closed)} closed, {len(own.outstanding)} open",
+    ]
+    if own.outstanding:
+        lines.append(f"          {', '.join(own.outstanding)}")
+    if own.unknown_ids:
+        lines.append(f"          not in the store, so not countable: {', '.join(own.unknown_ids)}")
+    return lines
 
 
 def _release_advice(ready: Readiness, plan: Wave | None) -> str:
@@ -1347,8 +1420,25 @@ def _beat_line(plan: Wave) -> str:
             line += f" here, {held} more blocked outside it"
         return line
     if plan.beat == RELEASE:
+        # Three arrangements reach this beat and they are released for
+        # different reasons, so the clause has to say which. A gate shipping as
+        # its own earlier version, or a milestone whose frozen list is its whole
+        # content, is released because the gate cleared; a milestone with a
+        # scope of its own is released because that scope closed too, and
+        # saying only "its gate is clear" of it would name the smaller half of
+        # what the reader is being asked to act on (`PL-KD98`).
+        if plan.own_scope is not None and plan.own_scope.is_complete:
+            closed = _plural(len(plan.own_scope.ids), "Required scope id", "Required scope ids")
+            return f"release {plan.subject} - its gate is clear and all {closed} have closed"
         return f"release {plan.subject} - its gate is clear"
     if plan.beat == IMPLEMENT:
+        if plan.own_scope is not None and plan.own_scope.ids:
+            left = len(plan.own_scope.outstanding) + len(plan.own_scope.unknown_ids)
+            return (
+                f"implement {plan.subject} - its gate is clear, "
+                f"{len(plan.own_scope.closed)} of {len(plan.own_scope.ids)} "
+                f"Required scope ids closed and {left} still open"
+            )
         return f"implement {plan.subject} - its gate is clear"
     if plan.beat == FREEZE:
         return f"freeze and record {plan.subject}'s debt list in its section"

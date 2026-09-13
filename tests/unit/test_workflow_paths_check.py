@@ -208,6 +208,37 @@ def test_a_tools_script_and_its_own_test_land_in_the_same_lane() -> None:
         assert item.lane(paths) == LANE_WORKFLOW, stem
 
 
+def test_the_owners_own_notes_are_apparatus_like_the_workers() -> None:
+    """`PL-GVNS`: `docs/maintainer.md` was missing from the list, so an item
+    whose only deliverable is a line in it ranked in the *product* lane.
+
+    The two files are a declared pair - `docs/worker.md` holds what a session is
+    told, `docs/maintainer.md` what only the project owner can act on - and
+    neither is read by the simulator or by a reader of it. The list's four
+    deliberate absences each carry their reason, so an entry missing without one
+    is an oversight, and this is what stops it being dropped again as a tidy-up.
+
+    Asserted through `Item.lane` rather than through `is_covered`, for the same
+    reason as the test above: `lane` is the code that actually decides which
+    session `docket next` offers the item to. `PL-90CJ` is the live instance -
+    reporting a hook's stale-ref count upstream, apparatus work end to end, with
+    `docs/maintainer.md` as its whole `touches`.
+    """
+    paths = workflow_paths_check.declared_workflow_paths(ROOT)
+    for doc in ("docs/maintainer.md", "docs/worker.md"):
+        item = parse_item(
+            "---\n"
+            "id: PL-TEST\n"
+            f"title: A change to {doc}\n"
+            "priority: P2\n"
+            "effort: S\n"
+            "status: ready\n"
+            f"touches: {doc}\n"
+            "---\n\nBody.\n"
+        )
+        assert item.lane(paths) == LANE_WORKFLOW, doc
+
+
 def test_the_prefix_comparison_agrees_with_the_lane_it_mirrors() -> None:
     """`is_covered` restates `docket.model.is_under`; this is what pins them together.
 

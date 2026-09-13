@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md
 added: 2026-09-13
 closed: 2026-09-13
+pr: 539
 verify: python3 tools/doc_check.py check && grep -q 'Table 1' src/anesthesia_sim/data/agents/sevoflurane.json
 ---
 

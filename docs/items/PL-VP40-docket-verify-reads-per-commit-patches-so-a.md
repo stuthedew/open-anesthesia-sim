@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, tests/unit/test_ignore_check.py
 added: 2026-09-05
 closed: 2026-09-13
+pr: 542
 verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_suppression_added_and_then_removed_is_not_reported' subprojects/docket/tests/test_verify.py
 ---
 

@@ -8,8 +8,10 @@ classes: defect, ux
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-05
 closed: 2026-09-13
+pr: 542
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_feature_draws_a_dropped_entry_distinctly_from_an_open_one' subprojects/docket/tests/test_cli.py
 ---
+
 **Problem.** `bin/docket feature teachable-case` printed `18/28 done (9 left)`
 above a list in which **ten** entries carried an empty `[ ]`. The tenth is
 `PL-TJJY`, which is `dropped` — closed, resolved, and correctly excluded from

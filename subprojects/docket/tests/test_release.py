@@ -20,7 +20,7 @@ from docket.release import (
     suggest_version,
     version_key,
 )
-from docket.roadmap import Wave, wave
+from docket.roadmap import IMPLEMENT, RELEASE, Wave, wave
 
 TODAY = date(2026, 8, 24)
 
@@ -641,3 +641,330 @@ def test_status_stops_predicting_a_version_the_roadmap_has_spent() -> None:
 
     assert "Next version would be" not in status
     assert 'Not 0.2.8: the roadmap gives that version to "the workflow works"' in status
+
+
+# --- what `status` says about the plan (`PL-BZCM`) ---------------------------
+
+#: A roadmap whose current milestone records a gate *and* a scope of its own,
+#: which is the arrangement that makes every mark reachable: an entry on the
+#: frozen list, an id the same milestone's `Required scope` names and clearing
+#: the gate comes before, an id a later milestone places, and an id no section
+#: holds at all.
+MARKED_ROADMAP = """# Roadmap
+
+## The plan
+
+### The timeline
+
+| # | Step | What it is | Size |
+| --- | --- | --- | --- |
+| 1 | **v0.2.8 — the workflow works** | Scoped below. | 2 M |
+| 2 | **v0.4.0 — the teachable case** | Scoped below. | 5 M |
+
+## Next release: v0.2.8 - the workflow works
+
+### Goal
+
+Fix the machinery first.
+
+### Debt gate: the frozen list
+
+**Frozen 2026-08-31.** One entry.
+
+- PL-GT01 (S) The frozen entry
+
+### Required scope
+
+- The run becomes teachable (queue item PL-SC02).
+
+### Definition of done
+
+Both closed.
+
+### Explicitly out of scope for v0.2.8
+
+The simulator.
+
+## Milestone after next: v0.4.0 - the teachable case
+
+### Goal
+
+Make the model teachable.
+
+### Required scope
+
+- One case (queue item PL-LT03).
+
+### Definition of done
+
+The learner can run it.
+
+### Explicitly out of scope for v0.4.0
+
+Forking.
+"""
+
+#: `PL-NN04` is deliberately absent from every section above, which is what
+#: makes it the unmarked case the legend has to define.
+MARKED_IDS = frozenset({"PL-GT01", "PL-SC02", "PL-LT03", "PL-NN04"})
+
+
+def _marked_plan() -> Wave:
+    """The beat at v0.2.7: v0.2.8's gate is open, so the beat is to clear it."""
+    return wave(MARKED_ROADMAP, "0.2.7", frozenset(), MARKED_IDS, {})
+
+
+def _open(identifier: str, feature: str = "", status: str = "ready") -> Item:
+    from docket.model import parse_item
+
+    return parse_item(
+        "---\n"
+        f"id: {identifier}\n"
+        f"title: Work on {identifier}\n"
+        "priority: P2\n"
+        "effort: S\n"
+        f"status: {status}\n"
+        + (f"feature: {feature}\n" if feature else "")
+        + ("closed: 2026-08-24\npr: 48\n" if status == "done" else "")
+        + "---\n\n**Problem.** x\n**Why it matters.** y\n**Done when.** z\n"
+    )
+
+
+def _feature_rows(*identifiers: str) -> str:
+    """`format_status` over one open item per id, each alone in its own feature.
+
+    Every feature is given a closed item too, so that it counts as `underway`
+    and prints the `next:` row this item is about - a feature with nothing done
+    lands in `Not started`, which names no item at all.
+    """
+    from docket.checks import Report
+    from docket.render import format_status
+
+    items: list[Item] = []
+    for index, identifier in enumerate(identifiers):
+        items.append(_open(identifier, feature=f"feature-{index}"))
+        items.append(_open(f"PL-DN0{index}", feature=f"feature-{index}", status="done"))
+    return format_status(Report(items=items), None, None, _marked_plan())
+
+
+def test_status_marks_the_next_item_the_open_gate_names() -> None:
+    """`PL-BZCM`: the survey the queue skill says to lead with listed the current
+    step's work in the same undifferentiated column as everything else."""
+    status = _feature_rows("PL-GT01")
+
+    assert "next: PL-GT01 [gate]" in status
+    assert "Plan: clearing the debt gate recorded under v0.2.8 — the workflow works." in status
+    assert "[gate] on its frozen list" in status
+
+
+def test_status_marks_the_anchors_own_scope_as_coming_after_the_gate() -> None:
+    """A different statement from "a later milestone names this": `Required
+    scope` is this milestone's own, and clearing its gate comes first."""
+    status = _feature_rows("PL-SC02")
+
+    assert "next: PL-SC02 [after the gate]" in status
+    assert "[after the gate] in its Required scope, which clearing the gate comes before" in status
+
+
+def test_status_names_the_later_milestone_that_places_an_item() -> None:
+    status = _feature_rows("PL-LT03")
+
+    assert "next: PL-LT03 [v0.4.0]" in status
+    assert "[v0.4.0] placed by that later milestone" in status
+
+
+def test_status_defines_the_unmarked_row_rather_than_leaving_it_silent() -> None:
+    """`PL-J790`'s point, met with a legend rather than a sentence per row: an
+    unmarked row has to be distinguishable from one nobody looked at."""
+    status = _feature_rows("PL-GT01", "PL-NN04")
+
+    assert "next: PL-NN04 Work on PL-NN04" in status
+    assert "PL-NN04 [" not in status
+    assert "unmarked, no section of the roadmap places the id" in status
+
+
+def test_status_marks_the_items_outside_any_feature_too() -> None:
+    """They are listed work like any other, and marking only the feature rows
+    would make an unmarked entry here read as unplaced when it is on the gate."""
+    from docket.checks import Report
+    from docket.render import format_status
+
+    status = format_status(
+        Report(items=[_open("PL-GT01"), _open("PL-NN04")]), None, None, _marked_plan()
+    )
+
+    assert "P2 PL-GT01 [gate]" in status
+    assert "P2 PL-NN04 Work on" in status
+
+
+def test_status_says_nothing_about_the_plan_when_there_is_none() -> None:
+    """A project with no roadmap is a legitimate state, and a legend defining
+    marks that were never drawn is noise in every one of those sessions."""
+    from docket.checks import Report
+    from docket.render import format_status
+
+    status = format_status(Report(items=[_open("PL-GT01")]), None, None, None)
+
+    assert "Plan:" not in status
+    assert "[gate]" not in status
+
+
+# --- the release a finished milestone leaves (`PL-KD98`) --------------------
+
+#: The live shape: a milestone recording a gate **and** a `Required scope` of
+#: its own, with the project standing on the patch-track row beneath it. Both
+#: v0.4.0 and v0.5.0 are this shape, and it is the one no arrangement could
+#: reach a `release` beat for.
+GATED_SCOPE_ROADMAP = """# Roadmap
+
+## The plan
+
+### The timeline
+
+| # | Step | What it is | Size |
+| --- | --- | --- | --- |
+| 1 | **v0.3.0 — the foundation** | Gate 0's frozen list. | 2 M |
+| — | **v0.3.x — a readability pass** | A patch, not a milestone. | — |
+| 2 | **v0.4.0 — the teachable case** | Scoped below. | 5 M |
+
+## Completed: v0.3.0 - the foundation
+
+### Goal
+
+Clear the backlog.
+
+### Definition of done
+
+Every entry on the list below is closed.
+
+### Explicitly out of scope for v0.3.0
+
+New capability.
+
+## Next milestone: v0.4.0 - the teachable case
+
+### Goal
+
+Make the model teachable.
+
+### Debt gate: the frozen list
+
+**Frozen 2026-08-25.** One entry.
+
+- PL-GT01 (M) The frozen entry
+
+### Required scope
+
+- A displayed clinical unit (queue item PL-SC02).
+
+### Definition of done
+
+The learner can run one case.
+
+### Explicitly out of scope for v0.4.0
+
+Forking.
+"""
+
+#: The same roadmap with the patch track removed, which puts the step on the
+#: v0.4.0 milestone row itself - the arrangement in which the bump's own
+#: arithmetic arrives at a number the roadmap has already spent, and so the one
+#: that produced the wrong digest line the item was filed on.
+ON_THE_MILESTONE_ROW = GATED_SCOPE_ROADMAP.replace(
+    "| — | **v0.3.x — a readability pass** | A patch, not a milestone. | — |\n", ""
+)
+
+GATED_SCOPE_IDS = frozenset({"PL-GT01", "PL-SC02"})
+
+
+def _gated(version: str, closed: frozenset[str], roadmap: str = GATED_SCOPE_ROADMAP) -> Wave:
+    return wave(roadmap, version, closed, GATED_SCOPE_IDS, {})
+
+
+def test_the_offer_names_the_milestone_the_beat_releases_not_the_patch_track() -> None:
+    """The patch-track row carries `(0, 3, -1)`, a track marker rather than a
+    number anything can be cut at - so an offer read off `step` falls back to
+    the bump's arithmetic and contradicts the beat printed beside it."""
+    from docket.release import PLANNED, release_offer
+
+    plan = _gated("0.3.0", GATED_SCOPE_IDS)
+    offer = release_offer(_ready("0.3.0", "0.3.1"), plan)
+
+    assert plan.beat == RELEASE and plan.subject == "v0.4.0 — the teachable case"
+    assert (offer.kind, offer.version, offer.milestone) == (PLANNED, "0.4.0", "the teachable case")
+
+
+def test_the_digest_offers_the_release_the_beat_asks_for() -> None:
+    """The two lines are read one above the other, so they have to agree."""
+    from docket.checks import Report
+    from docket.render import format_digest
+
+    plan = _gated("0.3.0", GATED_SCOPE_IDS)
+    digest = format_digest(Report(items=[_item("PL-4444")]), None, _ready("0.3.0", "0.3.1"), plan)
+
+    assert "Offer 0.4.0 before taking new work - the version the plan names" in digest
+    assert "No release to offer" not in digest
+
+
+def test_the_digest_stops_declining_a_release_for_a_finished_milestone() -> None:
+    """`PL-KD98`'s "Done when", stated directly.
+
+    The step is the v0.4.0 row and the bump arrives at 0.4.0, which is the
+    arrangement that produced `No release to offer: the roadmap gives 0.4.0 to
+    "the teachable case", which is unfinished` while twelve of thirteen scope
+    entries were done. The milestone is finished here, so nothing declines.
+    """
+    from docket.checks import Report
+    from docket.render import format_digest
+
+    plan = _gated("0.3.0", GATED_SCOPE_IDS, roadmap=ON_THE_MILESTONE_ROW)
+    digest = format_digest(Report(items=[_item("PL-4444")]), None, _ready("0.3.9", "0.4.0"), plan)
+
+    assert plan.step is not None and plan.step.version == (0, 4, 0)
+    assert "No release to offer" not in digest
+    assert "Offer 0.4.0 before taking new work." in digest
+
+
+def test_the_digest_still_declines_while_the_scope_is_unfinished() -> None:
+    """The decline was always the right answer; only its grounds were missing.
+    With the scope open it stands, and now rests on a counted fact."""
+    from docket.checks import Report
+    from docket.render import format_digest
+
+    plan = _gated("0.3.0", frozenset({"PL-GT01"}), roadmap=ON_THE_MILESTONE_ROW)
+    digest = format_digest(Report(items=[_item("PL-4444")]), None, _ready("0.3.9", "0.4.0"), plan)
+
+    assert plan.beat == IMPLEMENT
+    assert 'No release to offer: the roadmap gives 0.4.0 to "the teachable case"' in digest
+
+
+def test_wave_reports_the_scope_split_once_the_gate_is_clear() -> None:
+    from docket.render import format_wave
+
+    printed = format_wave(_gated("0.3.0", frozenset({"PL-GT01"})))
+
+    assert "Scope     the Required scope of v0.4.0 — the teachable case (1 id)" in printed
+    assert "0 closed, 1 open" in printed
+    assert "PL-SC02" in printed
+    assert "implement v0.4.0 — the teachable case - its gate is clear, 0 of 1 " in printed
+
+
+def test_wave_says_the_scope_closed_when_it_reports_a_release() -> None:
+    from docket.render import format_wave
+
+    printed = format_wave(_gated("0.3.0", GATED_SCOPE_IDS))
+
+    assert "1 closed, 0 open" in printed
+    assert "its gate is clear and all 1 Required scope id have closed" in printed
+
+
+def test_wave_withholds_the_scope_split_while_the_gate_is_open() -> None:
+    """Five lines read beside the digest rather than studied: while the beat is
+    `clear`, the gate block above already says what is due and the scope is work
+    the step has not reached."""
+    from docket.render import format_wave
+
+    printed = format_wave(_gated("0.3.0", frozenset()))
+
+    assert "clear the gate" in printed
+    assert "Scope" not in printed
