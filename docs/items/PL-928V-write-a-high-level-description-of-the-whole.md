@@ -25,8 +25,8 @@ already exists.
   policy. A rule is not a description.
 - `docs/worker.md` and `docs/consultant-brief.md` are operational prompts.
 
-**Proposed shape.** One pass end to end in `docs/workflow.md`: what a session is,
-where state lives, how an item is selected, claimed, verified and closed, how
+**Proposed shape.** One pass end to end in `docs/workflow.md`: what a session
+is, where state lives, how an item is selected, claimed, verified and closed, how
 findings are captured, how two concurrent sessions stay clear of each other, and
 which half of each question is scripted versus which stays judgment.
 
@@ -42,10 +42,10 @@ upkeep free: `tools/doc_check.py` already verifies that a cited path exists.
 launch. `make check` reports the resident character total, and this document
 must not enter it.
 
-**Homes considered and rejected.** Inside `subprojects/docket/README.md` (muddles
-a standalone tool with this project's method); as a section of the public field
--notes page (different genre — that page is argument-shaped, and a tour at the
-front breaks its spine).
+**Homes considered and rejected.** Inside `subprojects/docket/README.md`
+(muddles a standalone tool with this project's method); as a section of the
+public field-notes page (different genre — that page is argument-shaped, and a
+tour at the front breaks its spine).
 
 **Done when** `docs/workflow.md` exists, is linked from `README.md` and
 `docs/consultant-brief.md`, restates no rule it does not cite, and `make check`
