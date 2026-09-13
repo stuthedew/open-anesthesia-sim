@@ -2211,6 +2211,29 @@ the concrete defects it generalises do not reach it at all.
 - PL-YTDN (S) Rename the nine item files whose slug no longer matches their title, now that docket check names them
 - PL-ZG5J (M) Land the headless frame-cost harness that measured all of the above, so the simulation-versus-UI split can be re-measured rather than re-derived
 
+**One entry on a second ground, recorded here rather than under a heading of
+its own — `PL-VV6N` (decide a retention rule for items captured but never
+worked).** Captured 2026-09-13, a week after this gate was frozen, so the
+snapshot rule already places it in the next gate; it is written down because it
+sits at `needs-decision`, which is what makes it debt, and a reader finding it
+open would otherwise have to work out why it is absent.
+
+Its ground is not the refilling queue above but that it cannot be worked yet.
+It proposes *tightening* intake, and `.claude/rules/expert-review.md` requires
+naming what the suppressed side would have to be worth and then counting it
+before any such proposal is acted on. That count is `PL-YVV4`, filed the same
+day and named in this item's `blocked-by`. `PL-LKGL` is the precedent: an
+apparatus capture-bar proposal died when the count it had skipped came back 67%
+still-real findings. Admitting it would put an entry on the frozen list that
+cannot close until one that is not on the list closes first.
+
+**It is inside this section rather than beside it because the checker reads
+only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
+`### Declined to Gate ...` subsection after the gate heading and stops at the
+next heading of any level, so a second one silently orphans this section's 66
+dispositions - the gate then reports them all as undisposed. `PL-82B0` carries
+the defect.
+
 ### Required scope
 
 Eighteen items, in the order the dependencies allow. The first five are the
