@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-04
 closed: 2026-09-12
+pr: 504
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_flight_names_the_local_branch_where_the_checkout_holds_both' subprojects/docket/tests/test_vcs.py
 ---
 

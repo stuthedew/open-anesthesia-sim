@@ -764,11 +764,12 @@ Two bounds apply, and they answer different questions.
 **The run-time halt thresholds, as implemented in `core/agent_simulation_validation.py`:**
 
 ```text
-MASS_BALANCE_ABSOLUTE_TOLERANCE = 1e-12 L
-MASS_BALANCE_RELATIVE_TOLERANCE = 1e-9
+AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L = 1e-12
+AGENT_ACCOUNTING_RELATIVE_TOLERANCE = 1e-9
+MINIMUM_RELATIVE_SCALE_L = 1e-15
 ```
 
-A step passes if either tolerance is satisfied. The relative error uses `max(initial + delivered, 1e-15 L)` as its denominator to avoid division by zero when no agent has yet been delivered. Exceeding both stops the run: this is the point past which the model refuses to show a number, not the standard the shipped model is held to.
+These are the identifiers as the module spells them, so each resolves to the constant it quotes; the absolute bound and the scale floor carry their unit in the name, and the relative bound is dimensionless. A step passes if either tolerance is satisfied. The relative error uses `max(initial + delivered, MINIMUM_RELATIVE_SCALE_L)` as its denominator to avoid division by zero when no agent has yet been delivered. Exceeding both stops the run: this is the point past which the model refuses to show a number, not the standard the shipped model is held to.
 
 **The release gate is the relative residual alone**, asserted by the reference runs in `tests/reference/test_multi_agent.py` and `tests/reference/test_sevo_patient.py`, which restate it as `MASS_BALANCE_RELATIVE_GATE`:
 
@@ -1327,17 +1328,37 @@ Man, and Meybohm et al. 2021 is a Gas Man simulation study describing the
 product's standard 70 kg patient. Citing either as though the value had been
 measured is the specific failure this section exists to prevent.
 
-**Where this project stands, stated rather than implied.** Of the 29 rows in
-the provenance table below, 26 are tier 3. All twelve partition coefficients
-are the Gas Man set as published by De Wolf et al.; all eleven physiologic
-parameters in `src/anesthesia_sim/data/patients/reference_adult.json` are the
-Gas Man default patient; and the three `mac_percent` values are the MAC values
-De Wolf et al. state they used in their Gas Man simulations, with two
-tier-2 sources cited alongside but not adopted — Mapleson's 1996 meta-analysis
-and the age-related iso-MAC charts built on it. The three
-exceptions are the vaporizer maxima, which cite manufacturer device
-specifications — the primary source for a device capability, since no
-measurement is at issue.
+**Where this project stands, stated rather than implied.** Of the 35 rows in
+the provenance table below, 25 are tier 3, one is tier 2 and nine are tier 1.
+All twelve partition coefficients are the Gas Man set as published by De Wolf
+et al.; ten of the eleven physiologic parameters in
+`src/anesthesia_sim/data/patients/reference_adult.json` are the Gas Man default
+patient; and the three `mac_percent` values are the MAC values De Wolf et al.
+state they used in their Gas Man simulations, with two tier-2 sources cited
+alongside but not adopted — Mapleson's 1996 meta-analysis and the age-related
+iso-MAC charts built on it.
+
+**The ten exceptions are of three kinds**, and naming them is the point of the
+counts above. The eleventh reference-patient parameter, `venous_pool_volume_l`,
+is Davis and Mapleson 1981 — tier 2, adopted 2026-09-07 on the project owner's
+decision (`PL-8ZJQ`), and the only tier-2 source adopted anywhere in this
+project. The three vaporizer maxima are each the calibrated maximum
+of a device rather than a physiologic quantity, and each cites a primary source
+for it: the Dräger Vapor 2000 specification for sevoflurane, and published
+vaporizer-performance measurements for isoflurane (Kelly and Kong 2011) and
+desflurane (Johnston et al. 1994, on the Tec 6). And the six MAC-awake rows, a
+fraction and a standard deviation for each agent, are adopted primary
+measurements: Katoh et al. 1993 for sevoflurane and isoflurane, Chortkoff et al.
+1995 for desflurane.
+
+**Recompute these against the table; do not adjust them as rows arrive.** The
+pair that stood here until 2026-09-13 — 29 rows, 26 tier 3 — was written when
+both were true and survived two changes that made neither: the six MAC-awake
+rows were added, and `PL-8ZJQ` moved `venous_pool_volume_l` off tier 3
+(`PL-7KDC`). Nothing computed reads them, which is why they could go stale
+silently: `check_provenance` decides that a documented key holds the stated
+value, never what tier its source carries. `PL-9LXK` is the mechanized answer
+to that class.
 
 `mac_percent` is the one of these that a reader now divides by: it is the
 divisor of the second display unit, so its tier governs a displayed clinical
@@ -3293,9 +3314,10 @@ roughly ten MAC-hours even the size of the omission is unmeasured.
   doi:10.1097/00000539-199512001-00005.
 
 **That citation is tier 2, and nothing here is stored from it.** It is a
-review, so under "Source hierarchy" it may not be the authority for a stored
-value — and it is not one: 24 hours is not computed from 2% to 5%, and no
-parameter in this model descends from that paper. What it supplies is the
+review, and under "Source hierarchy" a tier-2 source is the authority for a
+stored value only on a recorded decision; none has been taken for this one, and
+there would be nothing for it to authorize — 24 hours is not computed from 2% to
+5%, and no parameter in this model descends from that paper. What it supplies is the
 magnitude and the timing of the omission this boundary is argued against,
 which is exactly what tier 2 is legitimate for. A cap derived arithmetically
 from a metabolic rate would need the primary measurements instead, and would
@@ -5141,6 +5163,7 @@ in it, and "Known limitations" below records it. A later reader should not
 This model does not model:
 
 - a separate arterial blood-mixing compartment (arterial blood is flow-limited and equals alveolar gas at every instant, matching the Gas Man reference simulator's mammillary structure — see "Model boundary");
+- lung tissue and pulmonary blood — no compartment represents either, and together they are a store worth about a fifth of every agent's fast pool (the note below this list sizes it);
 - halothane, enflurane, ether, or xenon (isoflurane and desflurane were added in v0.2.0; see "Parameter provenance");
 - nitrous oxide;
 - simultaneous gases;
@@ -5185,6 +5208,25 @@ beside the volatile, meet the coupling late, and be tempted into a partial fix
 whose $`F_A`$ curve is plausible and wrong by tens of percent through
 induction. "Alveolar gas" carries the arithmetic that separates the two cases
 and the two standard formulations that lift the constraint.
+
+**Lung tissue and pulmonary blood are an omitted store worth about a fifth of
+the fast pool.** The gas-exchange boundary here is the alveolar gas
+compartment, whose partial pressure arterial blood is taken to carry unchanged;
+the lung's own tissue, and the pulmonary blood in transit through it, are
+represented by nothing. Sized on round physiologic figures while working
+`PL-73G7` — 1 kg of lung tissue at a tissue:blood ratio of 1.2, and 1.8 L of
+pulmonary and arterial blood — that store is worth 20.1% of desflurane's fast
+pool, 19.7% of sevoflurane's and 23.4% of isoflurane's.
+
+It is invisible in the wash-in direction, which is why nothing before the
+open-circuit diagnostic surfaced it: the store equilibrates fully within about
+thirty minutes, so it does not appear in $`F_A/F_I`$ at all, and it acts only
+early in an elimination. The figures stay where they were measured —
+"Desflurane's residual, and why the parameter file was not changed" weighs them
+against the other candidate explanations of one specific disagreement, and a
+second copy here would be a second thing to keep true. What this list carries is
+the magnitude, because a reader sizing what the model leaves out should not have
+to find it inside an argument about one agent.
 
 **Desflurane's five-minute washout disagrees with the published human
 measurement, and no admissible parameter closes it.** With the rebreathing
@@ -5403,7 +5445,15 @@ verify one has to reach the document itself.
 
 ## Release gate
 
-Version v0.1.0 is complete only when:
+**This is the standing gate every release passes, not one version's.** It was
+written as v0.1.0's and kept that lead-in for four releases while entries were
+added to it — most recently the published wash-in validation, which arrived in
+the v0.3.0 window — and several criteria name agents and cohorts that did not
+exist until v0.2.0. A heading naming a version is a second thing to keep true,
+which is the failure `PL-C1KK` records one section over; the criteria beneath
+were already generic, so the lead-in is what changed (`PL-8PZ1`).
+
+A release is complete only when:
 
 - all parameter values and sources are present;
 - no scientific `TBD` markers remain;

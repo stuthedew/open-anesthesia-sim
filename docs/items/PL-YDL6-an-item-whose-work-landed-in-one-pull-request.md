@@ -1,15 +1,16 @@
 ---
 id: PL-YDL6
 title: An item whose work landed in one pull request but whose status done was written in a later one recovers the later number, which carries the closure but none of the work
-status: done
 priority: P2
 effort: S
+status: done
 classes: defect, infra
 feature: dev-tooling
-verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_closure_split_from_its_work_records_no_pull_request' subprojects/docket/tests/test_vcs.py
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-04
 closed: 2026-09-12
+pr: 504
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_closure_split_from_its_work_records_no_pull_request' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** `_number_closing` recovers a pull request by finding the commit

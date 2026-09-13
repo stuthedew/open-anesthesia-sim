@@ -3,11 +3,12 @@ id: PL-Q5NS
 title: docs/MODEL.md's Known limitations does not list lung tissue and pulmonary blood as an omitted store, which is worth about 20 percent of every agent's fast pool
 priority: P1
 effort: S
-status: ready
+status: done
 classes: science, docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-08
+closed: 2026-09-13
 verify: python3 tools/doc_check.py check && grep -q 'lung tissue and pulmonary blood' docs/MODEL.md
 ---
 
@@ -35,3 +36,13 @@ a reader looks for it.
 
 **Done when.** The list names it, and says whether the figures above belong
 with it or stay where they are measured.
+
+
+**Closed 2026-09-13.** "Known limitations" gains a bullet naming lung tissue
+and pulmonary blood, and a note below the list sizing the store at about a fifth
+of every agent's fast pool with the three measured percentages. The figures stay
+where they were measured: "Desflurane's residual, and why the parameter file was
+not changed" is where they are weighed against the other candidate explanations,
+and the note says so rather than copying the argument. The note also carries why
+nothing surfaced it earlier — the store equilibrates within about thirty minutes,
+so it is absent from `F_A/F_I` and acts only early in an elimination.
