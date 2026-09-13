@@ -3,11 +3,13 @@ id: PL-WT07
 title: docs/MODEL.md says the ventilator start binds the per-rate displacement table 'throughout', but at 300x it leads the unperfused load by only 3% (10.36 vs 10.03 pp) and 'throughout' reads as a comfortable margin
 priority: P1
 effort: S
-status: needs-decision
+status: done
 classes: docs, science
 feature: model-spec-accuracy
-touches: docs/MODEL.md
+touches: docs/MODEL.md, tests/reference/test_control_resolution.py
 added: 2026-09-07
+closed: 2026-09-13
+verify: uv run pytest tests/reference/test_control_resolution.py -q && python3 -c "import pathlib; t=' '.join(pathlib.Path('docs/MODEL.md').read_text().split()); raise SystemExit(0 if 'Second worst | Margin' in t and 'bound over the three manoeuvres' in t else 1)"
 ---
 
 **Problem.** `docs/MODEL.md` says the ventilator start binds the per-rate
@@ -63,13 +65,13 @@ case-opening ratios are stated. `tests/reference/test_control_resolution.py:481`
 holds the test that would fail if the ordering reversed; no change is owed
 there.
 
-**`PL-SR8F` is this paragraph's predecessor, and it is still open.** `PL-SR8F`
-(MODEL.md calls the case-opening displacement 'two orders milder') is P1
-`safety` against the same sentence, and its work has landed: the phrase it
-names was present through `a6da69e` (2026-09-06) and gone by `67b279b`,
-`PL-ZVS7`'s own commit, which replaced it with the explicit per-rate ratios the
-paragraph carries today. `bin/docket check --verify` reports `PL-SR8F` as open
-with a passing command for that reason.
+**`PL-SR8F` is this paragraph's predecessor, and it closed the day this item
+was filed.** `PL-SR8F` (MODEL.md calls the case-opening displacement 'two
+orders milder') is P1 `safety` against the same sentence; its work landed in
+`67b279b`, `PL-ZVS7`'s own commit, which replaced the phrase with the explicit
+per-rate ratios, and it was marked `done` on 2026-09-07 and shipped in v0.4.8
+under `#420`. The sequencing warning below is therefore discharged rather than
+outstanding — checked against the store on 2026-09-13, not recalled.
 
 So this item is about the sentence `PL-SR8F`'s fix produced, not the one it
 found: the ratios are now stated per rate and are correct, and what is still
@@ -77,8 +79,9 @@ wrong is *which manoeuvre* they are stated against. Close `PL-SR8F` before
 starting here, or work the two together — a second edit to one paragraph from a
 session that has not read the first is how a corrected figure gets re-broken.
 
-**Decision needed.** Which of the three options below the spec takes. All three
-are edits to `docs/MODEL.md` alone.
+**Decision needed — ANSWERED 2026-09-13, see below.** Which of the three
+options below the spec takes. All three were filed as edits to `docs/MODEL.md`
+alone, which turned out to be wrong for the one taken.
 
 1. **State the margin in the same sentence.** Costs a clause and makes the claim
    self-dating.
@@ -97,3 +100,69 @@ are edits to `docs/MODEL.md` alone.
 comfortable margin where there is a 3% one — either by stating the real nearest
 competitor and its margin, or by recording explicitly why it does not — and the
 decision is recorded there rather than only in this item.
+
+## Answered 2026-09-13 (project owner): options 1 and 2 together, with a test
+
+Not either/or. Option 2 alone would have published a second row that reads
+`1.0×10¹ pp` against the first row's `1.0×10¹ pp` at 300× — the convergence
+visible, the ordering unreadable, and the margin still unstated. Option 1 alone
+would have stated the margin without letting a reader see where it came from.
+So the section now carries both: two new columns, **Second worst** and
+**Margin**, and a rewritten paragraph beneath them.
+
+**Re-measured before anything was written, 2026-09-13.** Worst displacement per
+grid step, over all three agents, in percentage points:
+
+| Manoeuvre | 1× | 5× | 20× | 60× | 300× |
+| --- | --- | --- | --- | --- | --- |
+| Ventilator start | 0.143 | 0.695 | 2.508 | 5.826 | 10.33 |
+| Unperfused load then dial off | 0.0503 | 0.2502 | 0.9787 | 2.764 | 10.04 |
+| Case opening | 0.00666 | 0.03315 | 0.1304 | 0.3751 | 1.508 |
+
+Margin over the runner-up: 2.84× → 2.78× → 2.56× → 2.11× → **1.029×**. Over
+the case opening: 21.5× → 21.0× → 19.2× → 15.5× → 6.85×. The brief's figures
+(10.36 / 10.03, 1.033×) have drifted slightly against the shipped parameters
+since 2026-09-07; the finding is unchanged and the published numbers are
+today's.
+
+**The item was wrong that this is a `docs/MODEL.md` edit alone, and that is the
+part worth recording.** The same section states that "both tables in this
+section are held by a test". A published runner-up column that nothing
+re-measures would have been a figure in the specification with no gate under
+it — precisely what `PL-ZVS7` closed for the two tables already there. So
+`tests/reference/test_control_resolution.py` gains
+`_ranked_over_manoeuvres`, the two published dictionaries, and
+`test_the_second_worst_manoeuvre_and_the_margin_above_it`, parametrized over
+the rate ladder like the columns beside it.
+
+**The margin is pinned tighter than everything else in the module, at 1%
+against `PUBLICATION_RELATIVE_TOLERANCE`'s 5%.** That 5% band around 1.03 spans
+1.0, so at the tolerance the rest of the table uses, the column that exists to
+make a reversal visible would admit one. Verified by mutation: setting the
+300× margin to 1.10 fails with `Obtained: 1.0290778558182117`, and reverting
+passes.
+
+**Why the reversal is worth guarding rather than merely disclosing** — which is
+what option 3 would have rested on. `PUBLICATION_RELATIVE_TOLERANCE` is 0.05
+and the two manoeuvres differ by 2.9% at 300×, so
+`test_the_displacement_per_grid_step_at_each_playback_rate` passes with either
+manoeuvre producing the figure. Only the argmax assertion sees a crossing, and
+only on the day it happens. The margin column turns that into a trend a reader
+and a diff can both watch.
+
+**No margin floor was added, deliberately.** A threshold below 1.029× has no
+non-arbitrary value and one above it fails today. Pinning the measured margin
+is what gives the warning; a floor would have been a number chosen to pass.
+
+**What the prose now says.** The worst column is framed as a bound over the
+three manoeuvres, with the attribution to the ventilator start stated as a
+measured fact that a named test re-checks — so a future parameter revision that
+reverses the top two leaves the published bound correct and invalidates only a
+sentence. The case-opening comparison stays, correct as it always was, but is
+now labelled as a third manoeuvre and explicitly not the measure of the bound's
+headroom, which is the defect with a factor of seven in it.
+
+`test_the_ventilator_start_binds_the_per_rate_table_at_every_rate` needed no
+behaviour change but its docstring quoted the sentence this item removed; it
+now quotes the replacement and records why the claim is the one assertion in
+the module a reversal would trip.

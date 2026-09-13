@@ -1192,27 +1192,47 @@ then jumps by `multiplier × 0.1` s. A setting changed while the run is playing
 therefore first acts at a tick boundary, and the reachable simulated instants
 are that far apart:
 
-| Playback rate | Control grid | Frames are | Worst displacement per grid step |
-| --- | --- | --- | --- |
-| 1× | 0.1 s | 0.2 s | 1.4×10⁻¹ pp |
-| 5× | 0.5 s | 1 s | 7.0×10⁻¹ pp |
-| 20× | 2 s | 4 s | 2.5 pp |
-| 60× | 6 s | 12 s | 5.8 pp |
-| 300× | 30 s | 60 s | 1.0×10¹ pp |
+| Playback rate | Control grid | Frames are | Worst displacement per grid step | Second worst | Margin |
+| --- | --- | --- | --- | --- | --- |
+| 1× | 0.1 s | 0.2 s | 1.4×10⁻¹ pp | 5.0×10⁻² pp | 2.84× |
+| 5× | 0.5 s | 1 s | 7.0×10⁻¹ pp | 2.5×10⁻¹ pp | 2.78× |
+| 20× | 2 s | 4 s | 2.5 pp | 9.8×10⁻¹ pp | 2.56× |
+| 60× | 6 s | 12 s | 5.8 pp | 2.8 pp | 2.11× |
+| 300× | 30 s | 60 s | 1.0×10¹ pp | 1.0×10¹ pp | 1.03× |
 
-Every column is in simulated seconds except the last, which is the same
+The first three columns are in simulated seconds. "Worst" is the same
 measurement the table above reports, re-run at each rate over the same three
-manoeuvres and all three agents (2026-09-06, `PL-NBWP`). The binding case is
-the ventilator start with desflurane throughout; the case opening is about 21×
-milder at 1×, and **the gap narrows as the grid coarsens** — to 19× at 20×, 16×
-at 60× and about 7× at 300×, where an ordinary dial change reaches 1.5 pp. The
-narrowing is the same effect as the row above it: **the binding manoeuvre's
-displacement saturates rather than scaling with the delay** — its transient has
-largely run by the time a 30 s grid step has passed — so extrapolating the 1×
-figure linearly over-states 300× by about four times, while the case opening's
-displacement is still nearly linear in the delay and so keeps growing. The
-measured values are the ones to use, and the ratio is not one of them to
-extrapolate either.
+manoeuvres and all three agents (2026-09-06, `PL-NBWP`); "second worst" is the
+next manoeuvre down at that rate, and the margin is their ratio, computed from
+the measurements rather than from the rounded columns beside it (2026-09-13,
+`PL-WT07`).
+
+**Read the worst column as a bound over the three manoeuvres rather than as a
+property of one of them.** At every rate the worst is the ventilator start with
+desflurane and the second worst is the unperfused load then dial off. That is a
+measured fact and not a structural one, so it is re-checked on every run by
+`test_the_ventilator_start_binds_the_per_rate_table_at_every_rate` — and the
+margin column is why saying it that way round matters. The lead is 2.84× at 1×
+and 1.03× at 300×, three per cent, so at the coarsest grid the two manoeuvres
+are the same number to the two significant figures this table publishes. A
+parameter revision that reversed them would leave the bound intact and make the
+attribution wrong, which is the failure this phrasing is built to survive.
+
+**They converge because they saturate at different rates.** The ventilator
+start's transient has largely run by the time a 30 s grid step has passed, so
+**its displacement saturates rather than scaling with the delay** — take its 1×
+figure and extrapolate linearly and 300× is over-stated by about four times.
+The unperfused load's transient is still going at 30 s, so its displacement is
+still nearly linear in the delay and keeps growing. The measured values are the
+ones to use; neither the figures nor the margin extrapolates.
+
+**An ordinary dial change sits well below both, and is a third manoeuvre rather
+than the runner-up.** The case opening is about 21× milder than the bound at
+1×, narrowing to 19× at 20×, 16× at 60× and about 7× at 300×, where it reaches
+1.5 pp. That is the comparison to reach for when sizing what a learner's own
+actions cost. It is not the comparison that says how much room the bound has:
+the tens of percentage points at 300× belong to abrupt manoeuvres, and the
+nearest of those is the second-worst column above.
 
 Three things follow, and the third is why the behaviour was left alone.
 

@@ -244,6 +244,24 @@ PUBLISHED_TOLERANCE = {
 #: table above, which is the consistency between the two tables.
 PUBLISHED_DISPLACEMENT_PER_GRID_STEP_PP = {1: 1.4e-1, 5: 7.0e-1, 20: 2.5, 60: 5.8, 300: 1.0e1}
 
+#: The second-worst manoeuvre's displacement at each rate, published as the
+#: column beside the bound so that a reader can see how much room the bound
+#: has. `PL-WT07`: at 300x the two round to the same published figure, so the
+#: numbers alone cannot say it and `PUBLISHED_BINDING_MARGIN` below carries the
+#: part that can.
+PUBLISHED_SECOND_WORST_PER_GRID_STEP_PP = {1: 5.0e-2, 5: 2.5e-1, 20: 9.8e-1, 60: 2.8, 300: 1.0e1}
+
+#: The published ratio of the worst manoeuvre to the second worst, which is
+#: what `docs/MODEL.md` states the bound's headroom as. Tighter than
+#: `PUBLICATION_RELATIVE_TOLERANCE` on purpose: the 300x entry is 1.03, and a
+#: 5% band there would admit the reversal this column exists to make visible.
+PUBLISHED_BINDING_MARGIN = {1: 2.84, 5: 2.78, 20: 2.56, 60: 2.11, 300: 1.03}
+
+#: How far the published margin may drift before the table is restated. The
+#: margin is a ratio of two measurements of the same kind, so it moves less
+#: than either of them does; 1% keeps the 300x entry meaningful.
+MARGIN_RELATIVE_TOLERANCE = 0.01
+
 #: What the case opening reaches at the coarsest grid the interface offers.
 #: Published in the prose beneath the per-rate table, as the measure of how
 #: much milder an ordinary action is than the binding one.
@@ -381,6 +399,23 @@ def _worst_over_agents(manoeuvre_name: str, delay_s: float) -> tuple[float, str]
     return measured[binding], binding
 
 
+def _ranked_over_manoeuvres(grid_step_s: float) -> list[tuple[str, float, str]]:
+    """The three manoeuvres at one grid step, worst first, with their agents.
+
+    The per-rate table publishes the top two of this ranking and the margin
+    between them, so the ordering is the measurement rather than a convenience:
+    `PL-WT07` found `docs/MODEL.md` quoting a margin against the third-placed
+    manoeuvre while the second sat 3% away at 300x.
+    """
+
+    measured = [
+        (manoeuvre_name, *_worst_over_agents(manoeuvre_name, grid_step_s))
+        for manoeuvre_name in PUBLISHED_TOLERANCE
+    ]
+
+    return sorted(measured, key=lambda result: result[1], reverse=True)
+
+
 def _grid_step_s(rate: PlaybackRate) -> float:
     """The simulated seconds between the instants a control change can land at.
 
@@ -479,13 +514,18 @@ def test_every_published_displacement_belongs_to_an_offered_rate() -> None:
 
 
 def test_the_ventilator_start_binds_the_per_rate_table_at_every_rate() -> None:
-    """The claim that one manoeuvre is the worst case throughout.
+    """The claim that one manoeuvre is the worst case at every rate.
 
-    `docs/MODEL.md` states that "the binding case is the ventilator start with
-    desflurane throughout". It is a claim about every rate at once rather than
-    about any one row, so no per-rate assertion above can hold it: the table
-    would still pass with its own numbers if a different manoeuvre had become
-    the one producing them.
+    `docs/MODEL.md` states that "at every rate the worst is the ventilator
+    start with desflurane and the second worst is the unperfused load then dial
+    off". It is a claim about every rate at once rather than about any one row,
+    so no per-rate assertion above can hold it: the table would still pass with
+    its own numbers if a different manoeuvre had become the one producing them.
+
+    `PL-WT07` is why the section now calls that a measured fact rather than a
+    property of the manoeuvre. The margin is 1.03x at 300x, inside
+    `PUBLICATION_RELATIVE_TOLERANCE`, so the published figure would survive a
+    reversal and this is the only assertion in the module that would not.
     """
 
     for rate in SUPPORTED_PLAYBACK_RATES:
@@ -500,6 +540,57 @@ def test_the_ventilator_start_binds_the_per_rate_table_at_every_rate() -> None:
             f"manoeuvre with {binding_agent}, not the ventilator start with desflurane "
             'that docs/MODEL.md "Supported simulation step" names as binding throughout'
         )
+
+
+@pytest.mark.parametrize("rate", SUPPORTED_PLAYBACK_RATES, ids=lambda rate: f"{rate.multiplier}x")
+def test_the_second_worst_manoeuvre_and_the_margin_above_it(rate: PlaybackRate) -> None:
+    """The two columns `PL-WT07` added, and the manoeuvre they belong to.
+
+    `docs/MODEL.md` publishes the runner-up beside the bound so that a reader
+    can see how much room the bound has. Before `PL-WT07` the section quoted
+    its headroom against the *case opening* - correct figures, third-placed
+    manoeuvre - while the actual runner-up sat 1.03x away at 300x, which
+    over-stated the margin by about seven times in the reassuring direction.
+
+    Three assertions, because the columns fail in three different ways. The
+    identity of the runner-up is asserted first: at 300x the top two round to
+    the same published figure, so a swap between them moves no number in the
+    table and nothing else here would see it. The value is asserted next,
+    against the same publication tolerance as every other figure. The margin
+    is asserted last and tighter, because a 5% band around 1.03 spans 1.0 and
+    would admit the reversal the column exists to make visible.
+    """
+
+    grid_step_s = _grid_step_s(rate)
+    ranked = _ranked_over_manoeuvres(grid_step_s)
+    (worst_name, worst_pp, _), (second_name, second_pp, second_agent) = ranked[0], ranked[1]
+
+    assert (second_name, second_agent) == ("unperfused load then dial off", "desflurane"), (
+        f"at {rate.multiplier}x the second-worst displacement is now the {second_name} "
+        f"manoeuvre with {second_agent}, not the unperfused load then dial off with "
+        'desflurane that docs/MODEL.md "Supported simulation step" publishes as the '
+        "second-worst column"
+    )
+
+    published_second_pp = PUBLISHED_SECOND_WORST_PER_GRID_STEP_PP[rate.multiplier]
+
+    assert second_pp == pytest.approx(published_second_pp, rel=PUBLICATION_RELATIVE_TOLERANCE), (
+        f"at {rate.multiplier}x the second-worst manoeuvre now costs {second_pp:.3g} pp, "
+        f"not the {published_second_pp:.3g} pp published in docs/MODEL.md "
+        '"Supported simulation step"; re-measure the whole per-rate table'
+    )
+
+    published_margin = PUBLISHED_BINDING_MARGIN[rate.multiplier]
+
+    assert worst_pp / second_pp == pytest.approx(published_margin, rel=MARGIN_RELATIVE_TOLERANCE), (
+        f"at {rate.multiplier}x the bound leads the {second_name} manoeuvre by "
+        f"{worst_pp / second_pp:.3g}x, not the {published_margin:.3g}x published in "
+        'docs/MODEL.md "Supported simulation step"; the margin column is what tells a '
+        "reader how much room the bound has, and it is computed before rounding, so "
+        "dividing the published columns will not reproduce it"
+    )
+
+    assert worst_name == "ventilator start"
 
 
 def test_the_case_opening_stays_milder_than_the_binding_manoeuvre_at_every_rate() -> None:
