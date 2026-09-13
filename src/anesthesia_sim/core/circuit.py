@@ -2,6 +2,13 @@
 delivered fresh gas at a set concentration and exchanges agent with the
 alveolar compartment (`alveolar.py`) on every step.
 
+Ideal means the walls do nothing: agent enters with fresh gas and leaves with
+the exhaust, and no plastic or rubber component holds any. A real circuit's
+components do hold agent, measurably and in an order that follows solubility,
+so this simplification is most nearly true for desflurane and least for
+halothane. `docs/MODEL.md` "Known limitations" carries the measurement and the
+reason the simplification is kept (`PL-LS3H`).
+
 The circuit also owns the vaporizer delivery limit
 (`max_delivered_partial_pressure_fraction`), because it owns the delivered
 concentration itself: enforcing the limit here means every path that can

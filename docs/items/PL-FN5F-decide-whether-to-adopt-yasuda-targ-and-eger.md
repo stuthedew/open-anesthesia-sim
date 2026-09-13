@@ -1,8 +1,15 @@
 ---
 id: PL-FN5F
 title: Decide whether to adopt Yasuda, Targ and Eger 1989 as the authority for the nine tissue:gas coefficients, and whether to store its figures rather than Gas Man's rounding of them
-status: untriaged
+status: done
 added: 2026-09-13
+closed: 2026-09-13
+priority: P1
+effort: S
+classes: science, docs
+feature: model-spec-accuracy
+touches: src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md
+verify: python3 tools/doc_check.py check && uv run python -c "import json;d=json.load(open('src/anesthesia_sim/data/agents/sevoflurane.json'));assert any(s['tier']=='primary' and s['adopted'] and s['citation'].startswith('Yasuda N, Targ AG') for s in d['sources']);assert d['tissue_gas_partition_coefficients']=={'vessel_rich':1.1,'muscle':2.4,'fat':34.0}"
 ---
 
 **Decision needed.** Whether to (a) mark Yasuda, Targ and Eger 1989 `adopted`
@@ -60,3 +67,36 @@ that, and the project owner took the original decision on 2026-09-03.
 **Done when.** The owner has answered (a) and (b); the agent files and
 `docs/MODEL.md` record the answer and its reasoning; and if (b) is yes, the
 reference states are recomputed rather than the values changed under them.
+
+**Answered 2026-09-13 by the project owner: (a) yes, (b) no** - the
+recommendation above, taken as given.
+
+**(a), done.** The Yasuda entry in all three agent files moves to
+`"adopted": true`. Its `tier` was already `primary` and did not move; what was
+wrong was the adoption flag, which said the stored values came from elsewhere
+when they came from there. De Wolf et al. stays adopted and its authority
+narrows to `blood_gas_partition_coefficient` alone, with its note saying so -
+that paper measured no coefficient, which is exactly why its table could turn
+out to be somebody else's measurement passed along.
+
+Each file's `provenance_gap` now names only blood:gas and `mac_percent`. The gap
+is no longer *required* by `check_source_tiers`, which asks for one only where no
+entry is both primary and adopted, and it is kept anyway because two parameters
+are still in it.
+
+`docs/MODEL.md` moves with them: the tier counts go from 25/1/9/2 to 16/1/18/2,
+the "ten exceptions ... three kinds" paragraph becomes nineteen and four, the
+v0.2.0 shared-source-table argument is restated on its new and stronger basis -
+the three agents' tissue coefficients were measured side by side in one study,
+one laboratory, one technique, one cohort - and the paragraph that had posed
+this question records the answer.
+
+**(b), declined, and the reasoning is recorded rather than just the verdict.**
+No stored value changed. The section above has the three time constants it would
+have moved and the reference states it would have required recomputing;
+`PL-D6LX`'s original decision to keep the Gas Man values stands, now on better
+evidence than it had.
+
+**Done when.** The owner has answered (a) and (b); the agent files and
+`docs/MODEL.md` record the answer and its reasoning; no reference state needed
+recomputing because (b) was declined. All done.

@@ -1418,10 +1418,13 @@ product's standard 70 kg patient. Citing either as though the value had been
 measured is the specific failure this section exists to prevent.
 
 **Where this project stands, stated rather than implied.** Of the 37 rows in
-the provenance table below, 25 are tier 3, one is tier 2, nine are tier 1, and
-two adopt no source of any tier. All twelve partition coefficients are the Gas
-Man set as published by De Wolf
-et al.; ten of the eleven physiologic parameters in
+the provenance table below, 16 are tier 3, one is tier 2, 18 are tier 1, and
+two adopt no source of any tier. **Nine of the twelve partition coefficients —
+every tissue:gas value — are Yasuda, Targ and Eger's human measurements**,
+adopted 2026-09-13 (`PL-FN5F`) after the stored values were checked against that
+paper's Table 1; the other three, the blood:gas coefficients, are the Gas Man
+set as published by De Wolf et al. and remain tier 3. Ten of the eleven
+physiologic parameters in
 `src/anesthesia_sim/data/patients/reference_adult.json` are the Gas Man default
 patient; and the three `mac_percent` values are the MAC values De Wolf et al.
 state they used in their Gas Man simulations, with two tier-2 sources cited
@@ -1431,8 +1434,18 @@ in `src/anesthesia_sim/data/machines/reference_circle_system.json`: a circuit
 volume that departs deliberately from the published Gas Man figure, and a
 default fresh gas flow with no published counterpart at all.
 
-**The ten exceptions are of three kinds**, and naming them is the point of the
-counts above. The eleventh reference-patient parameter, `venous_pool_volume_l`,
+That count moved on 2026-09-13 and the *values* did not. Nine rows crossed from
+tier 3 to tier 1 because the project read the paper Gas Man had always named and
+found the stored numbers in it, not because anything was recalculated. The
+distinction is the whole point of separating `tier` from `adopted`: what
+changed was the record of where a number came from.
+
+**The nineteen exceptions are of four kinds**, and naming them is the point of
+the counts above. The largest is the nine tissue:gas partition coefficients,
+three per agent, adopted from Yasuda, Targ and Eger 1989 on 2026-09-13 — human
+autopsy measurements at 37 °C, and the paragraph below the table on Gas Man's
+attribution carries how they were checked and why the published figures were
+*not* substituted for the stored ones. The eleventh reference-patient parameter, `venous_pool_volume_l`,
 is Davis and Mapleson 1981 — tier 2, adopted 2026-09-07 on the project owner's
 decision (`PL-8ZJQ`), and the only tier-2 source adopted anywhere in this
 project. The three vaporizer maxima are each the calibrated maximum
@@ -2096,19 +2109,24 @@ in `tests/unit/test_parameters.py` guard this derivation.
 Isoflurane and desflurane use the same governing equations, compartment
 structure, and `data/patients/reference_adult.json` physiologic parameters
 as sevoflurane — only each agent's own `data/agents/*.json` partition
-coefficients differ. All three agents' blood:gas and tissue:gas values are
-drawn from the same source table (De Wolf et al. 2012, Table 1 — the paper
-already cited for sevoflurane), so the three data files are directly
-comparable rather than assembled from unrelated sources.
+coefficients differ. All twelve values reached this project through one table
+(De Wolf et al. 2012, Table 1 — the paper already cited for sevoflurane), so the
+three data files are directly comparable rather than assembled from unrelated
+sources.
 
-That shared table is the Gas Man parameter set, and it is tier 3 under
-"Source hierarchy" above: the comparability is real, and it is the
-comparability of three agents carrying one reference implementation's
-choices, not of three agents each traced to its own measurement. It buys a
-cross-agent comparison in which every agent shares the same error, which is
-the property a MAC-normalized axis needs; it does not make any of the twelve
-coefficients a measured value. That shared-error argument covers the
-*coefficients*, which is what this paragraph is about. It does **not** extend
+**Since 2026-09-13 that comparability rests on something better than a shared
+publisher.** The nine tissue:gas values in that table are Yasuda, Targ and Eger
+1989's human measurements, checked against the paper and adopted (`PL-FN5F`), so
+the three agents are comparable because their tissue coefficients come from *one
+study, one laboratory, one technique and one cohort* — measured side by side in
+the same specimens. That is the strongest form of the property a MAC-normalized
+axis needs, not a weaker one: whatever the systematic error of that technique,
+every agent carries it identically. The three blood:gas values remain the Gas
+Man set and remain tier 3, so the shared-error argument covers them in its
+original, weaker form.
+
+Both halves of that argument are about the *coefficients*, which is what this
+paragraph is about. It does **not** extend
 to the three `mac_percent` divisors, whose deviations from the primary
 literature run in opposite directions between sevoflurane and desflurane;
 "Delivery-limit and MAC parameters" measures that separately. Each agent file records the primary
@@ -2173,15 +2191,28 @@ Two things follow that are not about provenance:
   cohort's age-adjusted blood:gas, 4.9–9.4% above the three round figures stored
   here.
 
-**The tier is not changed on this, and that is deliberate.** On this evidence
-the nine coefficients descend from a primary measurement, and marking them so
-would raise the further question of whether to store Yasuda's figures rather
-than Gas Man's rounding of them — isoflurane fat 64.2 against 70.0 and
-desflurane fat 12.0 against 13.0 move the fat time constant by 8.3% and 7.7%,
-and sevoflurane vessel-rich 1.15 against 1.1 moves its own by 4.5%. Those are
-displayed values, and `PL-D6LX`'s decision to keep the Gas Man set was the
-project owner's. `PL-B9K7` carries the case to them; nothing here changes
-pending it (`PL-ZP7Z`, `PL-B9K7`).
+**The tier moved and the values did not** — the project owner's decision of
+2026-09-13, taken as two separate questions (`PL-FN5F`).
+
+*Adopted.* The nine tissue:gas coefficients descend from a primary human
+measurement, so Yasuda, Targ and Eger is now the adopted authority for them in
+all three agent files and they are tier 1. De Wolf et al. stays adopted for the
+three blood:gas values alone, which this study did not measure. Nothing
+numerical changed with the adoption; what changed is the record of where the
+numbers came from, which is what separating `tier` from `adopted` exists to
+carry.
+
+*Declined.* Storing Yasuda's published figures in place of Gas Man's rounding of
+them would move three displayed time constants — sevoflurane vessel-rich +4.5%
+at 1.15 against 1.1, isoflurane fat −8.3% at 64.2 against 70.0, desflurane fat
+−7.7% at 12.0 against 13.0 — and would require recomputing every pinned
+reference state under `tests/reference/`, which are this parameter set's
+solution. The accuracy it would buy is also inside the error the model's own
+lumping already carries: the vessel-rich group is one compartment standing for
+brain, heart, liver, kidney and viscera, so 0.05 on a brain measurement is not a
+difference this structure can use. `PL-D6LX`'s original decision to keep the Gas
+Man values therefore stands, now for a better-evidenced reason than it had
+(`PL-ZP7Z`, `PL-B9K7`, `PL-FN5F`).
 
 Desflurane is markedly less soluble than sevoflurane, which is itself less
 soluble than isoflurane (blood:gas 0.42 < 0.65 < 1.3). This does not change
@@ -5602,6 +5633,7 @@ This model does not model:
 - nitrous oxide;
 - simultaneous gases;
 - concentration or second-gas effects;
+- absorption of agent by the breathing circuit's own plastics and rubber (the note below this list measures it, and it is strongly agent-dependent);
 - vaporizer interlocks;
 - switching between volatile agents;
 - direct anesthetic injection;
@@ -5661,6 +5693,43 @@ against the other candidate explanations of one specific disagreement, and a
 second copy here would be a second thing to keep true. What this list carries is
 the magnitude, because a reader sizing what the model leaves out should not have
 to find it inside an argument about one agent.
+
+**The circuit's own walls absorb agent, and the model's circuit is inert.**
+`BreathingCircuit` solves an ideal, well-mixed volume whose walls do nothing —
+agent enters with fresh gas and leaves with the exhaust. Targ, Yasuda and Eger
+measured what a real one does (*Anesth Analg* 1989 Aug;69(2):218–25, PMID
+2764290; the companion of the tissue paper this project's coefficients come
+from). Their Table 1 gives plastic/gas and rubber/gas partition coefficients
+after 6–9 weeks' equilibration, in the order desflurane, sevoflurane,
+isoflurane, halothane:
+
+| component | desflurane | sevoflurane | isoflurane | halothane |
+| --- | ---: | ---: | ---: | ---: |
+| Y-piece (polypropylene) | 6.67 | 7.68 | 10.6 | 19.1 |
+| circuit tube (polyethylene) | 16.2 | 31.2 | 57.9 | 128 |
+| reservoir bag (latex) | 19.3 | 29.1 | 48.9 | 190 |
+| bellows (black rubber) | 10.4 | 22.6 | 42.9 | 199 |
+| endotracheal tube (PVC) | 34.7 | 68.5 | 114 | 233 |
+| mask pad (PVC) | 51.7 | 104 | 170 | 323 |
+
+The ranking held at every equilibration time from 7.5 min to 9 weeks, so **the
+inert circuit is most nearly true for desflurane and least for halothane** — an
+omission whose size depends on which agent is loaded, which is unusual on this
+list and is why it is stated rather than left implied. Measuring washin and
+washout in a real circuit at 0.5–5 L/min inflow against the ideal exponential,
+the same study found desflurane's curves "closely approximated the maximal
+possible theoretical rates" while the more soluble agents lagged.
+
+Two things a reader should take from that and no more. The authors' own
+conclusion is that this absorption "should not hinder induction of or recovery
+from anesthesia" for desflurane, so the simplification is defensible rather than
+a defect; and the coefficients above **overstate** the effect during a case,
+because equilibration is nowhere near complete in the hours an anesthetic lasts
+— the paper says so directly. What the model cannot show is the early lag a real
+circuit adds for sevoflurane and isoflurane relative to the curve drawn here
+(`PL-LS3H`). Adding a wall term is not planned: it would be a second gas store
+with its own time constant, and no teaching objective in `ROADMAP.md` asks for
+one.
 
 **Desflurane's five-minute washout disagrees with the published human
 measurement, and no admissible parameter closes it.** With the rebreathing
