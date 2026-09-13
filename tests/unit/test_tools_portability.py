@@ -48,15 +48,21 @@ source, and `src/` is free to use the language `.python-version` pins.
 `ast.parse`'s `feature_version` cannot bridge that: it only ever narrows the
 syntax accepted, so it cannot teach an older parser a newer language.
 
-So `tools/contrast_check.py` and `tools/import_boundary_check.py` are invoked
-through `uv run python` in both `make check` and
-`.github/workflows/quality.yml`, and are deliberately absent from that
-workflow's floor section - while staying standard-library-only and
-floor-parseable themselves, which is what keeps them in scope here. `PL-Y0RZ`
-established this for the second. `PL-L17Q` found the first still at the floor,
-green only because `app/theme.py` and `app/simulation_view.py` happened to
-carry no 3.12+ syntax; one PEP 695 generic added to either would have failed
-the floor section on a tool its author had not touched.
+So the five tools that parse repository source - `contrast_check.py`,
+`agent_identity_check.py`, `import_boundary_check.py`,
+`workflow_paths_check.py` and `core_vocabulary_check.py` - are invoked through
+`uv run python` in both `make check` and `.github/workflows/quality.yml`, and
+are deliberately absent from that workflow's floor section, while staying
+standard-library-only and floor-parseable themselves, which is what keeps them
+in scope here. A tool added to that group belongs on the `uv run python` lines
+in both files and in neither floor section.
+
+`PL-Y0RZ` established this for `import_boundary_check.py`. `PL-L17Q` found
+`contrast_check.py` still at the floor, green only because `app/theme.py` and
+`app/simulation_view.py` happened to carry no 3.12+ syntax; one PEP 695
+generic added to either would have failed the floor section on a tool its
+author had not touched. `PL-JBZK`, `PL-97VB` and `PL-FZ6T` added the other
+three, each for the same reason about its own input.
 """
 
 from __future__ import annotations
