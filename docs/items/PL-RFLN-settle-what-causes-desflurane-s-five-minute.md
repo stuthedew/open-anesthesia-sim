@@ -3,12 +3,13 @@ id: PL-RFLN
 title: Settle what causes desflurane's five-minute washout residual, which PL-73G7 narrowed to end-tidal sampling or the published datum
 priority: P1
 effort: M
-status: ready
+status: done
+closed: 2026-09-13
 classes: science
 feature: model-spec-accuracy
-touches: docs/MODEL.md
+touches: docs/MODEL.md, tests/reference/test_published_wash_in_and_elimination.py
 added: 2026-09-08
-verify: uv run pytest tests/reference/test_published_wash_in_and_elimination.py -q && grep -q 'def test_rebreathing_at_the_published_apparatus_dead_space' tests/reference/test_published_wash_in_and_elimination.py
+verify: uv run pytest tests/reference/test_published_wash_in_and_elimination.py -q && grep -q 'def test_no_apparatus_dead_space_reaches_desflurane_s_published_elimination' tests/reference/test_published_wash_in_and_elimination.py
 ---
 
 **Problem.** Settle what causes desflurane's five-minute washout residual, which PL-73G7 narrowed to end-tidal sampling or the published datum
@@ -182,3 +183,76 @@ that bound first would spend an `M` of effort on a result the item's own brief
 says "would say how much of the residual it could possibly carry without
 settling that it does".
 
+
+## Settled 2026-09-13: the apparatus's dead space is not the cause, and the framing it was asked under was wrong
+
+**The diagnostic the brief ordered first, run.** The result is a close, and the
+cause is *not* named — which the "Done when" above allows for, and the
+specification now says so in place of the two open candidates.
+
+**The framing had to change before the sourced number could be used, and that
+is the finding.** The sixth candidate row rejected "residual rebreathing in the
+published apparatus" at an assumed `F_I/F_A` of 0.30, and this item's brief
+proposed re-running it at the apparatus's sourced 50 ml — of the order of a
+tenth of that ratio. That re-run would have been meaningless. The 50 ml of
+corrugated Teflon holds alveolar gas at end-expiration and fresh gas at
+end-inspiration, which makes it a **series dead space**, and in a model with
+one perfectly mixed alveolar compartment a series dead space is not a non-zero
+inspired fraction at all:
+
+    alveoli receive V_T carrying V_D * F_A,  expel V_T carrying V_T * F_A
+    net = -(V_T - V_D) * F_A  ==  V_A_dot * (F_I - F_A)  at F_I = 0
+
+provided `V_A_dot` is the true alveolar ventilation `(V_T - V_D) * f`. So the
+apparatus's dead space is an alveolar-ventilation decrement of `V_D * f` and
+nothing else. Treating it as an `F_I` describes this model's circuit, not
+Yasuda's apparatus.
+
+**Measured, it fails as a common-mode mechanism.** Run at 50 ml across the
+conventional respiratory rates for a paralysed normocapnic adult, against the
+-2.33 SD desflurane sits at with no dead space:
+
+| f (/min) | V_A | Desflurane | Isoflurane n=8 | Worst wash-in |
+| --- | --- | --- | --- | --- |
+| 6 | 3.70 | -1.89 SD | +1.59 SD | -0.42 SD |
+| 8 | 3.60 | -1.73 SD | +1.82 SD | -0.63 SD |
+| 10 | 3.50 | -1.56 SD | +2.05 SD | -0.85 SD |
+| 12 | 3.40 | -1.38 SD | +2.30 SD | -1.08 SD |
+
+It carries 0.44 to 0.95 SD of the 2.33 — a quarter to two fifths — and buys
+that by pushing the isoflurane cohort that was inside its spread at +0.94 SD
+out to between +1.59 and +2.30. The wash-in comparison sets its own ceiling at
+11 breaths per minute, and at that largest admissible decrement desflurane is
+still 1.48 SD short with both isoflurane cohorts outside their spreads. It is
+the second candidate row — alveolar ventilation — at a sourced magnitude rather
+than a fitted one, and it fails the same way.
+
+**Whether any decrement is owed at all is undetermined, and that is now the
+live question.** Yasuda derived the alveolar fraction of ventilation from
+`F_M = f_A x F_A + f_D x F_I`, and the 1-l mixing chamber supplying `F_M` sits
+beyond the nonrebreathing valve — so the 50 ml that is re-inspired never
+reaches it, and their derived `f_A` is `(V_T - V_D_anat - V_D_app)/V_T`,
+already netting the apparatus out. A comparison run at their alveolar
+ventilation must not subtract it again. This model runs at 4.0 L/min, which
+`data/patients/reference_adult.json` records as a program default with no
+primary source, and which is neither quantity. `PL-ZDWL` reads the study's own
+figure.
+
+**What is left, recorded in `docs/MODEL.md` in place of the two open
+candidates.** One reachable candidate and one that is not: `PL-03ZG` bounds
+candidate 1's end-tidal-weighted bias, which the methods unblocked and nothing
+has demonstrated; candidate 2, the published value itself, no measurement this
+project can run will settle.
+
+**`verify:` was changed, and deliberately.** It named
+`test_rebreathing_at_the_published_apparatus_dead_space`, which would have
+baked the mischaracterisation above into a test name. The tests added are
+`test_no_apparatus_dead_space_reaches_desflurane_s_published_elimination`
+(parametrised over the four rates) and
+`test_the_apparatus_dead_space_moves_every_cohort_together` (the common-mode
+half). Both were mutation-checked: raising `APPARATUS_DEAD_SPACE_L` to 150 ml
+fails all five cases.
+
+**`touches` was widened** from `docs/MODEL.md` alone to include
+`tests/reference/test_published_wash_in_and_elimination.py`, which the item's
+own `verify:` command had always implied.

@@ -451,6 +451,98 @@ DESFLURANE_TISSUE_SOLUBILITY_CEILINGS = (
 )
 
 
+# The published apparatus's own dead space, read from the primary source rather
+# than assumed. Yasuda 1991 *Anesthesiology* (PMID 2001028) SS "Materials and
+# Methods" puts about 50 ml of corrugated Teflon between the tracheal end-tidal
+# sampling port and the connection to the nonrebreathing valve, stated there to
+# protect the end-tidal sample from contamination with inspired gas. Both
+# papers were supplied by the project owner and read on 2026-09-13; neither is
+# in PubMed Central and neither is held in this repository.
+APPARATUS_DEAD_SPACE_L = 0.050
+
+# **That volume is a series dead space, and in this model a series dead space
+# is a ventilation decrement rather than a non-zero F_I.** The distinction is
+# the whole of why the diagnostic below is run the way it is, so it is derived
+# here rather than asserted.
+#
+# Take one breath during the elimination, with the fresh gas agent-free, and
+# let V_D be the total series dead space - anatomic plus apparatus. At
+# end-expiration both dead spaces hold alveolar gas at F_A. Inspiration pushes
+# that V_D back into the alveoli and follows it with (V_T - V_D) of agent-free
+# gas, so the alveoli receive V_T of gas carrying V_D * F_A of agent and expel
+# V_T of gas carrying V_T * F_A. The net is
+#
+#     V_D * F_A - V_T * F_A = -(V_T - V_D) * F_A
+#
+# which is exactly this model's `V_A_dot * (F_I - F_A)` with F_I = 0, provided
+# V_A_dot is the *true* alveolar ventilation (V_T - V_D) * f. So adding the
+# apparatus's 50 ml at constant tidal volume and rate lowers alveolar
+# ventilation by 50 ml * f and does nothing else. Treating it instead as a
+# non-zero inspired fraction - the shape of the sixth candidate row in
+# `docs/MODEL.md` SS "Desflurane's residual" - describes a mixing volume that
+# returns a *fraction* of every breath, which is this model's circuit and not
+# the published apparatus.
+#
+# The model carries no respiratory rate, so the decrement cannot be computed
+# from stored parameters. These are the rates the diagnostic is run at: the
+# conventional range for a paralysed, mechanically ventilated, normocapnic
+# adult. **Yasuda measured minute ventilation and derived the alveolar
+# fraction from F_M = f_A * F_A + f_D * F_I; the numeric value is in the
+# methods text and is not held here** (`PL-ZDWL`), so the range below stands
+# in for it and is an assumption of this diagnostic rather than a datum.
+
+
+@dataclass(frozen=True, slots=True)
+class ApparatusDeadSpaceCase:
+    """One respiratory rate, and how far desflurane must still miss at it.
+
+    Attributes:
+        respiratory_rate_per_min: breaths per minute, which with
+            `APPARATUS_DEAD_SPACE_L` fixes the alveolar-ventilation decrement
+            the published apparatus's dead space is worth.
+        minimum_shortfall_sd: how far below its published elimination mean
+            desflurane must still land, in that cohort's published standard
+            deviations. Measured 2026-09-13 and asserted with margin.
+    """
+
+    respiratory_rate_per_min: float
+    minimum_shortfall_sd: float
+
+    @property
+    def alveolar_ventilation_l_min(self) -> float:
+        """The reference default, less what the apparatus dead space costs.
+
+        The baseline is read from the parameter file rather than restated, so
+        this diagnostic follows the reference adult if its default ventilation
+        is ever changed instead of silently comparing against a stale number.
+        """
+
+        return (
+            load_reference_adult_parameters().default_alveolar_ventilation_l_min
+            - APPARATUS_DEAD_SPACE_L * self.respiratory_rate_per_min
+        )
+
+
+# Measured 2026-09-13 across the conventional range. Desflurane's open-circuit
+# residual is -2.33 SD with no apparatus dead space at all; the shortfalls
+# below are what is left of it once the sourced dead space is applied, so the
+# largest of them carries 0.44 SD of the 2.33 and the smallest 0.95 SD.
+APPARATUS_DEAD_SPACE_CASES = (
+    ApparatusDeadSpaceCase(respiratory_rate_per_min=6.0, minimum_shortfall_sd=1.75),
+    ApparatusDeadSpaceCase(respiratory_rate_per_min=8.0, minimum_shortfall_sd=1.60),
+    ApparatusDeadSpaceCase(respiratory_rate_per_min=10.0, minimum_shortfall_sd=1.40),
+    ApparatusDeadSpaceCase(respiratory_rate_per_min=12.0, minimum_shortfall_sd=1.25),
+)
+
+# The largest decrement the wash-in comparison will bear: at 50 ml and 11
+# breaths per minute every wash-in row is still inside its published spread,
+# sevoflurane's nearest the edge at -0.96 SD, and one breath per minute more
+# takes it outside (-1.08 SD at 12). Measured 2026-09-13.
+LARGEST_ADMISSIBLE_DEAD_SPACE_CASE = ApparatusDeadSpaceCase(
+    respiratory_rate_per_min=11.0, minimum_shortfall_sd=1.25
+)
+
+
 @dataclass(frozen=True, slots=True)
 class PublishedMeasurement:
     """One agent's two measured ratios, from one published cohort.
@@ -1571,6 +1663,165 @@ def test_no_measured_tissue_solubility_reaches_desflurane_s_published_eliminatio
         f"the human tissue measurements support, and that is what has changed - re-open "
         f"the question rather than raising the shipped coefficient to meet it"
     )
+
+
+@pytest.mark.parametrize(
+    "case",
+    APPARATUS_DEAD_SPACE_CASES,
+    ids=[f"{c.respiratory_rate_per_min:g}bpm" for c in APPARATUS_DEAD_SPACE_CASES],
+)
+def test_no_apparatus_dead_space_reaches_desflurane_s_published_elimination(
+    case: ApparatusDeadSpaceCase,
+) -> None:
+    """Desflurane's residual is not the published apparatus's dead space either.
+
+    `docs/MODEL.md` SS "Desflurane's residual" rejected rebreathing in the
+    published apparatus at an *assumed* F_I/F_A of 0.30. The methods section
+    later supplied the apparatus's real volume - about 50 ml of corrugated
+    Teflon between the tracheal sampling port and the nonrebreathing valve -
+    and this test is what that sourced figure bought (`PL-RFLN`).
+
+    **The framing had to change before the number could be used.** That 50 ml
+    is a series dead space, and the derivation beside `APPARATUS_DEAD_SPACE_L`
+    shows a series dead space is exactly an alveolar-ventilation decrement of
+    V_D * f in this model, not a non-zero inspired fraction. So the run below
+    is the open-circuit diagnostic at a reduced ventilation, applied to both
+    limbs because the apparatus was present throughout the published protocol.
+
+    Measured 2026-09-13, in each cohort's own published SD, against the
+    -2.33 SD desflurane sits at with no dead space at all:
+
+    | f (/min) | V_A | Desflurane | Isoflurane n=8 | Worst wash-in |
+    | --- | --- | --- | --- | --- |
+    | 6 | 3.70 | -1.89 SD | +1.59 SD | -0.42 SD |
+    | 8 | 3.60 | -1.73 SD | +1.82 SD | -0.63 SD |
+    | 10 | 3.50 | -1.56 SD | +2.05 SD | -0.85 SD |
+    | 12 | 3.40 | -1.38 SD | +2.30 SD | -1.08 SD |
+
+    So the dead space moves desflurane the right way and carries between 0.44
+    and 0.95 SD of the 2.33 - a quarter to two fifths of it, never the whole -
+    while pushing the isoflurane cohort that was inside its spread at +0.94 SD
+    out to between +1.59 and +2.30. It fails the way every other candidate in
+    that section fails: it is **common-mode**, moving all four cohorts
+    together, and desflurane's residual is differential. The companion test
+    below is what asserts that second half.
+
+    This runs the diagnostic open circuit, so the caveat every other use of it
+    carries applies here too: no setting of the shipped simulator reaches the
+    condition, and nothing here is a statement about what a user sees.
+    """
+
+    measurement = next(m for m in PUBLISHED_MEASUREMENTS if m.agent_id == "desflurane")
+    ratio = _eliminate_without_rebreathing(
+        "desflurane", alveolar_ventilation_l_min=case.alveolar_ventilation_l_min
+    ).ratio
+    shortfall_sd = -measurement.elimination_distance_in_standard_deviations(ratio)
+
+    assert shortfall_sd > case.minimum_shortfall_sd, (
+        f"desflurane eliminating into an open circuit at an alveolar ventilation of "
+        f"{case.alveolar_ventilation_l_min:.3f} L/min - the reference default less the "
+        f"{APPARATUS_DEAD_SPACE_L * 1000:.0f} ml of apparatus dead space Yasuda 1991 "
+        f"Anesthesiology reports, re-inspired at {case.respiratory_rate_per_min:g} breaths "
+        f"per minute - reaches F_A/F_A0 {ratio:.4f} at 5 min, only {shortfall_sd:.2f} "
+        f"published SD below the {measurement.elimination_mean} +/- "
+        f"{measurement.elimination_standard_deviation} measured in "
+        f"{measurement.cohort_size} volunteers ({measurement.source}). This module and "
+        f"docs/MODEL.md say the published apparatus's dead space carries part of the "
+        f"residual and not the whole of it, and that is what has changed - re-open the "
+        f"question rather than treating the residual as explained"
+    )
+
+
+def test_the_apparatus_dead_space_moves_every_cohort_together() -> None:
+    """Why the published apparatus's dead space cannot be desflurane's residual.
+
+    The test above shows the sourced dead space never closes desflurane's gap.
+    This one shows the stronger thing: the gap could not be closed *by this
+    mechanism* even if the dead space were larger, because buying desflurane's
+    movement costs the two isoflurane cohorts their agreement.
+
+    The run is at the largest decrement the wash-in comparison will bear -
+    50 ml at 11 breaths per minute, where sevoflurane's wash-in sits at
+    -0.96 SD and one breath per minute more takes it outside its published
+    spread. That ceiling is not imposed here; it is the wash-in comparison's
+    own, and it is why `PL-73G7` required any candidate for the elimination
+    gap to be checked against the wash-in rows in the same pass.
+
+    Measured 2026-09-13 at f = 11, V_A = 3.45 L/min:
+
+    | Cohort | Wash-in | Elimination | Elimination with no dead space |
+    | --- | --- | --- | --- |
+    | Sevoflurane n=7 | -0.96 SD | +0.95 SD | -0.15 SD |
+    | Isoflurane n=7 | -0.82 SD | +1.69 SD | +0.66 SD |
+    | Desflurane n=8 | -0.55 SD | -1.48 SD | -2.33 SD |
+    | Isoflurane n=8 | -0.64 SD | +2.17 SD | +0.94 SD |
+
+    Desflurane is still 1.48 SD short while both isoflurane cohorts have left
+    their published spread entirely. That is the same failure the alveolar
+    ventilation row of `docs/MODEL.md`'s candidate table records, which is not
+    a coincidence: a series dead space *is* a ventilation decrement here, so
+    the apparatus's own volume is that candidate at a sourced magnitude rather
+    than a fitted one.
+
+    **One thing this test cannot decide, and it is why the item closed without
+    naming a cause.** Whether any decrement is owed at all is undetermined.
+    Yasuda derived the alveolar fraction of ventilation from
+    F_M = f_A * F_A + f_D * F_I, and the mixing chamber that supplies F_M sits
+    beyond the nonrebreathing valve, so the 50 ml that gets re-inspired never
+    reaches it: their derived f_A is (V_T - V_D_anat - V_D_app)/V_T and
+    already nets the apparatus out. A comparison run at *their* alveolar
+    ventilation must therefore not subtract it again. This model runs at 4.0
+    L/min, which the parameter file records as a convention with no primary
+    source behind it and which is neither quantity. `PL-ZDWL` carries reading
+    the value out of the methods text.
+
+    This runs the diagnostic open circuit, so the caveat every other use of it
+    carries applies here too: no setting of the shipped simulator reaches the
+    condition, and nothing here is a statement about what a user sees.
+    """
+
+    case = LARGEST_ADMISSIBLE_DEAD_SPACE_CASE
+    alveolar_ventilation = case.alveolar_ventilation_l_min
+
+    for measurement in PUBLISHED_MEASUREMENTS:
+        wash_in = _wash_in_ratio(
+            measurement.agent_id, alveolar_ventilation_l_min=alveolar_ventilation
+        )
+        wash_in_sd = measurement.wash_in_distance_in_standard_deviations(wash_in)
+        assert abs(wash_in_sd) < AGREEMENT_TOLERANCE_SD, (
+            f"{measurement.label} washes in to F_A/F_I {wash_in:.4f} ({wash_in_sd:+.2f} SD) at "
+            f"an alveolar ventilation of {alveolar_ventilation:.3f} L/min, outside its published "
+            f"spread. This case is meant to be the *largest* dead space the wash-in comparison "
+            f"still admits, so either the model or that ceiling has moved and the ceiling has to "
+            f"be re-measured before the conclusion below is restated"
+        )
+
+    desflurane = next(m for m in PUBLISHED_MEASUREMENTS if m.agent_id == "desflurane")
+    desflurane_shortfall_sd = -desflurane.elimination_distance_in_standard_deviations(
+        _eliminate_without_rebreathing(
+            "desflurane", alveolar_ventilation_l_min=alveolar_ventilation
+        ).ratio
+    )
+    assert desflurane_shortfall_sd > case.minimum_shortfall_sd, (
+        f"desflurane is only {desflurane_shortfall_sd:.2f} published SD short at the largest "
+        f"apparatus dead space the wash-in comparison admits, so the published apparatus may "
+        f"now account for the residual docs/MODEL.md says it cannot - re-open the question"
+    )
+
+    for measurement in PUBLISHED_MEASUREMENTS:
+        if measurement.agent_id != "isoflurane":
+            continue
+        ratio = _eliminate_without_rebreathing(
+            measurement.agent_id, alveolar_ventilation_l_min=alveolar_ventilation
+        ).ratio
+        excess_sd = measurement.elimination_distance_in_standard_deviations(ratio)
+        assert excess_sd > AGREEMENT_TOLERANCE_SD, (
+            f"{measurement.label} eliminates to F_A/F_A0 {ratio:.4f} ({excess_sd:+.2f} SD) at the "
+            f"dead space that leaves desflurane {desflurane_shortfall_sd:.2f} SD short, which is "
+            f"inside its published spread. The common-mode argument docs/MODEL.md rests on - that "
+            f"this mechanism cannot move desflurane without costing isoflurane - is what has "
+            f"changed, and the section has to be rewritten rather than this threshold lowered"
+        )
 
 
 @pytest.mark.parametrize("agent_id", AGENT_IDS)
