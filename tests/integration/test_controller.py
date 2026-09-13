@@ -21,7 +21,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationNumericalError,
 )
 from anesthesia_sim.core.parameters import load_reference_adult_parameters
-from anesthesia_sim.core.run_score import ScoreSegment
+from anesthesia_sim.core.run_definition import RunSegment
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S
 
@@ -269,10 +269,10 @@ def _samples_a_snapshot_carries(controller: SimulationController) -> int:
     for field in dataclasses.fields(snapshot):
         value = getattr(snapshot, field.name)
 
-        if isinstance(value, ScoreSegment):
+        if isinstance(value, RunSegment):
             total += 1
         elif isinstance(value, tuple | list):
-            total += sum(1 for item in value if isinstance(item, ScoreSegment))
+            total += sum(1 for item in value if isinstance(item, RunSegment))
 
     return total
 
@@ -355,7 +355,7 @@ def test_each_drawn_quantity_reads_the_state_of_the_compartment_it_names() -> No
     """The same pairing, audited against the state vector the chart draws from.
 
     `COMPARTMENT_STATE_INDEX` is what `_build_history_sample` was once the
-    chart evaluates the score instead of reading recorded samples
+    chart evaluates the run definition instead of reading recorded samples
     (`PL-2FM6`): a position in `governing_equations`' state order rather
     than a compartment accessor. It is the one place a trace could come to
     carry another compartment's values, and a swap here would reach a
@@ -1188,7 +1188,7 @@ def _run_with_two_changes(controller: SimulationController) -> None:
 
 
 def test_a_setting_change_opens_a_segment_where_the_run_saw_it() -> None:
-    """The score's segments and the timeline's entries describe one run.
+    """The run definition's segments and the timeline's entries describe one run.
 
     They are separate records on purpose - one is what the model integrated,
     the other is what a reader is shown - so what has to be checked is that
@@ -1199,13 +1199,13 @@ def test_a_setting_change_opens_a_segment_where_the_run_saw_it() -> None:
     _run_with_two_changes(controller)
 
     timeline = controller.snapshot().control_timeline
-    openings = [segment.opening.elapsed_s for segment in controller.score_segments]
+    openings = [segment.opening.elapsed_s for segment in controller.run_segments]
 
     assert [change.elapsed_s for change in timeline] == openings[1:]
     assert openings[0] == 0.0
 
 
-def test_a_refused_setting_leaves_the_score_describing_the_run() -> None:
+def test_a_refused_setting_leaves_the_run_definition_describing_the_run() -> None:
     """A setting the core rejects never took effect, so it opens no segment.
 
     The same property the control timeline has, for the same reason: the core
@@ -1220,36 +1220,36 @@ def test_a_refused_setting_leaves_the_score_describing_the_run() -> None:
     with pytest.raises(SimulationConfigurationError):
         controller.set_delivered_concentration(0.5)
 
-    assert len(controller.score_segments) == 1
+    assert len(controller.run_segments) == 1
     assert controller.snapshot().control_timeline == ()
 
 
-def test_resetting_starts_the_score_over() -> None:
-    """`reset()` destroys the run, so nothing of its score may survive it."""
+def test_resetting_starts_the_run_definition_over() -> None:
+    """`reset()` destroys the run, so nothing of its definition may survive it."""
 
     controller = SimulationController()
     _run_with_two_changes(controller)
     controller.reset()
 
-    assert len(controller.score_segments) == 1
+    assert len(controller.run_segments) == 1
     assert controller.drawn_window(0.0, 0.0, 150).times_s == (0.0,)
     # The axis outlives the run it was showing, and is clipped to nothing.
     assert controller.drawn_window(0.0, 60.0, 150).times_s == (0.0,)
 
 
-def test_changing_agent_starts_the_score_over() -> None:
-    """`set_agent` begins a new run, and a score is of one run only."""
+def test_changing_agent_starts_the_run_definition_over() -> None:
+    """`set_agent` begins a new run, and a run definition is of one run only."""
 
     controller = SimulationController()
     _run_with_two_changes(controller)
     controller.set_agent("desflurane")
 
-    assert len(controller.score_segments) == 1
+    assert len(controller.run_segments) == 1
     assert controller.drawn_window(0.0, 60.0, 150).times_s == (0.0,)
 
 
-def test_a_paused_run_s_score_stops_where_the_run_did() -> None:
-    """Pausing stops the run, so it stops what the score will answer for."""
+def test_a_paused_run_s_definition_stops_where_the_run_did() -> None:
+    """Pausing stops the run, so it stops what the run definition will answer for."""
 
     controller = SimulationController()
     controller.start()

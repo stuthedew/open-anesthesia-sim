@@ -26,7 +26,7 @@ from anesthesia_sim.core.governing_equations import (
     VENOUS_FRACTION,
 )
 from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
-from anesthesia_sim.core.run_score import DisplayState, RunScore, ScoreSegment
+from anesthesia_sim.core.run_definition import DisplayState, RunDefinition, RunSegment
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
@@ -169,7 +169,7 @@ COMPARTMENT_QUANTITIES: Final = (
 #: it is the one place a trace could come to carry another compartment's
 #: values. It replaces the same pairing `_build_history_sample` held while the
 #: chart was drawn from recorded samples (`PL-2FM6`): the chart now evaluates
-#: the score instead, so what a trace needs is a position in
+#: the run definition instead, so what a trace needs is a position in
 #: `governing_equations`' state order rather than a compartment accessor.
 #:
 #: The three tissue groups are consecutive from `FIRST_TISSUE_FRACTION` in
@@ -223,7 +223,7 @@ class RecordedSeries:
 
 @dataclass(frozen=True, slots=True)
 class DrawnWindow:
-    """The states one frame draws, evaluated from the run's score.
+    """The states one frame draws, evaluated from the run's definition.
 
     What `SimulationController.drawn_window` answers with, and the whole of
     what the chart is drawn from. It replaces `HistoryWindow`, and the
@@ -233,7 +233,7 @@ class DrawnWindow:
     nothing else exists behind them.
 
     **A drawn value is not a recorded one, and the type says so.** Every
-    state here is a `DisplayState`, which `core/run_score.py` makes
+    state here is a `DisplayState`, which `core/run_definition.py` makes
     structurally not a state vector precisely so that a drawn value cannot
     become a keyframe, an export or a fork's opening state by having the
     right shape. `docs/MODEL.md` § "The canonical evaluation rule" is the
@@ -552,7 +552,9 @@ class SimulationController:
         # through here and builds a new history under the new agent's id,
         # so a run's recorded substance is always the one its samples were
         # produced by.
-        self._score = RunScore(uptake_system.equation_settings(), uptake_system.state_vector())
+        self._run_definition = RunDefinition(
+            uptake_system.equation_settings(), uptake_system.state_vector()
+        )
         self._clear_control_timeline()
 
         # Every compartment above is newly constructed, so no state survives
@@ -711,7 +713,7 @@ class SimulationController:
         )
 
     @property
-    def score_segments(self) -> tuple[ScoreSegment, ...]:
+    def run_segments(self) -> tuple[RunSegment, ...]:
         """The stretches of constant settings this run has had, oldest first.
 
         The run's own record, as against `snapshot().control_timeline`, which
@@ -720,17 +722,17 @@ class SimulationController:
         the units the interface displays. They agree about when the run
         changed and about nothing else, deliberately.
 
-        Handed out as the frozen segments rather than as the score itself, so
-        a caller can read the run without being able to advance it: a score
+        Handed out as the frozen segments rather than as the run definition itself, so
+        a caller can read the run without being able to advance it: a run definition
         whose reach moved independently of the run would answer for instants
         the run never reached. Save, replay and forking read this;
         `ROADMAP.md` items 9 to 12 are what they are.
         """
 
-        return self._score.segments
+        return self._run_definition.segments
 
     def drawn_window(self, start_s: float, stop_s: float, columns: int) -> DrawnWindow:
-        """The states to plot across an axis, evaluated from the score.
+        """The states to plot across an axis, evaluated from the run definition.
 
         The chart's own read, and what the recorded-window read was before the run
         stopped keeping samples of itself (`PL-2FM6`).
@@ -746,7 +748,7 @@ class SimulationController:
         That is not the coercion `CLAUDE.md` forbids: nothing is substituted
         or defaulted, and `DrawnWindow.times_s` says exactly which instants
         came back, so a caller can see where the run ends rather than being
-        told a value for an instant it never reached. Asking the score itself
+        told a value for an instant it never reached. Asking the run definition itself
         for those instants is refused, and rightly - see `evaluate_window`.
 
         **The column spacing comes from the axis, not from the clipped
@@ -755,7 +757,7 @@ class SimulationController:
         instants stay put as the window follows the run and only the newest
         column is new. Deriving the spacing from the clipped range instead
         would move every column on every frame early in a run, which is the
-        defect `RunScore.evaluate_anchored` exists to avoid.
+        defect `RunDefinition.evaluate_anchored` exists to avoid.
 
         Args:
             start_s: Left edge of the axis, in simulated seconds.
@@ -792,7 +794,7 @@ class SimulationController:
 
         spacing_s = (stop_s - start_s) / (columns - 1)
         first_s = max(0.0, start_s)
-        last_s = min(stop_s, self._score.duration_s)
+        last_s = min(stop_s, self._run_definition.duration_s)
 
         if last_s < first_s:
             # The axis lies entirely ahead of the run - an ordinary state at
@@ -803,7 +805,7 @@ class SimulationController:
         # An axis of no width is one instant, and it is still drawn: both
         # bounds coincide, so no grid column can fall strictly between them
         # and the spacing substituted here cannot place one.
-        window = self._score.evaluate_anchored(
+        window = self._run_definition.evaluate_anchored(
             first_s, last_s, spacing_s if spacing_s > 0.0 else 1.0
         )
 
@@ -857,7 +859,9 @@ class SimulationController:
         self._supported_limit_reason = None
         self._state.reset()
         uptake_system = self._state.uptake_system
-        self._score = RunScore(uptake_system.equation_settings(), uptake_system.state_vector())
+        self._run_definition = RunDefinition(
+            uptake_system.equation_settings(), uptake_system.state_vector()
+        )
         self._clear_control_timeline()
 
     # No `set_circuit_volume` here, deliberately (`PL-GYH2`). The circuit
@@ -961,12 +965,12 @@ class SimulationController:
         if new_value == previous_value:
             return
 
-        # The score first, because it is the run: the timeline below records
+        # The definition first, because it is the run: the timeline below records
         # the acts a reader sees, and every branch under it is about how those
         # acts are grouped and displayed. Both are fed from here rather than
         # from the four setters, because this is the one place that means "the
         # core accepted a setting change".
-        self._score.record_change(self._state.uptake_system.equation_settings())
+        self._run_definition.record_change(self._state.uptake_system.equation_settings())
 
         if control is not self._open_adjustment_control:
             self._adjustment_count += 1
@@ -1007,9 +1011,9 @@ class SimulationController:
     def advance(self, simulation_step_s: float) -> None:
         """No-op while paused; otherwise advance state and record history.
 
-        The score's reach is moved after the step rather than before it, so a
+        The run definition's reach is moved after the step rather than before it, so a
         step the core refuses - a domain limit, a numerical failure - leaves
-        the score describing a run that stopped where the state did. Its
+        the run definition describing a run that stopped where the state did. Its
         `advance_to` records no state: the states are already implied by the
         settings, and are recovered from them on demand.
         """
@@ -1018,4 +1022,4 @@ class SimulationController:
             return
 
         self._state.advance(simulation_step_s)
-        self._score.advance_to(self._state.elapsed_s)
+        self._run_definition.advance_to(self._state.elapsed_s)

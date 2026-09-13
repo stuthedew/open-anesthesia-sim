@@ -102,7 +102,7 @@ from anesthesia_sim.core.parameters import (
     MacAwakeReference,
     load_agent_parameters,
 )
-from anesthesia_sim.core.run_score import DisplayState, ScoreSegment
+from anesthesia_sim.core.run_definition import DisplayState, RunSegment
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -228,8 +228,8 @@ class _FakeController:
     def drawn_window(self, start_s: float, stop_s: float, columns: int) -> DrawnWindow:
         """Draw exactly the samples this fake was given, inside the axis.
 
-        The real controller evaluates its score at instants it chooses; a
-        fake has no score, and inventing one would make every view test
+        The real controller evaluates its definition at instants it chooses; a
+        fake has no definition, and inventing one would make every view test
         assert the sampler's column placement rather than the formatting
         under test. So the fixture's own samples are the drawn instants,
         which is what these tests set up and assert against.
@@ -1552,14 +1552,14 @@ def test_a_recorded_run_is_not_discarded_before_the_reader_has_answered() -> Non
 
     controller = _paused_run_with_history()
     before = controller.snapshot()
-    run_before = (controller.snapshot().elapsed_s, controller.score_segments)
+    run_before = (controller.snapshot().elapsed_s, controller.run_segments)
 
     view, page = _select_agent(controller)
 
     after = controller.snapshot()
     assert after.agent_id == before.agent_id
     assert after.elapsed_s == before.elapsed_s
-    assert (controller.snapshot().elapsed_s, controller.score_segments) == run_before
+    assert (controller.snapshot().elapsed_s, controller.run_segments) == run_before
     assert len(page.dialogs) == 1
     assert page.dialogs[0].open is True
     # The selector reads the agent that is actually running, not the one
@@ -1572,7 +1572,7 @@ def test_a_declined_agent_change_leaves_the_run_and_the_selector_untouched() -> 
 
     controller = _paused_run_with_history()
     before = controller.snapshot()
-    run_before = (controller.snapshot().elapsed_s, controller.score_segments)
+    run_before = (controller.snapshot().elapsed_s, controller.run_segments)
 
     view, page = _select_agent(controller)
     _click_dialog_action(view, KEEP_CURRENT_CASE_TEMPLATE.format(agent="sevoflurane"))
@@ -1581,7 +1581,7 @@ def test_a_declined_agent_change_leaves_the_run_and_the_selector_untouched() -> 
     assert after.agent_id == "sevoflurane"
     assert after.elapsed_s == before.elapsed_s
     assert after.control_timeline == before.control_timeline
-    assert (controller.snapshot().elapsed_s, controller.score_segments) == run_before
+    assert (controller.snapshot().elapsed_s, controller.run_segments) == run_before
     assert view._agent_dropdown.value == "sevoflurane"
     assert view._subtitle_text.value is not None
     assert "Sevoflurane" in view._subtitle_text.value
@@ -2633,8 +2633,8 @@ def test_choosing_a_time_base_changes_nothing_the_run_recorded() -> None:
     for _ in range(200):
         controller.advance(SIMULATION_STEP_S)
 
-    def run() -> tuple[float, tuple[ScoreSegment, ...]]:
-        return controller.snapshot().elapsed_s, controller.score_segments
+    def run() -> tuple[float, tuple[RunSegment, ...]]:
+        return controller.snapshot().elapsed_s, controller.run_segments
 
     before = run()
 

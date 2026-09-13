@@ -216,16 +216,16 @@ the run it branched from at every sample they share.
 **What carries this once a state is derived rather than recorded.** The
 paragraph above is a claim about recorded samples, and it rests on every
 caller taking the same width: with the step fixed, there is only one sequence
-of arithmetic that reaches step *n*. A run held as its score records no
+of arithmetic that reaches step *n*. A run held as its definition records no
 samples and fixes no width — a state is computed when it is asked for, and the
 same instant can be reached by more than one sequence. "The canonical
 evaluation rule" under "Runtime controls" is what carries the guarantee there.
 It is stronger than this paragraph in one respect and narrower in another: two
-evaluations of one score at one instant are bit-identical rather than merely
-reproducible across runs, and only values from the canonical path may be
+evaluations of one run definition at one instant are bit-identical rather than
+merely reproducible across runs, and only values from the canonical path may be
 stored, exported or branched from. Both records are live in this release, so
 both halves are: the step count carries the recorded history, and the
-canonical rule carries the score.
+canonical rule carries the run definition.
 
 **Playing a run faster does not make it a different run.** The interface
 offers a playback rate — how much simulated time advances per second of real
@@ -2896,13 +2896,14 @@ using the release tolerances documented above.
 ### Closed-form agreement test
 
 A run driven through its own controls must be answered identically by both of
-its records: the states derived from the score, at the instants the run
+its records: the states derived from the run definition, at the instants the run
 recorded, must equal the recorded samples.
 
 The comparison is over every compartment of every sample rather than
 endpoints, for the reason "Deterministic replay test" gives, and it must cross
 at least two setting changes, because a stretch of constant settings is the
-easy case — what a score has to get right is the boundary between two of them.
+easy case — what a run definition has to get right is the boundary between two
+of them.
 The tolerance is absolute rather than relative and is stated in fractions of
 one atmosphere, since that is what the compartments hold and what a readout
 converts: a relative tolerance would tighten without limit on the near-zero
@@ -2915,7 +2916,7 @@ the figure measured and the headroom left above it.
 
 While both records are live this test is what says they describe one run.
 Once the recorded half is retired it becomes the record of what the closed
-form replaced, and the stepped comparison in `tests/unit/test_run_score.py`
+form replaced, and the stepped comparison in `tests/unit/test_run_definition.py`
 is what carries the claim forward.
 
 ### Deterministic replay test
@@ -2953,7 +2954,7 @@ day it is added.
 A run queried as it is built must answer identically to the same run never
 queried: element for element, across the whole state vector, at every instant
 probed and in every keyframe stored. That is what says the canonical answer
-belongs to the score rather than to the caller, and it is the property a
+belongs to the run definition rather than to the caller, and it is the property a
 cache, a memoised propagator or a reused buffer would take away while looking
 like an optimisation.
 
@@ -3032,7 +3033,7 @@ interface section carries.
 **What is held.** A run is the settings in force at each moment — the four
 controls above, together with the patient and agent parameters the equations
 read — plus one *keyframe* per change: the state at the instant that change
-took effect. Nothing else is stored. `core/run_score.py` is where this lives.
+took effect. Nothing else is stored. `core/run_definition.py` is where this lives.
 
 **What is derived.** The equations are linear and time-invariant while every
 setting is held constant, so between two changes the propagator under
@@ -3060,8 +3061,8 @@ exported or branched value may be taken from is stated as a guarantee under
 **What this is for, measured rather than argued.** Recording one sample per
 step costs 130.8 bytes per sample, measured over 20 000 samples of a live
 run; a 30-day case at the fixed 0.1 s step is 25 920 000 samples, or 3.16 GiB.
-The same case as a score — a busy ICU day at 50 setting changes, so 1 501
-stretches — is 1.6 MiB, a factor of about two thousand. The second gain is
+The same case held as a definition — a busy ICU day at 50 setting changes, so
+1 501 stretches — is 1.6 MiB, a factor of about two thousand. The second gain is
 that answering a window stops depending on how long the run has been going: a
 one-hour window at 600 columns costs 10.6 ms on a two-hour run and 13.0 ms on
 a thirty-day one, against the 62.6 ms at four hours and 207.7 ms at twelve
@@ -3076,7 +3077,8 @@ the regime where the columns are sparser than the changes, in which sampling
 instead is an interface question rather than a model one.
 
 **Both records are live in this release.** The recorded history remains, and
-the chart is still drawn from it; the score is built and maintained beside it,
+the chart is still drawn from it; the run definition is built and maintained
+beside it,
 and the two are held to each other by "Closed-form agreement test" below.
 Retiring the recorded half is a separate change, and until it lands the
 agreement is what stands in for it: a divergence in either record fails that
@@ -3094,14 +3096,14 @@ horizon takes that away. This is the rule that replaces it.
   opening the stretch that contains it, over the interval between the two.
   Each keyframe is itself computed that way, one propagation per stretch,
   composed in recording order from the start of the run. Two evaluations of
-  one score at one instant therefore perform the identical sequence of
+  one run definition at one instant therefore perform the identical sequence of
   floating-point operations, and are **bit-identical** rather than equal to
-  within a tolerance. `RunScore.state_at` in `core/run_score.py` is this path.
+  within a tolerance. `RunDefinition.state_at` in `core/run_definition.py` is this path.
 - **Display.** Drawing a window of evenly spaced columns reuses one propagator
   across the columns inside a stretch, chaining from the first, which is what
   makes a frame cost the window rather than the run. It solves the same
   equations exactly and composes the operations in a different order.
-  `RunScore.evaluate` is this path.
+  `RunDefinition.evaluate` is this path.
 
 **What each may be used for.** Every value that is stored, exported, replayed,
 compared against another run, or taken as the state a branch opens from is
@@ -3111,7 +3113,7 @@ state.
 
 **The program enforces this; the paragraph above does not.** The display path
 returns its states wrapped in `DisplayState`, which is not a state vector, so
-it cannot be passed where one is expected — and `RunScore` refuses one as an
+it cannot be passed where one is expected — and `RunDefinition` refuses one as an
 opening state by name, saying which path the value came from rather than
 failing on a length. The wrapper is deliberately not a subclass of the state
 tuple: the sinks this has to hold at include ones that have not been written
@@ -3604,8 +3606,8 @@ value, and the instant the numeric readouts were formatted from must always
 be drawn, so that the end of a trace and the readouts beside it cannot
 disagree.
 
-The chart meets this by **evaluating the run's score rather than reading
-samples back from a store**. `core/run_score.py` answers the state at any
+The chart meets this by **evaluating the run's definition rather than reading
+samples back from a store**. `core/run_definition.py` answers the state at any
 instant in closed form, so the columns a frame draws are chosen for the
 axis being drawn and computed for it, and there is no recorded series
 behind the trace that could disagree with it. Where the columns fall is
@@ -3623,7 +3625,7 @@ than optimisations:
   no hidden transients, so every sharp feature in a run is at an event
   boundary; a grid that stepped over one would draw a straight line through
   the single instant a reader is looking for. Each such column is read from
-  the keyframe the score already holds at that instant, so it is exact
+  the keyframe the run definition already holds at that instant, so it is exact
   rather than propagated.
 
 **So the drawn chart reproduces every control change**, to the last digit
