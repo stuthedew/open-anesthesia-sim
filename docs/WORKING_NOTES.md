@@ -1498,3 +1498,36 @@ last 120 frames recorded before the pause, and the lateness figure does not
 establish what latency does under a running 49 ms frame. Nothing in the decision
 turns on it - 49 ms of a 200 ms budget leaves the loop idle three quarters of
 the time - but it is not measured.
+
+## Settled, then measured: root-cause batching does lower the spawn rate, but the design cannot say why - PL-CSHL, PL-BHVM
+
+`PL-CSHL` was a pre-registered test with its prediction fixed before the work:
+close the `vcs.py` cluster's open items as one batch and count what they spawn
+against that cluster's own baseline of 1.05 new items per closure. It ran at
+N=9 - two of the eleven `ready` items did not close - and **spawned 3, against
+the 9.5 H0 predicted and a rejection threshold of 4**, so H0 is rejected and the
+observed rate is 0.33.
+
+**What the result does not license.** `PL-BHVM`'s root-cause account was already
+refuted before the batch began: twenty of twenty ref-lifecycle items came back
+`unaffected` and all three structure lenses proposed zero `blocked-by` edges. The
+low count is therefore not evidence for consolidation. What the batch actually
+shows is narrower - five of the nine items turned on one question, *what evidence
+proves a ref's work is on the base*, and two rules settled them.
+`_annotates_only` was already in the module and decided three; `_superseded` was
+written once for `PL-XLQ5` and then answered `PL-8MJ3` unchanged. Reuse of a
+decided rule, not consolidation of items.
+
+**And the confound is not separable in this design.** One session closing nine
+items has fewer chances to file than nine sessions closing one each, for reasons
+unrelated to root causes: a session already holding the whole module recognises a
+second finding as the same finding, and findings that would have ended a session
+and been captured on the way out were fixed in place instead. Batching and
+root-cause structure predict the same low count here. Testing them apart means
+closing nine *unrelated* items in one session and comparing, which is one item's
+worth of work rather than a redesign.
+
+**The methodological note worth keeping.** A pre-registered spawn count rewards
+not filing, and the session doing the counting is the one under that pressure. The
+three items were filed on the capture rule and counted against the result. Any
+future run should expect the same pressure and say how it handled it.

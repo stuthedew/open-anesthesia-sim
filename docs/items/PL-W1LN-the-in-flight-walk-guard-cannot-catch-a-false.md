@@ -6,7 +6,7 @@ effort: S
 status: needs-decision
 classes: defect, infra
 feature: parallel-sessions
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-08-31
 verify: uv run pytest subprojects/docket/tests/test_vcs.py -k horizon
 ---
@@ -115,3 +115,13 @@ bare-tree/no-network rule), or keep today's behavior with the limit documented a
 this reproduction standing as the evidence. A fourth, distrusting an emitted
 commit older than the base's newest graft, is cheap and covers this case but rests
 on commit dates a rebase moves.
+
+**Where the test goes, if the decision is to cover it.**
+`subprojects/docket/tests/test_cli.py`'s `_shallow_pair` already builds this in
+real git for `PL-MGNC`'s *caught* case: the default branch fetched to a depth that
+leaves it grafted, and a branch fetched past that graft. The uncaught shape is one
+change to it - `main` needs a **second, shorter path** to the root, so that the
+depth truncates the long path while the short one reaches bottom, and the walk
+then terminates against a commit the base still reaches instead of against a
+parentless one. So the fixture is nine-tenths built, and the `-k horizon` selector
+this item's `verify:` names has somewhere to live.

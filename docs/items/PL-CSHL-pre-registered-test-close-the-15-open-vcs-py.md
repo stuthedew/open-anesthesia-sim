@@ -1,13 +1,14 @@
 ---
 id: PL-CSHL
 title: Pre-registered test: close the 15 open vcs.py items as one root-cause round and count what they spawn against the cluster's own baseline of 1.05
-status: ready
+status: done
 feature: parallel-sessions
 priority: P3
 effort: S
 classes: infra
 touches: docs/items
 added: 2026-09-12
+closed: 2026-09-13
 verify: python3 tools/doc_check.py check && grep -q '^RESULT: N=' docs/items/PL-CSHL-pre-registered-test-close-the-15-open-vcs-py.md
 ---
 
@@ -96,8 +97,12 @@ So eleven still calls a halving. Below about nine it stops being worth running
 as a test, though the work stays worth doing.
 
 **The batch does not need the experiment to justify it, and that is the point.**
-Ten of the eleven `ready` items are entries on v0.5.0's frozen debt gate, so
-they are owed before the milestone begins whatever happens to `r`. The
+Six of the eleven `ready` items are entries on v0.5.0's frozen debt gate, so
+they are owed before the milestone begins whatever happens to `r`. (Corrected
+2026-09-13 while running it: the un-withdrawal said ten, and `bin/docket wave`
+names six - `PL-JSRH`, `PL-PMT7`, `PL-R6D8`, `PL-W1LN`, `PL-XLQ5`, `PL-YDL6`.
+The other five are `defect`-classed and so are debt by the gate rule; they were
+captured after the freeze, so they fall to the next gate rather than this one.) The
 measurement costs one count afterwards. This item therefore proposes no work
 that was not already owed - which is the test `PL-27S8` asks of any proposal,
 applied here to a proposal of my own.
@@ -131,3 +136,63 @@ means for the root-cause account - or this item is dropped with a reason if the
 batch closes fewer than nine items, at which point the test is underpowered and
 saying so is the honest outcome.
 
+
+---
+
+## The result, 2026-09-13
+
+RESULT: N=9 closed, 3 spawned. H0 at N=9 expects 9.5 and rejects at 5%
+one-sided on 4 or fewer, so **H0 is rejected**: the batch spawned a third of what
+the cluster's own baseline of 1.05 predicted. Spawn rate r = 3/9 = 0.33, against
+r_vcs = 1.05 and a whole-lane r = 0.69.
+
+**The nine closed.** `PL-6BDX`, `PL-8MJ3`, `PL-JBRC`, `PL-JSRH`, `PL-PMT7`,
+`PL-R6D8`, `PL-XLQ5`, `PL-Y31G`, `PL-YDL6`.
+
+**The three spawned**, each attributed by the pre-registered rule - the creating
+commit's subject leads with `PL-YDL6, PL-8MJ3` - and counted from git history
+rather than from memory: `PL-QNYF` (a `docket check` error now reachable with no
+remedy named), `PL-3LLZ` (four test fakes each taught the same git question),
+`PL-7XNX` (one subprocess per edited item where one per ref would do).
+
+**Two of the eleven did not close**, which is why N is 9 rather than 11 and why
+the test ran at its lowest useful power:
+
+- `PL-W1LN` moved to `needs-decision`. Its own **Done when.** allowed only "the
+  guard covers it" or "the topology cannot be produced here", and the
+  reproduction ruled out the second: seven commands produce the uncaught walk,
+  which reports three of `main`'s commits as in-flight work with every emitted
+  commit carrying a parent. Covering it soundly needs a trade the owner should
+  pick, so the item carries the recipe and the three options.
+- `PL-GVC0` left `ready`. Making the id prefix configurable means four regexes
+  compiled at import from `store.ID_PATTERN` become per-config, threaded through
+  `store`, `vcs`, `config` and every reader of `BRANCH_ID_RE`, `ITEM_FILE_RE`,
+  `LEADING_IDS_RE` and `ANY_ID_RE`. Its own brief argues for doing it when a
+  second consumer appears and not before, and having read the code that is the
+  right call: the seam's only validation would be a synthetic second prefix.
+
+**What the low count is and is not evidence for.** It is not evidence that
+`PL-BHVM`'s root-cause account holds, because that account was already refuted -
+twenty of twenty ref-lifecycle items came back `unaffected` and no `blocked-by`
+edge was proposed. What the batch actually found is weaker and real: five of the
+nine turned on one question - what evidence proves a ref's work is on the base -
+and two rules answered them. `_annotates_only`, already in the module, decided
+three of them (`PL-JBRC`, `PL-YDL6`, and the `record`-write half of `PL-8MJ3`'s
+reasoning); `_superseded`, written once for `PL-XLQ5`, then answered `PL-8MJ3`
+unchanged. So the mechanism is reuse of a decided rule rather than consolidation
+of items.
+
+**The threat to the inference, stated plainly.** One session closing nine items
+has fewer opportunities to file than nine sessions closing one each, for reasons
+that have nothing to do with root causes: findings that would each have ended a
+session and been captured on the way out were instead fixed in place or folded
+into a sibling item's brief, and a session already holding the whole module
+recognises a finding as the same finding. That is a batching effect, not a
+root-cause effect, and this design cannot separate the two - both predict a low
+count. A cleaner test would close nine unrelated items in one session and compare,
+which is worth one item rather than a redesign of this one.
+
+The count was also made against the session's own interest, and that is worth
+recording: a pre-registered spawn count rewards not filing, so the three above
+were filed on the capture rule and counted rather than held. Any future run of
+this test should expect that pressure and say how it handled it.
