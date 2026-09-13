@@ -1132,6 +1132,16 @@ item may not outrank its own blocker — nothing can start before the thing
 gating it, so a `P1` waiting on a `P2` is an error rather than a priority. When
 the last blocker clears, `docket check` says so.
 
+**The pairing runs the other way too: an item at `ready` may not declare an
+open item blocker.** `ready` says the work can be started now and the edge says
+it cannot, and the ranking reads only the status — `docket next` filters on
+`status != "blocked"` and never opens the field — so without this the edge
+could be declared, every other check pass, and the item still be offered ahead
+of what it waits on, silently (`PL-KBD0`). `needs-decision` is deliberately
+exempt: `docket gate` counts that status as debt somebody can resolve, and
+forcing it to `blocked` would take a pending decision out of the gate by
+renaming it rather than by answering it.
+
 **The field takes two kinds of entry, on one line: an item id, and a milestone
 version.**
 

@@ -3,11 +3,13 @@ id: PL-KBD0
 title: A blocked-by edge with no status blocked is invisible to the ranking, which is the same silent wrong answer one step along
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, infra
 feature: planning-cadence
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-05
+closed: 2026-09-13
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_ready_item_waiting_on_open_work_is_an_error' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** `docket next` filters on `status != "blocked"` (`plan.py:242`) and
@@ -69,3 +71,46 @@ ranking.
 without something saying so, `PL-SN2C` and `PL-LKRP` are resolved either way,
 and `PL-ZBRB`'s advisory message no longer has to name a field its own check
 does not read.
+
+**Decided 2026-09-13: reading 1, restricted to `status: ready`, as an error.**
+`needs-decision` is not reached. This is the reading the brief itself
+prefers, and the part it left open - "whether `needs-decision` is reached
+too" - is settled against reaching it.
+
+The reason is the one the brief identifies and is worth stating as the
+decision rather than as a risk: `bin/docket gate` counts `needs-decision` as
+debt somebody can go and resolve. An item forced from `needs-decision` to
+`blocked` would leave the gate **by being renamed rather than by being
+answered**, and a pending decision would go quiet - which is the same class of
+silent wrong answer this item exists to close, pointed at a different reader.
+Between an invisible edge in the ranking and a decision that disappears from
+the gate, the first is the smaller harm. It is accepted explicitly, in the
+check's own docstring, rather than left to be rediscovered.
+
+At `ready` there is no such tension: `ready` asserts the work can be started
+now and an open `blocked-by` asserts it cannot, so the two cannot both be
+true and the fix is unambiguous.
+
+**It lands with nothing to catch, and that was already the argument for it.**
+Confirmed 2026-09-13: every open item carrying `blocked-by` is at `status:
+blocked` - sixteen of them - so the store is clean and `bin/docket check`
+still reports 0 errors with the check in place. The brief anticipated this
+exactly ("the defect is that nothing notices, and the store happens to be
+clean this week") and called it a point for the decider rather than against.
+A guard is worth having before the instance, not after.
+
+Two deliberate narrowings, both in the docstring so the next reader does not
+have to re-derive them: milestones are not reached, because `blocking_items`
+is the fail-closed half of the field and a milestone clears by a scoping
+round rather than by an item closing; and an unknown blocker is left alone,
+because `_check_references` already errors on it by name and a second error
+would say the fix is a status change when it is a typo.
+
+Six tests, and only two of them assert the error. The other four pin what the
+check must *not* reach - `needs-decision`, a closed blocker, the `blocked`
+state the check exists to push authors into, and a milestone edge - because
+on a check whose whole content is where it stops, the negative cases are the
+specification.
+
+`PL-ZBRB`'s advisory message still names both fields. Narrowing it now that a
+checker reads one of them is a separate change and was not made here.

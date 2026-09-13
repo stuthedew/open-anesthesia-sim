@@ -1,13 +1,14 @@
 ---
 id: PL-B32L
 title: core/parameters.py raises OSError and JSONDecodeError outside the exception hierarchy its own docstring promises
-status: done
 priority: P2
 effort: S
+status: done
 classes: defect
 touches: src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py
 added: 2026-09-02
 closed: 2026-09-13
+pr: 510
 verify: uv run pytest tests/unit/test_parameters.py && grep -q 'def test_a_missing_data_file_raises_the_boundary_type_this_module_promises' tests/unit/test_parameters.py
 ---
 

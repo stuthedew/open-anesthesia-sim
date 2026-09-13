@@ -862,6 +862,7 @@ def _check_references(report: Report, milestones: MilestoneStates | None = None)
 
     known_items = {i.identifier: i for i in report.items}
     _outranks_its_blocker(report, known_items)
+    _ready_with_an_open_blocker(report, known_items)
     _check_prose_dependencies(report, known_items)
 
     duplicates = [
@@ -1009,6 +1010,60 @@ PROSE_DEPENDENCY_CONTINUATION = re.compile(
     rf"\band\s+(?:(?:up)?on|by)\b(?:\.?\*\*)?[^.\n;:()\"|—]{{0,40}}?`?({ID_PATTERN})`?",
     re.IGNORECASE,
 )
+
+
+def _ready_with_an_open_blocker(report: Report, known_items: dict[str, Item]) -> None:
+    """Refuse `ready` on an item that says it is waiting for something open.
+
+    `ready` asserts the work can be started now and `blocked-by` asserts it
+    cannot, so an item carrying both is a plain contradiction. The ranking
+    reads only the status - `plan.py` filters on `status != "blocked"` and
+    never opens `blocked_by`, which `concurrency.py` alone consumes - so the
+    edge can be declared, every other check pass, and `docket next` still
+    offer the item ahead of the work it says it waits on. Silently, which is
+    the property `CLAUDE.md` names as earning attention (`PL-KBD0`).
+
+    This is `PL-ZBRB`'s defect displaced by one step rather than fixed: that
+    advisory made an undeclared prose prerequisite visible, and this is the
+    state an author reaches after acting on it and stopping one field early.
+    `PL-ZBRB`'s message has to name both fields to work around it, which is a
+    message doing a checker's job.
+
+    **`needs-decision` is deliberately not reached**, though it can hold the
+    same contradiction. Forcing it to `blocked` would take it out of
+    `bin/docket gate`, which counts that status as debt somebody can go and
+    resolve - so the item would leave the gate by being renamed rather than by
+    being answered, and a pending decision would go quiet. Its declared edge
+    staying invisible to the ranking is the smaller harm of the two, and is
+    accepted here rather than overlooked.
+
+    Items only, never milestones. `blocking_items` is the fail-closed half of
+    the field, and a milestone blocker clears when a scoping round happens
+    rather than when an item closes, which `_groom` already reads the roadmap
+    to decide.
+
+    An unknown blocker is left alone: `_check_references` already errors on it
+    by name, and a second error here would say the fix is a status change when
+    it is a typo.
+    """
+
+    for item in report.items:
+        if item.status != "ready":
+            continue
+        open_blockers = [
+            identifier
+            for identifier in item.blocking_items
+            if (blocker := known_items.get(identifier)) is not None and blocker.is_open
+        ]
+        if not open_blockers:
+            continue
+        one = len(open_blockers) == 1
+        report.errors.append(
+            f"{_where(item)}: sits at `ready` while {', '.join(open_blockers)} "
+            f"{'is' if one else 'are'} still open; `ready` says the work can be started "
+            f"now, so set `status: blocked`, or drop the {'edge' if one else 'edges'} if "
+            "it no longer holds"
+        )
 
 
 def _check_prose_dependencies(report: Report, known_items: dict[str, Item]) -> None:

@@ -1,13 +1,14 @@
 ---
 id: PL-KCWD
 title: APP_VERSION falls back to 'unknown' in the one line tying a displayed value to the model that produced it
-status: done
 priority: P3
 effort: S
+status: done
 classes: anticipated, defect
 touches: src/anesthesia_sim/app_metadata.py, src/anesthesia_sim/app/formatting.py, tests/unit/test_app_metadata.py
 added: 2026-09-02
 closed: 2026-09-13
+pr: 510
 verify: uv run pytest tests/unit/test_formatting.py tests/unit/test_app_metadata.py && grep -q 'def test_the_subtitle_declares_an_unidentified_build_instead_of_naming_one' tests/unit/test_formatting.py
 ---
 

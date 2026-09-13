@@ -1,13 +1,14 @@
 ---
 id: PL-TCW5
 title: FLOW_FRACTION_TOLERANCE is defined twice, so the two perfusion-sum guards can drift apart silently
-status: done
 priority: P3
 effort: S
+status: done
 classes: refactor
 touches: src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/patient.py
 added: 2026-09-02
 closed: 2026-09-13
+pr: 510
 verify: uv run pytest tests/unit/test_parameters.py && grep -q 'def test_the_perfusion_tolerance_is_defined_once_for_both_guards' tests/unit/test_parameters.py
 ---
 

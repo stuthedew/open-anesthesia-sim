@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/control_timeline.py
 added: 2026-09-05
 closed: 2026-09-13
+pr: 510
 verify: uv run pytest tests/unit/test_formatting.py tests/unit/test_simulation_view.py && grep -q 'def test_the_clock_panel_reads_in_the_chart_axis_form_past_an_hour' tests/unit/test_simulation_view.py
 ---
 
