@@ -11,7 +11,7 @@ import pytest
 
 from docket.checks import brief_gaps
 from docket.cli import build_parser, main, merge_shared
-from docket.vcs import lost, records_on_base
+from docket.vcs import FlightReport, lost, records_on_base
 from docket.verify import LANDED_GUARD
 
 READY = """---
@@ -278,6 +278,68 @@ def test_next_explains_why(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -
 
     assert "PL-B1B1" in out
     assert "Highest-priority work" in out
+
+
+def test_next_computes_the_flight_report_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`next` asked twice, and every ask shells out to git per branch ref (`PL-PMT7`).
+
+    `cmd_next` and `cmd_digest` each reached the report twice - once through
+    `_offered`, once directly. Measured on a four-core container, `next` issued 26
+    git subprocesses where `flight` and `status` issued 13, and roughly 180 ms of
+    its ~460 ms was the repeated work.
+
+    Asserted as a count of computations rather than as a duration, because the
+    duration is the machine's and the count is the defect. `digest` is checked
+    beside it: the two shared the shape and a cache that only covered one would
+    leave the other paying.
+    """
+    calls: list[str] = []
+
+    def counted(root: Path, *, items_dir: str = "docs/items") -> FlightReport:
+        calls.append(items_dir)
+        return FlightReport()
+
+    monkeypatch.setattr("docket.cli.branches_in_flight", counted)
+    store = str(_store(tmp_path, READY))
+    # `_run` passes `--no-git`, which short-circuits the read this is about, so
+    # the parser is driven directly here.
+    ran = ["--items", store, "--today", "2026-08-24"]
+
+    main([*ran, "next"])
+    assert len(calls) == 1
+
+    calls.clear()
+    main([*ran, "digest"])
+    assert len(calls) == 1
+
+
+def test_the_flight_cache_does_not_outlive_one_invocation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One process, one answer - and never an answer carried into the next command.
+
+    The cache lives on the `argparse` namespace precisely so that its lifetime is
+    the invocation's. A module-level cache would be faster still and wrong: a
+    caller ranking against a stale view of what is in flight hands a session an
+    item another session is holding, which is the collision the read exists to
+    prevent.
+    """
+    calls: list[str] = []
+
+    def counted(root: Path, *, items_dir: str = "docs/items") -> FlightReport:
+        calls.append(items_dir)
+        return FlightReport()
+
+    monkeypatch.setattr("docket.cli.branches_in_flight", counted)
+    store = str(_store(tmp_path, READY))
+    ran = ["--items", store, "--today", "2026-08-24"]
+
+    main([*ran, "next"])
+    main([*ran, "next"])
+
+    assert len(calls) == 2
 
 
 def test_concurrent_never_certifies_a_pair_as_safe(

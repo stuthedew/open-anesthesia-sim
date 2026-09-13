@@ -110,6 +110,12 @@ def _load(args: argparse.Namespace) -> tuple[Path, list[Item], Config]:
     return directory, read_items(directory), config
 
 
+#: Where `_flight` keeps its per-invocation answer. On the namespace rather than
+#: in a module global so that its lifetime is the command's: `argparse` builds a
+#: fresh one per parse, and there is nothing to remember to reset.
+_FLIGHT_ATTR = "_flight_report"
+
+
 def _flight(args: argparse.Namespace) -> FlightReport:
     """What is in flight, and which refs this checkout could not read to find out.
 
@@ -124,11 +130,33 @@ def _flight(args: argparse.Namespace) -> FlightReport:
     answering about a queue somewhere else, is the same wrong-project error
     `_load` guards against and is harder to see: the branches come back looking
     perfectly plausible.
+
+    **Computed once per invocation, and the cache lives on `args` for that
+    reason** (`PL-PMT7`). `cmd_next` and `cmd_digest` each asked twice - once
+    through `_offered`, once directly - and every ask shells out to git per
+    branch ref. Measured on a four-core container, `next` issued 26 git
+    subprocesses where `flight` and `status` issued 13, and roughly 180 ms of its
+    ~460 ms was the repeated work.
+
+    Correctness is what keeps the cache on the namespace rather than in a module
+    global or an `lru_cache`. One process must give one answer, and that answer
+    must not outlive the command: a long-running caller ranking against a stale
+    view of what is in flight would hand a session an item another session is
+    holding, which is the collision this whole read exists to prevent.
+    `argparse` builds a fresh namespace per parse, so its lifetime *is* the
+    invocation - nothing has to be remembered to reset, which a global would.
+    `FlightReport` is frozen, so a caller cannot edit what the next one reads.
     """
+    cached: FlightReport | None = getattr(args, _FLIGHT_ATTR, None)
+    if cached is not None:
+        return cached
     if getattr(args, "no_git", False):
-        return FlightReport()
-    root, items_dir = _tracked(args)
-    return branches_in_flight(root, items_dir=items_dir)
+        report = FlightReport()
+    else:
+        root, items_dir = _tracked(args)
+        report = branches_in_flight(root, items_dir=items_dir)
+    setattr(args, _FLIGHT_ATTR, report)
+    return report
 
 
 def _tracked(args: argparse.Namespace) -> tuple[Path, str]:

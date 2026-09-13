@@ -1245,6 +1245,63 @@ def _check_records(report: Report, records: RecordReport | None) -> None:
                 "recorded command; where the item is genuinely not done, reopen it and the "
                 "field is writable again"
             )
+    _check_landing_records(report, records)
+
+
+def _check_landing_records(report: Report, records: RecordReport) -> None:
+    """Hold a closed item's `closed:` and `milestone:` to what the base recorded.
+
+    **The same argument as `verify:`, one field over** (`PL-JSRH`). `closed:` is
+    when the work landed and `milestone:` is which release shipped it. Both are
+    written once, by the branch that closed the item; both are read back long
+    afterwards - `closed:` by `docket gate`, deciding which side of a freeze an
+    item falls on, and `milestone:` by `docket release` and `wave`, deciding
+    whose notes it belongs in - and neither had anything stopping a branch
+    rewriting it. `pr:` is the fourth field of the set and was already covered
+    from the other side, since `docket record` refuses to overwrite a different
+    number, which is what made the gap in these two visible.
+
+    **The severities differ, and that is the judgment this item existed to
+    make.** A rewritten `milestone:` moves an item between releases, so two sets
+    of release notes are wrong and nothing says so; `docket release` writes the
+    field and no hand-edit of it is a repair, so the rule is exact and it is an
+    error. A mistyped `closed:` date is different in kind: correcting one is a
+    legitimate repair, and the field is a date a human typed rather than a value
+    a tool dictated. So that is reported and not refused - the reader is told
+    what changed and decides, which is what `CLAUDE.md` asks of a signal needing
+    context.
+
+    Both readings are one-sided in the same direction `verify:`'s is:
+    `_changed_items` returns nothing where it cannot resolve a merge base, so a
+    truncated checkout under-reports and never accuses a branch of an edit it
+    did not make. The escape hatch is the same too, and needs no flag: reopen the
+    item and it is no longer `done` here, so the fields are writable again.
+    """
+    landed = records.landings
+    for item in report.items:
+        if item.status != "done":
+            continue
+        was = landed.get(item.identifier)
+        if was is None:
+            continue
+        if was.milestone and was.milestone != item.milestone:
+            report.errors.append(
+                f"{_where(item)}: closed on `{records.base}` recording "
+                f"`milestone: {was.milestone}`, and this branch changes it to "
+                f"`{item.milestone or '(nothing)'}`. Which release shipped an item is a record "
+                f"`docket release` wrote - moving it makes the notes for two releases wrong and "
+                "nothing else reports it. Restore the recorded milestone; where the item is "
+                "genuinely not done, reopen it and the field is writable again"
+            )
+        if was.closed and was.closed != item.closed:
+            report.advisories.append(
+                f"{_where(item)}: closed on `{records.base}` recording "
+                f"`closed: {was.closed.isoformat()}`, and this branch changes it to "
+                f"`{item.closed.isoformat() if item.closed else '(nothing)'}`. That date is what "
+                "`docket gate` reads to decide which side of a debt-gate freeze the item falls "
+                "on. Correcting a mistyped date is a legitimate repair, so this is reported "
+                "rather than refused - confirm it is one"
+            )
 
 
 def _groom(

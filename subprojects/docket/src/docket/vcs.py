@@ -2495,10 +2495,24 @@ def _items_at(ref: str, root: Path, items_dir: str, run: Runner) -> dict[str, st
 
 @dataclass(frozen=True)
 class BaseRecord:
-    """What the default base's copy of one closed item records as its proof."""
+    """What the default base's copy of one closed item records about the work landing.
+
+    `verify` is what proved it, and `closed` and `milestone` are the two facts
+    beside it that are records in the same sense: when the work landed, and which
+    release shipped it. All three are written once, by the branch that closed the
+    item, and all three are read back long afterwards - `closed` by `docket gate`
+    deciding which side of a freeze an item falls on, `milestone` by `docket
+    release` and `wave` deciding which release's notes it belongs in (`PL-JSRH`).
+
+    `pr` is the fourth and is guarded from the other side: `docket record`
+    refuses to overwrite a different number, which is what made the gap in these
+    two visible.
+    """
 
     identifier: str
     verify: str
+    closed: date | None = None
+    milestone: str = ""
 
 
 @dataclass(frozen=True)
@@ -2539,6 +2553,11 @@ class RecordReport:
     @property
     def commands(self) -> dict[str, str]:
         return {record.identifier: record.verify for record in self.records}
+
+    @property
+    def landings(self) -> dict[str, BaseRecord]:
+        """Each record by id, for the reads that want the fields beside `verify:`."""
+        return {record.identifier: record for record in self.records}
 
 
 def _changed_items(root: Path, base: str, items_dir: str, run: Runner) -> set[str]:
@@ -2634,7 +2653,14 @@ def records_on_base(
             continue
         recorded = parse_item(text, path.rsplit("/", 1)[-1])
         if recorded.status == "done":
-            records.append(BaseRecord(identifier=identifier, verify=recorded.verify))
+            records.append(
+                BaseRecord(
+                    identifier=identifier,
+                    verify=recorded.verify,
+                    closed=recorded.closed,
+                    milestone=recorded.milestone,
+                )
+            )
     return RecordReport(base=base, records=tuple(records))
 
 

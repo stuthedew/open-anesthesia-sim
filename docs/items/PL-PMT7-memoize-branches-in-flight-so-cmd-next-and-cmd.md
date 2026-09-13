@@ -3,11 +3,12 @@ id: PL-PMT7
 title: Memoize branches_in_flight so cmd_next and cmd_digest stop computing _flight twice per invocation
 priority: P3
 effort: S
-status: ready
+status: done
 classes: perf
 feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-03
+closed: 2026-09-13
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_next_computes_the_flight_report_once' subprojects/docket/tests/test_cli.py
 ---
 
