@@ -3,11 +3,12 @@ id: PL-S3Q0
 title: Two paraphrases of the tier-2 absolute survived PL-FJGY's sweep, in docs/MODEL.md's Kharasch note and reference_adult.json's Frayn and Karpe note
 priority: P1
 effort: S
-status: ready
+status: done
 classes: science, docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md, src/anesthesia_sim/data/patients/reference_adult.json
 added: 2026-09-07
+closed: 2026-09-13
 verify: python3 tools/doc_check.py check && ! grep -qF 'A review measures nothing and cannot be the authority for a stored value' src/anesthesia_sim/data/patients/reference_adult.json
 ---
 
@@ -61,3 +62,10 @@ mechanizing the class.
 `reference_adult.json`'s Frayn and Karpe entry, each replaced by the statement
 the source hierarchy actually makes - that the source is not adopted here and
 nothing is stored from it - and `make check` is clean.
+
+
+**Closed 2026-09-13.** Both paraphrases replaced with the rule the source
+hierarchy actually states — a tier-2 source is the authority for a stored value
+only on a recorded decision, and none has been taken for either of these — which
+is the phrasing `reference_adult.json`'s Wahba entry already carried, so the file
+is now internally consistent as well as correct.

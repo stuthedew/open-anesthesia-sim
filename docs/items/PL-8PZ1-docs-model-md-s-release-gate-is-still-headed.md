@@ -3,11 +3,12 @@ id: PL-8PZ1
 title: docs/MODEL.md's release gate is still headed 'Version v0.1.0 is complete only when', but entries are being added to it for v0.3.0
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-02
+closed: 2026-09-13
 verify: python3 tools/doc_check.py check && ! grep -q 'Version v0.1.0 is complete only when' docs/MODEL.md
 ---
 
@@ -44,3 +45,12 @@ v0.2.9 release pass.
 **Done when.** No heading or lead-in in `docs/MODEL.md` scopes the release gate
 to a version it no longer governs, and the section reads as what it is: the
 standing gate every release passes.
+
+
+**Closed 2026-09-13.** The lead-in is now "A release is complete only when:",
+the version-generic option the brief preferred, with a paragraph above it saying
+that this is the standing gate, why the v0.1.0 lead-in survived four releases,
+and why a heading naming a version is a second thing to keep true (`PL-C1KK`).
+No criterion beneath needed rewording: the one version any of them names is
+v0.0.2's circuit reference set, which is the identity of a test set rather than
+a scope claim.

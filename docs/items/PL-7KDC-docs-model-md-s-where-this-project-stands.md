@@ -3,11 +3,12 @@ id: PL-7KDC
 title: docs/MODEL.md's 'Where this project stands' paragraph still says all eleven reference-patient parameters are the Gas Man default patient and 26 of 29 rows are tier 3, though PL-8ZJQ moved venous_pool_volume_l to a tier-2 source
 priority: P1
 effort: S
-status: ready
+status: done
 classes: science, docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-07
+closed: 2026-09-13
 verify: python3 tools/doc_check.py check && grep -q 'ten of the eleven' docs/MODEL.md
 ---
 
@@ -57,3 +58,27 @@ the shipped tree rather than a gap.
 parameters are the Gas Man default patient and names `venous_pool_volume_l` as
 the exception, with its tier; the tier-3 row count is recomputed against the
 provenance table rather than adjusted by one; and `make check` is clean.
+
+
+**Closed 2026-09-13. Recomputing found more than the item predicted.** The
+count was not one row out. The table has grown to 35 rows since the paragraph
+was written — the six MAC-awake rows arrived with `PL-F52R` and `PL-TJJY` (#288) — so
+the paragraph now reads 35 rows, 25 tier 3, one tier 2 and nine tier 1, and the
+old "three exceptions are the vaporizer maxima" was wrong in kind as well as in
+number. The exceptions are now stated as three kinds: `venous_pool_volume_l`
+(tier 2, Davis and Mapleson 1981, adopted on `PL-8ZJQ` and the only adopted
+tier-2 source in the project), the three vaporizer maxima, and the six MAC-awake
+rows, which are adopted primary measurements — Katoh et al. 1993 and Chortkoff
+et al. 1995. The vaporizer sentence was corrected while there: only sevoflurane
+cites a manufacturer specification, isoflurane and desflurane citing published
+vaporizer-performance studies. A third paragraph says to recompute rather than
+adjust, and points at `PL-9LXK` as the mechanized answer.
+
+**A second copy of the count was found by the close-out docs sweep, and
+removed rather than corrected.** `docs/MODEL.md` § "Parameter provenance"
+restated "26 of its 29 rows are tier 3" inside the argument for why `tier` and
+`adopted` are two fields. It now says "most of the provenance table's rows are
+tier 3" and points at the one place the count is stated, which is the durable
+fix: the pair went stale because it was written twice and only one copy was ever
+maintained.
+

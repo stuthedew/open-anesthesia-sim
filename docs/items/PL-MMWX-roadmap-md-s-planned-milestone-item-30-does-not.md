@@ -3,11 +3,12 @@ id: PL-MMWX
 title: ROADMAP.md's planned-milestone item 30 does not say that cardiac-output scaling is one of its obligations, or that weight scaling is only safe as a coupled package
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, docs, planning
 feature: release-roadmap-seam
 touches: ROADMAP.md
 added: 2026-09-08
+closed: 2026-09-13
 verify: python3 tools/doc_check.py check && sed -n '/^30\. Add patient factors/,/^31\./p' ROADMAP.md | grep -q 'cardiac output'
 ---
 
@@ -100,3 +101,23 @@ The replacement scopes the grep to item 30's own entry with `sed -n
 '/^30\. Add patient factors/,/^31\./p'`, so prose anywhere else in the file
 cannot satisfy it. Confirmed both ways: exit 1 today, exit 0 with a `cardiac
 output` line inserted into item 30 and nowhere else.
+
+
+**Closed 2026-09-13.** Item 30 gains three paragraphs, placed after the
+"Scaling: not through body composition" decision because that is where a session
+scoping the milestone meets the question: that cardiac output is one of the
+quantities that scales and the scaling is a coupled package, with the arithmetic
+and the 2.64 / 0.76 / 1.00 comparison at 20 kg; why it is recorded in the item
+rather than only where a reader of the stored *value* meets it; and the
+weight-banded-defaults suggestion.
+
+**One caveat was added to that suggestion that this brief did not carry.**
+Cattermole et al. 2017 is cited in `reference_adult.json` as tier 1 and
+explicitly *not adopted*, and the note says why: awake, supine, resting, healthy
+Hong Kong Chinese subjects measured by transcutaneous Doppler rather than
+thermodilution, with the authors stating that normal ranges are method-specific.
+None of that describes an anaesthetised patient. Recommending it as the basis
+for a default without that caveat would have written an unadopted source into a
+milestone's scope as though adopting it were settled, so the paragraph
+recommends it *and* says that adopting it is its own recorded decision under
+"Source hierarchy".
