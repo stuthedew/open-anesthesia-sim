@@ -12,9 +12,11 @@ is where a displayed value can be read off the control that carries it.
 """
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 
+from anesthesia_sim.app import formatting as formatting_module
 from anesthesia_sim.app.formatting import (
     CHART_AXIS_TOP_MAC,
     CHART_GRID_INTERVAL_MAC,
@@ -689,16 +691,21 @@ def test_the_chart_axis_refuses_a_non_positive_mac(bad_mac_percent: float) -> No
 def test_the_discard_warning_states_the_time_at_the_clock_s_own_resolution() -> None:
     """One rendering of simulated time, not a second one written here.
 
-    A warning quoting "1 min" beside a clock reading "60.0 s" would leave a
+    A warning quoting "1 min" beside a clock reading "1m" would leave a
     reader converting between two displayed forms of the same quantity at
     the moment they are deciding whether to destroy it, which is the failure
     `format_elapsed` exists to prevent.
+
+    The literal is asserted as well as the call, so that the two cannot
+    agree by both being wrong: `format_elapsed` moved from `1234.5 s` to the
+    compound form under `PL-Q4M4` and `PL-CZFY`, and a test written only
+    against the function would have followed it silently.
     """
 
     warning = format_case_discard_warning("Sevoflurane", 1234.5, 3)
 
     assert format_elapsed(1234.5) in warning
-    assert "1234.5 s" in warning
+    assert "20m34.5s" in warning
 
 
 def test_the_discard_warning_names_the_agent_being_left() -> None:
@@ -889,3 +896,136 @@ def test_the_supported_run_length_is_stated_from_the_model_s_own_constant() -> N
 
     assert format_supported_run_length() == "24 hours"
     assert format_supported_run_length() == (f"{MAXIMUM_ELAPSED_SIMULATION_TIME_S / 3600:g} hours")
+
+
+def test_the_subtitle_declares_an_unidentified_build_instead_of_naming_one(
+    monkeypatch: Any,
+) -> None:
+    """`PL-KCWD`: a provenance field must not state a version-shaped non-answer.
+
+    `app_metadata.py` falls back to `UNKNOWN_VERSION` where installed-package
+    metadata is missing, and that policy is right - failing visibly beats
+    crashing on launch. The objection was where the visible failure landed.
+    Substituted into this sentence it read "Version unknown", and this
+    subtitle is the interface's only link between a displayed number and the
+    model that produced it, so a reader was given an answer where there was
+    none. `CLAUDE.md` requires a displayed value to be traceable to the exact
+    version behind it; a build that cannot offer that has to say so, because
+    an unidentified build is precisely the one whose numbers must not later
+    be quoted back as having come from a known version.
+    """
+
+    monkeypatch.setattr(formatting_module, "APP_VERSION_IS_KNOWN", False)
+
+    subtitle = format_subtitle("Sevoflurane")
+
+    assert subtitle == (
+        "Version unavailable (this build is not traceable) — Sevoflurane patient model"
+    )
+    assert "unknown" not in subtitle
+    assert subtitle.endswith("Sevoflurane patient model")
+
+
+def test_an_identified_build_still_names_its_version() -> None:
+    """The other half of `PL-KCWD`: the ordinary path is unchanged."""
+
+    assert format_subtitle("Sevoflurane") == (
+        f"Version {APP_BUILD_VERSION} — Sevoflurane patient model"
+    )
+
+
+@pytest.mark.parametrize(
+    "elapsed_s",
+    [0.1, 20.0, 59.9, 60.0, 90.0, 3600.0, 5400.0, 86_399.9, MAXIMUM_ELAPSED_SIMULATION_TIME_S],
+)
+def test_the_clock_and_the_axis_state_one_quantity_one_way(elapsed_s: float) -> None:
+    """`PL-Q4M4`: the conversion the reader was doing is the display's job.
+
+    `PL-SSBP` gave the chart a time base spanning a case, so its axis reads
+    `1h30m` while the clock above it read `5400.0 s`. One quantity, two
+    formats, on one screen - and locating a control mark on a twelve-hour
+    axis meant dividing by 3600 by hand. Asserted across the whole range
+    rather than at one value, because the forms have to agree at every
+    boundary where a component appears or falls away, which is exactly where
+    two independent implementations would drift.
+    """
+
+    assert format_elapsed(elapsed_s) == format_chart_time_label(elapsed_s)
+
+
+def test_the_origin_is_the_one_place_the_two_forms_differ() -> None:
+    """The axis origin is a bare `0`; the clock says `0s`.
+
+    Deliberate, and the only difference: `0s` invites reading a whole axis
+    as seconds, where the origin needs no unit to be understood, while a
+    clock reading a bare `0` beside six percent readings has nothing saying
+    what it is a count of.
+    """
+
+    assert format_chart_time_label(0.0) == "0"
+    assert format_elapsed(0.0) == "0s"
+
+
+def test_the_clock_reads_the_supported_limit_the_way_the_limit_is_stated() -> None:
+    """`PL-CZFY`: `86400.0 s` was false precision on a boundary declared in hours.
+
+    `PL-Y5WR` declared the 24-hour envelope, so this is the clock's top
+    reading and a reader had to divide by 3600 to place themselves in the
+    case. `format_supported_run_length` had already refused to reuse the old
+    form for exactly this reason; now the two agree about the quantity and
+    differ only in register.
+    """
+
+    assert format_elapsed(MAXIMUM_ELAPSED_SIMULATION_TIME_S) == "24h"
+    assert format_supported_run_length() == "24 hours"
+
+
+def test_the_clock_still_resolves_the_step_the_simulation_advances_by() -> None:
+    """The tenth survives the move, which is what made one form possible.
+
+    `format_elapsed`'s docstring used to argue that the clock and the axis
+    could not share a form because "a compound duration form would round the
+    stamp away". That was false of the compound form that shipped, and this
+    is the assertion that keeps it false: a recorded control change has to
+    resolve the `0.1 s` step it was taken at.
+    """
+
+    assert format_elapsed(0.1) == "0.1s"
+    assert format_elapsed(5400.1) == "1h30m0.1s"
+    assert format_elapsed(86_399.9) == "23h59m59.9s"
+
+
+def test_the_widest_reachable_clock_string_is_what_the_reserved_width_assumes() -> None:
+    """`theme.ELAPSED_VALUE_WIDTH` is derived from this, not measured.
+
+    The compound form changes length as components appear and fall away, so
+    the readout reserves a width rather than letting its panel move every
+    render tick. That reservation was sized from the widest string the
+    supported run length can reach; nothing renders the interface in a check
+    yet (`PL-7J96`), so this test is what holds the premise honest if either
+    the form or the envelope changes.
+    """
+
+    widest = max(
+        (
+            format_elapsed(MAXIMUM_ELAPSED_SIMULATION_TIME_S - tenth / 10.0)
+            for tenth in range(1, 11)
+        ),
+        key=len,
+    )
+
+    assert widest == "23h59m59.9s"
+    assert len(widest) == 11
+
+
+@pytest.mark.parametrize("bad_elapsed_s", [-0.1, float("nan"), float("inf")])
+def test_the_clock_refuses_a_time_that_cannot_have_elapsed(bad_elapsed_s: float) -> None:
+    """A behaviour the old one-decimal form did not have.
+
+    `f"{-1.0:.1f} s"` renders `-1.0 s` quite happily. Simulated time cannot
+    run backwards, so a value that does is a fault upstream, and `CLAUDE.md`
+    prefers an obvious failure to a plausible-looking displayed number.
+    """
+
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        format_elapsed(bad_elapsed_s)

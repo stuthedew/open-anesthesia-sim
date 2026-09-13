@@ -185,6 +185,25 @@ METRIC_SECONDARY_VALUE_SIZE = 13
 # values already shipping.
 APP_TITLE_SIZE = 26
 METRIC_VALUE_SIZE = 22
+
+# Width held open for the simulated-time readout, which is the one metric
+# whose string changes *length* while it updates. On the compound form
+# `PL-Q4M4` and `PL-CZFY` put it on, the clock steps `59.9s` -> `1m` ->
+# `1m0.1s` and `1h23m` -> `1h23m0.1s`, so an unreserved readout would shift
+# its own panel every time a component appeared or fell away - and this is a
+# value that redraws every render tick. `_build_trace_legend_item` records
+# the same rule for the legend rows: a control a reader is looking at must
+# not move under them.
+#
+# Derived rather than measured: the widest string the run length can reach is
+# `23h59m59.9s`, eleven characters, and `tests/unit/test_formatting.py`
+# asserts that so the premise fails loudly if the form or the envelope
+# changes. At METRIC_VALUE_SIZE bold that is about 150 logical pixels in a
+# proportional UI face. Nothing renders the interface in a check yet
+# (`PL-7J96`), so this has not been confirmed by eye; it is set wide enough
+# that being a little generous costs panel whitespace rather than a clipped
+# clock.
+ELAPSED_VALUE_WIDTH = 150
 ACCOUNTING_STATUS_SIZE = 20
 
 # The six compartment traces. Two things decide these values, and only one of

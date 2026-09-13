@@ -3,11 +3,13 @@ id: PL-Q4M4
 title: The simulated-time clock reads in seconds while the chart's own time axis reads in hours and minutes
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/control_timeline.py
 added: 2026-09-05
+closed: 2026-09-13
+verify: uv run pytest tests/unit/test_formatting.py tests/unit/test_simulation_view.py && grep -q 'def test_the_clock_panel_reads_in_the_chart_axis_form_past_an_hour' tests/unit/test_simulation_view.py
 ---
 
 **Problem.** `PL-SSBP` gave the chart a time base that spans a case, and its
@@ -52,3 +54,33 @@ the reader is being shown, not an implementation detail.
 **Done when.** The queue records which option was chosen and why. If it is 2 or
 3, the "Simulated time" panel reads in the same format as the chart's axis, and
 a test asserts the string the panel renders at a simulated time past an hour.
+
+**Decided 2026-09-13 by the project owner: option 2.** The clock moves to the
+compound form and keeps the tenth. Worked together with `PL-CZFY`, which is
+the same decision reached from the 24-hour end, and closed with it in one
+commit.
+
+Option 1 (leave both, accept the conversion) was the status quo this item
+exists to object to. Option 3 (compound form, tenth dropped from the clock)
+was refused because it is not needed: the brief's reason for considering it
+was that the control timeline needs `0.1 s` resolution and the compound form
+would not carry it, and `PL-CZFY` measured that the compound form *does*
+carry it - `_duration_components` returns the seconds as a float and the
+label formats them with `:g`, giving `1h23m45.6s`. So option 2 satisfies the
+stamp's requirement and the axis's at once, and option 3 would have given up
+resolution for nothing.
+
+`format_elapsed` and `format_chart_time_label` now share one private
+renderer and differ in exactly one respect, the axis origin's bare `0`,
+which is a parameter rather than a branch at each site so that the
+difference is visible where it is decided.
+
+**The reflow the brief did not raise but `PL-CZFY` did** is paid in layout,
+per the owner's direction: `theme.ELAPSED_VALUE_WIDTH` holds the readout's
+width open at the widest string the supported run length can reach, so a
+component appearing or falling away cannot move the panel under a reader.
+`_build_trace_legend_item` already records that rule for the legend rows.
+The width is derived rather than measured, and
+`test_the_widest_reachable_clock_string_is_what_the_reserved_width_assumes`
+is what fails if the form or the envelope changes; nothing renders the
+interface in a check yet (`PL-7J96`), so it has not been confirmed by eye.

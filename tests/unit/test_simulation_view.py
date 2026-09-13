@@ -92,10 +92,21 @@ from anesthesia_sim.app.simulation_view import (
     WASH_IN_TERMINUS_CEILING,
     SimulationView,
 )
-from anesthesia_sim.app.theme import ACCENT_TEXT, AGENT_COLOR_SCHEMES, INK, MUTED, WARNING
+from anesthesia_sim.app.theme import (
+    ACCENT_TEXT,
+    AGENT_COLOR_SCHEMES,
+    ELAPSED_VALUE_WIDTH,
+    INK,
+    MUTED,
+    WARNING,
+)
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, read_wash_in, wash_in_ratio
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
-from anesthesia_sim.core.exceptions import SimulationDomainLimitError, SimulationNumericalError
+from anesthesia_sim.core.exceptions import (
+    SimulationConfigurationError,
+    SimulationDomainLimitError,
+    SimulationNumericalError,
+)
 from anesthesia_sim.core.governing_equations import STATE_SIZE, UNIT_STATE
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
@@ -950,7 +961,7 @@ def test_refresh_view_formats_every_concentration_metric() -> None:
         history=(_sample(12.5, 0.02345, 0.01234, 0.00456, 0.00789, 0.00321, 0.00012),)
     )
 
-    assert view._elapsed_time_text.value == "12.5 s"
+    assert view._elapsed_time_text.value == "12.5s"
     assert view._circuit_concentration_text.value == "2.34%"
     assert view._alveolar_concentration_text.value == "1.23%"
     assert view._mixed_venous_concentration_text.value == "0.46%"
@@ -1464,7 +1475,7 @@ def test_start_pause_reset_handlers_drive_the_real_controller() -> None:
     view._handle_reset(ft.Event(name="click", control=view._reset_button))
 
     assert controller.snapshot().elapsed_s == 0.0
-    assert view._elapsed_time_text.value == "0.0 s"
+    assert view._elapsed_time_text.value == "0s"
     assert page.update_calls == 3
 
 
@@ -3784,6 +3795,90 @@ def test_halt_run_survives_a_render_failure_and_leaves_the_run_stopped() -> None
     assert controller.is_running is False
 
 
+def test_the_clock_panel_reads_in_the_chart_axis_form_past_an_hour() -> None:
+    """`PL-Q4M4`'s own definition of done, read off the control that carries it.
+
+    `tests/unit/test_formatting.py` pins the two formatters against each
+    other; this is the end-to-end half - the string actually on the
+    "Simulated time" panel at a time past an hour, which is where the old
+    form (`5400.0 s`) and the axis (`1h30m`) diverged most visibly for a
+    reader trying to locate a control mark.
+    """
+
+    view, _ = _build_view(history=(_sample(5400.0, 0.02, 0.01, 0.005, 0.008, 0.003, 0.001),))
+
+    assert view._elapsed_time_text.value == "1h30m"
+    assert view._elapsed_time_text.value == format_chart_time_label(5400.0)
+
+
+def test_the_clock_reserves_its_width_so_the_panel_cannot_move() -> None:
+    """The cost `PL-CZFY` named for the compound form, paid in layout.
+
+    The form changes length as components appear and fall away - `59.9s`
+    becomes `1m`, then `1m0.1s` - on a value that redraws every render tick,
+    so an unreserved readout would shift its own panel while a reader
+    watched it. `_build_trace_legend_item` records the same rule for the
+    legend rows. This asserts the reservation exists rather than its pixel
+    count, which nothing can verify until `PL-7J96` makes the interface
+    renderable in a check.
+    """
+
+    view, _ = _build_view()
+
+    assert view._elapsed_time_text.width == ELAPSED_VALUE_WIDTH
+
+
+def test_a_settings_raise_outside_the_project_hierarchy_halts_the_run() -> None:
+    """`PL-YK2V`: the settings path now applies the timer loops' policy.
+
+    The two timer loops catch bare `Exception` and route to `_halt_run`,
+    deliberately - a `TypeError` from a future refactor kills the loop
+    exactly as silently as a modelling failure does. `_apply_setting` caught
+    `AnesthesiaSimulationError` only, so the same exception escaped into
+    Flet's event dispatch, the `_refresh_and_render()` on its last line never
+    ran, and the interface was left showing the agent the reader picked in
+    the dropdown while the badge and all six readouts still showed the
+    previous one, with the run silently paused. That is a display labelled
+    with the wrong patient model, which `CLAUDE.md` treats as a safety
+    failure rather than a missing log line.
+    """
+
+    controller = _recording_controller(is_running=True)
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    def _explode() -> None:
+        raise TypeError("a future refactor changed a signature")
+
+    view._apply_setting(_explode)
+
+    assert controller.failures == ["TypeError: a future refactor changed a signature"]
+    assert controller.is_running is False
+    assert view._rejected_setting_notice is None
+
+
+def test_a_refused_setting_is_still_a_notice_and_not_a_halt() -> None:
+    """The other half of `PL-YK2V`, and the reason the widening is not a rewrite.
+
+    A `SimulationConfigurationError` means the core rejected a value and
+    changed nothing: the run is untouched and must not be marked failed.
+    Widening the catch must not collapse that distinction, so this pins the
+    narrow case against the test above - same method, same doubles, opposite
+    outcome.
+    """
+
+    controller = _recording_controller(is_running=True)
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    def _refuse() -> None:
+        raise SimulationConfigurationError("a value the core refused")
+
+    view._apply_setting(_refuse)
+
+    assert controller.failures == []
+    assert controller.is_running is True
+    assert view._rejected_setting_notice == "Setting refused — a value the core refused"
+
+
 def test_a_built_in_agent_without_an_identification_colour_fails_at_import() -> None:
     """Adding an agent without its ISO 5360 colour must stop the app starting.
 
@@ -4566,7 +4661,7 @@ def test_the_list_states_what_was_changed_and_to_what() -> None:
         ),
     )
 
-    assert view._control_timeline_text.value == ("12.0 s · Fresh gas flow 4.0 L/min -> 2.0 L/min")
+    assert view._control_timeline_text.value == ("12s · Fresh gas flow 4.0 L/min -> 2.0 L/min")
 
 
 def test_the_list_reads_most_recent_first() -> None:
@@ -4581,8 +4676,8 @@ def test_the_list_reads_most_recent_first() -> None:
     )
 
     lines = view._control_timeline_text.value.splitlines()
-    assert lines[0].startswith("20.0 s")
-    assert lines[1].startswith("10.0 s")
+    assert lines[0].startswith("20s")
+    assert lines[1].startswith("10s")
 
 
 def test_a_run_with_no_changes_says_so_rather_than_showing_an_empty_panel() -> None:

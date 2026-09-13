@@ -150,12 +150,26 @@ $$
 Wall-clock time may schedule interface updates, but it must never be used as simulation time.
 
 Seconds are the unit everywhere this document, the core, and the recorded
-history state a time. The interface renders that one stored quantity in more
-than one form and introduces no second unit doing so: the clock and every
-recorded control stamp read in seconds, while the chart states both its axis
-ticks and the width it is drawing as compound durations whose every component
-carries its own unit. "The chart's time base" is why the chart differs and
-"Displayed precision" is what each form is resolved to.
+history state a time. The interface renders that one stored quantity in **one**
+form and introduces no second unit doing so: the clock, every recorded control
+stamp and the chart's axis ticks all read as compound durations whose every
+component carries its own unit — `45s`, `1m30s`, `1h23m45.6s`, `24h`. A
+component that is zero is dropped, and a tenth is shown only where there is
+one, so a stamp still resolves the step it was taken at.
+
+The clock and the stamps read in seconds until `PL-Q4M4` and `PL-CZFY`. They
+were moved onto the axis's form because the two were on screen together: a reader locating a
+control mark stamped `5400.0 s` on an axis reading `1h30m` was converting
+between two displayed forms of one quantity by hand, and at the supported
+24-hour run length the clock's top reading was `86400.0 s`, which is false
+precision on a boundary this document states in hours (`PL-Q4M4`, `PL-CZFY`).
+
+The width the chart is drawing is the one thing still spelled out in words —
+`15 minutes` above an axis whose last tick reads `15m`. That is register
+rather than a second form: it is a phrase a reader chooses from a selector and
+reads back in a caption, not a tick competing for width. "The chart's time
+base" is where that is decided and "Displayed precision" is what each form is
+resolved to.
 
 #### Simulated time is a count of steps, not a running total
 

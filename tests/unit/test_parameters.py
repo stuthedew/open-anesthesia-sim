@@ -1,6 +1,7 @@
 import importlib.resources
 import json
 from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
 import doc_check
@@ -9,6 +10,7 @@ from pydantic import BaseModel, model_validator
 from pydantic import ValidationError as PydanticValidationError
 
 from anesthesia_sim.core import parameters as parameters_module
+from anesthesia_sim.core import patient as patient_module
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
@@ -734,3 +736,109 @@ def test_the_reference_patient_records_its_provenance_gap() -> None:
     assert not any(source.tier == "primary" and source.adopted for source in patient.sources)
     assert patient.provenance_gap is not None
     assert patient.provenance_gap.strip()
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _loader_pointed_at(monkeypatch: Any, directory: Path) -> None:
+    """Point `_load_packaged_json` at a directory instead of the package."""
+
+    monkeypatch.setattr(parameters_module, "files", lambda package: directory)
+
+
+def test_a_missing_data_file_raises_the_boundary_type_this_module_promises(
+    monkeypatch: Any, tmp_path: Path
+) -> None:
+    """`PL-B32L`: the stated boundary was false for a missing file.
+
+    The module docstring promises that every raise it makes to a caller is a
+    `SimulationConfigurationError`, and callers are written against it -
+    `app/simulation_view.py` catches the project hierarchy. Unwrapped,
+    `resource.open()` raised a bare `FileNotFoundError`, which is not an
+    `AnesthesiaSimulationError`, so a corrupted install escaped the one
+    boundary the core claims to present.
+    """
+
+    _loader_pointed_at(monkeypatch, tmp_path)
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        load_agent_parameters("sevoflurane")
+
+    assert "sevoflurane.json" in str(raised.value)
+    assert isinstance(raised.value.__cause__, OSError)
+
+
+def test_a_malformed_data_file_raises_the_boundary_type_this_module_promises(
+    monkeypatch: Any, tmp_path: Path
+) -> None:
+    """`PL-B32L`, the second of the two routes the audit named."""
+
+    (tmp_path / "sevoflurane.json").write_text("{ not json", encoding="utf-8")
+    _loader_pointed_at(monkeypatch, tmp_path)
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        load_agent_parameters("sevoflurane")
+
+    assert "sevoflurane.json" in str(raised.value)
+    assert isinstance(raised.value.__cause__, json.JSONDecodeError)
+
+
+def test_a_data_file_that_is_not_utf8_raises_the_boundary_type_too(
+    monkeypatch: Any, tmp_path: Path
+) -> None:
+    """The third route, which `PL-B32L`'s own brief did not name.
+
+    The file is opened as text, so bytes that are not UTF-8 fail in the read
+    inside `json.load()` with a `UnicodeDecodeError` - a `ValueError`, and
+    not a `JSONDecodeError`. Catching only the two the audit listed would
+    have left this one escaping and the module docstring still false, which
+    is why the fix names three types and why this test exists separately.
+    """
+
+    (tmp_path / "sevoflurane.json").write_bytes(b'{"id": "\xff\xfe"}')
+    _loader_pointed_at(monkeypatch, tmp_path)
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        load_agent_parameters("sevoflurane")
+
+    assert "sevoflurane.json" in str(raised.value)
+    assert isinstance(raised.value.__cause__, UnicodeDecodeError)
+
+
+def test_the_reference_patient_loader_shares_that_boundary(
+    monkeypatch: Any, tmp_path: Path
+) -> None:
+    """The other caller of `_load_packaged_json`, which the fix also covers."""
+
+    _loader_pointed_at(monkeypatch, tmp_path)
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        load_reference_adult_parameters()
+
+    assert "reference_adult.json" in str(raised.value)
+    assert isinstance(raised.value.__cause__, OSError)
+
+
+def test_the_perfusion_tolerance_is_defined_once_for_both_guards() -> None:
+    """`PL-TCW5`: the duplicated *check* is wanted, the duplicated number is not.
+
+    Two guards enforce "tissue perfusion fractions sum to 1" - this module
+    guards the data file and `PatientCompartments.__post_init__` guards
+    direct construction - and both should stay. What must not be duplicated
+    is the tolerance itself, which is a policy value that could reasonably be
+    retuned; two copies would let the guards disagree about what the rule
+    means with nothing to say so. This asserts the shape rather than the
+    value, so retuning it stays a one-line change.
+    """
+
+    assert patient_module.FLOW_FRACTION_TOLERANCE is parameters_module.FLOW_FRACTION_TOLERANCE
+
+    definitions = sorted(
+        str(path.relative_to(REPO_ROOT))
+        for path in (REPO_ROOT / "src").rglob("*.py")
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.startswith("FLOW_FRACTION_TOLERANCE = ")
+    )
+
+    assert definitions == ["src/anesthesia_sim/core/parameters.py"]

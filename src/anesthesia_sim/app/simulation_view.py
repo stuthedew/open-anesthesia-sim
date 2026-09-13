@@ -100,6 +100,7 @@ from anesthesia_sim.app.theme import (
     CONTROL_MARK_STROKE_WIDTH,
     CONTROL_MARK_SWATCH_HEIGHT,
     CONTROL_MARK_SWATCH_WIDTH,
+    ELAPSED_VALUE_WIDTH,
     EQUILIBRIUM_LINE_COLOR,
     EQUILIBRIUM_LINE_DASH_PATTERN,
     EQUILIBRIUM_LINE_STROKE_WIDTH,
@@ -611,7 +612,12 @@ class SimulationView:
         self._pending_agent_id: str | None = None
         self._new_case_dialog: ft.AlertDialog | None = None
         self._notice_text = ft.Text("", color=WARNING, weight=ft.FontWeight.BOLD, visible=False)
-        self._elapsed_time_text = self._build_metric_value("0.0 s")
+        # From the formatter, not a literal - the same rule the comment below
+        # states for the compartment placeholders, which this line was quietly
+        # breaking. Width reserved because the compound form changes length as
+        # components appear and fall away; see `ELAPSED_VALUE_WIDTH`.
+        self._elapsed_time_text = self._build_metric_value(format_elapsed(0.0))
+        self._elapsed_time_text.width = ELAPSED_VALUE_WIDTH
         # Placeholders come from the formatter rather than from literals, so
         # a change to the displayed resolution cannot leave the pre-run
         # reading disagreeing with every reading after it.
@@ -1587,8 +1593,9 @@ class SimulationView:
         rendering the running app at each step.
 
         Returns:
-            Seven responsive panels containing simulated time in
-            seconds and compartment values in percent.
+            Seven responsive panels containing simulated time in the
+            compound form the chart's axis uses and compartment values in
+            percent.
         """
 
         return ft.ResponsiveRow(
@@ -2816,6 +2823,23 @@ class SimulationView:
         safety failure. `_refresh_view` restores the control from the
         snapshot, on the frame this draws or on the next tick.
 
+        **Anything that is not an `AnesthesiaSimulationError` halts the run**,
+        which is the policy the two timer loops already apply to the same
+        class of error and the reason this method no longer names a narrower
+        one (`PL-YK2V`). The distinction is what the core is saying: the
+        project hierarchy means a value was rejected and nothing was
+        miscalculated, so a notice is the whole of the correct response,
+        while a `TypeError` from a future refactor means the handler broke
+        part-way and what is on screen can no longer be trusted to describe
+        the run. Left to escape into Flet's dispatch, that second case
+        skipped the `_refresh_view()` below and left the dropdown showing
+        the agent the reader picked while the badge and all six readouts
+        still showed the previous one, with the run silently paused and
+        nothing on screen saying so - a display labelled with the wrong
+        patient model, which is the failure `CLAUDE.md` names rather than a
+        missing log line. `_halt_run` draws its own frame, so this returns
+        instead of falling through to the refresh below.
+
         **`_refresh_view` is never what waits.** It runs on every call,
         coalesced or not, so the control objects always agree with the
         snapshot the moment a setting has been applied - which is the
@@ -2837,9 +2861,10 @@ class SimulationView:
         says what the dial says.
 
         Args:
-            apply_setting: The setter to run. Called once, and any
-                `AnesthesiaSimulationError` it raises is reported rather
-                than propagated.
+            apply_setting: The setter to run. Called once. An
+                `AnesthesiaSimulationError` it raises is reported as a
+                refused setting; anything else halts the run. Neither is
+                propagated.
             coalesce: Whether this call may leave its frame to the next
                 render tick. True for the parameter sliders, which report
                 continuously while dragged; false for every discrete
@@ -2853,6 +2878,9 @@ class SimulationView:
             apply_setting()
         except AnesthesiaSimulationError as error:
             self._rejected_setting_notice = f"Setting refused — {error}"
+        except Exception as error:  # broad by design - see the docstring
+            self._halt_run(error)
+            return
         else:
             self._rejected_setting_notice = None
 
