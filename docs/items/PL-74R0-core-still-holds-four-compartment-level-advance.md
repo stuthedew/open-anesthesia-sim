@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: defect, refactor
 feature: numerical-domain
+milestone: v0.4.17
 touches: src/anesthesia_sim/core/__init__.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/patient.py, tests/unit/test_compartment_primitives.py, tests/unit/test_patient.py, tests/reference/test_sevo_patient.py
 added: 2026-09-06
 closed: 2026-09-13
+pr: 516
 verify: uv run pytest tests/unit/test_compartment_primitives.py tests/unit/test_patient.py -q
 ---
 

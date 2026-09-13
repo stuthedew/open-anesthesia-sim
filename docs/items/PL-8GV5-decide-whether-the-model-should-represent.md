@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: planning, docs
 feature: model-spec-accuracy
+milestone: v0.4.17
 touches: docs/MODEL.md, ROADMAP.md
 added: 2026-09-06
 closed: 2026-09-13
+pr: 516
 verify: grep -qF 'held fixed under' docs/MODEL.md && make doc-check
 ---
 

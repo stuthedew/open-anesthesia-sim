@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: planning-cadence
+milestone: v0.4.17
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-05
 closed: 2026-09-13

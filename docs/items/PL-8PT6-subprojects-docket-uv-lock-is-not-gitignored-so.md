@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: infra
+milestone: v0.4.17
 touches: .gitignore, subprojects/docket/README.md
 added: 2026-09-13
 closed: 2026-09-13

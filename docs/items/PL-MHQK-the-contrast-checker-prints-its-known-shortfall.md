@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: session-cost, infra
+milestone: v0.4.17
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py
 added: 2026-09-03
 closed: 2026-09-13
