@@ -1,7 +1,13 @@
 ---
 id: PL-QNYF
 title: docket check errors on an item whose closure landed in a queue-only commit, and the error names no remedy the session can reach
-status: untriaged
+status: ready
+priority: P2
+effort: S
+classes: defect, infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_declined_recovery_names_the_explicit_record_form' subprojects/docket/tests/test_checks.py
 added: 2026-09-13
 ---
 
@@ -47,3 +53,10 @@ an absent number: `ClosureReport` already separates `derived` from `shallow` for
 exactly this kind of distinction. Then the error for "the closure carried no work"
 names the explicit `record` form, and the error for "no commit names a number"
 stays as it is.
+
+**Done when.** An item whose closure landed in a queue-only commit is told that
+the recovery declined and why, with `bin/docket record <number> --merge <merge
+commit>` named as the way to supply the number - rather than being told its
+provenance is lost. The error for a closure no commit names a number for is
+unchanged, and `subprojects/docket/tests/test_checks.py` carries a test for each of
+the two.

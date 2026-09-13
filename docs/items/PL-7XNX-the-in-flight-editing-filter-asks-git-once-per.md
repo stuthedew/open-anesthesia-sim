@@ -1,7 +1,13 @@
 ---
 id: PL-7XNX
 title: The in-flight editing filter asks git once per edited item file, where one diff per ref would answer for all of them
-status: untriaged
+status: ready
+priority: P3
+effort: S
+classes: perf
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_the_editing_filter_asks_git_once_per_ref' subprojects/docket/tests/test_vcs.py
 added: 2026-09-13
 ---
 
@@ -30,3 +36,8 @@ a set of superseded paths, so the grouping needs no change to `_superseded` itse
 **Not a correctness question.** The answer is identical either way; only the number
 of subprocesses differs. Worth doing when something else is already in this
 function rather than as a pass of its own.
+
+**Done when.** `branches_in_flight` asks `_superseded` once per ref carrying
+edited item files rather than once per file, the reported `editing` entries are
+unchanged, and a test asserts the number of calls rather than a duration - the
+shape `PL-PMT7` used for the same reason on the same code path.

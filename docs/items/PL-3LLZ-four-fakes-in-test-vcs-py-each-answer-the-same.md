@@ -1,7 +1,13 @@
 ---
 id: PL-3LLZ
 title: Four fakes in test_vcs.py each answer the same commit-paths question, and each new git read has to be taught to all of them
-status: untriaged
+status: ready
+priority: P3
+effort: M
+classes: refactor
+feature: dev-tooling
+touches: subprojects/docket/tests/test_vcs.py
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def _default_run' subprojects/docket/tests/test_vcs.py
 added: 2026-09-13
 ---
 
@@ -30,4 +36,11 @@ has an opinion about, with each fake overriding only what it cares about, is the
 obvious shape. The risk is the opposite failure: a fake that silently answers a
 question its test never considered, which is how a test comes to pass for the
 wrong reason. Worth doing only if the shared half stays limited to reads whose
+answer is genuinely uniform.
+
+**Done when.** A new git read added to `vcs.py` can be answered for the whole of
+`subprojects/docket/tests/test_vcs.py` in one place, with each fake still able to
+override what its own tests turn on; the suite passes unchanged; and no fake
+answers a question whose answer its tests never considered - which is the failure
+this consolidation risks and the reason it is worth doing only for reads whose
 answer is genuinely uniform.
