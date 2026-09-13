@@ -918,17 +918,40 @@ only where a release is actually being offered, because the offer is where a
 duplicate release starts - refusing at `release` alone leaves the second
 session having already raised it and been approved.
 
-**A release writes all of itself or none of it.** Two things reach disk — the
-`milestone:` stamp on every item going out, and the version — and neither
-order is safe while the bump can still fail on the file it is about to
-rewrite. Stamping first left the store recording a release that never
-happened, with nothing saying which stamps to unpick; the next run then
-reported nothing to release, because the work it would have shipped claimed to
-have shipped already. So `prepare_bump` settles everything the bump can reject
-— an absent version file, one carrying no version field — before the first
-stamp is written, and hands back the text to put there. What a rejected file
-costs is then an exit code and a message naming it, rather than a half-written
-store.
+**A release that cannot finish writing itself is resumable, and one that is
+not resumed is reported.** Three things reach disk — the `milestone:` stamp on
+every item going out, the version, and the notes — and the failures between
+them are two different shapes.
+
+The first is a write that is *rejected*, and it is settled by proving the bump
+before anything is stamped. Stamping first left the store recording a release
+that never happened, with nothing saying which stamps to unpick; the next run
+then reported nothing to release, because the work it would have shipped
+claimed to have shipped already. So `prepare_bump` settles everything the bump
+can reject — an absent version file, one carrying no version field — before
+the first stamp is written, and hands back the text to put there. A rejected
+file costs an exit code and a message naming it, not a half-written store.
+
+The second is a write that is *interrupted*, which no ordering prevents: the
+stamps go in a file at a time, so a lost container leaves some written and the
+notes unwritten however the three are ordered. What the ordering decides is
+only which half is short, and the re-run was the dangerous part, because it
+succeeded — `unreleased` reads a stamped item as already shipped, so the second
+run cut the remainder under the same name, wrote notes covering it and exited
+0. A 33-item release recorded as 7, caught by a person reading the two printed
+counts side by side (`PL-1MKQ`).
+
+So the cut of a named version is idempotent instead. `release.unrecorded_milestones`
+defines an interrupted cut once — a milestone stamped in the store that no
+notes file records — and both halves of the repair read it: `cmd_release`
+folds those items back in and re-cuts the whole release, and
+`checks._check_release_notes` reports the state as an error wherever the
+re-run has not happened. A run asked for a *different* version while a cut is
+unfinished is refused, since two numbers over one unfinished cut make both
+sets of notes permanently wrong. Its floor is the lower of the oldest version
+with a notes file and the current version: the first exempts releases cut
+before the project wrote notes at all, the second covers a first release,
+where there is no notes directory to take a floor from.
 
 **The offer a session reads is reconciled with the plan before it is
 printed.** `readiness` reads the store and only the store, which is what
@@ -1226,7 +1249,9 @@ whole of what the field means. Nothing else writes it. An item carrying one
 before its release is cut claims to have shipped in a release that has not
 happened — and worse, silently: `release.unreleased` selects finished work
 with **no** milestone, so a stamped item is invisible to the release that
-would actually ship it and is left out of that release's generated notes. Ten
+would actually ship it and is left out of that release's generated notes. The
+one exception is a cut being resumed, which reclaims the items its own
+interrupted run stamped and nothing else. Ten
 items in the project this grew in were in exactly that state, hand-stamped for
 a release still being assembled, every one of them scoped to the release its
 own notes would have omitted it from.

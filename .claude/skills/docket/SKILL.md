@@ -969,6 +969,17 @@ fetches first so both are current:
   it is yours to read. Wait for a live one; for an abandoned one run
   `bin/docket stranded` before dropping the ref.
 
+**A cut that was interrupted is resumed, never cut again under a new number.**
+The stamps go into the items one file at a time and the notes are written after
+the whole loop, so a lost container leaves work stamped for a release that has
+no notes. Re-run the same number — `make release VERSION=0.3.0` — and it picks
+those items back up and cuts the whole release; the `Resuming an interrupted
+cut of v0.3.0` line it prints says how many were already stamped, and the total
+under it should match what the dry run said. Naming a *different* version is
+refused, because two numbers over one unfinished cut leave both sets of notes
+permanently wrong about the same items. Where nobody re-runs it, `docket check`
+reports the release whose notes were never written (`PL-1MKQ`).
+
 The digest says the same thing on its `Releasable:` line instead of offering
 a release, so the second session never raises one. **Neither read sees a
 session that has pushed nothing**, so a clean answer still means "nothing
