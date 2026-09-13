@@ -9,6 +9,7 @@ feature: documentation-standard
 touches: .claude/rules/apparatus-standard.md
 added: 2026-09-13
 closed: 2026-09-13
+pr: 522
 verify: python3 tools/rules_paths_check.py && grep -q '## What a test on this side is for' .claude/rules/apparatus-standard.md
 ---
 

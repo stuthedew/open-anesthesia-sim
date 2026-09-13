@@ -1983,7 +1983,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 66 entries
+### Declined to Gate 2 on the refilling-queue ground — 67 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -2131,6 +2131,23 @@ pair of stale check workarounds, and the citation-form conversion `PL-V13T`
 left open. None can reach a reader of the simulator, which is the test the
 first twenty-nine were declined on.
 
+**One more from the 2026-09-13 triage pass, on the same ground.** `PL-DG84`
+(`docs/WORKING_NOTES.md` asks for resolved threads to be deleted and nothing
+reads that policy) was captured that day and triaged to `needs-decision`, which
+is what makes it debt this gate has to dispose of; it is `P2`, neither `safety`
+nor `science`, and wholly apparatus. The accumulation it describes predates the
+2026-09-06 freeze and so passes the presence test as squarely as the first
+twenty-nine, and it is declined for the reason they were: it makes no remaining
+entry cheaper, so it fails the arithmetic the presence rule asks for, and Gate 1
+stands at 52 open entries it can clear.
+
+Its five filed instances need no disposition of their own and are not listed
+here - `PL-5748`, `PL-60CQ`, `PL-BHJW` and `PL-75R0` are `docs`-classed at
+`ready`, which is not a debt class, and `PL-C92D` is already above on its `perf`
+class. That asymmetry is worth naming rather than looking like an omission: the
+systemic item reaches the gate only because its next step is a decision, while
+the concrete defects it generalises do not reach it at all.
+
 - PL-0M32 (S) Nothing can tell an item finished under a renamed test from one nobody has started
 - PL-0VFF (S) ROADMAP.md's 'Declined to Gate 2' list names PL-483K, PL-69JZ and PL-L09X as deferred, but all three closed done in v0.4.14, and nothing distinguishes a still-open entry from a closed one
 - PL-12P8 (S) PL-JBZK's lane check assumes every file under tests/ is a test file, so a shared non-test helper is told to declare itself apparatus
@@ -2157,6 +2174,7 @@ first twenty-nine were declined on.
 - PL-BHVM (M) Nineteen items re-decide what evidence proves a ref is done, seventeen of them in vcs.py: one design round rather than nineteen heuristic patches
 - PL-C92D (S) PL-YSZN's Flet frame table predates PL-2FM6 and measures a tree that no longer exists in two of its three stages, so the Qt/Flet comparison rests on one row
 - PL-CNCF (M) controller.drawn_window costs 6.2 ms a frame at the shipped 150-column budget - 99% of the frame's read and about eighty times the simulation at 1x
+- PL-DG84 (M) docs/WORKING_NOTES.md asks for resolved threads to be deleted and nothing reads that policy
 - PL-F48B (S) Nothing ever repairs a clone's tags after a history rewrite: fetch_remote runs git fetch without --tags --force, so release tags keep pointing at purged commits
 - PL-G8TR (S) no-prune-guard is evaded by the form it recommends - git branch -dr driven from a generated list is a prune
 - PL-H9GV (S) PL-01GD shipped as one exported Makefile variable with no test: PYTHONDONTWRITEBYTECODE appears only at Makefile:21, its declared touches names tests/unit/test_tools_portability.py which never changed, and its verify: passes against an untouched suite
