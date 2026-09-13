@@ -1,9 +1,15 @@
 ---
 id: PL-03ZG
 title: Bound the end-tidal-weighted alveolar sampling bias, which is the last open candidate for desflurane's washout residual
-status: untriaged
+priority: P1
+effort: M
+status: dropped
+classes: science
 feature: model-spec-accuracy
+touches: docs/MODEL.md
 added: 2026-09-13
+closed: 2026-09-13
+reason: the hypothesis it was written to bound is struck, on the project owner's decision of 2026-09-13 - Carpenter & Eger 1989 (PMID 2930000), the one primary human measurement of the alveolar-to-arterial gradient it rests on, has the difference larger for MORE soluble agents (P_A/P_a 1.23 for halothane against 1.11 for isoflurane, P = .009) where the hypothesis needs it to grow as solubility falls, and attributes it to physiologic dead space contamination whose sign follows F_I, making it negative through an elimination run at F_I = 0. Both push the published F_A/F_A0 down, so the mechanism deepens desflurane's residual instead of explaining it. Computing the log-normal V/Q bound this item proposed would answer a question the measurement has already answered differently. docs/MODEL.md carries the exclusion under "Desflurane's residual, and why the parameter file was not changed"
 ---
 
 **Problem.** Bound the end-tidal-weighted alveolar sampling bias, which is the last open candidate for desflurane's washout residual
@@ -233,3 +239,26 @@ answering a question the measurement has already answered differently.
 `docs/MODEL.md` now records that, without deleting the hypothesis - whether
 candidate 1 is struck is the project owner's call and is in the reply that
 found this.
+
+## Struck, and this item dropped with it (project owner, 2026-09-13)
+
+The owner agreed the recommendation the same session. `docs/MODEL.md` moves
+end-tidal sampling out of the live candidate list into an eighth row of the
+excluded table and an account below it carrying what was proposed, what the
+methods sections unblocked, and what Carpenter & Eger struck it on. One
+candidate remains - the published value - and nothing this project runs can
+settle it.
+
+**What is deliberately kept rather than deleted**, because a reader meeting the
+eighth row is owed why: the V/Q mechanism and its 44/30/15% rank order, the
+methods finding that the published `F_A` is a tracheal end-tidal sample and the
+fifth row therefore excludes `F_M` rather than `F_A`, and the two things that
+would reopen it - Carpenter's regression never being fitted at `F_I` = 0, and
+his patients being 52 +/- 16 years old against Yasuda's 25 +/- 5. Reopening
+needs both to resolve in the hypothesis's favour **and** the measured solubility
+ordering to reverse.
+
+**One consequence recorded in the specification.** If the sampling bias is real
+and signed as measured, the published 0.140 is low - so every statement that
+this model washes desflurane out too fast is conservative rather than
+optimistic.

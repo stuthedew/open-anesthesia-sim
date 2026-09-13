@@ -1849,6 +1849,10 @@ week disproves it, the project owner having turned around three interlibrary
 loans for exactly this kind of chain. What it asks of a session is bounded:
 name the cause against the methods, or record that the question is unanswerable
 from what this project can reach and say so in place of the two open candidates.
+**Closed 2026-09-13 the second way**, and one candidate further than that: the
+methods were read, the apparatus excluded, and end-tidal sampling struck on
+Carpenter & Eger's measurement of the gradient it rests on. Only the published
+value is left, which nothing this project runs can settle.
 
 **`PL-YLKR` is here for what the tooltip may imply rather than for what it
 says.** What it says is a bare number - no unit, no compartment, no agent, and
