@@ -2943,6 +2943,35 @@ holding its alveolar fraction up. Two candidates, neither demonstrated:
    one at 30 min, 65% nitrous oxide continued through the first 150 min of
    elimination — so the difference is one of description and **must not be read
    as a cohort-specific difference in equipment**.
+   **The one primary human measurement of this gradient disagrees with the
+   paragraph above on both counts, and it was read after that paragraph was
+   written** (`PL-03ZG`, supplied by the project owner and read 2026-09-13).
+   Yasuda's own discussion flags the assumption "that the $`F_A`$ accurately
+   indicates the anesthetic partial pressures in arterial blood" and cites
+   Carpenter RL, Eger EI II, *Alveolar-to-arterial-to-venous anesthetic partial
+   pressure differences in humans*, Anesthesiology 1989;70(4):630–5, PMID
+   2930000 — eight surgical patients with simultaneous arterial, end-tidal and
+   inspired sampling. It reports, first, that the difference is **larger for
+   more soluble agents**, not less: a measured $`P_A/P_a`$ of 1.23 ± 0.13 for
+   halothane against 1.11 ± 0.09 for isoflurane, P = .009, where the paragraph
+   above requires a bias that grows as solubility *falls*. And second, that the
+   mechanism is contamination of the end-tidal sample by physiologic dead space
+   gas — "unchanged inspired gas" — with
+   $`(P_A - P_a) = 0.22 (P_I - P_a) + 0.02`$, a slope its authors read as
+   end-tidal samples being about 20% dead space gas. That makes the sign follow
+   $`F_I`$: upward during administration, where $`F_{A0}`$ is measured, and
+   **downward through an elimination run at $`F_I = 0`$**. Both push the
+   published $`F_A/F_{A0}`$ down, so on this evidence the measured 0.140
+   understates the true arterial ratio and this model's 0.0935 sits *further*
+   from it rather than nearer.
+
+   So candidate 1 is recorded as **contradicted by the one measurement of its
+   own quantity**, not merely undemonstrated. It is not struck, because the
+   measurement is an extrapolation in one respect that matters — Carpenter's
+   regression was fitted over positive $`P_I - P_a`$ only, never at $`F_I = 0`$
+   — and because Carpenter's patients were 52 ± 16 years old against Yasuda's
+   25 ± 5, and physiologic dead space is age-dependent. `PL-03ZG` carries
+   whether it survives.
 2. *The published value.* Desflurane's recovery — agent recovered over agent
    taken up — was 105 ± 25% in those eight volunteers, against 102 ± 13% for
    isoflurane measured in the same sitting: the wider spread of the two, and
