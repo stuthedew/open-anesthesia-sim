@@ -1866,7 +1866,7 @@ any sense that survives the toolkit changing underneath it.
 resolves it rather than any work on it. That is recorded now so a later session
 does not read a dropped item as one that was skipped.
 
-### Declined to Gate 2 on the refilling-queue ground — 42 entries
+### Declined to Gate 2 on the refilling-queue ground — 45 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -1940,6 +1940,22 @@ editing item front matter by hand. It is wholly in the workflow lane and sits on
 the same refilling-queue ground as the first thirty; it is also a question about
 whether a mechanism is worth building at all, which is the shape most likely to
 be answered "no" and least likely to be worth holding a gate open for.
+
+**Three more from the `vcs.py` batch closure** (`PL-CSHL`, 2026-09-13). `PL-QNYF`,
+`PL-3LLZ` and `PL-7XNX` were filed by the session that closed nine of that
+cluster's items, and each was produced by one of those closures rather than found
+by an audit. All three are wholly in the workflow lane and sit on the same
+refilling-queue ground as the first thirty: `PL-QNYF` is a `docket check` error
+reachable only by a closure shape the same-commit rule makes uncommon and which no
+item is in today, `PL-3LLZ` is test-fake upkeep, and `PL-7XNX` is a handful of git
+subprocesses on a path `PL-PMT7` just cleared. Admitting them would grow a gate
+that is not draining in order to hold the release open for apparatus that cannot
+reach a reader of the simulator.
+
+Worth stating because the batch was measured: these three *are* the spawn count
+`PL-CSHL` recorded, so they are the visible cost of that pass and they are being
+deferred rather than hidden. Filing them was the capture rule; deferring them is
+this one.
 
 They enter Gate 2 when v0.6.0 is scoped, unless closed before it.
 
