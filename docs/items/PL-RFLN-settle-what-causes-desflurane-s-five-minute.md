@@ -4,11 +4,12 @@ title: Settle what causes desflurane's five-minute washout residual, which PL-73
 priority: P1
 effort: M
 status: done
-closed: 2026-09-13
 classes: science
 feature: model-spec-accuracy
 touches: docs/MODEL.md, tests/reference/test_published_wash_in_and_elimination.py
 added: 2026-09-08
+closed: 2026-09-13
+pr: 533
 verify: uv run pytest tests/reference/test_published_wash_in_and_elimination.py -q && grep -q 'def test_no_apparatus_dead_space_reaches_desflurane_s_published_elimination' tests/reference/test_published_wash_in_and_elimination.py
 ---
 

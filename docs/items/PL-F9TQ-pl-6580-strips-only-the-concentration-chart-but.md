@@ -9,6 +9,7 @@ feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, tools/contrast_check.py
 added: 2026-09-08
 closed: 2026-09-13
+pr: 530
 verify: uv run pytest tests/unit/test_simulation_view.py -q -k "wash_in_heading_and_its_plot or wash_in_plot_says_what_its_denominator"
 ---
 

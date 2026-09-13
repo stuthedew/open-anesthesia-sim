@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
 added: 2026-09-06
 closed: 2026-09-13
+pr: 530
 verify: uv run pytest tests/unit/test_simulation_view.py -q -k carry_over_sentence_names_only
 ---
 
