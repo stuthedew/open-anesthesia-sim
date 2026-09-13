@@ -2032,6 +2032,22 @@ litres are Gas Man's form rather than its upstream's: Lowe and Ernst, the book
 the Workbook names, prints the same material as per cent of a 100 kg body with
 cardiac output an allometric function of mass (`PL-YKSM`).
 
+**The vessel-rich flow fraction is 0.76 here and 75.8% in the one reachable
+publication of the same parameter set**, and the difference is recorded rather
+than reconciled away. The Workbook's own page-168 table gives the vessel-rich
+relative flow as 0.76, read at the source 2026-09-06, and that is where the
+stored value comes from. De Wolf et al. 2012's Table 1 — the same paper the
+twelve partition coefficients come from — prints 75.8, and 75.8 + 18 + 6 =
+99.8. `_ReferenceAdultPayload._perfusion_fractions_must_sum_to_one` and
+`PatientCompartments.__post_init__` each reject a set summing outside
+`FLOW_FRACTION_TOLERANCE = 1e-12` of 1.0, so the published triple could not be
+stored as printed even if it were preferred, and that tolerance stays where it
+is: one wide enough to admit 99.8% would admit a transcription error silently.
+The consequence of the difference is 0.26% on the vessel-rich time constant,
+which is inside anything a learner reads off the curve; the provenance is the
+finding, not the arithmetic. `reference_adult.json`'s De Wolf entry carries it
+in full (`PL-0NQ1`).
+
 There is no "arterial blood-pool volume" row: arterial blood is flow-limited
 and holds no independent state (see "Model boundary"). Tissue:blood
 coefficients are derived at load time (`AgentParameters` properties in
