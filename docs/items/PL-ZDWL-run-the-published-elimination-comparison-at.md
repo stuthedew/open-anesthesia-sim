@@ -1,14 +1,15 @@
 ---
 id: PL-ZDWL
 title: Run the published elimination comparison at Yasuda's own measured alveolar ventilation, which the methods text states and this project has not read out
-status: done
-closed: 2026-09-13
 priority: P1
 effort: S
+status: done
 classes: science
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-13
+closed: 2026-09-13
+pr: 536
 verify: python3 tools/doc_check.py check && grep -qF 'Both papers have since been read at full text, and the study publishes no' docs/MODEL.md
 ---
 

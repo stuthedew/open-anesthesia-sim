@@ -3,12 +3,13 @@ id: PL-QS9H
 title: Nothing measures how much standing explanatory text the interface carries, so prose accretes between reviews the way contrast claims did before contrast_check
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: ux, infra
 feature: teachable-case
 touches: tools/, src/anesthesia_sim/app/simulation_view.py, .claude/rules/ui-reader.md
 blocked-by: PL-6580, PL-F9TQ
 added: 2026-09-08
+verify: grep -q 'standing_text_check' Makefile && python3 tools/standing_text_check.py && uv run pytest tests/unit/test_standing_text_check.py
 ---
 
 **Problem.** The seven standing paragraphs did not arrive at once. Blamed
@@ -92,3 +93,16 @@ against the current screen would freeze the prose it exists to prevent.
 `app/simulation_view.py`; `.claude/rules/ui-reader.md` names it the way
 `ui-color.md` names `contrast_check.py`; and `tests/unit/` holds it to the
 portability rule `tests/unit/test_tools_portability.py` states.
+
+**Unblocked 2026-09-13.** Both `blocked-by` edges have closed - `PL-6580` and
+`PL-F9TQ` - and `docket check` had been reporting the stale `blocked` status as
+a grooming advisory since. The edges are left in place rather than deleted: they
+record why this item waited, which is the point of writing them down. Nothing
+about the problem or the approach changed.
+
+The `verify:` command it now owes names the tool `tools/standing_text_check.py`,
+matching `contrast_check.py` and `agent_identity_check.py` beside it, and
+requires it to be wired into `make check` and covered by a unit test. The
+filename is this session's naming call rather than the owner's decision, and is
+the one part of the command a later session may change freely - the shape it
+checks was settled on 2026-09-08 and is not.

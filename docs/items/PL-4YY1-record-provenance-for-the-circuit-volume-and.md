@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/data, docs/MODEL.md, docs/ARCHITECTURE.md, tools/doc_check.py, tests/unit/test_circuit.py, tests/unit/test_parameters.py, tests/reference/test_coupled_dynamics.py
 added: 2026-08-30
 closed: 2026-09-13
+pr: 538
 verify: grep -rq 'circuit_volume_l' src/anesthesia_sim/data/ && python3 tools/doc_check.py check
 ---
 

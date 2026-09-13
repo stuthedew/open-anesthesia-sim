@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/patients/reference_adult.json, docs/MODEL.md
 added: 2026-09-01
 closed: 2026-09-13
+pr: 538
 verify: uv run pytest tests/unit/test_parameters.py && grep -q '75.8' src/anesthesia_sim/data/patients/reference_adult.json
 ---
 
