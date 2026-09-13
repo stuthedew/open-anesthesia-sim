@@ -628,6 +628,15 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
     with certainty, so it is named separately - closing anything on that
     evidence would be acting on a command that proves nothing.
 
+    A blocked item is the case where only one of the two readings survives, and
+    it is worded separately for that reason (`PL-RC0M`). Work nobody can start
+    has not landed, so a passing command there can only mean the command does
+    not discriminate - and telling that session to "close it" would send it at
+    the one repair that is certainly wrong. Blocked items reach this at all
+    only on a run narrowed to what a branch changed, so the finding arrives
+    where somebody is already editing the item rather than on a sweep of the
+    whole store.
+
     A command that could not answer at all - killed at the limit, or not found
     by the shell - is reported under "not checked" rather than as an advisory,
     because there is no finding to report: the run looked and was stopped. The
@@ -674,21 +683,38 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
     # that should have closed. The transient case, a session that ran the work
     # before editing its item, resolves in the same commit the skill already
     # requires: `status: done` travels with the work.
-    if not landed.passing:
+    if landed.blocked:
+        one = len(landed.blocked) == 1
+        report.errors.append(
+            f"{', '.join(landed.blocked)} {'is' if one else 'are'} blocked but "
+            f"{'its' if one else 'their'} `verify:` command already passes. An item "
+            "nobody can start has not had its work land, so the only reading left is "
+            "that the command does not discriminate and `docket verify` would ACCEPT a "
+            "branch that did none of it: rewrite it to name something only the work "
+            "creates, and run it and see it fail before recording it"
+        )
+
+    # Everything below is the two-reading finding, so the blocked ids are taken
+    # out of it rather than reported twice under a question one of them has
+    # already answered.
+    named = set(landed.blocked)
+    startable = tuple(identifier for identifier in landed.passing if identifier not in named)
+    if not startable:
         return
-    one = len(landed.passing) == 1
+    one = len(startable) == 1
     message = (
-        f"{', '.join(landed.passing)} {'is' if one else 'are'} open but "
+        f"{', '.join(startable)} {'is' if one else 'are'} open but "
         f"{'its' if one else 'their'} `verify:` command already passes "
-        f"({len(landed.passing)} of {landed.considered} checked). Either the work landed "
+        f"({len(startable)} of {landed.considered} checked). Either the work landed "
         "and the item was never closed - close it - or the command does not "
         "discriminate and proves nothing, in which case `docket verify` would ACCEPT a "
         "branch that did none of the work: rewrite it to name something only the work "
         "creates, and run it and see it fail before recording it"
     )
-    if landed.shared:
+    shared = tuple(identifier for identifier in landed.shared if identifier not in named)
+    if shared:
         message += (
-            f". {', '.join(landed.shared)} share a command with another open item, "
+            f". {', '.join(shared)} share a command with another open item, "
             "which cannot prove any one of them done - give each its own"
         )
     report.errors.append(message)

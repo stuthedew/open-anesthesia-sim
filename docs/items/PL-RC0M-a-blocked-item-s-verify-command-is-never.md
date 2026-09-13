@@ -3,11 +3,13 @@ id: PL-RC0M
 title: "A blocked item's verify: command is never replayed, so it can rot unnoticed and redden whichever pull request unblocks it"
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-06
+closed: 2026-09-13
+verify: uv run pytest subprojects/docket/tests/test_verify.py subprojects/docket/tests/test_checks.py -q -k blocked && python3 -c "import pathlib; t=pathlib.Path('subprojects/docket/src/docket/verify.py').read_text(); raise SystemExit(0 if 'SCOPED_ONLY_STATUSES' in t else 1)"
 ---
 
 **Problem.** `already_passing` replays the commands of items at `ready` or
@@ -41,7 +43,7 @@ nothing.
 `already_passing`'s candidate filter; `subprojects/docket/src/docket/checks.py`
 for how a finding about a blocked item should be worded.
 
-**Decision needed.** What the `verify:` replay is for — whether it guards every
+**Decision needed — ANSWERED 2026-09-13, see below.** What the `verify:` replay is for — whether it guards every
 open item's command, or only the commands of items a session could act on now.
 The three options below follow from that, and none is obviously right.
 
@@ -69,3 +71,50 @@ decision rather than a task.
 status changes, or the decision is recorded that the rot is acceptable and why.
 
 **Found while working `PL-N092`'s unblocking, 2026-09-06.**
+
+**Answered 2026-09-13 (project owner): option 2.** The replay guards the
+commands of items a session could act on now, *plus* any item a branch has
+actually edited — which is where a blocked item's command becomes both cheap
+and timely to ask about.
+
+**What was built.** `SCOPED_ONLY_STATUSES = ("blocked",)` in
+`subprojects/docket/src/docket/verify.py`, added to the candidate statuses only
+when `scoped_to` is not `None`. So the whole-store sweep on `push` to `main` is
+unchanged and costs exactly what it did, while a `pull_request` run — already
+narrowed to `changed_items` by `PL-SDHR` — asks about a blocked item the branch
+touched. `already_passing` reports the answer in a new `LandedReport.blocked`,
+the subset of `passing` whose items are at one of those statuses.
+
+**`checks.py` words it as one reading rather than two, which is the half the
+item flagged and the half that matters to a session.** The standing message
+offers "either the work landed — close it — or the command does not
+discriminate". For an item nobody can start the first branch is impossible, so
+that sentence would send a session at a status edit when what is broken is the
+command. Blocked items get their own error naming the single reading, are
+removed from the two-reading finding's list and its `N of M` count, and are not
+told a second time by the `shared` clause, which says something the blocked
+sentence has already said outright.
+
+**Tests.** Five in `test_verify.py` — the sweep leaves a blocked item alone, a
+scoped run asks about one the branch changed, a scoped run still ignores one
+outside its scope, a blocked item whose command correctly fails is not a
+finding, and `blocked` is always a subset of `passing`. Three in
+`test_checks.py` for the wording, the de-duplication and the count. Verified by
+mutation: dropping the `scoped_to is not None` guard, so blocked items join the
+sweep, fails `test_a_blocked_item_is_left_out_of_the_whole_store_sweep`.
+
+**Why not the other two.** Option 1 widens the most expensive thing `docket
+check` does, permanently, to buy findings about work nobody can start — and
+`PL-SDHR` had just narrowed that same cost. Option 3 leaves a guard that
+reports the store sound while holding a command that proves nothing, which is
+`CLAUDE.md`'s silent-wrong-answer test and the reason this was taken first of
+the four decisions in its batch.
+
+**What this does not catch, stated so it is not rediscovered as a defect.** The
+`PL-N092` instance itself would still not have been caught on the day it broke:
+`PL-WB5K` deleted `README.md` without touching `PL-N092`'s file, so no branch
+was in scope for it until the unblocking one. What the fix buys is every branch
+that does edit a blocked item — filling `touches`, editing the brief, blocking
+it in the first place — finding the rot then, rather than the unblocking pull
+request wearing it. Catching the deletion case needs the sweep, which is
+option 1 and is rejected on cost.
