@@ -1,13 +1,15 @@
 ---
 id: PL-WVSK
 title: Nothing distinguishes a concentration fraction from a percent at the type level, and two boundaries convert implicitly
-status: done
 priority: P2
 effort: M
+status: done
 classes: refactor
+milestone: v0.4.17
 touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/blood.py, src/anesthesia_sim/core/tissue.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/control_timeline.py, src/anesthesia_sim/app/wash_in.py, tests/unit/test_concentration.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-09-02
 closed: 2026-09-13
+pr: 516
 verify: uv run pytest tests/unit/test_concentration.py -q && uv run python tools/ignore_check.py
 ---
 

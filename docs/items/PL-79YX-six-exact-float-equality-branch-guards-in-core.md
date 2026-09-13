@@ -1,13 +1,15 @@
 ---
 id: PL-79YX
 title: Six exact float-equality branch guards in core/ are correct and nowhere explained
-status: done
 priority: P3
 effort: S
+status: done
 classes: docs
+milestone: v0.4.17
 touches: src/anesthesia_sim/core/__init__.py, tests/unit/test_compartment_primitives.py
 added: 2026-09-02
 closed: 2026-09-13
+pr: 516
 verify: uv run pytest tests/unit/test_compartment_primitives.py -q
 ---
 

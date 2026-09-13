@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: release-process
+milestone: v0.4.17
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-13
 closed: 2026-09-13

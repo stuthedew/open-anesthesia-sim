@@ -1,14 +1,16 @@
 ---
 id: PL-4T90
 title: The docket skill lets a session answer a needs-decision item whose answer is direction rather than fact, and PL-8GV5 was closed on a session's own reasoning as a result
-status: done
 priority: P2
 effort: S
+status: done
 classes: docs, session-cost
 feature: delegation
+milestone: v0.4.17
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-13
 closed: 2026-09-13
+pr: 516
 verify: grep -qF 'never whose' .claude/skills/docket/SKILL.md
 ---
 

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: worker-instructions
+milestone: v0.4.17
 touches: docket.toml, .claude/rules/apparatus-standard.md, CLAUDE.md
 added: 2026-09-06
 closed: 2026-09-13
