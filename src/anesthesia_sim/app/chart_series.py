@@ -35,6 +35,7 @@ import flet_charts as fch
 
 from anesthesia_sim.app.controller import DrawnWindow, RecordedSeries
 from anesthesia_sim.app.wash_in import is_wash_in
+from anesthesia_sim.core.concentration import Fraction, percent_from_fraction
 
 __all__ = [
     "CHART_COLUMN_BUDGET_PER_SERIES",
@@ -473,7 +474,7 @@ def redraw_series(series: fch.LineChartData, window: DrawnWindow, recorded: Reco
     redraw_points(
         series,
         [
-            (elapsed_s, fraction * 100.0)
+            (elapsed_s, percent_from_fraction(Fraction(fraction)))
             for elapsed_s, fraction in zip(window.times_s, fractions, strict=True)
         ],
     )

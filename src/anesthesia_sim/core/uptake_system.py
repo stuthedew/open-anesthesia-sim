@@ -26,6 +26,7 @@ from anesthesia_sim.core.agent_simulation_validation import (
 )
 from anesthesia_sim.core.alveolar import AlveolarCompartment, AlveolarCompartmentState
 from anesthesia_sim.core.circuit import BreathingCircuit, BreathingCircuitState, FreshGasExchange
+from anesthesia_sim.core.concentration import Fraction, fraction_from_percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationNumericalError
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
@@ -229,9 +230,9 @@ class AgentUptakeSystem:
 
         return cls(
             circuit=BreathingCircuit(
-                delivered_concentration_fraction=(agent.mac_percent / 100.0),
+                delivered_concentration_fraction=(fraction_from_percent(agent.mac_percent)),
                 max_delivered_concentration_fraction=(
-                    agent.max_delivered_concentration_percent / 100.0
+                    fraction_from_percent(agent.max_delivered_concentration_percent)
                 ),
             ),
             alveoli=AlveolarCompartment(
@@ -262,7 +263,7 @@ class AgentUptakeSystem:
     def set_fresh_gas_flow(self, fresh_gas_flow_l_min: float) -> None:
         self.circuit.set_fresh_gas_flow(fresh_gas_flow_l_min)
 
-    def set_delivered_concentration(self, delivered_concentration_fraction: float) -> None:
+    def set_delivered_concentration(self, delivered_concentration_fraction: Fraction) -> None:
         self.circuit.set_delivered_concentration(delivered_concentration_fraction)
 
     def set_alveolar_ventilation(self, alveolar_ventilation_l_min: float) -> None:
@@ -544,14 +545,20 @@ class AgentUptakeSystem:
         required behavior: an exact solution of the equations cannot leave
         the physical range, so a value that does is evidence the run is no
         longer trustworthy rather than a number to display.
+
+        This is also the one place a `Fraction` is asserted rather than
+        carried: the state vector is nine bare floats, six of them
+        concentrations and three of them not, and the positions are what
+        separate them. `core/concentration.py` says what the type does and
+        does not guarantee.
         """
 
-        self.circuit.set_circuit_concentration_fraction(state[INSPIRED_FRACTION])
-        self.alveoli.set_concentration_fraction(state[ALVEOLAR_FRACTION])
-        self.patient.venous_blood.set_concentration_fraction(state[VENOUS_FRACTION])
+        self.circuit.set_circuit_concentration_fraction(Fraction(state[INSPIRED_FRACTION]))
+        self.alveoli.set_concentration_fraction(Fraction(state[ALVEOLAR_FRACTION]))
+        self.patient.venous_blood.set_concentration_fraction(Fraction(state[VENOUS_FRACTION]))
 
         for offset, tissue in enumerate(self.patient.tissues):
-            tissue.set_partial_pressure_fraction(state[FIRST_TISSUE_FRACTION + offset])
+            tissue.set_partial_pressure_fraction(Fraction(state[FIRST_TISSUE_FRACTION + offset]))
 
     def reset(self) -> None:
         """Clear dynamic state and restart agent accounting.

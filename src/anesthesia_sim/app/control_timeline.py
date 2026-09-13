@@ -36,6 +36,7 @@ from typing import Final
 
 from anesthesia_sim.app.controller import ControlChange, ControlInput
 from anesthesia_sim.app.formatting import format_elapsed, format_flow, format_percent
+from anesthesia_sim.core.concentration import Fraction
 
 __all__ = [
     "CONTROL_INPUT_LABELS",
@@ -163,7 +164,11 @@ def format_control_value(control: ControlInput, value: float) -> str:
     # this function any more, and a formatter for a control that cannot be
     # changed is a unit rule with no value to apply it to.
     if control is ControlInput.DELIVERED:
-        return format_percent(value)
+        # The only control whose recorded value is a concentration rather
+        # than a flow, which is what naming the type here asserts.
+        # `ControlChange.value` is one field for four controls, so it
+        # cannot carry the distinction itself.
+        return format_percent(Fraction(value))
 
     return format_flow(value)
 

@@ -60,6 +60,7 @@ from enum import StrEnum
 from typing import Final
 
 from anesthesia_sim.app.formatting import CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
+from anesthesia_sim.core.concentration import Percent, fraction_from_percent
 
 __all__ = [
     "WASH_IN_DENOMINATOR_FLOOR_FRACTION",
@@ -78,7 +79,9 @@ __all__ = [
 #: `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT` expressed as a fraction, so
 #: re-deriving the displayed resolution moves this with it instead of leaving
 #: a second constant behind to go stale. Rule 1 of the module docstring.
-WASH_IN_DENOMINATOR_FLOOR_FRACTION: Final = CONCENTRATION_DISPLAY_RESOLUTION_PERCENT / 100.0
+WASH_IN_DENOMINATOR_FLOOR_FRACTION: Final = fraction_from_percent(
+    Percent(CONCENTRATION_DISPLAY_RESOLUTION_PERCENT)
+)
 
 #: Where net uptake stops: $`F_A = F_I`$, the wash-in curve's asymptote and
 #: rule 2 of the module docstring. Above it the run is eliminating agent

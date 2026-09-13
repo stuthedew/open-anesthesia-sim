@@ -286,11 +286,24 @@ two one quantity, and what would break it.
 
 For example, $`F = 0.02`$ represents a 2% gas-phase concentration.
 
-The interface alone converts between fraction and percent:
+Two other places quote the same quantity in percent of an atmosphere and
+cannot do otherwise: a vaporizer dial and a MAC. The conversion between the
+two forms is:
 
 $$
 \text{percent} = 100F
 $$
+
+`src/anesthesia_sim/core/concentration.py` is the only place that arithmetic
+is written, in both directions, and the two forms are distinct types there so
+that a type checker refuses a percent where a fraction is wanted. It is used
+in three places and no others: the agent data files' published percents become
+fractions when `AgentUptakeSystem.for_agent()` builds a circuit; a refused
+vaporizer setting is quoted back in percent, the unit the dial is read in; and
+the interface converts for display. Before `PL-WVSK` the factor was written
+out twelve times across six modules, seven of them on the path to a displayed
+value, and this section said the interface alone converted — which `core/` had
+contradicted since the agent data files began carrying a MAC.
 
 The interface also converts to the second display unit, a multiple of the
 running agent's 1 MAC. It is a rescaling of the percent above by one
@@ -5259,6 +5272,67 @@ non-ideal lung, and residual rebreathing in the published apparatus — and
 which of this section's omissions the two surviving hypotheses rest on. It is
 recorded rather than corrected because every value that would close it is
 outside what the human measurements support.
+
+**Cardiac output and the three perfusion fractions are held fixed under
+anesthesia, and a real anesthetic moves them.** $`Q`$ and each
+$`\text{perfusion fraction}_i`$ are constants for the whole of a run. $`Q`$ is
+a user control and nothing else can change it; the three fractions are not a
+control at all. A volatile anesthetic is itself a cardiovascular depressant,
+so the model holds fixed exactly the quantities its own subject matter acts
+on, and the consequence lands on the curve a learner is reading: the tissue
+time constants are $`\tau_i = V_i\lambda_{i:b}/Q_i`$, so a flow that fell
+under anesthesia would *lengthen* every tissue's equilibration for as long as
+the agent was being given. That direction is against the intuition that more
+agent means faster equilibration, which is why it is stated here rather than
+left to the "hemodynamic response" bullet above.
+
+**It is not modeled because the human volunteer data do not describe a
+function this model could carry.** Three studies of healthy volunteers,
+anesthetized without surgery and measured against their own awake baseline:
+
+- Weiskopf RB, Cahalan MK, Eger EI 2nd, Yasuda N, Rampil IJ, Ionescu P,
+  Lockhart SH, Johnson BH, Freire B, Kelley S. *Cardiovascular actions of
+  desflurane in normocarbic volunteers.* Anesth Analg 1991;73(2):143-56.
+  PMID 1854029. Desflurane alone at 0.83, 1.24 and 1.66 MAC in 12 men:
+  **cardiac index did not change**, although stroke volume index fell and
+  filling pressure rose at every concentration - myocardial depression with
+  cardiac output maintained.
+- Cahalan MK, Weiskopf RB, Eger EI 2nd, Yasuda N, Ionescu P, Rampil IJ,
+  Lockhart SH, Freire B, Peterson NA. *Hemodynamic effects of
+  desflurane/nitrous oxide anesthesia in volunteers.* Anesth Analg
+  1991;73(2):157-64. PMID 1854030, doi:10.1213/00000539-199108000-00008. The
+  **same** volunteers, in the same crossover, with 60% nitrous oxide carrying
+  0.5 MAC of the total: cardiac index now fell dose-dependently.
+- Malan TP Jr, DiNardo JA, Isner RJ, Frink EJ Jr, Goldberg M, Fenster PE,
+  Brown EA, Depa R, Hammond LC, Mata H. *Cardiovascular effects of sevoflurane
+  compared with those of isoflurane in volunteers.* Anesthesiology
+  1995;83(5):918-28. PMID 7486177, doi:10.1097/00000542-199511000-00004.
+  Sevoflurane: cardiac index fell at 1.0 and 1.5 MAC and **returned to
+  baseline at 2.0 MAC** as systemic vascular resistance fell. Isoflurane
+  behaved similarly, and in both the depression diminished with prolonged
+  administration and with spontaneous rather than controlled ventilation.
+
+Read together: the *sign* of the cardiac-output change depends on the carrier
+gas, the dose-response is **not monotonic**, and the effect changes with time
+at a fixed dose and with the mode of ventilation. This model has no second
+gas, no ventilation mode, no surgical stimulus and no pharmacodynamic layer of
+any kind, so it could carry none of those dependencies - it could only carry a
+monotonic, time-invariant $`Q(\text{dose})`$, which is a relationship the
+literature above does not show. Teaching one would be worse than holding the
+flow fixed and saying so. The regional half is weaker still: the reachable
+measurements of how anesthesia redistributes flow between the vessel-rich,
+muscle and fat groups are largely animal, and the note below on the fat
+group's perfusion is what the human record supports even at rest.
+
+**What a learner gets instead is the control.** Cardiac output is on the
+interface, so the lesson - a higher output carries more agent away from the
+lung, stores more of it and slows the rise of $`F_A`$ - is reachable by moving
+it and watching, which is also how the model's own directional gates assert it
+(`tests/reference/test_sevo_patient.py`). What is absent is the *automatic*
+coupling from the agent to the flow, and a reader should supply that
+themselves. `PL-8GV5` records the decision; it would be reopened by this model
+gaining a pharmacodynamic layer, or a second gas whose own hemodynamic profile
+differs materially from the volatile it accompanies.
 
 **The MAC divisor is a limitation of the display, and a named one.** The
 second display unit divides by a tier-3 `mac_percent`, and "Delivery-limit

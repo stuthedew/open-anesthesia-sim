@@ -14,6 +14,7 @@ from types import MappingProxyType
 from typing import Final
 
 from anesthesia_sim.app.wash_in import wash_in_ratio
+from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -359,8 +360,8 @@ class SimulationSnapshot:
     elapsed_s: float
     agent_id: str
     agent_display_name: str
-    max_delivered_concentration_percent: float
-    agent_mac_percent: float
+    max_delivered_concentration_percent: Percent
+    agent_mac_percent: Percent
     """The running agent's 1 MAC, as a percent of one atmosphere.
 
     Exposed because the interface displays every compartment in multiples
@@ -392,15 +393,15 @@ class SimulationSnapshot:
     """
     circuit_volume_l: float
     fresh_gas_flow_l_min: float
-    delivered_concentration_fraction: float
+    delivered_concentration_fraction: Fraction
     alveolar_ventilation_l_min: float
     cardiac_output_l_min: float
-    circuit_concentration_fraction: float
-    alveolar_concentration_fraction: float
-    mixed_venous_concentration_fraction: float
-    vessel_rich_partial_pressure_fraction: float
-    muscle_partial_pressure_fraction: float
-    fat_partial_pressure_fraction: float
+    circuit_concentration_fraction: Fraction
+    alveolar_concentration_fraction: Fraction
+    mixed_venous_concentration_fraction: Fraction
+    vessel_rich_partial_pressure_fraction: Fraction
+    muscle_partial_pressure_fraction: Fraction
+    fat_partial_pressure_fraction: Fraction
     delivered_agent_l: float
     exhausted_agent_l: float
     stored_agent_l: float
@@ -477,7 +478,7 @@ class SimulationController:
         agent_id: str = "sevoflurane",
         circuit_volume_l: float | None = None,
         fresh_gas_flow_l_min: float | None = None,
-        delivered_concentration_fraction: float | None = None,
+        delivered_concentration_fraction: Fraction | None = None,
         alveolar_ventilation_l_min: float | None = None,
         cardiac_output_l_min: float | None = None,
     ) -> None:
@@ -508,7 +509,7 @@ class SimulationController:
         agent_id: str,
         circuit_volume_l: float | None,
         fresh_gas_flow_l_min: float | None,
-        delivered_concentration_fraction: float | None,
+        delivered_concentration_fraction: Fraction | None,
         alveolar_ventilation_l_min: float | None,
         cardiac_output_l_min: float | None,
     ) -> None:
@@ -696,11 +697,13 @@ class SimulationController:
             alveolar_ventilation_l_min=(alveoli.alveolar_ventilation_l_min),
             cardiac_output_l_min=patient.cardiac_output_l_min,
             circuit_concentration_fraction=(circuit.circuit_concentration_fraction),
-            alveolar_concentration_fraction=(alveoli.concentration_fraction),
-            mixed_venous_concentration_fraction=(patient.mixed_venous_fraction),
-            vessel_rich_partial_pressure_fraction=(patient.vessel_rich.partial_pressure_fraction),
-            muscle_partial_pressure_fraction=(patient.muscle.partial_pressure_fraction),
-            fat_partial_pressure_fraction=(patient.fat.partial_pressure_fraction),
+            alveolar_concentration_fraction=(Fraction(alveoli.concentration_fraction)),
+            mixed_venous_concentration_fraction=(Fraction(patient.mixed_venous_fraction)),
+            vessel_rich_partial_pressure_fraction=(
+                Fraction(patient.vessel_rich.partial_pressure_fraction)
+            ),
+            muscle_partial_pressure_fraction=(Fraction(patient.muscle.partial_pressure_fraction)),
+            fat_partial_pressure_fraction=(Fraction(patient.fat.partial_pressure_fraction)),
             delivered_agent_l=accounting.delivered_agent_l,
             exhausted_agent_l=accounting.exhausted_agent_l,
             stored_agent_l=accounting.currently_stored_agent_l,
@@ -884,7 +887,7 @@ class SimulationController:
             ControlInput.FRESH_GAS_FLOW, previous_value, circuit.fresh_gas_flow_l_min
         )
 
-    def set_delivered_concentration(self, delivered_concentration_fraction: float) -> None:
+    def set_delivered_concentration(self, delivered_concentration_fraction: Fraction) -> None:
         circuit = self._state.uptake_system.circuit
         previous_value = circuit.delivered_concentration_fraction
         self._state.uptake_system.set_delivered_concentration(delivered_concentration_fraction)

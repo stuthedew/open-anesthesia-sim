@@ -14,6 +14,7 @@ accepted a `bool` where `parameters.py` refuses one (`PL-LKRP`).
 
 from dataclasses import dataclass
 
+from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import require_supported_alveolar_ventilation
 from anesthesia_sim.core.validation import (
@@ -74,7 +75,7 @@ class AlveolarCompartment:
         require_supported_alveolar_ventilation(alveolar_ventilation_l_min)
         self.alveolar_ventilation_l_min = alveolar_ventilation_l_min
 
-    def set_concentration_fraction(self, concentration_fraction: float) -> None:
+    def set_concentration_fraction(self, concentration_fraction: Fraction) -> None:
         """Set alveolar state from a concentration fraction."""
 
         require_concentration_fraction("concentration_fraction", concentration_fraction)

@@ -14,6 +14,7 @@ supported range in `core/supported_ranges.py`.
 from dataclasses import dataclass
 from math import exp, inf
 
+from anesthesia_sim.core.concentration import Fraction, percent_from_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import require_supported_fresh_gas_flow
 from anesthesia_sim.core.validation import (
@@ -50,7 +51,7 @@ class BreathingCircuitState:
     put back a different amount of agent than the step started with.
     """
 
-    circuit_concentration_fraction: float
+    circuit_concentration_fraction: Fraction
 
 
 @dataclass(slots=True)
@@ -84,9 +85,9 @@ class BreathingCircuit:
 
     circuit_volume_l: float = 6.0
     fresh_gas_flow_l_min: float = 4.0
-    delivered_concentration_fraction: float = 0.0
-    circuit_concentration_fraction: float = 0.0
-    max_delivered_concentration_fraction: float = 1.0
+    delivered_concentration_fraction: Fraction = Fraction(0.0)
+    circuit_concentration_fraction: Fraction = Fraction(0.0)
+    max_delivered_concentration_fraction: Fraction = Fraction(1.0)
 
     def __post_init__(self) -> None:
         require_positive_finite("circuit_volume_l", self.circuit_volume_l)
@@ -105,7 +106,7 @@ class BreathingCircuit:
             "circuit_concentration_fraction", self.circuit_concentration_fraction
         )
 
-    def _require_deliverable(self, delivered_concentration_fraction: float) -> None:
+    def _require_deliverable(self, delivered_concentration_fraction: Fraction) -> None:
         """Reject a concentration the vaporizer in use cannot produce.
 
         Rejecting rather than clamping is deliberate: a silently clamped
@@ -118,8 +119,8 @@ class BreathingCircuit:
         if delivered_concentration_fraction > self.max_delivered_concentration_fraction:
             raise SimulationConfigurationError(
                 "delivered_concentration_fraction exceeds the vaporizer maximum "
-                f"({delivered_concentration_fraction * 100.0:g}% requested, "
-                f"{self.max_delivered_concentration_fraction * 100.0:g}% maximum)"
+                f"({percent_from_fraction(delivered_concentration_fraction):g}% requested, "
+                f"{percent_from_fraction(self.max_delivered_concentration_fraction):g}% maximum)"
             )
 
     @property
@@ -173,7 +174,7 @@ class BreathingCircuit:
             raise SimulationConfigurationError("circuit_volume_l is smaller than stored agent")
 
         self.circuit_volume_l = circuit_volume_l
-        self.circuit_concentration_fraction = stored_agent_l / circuit_volume_l
+        self.circuit_concentration_fraction = Fraction(stored_agent_l / circuit_volume_l)
 
     def set_fresh_gas_flow(self, fresh_gas_flow_l_min: float) -> None:
         """Set fresh gas flow, rejecting a flow outside the supported range."""
@@ -181,7 +182,7 @@ class BreathingCircuit:
         require_supported_fresh_gas_flow(fresh_gas_flow_l_min)
         self.fresh_gas_flow_l_min = fresh_gas_flow_l_min
 
-    def set_delivered_concentration(self, delivered_concentration_fraction: float) -> None:
+    def set_delivered_concentration(self, delivered_concentration_fraction: Fraction) -> None:
         """Set the vaporizer dial, rejecting anything it cannot deliver."""
 
         require_concentration_fraction(
@@ -190,7 +191,7 @@ class BreathingCircuit:
         self._require_deliverable(delivered_concentration_fraction)
         self.delivered_concentration_fraction = delivered_concentration_fraction
 
-    def set_circuit_concentration_fraction(self, concentration_fraction: float) -> None:
+    def set_circuit_concentration_fraction(self, concentration_fraction: Fraction) -> None:
         """Set circuit state from a fraction, as the coupled step produces it.
 
         The counterpart of `set_agent_amount()` for a caller that already
@@ -215,7 +216,7 @@ class BreathingCircuit:
         if agent_amount_l > self.circuit_volume_l:
             raise SimulationConfigurationError("agent_amount_l exceeds circuit capacity")
 
-        self.circuit_concentration_fraction = agent_amount_l / self.circuit_volume_l
+        self.circuit_concentration_fraction = Fraction(agent_amount_l / self.circuit_volume_l)
 
     def advance_fresh_gas(self, simulation_step_s: float) -> FreshGasExchange:
         """Advance exact circuit wash-in and report external exchange.
@@ -241,7 +242,7 @@ class BreathingCircuit:
         delivered_fraction = self.delivered_concentration_fraction
         fraction_remaining = exp(-simulation_step_s / self.time_constant_s)
 
-        next_fraction = (
+        next_fraction = Fraction(
             delivered_fraction + (initial_fraction - delivered_fraction) * fraction_remaining
         )
 
@@ -300,4 +301,4 @@ class BreathingCircuit:
     def reset(self) -> None:
         """Clear circuit agent while preserving settings."""
 
-        self.circuit_concentration_fraction = 0.0
+        self.circuit_concentration_fraction = Fraction(0.0)
