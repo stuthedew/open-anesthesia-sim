@@ -77,9 +77,42 @@ Four limits decide what a citation may claim:
   readable and their methods sections are not. Telling the two apart is the
   point of checking the field instead of the date.
 
-  `PL-XJ5P` carries what a session does on reaching this state; it is an open
-  decision about redistribution and is the project owner's, so do not invent an
-  answer to it here. What is settled is that the searching stops.
+  **What to do on reaching it: attach the private reference corpus** (decided
+  by the project owner 2026-09-13, `PL-XJ5P`).
+  `stuthedew/open-anesthesia-sim-references` holds owner-supplied full texts
+  for exactly this case. It is *private*, which is what makes holding them
+  ordinary personal use rather than redistribution — the premise this project
+  lost when the public repository stopped being able to carry them
+  (`PL-SHG5`), restored without reopening it.
+
+  Attach it with `add_repo` (owner `stuthedew`, repo
+  `open-anesthesia-sim-references`, access `read`), then `git clone --depth 1
+  https://github.com/stuthedew/open-anesthesia-sim-references`. The GitHub
+  proxy authenticates the clone, so no token enters the sandbox and the
+  environment's network level stays Trusted. Reading a PDF needs
+  `poppler-utils`, which the base image does **not** carry: `apt-get update -qq
+  && apt-get install -y -qq poppler-utils`, then `pdftotext -layout FILE -` in
+  preference to rendering page images, which costs far more and is needed only
+  for a scan with no text layer. Its `README.md` indexes the holdings with
+  citations verified against PubMed; read that before opening a PDF. Verified
+  end to end from this environment on 2026-09-13.
+
+  **A miss is an answer too, because the corpus is not the literature.** It
+  holds what the project owner has supplied, and nothing else. Where a terminal
+  source is not among its holdings the route really has ended: record the gap in
+  the item and put the reading to the project owner, who has institutional
+  access and has turned interlibrary loans around inside a day when the request
+  named the pages it needed. What must not happen is the other two exits —
+  narrowing the claim until something reachable supports it, or taking a search
+  summary for a reading. Both produce a `sources` note that looks sourced, and
+  `docs/MODEL.md` § "Source hierarchy" exists to stop exactly that.
+
+  **Reading a source from the corpus owes an extraction note back here.**
+  Otherwise the corpus is consulted once per *session* rather than once per
+  *source*, and every later session re-reads the same PDF at full context.
+  Where that note lives and what may lawfully go in it is
+  `docs/references/README.md`; `PL-Z3V5` carries the note's fields and the
+  first worked example.
 
 ## A search result is not a source
 

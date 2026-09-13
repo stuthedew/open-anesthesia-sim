@@ -35,6 +35,48 @@ part designed to survive such a removal, which is why they are recorded here
 in full rather than left implicit in the filenames — a reader who needs one of
 those sources can now reach it the way any other reader would, through the DOI.
 
+## Where owner-supplied full texts live now
+
+**A private companion repository: `stuthedew/open-anesthesia-sim-references`**
+(`PL-XJ5P`, decided by the project owner 2026-09-13). The rule above closed the
+only home this directory had for a source the project cannot otherwise reach,
+and put nothing in its place; this is what now stands there.
+
+It is *private*, which restores the premise the removed entries used to rest on
+— holding a publisher-copyright full text for personal use is not
+redistribution — without reopening it for this public repository. **Nothing
+about the rule above changes.** No publisher-copyright file may sit in this
+directory, and nothing is to be copied from the corpus into this repository.
+
+**What may cross back, and why it is a different act.** The citation, and the
+*facts* taken from the source: a value, its units, the table or page it sits on,
+what was measured and in what population. Facts are not copyrightable in the
+United States — *Feist Publications, Inc. v. Rural Telephone Service Co.*,
+499 U.S. 340, 344–45 (1991), holding that "facts are not copyrightable" and
+that copyright in a factual compilation is "thin", protecting only original
+selection and arrangement. Short quotation for scholarly commentary is
+separately supported by 17 U.S.C. § 107. Reproducing a table wholesale in its
+published arrangement is neither of those things, and is not needed.
+
+This is what the section above already says about citations — "the citations
+were always the part designed to survive such a removal" — extended from the
+citation to the numbers taken under it.
+
+**Reading a source from the corpus therefore owes an extraction note in this
+directory.** Without one the corpus is consulted once per *session* instead of
+once per *source*, and each later session re-reads the same PDF at full
+context; `CLAUDE.md` § "Prefer deterministic tooling over repeated model work"
+is that argument applied to literature. The obligation and its home are settled
+here. What a note contains, and the first worked example, are `PL-Z3V5`'s and
+are deliberately not fixed here.
+
+How a session attaches and reads the corpus — `add_repo`, the shallow clone,
+`poppler-utils` and `pdftotext -layout` — is in
+`.claude/rules/citing-sources.md`, which loads on this directory, so it is not
+repeated here. That file also says what to do when a terminal source is *not*
+among the holdings: the corpus is what the project owner has supplied, not the
+literature, and a miss means recording the gap and putting the reading to them.
+
 ## The documents
 
 ### Baker & Farmery 2011 — inert gas transport in blood and tissues
