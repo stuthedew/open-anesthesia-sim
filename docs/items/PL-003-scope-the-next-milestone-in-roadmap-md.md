@@ -24,7 +24,8 @@ single-halogenated-agent interlock behavior.
 planned-milestone list all build on it, and nothing in that direction can
 start until it exists. It is also the answer to "are we in a good spot to
 move on to the next roadmap feature?"
-**Where.** `ROADMAP.md` ("Next milestone" and "Planned milestones").
+**Where.** `ROADMAP.md`, its then-current `Next milestone` section and
+`Planned milestones`.
 **First step.** Draft the goal and the out-of-scope list first; the
 out-of-scope list is what keeps the milestone narrow.
 **Done when.** `ROADMAP.md` carries a fully specified milestone with a

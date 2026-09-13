@@ -660,6 +660,33 @@ def test_a_section_mark_citation_that_resolves_is_not_an_error(tmp_path: Path) -
     assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
 
 
+def test_an_under_citation_after_the_document_is_checked(tmp_path: Path) -> None:
+    """`` `doc.md` under "X" `` - 11 in the tree, and `under` says outright it cites."""
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md` under "A deleted thread".\n')
+    assert any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_parenthesised_citation_is_checked(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md` ("A deleted thread").\n')
+    assert any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_possessive_quotation_of_prose_is_not_read_as_a_citation(tmp_path: Path) -> None:
+    """The form this check deliberately does not read, and why.
+
+    `` `CLAUDE.md`'s "..." `` quotes a *sentence* as often as it cites a
+    section, and nothing distinguishes the two without reading the meaning.
+    Admitting it reported 28 quotations of real prose as stale headings
+    (measured 2026-09-13, `PL-V13T`). `§` has no second use, which is what
+    makes it checkable and this not.
+    """
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md`\'s "a sentence quoted from it".\n')
+    assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
 def test_a_citation_wrapping_inside_a_blockquote_is_not_reported_stale(tmp_path: Path) -> None:
     """A `>` opening the continued line belongs to the blockquote, not the quote.
 

@@ -94,10 +94,43 @@ not reported stale, both are pinned by tests that fail without the fix
 (mutation-checked, separately, 2026-09-13), and the tree is at 0 errors with
 the check now actually looking.
 
-**Not done here.** Nothing was converted between the two forms. 285 `§` and 39
-comma citations both work and both are now checked; picking one is a
-readability question, not a correctness one, and would be a large mechanical
-diff for no change in what is enforced.
+**The connective set was then measured properly rather than guessed at a
+second time.** Fixing `§` alone still left the next-largest form unchecked, so
+every separator actually written between a cited document and its quotation was
+counted:
+
+```text
+  § "        353      's "      150      , "    44      (bare) "   20
+  under "     11      ("          9      's own "  5    : "         4
+  §§ "         3      plus a tail of content words: "gains", "holds to",
+                      "the", "eighteen", "-", "—"
+```
+
+Three were added - `under`, `(`, and `§§` - and each was tested in isolation:
+
+```text
+  § §§ , : (bare) under     0 errors
+  ... plus (                1 error, and it was a real one
+  ... plus 's               28 errors, every one a false positive
+```
+
+**The possessive is excluded, and that is the finding rather than a shortcut.**
+This project writes `` `CLAUDE.md`'s "..." `` to quote a *sentence* at least as
+often as to cite a section, and the two are indistinguishable without reading
+the meaning - so admitting it reported 28 quotations of correct prose as stale
+headings. That is `PL-KJ63`'s over-reach exactly, which cost a rewording of
+prose that was not wrong. `§` is checkable precisely because it has no second
+use. 150 possessive citations therefore stay unchecked by design, and the
+honest way to check them is to convert them to `§`, not to loosen the pattern.
+
+The `(` form found the twenty-ninth error and it was genuine: `PL-003`, closed,
+citing a ROADMAP section named `Next milestone` that no longer exists. De-quoted
+like the others.
+
+**Not done here.** Nothing was converted between forms. Converting the 150
+possessive citations to `§` would bring them under the check and is the only
+way to get them there - a large mechanical diff, worth its own item rather than
+riding this one.
 
 **Writing this item up tripped the fix, which is the limitation worth
 recording.** The five examples above were reported as citations, because

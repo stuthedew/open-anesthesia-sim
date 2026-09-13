@@ -325,9 +325,30 @@ MARKER_RE = re.compile(r"^(?:[-*+]\s+)?\*\*(?P<title>[^*\n]+?)\.?\*\*", re.M)
 # queue and the docstrings without the guesswork that reading a bare quoted
 # phrase there would need. The quotation must open on a word character, so a
 # stray `")"` in prose is not read as one, and it may span source lines.
+#: What may stand between a cited document and its quotation. A closed set of
+#: connectives, never a content word: the pattern once allowed only `,` and
+#: `:`, which left the two forms this project actually writes - `§` and the
+#: possessive - matching nothing, and matching nothing is silent rather than
+#: reported. Counted 2026-09-13 over `*.py` and `*.md`: 353 `§`, 150 `'s`, 44
+#: `,`, 20 bare, 11 `under`, 9 `(`, 5 `'s own`, 4 `:`, 3 `§§`.
+#:
+#: The possessive is deliberately NOT here, and it is the biggest excluded
+#: group. This project writes `` `CLAUDE.md`'s "..." `` for a *sentence* it is
+#: quoting as often as for a section it is citing, and the two are
+#: indistinguishable without reading the meaning: admitting it reported 28
+#: quotations of real prose as stale headings (measured 2026-09-13). `§` has no
+#: such second use, which is what makes it checkable. The tail below the
+#: possessive is prose too - "`docs/MODEL.md` gains \"a new section\"", "its
+#: eighteen \"...\"" - and admitting an arbitrary word would read it as a
+#: citation and hard-fail on text that is not wrong. That is `PL-KJ63`'s
+#: over-reach, which cost a rewording of correct prose, so widening this set
+#: means adding a named connective that has no second use, and nothing else
+#: (`PL-V13T`).
+CITATION_CONNECTIVE = r"(?:[,:(]|§{1,2}|\bunder\b)"
+
 QUOTED_SOURCE_RE = re.compile(
     r"(?:\b(?:see|under|in)\s+)?"
-    r"`(?P<document>[\w./-]+\.md)`[ \n]*(?:[,:]|§{1,2})?[ \n]*"
+    r"`(?P<document>[\w./-]+\.md)`[ \n]*" + CITATION_CONNECTIVE + r"?[ \n]*"
     r'"(?P<quoted>\w[^"]{2,200}?)"',
     re.DOTALL,
 )
