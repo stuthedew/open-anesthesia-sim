@@ -283,6 +283,49 @@ def placement_line(scope: Scope | None, identifier: str) -> str:
     return f"placed by no section of {scope.anchor} - it ranks on its band alone"
 
 
+#: The tags `placement_mark` draws, with the clause that defines each one. The
+#: caller prints the clause for the tags it actually used, which is what keeps a
+#: bare row from reading as "nobody looked" - the failure `PL-J790` named, met
+#: here by a legend rather than by a sentence on every row.
+PLACEMENT_MARKS = {
+    "[gate]": "on its frozen list",
+    "[after the gate]": "in its Required scope, which clearing the gate comes before",
+    "[in scope]": "in its Required scope",
+}
+
+
+def placement_mark(scope: Scope | None, identifier: str) -> str:
+    """The same relation as `placement_line`, compressed to a tag, or `""`.
+
+    `format_status` prints two dozen rows on one screen, so the sentence above
+    does not fit and a sentence per row would bury the handful that matter -
+    five of this store's twenty-four feature rows were on the gate when
+    `PL-BZCM` was written. The relation is what the two must agree on, and that
+    is `scope.placement` in both.
+
+    A later milestone's section is named by its version, which is what a reader
+    needs in order to place it; the fourth answer - no section places the id -
+    is deliberately no tag at all, because it is the common case and a legend
+    can define a blank row once.
+    """
+    if scope is None or not scope.anchor:
+        return ""
+    where = scope.placement(identifier)
+    if where == IN_SCOPE:
+        return "[gate]" if scope.clearing else "[in scope]"
+    if where == OUT_OF_SCOPE:
+        placed_by = scope.milestone(identifier)
+        # While a gate is open, `later` also carries the anchor's own scope
+        # under the anchor's version - the commonest case there is, and a
+        # different statement from "a later milestone names this". The anchor
+        # carries the roadmap's label and `milestone()` a bare version, so the
+        # comparison is on the label's first token, as `placement_line` does.
+        if placed_by and scope.anchor.split()[0] == placed_by:
+            return "[after the gate]"
+        return f"[{placed_by}]" if placed_by else ""
+    return ""
+
+
 def recommend(
     items: list[Item],
     in_flight: Collection[str] | None = None,

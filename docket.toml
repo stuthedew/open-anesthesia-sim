@@ -174,6 +174,15 @@ known_classes = [
 #   changing what it *says* are two jobs.
 # - `docs/ARCHITECTURE.md` and `README.md` are written for a reader of the
 #   simulator, which CLAUDE.md holds to the specialist standard.
+#
+# `docs/maintainer.md` is present for the same reason `docs/worker.md` is, and
+# is said out loud because its absence read as a fifth entry on that list. Both
+# are addressed to a participant in the build rather than to a reader of the
+# simulator - worker.md to a session, maintainer.md to the person running them -
+# and CLAUDE.md routes to both in the same breath. It was missing until
+# `PL-GVNS`, which left `PL-90CJ` - whose only deliverable is a line in the
+# owner's own notes - ranked in the product lane, offered to a simulator session
+# and hidden from the apparatus one.
 workflow_paths = [
   ".claude",
   ".github",
@@ -187,6 +196,7 @@ workflow_paths = [
   "docs/WORKING_NOTES.md",
   "docs/dead-ends.md",
   "docs/items",
+  "docs/maintainer.md",
   "docs/worker.md",
   "subprojects",
   "tests/unit/test_agent_identity_check.py",

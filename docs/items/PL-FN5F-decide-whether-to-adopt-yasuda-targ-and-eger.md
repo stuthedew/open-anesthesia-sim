@@ -1,14 +1,15 @@
 ---
 id: PL-FN5F
 title: Decide whether to adopt Yasuda, Targ and Eger 1989 as the authority for the nine tissue:gas coefficients, and whether to store its figures rather than Gas Man's rounding of them
-status: done
-added: 2026-09-13
-closed: 2026-09-13
 priority: P1
 effort: S
+status: done
 classes: science, docs
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md
+added: 2026-09-13
+closed: 2026-09-13
+pr: 539
 verify: python3 tools/doc_check.py check && uv run python -c "import json;d=json.load(open('src/anesthesia_sim/data/agents/sevoflurane.json'));assert any(s['tier']=='primary' and s['adopted'] and s['citation'].startswith('Yasuda N, Targ AG') for s in d['sources']);assert d['tissue_gas_partition_coefficients']=={'vessel_rich':1.1,'muscle':2.4,'fat':34.0}"
 ---
 

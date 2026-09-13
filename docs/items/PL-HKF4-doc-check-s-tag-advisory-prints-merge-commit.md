@@ -1,14 +1,15 @@
 ---
 id: PL-HKF4
 title: doc_check's tag advisory prints `<merge commit>`, which a shell reads as redirection, so pasting it fails with "no such file or directory: merge" instead of tagging
-status: done
-added: 2026-09-03
-closed: 2026-09-13
 priority: P2
 effort: S
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/SKILL.md, subprojects/docket/README.md
+added: 2026-09-03
+closed: 2026-09-13
+pr: 542
 verify: uv run pytest subprojects/docket/tests/test_cli.py && ! grep -rq 'commit>' subprojects/docket/src/docket/cli.py .claude/skills/docket/SKILL.md subprojects/docket/README.md
 ---
 

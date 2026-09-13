@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-02
 closed: 2026-09-13
+pr: 542
 verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_the_scope_detail_claims_no_commit_when_the_branch_has_none' subprojects/docket/tests/test_verify.py
 ---
 

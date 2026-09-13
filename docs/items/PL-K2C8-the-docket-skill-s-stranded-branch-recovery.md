@@ -8,6 +8,7 @@ classes: defect, infra
 touches: .claude/skills/docket/SKILL.md, docs/items
 added: 2026-09-05
 closed: 2026-09-13
+pr: 542
 verify: grep -q 'git push origin --delete' .claude/skills/docket/SKILL.md && grep -q "say the remote deletion is outstanding" .claude/skills/docket/SKILL.md
 ---
 

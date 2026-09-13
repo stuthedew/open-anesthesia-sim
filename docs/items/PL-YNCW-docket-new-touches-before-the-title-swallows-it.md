@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-02
 closed: 2026-09-13
+pr: 542
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_touches_before_the_title_no_longer_swallows_it' subprojects/docket/tests/test_cli.py
 ---
 
