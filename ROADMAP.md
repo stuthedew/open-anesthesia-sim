@@ -2166,15 +2166,9 @@ first twenty-nine were declined on.
 - PL-YTDN (S) Rename the nine item files whose slug no longer matches their title, now that docket check names them
 - PL-ZG5J (M) Land the headless frame-cost harness that measured all of the above, so the simulation-versus-UI split can be re-measured rather than re-derived
 
-**Two entries on a second ground, recorded here rather than under a heading of
-their own — `PL-VV6N` (decide a retention rule for items captured but never
-worked) and `PL-NB35` (give docket a bounded startup tier carrying failed
-approaches).** Both were captured 2026-09-13 and both sit at `needs-decision`.
-`PL-NB35`'s mechanism is built and green; what is open on it is a curation
-policy for the always-loaded record, which is a question for the project owner
-rather than work this gate can clear. The rest of this note is about `PL-VV6N`.
-
-**`PL-VV6N`.** Captured 2026-09-13, a week after this gate was frozen, so the
+**One entry on a second ground, recorded here rather than under a heading of
+its own — `PL-VV6N` (decide a retention rule for items captured but never
+worked).** Captured 2026-09-13, a week after this gate was frozen, so the
 snapshot rule already places it in the next gate; it is written down because it
 sits at `needs-decision`, which is what makes it debt, and a reader finding it
 open would otherwise have to work out why it is absent.

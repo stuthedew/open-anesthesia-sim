@@ -1,8 +1,9 @@
 ---
 id: PL-NB35
 title: Give docket a bounded startup tier carrying failed approaches and why they failed
-status: needs-decision
+status: done
 added: 2026-09-13
+closed: 2026-09-13
 priority: P2
 effort: M
 classes: infra
@@ -100,3 +101,43 @@ leans flagging, on the same ground that capture is cheap everywhere else here.
 
 **Until that is answered the entries stand and the cap holds.** The list is at
 12 of 30, so nothing is forced.
+
+**Decision taken, 2026-09-13 (project owner).** Three changes, all landed.
+
+1. **`stale-when` per-entry expiry conditions: withdrawn before building.** The
+   closest production analogue does not do it. Anthropic's own always-loaded
+   index warns *near* its limit and names three repairs - "keep one line per
+   entry, move detail into topic files, and merge or drop stale entries" -
+   rather than carrying an expiry language per entry. Building one here would
+   have been more machinery than the field uses, against `CLAUDE.md`'s rule
+   that where the benefit is unclear the answer is no.
+2. **Size warns; it never fails the build.** `budget()` nudges at 80% of either
+   budget so the decision arrives with slack, and warns louder over it. Only a
+   structural fault - a dangling id, a wrapped entry - fails, because both are
+   silent otherwise. A red gate on an unrelated commit is how a session learns
+   to raise the cap, which is the one repair that is never right.
+3. **Entries cut from 12 to 9**, on a sharpened admission test: an entry earns
+   its line only while a session could plausibly propose the approach again
+   *without first reading the code that refutes it*. Dropped were sequential
+   item ids and the four-heading capture template (a session would be refuted
+   by `store.py` and by the template's absence), and `commit:` as closure
+   provenance (superseded by `pr` and documented where a session would meet
+   it). Emitted text is now 1,961 bytes. Reversing any cut is one line.
+
+**What the primary source actually says, since it corrected the record.** The C
+compiler post prescribes "extensive READMEs and progress files" with no cap and
+no curation policy, and its failed-approaches doc is emergent and per-bug -
+"when stuck on a bug, Claude will often maintain a running doc of failed
+approaches and remaining tasks". Its context lesson runs the other way from
+this design: log detail to a file and make it greppable, rather than pushing it
+into context. The counterweight is narrower than the one first
+offered here, and the correction matters. NASA's LLIS - audited 2012, neither
+searched nor contributed to outside JPL over five years - is a *human* system,
+and its failure mechanism was tedium, which does not transfer: an agent does
+not get bored of `grep`. What transfers is that nothing triggers a lookup. A
+test failure announces itself, which is why the compiler harness's greppable
+log works; a dead end announces nothing, and a pointer read at session start is
+no help because the proposal it should stop arrives many turns later. A
+`SessionStart` hook's output is resent on every turn, so the entries are
+present at the moment of the proposal. That property, not the LLIS analogy, is
+what the 1,961 bytes buy.

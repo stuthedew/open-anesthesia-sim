@@ -11,7 +11,34 @@ is not emitted and not budgeted. That separation is the point: the file may
 explain itself at whatever length is useful, and the always-loaded half stays
 small.
 
-`check` holds the emitted half to a budget, and `make check` runs it.
+`check` reports two different things, and the split is deliberate. A
+*structural* fault fails the build: an entry citing an id that resolves to
+nothing, or an entry wrapped across two lines. Both are silent otherwise - a
+dangling id leaves a claim with no reasoning behind it, and a wrapped entry's
+second line is emitted by nothing and budgeted by nothing.
+
+**Size never fails, and that is a decision rather than laxity.** Going over
+budget does not make a commit on an unrelated task wrong, and a red gate that
+blocks one is how a session learns to raise the cap to get moving - which is
+the one repair that is never right. It warns instead, in two bands.
+
+**Why the entries are resident at all, which is the load-bearing choice here.**
+Not because records like this go unread - that argument comes from human
+lessons-learned systems (NASA's LLIS, audited 2012: neither searched nor
+contributed to outside JPL over five years) and it does not transfer. Its
+mechanism was tedium, and an agent does not get bored of `grep`; the C compiler
+harness's own lesson is the opposite one, log the detail to a file and make it
+greppable.
+
+What transfers is narrower and is not about effort: **there is no event that
+would cause a session to look.** A test failure announces itself, so `grep
+ERROR` finds it. A dead end announces nothing - a session about to re-propose
+partitioning the store has no signal telling it to check. And a pointer read
+once at session start does not solve that, because the proposal comes forty
+turns later. A `SessionStart` hook's output is resent on every turn, so the
+entries are in context at the moment of the proposal rather than at the moment
+of the greeting. That is what is being bought, and it is what the budget is
+paying for.
 
 **Why a budget rather than a style note.** The cost of an unbounded
 always-loaded store is measured, and it is large. Xu et al. (ACL 2026,
@@ -30,24 +57,23 @@ The numbers here are far under Anthropic's, and deliberately: this is one of
 several things the digest emits, and that hook's own comment calls its few
 lines the one cost it is careful about.
 
-**The cap forces removal rather than saturating, and that is the intended
-mechanism.** Appending deltas and never rewriting sounds like it fills up, but
-the two operations the file allows are add-one and remove-one; only rewriting
-the whole thing into a summary is the failure mode ACE measured, and its own
-prescription is delta updates *plus periodic de-duplication*. An entry earns
-its line only while a session could plausibly propose that approach again, so
-one whose code or design question no longer exists comes out. Hitting the cap
-means that pass is overdue - which is why this fails rather than warning, and
-why raising the number is the one repair that is never right.
+**The budget forces removal rather than saturating.** Appending deltas and
+never rewriting sounds like it fills up, but the operations the file allows are
+add-one, merge-two and remove-one; only rewriting the whole thing into a
+summary is the failure mode ACE measured, and its own prescription is delta
+updates *plus periodic de-duplication*. An entry earns its line only while a
+session could plausibly propose that approach again, so one whose code or
+design question no longer exists comes out. Reaching the nudge band means that
+pass is due, and raising the number is the one repair that is never right.
 
-**What is checked is arithmetic, and only arithmetic.** Entry count, emitted
-bytes, one line per entry, and that every `PL-` id an entry cites resolves to a
-real item. Whether an approach *deserves* a line - whether a future session
-would plausibly propose it again, which is the file's own admission test - is
-judgment, and a tool guessing at it would be the "worse than no tool" case
-`CLAUDE.md` names: its output would look authoritative and would not be. The
-file states that test in prose for a reader; this refuses only what a reader
-cannot see at a glance.
+**What is decided here is arithmetic, and only arithmetic.** Entry count,
+emitted bytes, one line per entry, and that every `PL-` id an entry cites
+resolves to a real item. Whether an approach *deserves* a line - whether a
+future session would plausibly propose it again, which is the file's own
+admission test - is judgment, and a tool guessing at it would be the "worse
+than no tool" case `CLAUDE.md` names: its output would look authoritative and
+would not be. The file states that test in prose for a reader; this refuses
+only what a reader cannot see at a glance.
 
 **Why a dangling id is an error rather than an advisory.** An entry's whole
 retrieval path is `bin/docket show <id>`. An id resolving to nothing leaves a
@@ -72,13 +98,19 @@ REPO = Path(__file__).resolve().parents[1]
 DEAD_ENDS = REPO / "docs" / "dead-ends.md"
 ITEMS = REPO / "docs" / "items"
 
-# Both budgets bind, and they fail in different directions: many short entries
-# trip the count, one essay trips the bytes. Measured against the seeded file
-# on 2026-09-13 - 12 entries, 2,447 emitted bytes - so each leaves room for
-# roughly what is there again before anybody has to choose what to drop.
-# Making that choice is the intended outcome of hitting either.
+# Both budgets bind, and they bind in different directions: many short entries
+# trip the count, one essay trips the bytes. Neither fails the build; both
+# warn, and both warn at NUDGE_FRACTION before they are reached.
 MAX_ENTRIES = 30
 MAX_EMITTED_BYTES = 4000
+
+# The nudge band. Anthropic's own always-loaded index warns *near* its limit
+# rather than at it - "if the file is near a limit, Claude Code reminds Claude
+# to shorten it: keep one line per entry, move detail into topic files, and
+# merge or drop stale entries" - which is the property that matters, because a
+# decision forced at the cap is taken by whoever happens to trip it, mid-task,
+# with no slack to think.
+NUDGE_FRACTION = 0.8
 
 ENTRY = re.compile(r"^- \*\*(?P<what>.+?)\*\* [-—] (?P<why>.+)$")
 ITEM_ID = re.compile(r"\bPL-[A-Z0-9]{3,4}\b")
@@ -119,23 +151,46 @@ def known_ids() -> set[str]:
     return ids
 
 
+def budget(text: str) -> list[str]:
+    """Advisories about size. Never errors - see the module docstring for why.
+
+    Two bands, and the first is the one that does the work. At `NUDGE_FRACTION`
+    of either budget this names the headroom and the three repairs, so the
+    decision about what to drop arrives while there is still slack. Over
+    budget it says what is now silently true - the emitted text is past what
+    the always-loaded half should carry - and still does not fail, because
+    nothing about being over it makes a commit on an unrelated task wrong.
+    """
+    advisories: list[str] = []
+    found = entries(text)
+    size = len(emitted(text).encode("utf-8"))
+
+    over_bytes = size > MAX_EMITTED_BYTES
+    over_entries = len(found) > MAX_ENTRIES
+    near = size >= MAX_EMITTED_BYTES * NUDGE_FRACTION or len(found) >= MAX_ENTRIES * NUDGE_FRACTION
+
+    if over_bytes or over_entries:
+        advisories.append(
+            f"docs/dead-ends.md is over budget: {len(found)}/{MAX_ENTRIES} entries, "
+            f"{size}/{MAX_EMITTED_BYTES} emitted bytes. This text is resent on every turn "
+            f"of every session. Three repairs, cheapest first: shorten an entry to one "
+            f"line, merge two related entries into one, or drop the entry a session is "
+            f"least likely to propose again."
+        )
+    elif near:
+        advisories.append(
+            f"docs/dead-ends.md is near budget: {len(found)}/{MAX_ENTRIES} entries, "
+            f"{size}/{MAX_EMITTED_BYTES} emitted bytes. Decide now while there is slack - "
+            f"shorten, merge, or drop the entry a session is least likely to propose again."
+        )
+
+    return advisories
+
+
 def check(text: str) -> list[str]:
+    """Structural errors only. Size is `budget()` above, and it never fails."""
     problems: list[str] = []
     found = entries(text)
-
-    size = len(emitted(text).encode("utf-8"))
-    if size > MAX_EMITTED_BYTES:
-        problems.append(
-            f"docs/dead-ends.md emits {size} bytes, over the {MAX_EMITTED_BYTES}-byte budget. "
-            f"That text is resent on every turn of every session. Drop the entry a session "
-            f"is least likely to propose again, or shorten one."
-        )
-
-    if len(found) > MAX_ENTRIES:
-        problems.append(
-            f"docs/dead-ends.md has {len(found)} entries, over the {MAX_ENTRIES} budget. "
-            f"Drop one rather than raising the cap: the cap is the mechanism."
-        )
 
     ids = known_ids()
     for number, line in found:
@@ -182,6 +237,9 @@ def main(argv: list[str] | None = None) -> int:
         if out:
             print(out)
         return 0
+
+    for advisory in budget(text):
+        print(advisory, file=sys.stderr)
 
     problems = check(text)
     for problem in problems:

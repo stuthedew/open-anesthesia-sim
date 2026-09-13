@@ -1,10 +1,17 @@
 """Tests for `tools/dead_ends.py`, the always-loaded dead-ends record and its budget.
 
-The budget is the whole mechanism. `.claude/hooks/docket-digest.sh` emits this
-file's entries at session start and a `SessionStart` hook's output is resent on
-every turn, so an entry added without a thought for the cap is paid by every
-session forever. A cap nothing enforces is a comment, so what is tested here is
-that each way of breaching it actually fails.
+`.claude/hooks/docket-digest.sh` emits this file's entries at session start and
+a `SessionStart` hook's output is resent on every turn, so an entry added
+without a thought for the budget is paid by every session forever.
+
+What is tested is the split between the two kinds of finding, because getting
+it wrong in either direction is a live failure. Size only ever *warns* - and
+warns at 80% of budget, before the decision is forced on whoever trips the cap
+mid-task - because a red gate on an unrelated commit is how a session learns to
+raise the cap, which is the one repair that is never right. A structural fault
+*does* fail, because a dangling id or a wrapped entry is silent otherwise. The
+third case matters as much as either: a comfortable file must say nothing at
+all, or the advisory fires every run and trains a reader to skim past it.
 
 The emit/check split is the second thing under test: the preamble explains how
 to add an entry, which a session *reading* entries never needs, so it must not
@@ -56,24 +63,53 @@ def test_prose_bullets_do_not_count_against_the_entry_budget() -> None:
     assert len(dead_ends.entries(text)) == 1
 
 
-def test_too_many_entries_fails() -> None:
+def test_size_never_fails_the_build() -> None:
+    """A blocked commit on an unrelated task is how a session learns to raise the cap."""
     text = PREAMBLE + "".join(
         entry(f"Approach {n}", "refuted. `PL-D188`") for n in range(dead_ends.MAX_ENTRIES + 1)
     )
-    problems = dead_ends.check(text)
-    assert any("over the" in p and "budget" in p for p in problems)
+    assert dead_ends.check(text) == []
 
 
-def test_too_many_emitted_bytes_fails() -> None:
+def test_over_budget_warns_and_names_all_three_repairs() -> None:
+    text = PREAMBLE + "".join(
+        entry(f"Approach {n}", "refuted. `PL-D188`") for n in range(dead_ends.MAX_ENTRIES + 1)
+    )
+    advisories = dead_ends.budget(text)
+    assert any("over budget" in a for a in advisories)
+    joined = " ".join(advisories)
+    assert "shorten" in joined and "merge" in joined and "drop" in joined
+
+
+def test_over_the_byte_budget_warns() -> None:
     text = PREAMBLE + entry("A long one", "x" * (dead_ends.MAX_EMITTED_BYTES + 1))
-    problems = dead_ends.check(text)
-    assert any("bytes" in p for p in problems)
+    assert any("over budget" in a for a in dead_ends.budget(text))
+
+
+def test_the_nudge_fires_before_the_budget_is_reached() -> None:
+    """The whole point: the decision arrives with slack, not at the cap."""
+    count = int(dead_ends.MAX_ENTRIES * dead_ends.NUDGE_FRACTION)
+    text = PREAMBLE + "".join(entry(f"Approach {n}", "refuted. `PL-D188`") for n in range(count))
+    advisories = dead_ends.budget(text)
+    assert any("near budget" in a for a in advisories)
+    assert not any("over budget" in a for a in advisories)
+
+
+def test_a_comfortable_file_says_nothing_at_all() -> None:
+    """An advisory that fires every run trains a reader to skim the output."""
+    text = PREAMBLE + entry("One", "refuted. `PL-D188`")
+    assert dead_ends.budget(text) == []
+
+
+def test_the_shipped_file_is_not_yet_in_the_nudge_band() -> None:
+    assert dead_ends.budget(dead_ends.DEAD_ENDS.read_text(encoding="utf-8")) == []
 
 
 def test_a_preamble_may_be_long_without_breaching_the_byte_budget() -> None:
     """The point of the split: explaining the file costs a reader nothing."""
     text = ("x" * (dead_ends.MAX_EMITTED_BYTES * 3)) + "\n\n" + entry("One", "refuted. `PL-D188`")
     assert dead_ends.check(text) == []
+    assert dead_ends.budget(text) == []
 
 
 def test_an_entry_citing_an_unknown_id_fails() -> None:
