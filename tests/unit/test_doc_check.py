@@ -2691,3 +2691,50 @@ def test_exclusion_language_in_a_scope_bullet_is_an_advisory(tmp_path: Path) -> 
     assert len(advisories) == 1
     assert "PL-WXYZ" in advisories[0]
     assert not [e for e in _errors(root) if "in scope and out of it" in e]
+
+
+def _with_tests(root: Path, *names: str) -> Path:
+    """Give a fixture repository a test suite defining `names`."""
+    suite = root / "tests" / "unit"
+    suite.mkdir(parents=True, exist_ok=True)
+    body = "\n\n".join(f"def {name}() -> None:\n    pass" for name in names)
+    (suite / "test_demo.py").write_text(body + "\n", encoding="utf-8")
+    return root
+
+
+def test_a_named_test_that_exists_is_quiet(tmp_path: Path) -> None:
+    """The correct form stays silent, or the check gets disabled."""
+    model = MODEL + "\n\nThe invariant is held by `test_the_thing_holds`.\n"
+    root = _with_tests(_repo(tmp_path, model=model), "test_the_thing_holds")
+
+    assert not [e for e in _errors(root) if "test_the_thing_holds" in e]
+
+
+def test_a_named_test_that_no_longer_exists_is_an_error(tmp_path: Path) -> None:
+    """A renamed or deleted test leaves the sentence reading as it did.
+
+    That is the whole reason the check exists: `docs/MODEL.md` asserts an
+    invariant or a mitigation is *held* by something, and the assertion decays
+    silently when the something is gone.
+    """
+    model = MODEL + "\n\nThe invariant is held by `test_renamed_away`.\n"
+    root = _with_tests(_repo(tmp_path, model=model), "test_something_else")
+
+    errors = [e for e in _errors(root) if "test_renamed_away" in e]
+    assert len(errors) == 1
+    assert "unverified until the name resolves" in errors[0]
+
+
+def test_no_test_directory_declines_rather_than_failing(tmp_path: Path) -> None:
+    """A checkout with no suite has not disproved the citation, so it declines.
+
+    `_repo` builds no `tests/`, which is the shape a bare or truncated checkout
+    has. Erroring there would fail a citation nobody could have checked, and
+    "not checked" and "wrong" are different results.
+    """
+    model = MODEL + "\n\nThe invariant is held by `test_absent_suite`.\n"
+    root = _repo(tmp_path, model=model)
+    report = doc_check.analyze(root)
+
+    assert not [e for e in report.errors if "test_absent_suite" in e]
+    assert any("no test directory was found" in d for d in report.declined)

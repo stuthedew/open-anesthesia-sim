@@ -1520,6 +1520,78 @@ def _subsection_line(section: MilestoneSection, lines: list[str], prefix: str) -
     return None
 
 
+#: A test function named inside a code span, e.g. `` `test_washout` ``.
+NAMED_TEST_RE = re.compile(r"`(test_[A-Za-z0-9_]+)`")
+#: A test function definition, at module level or inside a class.
+TEST_DEF_RE = re.compile(r"^\s*def (test_[A-Za-z0-9_]+)", re.MULTILINE)
+#: Where test functions are defined: the product suite and the apparatus one.
+TEST_ROOTS = (Path("tests"), Path("subprojects/docket/tests"))
+
+
+def check_named_tests(root: Path, report: Report) -> None:
+    """Resolve every test `docs/MODEL.md` names, so a citation cannot rot.
+
+    The specification earns its authority by being checkable, and a named test
+    is the most checkable claim in it: `docs/MODEL.md` asserts that an invariant
+    or a mitigation is *held* by something, and whether that something still
+    exists is decidable by reading the tree. A renamed or deleted test otherwise
+    leaves the sentence reading exactly as it did when it was true, which is the
+    silent-wrong-answer shape `CLAUDE.md` asks to be caught in code. The hazard
+    table's right-hand column is the reason this was built (`PL-FDBK`), and it
+    is the cheap half of `PL-8LDF`, which keeps the annotation pass over the
+    eighteen required invariants.
+
+    **Scoped to `docs/MODEL.md`, and the exclusion is the point rather than
+    laziness.** Measured 2026-09-13 across every markdown file in the tree: 161
+    test names are cited, 21 of them resolve to nothing, and **all 21 sit in
+    `docs/items/`**. That is correct there - an item brief names the test its
+    work will add, which is a specification of future work and the same forward
+    reference a `verify:` command makes. Failing on those would punish the queue
+    for doing what it is for. A specification asserts what holds *now*, so only
+    it is held to this.
+
+    What the check cannot judge is whether the test is any good, or whether it
+    tests the sentence it is cited under. It validates linkage, exactly as the
+    provenance check does, and says so.
+    """
+    document = root / MODEL
+    if not document.is_file():
+        report.declined.append(f"{MODEL} is absent, so the tests it names were not resolved")
+        return
+    text = document.read_text(encoding="utf-8")
+    seen: dict[str, int] = {}
+    for match in NAMED_TEST_RE.finditer(text):
+        seen.setdefault(match.group(1), _line_of(text, match.start()))
+    # **Read the citations before looking for the suite, so that a document
+    # naming no test declines nothing.** A decline is the claim "this was not
+    # checked", and there is nothing to check here until a name is cited -
+    # saying otherwise reports a gap about a question nobody asked, which is
+    # the every-run noise `CLAUDE.md` calls a defect in the check itself.
+    if not seen:
+        return
+    defined: set[str] = set()
+    searched = False
+    for relative in TEST_ROOTS:
+        directory = root / relative
+        if not directory.is_dir():
+            continue
+        searched = True
+        for path in sorted(directory.rglob("*.py")):
+            defined |= set(TEST_DEF_RE.findall(path.read_text(encoding="utf-8")))
+    if not searched:
+        report.declined.append(
+            f"the {len(seen)} test(s) {MODEL} names: no test directory was found in this checkout"
+        )
+        return
+    for name, line in sorted(seen.items(), key=lambda pair: pair[1]):
+        if name not in defined:
+            report.errors.append(
+                f"{MODEL}:{line}: names the test `{name}`, which no test under "
+                f"{' or '.join(str(one) for one in TEST_ROOTS)} defines; the statement it "
+                "holds up is unverified until the name resolves"
+            )
+
+
 def check_scope_exclusions(root: Path, report: Report) -> None:
     """Keep a milestone's exclusions out of its `Required scope`.
 
@@ -2816,6 +2888,7 @@ def analyze(root: Path) -> Report:
     check_baseline(root, report)
     check_gate_counts(root, report)
     check_scope_exclusions(root, report)
+    check_named_tests(root, report)
     check_gate_reentries(root, report)
     check_gate_dispositions(root, report)
     check_tags(root, report)

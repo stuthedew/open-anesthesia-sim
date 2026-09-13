@@ -1,12 +1,14 @@
 ---
 id: PL-BLHV
 title: Record the intended-use statement and the IEC 62304 safety classification in docs/MODEL.md
-status: needs-decision
+status: done
 priority: P2
 effort: M
 classes: docs, planning
 touches: docs/MODEL.md
+verify: python3 tools/doc_check.py check && grep -qF 'not intended for entering, importing, or reproducing the parameter values of' docs/MODEL.md
 added: 2026-09-02
+closed: 2026-09-13
 ---
 
 **Problem.** `docs/MODEL.md` says what this application is *not* - "not a
@@ -142,3 +144,67 @@ accept or replace; the section is not written until they have.
 **Still open, and only this:** the scope of the exclusion clause — the data-boundary
 wording recommended above, or the proximity wording the brief first proposed. Parts 2
 and 3 are answered and need nothing further.
+
+## Written 2026-09-13, on the project owner's answer: the data boundary
+
+The owner took the recommended exclusion clause, so `docs/MODEL.md` gains
+`## Intended use, and the safety class this project holds itself to`,
+immediately after "Status" and before "Purpose". Four subsections:
+
+**Intended use.** A positive statement — a teaching simulator for
+volatile-agent uptake and distribution, for clinicians, trainees and students,
+whose particular value is showing the compartments no monitor displays.
+
+**The exclusion, drawn at the data.** Not intended for entering, importing or
+reproducing an identifiable patient's parameter values, and not intended to
+inform the management of a specific patient. The section states why the
+boundary is the data rather than proximity, because the reasoning is what stops
+a later reader "simplifying" it back: proximity forbids a resident running the
+simulator on a workstation during a case, which carries no hazard, and permits a
+run built from a real patient's weight, age and cardiac output at a desk, which
+is a prediction about that patient whatever the window is labelled. Proximity
+gets both cases wrong, in opposite directions.
+
+**Class C, uniformly**, with the three arguments from the audit's withdrawn
+segmentation recorded as the reasons: a lower class has nothing to exempt under
+one uniform gate; Class A asserts no injury is possible, which the layer holding
+the halted/paused distinction and the ISO 5360 colours cannot assert; and the
+boundary would not sit still, since `src/anesthesia_sim/app/chart_series.py`
+looks like chrome and decides what a trace asserts.
+
+**Framed as an engineering bar**, quoting this document's own WCAG sentence —
+"chosen as the right engineering bar for a teaching tool, not as a compliance
+obligation" — verified verbatim against the source section rather than
+paraphrased.
+
+**The brief's IEC 62304 claim was corrected rather than written down.** There is
+no "undocumented classification defaults to Class C" sentence in the sources
+reachable from here. What the section cites instead is § 4.3's three class
+definitions plus Annex B.4.3's rule that a software failure's probability is
+**set to 1** rather than estimated — which is the stronger argument anyway,
+because it makes the class turn on severity alone and forecloses "this would
+rarely be wrong" as a case for Class B.
+
+**And the section says where its own knowledge of the standards came from.** IEC
+62304 and ISO 14971 are paywalled and were not reached from this environment;
+the clause numbers and class definitions came from secondary summaries, the FDA
+material from the source. The section records that distinction and tells a
+reviewer the conclusion does not depend on the wording but the clause numbers do.
+Writing a confident clause citation that nobody checked into the document that
+specifies a safety-critical model is the failure this avoids.
+
+**The FDA support turned out stronger than the brief had it.** The published
+non-device examples include "games that simulate various cardiac arrest scenarios
+to train health professionals in advanced cardiopulmonary resuscitation (CPR)
+skills" — a direct analogue. More useful still, the carve-out is conditioned on
+the software not facilitating assessment of a *specific patient*, which is what
+makes the intended-use statement load-bearing and what independently picks the
+data boundary over the proximity one.
+
+**Verified.** The `verify:` command's `grep` fails against `origin/main`'s copy
+of `docs/MODEL.md` and the whole command passes here. `make check` green.
+Docs swept: `docs/MODEL.md` (edited), `README.md` (read — its own disclaimer is
+the short negative form and stays correct; it now has a fuller statement to
+point at, which is `PL-FDBK`'s interface question rather than this item's),
+`ROADMAP.md` (read — the covariate work this section anticipates is in "Planned
+milestones" and v0.4.0's out-of-scope list, both consistent).
