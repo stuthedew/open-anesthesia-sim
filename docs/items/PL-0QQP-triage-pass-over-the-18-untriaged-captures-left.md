@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: queue-hygiene
+milestone: v0.4.15
 touches: docs/items
 added: 2026-09-12
 closed: 2026-09-12

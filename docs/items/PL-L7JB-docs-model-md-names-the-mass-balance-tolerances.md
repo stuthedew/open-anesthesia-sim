@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, defect
 feature: core-domain-language
+milestone: v0.4.15
 touches: docs/MODEL.md, src/anesthesia_sim/core/agent_simulation_validation.py, tests/unit/test_agent_simulation_validation.py
 added: 2026-09-06
 closed: 2026-09-13
