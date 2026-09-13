@@ -344,8 +344,10 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "1.4.3",
         "the compartment name and the smaller clinical gloss under it on each "
         "readout (`_build_metric_panel`), the MAC multiple under the value "
-        "(`_build_metric_secondary_value`), both chart axis descriptions "
-        "(`_time_axis_caption`, `_wash_in_time_axis_caption`), the sub-headings "
+        "(`_build_metric_secondary_value`), the chart's axis description "
+        "(`_time_axis_caption`; the wash-in chart's own went with the prose "
+        "`PL-F9TQ` removed, having restated that chart's axis titles), the "
+        "sub-headings "
         "and status lines the chart and its neighbours hold "
         "(`_build_chart_panel`, `_build_wash_in_section`, "
         "`_build_control_timeline_panel`), and the agent-accounting detail "

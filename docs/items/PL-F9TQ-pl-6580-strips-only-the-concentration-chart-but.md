@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: teachable-case
-touches: src/anesthesia_sim/app/simulation_view.py
+touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, tools/contrast_check.py
 added: 2026-09-08
 closed: 2026-09-13
 verify: uv run pytest tests/unit/test_simulation_view.py -q -k "wash_in_heading_and_its_plot or wash_in_plot_says_what_its_denominator"
@@ -140,3 +140,12 @@ applies `PL-6580`'s own rule to the panel below it — no string above the plot
 contains ". " or ends with one, `_wash_in_state_text` exempt by identity — and
 asserts the two labels the standard requires are present and the axis key is
 gone.
+
+**`touches` widened after the fact, and why rather than quietly.**
+`tools/contrast_check.py` carried a WCAG requirement citing
+`_wash_in_time_axis_caption` by name, so deleting the caption left that
+requirement pointing at a symbol nothing defines and
+`test_every_requirement_names_a_symbol_that_exists` failed. The citation now
+names the one axis description that remains and records where the other went.
+Declared here rather than left for `docket verify` to find outside the
+commission: it is this item's own consequence, not new work.
