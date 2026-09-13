@@ -8,6 +8,7 @@ classes: defect, infra
 touches: docket.toml, tests/unit/test_workflow_paths_check.py
 added: 2026-09-05
 closed: 2026-09-13
+pr: 544
 verify: uv run pytest tests/unit/test_workflow_paths_check.py && grep -q 'docs/maintainer.md' docket.toml
 ---
 

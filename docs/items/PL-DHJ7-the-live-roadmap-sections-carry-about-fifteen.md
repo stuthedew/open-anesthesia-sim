@@ -1,7 +1,12 @@
 ---
 id: PL-DHJ7
 title: The live ROADMAP sections carry about fifteen subset counts of the shape PL-GLBF checked, and unlike v0.2.8's those lists are still growing
-status: untriaged
+priority: P3
+effort: M
+status: needs-decision
+classes: docs, infra
+feature: dev-tooling
+touches: ROADMAP.md, tools/doc_check.py
 added: 2026-09-13
 ---
 
@@ -40,3 +45,19 @@ record rather than a live claim. The second kind needs nothing.
 
 **Where.** `ROADMAP.md`, the sections from Gate 1's declines onward;
 `tools/doc_check.py`'s `check_gate_counts`.
+**Why it matters.** `PL-GLBF` (the ROADMAP subset counts are hand-maintained
+and unchecked) rests on three numbers that cannot go stale, which is the
+weakest case for the rule it establishes. These fifteen are the strong one:
+they sit in Gate 1's declines and v0.5.1's dispositions, both of which grow
+with every triage pass - the 2026-09-13 pass added two paragraphs of exactly
+that shape and moved a heading count by thirteen. A subset count that is wrong
+is read as the project's own statement of what it owes, and `bin/docket wave`
+prints the gate's computed numbers in every session digest beside these written
+ones, with nothing telling a reader which kind they are looking at.
+
+**Done when.** The decision above is recorded, and whichever kinds it covers
+are handled: the decidable counts checked on the `PL-GLBF` pattern in
+`tools/doc_check.py`, and the judgment ones either given a date so they read as
+a record or left alone with that reasoning written where the next audit will
+find it. The anchored kind needs nothing, and saying so explicitly is part of
+the answer - otherwise the next pass re-examines it from scratch.

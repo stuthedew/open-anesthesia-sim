@@ -9,6 +9,7 @@ feature: queue-hygiene
 touches: docs/items
 added: 2026-09-13
 closed: 2026-09-13
+pr: 546
 verify: bin/docket check && grep -q '^blocked-by: PL-Z3V5' docs/items/PL-4QCJ-the-yasuda-methods-reading-has-no-extraction.md
 ---
 

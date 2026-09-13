@@ -8,8 +8,10 @@ classes: defect
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/README.md
 added: 2026-09-05
 closed: 2026-09-13
+pr: 544
 verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_the_digest_stops_declining_a_release_for_a_finished_milestone' subprojects/docket/tests/test_release.py
 ---
+
 **Problem.** `bin/docket wave` chose `IMPLEMENT` for v0.4.0 while twelve of the
 milestone's thirteen `Required scope` entries were `done`, and the digest
 turned that into an assertion: `No release to offer: the roadmap gives 0.4.0

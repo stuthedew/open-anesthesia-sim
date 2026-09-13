@@ -1,7 +1,12 @@
 ---
 id: PL-SCB4
 title: The store has no status for an item whose decision is made but whose work waits on a measurable condition, so it stays needs-decision and holds a gate open
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: infra
+feature: docket-store
+touches: subprojects/docket
 added: 2026-09-13
 ---
 
@@ -31,3 +36,9 @@ one-off workaround.
 an existing one — a `blocked-by` that accepts a condition rather than an id would
 reuse the machinery that already exists, and a new status would have to be taught
 to every command that branches on one.
+**Done when.** The decision above is recorded, the mechanism it chooses is
+built with a test, and `PL-Z34C` (retire `verify_required_from` and its
+grooming advisory once the grandfathered set reaches zero) carries the new
+state - so `bin/docket gate` stops counting a Gate 1 entry as debt on the
+strength of a question that is already answered, and `bin/docket next` stops
+offering an item whose work cannot start.
