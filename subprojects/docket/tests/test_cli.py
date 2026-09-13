@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from docket import cli
-from docket.checks import brief_gaps
+from docket.checks import STATUS_REQUIREMENTS, brief_gaps
 from docket.cli import build_parser, main, merge_shared
 from docket.vcs import FlightReport, lost, records_on_base
 from docket.verify import LANDED_GUARD
@@ -1205,6 +1205,53 @@ def test_triage_states_the_rules_the_answers_must_satisfy(
     assert "`verify:` command" in output
 
 
+def test_triage_states_the_rules_a_chosen_status_adds(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The block is presented as complete, so an enforced rule missing from it misleads.
+
+    `checks.py` errors on an item at `needs-decision` with no `**Decision
+    needed.**` section, and the rules block never said so - a session that
+    trusted it wrote the edit, ran `make docket` and found out afterwards
+    (`PL-F4JS`). The same held for the two `dropped` fields and for
+    `blocked-by`.
+    """
+    _triage(tmp_path, UNTRIAGED, READY)
+    output = capsys.readouterr().out
+
+    for status, rule in STATUS_REQUIREMENTS:
+        assert rule in output, f"the {status} rule is enforced but not printed"
+
+
+@pytest.mark.parametrize("status", [status for status, _ in STATUS_REQUIREMENTS])
+def test_every_status_rule_the_triage_block_prints_is_one_check_enforces(
+    tmp_path: Path, status: str
+) -> None:
+    """The table is prose; this is what stops it drifting from the checker.
+
+    Printing a rule nobody enforces is the same defect as enforcing one nobody
+    prints - both leave a session unable to trust the block - so each entry is
+    pinned to a refusal here rather than to the wording of `checks.py`.
+    """
+    document = f"""---
+id: PL-S1S1
+title: An item at a status that demands more of it
+priority: P2
+effort: S
+status: {status}
+classes: perf
+touches: a.py
+added: 2026-08-01
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+    assert _run("check", "--items", str(_store(tmp_path, document))) == 1
+
+
 def test_triage_leaves_a_project_that_declares_no_protected_paths_alone(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1224,6 +1271,75 @@ def test_triage_decides_nothing_and_writes_nothing(
 
     assert (store / "item-0.md").read_text() == before
     assert "priority: " not in capsys.readouterr().out
+
+
+def _featured(identifier: str, status: str, **extra: str) -> str:
+    """One item carrying a feature, at the status a progress listing has to draw."""
+    fields = {
+        "id": identifier,
+        "title": f"An item that is {status}",
+        "priority": "P2",
+        "effort": "S",
+        "status": status,
+        "classes": "perf",
+        "feature": "chart-readout",
+        "touches": "a.py",
+        "added": "2026-08-01",
+        **extra,
+    }
+    front = "".join(f"{key}: {value}\n" for key, value in fields.items())
+    return f"---\n{front}---\n\n**Problem.** x\n**Why it matters.** y\n**Done when.** z\n"
+
+
+def test_feature_draws_a_dropped_entry_distinctly_from_an_open_one(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Counting the boxes has to reproduce the two figures printed above them.
+
+    `bin/docket feature teachable-case` printed "18/28 done (9 left)" over ten
+    empty boxes: the tenth was `dropped`, correctly outside both counts and drawn
+    identically to the nine that were open. A reader counting to check the number
+    gets the wrong answer and cannot tell which of the two is lying (`PL-VFVW`).
+    """
+    store = _store(
+        tmp_path,
+        _featured("PL-D0D0", "done", closed="2026-08-10"),
+        _featured("PL-O0O0", "ready"),
+        _featured("PL-X0X0", "dropped", closed="2026-08-11", reason="superseded"),
+    )
+
+    assert _run("feature", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert "chart-readout: 1/3 done (1 left)" in output
+    assert "[x] PL-D0D0" in output
+    assert "[ ] PL-O0O0" in output
+    assert "[-] PL-X0X0" in output
+    # The counts and the marks are now two renderings that agree: one `[x]` for
+    # the numerator, one `[ ]` for what is left, three lines for the denominator.
+    assert output.count("[x]") == 1
+    assert output.count("[ ]") == 1
+
+
+def test_milestone_draws_a_dropped_entry_distinctly_too(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The milestone listing counts by the same two rules and drew the same box.
+
+    Fixed from one author rather than twice, so the next status added cannot
+    reach one listing and miss the other.
+    """
+    store = _store(
+        tmp_path,
+        _featured("PL-D1D1", "done", milestone="v0.9.0", closed="2026-08-10"),
+        _featured("PL-X1X1", "dropped", milestone="v0.9.0", closed="2026-08-11", reason="no"),
+    )
+
+    assert _run("milestone", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert "[x] PL-D1D1" in output
+    assert "[-] PL-X1X1" in output
 
 
 def test_triage_says_so_when_nothing_is_waiting(

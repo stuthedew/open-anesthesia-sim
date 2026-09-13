@@ -927,8 +927,7 @@ def cmd_feature(args: argparse.Namespace) -> int:
         state = "complete" if feature.is_complete else f"{len(feature.open_items)} left"
         print(f"{feature.name}: {len(feature.done)}/{len(feature.items)} done ({state})")
         for item in feature.items:
-            mark = "x" if item.status == "done" else " "
-            print(f"  [{mark}] {item.identifier} {item.title}")
+            print(f"  [{render.progress_mark(item)}] {item.identifier} {item.title}")
     return 0
 
 
@@ -946,8 +945,7 @@ def cmd_milestone(args: argparse.Namespace) -> int:
         state = "complete" if milestone.is_complete else f"{len(milestone.outstanding)} outstanding"
         print(f"{milestone.name}: {len(milestone.done)}/{len(milestone.items)} done ({state})")
         for item in milestone.items:
-            mark = "x" if item.status == "done" else " "
-            print(f"  [{mark}] {item.identifier} {item.title}")
+            print(f"  [{render.progress_mark(item)}] {item.identifier} {item.title}")
     return 0
 
 

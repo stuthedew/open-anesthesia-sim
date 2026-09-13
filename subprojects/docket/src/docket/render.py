@@ -14,7 +14,7 @@ from __future__ import annotations
 from collections.abc import Collection, Mapping
 from datetime import UTC, date
 
-from .checks import DONE_WHEN, REQUIRED_BRIEF, Report, brief_gaps
+from .checks import DONE_WHEN, REQUIRED_BRIEF, STATUS_REQUIREMENTS, Report, brief_gaps
 from .concurrency import undeclared
 from .config import Config
 from .model import (
@@ -1030,7 +1030,33 @@ def _triage_rules(report: Report, config: Config) -> list[str]:
         "those words - `**Why it matters, and why it is not new.**` is the same "
         "section - but it needs text under it."
     )
+    # Last, and from `checks.py`'s own table rather than restated here: these
+    # fire only for the status the pass chooses, so they read as the conditions
+    # on the choice just after the rules that apply to every item (`PL-F4JS`).
+    rules.extend(rule for _, rule in STATUS_REQUIREMENTS)
     return rules
+
+
+def progress_mark(item: Item) -> str:
+    """The checkbox a progress listing draws for one item.
+
+    Three marks rather than two, because the two figures printed above such a
+    listing are counted by two different rules: the numerator is `status ==
+    "done"` and the "N left" is `is_open`, and a `dropped` item is in neither. It
+    was drawn `[ ]`, so `bin/docket feature teachable-case` printed "18/28 done
+    (9 left)" above ten empty boxes, and a reader counting them to check the
+    number got the wrong answer with no way to tell which of the two was lying
+    (`PL-VFVW`).
+
+    With `[-]` for dropped, counting reproduces both figures and the total is the
+    denominator: `[x]` is the numerator, `[ ]` is what is left, every line is a
+    member.
+    """
+    if item.status == "done":
+        return "x"
+    if item.is_open:
+        return " "
+    return "-"
 
 
 def format_gate(gate: Gate, debt_classes: tuple[str, ...]) -> str:
