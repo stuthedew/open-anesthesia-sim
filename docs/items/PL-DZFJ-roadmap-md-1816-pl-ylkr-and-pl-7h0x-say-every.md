@@ -3,11 +3,12 @@ id: PL-DZFJ
 title: ROADMAP.md's gate text and PL-YLKR's brief say every drawn chart point is an M4 representative of a bucket of recorded samples, which PL-2FM6 deleted in v0.4.12 - the chart evaluates the score at the plotted instants
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, docs
 feature: presentation-safety
 touches: ROADMAP.md, docs/items/PL-YLKR-design-what-a-chart-tooltip-says-fl-chart-s.md
 added: 2026-09-12
+closed: 2026-09-13
 verify: python3 tools/doc_check.py check && ! grep -qF 'Every drawn point is an M4 representative' ROADMAP.md
 ---
 
@@ -63,3 +64,27 @@ chart does - the run's score evaluated at the plotted instants, with a control
 event given its own column from the keyframe - and argues `PL-YLKR`'s admission
 on grounds that survive that correction; `PL-YLKR`'s own brief says the same; and
 `PL-YLKR` is not started before this lands.
+
+
+**Closed 2026-09-13.** Two paragraphs in `ROADMAP.md`'s v0.5.0 gate section, and
+two passages in `PL-YLKR`'s brief.
+
+The admission paragraph no longer argues from M4 decimation. It argues from what
+the tooltip says - a bare number with no unit, compartment, agent, or anything
+marking the quantity as modelled rather than measured - which is the ground that
+survives the correction and which `CLAUDE.md` names in terms under "clearly
+distinguish modeled/internal states from measured or directly observable
+quantities". The paragraph below it records what the old argument said, that
+`PL-2FM6` removed the mechanism in v0.4.12, and that the entry survives because
+the *admission* does rather than because the argument did.
+
+`PL-YLKR`'s first obligation changed with it: from "that the point is not a
+sample", which is now false, to "that the value is modelled, not measured",
+which is a different problem reaching the same remedy. Confirmed against
+`app/chart_series.py`, whose module docstring already states the corrected
+fact - every drawn point is a state of the run at the instant it is drawn at,
+nothing interpolated or synthesized, and a control event always given its own
+column.
+
+`PL-YLKR` was `ready` and unstarted when this landed, re-checked against
+`origin` at the close, which its done-when required.

@@ -27,11 +27,14 @@ What it says today is `flet_charts`' default, from a
 **Three things it owes a reader**, and the first is the one only this project
 can know:
 
-1. **That the point is not a sample.** Every drawn point is an M4
-   representative — the minimum, maximum, first or last of its bucket — and at
-   300x on a long run one point stands for roughly 120 recorded samples. A
-   tooltip reporting a y value as the value at that instant is false precision
-   of exactly the kind `CLAUDE.md` names.
+1. **That the value is modelled, not measured.** Every drawn point *is* a
+   state of the run at the instant it is drawn at — `app/chart_series.py`
+   interpolates, extrapolates and synthesizes nothing, and a control event
+   always gets its own column — so reporting the y value as the value at that
+   instant is correct. What it is not is an observation: it is a lumped
+   compartment model's alveolar fraction, and a reader who takes it for an
+   end-tidal measurement has made exactly the mistake `CLAUDE.md` requires a
+   display to prevent. A bare number in a grey box prevents nothing.
 2. **Units, compartment and agent.** A bare number in a grey box satisfies none
    of the traceability the safety-critical standard requires of a clinically
    meaningful displayed value.
@@ -58,11 +61,10 @@ the moment its contents have to be right. A number somebody stopped the
 simulation to read is one they will act on.
 
 The safety-relevant half is the first of the three above and it is the one no
-report of "it works" can answer: a drawn point is an M4 representative - the
-minimum, maximum, first or last of its bucket - and at 300x on a long run it
-stands for roughly 120 recorded samples. Presenting it as the value at that
-instant is false precision of the kind `CLAUDE.md` names, and it is invisible to
-the reader, who has no way to tell a representative from a sample.
+report of "it works" can answer: the number is a modelled state of a lumped
+compartment model, and nothing on or near the tooltip says so. The reader who
+stopped the simulation to study one is the reader most likely to take it for an
+observation, and they have no way to tell the two apart from what is on screen.
 
 **The port changes the mechanism, not the design.** `PL-G59B` replaces fl_chart
 with pyqtgraph, so whatever fl_chart's default prints stops mattering - but the
@@ -70,3 +72,15 @@ three obligations transfer whole, and so does the hidden-mode problem, since a
 paused-only affordance is equally undiscoverable in either toolkit. Design it
 once here and implement against whichever chart is live. `PL-7H0X` was dropped
 into this item for that reason.
+
+**Corrected 2026-09-13 (`PL-DZFJ`).** Both passages above used to say that a
+drawn point is an M4 representative of a bucket of roughly 120 recorded samples,
+and that presenting it as the value at that instant is false precision. That has
+not been true since v0.4.12: `PL-2FM6` deleted the M4 decimation module,
+`RunHistory`, `HistoryWindow` and `SimulationHistorySample`, and the chart
+evaluates the run's score at the instants it plots. The first obligation is
+therefore not "the point is not a sample" but "the point is modelled rather than
+measured" - a different design problem reaching the same remedy, which is why
+this item survives the correction rather than shrinking to two obligations.
+`ROADMAP.md`'s gate admission for this item carried the same sentence and was
+corrected in the same pass.

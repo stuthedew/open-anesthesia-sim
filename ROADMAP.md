@@ -1832,30 +1832,38 @@ name the cause against the methods, or record that the question is unanswerable
 from what this project can reach and say so in place of the two open candidates.
 
 **`PL-YLKR` is here for what the tooltip may imply rather than for what it
-says.** Every drawn point is an M4 representative of its bucket - at 300x one
-point stands for roughly 120 recorded samples - and the hover presents it as the
-value at that instant, with no unit, compartment or agent beside it. `PL-KP7H`
-made it a paused-only affordance, which is precisely when a reader stops to
-study a number. The design is toolkit-independent and survives `v0.5.1`; only
-its implementation moves.
+says.** What it says is a bare number - no unit, no compartment, no agent, and
+nothing marking the quantity as modelled rather than measured. `PL-KP7H` made it
+a paused-only affordance, which is precisely when a reader stops to study a
+number instead of glancing at a trace: so the tooltip is the surface a reader
+meets with the most time to draw a conclusion from it and the least context to
+draw one from, and a modelled alveolar fraction read as a measurement is the
+confusion `CLAUDE.md` names in terms. The design is toolkit-independent and
+survives `v0.5.1`; only its implementation moves.
 
 **The seventh is the paragraph immediately above** (`PL-DZFJ`, found by the
-`PL-0QQP` triage pass, 2026-09-12). "Every drawn point is an M4 representative of
-its bucket" has not been true since v0.4.12: `PL-2FM6` deleted `RunHistory`,
-`HistoryWindow`, `SimulationHistorySample` and the M4 decimation module, and the
-chart evaluates the run's score at the instants it plots. So the gate's stated
-reason for admitting a `P1` `safety` entry rests on a mechanism the tree no
-longer has, and it is wrong in a specific direction: it says the hover "presents
-it as the value at that instant" when the chart now does exactly that. `PL-YLKR`
-may still belong here - a bare number with no unit, compartment or agent beside
-it is a presentation-safety matter whatever produces it - but the paragraph has
-to argue that rather than the M4 case, and `PL-YLKR`'s own brief carries the same
-sentence into work whose declared `touches` are `docs/MODEL.md`, `README.md` and
-`chart_series.py`. It is admitted on the same ground as `PL-MMWX` above: a wrong
+`PL-0QQP` triage pass, 2026-09-12; corrected 2026-09-13). Until that date the
+paragraph argued `PL-YLKR`'s admission from a mechanism the tree no longer has.
+It said every drawn point was an M4 representative of its bucket - roughly 120
+recorded samples at 300x - and that the hover "presents it as the value at that
+instant". `PL-2FM6` deleted `RunHistory`, `HistoryWindow`,
+`SimulationHistorySample` and the M4 decimation module in v0.4.12, and the chart
+now evaluates the run's score *at* the instants it plots, with a control event
+always given its own column. So the hover presenting a point as the value at
+that instant is correct rather than misleading, and the gate's stated reason for
+admitting a `P1` `safety` entry was false in exactly the direction that made the
+entry look necessary.
+
+What survives the correction is the admission rather than the argument, which is
+why this is a rewrite and not a removal. A bare number with no unit, compartment
+or agent beside it is a presentation-safety matter whatever produces it, and a
+correct number carrying nothing that marks it as modelled is a failure
+`CLAUDE.md` names in terms - so the paragraph above now argues that, and
+`PL-YLKR` stays. It is admitted on the same ground as `PL-MMWX` above: a wrong
 statement in this document about what a displayed value represents reaches the
-session scoping the work. The correction is `PL-DZFJ`'s and is deliberately not
-made here, so that whoever works `PL-YLKR` meets it as a gate entry rather than
-as a sentence they have to notice.
+session scoping the work rather than reaching a user. `PL-YLKR`'s own brief
+carried the same sentence into work whose declared `touches` are
+`docs/MODEL.md`, `README.md` and `chart_series.py`, and was corrected with it.
 
 - PL-7KDC (S) docs/MODEL.md's 'Where this project stands' paragraph still says all eleven reference-patient parameters are the Gas Man default patient and 26 of 29 rows are tier 3, though PL-8ZJQ moved venous_pool_volume_l to a tier-2 source
 - PL-DZFJ (S) ROADMAP.md's gate text and PL-YLKR's brief say every drawn chart point is an M4 representative of a bucket of recorded samples, which PL-2FM6 deleted in v0.4.12 - the chart evaluates the score at the plotted instants
@@ -3274,6 +3282,45 @@ specified.
     cited in `data/patients/reference_adult.json`, is the obese case explored
     with the same reference simulator this project draws its parameters from,
     and is where scoping should start reading.
+
+    *Cardiac output is one of the quantities that scales, and the scaling is a
+    coupled package (`PL-YKSM`, 2026-09-08).* The decision above settles what
+    weight acts *through*; this settles what "weight scales the compartments
+    directly" has to reach. A time constant here is
+    $`V_i \lambda_{i:b} / Q_i`$, so a rule that scales the flows and leaves
+    compartment volumes at the fixed litres this project stores makes
+    $`\tau \propto M^{-3/4}`$ - a heavier patient equilibrating faster and a
+    lighter one more slowly. Worked at 20 kg against the shipped sevoflurane
+    coefficients, that gives a child **2.64 times** the adult's time constants,
+    in a direction every textbook has running the other way, against **0.76
+    times** when volumes scale with the flows and **1.00** when nothing scales
+    at all. The half-measure is further from the truth than the status quo. So
+    compartment volumes, alveolar gas volume, alveolar ventilation and the
+    perfusion fractions move together with cardiac output and the tissue flows,
+    or none of them moves. `PL-YKSM` carries the arithmetic and the alternative
+    it refused.
+
+    It is recorded here rather than only in `docs/MODEL.md` "Known limitations"
+    and `reference_adult.json`'s Cattermole note - which is where a reader of
+    the stored *value* meets it - because the session that scopes this
+    milestone reads this item. The failure it guards against is that session
+    scoping weight as "cardiac output becomes a function of weight", which is
+    exactly the change `PL-YKSM` examined and refused, and shipping a
+    paediatric patient whose kinetics are wrong in the most-taught direction.
+    One paragraph now against a rebuild later.
+
+    *A suggestion for scoping rather than a decision: prefer measured
+    weight-banded normal ranges to an allometric formula for the default.* The
+    learner sees the default, not the law that generated it, and Cattermole et
+    al. 2017 - already cited in `data/patients/reference_adult.json`, 2218
+    healthy subjects aged 0.5 to 89, reported by weight band - is a measurement
+    of the quantity rather than a scaling exponent applied to one. It is not
+    free of the provenance problem it would solve, and scoping has to weigh
+    that: its subjects are awake, supine and at rest, measured by transcutaneous
+    Doppler rather than thermodilution, and the authors state that normal ranges
+    are method-specific - which is why the file cites it and does not adopt it.
+    Adopting it as a default would be its own recorded decision under
+    "Source hierarchy", on the terms every other value in `data/` is held to.
 
     *An out-of-range covariate: agreed in principle, cutoffs unresearched
     (project owner, 2026-09-02).* Bounding a covariate and reporting when one
