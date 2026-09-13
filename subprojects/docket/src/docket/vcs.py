@@ -31,7 +31,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from .model import parse_item
+from .model import CLOSED_STATUSES, parse_item
 from .release import version_in
 from .store import ID_PATTERN
 
@@ -246,7 +246,11 @@ class _Walk:
 
     last: dict[str, date]
     ids: dict[str, str]
-    edited: dict[str, str]
+    #: Per item id, the ref whose commits changed its file and the path they
+    #: changed. The path rides along because the mark is only worth raising
+    #: where the edit is still unmerged, which `branches_in_flight` tests
+    #: against the base rather than taking on trust (`PL-8MJ3`).
+    edited: dict[str, tuple[str, str]]
     staked: dict[tuple[str, str], Stake]
     opened: dict[str, Stake]
     unbounded: set[str]
@@ -307,8 +311,14 @@ def _annotates_only(paths: list[str], prefix: str) -> bool:
     return bool(paths) and all(path.startswith(prefix) for path in paths)
 
 
-def _item_file_ids(paths: list[str], prefix: str) -> list[str]:
-    """The items whose own file a commit changed, read from the paths alone.
+def _item_files(paths: list[str], prefix: str) -> list[tuple[str, str]]:
+    """The items whose own file a commit changed, as `(id, path)`, read from the paths alone.
+
+    **The path is returned beside the id because the mark has to be checked
+    against the base before it is believed** (`PL-8MJ3`). Which file a commit
+    changed is a fact about that commit and says nothing about whether the
+    change is still only on the branch - so the id alone was enough to raise the
+    mark and never enough to keep it.
 
     **The weaker of the two readings this walk makes, and the one that infers
     nothing.** `_annotates_only` and `leading_ids` between them decide what a
@@ -330,13 +340,13 @@ def _item_file_ids(paths: list[str], prefix: str) -> list[str]:
     advisory a session would have picked around; what a false one costs is a
     session told to leave alone an item nobody is holding.
     """
-    found: list[str] = []
+    found: list[tuple[str, str]] = []
     for path in paths:
         if not path.startswith(prefix):
             continue
         match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
         if match is not None:
-            found.append(match.group(1))
+            found.append((match.group(1), path))
     return found
 
 
@@ -347,9 +357,26 @@ def _unmerged_commits(
 
     One `git log` covers every ref at once: `--source` reports which ref on the
     command line reached each commit, so the walk that finds the ids also dates
-    the branches. Refs are passed in the order they will be reported in, so a
-    commit two refs share - a local branch and its own tracking ref - is
-    attributed to the one that will be named.
+    the branches.
+
+    **Which ref a shared commit is credited to is decided here, not by git.**
+    `--source` names *a* ref that reached each commit and promises nothing about
+    which, and measured on this repository it varies per commit inside a single
+    walk: on 2026-09-04, with `claude/next-workflow-item-knjkkt` and its tracking
+    ref holding identical history, one walk credited the branch's newest
+    `PL-YHD3` commit to the local ref and its oldest to `origin/...`
+    (`PL-R6D8`). So a commit two refs share - a local branch and its own
+    tracking ref - is attributed by *candidate order* instead, which prefers the
+    local branch: the id is kept against the earliest ref that accounts for it,
+    and the order the caller passed is the order it will report in.
+
+    `branches_in_flight` survives git's own answer, because it needs only some
+    ref per id, which is why this was never visible as a bug. What it cost is
+    smaller and real: `flight` and `triage` printed whichever ref the walk
+    happened to credit, so a session could be shown `origin/claude/...` for work
+    its own local branch was carrying - the exact confusion those lines exist to
+    remove. A docstring claiming git guaranteed it was the worse half, because
+    the next reader builds on it, and `PL-YHD3`'s `precedence` did.
 
     **A walk must stop because the default branch accounted for what came next,
     never because the checkout ran out of history.** `^base` excludes only the
@@ -414,7 +441,7 @@ def _unmerged_commits(
     prefix = items_dir.strip("/") + "/"
     last: dict[str, date] = {}
     ids: dict[str, str] = {}
-    edited: dict[str, str] = {}
+    edited: dict[str, tuple[str, str]] = {}
     staked: dict[tuple[str, str], Stake] = {}
     opened: dict[str, Stake] = {}
     unbounded: set[str] = set()
@@ -426,6 +453,15 @@ def _unmerged_commits(
     pending: tuple[str, Stake | None, str] | None = None
     paths: list[str] = []
 
+    # Candidate order is what settles a commit two refs share, since `--source`
+    # will not: the caller lists local branches before their tracking refs, so
+    # the lower rank is the one a reader wants to be shown.
+    rank = {name: position for position, name in enumerate(refs)}
+
+    def nearer(ref: str, held: str | None) -> bool:
+        """Whether `ref` outranks the ref already credited, or there is none."""
+        return held is None or rank.get(ref, len(refs)) < rank.get(held, len(refs))
+
     def credit_claims() -> None:
         """Credit the held commit's leading ids, unless its diff only annotates."""
         if pending is None:
@@ -434,12 +470,15 @@ def _unmerged_commits(
         # Credited before the annotation test and never withheld by it: an
         # annotating commit is not work, and it has still written to the file a
         # second session is about to write to.
-        for identifier in _item_file_ids(paths, prefix):
-            edited.setdefault(identifier, ref)
+        for identifier, path in _item_files(paths, prefix):
+            held_edit = edited.get(identifier)
+            if nearer(ref, None if held_edit is None else held_edit[0]):
+                edited[identifier] = (ref, path)
         if _annotates_only(paths, prefix):
             return
         for identifier in leading_ids(subject):
-            ids.setdefault(identifier, ref)
+            if nearer(ref, ids.get(identifier)):
+                ids[identifier] = ref
             if stake is not None:
                 held = staked.get((ref, identifier))
                 if held is None or stake < held:
@@ -583,6 +622,79 @@ def _work_already_on_base(split: tuple[tuple[str, ...], tuple[str, ...]]) -> boo
     return bool(landed) and not outstanding
 
 
+def _superseded(ref: str, base: str, paths: tuple[str, ...], root: Path, run: Runner) -> set[str]:
+    """Of `paths`, those the base's tip already accounts for, so nothing is left behind.
+
+    **The blob walk asks whether the base ever held a *version*; this asks
+    whether the base still needs one.** They differ wherever a path's content
+    was replaced after the branch introduced it, and `_landing_split` calls
+    every such path outstanding because no commit on the base ever carried that
+    exact blob. Two shapes reach it and neither is work anybody lost
+    (`PL-XLQ5`):
+
+    - **Superseded on the branch.** An early commit wrote one version and a
+      later commit on the same branch rewrote it, so the squash carried only
+      the final version and the intermediate blob is genuinely one the base has
+      never held. The branch changed its mind once; nothing was left behind.
+      Observed 2026-09-05 on `origin/claude/next-workflow-item-c2b07p`, where
+      `git diff origin/main HEAD` was empty while four files were reported.
+    - **Superseded on the base.** The base took the branch's content and then
+      added to it in the same commit - a recovery note appended to an item that
+      was re-applied (`PL-1VFK`, `#437`) - so the blob the branch introduced is
+      again one the base never held, while the base's copy is a strict superset
+      of it. This is the expensive one: the `recover:` line a reader is handed
+      is a `git checkout` of the branch's older copy over the base's newer one,
+      which deletes the note.
+
+    The test is the two-dot diff that disproved both by hand, read per path:
+
+    - **Absent from the diff.** The base's tip and the ref's tip agree, so
+      there is nothing the base is missing. That is supersession on the branch.
+    - **Removals only.** Going from the base to the ref *deletes* lines and
+      adds none, so the base holds everything the ref holds and more. That is
+      supersession on the base.
+    - **Anything added or changed.** The ref's tip carries content the base's
+      tip does not, which is what work left behind looks like.
+
+    **The direction of the read is what makes it safe**, and it is the
+    direction the rest of the module takes. Every silence here - a git that
+    failed, a path git answered for in a shape this cannot parse, a binary file
+    git writes as `-` rather than a count - leaves the path outstanding and so
+    leaves the branch reported. A path wrongly called superseded would hide
+    work nothing merged, which is the loss `orphaned` exists to catch; a path
+    wrongly left outstanding costs a reader one two-dot diff, which is what
+    they were doing by hand before this.
+
+    `--no-renames` because the paths compared against come from
+    `_landing_split`, which also passes it: a rename read on one side and not
+    the other would compare two different path sets.
+    """
+    if not paths:
+        return set()
+    output = run(["diff", "--numstat", "--no-renames", base, ref, "--", *paths], root)
+    differing: dict[str, tuple[str, str]] = {}
+    for line in output.splitlines():
+        fields = line.split("\t", 2)
+        if len(fields) != 3:
+            continue
+        added, deleted, path = fields
+        differing[path.strip()] = (added.strip(), deleted.strip())
+    superseded: set[str] = set()
+    for path in paths:
+        counts = differing.get(path)
+        if counts is None:
+            # The two tips agree on this path, so the base is missing nothing.
+            # A path git did not report on at all reads the same way only
+            # because it was asked for by name: git names every path it was
+            # given that differs.
+            superseded.add(path)
+            continue
+        added, deleted = counts
+        if added == "0" and deleted.isdigit() and int(deleted) > 0:
+            superseded.add(path)
+    return superseded
+
+
 @dataclass(frozen=True)
 class _Refs:
     """Every ref this checkout holds, split by what can be believed about it.
@@ -661,6 +773,84 @@ def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) 
         unreadable=unreadable,
         landing=landing,
     )
+
+
+def _preferred(name: str, candidates: list[str]) -> str:
+    """The local branch where the checkout holds it and its tracking ref both.
+
+    **A name-level rule, because the walk cannot supply one.** `--source` names
+    *a* ref that reached each commit and promises nothing about which, and
+    measured on this repository it varies per commit inside one walk
+    (`PL-R6D8`). So which of two refs holding one piece of work gets reported
+    cannot be read off the walk at all - and it is worth deciding, because
+    `flight` and `triage` showing `origin/claude/...` for work the reader's own
+    local branch is carrying is the confusion those lines exist to remove.
+
+    A tracking ref ends with its local branch's whole name after a separator, so
+    a candidate that is a proper suffix of this one is that branch. Matched that
+    way rather than against a list of remotes, which would cost a git call to
+    learn what `origin` is called here and answer nothing extra: a local branch
+    genuinely named `bar/x` alongside another named `foo/bar/x` is the only
+    shape that collides, and reporting either for the other names the same work.
+    """
+    for candidate in candidates:
+        if candidate != name and name.endswith(f"/{candidate}"):
+            return candidate
+    return name
+
+
+def _closed_on_base(
+    ids: set[str], items_dir: str, base: str, root: Path, run: Runner
+) -> frozenset[str]:
+    """Of `ids`, those whose item the default branch already records as closed.
+
+    **Why the line needs this at all.** The in-flight mark is read from branch
+    refs, and a ref outlives the merge that took its work: nothing prunes
+    `origin/<branch>`, deliberately, because a stale ref can be the only
+    surviving copy of an item captured on a branch nobody merged. So an item can
+    ship and go on being named under "do not start these again" for as long as
+    the ref survives - two of them for two releases, measured 2026-09-07, and
+    one reading of the line where all three entries were false (`PL-6BDX`).
+
+    It misroutes nothing: `docket next` does not offer closed items. What it
+    costs is the line's credibility, and `CLAUDE.md` is explicit that a check
+    firing every run without changing a decision is a defect in the check,
+    because it trains a session to skim the output where a real entry also
+    appears. The real entries here are the ones that stop two sessions
+    colliding.
+
+    **Closed on the base, never closed in this checkout**, and the difference is
+    the whole care of it. A session closing an item right now has that closure
+    on its own branch, and reading the working tree would suppress exactly the
+    live work the line exists to protect. The base is the one tree that cannot
+    be carrying an unmerged session's answer.
+
+    One tree listing maps ids to file names - the store names each file for its
+    item - and then one `git show` per id asked about, which is the few the
+    report is about to name rather than the whole store. An id whose file the
+    base does not hold is not closed there, which is the safe direction: it
+    keeps the entry.
+    """
+    if not ids:
+        return frozenset()
+    prefix = items_dir.strip("/") + "/"
+    names: dict[str, str] = {}
+    for line in run(["ls-tree", "--name-only", base, "--", prefix], root).splitlines():
+        path = line.strip()
+        if not path:
+            continue
+        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
+        if match is not None:
+            names.setdefault(match.group(1).upper(), path)
+    closed: set[str] = set()
+    for identifier in ids:
+        path = names.get(identifier.upper(), "")
+        if not path:
+            continue
+        text = run(["show", f"{base}:{path}"], root)
+        if text and parse_item(text, path.rsplit("/", 1)[-1]).status in CLOSED_STATUSES:
+            closed.add(identifier)
+    return frozenset(closed)
 
 
 def branches_in_flight(
@@ -786,19 +976,54 @@ def branches_in_flight(
             identifier, Branch(name=name, item_id=identifier, last_commit=last_commit.get(name))
         )
     for identifier, name in subject_ids.items():
+        # `_preferred` is what keeps a reader from being shown the tracking ref
+        # for work their own local branch is carrying, which git's own
+        # attribution cannot be relied on to avoid (`PL-R6D8`).
+        reported = _preferred(name, candidates)
         in_flight.setdefault(
-            identifier, Branch(name=name, item_id=identifier, last_commit=last_commit.get(name))
+            identifier,
+            Branch(
+                name=reported,
+                item_id=identifier,
+                last_commit=last_commit.get(reported) or last_commit.get(name),
+            ),
         )
+
+    # **An item the base already records as closed leaves the line**, whatever
+    # ref still carries its name. Asked here rather than earlier because the set
+    # to ask about is exactly what the report was about to name, which keeps the
+    # cost to the few entries that exist rather than the whole store
+    # (`PL-6BDX`).
+    for identifier in _closed_on_base(set(in_flight), items_dir, base, root, run):
+        del in_flight[identifier]
 
     # Refs whose commits went unread contribute no paths either, for the reason
     # they contribute no subject ids: the commits are what the checkout is
     # missing. A branch *name* still proves its id, which is why the loop above
     # reads unread refs and this does not - a name is not a diff.
+    # **An edit the base already holds is not an edit on a branch**, and until
+    # this was asked the mark could not be read as evidence of anything
+    # (`PL-8MJ3`). A squash merge keeps none of the branch's commits, so the
+    # branch stays ahead of the base indefinitely and goes on reporting every
+    # item file it ever touched. Measured 2026-09-07: a triage pass was told to
+    # skip four of its five items, and all four branch copies were
+    # byte-identical to the copy on `origin/main`. `SKILL.md` tells a pass to
+    # obey this mark, so the wrong answer was on the side that loses work.
+    #
+    # `_superseded` is the test, the same one `orphaned` narrows its outstanding
+    # side with: a path whose tips agree, or whose diff from the base only
+    # removes lines, is one the base is not missing. Its silences leave the mark
+    # standing, which is the direction this read has always failed in - an item
+    # wrongly left marked is one a session picks around, while an item wrongly
+    # unmarked is two sessions resolving one file.
     edited = {
         identifier: name
-        for identifier, name in walk.edited.items()
-        if name not in walk.unbounded and identifier not in in_flight
+        for identifier, (name, path) in walk.edited.items()
+        if name not in walk.unbounded
+        and identifier not in in_flight
+        and path not in _superseded(name, base, (path,), root, run)
     }
+    edited = {identifier: _preferred(name, candidates) for identifier, name in edited.items()}
     return FlightReport(
         branches=tuple(sorted(in_flight.values(), key=lambda branch: branch.item_id)),
         unreadable=tuple(name for name in candidates if name in unreadable),
@@ -1322,8 +1547,17 @@ def _landed_since(
     return tuple(found)
 
 
-def _duplicated_history(base: str, root: Path, run: Runner) -> RewriteReport | None:
+def _duplicated_history(
+    base: str, root: Path, run: Runner, *, ref: str = "HEAD"
+) -> RewriteReport | None:
     """Whether the divergence from `base` is one rewritten history, and what only this side holds.
+
+    `ref` is which side to read, and it defaults to the checkout's own `HEAD`
+    because `branch_state` - which this was built for - advises the session
+    about the branch it is standing on. `orphaned` passes a named ref instead:
+    a branch left on pre-rewrite history reads there as one whose pull request
+    merged, because that report's evidence is file content and a rewrite
+    changes every hash while leaving content untouched (`PL-Y31G`).
 
     **Stateless, and that is a requirement rather than a preference.** The
     obvious test - has the remote ref moved to something that is not a
@@ -1360,7 +1594,7 @@ def _duplicated_history(base: str, root: Path, run: Runner) -> RewriteReport | N
             "--reverse",
             "--left-right",
             "--format=%m%x00%h%x00%at%x00%p%x00%s",
-            f"{base}...HEAD",
+            f"{base}...{ref}",
             "--",
         ],
         root,
@@ -2025,6 +2259,7 @@ def _number_closing(name: str, items_dir: str, base: str, root: Path, run: Runne
     stopping loses nothing that a deeper fetch would not restore.
     """
     path = f"{items_dir}/{name}"
+    prefix = items_dir.strip("/") + "/"
     for revision, subject, here, there in _walk_following_renames(path, base, root, run):
         match = PR_SUBJECT_RE.search(subject.strip())
         if match is None:
@@ -2033,8 +2268,52 @@ def _number_closing(name: str, items_dir: str, base: str, root: Path, run: Runne
         if closed is None:  # its parent is outside this checkout, and so is everything older
             return None
         if closed:
+            # **A closure that landed without its work names the wrong pull
+            # request, so it names none** (`PL-YDL6`). This walk finds the commit
+            # that wrote `status: done`; where the work and the closure landed in
+            # different pull requests, that commit carries the closure and none
+            # of the code, and `pr:` would record a change whose diff does not
+            # contain the work the item describes. `commit:` was retired
+            # (`PL-T63T`), so `pr` is the only surviving link to the work and a
+            # wrong one is worse than an absent one.
+            #
+            # A closure commit that carries its work touches something outside
+            # the queue, so `_annotates_only` separates the two - the same rule
+            # that tells recording an item from working on it everywhere else in
+            # this module. Declining is the answer rather than a guess at which
+            # pull request held the work: nothing here knows which files an
+            # item's work was, and `PL-99Y4` already settled that a provenance
+            # question the checkout cannot answer is reported rather than
+            # invented.
+            #
+            # Audited over real history while fixing `PL-S5LB`: 249 of the 252
+            # closures this can answer agree with what the store recorded, and
+            # all three that disagree are this shape, each off by one. The store
+            # already holds the better answer in every case, so declining loses
+            # nothing that was ever right. All three predate the same-commit
+            # closure rule (`PL-D2GW`, then `PL-P5S0`), which is what keeps the
+            # shape rare rather than impossible.
+            if not _carried_work(revision, prefix, root, run):
+                return None
             return int(match.group(1) or match.group(2))
     return None
+
+
+def _carried_work(revision: str, items_prefix: str, root: Path, run: Runner) -> bool:
+    """Whether `revision` changed anything outside the queue directory.
+
+    `git diff` against the first parent rather than a bare `diff-tree`, for the
+    reason `closed_by` gives beside the same call: a true merge commit shows an
+    empty `diff-tree` by default and would read as touching nothing.
+
+    Silence reads as "no work", so a commit this checkout cannot diff declines
+    the number rather than supplying it. That is the direction the caller wants:
+    an absent `pr` is a transcription still owed and a wrong one is a false
+    provenance that nothing else will catch.
+    """
+    listing = run(["diff", "--name-only", f"{revision}^", revision], root)
+    paths = [line.strip() for line in listing.splitlines() if line.strip()]
+    return bool(paths) and not _annotates_only(paths, items_prefix)
 
 
 def _basename(path: str) -> str:
@@ -2216,10 +2495,24 @@ def _items_at(ref: str, root: Path, items_dir: str, run: Runner) -> dict[str, st
 
 @dataclass(frozen=True)
 class BaseRecord:
-    """What the default base's copy of one closed item records as its proof."""
+    """What the default base's copy of one closed item records about the work landing.
+
+    `verify` is what proved it, and `closed` and `milestone` are the two facts
+    beside it that are records in the same sense: when the work landed, and which
+    release shipped it. All three are written once, by the branch that closed the
+    item, and all three are read back long afterwards - `closed` by `docket gate`
+    deciding which side of a freeze an item falls on, `milestone` by `docket
+    release` and `wave` deciding which release's notes it belongs in (`PL-JSRH`).
+
+    `pr` is the fourth and is guarded from the other side: `docket record`
+    refuses to overwrite a different number, which is what made the gap in these
+    two visible.
+    """
 
     identifier: str
     verify: str
+    closed: date | None = None
+    milestone: str = ""
 
 
 @dataclass(frozen=True)
@@ -2260,6 +2553,11 @@ class RecordReport:
     @property
     def commands(self) -> dict[str, str]:
         return {record.identifier: record.verify for record in self.records}
+
+    @property
+    def landings(self) -> dict[str, BaseRecord]:
+        """Each record by id, for the reads that want the fields beside `verify:`."""
+        return {record.identifier: record for record in self.records}
 
 
 def _changed_items(root: Path, base: str, items_dir: str, run: Runner) -> set[str]:
@@ -2355,7 +2653,14 @@ def records_on_base(
             continue
         recorded = parse_item(text, path.rsplit("/", 1)[-1])
         if recorded.status == "done":
-            records.append(BaseRecord(identifier=identifier, verify=recorded.verify))
+            records.append(
+                BaseRecord(
+                    identifier=identifier,
+                    verify=recorded.verify,
+                    closed=recorded.closed,
+                    milestone=recorded.milestone,
+                )
+            )
     return RecordReport(base=base, records=tuple(records))
 
 
@@ -2707,6 +3012,12 @@ class OrphanedReport:
     branches: tuple[OrphanedBranch, ...] = ()
     refs_read: int = 0
     unreadable: tuple[str, ...] = ()
+    #: Refs that match this report's rule but whose divergence from the base is
+    #: duplicated history, so the content evidence cannot tell them from a
+    #: merge. Kept apart from `branches` because the recipe a merged branch
+    #: leads a reader to deletes the ref, and on pre-rewrite history that ref is
+    #: the only copy of the commits it carries (`PL-Y31G`).
+    rewritten: tuple[str, ...] = ()
     declined: str = ""
 
     @property
@@ -2721,6 +3032,7 @@ def _commits_by_landing(
     outstanding: frozenset[str],
     root: Path,
     run: Runner,
+    items_prefix: str,
 ) -> tuple[tuple[OrphanedCommit, ...], bool]:
     """One walk of the ref's commits, read for both halves of the rule.
 
@@ -2774,9 +3086,31 @@ def _commits_by_landing(
     Its own recall cost is the mirror of the one above and just as narrow: a
     branch whose every pre-merge commit was re-merged against a base that moved
     under it has no wholly landed commit either, and a post-merge push to it
-    goes unreported. The remaining false positive is a branch one of whose
-    commits is *only* `docket record` output - which the `docket` skill tells a
-    session not to make, for a different reason.
+    goes unreported.
+
+    **A commit that only wrote to the queue is not merge evidence either, and
+    that is the last of the convergence shapes** (`PL-JBRC`). The unit test
+    above holds because a squash takes whole commits while convergence scatters
+    files inside them - but a commit whose *entire* diff is `bin/docket record`
+    output converges whole, every path of it agreeing with the base because the
+    tool dictated the value rather than a session choosing it. So a branch
+    carrying one of those and one genuinely outstanding commit read as a merged
+    pull request with work left behind, and the recipe that verdict leads to
+    deletes the ref an open pull request was raised against - `PL-5TRV`'s harm
+    reached by a narrower route.
+
+    `_annotates_only` is the test, which is the same reading
+    `branches_in_flight` already applies to the same commits for the same
+    reason: a capture, a triage pass, a recovered item and a `record` write all
+    lead with an id they are not implementing, and none of them is work a merge
+    took. Using it here rather than matching `pr:` lines keeps one rule for
+    "this commit wrote to the queue and nowhere else" instead of two spellings
+    that can disagree, and it covers the other three shapes at no extra cost.
+
+    Its recall cost is a branch whose only wholly landed commit is a queue
+    write and which was then pushed to - now unreported. That is the direction
+    to fail in: this half of the rule exists to convict a branch of having
+    merged, and the reader it convinces is handed a ref deletion.
 
     `\\x1e` opens each record so a subject containing a newline cannot be read
     as the start of another commit.
@@ -2798,13 +3132,19 @@ def _commits_by_landing(
             found.append(
                 OrphanedCommit(commit=commit.strip(), subject=subject.strip(), paths=touched)
             )
-        elif all(path in landed for path in touched):
+        elif all(path in landed for path in touched) and not _annotates_only(
+            list(touched), items_prefix
+        ):
             took_one_whole = True
     return tuple(found), took_one_whole
 
 
 def orphaned(
-    root: Path, *, include_remote: bool = True, runner: Runner | None = None
+    root: Path,
+    *,
+    include_remote: bool = True,
+    items_dir: str = "docs/items",
+    runner: Runner | None = None,
 ) -> OrphanedReport:
     """Branches carrying work the default branch took only part of.
 
@@ -2864,12 +3204,29 @@ def orphaned(
         # which is the confident wrong answer this module refuses to give.
         return OrphanedReport(declined="no branch refs this checkout can read")
     branches: list[OrphanedBranch] = []
+    rewritten: list[str] = []
     for name in refs.unlanded:
         landed, outstanding = refs.landing.get(name, ((), ()))
         if not (landed and outstanding):
             continue
+        # **The outstanding side is narrowed to what the base's tip is missing
+        # before anything is decided on it.** `_landing_split` answers per
+        # historical blob, so a path whose content was replaced after the branch
+        # introduced it - on the branch, or on the base - is outstanding there
+        # and missing from nowhere. `_superseded` carries both shapes and why
+        # the wrong answer was expensive rather than untidy.
+        superseded = _superseded(name, base, outstanding, root, run)
+        outstanding = tuple(path for path in outstanding if path not in superseded)
+        if not outstanding:
+            continue
         left, took_one_whole = _commits_by_landing(
-            name, base, frozenset(landed), frozenset(outstanding), root, run
+            name,
+            base,
+            frozenset(landed),
+            frozenset(outstanding),
+            root,
+            run,
+            items_dir.strip("/") + "/",
         )
         # A split alone is not enough in either direction, and the branch that
         # taught each half is named in `_commits_by_landing`. The split says
@@ -2880,6 +3237,24 @@ def orphaned(
         # the base took a whole commit, because two branches running `docket
         # record` write identical lines and neither merged the other.
         if left and took_one_whole:
+            # **A rewritten history reads exactly like a merge here, and the
+            # difference cannot be seen in the content.** This report's evidence
+            # is which blobs the base holds, and a rewrite changes every hash
+            # while leaving every byte alone - so a branch left on pre-rewrite
+            # history has all the marks of one whose pull request merged
+            # (`PL-YGF3`, observed on `claude/fresh-gas-flow-range-4bom2g`).
+            # Asked last because it costs a walk of its own and only a branch
+            # this report would otherwise name needs it.
+            #
+            # It is named rather than reported, and the asymmetry is the point.
+            # The recovery this report hands a reader copies a file; the recipe
+            # the `docket` skill prescribes for a merged pull request deletes
+            # the ref, and on pre-rewrite history that ref holds the only copy
+            # of commits nothing else has. So the branch leaves the list that
+            # leads there and keeps a line of its own (`PL-Y31G`).
+            if _duplicated_history(base, root, run, ref=name) is not None:
+                rewritten.append(name)
+                continue
             # The branch's outstanding side is narrowed to the paths of the
             # commits actually reported. The wider set includes files a merged
             # commit touched that the base then merged differently, which are
@@ -2892,6 +3267,7 @@ def orphaned(
         branches=tuple(branches),
         refs_read=len(refs.candidates),
         unreadable=tuple(sorted(refs.unreadable)),
+        rewritten=tuple(sorted(rewritten)),
     )
 
 

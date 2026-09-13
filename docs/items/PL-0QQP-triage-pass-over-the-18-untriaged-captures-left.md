@@ -9,6 +9,7 @@ feature: queue-hygiene
 touches: docs/items
 added: 2026-09-12
 closed: 2026-09-12
+pr: 503
 not-delegable: A triage pass has no command that can prove it: 'bin/docket check reports no untriaged items' passes on any tree where nobody has captured anything, and the verify: commands this pass writes each prove their own item's work rather than this one's. The pass is judged by make docket, make check, and by whether each item's fields and brief survive being read by the session that starts it.
 ---
 

@@ -3,11 +3,12 @@ id: PL-6BDX
 title: "Two shipped items are reported in flight in every session's digest, because their branch refs outlived their merges: PL-GVXP (v0.4.7) and PL-S5LB (v0.4.6)"
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-07
+closed: 2026-09-12
 verify: uv run pytest -q subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_closed_item_is_not_reported_in_flight' subprojects/docket/tests/test_vcs.py
 ---
 

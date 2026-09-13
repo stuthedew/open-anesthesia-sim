@@ -2004,6 +2004,90 @@ def _records(
     )
 
 
+def _landing_records(
+    *records: BaseRecord, base: str = "origin/main", declined: str = ""
+) -> RecordReport:
+    """A base record carrying the fields beside `verify:`, for `PL-JSRH`'s two reads."""
+    return RecordReport(base=base, records=records, declined=declined)
+
+
+def test_rewriting_a_landed_closed_date_is_reported() -> None:
+    """`closed:` is when the work landed, and `docket gate` reads it (`PL-JSRH`).
+
+    Reported rather than refused, which is the judgment the item asked for.
+    Correcting a mistyped date is a legitimate repair in a way that re-pointing a
+    `verify:` command is not - the field is a date a human typed, not a value a
+    tool dictated - so the reader is told what changed and decides.
+    """
+    item = _item(status="done", closed=date(2026, 9, 9), pr="148", verify="pytest a")
+    report = analyze(
+        [item],
+        TODAY,
+        records=_landing_records(
+            BaseRecord(identifier="PL-K7QX", verify="pytest a", closed=date(2026, 9, 4))
+        ),
+    )
+
+    assert _has(report.advisories, "2026-09-04")
+    assert _has(report.advisories, "debt-gate freeze")
+    assert report.errors == []
+
+
+def test_rewriting_a_landed_milestone_is_an_error() -> None:
+    """`milestone:` is which release shipped it, and moving it breaks two sets of notes.
+
+    An error where the date is an advisory: `docket release` writes this field, so
+    no hand-edit of it is a repair, and a rewritten value makes the notes for both
+    the release it left and the one it joined wrong with nothing reporting it.
+    """
+    item = _item(status="done", closed=TODAY, pr="148", verify="pytest a", milestone="v0.4.9")
+    report = analyze(
+        [item],
+        TODAY,
+        records=_landing_records(
+            BaseRecord(identifier="PL-K7QX", verify="pytest a", milestone="v0.4.6")
+        ),
+    )
+
+    assert _has(report.errors, "v0.4.6")
+    assert _has(report.errors, "notes for two releases wrong")
+
+
+def test_a_closed_item_keeping_its_landing_records_passes() -> None:
+    """The healthy shape: neither field moved, so neither read fires."""
+    item = _item(
+        status="done", closed=date(2026, 9, 4), pr="148", verify="pytest a", milestone="v0.4.6"
+    )
+    report = analyze(
+        [item],
+        TODAY,
+        records=_landing_records(
+            BaseRecord(
+                identifier="PL-K7QX", verify="pytest a", closed=date(2026, 9, 4), milestone="v0.4.6"
+            )
+        ),
+    )
+
+    assert report.errors == []
+    assert not _has(report.advisories, "debt-gate freeze")
+
+
+def test_a_landing_record_the_base_does_not_carry_is_left_alone() -> None:
+    """An item the base records nothing for is a first closure, not a rewrite.
+
+    The same one-sidedness `verify:`'s read has: a field absent from the base is
+    "nothing to compare against" rather than "compared and differed", so a
+    truncated checkout under-reports and never accuses a branch of an edit it did
+    not make.
+    """
+    item = _item(status="done", closed=TODAY, pr="148", verify="pytest a", milestone="v0.4.9")
+    report = analyze(
+        [item], TODAY, records=_landing_records(BaseRecord(identifier="PL-K7QX", verify="pytest a"))
+    )
+
+    assert report.errors == []
+
+
 def test_rewriting_a_closed_item_s_verify_is_an_error() -> None:
     # The whole finding. `PL-MJ7B` closed carrying a command that named a test
     # `PL-D9WD` deleted hours later; the next session to meet it will want to

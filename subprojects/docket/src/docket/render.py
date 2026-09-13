@@ -525,7 +525,8 @@ def format_orphaned(report: OrphanedReport) -> str:
     # excluded before this read begins rather than examined and cleared.
     refs = _plural(report.refs_read, "unmerged branch ref", "unmerged branch refs")
     if not report.branches:
-        return f"No branch carries work its own pull request left behind, across the {refs} read."
+        clear = f"No branch carries work its own pull request left behind, across the {refs} read."
+        return "\n".join([clear, *_rewritten_lines(report)]) if report.rewritten else clear
 
     lines = [
         f"{_plural(len(report.branches), 'branch carries', 'branches carry')} work the "
@@ -547,7 +548,35 @@ def format_orphaned(report: OrphanedReport) -> str:
         "A pull request merges the head it was opened against; a commit pushed to the "
         "branch afterwards is merged by nothing and reported by nothing else."
     )
+    lines.extend(_rewritten_lines(report))
     return "\n".join(lines)
+
+
+def _rewritten_lines(report: OrphanedReport) -> list[str]:
+    """The refs this report set aside for sitting on duplicated history.
+
+    Stated separately from the branches above and never folded in with them,
+    because the two want opposite actions from a reader. A branch listed above
+    has work to recover; one listed here matches the same content evidence for a
+    reason that evidence cannot see - a rewrite changes every commit hash and no
+    file - so what it needs is a look at the pull request rather than the
+    deletion recipe, which on pre-rewrite history removes the only copy of the
+    commits the ref carries (`PL-Y31G`).
+    """
+    if not report.rewritten:
+        return []
+    matched = _plural(len(report.rewritten), "branch ref matches", "branch refs match")
+    return [
+        "",
+        f"{matched} that shape but diverges from the default branch by duplicated "
+        "history, so file content cannot say whether it merged:",
+        "",
+        *report.rewritten,
+        "",
+        "Confirm against the pull request before deleting either ref: a branch left on "
+        "pre-rewrite history holds the only copy of its own commits. `bin/docket branch` "
+        "reports the rewrite and how to re-point the tags.",
+    ]
 
 
 def _since(last_commit: date | None, today: date) -> str:

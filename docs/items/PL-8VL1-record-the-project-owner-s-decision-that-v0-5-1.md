@@ -9,6 +9,7 @@ feature: qt-port
 touches: ROADMAP.md
 added: 2026-09-12
 closed: 2026-09-12
+pr: 502
 verify: python3 tools/doc_check.py check && grep -qF 'reserves for planned-milestone item 34' ROADMAP.md
 ---
 

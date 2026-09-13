@@ -3,11 +3,12 @@ id: PL-JSRH
 title: A closed item's closed: and milestone: are records too, and nothing stops a branch rewriting either
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-05
+closed: 2026-09-13
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_rewriting_a_landed_closed_date_is_reported' subprojects/docket/tests/test_checks.py
 ---
 
@@ -36,3 +37,13 @@ takes an error. Decide that before writing the check.
 **Done when.** A branch that rewrites a landed item's `closed:` or `milestone:`
 is told so by `docket check`, at whichever severity the question above settles
 on, with a test for each field.
+
+**Decided while closing, 2026-09-13: `milestone:` errors, `closed:` is an
+advisory.** The item's **Approach** left this open and it is the whole judgment
+half. `docket release` writes `milestone:`, so no hand-edit of it is a repair and
+the rule is exact - a rewritten value makes the notes for the release it left and
+the release it joined both wrong, with nothing else reporting it. `closed:` is a
+date a human typed, and correcting a mistyped one is a legitimate repair, so the
+reader is told what changed and decides rather than being refused. That is
+`CLAUDE.md`'s own split: hard failure for exact rules, an advisory for a signal
+needing context.

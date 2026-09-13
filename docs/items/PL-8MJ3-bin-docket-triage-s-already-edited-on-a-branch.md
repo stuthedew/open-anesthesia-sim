@@ -3,11 +3,12 @@ id: PL-8MJ3
 title: bin/docket triage's 'already edited on a branch' mark reads the merge base, so it keeps firing after that branch's edit has merged - it told one pass to skip four of its five items, every one a false positive
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, .claude/skills/docket/SKILL.md
 added: 2026-09-07
+closed: 2026-09-12
 verify: uv run pytest -q subprojects/docket/tests/test_vcs.py && grep -q 'def test_an_item_file_already_on_the_base_is_not_reported_as_edited_on_a_branch' subprojects/docket/tests/test_vcs.py
 ---
 

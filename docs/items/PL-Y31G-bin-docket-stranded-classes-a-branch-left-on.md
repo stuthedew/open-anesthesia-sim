@@ -3,11 +3,12 @@ id: PL-Y31G
 title: bin/docket stranded classes a branch left on pre-rewrite history as one whose pull request merged, because it compares file content and a rewrite leaves content unchanged
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-06
+closed: 2026-09-12
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_on_duplicated_history_is_not_reported_as_orphaned' subprojects/docket/tests/test_vcs.py
 ---
 

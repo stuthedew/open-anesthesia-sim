@@ -655,6 +655,20 @@ file is already edited on <branch>` is that case: not work in flight, so
 answer here is still a second resolution of the same file. Skip it the same
 way, and say in the reply which branch you left it to.
 
+**The mark now means the edit is genuinely unmerged, which it did not before.**
+It used to be computed from the item files a branch's commits touched, without
+asking whether the base already held them — and a squash merge keeps none of a
+branch's commits, so the branch stayed ahead forever and kept reporting edits
+that had landed. One pass was told to skip four of its five items and all four
+were byte-identical to `origin/main`'s copies (`PL-8MJ3`). It is now checked
+against the base's own tip, so a skip is worth obeying.
+
+What it still cannot promise is that the ref it names is the *only* one. In that
+same pass one of the four was a real collision, answered an hour later on a
+different branch than the one the mark named. So read the mark as "somebody may
+be in this file" rather than as the identity of who: skipping is still right, and
+the branch named is where to look first rather than the whole answer.
+
 Fill in what capture deliberately skipped:
 `priority`, `effort`, `classes`, `touches`, and `feature` when it belongs
 with related work. Safety-critical work starts at `P0` or `P1`; the checker

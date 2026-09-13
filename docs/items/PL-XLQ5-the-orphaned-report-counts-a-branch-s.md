@@ -3,11 +3,12 @@ id: PL-XLQ5
 title: The orphaned report counts a branch's superseded intermediate blob as work the squash left behind
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-05
+closed: 2026-09-12
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_that_revised_its_own_file_before_merging_carries_nothing' subprojects/docket/tests/test_vcs.py
 ---
 

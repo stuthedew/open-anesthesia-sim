@@ -82,6 +82,9 @@ def _runner(
     log: list[list[str]] | None = None,
     ran_out: tuple[str, ...] = (),
     head: str = "",
+    tips: dict[str, dict[str, tuple[str, str]]] | None = None,
+    duplicated: tuple[str, ...] = (),
+    closed: tuple[str, ...] = (),
 ):
     """A git that holds `refs`, with `commits` mapping a ref to (day, subject).
 
@@ -107,6 +110,21 @@ def _runner(
     this checkout, which is what a walk that ran off the end of a truncated
     history looks like: every other commit reports a parent, so a walk the
     default branch stopped is told from one the history did.
+
+    `tips` maps a ref to the two-dot diff between the default branch's tip and
+    its own, per path, as `(added, deleted)` counts - which is what says whether
+    a path `adds` reports as never landed is one the base is still missing.
+    Left out, every such path differs by an addition, which is what a branch
+    genuinely carrying work looks like and what every test written before that
+    reading meant.
+
+    `duplicated` names the refs whose divergence from the default branch is one
+    rewritten history: the same commits twice over, which content comparison
+    cannot tell from a merge.
+
+    `closed` names the items the default branch's own copy records as closed,
+    which is what tells an item that shipped from one a live session is closing
+    on its own branch.
 
     `adds` maps a ref to the blobs it introduces since its fork point and
     `on_base` names the blobs the default branch has held at some point, which
@@ -144,12 +162,59 @@ def _runner(
             # The object walk the landing split reads, in the shape git writes
             # it: one oid per line, a path after it for anything but a commit.
             return "\n".join(f"{blob} some/path/{blob}" for blob in sorted(on_base or set()))
+        if args[0] == "ls-tree":
+            # The tree listing that maps an item id to its file name on the
+            # base. The store names each file for its item, which is what
+            # `filename_for` guarantees and what this relies on.
+            prefix = args[-1].rstrip("/")
+            return "\n".join(f"{prefix}/{identifier}-shipped.md" for identifier in closed)
+        if args[0] == "show":
+            # `git show <base>:<path>`, which is how the closure is read off the
+            # base rather than off this checkout.
+            wanted = args[-1].split(":", 1)[-1]
+            # The id is the first two dash-separated pieces of the basename
+            # (`PL-GVXP-shipped.md`), not the first one.
+            identifier = "-".join(wanted.rsplit("/", 1)[-1].split("-")[:2])
+            if identifier not in closed:
+                return ""
+            return f"---\nid: {identifier}\ntitle: shipped\nstatus: done\n---\n\nDone.\n"
+        if args[0] == "diff" and "--numstat" in args:
+            # The tip comparison: `diff --numstat --no-renames <base> <ref> --`
+            # then the paths asked about. A path git does not name is one the
+            # two tips agree on, so the fake omits it rather than reporting zeros.
+            asked = args[args.index("--") + 1 :]
+            per_path = (tips or {}).get(args[4])
+            rows = []
+            for path in asked:
+                if per_path is None:
+                    rows.append(f"1\t0\t{path}")
+                    continue
+                counts = per_path.get(path)
+                if counts is not None:
+                    rows.append(f"{counts[0]}\t{counts[1]}\t{path}")
+            return "\n".join(rows)
         if args[0] == "diff":
             return "\n".join(
                 f":000000 100644 {'0' * 40} {_blob(entry)} A\t{_path(entry)}"
                 for entry in (adds or {}).get(args[-2], [])
             )
         if args[0] == "log":
+            if "--left-right" in args:
+                # The rewrite fingerprint: the same author date and subject on
+                # both sides of the divergence, which is what a rewrite leaves
+                # and what forking and committing cannot produce. `--reverse`
+                # puts the oldest first, and that is the commit the rule reads.
+                walked = args[-2].split("...")[-1]
+                if walked not in duplicated:
+                    return ""
+                # `%x00` between the fields, spelled explicitly: a `\0` written
+                # against a digit is read as an octal escape, which is how the
+                # author date `100` first reached this as a backspace.
+                kept = ("1750000000", "p1", "a commit the rewrite kept")
+                return "\n".join(
+                    "\x00".join((side, short, *kept))
+                    for side, short in (("<", "aaaaaaa"), (">", "bbbbbbb"))
+                )
             if "--name-only" in args and "--source" not in args:
                 # `orphaned` decides on this walk - a commit *none* of whose
                 # paths reached the base - so the fake has to answer it. The
@@ -212,6 +277,8 @@ def _report(
     adds: dict[str, list[str] | list[tuple[str, str]]] | None = None,
     on_base: set[str] | None = None,
     ran_out: tuple[str, ...] = (),
+    tips: dict[str, dict[str, tuple[str, str]]] | None = None,
+    closed: tuple[str, ...] = (),
 ) -> FlightReport:
     """The whole report, for the tests reading the file edits beside the work.
 
@@ -221,7 +288,9 @@ def _report(
     *together* with the first - that an item is edited and not in flight, or in
     flight and not also listed as edited.
     """
-    runner = _runner(refs, merged, commits, unrelated, adds, on_base, ran_out=ran_out)
+    runner = _runner(
+        refs, merged, commits, unrelated, adds, on_base, ran_out=ran_out, tips=tips, closed=closed
+    )
     return branches_in_flight(ROOT, runner=runner)
 
 
@@ -506,6 +575,37 @@ def test_the_queue_directory_is_read_from_the_project_setting() -> None:
     assert branches_in_flight(ROOT, items_dir="docs/items", runner=runner).ids == {"PL-K7QX"}
 
 
+def test_flight_names_the_local_branch_where_the_checkout_holds_both() -> None:
+    """`--source` names *a* ref that reached a commit, and promises nothing about which.
+
+    Measured 2026-09-04: with `claude/next-workflow-item-knjkkt` and its tracking
+    ref holding identical history, one walk credited the branch's newest
+    `PL-YHD3` commit to the local ref and its oldest to `origin/...`. Attribution
+    varies per commit inside a single walk, so it cannot be read off git at all
+    (`PL-R6D8`).
+
+    `branches_in_flight` survives that, needing only some ref per id, which is
+    why it never showed as a bug. What it cost is that `flight` and `triage`
+    printed whichever ref the walk happened to credit - so a session could be
+    shown `origin/claude/...` for work its own local branch was carrying, which
+    is the exact confusion those lines exist to remove. Candidate order decides
+    it here instead, and it puts the local branch first.
+    """
+    # A harness-named branch, so the id comes only from the commit subject and
+    # the branch-name reading cannot supply the answer on its own.
+    local = "claude/next-workflow-item-knjkkt"
+    tracking = f"origin/{local}"
+    # git credited the shared commit to the tracking ref, which it is entitled
+    # to do and did on 2026-09-04. Both refs are candidates; the report names
+    # the local one regardless of which git picked.
+    report = _report(
+        [local, tracking],
+        commits={tracking: [("2026-09-04", "PL-YHD3: the work both refs hold", "c1")]},
+    )
+
+    assert [(branch.item_id, branch.name) for branch in report.branches] == [("PL-YHD3", local)]
+
+
 def test_a_queue_only_commit_is_reported_as_a_file_edit_though_not_as_work() -> None:
     """The failure `PL-N1JK` records: a triage pass no guard could see.
 
@@ -523,6 +623,75 @@ def test_a_queue_only_commit_is_reported_as_a_file_edit_though_not_as_work() -> 
     assert report.branches == ()
     assert report.ids == frozenset()
     assert [(edit.item_id, edit.name) for edit in report.editing] == [("PL-K7QX", HARNESS)]
+
+
+def test_an_item_file_already_on_the_base_is_not_reported_as_edited_on_a_branch() -> None:
+    """The mark has to survive the merge that took the edit it names (`PL-8MJ3`).
+
+    A squash merge keeps none of the branch's commits, so the branch stays ahead
+    of the base indefinitely and goes on reporting every item file it ever
+    touched. Measured 2026-09-07: a triage pass over five open captures was told
+    to skip four of them, and every one of the four branch copies was
+    byte-identical to the copy on `origin/main`, both branches having
+    squash-merged as `#421` and `#422`.
+
+    `SKILL.md` tells a triage pass to obey this mark, so obeyed literally that
+    pass would have triaged one item of five - and would have gone on skipping
+    the other four on every future pass, because nothing prunes the ref. The
+    wrong answer was on the side that loses work rather than the side that
+    duplicates it.
+    """
+    report = _report(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-03", "PL-K7QX: triage it", "c1", QUEUE_ONLY)]},
+        tips={HARNESS: {}},
+    )
+
+    assert report.editing == ()
+    assert report.branches == ()
+
+
+def test_a_closed_item_is_not_reported_in_flight() -> None:
+    """A ref outlives the merge that took its work, and the line outlived the release.
+
+    Measured 2026-09-07 after a full fetch: `PL-GVXP` (shipped in v0.4.7) and
+    `PL-S5LB` (v0.4.6) were both still named on the digest's `In flight on a
+    branch:` line, under "do not start these again". One reading of that line had
+    all three of its entries closed, and the next had a genuinely live session
+    arriving *fourth* behind them (`PL-6BDX`).
+
+    Nothing is misrouted by it - `docket next` does not offer closed items - and
+    that is the point: `CLAUDE.md` calls a check that fires every run without
+    changing a decision a defect in the check, because it trains a session to
+    skim the output where a real entry also appears. Here the real entries are
+    the ones that stop two sessions starting one item.
+    """
+    shipped = "origin/claude/pl-gvxp-shipped-two-releases-ago"
+    report = _report(
+        [shipped],
+        commits={shipped: [("2026-09-03", "PL-GVXP: the work that shipped", "c1", "src/done.py")]},
+        closed=("PL-GVXP",),
+    )
+
+    assert report.branches == ()
+
+
+def test_an_item_closed_only_on_a_branch_is_still_reported_in_flight() -> None:
+    """The closure has to be *on the base*, which is the care the rule turns on.
+
+    A session closing an item right now carries that closure on its own branch.
+    Reading the working tree, or any ref but the base, would suppress exactly the
+    live work the line exists to protect - so the base is asked, being the one
+    tree that cannot hold an unmerged session's answer.
+    """
+    live = "origin/claude/pl-k7qx-closing-it-now"
+    report = _report(
+        [live],
+        commits={live: [("2026-09-03", "PL-K7QX: close it", "c1", "src/work.py")]},
+        closed=(),
+    )
+
+    assert [branch.item_id for branch in report.branches] == ["PL-K7QX"]
 
 
 def test_a_branch_working_an_item_is_not_also_reported_as_editing_its_file() -> None:
@@ -1649,6 +1818,12 @@ def _closure_runner(
             return ""
         if args[0] == "for-each-ref":
             return f"{BASE}\n"
+        if args[0] == "diff" and "--name-only" in args:
+            # The paths a commit changed, which is what tells a closure that
+            # landed with its work from one that landed without it. These
+            # histories are the healthy shape - the commit that wrote the
+            # closure also carried the code - so every commit names work.
+            return "src/changed.py\n"
         if args[0] == "show":
             revision, _, path = args[-1].partition(":")
             name = path.split("/")[-1]
@@ -1674,7 +1849,12 @@ def _closure_runner(
     return run
 
 
-def _recovery_runner(history: tuple[tuple[str, str], ...], done_at: set[str], name: str):
+def _recovery_runner(
+    history: tuple[tuple[str, str], ...],
+    done_at: set[str],
+    name: str,
+    carried: tuple[str, ...] | None = None,
+):
     """A git whose base subjects name no id, so only the file's history answers.
 
     `history` is the file's own log, newest first, as (revision, subject).
@@ -1688,6 +1868,12 @@ def _recovery_runner(history: tuple[tuple[str, str], ...], done_at: set[str], na
             return "" if args[-1] == "--is-shallow-repository" else f"{BASE}\n"
         if args[0] == "for-each-ref":
             return f"{BASE}\n"
+        if args[0] == "diff" and "--name-only" in args:
+            # The paths a commit changed: these histories are all the healthy
+            # shape, where the commit that wrote the closure carried the work.
+            # A test about a closure that landed alone says so by naming only
+            # the item file here.
+            return "\n".join(carried) if carried is not None else "src/changed.py\n"
         if args[0] == "show":
             revision, _, _path = args[-1].partition(":")
             if revision == BASE:
@@ -1724,6 +1910,39 @@ def test_a_squash_subject_naming_no_id_is_recovered_from_the_item_s_file() -> No
 
     assert report.landed == frozenset({"PL-K7QX"})
     assert report.numbers == {"PL-K7QX": 220}
+
+
+def test_a_closure_split_from_its_work_records_no_pull_request() -> None:
+    """A closure that landed without its work names the wrong pull request, so it names none.
+
+    Where the work and the closure landed in *different* pull requests, the
+    commit that wrote `status: done` carries the closure and none of the code -
+    so `pr:` would record a change whose diff does not contain the work the item
+    describes. `commit:` was retired (`PL-T63T`), so `pr` is the only surviving
+    link to the work and a wrong one is worse than an absent one (`PL-YDL6`).
+
+    Audited over real history while fixing `PL-S5LB`: 249 of the 252 closures
+    this can answer agree with what the store recorded, and all three that
+    disagree are this shape, each off by one - `#128` did `PL-3CBS`'s work and
+    left the item at `status: ready`, and the triage pass that merged as `#129`
+    wrote the closure. The store already holds the better answer in all three,
+    so declining loses nothing that was ever right.
+
+    Declining rather than guessing which pull request held the work: nothing here
+    knows which files an item's work was, and `PL-99Y4` settled that a provenance
+    question the checkout cannot answer is reported rather than invented.
+    """
+    run = _recovery_runner(
+        history=(("ccc333", "Triage the open captures (#129)"),),
+        done_at={"ccc333"},
+        name="PL-K7QX-a.md",
+        carried=("docs/items/PL-K7QX-a.md",),
+    )
+
+    report = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run)
+
+    assert report.landed == frozenset({"PL-K7QX"})
+    assert report.numbers == {}
 
 
 def test_a_later_edit_to_a_closed_item_does_not_steal_the_attribution() -> None:
@@ -2589,9 +2808,20 @@ def _orphaned(
     refs: list[str] | None = None,
     merged: list[str] | None = None,
     touched: dict[str, list[tuple[str, tuple[str, ...]]]] | None = None,
+    tips: dict[str, dict[str, tuple[str, str]]] | None = None,
+    duplicated: tuple[str, ...] = (),
 ) -> OrphanedReport:
     return orphaned(
-        ROOT, runner=_runner(refs or [PARTLY], merged, adds=adds, on_base=on_base, touched=touched)
+        ROOT,
+        runner=_runner(
+            refs or [PARTLY],
+            merged,
+            adds=adds,
+            on_base=on_base,
+            touched=touched,
+            tips=tips,
+            duplicated=duplicated,
+        ),
     )
 
 
@@ -2620,6 +2850,120 @@ def test_a_branch_pushed_to_after_its_pull_request_merged_is_reported() -> None:
     assert [commit.subject for commit in report.branches[0].commits] == [
         "PL-ZSV6 the rule pushed after the merge"
     ]
+
+
+def test_a_branch_that_revised_its_own_file_before_merging_carries_nothing() -> None:
+    """The branch changed its mind once, and nothing was left behind (`PL-XLQ5`).
+
+    An early commit wrote one version of a file and a later commit on the same
+    branch rewrote it. The squash carried only the final version, so the
+    intermediate blob is one the default branch has genuinely never held - and
+    `_landing_split`, which asks after historical blobs, calls it outstanding.
+
+    Observed 2026-09-05 on `origin/claude/next-workflow-item-c2b07p`,
+    immediately after `PL-X3WZ` merged as `#324`: four files reported while
+    `git diff origin/main HEAD` was empty. The tip comparison is that two-dot
+    diff, and it is empty here for the same reason.
+    """
+    report = _orphaned(
+        adds={PARTLY: [("a1", "landed.txt"), ("a2", "revised.py")]},
+        on_base={"a1"},
+        touched={
+            PARTLY: [
+                ("PL-X3WZ rename the helper", ("revised.py",)),
+                ("PL-X3WZ introduce the helper", ("landed.txt",)),
+            ]
+        },
+        tips={PARTLY: {}},
+    )
+
+    assert report.branches == ()
+    assert report.rewritten == ()
+
+
+def test_a_branch_whose_file_the_base_then_added_to_carries_nothing() -> None:
+    """Supersession on the *base*, which is the expensive direction (`PL-XLQ5`).
+
+    `PL-1VFK` (`#437`) recovered two stranded items by re-applying them and
+    appended a recovery note to one in the same commit, so the blob the branch
+    introduced for that file is one `main` has never held while `main`'s copy is
+    a strict superset of it. The `recover:` line this report would hand a reader
+    is a `git checkout` of the branch's older copy over the newer one, which
+    deletes the note.
+
+    Going from the base to the ref therefore only *removes* lines, and that is
+    what the counts say: nothing is missing from the base.
+    """
+    report = _orphaned(
+        adds={PARTLY: [("a1", "landed.txt"), ("a2", "docs/items/PL-6YYR-recovered.md")]},
+        on_base={"a1"},
+        touched={
+            PARTLY: [
+                ("PL-6YYR capture the release tag", ("docs/items/PL-6YYR-recovered.md",)),
+                ("PL-K7QX the work the pull request took", ("landed.txt",)),
+            ]
+        },
+        tips={PARTLY: {"docs/items/PL-6YYR-recovered.md": ("0", "4")}},
+    )
+
+    assert report.branches == ()
+
+
+def test_a_branch_whose_only_landed_commit_is_docket_record_output_is_not_merged() -> None:
+    """Convergence is not a merge, and a whole commit of it is still not a merge (`PL-JBRC`).
+
+    `PL-5TRV` narrowed the merge verdict to "the base took one of this branch's
+    commits whole", because two sessions running `bin/docket record` write
+    byte-identical lines and each then holds content the other landed. That
+    leaves one shape: a commit *entirely* made of `record` output, every path of
+    which agrees with the base by convergence rather than by merge.
+
+    A branch carrying one of those and one genuinely outstanding commit then
+    reads as a merged pull request with work left behind - and the recovery the
+    `docket` skill prescribes for that deletes the ref an open pull request was
+    raised against, which is `PL-5TRV`'s harm by a narrower route.
+    """
+    report = _orphaned(
+        adds={PARTLY: [("a1", "docs/items/PL-K7QX-recorded.md"), ("a2", "src/live.py")]},
+        on_base={"a1"},
+        touched={
+            PARTLY: [
+                ("PL-K7QX the work this session is still doing", ("src/live.py",)),
+                (
+                    "PL-K7QX record the merged pull request number",
+                    ("docs/items/PL-K7QX-recorded.md",),
+                ),
+            ]
+        },
+    )
+
+    assert report.branches == ()
+
+
+def test_a_branch_on_duplicated_history_is_not_reported_as_orphaned() -> None:
+    """A rewrite changes every hash and no byte, so content cannot tell it from a merge.
+
+    `PL-YGF3` observed exactly this on `claude/fresh-gas-flow-range-4bom2g`.
+    The hazard is not the report itself - its recovery copies a file - but the
+    recipe the `docket` skill prescribes for a branch whose pull request merged,
+    which deletes the ref. On pre-rewrite history that ref holds the only copy
+    of the commits it carries, so it is named apart from the branches that lead
+    a reader there (`PL-Y31G`).
+    """
+    report = _orphaned(
+        adds={PARTLY: [("a1", "landed.txt"), ("a2", "pushed-after.md")]},
+        on_base={"a1"},
+        touched={
+            PARTLY: [
+                ("PL-ZSV6 the rule pushed after the merge", ("pushed-after.md",)),
+                ("PL-K7QX the work the pull request took", ("landed.txt",)),
+            ]
+        },
+        duplicated=(PARTLY,),
+    )
+
+    assert report.branches == ()
+    assert report.rewritten == (PARTLY,)
 
 
 def test_a_branch_that_has_landed_nothing_is_ordinary_work_in_flight() -> None:
@@ -3232,6 +3576,12 @@ def _rename_runner(commits: tuple[tuple[str, str, str, str], ...], items_dir: st
             )
             at += len(revision) - len(named)
             return commits[at][3] if at < len(commits) and paths[at] == path else ""
+        if args[0] == "diff" and "--name-only" in args:
+            # The paths a commit changed, which is how a closure that landed
+            # with its work is told from one that landed without it. Every
+            # commit in these histories carries work, which is what a closure
+            # written in the same commit as the work looks like.
+            return "src/changed.py\n"
         if args[0] != "log":
             return ""
         if "--" not in args:

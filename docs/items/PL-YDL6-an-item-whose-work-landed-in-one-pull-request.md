@@ -1,14 +1,15 @@
 ---
 id: PL-YDL6
 title: An item whose work landed in one pull request but whose status done was written in a later one recovers the later number, which carries the closure but none of the work
-status: ready
+status: done
 priority: P2
 effort: S
 classes: defect, infra
 feature: dev-tooling
-verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_closure_split_from_its_work_recovers_the_work_s_pull_request' subprojects/docket/tests/test_vcs.py
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_closure_split_from_its_work_records_no_pull_request' subprojects/docket/tests/test_vcs.py
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-04
+closed: 2026-09-12
 ---
 
 **Problem.** `_number_closing` recovers a pull request by finding the commit
@@ -58,3 +59,18 @@ closure rule (`PL-D2GW`, `PL-P5S0`), and none of them reachable through the
 subject scan, which `PL-GW37` made the first reading. Declining is a defensible
 answer here, per the `Done when` above.
 
+
+**Decided while closing, 2026-09-12: it declines rather than recovering the
+work's pull request**, which is the second of the two answers this item's **Done
+when.** allowed. Nothing in `vcs.py` knows which files an item's work was - that
+is the item's own `touches`, which is store knowledge and would be read from the
+branch rather than from the base - so naming the pull request that carried the
+work cannot be done from here without guessing. `PL-99Y4` already settled the
+posture for exactly that: a provenance question the checkout cannot answer is
+reported rather than invented.
+
+`_annotates_only` is the discriminator, which is the same rule that tells
+recording an item from working on it everywhere else in the module: a closure
+commit carrying its work touches something outside the queue. The `verify:`
+command was renamed with the test to match the answer taken; the old name
+described the option that was not.
