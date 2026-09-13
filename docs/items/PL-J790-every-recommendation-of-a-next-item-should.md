@@ -3,11 +3,12 @@ id: PL-J790
 title: Every recommendation of a next item should state its relation to the current gate, and docket show never states one at all
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: dev-tooling
 touches: .claude/skills/docket, subprojects/docket
 added: 2026-09-13
+closed: 2026-09-13
 verify: uv run pytest -q subprojects/docket/tests/test_plan.py && grep -rq 'def test_an_unplaced_item_says_the_roadmap_places_it_nowhere' subprojects/docket/tests/
 ---
 
