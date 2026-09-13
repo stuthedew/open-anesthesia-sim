@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-06
 closed: 2026-09-13
+pr: 530
 verify: uv run pytest subprojects/docket/tests/test_verify.py subprojects/docket/tests/test_checks.py -q -k blocked && python3 -c "import pathlib; t=pathlib.Path('subprojects/docket/src/docket/verify.py').read_text(); raise SystemExit(0 if 'SCOPED_ONLY_STATUSES' in t else 1)"
 ---
 

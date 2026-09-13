@@ -3,11 +3,13 @@ id: PL-1XPX
 title: Decide what the readouts show while two branches are displayed
 priority: P1
 effort: M
-status: needs-decision
+status: done
 classes: safety, ux
 feature: scenario-branching
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/formatting.py, docs/MODEL.md
 added: 2026-09-06
+closed: 2026-09-13
+verify: python3 tools/doc_check.py check && grep -qF 'While two runs are shown, every readout names the run it describes' docs/MODEL.md
 ---
 
 **Problem.** The readouts name a compartment and show one number each. With two
@@ -111,3 +113,71 @@ identity rather than to separate marks.
 naming its run in text - with the readouts following `PL-HLD5`'s two-compartment
 cap while comparing.** The crux the owner has to settle is that second clause,
 because it is what decides whether pairing is free or doubles the block.
+
+## Decided 2026-09-13: both runs, paired per compartment, each named in text
+
+**The first candidate, with one clause of the recommendation dropped.**
+`docs/MODEL.md` § "Minimum displayed outputs" now states it.
+
+**The second candidate is refused, and not on preference.** Showing the
+selected run with the selection stated is a mode, and `PL-HLD5` rejected
+run-by-colour on that same ground seven days ago - "making it mean 'run' in
+compare mode would put two meanings on one channel either side of a mode
+change, on the chart where a misread is a misread of a clinical value". The
+readout version is the worse case: colour would at least change appearance,
+where a selected-run readout block looks **identical** whichever run is
+selected, so a stale selection has no visual signature at all. Stating the
+selection warns after the fact; showing both prevents.
+`.claude/rules/expert-review.md` asks for the second.
+
+**The third is refused on a domain ground rather than a layout one.** A
+difference readout needs a sign convention, which is its own ambiguity - but
+the heavier objection is that the arithmetic difference of two alveolar
+fractions is not a quantity with a conventional clinical reading. Depth is
+reasoned about in MAC multiples and in time-to-target, not in "these two
+managements are 0.006 apart", and a displayed number implies a standard
+meaning. `CLAUDE.md` requires displayed precision to be justified by practical
+interpretability. The chart already carries the comparison continuously.
+
+**The run is named in text.** `PL-HLD5` put the run on line width because every
+other line-level channel was spent; text has no width analogue, colour is spent
+on the compartment, and position alone fails the reader who looks away and back
+- the stale-context failure the whole item is about.
+
+## The cap clause was recommended, approved, and then refused by the specification
+
+**Recorded because the approval was given on a case that had not read this.**
+The recommendation put to the project owner was the first candidate *plus* the
+readouts following `PL-HLD5`'s two-compartment cap while comparing, and that
+clause was named as the crux. It was approved. It is not what landed, and the
+reason is not a change of mind.
+
+§ "Minimum displayed outputs" already says, of the six compartment
+concentrations: "The chart's compartment traces are the reader's to show and
+hide ... and **a required value must not leave the display with the curve that
+draws it**." The cap is a colour-capacity limit on the chart - six traces
+cannot be separated, two can - and it removes four curves in compare mode.
+Under the existing rule the readouts are exactly what must keep those four
+values on the display. Capping them too would take four required clinical
+readouts off the screen, which is the failure that sentence exists to prevent.
+
+So the crowding objection the cap was meant to answer is answered a different
+way: **pair the two runs under one compartment label** rather than adding a
+second six-readout block. Six rows, not twelve; the block grows in width, not
+in height, and the one-row comparative reading survives. That is what "paired
+per compartment" most naturally meant in the first candidate, and the cap was
+never needed for it.
+
+**What is still the owner's.** If the readouts *should* follow the chart's cap,
+that is an amendment to § "Minimum displayed outputs" - making the six
+compartment readouts conditional on compare mode - and it is a change to a
+safety requirement rather than a layout choice. It is not made here.
+
+## Not implemented here, and deliberately
+
+No two-run rendering exists yet: `PL-B9PY` decomposes `SimulationView` so two
+runs can be drawn, and `PL-8PSW` builds the overlay. This item is the decision
+and the requirement, which is what its **Done when** asks for; `PL-TCD1` closing
+in v0.4.18 is what made the snapshot able to name which run a value belongs to
+at all.
+

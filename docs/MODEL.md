@@ -4069,6 +4069,45 @@ one chart entry above that the reader does choose, and what this list requires
 of it is that the width in force is stated, never that any particular width is
 in force.
 
+**While two runs are shown, every readout names the run it describes, and all
+six compartments keep theirs** (`PL-1XPX`). This list is a requirement on the
+numeric readouts and does not become a smaller one in compare mode. The rule in
+the paragraph above — that a required value must not leave the display with the
+curve that draws it — binds the chart's two-compartment cap (`ROADMAP.md`
+v0.5.0, `PL-HLD5`) exactly as it binds a reader hiding a trace: the cap is a
+colour-capacity limit on the chart, not a reduction of what the display owes.
+So while two runs are compared the chart may draw two compartments and the
+readouts still carry six, for both runs, and the readouts are what keep the
+other four on the display.
+
+**The run is named in text, not carried by colour or by position.** Colour is
+spent on the compartment and cannot take a second meaning either side of a mode
+change — "The six compartment traces" measures the worst trace-against-trace
+pair at 1.01:1 against a 3:1 requirement, which is why `PL-HLD5` put the run on
+line width rather than colour. Text has no width analogue, and position alone
+fails the reader who has looked away and back, which is the stale-context
+failure this requirement exists for. A concentration that does not say which
+management produced it is the correct number under the wrong patient context.
+
+**Both runs are shown, rather than the selected one with the selection stated.**
+Showing one would make the readout block a mode, and a stale selection there has
+no visual signature at all: the block looks identical whichever run is selected,
+so a reader who has forgotten reads one management's number as the other's.
+Stating the selection warns after the fact where showing both prevents. Pairing
+the two values under one compartment label is what keeps that from doubling the
+block's height: it grows in width instead, which preserves the one-row
+comparative reading this document requires the resolution to be uniform for —
+a reader seeing the circuit lead the alveoli lead the tissues. What that costs
+is width at narrow windows, which `PL-3355` tracks.
+
+**No difference readout is required, and none may be added without a stated
+sign convention.** The arithmetic difference of two alveolar fractions is not a
+quantity with a conventional clinical reading — depth is reasoned about in MAC
+multiples and in time-to-target — so displaying one implies a standard meaning
+it does not have, which "Displayed precision" refuses on interpretability
+grounds. The chart already carries the comparison continuously, in the axis the
+reader is looking at.
+
 Arterial concentration is deliberately **not** in this list. Arterial blood is
 flow-limited in this model and holds no independent state: $`F_a \equiv F_A`$
 (see "Model boundary"). A separate arterial readout would therefore display

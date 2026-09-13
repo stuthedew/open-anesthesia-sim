@@ -4,12 +4,13 @@ title: Check the symbol map, the retired names and the partition-coefficient rul
 priority: P2
 effort: M
 status: done
-blocked-by: PL-9SH6
 classes: infra
 feature: core-domain-language
 touches: tools, tests/unit, Makefile, .github/workflows, docs/ARCHITECTURE.md, docket.toml
+blocked-by: PL-9SH6
 added: 2026-09-03
 closed: 2026-09-13
+pr: 532
 verify: uv run pytest tests/unit/ && grep -rq 'def test_symbol_code_cell_must_resolve' tests/unit/
 ---
 
