@@ -42,6 +42,7 @@ from math import isfinite
 from typing import Final
 
 from anesthesia_sim.app_metadata import APP_BUILD_VERSION, APP_VERSION_IS_KNOWN
+from anesthesia_sim.core.concentration import Fraction, Percent, percent_from_fraction
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
 __all__ = [
@@ -205,7 +206,7 @@ CHART_GRID_INTERVAL_MAC: Final = 0.5
 WASH_IN_DISPLAY_DECIMALS: Final = 2
 
 
-def format_percent(concentration_fraction: float) -> str:
+def format_percent(concentration_fraction: Fraction) -> str:
     """Convert a concentration fraction to display percent.
 
     Renders at `CONCENTRATION_DISPLAY_RESOLUTION_PERCENT`, the resolution
@@ -233,7 +234,7 @@ def format_percent(concentration_fraction: float) -> str:
         below-resolution form for a positive value that rounds to zero.
     """
 
-    percent = concentration_fraction * 100.0
+    percent = percent_from_fraction(concentration_fraction)
     rendered = f"{percent:.{CONCENTRATION_DISPLAY_DECIMALS}f}"
 
     if percent > 0.0 and float(rendered) == 0.0:
@@ -244,7 +245,7 @@ def format_percent(concentration_fraction: float) -> str:
     return f"{rendered}%"
 
 
-def mac_multiple(concentration_fraction: float, mac_percent: float) -> float:
+def mac_multiple(concentration_fraction: Fraction, mac_percent: Percent) -> float:
     """Convert a concentration fraction to multiples of the agent's 1 MAC.
 
     The whole arithmetic of the second display unit, in one place, so the
@@ -287,10 +288,10 @@ def mac_multiple(concentration_fraction: float, mac_percent: float) -> float:
     if not mac_percent > 0.0:
         raise ValueError(f"mac_percent must be strictly positive, got {mac_percent!r}")
 
-    return concentration_fraction * 100.0 / mac_percent
+    return percent_from_fraction(concentration_fraction) / mac_percent
 
 
-def format_mac_multiple(concentration_fraction: float, mac_percent: float) -> str:
+def format_mac_multiple(concentration_fraction: Fraction, mac_percent: Percent) -> str:
     """Render a concentration fraction as a MAC multiple with its unit.
 
     The same three rules `format_percent` follows, for the same reasons,

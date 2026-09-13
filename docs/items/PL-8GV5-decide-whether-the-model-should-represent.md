@@ -3,11 +3,13 @@ id: PL-8GV5
 title: Decide whether the model should represent anaesthesia's own effect on cardiac output and regional perfusion, which it currently holds fixed
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: planning, docs
 feature: model-spec-accuracy
-touches: ROADMAP.md, docs/MODEL.md
+touches: docs/MODEL.md, ROADMAP.md
 added: 2026-09-06
+closed: 2026-09-13
+verify: grep -qF 'held fixed under' docs/MODEL.md && make doc-check
 ---
 
 **Problem.** Cardiac output and the three perfusion fractions are constants
@@ -62,3 +64,99 @@ boundary of the whole model rather than an unstated exception inside it, and no
 displayed value is wrong today. If the missing "Known limitations" sentence
 reads as a scientific-transparency gap rather than as scope documentation, the
 class becomes `science` and `docket check` moves it to P1.
+
+**Decided by the project owner, 2026-09-13: not now, and it stays on the
+roadmap as an option.** `docs/MODEL.md` § "Known limitations" records that
+perfusion is held fixed, with the evidence below; `ROADMAP.md`'s
+planned-milestone item 35 carries the coupling as a possible future feature,
+framed as an *option a user turns on* rather than as a change to the model's
+standing behaviour.
+
+**A session had answered this and should not have.** The first pass closed
+the item outright — "do not model it, no line of intent" — on the strength of
+the measurements below. The measurements were a session's to make; the
+disposition was not. `CLAUDE.md` divides this explicitly: *"The division of
+labour is theirs to set direction and yours to make it real."* Whether a
+feature enters `ROADMAP.md` is direction, so the case belonged in a reply with
+a recommendation, not in a closed item. The project owner caught it in the
+same session and supplied the answer, which is **better than the one it
+replaced**: an option carries the evidence problem below in a way a standing
+model behaviour cannot, because an overlay may state its own uncertainty while
+a default cannot.
+
+`PL-4T90` is the routing gap that let it happen, and the `docket` skill was
+edited in the same session.
+
+The half that did not wait on the answer — `docs/MODEL.md` stating that
+cardiac output and the three perfusion fractions are held fixed — is done
+either way, and it is now a paragraph rather than the one-word "hemodynamic
+response" bullet, because what a reader needs is the consequence for the curve
+in front of them: $`\tau_i = V_i\lambda_{i:b}/Q_i`$, so a flow that fell under
+anaesthesia would *lengthen* every tissue's equilibration for as long as the
+agent was being given, which is against the intuition that more agent means
+faster equilibration.
+
+**What decided it was reading the human volunteer data rather than reasoning
+from "volatiles depress the myocardium".** Three studies, healthy volunteers,
+no surgery, each against its own awake baseline:
+
+- **Weiskopf et al., Anesth Analg 1991;73(2):143-56 (PMID 1854029).**
+  Desflurane alone at 0.83, 1.24 and 1.66 MAC in 12 normocapnic men: cardiac
+  index **did not change**, although stroke volume index fell and filling
+  pressure rose at every concentration.
+- **Cahalan et al., Anesth Analg 1991;73(2):157-64 (PMID 1854030,
+  doi:10.1213/00000539-199108000-00008).** The **same** volunteers in the same
+  crossover, with 60% nitrous oxide carrying 0.5 MAC of the total: cardiac
+  index now fell dose-dependently.
+- **Malan et al., Anesthesiology 1995;83(5):918-28 (PMID 7486177,
+  doi:10.1097/00000542-199511000-00004).** Sevoflurane: cardiac index fell at
+  1.0 and 1.5 MAC and **returned to baseline at 2.0 MAC** as systemic vascular
+  resistance fell; isoflurane similar; the depression diminished with
+  prolonged administration and with spontaneous rather than controlled
+  ventilation.
+
+So the *sign* depends on the carrier gas, the dose-response is **not
+monotonic**, and the effect moves with time at a fixed dose and with the
+ventilation mode. This model has no second gas, no ventilation mode, no
+surgical stimulus and no pharmacodynamic layer, so the only function it could
+carry is a monotonic, time-invariant $`Q(\text{dose})`$ — which is a
+relationship the literature above does not show. In a simulator built to
+teach, shipping one would be worse than holding the flow fixed and saying so.
+
+That is a stronger argument than the ones the brief anticipated, and it
+replaces them rather than joining them. "Fidelity should match the learning
+objective" and "it would break Gas Man comparability" are both true and both
+would have lost to a good enough dataset; this does not, because there is no
+dataset to fit.
+
+**The regional half is weaker still**, which the brief already suspected: the
+reachable measurements of how anaesthesia redistributes flow between the
+vessel-rich, muscle and fat groups are largely animal — Moher and Carey's
+swine adipose washout, which this brief records and which is not a basis for
+changing a stored value. `docs/MODEL.md` already carries the finding that the
+stored fat flow is about twice Heinonen et al.'s human resting PET
+measurement; a *varying* fraction on top of a resting one that far out would
+be building a second storey on that.
+
+**What a learner gets instead is the control**, and this is the part that makes
+the decision defensible rather than merely cautious. Cardiac output is on the
+interface, so the lesson — higher output carries more agent away from the lung,
+stores more of it, slows the rise of $`F_A`$ — is reachable by moving it and
+watching, which is how the model's own directional gates assert it. What is
+missing is only the *automatic* coupling, and `docs/MODEL.md` now tells the
+reader to supply that themselves.
+
+**What the evidence leaves for whoever scopes item 35.** The hard part is not
+the arithmetic. A single monotonic, time-invariant `Q(dose)` is unsupportable
+on the data above, so the option has to decide what it *asserts* and how its
+uncertainty reaches the reader — which is the question an overlay can answer
+and a default cannot. Two conditions would sharpen it rather than reopen it:
+this model gaining a pharmacodynamic layer, or a second gas whose own
+haemodynamic profile differs materially from the volatile it accompanies —
+nitrous oxide being exactly that case, and `ROADMAP.md`'s planned items 6
+and 7.
+
+**Class stays `planning, docs`.** The brief offered to become `science` if the
+missing sentence read as a scientific-transparency gap; with the sentence
+written, and written as a measured paragraph with its sources, there is no gap
+left for the reclassification to describe.

@@ -1,6 +1,14 @@
 """Patient-side compartments: the vessel-rich, muscle, and fat tissue groups
 (`tissue.py`) plus mixed-venous blood (`blood.py`), coupled through cardiac
 output and each tissue's perfusion fraction of it.
+
+`PatientCompartments` holds those compartments and the flow allocation
+between them, and holds no method that steps them. It had one - `advance()`,
+which stepped the three tissue groups and then mixed their end-of-step return
+into the venous pool - and that was an operator split rather than a closed
+form: `core/__init__.py` carries the measurement and `PL-74R0` the decision.
+Nothing outside the governing equations may move agent between two modelled
+compartments, which is the rule `alveolar.py` states for the same reason.
 """
 
 from __future__ import annotations
@@ -16,7 +24,6 @@ from anesthesia_sim.core.parameters import (
 )
 from anesthesia_sim.core.supported_ranges import require_supported_cardiac_output
 from anesthesia_sim.core.tissue import TissueGroup, TissueGroupState
-from anesthesia_sim.core.validation import require_concentration_fraction, require_positive_finite
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,27 +139,6 @@ class PatientCompartments:
         require_supported_cardiac_output(cardiac_output_l_min)
         self.cardiac_output_l_min = cardiac_output_l_min
         self._update_blood_flows()
-
-    def advance(self, arterial_fraction: float, simulation_step_s: float) -> float:
-        """Advance tissues and venous blood.
-
-        Returns the signed change in total patient agent.
-        """
-
-        require_concentration_fraction("arterial_fraction", arterial_fraction)
-        require_positive_finite("simulation_step_s", simulation_step_s)
-
-        initial_amount_l = self.total_agent_amount_l
-
-        for tissue in self.tissues:
-            tissue.advance(arterial_fraction=arterial_fraction, simulation_step_s=simulation_step_s)
-
-        self.venous_blood.advance(
-            tissue_return_fraction=(self.tissue_return_fraction),
-            simulation_step_s=simulation_step_s,
-        )
-
-        return self.total_agent_amount_l - initial_amount_l
 
     def capture_state(self) -> PatientCompartmentsState:
         """Record run state so a failed step can be rolled back."""

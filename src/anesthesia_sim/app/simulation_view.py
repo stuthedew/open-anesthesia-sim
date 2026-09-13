@@ -142,6 +142,12 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO, WashInDomain, read_wash_in
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
+from anesthesia_sim.core.concentration import (
+    Fraction,
+    Percent,
+    fraction_from_percent,
+    percent_from_fraction,
+)
 from anesthesia_sim.core.exceptions import AnesthesiaSimulationError, SimulationDomainLimitError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.supported_ranges import (
@@ -621,7 +627,7 @@ class SimulationView:
         # Placeholders come from the formatter rather than from literals, so
         # a change to the displayed resolution cannot leave the pre-run
         # reading disagreeing with every reading after it.
-        empty_compartment = format_percent(0.0)
+        empty_compartment = format_percent(Fraction(0.0))
         self._circuit_concentration_text = self._build_metric_value(empty_compartment)
         self._alveolar_concentration_text = self._build_metric_value(empty_compartment)
         self._mixed_venous_concentration_text = self._build_metric_value(empty_compartment)
@@ -636,7 +642,7 @@ class SimulationView:
         # cannot be misread that way, and the pair is also what makes the
         # conversion legible - the agent's own 1 MAC is the ratio between them,
         # and it is named under the chart.
-        empty_mac = format_mac_multiple(0.0, initial_snapshot.agent_mac_percent)
+        empty_mac = format_mac_multiple(Fraction(0.0), initial_snapshot.agent_mac_percent)
         self._circuit_mac_text = self._build_metric_secondary_value(empty_mac)
         self._alveolar_mac_text = self._build_metric_secondary_value(empty_mac)
         self._mixed_venous_mac_text = self._build_metric_secondary_value(empty_mac)
@@ -1176,7 +1182,7 @@ class SimulationView:
         self._delivered_concentration_slider = ft.Slider(
             min=MIN_DELIVERED_CONCENTRATION_PERCENT,
             max=initial_snapshot.max_delivered_concentration_percent,
-            value=(initial_snapshot.delivered_concentration_fraction * 100.0),
+            value=(percent_from_fraction(initial_snapshot.delivered_concentration_fraction)),
             label="{value}%",
             # The drag label is the same clinical value as the readout beside
             # it and must be read at the same resolution. Flet rounds this
@@ -2227,8 +2233,8 @@ class SimulationView:
         self._running_agent_text.value = snapshot.agent_display_name
 
         self._delivered_concentration_slider.max = snapshot.max_delivered_concentration_percent
-        self._delivered_concentration_slider.value = (
-            snapshot.delivered_concentration_fraction * 100.0
+        self._delivered_concentration_slider.value = percent_from_fraction(
+            snapshot.delivered_concentration_fraction
         )
         # The ceiling and the rules move with the agent because both are
         # multiples of its 1 MAC - which is exactly what keeps the *scale*
@@ -2499,7 +2505,9 @@ class SimulationView:
         self._off_scale_text.value = (
             OFF_SCALE_NOTICE_TEMPLATE.format(
                 compartments=", ".join(off_scale),
-                top=format_mac_multiple(top_percent / 100.0, snapshot.agent_mac_percent),
+                top=format_mac_multiple(
+                    fraction_from_percent(Percent(top_percent)), snapshot.agent_mac_percent
+                ),
             )
             if off_scale
             else ""
@@ -3222,7 +3230,9 @@ class SimulationView:
         if event.control.value is None:
             return
 
-        delivered_concentration_fraction = float(event.control.value) / 100.0
+        delivered_concentration_fraction = fraction_from_percent(
+            Percent(float(event.control.value))
+        )
         self._apply_setting(
             lambda: self._controller.set_delivered_concentration(delivered_concentration_fraction),
             coalesce=True,

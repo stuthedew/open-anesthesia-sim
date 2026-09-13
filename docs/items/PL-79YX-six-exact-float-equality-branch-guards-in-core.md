@@ -1,12 +1,14 @@
 ---
 id: PL-79YX
 title: Six exact float-equality branch guards in core/ are correct and nowhere explained
-status: needs-decision
+status: done
 priority: P3
 effort: S
 classes: docs
-touches: src/anesthesia_sim/core
+touches: src/anesthesia_sim/core/__init__.py, tests/unit/test_compartment_primitives.py
 added: 2026-09-02
+closed: 2026-09-13
+verify: uv run pytest tests/unit/test_compartment_primitives.py -q
 ---
 
 **Problem.** Seven `== 0.0` comparisons gate physics branches -
@@ -81,3 +83,53 @@ deletes or restructures. Two of the three are gone:
 have no production caller at all — see `PL-74R0`, which decides whether they
 stay. Re-run the item's own walk before deciding; the decision may be smaller
 than the brief describes, or moot.
+
+**Decided 2026-09-13: yes, it is worth the words — and the walk was re-run as
+the note above asked, which changed the answer twice over.**
+
+The brief expected one sentence about a singular point and a continuous limit.
+Re-measured on the post-`PL-GS5X` tree, the six surviving guards do not share
+one reason, and two of the three reasons are not about singular points at all.
+The explanation lives in `core/__init__.py`, once, and
+`tests/unit/test_compartment_primitives.py` re-runs every number in it.
+
+**The inventory, and what each guard is actually for.** Six, in three files,
+and the "reader who knows the domain will work it out unaided" answer would
+have had them work out three different arguments:
+
+| Site | Without the guard |
+| --- | --- |
+| `circuit.py`, `tissue.py`, `blood.py` — `time_constant_s` | `ZeroDivisionError`. Python raises on `V/0.0` rather than returning `inf`, so the branch is the only route to the `inf` `docs/MODEL.md` states. |
+| `circuit.py` — `advance_fresh_gas` | `nan`. The exhausted-agent integral carries `tau * (1 - exp(-dt/tau))`, which at `tau = inf` is `inf * 0.0` — for *every* circuit state, including one already at the dial. The circuit would report a `nan` exhaust to the mass-balance check. |
+| `tissue.py`, `blood.py` — `advance` | One unit in the last place. The fraction comes back right, but the amount is written as `capacity_l * next_fraction`, and that round trip is not bit exact. |
+
+**Why the test is an equality and never a tolerance.** Walked upward from
+zero, the general path lands the *same* distance from the branch at 5e-324, at
+1e-300 and at 1e-30 — that distance being one rounding of `d + (i - d)`, not
+flow moving agent. Nothing changes across 294 orders of magnitude, so there is
+no band of nearly-zero flows for an epsilon to catch. The first magnitude at
+which the difference moves is a flow of 1e-12 L/min, twelve orders below
+anything the model supports, where a real flow moves a real 1e-15 L of agent.
+An epsilon would not remove a discontinuity; it would introduce one.
+
+**The 2026-09-02 table was right and its state was too easy**, which is the
+finding worth carrying forward. `d + (i - d)` returns `i` bit for bit whenever
+`i` and `d` are within a factor of two of each other, and that walk was run at
+a loaded fraction comparable to the fraction driving it. Measured today at a
+loaded fraction well below its input — the ordinary case, a compartment at the
+start of a wash-in — the same walk is one rounding out instead. Both halves
+were then tested: deleting either `advance` guard left the whole suite green,
+and left the first draft of the new module green too.
+
+So the third reason in the table above is the one the old table could not see,
+and the tests now pin it at a state where it is visible. All seven mutations —
+each guard deleted, each `time_constant_s` widened to a `< 1e-9` tolerance,
+and `PatientCompartments.advance` reinstated — now fail.
+
+**`core/validation.py` was the wrong home**, of the two the brief offered. It
+guards caller-supplied values and raises `SimulationConfigurationError`; a
+physical zero in a model quantity is not a rejected input, and filing the two
+together would have made both harder to read. The package docstring in
+`core/__init__.py` is where all six sites can be read against one statement,
+and it is where `PL-74R0`'s neighbouring rule about what an `advance()` is
+already had to go.

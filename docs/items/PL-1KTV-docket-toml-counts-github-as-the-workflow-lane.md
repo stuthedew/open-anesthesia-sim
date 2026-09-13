@@ -9,6 +9,7 @@ feature: worker-instructions
 touches: docket.toml, .claude/rules/apparatus-standard.md, CLAUDE.md
 added: 2026-09-06
 closed: 2026-09-13
+pr: 515
 verify: python3 tools/rules_paths_check.py && grep -qF '/.github/**' .claude/rules/apparatus-standard.md
 ---
 

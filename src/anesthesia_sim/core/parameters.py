@@ -30,6 +30,7 @@ from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, ConfigDict, field_validator, model_validator
 from pydantic import ValidationError as PydanticValidationError
 
+from anesthesia_sim.core.concentration import Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 SUPPORTED_SCHEMA_VERSION = 2
@@ -138,8 +139,8 @@ class AgentParameters:
     vessel_rich_tissue_gas_partition_coefficient: float
     muscle_tissue_gas_partition_coefficient: float
     fat_tissue_gas_partition_coefficient: float
-    max_delivered_concentration_percent: float
-    mac_percent: float
+    max_delivered_concentration_percent: Percent
+    mac_percent: Percent
     mac_awake: MacAwakeReference
     sources: tuple[SourceReference, ...]
     # Why no primary source is adopted, where none is; `None` where one is.
@@ -543,8 +544,8 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
         vessel_rich_tissue_gas_partition_coefficient=coefficients.vessel_rich,
         muscle_tissue_gas_partition_coefficient=coefficients.muscle,
         fat_tissue_gas_partition_coefficient=coefficients.fat,
-        max_delivered_concentration_percent=(model.max_delivered_concentration_percent),
-        mac_percent=model.mac_percent,
+        max_delivered_concentration_percent=(Percent(model.max_delivered_concentration_percent)),
+        mac_percent=Percent(model.mac_percent),
         mac_awake=MacAwakeReference(
             fraction_of_mac=model.mac_awake.fraction_of_mac,
             standard_deviation_fraction_of_mac=(model.mac_awake.standard_deviation_fraction_of_mac),

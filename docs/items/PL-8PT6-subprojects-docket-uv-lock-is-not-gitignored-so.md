@@ -1,13 +1,14 @@
 ---
 id: PL-8PT6
 title: subprojects/docket/uv.lock is not gitignored, so running uv from inside the subproject leaves an untracked lockfile a git add -A would commit
-status: done
 priority: P3
 effort: S
+status: done
 classes: infra
 touches: .gitignore, subprojects/docket/README.md
 added: 2026-09-13
 closed: 2026-09-13
+pr: 515
 verify: python3 tools/doc_check.py check && git check-ignore -q subprojects/docket/uv.lock
 ---
 

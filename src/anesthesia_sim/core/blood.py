@@ -6,6 +6,7 @@ arterial input, under this model's flow-limited arterial simplification.
 from dataclasses import dataclass
 from math import exp, inf
 
+from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.validation import (
     require_concentration_fraction,
@@ -87,16 +88,27 @@ class VenousBloodCompartment:
         require_nonnegative_finite("blood_flow_l_min", blood_flow_l_min)
         self.blood_flow_l_min = blood_flow_l_min
 
-    def set_concentration_fraction(self, concentration_fraction: float) -> None:
+    def set_concentration_fraction(self, concentration_fraction: Fraction) -> None:
         """Set venous state from an equilibrium fraction."""
 
         require_concentration_fraction("concentration_fraction", concentration_fraction)
         self.agent_amount_l = self.capacity_l * concentration_fraction
 
-    def advance(self, tissue_return_fraction: float, simulation_step_s: float) -> float:
-        """Mix tissue return into venous blood exactly.
+    def advance(self, tissue_return_fraction: Fraction, simulation_step_s: float) -> float:
+        """Mix tissue return into venous blood exactly, for a constant return.
+
+        This pool's own closed form, and not how a run advances: the tissue
+        return a run presents changes continuously as the tissues fill, and
+        the step that follows it is `AgentUptakeSystem.advance()`. The package
+        docstring in `core/__init__.py` states the distinction and the zero-
+        flow branch below; `docs/MODEL.md` § "Venous blood" is the equation.
 
         Returns the signed change in venous agent amount.
+
+        Raises:
+            SimulationConfigurationError: `tissue_return_fraction` is not a
+                finite number in [0, 1], or `simulation_step_s` is not
+                positive and finite. Both are checked before anything changes.
         """
 
         require_concentration_fraction("tissue_return_fraction", tissue_return_fraction)

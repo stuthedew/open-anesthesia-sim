@@ -3600,8 +3600,44 @@ once someone is ready to scope it.
     as to palette and spacing. Whether v0.5.1 builds the tiled shell, reserves
     for it, or ignores it is the project owner's call and is not recorded here.
 
+35. Add an optional model of anaesthesia's own effect on cardiac output and
+    regional perfusion, which the model holds fixed today. An option the user
+    turns on, labelled as an illustrative overlay rather than as the model's
+    own prediction, not a change to what a run does by default.
 
-None of items 1-34 mix scientific-core and UI/tooling concerns within a
+    *Framing (project owner, 2026-09-13).* Recorded as a possible future
+    feature to consider rather than as a settled exclusion. `PL-8GV5` proposed
+    closing the question outright and the owner agreed with the substance for
+    now - the model holds perfusion fixed - while directing that the feature
+    stay on this list as an option.
+
+    *The evidence constraint, and it is what makes "optional" the right shape
+    rather than a hedge.* Measured against the human volunteer literature
+    while working `PL-8GV5`: desflurane alone did not change cardiac index at
+    0.83-1.66 MAC (Weiskopf et al., Anesth Analg 1991;73:143-56, PMID
+    1854029); the same volunteers with 60% nitrous oxide showed a
+    dose-dependent fall (Cahalan et al., Anesth Analg 1991;73:157-64, PMID
+    1854030); sevoflurane fell at 1.0 and 1.5 MAC and returned to baseline at
+    2.0 MAC as systemic vascular resistance fell, with the depression
+    diminishing over hours and under spontaneous ventilation (Malan et al.,
+    Anesthesiology 1995;83:918-28, PMID 7486177). So the sign depends on the
+    carrier gas, the dose-response is not monotonic, and the effect moves with
+    time at a fixed dose. A single monotonic, time-invariant relation is
+    therefore not supportable, and the hard part of scoping this is not the
+    arithmetic but deciding what the option *asserts* and how its uncertainty
+    reaches the reader. `docs/MODEL.md` § "Known limitations" carries the
+    measurements, the citations and the consequence for the tissue time
+    constants.
+
+    *Also unsupported at rest, one layer down.* The regional half needs
+    per-tissue flow under anaesthesia, and the reachable measurements are
+    largely animal; `docs/MODEL.md` already records that the stored fat flow
+    is about twice Heinonen et al.'s human resting PET measurement. A varying
+    fraction on top of a resting one that far out is a second storey on the
+    same foundation.
+
+
+None of items 1-35 mix scientific-core and UI/tooling concerns within a
 single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
 on 9, 13 on 12), that dependency is noted inline rather than bundled into
 one item.

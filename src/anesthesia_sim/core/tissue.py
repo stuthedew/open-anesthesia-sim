@@ -6,6 +6,7 @@ independently of every other tissue group.
 from dataclasses import dataclass
 from math import exp, inf
 
+from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.validation import (
     require_concentration_fraction,
@@ -129,18 +130,30 @@ class TissueGroup:
         require_nonnegative_finite("blood_flow_l_min", blood_flow_l_min)
         self.blood_flow_l_min = blood_flow_l_min
 
-    def set_partial_pressure_fraction(self, partial_pressure_fraction: float) -> None:
+    def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
         """Set tissue state from a partial-pressure-equivalent fraction."""
 
         require_concentration_fraction("partial_pressure_fraction", partial_pressure_fraction)
         self.agent_amount_l = self.capacity_l * partial_pressure_fraction
 
-    def advance(self, arterial_fraction: float, simulation_step_s: float) -> float:
+    def advance(self, arterial_fraction: Fraction, simulation_step_s: float) -> float:
         """Advance exactly for constant arterial fraction and blood flow.
+
+        This tissue group's own closed form, and not how a run advances: the
+        arterial fraction a run presents changes continuously, and the step
+        that follows it is `AgentUptakeSystem.advance()`. The package
+        docstring in `core/__init__.py` states the distinction and the zero-
+        flow branch below; `docs/MODEL.md` § "Tissue uptake and return" is
+        the equation.
 
         Returns the signed change in tissue agent amount. A positive value
         represents uptake by the tissue. A negative value represents return
         from the tissue to blood.
+
+        Raises:
+            SimulationConfigurationError: `arterial_fraction` is not a finite
+                number in [0, 1], or `simulation_step_s` is not positive and
+                finite. Both are checked before anything changes.
         """
 
         require_concentration_fraction("arterial_fraction", arterial_fraction)

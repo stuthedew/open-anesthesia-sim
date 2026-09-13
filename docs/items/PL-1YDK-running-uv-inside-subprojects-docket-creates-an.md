@@ -7,8 +7,10 @@ classes: infra
 feature: dev-tooling
 touches: .gitignore
 verify: git check-ignore -q subprojects/docket/uv.lock
-status: ready
+status: dropped
 added: 2026-09-01
+closed: 2026-09-13
+reason: superseded by `PL-8PT6`, which landed the identical fix in #515 without knowing this item existed. The two are one finding filed twice - same path, same `.gitignore` entry, same approach - and `PL-8PT6` even adopted this item's `verify:` command verbatim as half of its own. Dropped rather than marked done because neither this item nor the branch that closes it did the work; what satisfies its `Done when` is `.gitignore:28`, `/subprojects/docket/uv.lock`, anchored exactly as this item anticipated ("a `subprojects/*/uv.lock` glob satisfies it as readily as the literal path"). The decision half of the `Done when` - ignore the file rather than track it - was recorded here on 2026-09-01 by the project owner and is unchanged; `PL-8PT6` carries the same conclusion with the anchoring reason beside the line. Found by `bin/docket check --verify` on `main`, which is the mechanism working: its error fired on the first run after `PL-8PT6` merged and is what this closure clears.
 ---
 
 **Problem.** `subprojects/docket/pyproject.toml` makes that directory a uv
@@ -57,3 +59,13 @@ The `verify:` command exits 1 on 2026-09-01 and exits 0 once the entry lands.
 It asks git rather than looking for text in the file, so it stays true however
 the pattern is written - a `subprojects/*/uv.lock` glob satisfies it as
 readily as the literal path.
+
+**Dropped 2026-09-13, and what it cost is worth one line.** This item sat
+`ready` for twelve days while `PL-8PT6` was filed, triaged, worked and merged
+against the same finding. Nothing compared the two at filing time; what caught
+it was `bin/docket check --verify` on `main`, *after* the merge, by turning the
+base branch red - which is the right mechanism reporting at the latest useful
+moment rather than the earliest. `PL-BGMK` carries the cheaper signal that was
+available and unused: these two items shared a `touches` path **and** a
+`verify:` command substring, which is decidable without judging whether two
+findings are "the same".
