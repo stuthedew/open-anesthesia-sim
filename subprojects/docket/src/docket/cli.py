@@ -27,7 +27,7 @@ from .concurrency import (
 from .config import CONFIG_NAME, Config
 from .config import load as load_config
 from .model import LANE_CROSSING, SELECTABLE_LANES, Item
-from .plan import OfferedReport, features, gate, recommend, set_aside
+from .plan import OfferedReport, features, gate, placement_line, recommend, set_aside
 from .release import (
     NOTES_DIR,
     Readiness,
@@ -557,7 +557,7 @@ def cmd_show(args: argparse.Namespace) -> int:
     continues - the one question every other guard in this package leaves
     open (queue item PL-YHD3).
     """
-    _, items, _ = _load(args)
+    _, items, config = _load(args)
     item = find_item(items, args.item)
     if item is None:
         print(f"no item matching '{args.item}'")
@@ -569,6 +569,11 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(f"  touches: {', '.join(item.touches)}")
     if item.milestone:
         print(f"  milestone: {item.milestone}")
+    root = args.items.parent if args.items else find_root()
+    plan = _plan(root, items, config)
+    placement = placement_line(plan.scope if plan is not None else None, item.identifier)
+    if placement:
+        print(f"  plan: {placement}")
     if item.identifier in flight.ids:
         # The whole precedence read only where something is actually carrying
         # the item, which is the rare case. A session starting ordinary work

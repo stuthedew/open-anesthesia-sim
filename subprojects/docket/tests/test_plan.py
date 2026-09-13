@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import date
 
 from docket.model import Item
-from docket.plan import effort_total, features, gate, recommend, set_aside
+from docket.plan import effort_total, features, gate, placement_line, recommend, set_aside
 from docket.roadmap import Scope, milestone_scope, parse_milestones
 
 
@@ -182,9 +182,10 @@ def _scope(
     later: dict[str, str] | None = None,
     step_label: str = "",
     clearing: bool = False,
+    anchor: str = STEP,
 ) -> Scope:
     return Scope(
-        anchor=STEP,
+        anchor=anchor,
         current=frozenset(current),
         later=later or {},
         step_label=step_label,
@@ -343,11 +344,72 @@ def test_p0_outranks_in_scope_work_because_a_hotfix_outranks_the_phase() -> None
 
 
 def test_a_ranking_given_no_plan_reads_as_it_did_before_there_was_one() -> None:
-    """No roadmap, an unreadable one, or a plan with no milestone to anchor on."""
+    """No roadmap, an unreadable one, or a plan with no milestone to anchor on.
+
+    The third case is what `anchor=""` says, and until `PL-J790` the default
+    helper stood in for it. That conflated two different silences: a plan that
+    does not exist has nothing to say about where an id sits, while a plan that
+    exists and places the id in no section is stating a fact. The test below
+    pins the second; this one keeps the first reading exactly as it did.
+    """
     items = [_item("PL-1111", priority="P1"), _item("PL-2222", priority="P3")]
 
     assert [p.item.identifier for p in recommend(items)] == ["PL-1111", "PL-2222"]
-    assert recommend(items, scope=_scope())[0].reason == recommend(items)[0].reason
+    assert recommend(items, scope=_scope(anchor=""))[0].reason == recommend(items)[0].reason
+
+
+def test_an_unplaced_item_says_the_roadmap_places_it_nowhere() -> None:
+    """The third placement spoke for the first time in `PL-J790`.
+
+    `docket next` wrote a sentence for `IN_SCOPE` and for `OUT_OF_SCOPE` and
+    nothing for `UNPLACED`, so a reason line carrying no gate sentence could
+    not be told from a session that had never looked. The wording stays
+    narrow deliberately: `Scope` reads a section's frozen list and its
+    `Required scope` and nothing else, so a timeline row places nothing here
+    and the claim is about sections rather than about the whole roadmap.
+    """
+    (pick,) = recommend([_item("PL-1111")], scope=_scope(current=("PL-2222",)), limit=1)
+
+    assert f"Placed by no section of {STEP}" in pick.reason
+    assert "ranks on its band alone" in pick.reason
+    assert "A timeline row or prose may still place it." in pick.reason
+    # Still not a verdict about exclusion, which is what `scoped_to` carries.
+    assert pick.scoped_to == ""
+
+
+def test_placement_line_answers_for_each_of_the_three_placements() -> None:
+    """What `bin/docket show` prints, which said nothing at all before."""
+    on_gate = _scope(current=("PL-1111",), clearing=True)
+    assert placement_line(on_gate, "PL-1111") == f"on the debt gate recorded under {STEP}"
+
+    in_scope = _scope(current=("PL-1111",))
+    assert placement_line(in_scope, "PL-1111") == f"in scope for {STEP}"
+
+    later = _scope(current=("PL-2222",), later={"PL-1111": "v0.4.0"})
+    assert placement_line(later, "PL-1111") == f"outside what {STEP} names; placed by v0.4.0"
+
+    unplaced = _scope(current=("PL-2222",))
+    assert "placed by no section" in placement_line(unplaced, "PL-1111")
+
+
+def test_placement_line_is_silent_when_there_is_no_plan_to_relate_to() -> None:
+    """A missing or unreadable roadmap has no relation to state, unlike a gate."""
+    assert placement_line(None, "PL-1111") == ""
+    assert placement_line(_scope(anchor=""), "PL-1111") == ""
+
+
+def test_placement_line_does_not_say_a_milestone_is_outside_itself() -> None:
+    """While a gate is open, `later` also holds the anchor's own scope.
+
+    `Scope.milestone` answers with a bare `v0.2.8` where `anchor` carries the
+    roadmap's label, so the naive comparison never matched and the line read
+    "outside what v0.2.8 - the workflow works names; placed by v0.2.8".
+    """
+    scope = _scope(current=("PL-2222",), later={"PL-1111": STEP.split()[0]}, clearing=True)
+
+    assert placement_line(scope, "PL-1111") == (
+        f"in the scope of {STEP}, which clearing its gate comes before"
+    )
 
 
 DEBT_CLASSES = ("defect", "safety", "science", "refactor", "perf")
