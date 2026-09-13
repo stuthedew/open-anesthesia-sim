@@ -873,6 +873,25 @@ def landed_workers() -> int:
 # untriaged capture has not promised to do anything yet.
 LANDED_STATUSES = ("ready", "needs-decision")
 
+# Statuses asked about only when the run is narrowed to what a branch changed.
+#
+# A `blocked` item's command rots in silence, and the cost lands on somebody
+# else: `PL-N092`'s command was `doc_check check && ! grep -q '…' README.md`,
+# and when `PL-WB5K` deleted that file on 2026-09-05 `grep` began exiting 2,
+# which `!` inverts to success. From that moment the command passed on a tree
+# where none of the work had been done - the "would ACCEPT a branch that did
+# none of it" case - and it sat that way for a day, invisible, because the item
+# was blocked. Unblocking it reddened the very pull request that unblocked it.
+#
+# Sweeping these with the store was the obvious repair and is the wrong one:
+# the replay is the most expensive thing `docket check` does, and widening the
+# pool permanently would buy a finding about work nobody can start. So the
+# question is asked exactly where it is cheap and timely - on a branch that
+# edited the item, which is the one place a session is already looking at it
+# and where `changed_items` has computed the set for free (`PL-RC0M`,
+# recommending this over both widening the sweep and leaving the rot).
+SCOPED_ONLY_STATUSES = ("blocked",)
+
 # How far above the typical command one has to be before it is worth naming.
 #
 # Measured against this store on 2026-09-02, 46 commands at the configured pool
@@ -945,6 +964,13 @@ class LandedReport:
     rather than a maybe - and their fix is to give each item a command of its
     own, not to close anything.
 
+    `blocked` is the other decidable part, and for the mirror reason. It is the
+    subset of `passing` whose items nobody can start, so the first reading -
+    the work landed and nobody closed the item - is not available: what a
+    passing command means there is that the command does not discriminate. It
+    is only ever populated on a narrowed run, because `SCOPED_ONLY_STATUSES`
+    is only asked about there.
+
     `declined` carries the meaning it does everywhere else here: the check did
     not run, and a caller must not read the empty `passing` - or the empty
     `vacuous` - as a clean result.
@@ -959,6 +985,10 @@ class LandedReport:
     """
 
     passing: tuple[str, ...] = ()
+    #: The subset of `passing` whose items are at a `SCOPED_ONLY_STATUSES`
+    #: status, so the "work landed" reading is unavailable and only the
+    #: non-discriminating one is left (`PL-RC0M`).
+    blocked: tuple[str, ...] = ()
     shared: tuple[str, ...] = ()
     #: Open items whose command matched no test, so it asserted nothing. Unlike
     #: `passing` this is a verdict rather than a candidate: `selects_no_test`
@@ -1018,6 +1048,7 @@ def already_passing(
     items: Sequence[Item],
     *,
     statuses: tuple[str, ...] = LANDED_STATUSES,
+    scoped_only_statuses: tuple[str, ...] = SCOPED_ONLY_STATUSES,
     timeout: float = LANDED_TIMEOUT,
     workers: int | None = None,
     scoped_to: Collection[str] | None = None,
@@ -1063,6 +1094,16 @@ def already_passing(
     Where only some commands could not answer the run still reports, and names
     them in `timed_out` and `unavailable` rather than counting them checked.
 
+    A `blocked` item is asked about only on a narrowed run, which is the whole
+    of `PL-RC0M`'s answer: its command can rot for as long as the item waits,
+    and the pull request that unblocks it is the one that then goes red. The
+    two rejected repairs were sweeping blocked items with the store - the
+    replay is already this check's largest cost, and that widens it forever to
+    ask about work nobody can start - and leaving the rot, which is a guard
+    reporting the store sound while holding a command that proves nothing. A
+    branch that edits the item is where the question is both cheap and timely,
+    and `scoped_to` is exactly that set.
+
     `scoped_to` narrows the run to those ids, and exists because the cost of
     sweeping the whole store is paid on every push to every open pull request
     while the answer is about the store rather than about the commit. It is
@@ -1107,7 +1148,11 @@ def already_passing(
             "ask this question about itself",
             scope=scope,
         )
-    candidates = [item for item in items if item.status in statuses and item.verify]
+    # `scoped_only_statuses` widens the pool only on a narrowed run, so the
+    # order here matters: the filter below removes everything the branch did
+    # not touch, which is what keeps a blocked item off the whole-store sweep.
+    asked = statuses + (scoped_only_statuses if scoped_to is not None else ())
+    candidates = [item for item in items if item.status in asked and item.verify]
     if scoped_to is not None:
         candidates = [item for item in candidates if item.identifier in scoped_to]
     if not candidates:
@@ -1207,6 +1252,13 @@ def already_passing(
         else ()
     )
 
+    # Reported apart from `passing` because only one of that finding's two
+    # readings is available here: an item nobody can start has not had its work
+    # land, so a passing command can only mean the command does not
+    # discriminate. `checks.py` words the two separately for that reason.
+    scoped_only = {item.identifier for item in candidates if item.status in scoped_only_statuses}
+    blocked = tuple(identifier for identifier in passing if identifier in scoped_only)
+
     counts = Counter(item.verify for item in candidates)
     named = set(passing)
     shared = tuple(
@@ -1216,6 +1268,7 @@ def already_passing(
     )
     return LandedReport(
         passing=tuple(passing),
+        blocked=blocked,
         shared=shared,
         vacuous=tuple(vacuous),
         timed_out=tuple(timed_out),

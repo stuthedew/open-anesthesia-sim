@@ -1199,6 +1199,72 @@ def test_a_declined_run_still_reports_what_it_would_have_covered(
     assert report.scope == "1 item(s) this branch changed against origin/main"
 
 
+# A blocked item's command, asked about only where a branch touched the item
+# (`PL-RC0M`). `PL-N092`'s command passed for a day on a tree where none of its
+# work had been done, because the file its `grep` negated had been deleted and
+# `grep` on a missing file exits 2 - and nothing looked, because the item was
+# blocked. The pull request that unblocked it is the one that went red.
+
+
+def test_a_blocked_item_is_left_out_of_the_whole_store_sweep(tmp_path: Path) -> None:
+    # The cost half of the answer. The replay is this check's largest expense
+    # and the sweep is where it is paid, so widening it permanently to ask
+    # about work nobody can start is the repair that was rejected.
+    root = _repo(tmp_path)
+    report = already_passing(root, [_item(status="blocked", verify="true")])
+
+    assert report.passing == ()
+    assert report.blocked == ()
+    assert report.considered == 0
+
+
+def test_a_blocked_item_the_branch_changed_is_asked_about(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    report = already_passing(root, [_item(status="blocked", verify="true")], scoped_to={"PL-K7QX"})
+
+    assert report.passing == ("PL-K7QX",)
+    assert report.blocked == ("PL-K7QX",)
+    assert report.considered == 1
+
+
+def test_a_blocked_item_outside_the_scope_is_still_left_alone(tmp_path: Path) -> None:
+    # Narrowing is what admits it, not the mere fact that the run is narrowed:
+    # a scoped run still asks only about the items the branch touched.
+    root = _repo(tmp_path)
+    items = [
+        _item(identifier="PL-K7QX", status="ready", verify="true"),
+        _item(identifier="PL-A1B2", status="blocked", verify="true"),
+    ]
+    report = already_passing(root, items, scoped_to={"PL-K7QX"})
+
+    assert report.passing == ("PL-K7QX",)
+    assert report.blocked == ()
+
+
+def test_a_blocked_item_whose_command_still_fails_is_not_a_finding(tmp_path: Path) -> None:
+    # The steady state. Asking is only worth its cost if a healthy command is
+    # silent, and `blocked` is a subset of `passing` rather than of the pool.
+    root = _repo(tmp_path)
+    report = already_passing(root, [_item(status="blocked", verify="false")], scoped_to={"PL-K7QX"})
+
+    assert report.passing == ()
+    assert report.blocked == ()
+    assert report.considered == 1
+
+
+def test_blocked_is_always_a_subset_of_passing(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    items = [
+        _item(identifier="PL-K7QX", status="ready", verify="true"),
+        _item(identifier="PL-A1B2", status="blocked", verify="true"),
+    ]
+    report = already_passing(root, items, scoped_to={"PL-K7QX", "PL-A1B2"})
+
+    assert set(report.blocked) <= set(report.passing)
+    assert report.passing == ("PL-K7QX", "PL-A1B2")
+    assert report.blocked == ("PL-A1B2",)
+
+
 TOUCHES = "diff stayed inside `touches`"
 
 

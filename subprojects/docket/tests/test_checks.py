@@ -1334,6 +1334,7 @@ def test_an_offering_that_read_every_ref_declines_nothing() -> None:
 def _landed(**overrides: object) -> LandedReport:
     base: dict[str, object] = dict(
         passing=("PL-K7QX",),
+        blocked=(),
         shared=(),
         vacuous=(),
         timed_out=(),
@@ -1397,6 +1398,38 @@ def test_a_landed_item_sharing_a_command_is_named_as_proving_nothing() -> None:
     )
     assert _has(messages, "share a command with another open item")
     assert _has(messages, "give each its own")
+
+
+def test_a_blocked_item_is_told_the_one_reading_that_is_left() -> None:
+    """`PL-RC0M`: "close it" is the one repair that is certainly wrong here.
+
+    Work nobody can start has not landed, so the two-reading sentence would
+    send a session at a status edit when what is broken is the command.
+    """
+    messages = _landed_errors(_landed(passing=("PL-K7QX",), blocked=("PL-K7QX",)))
+    assert _has(messages, "blocked but")
+    assert _has(messages, "only reading left")
+    assert _has(messages, "ACCEPT")
+    assert not _has(messages, "Either the work landed")
+
+
+def test_a_blocked_item_is_not_also_counted_in_the_two_reading_finding() -> None:
+    # Reported once, under the question it can actually answer.
+    messages = _landed_errors(
+        _landed(passing=("PL-K7QX", "PL-B1C2"), blocked=("PL-B1C2",), considered=4)
+    )
+    assert _has(messages, "Either the work landed")
+    assert len([m for m in messages if "PL-B1C2" in m and "Either the work landed" in m]) == 0
+    assert _has(messages, "1 of 4 checked")
+
+
+def test_a_blocked_item_sharing_a_command_is_not_told_twice() -> None:
+    # `shared` says the command proves nothing, which the blocked sentence has
+    # already said outright, so it is not appended a second time.
+    messages = _landed_errors(
+        _landed(passing=("PL-K7QX",), blocked=("PL-K7QX",), shared=("PL-K7QX",))
+    )
+    assert not _has(messages, "share a command with another open item")
 
 
 def test_nothing_is_said_when_no_open_item_has_landed() -> None:

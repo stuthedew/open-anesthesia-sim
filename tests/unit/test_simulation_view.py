@@ -1717,6 +1717,26 @@ def test_the_confirmation_names_both_agents_and_what_survives_the_switch() -> No
     assert dialog.modal is True
 
 
+def test_the_carry_over_sentence_names_only_settings_the_reader_can_set() -> None:
+    """`PL-0Q1T`: a list of what a discard costs, in things the reader chose.
+
+    The circuit volume does carry over, so naming it was true - and lopsided.
+    `PL-GYH2` retired the only setter that could have changed it, so listing it
+    beside three sliders implied a control this interface does not have, in the
+    one place the interface mentioned the parameter at all.
+
+    Asserted as the property rather than against the string, so that rewording
+    the sentence does not need this test rewritten and reintroducing the
+    parameter still fails it.
+    """
+
+    sentence = NEW_CASE_CARRYOVER_TEMPLATE.lower()
+
+    assert "circuit volume" not in sentence
+    for setting in ("fresh gas flow", "alveolar ventilation", "cardiac output"):
+        assert setting in sentence
+
+
 def test_the_confirmations_trailing_action_is_the_one_that_keeps_the_case() -> None:
     """The press a reader makes without reading must not destroy the run.
 
@@ -4095,6 +4115,36 @@ def test_the_display_names_the_mac_the_readouts_were_divided_by() -> None:
     assert view._mac_reference_text.value == format_mac_reference("Desflurane", 6.0)
 
 
+def test_the_readout_row_names_the_substance_its_numbers_belong_to() -> None:
+    """`PL-TCD1`: one frame, one vocabulary.
+
+    The chart names the substance it draws; until this the six numbers above
+    it did not, so a reader carried the agent over from the selector and a
+    frame described the run in two terms. It has to follow an agent change for
+    the same reason `_mac_reference_text` does - a confident label on the
+    wrong agent's numbers is the correct value under the wrong name that
+    `CLAUDE.md` counts as a safety failure.
+
+    The snapshot's compartment fields stay flat rather than becoming a mapping
+    keyed by substance: `ROADMAP.md` § "Designed for forking" names
+    per-compartment agent amounts in the snapshot as deliberately not designed
+    for in advance, on the test of whether retrofitting invalidates recorded
+    runs or merely adds a field. This one merely adds a field.
+    """
+
+    controller = _fake_controller()
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    assert view._compartment_substance_text.value == "Modelled concentrations: Sevoflurane"
+
+    controller.switch_agent(
+        "desflurane", agent_display_name="Desflurane", max_delivered_concentration_percent=18.0
+    )
+    view._refresh_view()
+
+    assert view._compartment_substance_text.value == "Modelled concentrations: Desflurane"
+
+
 def test_the_interface_states_the_mac_divisor_and_writes_the_unit_as_a_ratio() -> None:
     """What a MAC multiple owes a reader, once the prose stating it is gone.
 
@@ -4489,6 +4539,56 @@ def test_the_interface_says_which_trace_the_band_is_read_against() -> None:
     # patient's number, which is what stops it reading as a prediction.
     assert "±1 SD" in prose
     assert "population" in prose
+
+
+def test_nothing_between_the_wash_in_heading_and_its_plot_is_a_sentence() -> None:
+    """`PL-F9TQ`: the same rule as the panel above, applied to the panel below.
+
+    `PL-6580` stripped the compartment chart and named four paragraphs, all of
+    them in that panel. Executed as written it left the wash-in section's two -
+    786 characters, the largest standing block on the screen and larger than
+    anything it removed - so 47% of the explanatory prose survived the item
+    filed to remove it, and would have read afterwards as prose that passed
+    review.
+
+    What the three corrections became is in `_build_wash_in_section`'s
+    docstring. This asserts the outcome rather than the wording: labels above
+    the plot, no sentences, and the two the safety standard requires still
+    present.
+
+    `_wash_in_state_text` is exempt by identity, as the two state advisories
+    are in the test below. It is empty until it applies, which is the
+    distinction being drawn - a message at the moment of need is not a
+    standing paragraph.
+    """
+
+    view, _ = _build_view()
+    panel = view._build_chart_panel()
+    column = panel.content
+    assert isinstance(column, ft.Column)
+
+    section = view._build_wash_in_section()
+    above_the_plot: list[ft.Control] = []
+    for control in section:
+        if isinstance(control, ft.Container) and control.content is view._wash_in_chart:
+            break
+        above_the_plot.append(control)
+    else:  # pragma: no cover - the plot is in the section it is the section for
+        raise AssertionError("the wash-in chart is not in the wash-in section")
+
+    strings = _strings_in(above_the_plot, skip=(view._wash_in_state_text,))
+
+    for value in strings:
+        assert ". " not in value, value
+        assert not value.rstrip().endswith("."), value
+
+    joined = " ".join(sorted(strings))
+    # The denominator, which is the correction a specialist reader needs.
+    assert "not the vaporizer dial" in joined
+    # And the safety standard's own requirement, on a line of its own now.
+    assert "Modelled, not measured" in joined
+    # The axis key restated both axis titles and is gone with the paragraphs.
+    assert "dimensionless ratio" not in joined
 
 
 def test_nothing_between_the_chart_heading_and_the_plot_is_a_sentence() -> None:
@@ -5086,14 +5186,23 @@ def test_the_wash_in_plot_says_what_its_denominator_is() -> None:
     the modelled circuit fraction, which approaches the dial over the
     circuit's own time constant - and the difference is the whole reason
     the trace rises the way it does early in a run.
+
+    `PL-F9TQ` changed how this is said, not whether. Two of the four
+    assertions below named prose that is gone: the held-constant caveat is
+    now the denominator-moving reading rule, which is the same fact put as
+    something to do with it, and the model-structure justification for
+    circuit being inspired - a single perfectly mixed circuit, no dead
+    space, no separate limbs - is `docs/MODEL.md` § "F_A/F_I as a displayed
+    ratio"'s alone now. That one is deliberately not asserted here: it
+    explains why the label is true, and the label is what a reader needs to
+    read the plot.
     """
 
     view, page = _build_view()
     strings = " ".join(_mounted_interface_strings(view, page))
 
     assert "not the vaporizer dial" in strings
-    assert "no dead space" in strings
-    assert "held constant" in strings
+    assert "denominator moving" in strings
     assert "Equilibrium, F_A = F_I" in strings
 
 

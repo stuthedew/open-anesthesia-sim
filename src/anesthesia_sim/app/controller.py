@@ -400,6 +400,30 @@ class SimulationSnapshot:
     delivered_partial_pressure_fraction: Fraction
     alveolar_ventilation_l_min: float
     cardiac_output_l_min: float
+    # The six compartment values, and they are `agent_id`'s. Flat named
+    # floats rather than a mapping keyed by substance, which is what the
+    # recorded run became at `PL-W3DD` - and the asymmetry is deliberate
+    # rather than unfinished (`PL-TCD1`, decided 2026-09-13).
+    #
+    # `ROADMAP.md` § "Designed for forking" already drew the line and named
+    # this structure on the declined side of it: "What is deliberately *not*
+    # designed for in advance: per-compartment agent amounts in the snapshot
+    # ... The distinction is whether retrofitting invalidates recorded runs or
+    # merely adds a field." A snapshot is one instant's transient state, so
+    # reshaping it when a second substance arrives invalidates nothing. The
+    # recorded row was the opposite case and was rightly reshaped first.
+    #
+    # What was actually wrong was that a frame described the run in two
+    # vocabularies - the chart named the substance it drew and the numbers
+    # beside it did not. That is fixed by saying so: these travel with
+    # `agent_id` and `agent_display_name` above, for the same reason
+    # `agent_mac_percent` does, and `simulation_view` labels the readout row
+    # with the substance rather than leaving a reader to carry it over from
+    # the agent selector.
+    #
+    # When the model holds N simultaneously present substances - `ROADMAP.md`
+    # Phase 1, ahead of planned item 6 - a mapping is the right shape and this
+    # block is where it goes.
     inspired_partial_pressure_fraction: Fraction
     alveolar_partial_pressure_fraction: Fraction
     mixed_venous_partial_pressure_fraction: Fraction

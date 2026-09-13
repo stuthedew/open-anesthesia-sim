@@ -3721,6 +3721,28 @@ of fails rather than drawing whichever substance it does hold. The wash-in
 quotient below is formed from one substance's own two fractions, for the
 same reason.
 
+**What a snapshot is, and why it is not keyed the same way.** The
+instantaneous state a frame is rendered from — `app/controller.py`'s
+`SimulationSnapshot` — carries the six compartment values as flat named
+fields rather than as the per-substance mapping above. That asymmetry is
+decided rather than unfinished (`PL-TCD1`, 2026-09-13). A snapshot is one
+instant's transient state for the running agent: unlike the recorded history
+it is never stored, never compared against a later run, and never read back,
+so giving it a second substance later adds a field rather than invalidating
+anything already written. That is the test `ROADMAP.md` § "Designed for
+forking" applies — "whether retrofitting invalidates recorded runs or merely
+adds a field" — and it names per-compartment agent amounts in the snapshot on
+the declined side of it. `ROADMAP.md` Phase 1 generalizes the patient to N
+simultaneously present substances, and the mapping arrives with it.
+
+What the asymmetry may not do is let one frame describe the run in two
+vocabularies. The six fields travel with the `agent_id` and
+`agent_display_name` they belong to, for the same reason `agent_mac_percent`
+travels beside the concentrations it scales, and the interface names the
+substance on the readout row itself rather than leaving a reader to carry it
+over from the agent selector — so a compartment number and the trace beside it
+name the same substance on the face of the display.
+
 **What the chart draws.** A plotted trace need not draw the run at every
 instant it passed through — a run advances by one step every 0.1 s, well
 beyond what a chart can resolve — but every point it does draw must be a
