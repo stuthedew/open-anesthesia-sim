@@ -327,7 +327,7 @@ MARKER_RE = re.compile(r"^(?:[-*+]\s+)?\*\*(?P<title>[^*\n]+?)\.?\*\*", re.M)
 # stray `")"` in prose is not read as one, and it may span source lines.
 QUOTED_SOURCE_RE = re.compile(
     r"(?:\b(?:see|under|in)\s+)?"
-    r"`(?P<document>[\w./-]+\.md)`[ \n]*[,:]?[ \n]*"
+    r"`(?P<document>[\w./-]+\.md)`[ \n]*(?:[,:]|§{1,2})?[ \n]*"
     r'"(?P<quoted>\w[^"]{2,200}?)"',
     re.DOTALL,
 )
@@ -1899,9 +1899,19 @@ def _resolves(root: Path, basenames: frozenset[str], token: str) -> bool:
     return "/" not in token and token in basenames
 
 
+#: The blockquote and list continuation markers that open a *wrapped* line.
+#: A quotation inside a `>` blockquote carries the marker of every line it
+#: wraps onto, so `§ "v0.5.1 -\n> the interface moves to Qt"` compared as
+#: `v0.5.1 - > the interface moves to Qt` and failed against a heading that is
+#: there. Eleven citations across the queue were reported stale that way, all
+#: of one correct heading (`PL-V13T`). Only a marker that *opens* a continued
+#: line is dropped; one inside the text is left alone.
+CONTINUATION_RE = re.compile(r"\n[ \t]*(?:>[ \t]*)+")
+
+
 def _normalized(text: str) -> str:
     """`text` on one line, so a quotation that wrapped compares as written."""
-    return " ".join(text.split())
+    return " ".join(CONTINUATION_RE.sub("\n", text).split())
 
 
 #: Typography that differs between a passage and an honest quotation of it.

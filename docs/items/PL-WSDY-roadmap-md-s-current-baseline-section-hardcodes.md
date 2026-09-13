@@ -13,7 +13,7 @@ pr: 507
 verify: python3 tools/doc_check.py check && ! sed -n '/^## Current baseline/,/^## /p' ROADMAP.md | grep -qE 'Gate [0-9]+ (remains|stands) open at|[0-9]+ of its [0-9]+ entries'
 ---
 
-**Problem.** `ROADMAP.md` § "Current baseline: v0.4.10" ends with "Gate 1
+**Problem.** `ROADMAP.md`'s `Current baseline: v0.4.10` section ends with "Gate 1
 remains open at 92 of its 121 entries, so v0.5.0 - the case you can branch - is
 still behind it." Both numbers are wrong: the list stands at 132 entries (the
 timeline's own v0.5.0 row says so) with 89 open as of 2026-09-08.
@@ -31,7 +31,7 @@ while overstating what is left to do. `PL-KTKP` closed on the same file for the
 same reason: a count that is right about the document and wrong about the
 project.
 
-**Where.** `ROADMAP.md` § "Current baseline: v0.4.10", the final paragraph of
+**Where.** `ROADMAP.md`'s `Current baseline: v0.4.10` section, the final paragraph of
 "What this release does not do".
 
 **Done when.** The sentence states that Gate 1 is still open and that v0.5.0 is

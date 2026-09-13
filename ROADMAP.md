@@ -3424,7 +3424,7 @@ once someone is ready to scope it.
     after the simulator works rather than before.
 
     *This resumes a shelved thread rather than opening a new one.*
-    `docs/WORKING_NOTES.md` § "Shelved: UI structure/form mockups" records a
+    `docs/WORKING_NOTES.md` § "Shelved, then resumed: UI structure/form mockups" records a
     mockup round explored and shelved on the owner's call, closing "Do not
     resume this without the project owner asking again". That condition is now
     met. The note's own reasoning — that a mature UI could not be designed on

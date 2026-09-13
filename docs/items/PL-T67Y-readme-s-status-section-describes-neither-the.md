@@ -47,7 +47,7 @@ boundary" requires it on screen at every rate for that reason. A README that
 never mentions it leaves a reader to meet a 60× clock without having been told
 one exists.
 
-**Where.** `README.md` § "Current status". `docs/MODEL.md` § "Interface
+**Where.** `README.md`'s then-current `Current status` section. `docs/MODEL.md` § "Interface
 boundary" (the playback-rate paragraph) and § "The chart's time base" carry the
 substance to draw on; neither should be restated at length in the README.
 
