@@ -1,7 +1,12 @@
 ---
 id: PL-NJ9M
 title: bin/docket delegable cannot tell a brief that determines the fix from one that leaves the choice open, so a hand-off meant to need no reading still does
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: infra
+feature: delegation
+touches: subprojects/docket, docs/worker.md
 added: 2026-09-08
 ---
 
@@ -35,3 +40,14 @@ make from front matter alone - unless the shape of a resolved brief is made
 decidable, which is the third option and the largest. Related: `PL-S2L4` (the
 delegable list offers items `docs/worker.md` forbids a worker to touch) is the
 other half of "the list cannot be handed over as printed".
+**Done when.** A decision is recorded among the three the brief names - triage
+resolves the open options before an item may read as delegable; `delegable`
+prints the caution beside the item rather than withholding it; or the shape of a
+resolved brief is made decidable - and the chosen one is built, with a test
+pinning it. `PL-S2L4` (the delegable list offered items `docs/worker.md` forbids
+a worker to touch) closed already and is the precedent worth reading first: it
+is the same failure - the printed list cannot be handed over as-is - answered
+once, and how it chose to report what it could not offer is the shape this
+decision should either follow or deliberately depart from.
+
+**Decision needed.** Which end is fixed: triage resolves a brief's open options before it may read as delegable, `delegable` prints the caution beside the item, or the shape of a resolved brief is made decidable?

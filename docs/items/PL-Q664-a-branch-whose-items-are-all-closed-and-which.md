@@ -1,8 +1,14 @@
 ---
 id: PL-Q664
 title: A branch whose items are all closed and which has no open pull request is indistinguishable from live work in docket flight, so finished work can stall unseen
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
+feature: parallel-sessions
+touches: subprojects/docket, tools
 added: 2026-09-13
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_whose_items_are_all_closed_is_not_in_flight' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** `bin/docket flight` reports an item as in flight from a commit
@@ -31,3 +37,11 @@ would recover it points the other way.
 branches whose closed-item set is non-empty, whose open items are none, and for
 which no open pull request exists. Wording matters - the check can say "nothing
 here is being worked", never "safe to merge".
+**Done when.** `bin/docket flight` reports, separately from the branches it
+already names, those whose item work is entirely `done` or `dropped` and which
+have no open pull request; the wording says "nothing here is being worked" and
+never anything that could be read as "safe to merge"; the pull request lookup
+degrades to a silent skip when it cannot reach GitHub, the way
+`tools/pr_title_check.py` already does, so a bare or offline checkout still
+answers; and a test in `subprojects/docket/tests/test_vcs.py` pins the
+closed-items-with-no-pull-request case.

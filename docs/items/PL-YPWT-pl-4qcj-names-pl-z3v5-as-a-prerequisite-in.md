@@ -1,8 +1,15 @@
 ---
 id: PL-YPWT
 title: PL-4QCJ names PL-Z3V5 as a prerequisite in prose without declaring the edge in blocked-by, so docket next offers it as startable work whose first step is another item
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: infra
+feature: queue-hygiene
+touches: docs/items
 added: 2026-09-13
+closed: 2026-09-13
+verify: bin/docket check && grep -q '^blocked-by: PL-Z3V5' docs/items/PL-4QCJ-the-yasuda-methods-reading-has-no-extraction.md
 ---
 
 **Problem.** PL-4QCJ names PL-Z3V5 as a prerequisite in prose without declaring the edge in blocked-by, so docket next offers it as startable work whose first step is another item
@@ -30,4 +37,20 @@ have each cost once before.
 
 **Where.** `docs/items/PL-4QCJ-the-yasuda-methods-reading-has-no-extraction.md`,
 front matter and the `**Blocked on.**` paragraph.
+**Done when.** Closed in the triage pass of 2026-09-13, which is where the
+question belonged: the remedy either way was a front-matter field, and setting
+those is what triage does.
 
+**Which remedy, and why.** The first. `PL-4QCJ` now carries `blocked-by:
+PL-Z3V5` with `status: blocked`, so it leaves the startable queue until
+`PL-Z3V5` (decide what a `docs/references/` extraction note contains) closes.
+The sentence was not an overstatement: `docs/references/README.md` says "What a
+note contains, and the first worked example, are `PL-Z3V5`'s and are
+deliberately not fixed here", and `PL-4QCJ`'s own brief adds "Do not invent the
+format here." A prerequisite the repository forbids working around is a blocker.
+`bin/docket check`'s advisory recommended the same disposition.
+
+**One thing corrected in the same edit.** `PL-4QCJ` said `PL-Z3V5` existed only
+on `origin/claude/vibrant-curie-0x11e4` and needed recovering. `PL-ZGK2`
+recovered it; `bin/docket check` now reports it ready to promote. The stale
+sentence is replaced rather than left standing under a note.

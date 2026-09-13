@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: docs/items/
 added: 2026-09-13
 closed: 2026-09-13
+pr: 540
 verify: bin/docket check && test $(ls docs/items/PL-4ZK8-* docs/items/PL-5NR5-* docs/items/PL-7B3G-* docs/items/PL-928V-* docs/items/PL-NJ9M-* docs/items/PL-Q664-* docs/items/PL-V67Q-* docs/items/PL-V9L3-* docs/items/PL-Z3V5-* 2>/dev/null | wc -l) -eq 9
 ---
 

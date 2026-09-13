@@ -1,8 +1,13 @@
 ---
 id: PL-4QCJ
 title: The Yasuda methods reading has no extraction note in docs/references/, so the facts PL-RFLN's conclusion rests on live only as prose in docs/MODEL.md
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: docs
 feature: provenance
+touches: docs/references, docs/MODEL.md
+blocked-by: PL-Z3V5
 added: 2026-09-13
 ---
 
@@ -49,8 +54,10 @@ it will have the PDFs attached.
 writes the first worked example. `docs/references/README.md` says so
 explicitly: "What a note contains, and the first worked example, are
 `PL-Z3V5`'s and are deliberately not fixed here." Do not invent the format
-here. `PL-Z3V5` currently exists only on `origin/claude/vibrant-curie-0x11e4`
-and needs recovering - `bin/docket stranded` prints the `git checkout` line.
+here. `PL-Z3V5` was stranded on `origin/claude/vibrant-curie-0x11e4` when this
+was written; `PL-ZGK2` has since recovered it into the store, and
+`bin/docket check` now reports it as ready to promote (corrected at triage,
+2026-09-13). Only the format decision is outstanding.
 
 **Also worth doing in the same pass.** `docs/MODEL.md` says of these two papers
 that "neither is in PubMed Central, and neither is held in this repository".
@@ -97,3 +104,11 @@ paper directly and match what the earlier session recorded.
 This does not unblock the item: `PL-Z3V5` still decides what an extraction note
 contains, and the locators above are raw material for one rather than the note
 itself.
+## Triaged 2026-09-13
+
+The dependency on `PL-Z3V5` (decide what a `docs/references/` extraction note
+contains) is now declared in `blocked-by` with `status: blocked`, which is the
+half `bin/docket next` reads, rather than stated only in the prose above.
+`docs/references/README.md` forbids inventing the format here, so this is a
+blocker rather than an overstated relationship. `PL-YPWT` is the item that
+asked for that disposition and closes with it.

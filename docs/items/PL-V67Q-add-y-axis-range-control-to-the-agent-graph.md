@@ -1,7 +1,12 @@
 ---
 id: PL-V67Q
 title: Add y-axis range control to the agent graph: optional auto-scale, and a settable MAC / volume-percent scale
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: feature, ux
+feature: chart-readout
+touches: src/anesthesia_sim/app
 added: 2026-09-08
 ---
 
@@ -41,3 +46,28 @@ attractive but misleading graph is a defect") and under
 `.claude/rules/expert-review.md`'s data-visualization domain. The design
 round owes a look at the actual human-factors literature on autoscaling
 trend displays; nothing here has consulted it.
+**Why it matters.** An axis that rescales itself changes what the same
+physiology looks like: a trace that reads as flat against a 0-3 MAC axis becomes
+a dramatic climb the moment the axis shrinks to the data, with nothing about the
+patient changed. `CLAUDE.md`'s clinical-output standard names that class of
+defect directly - "a visually attractive but misleading graph is a defect" - and
+requires that presentation not imply more certainty than the model supports. So
+the mode this introduces is one a reader can be inside without knowing, which is
+the hidden-mode failure `.claude/rules/expert-review.md` lists under human
+factors, and it is why this is not filed as a convenience control.
+
+**Done when.** The open questions above are answered in a design round and items
+are written from it. That round owes at least: whether MAC and volume-percent
+take one axis or two; whether fixed defaults are per-agent; whether the range
+survives a run; whether auto-scale is off by default and visibly marked when on;
+and whether the axis limits are readable on the plot itself rather than only in
+a settings panel. It also owes a look at the human-factors literature on
+autoscaling trend displays before any default is chosen - nothing here has
+consulted it, and `.claude/rules/expert-review.md` requires the source be
+consulted before the recommendation is formed rather than after.
+
+**Not startable as filed**, which is what `status: needs-decision` says here.
+Half the decision is the project owner's: what the graph should offer a reader
+is direction rather than implementation.
+
+**Decision needed.** The design round's five open questions, of which two are the project owner's: what the y-axis control offers a reader, and whether auto-scale may be on by default.

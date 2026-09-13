@@ -1,7 +1,12 @@
 ---
 id: PL-6KNM
 title: core/ names the quantity partial_pressure_fraction but still validates it with require_concentration_fraction, from a module called concentration.py
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: refactor
+feature: core-domain-language
+touches: src/anesthesia_sim/core, src/anesthesia_sim/app, tests, docs/MODEL.md
 added: 2026-09-13
 ---
 
@@ -45,3 +50,23 @@ clinically, and renaming it is a data-file migration with nothing to gain.
 
 **Where.** `core/validation.py`, `core/concentration.py`, and every importer of
 either; `docs/MODEL.md` § "Concentrations" if the answer moves the term.
+**Why it matters.** Two names for one kind is the defect `PL-9SH6` was written
+to remove, and `.claude/rules/core-domain.md` asks that `core/` read like the
+domain rather than like a translation of it. A reader of
+`AlveolarCompartment.set_partial_pressure_fraction` meets
+`require_concentration_fraction` on the next line and has to decide whether the
+two name the same quantity - nineteen times across `core/`. The cost is
+indirect but not cosmetic: `docs/MODEL.md` § "Concentrations" is the sentence
+both are supposed to implement, and a reader who concludes they implement
+different things has been misled about what the model holds.
+
+**Done when.** A decision is recorded on whether these three name a
+*representation* - a dimensionless number in [0, 1], which need not know which
+fraction it is guarding, and which `require_fraction` would say without taking a
+side - or the *quantity*, in which case the validator, `core/concentration.py`,
+the `Fraction` `NewType` and `docs/MODEL.md` § "Concentrations" move together in
+one change rather than three. Whichever is chosen,
+`max_delivered_concentration_percent` in `src/anesthesia_sim/data/` is untouched,
+for the reasons the brief already gives.
+
+**Decision needed.** Do `require_concentration_fraction`, `core/concentration.py` and the `Fraction` `NewType` name a representation - a number in [0, 1] that need not know which fraction it guards - or the quantity, in which case all three move with `docs/MODEL.md` § "Concentrations"?
