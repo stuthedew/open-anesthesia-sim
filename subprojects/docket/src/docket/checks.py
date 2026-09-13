@@ -29,7 +29,7 @@ from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item
 from .plan import OfferedReport
 from .release import SEMVER_RE, version_key
 from .roadmap import MilestoneStates
-from .store import ID_PATTERN, ID_RE
+from .store import ID_PATTERN, ID_RE, filename_for
 from .vcs import ClosureReport, LostReport, PullRequestHistory, RecordReport
 from .verify import LandedReport, reads_check_output, reenters_verify
 
@@ -876,6 +876,53 @@ def _check_references(report: Report, milestones: MilestoneStates | None = None)
         report.errors.append(f"{identifier}: used by more than one file ({paths})")
 
 
+def _check_filenames(report: Report) -> None:
+    """Report an item file whose name no longer matches the slug its title makes.
+
+    The store names a file from its title, so the two can only disagree after
+    a title is edited in place - and nothing then says so. `PL-3D2M` sat on
+    `origin/main` under the slug of a title it no longer had, with `make
+    check` passing, until an unrelated `bin/docket record` run happened to
+    re-render the file and rename it (`PL-3833`). The filename is how a
+    session finds an item by hand, so a stale slug sends it to the wrong
+    mental model of what the item is about.
+
+    An advisory rather than an error, and the reason is the remedy rather
+    than the rule. Deriving the slug and comparing it is exactly decidable,
+    which is what `CLAUDE.md` reserves hard failure for; renaming the file is
+    not, because the session that would do it has to know who else is holding
+    that file first. A rename arriving as a side effect of an unrelated
+    command is how `PL-36R4` became a rename-against-edit conflict for
+    whoever merged second, on 2026-09-08, and an error here would force
+    exactly that: nine files on this store carry drift today, so `make check`
+    would fail until someone renamed all nine in one pass, against whatever
+    branches were open at the time.
+
+    Named in one line rather than one per file. Nine advisory lines is the
+    disease `PL-CW14` describes in the same function - an advisory nobody can
+    clear in the moment, printed often enough to train a session to skim the
+    one below it.
+
+    Declines on an item carrying no path: those are built in memory rather
+    than read from disk, and there is no filename to disagree with.
+    """
+    drifted = [
+        item
+        for item in report.items
+        if item.path and item.identifier and item.path != filename_for(item)
+    ]
+    if not drifted:
+        return
+    one = len(drifted) == 1
+    report.advisories.append(
+        f"{len(drifted)} item file{'' if one else 's'} carr{'ies' if one else 'y'} a slug "
+        f"{'its' if one else 'their'} title no longer generates "
+        f"({', '.join(item.identifier for item in sorted(drifted, key=lambda i: i.identifier))}); "
+        "rename with `git mv` to the name `docket` would write, and check first that no open "
+        "branch is editing the file - a rename against someone else's edit conflicts"
+    )
+
+
 def _outranks_its_blocker(report: Report, known_items: dict[str, Item]) -> None:
     """Refuse an item that ranks above the work it is waiting on.
 
@@ -1420,10 +1467,40 @@ def _groom(
     if len(startable) > config.top_band_limit:
         held = len(top) - len(startable)
         note = f", and {held} more blocked and not counted" if held else ""
+        # Split the band by what may actually be moved. The same checker
+        # refuses to seat a `safety`- or `science`-classed item below the top
+        # band, so "demote what is not genuinely next" prescribes an action
+        # `docket check` would then reject as an error - and on this store
+        # that was twelve of the thirteen items making the band overfull
+        # (`PL-CW14`). Reporting the split is not the same as exempting the
+        # pinned items from the count: `docket.toml`'s `top_band_limit`
+        # comment considered that and rejected it, because a band that grows
+        # to twenty safety items is a real problem a session should be told
+        # about. The count stands; only the remedy is narrowed to what is
+        # available.
+        pinned = [i for i in startable if set(i.classes) & set(config.safety_classes)]
+        demotable = len(startable) - len(pinned)
+        if demotable:
+            one = demotable == 1
+            remedy = (
+                f"{len(pinned)} are pinned there by a {' or '.join(config.safety_classes)} "
+                f"class, {demotable} {'is' if one else 'are'} demotable; demote what is not "
+                "genuinely next"
+            )
+        else:
+            # Nothing is demotable, so say what the number means instead of
+            # prescribing an action nobody can take. A band that is entirely
+            # class-pinned is large because that much safety work is open,
+            # which is the debt gate's own signal and reads as one.
+            remedy = (
+                f"all {len(startable)} are pinned there by a "
+                f"{' or '.join(config.safety_classes)} class, so the band is large because "
+                "that much safety-critical work is open rather than because anything is "
+                "over-prioritized"
+            )
         report.advisories.append(
             f"{band}: {len(startable)} startable items{note}, past the "
-            f"{config.top_band_limit} a session can choose between at a glance; demote what is "
-            "not genuinely next"
+            f"{config.top_band_limit} a session can choose between at a glance; {remedy}"
         )
     undecided = [i for i in top if i.status == "needs-decision"]
     if len(undecided) > len(top) - len(undecided):
@@ -1555,6 +1632,7 @@ def analyze(
         _check_item(item, report, settings)
     _check_references(report, milestones)
     _check_feature_spellings(report)
+    _check_filenames(report)
     _check_milestones(report, version)
     _check_provenance(report, history)
     _check_landed(report, landed)

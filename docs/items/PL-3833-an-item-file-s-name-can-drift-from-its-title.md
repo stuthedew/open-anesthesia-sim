@@ -3,11 +3,12 @@ id: PL-3833
 title: An item file's name can drift from its title and nothing checks it, so the store carries a stale slug until some unrelated rewrite happens to fix it
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect
 feature: dev-tooling
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-09-04
+closed: 2026-09-13
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_filename_that_does_not_match_its_title_is_reported' subprojects/docket/tests/test_checks.py
 ---
 
