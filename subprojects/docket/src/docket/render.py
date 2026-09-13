@@ -1352,12 +1352,39 @@ def format_wave(plan: Wave) -> str:
                 f"          not in the store, so not countable: {', '.join(gate.unknown_ids)}"
             )
 
+    lines.extend(_scope_lines(plan))
     lines.append(f"Beat      {_beat_line(plan)}")
     if plan.problems:
         lines.append("")
         lines.append("The timeline table does not parse cleanly, so the step above may be wrong:")
         lines.extend(f"  {problem}" for problem in plan.problems)
     return "\n".join(lines)
+
+
+def _scope_lines(plan: Wave) -> list[str]:
+    """The gated milestone's own `Required scope`, counted - once the gate is clear.
+
+    Withheld while the gate is open, deliberately. `format_wave`'s budget is
+    five lines read beside the digest rather than studied, and while the beat is
+    `clear` the gate block above already says what is due; the scope is work the
+    step has not reached, which `docket next` marks per item. Once the gate
+    clears, the scope *is* the remaining question - `implement` or `release`
+    turns on nothing else - and this is the count that makes the beat checkable,
+    the same job the gate's own split does above it (`PL-KD98`).
+    """
+    own = plan.own_scope
+    if own is None or not own.ids or plan.beat not in (IMPLEMENT, RELEASE):
+        return []
+    lines = [
+        f"Scope     the Required scope of {own.milestone.label} "
+        f"({_plural(len(own.ids), 'id', 'ids')})",
+        f"          {len(own.closed)} closed, {len(own.outstanding)} open",
+    ]
+    if own.outstanding:
+        lines.append(f"          {', '.join(own.outstanding)}")
+    if own.unknown_ids:
+        lines.append(f"          not in the store, so not countable: {', '.join(own.unknown_ids)}")
+    return lines
 
 
 def _release_advice(ready: Readiness, plan: Wave | None) -> str:
@@ -1393,8 +1420,25 @@ def _beat_line(plan: Wave) -> str:
             line += f" here, {held} more blocked outside it"
         return line
     if plan.beat == RELEASE:
+        # Three arrangements reach this beat and they are released for
+        # different reasons, so the clause has to say which. A gate shipping as
+        # its own earlier version, or a milestone whose frozen list is its whole
+        # content, is released because the gate cleared; a milestone with a
+        # scope of its own is released because that scope closed too, and
+        # saying only "its gate is clear" of it would name the smaller half of
+        # what the reader is being asked to act on (`PL-KD98`).
+        if plan.own_scope is not None and plan.own_scope.is_complete:
+            closed = _plural(len(plan.own_scope.ids), "Required scope id", "Required scope ids")
+            return f"release {plan.subject} - its gate is clear and all {closed} have closed"
         return f"release {plan.subject} - its gate is clear"
     if plan.beat == IMPLEMENT:
+        if plan.own_scope is not None and plan.own_scope.ids:
+            left = len(plan.own_scope.outstanding) + len(plan.own_scope.unknown_ids)
+            return (
+                f"implement {plan.subject} - its gate is clear, "
+                f"{len(plan.own_scope.closed)} of {len(plan.own_scope.ids)} "
+                f"Required scope ids closed and {left} still open"
+            )
         return f"implement {plan.subject} - its gate is clear"
     if plan.beat == FREEZE:
         return f"freeze and record {plan.subject}'s debt list in its section"

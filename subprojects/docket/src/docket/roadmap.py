@@ -383,6 +383,12 @@ class MilestoneSection:
     #: named under `Required scope`, in the order they appear. An id the
     #: section merely mentions is absent, deliberately - see `SECTION_ID_RE`.
     scope_ids: tuple[str, ...]
+    #: The `Required scope` half of `scope_ids`, alone. The union above answers
+    #: placement, where a gate entry and a scope entry are both "this milestone
+    #: names it"; this answers whether the milestone's *own* content is
+    #: finished, which the gate half would contaminate - a gate can be clear
+    #: with entries still open, deferred to work outside it (`PL-KD98`).
+    own_scope_ids: tuple[str, ...] = ()
 
     @property
     def label(self) -> str:
@@ -448,19 +454,21 @@ def _subsection_ids(lines: Sequence[str], start: int) -> Iterator[str]:
             yield match.group(0)
 
 
+def _deduped(ids: Iterable[str]) -> tuple[str, ...]:
+    """The ids, first occurrence kept, in the order they were read."""
+    seen: dict[str, None] = {}
+    for identifier in ids:
+        seen.setdefault(identifier, None)
+    return tuple(seen)
+
+
 def _scope_ids(entries: Sequence[GateEntry], scope_ids: Iterable[str]) -> tuple[str, ...]:
     """The section's frozen entries and its own scope, deduplicated in order.
 
     The gate half is taken from the parsed entries rather than re-read, so the
     ids a gate holds and the ids it places cannot drift apart.
     """
-    seen: dict[str, None] = {}
-    for entry in entries:
-        for identifier in entry.ids:
-            seen.setdefault(identifier, None)
-    for identifier in scope_ids:
-        seen.setdefault(identifier, None)
-    return tuple(seen)
+    return _deduped([identifier for entry in entries for identifier in entry.ids] + list(scope_ids))
 
 
 def _gate_entries(lines: Sequence[str], start: int) -> tuple[GateEntry, ...]:
@@ -519,6 +527,7 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
             return
         heading_line, heading_title = gate or (0, "")
         entries = _gate_entries(lines, heading_line) if gate else ()
+        own_scope = _deduped(_subsection_ids(lines, scope)) if scope else ()
         found.append(
             MilestoneSection(
                 line=line_number,
@@ -529,7 +538,8 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
                 gate_heading=heading_title,
                 gate_line=heading_line,
                 gate_entries=entries,
-                scope_ids=_scope_ids(entries, _subsection_ids(lines, scope) if scope else ()),
+                scope_ids=_scope_ids(entries, own_scope),
+                own_scope_ids=own_scope,
             )
         )
 
@@ -725,6 +735,67 @@ class GateStatus:
         return not self.clearable and not self.unknown_ids
 
 
+@dataclass(frozen=True)
+class ScopeStatus:
+    """A milestone's own `Required scope`, counted against the store that holds it.
+
+    The gate's counterpart, and deliberately a much simpler object. A gate is a
+    list of *entries*, because one problem may have surfaced under two ids and
+    be frozen as a single bullet; `Required scope` is prose with ids written
+    into whatever grammar the sentence wanted, so there is no entry to count
+    and the honest unit is the id. `SECTION_ID_RE` explains why the two
+    subsections are read by different grammars, and it is the same reading
+    `Scope.placement` already rests on - this adds no parser, only the split
+    (`PL-KD98`).
+
+    **No blocker walk, unlike `GateStatus.clearable`.** A gate entry deferred to
+    work outside the list is open and is not something *this gate* can be asked
+    to finish, so the beat counts it out. A scope id is not the same question:
+    the milestone ships when its scope is done, and an id it cannot reach yet
+    means the milestone is not ready whoever is at fault. Counting it out would
+    offer a release for a milestone with work still in it, which is the failure
+    `ReleaseOffer` exists to prevent, so the strict reading is the safe one.
+    """
+
+    milestone: MilestoneSection
+    ids: tuple[str, ...]
+    closed: tuple[str, ...]
+    outstanding: tuple[str, ...]
+    #: Ids the scope names that the store does not hold. Read exactly as
+    #: `GateStatus.unknown_ids` is: a typo or a file that never existed leaves
+    #: the id's state unknown rather than closed, so it withholds completeness
+    #: instead of being counted either way.
+    unknown_ids: tuple[str, ...]
+
+    @property
+    def is_complete(self) -> bool:
+        """Whether every id this milestone's own scope names has closed.
+
+        False for a milestone that records no `Required scope` ids at all, which
+        is deliberate: an empty scope is not a finished one. A section whose
+        frozen list *is* its content records no scope subsection, and
+        `_release_due` reaches that arrangement by its own test rather than
+        through this.
+        """
+        return bool(self.ids) and not self.outstanding and not self.unknown_ids
+
+
+def scope_status(
+    section: MilestoneSection, closed_ids: frozenset[str], known_ids: frozenset[str]
+) -> ScopeStatus:
+    """Split a milestone's own `Required scope` into closed, open and unknown."""
+    closed = tuple(i for i in section.own_scope_ids if i in closed_ids)
+    unknown = tuple(i for i in section.own_scope_ids if i not in known_ids)
+    outstanding = tuple(i for i in section.own_scope_ids if i in known_ids and i not in closed_ids)
+    return ScopeStatus(
+        milestone=section,
+        ids=section.own_scope_ids,
+        closed=closed,
+        outstanding=outstanding,
+        unknown_ids=unknown,
+    )
+
+
 # What a milestone section says about an id, as three answers rather than two.
 IN_SCOPE = "in-scope"
 UNPLACED = "unplaced"
@@ -865,6 +936,11 @@ class Wave:
     total_steps: int
     #: The open gate, when one is recorded under a milestone not yet released.
     gate: GateStatus | None
+    #: That gate's milestone's own `Required scope`, counted - `None` when no
+    #: gate is recorded or its milestone records no scope subsection. Distinct
+    #: from `scope` below, which answers placement for any id; this answers
+    #: whether the milestone's own content is finished.
+    own_scope: ScopeStatus | None
     #: The milestone the beat is about, when the roadmap has a section for it.
     milestone: MilestoneSection | None
     #: Which items that milestone names, and which a later one names instead.
@@ -876,6 +952,18 @@ class Wave:
     #: errors; here they are carried so a caller can say the answer rests on a
     #: table that does not parse cleanly.
     problems: tuple[str, ...]
+    #: The version a `release` beat is asking for, and the roadmap's own name
+    #: for it; `None` and `""` on every other beat. Carried rather than left to
+    #: `release_offer` to read off `step`, which is right for two of the three
+    #: release arrangements and wrong for the third: it releases the milestone
+    #: while the project still stands on the patch-track row beneath it, whose
+    #: `(0, 4, -1)` is a track marker rather than a number anything can be cut
+    #: at. Read from there the offer falls back to the bump's own arithmetic and
+    #: prints `0.4.21` directly above a beat reading `release v0.5.0` - a
+    #: reader-visible contradiction, which is the failure `PL-D2GW` and
+    #: `PL-Q2BJ` already cost (`PL-KD98`).
+    release_version: tuple[int, int, int] | None = None
+    release_name: str = ""
 
 
 def version_tuple(version: str) -> tuple[int, int, int] | None:
@@ -1000,11 +1088,25 @@ def _current_step(
     return following if following < len(steps) else None
 
 
-def _shipping_the_gate(step: TimelineStep | None, gate: GateStatus) -> bool:
-    """Whether a clear gate leaves a release to cut rather than work to start.
+@dataclass(frozen=True)
+class ReleaseDue:
+    """The release a clear gate leaves to cut: how the roadmap labels it, its
+    version, and its own name. Version and name are carried rather than derived
+    because the caller cannot recover them from the label, and because the three
+    arrangements below read them off two different objects."""
 
-    Two arrangements put the gate's work in the release the project is
-    standing on, and they are different shapes rather than one comparison
+    label: str
+    version: tuple[int, int, int]
+    name: str
+
+
+def _release_due(
+    step: TimelineStep | None, gate: GateStatus, own_scope: ScopeStatus | None
+) -> ReleaseDue | None:
+    """What a clear gate leaves to release, or `None` when it leaves work.
+
+    Three arrangements put a release in front of the milestone's own
+    implementation, and they are different shapes rather than one comparison
     written loosely:
 
     - the step is an *earlier* milestone than the section that recorded the
@@ -1015,19 +1117,43 @@ def _shipping_the_gate(step: TimelineStep | None, gate: GateStatus) -> bool:
       own, so its frozen list is the whole of its content - `ROADMAP.md`'s
       v0.2.8, whose list "is its own scope, recorded under a gate heading
       because that subsection is what `bin/docket wave` reads". Clearing it
-      finishes the milestone, so the act due is to cut the release.
+      finishes the milestone, so the act due is to cut the release;
+    - the section records a scope of its own **and every id in it has closed**.
+      Its gate cleared so that scope could be implemented, which is the
+      cadence's ordinary case - and the case ends when the scope does.
 
-    A milestone recording a gate *and* a scope of its own is neither: its gate
-    clears so that its scope can be implemented, which is the cadence's
-    ordinary case and stays an implementation. That is why the second
-    arrangement asks about the scope subsection and not only the version - the
-    two are indistinguishable by version order alone.
+    **The third was missing, and its absence was unconditional** (`PL-KD98`).
+    Reading the first two alone, a milestone recording a gate *and* a scope was
+    neither, so `wave` could never reach `release` for that shape whatever the
+    state of its scope - and both v0.4.0 and v0.5.0 are that shape. The beat
+    stayed `implement` on a finished milestone, and the digest turned the
+    non-answer into an assertion: `No release to offer: the roadmap gives 0.4.0
+    to "the teachable case", which is unfinished`. The project owner asked for
+    the cut anyway and was right. The wording is now true because the
+    computation is, rather than by being softened around a construction.
+
+    The first arrangement is tested before the third, and the order is
+    load-bearing: under Gate 0's exception the gate ships as its own earlier
+    version *first*, so a gated milestone whose scope happened to be complete
+    would otherwise be offered ahead of the release its own gate earned.
+
+    The third arrangement does not consult `step`, and the other two do. That is
+    not an oversight either: `_current_step` puts the project on the row after
+    the last milestone it released, which on this roadmap is the `v0.4.x`
+    patch-track row - not a milestone, and carrying `(0, 4, -1)` rather than a
+    release number, the `-1` marking a track rather than a version anything can
+    be cut at. A third arrangement resting on `step` would therefore never fire
+    on the very project that filed the item.
     """
-    if step is None or step.kind != "milestone" or step.version is None:
-        return False
-    if step.version < gate.milestone.version:
-        return True
-    return step.version == gate.milestone.version and not gate.milestone.records_its_own_scope
+    if step is not None and step.kind == "milestone" and step.version is not None:
+        if step.version < gate.milestone.version:
+            return ReleaseDue(step.label, step.version, step.name)
+        if step.version == gate.milestone.version and not gate.milestone.records_its_own_scope:
+            return ReleaseDue(step.label, step.version, step.name)
+    if own_scope is not None and own_scope.is_complete:
+        section = gate.milestone
+        return ReleaseDue(section.label, section.version, section.name)
+    return None
 
 
 def wave(
@@ -1048,8 +1174,8 @@ def wave(
       hands the beat on rather than repeating a target nobody can reach;
     - a gate that is clear leaves either a release to cut, when the step the
       project stands on is the milestone that carries the gate's work, or the
-      milestone that recorded the gate to implement - `_shipping_the_gate`
-      holds the two arrangements that make it a release;
+      milestone that recorded the gate to implement - `_release_due`
+      holds the three arrangements that make it a release;
     - with no gate recorded, the next milestone either has its four scoping
       subsections and wants its gate frozen, or does not and wants scoping.
 
@@ -1072,6 +1198,11 @@ def wave(
     unreleased = [section for section in sections if current is None or section.version > current]
     recorded = [section for section in unreleased if section.records_a_gate]
     gate = gate_status(recorded[0], closed_ids, known_ids, blockers) if recorded else None
+    own_scope = (
+        scope_status(gate.milestone, closed_ids, known_ids)
+        if gate is not None and gate.milestone.records_its_own_scope
+        else None
+    )
 
     # Declared, not inferred: two of the three branches below bind a section
     # and the third may find none, so the union is the real type of the
@@ -1079,14 +1210,15 @@ def wave(
     milestone: MilestoneSection | None
 
     clearing: GateStatus | None = None
+    due: ReleaseDue | None = None
 
     if gate is not None and not gate.is_clear:
         beat, milestone, subject = CLEAR, gate.milestone, gate.milestone.label
         clearing = gate
     elif gate is not None:
-        if _shipping_the_gate(step, gate):
-            assert step is not None  # narrowed by `_shipping_the_gate`
-            beat, milestone, subject = RELEASE, gate.milestone, step.label
+        due = _release_due(step, gate, own_scope)
+        if due is not None:
+            beat, milestone, subject = RELEASE, gate.milestone, due.label
         else:
             beat, milestone, subject = IMPLEMENT, gate.milestone, gate.milestone.label
     else:
@@ -1116,6 +1248,7 @@ def wave(
         next_step=next_step,
         total_steps=total,
         gate=gate,
+        own_scope=own_scope,
         milestone=milestone,
         scope=milestone_scope(
             sections,
@@ -1131,5 +1264,7 @@ def wave(
         ),
         beat=beat,
         subject=subject,
+        release_version=due.version if due is not None else None,
+        release_name=due.name if due is not None else "",
         problems=tuple(problems),
     )

@@ -3,11 +3,12 @@ id: PL-KD98
 title: bin/docket wave reports 'implement' for a milestone whose Required scope is complete, because the beat reads only the frozen gate list and never the scope's item ids
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
-touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_release.py
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/README.md
 added: 2026-09-05
-verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_no_release_offer_declines_rather_than_asserts' subprojects/docket/tests/test_release.py
+closed: 2026-09-13
+verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_the_digest_stops_declining_a_release_for_a_finished_milestone' subprojects/docket/tests/test_release.py
 ---
 **Problem.** `bin/docket wave` chose `IMPLEMENT` for v0.4.0 while twelve of the
 milestone's thirteen `Required scope` entries were `done`, and the digest
@@ -95,11 +96,73 @@ construction. Conservative in the same direction as `GateStatus.unknown_ids`: a
 scope naming an id the store does not hold is not complete, because its state is
 unknown rather than closed.
 
-**Not built.** It changes the cadence — what beat every session is told, and
-whether a release is offered for the milestone the project is standing on — which
-is materially different from both options the brief names, so it is the project
-owner's call under `CLAUDE.md`'s "the outcome is the requirement". Nothing that
-depends on the answer has been written; this note is the measurement the brief
-asked for. The `verify:` command still names
-`test_no_release_offer_declines_rather_than_asserts`, which presumes the second
-option; it is rewritten with whichever route is chosen rather than churned now.
+**Put to the project owner rather than built, because it changes the cadence —
+what beat every session is told, and whether a release is offered for the
+milestone the project is standing on. Approved 2026-09-13.**
+
+**Done.** `_shipping_the_gate` is now `_release_due`, answering *what* to release
+rather than *whether*, with the third arrangement beside the two it already
+held. `MilestoneSection` carries `own_scope_ids` — the `Required scope` half
+alone, separate from the union `scope_ids` that answers placement, because a
+gate can be clear with entries still open and the union would read a milestone
+as unfinished on work deferred outside it. `ScopeStatus` and `scope_status()`
+split those ids into closed, open and unknown, exactly as `GateStatus` does, and
+`Wave` carries the result.
+
+**Three deliberate narrowings, each the safe direction:**
+
+- **No blocker walk**, unlike `GateStatus.clearable`. A gate entry deferred to
+  later work is not something *this gate* can be asked to finish; a scope id is
+  a different question, because the milestone ships when its scope is done and
+  an id it cannot reach yet means it is not ready whoever is at fault. Counting
+  one out would offer a release for a milestone with work still in it.
+- **An unknown id withholds completeness**, as `GateStatus.unknown_ids` does: a
+  typo or a file that never existed leaves the state unknown, not closed.
+- **An empty scope is not a finished one.** A section whose frozen list is its
+  whole content records no `Required scope` subsection, and reaches `release`
+  by the second arrangement rather than through this.
+
+**The arrangement could not rest on `step`, which is what the brief's option 1
+would have missed.** `_current_step` puts the project on the row *after* the
+last milestone it released — here the `v0.4.x` patch track, which is not a
+milestone and carries `(0, 4, -1)`, a track marker rather than a number anything
+can be cut at. A third arrangement reading `step.version` would have declined on
+the very project that filed the item. For the same reason `Wave` now carries
+`release_version` and `release_name`: left to read `plan.step`, `release_offer`
+fell through to the bump's own arithmetic and offered `0.4.21` directly above a
+beat reading `release v0.5.0` — the two-lines-contradicting-each-other failure
+`PL-D2GW` and `PL-Q2BJ` already cost, reintroduced by the fix for it.
+
+**Order matters between the first and third arrangements, and is tested.** Under
+Gate 0's exception the frozen list ships as its own earlier version first, so a
+gated milestone whose scope happened to be complete must not be offered ahead of
+the release its gate earned.
+
+**What a session now sees.** `bin/docket wave` gains a `Scope` block once the
+gate is clear — withheld while it is open, where the gate block already says
+what is due and `format_wave`'s budget is five lines read beside the digest —
+and the beat carries the count that makes it checkable: `implement v0.5.0 — the
+case you can branch - its gate is clear, 13 of 21 Required scope ids closed and
+8 still open`, or `release ... - its gate is clear and all 21 Required scope ids
+have closed`. The digest's own wording is untouched and is now true, which was
+the point: `No release to offer ... which is unfinished` was an inference from
+"the beat is not `RELEASE`", and for this shape of milestone that inference used
+to be unconditional.
+
+**Measured against the live roadmap on the day it landed**, which is also the
+item's own worked example recomputed: v0.4.0's `Required scope` is **16 of 17
+ids closed**, the one open being `PL-B9PY` (decompose `SimulationView` so two
+runs can be rendered at once) — the brief said "twelve of thirteen" counting
+entries by eye. v0.5.0 is 10 of 21, v0.5.1 is 1 of 13, and no section names an
+id the store does not hold. Today's beat is unchanged: Gate 1 is open, so the
+beat is still `clear the gate` and the `Scope` block stays withheld.
+
+**Swept.** `subprojects/docket/README.md`'s `docket wave` paragraph enumerated
+what the command reports and was left incomplete by this change; it now carries
+the scope split, the beat it decides, and the two narrowings that make it
+stricter than the gate's count. Checked and still true without editing:
+`docs/ARCHITECTURE.md` (the timeline grammar, and the Python floor the tools are
+held to), `docs/WORKING_NOTES.md`, `docs/resident-instructions.md`, `ROADMAP.md`,
+`docs/worker.md`, `.claude/skills/docket/SKILL.md`, and the README's own "What a
+milestone places, and what it only mentions", which is about placement and is
+untouched by the split.
