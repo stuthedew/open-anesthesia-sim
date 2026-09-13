@@ -85,3 +85,49 @@ command reports them — which is the finding.
 whole open queue rather than of the top band alone, the advisory fires against
 the current store, and a test pins it against a store whose top band is
 entirely product work and whose lower bands are entirely process work.
+
+## Re-measured 2026-09-13: `bin/docket trend` has since answered this, and better
+
+This item was captured 2026-09-02. `bin/docket trend` landed 2026-09-07
+(`PL-QPJZ`, #424), five days later, and it reports exactly what the **Done
+when** asks for — the process-to-product balance of the whole open queue
+rather than of the top band. On this store it prints:
+
+```
+Open now           107 workflow, 107 product, 29 crossing, 1 unplaced
+P1 band            0 workflow, 10 product, 3 crossing, 0 unplaced
+```
+
+with a seven-day history beside it and three separate measures, because no
+one of them is honest alone. It is a better instrument than the one this
+item specifies, on the reading `docket.toml` itself already settled: `trend`
+places an item by its `touches`, and the comment beside `workflow_paths`
+records that the `classes` reading this item would use put **33 of 145** open
+items on the wrong side, because `classes` says what *kind* of work an item
+is and a defect in the tooling carries the same `defect` label as a defect in
+the simulator.
+
+**The advisory this item specifies also cannot fire.** Measured 2026-09-13
+against the live store: 74 of 244 open items are process-classed under
+`process_classes`. A majority test needs it to exceed 122. So implementing
+this as written would add an advisory that is silent today and whose own
+**Done when** ("the advisory fires against the current store") is unmeetable.
+
+This is the shape `PL-LKGL` describes: an item whose problem was solved
+another way stays red forever and reads as outstanding work.
+
+**What is genuinely left is smaller than this item.** `trend` answers on
+demand; nothing pushes the balance in front of a session that did not think
+to ask. The session-start digest does not carry it. So the residual is one
+line in the digest, not a classes-based majority advisory — which is a
+different and much cheaper item than the one this brief describes.
+
+**Needs a decision (project owner).** Three dispositions, in order of
+preference:
+
+1. **Drop**, `reason:` superseded by `bin/docket trend` (`PL-QPJZ`). Clears a
+   Gate 1 entry honestly.
+2. **Re-scope** to "the session-start digest carries `trend`'s open-queue
+   balance line", `S`, and rewrite the **Done when** accordingly.
+3. Build as written — not recommended: it adds a permanently silent advisory
+   on the reading this project has already measured as the worse one.
