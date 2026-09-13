@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, session-cost
 feature: documentation-standard
+milestone: v0.4.18
 touches: .claude/rules/where-new-code-goes.md, .claude/rules/core-domain.md
 added: 2026-09-13
 closed: 2026-09-13

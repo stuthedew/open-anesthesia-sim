@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: core-domain-language
+milestone: v0.4.18
 touches: docs/MODEL.md
 added: 2026-09-03
 closed: 2026-09-13

@@ -77,7 +77,8 @@ capability-boundary rule above governs.
 | v0.4.14 | Completed | **The release where the project's own checks stopped refusing correct work.** Nothing computational moved, and this one can say so more strongly than the last: `git rev-parse v0.4.13:src HEAD:src` resolves to the same tree object at both ends, so the whole of `src/` is byte-identical - `core/`, `app/` and `data/` alike - where v0.4.13 could claim only `core/`. `docs/MODEL.md` is byte-identical and `.github/` untouched, so no equation, parameter, unit, numerical method, solver step, displayed value or CI gate moved; the three changed files under `tests/` exercise `tools/` and none imports `anesthesia_sim`. **Fifteen of the seventeen items are one defect wearing different clothes:** a piece of the apparatus produced a signal a session could act on, and the signal was false. **Five are `bin/docket verify` refusing exactly what the instructions mandate** - a branch carrying a capture (`PL-66PR`), a close-out letting `docket record` ride its commit (`PL-ZYQC`), an item whose declared work *is* editing `.claude` (`PL-69JZ`), the front matter that closing an item necessarily edits (`PL-B5YN`), and a batch branch audited as one item (`PL-4LT9`) - all five the same inability to tell a delegated worker from a session reviewing its own branch. **The repair is deliberately partial and the gap is recorded rather than implied:** two shapes are exempt unconditionally, the other three only under the new opt-in `verify --self`, and nothing on the documented close-out path names that mode yet - `PL-7XTS` was filed in this range to say so. `PL-4LT9` is *reported rather than repaired* by explicit decision; `item_commits` still matches every subject, so the new check never blocks. **Two are the stop hook demanding a push for work already pushed**, from unrelated causes: `--depth 1` implies `--single-branch`, so `git push` never creates the ref the hook reads (`PL-3SGR`), and the merged-PR recovery's `checkout -B` repoints the upstream (`PL-483K`) - whose dangerous variant is that the same missing ref makes `--force-with-lease` refuse with `stale info` and invites a bare `--force` mid-rebase. What shipped widens `remote.origin.fetch` at session start and deliberately never fetches and never prunes. **Three named a wrong cause with complete confidence**, which is worse than failing: eleven missing-row errors pointing a session at the safety-critical provenance table when the fault was a decoy table 300 lines above (`PL-ZBZZ`), a checker erroring on an elaborated `**Decision needed**` heading its own README permits (`PL-VJ1X`), and stale `.pyc` bytecode producing a `make check` failure unreachable from the source in front of the reader (`PL-01GD`). **Three reported nothing or the wrong number:** one unparseable glob token aborting the whole documentation gate on a traceback (`PL-0M7L`), `docket next` understating the queue by exactly the untriaged pile (`PL-ZWBK`), and `docket check` advising every run that a `P1` `safety` item was ready to promote when it must ship behind an unshipped port (`PL-L09X`). `PL-KY7M` removes ten deprecation lines per run; `PL-BBDD` is the same class at opposite polarity, an uncovered `ruff.toml` letting a delegated diff relax the linter and still report ACCEPT. **They were found by running the tools rather than reading them:** `PL-3B47`'s pass over the 46 untriaged captures closed 23 ids, eight of them dropped as duplicates, already fixed, or overtaken by the Qt port. **Seventeen items, one of which is the v0.4.13 cut itself.** Two debts leave with it rather than inside it: `PL-01GD` shipped with no test at all (`PL-H9GV`), and the same triage pass wrote into this document a sentence calling every drawn chart point an M4 representative of roughly 120 recorded samples - a path `PL-2FM6` deleted in v0.4.12 (`PL-DZFJ`). |
 | v0.4.15 | Completed | **The release where the project's own checks stopped reaching past what they could decide.** Nothing a learner can observe moved: `src/anesthesia_sim/core/` and `app/` resolve to the same tree objects as at `v0.4.14`, `.github/` is untouched, and the whole of `src/` changes in one string - the `note` on `reference_adult.json`'s Frayn and Karpe entry, which said a review "cannot be the authority for a stored value" where `docs/MODEL.md`'s own source hierarchy admits a tier-2 source on a recorded decision and the entry needed instead to say that no such decision has been taken for this parameter (`PL-S3Q0`). **Ten of the thirty-three entries are one defect in ten places: a check answering a question it could not decide, confidently, and charging a session for the difference.** Four are in the documentation and queue checkers - the top-band advisory prescribing a demotion `docket check` itself rejects as an error, on a band where twelve of thirteen items are class-pinned and one is demotable (`PL-CW14`); and `doc_check` reading a shell regex in an item's `verify:` front matter as LaTeX (`PL-WTQ1`), reading any double-quoted phrase as a section citation, so quoting a measured figure hard-fails (`PL-KJ63`), and attributing a candidate line to the alphabetically first matching term rather than the most specific (`PL-Z0G0`). Six are the `vcs.py` ref-lifecycle cluster, closed as one root-cause round: shipped items reported in flight in every digest because their refs outlived their merges (`PL-6BDX`), a triage skip-mark still firing after the branch it named had merged, which told one pass to skip four of its five items (`PL-8MJ3`), and four ways of calling a branch merged, stranded or left-behind by comparing content that a squash or a history rewrite leaves unchanged (`PL-JBRC`, `PL-XLQ5`, `PL-Y31G`, `PL-YDL6`). **Two sit either side of that line.** `PL-JSRH` closes a gap rather than a false positive - nothing stopped a branch rewriting a closed item's `closed:` or `milestone:`, which are records - and `PL-R6D8` is the same error in prose, a docstring claiming `git log --source` attributes a shared commit to the ref named first, which it does not. **`PL-W1LN` is the judgment running the other way:** the in-flight walk guard cannot catch a false positive whose walk ends against a commit the base reaches by another path, and the limit was reproduced, accepted and pinned rather than papered over. **`PL-3833` adds the one check that was missing** - an item filename drifted from its title - as an *advisory*, because the remedy needs judgment the tool does not have. **The cluster carried a pre-registered test and rejected its null** (`PL-CSHL`): against the cluster's own spawn rate of 1.05, nine closures predicted 9.5 new items and produced 3, rejecting H0 one-sided at 5% - recorded with the threat to the inference in the same breath, that one session closing nine items has fewer opportunities to file than nine sessions closing one, which this design cannot separate from a root-cause effect. **Nine entries are the documentation stating something untrue**, two safety- and three science-classed: `docs/MODEL.md` still saying all eleven reference-patient parameters are the Gas Man default patient (`PL-7KDC`), naming two mass-balance tolerance constants that do not exist in the code (`PL-L7JB`, `PL-MS54`), omitting lung tissue and pulmonary blood from its known limitations - worth about twenty percent of every agent's fast pool (`PL-Q5NS`) - and this file calling every drawn chart point an M4 representative of a bucket `PL-2FM6` deleted in v0.4.12 (`PL-DZFJ`), and not saying that cardiac-output scaling is planned-milestone item 30's obligation or that weight scaling is only safe as a coupled package (`PL-MMWX`). **Gate 1 passed half inside this range.** `PL-27S8` writes the rule that governs the next proposal to tighten anything - name what the suppressed side would have to be worth for the proposal to be wrong, then go and count it - and `PL-MGF9` is the first thing it would have caught, dropped rather than built because the advisory it specified could not fire and `bin/docket trend` had taken its job five days after it was captured. |
 | v0.4.16 | Completed | **The release where one quantity stopped being stated two ways.** All thirteen entries are the same shape: two statements of one fact, drifted apart or free to drift. **Nothing computational moved** - `src/anesthesia_sim/data/` and `.github/` are byte-identical to `v0.4.15`, and `src/anesthesia_sim/core/` changes in docstrings, one moved constant and one rename, so no equation, parameter, unit, numerical method or solver step is touched. **What a reader sees is the clock.** `PL-SSBP` gave the chart a time base spanning a case, so an axis tick read `1h30m` while the clock and every recorded control stamp beside it read `5400.0 s`, and locating a control mark meant dividing by 3600 by hand; `PL-Y5WR`'s 24-hour envelope then made the clock's top reading `86400.0 s`, seven characters of tenths on a quantity a reader thinks about in hours. The clock, the stamps and the axis now share one compound form - `45s`, `1m30s`, `1h23m45.6s`, `24h` - built in one function, dropping a zero component and keeping a tenth only where there is one, so a stamp still resolves the `0.1 s` step the simulation advances by (`PL-Q4M4`, `PL-CZFY`). The old docstring's argument for two forms, that "a compound duration form would round the stamp away", was checkable and false; `format_elapsed` now also raises rather than printing `-1.0 s`. **Two error boundaries were false where they were stated:** `core/parameters.py` promised in its own docstring that every raise reaching a caller is a `SimulationConfigurationError` while a missing, unreadable or truncated data file escaped as `OSError`, `UnicodeDecodeError` or `JSONDecodeError` - three types where the audit named two, because the file is opened as text (`PL-B32L`) - and `_apply_setting` caught a narrower class than the timer paths beside it, so an unexpected raise escaped into Flet's dispatch (`PL-YK2V`). `FLOW_FRACTION_TOLERANCE` stood at `1e-12` in two modules guarding the two perfusion-sum checks independently; one definition now, identical value, so no threshold moved (`PL-TCW5`). **The provenance line stopped answering when it could not:** `APP_VERSION` falls back to `unknown`, which is a version-shaped string, and the header subtitle is the interface's only link between a displayed number and the model behind it, so a build that cannot identify itself now says "Version unavailable (this build is not traceable)" (`PL-KCWD`). **Three names had outlived what they name** - `RunScore` is `RunDefinition`, in the package that should read like the domain (`PL-ZX12`); the wash-in validation module and its `docs/MODEL.md` section cover elimination too (`PL-B9VL`); and `docs/MODEL.md` named sevoflurane in its headings, Purpose and symbol table four releases after three agents shipped (`PL-KGNF`). **And the citation tying `core/` to the specification is enforced rather than asserted.** `PL-VZL0` cites `docs/MODEL.md` from every `core/` function implementing a governing equation, precisely so a section rename cannot silently orphan it - and `tools/doc_check.py` read the comma form and not the section-mark form this repository writes, leaving 285 of the tree's 324 document-section citations unchecked while the run reported that they all resolve. Recognising the form surfaced eighteen errors: eleven were one false positive, a citation wrapped across two lines of a blockquote, and seven were genuinely stale pointers in closed items (`PL-V13T`). Five gate entries deferred to the Qt port by owner decision are `blocked` rather than counted as debt the gate could clear (`PL-D143`). Thirteen items, one of which is the v0.4.15 cut itself. |
-| v0.4.17 | Completed / current baseline | **The release where `core/` said what it meant.** Four Gate 1 `needs-decision` entries, all of them about the core's own vocabulary rather than its arithmetic, and **no number the model produces moves**: `src/anesthesia_sim/data/` and `.github/` are byte-identical to `v0.4.16`, and every reference test carrying a pinned published or canonical value - `test_canonical_evaluation.py`, `test_coupled_dynamics.py`, `test_published_wash_in_and_elimination.py`, `test_circuit_wash_in.py`, `test_multi_agent.py`, `test_control_resolution.py` - is byte-identical too and still passes. Every executable line that changed is a type annotation erased at runtime, or a hand-written `* 100.0` replaced by an identically-defined named conversion, or the deletion of a method with no caller. **Three of the four decisions were settled by a measurement that changed the answer the brief expected.** `PL-74R0` asked which of five public `advance` methods should survive the exact step that replaced the operator split: one 60 s step against six hundred 0.1 s steps put the circuit, tissue and venous closed forms within 1.1e-14 of themselves and `PatientCompartments.advance` **25% apart**, which is not a closed form at all but the first-order split `PL-GS5X` deleted, kept alive as a public method with no error bound and a docstring giving a reader nothing to suspect. It is gone; the three exact ones stay, documented, and the criterion deciding them was already written in `alveolar.py` - nothing outside the governing equations may move agent between two modelled compartments. `PL-79YX` asked whether six `== 0.0` guards deserved any words: they turned out to be **three different arguments**, two of them load-bearing rather than stylistic - `V/0.0` raises in Python, and the circuit's exhausted-agent integral is `inf * 0.0` and therefore `nan` at zero flow for every state - while the item's own 2026-09-02 walk had been run at a loaded fraction where the third argument is invisible, so deleting either `advance` guard had been leaving the whole suite green. `PL-WVSK` asked whether a concentration fraction and a percent should differ at the type level, against a brief naming two implicit conversions: there were **twelve**, across six modules, six of them on the path to a displayed clinical value, and `docs/MODEL.md` had been asserting that "the interface alone converts" since the agent files began carrying a MAC. `core/concentration.py` now owns the factor and both directions, with `Fraction` and `Percent` as `NewType`s whose limits are documented rather than implied - erased at runtime, useless against a wrong magnitude, and unable to reach inside the equations at all, since `Fraction(0.5) * 2.0` is a plain `float`. **The fourth was the project owner's and a session took it.** `PL-8GV5` asked whether `ROADMAP.md` should carry intent for a dose-dependent haemodynamic response; the session measured the human volunteer literature - cardiac index unchanged under desflurane alone, falling dose-dependently in the same volunteers with nitrous oxide, and falling then returning to baseline at 2.0 MAC under sevoflurane - and then closed the item on that measurement. Whether a feature enters the roadmap is direction, not fact. The owner's answer was different and better: not now, and kept as **planned item 35, an option a user turns on**, because an overlay can state the uncertainty those three studies describe where a default behaviour cannot. `PL-4T90` is the routing gap fixed in the same session - the `docket` skill now sorts a `needs-decision` item by what its answer rests on rather than by how hard it looks. Eleven items, one of which is the v0.4.16 cut itself, and one of which - `PL-1YDK` - was a duplicate of `PL-8PT6` that had turned `main` red by passing its own `verify:` command. |
+| v0.4.17 | Completed | **The release where `core/` said what it meant.** Four Gate 1 `needs-decision` entries, all of them about the core's own vocabulary rather than its arithmetic, and **no number the model produces moves**: `src/anesthesia_sim/data/` and `.github/` are byte-identical to `v0.4.16`, and every reference test carrying a pinned published or canonical value - `test_canonical_evaluation.py`, `test_coupled_dynamics.py`, `test_published_wash_in_and_elimination.py`, `test_circuit_wash_in.py`, `test_multi_agent.py`, `test_control_resolution.py` - is byte-identical too and still passes. Every executable line that changed is a type annotation erased at runtime, or a hand-written `* 100.0` replaced by an identically-defined named conversion, or the deletion of a method with no caller. **Three of the four decisions were settled by a measurement that changed the answer the brief expected.** `PL-74R0` asked which of five public `advance` methods should survive the exact step that replaced the operator split: one 60 s step against six hundred 0.1 s steps put the circuit, tissue and venous closed forms within 1.1e-14 of themselves and `PatientCompartments.advance` **25% apart**, which is not a closed form at all but the first-order split `PL-GS5X` deleted, kept alive as a public method with no error bound and a docstring giving a reader nothing to suspect. It is gone; the three exact ones stay, documented, and the criterion deciding them was already written in `alveolar.py` - nothing outside the governing equations may move agent between two modelled compartments. `PL-79YX` asked whether six `== 0.0` guards deserved any words: they turned out to be **three different arguments**, two of them load-bearing rather than stylistic - `V/0.0` raises in Python, and the circuit's exhausted-agent integral is `inf * 0.0` and therefore `nan` at zero flow for every state - while the item's own 2026-09-02 walk had been run at a loaded fraction where the third argument is invisible, so deleting either `advance` guard had been leaving the whole suite green. `PL-WVSK` asked whether a concentration fraction and a percent should differ at the type level, against a brief naming two implicit conversions: there were **twelve**, across six modules, six of them on the path to a displayed clinical value, and `docs/MODEL.md` had been asserting that "the interface alone converts" since the agent files began carrying a MAC. `core/concentration.py` now owns the factor and both directions, with `Fraction` and `Percent` as `NewType`s whose limits are documented rather than implied - erased at runtime, useless against a wrong magnitude, and unable to reach inside the equations at all, since `Fraction(0.5) * 2.0` is a plain `float`. **The fourth was the project owner's and a session took it.** `PL-8GV5` asked whether `ROADMAP.md` should carry intent for a dose-dependent haemodynamic response; the session measured the human volunteer literature - cardiac index unchanged under desflurane alone, falling dose-dependently in the same volunteers with nitrous oxide, and falling then returning to baseline at 2.0 MAC under sevoflurane - and then closed the item on that measurement. Whether a feature enters the roadmap is direction, not fact. The owner's answer was different and better: not now, and kept as **planned item 35, an option a user turns on**, because an overlay can state the uncertainty those three studies describe where a default behaviour cannot. `PL-4T90` is the routing gap fixed in the same session - the `docket` skill now sorts a `needs-decision` item by what its answer rests on rather than by how hard it looks. Eleven items, one of which is the v0.4.16 cut itself, and one of which - `PL-1YDK` - was a duplicate of `PL-8PT6` that had turned `main` red by passing its own `verify:` command. |
+| v0.4.18 | Completed / current baseline | **The release where the project checked what it tells the next session.** Twelve of the seventeen entries are a statement this repository makes — to a session or to a reader — that was wrong, missing, or unreachable: the gate's own counts and deferrals (`PL-SL70`, `PL-9S30`), a recommendation that never said how the item it named related to the gate (`PL-J790`), `docs/MODEL.md`'s symbol map (`PL-H46J`, `PL-212V`) and a margin its prose called comfortable at three percent (`PL-WT07`), the architecture pointer no session was shown (`PL-39K7`), the apparatus test bar that was never written down (`PL-N6Y0`), a v0.4.0 Goal still in the present tense about problems since fixed (`PL-DXQC`), and the README's scope word (`PL-XF89`). Two go further and measure reception instead of correcting prose: `PL-VV16` instruments which item files sessions actually open, and `PL-NB35` gives failed approaches a bounded startup tier so they are not rediscovered. **Nothing a learner can observe was recomputed**, and this release says so with a measurement rather than a byte comparison: `src/anesthesia_sim/data/` and `.github/` are byte-identical to `v0.4.17`, and `core/` holds exactly the same 401 numeric literals before and after, so `PL-9SH6`'s accessor rename across every compartment moved not one number. The reference suite is *not* byte-identical this time, because that rename reaches it — what is measured instead is that no numeric literal was removed from it, so every pinned published and canonical value still stands. `PL-V6M0` is the one safety entry: `_apply_setting` caught the exception hierarchy's base class, so a `SimulationExecutionError` would have been reported as a refused setting over a run that kept producing readings. Seventeen items. |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -113,142 +114,91 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.4.17
+## Current baseline: v0.4.18
 
-v0.4.17 is the release in which `core/` said what it meant.
+v0.4.18 is the release in which the project checked what it tells the next
+session.
 
-**Four Gate 1 `needs-decision` entries, all about the core's own vocabulary
-rather than its arithmetic**, and this release can make the "nothing
-computational moved" claim in its strongest form yet.
-`src/anesthesia_sim/data/` and `.github/` are byte-identical to `v0.4.16`, so
-no stored parameter and no CI gate changed - and every reference test carrying
-a pinned published or canonical value is byte-identical too, and still passes:
-`test_canonical_evaluation.py`, `test_coupled_dynamics.py`,
-`test_published_wash_in_and_elimination.py`, `test_circuit_wash_in.py`,
-`test_multi_agent.py`, `test_control_resolution.py`. Read the diff of `core/`
-and `app/` line by line and every executable change is one of three things: a
-type annotation that is erased at runtime, a hand-written `* 100.0` or
-`/ 100.0` replaced by a named conversion defined as exactly that, or the
-deletion of a method nothing called.
+**Twelve of the seventeen entries are a statement this repository makes about
+itself that was wrong, missing, or unreachable.** That is not a theme anybody
+set out to work; it is what the queue produced once the gate started being read
+carefully, and it is worth naming because the failure mode is uniform. None of
+the twelve was a wrong calculation. Each was a sentence, a count, or a pointer
+that a session or a reader would have acted on, and that did not describe the
+tree it sat in.
 
-**Three of the four were settled by a measurement that changed the answer the
-brief expected**, which is worth saying plainly because it is the argument for
-answering such items by going and looking rather than by reasoning.
+The gate itself supplied three. `bin/docket wave` and `bin/docket gate` counted
+the seven Gate 1 entries sequenced behind v0.5.1 as open debt, so every session
+opened on a beat demanding a target the plan forbids (`PL-SL70`); the gate's
+deferral section wrote down one of the nine entries sequenced past v0.5.0 and
+left the other eight living in a `blocked-by` field, which the gate's own
+snapshot rule says must be written down and explained (`PL-9S30`); and no
+recommendation of a next item said how that item stood to the gate, which is the
+one thing that decides whether it can be worked now (`PL-J790`).
 
-**A public method that still worked and solved nothing.** `PL-GS5X` replaced
-five composed sub-steps with one exact propagation, and five compartment
-`advance` methods were left behind with no production caller. Each still ran,
-so nothing about a call site would look wrong. One 60 s step against six
-hundred 0.1 s steps separates them: the circuit, tissue and venous closed forms
-land within 1.1e-14 of themselves, and `PatientCompartments.advance` lands
-**25% apart** on the mixed venous fraction. It was never a closed form - it
-stepped the three tissue groups and then mixed their *end-of-step* return into
-venous blood, which is the first-order split that was supposed to have been
-deleted - and it carried no error bound and a docstring, "Advance tissues and
-venous blood", that gave a reader nothing to suspect. That is the
-plausible-looking number `CLAUDE.md` reserves "prefer an obvious failure" for,
-and it is gone (`PL-74R0`). The three exact ones stay and now say what they
-are. The criterion separating them was already written down in `alveolar.py` -
-nothing outside the governing equations may move agent between two modelled
-compartments - so this is that rule applied a second time rather than a new
-one.
+`docs/MODEL.md` supplied three more, and they are the ones that reach a reader
+rather than a session. Its Symbols table gained a Code column naming the
+expression in `core/` that denotes each symbol (`PL-H46J`) and a row for the
+tissue:gas coefficient, which is the parameter actually stored and the one
+`core/` names (`PL-212V`) — together making the map from specification to
+implementation enumerable instead of a matter of recognition. The third is a
+correction of tone rather than of fact: the specification said a ventilator
+start binds the per-rate displacement table "throughout", where the measured
+margin at 300x is about three percent, and "throughout" reads as comfortable
+where the number is not (`PL-WT07`).
 
-**Verification moved up rather than being deleted with the method.** Two
-properties the patient-side step had been asserting now run against the coupled
-system, where both are stronger: the mixed-venous lag behind the flow-weighted
-tissue return, which the old step could only ever show at the size of one step
-because it held that return constant; and cardiac output raising patient uptake
-*and* lowering `F_A`, whose second half the old step structurally could not
-produce, taking the arterial fraction as an argument rather than solving for it.
+The rest of the twelve are the guidance surface. Nothing in the auto-loaded
+context pointed a session at `docs/ARCHITECTURE.md`'s "Where new code belongs"
+(`PL-39K7`); `.claude/rules/apparatus-standard.md` stated no test bar, so
+apparatus tests silently inherited the simulator's (`PL-N6Y0`); v0.4.0's Goal
+section still described in the present tense two problems since fixed
+(`PL-DXQC`); and the README's opening said *inhaled-anesthetic* where the
+repository description and `pyproject.toml` said *volatile* (`PL-XF89`).
 
-**Six exact float-equality guards turned out to be three arguments.** `PL-79YX`
-was filed as a documentation question - correct code, nowhere explained - and
-re-running its own walk on the post-`PL-GS5X` tree found two of the three
-reasons load-bearing rather than stylistic. The three `time_constant_s` guards
-are *required*: Python raises `ZeroDivisionError` on `V/0.0` rather than
-returning `inf`. The circuit's is *required*: its exhausted-agent integral
-carries `tau * (1 - exp(-dt/tau))`, which at `tau = inf` is `inf * 0.0` and
-therefore `nan`, for every circuit state including one already sitting at the
-dial. Only the two in `TissueGroup.advance` and
-`VenousBloodCompartment.advance` are the discretionary case, and what they buy
-is an exact no-op rather than one unit in the last place. The equality is right
-because there is no band to catch: walked from the smallest positive double up
-through 1e-30, the general path sits the *same* distance from the branch at
-every magnitude, and the first flow that moves more agent than that rounding is
-1e-12 L/min, twelve orders below the smallest the model supports. **The item's
-own 2026-09-02 table was right and its state was too easy** - `d + (i - d)` is
-exact wherever the two are within a factor of two, and that walk ran at a
-loaded fraction comparable to its driving one, which is why deleting either
-`advance` guard had been leaving the whole suite green.
+**Two entries stop correcting statements and start measuring whether they are
+received**, which is the more interesting half of this release. `PL-VV16`
+instruments which item files sessions actually open and whether citation edges
+between them are ever traversed — the queue has long assumed that a brief citing
+another item causes that item to be read, and nothing until now could say. And
+`PL-NB35` gives `docket` a bounded startup tier carrying failed approaches and
+why they failed, so an approach already tried and abandoned is declined at
+session start rather than rediscovered at full context. Both are bets that the
+cheapest thing to fix is what a session is told before it starts.
 
-**One quantity, two conventions, twelve crossings.** `PL-WVSK` was filed
-against two implicit fraction-to-percent conversions; there were twelve, across
-six modules, six of them on the path to a displayed clinical value - the
-readouts, the MAC multiples, the plotted points, the delivered-concentration
-slider in both directions. `docs/MODEL.md` had been asserting that "the
-interface alone converts between fraction and percent" since the agent data
-files began carrying a MAC, which two of those twelve made false.
-`core/concentration.py` now owns the factor and both directions, with
-`Fraction` and `Percent` as `NewType`s. **Its limits are documented rather than
-implied**, because reading `Fraction` as something that validates is how this
-change could be mistaken for more than it is: the types are erased at runtime,
-they cannot catch a wrong magnitude, and they cannot reach inside the governing
-equations at all - `Fraction(0.5) * 2.0` is a plain `float`, which is why
-annotating the whole core was ruled out on a measurement rather than on effort.
-Eleven `Fraction(...)` wraps in `core/`, none of them in
-`governing_equations.py` or `matrix_exponential.py`.
+**Nothing a learner can observe was recomputed, and this release makes that
+claim with a measurement rather than a byte comparison.**
+`src/anesthesia_sim/data/` and `.github/` are byte-identical to `v0.4.17`, so no
+stored parameter and no CI gate moved. `core/` is not byte-identical —
+`PL-9SH6` gave the partial-pressure-equivalent fraction one accessor name across
+every compartment — but it holds exactly the same 401 numeric literals before
+and after, as a multiset, so the rename moved no number at all.
 
-**The fourth decision was the project owner's and a session took it.**
-`PL-8GV5` asked whether `ROADMAP.md` should carry one line of intent for a
-dose-dependent haemodynamic response, the model holding cardiac output and the
-three perfusion fractions fixed under anaesthesia. A session measured the human
-volunteer literature and found the question harder than the brief assumed -
-cardiac index unchanged under desflurane alone at 0.83 to 1.66 MAC, falling
-dose-dependently in the *same* volunteers once nitrous oxide carried half the
-dose, and under sevoflurane falling at 1.0 and 1.5 MAC then returning to
-baseline at 2.0 as systemic vascular resistance fell - so the sign depends on
-the carrier gas, the dose-response is not monotonic, and the effect moves with
-time at a fixed dose. Then it closed the item on that measurement. The
-measurement was a session's to make; **whether a feature enters this roadmap is
-direction, and this file is where direction is recorded.** The owner's answer
-was different and better: not now, and kept as planned item 35 as an *option a
-user turns on*, because an overlay can state the uncertainty those three
-studies describe where a standing model behaviour cannot.
-`docs/MODEL.md` § "Known limitations" carries the measurements, the citations,
-and the consequence a reader needs - the tissue time constants are
-`V·lambda/Q`, so a flow falling under anaesthesia *lengthens* equilibration,
-against the intuition that more agent means faster.
+The reference suite is **not** byte-identical this time, which is the one place
+this release is weaker than `v0.4.17` and is said plainly rather than skipped:
+the accessor rename reaches the tests that call it. What was measured instead is
+that **no numeric literal was removed** from `tests/reference/` across the
+release — 1,405 before and 1,445 after, every one of the additions new — so
+every pinned published and canonical value that stood at `v0.4.17` still stands
+unchanged. A rename can break a name; it cannot quietly move a number past that
+check.
 
-**`PL-4T90` is that mistake turned into a rule**, edited in the same session
-under `CLAUDE.md`'s requirement that a behaviour change takes effect where it
-is asked for. The `docket` skill had two kinds of `needs-decision` item - a
-question the project can answer, and a milestone not yet scoped - and a
-question whose answer is *preference* fell between them while three mechanisms
-pointed a session at it: the status reads as an invitation, `bin/docket next`
-ranks it first, and `bin/docket gate` counts it as debt to clear. The skill now
-sorts by what an answer rests on rather than by how hard the item looks. Code,
-a measurement, or a rule this repository already states is a session's, however
-long it takes - `PL-74R0` and `PL-79YX` above are exactly that. What the
-project is *for* is the owner's, however obvious it looks from inside a
-session. It is deliberately not scripted: which side an item falls on is a
-judgement about its content, and a checker guessing at it would be
-authoritative and wrong.
+**The one safety entry is `PL-V6M0`, and it is an inversion rather than an
+arithmetic error.** `_apply_setting` caught `AnesthesiaSimulationError`, the
+hierarchy's base class, and reported everything under it as a refused setting
+over a run that kept going. That is right for `SimulationConfigurationError`,
+where a value was rejected and nothing was miscalculated, and it inverts the
+meaning of `SimulationExecutionError`, whose definition in `core/exceptions.py`
+is that the run cannot continue safely. `docs/ARCHITECTURE.md` had specified the
+narrow class all along; the code was what disagreed, and nothing noticed because
+the two behave identically until a route raises the execution branch. No route
+does today, which is why the fix landed before one exists rather than after.
 
-**And one item was a duplicate that had turned `main` red.** `PL-1YDK`
-(2026-09-01) and `PL-8PT6` (2026-09-13) are one finding filed twice - the
-untracked lockfile `uv` writes inside `subprojects/docket/` when run from
-there - with the same path, the same
-`.gitignore` entry and the same approach, and the second even adopted the
-first's `verify:` command verbatim. `PL-8PT6` shipped the fix in v0.4.16's
-window and nothing closed `PL-1YDK`, so the whole-store `--verify` sweep that
-runs only on a push to the default branch reported an open item whose command
-already passed, and `main` sat red where no pull request could show it. Dropped
-with the reason recorded rather than marked done, since neither the item nor
-the branch closing it did the work. `PL-BGMK` records the cheap signal that was
-available and unused: these two shared a `touches` path **and** a `verify:`
-command, which is decidable without judging whether two findings are the same.
+**What this release does not claim.** It does not claim the simulator improved.
+One refactor, one safety narrowing and one legend decision (`PL-YTX9`) are the
+whole of the user-visible change, and the first two are invisible until
+something goes wrong. The twelve corrections above make the project easier to
+work on and harder to be misled by; they move no curve on the screen.
 
-Eleven items, one of which is the v0.4.16 cut itself.
 
 ## The plan
 
