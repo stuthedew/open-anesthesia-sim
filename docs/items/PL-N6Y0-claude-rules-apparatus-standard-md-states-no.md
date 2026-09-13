@@ -1,8 +1,15 @@
 ---
 id: PL-N6Y0
 title: .claude/rules/apparatus-standard.md states no test bar, so apparatus tests inherit the simulator's instinct
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: docs
+feature: documentation-standard
+touches: .claude/rules/apparatus-standard.md
 added: 2026-09-13
+closed: 2026-09-13
+verify: python3 tools/rules_paths_check.py && grep -q '## What a test on this side is for' .claude/rules/apparatus-standard.md
 ---
 
 **Problem.** .claude/rules/apparatus-standard.md states no test bar, so apparatus tests inherit the simulator's instinct
@@ -28,3 +35,24 @@ patient. Deciding it is this item; do not let the answer leak across the line
 
 **Found.** 2026-09-13, reviewing an outside article on long AI projects against
 this repository.
+
+
+**Closed 2026-09-13.** `.claude/rules/apparatus-standard.md` gains § "What a test
+on this side is for": a test here earns its place if its absence would let a real
+defect through — a script's rule, its failure path, and the input that once broke
+it, and not a getter, a constructor, or the standard library's behaviour.
+
+The second paragraph is the load-bearing one, because this bar is exactly the one
+the simulator's standard refuses. It says so, names what `CLAUDE.md` asks of a
+product test instead (boundary, invalid-input, pathological-input and regression
+tests, and validation against published reference cases or independently
+calculated test vectors), and hands the line to
+`tools/workflow_paths_check.py`, which already decides it mechanically: "A test
+file under `tests/` is apparatus when it does not import the product package, and
+product when it does." So the distinction is not a judgment made per file, and
+`PL-6SBB`'s mirror error has one less way to happen.
+
+**Found** reviewing an outside article on long AI projects. Its rule — "a test
+exists if and only if its absence would let a real bug ship" — is wrong for
+`src/` and arguable here, which is the whole reason this file needed to say which
+side it was talking about.
