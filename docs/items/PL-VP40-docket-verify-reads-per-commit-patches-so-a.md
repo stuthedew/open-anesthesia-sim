@@ -3,12 +3,13 @@ id: PL-VP40
 title: docket verify reads per-commit patches, so a line a branch added and then removed still reads as added
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-05
-verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_line_added_then_removed_is_not_reported_as_added' subprojects/docket/tests/test_verify.py
+closed: 2026-09-13
+verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_suppression_added_and_then_removed_is_not_reported' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** `_diff_text` in `subprojects/docket/src/docket/verify.py` runs

@@ -228,6 +228,95 @@ def test_a_removed_assertion_is_rejected(tmp_path: Path) -> None:
     assert any("assertion" in c.name and not c.passed for c in report.checks)
 
 
+def test_a_suppression_added_and_then_removed_is_not_reported(tmp_path: Path) -> None:
+    """A branch is judged on its net change, not on the sum of its patches.
+
+    `git show` over the item's commits concatenates one patch per commit, so a
+    suppression a worker added while iterating and deleted before pushing used
+    to appear in the added lines of the first patch and be reported - with the
+    cancelling commit nowhere in the output, so the worker could not argue with
+    it (`PL-VP40`).
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX silence it while iterating",
+        "tests/test_thing.py",
+        KEPT + "\n\ndef test_b() -> None:  # type: ignore[misc]\n    assert 2 == 2\n",
+    )
+    _work(
+        root,
+        "PL-K7QX take the ignore back out",
+        "tests/test_thing.py",
+        KEPT + "\n\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(root, _item(), _config(), "HEAD~2")
+
+    suppression = _check(report, "no suppression added")
+    assert suppression.passed
+    assert suppression.detail == "none"
+
+
+def test_an_assertion_removed_and_then_restored_is_not_reported(tmp_path: Path) -> None:
+    """The other half of `PL-VP40`: a cut assertion that the branch puts back."""
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX drop it", "tests/test_thing.py", "def test_a() -> None:\n    pass\n")
+    _work(root, "PL-K7QX put it back", "tests/test_thing.py", KEPT)
+
+    report = verify(root, _item(), _config(), "HEAD~2")
+
+    assertion = _check(report, "no existing assertion removed")
+    assert assertion.passed
+    assert assertion.detail == "none"
+
+
+def test_a_suppression_re_added_after_removal_is_still_reported(tmp_path: Path) -> None:
+    """The fold counts; it does not de-duplicate.
+
+    This is the direction that would matter if it broke. Cancelling by set
+    membership rather than by count would let a suppression deleted once and
+    added twice pass, which is a real suppression reaching `HEAD` with the check
+    reporting none - the opposite of the over-reporting `PL-VP40` fixed, and the
+    dangerous one.
+    """
+    root = _repo(tmp_path)
+    ignored = KEPT + "\n\nSTRAY = 1  # type: ignore[misc]\n"
+    _work(root, "PL-K7QX silence it", "tests/test_thing.py", ignored)
+    _work(root, "PL-K7QX take it out", "tests/test_thing.py", KEPT)
+    _work(root, "PL-K7QX put it back after all", "tests/test_thing.py", ignored)
+
+    report = verify(root, _item(), _config(), "HEAD~3")
+
+    suppression = _check(report, "no suppression added")
+    assert not suppression.passed
+    assert suppression.detail == "1 line(s)"
+    assert any("STRAY = 1" in line for line in suppression.lines)
+
+
+def test_the_scope_detail_claims_no_commit_when_the_branch_has_none(tmp_path: Path) -> None:
+    """The check that reports the scope may not invent a commit to report it in.
+
+    `len(commits) or 1` printed "1 commit(s)" for a branch carrying none, which
+    is false at the one moment a session most needs a truthful answer about what
+    it has committed - the container is ephemeral, so "have I committed this?"
+    is the last question before a session ends (`PL-NB4D`).
+    """
+    root = _repo(tmp_path)
+    (root / "tests" / "test_thing.py").write_text(
+        KEPT + "\n\ndef test_b() -> None:\n    assert 2 == 2\n"
+    )
+
+    report = verify(root, _item(), _config(), "HEAD")
+
+    scope = _check(report, "diff stayed inside `touches`")
+    assert scope.passed
+    assert scope.detail == "1 path(s), no commit naming PL-K7QX, all declared"
+    # Named separately from the equality above so the `or 1` cannot come back
+    # under a reworded detail line.
+    assert "commit(s)" not in scope.detail
+
+
 def test_a_failing_verify_command_is_rejected(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     _work(

@@ -375,14 +375,66 @@ def _diff_text(root: Path, base: str, commits: tuple[str, ...]) -> str:
     return diff
 
 
-def _added_lines(root: Path, base: str, commits: tuple[str, ...] = ()) -> list[str]:
-    diff = _diff_text(root, base, commits)
-    return [line[1:] for line in diff.splitlines() if line.startswith("+") and line[1:2] != "+"]
+def _net_line_changes(
+    root: Path, base: str, commits: tuple[str, ...]
+) -> tuple[list[str], list[str]]:
+    """The lines the work added and removed, with cancelling pairs folded out per file.
 
+    `git show` over an item's commits concatenates one patch per commit rather
+    than producing the branch's net change, because an item's commits need not
+    be contiguous and `git diff <first>^ <last>` would sweep in whatever
+    another item committed in between - which is why the per-commit form is
+    there. So a line a branch added in one commit and removed in the next
+    appeared in both lists, and both checks reading them - "no suppression
+    added" and "no existing assertion removed" - reported work the branch had
+    already undone. The error ran in the safe direction, which is why it
+    survived: nothing that reaches `HEAD` escapes either check. What it cost was
+    the report's credibility, because the cancelling commit is not in the output
+    and so the worker cannot argue with it (`PL-VP40`).
 
-def _removed_lines(root: Path, base: str, commits: tuple[str, ...] = ()) -> list[str]:
+    Cancelling an added line against an identical removed line within the same
+    file is exactly as precise as the two checks consuming this, which are
+    substring greps over line text rather than structural readings, and it costs
+    no extra git call. Counting rather than de-duplicating is what keeps it
+    safe: a file whose patches remove one `# type: ignore` and add two still
+    reports one added. A line merely *moved* within a file cancels too, which is
+    the right answer to both questions - the suppression was already there, and
+    the assertion still is.
+
+    Per file, never across: an assertion deleted from one file and an identical
+    one added to another is two facts, not a move, and is reported as both.
+
+    Lines come back in the order the diff presented their files, so two runs
+    over one branch report the same sample.
+    """
     diff = _diff_text(root, base, commits)
-    return [line[1:] for line in diff.splitlines() if line.startswith("-") and line[1:2] != "-"]
+    # Insertion-ordered by first appearance of each file, which is what makes
+    # the returned order - and so the five lines the report prints - stable.
+    per_file: dict[str, tuple[Counter[str], Counter[str]]] = {}
+    current = ""
+    for line in diff.splitlines():
+        if line.startswith("diff --git "):
+            current = line
+            continue
+        # The `+++`/`---` header lines are excluded by the second test, exactly
+        # as they were before the fold.
+        if line.startswith("+") and line[1:2] != "+":
+            side = 0
+        elif line.startswith("-") and line[1:2] != "-":
+            side = 1
+        else:
+            continue
+        if current not in per_file:
+            per_file[current] = (Counter(), Counter())
+        per_file[current][side][line[1:]] += 1
+    added: list[str] = []
+    removed: list[str] = []
+    for added_here, removed_here in per_file.values():
+        # `Counter.__sub__` keeps only positive counts, which is multiset
+        # difference: the fold each check wants.
+        added.extend((added_here - removed_here).elements())
+        removed.extend((removed_here - added_here).elements())
+    return added, removed
 
 
 def _store_at(root: Path, base: str, items_dir: str) -> tuple[str, ...] | None:
@@ -652,7 +704,17 @@ def verify_item(
     if outside:
         detail = f"{len(outside)} path(s) outside"
     else:
-        detail = f"{len(paths)} path(s) in {len(commits) or 1} commit(s), all declared"
+        # Say what is true rather than what is shaped like an answer. `commits`
+        # is empty when no commit on the branch names this item, and the paths
+        # then come from the branch diff and the working tree - so the `or 1`
+        # here reported "1 commit(s)" for a branch carrying none, at the one
+        # moment a session most needs a truthful answer about what it has
+        # committed. The wording matches the empty-diff check above, which
+        # already says "no commit naming <id>" (`PL-NB4D`).
+        if commits:
+            detail = f"{len(paths)} path(s) in {len(commits)} commit(s), all declared"
+        else:
+            detail = f"{len(paths)} path(s), no commit naming {item.identifier}, all declared"
         if sanctioned:
             kinds = Counter(sanctioned.values())
             detail += " or a sanctioned queue edit ({})".format(
@@ -708,7 +770,8 @@ def verify_item(
         )
     )
 
-    added = _added_lines(root, base, commits)
+    # One diff read for both checks, where there were two.
+    added, removed = _net_line_changes(root, base, commits)
     suppressed = [line.strip() for line in added if any(s in line for s in SUPPRESSIONS)]
     report.checks.append(
         Check(
@@ -719,7 +782,7 @@ def verify_item(
         )
     )
 
-    dropped = [line.strip() for line in _removed_lines(root, base, commits) if "assert" in line]
+    dropped = [line.strip() for line in removed if "assert" in line]
     report.checks.append(
         Check(
             "no existing assertion removed",
