@@ -1,12 +1,14 @@
 ---
 id: PL-MHQK
 title: The contrast checker prints its known-shortfall detail on every run, where the verify advisory was narrowed to what a session is about to trip over
-status: needs-decision
+status: done
 priority: P3
 effort: S
 classes: session-cost, infra
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py
 added: 2026-09-03
+closed: 2026-09-13
+verify: uv run python tools/contrast_check.py && grep -qF 'Decided 2026-09-13' docs/items/PL-MHQK-the-contrast-checker-prints-its-known-shortfall.md
 ---
 
 **Problem.** `tools/contrast_check.py` prints its `Known shortfalls (tracked,
@@ -63,3 +65,44 @@ ungated paths.
 
 **Found.** 2026-09-03, by the project owner, applying `PL-5YK8`'s reasoning
 about the `verify:` advisory to the contrast output in the same `make check`.
+
+**Decided 2026-09-13: option 2, leave it - and the measurement is what
+decided it rather than the argument.**
+
+This brief's own recommendation was "option 2 or 3 *today*", with the
+condition that would overturn it stated precisely: "**What would change that
+is the list growing rather than shrinking** - a fourth entry means the
+suppression ledger is being used as a suppression list". So the item was
+already a threshold analysis waiting on a count, and the count has moved the
+right way.
+
+**Measured 2026-09-13.** The block names **one** shortfall, not the three
+this brief was written against:
+
+    contrast: 22 of 23 declared requirements meet WCAG 2.2 AA, 1 known shortfalls, 0 errors
+
+    Known shortfalls (tracked, not failing):
+      ACCENT on PANEL: 2.93 < 3.0 - PL-W8DQ
+
+`PL-GNN1` and `PL-GVXP` have both closed. Option 3 said "the next colour item
+to land takes it to two, where the noise argument is weaker still"; two landed
+and it is at one. The declared-pair count also grew 21 to 23, so the summary
+line carries more information than when the objection was raised and the
+detail block carries less.
+
+That inverts the case for building anything. One line naming one owned,
+tracked gap is not the failure `CLAUDE.md` describes - "a check that fires
+every run without changing a decision" - because at n=1 the line *is* the
+count, and gating it behind a `--base` the tool does not currently take would
+add a diff-reading code path to suppress a single line. `CLAUDE.md`'s gate on
+building tooling settles it: "Where the benefit is unclear, the answer is no."
+
+**The trigger is recorded rather than the objection dismissed.** If the list
+reaches four, the ledger is being used as a suppression list, which
+`.claude/rules/ui-color.md` forbids in prose and nothing enforces - and that
+is a different and better item than this one (a check on the *size* of
+`KNOWN_SHORTFALLS`, not on whether it prints). Filed as `PL-VJFQ`.
+
+Nothing about the mechanism changes: `KNOWN_SHORTFALLS` keeps both jobs
+`ui-color.md` gives it, and both were always properties of the entries
+existing rather than of the lines rendering.

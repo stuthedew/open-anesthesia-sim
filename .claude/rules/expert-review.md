@@ -9,8 +9,8 @@ moment only when a session happened to open an item file (`PL-WWDT`);
 **Scope, on sight rather than three sentences away.** This is the standard for
 the **simulator** — `src/`, `tests/`, `docs/MODEL.md`, `README.md` — and for
 any conversation deciding what goes into them. It is not the bar for the
-apparatus (`subprojects/docket/`, `tools/`, `.claude/`, `docs/worker.md`,
-`CLAUDE.md`), which is held to the deliberately lower
+apparatus (`subprojects/docket/`, `tools/`, `.claude/`, `.github/`,
+`docs/worker.md`, `CLAUDE.md`), which is held to the deliberately lower
 `.claude/rules/apparatus-standard.md`. `PL-6SBB` is what the mirror error cost:
 a session applied the apparatus bar to `src/`, quoting it correctly from a
 sentence whose scope sat too far away to travel.

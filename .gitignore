@@ -19,6 +19,14 @@ __pypackages__/
 coverage.xml
 htmlcov/
 
+# The standalone subproject's lockfile, which this repository does not use.
+# `subprojects/docket/` carries its own pyproject.toml, so `uv` run from inside
+# it resolves and writes one - but the root pyproject.toml already declares
+# those tests in `testpaths`, so they belong to the root environment and the
+# root `uv.lock`. Anchored rather than a bare `uv.lock`, which would also match
+# the tracked root lockfile (`PL-8PT6`).
+/subprojects/docket/uv.lock
+
 # Packaging and build output
 build/
 dist/

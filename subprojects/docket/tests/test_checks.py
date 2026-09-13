@@ -287,6 +287,72 @@ def test_an_item_cannot_block_itself() -> None:
     )
 
 
+def test_a_ready_item_waiting_on_open_work_is_an_error() -> None:
+    """`PL-KBD0`: the ranking reads the status and never the edge.
+
+    `plan.py` filters on `status != "blocked"`, so an item may declare
+    `blocked-by`, satisfy every other check, and still be offered ahead of the
+    work it says it waits on - with nothing saying so.
+    """
+
+    waiting = _item(status="ready", blocked_by=("PL-0002",))
+    blocker = _item("PL-0002", status="ready")
+
+    assert _has(_errors(waiting, blocker), "sits at `ready` while PL-0002 is still open")
+
+
+def test_a_ready_item_whose_blocker_has_closed_is_fine() -> None:
+    """The edge is a record once the blocker is done, not a contradiction."""
+
+    waiting = _item(status="ready", blocked_by=("PL-0002",))
+    blocker = _item("PL-0002", status="done", closed=date(2026, 8, 20), verify="true")
+
+    assert not _has(_errors(waiting, blocker), "sits at `ready`")
+
+
+def test_a_needs_decision_item_waiting_on_open_work_is_left_alone() -> None:
+    """The deliberate exemption, and the reason the check stops at `ready`.
+
+    `bin/docket gate` counts `needs-decision` as debt somebody can go and
+    resolve. Forcing it to `blocked` would take it out of that count, so the
+    item would leave the gate by being renamed rather than by being answered.
+    """
+
+    waiting = _item(
+        status="needs-decision",
+        blocked_by=("PL-0002",),
+        body=BRIEF + "**Decision needed.** Which way.\n",
+    )
+    blocker = _item("PL-0002", status="ready")
+
+    assert not _has(_errors(waiting, blocker), "sits at `ready`")
+
+
+def test_a_blocked_item_waiting_on_open_work_is_the_normal_case() -> None:
+    """The state this check exists to push authors into must not itself error."""
+
+    waiting = _item(status="blocked", blocked_by=("PL-0002",), body=BRIEF)
+    blocker = _item("PL-0002", status="ready")
+
+    assert not _has(_errors(waiting, blocker), "sits at `ready`")
+
+
+def test_a_ready_item_waiting_on_a_milestone_is_not_reached() -> None:
+    """Items only: a milestone clears by a scoping round, not by closing."""
+
+    assert not _has(_errors(_item(status="ready", blocked_by=("v0.5.1",))), "sits at `ready`")
+
+
+def test_every_open_blocker_is_named_in_one_error() -> None:
+    """One line per item, not one per edge, so the fix is read in one place."""
+
+    waiting = _item(status="ready", blocked_by=("PL-0002", "PL-0003"))
+    errors = _errors(waiting, _item("PL-0002", status="ready"), _item("PL-0003", status="ready"))
+
+    assert _has(errors, "PL-0002, PL-0003 are still open")
+    assert len([e for e in errors if "sits at `ready`" in e]) == 1
+
+
 DEPENDS_BRIEF = "**Problem.** Depends on `PL-0002`.\n**Why it matters.** y\n**Done when.** z\n"
 
 

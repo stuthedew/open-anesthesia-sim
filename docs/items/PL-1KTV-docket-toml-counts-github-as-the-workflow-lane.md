@@ -3,11 +3,13 @@ id: PL-1KTV
 title: docket.toml counts .github as the workflow lane but apparatus-standard.md's paths do not, so 500 lines of workflow comments sit under the simulator's standard by default
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: docs
 feature: worker-instructions
 touches: docket.toml, .claude/rules/apparatus-standard.md, CLAUDE.md
 added: 2026-09-06
+closed: 2026-09-13
+verify: python3 tools/rules_paths_check.py && grep -qF '/.github/**' .claude/rules/apparatus-standard.md
 ---
 
 **Problem.** Two path lists in this repository answer two different questions
@@ -67,3 +69,39 @@ checking which standard governed the comment being written.
 
 **Done when.** The three lists agree about `.github/`, or the one that
 deliberately differs says in a sentence why.
+
+**Decided 2026-09-13: yes, `.github/` is apparatus.** All the lists now agree
+rather than one of them documenting an exception.
+
+The question the brief poses is which way to resolve the disagreement, and the
+answer follows from what the two halves are *for*. `CLAUDE.md` defines the
+apparatus as what "exists so agent sessions can be productive". A CI workflow
+is that and nothing else: `quality.yml` and `pr-title.yml` run the checks a
+session runs, and no reader of the simulator ever opens them. Nothing in
+`.github/` is `src/`, `tests/`, `docs/MODEL.md` or `README.md`, which is the
+simulator half stated by enumeration. Declaring the lane boundary
+deliberately wider than the standard boundary was the alternative, and it
+would have meant writing a sentence explaining why two lists that look alike
+are not - a standing cost against a one-line addition.
+
+**The brief named two lists and there are three.**
+`.claude/rules/expert-review.md` carries its own copy of the apparatus
+enumeration, added when that file was made resident, and it was missing
+`.github` too. Fixing only the two the brief names would have left the
+disagreement intact in the file a session reads *while choosing an approach*,
+which is the moment the standard actually gets applied. All three now read
+`subprojects/docket/`, `tools/`, `.claude/`, `.github/`, `docs/worker.md`.
+
+The addition is checked rather than asserted: `tools/rules_paths_check.py`
+holds every `paths:` entry to a leading `/` and to resolving against the
+tree, and now reports 14 globs where it reported 13.
+
+**`docket.toml`'s `workflow_paths` is untouched**, as the brief requires: it
+also carries `Makefile`, `docket.toml`, `docs/items` and three named test
+files, which are lane facts rather than standard facts. The two lists agree
+about `.github/` now and are still not the same list, which is the
+distinction worth keeping.
+
+`PL-WGXJ` is unaffected and remains open. It asks what the apparatus bar
+*says*; this asked which paths it *covers*, and the brief was right that the
+two are independent.
