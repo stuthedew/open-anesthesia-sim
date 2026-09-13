@@ -1825,8 +1825,11 @@ read rather than when the checker next runs.
 agent file cites primary measurements it has explicitly *not* adopted, and so
 does the reference patient — it cites five. A check reading the tier alone
 would therefore report all four of this project's data files as
-primary-sourced, on the same day this document records that 26 of its 29 rows
-are tier 3. That is the second rule above, arriving as the exact failure it
+primary-sourced, on the same day this document records that most of the
+provenance table's rows are tier 3. That count is stated once, under "Source
+hierarchy", and deliberately not repeated here: it moves whenever a row is added
+or a source is adopted, and two copies of it is how the previous pair came to be
+wrong (`PL-7KDC`). That is the second rule above, arriving as the exact failure it
 exists to prevent, so the check has to read the adoption rather than the
 citation list. As it stands, the three agent files each declare two adopted
 primary sources — `mac_awake` and the vaporizer maximum — and

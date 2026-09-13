@@ -73,3 +73,12 @@ et al. 1995. The vaporizer sentence was corrected while there: only sevoflurane
 cites a manufacturer specification, isoflurane and desflurane citing published
 vaporizer-performance studies. A third paragraph says to recompute rather than
 adjust, and points at `PL-9LXK` as the mechanized answer.
+
+**A second copy of the count was found by the close-out docs sweep, and
+removed rather than corrected.** `docs/MODEL.md` § "Parameter provenance"
+restated "26 of its 29 rows are tier 3" inside the argument for why `tier` and
+`adopted` are two fields. It now says "most of the provenance table's rows are
+tier 3" and points at the one place the count is stated, which is the durable
+fix: the pair went stale because it was written twice and only one copy was ever
+maintained.
+
