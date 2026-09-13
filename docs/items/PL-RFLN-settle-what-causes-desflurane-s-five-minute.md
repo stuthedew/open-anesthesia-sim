@@ -3,11 +3,12 @@ id: PL-RFLN
 title: Settle what causes desflurane's five-minute washout residual, which PL-73G7 narrowed to end-tidal sampling or the published datum
 priority: P1
 effort: M
-status: needs-decision
+status: ready
 classes: science
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-08
+verify: uv run pytest tests/reference/test_published_wash_in_and_elimination.py -q && grep -q 'def test_rebreathing_at_the_published_apparatus_dead_space' tests/reference/test_published_wash_in_and_elimination.py
 ---
 
 **Problem.** Settle what causes desflurane's five-minute washout residual, which PL-73G7 narrowed to end-tidal sampling or the published datum
@@ -100,3 +101,84 @@ conservative". Recorded here only so the next session does not raise it as new.
 So **Decision needed** above stands as written and is still the owner's: obtain
 the methods pages, or record the question as unanswerable and say so in
 `docs/MODEL.md` in place of the two open candidates.
+
+## Both methods sections read 2026-09-13, and the blocker is gone
+
+The project owner supplied both papers. Neither is in PubMed Central and
+neither is held in this repository; they were read and the findings recorded
+here and in `docs/MODEL.md`, which is the route `PL-XJ5P` is deciding about and
+the third time it has been exercised.
+
+**What the Route section asked for, answered.** Yasuda 1991 *Anesthesiology*
+(PMID 2001028) § "Materials and Methods":
+
+- **The breathing system.** A nonrebreathing circuit. The expiratory limb is
+  corrugated Teflon into a 1-l aluminium mixing chamber, whose output goes to a
+  spirometer; the chamber supplies the mixed expired sample. At exactly 30 min
+  administration stopped and **the circuit was exchanged for a fresh
+  inspiratory and expiratory one**, so the potent agents' inspired fraction
+  during elimination is zero by construction.
+- **How end-tidal gas was sampled** - the fact the hypothesis "stands entirely
+  on". **From a port at the tracheal tube**, with about 50 ml of corrugated
+  Teflon dead space interposed between that port and the connection to the
+  nonrebreathing valve, stated to protect the end-tidal sample from
+  contamination with inspired gas. Inspired gas came from a port on the
+  nonrebreathing valve. Mixed expired gas came from the mixing chamber and is
+  reported separately as `F_M`.
+- **Ventilation.** Minute ventilation was measured, not alveolar ventilation.
+  The alveolar fraction of ventilation was derived from
+  `F_M = f_A x F_A + f_D x F_I`, averaged over the 10-, 15- and 20-minute
+  samples.
+
+Two further protocol facts worth having recorded: all three potent agents were
+given **simultaneously** from one cylinder (2.0% desflurane, 0.4% isoflurane,
+0.2% halothane, balance 35% oxygen / 65% nitrous oxide), and 65% nitrous oxide
+**continued through the first 150 min of elimination** - so at the five-minute
+point nitrous oxide is being maintained rather than eliminated, which removes
+its outpouring as a confounder there while leaving its continuing uptake.
+
+**The *Anesth Analg* paper (PMID 1994760) does not site its ports.** It says
+only that ports permitted sampling of end-tidal, mixed expired and inspired
+gas. Everything else is described in near-identical terms - same nonrebreathing
+circuit, same corrugated Teflon limb, same 1-l chamber, same exchange at 30
+min, same 65% nitrous oxide to 150 min, seven volunteers on 1.0% sevoflurane
+and 0.6% isoflurane. **The difference is one of description, not of
+demonstrated equipment**, and must not be read as a cohort-specific mechanism.
+It is the same group in the same year and this paper refers to the other as a
+parallel study.
+
+## What this changes, and what it does not
+
+**Candidate 1 is unblocked, not confirmed.** `docs/MODEL.md` recorded the
+obstacle as "the flow-weighted alveolar reading of that same calculation moves
+every agent the wrong way, so the hypothesis rests entirely on the end-tidal
+weighting, and neither abstract says how end-tidal gas was sampled". The
+methods say how: a tracheal-port, last-gas sample, explicitly distinct from the
+mixed expired sample the study reports as `F_M`. So the reading the fifth table
+row rules out is `F_M`, not the `F_A` the published ratio is built from. What
+remains is to compute the **end-tidal-weighted** bias rather than the
+flow-weighted one and bound how much of 2.33 SD it could carry.
+
+**A third mechanism is now sourced rather than assumed, and it is cheap to
+test.** The sixth table row rejected rebreathing at an assumed `F_I/F_A` of
+0.30. The methods give the apparatus its actual volume - about 50 ml, re-inspired
+each breath - which against a normocapnic tidal volume in a paralysed 76 kg
+adult is of the order of a tenth of that. So the row excluded rebreathing at a
+magnitude the apparatus does not have, and says nothing yet about rebreathing
+at the magnitude it does. `_eliminate_without_rebreathing()` in
+`tests/reference/test_published_wash_in_and_elimination.py` already carries the
+machinery.
+
+**Done when** (replacing the version above, which assumed the papers were
+unreachable). The rebreathing row is re-run at the apparatus's sourced dead
+space and `docs/MODEL.md` records the result; on that result, either the cause
+is named or the end-tidal-weighted bound is what is still missing and the
+specification says so in place of the open candidates.
+
+**Order, and it matters.** Run the cheap diagnostic first. It is a re-run of
+machinery that exists, at a number now taken from the primary source, and if it
+closes the gap the multi-alveolar-compartment work is unnecessary. Building
+that bound first would spend an `M` of effort on a result the item's own brief
+says "would say how much of the residual it could possibly carry without
+settling that it does".
+

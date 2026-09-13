@@ -156,3 +156,18 @@ reaching the terminal state, and what `docs/references/README.md` says now
 stands where owner-supplied full texts used to. Both wait on the redistribution
 question in **Decision needed** above, which is the project owner's. Nothing
 was written into either on a session's guess.
+
+## A third exercise of the extract route, 2026-09-13
+
+The project owner supplied both Yasuda 1991 papers (PMIDs 2001028 and 1994760)
+for `PL-RFLN`. Neither is in PubMed Central; both were read for their methods
+sections and the findings recorded in `PL-RFLN` and `docs/MODEL.md`, with the
+repository holding no copy. That is the middle candidate in **Decision needed**
+above, exercised a third time after 2026-09-08 and 2026-09-10 - and this time
+it settled a question `docs/MODEL.md` had recorded as unanswerable from what
+the project could reach.
+
+It strengthens the case for that candidate without deciding it: what the route
+still lacks is a written rule saying it *is* the route, and what
+`docs/references/README.md` says now stands where owner-supplied full texts
+used to. Both remain the owner's call on redistribution.
