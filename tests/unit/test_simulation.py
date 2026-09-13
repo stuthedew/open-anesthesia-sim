@@ -28,8 +28,8 @@ def test_advance_updates_time_and_complete_uptake_system() -> None:
     _advance_for(state, duration_s=2.5)
 
     assert state.elapsed_s == 2.5
-    assert state.uptake_system.circuit.circuit_concentration_fraction > 0.0
-    assert state.uptake_system.alveoli.concentration_fraction > 0.0
+    assert state.uptake_system.circuit.inspired_partial_pressure_fraction > 0.0
+    assert state.uptake_system.alveoli.partial_pressure_fraction > 0.0
     assert state.uptake_system.patient.total_agent_amount_l > 0.0
     assert state.uptake_system.agent_simulation_validation.passes_validation
 
@@ -38,7 +38,7 @@ def test_reset_preserves_settings_and_clears_dynamic_state() -> None:
     system = AgentUptakeSystem.default()
     system.circuit.set_circuit_volume(5.0)
     system.set_fresh_gas_flow(3.0)
-    system.set_delivered_concentration(0.06)
+    system.set_delivered_partial_pressure_fraction(0.06)
     system.set_alveolar_ventilation(5.5)
     system.set_cardiac_output(6.0)
 
@@ -48,13 +48,13 @@ def test_reset_preserves_settings_and_clears_dynamic_state() -> None:
     state.reset()
 
     assert state.elapsed_s == 0.0
-    assert state.uptake_system.circuit.circuit_concentration_fraction == 0.0
-    assert state.uptake_system.alveoli.concentration_fraction == 0.0
+    assert state.uptake_system.circuit.inspired_partial_pressure_fraction == 0.0
+    assert state.uptake_system.alveoli.partial_pressure_fraction == 0.0
     assert state.uptake_system.patient.total_agent_amount_l == 0.0
 
     assert state.uptake_system.circuit.circuit_volume_l == 5.0
     assert state.uptake_system.circuit.fresh_gas_flow_l_min == 3.0
-    assert state.uptake_system.circuit.delivered_concentration_fraction == 0.06
+    assert state.uptake_system.circuit.delivered_partial_pressure_fraction == 0.06
     assert state.uptake_system.alveoli.alveolar_ventilation_l_min == 5.5
     assert state.uptake_system.patient.cardiac_output_l_min == 6.0
 
@@ -242,7 +242,7 @@ def test_a_refused_step_leaves_the_run_exactly_where_it_was() -> None:
         simulation_step_s=MAXIMUM_SIMULATION_STEP_S,
     )
     stored_before = state.uptake_system.total_stored_agent_l
-    alveolar_before = state.uptake_system.alveoli.concentration_fraction
+    alveolar_before = state.uptake_system.alveoli.partial_pressure_fraction
 
     with pytest.raises(SimulationDomainLimitError):
         state.advance(MAXIMUM_SIMULATION_STEP_S)
@@ -250,7 +250,7 @@ def test_a_refused_step_leaves_the_run_exactly_where_it_was() -> None:
     assert state.step_count == maximum_step_count(MAXIMUM_SIMULATION_STEP_S)
     assert state.elapsed_s == MAXIMUM_ELAPSED_SIMULATION_TIME_S
     assert state.uptake_system.total_stored_agent_l == stored_before
-    assert state.uptake_system.alveoli.concentration_fraction == alveolar_before
+    assert state.uptake_system.alveoli.partial_pressure_fraction == alveolar_before
 
 
 def test_reset_returns_a_run_stopped_at_the_limit_to_a_startable_one() -> None:

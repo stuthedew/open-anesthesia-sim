@@ -568,7 +568,7 @@ def _wash_in_system(
     system = AgentUptakeSystem.for_agent(agent_id)
 
     system.set_fresh_gas_flow(fresh_gas_flow_l_min)
-    system.set_delivered_concentration(delivered_fraction)
+    system.set_delivered_partial_pressure_fraction(delivered_fraction)
     system.set_alveolar_ventilation(
         patient_parameters.default_alveolar_ventilation_l_min
         if alveolar_ventilation_l_min is None
@@ -610,7 +610,9 @@ def _wash_in_ratio(
         delivered_fraction,
     )
 
-    return system.alveoli.concentration_fraction / system.circuit.circuit_concentration_fraction
+    return (
+        system.alveoli.partial_pressure_fraction / system.circuit.inspired_partial_pressure_fraction
+    )
 
 
 def _private_washed_in_system(
@@ -659,7 +661,7 @@ def _private_washed_in_system(
         )
 
     system.set_fresh_gas_flow(fresh_gas_flow_l_min)
-    system.set_delivered_concentration(delivered_fraction)
+    system.set_delivered_partial_pressure_fraction(delivered_fraction)
     system.set_alveolar_ventilation(
         patient_parameters.default_alveolar_ventilation_l_min
         if alveolar_ventilation_l_min is None
@@ -739,17 +741,17 @@ def _eliminate(
         fresh_gas_flow_l_min,
         delivered_fraction,
     )
-    alveolar_fraction_at_discontinuation = system.alveoli.concentration_fraction
+    alveolar_fraction_at_discontinuation = system.alveoli.partial_pressure_fraction
 
-    system.set_delivered_concentration(0.0)
+    system.set_delivered_partial_pressure_fraction(0.0)
 
     for _ in range(round(ELIMINATION_DURATION_S / SIMULATION_STEP_S)):
         system.advance(SIMULATION_STEP_S)
 
     return EliminationReading(
         alveolar_fraction_at_discontinuation=alveolar_fraction_at_discontinuation,
-        alveolar_fraction=system.alveoli.concentration_fraction,
-        inspired_fraction=system.circuit.circuit_concentration_fraction,
+        alveolar_fraction=system.alveoli.partial_pressure_fraction,
+        inspired_fraction=system.circuit.inspired_partial_pressure_fraction,
     )
 
 
@@ -775,7 +777,7 @@ def _discard_circuit_contents(system: AgentUptakeSystem) -> None:
 
     discarded_agent_l = system.circuit.agent_amount_l
 
-    system.circuit.set_circuit_concentration_fraction(0.0)
+    system.circuit.set_inspired_partial_pressure_fraction(0.0)
     system.agent_simulation_validator.record_external_agent_transfer(
         delivered_agent_l=0.0, exhausted_agent_l=discarded_agent_l
     )
@@ -887,9 +889,9 @@ def _eliminate_without_rebreathing(
         delivered_fraction,
         vessel_rich_tissue_gas_partition_coefficient,
     )
-    alveolar_fraction_at_discontinuation = system.alveoli.concentration_fraction
+    alveolar_fraction_at_discontinuation = system.alveoli.partial_pressure_fraction
 
-    system.set_delivered_concentration(0.0)
+    system.set_delivered_partial_pressure_fraction(0.0)
 
     if elimination_fresh_gas_flow_l_min is not None:
         system.set_fresh_gas_flow(elimination_fresh_gas_flow_l_min)
@@ -901,13 +903,14 @@ def _eliminate_without_rebreathing(
         system.advance(SIMULATION_STEP_S)
         peak_inspired_to_alveolar_ratio = max(
             peak_inspired_to_alveolar_ratio,
-            system.circuit.circuit_concentration_fraction / system.alveoli.concentration_fraction,
+            system.circuit.inspired_partial_pressure_fraction
+            / system.alveoli.partial_pressure_fraction,
         )
         _discard_circuit_contents(system)
 
     return OpenCircuitEliminationReading(
         alveolar_fraction_at_discontinuation=alveolar_fraction_at_discontinuation,
-        alveolar_fraction=system.alveoli.concentration_fraction,
+        alveolar_fraction=system.alveoli.partial_pressure_fraction,
         peak_inspired_to_alveolar_ratio=peak_inspired_to_alveolar_ratio,
         agent_accounting=system.agent_simulation_validation,
     )
@@ -972,7 +975,7 @@ def test_the_displayed_ratio_is_the_quantity_this_file_validates(agent_id: str) 
 
     system = _wash_in_system(agent_id)
     reading = read_wash_in(
-        system.alveoli.concentration_fraction, system.circuit.circuit_concentration_fraction
+        system.alveoli.partial_pressure_fraction, system.circuit.inspired_partial_pressure_fraction
     )
 
     assert reading.domain is WashInDomain.WASH_IN

@@ -110,18 +110,29 @@ class PatientCompartments:
         return sum(tissue.perfusion_fraction for tissue in self.tissues)
 
     @property
-    def tissue_return_fraction(self) -> float:
-        """Return flow-weighted tissue outflow fraction."""
+    def tissue_return_partial_pressure_fraction(self) -> float:
+        """The flow-weighted partial-pressure fraction returning to the venous pool.
+
+        Each group contributes its venous outflow in proportion to its share
+        of cardiac output; `TissueGroup.venous_outflow_partial_pressure_fraction`
+        is why that outflow equals the group's own fraction.
+        """
 
         return sum(
-            tissue.perfusion_fraction * tissue.venous_outflow_fraction for tissue in self.tissues
+            tissue.perfusion_fraction * tissue.venous_outflow_partial_pressure_fraction
+            for tissue in self.tissues
         )
 
     @property
-    def mixed_venous_fraction(self) -> float:
-        """Return the venous blood concentration."""
+    def mixed_venous_partial_pressure_fraction(self) -> float:
+        """The mixed-venous partial-pressure-equivalent fraction $`F_v`$.
 
-        return self.venous_blood.concentration_fraction
+        Not the venous *concentration*, which is this times
+        $`\\lambda_{b:g}`$; `docs/MODEL.md` § "Concentrations" is why every
+        compartment here is stated as a partial-pressure-equivalent fraction.
+        """
+
+        return self.venous_blood.partial_pressure_fraction
 
     @property
     def total_agent_amount_l(self) -> float:

@@ -58,7 +58,7 @@ class VenousBloodCompartment:
         return self.volume_l * self.blood_gas_partition_coefficient
 
     @property
-    def concentration_fraction(self) -> float:
+    def partial_pressure_fraction(self) -> float:
         """Return partial-pressure-equivalent venous fraction."""
 
         return self.agent_amount_l / self.capacity_l
@@ -88,13 +88,15 @@ class VenousBloodCompartment:
         require_nonnegative_finite("blood_flow_l_min", blood_flow_l_min)
         self.blood_flow_l_min = blood_flow_l_min
 
-    def set_concentration_fraction(self, concentration_fraction: Fraction) -> None:
+    def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
         """Set venous state from an equilibrium fraction."""
 
-        require_concentration_fraction("concentration_fraction", concentration_fraction)
-        self.agent_amount_l = self.capacity_l * concentration_fraction
+        require_concentration_fraction("partial_pressure_fraction", partial_pressure_fraction)
+        self.agent_amount_l = self.capacity_l * partial_pressure_fraction
 
-    def advance(self, tissue_return_fraction: Fraction, simulation_step_s: float) -> float:
+    def advance(
+        self, tissue_return_partial_pressure_fraction: Fraction, simulation_step_s: float
+    ) -> float:
         """Mix tissue return into venous blood exactly, for a constant return.
 
         This pool's own closed form, and not how a run advances: the tissue
@@ -106,24 +108,26 @@ class VenousBloodCompartment:
         Returns the signed change in venous agent amount.
 
         Raises:
-            SimulationConfigurationError: `tissue_return_fraction` is not a
-                finite number in [0, 1], or `simulation_step_s` is not
+            SimulationConfigurationError: the tissue return fraction is not
+                a finite number in [0, 1], or `simulation_step_s` is not
                 positive and finite. Both are checked before anything changes.
         """
 
-        require_concentration_fraction("tissue_return_fraction", tissue_return_fraction)
+        require_concentration_fraction(
+            "tissue_return_partial_pressure_fraction", tissue_return_partial_pressure_fraction
+        )
         require_positive_finite("simulation_step_s", simulation_step_s)
 
         if self.blood_flow_l_min == 0.0:
             return 0.0
 
         initial_amount_l = self.agent_amount_l
-        initial_fraction = self.concentration_fraction
+        initial_fraction = self.partial_pressure_fraction
         fraction_remaining = exp(-simulation_step_s / self.time_constant_s)
 
         next_fraction = (
-            tissue_return_fraction
-            + (initial_fraction - tissue_return_fraction) * fraction_remaining
+            tissue_return_partial_pressure_fraction
+            + (initial_fraction - tissue_return_partial_pressure_fraction) * fraction_remaining
         )
 
         self.agent_amount_l = self.capacity_l * next_fraction

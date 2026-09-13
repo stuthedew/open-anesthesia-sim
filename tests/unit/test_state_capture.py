@@ -60,7 +60,7 @@ class _Compartment:
 
 
 def _breathing_circuit() -> BreathingCircuit:
-    return BreathingCircuit(circuit_concentration_fraction=0.013)
+    return BreathingCircuit(inspired_partial_pressure_fraction=0.013)
 
 
 def _alveolar_compartment() -> AlveolarCompartment:
@@ -98,13 +98,13 @@ COMPARTMENTS = (
     _Compartment(
         label="BreathingCircuit",
         build=_breathing_circuit,
-        run_state_fields=frozenset({"circuit_concentration_fraction"}),
+        run_state_fields=frozenset({"inspired_partial_pressure_fraction"}),
         setting_fields=frozenset(
             {
                 "circuit_volume_l",
                 "fresh_gas_flow_l_min",
-                "delivered_concentration_fraction",
-                "max_delivered_concentration_fraction",
+                "delivered_partial_pressure_fraction",
+                "max_delivered_partial_pressure_fraction",
             }
         ),
     ),

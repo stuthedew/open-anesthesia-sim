@@ -126,7 +126,7 @@ class WashInReading:
 
 
 def wash_in_ratio(
-    alveolar_concentration_fraction: float, inspired_concentration_fraction: float
+    alveolar_partial_pressure_fraction: float, inspired_partial_pressure_fraction: float
 ) -> float | None:
     """Divide alveolar by inspired, where the denominator supports it.
 
@@ -135,9 +135,9 @@ def wash_in_ratio(
     fraction wants `plotted_wash_in_ratio` instead.
 
     Args:
-        alveolar_concentration_fraction: $`F_A`$, as a fraction of one
+        alveolar_partial_pressure_fraction: $`F_A`$, as a fraction of one
             atmosphere.
-        inspired_concentration_fraction: $`F_I`$, as a fraction of one
+        inspired_partial_pressure_fraction: $`F_I`$, as a fraction of one
             atmosphere. This model's inspired fraction is its circuit
             fraction; see the module docstring.
 
@@ -146,10 +146,10 @@ def wash_in_ratio(
         below `WASH_IN_DENOMINATOR_FLOOR_FRACTION`.
     """
 
-    if inspired_concentration_fraction < WASH_IN_DENOMINATOR_FLOOR_FRACTION:
+    if inspired_partial_pressure_fraction < WASH_IN_DENOMINATOR_FLOOR_FRACTION:
         return None
 
-    return alveolar_concentration_fraction / inspired_concentration_fraction
+    return alveolar_partial_pressure_fraction / inspired_partial_pressure_fraction
 
 
 def is_wash_in(ratio: float) -> bool:
@@ -170,7 +170,7 @@ def is_wash_in(ratio: float) -> bool:
 
 
 def read_wash_in(
-    alveolar_concentration_fraction: float, inspired_concentration_fraction: float
+    alveolar_partial_pressure_fraction: float, inspired_partial_pressure_fraction: float
 ) -> WashInReading:
     """Read F_A/F_I at one moment: the plottable value, and its domain.
 
@@ -179,9 +179,9 @@ def read_wash_in(
     one rule and cannot come to disagree.
 
     Args:
-        alveolar_concentration_fraction: $`F_A`$, as a fraction of one
+        alveolar_partial_pressure_fraction: $`F_A`$, as a fraction of one
             atmosphere.
-        inspired_concentration_fraction: $`F_I`$, as a fraction of one
+        inspired_partial_pressure_fraction: $`F_I`$, as a fraction of one
             atmosphere.
 
     Returns:
@@ -189,7 +189,7 @@ def read_wash_in(
         `domain` is `WashInDomain.WASH_IN`.
     """
 
-    ratio = wash_in_ratio(alveolar_concentration_fraction, inspired_concentration_fraction)
+    ratio = wash_in_ratio(alveolar_partial_pressure_fraction, inspired_partial_pressure_fraction)
 
     if ratio is None:
         return WashInReading(WashInDomain.NO_INSPIRED_AGENT, None)

@@ -408,12 +408,12 @@ def _snapshot(
         agent_mac_awake=agent_mac_awake,
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=4.0,
-        delivered_concentration_fraction=0.08,
+        delivered_partial_pressure_fraction=0.08,
         alveolar_ventilation_l_min=4.0,
         cardiac_output_l_min=5.0,
-        circuit_concentration_fraction=compartments[RecordedQuantity.CIRCUIT],
-        alveolar_concentration_fraction=compartments[RecordedQuantity.ALVEOLAR],
-        mixed_venous_concentration_fraction=compartments[RecordedQuantity.MIXED_VENOUS],
+        inspired_partial_pressure_fraction=compartments[RecordedQuantity.CIRCUIT],
+        alveolar_partial_pressure_fraction=compartments[RecordedQuantity.ALVEOLAR],
+        mixed_venous_partial_pressure_fraction=compartments[RecordedQuantity.MIXED_VENOUS],
         vessel_rich_partial_pressure_fraction=compartments[RecordedQuantity.VESSEL_RICH],
         muscle_partial_pressure_fraction=compartments[RecordedQuantity.MUSCLE],
         fat_partial_pressure_fraction=compartments[RecordedQuantity.FAT],
@@ -1760,7 +1760,7 @@ def test_delivered_concentration_slider_converts_percent_to_fraction() -> None:
         ft.Event(name="change", control=view._delivered_concentration_slider)
     )
 
-    assert controller.snapshot().delivered_concentration_fraction == pytest.approx(0.065)
+    assert controller.snapshot().delivered_partial_pressure_fraction == pytest.approx(0.065)
     assert view._delivered_concentration_text.value == "6.50%"
 
 
@@ -3104,8 +3104,8 @@ def test_simulation_time_does_not_depend_on_render_cadence() -> None:
     # precisely the drift this asserts the absence of.
     assert stepped_by_the_loop.elapsed_s == reference.snapshot().elapsed_s
     assert (
-        stepped_by_the_loop.alveolar_concentration_fraction
-        == reference.snapshot().alveolar_concentration_fraction
+        stepped_by_the_loop.alveolar_partial_pressure_fraction
+        == reference.snapshot().alveolar_partial_pressure_fraction
     )
 
 
@@ -3652,7 +3652,7 @@ def test_a_refused_setting_is_reported_without_stopping_the_run() -> None:
     controller = SimulationController(agent_id="isoflurane")
     view = SimulationView(page=page, controller=controller)
     controller.start()
-    delivered_before = controller.snapshot().delivered_concentration_fraction
+    delivered_before = controller.snapshot().delivered_partial_pressure_fraction
 
     view._delivered_concentration_slider.value = 50.0
     view._handle_delivered_concentration_change(
@@ -3669,7 +3669,7 @@ def test_a_refused_setting_is_reported_without_stopping_the_run() -> None:
 
     # The control must not keep showing a dial position the simulation is
     # not running at: that is the correct number under the wrong label.
-    assert controller.snapshot().delivered_concentration_fraction == delivered_before
+    assert controller.snapshot().delivered_partial_pressure_fraction == delivered_before
     assert view._delivered_concentration_slider.value == pytest.approx(delivered_before * 100.0)
 
 
@@ -3690,7 +3690,7 @@ def test_a_refusal_notice_clears_once_a_setting_is_accepted() -> None:
     )
 
     assert view._notice_text.visible is False
-    assert controller.snapshot().delivered_concentration_fraction == pytest.approx(0.02)
+    assert controller.snapshot().delivered_partial_pressure_fraction == pytest.approx(0.02)
 
 
 @pytest.mark.parametrize(
@@ -3926,15 +3926,15 @@ def test_the_model_keeps_precision_the_display_throws_away() -> None:
 
     below_resolution = 1e-8  # a fraction, i.e. 1e-6 percentage points
 
-    def run_at(delivered_concentration_fraction: float) -> tuple[float, str]:
+    def run_at(delivered_partial_pressure_fraction: float) -> tuple[float, str]:
         controller = SimulationController()
-        controller.set_delivered_concentration(delivered_concentration_fraction)
+        controller.set_delivered_partial_pressure_fraction(delivered_partial_pressure_fraction)
         controller.start()
         _advance_to(controller, 120.0)
         snapshot = controller.snapshot()
 
-        return snapshot.alveolar_concentration_fraction, format_percent(
-            snapshot.alveolar_concentration_fraction
+        return snapshot.alveolar_partial_pressure_fraction, format_percent(
+            snapshot.alveolar_partial_pressure_fraction
         )
 
     baseline_fraction, baseline_displayed = run_at(0.02)
@@ -4175,11 +4175,11 @@ def test_the_end_to_end_mac_path_reaches_the_panel_from_a_real_run() -> None:
 
     assert snapshot.agent_mac_percent == 6.0
     assert view._alveolar_mac_text.value == format_mac_multiple(
-        snapshot.alveolar_concentration_fraction, 6.0
+        snapshot.alveolar_partial_pressure_fraction, 6.0
     )
     # The dial starts at the agent's own 1 MAC, so after a minute of wash-in
     # the alveolar compartment is somewhere below it and above nothing.
-    alveolar_mac = snapshot.alveolar_concentration_fraction * 100.0 / 6.0
+    alveolar_mac = snapshot.alveolar_partial_pressure_fraction * 100.0 / 6.0
     assert 0.0 < alveolar_mac < 1.0
     assert view._delivered_concentration_mac_text.value == "1.00 ×MAC"
 
@@ -5055,7 +5055,7 @@ def test_a_real_run_draws_the_ratio_of_its_own_recorded_compartments() -> None:
     view = SimulationView(page=_FakePage(), controller=controller)
     snapshot = controller.snapshot()
     reading = read_wash_in(
-        snapshot.alveolar_concentration_fraction, snapshot.circuit_concentration_fraction
+        snapshot.alveolar_partial_pressure_fraction, snapshot.inspired_partial_pressure_fraction
     )
 
     assert reading.plotted_ratio is not None

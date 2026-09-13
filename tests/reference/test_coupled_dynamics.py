@@ -980,7 +980,7 @@ def _apply_operating_point(system: AgentUptakeSystem, point: OperatingPoint) -> 
     system.set_fresh_gas_flow(point.fresh_gas_flow_l_min)
     system.set_alveolar_ventilation(point.alveolar_ventilation_l_min)
     system.set_cardiac_output(point.cardiac_output_l_min)
-    system.set_delivered_concentration(point.delivered_fraction)
+    system.set_delivered_partial_pressure_fraction(point.delivered_fraction)
 
 
 def _shipped_system(agent_id: str, point: OperatingPoint) -> AgentUptakeSystem:
@@ -998,9 +998,9 @@ def _shipped_states(system: AgentUptakeSystem) -> tuple[float, ...]:
     patient = system.patient
 
     return (
-        system.circuit.circuit_concentration_fraction,
-        system.alveoli.concentration_fraction,
-        patient.mixed_venous_fraction,
+        system.circuit.inspired_partial_pressure_fraction,
+        system.alveoli.partial_pressure_fraction,
+        patient.mixed_venous_partial_pressure_fraction,
         patient.vessel_rich.partial_pressure_fraction,
         patient.muscle.partial_pressure_fraction,
         patient.fat.partial_pressure_fraction,

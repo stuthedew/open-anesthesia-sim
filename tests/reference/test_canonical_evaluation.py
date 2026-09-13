@@ -82,10 +82,10 @@ from anesthesia_sim.core.run_definition import DisplayState, RunDefinition
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 CHANGES: tuple[tuple[float, str, float], ...] = (
-    (30.0, "set_delivered_concentration", 0.04),
+    (30.0, "set_delivered_partial_pressure_fraction", 0.04),
     (120.0, "set_alveolar_ventilation", 6.0),
     (450.0, "set_fresh_gas_flow", 2.0),
-    (900.0, "set_delivered_concentration", 0.01),
+    (900.0, "set_delivered_partial_pressure_fraction", 0.01),
 )
 """When each control moves, and to what, in the run every test here uses.
 

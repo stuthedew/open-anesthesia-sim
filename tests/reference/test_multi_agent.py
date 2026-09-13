@@ -64,8 +64,8 @@ def _build_system_for_agent(agent_id: str) -> AgentUptakeSystem:
 
     return AgentUptakeSystem(
         circuit=BreathingCircuit(
-            delivered_concentration_fraction=DELIVERED_CONCENTRATION_FRACTION,
-            max_delivered_concentration_fraction=(
+            delivered_partial_pressure_fraction=DELIVERED_CONCENTRATION_FRACTION,
+            max_delivered_partial_pressure_fraction=(
                 agent.max_delivered_concentration_percent / 100.0
             ),
         ),
@@ -83,7 +83,7 @@ def test_wash_in_and_washout_validates_agent_simulation(agent_id: str) -> None:
 
     _run_for(system, duration_s=600.0, simulation_step_s=0.1)
 
-    system.set_delivered_concentration(0.0)
+    system.set_delivered_partial_pressure_fraction(0.0)
 
     _run_for(system, duration_s=600.0, simulation_step_s=0.1)
 
@@ -113,11 +113,11 @@ def test_equilibrium_produces_no_net_internal_transfer(agent_id: str) -> None:
     equilibrium_fraction = 0.05
 
     system.circuit.set_agent_amount(system.circuit.circuit_volume_l * equilibrium_fraction)
-    system.alveoli.set_concentration_fraction(equilibrium_fraction)
+    system.alveoli.set_partial_pressure_fraction(equilibrium_fraction)
     system.patient.vessel_rich.set_partial_pressure_fraction(equilibrium_fraction)
     system.patient.muscle.set_partial_pressure_fraction(equilibrium_fraction)
     system.patient.fat.set_partial_pressure_fraction(equilibrium_fraction)
-    system.patient.venous_blood.set_concentration_fraction(equilibrium_fraction)
+    system.patient.venous_blood.set_partial_pressure_fraction(equilibrium_fraction)
 
     system.agent_simulation_validator.reset(initial_agent_l=system.total_stored_agent_l)
 
@@ -148,12 +148,12 @@ def test_desflurane_alveolar_circuit_ratio_rises_faster_than_isoflurane() -> Non
     _run_for(isoflurane, duration_s=60.0, simulation_step_s=0.1)
 
     desflurane_ratio = (
-        desflurane.alveoli.concentration_fraction
-        / desflurane.circuit.circuit_concentration_fraction
+        desflurane.alveoli.partial_pressure_fraction
+        / desflurane.circuit.inspired_partial_pressure_fraction
     )
     isoflurane_ratio = (
-        isoflurane.alveoli.concentration_fraction
-        / isoflurane.circuit.circuit_concentration_fraction
+        isoflurane.alveoli.partial_pressure_fraction
+        / isoflurane.circuit.inspired_partial_pressure_fraction
     )
 
     assert desflurane_ratio > isoflurane_ratio

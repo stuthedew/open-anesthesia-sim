@@ -58,12 +58,12 @@ def test_a_percent_reaching_a_fraction_parameter_is_refused_by_mypy_alone() -> N
     and what it stored is 8%.
     """
 
-    circuit = BreathingCircuit(max_delivered_concentration_fraction=SEVOFLURANE_MAXIMUM_FRACTION)
+    circuit = BreathingCircuit(max_delivered_partial_pressure_fraction=SEVOFLURANE_MAXIMUM_FRACTION)
 
-    circuit.set_delivered_concentration(Percent(0.08))  # type: ignore[arg-type]
+    circuit.set_delivered_partial_pressure_fraction(Percent(0.08))  # type: ignore[arg-type]
 
-    assert circuit.delivered_concentration_fraction == 0.08
-    assert percent_from_fraction(circuit.delivered_concentration_fraction) == pytest.approx(8.0)
+    assert circuit.delivered_partial_pressure_fraction == 0.08
+    assert percent_from_fraction(circuit.delivered_partial_pressure_fraction) == pytest.approx(8.0)
 
 
 def test_a_bare_float_reaching_a_fraction_parameter_is_refused_too() -> None:
@@ -74,11 +74,11 @@ def test_a_bare_float_reaching_a_fraction_parameter_is_refused_too() -> None:
     something already called a percent.
     """
 
-    circuit = BreathingCircuit(max_delivered_concentration_fraction=SEVOFLURANE_MAXIMUM_FRACTION)
+    circuit = BreathingCircuit(max_delivered_partial_pressure_fraction=SEVOFLURANE_MAXIMUM_FRACTION)
 
-    circuit.set_delivered_concentration(0.02)  # type: ignore[arg-type]
+    circuit.set_delivered_partial_pressure_fraction(0.02)  # type: ignore[arg-type]
 
-    assert circuit.delivered_concentration_fraction == 0.02
+    assert circuit.delivered_partial_pressure_fraction == 0.02
 
 
 def test_the_runtime_guards_are_unchanged_by_any_of_this() -> None:
@@ -89,12 +89,12 @@ def test_the_runtime_guards_are_unchanged_by_any_of_this() -> None:
     mistaken for more than it is.
     """
 
-    circuit = BreathingCircuit(max_delivered_concentration_fraction=SEVOFLURANE_MAXIMUM_FRACTION)
+    circuit = BreathingCircuit(max_delivered_partial_pressure_fraction=SEVOFLURANE_MAXIMUM_FRACTION)
 
     with pytest.raises(SimulationConfigurationError, match="must be between 0 and 1"):
-        circuit.set_delivered_concentration(Fraction(1.5))
+        circuit.set_delivered_partial_pressure_fraction(Fraction(1.5))
 
     with pytest.raises(SimulationConfigurationError, match="exceeds the vaporizer maximum"):
-        circuit.set_delivered_concentration(Fraction(0.5))
+        circuit.set_delivered_partial_pressure_fraction(Fraction(0.5))
 
-    assert circuit.delivered_concentration_fraction == 0.0
+    assert circuit.delivered_partial_pressure_fraction == 0.0
