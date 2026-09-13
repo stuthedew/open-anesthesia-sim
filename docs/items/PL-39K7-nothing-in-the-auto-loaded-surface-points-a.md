@@ -1,8 +1,15 @@
 ---
 id: PL-39K7
 title: Nothing in the auto-loaded surface points a session at docs/ARCHITECTURE.md's "Where new code belongs"
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: docs, session-cost
+feature: documentation-standard
+touches: .claude/rules/where-new-code-goes.md, .claude/rules/core-domain.md
 added: 2026-09-13
+closed: 2026-09-13
+verify: python3 tools/rules_paths_check.py && grep -q 'Where new code belongs' .claude/rules/where-new-code-goes.md && grep -q 'core/tissue.py' .claude/rules/core-domain.md
 ---
 
 **Problem.** Nothing in the auto-loaded surface points a session at docs/ARCHITECTURE.md's "Where new code belongs"
@@ -39,3 +46,38 @@ citation check already guards a cited path from rot.
 
 **Found.** 2026-09-13, reviewing an outside article on long AI projects against
 this repository.
+
+
+**Closed 2026-09-13.** Two carriers, both path-scoped, so resident context is
+unchanged at 49,802 characters — confirmed against `origin/main` by
+`tools/doc_check.py`'s own report.
+
+`.claude/rules/where-new-code-goes.md` is new, scoped to `/src/**` and
+`/tests/**`, and does one thing: sends a session to `docs/ARCHITECTURE.md`
+§ "Where new code belongs" and § "Tests (`tests/`)" and says to read one existing
+instance end-to-end before writing a new one. It deliberately restates neither
+section — a rule that paraphrases the document it cites goes stale while still
+reading as current, and the map is already held to the tree in both directions by
+`tools/doc_check.py`. It also names where the per-pattern instances live rather
+than listing them, and says that an unnamed pattern means the codebase is silent
+and that the silence is worth capturing rather than guessing past.
+
+`.claude/rules/core-domain.md` gains the sharper half: `core/tissue.py` named as
+the compartment to read end-to-end, with what makes it the fullest instance —
+`TissueGroupState` saying why each parameter is excluded, `__post_init__` refusing
+every field through `core/validation.py`'s named guards, properties carrying the
+equation and citing the `docs/MODEL.md` section that defines it, and an
+`advance()` separating this compartment's closed form from how a run steps. Its
+`time_constant_s` is called out as the illustration of that file's own bar: a
+property the step does not read, kept because it is the form a reader of the
+specification is looking for.
+
+**Scope held deliberately.** `ui-reader.md` was named as a candidate carrier in
+the proposal and did not get the pointer: it governs what a clinician reading the
+screen already knows, and structural routing bolted onto it would have been the
+second copy this item exists to avoid. `/src/**` covers `app/` anyway.
+
+**Found** reviewing an outside article on long AI projects against this
+repository; its "point at a canonical instance from the instruction file" claim
+was the half that landed. `PL-VV16`, in flight, adds the read-side instrumentation
+that would answer whether this citation edge is ever actually traversed.
