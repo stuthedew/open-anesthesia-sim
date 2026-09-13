@@ -3130,7 +3130,7 @@ side.
 | 1.39, its own measured mean + 2 SD | 0.0998 | −2.01 SD |
 | 1.70, sevoflurane's, the highest of the three | 0.1167 | −1.17 SD |
 
-**Eight other candidates were tested, and each fails the same way**: it moves
+**Nine other candidates were tested or struck, and each fails the same way**: it moves
 sevoflurane and isoflurane as much as desflurane or more, and the published
 rows have no room for that, or it moves desflurane the wrong way. Rows one to
 six were measured 2026-09-08, rows four to six on an independent forward-Euler
@@ -3139,7 +3139,9 @@ integration of these equations, which reproduces the shipped driver to within
 −2.33. The seventh was measured 2026-09-13 on the shipped driver, after the
 methods sections supplied the apparatus's real volume (`PL-RFLN`); the
 paragraphs below it are why it is a row of its own rather than a correction to
-the sixth.
+the sixth. The eighth and ninth were not measured here at all — each is struck
+by a held primary measurement that answers it outright, and each has a block
+below giving what it proposed and what killed it.
 
 | Candidate | What reaching 0.140 takes | What it costs the other rows |
 | --- | --- | --- |
@@ -3151,6 +3153,7 @@ the sixth.
 | Circuit-style rebreathing in the published apparatus, at an assumed ratio | $`F_I/F_A`$ = 0.30 | sevoflurane +2.72 SD, isoflurane +3.29 and +4.10 |
 | The published apparatus's own dead space, sourced — 50 ml re-inspired each breath, which in this model is a ventilation decrement rather than an $`F_I`$ | more than the wash-in rows will bear | at the largest admissible decrement desflurane is still −1.48 SD while both isoflurane cohorts leave their spread, at +1.69 and +2.17 |
 | End-tidal sampling bias in a lung with ventilation-perfusion dispersion — a correction to the *published* value rather than to this model | a bias upward at both ends, growing as solubility falls | the one human measurement of that gradient has it larger for *more* soluble agents and negative through an elimination, so it moves the published value down and deepens the residual — struck below |
+| Circuit-wall absorption — this model's circle system has inert walls, and a real one's plastic and rubber dissolve agent | nothing it can supply: walls that absorb during administration give the agent back through the washout, holding $`F_I`$ up | the one study to measure a real circle system found desflurane's washin and washout lay close to the ideal exponential at every flow, so the inert wall is the assumption it most nearly supports for this agent — struck below |
 
 **The sixth row measured circuit-style rebreathing at an assumed ratio, and
 the apparatus turns out not to be that shape at all.** Yasuda 1991
@@ -3325,6 +3328,63 @@ signed as measured, the published 0.140 is **low** — so every reading of this
 section that treats the model as washing desflurane out too fast is
 conservative rather than optimistic.
 
+**Circuit-wall absorption was never on this list, and the paper behind the
+circuit volume decides it** (`PL-XWCY`). Targ, Yasuda and Eger measured washin
+at 0.5–2 L/min and washout at 1–5 L/min in a real conventional circle system
+against the ideal exponential (*Anesth Analg* 1989 Aug;69(2):218–25, PMID
+2764290; read at full text 2026-09-13, and the same study behind the circuit
+volume's provenance and the inert-circuit entry under "Known limitations").
+Desflurane's curves lay close to the ideal line at every flow — deviating most
+at the lowest flows and near complete washin, none of them this model's
+operating point — and the authors conclude that absorption of it "by circuit
+components or soda lime should not hinder induction of or recovery from
+anesthesia". For **desflurane**, then, the model's inert circuit is the
+assumption this measurement most nearly supports, and the candidate is struck
+on evidence rather than on argument.
+
+**The direction rules it out independently, and that half needed no
+measurement.** A wall that dissolves agent through a 30-minute administration
+gives it back through the washout, holding the circuit's — and therefore the
+inspired — fraction up and *slowing* the alveolar fall. Desflurane's residual
+is this model washing out too **fast**. A mechanism that can only slow a
+washout cannot produce it, so no magnitude of wall absorption would have
+helped whatever the measurement had said.
+
+**The same study finds that a real circuit measurably retards sevoflurane and
+isoflurane. That is a limitation of this simulator, and it is not a candidate
+here — three separate reasons, any one sufficient.** The finding is real: the
+component partition coefficients rank halothane > isoflurane > sevoflurane >
+desflurane at every equilibration time from 7.5 min to 9 weeks, and the washin
+and washout curves follow that order. But it does not bear on the residual.
+
+- **It is already recorded, in the right place.** "Known limitations" carries
+  the coefficient table, the ranking, and the statement that the inert circuit
+  is most nearly true for desflurane and least for halothane, together with
+  the decision not to add a wall term (`PL-LS3H`). What a reader of this
+  section would take from repeating it here is that the residual is partly
+  explained, which is the opposite of true.
+- **The departure it would be offered against is in the elimination rows, not
+  the wash-in rows.** Sevoflurane's +3.79 SD and isoflurane's +4.15 SD are
+  five-minute $`F_A/F_{A0}`$ figures. The wash-in comparison has no departure
+  for anything to explain: every agent stays inside its published spread at
+  every fresh gas flow from 1 to 10 L/min.
+- **On the elimination rows the mechanism moves the wrong way, and it is
+  absent from the published measurement besides.** Most of that departure is
+  already attributed to the breathing system: removing the rebreathing takes
+  sevoflurane to −0.15 SD and isoflurane to +0.66 SD. Wall absorption is a
+  *further* agent store returning agent to the circuit through the washout, so
+  adding it would hold $`F_I`$ up longer and push both rows further above
+  their means, not toward them — the same directional argument that strikes it
+  for desflurane, pointed at the two agents it is strongest for. And the
+  published cohorts breathed a non-rebreathing apparatus with the potent
+  agents' inspired fraction zero by construction, so no circle-system wall
+  effect is present in the published number at all.
+
+The general form of that last point is worth keeping: **a mechanism belonging
+to this model's circle system cannot explain a disagreement with a measurement
+made without one.** It can only be a statement about what the simulator shows
+a learner, which is what "Known limitations" is for.
+
 Whatever the explanation is, it has to fit the whole published set and not
 desflurane alone. The same eight volunteers gave halothane 0.25 ± 0.02, so
 across a solubility range of roughly six-fold — halothane's blood:gas is
@@ -3339,18 +3399,21 @@ through the elimination — are two answered and one outstanding. The breathing
 system and the end-tidal sampling are recorded above, and they closed the
 apparatus question: the published circuit is non-rebreathing with the potent
 agents' inspired fraction zero by construction, and its 50 ml of series dead
-space cannot carry the residual. The third was never read out. Yasuda measured
-minute ventilation and derived the alveolar fraction from
-$`F_M = f_A F_A + f_D F_I`$; the **value** is in the methods text and is not
-held here, and `PL-ZDWL` is reading it.
+space cannot carry the residual. The third has been read out and is answered
+in the negative: `PL-ZDWL` read both papers at full text on 2026-09-13 and
+**neither publishes a ventilation at all**, as the paragraphs above record —
+it was titrated per subject to normocapnia rather than set to a figure, and no
+$`\dot V_E`$ and no $`f_A`$ is reported. So there is no published value to run
+the comparison at, and that avenue is closed rather than outstanding.
 
-So what is left is one reachable candidate and one that is not. The reachable
-one is candidate 1's end-tidal-weighted bias, which `PL-03ZG` bounds: the
-methods removed its obstacle and nothing has demonstrated it. The unreachable
-one is candidate 2, the published value itself, which no measurement this
-project can run will settle. **Neither is a claim this specification makes** —
-the residual's cause is not identified, and what is recorded here is its sign,
-its size, and the six mechanisms that have been excluded.
+So what is left is one candidate, and this project cannot test it: the
+published value itself, which no measurement available here will settle. The
+end-tidal-weighted bias that stood beside it was struck on the same day
+(`PL-03ZG`, dropped for that reason), and circuit-wall absorption was struck
+with it above. **Neither the remaining candidate nor any struck one is a claim
+this specification makes** — the residual's cause is not identified, and what
+is recorded here is its sign, its size, and the nine candidates in the table
+above with what ruled each of them out.
 
 **Which question a band of one standard deviation answers**, since this
 section now makes the claim in two places. A deterministic model compared
