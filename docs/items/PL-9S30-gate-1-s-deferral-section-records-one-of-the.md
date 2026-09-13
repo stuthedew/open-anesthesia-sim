@@ -5,10 +5,11 @@ priority: P2
 effort: S
 status: done
 classes: defect, docs
-touches: ROADMAP.md, docs/items/
 feature: planning-cadence
+touches: ROADMAP.md, docs/items/
 added: 2026-09-13
 closed: 2026-09-13
+pr: 521
 verify: python3 tools/doc_check.py check && grep -qF 'Sequenced past v0.5.0, so not clearable before it begins' ROADMAP.md
 ---
 

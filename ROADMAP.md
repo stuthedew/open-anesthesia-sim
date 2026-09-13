@@ -2545,8 +2545,16 @@ thrown away.
   After the port the question is `QAccessible`'s, which is a different
   investigation against a different backend.
 - **`PL-7J96`** ("nothing in this repository draws the interface") is what
-  `PL-YCWZ` now does. One of them supersedes the other and it is worth deciding
-  which rather than working both.
+  `PL-YCWZ` now does. **Decided for `PL-YCWZ` (project owner, 2026-09-13), and
+  `PL-7J96` is `dropped` as superseded.** `PL-YCWZ`'s capability is demonstrated
+  rather than assumed - `spikes/qt/qt_spike.py --screenshot` already renders the
+  interface offscreen inside the web container - where `PL-7J96` would have built
+  a Playwright renderer for the interface this milestone replaces. What that
+  accepts is that the shipped Flet build gets no automated wrapping check before
+  the port; the two defects `PL-7J96` records are filed and dispositioned
+  separately, so what is given up is the gate rather than the fixes. Its Gate 1
+  line stays written where the freeze put it, per § "The gate is a snapshot, not
+  a moving target". `PL-MBP6` was blocked on it and is re-pointed at `PL-YCWZ`.
 - **`PL-NC2P`** and **`PL-YMY7`** are coverage items over `app/main.py` and
   `app/simulation_view.py`'s Flet-construction paths - files this milestone
   replaces.
