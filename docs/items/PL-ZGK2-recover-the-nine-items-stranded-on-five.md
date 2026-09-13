@@ -3,11 +3,12 @@ id: PL-ZGK2
 title: Recover the nine items stranded on five abandoned branches, and leave the four on a live session's branch
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: dev-tooling
 touches: docs/items/
 added: 2026-09-13
+closed: 2026-09-13
 verify: bin/docket check && test $(ls docs/items/PL-4ZK8-* docs/items/PL-5NR5-* docs/items/PL-7B3G-* docs/items/PL-928V-* docs/items/PL-NJ9M-* docs/items/PL-Q664-* docs/items/PL-V67Q-* docs/items/PL-V9L3-* docs/items/PL-Z3V5-* 2>/dev/null | wc -l) -eq 9
 ---
 
@@ -53,3 +54,19 @@ reach them.
 
 **Done when.** All nine files are on this branch, `bin/docket check` passes, and
 the four on the live session's branch are untouched.
+
+**What the recovery surfaced on the first `bin/docket check` after it, which is
+the argument for having done it.** `PL-4QCJ` - an open item on the default
+branch - names `PL-Z3V5` as a prerequisite in its prose and does not declare the
+edge in `blocked-by`. That advisory could not fire while `PL-Z3V5` existed on
+nobody's branch but one nobody would merge: the checker had no such id to
+resolve against, so an open item sat blocked on something the store did not
+contain and nothing said so. Captured as its own item rather than fixed here -
+the advisory names two remedies (declare the edge, or reword the sentence if it
+is not really a prerequisite) and choosing between them is a decision, which
+fails the third test of `CLAUDE.md`'s fix-now rule.
+
+**Two of the nine came back already triaged and seven untriaged**, which is the
+expected shape: `bin/docket triage` is where they are folded into the queue, and
+a recovery pass that also triaged them would be resolving nine items' fields on
+a branch cut for something else.
