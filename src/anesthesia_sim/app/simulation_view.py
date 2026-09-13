@@ -327,14 +327,23 @@ MAX_LISTED_ADJUSTMENTS = 12
 # and has to stay true with it: that method preserves the circuit and patient
 # settings and takes the delivered concentration from the new agent's own
 # `mac_percent`.
+#
+# It names three of the four it preserves, deliberately (`PL-0Q1T`, decided
+# 2026-09-13). The circuit volume carries over too, and saying so was true and
+# lopsided: this dialog exists to tell a reader what discarding the case costs
+# them, the cost is denominated in things they chose, and `PL-GYH2` retired the
+# only setter that could ever have changed it. Listed among settings that carry
+# over it read as a slider mislaid somewhere - and this sentence was the
+# interface's one mention of the parameter, so a reader who went looking found
+# nothing. Its value and provenance belong to `docs/MODEL.md`, not here.
 NEW_CASE_TITLE_TEMPLATE = "Start a new {agent} case?"
 NEW_CASE_IS_NOT_A_VIEW_TEXT = (
     "Changing agent starts a new case. This model does not simulate switching "
     "between volatile agents, so a run cannot be continued under a different one."
 )
 NEW_CASE_CARRYOVER_TEMPLATE = (
-    "Circuit volume, fresh gas flow, alveolar ventilation and cardiac output "
-    "carry over. Delivered {agent} starts at that agent's own 1 MAC."
+    "Fresh gas flow, alveolar ventilation and cardiac output carry over. "
+    "Delivered {agent} starts at that agent's own 1 MAC."
 )
 # Both buttons name their outcome rather than answering a question, so
 # neither can be pressed on the reading that "OK" confirms whatever was on

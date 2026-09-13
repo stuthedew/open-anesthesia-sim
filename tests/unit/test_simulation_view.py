@@ -1716,6 +1716,26 @@ def test_the_confirmation_names_both_agents_and_what_survives_the_switch() -> No
     assert dialog.modal is True
 
 
+def test_the_carry_over_sentence_names_only_settings_the_reader_can_set() -> None:
+    """`PL-0Q1T`: a list of what a discard costs, in things the reader chose.
+
+    The circuit volume does carry over, so naming it was true - and lopsided.
+    `PL-GYH2` retired the only setter that could have changed it, so listing it
+    beside three sliders implied a control this interface does not have, in the
+    one place the interface mentioned the parameter at all.
+
+    Asserted as the property rather than against the string, so that rewording
+    the sentence does not need this test rewritten and reintroducing the
+    parameter still fails it.
+    """
+
+    sentence = NEW_CASE_CARRYOVER_TEMPLATE.lower()
+
+    assert "circuit volume" not in sentence
+    for setting in ("fresh gas flow", "alveolar ventilation", "cardiac output"):
+        assert setting in sentence
+
+
 def test_the_confirmations_trailing_action_is_the_one_that_keeps_the_case() -> None:
     """The press a reader makes without reading must not destroy the run.
 
