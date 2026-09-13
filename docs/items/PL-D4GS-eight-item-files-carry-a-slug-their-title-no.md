@@ -1,8 +1,15 @@
 ---
 id: PL-D4GS
 title: Eight item files carry a slug their title no longer generates, which PL-3833's new advisory reports and no item owns
-status: untriaged
+status: dropped
+closed: 2026-09-13
 added: 2026-09-13
+priority: P3
+effort: S
+classes: defect, infra
+feature: dev-tooling
+touches: docs/items/
+reason: Duplicate of PL-YTDN, filed independently the same day; its three unique contributions were folded into PL-YTDN before this was dropped
 ---
 
 **Problem.** Eight item files carry a slug their title no longer generates, which PL-3833's new advisory reports and no item owns
@@ -44,3 +51,21 @@ and the two items should not fight over the same files.
 **Done when.** Every item file whose slug no longer matches its title has
 either been renamed or is named in this item with the branch that holds it, and
 `make check`'s advisory is empty or lists only the held ones.
+
+**Why it matters.** Kept rather than deleted so the finding is not raised a
+third time: the filename-drift advisory is ownerless by design and attracts a
+fresh capture from every session that meets it, which is two in one day.
+
+**Dropped 2026-09-13 as a duplicate of `PL-YTDN`** (rename the item files whose
+slug no longer matches their title), which was filed earlier the same day and
+carries the measurement this one does not: 0 of the drifted files are
+referenced by path in any other item's `verify:` or brief, against 34 items
+that do hardcode some item path, plus the one-liner to re-run that check
+because the store moves.
+
+What this brief had and that one did not is folded into `PL-YTDN` rather than
+lost: the corrected count of eight and why it moved, the dependency on
+`PL-LBR6`, and the ordering constraint that a rename conflicts against any
+branch holding the file, so the pass renames what is free and names the rest.
+
+**Done when.** Nothing - dropped. `PL-YTDN` carries the work.

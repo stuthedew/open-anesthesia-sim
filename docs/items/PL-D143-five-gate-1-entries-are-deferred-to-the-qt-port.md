@@ -8,6 +8,7 @@ closed: 2026-09-13
 classes: defect, planning
 touches: docs/items/, ROADMAP.md
 added: 2026-09-13
+verify: bin/docket check && [ "$(grep -l '^blocked-by: v0.5.1' docs/items/PL-3355-*.md docs/items/PL-Q4VH-*.md docs/items/PL-THXF-*.md docs/items/PL-TG60-*.md docs/items/PL-W8DQ-*.md | wc -l)" = 5 ]
 ---
 
 **Problem.** Five open Gate 1 entries carry an identical blockquote, added by

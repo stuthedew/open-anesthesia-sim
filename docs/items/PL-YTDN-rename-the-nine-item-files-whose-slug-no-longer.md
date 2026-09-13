@@ -1,8 +1,14 @@
 ---
 id: PL-YTDN
 title: Rename the nine item files whose slug no longer matches their title, now that docket check names them
-status: untriaged
+status: ready
 added: 2026-09-13
+priority: P2
+effort: S
+classes: defect, infra
+feature: dev-tooling
+touches: docs/items/
+verify: bin/docket check && ! bin/docket check | grep -q 'slug their title no longer generates'
 ---
 
 **Problem.** Rename the nine item files whose slug no longer matches their title, now that docket check names them
@@ -70,3 +76,33 @@ open six: findability by `ls docs/items/ | grep` is the whole point of the
 slug, and a closed item is precisely what a later session looks up by name
 when tracing why something was done. The check reports closed items
 deliberately for the same reason.
+
+**Why it matters.** The advisory has no owner, so it fires on every `make
+check` in every session and none of them is the session whose job it is.
+`CLAUDE.md` calls an advisory nobody acts on a candidate for retirement rather
+than promotion - so the choice is to discharge it once or to admit it is not
+earning its place, and discharging it is cheap. A slug is also what a later
+session greps `docs/items/` by when tracing why something was done, which is
+why the closed files are renamed too.
+
+**Triaged 2026-09-13, and `PL-D4GS` is dropped into this item** - the same
+finding, filed independently by the session that cut v0.4.15. Three things it
+carried that this brief did not, kept here:
+
+- **The count is eight, not nine, and the list has moved.** `PL-DZFJ` was
+  renamed on 2026-09-08 by `bin/docket record` as a side effect of writing a
+  `pr:` number, which is `PL-LBR6`. Now: `PL-0VFF`, `PL-5N7T`, `PL-6194`,
+  `PL-68XK`, `PL-K9HV`, `PL-TTMF`, `PL-XQRK`, `PL-ZX12`. Re-read the advisory
+  rather than either list.
+- **Check `PL-LBR6` first.** Until it lands, any `record` run renames drifted
+  files underneath this pass, so the set changes without anyone deciding it.
+- **This is not a sweep to run start to finish.** A rename conflicts against
+  any branch editing the file. `git mv` only the files no live branch holds,
+  then re-run `make check` and name the rest in the close-out for the next
+  pass. `PL-ZX12` is the worked example: it was held by the stale-name batch of
+  Gate 1 while `PL-D4GS` was being written.
+
+**Done when.** `bin/docket check` no longer reports a filename-drift advisory,
+or reports only files a live branch holds and the close-out names them; the
+`verify:` command's own re-check (below) is clean; and nothing that referenced
+a renamed file by path is broken.
