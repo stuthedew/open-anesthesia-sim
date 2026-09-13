@@ -3,11 +3,13 @@ id: PL-XJ5P
 title: Citing-sources says there is always a route, but a pre-abstract subscription paper has none and docs/references can no longer hold one
 priority: P1
 effort: M
-status: needs-decision
+status: done
 classes: science, docs
 feature: model-spec-accuracy
 touches: .claude/rules/citing-sources.md, docs/references/README.md
 added: 2026-09-06
+closed: 2026-09-13
+verify: python3 tools/doc_check.py check && grep -qF 'open-anesthesia-sim-references' .claude/rules/citing-sources.md && grep -qF 'Where owner-supplied full texts live now' docs/references/README.md
 ---
 
 **Problem.** `.claude/rules/citing-sources.md` tells a session, in those
@@ -171,3 +173,56 @@ It strengthens the case for that candidate without deciding it: what the route
 still lacks is a written rule saying it *is* the route, and what
 `docs/references/README.md` says now stands where owner-supplied full texts
 used to. Both remain the owner's call on redistribution.
+
+## Decided 2026-09-13 by the project owner: the private corpus is the route
+
+**The answer is the fourth candidate, which this item's own Decision needed
+does not list.** `PL-5NR5` found it while this item sat open: a private
+companion repository, `stuthedew/open-anesthesia-sim-references`, attached per
+session with `add_repo` and cloned through the GitHub proxy. It is better than
+all three candidates here, and for a reason none of them could reach - it is
+*storage*. The middle candidate, an owner-supplied extract read without the
+repository holding the scan, had been exercised three times by the day this
+closed, and every time the reading survived only as prose in an item. So that
+route scales with **sessions**; this one scales with **sources**.
+
+**Why it is lawful, which is the half that was the owner's to settle.** The
+corpus is private, which restores the premise this project lost when the public
+repository stopped being able to carry a publisher-copyright full text
+(`PL-SHG5`). What crosses back into the public repository is the citation and
+the facts - a value, its units, its locator, what was measured and in whom -
+which are not copyrightable (*Feist Publications, Inc. v. Rural Telephone
+Service Co.*, 499 U.S. 340, 344-45 (1991)), with short quotation for commentary
+separately supported by 17 U.S.C. 107. Reproducing a table in its published
+arrangement is a different act and is not needed. `PL-Z3V5` carries that
+reasoning in full; this item adopted it rather than re-deriving it.
+
+**Verified end to end from this environment before the rule was written**,
+rather than written from the documentation. `add_repo`, then `git clone
+--depth 1`, then `rev-parse` - the clone authenticates through the GitHub proxy
+with no token in the sandbox, and the corpus holds four sources including
+Mapleson 1963 (PMID 13932730) and Smith, Zwart and Beneken 1972 (PMID 5050101),
+two of the seven terminal cases this item measured. Writing a rule that points
+at a repository nobody had opened would have been the same defect this item is
+about.
+
+**What landed.**
+
+- `.claude/rules/citing-sources.md`, under the fourth limit: what a session
+  does on reaching the terminal state - attach the corpus, with the exact
+  commands and the `poppler-utils` / `pdftotext -layout` note - and, as
+  importantly, **what a miss means**. The corpus holds what the owner has
+  supplied, not the literature, so a source that is not in it has genuinely run
+  out of route: record the gap and put the reading to the owner. The two exits
+  this item was filed on - narrowing the claim, or taking a search summary for
+  a reading - are named and refused there.
+- `docs/references/README.md`, a new section beside Redistribution saying what
+  now stands where owner-supplied full texts used to, what may lawfully cross
+  back, and that reading one owes an extraction note in that directory.
+
+**Deliberately not decided here.** What an extraction note *contains* and the
+first worked example are `PL-Z3V5`'s, which is live on another branch; this
+item settled only that the obligation exists and where it lives, both of which
+are in this item's `touches` and neither of which `PL-Z3V5` could settle
+without them. `PL-5NR5` is `blocked-by` this item and is now unblocked.
+
