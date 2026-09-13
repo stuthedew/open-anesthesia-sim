@@ -2028,6 +2028,149 @@ def _shallow_pair(tmp_path: Path) -> Path:
     return work
 
 
+def _unevenly_truncated_pair(tmp_path: Path) -> Path:
+    """A clone whose default branch is grafted on one path and complete on another.
+
+    `_shallow_pair`'s default branch is linear, so a walk that descends below its
+    horizon must end on a grafted commit - which is the signature `PL-MGNC`'s
+    guard catches. This is the same container with one difference that removes
+    that signature: `main` reaches the root down a **second, shorter path**, so a
+    single `--depth` truncates the long path while leaving the short one whole.
+
+    Depth is counted per path from the tip, which is what makes the truncation
+    uneven from one ordinary number. A branch forked from a commit on the long
+    path below the graft then descends through commits `^main` cannot exclude and
+    terminates against the fork point the *short* path still reaches - a clean
+    stop, with every commit carrying a parent (`PL-W1LN`).
+    """
+    origin = tmp_path / "origin"
+    (origin / "items").mkdir(parents=True)
+    (origin / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+    dated = os.environ | {
+        "GIT_AUTHOR_DATE": "2026-08-20T12:00:00+00:00",
+        "GIT_COMMITTER_DATE": "2026-08-20T12:00:00+00:00",
+        "GIT_AUTHOR_NAME": "T",
+        "GIT_COMMITTER_NAME": "T",
+        "GIT_AUTHOR_EMAIL": "t@example.com",
+        "GIT_COMMITTER_EMAIL": "t@example.com",
+    }
+
+    def git(*args: str, cwd: Path = origin) -> None:
+        subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, env=dated)
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(origin)],
+        check=True,
+        capture_output=True,
+    )
+
+    def commit(name: str, subject: str) -> None:
+        (origin / name).write_text(f"{name}\n")
+        git("add", "-A")
+        git("commit", "-qm", subject)
+
+    commit("root", "PL-R00T Lay the first commit")
+    commit("shared", "PL-SH4R Where both paths meet")
+    # The long path. Its ids are spelled to the id grammar - four consonant-safe
+    # characters - because `PL-M01` is not an id `ID_PATTERN` matches and a
+    # subject carrying one is credited to nobody, which would make this fixture
+    # prove nothing. `PL-M3NW` is the commit the live branch forks from, and the
+    # one the report will wrongly carry.
+    for name, subject in (
+        ("a1", "PL-M1QJ Main work 1"),
+        ("a2", "PL-M2KT Main work 2"),
+        ("a3", "PL-M3NW Main work 3"),
+        ("a4", "PL-M4RB Main work 4"),
+        ("a5", "PL-M5VC Main work 5"),
+        ("a6", "PL-M6WD Main work 6"),
+    ):
+        commit(name, subject)
+    # The short path, merged back in: this is what leaves `main` reaching the
+    # root at a depth that still grafts the long one.
+    git("checkout", "-qb", "side", "main~6")
+    commit("side", "PL-S1DE The short path")
+    git("checkout", "-q", "main")
+    git("merge", "-q", "--no-edit", "-m", "Merge the short path", "side")
+    commit("tip", "PL-T1PP The tip")
+    # The live branch, forked from a commit of `main`'s own long path *below* the
+    # graft the depth leaves: `main~5` is `PL-M3NW`, and `--depth=5` reaches only
+    # as far as `PL-M4RB` down this path.
+    git("checkout", "-qb", BRANCH, "main~5")
+    commit("branch-work", "PL-K7QX Do the thing")
+    git("checkout", "-q", "main")
+
+    work = tmp_path / "work"
+    # Five leaves `main` grafted partway down the long path while the short path
+    # reaches the root inside the same depth, which is the uneven horizon. The
+    # branch is then fetched whole, so its own descent carries full parentage.
+    subprocess.run(
+        ["git", "clone", "-q", "--depth=5", "--no-single-branch", "--branch", "main"]
+        + [origin.as_uri(), str(work)],
+        check=True,
+        capture_output=True,
+        env=dated,
+    )
+    git("fetch", "-q", "origin", f"{BRANCH}:refs/remotes/origin/{BRANCH}", cwd=work)
+    return work
+
+
+def test_flight_reports_below_an_uneven_horizon_which_is_the_accepted_limit(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The limit `PL-MGNC`'s guard cannot reach, pinned so a change to it is deliberate.
+
+    **This test asserts a known-wrong answer on purpose**, and the decision behind
+    that is `PL-W1LN`'s: the shape is real and reproducible, and no *sound* fix is
+    available inside a truncated checkout. The decisive question is whether an
+    emitted commit is one the base reaches in the **full** history, and the commits
+    that would answer it are exactly the ones the clone does not hold. The three
+    alternatives each cost more than the shape is worth - naming a ref unread
+    whenever the base is truncated silences `flight` in every agent container,
+    fetching to deepen breaks the bare-tree/no-network rule, and distrusting a
+    commit older than the base's newest graft trades an exact guard for one resting
+    on dates a rebase moves (project owner, 2026-09-13).
+
+    So the limit is accepted and written down here rather than inferred from the
+    absence of a test. What the guard *does* catch is
+    `test_flight_does_not_answer_from_a_walk_the_clone_truncated`, whose default
+    branch is linear; the only difference here is a second, shorter path to the
+    root, and it is enough to remove the parentless commit the guard keys on.
+
+    If a later change makes this pass differently, that is progress and not a
+    regression - but it must be a decision, which is what this test forces.
+    """
+    work = _unevenly_truncated_pair(tmp_path)
+    walk = (
+        subprocess.run(
+            ["git", "log", "--format=%H %p %s", "^origin/main", f"origin/{BRANCH}", "--"],
+            cwd=work,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        .stdout.strip()
+        .splitlines()
+    )
+
+    # The precondition that makes this the uncaught shape rather than the caught
+    # one: the walk reaches past the horizon and every commit it emits has a
+    # parent, so there is no parentless commit for the guard to key on.
+    assert len(walk) > 1, "the walk must descend past the branch's own commit"
+    for line in walk:
+        assert len(line.split()) >= 3, f"every emitted commit must carry a parent: {line!r}"
+
+    assert main(["--items", str(work / "items"), "flight"]) == 0
+    out = capsys.readouterr().out
+
+    # The branch's own work, correctly reported.
+    assert "PL-K7QX" in out
+    # A commit of `main`'s own, wrongly reported - the accepted limit.
+    assert "PL-M3NW" in out
+    # And the guard stayed silent, which is the whole point: nothing tells the
+    # reader this answer came from a walk the clone could not bound.
+    assert "cannot be compared with origin/main" not in out
+
+
 def test_flight_does_not_answer_from_a_walk_the_clone_truncated(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

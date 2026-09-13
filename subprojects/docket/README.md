@@ -459,6 +459,27 @@ believed, on the same reasoning as everything else here: the ids it produced
 would be *removed* from `docket next`, so believing a walk that cannot be
 checked hides startable work, while naming the ref costs a line of output.
 
+**That signature catches the shape it was built for and is not a proof of
+completeness**, which is worth stating because the asymmetry is easy to read the
+wrong way. A parentless commit means the walk ran off the end; a walk without one
+does *not* mean it stopped soundly. Where the default branch reaches the root
+down one path and is grafted on another — which a single `--depth` produces,
+because depth is counted per path from the tip — a branch forked from a commit
+below the graft descends through commits `^origin/main` cannot exclude and then
+terminates against the fork point the short path still reaches. Every commit it
+emits has a parent, so the guard stays silent and the default branch's own
+commits are reported as somebody's work.
+
+The limit is accepted rather than unnoticed (`PL-W1LN`, 2026-09-13). No sound
+replacement exists inside a truncated checkout: the question is whether an
+emitted commit is one the base reaches in the *full* history, and those commits
+are precisely what the clone lacks. Naming a ref unread whenever the base is
+grafted is sound and silences this read in every agent container; fetching to
+deepen answers exactly and breaks the bare-tree, no-network rule; distrusting a
+commit older than the base's newest graft is cheap and rests on dates a rebase
+moves. So the behaviour is pinned by a test that asserts the wrong answer on
+purpose, which makes changing it a decision rather than an accident.
+
 **And the naming reaches wherever the queue is read**, not only `docket
 flight`. The seven answers that rank or mark against in-flight work — `next`,
 `list`, `status`, `concurrent`, `delegable`, `show` and the session digest —

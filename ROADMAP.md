@@ -1886,7 +1886,7 @@ any sense that survives the toolkit changing underneath it.
 resolves it rather than any work on it. That is recorded now so a later session
 does not read a dropped item as one that was skipped.
 
-### Declined to Gate 2 on the refilling-queue ground — 60 entries
+### Declined to Gate 2 on the refilling-queue ground — 61 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -2011,6 +2011,17 @@ rather than merely convenient: no preview is drawn today, so the safety obligati
 the item records binds whoever builds it rather than describing a live defect. Had
 a preview already shipped in a style a compartment uses, this would be admitted
 above under the unconditional safety exception instead.
+
+**One more from closing `PL-W1LN`** (`PL-CY8B`, 2026-09-13). Building that item's
+reproduction turned up that `_shallow_pair`'s own commits carry `PL-M01`-style
+subjects, which `ID_PATTERN` does not match, so the sibling guard test's
+`assert "PL-M01" not in out` cannot fail. It is wholly in the workflow lane and sits
+on the refilling-queue ground with the first thirty. Worth one sentence on why it is
+not more urgent than that: the test's *other* assertions are sound and do fail if the
+guard stops working, so the guard is covered - what the vacuous line never checked is
+the narrower claim about the default branch's own ids, which `PL-W1LN`'s new test now
+makes with valid ids. So the coverage exists; it is the older assertion that is
+decorative.
 
 They enter Gate 2 when v0.6.0 is scoped, unless closed before it.
 
