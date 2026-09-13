@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, docs
 feature: presentation-safety
+milestone: v0.4.15
 touches: ROADMAP.md, docs/items/PL-YLKR-design-what-a-chart-tooltip-says-fl-chart-s.md
 added: 2026-09-12
 closed: 2026-09-13

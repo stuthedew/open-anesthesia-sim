@@ -3,11 +3,12 @@ id: PL-T6F9
 title: "Cut v0.4.15: the release where the checks stopped over-reaching, and Gate 1 passed half"
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning, docs
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases
 added: 2026-09-13
+closed: 2026-09-13
 verify: python3 tools/doc_check.py check && grep -q '^version = "0.4.15"' pyproject.toml && test -f docs/releases/v0.4.15.md
 ---
 
@@ -100,3 +101,53 @@ authoritative; this is the short form.
 `docs/releases/v0.4.15.md` exists, `ROADMAP.md` carries the row, the moved
 baseline heading and the baseline section, `make check` is green, the pull
 request is merged, and the tag command has been handed to the project owner.
+
+**Closed 2026-09-13.** `pyproject.toml` reads `0.4.15`, `uv.lock` agrees,
+`docs/releases/v0.4.15.md` names all 33 items, and `ROADMAP.md` carries the
+v0.4.15 row, the baseline heading moved off v0.4.14 and the baseline section.
+`make check` is green: 2388 tests, 100% coverage, 0 documentation errors, and
+`docket check` reporting 0 errors with the one grooming advisory that is
+`PL-D4GS`'s.
+
+**The cut had to be run twice, and the first run is now `PL-1MKQ`.** A `make
+release` interrupted inside `cmd_release`'s stamp loop left 26 items carrying
+`milestone: v0.4.15` with the version unbumped and no notes file. The re-run
+saw only the 7 still-unstamped items and produced a perfectly ordinary-looking
+7-item release. The repair was to revert (`git checkout -- docs/items
+pyproject.toml uv.lock`, plus the untracked notes file and the one item the run
+had renamed) and cut once, uninterrupted. What caught it was comparing the dry
+run's 33 against the cut's 7; no check did.
+
+**Two numbers in the brief above were wrong, and the measured ones are these.**
+
+- The brief says the `P1` band "fell 13 to 8". Counting open items - status not
+  `done` or `dropped` - at the `v0.4.14` tag gives **11**, and the store now
+  gives **8**, which matches `docket check`'s own line. 13 was the band's size
+  on 2026-09-03, measured in `PL-CW14` and carried forward unchecked.
+- The brief says "five separate gate entries" were a check over-reaching and
+  then names four. Four is right for `#506` (`PL-CW14`, `PL-WTQ1`, `PL-KJ63`,
+  `PL-Z0G0`); the release as a whole holds **ten** such entries, the other six
+  being the `vcs.py` cluster in `#504`.
+
+**The gate crossing, measured at both ends rather than asserted.** `bin/docket
+wave` run against a worktree at the `v0.4.14` tag reads `158 entries, 56
+cleared, 102 open`; run against this cut it reads `159 entries, 80 cleared, 79
+open`. So the crossing of half happened inside this range, the gate took one
+post-freeze entry, and 24 entries closed. Those numbers are recorded here and
+deliberately **not** in `ROADMAP.md`: § "Debt gate: the frozen list" states
+that how many are closed is not written into the document, and `PL-WSDY` -
+shipping in this same release - closed the last narrative that violated it. The
+baseline section states the crossing and points at `bin/docket wave` for the
+split.
+
+**Docs swept:** `ROADMAP.md` (the row, the baseline heading, the baseline
+section, and a check that no other release narrative gained a gate count),
+`docs/releases/v0.4.15.md` (generated; 33 entries verified against the 33
+stamped items), `pyproject.toml`, `uv.lock`. `docs/MODEL.md` and `README.md`
+need nothing: `src/anesthesia_sim/core/` and `app/` are byte-identical to
+`v0.4.14`, and the only change under `src/` in the whole range is one provenance
+note's wording, which `PL-S3Q0` made in `#507` along with its `docs/MODEL.md`
+half.
+
+**The tag is outstanding** and is the project owner's to push - a session's tag
+push fails after reporting `[new tag]` (`PL-N936`).

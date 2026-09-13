@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: parallel-sessions
+milestone: v0.4.15
 touches: tools, subprojects/docket/src/docket/vcs.py
 added: 2026-09-04
 closed: 2026-09-12
