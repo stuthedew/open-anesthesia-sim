@@ -5,11 +5,14 @@ priority: P2
 effort: M
 status: done
 classes: defect
+milestone: v0.4.21
 touches: ROADMAP.md, subprojects/docket/README.md, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py, tools/doc_check.py, tests/unit/test_doc_check.py
-verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_an_id_a_scope_bullet_names_only_to_exclude_it' subprojects/docket/tests/test_roadmap.py
 added: 2026-09-05
 closed: 2026-09-13
+pr: 547
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_an_id_a_scope_bullet_names_only_to_exclude_it' subprojects/docket/tests/test_roadmap.py
 ---
+
 **Problem.** `bin/docket next product` ranks `PL-B9PY` (decompose
 `SimulationView` so two runs can be rendered at once) second in the product
 lane and marks it *"In scope for v0.4.0 - the teachable case, the step the

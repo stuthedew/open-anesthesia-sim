@@ -1,14 +1,16 @@
 ---
 id: PL-FDBK
 title: docs/MODEL.md has no hazard table, so every mitigation is argued forward and none is checked backward
-status: done
 priority: P2
 effort: M
+status: done
 classes: docs
+milestone: v0.4.21
 touches: docs/MODEL.md, tools/doc_check.py, tests/unit/test_doc_check.py
-verify: python3 tools/doc_check.py check && grep -qF 'reading a modelled compartment value as a measured one' docs/MODEL.md
 added: 2026-09-02
 closed: 2026-09-13
+pr: 547
+verify: python3 tools/doc_check.py check && grep -qF 'reading a modelled compartment value as a measured one' docs/MODEL.md
 ---
 
 **Problem.** Every safety argument in this repository runs one way: here is

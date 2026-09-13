@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect, infra
+milestone: v0.4.21
 touches: docket.toml, tests/unit/test_workflow_paths_check.py
 added: 2026-09-05
 closed: 2026-09-13

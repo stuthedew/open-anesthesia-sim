@@ -3,11 +3,12 @@ id: PL-4KKR
 title: "Cut v0.4.21: the release where the stored coefficients were checked against the primary measurement and the specification learned to argue backwards"
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning, docs
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items/
 added: 2026-09-13
+closed: 2026-09-13
 verify: python3 tools/doc_check.py check && grep -q '^version = "0.4.21"' pyproject.toml && test -f docs/releases/v0.4.21.md
 ---
 
@@ -73,3 +74,42 @@ every commit subject leads with it instead.
 **Done when.** `pyproject.toml` is at 0.4.21, `docs/releases/v0.4.21.md`
 exists, `ROADMAP.md` carries the version-table row, the moved `current
 baseline` mark and the baseline section, and `make check` passes.
+
+**Cut 2026-09-13.** `make release VERSION=0.4.21` bumped `pyproject.toml`,
+wrote `docs/releases/v0.4.21.md`, stamped `milestone: v0.4.21` onto all
+twenty-one items and relocked `uv.lock`. `ROADMAP.md` gains the version-table
+row, the `current baseline` mark moves onto it from v0.4.20, and the baseline
+section is replaced with the long-form prose for this release. `make check` is
+green - 2615 tests, 100 percent coverage, `docket check` 0 errors,
+`doc_check` 0 errors and 0 advisories.
+
+**The release name was checked rather than taken from the items.** Two claims in
+the prose are measured here rather than quoted: `src/anesthesia_sim/app/` and
+`tests/reference/` resolve to the same tree objects at v0.4.20 and at this
+release (`7586231`, `e519afd`), so no interface changed and no pinned reference
+state was recomputed; and comparing every numeric leaf of all five files under
+`src/anesthesia_sim/data/` across the two trees returns **zero differences**, so
+"no stored number moved" is a measurement rather than a reading of the items'
+own summaries. `src/anesthesia_sim/core/` changed by one docstring, which is
+`PL-LS3H`'s pointer to the circuit-absorption limitation.
+
+**Three `pr` numbers rode this commit.** `bin/docket record` wrote `pr: 547` to
+`PL-BLHV`, `PL-FDBK` and `PL-NBCS`, which had closed on `origin/main` without
+one - the advisory `docket check` prints for exactly this, taken here rather
+than in a commit composed for it.
+
+**Docs swept.** `ROADMAP.md` (edited). `docs/releases/v0.4.21.md` (generated,
+read back). `python3 tools/doc_check.py candidates --base origin/main` named
+eight documentation lines marking `pyproject.toml` or `uv.lock` as code -
+`ROADMAP.md:46` and `:1120`, `:3008`, `.claude/skills/docket/SKILL.md:1011`,
+`docs/ARCHITECTURE.md:617`, `docs/WORKING_NOTES.md:764` and `:849`,
+`subprojects/docket/README.md:1911` - and every one is a statement about the
+release *mechanism* or a historical record, not about which version is current,
+so none is stale. Grepped for `0.4.20` outside `ROADMAP.md`, `docs/releases/`
+and `docs/items/`: no hits, so no document names the superseded baseline.
+`docs/MODEL.md` and `README.md` read: neither states a version.
+
+**Done when.** All met: `pyproject.toml` at 0.4.21, `docs/releases/v0.4.21.md`
+written, `ROADMAP.md` carrying the row, the moved mark and the section, and
+`make check` green. The tag is outstanding and is the project owner's to run
+after the merge.
