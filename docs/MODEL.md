@@ -336,31 +336,60 @@ The unit used in code is liters of equivalent pure agent gas unless the implemen
 
 ## Symbols
 
-| Symbol | Meaning | Unit |
-| --- | --- | --- |
-| $`t`$ | Explicit simulation time | s |
-| $`\Delta t`$ | Simulation step | s |
-| $`F_D`$ | Delivered fresh-gas agent fraction | dimensionless |
-| $`F_I`$ | Inspired agent fraction, which is the gas in the breathing circuit (see "Model boundary") | dimensionless |
-| $`F_A`$ | Alveolar agent fraction | dimensionless |
-| $`F_a`$ | Arterial partial-pressure-equivalent fraction (flow-limited: $`F_a \equiv F_A`$; not an independent state) | dimensionless |
-| $`F_v`$ | Venous blood partial-pressure-equivalent fraction | dimensionless |
-| $`F_i`$ | Tissue group $`i`$ partial-pressure-equivalent fraction | dimensionless |
-| $`V_C`$ | Mixed breathing-circuit volume | L gas |
-| $`V_A`$ | Modeled alveolar gas volume | L gas |
-| $`V_v`$ | Venous blood-pool volume | L blood |
-| $`V_i`$ | Volume of tissue group $`i`$ | L tissue |
-| $`\dot V_F`$ | Fresh gas flow at the common gas outlet: carrier gas plus the vapour the vaporizer added, not the flowmeter setting (see "Breathing circuit") | L gas/min |
-| $`\dot V_A`$ | Alveolar ventilation | L gas/min |
-| $`Q`$ | Cardiac output | L blood/min |
-| $`Q_i`$ | Blood flow to tissue group $`i`$ | L blood/min |
-| $`\mathrm{MAC}_\%`$ | Agent's 1 MAC, age-40 alveolar (display divisor only; not in any governing equation) | percent |
-| $`\lambda_{b:g}`$ | Agent blood:gas partition coefficient | dimensionless |
-| $`\lambda_{i:b}`$ | Tissue:blood partition coefficient for group $`i`$ | dimensionless |
-| $`M_C`$ | Agent stored in the breathing circuit | L equivalent gas |
-| $`M_A`$ | Agent stored in alveolar gas | L equivalent gas |
-| $`M_v`$ | Agent stored in venous blood | L equivalent gas |
-| $`M_i`$ | Agent stored in tissue group $`i`$ | L equivalent gas |
+The **Code** column names the one expression in `core/` that denotes each
+symbol, written `ClassName.accessor`. It maps this specification onto the
+implementation; it is not a key for reading it. `core/` is meant to be
+followable by a reader who knows these variables, so needing this column to
+get through the code is a defect in the code rather than a use for the table.
+
+| Symbol | Meaning | Unit | Code |
+| --- | --- | --- | --- |
+| $`t`$ | Explicit simulation time | s | `SimulationState.elapsed_s` |
+| $`\Delta t`$ | Simulation step | s | `SimulationState.simulation_step_s` |
+| $`F_D`$ | Delivered fresh-gas agent fraction | dimensionless | `BreathingCircuit.delivered_concentration_fraction` |
+| $`F_I`$ | Inspired agent fraction, which is the gas in the breathing circuit (see "Model boundary") | dimensionless | `BreathingCircuit.circuit_concentration_fraction` |
+| $`F_A`$ | Alveolar agent fraction | dimensionless | `AlveolarCompartment.concentration_fraction` |
+| $`F_a`$ | Arterial partial-pressure-equivalent fraction (flow-limited: $`F_a \equiv F_A`$; not an independent state) | dimensionless | — no attribute: the code reads `AlveolarCompartment.concentration_fraction` wherever an arterial fraction is required |
+| $`F_v`$ | Venous blood partial-pressure-equivalent fraction | dimensionless | `VenousBloodCompartment.concentration_fraction` |
+| $`F_i`$ | Tissue group $`i`$ partial-pressure-equivalent fraction | dimensionless | `TissueGroup.partial_pressure_fraction` |
+| $`V_C`$ | Mixed breathing-circuit volume | L gas | `BreathingCircuit.circuit_volume_l` |
+| $`V_A`$ | Modeled alveolar gas volume | L gas | `AlveolarCompartment.gas_volume_l` |
+| $`V_v`$ | Venous blood-pool volume | L blood | `VenousBloodCompartment.volume_l` |
+| $`V_i`$ | Volume of tissue group $`i`$ | L tissue | `TissueGroup.volume_l` |
+| $`\dot V_F`$ | Fresh gas flow at the common gas outlet: carrier gas plus the vapour the vaporizer added, not the flowmeter setting (see "Breathing circuit") | L gas/min | `BreathingCircuit.fresh_gas_flow_l_min` |
+| $`\dot V_A`$ | Alveolar ventilation | L gas/min | `AlveolarCompartment.alveolar_ventilation_l_min` |
+| $`Q`$ | Cardiac output | L blood/min | `PatientCompartments.cardiac_output_l_min` |
+| $`Q_i`$ | Blood flow to tissue group $`i`$ | L blood/min | `TissueGroup.blood_flow_l_min` |
+| $`\mathrm{MAC}_\%`$ | Agent's 1 MAC, age-40 alveolar (display divisor only; not in any governing equation) | percent | `AgentParameters.mac_percent` |
+| $`\lambda_{b:g}`$ | Agent blood:gas partition coefficient | dimensionless | `AgentParameters.blood_gas_partition_coefficient` |
+| $`\lambda_{i:g}`$ | Tissue:gas partition coefficient for group $`i`$, which is the coefficient the agent data files store | dimensionless | `TissueGroup.tissue_gas_partition_coefficient` |
+| $`\lambda_{i:b}`$ | Tissue:blood partition coefficient for group $`i`$, derived as $`\lambda_{i:g}/\lambda_{b:g}`$ | dimensionless | `TissueGroup.tissue_blood_partition_coefficient` |
+| $`M_C`$ | Agent stored in the breathing circuit | L equivalent gas | `BreathingCircuit.agent_amount_l` |
+| $`M_A`$ | Agent stored in alveolar gas | L equivalent gas | `AlveolarCompartment.agent_amount_l` |
+| $`M_v`$ | Agent stored in venous blood | L equivalent gas | `VenousBloodCompartment.agent_amount_l` |
+| $`M_i`$ | Agent stored in tissue group $`i`$ | L equivalent gas | `TissueGroup.agent_amount_l` |
+
+Two conventions govern the Code column. Where a parameter is copied into more
+than one compartment, the cell names its definition in `core/parameters.py`
+rather than one of the copies — $`\lambda_{b:g}`$ is an agent parameter that
+`VenousBloodCompartment` and every `TissueGroup` hold a copy of. Where the
+model defines a symbol the implementation does not materialize, the cell is an
+em dash and says what the code reads in its place; $`F_a`$ is the only such
+symbol.
+
+The two tissue coefficients are related by
+$`\lambda_{i:g} = \lambda_{i:b}\lambda_{b:g}`$. The agent data files store
+$`\lambda_{i:g}`$ and $`\lambda_{b:g}`$; $`\lambda_{i:b}`$ is derived from
+them, which is why the tissue capacity in "Tissue compartments" below is
+written $`V_i\lambda_{i:b}\lambda_{b:g}`$ and computed as the equivalent
+single multiplication $`V_i\lambda_{i:g}`$. Both symbols name their two
+phases in order, as do both identifiers, because the primary literature does
+not hold a convention that would let a reader supply the missing phase:
+Baker and Farmery's 2011 review names one quantity the tissue-gas partition
+coefficient (p. 569), the tissue-blood partition coefficient (p. 570) and the
+blood tissue partition coefficient (Table 2) in a single chapter, and its Eq.
+(4) settles the quantity as tissue:blood. `docs/references/README.md` carries
+the citation.
 
 ## Compartment capacities
 
@@ -431,7 +460,17 @@ C_i =
 V_i\lambda_{i:b}\lambda_{b:g}
 $$
 
-so the same relationship may be written:
+Equivalently, in the stored tissue:gas coefficient:
+
+$$
+C_i =
+V_i\lambda_{i:g}
+$$
+
+which is the single multiplication `TissueGroup.capacity_l` computes, the
+stored coefficient being the tissue:gas one.
+
+Either way, the same relationship may be written:
 
 $$
 M_i = C_iF_i
@@ -450,7 +489,10 @@ Each group has:
 - a tissue volume $`V_i`$;
 - a fraction of cardiac output $`f_i`$;
 - a tissue blood flow $`Q_i`$;
-- an agent tissue:blood partition coefficient $`\lambda_{i:b}`$;
+- an agent tissue:gas partition coefficient $`\lambda_{i:g}`$, which is the
+  coefficient stored per agent;
+- an agent tissue:blood partition coefficient $`\lambda_{i:b}`$, derived from
+  that one;
 - a stored agent amount $`M_i`$; and
 - a derived partial-pressure-equivalent fraction $`F_i`$.
 

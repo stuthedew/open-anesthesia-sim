@@ -3,11 +3,12 @@ id: PL-H46J
 title: Give MODEL.md's Symbols table a Code column naming the expression that denotes each symbol
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: core-domain-language
 touches: docs/MODEL.md
 added: 2026-09-03
+closed: 2026-09-13
 verify: python3 tools/doc_check.py check && grep -qF '| Symbol | Meaning | Unit | Code |' docs/MODEL.md
 ---
 
