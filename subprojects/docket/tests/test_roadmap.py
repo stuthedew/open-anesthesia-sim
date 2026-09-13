@@ -128,8 +128,13 @@ GATE_IDS = frozenset({"PL-001", "PL-BCDF", "PL-GHJK", "PL-KLMN"})
 KNOWN = GATE_IDS | {"PL-MNPQ"}
 
 
-def _wave(version: str, closed: frozenset[str] = frozenset(), roadmap: str = ROADMAP):
-    return wave(roadmap, version, closed, KNOWN)
+def _wave(
+    version: str,
+    closed: frozenset[str] = frozenset(),
+    roadmap: str = ROADMAP,
+    blockers: dict[str, tuple[str, ...]] | None = None,
+):
+    return wave(roadmap, version, closed, KNOWN, blockers or {})
 
 
 # --- the release train ------------------------------------------------------
@@ -216,6 +221,65 @@ def test_an_entry_holding_two_ids_clears_only_when_both_do() -> None:
 
     both = _wave("0.2.5", frozenset(GATE_IDS))
     assert both.gate is not None and both.gate.is_clear
+
+
+def test_an_entry_sequenced_past_the_milestone_is_not_clearable() -> None:
+    """`PL-SL70`: an entry waiting on a later release is open, and is not work
+    this gate can be asked for. It stays on the frozen list and out of the
+    count the beat is taken from."""
+    plan = _wave("0.2.5", frozenset({"PL-001"}), blockers={"PL-KLMN": ("v0.4.0",)})
+    assert plan.beat == CLEAR
+    assert plan.gate is not None
+    assert len(plan.gate.entries) == 3 and len(plan.gate.outstanding) == 2
+    assert [entry.ids for entry in plan.gate.blocked_outside] == [("PL-KLMN",)]
+    assert [entry.ids for entry in plan.gate.clearable] == [("PL-BCDF", "PL-GHJK")]
+
+
+def test_a_gate_whose_remainder_all_waits_on_later_work_hands_the_beat_on() -> None:
+    """The failure that split the count in two: read from every open entry,
+    `clear the gate` stayed the beat forever on a list whose remainder nobody
+    could close before the milestone it gates."""
+    plan = _wave(
+        "0.2.5", frozenset({"PL-001", "PL-BCDF", "PL-GHJK"}), blockers={"PL-KLMN": ("v0.4.0",)}
+    )
+    assert plan.gate is not None and plan.gate.is_clear
+    assert len(plan.gate.outstanding) == 1 and plan.beat == RELEASE
+
+
+def test_an_entry_waiting_on_another_entry_of_the_same_gate_stays_clearable() -> None:
+    """Sequencing inside the list is the gate being worked in order, not the
+    gate waiting on something outside itself."""
+    plan = _wave("0.2.5", frozenset({"PL-001"}), blockers={"PL-KLMN": ("PL-BCDF",)})
+    assert plan.gate is not None and not plan.gate.blocked_outside
+
+
+def test_the_walk_follows_a_chain_out_through_an_entry_of_the_gate() -> None:
+    """`PL-3355` reaches the Qt port through `PL-25KS`, so a single hop would
+    have stopped at a gate entry and read the whole chain as clearable."""
+    plan = _wave(
+        "0.2.5", frozenset({"PL-001"}), blockers={"PL-KLMN": ("PL-BCDF",), "PL-BCDF": ("PL-MNPQ",)}
+    )
+    assert plan.gate is not None
+    assert [entry.ids for entry in plan.gate.blocked_outside] == [
+        ("PL-BCDF", "PL-GHJK"),
+        ("PL-KLMN",),
+    ]
+
+
+def test_a_blocker_that_has_already_closed_holds_nothing() -> None:
+    """`PL-9SH6` read `blocked` for the hour after `PL-H46J` merged. A closed
+    blocker is sequencing that has happened, not work outside the gate."""
+    plan = _wave("0.2.5", frozenset({"PL-001", "PL-MNPQ"}), blockers={"PL-KLMN": ("PL-MNPQ",)})
+    assert plan.gate is not None and not plan.gate.blocked_outside
+
+
+def test_two_entries_waiting_on_each_other_stay_inside_the_gate() -> None:
+    """A cycle is stuck, but it is stuck on the list - and the count that has
+    to show that is the one the gate is being asked for."""
+    plan = _wave(
+        "0.2.5", frozenset({"PL-001"}), blockers={"PL-KLMN": ("PL-BCDF",), "PL-BCDF": ("PL-KLMN",)}
+    )
+    assert plan.gate is not None and not plan.gate.blocked_outside
 
 
 def test_a_clear_gate_below_the_milestone_that_recorded_it_is_a_release() -> None:
@@ -461,7 +525,7 @@ def test_a_plan_with_no_milestone_to_anchor_on_places_nothing() -> None:
 def test_a_gate_naming_an_item_the_store_does_not_hold_is_not_clear() -> None:
     """An id the store cannot account for leaves the entry's state unknown, and
     an unknown entry is reported rather than counted as closed."""
-    plan = wave(ROADMAP, "0.2.5", frozenset(GATE_IDS), KNOWN - {"PL-KLMN"})
+    plan = wave(ROADMAP, "0.2.5", frozenset(GATE_IDS), KNOWN - {"PL-KLMN"}, {})
     assert plan.gate is not None
     assert plan.gate.unknown_ids == ("PL-KLMN",)
     assert not plan.gate.is_clear
@@ -610,7 +674,7 @@ added: 2026-08-01
 
 def _scoped_wave():
     """A plan anchored on v0.4.0, with v0.5.0 placing `PL-WXYZ` beyond it."""
-    return wave(SCOPED_ROADMAP, "0.2.5", frozenset(), KNOWN | {"PL-WXYZ"})
+    return wave(SCOPED_ROADMAP, "0.2.5", frozenset(), KNOWN | {"PL-WXYZ"}, {})
 
 
 def _digest_of(*bodies: str, plan: object = None) -> str:

@@ -397,6 +397,7 @@ def _plan(root: Path, items: Sequence[Item], config: Config) -> Wave | None:
             read_version(root / config.version_file),
             frozenset(item.identifier for item in items if not item.is_open),
             frozenset(item.identifier for item in items),
+            {item.identifier: item.blocked_by for item in items},
         )
     except (OSError, ValueError, KeyError):
         return None
@@ -1333,6 +1334,7 @@ def cmd_wave(args: argparse.Namespace) -> int:
         read_version(root / config.version_file),
         frozenset(item.identifier for item in items if not item.is_open),
         frozenset(item.identifier for item in items),
+        {item.identifier: item.blocked_by for item in items},
     )
     print(render.format_wave(plan))
     if plan.step is None or plan.problems or (plan.gate is not None and plan.gate.unknown_ids):

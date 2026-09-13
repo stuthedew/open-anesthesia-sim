@@ -3,10 +3,11 @@ id: PL-NGF7
 title: tools/contrast_check.py can see no disabled-state colour, because none of them is a constant in theme.py
 priority: P2
 effort: M
-status: needs-decision
+status: blocked
 classes: infra, test
 feature: presentation-safety
 touches: tools/contrast_check.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_contrast_check.py
+blocked-by: v0.5.1
 added: 2026-09-06
 ---
 

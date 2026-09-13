@@ -1262,10 +1262,19 @@ def format_wave(plan: Wave) -> str:
         entries = _plural(len(gate.entries), "entry", "entries")
         ids = _plural(len(gate.ids), "id", "ids")
         lines.append(f'Gate      recorded under "{gate.milestone.title}" ({entries}, {ids})')
-        lines.append(f"          {len(gate.cleared)} cleared, {len(gate.outstanding)} open")
-        if gate.outstanding:
-            open_ids = [identifier for entry in gate.outstanding for identifier in entry.ids]
+        counted = f"{len(gate.cleared)} cleared, {len(gate.outstanding)} open"
+        if gate.blocked_outside:
+            counted += (
+                f" - {len(gate.clearable)} this gate can clear, "
+                f"{len(gate.blocked_outside)} waiting on work outside it"
+            )
+        lines.append(f"          {counted}")
+        if gate.clearable:
+            open_ids = [identifier for entry in gate.clearable for identifier in entry.ids]
             lines.append(f"          {', '.join(open_ids)}")
+        if gate.blocked_outside:
+            held = [identifier for entry in gate.blocked_outside for identifier in entry.ids]
+            lines.append(f"          blocked outside the gate: {', '.join(held)}")
         if gate.unknown_ids:
             lines.append(
                 f"          not in the store, so not countable: {', '.join(gate.unknown_ids)}"
@@ -1305,8 +1314,12 @@ def _release_advice(ready: Readiness, plan: Wave | None) -> str:
 def _beat_line(plan: Wave) -> str:
     """The beat, said as an instruction, with the count that makes it checkable."""
     if plan.beat == CLEAR and plan.gate is not None:
-        remaining = _plural(len(plan.gate.outstanding), "entry", "entries")
-        return f"clear the gate - {remaining} of {len(plan.gate.entries)} still open"
+        remaining = _plural(len(plan.gate.clearable), "entry", "entries")
+        line = f"clear the gate - {remaining} of {len(plan.gate.entries)} still open"
+        held = len(plan.gate.blocked_outside)
+        if held:
+            line += f" here, {held} more blocked outside it"
+        return line
     if plan.beat == RELEASE:
         return f"release {plan.subject} - its gate is clear"
     if plan.beat == IMPLEMENT:

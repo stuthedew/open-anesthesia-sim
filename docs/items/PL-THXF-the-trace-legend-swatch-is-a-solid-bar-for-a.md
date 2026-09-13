@@ -4,7 +4,7 @@ title: The trace legend swatch is a solid bar for a trace that is dashed, so the
 priority: P2
 effort: S
 status: blocked
-blocked-by: PL-G59B
+blocked-by: v0.5.1, PL-G59B
 classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py

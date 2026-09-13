@@ -480,7 +480,7 @@ KNOWN_IDS = frozenset({"PL-DDDD", "PL-BBBB", "PL-CCCC"})
 
 
 def _plan(version: str, closed: frozenset[str] = frozenset()) -> Wave:
-    return wave(PLAN_ROADMAP, version, closed, KNOWN_IDS)
+    return wave(PLAN_ROADMAP, version, closed, KNOWN_IDS, {})
 
 
 def _ready(current: str, suggested: str) -> Readiness:

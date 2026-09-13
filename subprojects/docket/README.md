@@ -846,7 +846,12 @@ A queue answers "which item next". It cannot answer "what is the project
 prose. `docket wave` reads the parts of it that are not — the release train,
 the milestone sections, and the debt list each one records when it is scoped —
 and reports the version, the step, the gate's size and how much of it is
-closed, and which beat of the cadence that leaves due.
+closed, and which beat of the cadence that leaves due. It splits the open
+entries once more, from the items rather than from the roadmap: an entry whose
+`blocked-by` chain leaves the frozen list — a later milestone, or an item the
+list does not hold — cannot be closed by clearing this gate in any order, so it
+is counted apart and the beat asks for the rest. The entry stays on the list;
+the list is frozen, and this is a count of what it can be asked for today.
 
 The beat and the step also ride in `docket digest`, as one line. A command
 nobody runs unprompted does not change where "what next" gets answered from,
