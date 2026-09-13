@@ -2078,6 +2078,40 @@ literature run in opposite directions between sevoflurane and desflurane;
 "Delivery-limit and MAC parameters" measures that separately. Each agent file records the primary
 measurement alongside its stored number and states the difference.
 
+**Gas Man says those coefficients are Yasuda's, and that claim is recorded
+without being acted on.** The note under the Workbook's own page-168 parameter
+table reads "Values for isoflurane, halothane, desflurane and sevoflurane are
+taken from Yasuda, Targ and Eger" — which, if it held, would make the twelve
+coefficients descendants of a human tissue-solubility measurement rather than a
+simulator's choices. Four things stop it from moving the tier, and the first is
+sufficient alone:
+
+- A program's statement about its own provenance is the program talking. That
+  is the same rule as "Republication does not promote a value between tiers"
+  above, applied one link further back.
+- The Workbook names a different document from the one the agent files cite:
+  its reference 45 is the abstract `Anesthesiology 69:A615`, from the 1988 ASA
+  annual-meeting supplement, not Yasuda, Targ and Eger's 1989 *Anesthesia &
+  Analgesia* paper. What the abstract reports is unknown here.
+- The same paragraph contradicts itself for sevoflurane, crediting it to Yasuda
+  and, one sentence later, to "the package insert and Abbott data".
+- The arithmetic is close and not exact. Yasuda's measured brain:blood times
+  each file's stored blood:gas reproduces sevoflurane's and desflurane's stored
+  vessel-rich tissue:gas exactly (1.1050 → 1.1; 0.5418 → 0.54) and misses
+  isoflurane's (2.0410 against a stored 2.1) by 2.9%, which is inside half the
+  measurement's own standard deviation. Close enough to suggest the route,
+  never enough to name it.
+
+**The check that would settle it needs a document this project does not hold.**
+The stored coefficients are tissue:gas and the 1989 abstract reports tissue:blood
+only, which is why the comparison above has to pass through a blood:gas the
+Workbook attributes to nobody. The full paper reports both — Yasuda et al. 1991
+(*Anesth Analg* 1991;72:316–24, PMID 1994760), read at full text from the private
+reference corpus on 2026-09-13, cites it for the tissue/blood and the tissue/gas
+coefficients in the same methods paragraph. That paper is not in PubMed Central
+and not among the corpus's holdings, so the route ends there and the gap is
+recorded rather than inferred across (`PL-ZP7Z`).
+
 Desflurane is markedly less soluble than sevoflurane, which is itself less
 soluble than isoflurane (blood:gas 0.42 < 0.65 < 1.3). This does not change
 any equation: lower solubility only means faster equilibration through the
