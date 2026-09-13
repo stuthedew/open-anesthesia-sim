@@ -3963,6 +3963,31 @@ files could not see it: `check_provenance` walks data files in both
 directions, and a constant that never entered one is invisible to it.
 <!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
 
+**Each parameter file is the single authority for its own values, and the
+`core/` field defaults that restate them are held to it by test.**
+`AlveolarCompartment` and `BreathingCircuit` both still carry their two
+figures as dataclass field defaults — `gas_volume_l: float = 2.5` and
+`alveolar_ventilation_l_min: float = 4.0` on the first,
+`circuit_volume_l: float = 6.0` and `fresh_gas_flow_l_min: float = 4.0` on the
+second. They are kept so that a unit test of one compartment's physics need
+not load package data, and they are reached by nothing else: every shipped
+path goes through `AgentUptakeSystem.for_agent()`, which reads all four from
+the two files and passes them explicitly. What makes that safe to keep is that
+neither restatement may drift.
+`test_the_bare_circuit_defaults_match_the_shipped_machine_file` (`PL-4YY1`)
+and `test_the_bare_alveolar_defaults_match_the_shipped_patient_file`
+(`PL-DJYF`) each assert the literals against the file, and
+`test_for_agent_builds_the_circuit_at_the_machine_file_s_values` and
+`test_for_agent_builds_the_alveoli_at_the_patient_file_s_values` each assert
+that the shipped path reads the file rather than falling through to them. The
+second half of each pair is the one that catches the consequential failure:
+because the defaults currently equal the files' values, a change that stopped
+`for_agent()` reading a file would move no number, and every provenance row in
+this table would silently become a claim about a file the model no longer
+consults.
+<!-- provenance: data/patients/reference_adult.json alveolar_gas_volume_l = 2.5, default_alveolar_ventilation_l_min = 4 -->
+<!-- provenance: data/machines/reference_circle_system.json circuit_volume_l = 6.0, default_fresh_gas_flow_l_min = 4.0 -->
+
 **Why neither gets a supported range.** A supported range describes an
 envelope a run can be steered *within*: the four controls above each name an
 interval because a user can put the model anywhere in it, and the
