@@ -315,6 +315,11 @@ SECTION_SEPARATORS = " -–—: "
 # what places an id; the reasoning is beneath `SECTION_ID_RE`.
 GATE_SUBSECTION = "debt gate"
 SCOPE_SUBSECTION = "required scope"
+#: The heading whose whole meaning is exclusion. Read separately from
+#: `SCOPE_SUBSECTION` because the two answer opposite questions about the same
+#: id, and a milestone naming one id under both has contradicted itself -
+#: which `tools/doc_check.py` fails on, per `PL-NBCS`.
+EXCLUDED_SUBSECTION = "explicitly out of scope"
 REQUIRED_SUBSECTIONS = ("goal", SCOPE_SUBSECTION, "definition of done", "explicitly out of scope")
 
 # An item id at the head of a gate entry, possibly the second of a pair
@@ -383,6 +388,18 @@ class MilestoneSection:
     #: named under `Required scope`, in the order they appear. An id the
     #: section merely mentions is absent, deliberately - see `SECTION_ID_RE`.
     scope_ids: tuple[str, ...]
+    #: The ids named under `Required scope` alone, without the frozen list's.
+    #: `scope_ids` merges the two because placement does not care which
+    #: structure placed an id; the contradiction check does, because only this
+    #: subsection can contradict `Explicitly out of scope`.
+    required_scope_ids: tuple[str, ...] = ()
+    #: The ids named under `Explicitly out of scope for vX.Y.Z`. Parsed, and
+    #: deliberately *not* fed into placement here: an exclusion recorded by a
+    #: milestone the project has already passed says what was true then, and
+    #: `milestone_scope` reads no section at or below the anchor. Making an
+    #: exclusion speak in the ranking is `PL-6P9Y`, which this leaves ready to
+    #: consume rather than doing on its behalf.
+    excluded_ids: tuple[str, ...] = ()
 
     @property
     def label(self) -> str:
@@ -513,6 +530,7 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
     subsections: list[str] = []
     gate: tuple[int, str] | None = None
     scope: int | None = None
+    excluded: int | None = None
 
     def flush() -> None:
         if version is None:
@@ -530,6 +548,12 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
                 gate_line=heading_line,
                 gate_entries=entries,
                 scope_ids=_scope_ids(entries, _subsection_ids(lines, scope) if scope else ()),
+                required_scope_ids=tuple(
+                    dict.fromkeys(_subsection_ids(lines, scope)) if scope else ()
+                ),
+                excluded_ids=tuple(
+                    dict.fromkeys(_subsection_ids(lines, excluded)) if excluded else ()
+                ),
             )
         )
 
@@ -552,13 +576,15 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
                 int(match.group("patch")),
             )
             name = heading_title[match.end() :].strip(SECTION_SEPARATORS)
-            subsections, gate, scope = [], None, None
+            subsections, gate, scope, excluded = [], None, None, None
         elif version is not None and depth == 3:
             subsections.append(heading_title)
             if heading_title.lower().startswith(GATE_SUBSECTION):
                 gate = (index, heading_title)
             elif heading_title.lower().startswith(SCOPE_SUBSECTION):
                 scope = index
+            elif heading_title.lower().startswith(EXCLUDED_SUBSECTION):
+                excluded = index
     flush()
 
     return sorted(found, key=lambda section: section.version)

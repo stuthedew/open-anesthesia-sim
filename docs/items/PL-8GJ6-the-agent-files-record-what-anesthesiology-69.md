@@ -1,16 +1,18 @@
 ---
 id: PL-8GJ6
 title: The agent files record what Anesthesiology 69:A615 contains as unknown, and the authors' own reference list now confirms it is the 1988 abstract of the 1989 human-tissues paper
-status: done
-added: 2026-09-13
-closed: 2026-09-13
 priority: P3
 effort: S
+status: done
 classes: docs
 feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md
+added: 2026-09-13
+closed: 2026-09-13
+pr: 539
 verify: grep -q 'A615' src/anesthesia_sim/data/agents/sevoflurane.json
 ---
+
 **Problem.** `PL-ZP7Z` established that the Gas Man Workbook's reference 45 is
 `Anesthesiology 69:A615`, an ASA annual-meeting abstract, rather than the 1989
 *Anesthesia & Analgesia* paper the three agent files cite. It could not

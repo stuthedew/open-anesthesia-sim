@@ -772,7 +772,11 @@ answer below is:
   `Explicitly out of scope` list included. Silence is the honest answer to a
   sentence the command cannot read, and the safe one: an unread mention makes
   no claim, where an over-read one told a session that work a milestone
-  excludes was the work that milestone was waiting on.
+  excludes was the work that milestone was waiting on. That list *is* parsed,
+  onto `MilestoneSection.excluded_ids` - `tools/doc_check.py` compares it
+  against `Required scope` and fails a milestone naming one id under both
+  (`PL-NBCS`) - but nothing feeds it into placement, so the ranking still says
+  nothing in either direction. Reporting it there is queue item `PL-6P9Y`.
 - A released milestone's section places nothing. Its narrative records where a
   problem was raised, not what is current work.
 

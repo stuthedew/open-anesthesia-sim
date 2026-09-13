@@ -433,6 +433,64 @@ def test_an_exclusion_the_reader_cannot_see_is_silence_not_the_opposite() -> Non
     assert scope.milestone("PL-Z7LY") == ""
 
 
+#: v0.4.0's `Required scope` rewritten as bullets, the second of which names an
+#: id **in order to exclude it** - the shape `ROADMAP.md` carried for `PL-B9PY`
+#: until `PL-NBCS` moved it out.
+SCOPE_BULLET_EXCLUSION_ROADMAP = ROADMAP.replace(
+    "A displayed clinical unit (queue item PL-MNPQ).",
+    "- **A displayed clinical unit** (queue item PL-MNPQ).\n"
+    "- Stage 3, the decomposition proper, is **not** in scope: it is queue item\n"
+    "  PL-WXYZ and stays at Gate 1, because only v0.5.0 needs it.",
+)
+
+
+def test_an_id_a_scope_bullet_names_only_to_exclude_it() -> None:
+    """Reads as scope, and this test exists to say that it still does.
+
+    `Required scope` is read *in full* - a milestone names what it covers in
+    whatever grammar the sentence wanted, so `"(queue item PL-MNPQ)"` mid-bullet
+    has to count - and the price is that a bullet naming an id in order to
+    **exclude** it is read as claiming it. No grammar separates the two: the
+    excluding sentence here says "queue item PL-WXYZ", which is the same phrase
+    the including one uses.
+
+    `PL-NBCS` is the case, and this is deliberately a *characterisation* test
+    rather than a fix. The candidate that made the parser guess at the sentence
+    was refused - a phrasing it missed would print a wrong placement silently,
+    which is the failure being removed rather than a smaller version of it. The
+    fix is that the exclusion moves under the other heading, where
+    `excluded_ids` parses it apart from scope; `tools/doc_check.py` fails the
+    contradiction that leaves behind and advises on this shape.
+    """
+    sections = parse_milestones(SCOPE_BULLET_EXCLUSION_ROADMAP)
+    section = next(one for one in sections if one.version == (0, 4, 0))
+
+    assert "PL-WXYZ" in section.required_scope_ids
+    assert milestone_scope(sections, section).placement("PL-WXYZ") == IN_SCOPE
+    assert "PL-WXYZ" not in section.excluded_ids
+
+
+def test_the_exclusion_heading_is_parsed_apart_from_required_scope() -> None:
+    """The two headings answer opposite questions, so they are read separately.
+
+    `scope_ids` merges the frozen list with `Required scope` because placement
+    does not care which structure placed an id. The contradiction check does
+    care, because only `Required scope` can contradict `Explicitly out of
+    scope`, so each is kept as its own tuple.
+
+    Parsed and not yet *placed*: making an exclusion speak in the ranking is
+    `PL-6P9Y`. An exclusion recorded by a milestone the project has already
+    passed says what was true then, and `milestone_scope` reads no section at or
+    below the anchor - so the answer here stays `UNPLACED`, as the test above
+    this one asserts.
+    """
+    section = _section((0, 4, 0))
+
+    assert section.excluded_ids == ("PL-Z7LY",)
+    assert section.required_scope_ids == ("PL-MNPQ",)
+    assert "PL-Z7LY" not in section.required_scope_ids
+
+
 def test_the_scope_places_an_id_by_the_milestone_whose_section_names_it() -> None:
     scope = milestone_scope(parse_milestones(ROADMAP), _section((0, 3, 0)))
 

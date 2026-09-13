@@ -1,16 +1,18 @@
 ---
 id: PL-LS3H
 title: docs/MODEL.md models the breathing circuit as a non-absorbing volume, and a held measurement says its components absorb substantially and unequally by agent
-status: done
-added: 2026-09-13
-closed: 2026-09-13
 priority: P1
 effort: S
+status: done
 classes: science, docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md, src/anesthesia_sim/core/circuit.py
+added: 2026-09-13
+closed: 2026-09-13
+pr: 539
 verify: python3 tools/doc_check.py check && grep -q 'circuit.s own walls absorb agent' docs/MODEL.md
 ---
+
 **Problem.** `docs/MODEL.md` § "Breathing circuit" models the circuit as an
 ideal, well-mixed gas volume: agent enters with fresh gas, leaves with the
 exhaust, and the walls do nothing. `BreathingCircuit.advance_fresh_gas()`

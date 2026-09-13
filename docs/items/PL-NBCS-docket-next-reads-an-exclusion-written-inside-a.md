@@ -3,11 +3,12 @@ id: PL-NBCS
 title: docket next reads an exclusion written inside a Required scope bullet as membership, so PL-B9PY is ranked in scope for v0.4.0 when ROADMAP.md sends it to Gate 1
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
-touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
+touches: ROADMAP.md, subprojects/docket/README.md, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py, tools/doc_check.py, tests/unit/test_doc_check.py
 verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_an_id_a_scope_bullet_names_only_to_exclude_it' subprojects/docket/tests/test_roadmap.py
 added: 2026-09-05
+closed: 2026-09-13
 ---
 **Problem.** `bin/docket next product` ranks `PL-B9PY` (decompose
 `SimulationView` so two runs can be rendered at once) second in the product
@@ -157,3 +158,66 @@ is the companion, and it is what makes part 1 produce the *right* answer rather 
 merely not the wrong one: without it, moving the bullet turns `in-scope` into
 `unplaced`; with it, into "excluded by v0.4.0", which is what the roadmap actually
 says. It is `ready` at P3 and should land with this.
+
+## Built 2026-09-13, and two corrections to the decision above
+
+**The live fix.** `ROADMAP.md`'s v0.4.0 `Required scope` no longer discusses
+stage 3 at all: the `PL-WB0X` bullet's head already said "stages 1 and 2 only",
+so the excluding sentence was removed rather than reworded, and stage 3 is now a
+bullet under `### Explicitly out of scope for v0.4.0` carrying the same
+reasoning and the same attribution. `PL-B9PY` is out of v0.4.0's
+`required_scope_ids` and in its `excluded_ids`, confirmed by parsing.
+
+**The convention.** `ROADMAP.md` § "Development rules for scientific
+milestones" now states the rule, beside the frozen-Goal rule it resembles, with
+`PL-NBCS` cited for why it is written down rather than left to imitation.
+
+**The parser.** `MilestoneSection` gains `required_scope_ids` (the scope
+subsection alone, unmerged with the frozen list) and `excluded_ids`, with
+`EXCLUDED_SUBSECTION` beside `SCOPE_SUBSECTION`. `scope_ids` is unchanged:
+placement does not care which structure placed an id, and only the scope
+subsection can contradict the exclusion heading.
+
+**The checks, in `tools/doc_check.py`** - which already imports `docket.roadmap`
+by path for exactly this reason, so the grammar has one home:
+
+- **`check_scope_exclusions`, error half.** An id under both of one milestone's
+  scope headings. Exact, no judgment, and it is what holds this fix in place
+  against a later edit.
+- **Advisory half.** A `Required scope` bullet carrying `not in scope`, `out of
+  scope` or `stays at Gate` alongside an id. A keyword guess, admissible *here*
+  and refused in the ranker for the reason the decision above gives: it changes
+  no placement and only asks a person to move a sentence, so a miss leaves the
+  status quo and a false positive costs one rewording.
+
+**Correction one: the advisory is not the marginal half after all.** The
+decision above called it the part that might not earn its place. Implementing
+showed the opposite: the *error* half cannot catch the original shape, because
+an exclusion written only inside a scope bullet produces no contradiction to
+find. The advisory is the sole guard against the defect recurring, and the
+convention sentence alone is prose a session may not read. It stays.
+
+**Correction two: "excluded by v0.4.0" was wrong, and `PL-6P9Y` is not needed
+here.** The decision above said moving the bullet would turn `in-scope` into
+"excluded by v0.4.0" with `PL-6P9Y`, and `unplaced` without it. Both are beside
+the point: `milestone_scope` reads no section at or below the anchor, the anchor
+is v0.5.0, and `PL-B9PY` is placed `in-scope` by Gate 1's frozen list whatever
+v0.4.0 says. So this item needed only the *parsing* half of `PL-6P9Y`, which is
+now done - `PL-6P9Y` keeps the placement half and is smaller for it.
+
+**One defect found in the check while writing it, worth recording because it
+passed silently.** `_subsection_line` first returned a 0-based index where
+`roadmap.py`'s convention is 1-based, so `_scope_bullets` began *on* the
+`### Required scope` heading and stopped on it - zero bullets walked, advisory
+never fired, `doc_check` reporting 0 advisories on a tree that had one. It was
+caught only because the first ROADMAP.md rewording deliberately contained "out
+of scope" and the advisory was expected to fire on it. A check watched failing
+for the right reason is what separated that from a green run.
+
+**Verified.** `verify:` exits 1 before the work and 0 after. `make check` green.
+Docs swept: `ROADMAP.md` (edited), `docs/MODEL.md` (read, untouched by this
+item), `subprojects/docket/README.md` (read, and **edited**: its
+"What a milestone places" limitation said a milestone's `Explicitly out of
+scope` list is "invisible", which is still true of the *ranking* and now
+misleading about the *parse*, so the bullet names `excluded_ids`, the check
+reading it, and `PL-6P9Y` as what would make it speak in placement).

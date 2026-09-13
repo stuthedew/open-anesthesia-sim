@@ -2614,3 +2614,80 @@ def test_an_absolute_glob_citation_is_reported_rather_than_raised(tmp_path: Path
     report = doc_check.analyze(root)  # must not raise
 
     assert any("/docs/*.md" in error for error in report.errors), report.errors
+
+
+#: `ROADMAP` with one scoped milestone section, so the two scope headings exist
+#: to be compared. The base fixture carries a timeline and nothing else.
+SCOPED_SECTION_ROADMAP = ROADMAP.replace(
+    "## Planned milestones",
+    """## v0.4.0 - the teachable case
+
+### Goal
+
+Make one case observable.
+
+### Required scope
+
+- **A displayed clinical unit** (queue item PL-MNPQ).
+
+### Definition of done
+
+The learner can run one case.
+
+### Explicitly out of scope for v0.4.0
+
+- Horizontal panning of the chart (queue item PL-Z7LY).
+
+## Planned milestones""",
+)
+
+
+def test_a_milestone_whose_two_scope_headings_agree_is_quiet(tmp_path: Path) -> None:
+    """The correct form stays silent, or the check gets disabled."""
+    root = _repo(tmp_path, roadmap=SCOPED_SECTION_ROADMAP)
+
+    assert not [e for e in _errors(root) if "in scope and out of it" in e]
+    assert not [a for a in _advisories(root) if "Required scope" in a]
+
+
+def test_an_id_under_both_scope_headings_is_an_error(tmp_path: Path) -> None:
+    """The exact half of `PL-NBCS`'s rule: the section contradicts itself.
+
+    No judgment in it - the same id is named as scope and as excluded - so it
+    fails hard rather than advising. This is the shape a later edit would
+    reintroduce after the exclusion was moved, which is what makes it the rule
+    that holds the fix in place.
+    """
+    roadmap = SCOPED_SECTION_ROADMAP.replace(
+        "- **A displayed clinical unit** (queue item PL-MNPQ).",
+        "- **A displayed clinical unit** (queue item PL-MNPQ).\n"
+        "- **Horizontal panning** (queue item PL-Z7LY).",
+    )
+    root = _repo(tmp_path, roadmap=roadmap)
+
+    errors = [e for e in _errors(root) if "in scope and out of it" in e]
+    assert len(errors) == 1
+    assert "PL-Z7LY" in errors[0]
+
+
+def test_exclusion_language_in_a_scope_bullet_is_an_advisory(tmp_path: Path) -> None:
+    """The keyword half, and the only rule that catches the original shape.
+
+    Where the exclusion is written *only* in the scope bullet there is no
+    contradiction to find, so the error above is silent and this is what fires.
+    It is a keyword guess, admissible here because it changes no placement and
+    only asks a person to move a sentence - the same guess was refused inside
+    `docket`'s ranker, where a missed phrasing would print a wrong marking.
+    """
+    roadmap = SCOPED_SECTION_ROADMAP.replace(
+        "- **A displayed clinical unit** (queue item PL-MNPQ).",
+        "- **A displayed clinical unit** (queue item PL-MNPQ).\n"
+        "- Stage 3 is **not** in scope: it is queue item PL-WXYZ and stays at\n"
+        "  Gate 1, because only v0.5.0 needs it.",
+    )
+    root = _repo(tmp_path, roadmap=roadmap)
+
+    advisories = [a for a in _advisories(root) if "reads as scope" in a]
+    assert len(advisories) == 1
+    assert "PL-WXYZ" in advisories[0]
+    assert not [e for e in _errors(root) if "in scope and out of it" in e]

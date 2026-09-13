@@ -95,7 +95,11 @@ try:
     from docket.model import CLOSED_STATUSES
     from docket.roadmap import (
         BASELINE_MARK,
+        BULLET_RE,
+        EXCLUDED_SUBSECTION,
         HEADING_RE,
+        SCOPE_SUBSECTION,
+        SECTION_ID_RE,
         TABLE_ROW_RE,
         TIMELINE_HEADING,
         VERSION_TABLE_HEADING,
@@ -1451,6 +1455,135 @@ def check_gate_counts(root: Path, report: Report) -> None:
                 )
 
 
+#: Phrases that turn a `Required scope` bullet into an exclusion. Matched
+#: lowercased against the bullet's whole text, continuation lines joined.
+#:
+#: **This is a keyword guess, and it is placed where a guess is safe.** The same
+#: guess inside `docket`'s ranker was refused (`PL-NBCS`): there it would decide
+#: a placement, so a phrasing it missed would print a wrong marking silently.
+#: Here it asks a person to move a sentence and changes no placement at all, so
+#: a miss leaves the status quo and a false positive costs one rewording. That
+#: asymmetry is the whole reason the rule lives in this file.
+SCOPE_EXCLUSION_MARKERS = ("not in scope", "out of scope", "stays at gate", "stays on gate")
+
+
+def _scope_bullets(lines: list[str], start: int) -> Iterator[tuple[int, str]]:
+    """Each bullet under one `###` heading, as (line number, joined text).
+
+    Continuation lines are folded in, because a sentence excluding an item
+    routinely wraps - the one this rule was written for wrapped twice - and a
+    marker split across a line break would be invisible to a substring test.
+    """
+    line_number = 0
+    parts: list[str] = []
+    for index in range(start, len(lines)):
+        heading = HEADING_RE.match(lines[index])
+        if heading is not None and len(heading.group("hashes")) <= 3:
+            break
+        bullet = BULLET_RE.match(lines[index])
+        if bullet is not None:
+            if parts:
+                yield line_number, " ".join(parts)
+            line_number, parts = index + 1, [bullet.group("text")]
+        elif parts and lines[index].strip() and lines[index][:1].isspace():
+            parts.append(lines[index].strip())
+        elif parts:
+            yield line_number, " ".join(parts)
+            parts = []
+    if parts:
+        yield line_number, " ".join(parts)
+
+
+def _subsection_line(section: MilestoneSection, lines: list[str], prefix: str) -> int | None:
+    """The **1-based** line of one `###` heading inside a milestone section.
+
+    `MilestoneSection` records the ids under each subsection but not where the
+    heading sat, and both readers here need that: the error cites a line a
+    person can open, and `_scope_bullets` needs somewhere to start.
+
+    One-based deliberately, matching `MilestoneSection.line` and the `scope`
+    index `parse_milestones` hands `_subsection_ids`. Those readers all treat
+    the number as "the heading's line", so `range(start, ...)` over a 0-based
+    list begins on the line *after* it - which is what reading a subsection's
+    body means. Returning the 0-based index instead made `_scope_bullets` start
+    on the heading and stop on it, so the advisory silently found nothing.
+    """
+    for index in range(section.line, len(lines)):
+        heading = HEADING_RE.match(lines[index])
+        if heading is None:
+            continue
+        depth = len(heading.group("hashes"))
+        if depth <= 2:
+            return None
+        if depth == 3 and heading.group("title").strip().lower().startswith(prefix):
+            return index + 1
+    return None
+
+
+def check_scope_exclusions(root: Path, report: Report) -> None:
+    """Keep a milestone's exclusions out of its `Required scope`.
+
+    `bin/docket next` reads exactly two structures for membership - a section's
+    frozen list and its `Required scope` - and it reads the second **in full**,
+    because a milestone names what it covers in whatever grammar the sentence
+    wanted. The cost is that an id written into a scope bullet *in order to
+    exclude it* is read as scope. `PL-NBCS` is the case: v0.4.0's stage-3
+    exclusion put `PL-B9PY` into v0.4.0's `scope_ids`, and while v0.4.0 was the
+    anchor every session was told Gate-1 work was what v0.4.0 was waiting on -
+    as a fact, with the milestone named.
+
+    Two rules, and the split between them is the point.
+
+    **An id under both of one milestone's scope headings is an error.** Exact,
+    no judgment: the section has said the same id is in scope and out of it.
+    This is the shape a later edit would reintroduce after the fix, so it is
+    what holds the fix in place.
+
+    **Exclusion language inside a scope bullet is an advisory.** That one is a
+    keyword guess - see `SCOPE_EXCLUSION_MARKERS` for why a guess is admissible
+    here and was refused inside the ranker - and it is the only rule that
+    catches the original shape, where the exclusion is written *only* in the
+    scope bullet and there is no contradiction to find.
+    """
+    roadmap = root / ROADMAP
+    if not roadmap.is_file():
+        report.declined.append(f"{ROADMAP} is absent, so its scope headings were not compared")
+        return
+    text = roadmap.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    for section in parse_milestones(text):
+        excluded = set(section.excluded_ids)
+        both = [identifier for identifier in section.required_scope_ids if identifier in excluded]
+        if both:
+            where = _subsection_line(section, lines, SCOPE_SUBSECTION)
+            at = f":{where}" if where is not None else ""
+            scope_heading = SCOPE_SUBSECTION.capitalize()
+            excluded_heading = EXCLUDED_SUBSECTION.capitalize()
+            report.errors.append(
+                f"{ROADMAP}{at}: {section.label} names {', '.join(both)} under both "
+                f'"{scope_heading}" and "{excluded_heading}", so the section says the same '
+                "item is in scope and out of it; `docket next` reads the scope heading "
+                "and reports it as in scope"
+            )
+        start = _subsection_line(section, lines, SCOPE_SUBSECTION)
+        if start is None:
+            continue
+        for number, bullet in _scope_bullets(lines, start):
+            lowered = bullet.lower()
+            marker = next((m for m in SCOPE_EXCLUSION_MARKERS if m in lowered), None)
+            if marker is None:
+                continue
+            named = SECTION_ID_RE.findall(bullet)
+            if not named:
+                continue
+            report.advisories.append(
+                f'{ROADMAP}:{number}: this "{SCOPE_SUBSECTION.capitalize()}" bullet says '
+                f'"{marker}" and names {", ".join(dict.fromkeys(named))}, which `docket next` '
+                f'reads as scope. Move the exclusion under "{EXCLUDED_SUBSECTION.capitalize()} for '
+                f'{section.label.split()[0]}" and leave the bullet saying only what is in scope'
+            )
+
+
 def check_gate_reentries(root: Path, report: Report) -> None:
     """Name every open `safety`/`science` item the current gate does not place.
 
@@ -2682,6 +2815,7 @@ def analyze(root: Path) -> Report:
     check_timeline(root, report)
     check_baseline(root, report)
     check_gate_counts(root, report)
+    check_scope_exclusions(root, report)
     check_gate_reentries(root, report)
     check_gate_dispositions(root, report)
     check_tags(root, report)

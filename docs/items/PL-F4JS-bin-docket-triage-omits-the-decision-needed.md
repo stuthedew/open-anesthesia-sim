@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-02
 closed: 2026-09-13
+pr: 542
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_triage_states_the_rules_a_chosen_status_adds' subprojects/docket/tests/test_cli.py
 ---
 
