@@ -13,13 +13,14 @@ prompt has been read and before any tool has run: `CLAUDE.md`, and
 `.claude/rules/expert-review.md` carries no `paths:` and says so in its own header
 ("Resident by necessity; no `paths:`, deliberately"). `make check` already reports
 all three — 49,802 characters over 715 lines, `CLAUDE.md` 32,692 /
-`expert-review.md` 7,438 / `instruction-writing.md` 9,672 — so the ledger's
+expert-review.md 7,438 / instruction-writing.md 9,672 — so the ledger's
 opening sentence disagrees with the measurement printed beside it.
 
 The body of the same document is right: § "What stays resident, and on what
-argument" carries `expert-review.md` under "Fires when the approach is being
-decided", with its +4,721-character cost and `PL-WWDT` as the reason. Only the
-preamble was not updated when it moved.
+argument" names `.claude/rules/expert-review.md` at line 104, in the group it
+heads "**Fires when the approach is being decided.**", with its
++4,721-character cost and `PL-WWDT` as the reason. Only the preamble was not
+updated when it moved.
 
 **Why it matters.** This is the document whose whole purpose is to stop the
 resident-cost question being re-opened from scratch, and it understates the
