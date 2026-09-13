@@ -1,8 +1,15 @@
 ---
 id: PL-SL70
 title: bin/docket wave and gate count the seven Gate 1 entries sequenced behind v0.5.1 as open debt, so every session opens on a beat asking for a target the plan forbids
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: defect, infra
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/README.md
+feature: planning-cadence
 added: 2026-09-13
+closed: 2026-09-13
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_an_entry_sequenced_past_the_milestone_is_not_clearable' subprojects/docket/tests/test_roadmap.py
 ---
 
 **Problem.** bin/docket wave and gate count the seven Gate 1 entries sequenced behind v0.5.1 as open debt, so every session opens on a beat asking for a target the plan forbids
@@ -42,8 +49,8 @@ files carry a `blocked-by`, which is why the gap survived its close.
 **Where.** `subprojects/docket/src/docket/` — whatever computes the gate split
 `wave` prints and the `Open debt` list `gate` prints.
 
-**Decision needed.** Whether the count excludes them or merely marks them. Two
-shapes, and the second is the recommendation:
+**Decided (project owner, 2026-09-13): option 2.** Two shapes were put; the
+second was taken:
 
 1. **Exclude** an entry whose `blocked-by` resolves to a version later than the
    milestone the gate guards. Cleanest count, but it silently shrinks a frozen
@@ -52,3 +59,19 @@ shapes, and the second is the recommendation:
    milestone` — and compute the beat from the clearable figure. The frozen list
    stays whole and visible, and the beat becomes reachable. `PL-9S30` is the
    documentation half of the same finding.
+
+**Done when.** `bin/docket wave` splits the open entries into the ones this
+gate can clear and the ones waiting on work the frozen list does not hold,
+prints both, and takes the beat's count from the first; `GateStatus.is_clear`
+reads the same figure, so a list whose whole remainder waits on a later
+milestone hands the beat on instead of repeating an unreachable target. The
+frozen list keeps every id it froze. The walk is tested direct, transitive,
+through a closed blocker, and around a cycle.
+
+**What this does not do.** It does not model the gate's other carve-out - debt
+inside the milestone's own scope, which `ROADMAP.md` § "Debt inside the
+milestone's own scope" clears *by* the milestone rather than before it. Four
+open entries are in that group today and are still counted as clearable here.
+That is a second reading of the same list, filed as `PL-WZBX` rather than
+folded in here, because it narrows the count on a different rule and its
+evidence is a prose group heading rather than a field.

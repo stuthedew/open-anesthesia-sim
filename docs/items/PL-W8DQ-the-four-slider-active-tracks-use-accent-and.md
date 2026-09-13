@@ -4,7 +4,7 @@ title: The four slider active tracks use ACCENT and miss the non-text minimum
 priority: P3
 effort: S
 status: blocked
-blocked-by: PL-L9RD
+blocked-by: v0.5.1, PL-L9RD
 classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, tools/contrast_check.py

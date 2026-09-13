@@ -9,6 +9,7 @@ feature: core-domain-language
 touches: docs/MODEL.md
 added: 2026-09-03
 closed: 2026-09-13
+pr: 519
 verify: python3 tools/doc_check.py check && grep -qF '| Symbol | Meaning | Unit | Code |' docs/MODEL.md
 ---
 

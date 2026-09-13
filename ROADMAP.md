@@ -1935,6 +1935,54 @@ any sense that survives the toolkit changing underneath it.
 resolves it rather than any work on it. That is recorded now so a later session
 does not read a dropped item as one that was skipped.
 
+### Sequenced past v0.5.0, so not clearable before it begins — 9 entries
+
+**Recorded because the rule requires it, and until 2026-09-13 it was not.**
+§ "The gate is a snapshot, not a moving target" allows a deferral only where
+this section "says so and says why". Nine open entries are sequenced past the
+milestone this list gates, and only the `PL-NGF7` block above was written down;
+the other eight said so in a `blocked-by:` field and nowhere else, which is
+renegotiation by frontmatter (`PL-9S30`).
+
+**Nothing moves, and no decision is taken here.** Every entry below stays
+written where the freeze put it, exactly as `PL-NGF7` does - this is their
+disposition, not their deletion. Five still sit under headings reading "Cleared
+before v0.5.0 begins", and those headings record what the list said on
+2026-09-06 rather than a claim about today. Each sequencing call was the
+project owner's, taken on 2026-09-10 when `v0.5.1` was scoped, and each is
+argued where it was taken; this is the index, not the argument.
+
+**Carried by the Qt port — 5.** `PL-3355`, `PL-Q4VH`, `PL-THXF`, `PL-TG60`
+and `PL-W8DQ`, on the rule in § "v0.5.1 — the interface moves to Qt" → "Fixes
+this port carries, and why that is not scope creep": each defect lives in code
+that milestone rewrites from scratch, so fixing it on Flet means writing the
+same lines twice. Each now carries `blocked-by: v0.5.1` beside the port item
+that does the work - which is what `PL-D143` intended and what its own
+`verify:` command tested for, and which shipped as the port item alone.
+
+**Sequenced behind the port — 1.** `PL-GS3R`, `P1` and `safety`-classed. It is
+designed already; what it waits for is the port *landing*, because the
+chord-width column rule costs frame time the port makes free. § "v0.5.1" →
+"Required scope" item 1 is where that was decided.
+
+**Dissolved by the port — 1.** `PL-NGF7`, whose own block above carries the
+reasoning and its expected disposition of `dropped` rather than `done`.
+
+**Behind a design round the roadmap places nowhere — 2.** `PL-8PS6` and
+`PL-WZVZ` both wait on `PL-FG9D`, the base anesthesia-machine abstraction,
+which no milestone section names and which has no planned-milestone line of its
+own. These two are unlike the seven above: nothing forbids clearing them before
+v0.5.0, but doing it means scoping that design round first, which is a
+milestone decision rather than gate work.
+
+**What reads this, and what reads past it.** `bin/docket wave` reaches the same
+nine from the items rather than from this prose - an open entry whose
+`blocked-by` chain leaves the frozen list is counted apart from the ones this
+gate can clear, so the beat asks for a number that is reachable (`PL-SL70`).
+Two independent readings of one fact is the point rather than duplication: if
+the prose and the count disagree, one of them is wrong and the disagreement is
+visible on the next run.
+
 ### Declined to Gate 2 on the refilling-queue ground — 66 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
@@ -2407,6 +2455,9 @@ Four grounds survive:
    `tools/agent_identity_check.py` both parse `theme.py`; after a port they
    would not fail, they would *pass* on a tree they no longer describe.
    `PL-JRS3` is that item and is the one most likely to stop this cheaply.
+   `PL-NGF7` is the other, and the port *dissolves* it rather than fixing
+   it - see § "Items this port moots or transforms" below, and Gate 1's
+   own disposition of it.
 5. **Packaging and dependencies.** PySide6-Essentials, pyqtgraph and numpy
    enter; `flet` and `flet-charts` leave. numpy arriving under a plotting
    library reopens the scope of `docs/WORKING_NOTES.md`'s "Decided: no numpy"
@@ -2415,7 +2466,13 @@ Four grounds survive:
 6. **Headless rendering tests**, which is what `PL-2QMK` has been waiting for
    and what makes the rest of `presentation-safety` workable.
 7. **Deletion.** `spikes/` goes, and so does every Flet import.
-8. **The queued fixes named below**, on the rule stated there.
+8. **The queued fixes named below**, on the rule stated there: `PL-3355`,
+   `PL-Q4VH`, `PL-THXF`, `PL-W8DQ`, `PL-TG60` and `PL-005`. Named here and
+   not only under that heading because `MilestoneStates.ships_with` reads
+   `Required scope` and nothing else: it is what separates `blocked-by:
+   v0.5.1` meaning *ships with this milestone* from the same field meaning
+   *waits for it to be scoped*, which is the relation `PL-L09X` costed and
+   the roadmap already carries rather than a field anyone writes twice.
 
 ### Fixes this port carries, and why that is not scope creep
 

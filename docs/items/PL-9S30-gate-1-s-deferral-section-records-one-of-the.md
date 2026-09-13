@@ -1,8 +1,15 @@
 ---
 id: PL-9S30
 title: Gate 1's deferral section records one of the nine entries sequenced past v0.5.0; the other eight exist only as a blocked-by field, which the gate's own snapshot rule says must be written down and explained
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, docs
+touches: ROADMAP.md, docs/items/
+feature: planning-cadence
 added: 2026-09-13
+closed: 2026-09-13
+verify: python3 tools/doc_check.py check && grep -qF 'Sequenced past v0.5.0, so not clearable before it begins' ROADMAP.md
 ---
 
 **Problem.** Gate 1's deferral section records one of the nine entries sequenced past v0.5.0; the other eight exist only as a blocked-by field, which the gate's own snapshot rule says must be written down and explained
@@ -47,3 +54,11 @@ you can branch" — the group headings, the `PL-GS3R` entry's prose, and the
 **Not a re-decision.** Every one of these sequencing calls is the project
 owner's and already taken; this item writes them where the gate's own rule says
 they belong. `PL-SL70` is the tooling half of the same finding.
+
+**Done when.** Gate 1's own section carries a subsection naming all nine
+entries sequenced past v0.5.0, each with its reason and a pointer to where the
+decision was taken, and nothing is moved between groups. The six that recorded
+their deferral nowhere a reader would look carry `blocked-by: v0.5.1`, and
+v0.5.1's `Required scope` names the fixes it carries so `MilestoneStates.
+ships_with` reads them - which is what stops `docket check` advising, on every
+run, that an item waiting for the port to land is ready to promote.

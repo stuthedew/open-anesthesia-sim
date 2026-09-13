@@ -4,7 +4,7 @@ title: Stop printing six decimals of an exhaust integral good to three
 priority: P3
 effort: S
 status: blocked
-blocked-by: PL-25KS
+blocked-by: v0.5.1, PL-25KS
 classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, tests/unit/test_simulation_view.py

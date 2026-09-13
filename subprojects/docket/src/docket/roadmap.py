@@ -692,6 +692,12 @@ class GateStatus:
     entries: tuple[GateEntry, ...]
     cleared: tuple[GateEntry, ...]
     outstanding: tuple[GateEntry, ...]
+    #: Open entries the gate cannot clear, because clearing them needs work the
+    #: gate does not contain - a later milestone, or an item off the list. A
+    #: subset of `outstanding`, never a fourth partition of `entries`: the
+    #: frozen list keeps every id it froze, and this says which of them the
+    #: beat below cannot honestly ask for.
+    blocked_outside: tuple[GateEntry, ...]
     #: Ids the gate names that the store does not hold. A gate cannot be shown
     #: clear while one of these stands: the entry may be a typo or a file that
     #: never existed, and either way its state is unknown rather than closed.
@@ -702,8 +708,21 @@ class GateStatus:
         return tuple(identifier for entry in self.entries for identifier in entry.ids)
 
     @property
+    def clearable(self) -> tuple[GateEntry, ...]:
+        """The open entries this gate can actually close before its milestone.
+
+        What the beat is counted from, and what `is_clear` reads. An entry
+        waiting on a version later than the gated milestone, or on an item the
+        list does not hold, is open and is not work this gate can be asked to
+        finish - counting it leaves the beat asking for a target the plan
+        forbids, which is what `PL-SL70` was filed on.
+        """
+        blocked = set(self.blocked_outside)
+        return tuple(entry for entry in self.outstanding if entry not in blocked)
+
+    @property
     def is_clear(self) -> bool:
-        return not self.outstanding and not self.unknown_ids
+        return not self.clearable and not self.unknown_ids
 
 
 # What a milestone section says about an id, as three answers rather than two.
@@ -868,14 +887,63 @@ def version_tuple(version: str) -> tuple[int, int, int] | None:
     return major, minor, patch
 
 
+def _blocked_outside(
+    identifier: str,
+    blockers: Mapping[str, Sequence[str]],
+    gate_ids: frozenset[str],
+    closed_ids: frozenset[str],
+    seen: set[str],
+) -> bool:
+    """Whether clearing this id needs work the frozen list does not hold.
+
+    Follows `blocked-by` from the id, skipping blockers that have already
+    closed, and answers True the moment the walk leaves the list. Two kinds of
+    entry leave it, and they are one fact rather than two special cases: a
+    milestone version is never an item on the list, and an item off the list
+    is work the gate was not frozen to contain. A blocker that is *itself* a
+    gate entry keeps the walk inside, so a list that sequences its own entries
+    still reads as clearable.
+
+    Transitive because the sequencing is. `PL-3355` waits on `PL-25KS`, the
+    dashboard port, which the plan places in a release after the milestone
+    this gate guards; one hop would have stopped at a gate entry's blocker
+    without asking what that blocker waits on in turn.
+
+    A cycle answers False on its second visit: two entries waiting on each
+    other are stuck, but they are stuck *inside* the gate, and saying
+    otherwise would move a deadlock out of the count that should show it.
+    """
+    if identifier in seen:
+        return False
+    seen.add(identifier)
+    for blocker in blockers.get(identifier, ()):
+        if blocker in closed_ids:
+            continue
+        if blocker not in gate_ids:
+            return True
+        if _blocked_outside(blocker, blockers, gate_ids, closed_ids, seen):
+            return True
+    return False
+
+
 def gate_status(
-    milestone: MilestoneSection, closed_ids: frozenset[str], known_ids: frozenset[str]
+    milestone: MilestoneSection,
+    closed_ids: frozenset[str],
+    known_ids: frozenset[str],
+    blockers: Mapping[str, Sequence[str]],
 ) -> GateStatus:
     """Count a frozen list against the store, entry by entry.
 
     An entry is cleared when every id it holds is closed - `done` or `dropped`,
     which the store already distinguishes - because an entry holding two ids
     for one problem is not half finished when one of them closes.
+
+    `blockers` is each item's `blocked-by`, and it splits the open entries in
+    two. An entry waiting on something the list does not hold cannot be closed
+    by clearing this gate, whatever order the gate is worked in, so it is
+    reported apart from the ones that can - see `GateStatus.blocked_outside`.
+    It stays on the list either way: the list is frozen, and this is a count
+    of what it can be asked for today rather than an edit to it.
     """
     cleared: list[GateEntry] = []
     outstanding: list[GateEntry] = []
@@ -887,11 +955,22 @@ def gate_status(
             cleared.append(entry)
         else:
             outstanding.append(entry)
+    gate_ids = frozenset(identifier for entry in milestone.gate_entries for identifier in entry.ids)
+    blocked_outside = tuple(
+        entry
+        for entry in outstanding
+        if any(
+            identifier not in closed_ids
+            and _blocked_outside(identifier, blockers, gate_ids, closed_ids, set())
+            for identifier in entry.ids
+        )
+    )
     return GateStatus(
         milestone=milestone,
         entries=milestone.gate_entries,
         cleared=tuple(cleared),
         outstanding=tuple(outstanding),
+        blocked_outside=blocked_outside,
         unknown_ids=tuple(unknown),
     )
 
@@ -951,14 +1030,22 @@ def _shipping_the_gate(step: TimelineStep | None, gate: GateStatus) -> bool:
     return step.version == gate.milestone.version and not gate.milestone.records_its_own_scope
 
 
-def wave(roadmap: str, version: str, closed_ids: frozenset[str], known_ids: frozenset[str]) -> Wave:
+def wave(
+    roadmap: str,
+    version: str,
+    closed_ids: frozenset[str],
+    known_ids: frozenset[str],
+    blockers: Mapping[str, Sequence[str]],
+) -> Wave:
     """Read the plan and the store, and say which beat of the cadence is due.
 
     The composition, in the order the cadence runs:
 
     - an open gate recorded under a milestone not yet released is always the
       beat, because the cadence clears a gate before the milestone it gates is
-      implemented;
+      implemented - open meaning it holds entries this gate can clear, so a
+      list whose remainder all waits on a later milestone is clear here and
+      hands the beat on rather than repeating a target nobody can reach;
     - a gate that is clear leaves either a release to cut, when the step the
       project stands on is the milestone that carries the gate's work, or the
       milestone that recorded the gate to implement - `_shipping_the_gate`
@@ -984,7 +1071,7 @@ def wave(roadmap: str, version: str, closed_ids: frozenset[str], known_ids: froz
 
     unreleased = [section for section in sections if current is None or section.version > current]
     recorded = [section for section in unreleased if section.records_a_gate]
-    gate = gate_status(recorded[0], closed_ids, known_ids) if recorded else None
+    gate = gate_status(recorded[0], closed_ids, known_ids, blockers) if recorded else None
 
     # Declared, not inferred: two of the three branches below bind a section
     # and the third may find none, so the union is the real type of the
