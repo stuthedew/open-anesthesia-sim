@@ -608,21 +608,32 @@ become unparseable by the interpreter that runs it.
 `tests/unit/test_tools_portability.py` covers both directories by path rather
 than by filename, so the guard follows the next hook without being extended.
 
-Two of them are nonetheless *invoked* under `uv run python`, and the
+Six of them are nonetheless *invoked* under `uv run python`, and the
 distinction is worth keeping straight, because it is about what a tool reads
-rather than what it needs. `ignore_check.py` shells out to mypy, so it wants
-the virtualenv that gate runs in. `import_boundary_check.py` parses
-`src/anesthesia_sim/`, and that source targets 3.14: `app/chart_series.py`
-declares `type PlottedSeries = ...`, a PEP 695 statement added in 3.12 and so
-a `SyntaxError` to the 3.11 parser, and `ast.parse`'s `feature_version` only
-narrows the syntax it accepts rather than extending it. A tool that parses
-repository source can only run under an interpreter that understands that
-source. Both still meet the promise above, which is what the portability suite
-holds them to. `contrast_check.py` reads `app/` too and ran bare until
-`PL-L17Q`, green only because the two files it reads happened to carry no
-3.12+ syntax; it now runs under `uv run python` beside
-`import_boundary_check.py`, and the rule the pair is an instance of is stated
-in `tests/unit/test_tools_portability.py`'s module docstring.
+rather than what it needs. `ignore_check.py` is the odd one and the only one
+of the six with a reason of its own: it shells out to mypy, so it wants the
+virtualenv that gate runs in.
+
+The other five are one reason repeated. `import_boundary_check.py`,
+`contrast_check.py`, `agent_identity_check.py`, `workflow_paths_check.py` and
+`core_vocabulary_check.py` each parse repository source with `ast`, and that
+source targets 3.14: `app/chart_series.py` declares `type PlottedSeries = ...`,
+a PEP 695 statement added in 3.12 and so a `SyntaxError` to the 3.11 parser,
+and `ast.parse`'s `feature_version` only narrows the syntax it accepts rather
+than extending it. A tool that parses repository source can only run under an
+interpreter that understands that source. All of them still meet the promise
+above — standard library only, parseable at the floor — which is what the
+portability suite holds them to, and it is why they stay in scope for it while
+being absent from the CI floor section.
+
+`contrast_check.py` is why the group is worth naming rather than left to each
+tool's own docstring. It ran bare until `PL-L17Q`, green only because the two
+files it reads happened to carry no 3.12+ syntax, so one PEP 695 generic added
+to either would have failed the floor section on a tool nobody had touched. The
+rule the five are an instance of is stated in
+`tests/unit/test_tools_portability.py`'s module docstring, and a tool joining
+them belongs on the `uv run python` lines in both `Makefile` and
+`.github/workflows/quality.yml`, never in that workflow's floor section.
 
 `tools/ruff.toml` is what keeps that true. The repository targets 3.14, where
 PEP 758 makes the parentheses in `except (OSError, TimeoutError):` redundant,
