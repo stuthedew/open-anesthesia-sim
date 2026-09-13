@@ -739,10 +739,10 @@ MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = (
     2.0 * EXACT_STEP_ORACLE_TOLERANCE * 100.0 * 10.0**CONCENTRATION_DISPLAY_DECIMALS
 )
 
-# Names this module is allowed to import from `anesthesia_sim`: the two
-# parameter loaders the oracle needs, the system under test, the module
-# declaring the input domain this gate measures over, and the view module
-# whose displayed resolution and shipped step every figure here is quoted at.
+# Names this module is allowed to import from `anesthesia_sim`: the parameter
+# loaders the oracle needs, the system under test, the module declaring the
+# input domain this gate measures over, and the view module whose displayed
+# resolution and shipped step every figure here is quoted at.
 #
 # `supported_ranges` and `simulation_view` are on this list for two
 # assertions — that the limits restated above are still the model's, and that
@@ -751,10 +751,16 @@ MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = (
 # imported is a solver, because comparing the implementation against itself
 # proves nothing. Modules of constants are not that. The oracle itself
 # (`_build_derivative`) still uses the parameter loaders alone.
+#
+# `load_reference_circle_system_parameters` is the third loader, added with the
+# machine parameter file (`PL-4YY1`) and used by one assertion — that the
+# operating point restated above is still the shipped one. It reads a JSON
+# document and solves nothing, which is the property this list is about.
 ALLOWED_PACKAGE_IMPORTS = frozenset(
     {
         "load_agent_parameters",
         "load_reference_adult_parameters",
+        "load_reference_circle_system_parameters",
         "AgentUptakeSystem",
         "formatting",
         "simulation_view",
@@ -1367,6 +1373,44 @@ def test_envelope_limits_match_the_supported_input_ranges() -> None:
         "the model's supported input ranges have changed; re-run the envelope "
         "and trajectory sweeps, update these constants and the bound, and "
         "re-derive the measured figures in docs/MODEL.md"
+    )
+
+
+def test_the_historical_operating_point_is_still_the_shipped_machine_s() -> None:
+    """The restated circuit volume and flow are still what a run uses.
+
+    `CIRCUIT_VOLUME_L` and `FRESH_GAS_FLOW_L_MIN` are restated above rather
+    than imported, for the reason the envelope limits are: the pinned
+    reference states below are that operating point's solution, so binding
+    them to whatever the data file happens to say would let a changed file
+    silently re-point this gate at a trajectory it never measured.
+
+    What the restatement needs instead is this: a statement that the two are
+    still the shipped values, failing loudly when they stop being. Until
+    `PL-4YY1` there was nothing to compare them against - the shipped values
+    were `BreathingCircuit` field defaults, and this file held a third
+    unsourced copy of 6.0. They now live in
+    `data/machines/reference_circle_system.json`, which is a source a test may
+    read: the module docstring's independence rule permits the parameter
+    loaders and forbids a solver, and this is the former.
+
+    A failure here does not mean the file is wrong. It means the shipped
+    operating point moved and the pinned states below no longer describe it,
+    so they have to be recomputed - which is the same instruction the envelope
+    check above gives, for the same reason.
+    """
+
+    from anesthesia_sim.core.parameters import load_reference_circle_system_parameters
+
+    machine = load_reference_circle_system_parameters()
+
+    assert (CIRCUIT_VOLUME_L, FRESH_GAS_FLOW_L_MIN) == (
+        machine.circuit_volume_l,
+        machine.default_fresh_gas_flow_l_min,
+    ), (
+        "the shipped circuit volume or fresh gas flow has moved away from the "
+        "operating point the pinned reference states below were computed at; "
+        "recompute them, or restore the file"
     )
 
 

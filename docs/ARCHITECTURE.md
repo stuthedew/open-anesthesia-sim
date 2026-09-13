@@ -23,8 +23,16 @@ data/  --loaded by-->  core/  --read by-->  app/
   (through a thin controller) and renders them, and forwards user input back
   as setter calls.
 - **`data/`** holds versioned, schema-validated parameter files (JSON) with
-  citations. `core/` never contains hardcoded scientific constants for the
-  agent or patient it loads by default.
+  citations, in three kinds — the agent, the patient, and the machine in front
+  of them. Every scientific constant a shipped run uses comes from one of them:
+  `AgentUptakeSystem.for_agent()` passes each value explicitly, so no
+  compartment's field default is reached on a shipped path. The defaults are
+  still written in `core/` for bare unit construction, and each is pinned by a
+  test to the file that is its authority — `PL-4YY1` added the machine file and
+  the first of those pins after finding that the circuit's volume and flow were
+  reached from `core/circuit.py` and were therefore invisible to
+  `tools/doc_check.py`'s provenance walk, which can only see a constant that
+  entered a data file.
 
 This mirrors the repository rules in `CLAUDE.md`: simulation code stays
 independent of Flet, no simulation calculations belong in UI callbacks, and
@@ -41,7 +49,7 @@ src/anesthesia_sim/
 │   ├── concentration.py           # fraction vs percent: the two forms, and the only crossing
 │   ├── supported_ranges.py        # the declared domain; refuses a setting, or a run, outside it
 │   ├── exceptions.py              # exception hierarchy; every core failure is inside it
-│   ├── parameters.py              # load + validate agent/patient JSON data
+│   ├── parameters.py              # load + validate agent/patient/machine JSON data
 │   ├── circuit.py                 # breathing circuit compartment
 │   ├── alveolar.py                # alveolar gas compartment
 │   ├── blood.py                   # venous blood compartment
@@ -66,6 +74,7 @@ src/anesthesia_sim/
 │   └── main.py                     # entry point; builds the Flet page
 └── data/                 # versioned, cited parameter files
     ├── agents/{sevoflurane,isoflurane,desflurane}.json
+    ├── machines/reference_circle_system.json
     └── patients/reference_adult.json
 ```
 
@@ -74,8 +83,9 @@ src/anesthesia_sim/
 **Startup / parameter loading:**
 
 ```text
-data/agents/sevoflurane.json  ──┐
-data/patients/reference_adult.json ─┴─> core/parameters.py
+data/agents/sevoflurane.json                ──┐
+data/patients/reference_adult.json          ──┤
+data/machines/reference_circle_system.json  ──┴─> core/parameters.py
                                         (parse + validate schema, units, ranges)
                                         │
                                         ▼
@@ -92,7 +102,8 @@ data/patients/reference_adult.json ─┴─> core/parameters.py
 `core/parameters.py` is the only module that reads the JSON files (via
 `importlib.resources`), and it validates schema version, required fields,
 units, and ranges before constructing `AgentParameters` /
-`ReferenceAdultParameters`. The schemas are strict at every nesting level:
+`ReferenceAdultParameters` / `BreathingCircuitParameters`. The schemas are
+strict at every nesting level:
 a key the schema does not declare fails the load rather than being silently
 discarded, so a data file cannot document one model while the app runs
 another. Nothing downstream re-reads or re-derives these values from disk.
@@ -294,9 +305,18 @@ contains a
 value outside its validated range (e.g. non-positive volumes, tissue
 perfusion fractions that don't sum to 1), or carries a key the schema does
 not declare — including inside a nested object such as
-`tissue_gas_partition_coefficients` or one `sources` entry. Adding a new agent or patient
-profile means adding a new validated, cited JSON file plus any new parsing
-support in `parameters.py` — not adding constants directly to `core/`.
+`tissue_gas_partition_coefficients` or one `sources` entry. Adding a new agent, patient
+or machine profile means adding a new validated, cited JSON file plus any new
+parsing support in `parameters.py` — not adding constants directly to `core/`.
+
+The three kinds answer three different questions and a value belongs to
+exactly one of them: `data/agents/` is what the drug does, `data/patients/` is
+who is being anesthetized, and `data/machines/` is the apparatus delivering
+it — the
+breathing system's volume and the default fresh gas flow. Filing a machine
+parameter under the patient would say something false about where it came
+from, which is why `PL-4YY1` added a third directory rather than a field to
+`reference_adult.json`.
 
 ## Developer tooling (`tools/`)
 
@@ -728,8 +748,12 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
 
 - A new physiological compartment or coupling → `core/`, with its equations
   and reference cases documented in `docs/MODEL.md` first (per `CLAUDE.md`).
-- A new agent or patient profile → a new validated, cited file under
-  `data/`, not hardcoded values in `core/`.
+- A new agent, patient or machine profile → a new validated, cited file under
+  the matching subdirectory of `data/`, not hardcoded values in `core/`. Where
+  a compartment keeps a field default restating one of those values for bare
+  unit construction, the default is pinned to the file by a test, as
+  `test_the_bare_circuit_defaults_match_the_shipped_machine_file` pins
+  `BreathingCircuit`'s.
 - A new display panel or control → `app/simulation_view.py`, reading only
   what `SimulationSnapshot` already carries and what a recorded sample
   already records — a `SimulationHistorySample` holds its values per

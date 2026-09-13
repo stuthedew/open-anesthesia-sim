@@ -65,6 +65,20 @@ class BreathingCircuit:
     agent has, and therefore the only delivered concentration this class
     can supply without borrowing some particular agent's number (PL-019).
 
+    **`data/machines/reference_circle_system.json` is the authority for the
+    first two, and this class is not.** Every shipped path builds the circuit
+    through `AgentUptakeSystem.for_agent()`, which reads both from that file
+    and passes them explicitly, so the literals below are reached only by a
+    bare unit-test construction of circuit physics. They are kept as defaults
+    rather than made required so that such a test does not have to load
+    package data to exercise an equation - and
+    `test_the_bare_circuit_defaults_match_the_shipped_machine_file` in
+    `tests/unit/test_circuit.py` fails if the two ever disagree, because a
+    reader meeting `6.0` here will take it for the model's circuit volume
+    whatever this paragraph says (`PL-4YY1`). The file also carries why 6.0 is
+    kept where the published Gas Man convention is 8 L, and that the 4 L/min
+    has no published counterpart at all.
+
     `fresh_gas_flow_l_min` is the flow at the common gas outlet - carrier
     gas plus the vapour the vaporizer added - and not the flowmeter
     setting a user reads it as. The two differ by a factor of
