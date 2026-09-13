@@ -1,6 +1,10 @@
 [project]
 name = "anesthesia-sim"
 version = "0.4.17"
+# "volatile" here where `README.md` says "inhaled", deliberately rather than by
+# drift: a package Summary describes the artifact, and this release models
+# sevoflurane, isoflurane and desflurane only. README "What it does not
+# simulate" records the split and why (`PL-XF89`).
 description = "A deterministic simulator of volatile-anesthetic uptake and distribution, built for teaching. An educational tool, not a medical device: not for clinical prediction, dosing, or monitoring."
 readme = "README.md"
 license = "Apache-2.0"
