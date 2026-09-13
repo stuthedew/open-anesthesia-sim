@@ -12,6 +12,14 @@ computes that matrix exponential and nothing else: it carries no physiology,
 no units and no compartment names, so that the file which assembles $`A`$ can
 be read as the governing equations and this one can be read as arithmetic.
 
+`docs/MODEL.md` § "Selected method (as implemented)" is the step this serves,
+and says the same thing from the other side - that this module "computes
+$`\\exp(A\\Delta t)`$ and carries no physiology". **Nothing here implements a
+governing equation.** Every formula below is numerical method, and it is
+labelled as such rather than as physiology on purpose: a reader looking for the
+model should be sent to `governing_equations.py` and stop here only for the
+arithmetic that advances it.
+
 Moler and Van Loan survey nineteen ways to compute it and recommend none
 without qualification; the three paragraphs below say which one is taken here
 and why, against their analysis (Moler C, Van Loan C. Nineteen dubious ways

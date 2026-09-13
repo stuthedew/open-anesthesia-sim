@@ -54,7 +54,13 @@ class AlveolarCompartment:
 
     @property
     def concentration_fraction(self) -> float:
-        """Return the current alveolar concentration fraction."""
+        """The alveolar fraction $`F_A = M_A/V_A`$.
+
+        `docs/MODEL.md` § "Gas compartments" is the definition. The alveolar
+        capacity is $`V_A`$ with no partition coefficient, this being a gas
+        phase, which is why the division is by the volume itself where the
+        blood and tissue compartments divide by a `capacity_l`.
+        """
 
         return self.agent_amount_l / self.gas_volume_l
 

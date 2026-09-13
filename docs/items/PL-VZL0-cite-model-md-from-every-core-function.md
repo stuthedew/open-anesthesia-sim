@@ -3,12 +3,13 @@ id: PL-VZL0
 title: Cite MODEL.md from every core/ function implementing a governing equation, and restate the solved form the spec lacks
 priority: P2
 effort: S
-status: ready
+status: done
+closed: 2026-09-13
 classes: docs, refactor
 feature: core-domain-language
-touches: src/anesthesia_sim/core
+touches: src/anesthesia_sim/core, tools/doc_check.py
 added: 2026-09-03
-verify: uv run pytest && grep -qF 'docs/MODEL.md § "Tissue uptake and return"' src/anesthesia_sim/core/tissue.py
+verify: uv run pytest && grep -qF '`docs/MODEL.md` § "Tissue uptake and return"' src/anesthesia_sim/core/tissue.py
 ---
 
 **Problem.** `docs/MODEL.md` § "Selected method (as implemented)" names the five
@@ -76,3 +77,56 @@ much of this item is left.
 each solved form absent from the spec is stated once beside the code that
 implements it and nowhere else; `PL-X2XX`'s check resolves all of them; `make
 check` passes; and no modelled value changed.
+
+**Closed 2026-09-13. The scope re-measured after `PL-GS5X`, as the brief
+asked.** § "Selected method (as implemented)" now names exactly two modules -
+`core/governing_equations.py`, which assembles $`A`$, and
+`core/matrix_exponential.py`, which computes $`\\exp(A\\Delta t)`$ and carries no
+physiology. The five functions this item was written against are down to those
+two plus the capacity and time-constant properties, and the brief's prediction
+held: **no solved form needed restating.** The matrix assembly *is* the
+governing equations, entry by entry, and it already says so.
+
+Cited, all in the section-mark form so the gate reads them:
+
+- `TissueGroup.capacity_l` and `.time_constant_s` -> §§ "Tissue compartments",
+  "Tissue uptake and return";
+- `VenousBloodCompartment.capacity_l` and `.time_constant_s` -> §§ "Blood
+  compartments", "Venous blood";
+- `AlveolarCompartment.concentration_fraction` -> § "Gas compartments";
+- `build_system_matrix` and `UptakeEquationSettings` -> §§ "Governing
+  equations", "Selected method (as implemented)";
+- `TissueGroupEquationSettings.washin_rate_s` -> § "Tissue uptake and return".
+
+Each docstring states the expression as well as the pointer, which is the
+2026-09-03 inversion: the equation visible at the site is the deliverable and
+the citation is provenance. The two time constants now say what distinguishes
+them - $`\\lambda_{b:g}`$ cancels in the venous pool because the pool and the
+blood flowing through it are one phase - which is the question a reader of the
+two adjacent files actually has.
+
+`matrix_exponential.py` got the opposite treatment, per the brief: it is
+labelled **numerics, not physiology**, in as many words, so a reader looking
+for the model is sent back to `governing_equations.py`.
+
+**`build_system_matrix` already cited § "Governing equations" - in the
+possessive form, which `tools/doc_check.py` does not read.** It was unenforced
+prose, which is the exact failure this item exists to prevent, sitting in the
+one function that assembles the whole model. Converted.
+
+**This item was blocked on a check that did not do what it was believed to
+do.** The brief made `PL-X2XX` the prerequisite because "without it these
+citations are unenforced prose, and a section rename would silently orphan
+every one of them". `PL-X2XX` closed, but its pattern read `,` and `:` between
+a document and its quotation and not `§` - the form this brief mandates - so
+every citation written to this item's rule would have been invisible. `PL-V13T`
+fixed that first; mutation-checked here afterwards, pointing this item's own
+tissue citation at a section that does not exist, which now errors.
+
+**The `verify:` command was wrong and is corrected rather than worked around.**
+It grepped for `docs/MODEL.md § "..."` with no backticks around the path - the
+brief's markdown code span lost them - and `doc_check` only reads the
+**backticked** form, so the command specified a citation the gate cannot see.
+Corrected to the backticked form and run: it fails on `origin/main` and passes
+here. Both halves of the six-wrong-commands pattern in the `docket` skill, in
+one field: written away from the work, and never executed.
