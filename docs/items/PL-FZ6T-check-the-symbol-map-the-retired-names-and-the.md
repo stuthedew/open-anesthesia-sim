@@ -3,7 +3,7 @@ id: PL-FZ6T
 title: Check the symbol map, the retired names and the partition-coefficient rule, so core/ cannot drift back off the domain
 priority: P2
 effort: M
-status: blocked
+status: ready
 blocked-by: PL-9SH6
 classes: infra
 feature: core-domain-language
