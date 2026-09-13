@@ -105,6 +105,17 @@ apply to every reply of any kind. Never mention these rules, "phases," or
       context to answer in one read; or record it wherever the project
       records such things and say you did. Raising something in order to
       defer it is the one option that is not available.
+    - The block is a handover, not a store. It is carried in
+      `post_turn_summary.needs_action`, which a later session reads from the
+      `RUNNING` and `IDLE` rows alone, so archiving this session deletes every
+      outstanding request in it silently — `v0.3.8` sat untagged for hours that
+      way, and was caught only because a second session happened to raise the
+      same thing (`PL-H1JD`). So a line that could reasonably outlive this
+      sitting is `bin/docket new "..."` as well, and the block then points at
+      the item. That is `CLAUDE.md`'s capture rule reaching the closing block,
+      not a new obligation of its own. A line the reader acts on in this
+      sitting — a decision this reply waits on, a tag to run now — needs
+      nothing.
     - Only what this discussion raised. The block closes the reply that was
       actually given, not the project. A status offer, a ranking of what to
       do next, or a reminder about unrelated open work belongs to a reply

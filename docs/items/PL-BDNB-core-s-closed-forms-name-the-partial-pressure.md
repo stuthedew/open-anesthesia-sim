@@ -1,7 +1,12 @@
 ---
 id: PL-BDNB
 title: core/'s closed forms name the partial-pressure-equivalent fraction with bare _fraction locals, and integrated_circuit_fraction_s keeps the stutter PL-9SH6 removed from the accessor
-status: untriaged
+priority: P3
+effort: S
+status: needs-decision
+classes: refactor
+feature: core-domain-language
+touches: src/anesthesia_sim/core
 added: 2026-09-13
 ---
 
@@ -52,4 +57,22 @@ names the rule was written for.
 `concentration.py` and the `Fraction` `NewType` — the *representation* layer,
 one question with three parts. These are locals inside the equations and can
 be decided separately.
+**Why it matters.** One of the five entries above is worth a decision and the
+brief says which. `integrated_circuit_fraction_s` carries both defects
+`PL-9SH6` was written to remove - a short name for the
+partial-pressure-equivalent fraction, and a `circuit_` stutter on a
+`BreathingCircuit` method - and it is the one identifier in the closed forms
+that a reader who knows the domain would not guess, which is the bar
+`.claude/rules/core-domain.md` sets. The risk this item carries is the opposite
+one: that it becomes a five-site rename buying nothing, since a local bound two
+lines below the accessor it reads is not a translation step.
 
+**Done when.** A decision is recorded on `integrated_circuit_fraction_s` alone -
+renamed to the faithful form, or kept with the reason written where a reader of
+the closed form can see it - and the defensible locals are named as deliberately
+left, so this is not re-raised. The decision should also say something about
+`delivered_fraction` in `core/governing_equations.py`, which the brief marks as
+the weakest of them: bound at line 283 and last read at line 331, far enough
+that the accessor is no longer in the reader's eye.
+
+**Decision needed.** Is `integrated_circuit_fraction_s` renamed to the faithful `integrated_inspired_partial_pressure_fraction_s`, at 44 characters, or kept with its reason written beside it?

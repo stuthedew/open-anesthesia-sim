@@ -1,7 +1,12 @@
 ---
 id: PL-SPN6
 title: Three compartments now raise the same 'partial_pressure_fraction must be between 0 and 1', so a refused step no longer says which one refused
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, test
+feature: core-guard-coverage
+touches: src/anesthesia_sim/core, tests/unit/test_uptake_system_failure.py
 added: 2026-09-13
 ---
 
@@ -54,3 +59,15 @@ step, and a reader with a traceback has the frame.
 **Not blocked by anything.** The two items touch `core/validation.py` and
 would collide there, so whichever runs second resolves against the first;
 neither has to wait for the other, and this one is startable on its own.
+**Done when.** A decision is recorded among the three the brief weighs - a
+compartment-qualified name passed to the guard, an optional owner argument on
+`require_concentration_fraction`, or leaving the message as it is because the
+wrapped `SimulationNumericalError` already names the step - and whichever is
+chosen, the three assertions at `tests/unit/test_uptake_system_failure.py` lines
+216, 220 and 471 are made to pin the compartment that actually refused rather
+than a string three classes now share. The test half is owed under every answer:
+an assertion that would still pass if a different compartment refused first no
+longer proves what its name claims, and that file exists to keep a refused step
+diagnosable back to the invariant that broke.
+
+**Decision needed.** Does the guard take a compartment-qualified name, an optional owner argument, or neither - leaving the message as it is because the wrapped `SimulationNumericalError` already names the step?

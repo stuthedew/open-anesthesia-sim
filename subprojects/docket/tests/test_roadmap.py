@@ -31,6 +31,7 @@ from docket.roadmap import (
     parse_milestones,
     parse_timeline,
     parse_version_table,
+    scope_status,
     wave,
 )
 
@@ -465,7 +466,7 @@ def test_an_id_a_scope_bullet_names_only_to_exclude_it() -> None:
     sections = parse_milestones(SCOPE_BULLET_EXCLUSION_ROADMAP)
     section = next(one for one in sections if one.version == (0, 4, 0))
 
-    assert "PL-WXYZ" in section.required_scope_ids
+    assert "PL-WXYZ" in section.own_scope_ids
     assert milestone_scope(sections, section).placement("PL-WXYZ") == IN_SCOPE
     assert "PL-WXYZ" not in section.excluded_ids
 
@@ -487,8 +488,8 @@ def test_the_exclusion_heading_is_parsed_apart_from_required_scope() -> None:
     section = _section((0, 4, 0))
 
     assert section.excluded_ids == ("PL-Z7LY",)
-    assert section.required_scope_ids == ("PL-MNPQ",)
-    assert "PL-Z7LY" not in section.required_scope_ids
+    assert section.own_scope_ids == ("PL-MNPQ",)
+    assert "PL-Z7LY" not in section.own_scope_ids
 
 
 def test_the_scope_places_an_id_by_the_milestone_whose_section_names_it() -> None:
@@ -915,3 +916,105 @@ def test_a_shipped_milestone_no_longer_holds_what_it_placed() -> None:
 
     assert "v0.5.0" in states.released
     assert not states.ships_with("v0.5.0", "PL-GS3R")
+
+
+# --- the milestone's own scope, and the third way to reach a release ---------
+#
+# `PL-KD98`. Reading only the two version-order arrangements, a milestone
+# recording a gate *and* a `Required scope` could never reach the `release`
+# beat, whatever the state of that scope - and both v0.4.0 and v0.5.0 are that
+# shape. The fixture's v0.4.0 is too: its gate holds four ids and its
+# `Required scope` names `PL-MNPQ`, so closing the gate alone leaves the
+# milestone unfinished and closing `PL-MNPQ` as well finishes it.
+
+#: A scope id the store does not hold, added to the same subsection.
+_UNKNOWN_IN_SCOPE = ROADMAP.replace(
+    "A displayed clinical unit (queue item PL-MNPQ).",
+    "A displayed clinical unit (queue item PL-MNPQ), and one more (queue item PL-XQZ0).",
+)
+
+
+def test_the_scope_split_counts_ids_rather_than_entries() -> None:
+    """`Required scope` is prose with ids written into it, so there is no entry
+    to count - which is why `SECTION_ID_RE` reads the subsection in full and
+    why this is the only honest unit."""
+    section = next(s for s in parse_milestones(ROADMAP) if s.version == (0, 4, 0))
+
+    assert section.own_scope_ids == ("PL-MNPQ",)
+    assert section.scope_ids == ("PL-001", "PL-BCDF", "PL-GHJK", "PL-KLMN", "PL-MNPQ")
+
+    status = scope_status(section, frozenset(), KNOWN)
+    assert (status.closed, status.outstanding, status.unknown_ids) == ((), ("PL-MNPQ",), ())
+    assert not status.is_complete
+    assert scope_status(section, frozenset({"PL-MNPQ"}), KNOWN).is_complete
+
+
+def test_a_scope_id_the_store_does_not_hold_withholds_completeness() -> None:
+    """Read exactly as `GateStatus.unknown_ids` is: a typo or a file that never
+    existed leaves the id's state unknown rather than closed."""
+    plan = _wave("0.3.0", frozenset(GATE_IDS | {"PL-MNPQ"}), roadmap=_UNKNOWN_IN_SCOPE)
+
+    assert plan.own_scope is not None
+    assert plan.own_scope.unknown_ids == ("PL-XQZ0",)
+    assert not plan.own_scope.is_complete
+    assert plan.beat == IMPLEMENT
+
+
+def test_a_milestone_whose_own_scope_has_closed_is_a_release() -> None:
+    """The third arrangement, on the live shape: the gate is clear, the
+    milestone's `Required scope` has closed, and the project is standing on a
+    patch-track row - not a milestone, and carrying `-1` for its patch rather
+    than a release number.
+
+    That last part is why the arrangement cannot rest on `step`. `_current_step`
+    puts the project on the row after the last milestone it released, which here
+    is `v0.3.x` - so an arrangement reading `step.version` would have declined
+    on exactly the project that filed the item.
+    """
+    plan = _wave("0.3.0", frozenset(GATE_IDS | {"PL-MNPQ"}))
+
+    assert plan.step is not None and plan.step.kind == "patch-track"
+    assert plan.step.version == (0, 3, -1)
+    assert plan.gate is not None and plan.gate.is_clear
+    assert plan.own_scope is not None and plan.own_scope.is_complete
+    assert plan.beat == RELEASE
+    assert plan.subject == "v0.4.0 — the teachable case"
+
+
+def test_the_release_beat_carries_the_version_the_step_cannot_name() -> None:
+    """`release_offer` reads these rather than `plan.step`, which names no
+    version on the patch-track row the arrangement above stands on."""
+    plan = _wave("0.3.0", frozenset(GATE_IDS | {"PL-MNPQ"}))
+
+    assert (plan.release_version, plan.release_name) == ((0, 4, 0), "the teachable case")
+
+
+def test_an_unfinished_scope_leaves_the_beat_at_implement() -> None:
+    """The other half of the same test, and the cadence's ordinary case: the
+    gate cleared so the scope could be implemented, and it has not been."""
+    plan = _wave("0.3.0", frozenset(GATE_IDS))
+
+    assert plan.own_scope is not None and not plan.own_scope.is_complete
+    assert plan.beat == IMPLEMENT
+    assert (plan.release_version, plan.release_name) == (None, "")
+
+
+def test_gate_zeros_exception_still_wins_over_a_finished_scope() -> None:
+    """Order is load-bearing. Under Gate 0's exception the frozen list ships as
+    its own earlier version *first*, so a gated milestone whose scope happened
+    to be complete must not be offered ahead of the release its gate earned."""
+    plan = _wave("0.2.5", frozenset(GATE_IDS | {"PL-MNPQ"}))
+
+    assert plan.own_scope is not None and plan.own_scope.is_complete
+    assert plan.beat == RELEASE
+    assert plan.subject == "v0.3.0 — the foundation"
+    assert plan.release_version == (0, 3, 0)
+
+
+def test_a_milestone_recording_no_scope_subsection_has_no_split_to_report() -> None:
+    """v0.2.8's shape reaches `release` by the second arrangement, not this one,
+    and an empty scope is not a finished one."""
+    plan = _wave("0.3.0", frozenset(GATE_IDS), roadmap=_SELF_GATING)
+
+    assert plan.own_scope is None
+    assert plan.beat == RELEASE

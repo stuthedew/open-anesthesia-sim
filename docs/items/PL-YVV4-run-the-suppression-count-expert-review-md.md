@@ -1,8 +1,14 @@
 ---
 id: PL-YVV4
 title: Run the suppression count expert-review.md requires before any triage-bar change
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: planning
+feature: queue-hygiene
+touches: docs/items
 added: 2026-09-13
+verify: bin/docket check && grep -q '^## The count' docs/items/PL-YVV4-run-the-suppression-count-expert-review-md.md
 ---
 
 **Problem.** `.claude/rules/expert-review.md` requires that before proposing to
@@ -25,3 +31,15 @@ would have mattered. Note that 91% of open P3 items have never appeared in a
 commit touching a non-item file (6 of 70), which is a measure of *not yet
 worked*, not of *not real* - the distinction is the whole point of the count and
 it needs reading, not counting.
+## Triaged 2026-09-13
+
+`PL-VV6N` (decide a retention rule for items captured but never worked) already
+declares `blocked-by: PL-YVV4`, so the edge this count sits upstream of is in
+the store rather than only in prose. Nothing to add there.
+
+The `verify:` command looks for a `## The count` heading in this file. That is
+deliberate: the deliverable is the classification and the stated break-even
+recorded *here*, where the proposal resting on it can read them, not a number in
+a reply that no later session sees. `PL-LKGL` is the precedent - the count that
+killed the last tightening proposal is only reconstructable because it was
+written down.

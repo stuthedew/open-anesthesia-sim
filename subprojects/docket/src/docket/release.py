@@ -469,8 +469,9 @@ class ReleaseOffer:
     #: The version to cut. Under `RESERVED` it is the version *not* to cut:
     #: the one the bump arrived at and the plan has spoken for.
     version: str
-    #: The roadmap's own name for the step the answer turns on - "the workflow
-    #: works", not "v0.2.8". Empty under `STANDS`, where no step is involved.
+    #: The roadmap's own name for the step or milestone the answer turns on -
+    #: "the workflow works", not "v0.2.8". Empty under `STANDS`, where neither
+    #: is involved.
     milestone: str
 
 
@@ -484,18 +485,32 @@ def release_offer(ready: Readiness, plan: Wave | None) -> ReleaseOffer:
     from .roadmap import RELEASE
 
     suggested = ready.suggested_version.lstrip("v")
-    if plan is None or plan.step is None or plan.step.version is None:
+    if plan is None:
         return ReleaseOffer(STANDS, suggested, "")
 
-    planned = "{}.{}.{}".format(*plan.step.version)
-    if plan.beat == RELEASE:
+    if plan.beat == RELEASE and plan.release_version is not None:
         # The plan is itself asking for a release, so the only thing left to
         # disagree about is the number - and there the plan wins: it named the
         # version when the milestone was scoped, the bump inferred one from a
         # class label.
+        #
+        # Read from the beat rather than from `plan.step`, which names the
+        # version in two of the three release arrangements and not in the
+        # third: a milestone whose gate is clear and whose `Required scope` has
+        # closed is released while the project still stands on the patch-track
+        # row beneath it, and that row carries `(0, 4, -1)` - a track marker
+        # rather than a number anything can be cut at, which matches no
+        # suggestion and falls through to the bump's own arithmetic. Left on
+        # `step`, the digest offered `0.4.21` directly above a beat reading
+        # `release v0.5.0` (`PL-KD98`).
+        planned = "{}.{}.{}".format(*plan.release_version)
         if planned == suggested:
             return ReleaseOffer(STANDS, suggested, "")
-        return ReleaseOffer(PLANNED, planned, plan.step.name)
+        return ReleaseOffer(PLANNED, planned, plan.release_name)
+
+    if plan.step is None or plan.step.version is None:
+        return ReleaseOffer(STANDS, suggested, "")
+    planned = "{}.{}.{}".format(*plan.step.version)
     if planned == suggested:
         return ReleaseOffer(RESERVED, suggested, plan.step.name)
     return ReleaseOffer(STANDS, suggested, "")

@@ -857,6 +857,17 @@ list does not hold — cannot be closed by clearing this gate in any order, so i
 is counted apart and the beat asks for the rest. The entry stays on the list;
 the list is frozen, and this is a count of what it can be asked for today.
 
+Once that gate is clear it counts the milestone's own `Required scope` the same
+way, and the split decides the beat: ids still open leave an `implement`, and
+all of them closed leaves a `release`. Without it a milestone recording a gate
+*and* a scope could never reach `release` at all, whatever the state of that
+scope — it was neither of the two arrangements that had one, and the beat stayed
+`implement` on a finished milestone while the digest declined the cut. That
+count is strict where the gate's is not: a scope id waiting on work outside the
+milestone still holds the milestone, because it ships when its scope is done and
+not when the remainder is somebody else's fault, and an id the store does not
+hold withholds completeness rather than being guessed either way.
+
 The beat and the step also ride in `docket digest`, as one line. A command
 nobody runs unprompted does not change where "what next" gets answered from,
 and the queue nags every session while a roadmap nags none. One line is the

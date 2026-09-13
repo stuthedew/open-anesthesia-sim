@@ -3,10 +3,12 @@ id: PL-F0L8
 title: Establish what accessibility Flet's rendering backend can actually deliver
 priority: P3
 effort: M
-status: needs-decision
+status: dropped
 classes: planning
 feature: presentation-safety
 touches: ROADMAP.md, src/anesthesia_sim/app
+reason: Superseded by the Qt port. The investigation this item commissions is against Flet, which v0.5.1 replaces with PySide6; ROADMAP.md "Items this port moots or transforms" records that after the port the question is QAccessible's, a different investigation against a different backend. The surviving half - settling ROADMAP item 20 - is PL-QR6Q, blocked-by v0.5.1.
+closed: 2026-09-13
 added: 2026-09-02
 ---
 
@@ -66,3 +68,51 @@ achievable or file the items that close the gap.
 **Done when.** `ROADMAP.md` item 20 states what is achievable on this stack
 rather than what would be ideal, and the reasoning is recorded where a later
 session will find it before re-asking.
+
+## Dropped 2026-09-13: the investigation is against a backend the project has decided to replace
+
+**This is not a new decision. It is the disposition of one the project owner
+already took**, on 2026-09-10 when `v0.5.1` was scoped on `PL-QXSB`.
+`ROADMAP.md` § "Items this port moots or transforms" names this item outright
+and states the consequence: "**`PL-F0L8`** asks what accessibility Flet's
+rendering backend can deliver. After the port the question is `QAccessible`'s,
+which is a different investigation against a different backend."
+
+**Why it cannot simply wait for the port.** It is a Gate 1 entry, and that gate
+clears before `v0.5.0` begins — `v0.5.1` ships *after* `v0.5.0`. So there is no
+sequencing available that lets this item run against the backend it would need
+to run against. Deferring it would mean holding the gate open on work that can
+only ever be done wrong.
+
+**Why the two halves separate cleanly.** The item bundles an investigation with
+a roadmap question, and the port kills exactly one of them:
+
+- **The investigation** — what Flet/Flutter's synthesised semantics layer
+  exposes in each target — is worthless the day the port lands. Flutter draws
+  to a canvas and synthesises semantics; Qt exposes `QAccessible`, which bridges
+  to the platform accessibility API. A finding about one is not evidence about
+  the other.
+- **The commitment** — whether `ROADMAP.md` item 20 stays as written or is
+  narrowed — survives untouched. No toolkit change retires a promise about
+  keyboard navigation and screen-reader support.
+
+So the investigation is dropped and the commitment is re-pointed. **`PL-QR6Q`**
+carries it, `blocked-by: v0.5.1`, with the three questions rewritten against Qt
+and `pyqtgraph`.
+
+**`dropped`, not `done`**, on the precedent this roadmap sets for `PL-NGF7`:
+"Expected disposition when `v0.5.1` lands: `dropped`, not `done` — the port
+resolves it rather than any work on it. That is recorded now so a later session
+does not read a dropped item as one that was skipped." The same applies here,
+and the same sentence is the reason this block exists: nobody did the work, and
+nobody should.
+
+**What it differs from, and why that is not a precedent problem.** `PL-NGF7` is
+held open until the port proves the defect gone, because it is a defect whose
+disappearance is a fact about the shipped tree. This is an open *question*, and
+a question whose premise is void is answerable now.
+
+**Gate effect.** One entry leaves Gate 1 by the route its own definition of done
+allows — "`dropped` with its reason recorded" — rather than by deferral. Its
+Gate 1 line stays written where the freeze put it, per § "The gate is a
+snapshot, not a moving target".

@@ -1625,7 +1625,7 @@ def check_scope_exclusions(root: Path, report: Report) -> None:
     lines = text.splitlines()
     for section in parse_milestones(text):
         excluded = set(section.excluded_ids)
-        both = [identifier for identifier in section.required_scope_ids if identifier in excluded]
+        both = [identifier for identifier in section.own_scope_ids if identifier in excluded]
         if both:
             where = _subsection_line(section, lines, SCOPE_SUBSECTION)
             at = f":{where}" if where is not None else ""

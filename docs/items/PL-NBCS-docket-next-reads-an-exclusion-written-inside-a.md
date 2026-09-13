@@ -166,17 +166,27 @@ stage 3 at all: the `PL-WB0X` bullet's head already said "stages 1 and 2 only",
 so the excluding sentence was removed rather than reworded, and stage 3 is now a
 bullet under `### Explicitly out of scope for v0.4.0` carrying the same
 reasoning and the same attribution. `PL-B9PY` is out of v0.4.0's
-`required_scope_ids` and in its `excluded_ids`, confirmed by parsing.
+`own_scope_ids` and in its `excluded_ids`, confirmed by parsing.
 
 **The convention.** `ROADMAP.md` § "Development rules for scientific
 milestones" now states the rule, beside the frozen-Goal rule it resembles, with
 `PL-NBCS` cited for why it is written down rather than left to imitation.
 
-**The parser.** `MilestoneSection` gains `required_scope_ids` (the scope
-subsection alone, unmerged with the frozen list) and `excluded_ids`, with
+**The parser.** `MilestoneSection` gains `excluded_ids`, with
 `EXCLUDED_SUBSECTION` beside `SCOPE_SUBSECTION`. `scope_ids` is unchanged:
 placement does not care which structure placed an id, and only the scope
-subsection can contradict the exclusion heading.
+subsection can contradict the exclusion heading, so the check reads that
+subsection alone.
+
+**The scope-subsection field was added twice, independently, and the merge
+resolved it to one.** This branch added `required_scope_ids` for the
+contradiction check while `PL-KD98` added `own_scope_ids` on `#544` to ask
+whether a milestone's own content is finished — the same tuple under two names,
+computed twice. `own_scope_ids` won on the merge because it was already on the
+base with its own consumers, and renaming a landed field to suit a later branch
+is the more expensive half of the trade. Its docstring now records both readers,
+so the next session does not re-split it. Nothing else about either item
+changed.
 
 **The checks, in `tools/doc_check.py`** - which already imports `docket.roadmap`
 by path for exactly this reason, so the grammar has one home:

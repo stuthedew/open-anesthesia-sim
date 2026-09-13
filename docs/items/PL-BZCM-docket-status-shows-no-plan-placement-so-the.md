@@ -3,12 +3,14 @@ id: PL-BZCM
 title: docket status shows no plan placement, so the feature survey a session leads with cannot say which work the current step includes
 priority: P3
 effort: S
+status: done
 classes: defect, infra
 feature: planning-cadence
-touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py
-verify: uv run pytest subprojects/docket/tests/test_roadmap.py -k "status and scope"
-status: ready
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_release.py
 added: 2026-09-01
+closed: 2026-09-13
+pr: 544
+verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_status_marks_the_next_item_the_open_gate_names' subprojects/docket/tests/test_release.py
 ---
 
 **Problem.** `render.format_status` receives the `plan` and uses it only for
@@ -83,3 +85,49 @@ family; otherwise it clears at the next gate.
 The `verify:` selector matches no test today - `-k "status and scope"` exits 5
 against `test_roadmap.py` on 2026-09-01 - so the new tests have to carry both
 words, as `PL-Q2BJ`'s did.
+
+**Done.** The mark goes on the id, as triage settled, and on the loose block's
+ids as well as each feature row's `next:` — marking only the feature rows would
+have made an unmarked entry under `Outside any feature` read as unplaced when
+three of the five there are on the gate, which is a wrong inference the fix
+itself would have created. The feature rows are unmarked and unreordered, per
+**Where.**
+
+Four answers rather than three, because `Scope` already draws a distinction
+`placement()`'s three constants flatten: while a gate is open, the anchor's own
+`Required scope` sits in `later` under the anchor's own version, which is
+`OUT_OF_SCOPE` but is not "a later milestone names this". `placement_line`
+already handles that case in prose, and the tag mirrors it:
+
+| Tag | What it says |
+| --- | --- |
+| `[gate]` | on the anchor's frozen list, which is the current step |
+| `[after the gate]` | in the anchor's own `Required scope`, which clearing its gate comes before |
+| `[in scope]` | in the anchor's `Required scope`, its gate already clear |
+| `[v0.5.1]` | a later milestone's section places it |
+| unmarked | no section of the roadmap places the id |
+
+**The legend is the load-bearing half, and it is why no tag is drawn for the
+common case.** Twenty-four of this store's feature rows print a `next:` item and
+five of them are on the gate, so a tag on every row would bury the ones that
+matter; but an untagged row is then indistinguishable from one nobody looked at,
+which is exactly the silence `PL-J790` named in `docket next`'s reason lines and
+fixed there with a sentence per item. A sentence does not fit two dozen rows, so
+`_plan_header` defines the blank once, in two lines above the survey, naming
+only the tags the render actually drew.
+
+**Where it landed.** `placement_mark` and `PLACEMENT_MARKS` in
+`subprojects/docket/src/docket/plan.py`, beside `placement_line` rather than in
+`render.py`, because the two must agree on the *relation* and that is
+`scope.placement` in both — the same argument `placement_line`'s own docstring
+makes for not sharing its wording. `_plan_header` and the call sites are in
+`format_status`. `plan.py` is added to `touches`, which named only `render.py`
+and `test_roadmap.py`; the tests went to `test_release.py`, where the existing
+`format_status`-with-a-plan tests already live.
+
+**The `verify:` command was one of the broken ones.** `-k "status and scope"`
+selected nothing and exited 5, which reads as a command failing as intended and
+would have gone on reading that way after the work. Replaced with the paired
+shape the skill prescribes — the file's whole suite, and a `grep` for the test
+the work adds — run and watched fail first: five of the seven new tests fail
+against the unpatched `render.py`.
