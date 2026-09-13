@@ -1170,10 +1170,7 @@ Findings made while clearing this gate go to Gate 1, except `P0` and
   a private static method on a Flet view class, so the one function the
   specification reasons about cannot be read, cited or tested without loading
   the whole interface. Stage 2 lands before the chart work, which four items of
-  this milestone touch in the same place. Stage 3, the `SimulationView`
-  decomposition proper, is **not** in scope: it is queue item PL-B9PY and stays
-  at Gate 1, because only v0.5.0's side-by-side comparison of two branches
-  needs it (project owner, 2026-09-02).
+  this milestone touch in the same place.
 - **MAC multiples as a display unit** across every readout and both chart
   axes, alongside percent, with the agent's `mac_percent` provenance
   traceable from the display (queue item PL-DHV7).
@@ -1364,6 +1361,10 @@ v0.4.0 is complete only when:
   airway sampling delay, or any depth, BIS or effect-site model.
 - Horizontal panning of the chart window (queue item PL-Z7LY), which the
   fit-run scale makes optional rather than necessary.
+- Stage 3 of the interface layer's decomposition - the `SimulationView`
+  decomposition proper (queue item PL-B9PY). Stages 1 and 2 are in scope
+  above; stage 3 stays at Gate 1, because only v0.5.0's side-by-side
+  comparison of two branches needs it (project owner, 2026-09-02).
 
 ## v0.5.0 - the case you can branch
 
@@ -2777,6 +2778,19 @@ and say why. `PL-B9PY` is not moved, for the reason in its entry above.
   v0.4.0's three Goal bullets were fixed while the section still asserted them
   in the present tense, and one had been stale for two releases before anybody
   noticed there was no convention to breach.
+- **An exclusion is written under `Explicitly out of scope`, never inside a
+  `Required scope` bullet.** Those two subsections are the only structures
+  `bin/docket next` reads for membership, and it reads `Required scope` *in
+  full* - a milestone names what it covers in whatever grammar the sentence
+  wanted, so `"(queue item PL-DHV7)"` mid-bullet has to count. The cost of
+  reading it in full is that an id named inside a scope bullet **in order to
+  exclude it** is read as scope. `PL-NBCS` is why this is written down rather
+  than left to imitation: v0.4.0's stage-3 exclusion put `PL-B9PY` into
+  v0.4.0's `scope_ids`, and while v0.4.0 was the anchor `docket next` told
+  every session that Gate-1 work was what v0.4.0 was waiting on - stated as a
+  fact, with the milestone named. `tools/doc_check.py` fails an id named under
+  both headings of one milestone, and advises where a scope bullet carries
+  exclusion language.
 
 ## Keeping the toolchain current
 

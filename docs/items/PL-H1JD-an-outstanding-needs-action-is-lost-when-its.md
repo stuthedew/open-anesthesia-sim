@@ -7,9 +7,10 @@ status: done
 classes: infra
 feature: parallel-sessions
 touches: .claude/rules/instruction-writing.md
-verify: python3 tools/doc_check.py check && grep -qF 'The block is a handover, not a store.' .claude/rules/instruction-writing.md
-closed: 2026-09-13
 added: 2026-09-04
+closed: 2026-09-13
+pr: 545
+verify: python3 tools/doc_check.py check && grep -qF 'The block is a handover, not a store.' .claude/rules/instruction-writing.md
 ---
 
 **Problem.** An outstanding needs_action is lost when its session is archived,

@@ -3,13 +3,14 @@ id: PL-BZCM
 title: docket status shows no plan placement, so the feature survey a session leads with cannot say which work the current step includes
 priority: P3
 effort: S
+status: done
 classes: defect, infra
 feature: planning-cadence
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_release.py
-verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_status_marks_the_next_item_the_open_gate_names' subprojects/docket/tests/test_release.py
-status: done
 added: 2026-09-01
 closed: 2026-09-13
+pr: 544
+verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_status_marks_the_next_item_the_open_gate_names' subprojects/docket/tests/test_release.py
 ---
 
 **Problem.** `render.format_status` receives the `plan` and uses it only for

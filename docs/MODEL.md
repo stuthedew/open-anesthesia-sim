@@ -38,6 +38,175 @@ Version v0.1.0 is the first patient sevoflurane model—the “Sevo works” mil
 
 This is an educational model. It is not a clinical prediction, dosing tool, patient monitor, or medical device.
 
+## Intended use, and the safety class this project holds itself to
+
+The sentence above says what this is *not*. Both ISO 14971 and IEC 62304 begin
+from what a thing **is**, because intended use is what every later judgment
+about hazard and class is made against, so it is stated here rather than left
+to be inferred from the absence of a disclaimer (queue item `PL-BLHV`,
+2026-09-13).
+
+### Intended use
+
+This is a teaching simulator for volatile-agent uptake and distribution. It is
+intended for anesthesia clinicians, trainees, and students, to build intuition
+about how agent concentration moves between the breathing circuit, alveolar
+gas, blood, and the tissue groups under management the learner chooses — and
+in particular to make visible the compartments no clinical monitor displays:
+vessel-rich, muscle, fat, and mixed venous.
+
+**It is not intended for use with an identifiable patient's data.** The
+simulator is intended to be run on hypothetical or illustrative parameters. It
+is not intended for entering, importing, or reproducing the parameter values of
+an identifiable patient, and not intended to inform the management of a specific
+patient.
+
+The boundary is deliberately drawn at the *data* rather than at physical
+proximity to a patient, and the distinction is not pedantic. A simulator open on
+a workstation while a case runs is ordinary teaching and carries no hazard of its
+own; a run built from a particular patient's weight, age, and cardiac output is a
+prediction about that patient whatever the window is labelled. Proximity would
+forbid the first and permit the second, which is backwards. `ROADMAP.md`'s
+planned patient-covariate work makes the second reachable, so the boundary is
+recorded before that work rather than after it.
+
+### Software safety classification: Class C, for the whole application
+
+IEC 62304 § 4.3 assigns a software safety class from the severity of what a
+software failure could contribute to: **Class A** where no injury or damage to
+health is possible, **Class B** where injury is possible but not serious, and
+**Class C** where death or serious injury is possible. Annex B.4.3 is what makes
+the assignment turn on severity alone: where software sits in a sequence leading
+to a hazardous situation, the probability of the software failing is **set to 1**
+rather than estimated, so "this would rarely be wrong" is not an argument for a
+lower class.
+
+This project assigns **Class C uniformly, across the whole application**, and
+does not segment the interface layer into a lower class. The reasoning:
+
+- A lower class buys nothing here. Class A exists to *exempt* low-risk software
+  from detailed design, unit verification, and integration testing. This project
+  applies one quality gate to the whole tree, so there is nothing for the
+  exemption to exempt, and declaring Class C costs nothing while declaring
+  Class A for part of the tree would be a claim to defend.
+- Class A asserts that *no injury is possible*, which the interface layer cannot
+  assert. `CLAUDE.md` holds that presentation correctness is itself safety — the
+  correct number with the wrong units, label, patient context, stale state, or
+  model version is still a safety failure — and the interface is where the
+  halted-versus-paused distinction, the displayed-precision rule, the ISO 5360
+  agent colours, and the extreme-preserving decimation live.
+- The boundary does not sit still. `app/chart_series.py` looks like chrome and
+  decides what a trace asserts about a run; `app/theme.py` looks like styling and
+  carries agent identification. Drawing a class boundary through that would put
+  the line in a different place from the one this project already maintains.
+
+A split would pay only where the exempted surface is large, genuinely
+non-clinical, and its verification burden actually felt. That is a condition to
+watch for rather than a reason to build one now.
+
+### This is an engineering bar, not a regulatory status
+
+The class above is adopted the same way this project adopts WCAG 2.2 AA, which
+"Color contrast, and the standard this interface is held to" in this document
+describes as "chosen as the right engineering bar for a teaching tool, not as a
+compliance obligation". Nothing here claims conformance to IEC 62304, a quality
+management system, or any regulatory status, and no such claim should be read
+into it. Writing the class down is strictly more useful than leaving it
+implicit: it records the bar a reviewer can hold the code to.
+
+Device status is a separate question and is not what the class answers. FDA's
+published examples of software functions that are *not* medical devices include
+software intended for health care professionals as educational tools for medical
+training — with "games that simulate various cardiac arrest scenarios to train
+health professionals in advanced cardiopulmonary resuscitation (CPR) skills"
+given as a worked example ([FDA, Examples of Software Functions That Are NOT
+Medical Devices](https://www.fda.gov/medical-devices/device-software-functions-including-mobile-medical-applications/examples-software-functions-are-not-medical-devices),
+and the guidance "Policy for Device Software Functions and Mobile Medical
+Applications"). That exclusion turns on intended use rather than on which
+physiologic parameters the software accepts, and specifically on the software not
+facilitating a health professional's assessment of a *specific patient* — which
+is why the intended-use statement above is load-bearing rather than decorative,
+and why its boundary is drawn where it is.
+
+ISO 14971:2019 is the other half of the frame. It promoted **reasonably
+foreseeable misuse** from a passing reference in the 2007 edition to a defined
+term, and clause 5.2 makes documenting it an explicit requirement. Use of this
+simulator against the intended use above is exactly that category, which is why
+it is recorded as a stated boundary with mitigations rather than met with a
+stronger disclaimer.
+
+**On the sources for this section.** IEC 62304 and ISO 14971 are published
+standards and are not open access; the clause structure, the three class
+definitions, and Annex B.4.3's probability rule stated above were read from
+secondary summaries rather than from the standards' own text, and that is
+recorded here rather than implied. The FDA material was read at the source. A
+reviewer revising this section should check the standards directly; the
+conclusion (Class C, uniform) does not depend on the wording, but the clause
+numbers cited here do.
+
+## Reasonably foreseeable misuse, and the hazards the presentation carries
+
+Every other safety argument in this document runs one way: here is a decision,
+here is why it is sound. This section runs the other way — here is how a reader
+could be misled, here is what stops it, here is the test holding the stop
+(queue item `PL-FDBK`, 2026-09-13).
+
+The direction matters because the two find different defects. Arguing forward
+finds the mistakes you thought to look for; asking what has *not* been excluded
+is what found `PL-VYXP` (a mass-balance baseline anchored to an implicit zero)
+and `PL-B32L` (I/O exceptions escaping this model's documented error hierarchy),
+neither of which had surfaced across roughly two hundred queue items, because a
+queue records decisions taken rather than harms not yet ruled out.
+
+ISO 14971:2019 makes this a requirement rather than a nicety: it promoted
+**reasonably foreseeable misuse** to a defined term and, in clause 5.2, made
+documenting it explicit. Use of this simulator against the intended use above is
+that category, so it appears here as a row with a mechanism and a mitigation
+rather than as a stronger disclaimer.
+
+**Every row names the test that holds it, or says plainly that it has none.**
+`tools/doc_check.py` fails when a test named anywhere in this document does not
+resolve to a test that exists, so the right-hand column cannot rot into
+decoration. What the check cannot judge is whether the test is any good; that
+stays a reviewer's question.
+
+| A reader could be misled into | What stops it | Held by |
+| --- | --- | --- |
+| reading a correct concentration as belonging to a different agent | agent colour is a redundant cue, never the sole identifier: the agent name is always visible, and the ISO 5360 colours and their accessible foregrounds are audited as one unit in `src/anesthesia_sim/app/theme.py` by `tools/agent_identity_check.py` | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
+| reading a run halted by a failure as one the user paused | a halt gets its own status words rather than falling back to "Paused", and the two failure modes are distinguished from each other as well | `test_refresh_view_reports_a_failed_run_as_stopped_not_paused`, `test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed` |
+| believing a setting above the vaporizer maximum was simulated | such a setting is **rejected, not clamped**, so no run proceeds on a value the user did not choose; the boundary itself is accepted | `test_rejects_delivered_concentration_above_the_vaporizer_maximum`, `test_explicit_delivered_concentration_above_the_agent_max_is_rejected`, `test_accepts_delivered_concentration_exactly_at_the_vaporizer_maximum` |
+| reading a displayed value as resolved to its last digit | displayed precision is a recorded choice within a justified band, and the model retains precision the display discards rather than rounding its own state | `test_the_model_keeps_precision_the_display_throws_away`, `test_concentration_decimals_are_a_choice_within_a_recorded_band` |
+| reading a control mark on the timeline as a measurement | the timeline labels its marks "Settings only — not a measurement." | `test_the_interface_says_a_control_mark_is_an_input_not_a_measurement` |
+| reading a modelled compartment value as a measured one | **partially mitigated; see below** | none for the readouts and chart |
+
+### The row that is only partly mitigated
+
+The last row is the one worth reading closely, because its mitigation is
+incomplete and this section exists to say so rather than to imply otherwise.
+
+Three statements exist and they do not cover the same surface. `README.md`
+states that "Every value on screen is a model output, never a measurement" — but
+a learner running the application never opens it. The control-input timeline
+carries "Settings only — not a measurement.", which is exact and covers the
+marks only. And the interface's own standing notice is an **educational-use**
+disclaimer, which tells a reader what the tool is *for* rather than how to read
+a number on it.
+
+Nothing in the interface tells a reader that the compartment readouts and the
+chart traces are modelled predictions rather than measurements. That is
+precisely the distinction this project's value depends on: the compartments it
+exists to display — vessel-rich, muscle, fat, mixed venous — are the ones no
+monitor shows, so there is no measured counterpart a reader could mistake them
+against, and the polish of the display argues the other way.
+
+The project owner has agreed the interface should carry an interpretation
+statement distinct from the use disclaimer (2026-09-13). The wording and its
+placement are an interface change rather than a specification one, so they are
+tracked as queue item `PL-2K1R`; the pattern to follow is the timeline's
+existing phrasing, which is short, sits beside the thing it qualifies, and says
+what the value *is* rather than what the user must not do. This row is updated
+to name that test once it lands.
+
 ## Purpose
 
 The milestone must demonstrate:
