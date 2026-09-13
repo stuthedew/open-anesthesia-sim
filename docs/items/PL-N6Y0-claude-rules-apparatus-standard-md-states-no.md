@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: documentation-standard
+milestone: v0.4.18
 touches: .claude/rules/apparatus-standard.md
 added: 2026-09-13
 closed: 2026-09-13

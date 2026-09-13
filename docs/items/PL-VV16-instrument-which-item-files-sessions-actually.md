@@ -1,14 +1,16 @@
 ---
 id: PL-VV16
 title: Instrument which item files sessions actually open, and whether citation edges are ever traversed
-status: done
-added: 2026-09-13
-closed: 2026-09-13
 priority: P2
 effort: M
+status: done
 classes: infra
 feature: worker-instructions
+milestone: v0.4.18
 touches: .claude/hooks/item_read_log.py, .claude/settings.json, tools/item_reads.py, docket.toml, docs/ARCHITECTURE.md, tests/unit/test_item_read_log.py
+added: 2026-09-13
+closed: 2026-09-13
+pr: 527
 verify: python3 tools/item_reads.py && grep -q 'item_read_log.py' .claude/settings.json
 ---
 

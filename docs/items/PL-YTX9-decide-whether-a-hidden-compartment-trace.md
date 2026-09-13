@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: ux
 feature: teachable-case
+milestone: v0.4.18
 touches: src/anesthesia_sim/app/simulation_view.py
 added: 2026-09-04
 closed: 2026-09-13
+pr: 524
 verify: uv run pytest tests/unit/test_simulation_view.py -q && python3 -c "import pathlib; t=' '.join(pathlib.Path('src/anesthesia_sim/app/simulation_view.py').read_text().split()); raise SystemExit(0 if 'keeps its line-style words while it is off' in t else 1)"
 ---
 
