@@ -2224,7 +2224,7 @@ The implementation must preserve the following invariants:
 - partition coefficients are finite and positive;
 - tissue flow fractions sum to one within tolerance;
 - stored agent amounts remain finite and nonnegative;
-- derived concentration fractions remain finite and nonnegative;
+- derived partial-pressure-equivalent fractions remain finite and within 0 through 1;
 - no compartment creates agent spontaneously;
 - internal transfers remove and add equal amounts;
 - identical runs produce identical state and history, element for element,

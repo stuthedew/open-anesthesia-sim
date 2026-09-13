@@ -3,11 +3,12 @@ id: PL-B667
 title: MODEL.md's required invariants say derived fractions stay finite and nonnegative, but core/ enforces the upper bound of 1 in five places and the list never states it
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: core-domain-language
 touches: docs/MODEL.md
 added: 2026-09-13
+closed: 2026-09-13
 verify: python3 tools/doc_check.py check && grep -qF 'derived partial-pressure-equivalent fractions remain finite and within 0 through 1' docs/MODEL.md
 ---
 
@@ -104,3 +105,20 @@ P1, a band that has to keep meaning "a clinician could be misled".
 core-domain-language` puts it in the `v0.4.x` track, "the code is the model",
 with `PL-FZ6T` and `PL-9SH6`; `ROADMAP.md`'s row for that track records that it
 "freezes no gate and takes no section of its own" (project owner, 2026-09-05).
+
+**Landed 2026-09-13 on `PL-FZ6T`'s branch, one line as scoped.** The invariant
+now reads "derived partial-pressure-equivalent fractions remain finite and
+within 0 through 1", which takes the upper bound and `PL-9SH6`'s vocabulary in
+the same edit. The optional second line was not added: the rollback it would
+have stated is already carried by the "a simulation step that cannot be
+completed leaves every dynamic value, and simulation time, exactly as the last
+completed step left them" invariant four lines below, and a second statement of
+one guarantee is the drift this list exists to prevent.
+
+Checked for contradiction across the document, as the brief required: the seven
+other uses of "nonnegative" in `docs/MODEL.md` are about transfer rates, the
+Metzler propagator, stored agent amounts, washout and the three input ranges
+`core/supported_ranges.py` declares. None is about a derived fraction, so
+nothing else needed changing. No code changed — the guarantee already held in
+the five places the brief counted.
+

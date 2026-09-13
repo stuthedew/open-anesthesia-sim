@@ -9,6 +9,7 @@ feature: project-introduction
 touches: README.md, pyproject.toml
 added: 2026-09-06
 closed: 2026-09-13
+pr: 524
 verify: python3 -c "import pathlib; r=' '.join(pathlib.Path('README.md').read_text().split()); p=' '.join(pathlib.Path('pyproject.toml').read_text().split()); raise SystemExit(0 if 'The scope word differs between this page and the package' in r and 'a package Summary describes the artifact' in p else 1)"
 ---
 

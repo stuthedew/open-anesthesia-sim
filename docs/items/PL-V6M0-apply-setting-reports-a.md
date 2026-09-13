@@ -8,6 +8,7 @@ classes: safety, anticipated
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
 added: 2026-09-13
 closed: 2026-09-13
+pr: 526
 verify: uv run pytest tests/unit/test_simulation_view.py -q && grep -q 'def test_a_settings_execution_error_halts_the_run_instead_of_reading_as_refused' tests/unit/test_simulation_view.py
 ---
 

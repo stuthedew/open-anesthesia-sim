@@ -3,12 +3,13 @@ id: PL-FZ6T
 title: Check the symbol map, the retired names and the partition-coefficient rule, so core/ cannot drift back off the domain
 priority: P2
 effort: M
-status: ready
+status: done
 blocked-by: PL-9SH6
 classes: infra
 feature: core-domain-language
-touches: tools, tests/unit
+touches: tools, tests/unit, Makefile, .github/workflows, docs/ARCHITECTURE.md, docket.toml
 added: 2026-09-03
+closed: 2026-09-13
 verify: uv run pytest tests/unit/ && grep -rq 'def test_symbol_code_cell_must_resolve' tests/unit/
 ---
 
@@ -82,3 +83,53 @@ It belongs here rather than on its own because this item is what makes a spec
 sentence enforceable: the corrected invariant is a line a check written here can
 read. Landing the sentence without the check is how it drifts again, which is
 the failure this whole item exists to prevent.
+
+**Built as `tools/core_vocabulary_check.py`, 2026-09-13.** Three decisions the
+brief left open, and what settled each.
+
+**A new script rather than three rules inside `tools/doc_check.py`.** The brief
+said to decide by whether the AST parse of `core/` fits there without distorting
+it, and it does not: `doc_check.py` is invoked by a bare `python3` in both `make
+check` and `.github/workflows/quality.yml`'s floor section, which is the section
+that *proves* the standard-library-only promise by running these tools under the
+3.11 floor. `core/` targets the version `.python-version` pins, and
+`ast.parse`'s `feature_version` only ever narrows the syntax accepted, so a
+parse of `core/` cannot run at the floor. The new script therefore joins
+`contrast_check.py`, `agent_identity_check.py`, `import_boundary_check.py` and
+`workflow_paths_check.py` under `uv run python`, and is deliberately absent from
+the floor section for the same reason they are (`PL-Y0RZ`, `PL-L17Q`).
+
+**Rule 3's "in order" is decided by a declared phase ordering, not a closed list
+of permitted pairs.** `PHASES` is `("gas", "blood", "tissue")`, read outward
+from the gas phase, and an identifier must name the outer phase first — which is
+the order the symbol writes, so `tissue_blood_partition_coefficient` is
+$`\lambda_{i:b}`$ and cannot be read as its own reciprocal. An ordering was
+taken over a list of pairs because it admits a legitimately new pair with no
+edit while still refusing every reciprocal; a new *phase* — oil, rubber, soda
+lime — is one entry. Whatever precedes the two phases is a qualifier naming
+which instance (`fat_tissue_gas_partition_coefficient`) and is unconstrained,
+because it says nothing about which phases the ratio is between.
+
+**Rule 2 matches whole identifiers, and two live names are why.**
+`require_concentration_fraction` in `core/validation.py` and
+`BreathingCircuit.circuit_volume_l` each contain the text of a retired accessor.
+Neither is one: the first is the [0, 1] guard every renamed setter calls and is
+`PL-6KNM`'s open question, the second is the stutter `PL-9SH6` deliberately left
+to `PL-KZS3`. A substring rule would have failed the tree on the day it landed,
+over two names nobody has agreed to change, which is the shape of a check that
+gets suppressed rather than obeyed. `RETIRED_NAMES` is therefore the transcribed
+list from `PL-9SH6`'s table and nothing is inferred from the tree — a name that
+has been removed leaves nothing behind to read.
+
+**All three were watched failing against the real tree**, not only against the
+suite's synthetic ones: one Symbols cell repointed at `concentration_fraction`,
+`AlveolarCompartment.partial_pressure_fraction` renamed back, and
+`tissue_blood_partition_coefficient` written as its reciprocal. Each reported
+the file, the line and the fix; the second and third tripped rule 1 as well,
+which is the Code column doing its job.
+
+**Vacuous passing is an error.** An empty `core/` tree and an unreadable Symbols
+table — a renamed heading or a renamed column — are both reported rather than
+passed over, because a rule that inspects nothing otherwise reports success
+indistinguishable from the real thing.
+

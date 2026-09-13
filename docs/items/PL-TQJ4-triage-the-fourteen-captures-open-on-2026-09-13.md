@@ -9,6 +9,7 @@ feature: queue-hygiene
 touches: docs/items
 added: 2026-09-13
 closed: 2026-09-13
+pr: 526
 verify: test -z "$(grep -l '^status: untriaged' docs/items/*.md)"
 ---
 

@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: docs/MODEL.md, tests/reference/test_control_resolution.py
 added: 2026-09-07
 closed: 2026-09-13
+pr: 524
 verify: uv run pytest tests/reference/test_control_resolution.py -q && python3 -c "import pathlib; t=' '.join(pathlib.Path('docs/MODEL.md').read_text().split()); raise SystemExit(0 if 'Second worst | Margin' in t and 'bound over the three manoeuvres' in t else 1)"
 ---
 

@@ -1,14 +1,15 @@
 ---
 id: PL-NB35
 title: Give docket a bounded startup tier carrying failed approaches and why they failed
-status: done
-added: 2026-09-13
-closed: 2026-09-13
 priority: P2
 effort: M
+status: done
 classes: infra
 feature: worker-instructions
 touches: docs/dead-ends.md, tools/dead_ends.py, .claude/hooks/docket-digest.sh, Makefile, docket.toml, docs/ARCHITECTURE.md, tests/unit/test_dead_ends.py
+added: 2026-09-13
+closed: 2026-09-13
+pr: 527
 verify: python3 tools/dead_ends.py check && grep -q 'dead_ends.py" emit' .claude/hooks/docket-digest.sh
 ---
 

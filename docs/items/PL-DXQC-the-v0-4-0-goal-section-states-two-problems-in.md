@@ -9,6 +9,7 @@ feature: planning-cadence
 touches: ROADMAP.md
 added: 2026-09-04
 closed: 2026-09-13
+pr: 524
 verify: python3 -c "import pathlib; t=' '.join(pathlib.Path('ROADMAP.md').read_text().split()); raise SystemExit(0 if 'Goal is frozen at scoping and dated there' in t else 1)"
 ---
 

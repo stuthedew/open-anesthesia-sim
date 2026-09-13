@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: .claude/skills/docket, subprojects/docket
 added: 2026-09-13
 closed: 2026-09-13
+pr: 528
 verify: uv run pytest -q subprojects/docket/tests/test_plan.py && grep -rq 'def test_an_unplaced_item_says_the_roadmap_places_it_nowhere' subprojects/docket/tests/
 ---
 

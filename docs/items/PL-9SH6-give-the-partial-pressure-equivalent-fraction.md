@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/core, src/anesthesia_sim/app, tests, spikes/qt, docs
 blocked-by: PL-H46J
 added: 2026-09-03
 closed: 2026-09-13
+pr: 520
 verify: uv run pytest -q tests/unit/test_alveolar.py tests/unit/test_blood.py tests/unit/test_circuit.py tests/unit/test_patient.py tests/unit/test_tissue.py && grep -q 'def partial_pressure_fraction' src/anesthesia_sim/core/alveolar.py
 ---
 
