@@ -117,6 +117,81 @@ def test_finished_work_is_unreleased_until_a_version_stamps_it() -> None:
     assert [i.identifier for i in unreleased([fresh, shipped])] == ["PL-1111"]
 
 
+def test_a_resumed_cut_folds_its_own_stamps_back_in() -> None:
+    """PL-1MKQ: without this the re-run ships only what the first run missed."""
+    from docket.release import unreleased
+
+    fresh = _item("PL-1111", milestone="")
+    stamped = _item("PL-2222", milestone="v0.2.6")
+    other = _item("PL-3333", milestone="v0.2.5")
+
+    assert [i.identifier for i in unreleased([fresh, stamped, other])] == ["PL-1111"]
+    assert [i.identifier for i in unreleased([fresh, stamped, other], "v0.2.6")] == [
+        "PL-1111",
+        "PL-2222",
+    ]
+
+
+def test_notes_are_read_from_the_bullet_leader_and_not_from_the_whole_line(tmp_path: Path) -> None:
+    """An item's title quotes other ids, and every one of them is not a claim.
+
+    Reading every id in the file made 20 of this project's 37 healthy releases
+    read as inconsistent, because a title like "PL-2GQW PL-L9JS's reason rests
+    on the claim PL-20CQ disproved" names three items and ships one.
+    """
+    from docket.release import notes_by_version
+
+    notes = tmp_path / "docs" / "releases"
+    notes.mkdir(parents=True)
+    (notes / "v0.2.6.md").write_text(
+        "## v0.2.6 - 2026-08-24\n\n### defect\n\n"
+        "- PL-1111 PL-2222's reasoning rests on what PL-3333 disproved - #48\n",
+        encoding="utf-8",
+    )
+
+    assert notes_by_version(tmp_path) == {"v0.2.6": frozenset({"PL-1111"})}
+
+
+def test_a_project_with_no_notes_directory_reads_as_having_written_none(tmp_path: Path) -> None:
+    from docket.release import notes_by_version
+
+    assert notes_by_version(tmp_path) == {}
+
+
+def test_a_milestone_no_notes_file_records_is_an_interrupted_cut() -> None:
+    from docket.release import unrecorded_milestones
+
+    items = [_item("PL-1111", milestone="v0.2.6")]
+    notes = {"v0.2.5": frozenset({"PL-9999"})}
+
+    assert unrecorded_milestones(items, notes, "0.2.5") == ["v0.2.6"]
+    assert unrecorded_milestones(items, {"v0.2.6": frozenset({"PL-1111"})}, "0.2.5") == []
+
+
+def test_a_release_cut_before_the_project_wrote_notes_is_not_judged() -> None:
+    """This project's v0.2.2 shipped eleven items before `docs/releases/` existed."""
+    from docket.release import unrecorded_milestones
+
+    items = [_item("PL-1111", milestone="v0.2.2")]
+
+    assert unrecorded_milestones(items, {"v0.2.3": frozenset()}, "0.4.15") == []
+
+
+def test_a_first_release_interrupted_before_any_notes_exist_is_still_found() -> None:
+    """The directory offers no floor on a first cut, so the version is the floor."""
+    from docket.release import unrecorded_milestones
+
+    items = [_item("PL-1111", milestone="v0.2.6"), _item("PL-2222", milestone="v0.1.0")]
+
+    assert unrecorded_milestones(items, {}, "0.2.5") == ["v0.2.6"]
+
+
+def test_nothing_is_judged_with_neither_notes_nor_a_version_to_measure_against() -> None:
+    from docket.release import unrecorded_milestones
+
+    assert unrecorded_milestones([_item("PL-1111", milestone="v0.2.6")], {}, "") == []
+
+
 def test_readiness_reports_what_would_ship_and_what_it_completes() -> None:
     from docket.plan import Feature  # noqa: F401  (documents the coupling)
     from docket.release import readiness

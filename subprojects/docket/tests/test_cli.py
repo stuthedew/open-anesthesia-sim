@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from docket import cli
 from docket.checks import brief_gaps
 from docket.cli import build_parser, main, merge_shared
 from docket.vcs import FlightReport, lost, records_on_base
@@ -868,7 +869,7 @@ def test_no_git_skips_the_release_guards_entirely(tmp_path: Path) -> None:
 def test_a_version_file_the_bump_rejects_leaves_the_items_unstamped(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """PL-DL1X: a release records all of itself or none of it.
+    """PL-DL1X: a bump the version file rejects strands no stamp.
 
     Every item was stamped before the version moved, so a version file the
     bump rejects left the store recording a release that never happened - and
@@ -910,6 +911,167 @@ RELEASE_ROADMAP = """# Roadmap
 
 What it is.
 """
+
+
+class _ContainerLost(Exception):
+    """The container going away part way through a write, as a raisable thing.
+
+    Not `KeyboardInterrupt`, which pytest treats as a signal to abandon the
+    whole session rather than as a failure a test can assert on. What the
+    tests below need is only that the writes stop part way and the tree is
+    left in the state that leaves.
+    """
+
+
+def _interruptible_repo(tmp_path: Path, count: int) -> Path:
+    """A release repository holding `count` finished items instead of one."""
+    root = _release_repo(tmp_path, "v0.2.5")
+    for index in range(count - 1):
+        identifier = f"PL-E{index}E{index}"
+        (root / "items" / f"done-{index}.md").write_text(
+            DONE.replace("PL-D1D1", identifier).replace(
+                "title: A finished item", f"title: Another finished item {index}"
+            ),
+            encoding="utf-8",
+        )
+    return root
+
+
+def _interrupt_after(monkeypatch: pytest.MonkeyPatch, written: int) -> None:
+    """Stop `cmd_release`'s stamp loop part way through, as a lost container does."""
+    real = cli.write_item
+    seen = 0
+
+    def stop(*args: object, **kwargs: object) -> Path:
+        nonlocal seen
+        if seen >= written:
+            raise _ContainerLost("the container went away")
+        seen += 1
+        return real(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(cli, "write_item", stop)
+
+
+def test_a_cut_interrupted_inside_the_stamp_loop_is_resumed_whole(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-1MKQ: the re-run used to cut a short release under the full one's name.
+
+    The stamps are written a file at a time and the notes after the whole
+    loop, so an interruption inside it leaves work stamped for a release that
+    does not exist. `unreleased` reads a stamped item as already shipped, so
+    the second run saw only the remainder, wrote notes naming it, bumped and
+    exited 0 - a 33-item release recorded as 7, which a person caught by
+    reading the two counts side by side and no check would have caught at all.
+    """
+    root = _interruptible_repo(tmp_path, 4)
+    _interrupt_after(monkeypatch, 3)
+
+    with pytest.raises(_ContainerLost):
+        main(["release", "0.2.6", "--items", str(root / "items")])
+
+    stamped = [
+        path
+        for path in (root / "items").glob("*.md")
+        if "milestone: v0.2.6" in path.read_text(encoding="utf-8")
+    ]
+    assert len(stamped) == 3
+    assert not (root / "docs" / "releases" / "v0.2.6.md").exists()
+    assert 'version = "0.2.5"' in (root / "pyproject.toml").read_text(encoding="utf-8")
+
+    monkeypatch.undo()
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+
+    out = capsys.readouterr().out
+    assert "Resuming an interrupted cut of v0.2.6: 3 of these 4 item(s)" in out
+    assert "4 finished item(s)" in out
+    notes = (root / "docs" / "releases" / "v0.2.6.md").read_text(encoding="utf-8")
+    assert sorted(re.findall(r"^- (PL-\S+)", notes, re.M)) == [
+        "PL-D1D1",
+        "PL-E0E0",
+        "PL-E1E1",
+        "PL-E2E2",
+    ]
+    assert 'version = "0.2.6"' in (root / "pyproject.toml").read_text(encoding="utf-8")
+
+
+def test_a_cut_interrupted_after_its_bump_still_writes_the_notes_it_owes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The other side of the loop, and the one that used to have no way forward.
+
+    Every item stamped and the version moved leaves nothing unreleased at all,
+    so the re-run reported "Nothing to release" and exited 0 while the release
+    it was asked for had no notes. The untagged guard would have refused it
+    first, naming the version being finished as one that shipped without a tag.
+    """
+    root = _interruptible_repo(tmp_path, 3)
+
+    # The one call `cmd_release` makes between `bump.write()` and the notes
+    # write, so raising here leaves exactly the state that gap leaves.
+    def stop(version: str) -> str:
+        raise _ContainerLost("the container went away")
+
+    monkeypatch.setattr(cli, "notes_name", stop)
+    with pytest.raises(_ContainerLost):
+        main(["release", "0.2.6", "--items", str(root / "items")])
+    monkeypatch.undo()
+
+    assert 'version = "0.2.6"' in (root / "pyproject.toml").read_text(encoding="utf-8")
+    assert not (root / "docs" / "releases" / "v0.2.6.md").exists()
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+    notes = (root / "docs" / "releases" / "v0.2.6.md").read_text(encoding="utf-8")
+    assert notes.count("\n- PL-") == 3
+
+
+def test_a_different_version_is_refused_while_a_cut_is_unfinished(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Two numbers over one unfinished cut makes both sets of notes wrong."""
+    root = _interruptible_repo(tmp_path, 4)
+    _interrupt_after(monkeypatch, 2)
+    with pytest.raises(_ContainerLost):
+        main(["release", "0.2.6", "--items", str(root / "items")])
+    monkeypatch.undo()
+
+    assert main(["release", "0.2.7", "--items", str(root / "items")]) == 1
+
+    out = capsys.readouterr().out
+    assert "A cut of v0.2.6 was interrupted" in out
+    assert "make release VERSION=0.2.6" in out
+    assert not (root / "docs" / "releases" / "v0.2.7.md").exists()
+
+
+def test_check_reports_a_release_whose_notes_were_never_written(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The detection half, which holds wherever the resume is not re-run."""
+    root = _interruptible_repo(tmp_path, 4)
+    (root / "docs" / "releases").mkdir(parents=True)
+    (root / "docs" / "releases" / "v0.2.5.md").write_text("## v0.2.5\n", encoding="utf-8")
+    _interrupt_after(monkeypatch, 3)
+    with pytest.raises(_ContainerLost):
+        main(["release", "0.2.6", "--items", str(root / "items")])
+    monkeypatch.undo()
+
+    assert main(["check", "--items", str(root / "items"), "--today", "2026-08-24"]) == 1
+
+    out = capsys.readouterr().out
+    assert "3 item(s) carry `milestone: v0.2.6`" in out
+    assert "docs/releases/v0.2.6.md was never written" in out
+
+
+def test_check_reports_notes_that_name_work_the_store_does_not_stamp(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The milder inverse, and the same two files disagreeing."""
+    root = _release_repo(tmp_path, "v0.2.5")
+    notes = root / "docs" / "releases"
+    notes.mkdir(parents=True)
+    (notes / "v0.2.5.md").write_text("## v0.2.5\n\n- PL-D1D1 A finished item\n", encoding="utf-8")
+
+    assert main(["check", "--items", str(root / "items"), "--today", "2026-08-24"]) == 1
+    assert "names 1 item(s) that do not carry `milestone: v0.2.5`" in capsys.readouterr().out
 
 
 def test_a_cut_release_names_the_roadmap_edits_it_did_not_write(

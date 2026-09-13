@@ -27,7 +27,7 @@ from datetime import date
 from .config import Config
 from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item
 from .plan import OfferedReport
-from .release import SEMVER_RE, version_key
+from .release import NOTES_DIR, SEMVER_RE, notes_name, unrecorded_milestones, version_key
 from .roadmap import MilestoneStates
 from .store import ID_PATTERN, ID_RE, filename_for
 from .vcs import ClosureReport, LostReport, PullRequestHistory, RecordReport
@@ -488,6 +488,78 @@ def _check_milestones(report: Report, version: str | None) -> None:
                 "cut; `docket release` stamps this field when the release goes "
                 "out, and until then a stamped item is left out of that release's "
                 "own notes"
+            )
+
+
+def _named(identifiers: list[str], limit: int = 8) -> str:
+    """List ids for a reader, and stop before the list stops being readable."""
+    shown = ", ".join(identifiers[:limit])
+    rest = len(identifiers) - limit
+    return f"{shown} and {rest} more" if rest > 0 else shown
+
+
+def _check_release_notes(
+    report: Report, notes: dict[str, frozenset[str]] | None, version: str | None
+) -> None:
+    """Hold each release's notes to the items stamped with its milestone.
+
+    One release is recorded in two places - the `milestone:` on every item it
+    shipped, and the notes file naming them - written by one command in one
+    run, and until now nothing compared them. So an interruption between the
+    two halves left them disagreeing with nothing to say so: a cut of v0.4.15
+    stamped 26 items and died, and the re-run read those as already shipped,
+    cut the remaining 7 under the same name and exited 0. Only the two printed
+    counts, 33 from the dry run and 7 from the cut, distinguished it from a
+    correct 7-item release, and a person read them side by side (`PL-1MKQ`).
+
+    Both directions are errors, and the first is the dangerous one. Work
+    stamped with a release whose notes do not name it is shipped work with no
+    record - and a tag makes that permanent. Notes naming work that carries no
+    stamp is the milder inverse, but it is the same file pair disagreeing and
+    it is equally decidable.
+
+    Reported per release rather than per item. The inconsistency is a property
+    of the release - "this shipped 33 items and its notes name 7" - and saying
+    it 26 times would bury the number that matters.
+
+    Measured before it was made an error: across 37 releases and 231 items,
+    36 agree exactly and the 37th is v0.2.2, which shipped before
+    `docs/releases/` existed and is below the floor `unrecorded_milestones`
+    derives. So this costs nothing on a healthy store, which is the test a
+    check has to pass to earn a place in every run.
+
+    `None` is a caller that did not ask, which is every command but `check`.
+    """
+    if notes is None:
+        return
+    stamped_by_name: dict[str, list[Item]] = {}
+    for item in report.items:
+        if item.milestone:
+            stamped_by_name.setdefault(item.milestone.strip(), []).append(item)
+
+    for name in unrecorded_milestones(report.items, notes, version or ""):
+        stamped = sorted(item.identifier for item in stamped_by_name[name])
+        report.errors.append(
+            f"{len(stamped)} item(s) carry `milestone: {name}` but "
+            f"{NOTES_DIR}/{notes_name(name)} was never written, so that release has no "
+            f"record of what it shipped: {_named(stamped)}. That is what an interrupted "
+            f"`docket release` leaves; re-run the cut of {name}, which picks the stamped "
+            "items back up rather than shipping only the remainder"
+        )
+
+    for name, named in sorted(notes.items(), key=lambda pair: version_key(pair[0])):
+        carried = {item.identifier for item in stamped_by_name.get(name, [])}
+        if missing := sorted(carried - named):
+            report.errors.append(
+                f"{NOTES_DIR}/{notes_name(name)} does not name {len(missing)} item(s) "
+                f"stamped `milestone: {name}`, so {name} shipped work its own notes have "
+                f"no record of: {_named(missing)}"
+            )
+        if unstamped := sorted(named - carried):
+            report.errors.append(
+                f"{NOTES_DIR}/{notes_name(name)} names {len(unstamped)} item(s) that do "
+                f"not carry `milestone: {name}`, so the notes and the store disagree about "
+                f"what {name} shipped: {_named(unstamped)}"
             )
 
 
@@ -1603,6 +1675,7 @@ def analyze(
     lost: LostReport | None = None,
     version: str | None = None,
     milestones: MilestoneStates | None = None,
+    notes: dict[str, frozenset[str]] | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
@@ -1624,6 +1697,10 @@ def analyze(
     vX.Y.Z` asks - whether that milestone exists, and whether it has been
     scoped. Omitting it leaves both halves unjudged rather than guessed, which
     is what a bare checkout with no roadmap gets.
+
+    `notes` is what each cut release's notes file says it shipped, which is
+    the other half of a record the store holds one half of. Like the rest, a
+    caller that does not supply it leaves the comparison unmade.
     """
     settings = config or Config()
     ids = offered.ids if offered is not None else None
@@ -1634,6 +1711,7 @@ def analyze(
     _check_feature_spellings(report)
     _check_filenames(report)
     _check_milestones(report, version)
+    _check_release_notes(report, notes, version)
     _check_provenance(report, history)
     _check_landed(report, landed)
     _check_selects_nothing(report, landed, ids)
