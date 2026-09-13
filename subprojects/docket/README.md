@@ -1871,6 +1871,10 @@ from.
 rather than a convenience. This directory has its own `pyproject.toml`, so
 `uv` builds a **second** environment from a lockfile it resolves on the spot -
 and the tests then pass against a dependency set nobody reviewed and CI never
-runs, which is a weaker answer wearing the same green tick. It leaves `.venv/`
-and `uv.lock` behind, both of them ignored, so nothing in `git status` says it
-happened (`PL-8PT6`).
+runs, which is a weaker answer wearing the same green tick. It leaves a
+private virtual environment and a second lockfile behind, both of them
+ignored, so nothing in `git status` says it happened (`PL-8PT6`).
+
+Named in prose rather than by path, deliberately: both are ignored, so a
+citation to either resolves on a developer's machine and fails in a clean
+checkout, which is a check that passes locally and reddens CI.
