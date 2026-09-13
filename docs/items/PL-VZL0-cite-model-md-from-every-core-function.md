@@ -4,11 +4,13 @@ title: Cite MODEL.md from every core/ function implementing a governing equation
 priority: P2
 effort: S
 status: done
-closed: 2026-09-13
 classes: docs, refactor
 feature: core-domain-language
+milestone: v0.4.16
 touches: src/anesthesia_sim/core, tools/doc_check.py
 added: 2026-09-03
+closed: 2026-09-13
+pr: 512
 verify: uv run pytest && grep -qF '`docs/MODEL.md` § "Tissue uptake and return"' src/anesthesia_sim/core/tissue.py
 ---
 

@@ -4,10 +4,12 @@ title: Five Gate 1 entries are deferred to the Qt port at v0.5.1 by owner decisi
 priority: P2
 effort: S
 status: done
-closed: 2026-09-13
 classes: defect, planning
+milestone: v0.4.16
 touches: docs/items/, ROADMAP.md
 added: 2026-09-13
+closed: 2026-09-13
+pr: 512
 verify: bin/docket check && [ "$(grep -l '^blocked-by: v0.5.1' docs/items/PL-3355-*.md docs/items/PL-Q4VH-*.md docs/items/PL-THXF-*.md docs/items/PL-TG60-*.md docs/items/PL-W8DQ-*.md | wc -l)" = 5 ]
 ---
 

@@ -4,11 +4,13 @@ title: docs/MODEL.md still names sevoflurane specifically in section headings an
 priority: P2
 effort: M
 status: done
-closed: 2026-09-13
 classes: defect, docs
 feature: model-spec-accuracy
+milestone: v0.4.16
 touches: docs/MODEL.md
 added: 2026-09-02
+closed: 2026-09-13
+pr: 512
 verify: python3 tools/doc_check.py check && ! grep -q '^## Conservation of sevoflurane' docs/MODEL.md
 ---
 
