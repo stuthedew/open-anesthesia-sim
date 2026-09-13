@@ -1,14 +1,15 @@
 ---
 id: PL-HKF4
 title: doc_check's tag advisory prints `<merge commit>`, which a shell reads as redirection, so pasting it fails with "no such file or directory: merge" instead of tagging
-status: ready
+status: done
 added: 2026-09-03
+closed: 2026-09-13
 priority: P2
 effort: S
 classes: defect, infra
 feature: dev-tooling
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/SKILL.md
-verify: uv run pytest subprojects/docket/tests/test_cli.py && ! grep -rq '<merge commit>' subprojects/docket/src/docket/cli.py .claude/skills/docket/SKILL.md
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/SKILL.md, subprojects/docket/README.md
+verify: uv run pytest subprojects/docket/tests/test_cli.py && ! grep -rq 'commit>' subprojects/docket/src/docket/cli.py .claude/skills/docket/SKILL.md subprojects/docket/README.md
 ---
 
 **Problem.** `tools/doc_check.py:1273` prints the tag command as
@@ -73,3 +74,23 @@ worked example in `.claude/skills/docket/SKILL.md` contains a `<...>`
 placeholder a shell reads as redirection, and `subprojects/docket/tests/test_cli.py`
 asserts the replacement rather than the old string. `tools/doc_check.py` is out
 of scope: `PL-R7C0` retired the advisory that printed it there.
+
+**Worked.** Five sites, not the three **Where.** lists - the line numbers had
+moved and the sweep found two more. `cli.py` prints `MERGE_COMMIT` on the
+release cut and `RELEASE_COMMIT` on the untagged-release refusal, each with an
+inline comment saying which commit it means, and `--limit N` in place of
+`--limit <n>` in the `concurrent` overflow line. `subprojects/docket/README.md`
+carried the same `docket record` form and is fixed with it; `touches` widened
+to name it.
+
+The `SKILL.md` recovery block took a shell variable rather than a bare token,
+and this is the one place where a token would have been worse than the bracket
+it replaced: `git checkout -B BRANCH origin/main` *succeeds*, creating a branch
+literally named `BRANCH`, where the bracketed form at least failed. With
+`BRANCH=...` on the first line both commands fail when it is unset and the
+block is paste-and-run when it is set.
+
+The brief's `SKILL.md:607` tag example needed nothing: it already reads
+`git tag -a v0.3.0 origin/main`. Prose *referring* to `origin/<branch>` as a
+concept (`:243`, `:253`) is left alone - it is not a command anybody pastes,
+and rewriting it would read worse.

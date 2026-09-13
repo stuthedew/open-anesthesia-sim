@@ -35,6 +35,35 @@ from .verify import LandedReport, reads_check_output, reenters_verify
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
 DONE_WHEN = "**Done when.**"
+DECISION_NEEDED = "**Decision needed.**"
+
+#: What a status demands beyond what every triaged item owes, paired with the
+#: rule as `bin/docket triage` states it. One table, read by the checks below and
+#: by `render._triage_rules`, because a requirement enforced and never printed
+#: costs a round trip on every pass that sets the status - the session writes the
+#: edit, runs `make docket`, and finds out afterwards. `PL-F4JS` was the
+#: `needs-decision` entry: enforced since the status existed, absent from the
+#: rules block the `docket` skill calls complete, and found the expensive way.
+#:
+#: Only statuses a triage pass can set. `ready` has its own rule, printed
+#: conditionally on `verify_required_from`, and `done` is not a triage outcome.
+STATUS_REQUIREMENTS: tuple[tuple[str, str], ...] = (
+    (
+        "needs-decision",
+        f"an item set to `needs-decision` needs a `{DECISION_NEEDED}` section saying "
+        "what has to be decided, so a later session can answer it.",
+    ),
+    (
+        "blocked",
+        "an item set to `blocked` needs a `blocked-by` naming the item or milestone "
+        f"that would unblock it, and is exempt from `{DONE_WHEN}`.",
+    ),
+    (
+        "dropped",
+        "an item set to `dropped` needs a `reason` and a `closed` date - dropping an "
+        "item closes it.",
+    ),
+)
 
 # A heading, as the item format writes one: `**` at the start of a line. Used
 # to find where one section stops rather than to validate the heading itself,
@@ -361,10 +390,10 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
         )
     if item.status == "blocked" and not item.blocked_by:
         report.errors.append(f"{where}: marked blocked but names no blocking item or milestone")
-    if item.status == "needs-decision" and not _section_text(item.body, "**Decision needed.**"):
+    if item.status == "needs-decision" and not _section_text(item.body, DECISION_NEEDED):
         report.errors.append(
             f"{where}: marked needs-decision but states no decision to make; add a "
-            "**Decision needed.** line so a later session can answer it"
+            f"{DECISION_NEEDED} line so a later session can answer it"
         )
     if item.verify and "\n" in item.verify:
         report.errors.append(f"{where}: `verify` must be a single-line command")

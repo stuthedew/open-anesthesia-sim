@@ -3,12 +3,13 @@ id: PL-VP40
 title: docket verify reads per-commit patches, so a line a branch added and then removed still reads as added
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: dev-tooling
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, tests/unit/test_ignore_check.py
 added: 2026-09-05
-verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_line_added_then_removed_is_not_reported_as_added' subprojects/docket/tests/test_verify.py
+closed: 2026-09-13
+verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_suppression_added_and_then_removed_is_not_reported' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** `_diff_text` in `subprojects/docket/src/docket/verify.py` runs
@@ -45,3 +46,20 @@ readings, and it costs no new git call.
 it in a later one passes the "no suppression added" check, and one that removes
 an assertion and restores it passes "no existing assertion removed", with a
 test for each shape.
+
+**Worked.** `_added_lines` and `_removed_lines` are replaced by one
+`_net_line_changes`, which folds cancelling lines per file by *count* rather
+than by set membership - so a file whose patches remove one `# type: ignore`
+and add two still reports one added, which is the direction that would matter
+if it broke. It also reads the diff once where the two helpers read it twice.
+
+A line merely *moved* within a file cancels too, which was not in the brief
+and is the right answer to both questions the checks ask: the suppression was
+already there, and the assertion still is. The fold is applied to the
+no-commits path as well as to the concatenation, for that reason.
+
+`tests/unit/test_ignore_check.py` is in `touches` because the two new fixtures
+broke it: it asserted that exactly *one* line of `test_verify.py` writes a
+`type: ignore` inside a string literal, where what it means to say - and now
+does, for every such line - is that a literal occurrence is not counted as a
+directive. The tokenizer in `tools/ignore_check.py` was already right.

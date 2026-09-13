@@ -3,12 +3,13 @@ id: PL-YNCW
 title: docket new --touches before the title swallows it, because nargs='*' is greedy and the error names the title instead
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-02
-verify: uv run pytest subprojects/docket/tests/test_cli.py -k new_captures && grep -q 'def test_touches_before_title' subprojects/docket/tests/test_cli.py
+closed: 2026-09-13
+verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_touches_before_the_title_no_longer_swallows_it' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** `bin/docket new --feature parallel-sessions --touches path "Some
@@ -33,3 +34,19 @@ reason is legible.
 
 **Done when.** Either the argument order works, or the error says why it did
 not.
+
+**Worked.** Took the option the brief ranked second, not the one it called
+smallest: `--touches` is now one comma-separated value (`action="append"`,
+repeatable), never variadic, so the brief's own reproduction works instead of
+explaining itself. `.claude/rules/expert-review.md` decides it - "favor
+interfaces that prevent errors over interfaces that merely warn after an
+error occurs" - and the comma form is how `touches` is spelled in the item
+file anyway. No space-separated form was documented anywhere, so nothing
+promised was broken.
+
+That leaves one new way to lose a path - space-separating it, so the second
+lands in the title - and it would be silent, capturing an item called
+`src/b.py`. `_reads_as_a_path` refuses it: one token, no whitespace, and
+either a `/` or a short lowercase extension, and only when `--touches` was
+also given. A title anybody meant to write has a space in it, which is the
+test that keeps the rule from refusing a real one.

@@ -495,10 +495,46 @@ def cmd_new(args: argparse.Namespace) -> int:
     separate command turns a thirty-second capture into a conversation.
     """
     directory, items, _ = _load(args)
+    # The `--touches` order that used to fail loudly now parses, so the one way
+    # left to lose a path is to space-separate it and have it land in the title.
+    # Refused rather than written, because the alternative is a silently captured
+    # item called `controller.py` (`PL-YNCW`).
+    strays = [title for title in args.title if _reads_as_a_path(title)]
+    if args.touches and strays:
+        print(
+            f"'{strays[0]}' reads as a path rather than a title, so nothing was "
+            "written. `--touches` takes one comma-separated value "
+            "(`--touches a.py,b.py`) and may be repeated; a space-separated second "
+            "path lands in the title instead."
+        )
+        return 1
     taken = {item.identifier for item in items}
     for title in args.title:
         taken.add(_capture(directory, title, taken, args))
     return 0
+
+
+def _declared_touches(values: list[str] | None) -> tuple[str, ...]:
+    """`--touches` as the item file spells it: comma-separated, in order, no blanks."""
+    paths: list[str] = []
+    for value in values or ():
+        paths.extend(part.strip() for part in value.split(",") if part.strip())
+    return tuple(paths)
+
+
+def _reads_as_a_path(title: str) -> bool:
+    """Whether a title is really a `--touches` value that landed in the wrong place.
+
+    Narrow deliberately: one token with no whitespace, and either a directory
+    separator or a short lowercase extension. A title anybody meant to write has
+    a space in it, so the rule cannot refuse one that was intended.
+    """
+    if not title or any(character.isspace() for character in title):
+        return False
+    if "/" in title:
+        return True
+    stem, dot, suffix = title.rpartition(".")
+    return bool(stem and dot and suffix.isalpha() and suffix.islower() and len(suffix) <= 4)
 
 
 def _capture(directory: Path, title: str, taken: set[str], args: argparse.Namespace) -> str:
@@ -510,7 +546,7 @@ def _capture(directory: Path, title: str, taken: set[str], args: argparse.Namesp
         effort="",
         status="untriaged",
         classes=(),
-        touches=tuple(args.touches or ()),
+        touches=_declared_touches(args.touches),
         blocked_by=(),
         feature=args.feature or "",
         milestone="",
@@ -709,7 +745,7 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
         print()
         print(f"Outside the batch is not refused: {count} more items share a file with")
         print("something above, which orders the work rather than forbidding it.")
-        print("`docket concurrent --limit <n>` fills the batch out with them.")
+        print("`docket concurrent --limit N` fills the batch out with them.")
     _say_unread(flight)
     return 0
 
@@ -927,8 +963,7 @@ def cmd_feature(args: argparse.Namespace) -> int:
         state = "complete" if feature.is_complete else f"{len(feature.open_items)} left"
         print(f"{feature.name}: {len(feature.done)}/{len(feature.items)} done ({state})")
         for item in feature.items:
-            mark = "x" if item.status == "done" else " "
-            print(f"  [{mark}] {item.identifier} {item.title}")
+            print(f"  [{render.progress_mark(item)}] {item.identifier} {item.title}")
     return 0
 
 
@@ -946,8 +981,7 @@ def cmd_milestone(args: argparse.Namespace) -> int:
         state = "complete" if milestone.is_complete else f"{len(milestone.outstanding)} outstanding"
         print(f"{milestone.name}: {len(milestone.done)}/{len(milestone.items)} done ({state})")
         for item in milestone.items:
-            mark = "x" if item.status == "done" else " "
-            print(f"  [{mark}] {item.identifier} {item.title}")
+            print(f"  [{render.progress_mark(item)}] {item.identifier} {item.title}")
     return 0
 
 
@@ -1140,7 +1174,13 @@ def _hand_off(root: Path, config: Config, name: str) -> str:
     lines.append("Then:")
     lines.append(f"  {config.check_command}")
     lines.append("  review the diff and commit")
-    lines.append(f'  git tag -a {name} <merge commit> -m "{name}"')
+    # A bare token, never an angle-bracketed placeholder: a shell reads the
+    # opening bracket as input redirection from a file named `merge`, so pasting
+    # the line answered "no such file or directory: merge" and never reached git
+    # at all - naming neither git, nor the tag, nor the thing that is missing.
+    # `MERGE_COMMIT` fails as `fatal: Failed to resolve 'MERGE_COMMIT'`, which
+    # does (`PL-HKF4`).
+    lines.append(f'  git tag -a {name} MERGE_COMMIT -m "{name}"   # the merge commit on main')
     lines.append(f"  git push origin {name}")
     return "\n".join(lines)
 
@@ -1258,7 +1298,7 @@ def _untagged_warning(version: str) -> str:
             "with any confidence. Tag it first:",
             "",
             f'  git log --oneline --grep="Release {name}"   # find the commit',
-            f'  git tag -a {name} <commit> -m "{name}"',
+            f'  git tag -a {name} RELEASE_COMMIT -m "{name}"   # the commit found above',
             f"  git push origin {name}",
         ]
     )
@@ -1751,7 +1791,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     new = add("new", "capture one or more ideas")
     new.add_argument("title", nargs="+")
-    new.add_argument("--touches", nargs="*", help="paths the work is expected to reach")
+    # One comma-separated value, repeatable - never variadic. `nargs="*"` made
+    # `--touches path "Some title"` consume the title and then report the title as
+    # missing, which named the one thing that had been supplied. Comma-separated
+    # is also how `touches` is spelled in the item file (`PL-YNCW`).
+    new.add_argument(
+        "--touches",
+        action="append",
+        metavar="A.PY,B.PY",
+        help="comma-separated paths the work is expected to reach; may be repeated",
+    )
     new.add_argument("--feature", default=None, help="group this with related work")
     new.set_defaults(func=cmd_new)
 

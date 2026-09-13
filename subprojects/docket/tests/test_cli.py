@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from docket import cli
-from docket.checks import brief_gaps
+from docket.checks import STATUS_REQUIREMENTS, brief_gaps
 from docket.cli import build_parser, main, merge_shared
 from docket.vcs import FlightReport, lost, records_on_base
 from docket.verify import LANDED_GUARD
@@ -69,6 +69,105 @@ def test_new_captures_several_ideas_in_one_call(
     written = sorted(store.glob("*.md"))
     assert len(written) == 2
     assert len({p.name.split("-")[1] for p in written}) == 2
+
+
+def test_touches_before_the_title_no_longer_swallows_it(tmp_path: Path) -> None:
+    """The capture path is the one place in this project meant to be frictionless.
+
+    `--touches` was `nargs="*"`, so it consumed the title and argparse then
+    reported the title as missing - naming the one thing that had been supplied.
+    Capture has to work when usage is nearly spent and a thought is one
+    interruption from gone, so a plausible argument order failing is friction in
+    exactly the wrong place (`PL-YNCW`).
+    """
+    store = _store(tmp_path)
+
+    # The brief's own reproduction, unquoted path and all: under `nargs="*"` this
+    # raised `SystemExit` from argparse's "the following arguments are required:
+    # title", having just been handed one.
+    exit_code = _run(
+        "new",
+        "--feature",
+        "parallel-sessions",
+        "--touches",
+        "src/a.py",
+        "Some title",
+        "--items",
+        str(store),
+    )
+
+    assert exit_code == 0
+    written = sorted(store.glob("*.md"))
+    assert len(written) == 1
+    body = written[0].read_text()
+    assert "title: Some title" in body
+    assert "touches: src/a.py" in body
+    assert "feature: parallel-sessions" in body
+
+
+def test_touches_may_be_repeated_as_well_as_comma_separated(tmp_path: Path) -> None:
+    """Both spellings reach the same field, so neither order has to be remembered."""
+    store = _store(tmp_path)
+
+    assert (
+        _run(
+            "new",
+            "--touches",
+            "src/a.py",
+            "--touches",
+            "src/b.py,src/c.py",
+            "One idea",
+            "--items",
+            str(store),
+        )
+        == 0
+    )
+
+    assert "touches: src/a.py, src/b.py, src/c.py" in next(store.glob("*.md")).read_text()
+
+
+def test_a_space_separated_second_path_is_refused_rather_than_captured_as_a_title(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The failure the parser fix would otherwise have made silent.
+
+    With `--touches` no longer variadic, a space-separated second path lands in
+    the title, which would capture an item called `src/b.py` and write it. A loud
+    refusal naming the value is the only acceptable outcome; the rule is narrow
+    enough that a title anybody meant to write cannot trip it, because a real
+    title has a space in it (`PL-YNCW`).
+    """
+    store = _store(tmp_path)
+
+    exit_code = _run(
+        "new", "--touches", "src/a.py", "src/b.py", "Some title", "--items", str(store)
+    )
+
+    assert exit_code == 1
+    assert list(store.glob("*.md")) == []
+    output = capsys.readouterr().out
+    assert "src/b.py" in output
+    assert "reads as a path rather than a title" in output
+    assert "--touches a.py,b.py" in output
+
+
+def test_a_title_with_a_space_is_never_read_as_a_path(tmp_path: Path) -> None:
+    """The guard above may not refuse an ordinary capture that mentions a file."""
+    store = _store(tmp_path)
+
+    assert (
+        _run(
+            "new",
+            "--touches",
+            "src/a.py",
+            "src/controller.py holds the run's storage as well",
+            "--items",
+            str(store),
+        )
+        == 0
+    )
+
+    assert len(list(store.glob("*.md"))) == 1
 
 
 def test_a_captured_idea_needs_no_priority(tmp_path: Path) -> None:
@@ -1087,7 +1186,32 @@ def test_a_cut_release_names_the_roadmap_edits_it_did_not_write(
     assert "still marked" in out
     assert "still names v0.2.5" in out
     assert "make check" in out
-    assert 'git tag -a v0.2.6 <merge commit> -m "v0.2.6"' in out
+    assert 'git tag -a v0.2.6 MERGE_COMMIT -m "v0.2.6"' in out
+
+
+def test_no_command_the_release_prints_carries_a_shell_redirection(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A placeholder a shell eats is worse than no placeholder at all.
+
+    `git tag -a v0.3.1 <merge commit> -m "v0.3.1"` never reached git: a shell
+    reads `<merge` as input redirection from a file named `merge`, so zsh answered
+    "no such file or directory: merge", which names neither git nor the tag nor
+    the thing that is missing. The advisory fires once per release at the moment
+    somebody is copying it, and the release cannot be finished until the tag lands
+    (`PL-HKF4`).
+
+    Asserted over every indented command line rather than over the one string, so
+    a placeholder added to a different instruction is caught too.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+    (root / "ROADMAP.md").write_text(RELEASE_ROADMAP, encoding="utf-8")
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+
+    for line in capsys.readouterr().out.splitlines():
+        if line.startswith("  git ") or line.startswith("  make "):
+            assert "<" not in line and ">" not in line, line
 
 
 def test_a_release_whose_roadmap_is_already_written_says_nothing_is_owed(
@@ -1205,6 +1329,53 @@ def test_triage_states_the_rules_the_answers_must_satisfy(
     assert "`verify:` command" in output
 
 
+def test_triage_states_the_rules_a_chosen_status_adds(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The block is presented as complete, so an enforced rule missing from it misleads.
+
+    `checks.py` errors on an item at `needs-decision` with no `**Decision
+    needed.**` section, and the rules block never said so - a session that
+    trusted it wrote the edit, ran `make docket` and found out afterwards
+    (`PL-F4JS`). The same held for the two `dropped` fields and for
+    `blocked-by`.
+    """
+    _triage(tmp_path, UNTRIAGED, READY)
+    output = capsys.readouterr().out
+
+    for status, rule in STATUS_REQUIREMENTS:
+        assert rule in output, f"the {status} rule is enforced but not printed"
+
+
+@pytest.mark.parametrize("status", [status for status, _ in STATUS_REQUIREMENTS])
+def test_every_status_rule_the_triage_block_prints_is_one_check_enforces(
+    tmp_path: Path, status: str
+) -> None:
+    """The table is prose; this is what stops it drifting from the checker.
+
+    Printing a rule nobody enforces is the same defect as enforcing one nobody
+    prints - both leave a session unable to trust the block - so each entry is
+    pinned to a refusal here rather than to the wording of `checks.py`.
+    """
+    document = f"""---
+id: PL-S1S1
+title: An item at a status that demands more of it
+priority: P2
+effort: S
+status: {status}
+classes: perf
+touches: a.py
+added: 2026-08-01
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+    assert _run("check", "--items", str(_store(tmp_path, document))) == 1
+
+
 def test_triage_leaves_a_project_that_declares_no_protected_paths_alone(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1224,6 +1395,75 @@ def test_triage_decides_nothing_and_writes_nothing(
 
     assert (store / "item-0.md").read_text() == before
     assert "priority: " not in capsys.readouterr().out
+
+
+def _featured(identifier: str, status: str, **extra: str) -> str:
+    """One item carrying a feature, at the status a progress listing has to draw."""
+    fields = {
+        "id": identifier,
+        "title": f"An item that is {status}",
+        "priority": "P2",
+        "effort": "S",
+        "status": status,
+        "classes": "perf",
+        "feature": "chart-readout",
+        "touches": "a.py",
+        "added": "2026-08-01",
+        **extra,
+    }
+    front = "".join(f"{key}: {value}\n" for key, value in fields.items())
+    return f"---\n{front}---\n\n**Problem.** x\n**Why it matters.** y\n**Done when.** z\n"
+
+
+def test_feature_draws_a_dropped_entry_distinctly_from_an_open_one(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Counting the boxes has to reproduce the two figures printed above them.
+
+    `bin/docket feature teachable-case` printed "18/28 done (9 left)" over ten
+    empty boxes: the tenth was `dropped`, correctly outside both counts and drawn
+    identically to the nine that were open. A reader counting to check the number
+    gets the wrong answer and cannot tell which of the two is lying (`PL-VFVW`).
+    """
+    store = _store(
+        tmp_path,
+        _featured("PL-D0D0", "done", closed="2026-08-10"),
+        _featured("PL-O0O0", "ready"),
+        _featured("PL-X0X0", "dropped", closed="2026-08-11", reason="superseded"),
+    )
+
+    assert _run("feature", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert "chart-readout: 1/3 done (1 left)" in output
+    assert "[x] PL-D0D0" in output
+    assert "[ ] PL-O0O0" in output
+    assert "[-] PL-X0X0" in output
+    # The counts and the marks are now two renderings that agree: one `[x]` for
+    # the numerator, one `[ ]` for what is left, three lines for the denominator.
+    assert output.count("[x]") == 1
+    assert output.count("[ ]") == 1
+
+
+def test_milestone_draws_a_dropped_entry_distinctly_too(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The milestone listing counts by the same two rules and drew the same box.
+
+    Fixed from one author rather than twice, so the next status added cannot
+    reach one listing and miss the other.
+    """
+    store = _store(
+        tmp_path,
+        _featured("PL-D1D1", "done", milestone="v0.9.0", closed="2026-08-10"),
+        _featured("PL-X1X1", "dropped", milestone="v0.9.0", closed="2026-08-11", reason="no"),
+    )
+
+    assert _run("milestone", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert "[x] PL-D1D1" in output
+    assert "[-] PL-X1X1" in output
 
 
 def test_triage_says_so_when_nothing_is_waiting(

@@ -3,12 +3,13 @@ id: PL-NB4D
 title: '`docket verify` reports "1 commit(s)" when the work it just checked is entirely uncommitted'
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: dev-tooling
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-02
-verify: uv run pytest subprojects/docket/tests/test_verify.py -k uncommitted && grep -q 'def test_uncommitted_work_is_not_reported_as_a_commit' subprojects/docket/tests/test_verify.py
+closed: 2026-09-13
+verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_the_scope_detail_claims_no_commit_when_the_branch_has_none' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** `subprojects/docket/src/docket/verify.py:355` formats the scope

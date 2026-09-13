@@ -3,12 +3,13 @@ id: PL-F4JS
 title: bin/docket triage omits the **Decision needed.** requirement from the rules it prints, so triaging an item to needs-decision fails check after the edit
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra, session-cost
 feature: dev-tooling
-touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-02
-verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_the_triage_rules_name_the_decision_needed_requirement' subprojects/docket/tests/test_cli.py
+closed: 2026-09-13
+verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_triage_states_the_rules_a_chosen_status_adds' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** `bin/docket triage` closes with "The rules these answers have to
@@ -42,3 +43,12 @@ sections (printed) and this one (not).
 in its rules block, and a test pins that the block covers the status-conditional
 rules `checks.py` enforces.
 
+**Worked.** The audit **Worth checking while there.** asked for found three
+more, not one: `blocked` requires a `blocked-by` (`checks.py:362`), and
+`dropped` requires both a `reason` (`:414`) and a `closed` date (`:419`) -
+and a triage pass sets all three statuses, `dropped` explicitly on the
+skill's instruction. All four now come from one table,
+`checks.STATUS_REQUIREMENTS`, which the checker and `_triage_rules` both
+read, so a requirement cannot be enforced without being printed. A
+parametrized test pins each entry to an actual refusal from `docket check`,
+which is what stops the table's prose drifting from the checker.

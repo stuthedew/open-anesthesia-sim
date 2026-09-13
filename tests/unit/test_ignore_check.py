@@ -112,20 +112,22 @@ def test_directives_finds_the_real_ones_in_this_repository() -> None:
 
     assert found, "the repository still carries directives; this found none"
     assert all(":" in site for site in found)
-    # Located rather than hardcoded. This pinned the line by its leading digit,
-    # which matches every line sharing it: the fixture sat at 19x, and the
-    # assertion began matching the real directive at line 100 the moment the
-    # file grew by one line. What it means to say is "the occurrence written
-    # inside a string literal is not counted", so it says that instead - the
-    # literal is the only one carrying an escaped newline.
+    # Located rather than hardcoded, and counted rather than pinned - twice over
+    # now. This first pinned the line by its leading digit, which matches every
+    # line sharing it; it then pinned *how many* fixtures write one, and broke the
+    # moment `PL-VP40` added two more. What it means to say is "an occurrence
+    # written inside a string literal is not counted", so it says exactly that,
+    # for every one of them - the literals are the lines carrying an escaped
+    # newline.
     fixture = Path(REPO_ROOT) / "subprojects/docket/tests/test_verify.py"
     in_a_literal = [
         number
         for number, line in enumerate(fixture.read_text().splitlines(), 1)
         if "type: ignore" in line and "\\n" in line
     ]
-    assert len(in_a_literal) == 1, "the fixture no longer writes a directive as a string"
-    assert f"subprojects/docket/tests/test_verify.py:{in_a_literal[0]}" not in found
+    assert in_a_literal, "the fixture no longer writes a directive as a string"
+    for number in in_a_literal:
+        assert f"subprojects/docket/tests/test_verify.py:{number}" not in found
     grepped = subprocess.run(
         ("grep", "-rn", "type: *ignore", "--include=*.py", *ignore_check.TREES),
         cwd=REPO_ROOT,
