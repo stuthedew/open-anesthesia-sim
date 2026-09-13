@@ -3,10 +3,12 @@ id: PL-V6M0
 title: _apply_setting reports a SimulationExecutionError as a refused setting and lets the run continue, which is the opposite of what that type means
 priority: P1
 effort: S
-status: needs-decision
+status: done
 classes: safety, anticipated
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
 added: 2026-09-13
+closed: 2026-09-13
+verify: uv run pytest tests/unit/test_simulation_view.py -q && grep -q 'def test_a_settings_execution_error_halts_the_run_instead_of_reading_as_refused' tests/unit/test_simulation_view.py
 ---
 
 **Problem.** _apply_setting reports a SimulationExecutionError as a refused setting and lets the run continue, which is the opposite of what that type means
@@ -52,3 +54,48 @@ for what it says to a reader - no route raises either type today - and not for
 the exemption, which `checks.py` grants only at `status: blocked` and which
 this item cannot claim: nothing blocks it, and the trigger is a future route
 rather than a named item or milestone.
+
+## Decided 2026-09-13: catch `SimulationConfigurationError`, not the base class
+
+**`docs/ARCHITECTURE.md` had already decided it, and the code was what
+disagreed.** The "Failure direction" section splits the hierarchy into two
+branches that "mean different things and get different treatment", and its
+first bullet says in terms that `SimulationConfigurationError` is what "the
+view's `_apply_setting` catches ... the run is untouched and keeps going",
+against a second bullet whose branch means "the run must stop". So this was
+never a choice between two defensible readings: the specification named the
+narrow class, `PL-YK2V` widened the arm to the base class while fixing a
+different problem, and nothing noticed because the widened arm and the
+specified one behave identically until a route raises the execution branch.
+That is what made the decision a session's rather than the owner's.
+
+**What changed.** One word in `app/simulation_view.py` — the arm now reads
+`except SimulationConfigurationError` — plus the import, the docstring
+paragraph stating the policy, and the `Args:` note. Everything under
+`SimulationExecutionError` now falls to the `except Exception` arm and
+`_halt_run`, which already routes `SimulationDomainLimitError` to the
+supported-limit channel rather than to `fail`, so the milder branch gets its
+correct wording with no second branch added here. A bare
+`AnesthesiaSimulationError` raised directly is unclassified and halts too,
+which is the asymmetry `_halt_run`'s own docstring already states.
+
+**Why not leave it.** The alternative the brief named — keep the base-class
+catch and accept that the distinction only matters once a route exists — was
+refused because the failure it protects against is silent. A
+`SimulationExecutionError` reported as a refused setting leaves "Running"
+over numbers the core has disowned, with nothing on screen and nothing in the
+logs distinguishing it from an ordinary refusal, which is the
+plausible-looking value `CLAUDE.md` prefers an obvious failure state to. The
+fix costs one word and the tests that pin it; waiting costs a route nobody
+has written yet plus the session that would have to diagnose it.
+
+**Regression tests, run against the old arm first.** Both new tests fail with
+the base-class catch restored and pass with the narrow one; the existing
+`test_a_refused_setting_is_still_a_notice_and_not_a_halt` passes under both,
+which is what shows the narrowing did not collapse the case it must keep.
+
+**Docs swept:** `docs/ARCHITECTURE.md` (the Failure-direction bullets, which
+this change makes true rather than aspirational), `docs/MODEL.md` (§ "A
+refused setting is not recorded", unaffected — recording still happens after
+the setter returns). No edit was needed to either.
+

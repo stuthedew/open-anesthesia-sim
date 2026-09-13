@@ -148,7 +148,7 @@ from anesthesia_sim.core.concentration import (
     fraction_from_percent,
     percent_from_fraction,
 )
-from anesthesia_sim.core.exceptions import AnesthesiaSimulationError, SimulationDomainLimitError
+from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
@@ -2831,15 +2831,36 @@ class SimulationView:
         safety failure. `_refresh_view` restores the control from the
         snapshot, on the frame this draws or on the next tick.
 
-        **Anything that is not an `AnesthesiaSimulationError` halts the run**,
-        which is the policy the two timer loops already apply to the same
-        class of error and the reason this method no longer names a narrower
-        one (`PL-YK2V`). The distinction is what the core is saying: the
-        project hierarchy means a value was rejected and nothing was
-        miscalculated, so a notice is the whole of the correct response,
-        while a `TypeError` from a future refactor means the handler broke
-        part-way and what is on screen can no longer be trusted to describe
-        the run. Left to escape into Flet's dispatch, that second case
+        **Anything that is not a `SimulationConfigurationError` halts the
+        run**, which is the policy the two timer loops already apply to the
+        same class of error (`PL-YK2V`). The distinction is what the core is
+        saying, and it is drawn at that class rather than at the hierarchy's
+        base because only that class means *a value was rejected and nothing
+        was miscalculated* - so a notice over a continuing run is the whole
+        of the correct response. A `TypeError` from a future refactor means
+        the handler broke part-way and what is on screen can no longer be
+        trusted to describe the run.
+
+        **`SimulationExecutionError` is on the halting side, and catching it
+        here would invert its meaning** (`PL-V6M0`). `core/exceptions.py`
+        defines it as the run being unable to continue safely, so reporting
+        one as a refused setting would leave a run that must stop producing
+        readings under a notice about one control. Its
+        `SimulationDomainLimitError` branch is the same fault in the milder
+        direction: the run has reached the edge of the supported domain, and
+        `_halt_run` routes that to its own channel precisely so it is not
+        read as either a failure or a refusal. Narrowing the arm to
+        `SimulationConfigurationError` sends both there for free. A bare
+        `AnesthesiaSimulationError` raised directly is unclassified and falls
+        through to `_halt_run` too, which is the same asymmetry `_halt_run`
+        itself states - the narrow case is the named one, and anything
+        unrecognised takes the more cautious branch.
+
+        No route raises either type into this method today: the setting
+        handlers call controller setters, and `SimulationExecutionError` is
+        raised from `advance()`. The arm is narrowed before such a route
+        exists rather than after, because the failure it would produce is
+        silent. Left to escape into Flet's dispatch, that second case
         skipped the `_refresh_view()` below and left the dropdown showing
         the agent the reader picked while the badge and all six readouts
         still showed the previous one, with the run silently paused and
@@ -2869,10 +2890,10 @@ class SimulationView:
         says what the dial says.
 
         Args:
-            apply_setting: The setter to run. Called once. An
-                `AnesthesiaSimulationError` it raises is reported as a
-                refused setting; anything else halts the run. Neither is
-                propagated.
+            apply_setting: The setter to run. Called once. A
+                `SimulationConfigurationError` it raises is reported as a
+                refused setting; anything else, the rest of the project
+                hierarchy included, halts the run. Neither is propagated.
             coalesce: Whether this call may leave its frame to the next
                 render tick. True for the parameter sliders, which report
                 continuously while dragged; false for every discrete
@@ -2884,7 +2905,7 @@ class SimulationView:
 
         try:
             apply_setting()
-        except AnesthesiaSimulationError as error:
+        except SimulationConfigurationError as error:
             self._rejected_setting_notice = f"Setting refused — {error}"
         except Exception as error:  # broad by design - see the docstring
             self._halt_run(error)

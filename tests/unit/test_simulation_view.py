@@ -105,6 +105,7 @@ from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
+    SimulationExecutionError,
     SimulationNumericalError,
 )
 from anesthesia_sim.core.governing_equations import STATE_SIZE, UNIT_STATE
@@ -3877,6 +3878,62 @@ def test_a_refused_setting_is_still_a_notice_and_not_a_halt() -> None:
     assert controller.failures == []
     assert controller.is_running is True
     assert view._rejected_setting_notice == "Setting refused — a value the core refused"
+
+
+def test_a_settings_execution_error_halts_the_run_instead_of_reading_as_refused() -> None:
+    """`PL-V6M0`: the narrow arm is drawn at the class that means "nothing was miscalculated".
+
+    `PL-YK2V` left the arm catching `AnesthesiaSimulationError`, the *base*
+    class, which put every branch of the hierarchy on the notice side.
+    `SimulationExecutionError` means the opposite of a refused setting -
+    `core/exceptions.py` defines it as the run being unable to continue
+    safely - so the base-class catch would have left a run that must stop
+    producing readings under a notice about one control, with "Running" over
+    numbers the core had already disowned. That is the plausible-looking
+    number `CLAUDE.md` prefers an obvious failure state to.
+
+    Pinned before any route raises one here, because the failure is silent:
+    nothing on screen, and nothing in the logs, distinguishes it from an
+    ordinary refusal.
+    """
+
+    controller = _recording_controller(is_running=True)
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    def _cannot_continue() -> None:
+        raise SimulationExecutionError("the run cannot continue safely")
+
+    view._apply_setting(_cannot_continue)
+
+    assert controller.failures == ["SimulationExecutionError: the run cannot continue safely"]
+    assert controller.is_running is False
+    assert view._rejected_setting_notice is None
+
+
+def test_a_settings_domain_limit_reaches_the_supported_limit_channel() -> None:
+    """The milder half of `PL-V6M0`, and the one a base-class catch mislabels twice.
+
+    `SimulationDomainLimitError` is a `SimulationExecutionError`, so the old
+    arm caught it and reported the end of the supported domain as a refused
+    setting over a continuing run. Narrowing the arm sends it to `_halt_run`,
+    which already routes this one type away from `fail` to its own channel -
+    so the correct wording arrives without a second branch here. This pins
+    the routing end to end, since `_halt_run`'s own test cannot see which
+    caller reaches it.
+    """
+
+    controller = _recording_controller(is_running=True)
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    def _out_of_domain() -> None:
+        raise SimulationDomainLimitError("this run has reached 86400 s of simulated time")
+
+    view._apply_setting(_out_of_domain)
+
+    assert controller.supported_limits == ["this run has reached 86400 s of simulated time"]
+    assert controller.failures == []
+    assert controller.is_running is False
+    assert view._rejected_setting_notice is None
 
 
 def test_a_built_in_agent_without_an_identification_colour_fails_at_import() -> None:
