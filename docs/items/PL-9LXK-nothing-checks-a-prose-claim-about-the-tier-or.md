@@ -3,11 +3,12 @@ id: PL-9LXK
 title: Nothing checks a prose claim about the tier or adoption of a stored value's source, though PL-1JDD made both machine-readable and three such claims went stale within a day
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: defect, infra, docs
 feature: provenance
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-07
+verify: python3 tools/source_tier_counts.py && python3 tools/doc_check.py check
 ---
 
 **Problem.** Nothing checks a prose claim about the tier or adoption of a stored value's source, though PL-1JDD made both machine-readable and three such claims went stale within a day
@@ -67,3 +68,48 @@ that decision directly.
 
 **Done when.** Either mechanism is built with tests, or the decision is recorded
 that neither earns its place and the class is handled by the close-out sweep.
+
+## Decided 2026-09-13: the printing command, not a marker
+
+**Project owner's decision, 2026-09-13.** Of the two mechanisms this item named
+- a `<!-- provenance: ... -->`-style marker extended to assert a tier or an
+adoption count, or a command that reads the counts out of the data files and
+prints them so a session updating the paragraph has the true numbers in front of
+it and marks nothing - **the printing command is the item.**
+
+**On this item's own test**, which is "if marking is what the author will not do,
+the second is the item." Marking is what does not happen here, on three measured
+instances rather than a prediction:
+
+1. `docs/MODEL.md` § "Source hierarchy: what may be cited as the authority for a
+   value" records its own failure in the file: the pair of counts that stood
+   until 2026-09-13 - 29 rows, 26 tier 3 - "was written when both were true and
+   survived two changes that made neither", and it names why, which is that
+   "Nothing computed reads them".
+2. `docs/resident-instructions.md` opens by naming two files that load at launch
+   where `make check` reports three, unmarked and unread by anything (`PL-T9XJ`).
+3. `.claude/rules/citing-sources.md` states that thirteen of twenty-six `sources`
+   entries name a row, also as unmarked prose (`PL-LM8P`).
+
+All three are hand-maintained counts in prose. None was marked, and a mechanism
+that checks only what somebody remembered to mark would have caught none of
+them - which is the prediction this item said the choice turned on, now answered
+by observation.
+
+**What the command owes its caller**, and it is the judgment half this project
+does not script: it prints the counts and never rewrites the sentence. A tool
+that edited the paragraph would be guessing at the rounding and the phrasing, and
+`CLAUDE.md`'s tooling section refuses exactly that - the same line
+`check_provenance` already holds when it reports that a derived figure must be
+recomputed and names it rather than recomputing it.
+
+**The `verify:` names `tools/source_tier_counts.py`, and that name is not part of
+the decision.** If the counts land as a `doc_check` mode instead, update the
+`verify:` with the work. What the command must do is print, from the data files,
+the numbers `docs/MODEL.md` § "Source hierarchy" states in prose: the row total
+and the per-tier split, and the adopted/not-adopted split.
+
+**Scope note.** This closes the residual that `check_provenance` deliberately
+leaves: it "decides that a documented key holds the stated value, never what tier
+its source carries." The value half is already guarded in both directions; this
+is the tier and adoption half.

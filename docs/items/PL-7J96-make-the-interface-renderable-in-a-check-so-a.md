@@ -3,11 +3,13 @@ id: PL-7J96
 title: Make the interface renderable in a check, so a presentation change can be looked at
 priority: P2
 effort: M
-status: needs-decision
+status: dropped
 classes: test, infra, ux
 feature: presentation-safety
 touches: tools/, Makefile, docs/ARCHITECTURE.md, README.md, src/anesthesia_sim/app/main.py
 added: 2026-09-02
+closed: 2026-09-13
+reason: superseded by PL-YCWZ, on the project owner's decision of 2026-09-13 - ROADMAP.md's v0.5.1 section asked which of the two supersedes the other, and PL-YCWZ is the one whose capability is already demonstrated rather than assumed
 ---
 
 > **The Qt port (`v0.5.1`) moots or transforms this.** `ROADMAP.md` § "v0.5.1 -
@@ -92,3 +94,45 @@ ones.
 and the project has decided — with the reason recorded — whether anything
 about the rendering is gated in `make check` or whether the target exists only
 to be looked at.
+
+## Dropped 2026-09-13: superseded by `PL-YCWZ`
+
+**The decision `ROADMAP.md` asked for.** § "v0.5.1 - the interface moves to Qt"
+→ "Items this port moots or transforms" recorded that this item "is what
+`PL-YCWZ` now does. One of them supersedes the other and it is worth deciding
+which rather than working both." The project owner decided for `PL-YCWZ` on
+2026-09-13.
+
+**Why `PL-YCWZ` rather than this item.** Its capability is demonstrated rather
+than assumed: `spikes/qt/qt_spike.py --screenshot` already writes a PNG of the
+running interface inside the web container, under `QT_QPA_PLATFORM=offscreen`,
+with no proxy workaround at all. This item's route is the Playwright
+`page.route` handler fulfilling `https://www.gstatic.com/flutter-canvaskit/**`
+from `flet_web/web/canvaskit/` that its own brief above documents - which works,
+and which builds a renderer for the interface `v0.5.1` replaces. That is the
+"work done and thrown away" the port's own section exists to prevent.
+`PL-YCWZ` also closes `PL-2QMK`, which is what blocks the rest of
+`presentation-safety`.
+
+**What is being accepted, stated rather than left implicit.** Only a *Flet*
+renderer would have caught the two defects this item records - a required label
+wrapping to `Alveolar / end-tidal-` over `equivalent`, and four of seven readout
+labels dropping to a second baseline at some widths. Both were found by hand,
+and until `v0.5.1` lands the shipped Flet build has no automated check that
+would catch a third. The two defects themselves are already filed and
+dispositioned; what is given up is the *gate*, not the fixes.
+
+**The open question this item carried is inherited, not resolved.** Its
+"Decision needed" was whether the rendering gates `make check` or only produces
+artifacts a person looks at. `PL-YCWZ`'s brief has the same question in its own
+words - "What such a test may assert is the design question... A pixel-exact
+snapshot is brittle across Qt versions and font stacks" - so it is answered
+there, against the toolkit that will still exist.
+
+**`PL-MBP6` was blocked on this item and is re-pointed at `PL-YCWZ`**
+(the README has no image of the interface). See its own file for what that
+changes about when it can be worked.
+
+**`ROADMAP.md`'s Gate 1 list keeps its line for this item**, per § "The gate is
+a snapshot, not a moving target": nothing moves, and a disposition is not a
+deletion.
