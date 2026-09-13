@@ -21,7 +21,7 @@ tests are preserved unchanged (see "Preserved circuit reference tests" below).
 Version v0.1.0 extends that model through:
 
 ```text
-delivered sevoflurane
+delivered agent
         ↓
 breathing circuit
         ↓
@@ -50,7 +50,7 @@ The milestone must demonstrate:
 - mixed-venous return to the lungs;
 - dynamic changes in fresh gas flow, delivered concentration, alveolar ventilation, and cardiac output;
 - deterministic numerical behavior; and
-- explicit conservation of sevoflurane mass.
+- explicit conservation of agent mass.
 
 Only sevoflurane was modeled in v0.1.0. Isoflurane and desflurane were
 added in v0.2.0 as additional selectable agents, using this same section's
@@ -128,10 +128,10 @@ appear in one expression the tissue index is written out.
 
 The external inputs and outputs are:
 
-- sevoflurane entering through fresh gas;
+- agent entering through fresh gas;
 - carrier gas entering through fresh gas;
 - an equal volume of mixed circuit gas leaving through the circuit exhaust; and
-- no metabolism or other chemical destruction of sevoflurane.
+- no metabolism or other chemical destruction of the agent.
 
 The circuit and patient form a closed recirculating exchange path except for fresh-gas inflow and circuit exhaust.
 
@@ -298,14 +298,14 @@ $$
 
 ### Agent amount
 
-Every compartment stores sevoflurane as an equivalent gas volume at one documented reference temperature and pressure.
+Every compartment stores the agent as an equivalent gas volume at one documented reference temperature and pressure.
 
 The implementation must use the same reference conditions everywhere. It must not add gas fractions, dissolved blood concentrations, and tissue concentrations directly.
 
-Let $`M_x`$ denote the equivalent gas volume of sevoflurane stored in
+Let $`M_x`$ denote the equivalent gas volume of the agent stored in
 compartment $`x`$.
 
-The unit used in code is liters of equivalent pure sevoflurane gas unless the implementation document explicitly selects another consistent unit.
+The unit used in code is liters of equivalent pure agent gas unless the implementation document explicitly selects another consistent unit.
 
 ## Symbols
 
@@ -313,9 +313,9 @@ The unit used in code is liters of equivalent pure sevoflurane gas unless the im
 | --- | --- | --- |
 | $`t`$ | Explicit simulation time | s |
 | $`\Delta t`$ | Simulation step | s |
-| $`F_D`$ | Delivered fresh-gas sevoflurane fraction | dimensionless |
-| $`F_I`$ | Inspired sevoflurane fraction, which is the gas in the breathing circuit (see "Model boundary") | dimensionless |
-| $`F_A`$ | Alveolar sevoflurane fraction | dimensionless |
+| $`F_D`$ | Delivered fresh-gas agent fraction | dimensionless |
+| $`F_I`$ | Inspired agent fraction, which is the gas in the breathing circuit (see "Model boundary") | dimensionless |
+| $`F_A`$ | Alveolar agent fraction | dimensionless |
 | $`F_a`$ | Arterial partial-pressure-equivalent fraction (flow-limited: $`F_a \equiv F_A`$; not an independent state) | dimensionless |
 | $`F_v`$ | Venous blood partial-pressure-equivalent fraction | dimensionless |
 | $`F_i`$ | Tissue group $`i`$ partial-pressure-equivalent fraction | dimensionless |
@@ -328,24 +328,24 @@ The unit used in code is liters of equivalent pure sevoflurane gas unless the im
 | $`Q`$ | Cardiac output | L blood/min |
 | $`Q_i`$ | Blood flow to tissue group $`i`$ | L blood/min |
 | $`\mathrm{MAC}_\%`$ | Agent's 1 MAC, age-40 alveolar (display divisor only; not in any governing equation) | percent |
-| $`\lambda_{b:g}`$ | Sevoflurane blood:gas partition coefficient | dimensionless |
+| $`\lambda_{b:g}`$ | Agent blood:gas partition coefficient | dimensionless |
 | $`\lambda_{i:b}`$ | Tissue:blood partition coefficient for group $`i`$ | dimensionless |
-| $`M_C`$ | Sevoflurane stored in the breathing circuit | L equivalent gas |
-| $`M_A`$ | Sevoflurane stored in alveolar gas | L equivalent gas |
-| $`M_v`$ | Sevoflurane stored in venous blood | L equivalent gas |
-| $`M_i`$ | Sevoflurane stored in tissue group $`i`$ | L equivalent gas |
+| $`M_C`$ | Agent stored in the breathing circuit | L equivalent gas |
+| $`M_A`$ | Agent stored in alveolar gas | L equivalent gas |
+| $`M_v`$ | Agent stored in venous blood | L equivalent gas |
+| $`M_i`$ | Agent stored in tissue group $`i`$ | L equivalent gas |
 
 ## Compartment capacities
 
 ### Gas compartments
 
-The equivalent sevoflurane amount in the breathing circuit is:
+The equivalent agent amount in the breathing circuit is:
 
 $$
 M_C = V_C F_I
 $$
 
-The equivalent sevoflurane amount in the alveolar gas compartment is:
+The equivalent agent amount in the alveolar gas compartment is:
 
 $$
 M_A = V_A F_A
@@ -423,8 +423,8 @@ Each group has:
 - a tissue volume $`V_i`$;
 - a fraction of cardiac output $`f_i`$;
 - a tissue blood flow $`Q_i`$;
-- a sevoflurane tissue:blood partition coefficient $`\lambda_{i:b}`$;
-- a stored sevoflurane amount $`M_i`$; and
+- an agent tissue:blood partition coefficient $`\lambda_{i:b}`$;
+- a stored agent amount $`M_i`$; and
 - a derived partial-pressure-equivalent fraction $`F_i`$.
 
 Tissue flow is:
@@ -701,11 +701,11 @@ when $`Q>0`$.
 
 At zero cardiac output, pulmonary and tissue perfusion transfers are zero and no division by $`Q`$ is performed.
 
-## Conservation of sevoflurane
+## Conservation of agent mass
 
 ### External delivery
 
-The cumulative delivered sevoflurane amount is:
+The cumulative delivered agent amount is:
 
 $$
 M_{\mathrm{delivered}}(t) = \int_0^t \dot V_FF_D\,dt
@@ -713,7 +713,7 @@ $$
 
 ### Circuit exhaust
 
-The cumulative exhausted sevoflurane amount is:
+The cumulative exhausted agent amount is:
 
 $$
 M_{\mathrm{exhausted}}(t) = \int_0^t \dot V_FF_I\,dt
@@ -5124,7 +5124,7 @@ Version v0.1.0 assumes:
   vaporizer and the alveoli, there being one perfectly mixed circuit with no
   dead space and no separate limbs (see "Model boundary");
 - tissue venous blood equilibrates with its tissue group;
-- carrier gases do not affect sevoflurane kinetics;
+- carrier gases do not affect agent kinetics;
 - temperature is constant;
 - ambient pressure is constant, and it is one atmosphere — 760 mmHg. Every
   concentration in this model is a fraction of that pressure, so the model is
