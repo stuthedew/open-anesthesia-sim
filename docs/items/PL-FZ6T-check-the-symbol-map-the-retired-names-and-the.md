@@ -3,7 +3,7 @@ id: PL-FZ6T
 title: Check the symbol map, the retired names and the partition-coefficient rule, so core/ cannot drift back off the domain
 priority: P2
 effort: M
-status: blocked
+status: ready
 blocked-by: PL-9SH6
 classes: infra
 feature: core-domain-language
@@ -71,3 +71,14 @@ could be built against `PL-212V` alone if it turns out to be worth splitting.
 **Done when.** The three rules run in `make check`, each has a unit test that
 fails when its rule is violated, all three pass against the tree, and each
 states its rule in a message a reader can act on without opening the script.
+
+**Carry `PL-B667` on this branch** (project owner, 2026-09-13). `PL-B667` is a
+one-line correction to `docs/MODEL.md` § "Required invariants", which currently
+says derived fractions stay "finite and nonnegative" - the lower bound only -
+while `core/` enforces the upper bound of 1 in five places and checks it on
+every step's output. It was found while reviewing `PL-9SH6`'s rename.
+
+It belongs here rather than on its own because this item is what makes a spec
+sentence enforceable: the corrected invariant is a line a check written here can
+read. Landing the sentence without the check is how it drifts again, which is
+the failure this whole item exists to prevent.

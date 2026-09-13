@@ -66,6 +66,26 @@ fi
 
 "$root/bin/docket" digest 2>/dev/null || true
 
+# The dead ends, immediately after the queue state and before the exception
+# line below. Placed here because it answers a different question from
+# everything above it: the digest says what is *open*, this says what has
+# already been *closed off*, and a session that reads the first without the
+# second proposes a refuted approach and has to be talked out of it in a reply.
+#
+# It prints the entry lines only, never `docs/dead-ends.md`'s preamble, which
+# is instructions for adding an entry rather than for reading one - the split
+# is what keeps the always-loaded half small, and `tools/dead_ends.py check`
+# holds the emitted half to 30 entries and 4,000 bytes. That cap exists because
+# this text is resent on every turn: measured on an agent benchmark, add-all
+# memory curation reached 13.04% accuracy against strict selection's 38.86%
+# (Xu et al., ACL 2026), and on identical questions a focused ~300-token prompt
+# beat a ~113,000-token one by 30-60 points across 18 models (Chroma, 2025-07).
+#
+# Bare `python3` like `main_ci_status.py` below, and silent on every way it can
+# fail - no file, no interpreter - so a checkout without it starts as it did
+# before. `PL-NB35`.
+python3 "$root/tools/dead_ends.py" emit 2>/dev/null || true
+
 # Last, and usually silent. The whole-store `verify:` replay runs only on push
 # to `main` (`PL-SDHR`: a pull request cannot have changed whether some *other*
 # item's work merged, and replaying the store on every branch costs more than

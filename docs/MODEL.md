@@ -346,11 +346,11 @@ get through the code is a defect in the code rather than a use for the table.
 | --- | --- | --- | --- |
 | $`t`$ | Explicit simulation time | s | `SimulationState.elapsed_s` |
 | $`\Delta t`$ | Simulation step | s | `SimulationState.simulation_step_s` |
-| $`F_D`$ | Delivered fresh-gas agent fraction | dimensionless | `BreathingCircuit.delivered_concentration_fraction` |
-| $`F_I`$ | Inspired agent fraction, which is the gas in the breathing circuit (see "Model boundary") | dimensionless | `BreathingCircuit.circuit_concentration_fraction` |
-| $`F_A`$ | Alveolar agent fraction | dimensionless | `AlveolarCompartment.concentration_fraction` |
-| $`F_a`$ | Arterial partial-pressure-equivalent fraction (flow-limited: $`F_a \equiv F_A`$; not an independent state) | dimensionless | — no attribute: the code reads `AlveolarCompartment.concentration_fraction` wherever an arterial fraction is required |
-| $`F_v`$ | Venous blood partial-pressure-equivalent fraction | dimensionless | `VenousBloodCompartment.concentration_fraction` |
+| $`F_D`$ | Delivered fresh-gas agent fraction | dimensionless | `BreathingCircuit.delivered_partial_pressure_fraction` |
+| $`F_I`$ | Inspired agent fraction, which is the gas in the breathing circuit (see "Model boundary") | dimensionless | `BreathingCircuit.inspired_partial_pressure_fraction` |
+| $`F_A`$ | Alveolar agent fraction | dimensionless | `AlveolarCompartment.partial_pressure_fraction` |
+| $`F_a`$ | Arterial partial-pressure-equivalent fraction (flow-limited: $`F_a \equiv F_A`$; not an independent state) | dimensionless | — no attribute: the code reads `AlveolarCompartment.partial_pressure_fraction` wherever an arterial fraction is required |
+| $`F_v`$ | Venous blood partial-pressure-equivalent fraction | dimensionless | `VenousBloodCompartment.partial_pressure_fraction` |
 | $`F_i`$ | Tissue group $`i`$ partial-pressure-equivalent fraction | dimensionless | `TissueGroup.partial_pressure_fraction` |
 | $`V_C`$ | Mixed breathing-circuit volume | L gas | `BreathingCircuit.circuit_volume_l` |
 | $`V_A`$ | Modeled alveolar gas volume | L gas | `AlveolarCompartment.gas_volume_l` |
@@ -2793,6 +2793,18 @@ own zero-shunt baseline for desflurane is −2.29 SD rather than −2.33.
 | A non-ideal lung — shunt or ventilation-perfusion dispersion, both excluded by $`F_a \equiv F_A`$ | moves the wrong way | a 20% shunt takes desflurane from −2.29 to −2.66 SD; a log-normal V/Q distribution at log SD 1.0 takes it to −2.91 |
 | Residual rebreathing in the published apparatus | $`F_I/F_A`$ = 0.30 | sevoflurane +2.72 SD, isoflurane +3.29 and +4.10 |
 
+**The sixth row's $`F_I/F_A`$ = 0.30 was an assumed magnitude, and the methods
+now give a sourced one.** Yasuda 1991 *Anesthesiology* § "Materials and
+Methods" puts about 50 ml of corrugated Teflon between the tracheal sampling
+port and the nonrebreathing valve, and that volume is re-inspired each breath,
+so the published apparatus does rebreathe — but against a normocapnic tidal
+volume in a paralysed 76 kg adult it is of the order of a tenth of the ratio
+the row was rejected at, not the whole of it. The row therefore rules out
+rebreathing at 0.30 and says nothing yet about rebreathing at the apparatus's
+own volume. Re-running it at the sourced figure is the cheapest of the open
+diagnostics and is the first thing `PL-RFLN` asks for; until it is run, this
+row must not be cited as having excluded rebreathing generally.
+
 The fourth row's volumes are round physiologic figures — 1 kg of lung tissue
 at a tissue:blood ratio of 1.2, and 1.8 L of pulmonary and arterial blood —
 used to size the term and not proposed as parameters; none of them is a stored
@@ -2818,11 +2830,37 @@ holding its alveolar fraction up. Two candidates, neither demonstrated:
    arterial retention this model fixes at
    $`\lambda_{b:g}/(\lambda_{b:g} + \dot V_A/Q)`$ is understated by 44% for
    desflurane, 30% for sevoflurane and 15% for isoflurane — the rank order the
-   residuals have. What stops it being the answer is the fifth row of the
+   residuals have. What stopped it being the answer was the fifth row of the
    table above: the flow-weighted alveolar reading of that same calculation
    moves every agent the wrong way, so the hypothesis rests entirely on the
-   end-tidal weighting, and neither abstract says how end-tidal gas was
-   sampled.
+   end-tidal weighting.
+
+   **The methods sections settle that weighting, and it is the one the
+   hypothesis needs** (both papers supplied by the project owner and read
+   2026-09-13; neither is in PubMed Central, and neither is held in this
+   repository — see "Source hierarchy"). Yasuda 1991 *Anesthesiology*
+   § "Materials and Methods" sites the end-tidal port **at the tracheal tube**,
+   with about 50 ml of corrugated Teflon dead space interposed between that
+   port and the connection to the nonrebreathing valve, stated to protect the
+   end-tidal sample from contamination with inspired gas; mixed expired gas is
+   sampled **separately**, from the 1-l aluminium mixing chamber on the
+   expiratory limb, and is reported as $`F_M`$. So the published $`F_A`$ is
+   the last gas at the airway opening rather than the flow-weighted mixture:
+   the reading the fifth row rules out is the one the study reports as
+   $`F_M`$, not the one it reports as $`F_A`$.
+
+   This removes the obstacle rather than demonstrating the mechanism. What the
+   hypothesis still needs is the end-tidal-weighted bias computed instead of
+   the flow-weighted one, and a bound on how much of 2.33 SD it could carry;
+   that is bounded work this project can do, and `PL-RFLN` carries it. The
+   *Anesth Analg* paper states only that ports permitted sampling of end-tidal,
+   mixed expired and inspired gas, without siting them or naming a dead space,
+   so it neither confirms nor contradicts this. The two studies describe the
+   same apparatus otherwise — nonrebreathing circuit, corrugated Teflon
+   expiratory limb, 1-l aluminium mixing chamber, circuit exchanged for a fresh
+   one at 30 min, 65% nitrous oxide continued through the first 150 min of
+   elimination — so the difference is one of description and **must not be read
+   as a cohort-specific difference in equipment**.
 2. *The published value.* Desflurane's recovery — agent recovered over agent
    taken up — was 105 ± 25% in those eight volunteers, against 102 ± 13% for
    isoflurane measured in the same sitting: the wider spread of the two, and

@@ -537,7 +537,7 @@ class SpikeWindow(QWidget):
             "vaporizer dial",
             0.0,
             snapshot.max_delivered_concentration_percent,
-            snapshot.delivered_concentration_fraction * 100.0,
+            snapshot.delivered_partial_pressure_fraction * 100.0,
             CONCENTRATION_DISPLAY_DECIMALS,
         )
         self._alveolar_ventilation = ParameterSlider(
@@ -707,9 +707,9 @@ class SpikeWindow(QWidget):
 
         mac_percent = snapshot.agent_mac_percent
         fractions = (
-            snapshot.circuit_concentration_fraction,
-            snapshot.alveolar_concentration_fraction,
-            snapshot.mixed_venous_concentration_fraction,
+            snapshot.inspired_partial_pressure_fraction,
+            snapshot.alveolar_partial_pressure_fraction,
+            snapshot.mixed_venous_partial_pressure_fraction,
             snapshot.vessel_rich_partial_pressure_fraction,
             snapshot.muscle_partial_pressure_fraction,
             snapshot.fat_partial_pressure_fraction,
@@ -813,7 +813,7 @@ class SpikeWindow(QWidget):
         self._pause_button.setEnabled(snapshot.is_running)
         self._fresh_gas_flow.value_label.setText(format_flow(snapshot.fresh_gas_flow_l_min))
         self._delivered.value_label.setText(
-            format_percent(snapshot.delivered_concentration_fraction)
+            format_percent(snapshot.delivered_partial_pressure_fraction)
         )
         self._alveolar_ventilation.value_label.setText(
             format_flow(snapshot.alveolar_ventilation_l_min)
@@ -970,7 +970,7 @@ class SpikeWindow(QWidget):
         self._controller.set_fresh_gas_flow(self._fresh_gas_flow.value())
 
     def _on_delivered(self) -> None:
-        self._controller.set_delivered_concentration(self._delivered.value() / 100.0)
+        self._controller.set_delivered_partial_pressure_fraction(self._delivered.value() / 100.0)
 
     def _on_alveolar_ventilation(self) -> None:
         self._controller.set_alveolar_ventilation(self._alveolar_ventilation.value())
@@ -1086,7 +1086,7 @@ def save_screenshot(path: str) -> int:
     window.stop_timers()
     window.show()
     window.set_playback_rate(next(r for r in SUPPORTED_PLAYBACK_RATES if r.multiplier == 60))
-    controller.set_delivered_concentration(0.02)
+    controller.set_delivered_partial_pressure_fraction(0.02)
     controller.start()
 
     for tick in range(120):
@@ -1097,7 +1097,7 @@ def save_screenshot(path: str) -> int:
             # chart is most often wrong about (`PL-4RBD`) rather than a smooth
             # curve that would look right either way.
             controller.begin_control_adjustment()
-            controller.set_delivered_concentration(0.04)
+            controller.set_delivered_partial_pressure_fraction(0.04)
 
         if tick % 2 == 1:
             window.render_tick()

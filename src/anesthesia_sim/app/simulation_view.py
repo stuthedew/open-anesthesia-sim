@@ -148,7 +148,7 @@ from anesthesia_sim.core.concentration import (
     fraction_from_percent,
     percent_from_fraction,
 )
-from anesthesia_sim.core.exceptions import AnesthesiaSimulationError, SimulationDomainLimitError
+from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
@@ -677,14 +677,14 @@ class SimulationView:
             format_flow(initial_snapshot.fresh_gas_flow_l_min), color=INK
         )
         self._delivered_concentration_text = ft.Text(
-            format_percent(initial_snapshot.delivered_concentration_fraction), color=INK
+            format_percent(initial_snapshot.delivered_partial_pressure_fraction), color=INK
         )
         # The dial in the same two units as the compartments it fills. Without
         # it the one control a reader sets would be the only value on screen
         # they could not compare with the traces it produces.
         self._delivered_concentration_mac_text = ft.Text(
             format_mac_multiple(
-                initial_snapshot.delivered_concentration_fraction,
+                initial_snapshot.delivered_partial_pressure_fraction,
                 initial_snapshot.agent_mac_percent,
             ),
             color=MUTED,
@@ -1204,7 +1204,7 @@ class SimulationView:
         self._delivered_concentration_slider = ft.Slider(
             min=MIN_DELIVERED_CONCENTRATION_PERCENT,
             max=initial_snapshot.max_delivered_concentration_percent,
-            value=(percent_from_fraction(initial_snapshot.delivered_concentration_fraction)),
+            value=(percent_from_fraction(initial_snapshot.delivered_partial_pressure_fraction)),
             label="{value}%",
             # The drag label is the same clinical value as the readout beside
             # it and must be read at the same resolution. Flet rounds this
@@ -2283,7 +2283,7 @@ class SimulationView:
 
         self._delivered_concentration_slider.max = snapshot.max_delivered_concentration_percent
         self._delivered_concentration_slider.value = percent_from_fraction(
-            snapshot.delivered_concentration_fraction
+            snapshot.delivered_partial_pressure_fraction
         )
         # The ceiling and the rules move with the agent because both are
         # multiples of its 1 MAC - which is exactly what keeps the *scale*
@@ -2344,13 +2344,13 @@ class SimulationView:
         self._refresh_notice(snapshot.failure_reason, snapshot.supported_limit_reason)
         self._elapsed_time_text.value = format_elapsed(snapshot.elapsed_s)
         self._circuit_concentration_text.value = format_percent(
-            snapshot.circuit_concentration_fraction
+            snapshot.inspired_partial_pressure_fraction
         )
         self._alveolar_concentration_text.value = format_percent(
-            snapshot.alveolar_concentration_fraction
+            snapshot.alveolar_partial_pressure_fraction
         )
         self._mixed_venous_concentration_text.value = format_percent(
-            snapshot.mixed_venous_concentration_fraction
+            snapshot.mixed_venous_partial_pressure_fraction
         )
         self._vessel_rich_concentration_text.value = format_percent(
             snapshot.vessel_rich_partial_pressure_fraction
@@ -2365,13 +2365,13 @@ class SimulationView:
         # MAC. `_refresh_view` is the only writer of both.
         mac_percent = snapshot.agent_mac_percent
         self._circuit_mac_text.value = format_mac_multiple(
-            snapshot.circuit_concentration_fraction, mac_percent
+            snapshot.inspired_partial_pressure_fraction, mac_percent
         )
         self._alveolar_mac_text.value = format_mac_multiple(
-            snapshot.alveolar_concentration_fraction, mac_percent
+            snapshot.alveolar_partial_pressure_fraction, mac_percent
         )
         self._mixed_venous_mac_text.value = format_mac_multiple(
-            snapshot.mixed_venous_concentration_fraction, mac_percent
+            snapshot.mixed_venous_partial_pressure_fraction, mac_percent
         )
         self._vessel_rich_mac_text.value = format_mac_multiple(
             snapshot.vessel_rich_partial_pressure_fraction, mac_percent
@@ -2385,10 +2385,10 @@ class SimulationView:
 
         self._fresh_gas_flow_text.value = format_flow(snapshot.fresh_gas_flow_l_min)
         self._delivered_concentration_text.value = format_percent(
-            snapshot.delivered_concentration_fraction
+            snapshot.delivered_partial_pressure_fraction
         )
         self._delivered_concentration_mac_text.value = format_mac_multiple(
-            snapshot.delivered_concentration_fraction, mac_percent
+            snapshot.delivered_partial_pressure_fraction, mac_percent
         )
         self._alveolar_ventilation_text.value = format_flow(snapshot.alveolar_ventilation_l_min)
         self._cardiac_output_text.value = format_flow(snapshot.cardiac_output_l_min)
@@ -2668,7 +2668,7 @@ class SimulationView:
         """
 
         reading = read_wash_in(
-            snapshot.alveolar_concentration_fraction, snapshot.circuit_concentration_fraction
+            snapshot.alveolar_partial_pressure_fraction, snapshot.inspired_partial_pressure_fraction
         )
 
         if reading.plotted_ratio is not None:
@@ -2883,15 +2883,36 @@ class SimulationView:
         safety failure. `_refresh_view` restores the control from the
         snapshot, on the frame this draws or on the next tick.
 
-        **Anything that is not an `AnesthesiaSimulationError` halts the run**,
-        which is the policy the two timer loops already apply to the same
-        class of error and the reason this method no longer names a narrower
-        one (`PL-YK2V`). The distinction is what the core is saying: the
-        project hierarchy means a value was rejected and nothing was
-        miscalculated, so a notice is the whole of the correct response,
-        while a `TypeError` from a future refactor means the handler broke
-        part-way and what is on screen can no longer be trusted to describe
-        the run. Left to escape into Flet's dispatch, that second case
+        **Anything that is not a `SimulationConfigurationError` halts the
+        run**, which is the policy the two timer loops already apply to the
+        same class of error (`PL-YK2V`). The distinction is what the core is
+        saying, and it is drawn at that class rather than at the hierarchy's
+        base because only that class means *a value was rejected and nothing
+        was miscalculated* - so a notice over a continuing run is the whole
+        of the correct response. A `TypeError` from a future refactor means
+        the handler broke part-way and what is on screen can no longer be
+        trusted to describe the run.
+
+        **`SimulationExecutionError` is on the halting side, and catching it
+        here would invert its meaning** (`PL-V6M0`). `core/exceptions.py`
+        defines it as the run being unable to continue safely, so reporting
+        one as a refused setting would leave a run that must stop producing
+        readings under a notice about one control. Its
+        `SimulationDomainLimitError` branch is the same fault in the milder
+        direction: the run has reached the edge of the supported domain, and
+        `_halt_run` routes that to its own channel precisely so it is not
+        read as either a failure or a refusal. Narrowing the arm to
+        `SimulationConfigurationError` sends both there for free. A bare
+        `AnesthesiaSimulationError` raised directly is unclassified and falls
+        through to `_halt_run` too, which is the same asymmetry `_halt_run`
+        itself states - the narrow case is the named one, and anything
+        unrecognised takes the more cautious branch.
+
+        No route raises either type into this method today: the setting
+        handlers call controller setters, and `SimulationExecutionError` is
+        raised from `advance()`. The arm is narrowed before such a route
+        exists rather than after, because the failure it would produce is
+        silent. Left to escape into Flet's dispatch, that second case
         skipped the `_refresh_view()` below and left the dropdown showing
         the agent the reader picked while the badge and all six readouts
         still showed the previous one, with the run silently paused and
@@ -2921,10 +2942,10 @@ class SimulationView:
         says what the dial says.
 
         Args:
-            apply_setting: The setter to run. Called once. An
-                `AnesthesiaSimulationError` it raises is reported as a
-                refused setting; anything else halts the run. Neither is
-                propagated.
+            apply_setting: The setter to run. Called once. A
+                `SimulationConfigurationError` it raises is reported as a
+                refused setting; anything else, the rest of the project
+                hierarchy included, halts the run. Neither is propagated.
             coalesce: Whether this call may leave its frame to the next
                 render tick. True for the parameter sliders, which report
                 continuously while dragged; false for every discrete
@@ -2936,7 +2957,7 @@ class SimulationView:
 
         try:
             apply_setting()
-        except AnesthesiaSimulationError as error:
+        except SimulationConfigurationError as error:
             self._rejected_setting_notice = f"Setting refused — {error}"
         except Exception as error:  # broad by design - see the docstring
             self._halt_run(error)
@@ -3282,11 +3303,13 @@ class SimulationView:
         if event.control.value is None:
             return
 
-        delivered_concentration_fraction = fraction_from_percent(
+        delivered_partial_pressure_fraction = fraction_from_percent(
             Percent(float(event.control.value))
         )
         self._apply_setting(
-            lambda: self._controller.set_delivered_concentration(delivered_concentration_fraction),
+            lambda: self._controller.set_delivered_partial_pressure_fraction(
+                delivered_partial_pressure_fraction
+            ),
             coalesce=True,
         )
 

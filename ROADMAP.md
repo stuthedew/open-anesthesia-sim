@@ -291,7 +291,7 @@ adds no capability and exists to clear the ground they are built on:
 | 3 | **v0.4.0 — the teachable case** | **Shipped 2026-09-05.** Scoped below. 13 items, of which 6 are gate-0 debt the milestone cleared itself. Twelve landed and the thirteenth, `PL-011`'s retention rule, was dropped as superseded; its Required-scope entry records why. | 7 M, 6 S |
 | — | **v0.4.x — the code is the model** | Planned-milestone item 29, shipping as a patch in the `v0.4.x` track. A patch, not a milestone. "No behavior changes" held until the 2026-09-03 re-scope and no longer does: the exact step moves the displayed value in its last digit. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped and then re-scoped 2026-09-03: the owner's bar is that a reviewer follow `core/` without a lookup table, which naming alone cannot reach, so the operator split is replaced by the exact matrix exponential (`PL-GS5X`). Still a patch — it crosses no capability boundary; see item 29 for why, and for why no exception is recorded. (Written `v0.4.1` until 2026-09-06, which contradicted this row's own rule that the track promises no particular patch number; v0.4.1 and v0.4.2 both shipped without the exact step, as that rule predicted.) **It freezes no gate and takes no section of its own (project owner, 2026-09-05).** The cadence's four beats run for *milestones*; Gate 1 is frozen when v0.5.0 is scoped, as row 4 records and as three of v0.4.0's own deferrals assume; and no patch in this project has ever had a section — v0.2.1 through v0.3.9 each took a version-table row and a baseline section at ship time and nothing more. That this was ever in question is a tooling artefact worth recording: `bin/docket wave` read this row as a milestone because it was written `v0.4.1` where item 29 already called it the `v0.4.x` row, and the gate it therefore asked to freeze was 105 entries against Gate 0's 21 — five times the largest gate this project has cleared, and 62% of the open queue. The row is now written `v0.4.x`, which is what makes the beat agree with the plan. **Eight items**, `PL-P0BB` having shipped in v0.3.2: `PL-GS5X` and `PL-X9KD` under `numerical-domain`, and `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T` under `core-domain-language` — plus `PL-X2XX`, which `PL-VZL0` requires and which neither list named until `PL-GGCN` taught the checker to read the second half of a compound prerequisite. Swapping `PL-P0BB` out for `PL-X2XX` leaves the effort totals unchanged. `PL-3TLK` leads; the rest of the naming work follows the exact step. `PL-011` was carried here at the v0.4.0 cut and is **not** part of this step: it was dropped 2026-09-05, superseded by `PL-T691` and `PL-2FM6`. Those two, with `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, are the score architecture the 2026-09-05 design round filed into `numerical-domain` behind `PL-GS5X`, and they are **v0.5.0's, not this track's** (project owner, 2026-09-05) — row 5 carries the reasoning. **This track promises no particular patch number,** which is what `v0.4.x` means: patches are cut as work accumulates and the exact step takes whichever number it lands on. Saying "ships as v0.4.1" would be a promise the release path cannot keep — `docket release` offers the next free number to whatever is finished, so any patch cut before the exact step lands would take it. | 1 L, 6 M, 2 S |
 | 4 | **Gate 1** | **Frozen 2026-09-06**, the day v0.5.0 was scoped, and recorded in that milestone's own section below rather than here. Contents were unknown by construction and are now the list: v0.4.0's findings, the queue's own defects, and the model-specification debt. Ships inside v0.5.0, not as its own release — except for the three items "The timeline" had already placed on the `v0.4.x` step, which that patch carries. | — |
-| 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. The placement argument above stands for what it placed, and is left as written. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 159 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. | — |
+| 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. The placement argument above stands for what it placed, and is left as written. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 160 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
 | — | **v0.5.1 — the interface moves to Qt** | **Scoped 2026-09-10**, on `PL-QXSB`'s decision the same day, and it has its own section below. The port `PL-55DH` spiked and `PL-X9T3` measured: the dashboard, the chart and the theme move to PySide6 + pyqtgraph, and nothing a learner can do is lost. **It replaces the `v0.5.x — the interface pass` row that stood here** and absorbs planned-milestone item 33 with it - a restyle of a dashboard about to be rewritten is the same work twice, since porting redecides palette, type scale, spacing and layout regardless. The placement is unchanged from that row's: after MVP, because the owner's standing principle is that UI ambition follows scientific-core maturity, and ahead of v0.6.0, because the schematic is a second large visual surface on a toolkit charged per control present per frame. **A patch number for a 3 619-line rewrite** because § "Versioning decision" chooses the number for the capability boundary crossed and this crosses none; v0.2.8 is the precedent for machinery at this scale taking one. **It takes a section, which no patch here ever has**, for one mechanical reason: `blocked-by: vX.Y.Z` resolves only against a version the roadmap places, a patch-track row is not a version, and `PL-GS3R` - `P1`, `safety`, sequenced behind this port - needs one or it ranks top of `bin/docket next` as startable work guarded only by prose (`PL-L09X`). **Gate 2's freeze is deferred** to when v0.5.0 ships: that gate holds v0.5.0's findings and v0.5.0 is not implemented, so freezing it today would freeze an empty list and then refuse the findings it exists for. **On the structural half, the `v0.5.x` row this replaces was wrong and the error is inherited no further.** It said `PL-2CS8`, `PL-NGF7` and `PL-B9PY` all "land ahead of v0.5.0". `PL-2CS8` did. `PL-B9PY` does not and must not: Gate 1 places it under "Cleared by v0.5.0 itself", because decomposing `SimulationView` so two runs render *is* what the branched-run milestone needs to exist - moving it behind this port would defer the MVP behind a toolkit change. It ships in v0.5.0 on Flet and is rewritten here, and that duplication is the price of shipping the MVP first, taken deliberately. What this port carries forward is its *shape*: the Qt view is built decomposed from the start. `PL-NGF7` is the one that moves - see the gate section. | 7 M |
 | 6 | **Gate 2** | Frozen when v0.6.0 is scoped; ships inside it. | — |
@@ -1914,6 +1914,39 @@ carried the same sentence into work whose declared `touches` are
 - PL-S3Q0 (S) Two paraphrases of the tier-2 absolute survived PL-FJGY's sweep, in docs/MODEL.md's Kharasch note and reference_adult.json's Frayn and Karpe note
 - PL-YLKR (M) Design what a chart tooltip says: fl_chart's default is a bare number, and PL-KP7H makes the tooltip a paused-only readout that a reader will actually stop and study
 
+**Added 2026-09-13 under the unconditional safety/science exception — 1 entry**
+
+Found by the triage pass over the fourteen captures open that day (`PL-TQJ4`).
+`PL-V6M0` is `safety`-classed, so it re-enters this gate whatever its presence
+answer, under the second of "The gate is a snapshot"'s two unconditional
+exceptions. It is not inside this milestone's Required scope, so it clears
+before implementation begins.
+
+**What it is.** `PL-YK2V` widened `_apply_setting`'s catch so that anything
+outside the project hierarchy halts the run, and the narrow arm it kept catches
+`AnesthesiaSimulationError` — the base class. That is right for
+`SimulationConfigurationError`, where a value was refused and nothing was
+miscalculated, and it inverts the meaning of `SimulationExecutionError`, whose
+docstring in `core/exceptions.py` says the run must stop rather than continue:
+such an error would be reported to the reader as a refused setting, over a run
+that keeps producing readings. `SimulationDomainLimitError` is the same shape
+again, mislabelled as a refusal rather than as the run reaching the edge of its
+supported domain.
+
+**Why `anticipated` does not defer it.** No route raises either type into
+`_apply_setting` today, which is why the item carries that class — but
+`checks.py` grants the class its exemption from the band only at `status:
+blocked`, and nothing blocks this one: the trigger is a future route rather than
+a named item or milestone. The exemption is therefore unavailable, and an
+unavailable exemption is not a reason to seat safety-critical work lower. It is
+also this milestone that makes the anticipation concrete: v0.5.0 turns a run
+from a sequence of applied steps into a closed-form function of its
+control-input timeline, so a setting applied to a run that has already been
+evaluated — the "applied by re-stepping" route the item names as the way in
+— is newly in play here rather than hypothetically.
+
+- PL-V6M0 (S) _apply_setting reports a SimulationExecutionError as a refused setting and lets the run continue, which is the opposite of what that type means
+
 ### Deferred to v0.5.1, because the port dissolves the defect — 1 entry
 
 **Recorded here because this list is frozen** and "The gate is a snapshot, not
@@ -1983,7 +2016,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 66 entries
+### Declined to Gate 2 on the refilling-queue ground — 79 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -2131,17 +2164,69 @@ pair of stale check workarounds, and the citation-form conversion `PL-V13T`
 left open. None can reach a reader of the simulator, which is the test the
 first twenty-nine were declined on.
 
+**Twelve more from the 2026-09-13 triage pass over the fourteen captures open
+that day** (`PL-TQJ4`). Nine are wholly in the workflow lane and sit exactly
+where the first thirty do: found after the 2026-09-06 freeze, `P2` or `P3`,
+neither `safety` nor `science`, and apparatus held to
+`.claude/rules/apparatus-standard.md`'s deliberately lower bar. The
+refilling-queue arithmetic above is unchanged and is still the reason. The
+thirteenth item of that pass, `PL-V6M0`, is admitted above under the
+unconditional safety exception rather than declined.
+
+**Three are not wholly apparatus and so need their own ground**, which is
+stated rather than stretched. `PL-BQ46` and `PL-KL2Q` are two halves of one
+question about `core/`'s dimensionless vocabulary — whether a MAC-relative
+ratio earns a type of its own, and which of the two percent/fraction
+vocabularies a new parameter field takes. Both are `refactor`-classed hardening
+of a boundary that produces no wrong value today: what they describe is a guard
+`mypy` could give and does not, not a displayed number that is wrong. Neither is
+under this milestone, which adds no field to `core/parameters.py` and no fourth
+convention, and answering them apart would decide one question twice — so
+they are better taken together, after the port has settled what `formatting`
+looks like.
+
+`PL-N32Y` is a correction to this document's account of a *past* release:
+v0.1.0's Required scope says the release added tissue:blood partition data where
+the agent files store tissue:gas. The scientific half is already fixed where a
+reader of the model meets it — `PL-212V` corrected `docs/MODEL.md`'s
+specification and `PL-H46J` gave the Symbols table the Code column that maps
+each symbol onto `core/`, both in v0.4.17 — so what is left is the history,
+and it cannot reach a reader of the simulator. It is also `needs-decision` on a
+question only the project owner can answer, about whether a frozen `Required
+scope` line is corrected or annotated when it turns out to be wrong; holding
+v0.5.0 open would not produce that answer.
+
+**One more from the 2026-09-13 article-review triage pass, on the same ground.** `PL-DG84`
+(`docs/WORKING_NOTES.md` asks for resolved threads to be deleted and nothing
+reads that policy) was captured that day and triaged to `needs-decision`, which
+is what makes it debt this gate has to dispose of; it is `P2`, neither `safety`
+nor `science`, and wholly apparatus. The accumulation it describes predates the
+2026-09-06 freeze and so passes the presence test as squarely as the first
+twenty-nine, and it is declined for the reason they were: it makes no remaining
+entry cheaper, so it fails the arithmetic the presence rule asks for, and Gate 1
+stands at 52 open entries it can clear.
+
+Its five filed instances need no disposition of their own and are not listed
+here - `PL-5748`, `PL-60CQ`, `PL-BHJW` and `PL-75R0` are `docs`-classed at
+`ready`, which is not a debt class, and `PL-C92D` is already above on its `perf`
+class. That asymmetry is worth naming rather than looking like an omission: the
+systemic item reaches the gate only because its next step is a decision, while
+the concrete defects it generalises do not reach it at all.
+
 - PL-0M32 (S) Nothing can tell an item finished under a renamed test from one nobody has started
 - PL-0VFF (S) ROADMAP.md's 'Declined to Gate 2' list names PL-483K, PL-69JZ and PL-L09X as deferred, but all three closed done in v0.4.14, and nothing distinguishes a still-open entry from a closed one
 - PL-12P8 (S) PL-JBZK's lane check assumes every file under tests/ is a test file, so a shared non-test helper is told to declare itself apparatus
+- PL-1BS2 (S) The session-start digest's Releasable line reads readiness without the interrupted-cut resume, so during an unfinished cut it reports the short remainder with nothing saying why
 - PL-2GQW (S) PL-L9JS's not-delegable reason rests on the recursion claim PL-20CQ disproved, so the item may be delegable after all
 - PL-316G (M) Convert the 150 possessive-form document citations to the section-mark form, which is the only way doc_check can check them without reading prose as a citation
+- PL-3DN1 (S) bin/docket release accepts a VERSION below the current one, so a typo silently downgrades pyproject.toml's version field
 - PL-3JP0 (S) Decide whether the wash-in section's three paragraphs survive the same test PL-6580 applied to the chart panel above it
 - PL-3V6C (S) PL-TFWR and PL-XQRK record incompatible causes for the same remote-deletion failure and both ruled out the git proxy on a field that does not record policy denials, so whichever lands first writes an unproven cause into the instructions
 - PL-483K (S) The stop hook demands a push for work already pushed after a branch is restarted per the merged-PR recovery, because checkout -B from origin/main leaves the upstream pointing at main
 - PL-69JZ (S) docket verify's 'the checks themselves are unedited' audit REJECTs every item whose declared work is editing a .claude rules file, since gate_paths includes .claude and touches is not consulted
 - PL-6BDX (S) Two shipped items are reported in flight in every session's digest, because their branch refs outlived their merges: PL-GVXP (v0.4.7) and PL-S5LB (v0.4.6)
 - PL-6G8T (S) _section_text reads a required heading quoted at a line break as the section itself, so a wrapped quotation above an empty real heading masks the empty one
+- PL-6YWK (S) PL-4L6Z's verify: runs the whole reference suite, so it is killed at docket check's 120s limit and nothing is claimed about the item on any run
 - PL-6YYR (M) A release tag can be pushed for a version that was never cut, and nothing detects it: v0.4.8 tags main at version 0.4.7 with no release notes and no ROADMAP row
 - PL-77SV (S) PL-G8TR, PL-K2C8 and PL-TFWR all edit the same ten lines of the docket skill's recovery block, and PL-G8TR's Done-when is defined against that block's shape, so whoever lands first silently sets the other two's tests
 - PL-7RTN (M) An open pull request can carry no check runs at all, so a branch merges with nothing having gated it
@@ -2154,10 +2239,14 @@ first twenty-nine were declined on.
 - PL-8T3Z (S) PL-K2C8's touches omits .claude/hooks/no-prune-guard.sh, which carries the same incomplete recovery recipe, and its Where sends a fix at PL-CPLD which is now dropped
 - PL-9LXK (M) Nothing checks a prose claim about the tier or adoption of a stored value's source, though PL-1JDD made both machine-readable and three such claims went stale within a day
 - PL-B8V1 (S) ROADMAP.md's declined-to-Gate-2 argument says 'Gate 1 stands at 132 entries ... with 89 still open' in the present tense, and it is now 159 with 94 open
+- PL-BGMK (M) Two open items whose touches and verify: command overlap are never compared, so PL-1YDK and PL-8PT6 were filed and worked as one finding twice and only docket check --verify on main caught it
 - PL-BHVM (M) Nineteen items re-decide what evidence proves a ref is done, seventeen of them in vcs.py: one design round rather than nineteen heuristic patches
+- PL-BQ46 (S) MacAwakeReference.fraction_of_mac and formatting.mac_multiple are a third and fourth dimensionless convention beside Fraction, and neither is distinguished from a concentration fraction at the type level
 - PL-C92D (S) PL-YSZN's Flet frame table predates PL-2FM6 and measures a tree that no longer exists in two of its three stages, so the Qt/Flet comparison rests on one row
 - PL-CNCF (M) controller.drawn_window costs 6.2 ms a frame at the shipped 150-column budget - 99% of the frame's read and about eighty times the simulation at 1x
+- PL-DG84 (M) docs/WORKING_NOTES.md asks for resolved threads to be deleted and nothing reads that policy
 - PL-F48B (S) Nothing ever repairs a clone's tags after a history rewrite: fetch_remote runs git fetch without --tags --force, so release tags keep pointing at purged commits
+- PL-F933 (S) doc_check resolves a path citation against the working tree, so a citation to a gitignored path passes locally and reddens CI
 - PL-G8TR (S) no-prune-guard is evaded by the form it recommends - git branch -dr driven from a generated list is a prune
 - PL-H9GV (S) PL-01GD shipped as one exported Makefile variable with no test: PYTHONDONTWRITEBYTECODE appears only at Makefile:21, its declared touches names tests/unit/test_tools_portability.py which never changed, and its verify: passes against an untouched suite
 - PL-HKTB (S) The chart gridline and divider grey measures 1.31:1 on the panel and carries no contrast requirement; decide whether it should be darkened or recorded as exempt furniture
@@ -2167,6 +2256,7 @@ first twenty-nine were declined on.
 - PL-JXVD (S) PL-38PN's own line-number corrections are stale, so working it as written writes a second generation of wrong citations; PL-QV5Y has the same defect
 - PL-K5PW (S) bin/docket check --items docs/items resolves config from docs/ rather than the repo root, so it reports a clean store as 112 errors
 - PL-KFWL (S) The v0.4.8 tag is pushed onto a commit where the release was never cut, so doc_check errors on main for every session
+- PL-KL2Q (S) core/parameters.py now holds two overlapping percent/fraction vocabularies - Pydantic's PositivePercent which validates but does not type-check, and concentration.py's Percent which type-checks but does not validate - and nothing says which a new field takes
 - PL-KNHX (S) contrast_check's KNOWN_SHORTFALLS entries are never checked against the requirements they excuse, so a stale one lingers and inflates the reported shortfall count
 - PL-KRS6 (S) bin/docket release counts the previous release's own cut item as releasable work, so every session after a release is offered an empty one
 - PL-L09X (M) An item blocked on a milestone that is decided but not yet named has no honest status: bare blocked errors, and blocked-by only accepts a version the roadmap already places
@@ -2176,6 +2266,7 @@ first twenty-nine were declined on.
 - PL-LPWK (S) A release note cites the pull request that closed an item, not the one that carried its code, whenever the two differ
 - PL-LT77 (S) git fetch --tags does not prune, so a tag deleted on origin keeps failing doc_check in every checkout that already fetched it, and nothing distinguishes stale local state from a real repository fault
 - PL-MSFB (S) PL-6194's verify: command still uses [(] and [)] to work around the math check that PL-WTQ1 fixed, and WORKING_NOTES.md:504 still uses backticks to work around PL-KJ63
+- PL-N32Y (S) ROADMAP.md's v0.1.0 Required scope says the release added tissue:blood partition data, where the agent data files store tissue:gas
 - PL-NF6N (M) Triage has no write command: every pass edits item front matter by hand, which is the decidable half CLAUDE.md asks to be moved into code
 - PL-P757 (S) bin/docket --items pointed at a nested store makes every annotating commit read as work, silently
 - PL-PNW6 (S) A release cut at a version number some withdrawn tag once named leaves every warm checkout pointing v<version> at the old commit, and the handover's own 'git fetch origin main' is the command that leaves it stale silently
@@ -2185,13 +2276,40 @@ first twenty-nine were declined on.
 - PL-T7VS (M) A red doc_check voids the whole-store verify replay for the 29 open items gated behind it, and the replay reports green rather than declining to answer
 - PL-T8PT (S) make check runs pr_title_check --discover against committed history, so a session that runs it before committing the closure sees a HEAD without it, passes locally, and goes red in CI anyway
 - PL-TNB6 (S) docket next attributes the whole of Gate 1 to the v0.4.x step, where the plan makes Gate 1 its own row that no patch may ship
+- PL-TP5M (S) PL-ZBRB's advisory names blocked-by to work around a checker that did not read it, and PL-KBD0's check now does
 - PL-TTMF (S) PL-6BDX's title names two expired refs and the live instance this item was filed on has cleared too, so the item now reproduces nothing while the defect it describes is unfixed
+- PL-VJFQ (S) Nothing enforces that KNOWN_SHORTFALLS only shrinks, so the contrast ledger could become the suppression list ui-color.md forbids in prose
 - PL-VYK1 (S) The docket skill's release handover tags at origin/main rather than at the cut's own merge commit, so a re-run of the three commands tags whatever merged next
+- PL-WZBX (M) bin/docket wave counts the four entries ROADMAP.md's gate places under 'Cleared by v0.5.0 itself' as clearable before the milestone begins, where the gate rule says the milestone clears them
 - PL-Y1LD (M) docket concurrent orders a batch by file, but the lane mechanism separates only two sessions, so the third and fourth simultaneous session have no command that picks for them
 - PL-Y31G (M) bin/docket stranded classes a branch left on pre-rewrite history as one whose pull request merged, because it compares file content and a rewrite leaves content unchanged
 - PL-YKXQ (S) This container's initial clone had local main diverged 407 commits into pre-rewrite history, so a session that checks out main gets a stale tree and an old bin/docket
 - PL-YTDN (S) Rename the nine item files whose slug no longer matches their title, now that docket check names them
+- PL-Z5FG (S) The PL-B32L and PL-TCW5 edits to core/parameters.py shifted line numbers cited by PL-0NQ1 and PL-HXKC, which is PL-J7C5's hazard arriving again from an unrelated branch
 - PL-ZG5J (M) Land the headless frame-cost harness that measured all of the above, so the simulation-versus-UI split can be re-measured rather than re-derived
+
+**One entry on a second ground, recorded here rather than under a heading of
+its own — `PL-VV6N` (decide a retention rule for items captured but never
+worked).** Captured 2026-09-13, a week after this gate was frozen, so the
+snapshot rule already places it in the next gate; it is written down because it
+sits at `needs-decision`, which is what makes it debt, and a reader finding it
+open would otherwise have to work out why it is absent.
+
+Its ground is not the refilling queue above but that it cannot be worked yet.
+It proposes *tightening* intake, and `.claude/rules/expert-review.md` requires
+naming what the suppressed side would have to be worth and then counting it
+before any such proposal is acted on. That count is `PL-YVV4`, filed the same
+day and named in this item's `blocked-by`. `PL-LKGL` is the precedent: an
+apparatus capture-bar proposal died when the count it had skipped came back 67%
+still-real findings. Admitting it would put an entry on the frozen list that
+cannot close until one that is not on the list closes first.
+
+**It is inside this section rather than beside it because the checker reads
+only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
+`### Declined to Gate ...` subsection after the gate heading and stops at the
+next heading of any level, so a second one silently orphans this section's 66
+dispositions - the gate then reports them all as undisposed. `PL-82B0` carries
+the defect.
 
 ### Required scope
 

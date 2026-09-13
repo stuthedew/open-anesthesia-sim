@@ -105,6 +105,7 @@ from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
+    SimulationExecutionError,
     SimulationNumericalError,
 )
 from anesthesia_sim.core.governing_equations import STATE_SIZE, UNIT_STATE
@@ -408,12 +409,12 @@ def _snapshot(
         agent_mac_awake=agent_mac_awake,
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=4.0,
-        delivered_concentration_fraction=0.08,
+        delivered_partial_pressure_fraction=0.08,
         alveolar_ventilation_l_min=4.0,
         cardiac_output_l_min=5.0,
-        circuit_concentration_fraction=compartments[RecordedQuantity.CIRCUIT],
-        alveolar_concentration_fraction=compartments[RecordedQuantity.ALVEOLAR],
-        mixed_venous_concentration_fraction=compartments[RecordedQuantity.MIXED_VENOUS],
+        inspired_partial_pressure_fraction=compartments[RecordedQuantity.CIRCUIT],
+        alveolar_partial_pressure_fraction=compartments[RecordedQuantity.ALVEOLAR],
+        mixed_venous_partial_pressure_fraction=compartments[RecordedQuantity.MIXED_VENOUS],
         vessel_rich_partial_pressure_fraction=compartments[RecordedQuantity.VESSEL_RICH],
         muscle_partial_pressure_fraction=compartments[RecordedQuantity.MUSCLE],
         fat_partial_pressure_fraction=compartments[RecordedQuantity.FAT],
@@ -1780,7 +1781,7 @@ def test_delivered_concentration_slider_converts_percent_to_fraction() -> None:
         ft.Event(name="change", control=view._delivered_concentration_slider)
     )
 
-    assert controller.snapshot().delivered_concentration_fraction == pytest.approx(0.065)
+    assert controller.snapshot().delivered_partial_pressure_fraction == pytest.approx(0.065)
     assert view._delivered_concentration_text.value == "6.50%"
 
 
@@ -3124,8 +3125,8 @@ def test_simulation_time_does_not_depend_on_render_cadence() -> None:
     # precisely the drift this asserts the absence of.
     assert stepped_by_the_loop.elapsed_s == reference.snapshot().elapsed_s
     assert (
-        stepped_by_the_loop.alveolar_concentration_fraction
-        == reference.snapshot().alveolar_concentration_fraction
+        stepped_by_the_loop.alveolar_partial_pressure_fraction
+        == reference.snapshot().alveolar_partial_pressure_fraction
     )
 
 
@@ -3672,7 +3673,7 @@ def test_a_refused_setting_is_reported_without_stopping_the_run() -> None:
     controller = SimulationController(agent_id="isoflurane")
     view = SimulationView(page=page, controller=controller)
     controller.start()
-    delivered_before = controller.snapshot().delivered_concentration_fraction
+    delivered_before = controller.snapshot().delivered_partial_pressure_fraction
 
     view._delivered_concentration_slider.value = 50.0
     view._handle_delivered_concentration_change(
@@ -3689,7 +3690,7 @@ def test_a_refused_setting_is_reported_without_stopping_the_run() -> None:
 
     # The control must not keep showing a dial position the simulation is
     # not running at: that is the correct number under the wrong label.
-    assert controller.snapshot().delivered_concentration_fraction == delivered_before
+    assert controller.snapshot().delivered_partial_pressure_fraction == delivered_before
     assert view._delivered_concentration_slider.value == pytest.approx(delivered_before * 100.0)
 
 
@@ -3710,7 +3711,7 @@ def test_a_refusal_notice_clears_once_a_setting_is_accepted() -> None:
     )
 
     assert view._notice_text.visible is False
-    assert controller.snapshot().delivered_concentration_fraction == pytest.approx(0.02)
+    assert controller.snapshot().delivered_partial_pressure_fraction == pytest.approx(0.02)
 
 
 @pytest.mark.parametrize(
@@ -3899,6 +3900,62 @@ def test_a_refused_setting_is_still_a_notice_and_not_a_halt() -> None:
     assert view._rejected_setting_notice == "Setting refused — a value the core refused"
 
 
+def test_a_settings_execution_error_halts_the_run_instead_of_reading_as_refused() -> None:
+    """`PL-V6M0`: the narrow arm is drawn at the class that means "nothing was miscalculated".
+
+    `PL-YK2V` left the arm catching `AnesthesiaSimulationError`, the *base*
+    class, which put every branch of the hierarchy on the notice side.
+    `SimulationExecutionError` means the opposite of a refused setting -
+    `core/exceptions.py` defines it as the run being unable to continue
+    safely - so the base-class catch would have left a run that must stop
+    producing readings under a notice about one control, with "Running" over
+    numbers the core had already disowned. That is the plausible-looking
+    number `CLAUDE.md` prefers an obvious failure state to.
+
+    Pinned before any route raises one here, because the failure is silent:
+    nothing on screen, and nothing in the logs, distinguishes it from an
+    ordinary refusal.
+    """
+
+    controller = _recording_controller(is_running=True)
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    def _cannot_continue() -> None:
+        raise SimulationExecutionError("the run cannot continue safely")
+
+    view._apply_setting(_cannot_continue)
+
+    assert controller.failures == ["SimulationExecutionError: the run cannot continue safely"]
+    assert controller.is_running is False
+    assert view._rejected_setting_notice is None
+
+
+def test_a_settings_domain_limit_reaches_the_supported_limit_channel() -> None:
+    """The milder half of `PL-V6M0`, and the one a base-class catch mislabels twice.
+
+    `SimulationDomainLimitError` is a `SimulationExecutionError`, so the old
+    arm caught it and reported the end of the supported domain as a refused
+    setting over a continuing run. Narrowing the arm sends it to `_halt_run`,
+    which already routes this one type away from `fail` to its own channel -
+    so the correct wording arrives without a second branch here. This pins
+    the routing end to end, since `_halt_run`'s own test cannot see which
+    caller reaches it.
+    """
+
+    controller = _recording_controller(is_running=True)
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    def _out_of_domain() -> None:
+        raise SimulationDomainLimitError("this run has reached 86400 s of simulated time")
+
+    view._apply_setting(_out_of_domain)
+
+    assert controller.supported_limits == ["this run has reached 86400 s of simulated time"]
+    assert controller.failures == []
+    assert controller.is_running is False
+    assert view._rejected_setting_notice is None
+
+
 def test_a_built_in_agent_without_an_identification_colour_fails_at_import() -> None:
     """Adding an agent without its ISO 5360 colour must stop the app starting.
 
@@ -3946,15 +4003,15 @@ def test_the_model_keeps_precision_the_display_throws_away() -> None:
 
     below_resolution = 1e-8  # a fraction, i.e. 1e-6 percentage points
 
-    def run_at(delivered_concentration_fraction: float) -> tuple[float, str]:
+    def run_at(delivered_partial_pressure_fraction: float) -> tuple[float, str]:
         controller = SimulationController()
-        controller.set_delivered_concentration(delivered_concentration_fraction)
+        controller.set_delivered_partial_pressure_fraction(delivered_partial_pressure_fraction)
         controller.start()
         _advance_to(controller, 120.0)
         snapshot = controller.snapshot()
 
-        return snapshot.alveolar_concentration_fraction, format_percent(
-            snapshot.alveolar_concentration_fraction
+        return snapshot.alveolar_partial_pressure_fraction, format_percent(
+            snapshot.alveolar_partial_pressure_fraction
         )
 
     baseline_fraction, baseline_displayed = run_at(0.02)
@@ -4225,11 +4282,11 @@ def test_the_end_to_end_mac_path_reaches_the_panel_from_a_real_run() -> None:
 
     assert snapshot.agent_mac_percent == 6.0
     assert view._alveolar_mac_text.value == format_mac_multiple(
-        snapshot.alveolar_concentration_fraction, 6.0
+        snapshot.alveolar_partial_pressure_fraction, 6.0
     )
     # The dial starts at the agent's own 1 MAC, so after a minute of wash-in
     # the alveolar compartment is somewhere below it and above nothing.
-    alveolar_mac = snapshot.alveolar_concentration_fraction * 100.0 / 6.0
+    alveolar_mac = snapshot.alveolar_partial_pressure_fraction * 100.0 / 6.0
     assert 0.0 < alveolar_mac < 1.0
     assert view._delivered_concentration_mac_text.value == "1.00 ×MAC"
 
@@ -5164,7 +5221,7 @@ def test_a_real_run_draws_the_ratio_of_its_own_recorded_compartments() -> None:
     view = SimulationView(page=_FakePage(), controller=controller)
     snapshot = controller.snapshot()
     reading = read_wash_in(
-        snapshot.alveolar_concentration_fraction, snapshot.circuit_concentration_fraction
+        snapshot.alveolar_partial_pressure_fraction, snapshot.inspired_partial_pressure_fraction
     )
 
     assert reading.plotted_ratio is not None

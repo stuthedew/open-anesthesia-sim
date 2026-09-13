@@ -245,6 +245,44 @@ def _startable(
     ]
 
 
+def placement_line(scope: Scope | None, identifier: str) -> str:
+    """One short phrase saying where the plan places an id, or `""`.
+
+    `docket next` states the relation inside a ranked item's reason, which
+    only reaches a session that asked for a ranking. Naming an item reaches
+    `docket show` instead, and until `PL-J790` that printed priority, effort,
+    status and `touches` and nothing about the plan - on the path the project
+    owner usually starts work on, and the one `next` never sees.
+
+    Deliberately shorter than the reason lines above, and deliberately not
+    shared with them: this is a header field beside `touches`, where a
+    sentence explaining the ranking would not fit. What the two must agree on
+    is the *relation*, which is `scope.placement` in both.
+    """
+
+    if scope is None or not scope.anchor:
+        return ""
+
+    where = scope.placement(identifier)
+    if where == IN_SCOPE:
+        if scope.clearing:
+            return f"on the debt gate recorded under {scope.anchor}"
+        return f"in scope for {scope.anchor}"
+    if where == OUT_OF_SCOPE:
+        placed_by = scope.milestone(identifier)
+        # While a gate is being cleared, `later` also holds the anchor's own
+        # scope mapped to the anchor - so "outside what v0.5.0 names; placed by
+        # v0.5.0" is accurate and reads as a bug. It is the commonest case
+        # there is while a gate is open, and it says something different.
+        # `milestone()` answers with a bare `v0.5.0` while `anchor` carries the
+        # roadmap's label - "v0.5.0 - the case you can branch" - so comparing
+        # them directly never matches. The anchor's first token is the version.
+        if placed_by and scope.anchor.split()[0] == placed_by:
+            return f"in the scope of {scope.anchor}, which clearing its gate comes before"
+        return f"outside what {scope.anchor} names; placed by {placed_by}"
+    return f"placed by no section of {scope.anchor} - it ranks on its band alone"
+
+
 def recommend(
     items: list[Item],
     in_flight: Collection[str] | None = None,
@@ -381,6 +419,22 @@ def recommend(
                 )
             else:
                 reason = f"In scope for {scope.anchor}, the step the project is on. {reason}"
+        elif scope is not None and where == UNPLACED and scope.anchor:
+            # The third placement said nothing until PL-J790, and silence is
+            # not one of the three answers: a session reading a reason line
+            # with no gate sentence cannot tell "no section places this" from
+            # "nobody looked". The wording has to stay narrow, though. `Scope`
+            # reads a section's frozen list and its `Required scope` and
+            # nothing else, so a timeline row places nothing here - `PL-FZ6T`
+            # is unplaced by this test while `ROADMAP.md`'s `v0.4.x` row names
+            # it outright. Saying "the roadmap places this nowhere" would have
+            # every session assert that falsehood.
+            reason = (
+                f"{reason} Placed by no section of {scope.anchor}: neither its frozen "
+                f"list nor its `Required scope` names this id, so it is neither "
+                f"preferred nor excluded and ranks on its band alone. A timeline row "
+                f"or prose may still place it."
+            )
         elif scope is not None and where == OUT_OF_SCOPE:
             scoped_to = scope.milestone(item.identifier)
             reason = (

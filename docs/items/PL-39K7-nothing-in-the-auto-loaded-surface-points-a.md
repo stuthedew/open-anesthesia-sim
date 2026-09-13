@@ -9,6 +9,7 @@ feature: documentation-standard
 touches: .claude/rules/where-new-code-goes.md, .claude/rules/core-domain.md
 added: 2026-09-13
 closed: 2026-09-13
+pr: 522
 verify: python3 tools/rules_paths_check.py && grep -q 'Where new code belongs' .claude/rules/where-new-code-goes.md && grep -q 'core/tissue.py' .claude/rules/core-domain.md
 ---
 

@@ -105,8 +105,8 @@ def _build_circuit(fresh_gas_flow_l_min: float) -> BreathingCircuit:
     return BreathingCircuit(
         circuit_volume_l=6.0,
         fresh_gas_flow_l_min=fresh_gas_flow_l_min,
-        delivered_concentration_fraction=DRIVING_FRACTION,
-        circuit_concentration_fraction=LOADED_FRACTION,
+        delivered_partial_pressure_fraction=DRIVING_FRACTION,
+        inspired_partial_pressure_fraction=LOADED_FRACTION,
     )
 
 
@@ -134,7 +134,7 @@ def _build_venous_blood(blood_flow_l_min: float) -> VenousBloodCompartment:
     venous_blood = VenousBloodCompartment(
         volume_l=1.222, blood_gas_partition_coefficient=0.65, blood_flow_l_min=blood_flow_l_min
     )
-    venous_blood.set_concentration_fraction(LOADED_FRACTION)
+    venous_blood.set_partial_pressure_fraction(LOADED_FRACTION)
 
     return venous_blood
 
@@ -153,7 +153,7 @@ PRIMITIVES = (
         name="TissueGroup.advance",
         build=_build_tissue,
         step=lambda tissue, step_s: tissue.advance(
-            arterial_fraction=DRIVING_FRACTION, simulation_step_s=step_s
+            arterial_partial_pressure_fraction=DRIVING_FRACTION, simulation_step_s=step_s
         ),
         stored_agent_l=lambda tissue: tissue.agent_amount_l,
         time_constant_s=lambda tissue: tissue.time_constant_s,
@@ -164,7 +164,7 @@ PRIMITIVES = (
         name="VenousBloodCompartment.advance",
         build=_build_venous_blood,
         step=lambda venous_blood, step_s: venous_blood.advance(
-            tissue_return_fraction=DRIVING_FRACTION, simulation_step_s=step_s
+            tissue_return_partial_pressure_fraction=DRIVING_FRACTION, simulation_step_s=step_s
         ),
         stored_agent_l=lambda venous_blood: venous_blood.agent_amount_l,
         time_constant_s=lambda venous_blood: venous_blood.time_constant_s,
