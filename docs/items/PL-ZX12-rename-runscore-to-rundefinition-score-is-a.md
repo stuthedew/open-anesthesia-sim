@@ -10,6 +10,7 @@ milestone: v0.4.16
 touches: src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_run_definition.py, tests/unit/test_simulation_view.py, tests/integration/test_controller.py, tests/integration/test_chart_patching.py, tests/integration/test_sevo_controller.py, tests/reference/test_canonical_evaluation.py, docs/ARCHITECTURE.md, docs/MODEL.md, docs/WORKING_NOTES.md, ROADMAP.md, docs/items/PL-49R8-a-path-scoped-rule-that-stops-a-session-re.md
 added: 2026-09-08
 closed: 2026-09-13
+pr: 512
 verify: test -f src/anesthesia_sim/core/run_definition.py && ! grep -rqE 'RunScore|ScoreSegment|run_score' src/ tests/
 ---
 
