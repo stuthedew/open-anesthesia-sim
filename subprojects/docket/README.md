@@ -1499,7 +1499,7 @@ them from the base is what lets the write ride whatever commit the session was
 about to make. That is the cost being removed: not the typing, but the commit
 the typing needed.
 
-`docket record <number> --merge <commit>` is the explicit form, for the number
+`docket record NUMBER --merge MERGE_COMMIT` is the explicit form, for the number
 the base cannot name — a squash subject that led with no id. It takes the
 number rather than deriving it, and `closed_by` supplies what that merge closed
 by comparing its tree against its parent's: `status: done` here and not there,

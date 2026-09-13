@@ -3,11 +3,12 @@ id: PL-K2C8
 title: The docket skill's stranded-branch recovery deletes only the local remote-tracking ref, which the next non-prune fetch restores while the branch still exists on the remote
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 touches: .claude/skills/docket/SKILL.md, docs/items
 added: 2026-09-05
-verify: grep -q 'push origin --delete' .claude/skills/docket/SKILL.md
+closed: 2026-09-13
+verify: grep -q 'git push origin --delete' .claude/skills/docket/SKILL.md && grep -q "say the remote deletion is outstanding" .claude/skills/docket/SKILL.md
 ---
 
 **Problem.** `.claude/skills/docket/SKILL.md` § "Mode: capture" gives the
@@ -66,3 +67,15 @@ whether `stranded` should say which of the two states it is looking at, is
 **Done when.** The skill's recovery block names the remote deletion,
 distinguishes it from the local ref deletion, and states that the remote half
 is the project owner's to run.
+
+**Worked.** Taken into this batch rather than left for a later session because
+`PL-HKF4` had just rewritten the same five lines - the block now sets `BRANCH`
+as a shell variable, which is what the two commands below interpolate. The
+remote deletion leads, with the inline comment saying it is the owner's, and
+the paragraph under the block says why `branch -dr` is not a substitute and
+why none of this weakens the `--prune` prohibition beside it.
+
+`docs/items/PL-CPLD-*.md`, named under **Where.**, is left alone: it is
+`dropped`, so its **Approach.** is a record of what was thought at the time
+rather than a procedure any session will run, and rewriting a closed item's
+brief is the same mistake as re-pointing a closed `verify:`.

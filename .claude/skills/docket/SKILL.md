@@ -210,12 +210,31 @@ on the merged `main` and carry the commit forward as a new pull request, never
 by pushing to the merged branch again, which is what lost it:
 
 ```bash
-git branch -dr origin/<branch>
+BRANCH=claude/the-branch-stranded    # the ref `stranded` named
+
+git push origin --delete "$BRANCH"   # the branch itself - the owner's to run
+git branch -dr "origin/$BRANCH"      # this clone's remote-tracking ref
 git fetch origin main
-git checkout -B <branch> origin/main
+git checkout -B "$BRANCH" origin/main
 ```
 
-**These three commands destroy a branch, so confirm the merge before running
+**The first command is the project owner's, and the second is not a substitute
+for it.** `git branch -dr` clears this clone's remote-tracking ref and nothing
+else, so where the branch still exists on the remote the next `git fetch
+origin` recreates it under the default refspec `+refs/heads/*:refs/remotes/origin/*`.
+The deletion does not survive the next fetch, let alone the next session:
+`bin/docket stranded` names the branch again and the next session repeats the
+whole recovery, which is the re-discovery loop `CLAUDE.md`'s housekeeping rule
+exists to stop, arriving through the procedure rather than through the absence
+of one. Measured 2026-09-05 on `origin/claude/next-item-75htc6`, where `git
+ls-remote --heads origin` still returned the branch after the ref had been
+cleared. Deleting a branch on the remote is destructive and outward-facing, so
+run the other three, then **say the remote deletion is outstanding and leave it
+to the owner** (`PL-K2C8`). This is also why none of it weakens the `--prune`
+prohibition below: prune and `branch -dr` clear local refs and nothing else, so
+neither one finishes the job.
+
+**These commands destroy a branch, so confirm the merge before running
 them.** The check now requires the base to have taken one of the branch's
 commits whole, which is what a squash merge leaves and what two sessions
 writing identical `docket record` lines does not (`PL-5TRV`, `#372` reported
@@ -1124,8 +1143,8 @@ in the tree reports it; `git ls-remote --tags origin` is what answers.
    `#229` and `#230` for one identical insertion (`PL-QTSB`). Let the write
    ride a commit you are already making; do not compose one for it, and do not
    open a pull request for it alone. Where a number exists that the base cannot
-   name — a squash subject that led with no id — `bin/docket record <number>
-   --merge <merge commit>` is the explicit form.
+   name — a squash subject that led with no id — `bin/docket record NUMBER
+   --merge MERGE_COMMIT` is the explicit form.
 
    No in-flight guard is owed before running it, unlike every other path that
    edits an item someone else may hold. `PL-QTSB`'s harm was two *pull

@@ -71,6 +71,105 @@ def test_new_captures_several_ideas_in_one_call(
     assert len({p.name.split("-")[1] for p in written}) == 2
 
 
+def test_touches_before_the_title_no_longer_swallows_it(tmp_path: Path) -> None:
+    """The capture path is the one place in this project meant to be frictionless.
+
+    `--touches` was `nargs="*"`, so it consumed the title and argparse then
+    reported the title as missing - naming the one thing that had been supplied.
+    Capture has to work when usage is nearly spent and a thought is one
+    interruption from gone, so a plausible argument order failing is friction in
+    exactly the wrong place (`PL-YNCW`).
+    """
+    store = _store(tmp_path)
+
+    # The brief's own reproduction, unquoted path and all: under `nargs="*"` this
+    # raised `SystemExit` from argparse's "the following arguments are required:
+    # title", having just been handed one.
+    exit_code = _run(
+        "new",
+        "--feature",
+        "parallel-sessions",
+        "--touches",
+        "src/a.py",
+        "Some title",
+        "--items",
+        str(store),
+    )
+
+    assert exit_code == 0
+    written = sorted(store.glob("*.md"))
+    assert len(written) == 1
+    body = written[0].read_text()
+    assert "title: Some title" in body
+    assert "touches: src/a.py" in body
+    assert "feature: parallel-sessions" in body
+
+
+def test_touches_may_be_repeated_as_well_as_comma_separated(tmp_path: Path) -> None:
+    """Both spellings reach the same field, so neither order has to be remembered."""
+    store = _store(tmp_path)
+
+    assert (
+        _run(
+            "new",
+            "--touches",
+            "src/a.py",
+            "--touches",
+            "src/b.py,src/c.py",
+            "One idea",
+            "--items",
+            str(store),
+        )
+        == 0
+    )
+
+    assert "touches: src/a.py, src/b.py, src/c.py" in next(store.glob("*.md")).read_text()
+
+
+def test_a_space_separated_second_path_is_refused_rather_than_captured_as_a_title(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The failure the parser fix would otherwise have made silent.
+
+    With `--touches` no longer variadic, a space-separated second path lands in
+    the title, which would capture an item called `src/b.py` and write it. A loud
+    refusal naming the value is the only acceptable outcome; the rule is narrow
+    enough that a title anybody meant to write cannot trip it, because a real
+    title has a space in it (`PL-YNCW`).
+    """
+    store = _store(tmp_path)
+
+    exit_code = _run(
+        "new", "--touches", "src/a.py", "src/b.py", "Some title", "--items", str(store)
+    )
+
+    assert exit_code == 1
+    assert list(store.glob("*.md")) == []
+    output = capsys.readouterr().out
+    assert "src/b.py" in output
+    assert "reads as a path rather than a title" in output
+    assert "--touches a.py,b.py" in output
+
+
+def test_a_title_with_a_space_is_never_read_as_a_path(tmp_path: Path) -> None:
+    """The guard above may not refuse an ordinary capture that mentions a file."""
+    store = _store(tmp_path)
+
+    assert (
+        _run(
+            "new",
+            "--touches",
+            "src/a.py",
+            "src/controller.py holds the run's storage as well",
+            "--items",
+            str(store),
+        )
+        == 0
+    )
+
+    assert len(list(store.glob("*.md"))) == 1
+
+
 def test_a_captured_idea_needs_no_priority(tmp_path: Path) -> None:
     store = _store(tmp_path)
     _run("new", "Half an idea", "--items", str(store))
@@ -1087,7 +1186,32 @@ def test_a_cut_release_names_the_roadmap_edits_it_did_not_write(
     assert "still marked" in out
     assert "still names v0.2.5" in out
     assert "make check" in out
-    assert 'git tag -a v0.2.6 <merge commit> -m "v0.2.6"' in out
+    assert 'git tag -a v0.2.6 MERGE_COMMIT -m "v0.2.6"' in out
+
+
+def test_no_command_the_release_prints_carries_a_shell_redirection(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A placeholder a shell eats is worse than no placeholder at all.
+
+    `git tag -a v0.3.1 <merge commit> -m "v0.3.1"` never reached git: a shell
+    reads `<merge` as input redirection from a file named `merge`, so zsh answered
+    "no such file or directory: merge", which names neither git nor the tag nor
+    the thing that is missing. The advisory fires once per release at the moment
+    somebody is copying it, and the release cannot be finished until the tag lands
+    (`PL-HKF4`).
+
+    Asserted over every indented command line rather than over the one string, so
+    a placeholder added to a different instruction is caught too.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+    (root / "ROADMAP.md").write_text(RELEASE_ROADMAP, encoding="utf-8")
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+
+    for line in capsys.readouterr().out.splitlines():
+        if line.startswith("  git ") or line.startswith("  make "):
+            assert "<" not in line and ">" not in line, line
 
 
 def test_a_release_whose_roadmap_is_already_written_says_nothing_is_owed(
