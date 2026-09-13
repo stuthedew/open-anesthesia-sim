@@ -1,8 +1,14 @@
 ---
 id: PL-B667
 title: MODEL.md's required invariants say derived fractions stay finite and nonnegative, but core/ enforces the upper bound of 1 in five places and the list never states it
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, docs
+feature: core-domain-language
+touches: docs/MODEL.md
 added: 2026-09-13
+verify: python3 tools/doc_check.py check && grep -qF 'derived partial-pressure-equivalent fractions remain finite and within 0 through 1' docs/MODEL.md
 ---
 
 **Problem.** MODEL.md's required invariants say derived fractions stay finite and nonnegative, but core/ enforces the upper bound of 1 in five places and the list never states it
@@ -30,7 +36,7 @@ the terms this list should use: "an exact solution of the equations cannot leave
 the physical range, so a value that does is evidence the run is no longer
 trustworthy rather than a number to display."
 
-**Why the omission matters rather than being a wording nit.** § "Concentrations"
+**Why it matters.** This is not a wording nit. § "Concentrations"
 does say fractions run "from 0 through 1", but that is a statement about
 *representation* — what the number means — where this list is the statement of
 what the implementation *must preserve*. A reader checking the code against the
@@ -59,4 +65,25 @@ maximum, 0.18 for desflurane, so operating states sit about 5x below it. A test
 sweeping the supported domain for a bound violation would be a check that cannot
 fail, which `CLAUDE.md` says to retire rather than build.
 
+**Done when.** `docs/MODEL.md` § "Required invariants" states both bounds on
+the derived fraction, `make check` passes, and no other statement in the
+document contradicts it. No code changes: the guarantee already holds, and this
+item is the spec catching up to it.
+
 **Where.** `docs/MODEL.md` § "Required invariants", one line.
+
+**Work it with `PL-FZ6T`, on one branch** (project owner, 2026-09-13). `PL-FZ6T`
+builds the checks that hold `core/` to `docs/MODEL.md`, and this invariant line
+is what one of those checks would read - so writing the sentence and writing the
+check that enforces it belong in the same pass. Alone this is a one-line docs
+commit with nothing behind it, which is how a spec line comes to be wrong again.
+
+Not a `blocked-by` edge, deliberately: neither item needs the other to start,
+and declaring one would take this out of `bin/docket next` for the wrong reason.
+It is a pairing note, and `PL-FZ6T`'s brief carries the matching one.
+
+**Not classed `safety`.** The invariant it corrects is a safety invariant, but
+the reader misled by the current wording is a developer auditing `core/` against
+the spec, not a clinician reading a displayed value - and `docket check` pins
+`safety` to P1, where the band has to keep meaning "a clinician could be
+misled".
