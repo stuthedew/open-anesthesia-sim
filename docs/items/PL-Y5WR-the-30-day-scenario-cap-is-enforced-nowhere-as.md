@@ -112,7 +112,7 @@ inverts the relationship, and it is the sentence that would otherwise anchor the
 answer near 30 days.
 
 Many multiples of the slowest mode is the regime this document already declines
-to stand behind. § "Published wash-in validation test" limitation 4 says it
+to stand behind. § "Published wash-in and elimination validation test" limitation 4 says it
 outright — *"This model has no metabolism, which is why five minutes is the
 limit"* — and rejects the two Yasuda papers' own multi-day elimination curves as
 a comparison, because "over days the missing metabolism is no longer negligible,

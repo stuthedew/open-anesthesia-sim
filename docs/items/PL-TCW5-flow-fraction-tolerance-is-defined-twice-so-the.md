@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: refactor
+milestone: v0.4.16
 touches: src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/patient.py
 added: 2026-09-02
 closed: 2026-09-13

@@ -1,8 +1,14 @@
 ---
 id: PL-MSFB
 title: PL-6194's verify: command still uses [(] and [)] to work around the math check that PL-WTQ1 fixed, and WORKING_NOTES.md:504 still uses backticks to work around PL-KJ63
-status: untriaged
+status: ready
 added: 2026-09-13
+priority: P3
+effort: S
+classes: defect, docs
+feature: dev-tooling
+touches: docs/items/, docs/WORKING_NOTES.md
+verify: python3 tools/doc_check.py check && grep -qF '"~88-256 B each" above' docs/WORKING_NOTES.md && ! grep -q '\[(\]' docs/items/PL-6194-*.md
 ---
 
 **Problem.** PL-6194's verify: command still uses [(] and [)] to work around the math check that PL-WTQ1 fixed, and WORKING_NOTES.md:504 still uses backticks to work around PL-KJ63
@@ -39,3 +45,18 @@ rather than doing alone.
 
 **Done when.** Both read as they would have been written had the checks never
 over-reached, and `make check` is green.
+
+**Triaged 2026-09-13, and the line number in **Where** was already stale.** The
+second workaround is at `docs/WORKING_NOTES.md:524`, not 504 - it reads
+`` `~88-256 B each` above `` and should read `"~88-256 B each" above`. Line
+numbers in that file moved on 2026-09-13; find it by the figure, not the line.
+
+`PL-KJ63`'s fix is what makes the quoted form safe again: `CITATION_RE`'s
+`directed` branch must now open on a letter or a code span, and `~` is neither,
+so the quotation is no longer read as a section citation. That is checkable
+rather than assumed - the `verify:` command runs `doc_check` alongside both
+greps, and was run first: it exits 1 today.
+
+**Sequencing stands as the brief has it.** The `PL-6194` half is only doable
+while that item is open, so it rides whoever starts it; the
+`docs/WORKING_NOTES.md` half is independent and can land any time.

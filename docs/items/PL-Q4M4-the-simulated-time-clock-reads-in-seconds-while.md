@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: presentation-safety
+milestone: v0.4.16
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/control_timeline.py
 added: 2026-09-05
 closed: 2026-09-13

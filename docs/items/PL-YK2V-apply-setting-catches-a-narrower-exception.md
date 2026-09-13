@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, ux
+milestone: v0.4.16
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
 added: 2026-09-02
 closed: 2026-09-13

@@ -1,8 +1,14 @@
 ---
 id: PL-LBR6
 title: bin/docket record renames a drifted item file as a side effect of writing a pr number, which conflicts against whoever else is holding that file
-status: untriaged
+status: ready
 added: 2026-09-13
+priority: P2
+effort: S
+classes: defect, infra
+feature: dev-tooling
+touches: subprojects/docket/src/docket/store.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
+verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_record_keeps_a_drifted_filename' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** bin/docket record renames a drifted item file as a side effect of writing a pr number, which conflicts against whoever else is holding that file
@@ -44,3 +50,9 @@ reports by name since `PL-3833`. The rename was backed out of that commit and
 the `pr: 507` write kept, which is the same resolution `PL-36R4` got — and it
 is a manual step a session has to know to take, every time, which is the
 argument for fixing the writer rather than remembering.
+
+**Triaged 2026-09-13.** `store.write_item` is the writer: it renders the item
+and writes to `directory / filename_for(item)`, so any caller that re-renders a
+drifted file renames it. `record` is the caller that should not. The `verify:`
+command was run first and exits 1 - the `test_cli.py` suite passes and the test
+this item owes does not yet exist.

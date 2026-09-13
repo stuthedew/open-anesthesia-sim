@@ -216,11 +216,11 @@ def test_a_run_records_the_same_history_however_the_ticks_fell() -> None:
     one_step_per_tick = _scripted_run([1] * steps)
     ragged = _scripted_run(_ragged_bursts(steps))
 
-    # The score *is* the run now, so identity is compared there: the
+    # The definition *is* the run now, so identity is compared there: the
     # settings each stretch was computed under and the keyframe opening it,
     # element for element and bit for bit, which the canonical evaluation
     # rule guarantees is reproducible rather than merely close.
-    assert one_step_per_tick.score_segments == ragged.score_segments
+    assert one_step_per_tick.run_segments == ragged.run_segments
     assert one_step_per_tick.snapshot() == ragged.snapshot()
 
 
@@ -243,7 +243,7 @@ def test_the_recorded_history_is_identical_at_every_playback_rate() -> None:
 
     steps = 600
     real_time = _scripted_run([1] * steps)
-    reference = real_time.score_segments
+    reference = real_time.run_segments
 
     for rate in SUPPORTED_PLAYBACK_RATES:
         steps_per_tick = rate.steps_per_tick(
@@ -255,7 +255,7 @@ def test_the_recorded_history_is_identical_at_every_playback_rate() -> None:
         played = _scripted_run(bursts)
 
         assert sum(bursts) == steps
-        assert played.score_segments == reference, f"playing at {rate.multiplier}x changed the run"
+        assert played.run_segments == reference, f"playing at {rate.multiplier}x changed the run"
         assert played.snapshot() == real_time.snapshot()
 
 

@@ -1,15 +1,14 @@
 ---
 id: PL-49R8
-title: A path-scoped rule that stops a session re-introducing a sample store once the run is a closed-form function of its score
+title: A path-scoped rule that stops a session re-introducing a sample store once the run is a closed-form function of its definition
 priority: P2
 effort: S
-status: blocked
-blocked-by: PL-ZX12
+status: ready
 classes: docs
 feature: numerical-domain
 touches: .claude/rules
 added: 2026-09-05
-verify: test -f .claude/rules/run-is-its-score.md && grep -q 'cannot be re-derived' .claude/rules/run-is-its-score.md
+verify: test -f .claude/rules/run-is-its-definition.md && grep -q 'cannot be re-derived' .claude/rules/run-is-its-definition.md
 ---
 
 **Problem.** "Record each sample as the simulation steps" is the obvious
@@ -38,7 +37,7 @@ whatever replaces `app/simulation_view.py`'s frame path.
 
 **What it says**, as a precondition rather than a prohibition:
 
-> The run is its score — patient, agents and the ordered control-input
+> The run is its definition — patient, agents and the ordered control-input
 > timeline. Every compartment value at every instant is a closed-form function
 > of it, so the chart evaluates rather than reads back, and there is no sample
 > store to add to. Storage is warranted only for a series that **cannot be
@@ -52,14 +51,12 @@ which is what `CLAUDE.md` calls a defect in the check. This one earns its place
 every time it fires, because the regression it prevents is likelier than the
 recovery it enables.
 
-**This item's filename and `verify:` move with `PL-ZX12`** (the rename of
-`RunScore` to `RunDefinition`, decided by the project owner 2026-09-08). The
-rule file is specified above as `.claude/rules/run-is-its-score.md` and the
-`verify:` command greps that exact path, so written before that rename lands
-the rule is born carrying the retired term - in the one file whose whole job is
-telling a future session how this architecture works. `PL-ZX12` is sequenced
-ahead of this item for that reason; take its name (`run-is-its-definition.md`,
-or whatever the rename settles on) rather than the one above.
+**Unblocked 2026-09-13: `PL-ZX12` landed and this item took its name.** The
+rule file, the `verify:` command and the precondition's opening sentence above
+now read `definition` rather than `score`, so the rule is written in the
+vocabulary the tree uses rather than being born carrying the retired term - the
+one thing the sequencing existed to prevent. The file to write is
+`.claude/rules/run-is-its-definition.md`; nothing else about this item moved.
 
 **Done when.** The rule exists, is scoped to those paths, states the
 precondition before the pointer, and `make check`'s resident-line accounting is

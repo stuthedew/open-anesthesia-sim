@@ -199,7 +199,7 @@ CHART_GRID_INTERVAL_MAC: Final = 0.5
 # over-claim at one end or waste a digit at the other. It is instead set by
 # what the quantity is compared against - Yasuda et al. report F_A/F_I at
 # 30 minutes as 0.850, 0.733 and 0.90 with standard deviations of 0.018, 0.027
-# and 0.01 (`docs/MODEL.md` § "Published wash-in validation test"), so a third
+# and 0.01 (`docs/MODEL.md` § "Published wash-in and elimination validation test"), so a third
 # decimal would be finer than the published spread this trace exists to be read
 # beside.
 WASH_IN_DISPLAY_DECIMALS: Final = 2

@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.4.16
 touches: src/anesthesia_sim/core/parameters.py, tests/unit/test_parameters.py
 added: 2026-09-02
 closed: 2026-09-13

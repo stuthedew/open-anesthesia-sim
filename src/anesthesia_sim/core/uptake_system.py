@@ -446,10 +446,11 @@ class AgentUptakeSystem:
     def equation_settings(self) -> UptakeEquationSettings:
         """Read the governing equations' parameters out of the compartments.
 
-        Public because it is what a run's score is written in: `core/run_score.py`
-        records one of these per setting change and rebuilds the same matrix from
-        it, so a stretch of a run is replayed from the settings the compartments
-        actually held rather than from a second copy kept alongside them.
+        Public because it is what a run's definition is written in:
+        `core/run_definition.py` records one of these per setting change and
+        rebuilds the same matrix from it, so a stretch of a run is replayed from
+        the settings the compartments actually held rather than from a second
+        copy kept alongside them.
 
         Flows are converted to litres per second here, once, because that is
         the unit `docs/MODEL.md`'s "Governing equations" are written in and
@@ -511,7 +512,7 @@ class AgentUptakeSystem:
         """Read the trajectory out of the compartments, in equation order.
 
         Public alongside `equation_settings` and for the same reason: it is the
-        state a `core/run_score.py` score opens from.
+        state a `RunDefinition` opens from (`core/run_definition.py`).
 
         The two accumulator states start each step at zero, so after one
         propagation they hold that step's own delivered and exhausted agent
