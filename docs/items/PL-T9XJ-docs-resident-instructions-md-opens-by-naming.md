@@ -1,8 +1,14 @@
 ---
 id: PL-T9XJ
 title: docs/resident-instructions.md opens by naming two resident files when there are three, in the document that governs resident cost
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs, session-cost
+feature: dev-tooling
+touches: docs/resident-instructions.md
 added: 2026-09-13
+verify: python3 tools/doc_check.py check && head -12 docs/resident-instructions.md | grep -q 'expert-review'
 ---
 
 **Problem.** docs/resident-instructions.md opens by naming two resident files when there are three, in the document that governs resident cost
@@ -28,6 +34,11 @@ number a session is being asked to economize on by 7,438 characters — in the
 sentence a session reads first.
 
 **Where.** `docs/resident-instructions.md`, lines 3-4.
+
+**Done when.** `docs/resident-instructions.md`'s opening paragraph names all
+three files that load at launch, so it agrees with the figure `make check` prints
+beside it. The `verify:` command asserts that `expert-review` appears in the
+file's first twelve lines rather than a fixed sentence, so the wording is free.
 
 **Found.** 2026-09-13, reviewing an outside article on long AI projects against
 this repository.

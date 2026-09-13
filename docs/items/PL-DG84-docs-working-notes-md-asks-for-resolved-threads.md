@@ -1,7 +1,12 @@
 ---
 id: PL-DG84
 title: docs/WORKING_NOTES.md asks for resolved threads to be deleted and nothing reads that policy
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: docs, session-cost
+feature: dev-tooling
+touches: docs/WORKING_NOTES.md
 added: 2026-09-13
 ---
 
@@ -36,6 +41,39 @@ dead or overstated.
 close-out and could name a thread all of whose cited ids have closed, but a
 one-off pruning pass may be the honest answer instead. Do not build a check that
 fires every run without changing a decision.
+
+**Why it matters.** The file exists "so that a new conversation can pick up
+context without re-deriving it", so a stale thread in it is not merely unread -
+it is read and acted on. `PL-75R0` is the sharp case: a thread headed "Open: the
+repository has no README" a week after one shipped. The five filed instances are
+each individually true and none of them stops the sixth, which is what makes this
+the systemic item rather than a sixth instance.
+
+**Decision needed.** Which carrier, and the question is whether anything here
+should run every time. Three candidates, and they are not equivalent:
+
+- **A `tools/doc_check.py` `candidates`-mode line.** It already runs at
+  close-out, and it could name a thread all of whose cited `PL-` ids have closed.
+  `PL-7QKY`'s brief establishes the parse: every one of the ids this file cites
+  resolves to a real item file. The risk is `CLAUDE.md`'s own retirement test - a
+  thread can legitimately outlive its items, which is one of the three things the
+  file's header says belongs in it, so this would fire on correct content and
+  train a session to skim it.
+- **A grooming advisory**, alongside the existing ones, so it surfaces on a pass
+  that is already about queue hygiene rather than on every close-out.
+- **A one-off pruning pass and no mechanism at all**, on the ground that the
+  decidable half here is small and the judgment half - whether a thread still
+  earns its place - is the whole of it.
+
+The answer rests on a rule this repository already states rather than on what the
+project is for, so it is a session's to settle with the counts in front of it,
+not the owner's. What it must not become is a check that fires every run without
+changing a decision.
+
+**Done when.** The carrier above is chosen and recorded here with its reasoning,
+and either it is built or the item says why no mechanism earns its place - and in
+either case `docs/WORKING_NOTES.md` no longer carries a thread whose every cited
+id has closed.
 
 **Found.** 2026-09-13, reviewing an outside article on long AI projects against
 this repository.
