@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: teachable-case
+milestone: v0.4.19
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, tools/contrast_check.py
 added: 2026-09-08
 closed: 2026-09-13

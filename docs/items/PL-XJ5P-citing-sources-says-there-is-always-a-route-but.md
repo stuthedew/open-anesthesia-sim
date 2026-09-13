@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: science, docs
 feature: model-spec-accuracy
+milestone: v0.4.19
 touches: .claude/rules/citing-sources.md, docs/references/README.md
 added: 2026-09-06
 closed: 2026-09-13

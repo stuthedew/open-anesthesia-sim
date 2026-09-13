@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: refactor, anticipated
 feature: teachable-case
+milestone: v0.4.19
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, tests/unit/test_simulation_view.py
 added: 2026-09-05
 closed: 2026-09-13
