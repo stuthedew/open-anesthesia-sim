@@ -336,6 +336,12 @@ MAX_LISTED_ADJUSTMENTS = 12
 # over it read as a slider mislaid somewhere - and this sentence was the
 # interface's one mention of the parameter, so a reader who went looking found
 # nothing. Its value and provenance belong to `docs/MODEL.md`, not here.
+# The readout row is one substance's, and until `PL-TCD1` nothing on it said
+# which: the chart below could name the substance it drew and the numbers above
+# it could not, so one frame described the run in two vocabularies. Label
+# rather than sentence, and "Modelled" rather than a bare agent name, because
+# the row's own hazard is a reader setting these beside a monitor.
+COMPARTMENT_SUBSTANCE_TEMPLATE = "Modelled concentrations: {agent}"
 NEW_CASE_TITLE_TEMPLATE = "Start a new {agent} case?"
 NEW_CASE_IS_NOT_A_VIEW_TEXT = (
     "Changing agent starts a new case. This model does not simulate switching "
@@ -1026,6 +1032,13 @@ class SimulationView:
             ),
             expand=True,
         )
+        # Names the substance the six readouts below it belong to. It changes
+        # with the agent, so it is held rather than built inline.
+        self._compartment_substance_text = ft.Text(
+            COMPARTMENT_SUBSTANCE_TEMPLATE.format(agent=initial_snapshot.agent_display_name),
+            weight=ft.FontWeight.BOLD,
+            color=INK,
+        )
         # Names the divisor every MAC number on this page was produced with,
         # which is what makes those numbers traceable without opening a data
         # file (`CLAUDE.md`, safety-critical clinical-output standard). It
@@ -1435,6 +1448,7 @@ class SimulationView:
                         # continuing one.
                         self._notice_text,
                         self._build_parameter_controls(),
+                        self._compartment_substance_text,
                         self._build_concentration_metrics(),
                         ft.ResponsiveRow(
                             controls=[self._build_chart_panel(), self._build_chart_sidebar()],
@@ -2290,6 +2304,9 @@ class SimulationView:
             self._mac_axis_basis = mac_axis_basis
             self._mac_axis.labels = self._build_mac_axis_labels(mac_axis_basis)
 
+        self._compartment_substance_text.value = COMPARTMENT_SUBSTANCE_TEMPLATE.format(
+            agent=snapshot.agent_display_name
+        )
         self._mac_reference_text.value = format_mac_reference(
             snapshot.agent_display_name, snapshot.agent_mac_percent
         )

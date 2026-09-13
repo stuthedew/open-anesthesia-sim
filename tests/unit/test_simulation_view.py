@@ -4058,6 +4058,36 @@ def test_the_display_names_the_mac_the_readouts_were_divided_by() -> None:
     assert view._mac_reference_text.value == format_mac_reference("Desflurane", 6.0)
 
 
+def test_the_readout_row_names_the_substance_its_numbers_belong_to() -> None:
+    """`PL-TCD1`: one frame, one vocabulary.
+
+    The chart names the substance it draws; until this the six numbers above
+    it did not, so a reader carried the agent over from the selector and a
+    frame described the run in two terms. It has to follow an agent change for
+    the same reason `_mac_reference_text` does - a confident label on the
+    wrong agent's numbers is the correct value under the wrong name that
+    `CLAUDE.md` counts as a safety failure.
+
+    The snapshot's compartment fields stay flat rather than becoming a mapping
+    keyed by substance: `ROADMAP.md` § "Designed for forking" names
+    per-compartment agent amounts in the snapshot as deliberately not designed
+    for in advance, on the test of whether retrofitting invalidates recorded
+    runs or merely adds a field. This one merely adds a field.
+    """
+
+    controller = _fake_controller()
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    assert view._compartment_substance_text.value == "Modelled concentrations: Sevoflurane"
+
+    controller.switch_agent(
+        "desflurane", agent_display_name="Desflurane", max_delivered_concentration_percent=18.0
+    )
+    view._refresh_view()
+
+    assert view._compartment_substance_text.value == "Modelled concentrations: Desflurane"
+
+
 def test_the_interface_states_the_mac_divisor_and_writes_the_unit_as_a_ratio() -> None:
     """What a MAC multiple owes a reader, once the prose stating it is gone.
 
