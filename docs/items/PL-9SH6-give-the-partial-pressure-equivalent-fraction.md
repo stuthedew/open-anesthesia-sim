@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: refactor
 feature: core-domain-language
-touches: src/anesthesia_sim/core, src/anesthesia_sim/app, tests, spikes/qt
+touches: src/anesthesia_sim/core, src/anesthesia_sim/app, tests, spikes/qt, docs/MODEL.md
 blocked-by: PL-H46J
 added: 2026-09-03
 closed: 2026-09-13
