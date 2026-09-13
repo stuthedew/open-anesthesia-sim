@@ -8,7 +8,7 @@ effort: S
 classes: defect, infra
 feature: dev-tooling
 touches: docs/items/
-verify: bin/docket check && ! bin/docket check | grep -q 'slug their title no longer generates'
+verify: uv run pytest -q subprojects/docket/tests/test_store.py && python3 -c "import sys, pathlib; sys.path.insert(0, 'subprojects/docket/src'); from docket.store import read_items, filename_for; items = read_items(pathlib.Path('docs/items')); raise SystemExit(1 if [i for i in items if i.path and i.identifier and i.path != filename_for(i)] else 0)"
 ---
 
 **Problem.** Rename the nine item files whose slug no longer matches their title, now that docket check names them
@@ -106,3 +106,17 @@ carried that this brief did not, kept here:
 or reports only files a live branch holds and the close-out names them; the
 `verify:` command's own re-check (below) is clean; and nothing that referenced
 a renamed file by path is broken.
+
+**`verify:` rewritten 2026-09-13 before it was ever relied on.** The first
+version ran `bin/docket check` and piped its output into `grep`, and
+`docket check --verify` refused it with the reason: a nested run is told not to
+replay the open items' commands, so it never prints the landed advisory - a
+`grep` for that answer matches nothing whether the work is done or not, and the
+inverted form passes on the strength of it. It exited 1 when it was run, for
+the wrong reason, which is exactly the failure the "watch it fail for the right
+reason" rule names.
+
+It now asks the store directly, through the same `filename_for` comparison
+`docket check` uses and this brief's own one-liner already carried: zero drifted
+files is exit 0, any drift is exit 1. No nesting, no output parsing, and it is
+the condition the work actually has to reach.

@@ -68,8 +68,30 @@ and `bin/docket next` both report something a session can act on without
 opening the five files to find out.
 
 **Answered 2026-09-13: option 1** (project owner). The five entries are
-`status: blocked`, `blocked-by: v0.5.1`, and each carries a line under the
-owner's 2026-09-10 note saying so. `bin/docket next` no longer offers them.
+`status: blocked`, and each carries a line under the owner's 2026-09-10 note
+saying so. `bin/docket next` no longer offers them.
+
+**The blocker is the port item, not the version, and the first attempt had it
+wrong.** Written as `blocked-by: v0.5.1` it raised "v0.5.1 is scoped and every
+other blocker has closed; it is ready to promote" on all five, every run - a
+permanently-firing advisory, which `CLAUDE.md` calls a defect in the check
+rather than a thing to live with. The store is right and the disposition was
+wrong: `blocked-by: <version>` means *waiting for a milestone to be scoped*,
+and `docket check` promotes such an item the moment that section carries its
+four subsections. v0.5.1's already does.
+
+So each is blocked on the port item that rewrites the code its defect lives in,
+which is the edge that is actually true:
+
+```text
+  PL-3355  readouts wrap                  -> PL-25KS  port the dashboard
+  PL-TG60  six decimals of the integral   -> PL-25KS  port the dashboard
+  PL-Q4VH  percent axis vs gridlines      -> PL-G59B  port the chart
+  PL-THXF  legend swatch vs dash pattern  -> PL-G59B  port the chart
+  PL-W8DQ  slider track contrast          -> PL-L9RD  re-express theme.py for Qt
+```
+
+Caught by `docket check --verify`, which CI runs and `make check` does not.
 
 **What this does not do, stated so the next session does not expect it.**
 `bin/docket gate` counts a `blocked` item as open debt - `PL-GS3R` and

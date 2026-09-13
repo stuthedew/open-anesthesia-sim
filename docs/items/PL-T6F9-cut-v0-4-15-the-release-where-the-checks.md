@@ -9,9 +9,9 @@ feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases
 added: 2026-09-13
 closed: 2026-09-13
+pr: 511
 verify: python3 tools/doc_check.py check && grep -q '^version = "0.4.15"' pyproject.toml && test -f docs/releases/v0.4.15.md
 ---
-
 
 **Problem.** Cut v0.4.15: the release where the checks stopped over-reaching, and Gate 1 passed half
 
