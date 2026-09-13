@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: science
 feature: model-spec-accuracy
+milestone: v0.4.20
 touches: src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-09-13
+pr: 538
 verify: python3 tools/doc_check.py check && grep -q 'A615' src/anesthesia_sim/data/agents/sevoflurane.json
 ---
 
