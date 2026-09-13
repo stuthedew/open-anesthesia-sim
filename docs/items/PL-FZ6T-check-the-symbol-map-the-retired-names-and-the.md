@@ -4,7 +4,7 @@ title: Check the symbol map, the retired names and the partition-coefficient rul
 priority: P2
 effort: M
 status: blocked
-blocked-by: PL-H46J
+blocked-by: PL-9SH6
 classes: infra
 feature: core-domain-language
 touches: tools, tests/unit
@@ -60,8 +60,12 @@ if they sit naturally beside its existing checks — decide by whether the AST
 parse of `core/` fits there without distorting it. Tests in
 `tests/unit/`, one per rule, each with a fixture that violates it.
 
-**Blocked on `PL-H46J`** (the Symbols Code column) and `PL-9SH6` (the accessor
-rename), because rules 1 and 2 have nothing to check until those land. Rule 3
+**Blocked on `PL-9SH6`** (one accessor name for the partial-pressure-equivalent
+fraction), because rule 2 has nothing to check until the rename lands.
+`PL-H46J` (the Symbols Code column) was the other blocker and closed
+2026-09-13, so rule 1 now has 24 cells to resolve; the `blocked-by` field moved
+to the remaining one rather than being cleared, which is the edge this item's
+prose had always stated (`PL-KH58`). Rule 3
 could be built against `PL-212V` alone if it turns out to be worth splitting.
 
 **Done when.** The three rules run in `make check`, each has a unit test that
