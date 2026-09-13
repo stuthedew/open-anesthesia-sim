@@ -1,8 +1,12 @@
 ---
 id: PL-5B1N
 title: Simulated traces should be solid and a dotted trace should mean an uncommitted predicted future, but dash pattern is already spent as the six traces' colour-blind-safe channel
-status: untriaged
+status: needs-decision
+priority: P2
+effort: M
+classes: feature
 feature: presentation-safety
+touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
 added: 2026-09-12
 ---
 
@@ -44,7 +48,7 @@ already spatially separated in a way two concurrent traces are not; a tinted
 band behind the forward region. Stroke width is the weakest of these — it is
 partly load-bearing already, traces carry 2 px and 3 px by importance.
 
-**Why it is a safety question and not a styling one.** A preview curve is a
+**Why it matters.** It is a safety question rather than a styling one. A preview curve is a
 third epistemic class, distinct from both halves of `CLAUDE.md`'s
 modelled-versus-measured rule: it is a *conditional* prediction of an input the
 learner has not committed. Three failure modes follow, and any design has to
@@ -76,3 +80,54 @@ answer all three:
 **Related.** `PL-GVXP` (six traces separated by more than colour, shipped
 v0.4.7) is the constraint. `PL-THXF` (the legend swatch is a solid bar for a
 dashed trace) is open and touches the same legend this would have to extend.
+
+**Triaged 2026-09-13.** `P2`, `M`, `feature`, `needs-decision`.
+
+**`needs-decision` rather than blocked on v0.5.1, which was tried and is wrong.**
+The brief's prerequisite is real - answering the channel question against the Flet
+chart is the work done twice, since v0.5.1 rewrites the chart on pyqtgraph and
+redecides dash patterns, alpha and stroke widths with it. But `blocked-by:
+<version>` holds only until that version is *scoped*, and v0.5.1 was scoped
+2026-09-10, so `docket check` promotes the item straight back out - it says so
+outright. The carve-out is for a milestone nobody has scoped yet, which is
+`PL-B9PY`'s case and not this one.
+
+So the sequencing lives in the brief, where a session picking the item up reads it,
+rather than in a status that cannot carry it. The question is genuinely open and
+genuinely answerable, which is what `needs-decision` is for.
+
+**Classed `feature`, not `safety`, deliberately.** The brief is right that the
+design is a safety question - a preview is a third epistemic class beside modelled
+and measured, and its three failure modes are real. But nothing misleads a reader
+today, because no preview is drawn: the safety obligation binds whoever *builds*
+it, which is what the brief already records. Classing it `safety` would pin it
+`P1` and make it debt by `docket.toml`'s `debt_classes`, so a gate would hold a
+release open for a feature that cannot be built until the port lands - debt and
+blocked at once, which is the contradiction `blocked-by` exists to avoid.
+
+**What the port should carry forward regardless.** Whoever ports the chart should
+leave the non-colour channel documented as *spent* - `PL-GVXP`'s derivation is
+load-bearing and the port is where it would most easily be lost - so that this
+item's candidate list still holds when it unblocks.
+
+**Decision needed.** Which still-free channel carries committed-run versus
+uncommitted preview, given that dash pattern is spent as the six traces'
+colour-blind-safe redundant channel (`PL-GVXP`, shipped v0.4.7) and that the
+owner's named mechanism - solid for simulated, dotted for predicted - collides
+with it head-on: muscle is literally `"dotted"`. The brief ranks the candidates
+(ghost line at reduced alpha or lightness keeping colour and dash intact;
+position, since the preview lies wholly right of "now"; a tinted forward band) and
+argues stroke width is weakest, being partly load-bearing already. Answer it
+against the ported pyqtgraph chart rather than the Flet one, and answer all three
+failure modes the brief names, since a preview is a third epistemic class beside
+modelled and measured.
+
+**Done when.** A learner changing the vaporizer dial, fresh gas flow or cardiac
+output without committing sees the resulting trajectory on a channel that does not
+compete with the six compartments' dash patterns; the preview is bound to the
+interaction and gone on commit or cancel; it reads as lighter than the run and is
+labelled as well as styled, so a screenshot taken mid-drag is not ambiguous; and it
+is computed by a pure deterministic read of `core/` at the run's own model and
+version, touching none of the run's state. `PL-GVXP`'s derivation still holds
+afterwards, and `tests/unit/test_simulation_view.py` covers the preview appearing,
+disappearing on both exits, and never being drawn in a style a compartment uses.

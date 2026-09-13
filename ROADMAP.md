@@ -1886,7 +1886,7 @@ any sense that survives the toolkit changing underneath it.
 resolves it rather than any work on it. That is recorded now so a later session
 does not read a dropped item as one that was skipped.
 
-### Declined to Gate 2 on the refilling-queue ground — 59 entries
+### Declined to Gate 2 on the refilling-queue ground — 61 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -1996,6 +1996,32 @@ Worth stating because the batch was measured: these three *are* the spawn count
 `PL-CSHL` recorded, so they are the visible cost of that pass and they are being
 deferred rather than hidden. Filing them was the capture rule; deferring them is
 this one.
+
+**One is a decision the port makes cheaper, on the ground `PL-3JP0` and `PL-HKTB`
+were declined on** (`PL-5B1N`, triaged 2026-09-13). It is not apparatus and cannot
+be declined on the refilling-queue ground: it asks what visual channel separates a
+committed run from an uncommitted preview, which is a question about a displayed
+clinical value and reaches a reader of the simulator directly. It is declined
+because v0.5.1 rewrites the chart on pyqtgraph and redecides dash pattern, alpha
+and stroke width along with it, so answering against the Flet chart would mean
+answering twice - the same reason those two wait for `PL-L9RD`.
+
+Nothing is misleading anybody meanwhile, which is what makes the deferral safe
+rather than merely convenient: no preview is drawn today, so the safety obligation
+the item records binds whoever builds it rather than describing a live defect. Had
+a preview already shipped in a style a compartment uses, this would be admitted
+above under the unconditional safety exception instead.
+
+**One more from closing `PL-W1LN`** (`PL-CY8B`, 2026-09-13). Building that item's
+reproduction turned up that `_shallow_pair`'s own commits carry `PL-M01`-style
+subjects, which `ID_PATTERN` does not match, so the sibling guard test's
+`assert "PL-M01" not in out` cannot fail. It is wholly in the workflow lane and sits
+on the refilling-queue ground with the first thirty. Worth one sentence on why it is
+not more urgent than that: the test's *other* assertions are sound and do fail if the
+guard stops working, so the guard is covered - what the vacuous line never checked is
+the narrower claim about the default branch's own ids, which `PL-W1LN`'s new test now
+makes with valid ids. So the coverage exists; it is the older assertion that is
+decorative.
 
 They enter Gate 2 when v0.6.0 is scoped, unless closed before it.
 

@@ -390,14 +390,38 @@ def _unmerged_commits(
     checkout can see, never that the walk can see the rest.
 
     The signature is a commit with no parents in this checkout. A walk that
-    ends soundly ends against a commit `base` excluded; one that emits a
-    parentless commit ran off the end of a grafted history instead, so nothing
+    emits a parentless commit ran off the end of a grafted history, so nothing
     it produced is proven and the ref it belongs to is returned as unread. The
     repository's true root reads the same way and is answered the same way -
     it sits on the default branch, so a walk reaching it is one `base` failed
     to exclude. Reading the commits is what settles this rather than
     `is_shallow`, so a git too old to say whether the checkout is truncated is
     guarded too.
+
+    **The converse does not hold, and the limit is accepted rather than
+    unnoticed** (`PL-W1LN`, decided with the project owner 2026-09-13). A walk
+    that ends against a commit `base` excluded is *not* thereby proven: where
+    the default branch reaches the root down one path and is grafted on
+    another, a single `--depth` truncates unevenly, and a branch forked from a
+    commit below the graft descends through commits `^base` cannot exclude
+    before terminating against the fork point the *short* path still reaches.
+    Every commit it emits carries a parent, so this signature stays silent.
+    Reproduced end to end in
+    `subprojects/docket/tests/test_cli.py::test_flight_reports_below_an_uneven_horizon_which_is_the_accepted_limit`,
+    where three of the default branch's own commits are reported as work a
+    branch is carrying.
+
+    It is accepted because no *sound* replacement exists inside a truncated
+    checkout: the decisive question is whether an emitted commit is one the base
+    reaches in the **full** history, and the commits that would answer it are
+    exactly the ones the clone does not hold. Naming a ref unread whenever the
+    base is grafted is sound and would silence this read in every agent
+    container, which is the common case rather than the exotic one; fetching to
+    deepen would answer it exactly and breaks the rule that these commands run
+    from a bare tree with no network; distrusting a commit older than the base's
+    newest graft would cover it cheaply on commit dates, which a rebase moves.
+    The test pins the behaviour so that changing it is a decision rather than an
+    accident.
 
     **`staked` and `opened` keep the *earliest* commit where the rest keeps the
     newest**, and the difference is which question each answers. How long a

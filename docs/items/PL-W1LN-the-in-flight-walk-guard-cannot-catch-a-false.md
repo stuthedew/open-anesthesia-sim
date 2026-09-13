@@ -3,12 +3,13 @@ id: PL-W1LN
 title: The in-flight walk guard cannot catch a false positive whose walk ends against a commit the base reaches by another path
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: defect, infra
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-08-31
-verify: uv run pytest subprojects/docket/tests/test_vcs.py -k horizon
+closed: 2026-09-13
+verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_flight_reports_below_an_uneven_horizon_which_is_the_accepted_limit' subprojects/docket/tests/test_cli.py
 ---
 **Problem.** `PL-MGNC` made `_unmerged_commits` refuse a walk that ran off the
 end of the history, detecting it by the commit with no parents such a walk
@@ -125,3 +126,50 @@ depth truncates the long path while the short one reaches bottom, and the walk
 then terminates against a commit the base still reaches instead of against a
 parentless one. So the fixture is nine-tenths built, and the `-k horizon` selector
 this item's `verify:` names has somewhere to live.
+
+## Decided and closed 2026-09-13: the limit is accepted, documented and pinned
+
+**Project owner's answer to the three dispositions above: keep today's behavior,
+with the limit documented.** So this closes on its **Done when.**'s first branch in
+substance rather than its letter - the guard does not cover the shape and
+deliberately will not, and what covers it instead is a test that asserts the wrong
+answer on purpose plus two documents that say why.
+
+**What the reproduction turned out to be worth.** Built as a real-git fixture,
+`_unevenly_truncated_pair` in `subprojects/docket/tests/test_cli.py`, sibling to
+the `_shallow_pair` the *caught* case uses. The difference between them is one
+commit's worth of topology - `main` reaching the root down a second, shorter path -
+and that is enough to remove the parentless commit `PL-MGNC`'s guard keys on. Run
+end to end through `bin/docket flight`, it is worse than this item predicted:
+**three** of the default branch's own commits are reported as work a branch is
+carrying (`PL-M1QJ`, `PL-M2KT`, `PL-M3NW`), with `unbounded` empty and no ref named
+unread.
+
+**Where the limit is now written down.** `_unmerged_commits`' docstring, which
+previously implied the converse - "a walk that ends soundly ends against a commit
+`base` excluded" - and now states that the signature catches its shape and is not a
+proof of completeness; `subprojects/docket/README.md`'s walk-guard section, same
+correction; and the test itself, whose docstring carries the decision and says that
+a later change making it pass differently is progress rather than regression, so
+long as it is a decision.
+
+**Why not each alternative**, recorded so this is not re-litigated. Naming a ref
+unread whenever the base is grafted is sound and silences the read in every agent
+container, which is the common case. Fetching to deepen answers exactly and breaks
+the rule that these commands run from a bare tree with no network. Distrusting a
+commit older than the base's newest graft covers this case cheaply and rests on
+commit dates, which a rebase or a skewed clock moves - an exact guard traded for a
+heuristic one, in the direction that withholds work.
+
+**The `verify:` was corrected while closing.** It was `pytest ... -k horizon`, which
+selects nothing and exits 5 - the shape `.claude/skills/docket/SKILL.md` warns reads
+as a command correctly failing when it is really a command specifying nothing. It is
+now the prescribed pair: the file's whole suite, which proves the suite healthy, and
+a `grep` for the test the work adds, which exits 1 until that test exists. Both
+halves were run - the grep against `origin/main`'s copy returns 1, and the pair
+returns 0 here.
+
+**Found while building it:** `_shallow_pair`'s own commits carry `PL-M01`-style
+subjects, which `ID_PATTERN` does not match, so the sibling test's
+`assert "PL-M01" not in out` cannot fail. Filed as `PL-CY8B`; that test's other
+assertions are sound, so the guard is still covered.
