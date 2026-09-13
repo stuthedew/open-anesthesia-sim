@@ -3,10 +3,11 @@ id: PL-9SH6
 title: Give the partial-pressure-equivalent fraction one accessor name across every compartment in core/
 priority: P2
 effort: M
-status: ready
+status: blocked
 classes: refactor
 feature: core-domain-language
 touches: src/anesthesia_sim/core, src/anesthesia_sim/app, tests
+blocked-by: PL-H46J
 added: 2026-09-03
 verify: uv run pytest -q tests/unit/test_alveolar.py tests/unit/test_blood.py tests/unit/test_circuit.py tests/unit/test_patient.py tests/unit/test_tissue.py && grep -q 'def partial_pressure_fraction' src/anesthesia_sim/core/alveolar.py
 ---
@@ -118,3 +119,15 @@ belong in it too, and both run *before* this one:
 The warning already written here - "the counts in the table above will be
 smaller once it lands, re-measure rather than trusting them" - was written about
 `PL-GS5X` and applies at least as strongly to these two.
+
+**The `blocked-by` edge was added 2026-09-13**, recording in a field what the
+Sequencing sections above had only ever said in prose. Nothing read that prose:
+`bin/docket next` offered this item as startable, `bin/docket gate` counted it
+as clearable debt, and a session that had just been told to start it next got
+as far as the in-flight and concurrency checks - all three clean - before
+opening the brief and finding "Still after `PL-H46J`" with `PL-H46J` still
+`ready`. The status follows the edge, per `PL-KBD0`'s rule that an item
+declaring an open blocker may not sit at `ready`.
+
+`PL-KH58` carries the measurement of how general the problem is, and the
+decision not to build a check for it.
