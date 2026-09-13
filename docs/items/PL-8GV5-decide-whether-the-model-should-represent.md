@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: planning, docs
 feature: model-spec-accuracy
-touches: docs/MODEL.md
+touches: docs/MODEL.md, ROADMAP.md
 added: 2026-09-06
 closed: 2026-09-13
 verify: grep -qF 'held fixed under' docs/MODEL.md && make doc-check
@@ -65,10 +65,27 @@ displayed value is wrong today. If the missing "Known limitations" sentence
 reads as a scientific-transparency gap rather than as scope documentation, the
 class becomes `science` and `docket check` moves it to P1.
 
-**Decided 2026-09-13: do not model it. The decision and its reasoning are
-recorded in `docs/MODEL.md` § "Known limitations"; `ROADMAP.md` carries no
-line of intent, because a line of intent is a commitment to build a thing
-eventually and this is a decision not to.**
+**Decided by the project owner, 2026-09-13: not now, and it stays on the
+roadmap as an option.** `docs/MODEL.md` § "Known limitations" records that
+perfusion is held fixed, with the evidence below; `ROADMAP.md`'s
+planned-milestone item 35 carries the coupling as a possible future feature,
+framed as an *option a user turns on* rather than as a change to the model's
+standing behaviour.
+
+**A session had answered this and should not have.** The first pass closed
+the item outright — "do not model it, no line of intent" — on the strength of
+the measurements below. The measurements were a session's to make; the
+disposition was not. `CLAUDE.md` divides this explicitly: *"The division of
+labour is theirs to set direction and yours to make it real."* Whether a
+feature enters `ROADMAP.md` is direction, so the case belonged in a reply with
+a recommendation, not in a closed item. The project owner caught it in the
+same session and supplied the answer, which is **better than the one it
+replaced**: an option carries the evidence problem below in a way a standing
+model behaviour cannot, because an overlay may state its own uncertainty while
+a default cannot.
+
+`PL-4T90` is the routing gap that let it happen, and the `docket` skill was
+edited in the same session.
 
 The half that did not wait on the answer — `docs/MODEL.md` stating that
 cardiac output and the three perfusion fractions are held fixed — is done
@@ -129,11 +146,15 @@ watching, which is how the model's own directional gates assert it. What is
 missing is only the *automatic* coupling, and `docs/MODEL.md` now tells the
 reader to supply that themselves.
 
-**The trigger that would reopen it is recorded rather than the objection
-dismissed**: this model gaining a pharmacodynamic layer, or a second gas whose
-own haemodynamic profile differs materially from the volatile it accompanies —
-nitrous oxide being exactly that case, and `ROADMAP.md`'s planned items 6 and
-7.
+**What the evidence leaves for whoever scopes item 35.** The hard part is not
+the arithmetic. A single monotonic, time-invariant `Q(dose)` is unsupportable
+on the data above, so the option has to decide what it *asserts* and how its
+uncertainty reaches the reader — which is the question an overlay can answer
+and a default cannot. Two conditions would sharpen it rather than reopen it:
+this model gaining a pharmacodynamic layer, or a second gas whose own
+haemodynamic profile differs materially from the volatile it accompanies —
+nitrous oxide being exactly that case, and `ROADMAP.md`'s planned items 6
+and 7.
 
 **Class stays `planning, docs`.** The brief offered to become `science` if the
 missing sentence read as a scientific-transparency gap; with the sentence

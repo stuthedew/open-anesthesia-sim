@@ -706,6 +706,32 @@ hidden from `bin/docket next` after v0.5.0 was scoped. A patch track
 (`v0.5.x`) is not a version anything can wait on: it freezes no gate and takes
 no section, so nothing resolves it.
 
+**And `needs-decision` says the next step is a decision, never whose.** That is
+the third case, and it is the one taken by mistake, because the status looks
+like an invitation and `bin/docket next` ranks it. Where the answer rests on
+what the project should *want* - whether a feature enters `ROADMAP.md`, which
+of two defensible products this is, what a scope word means - it is the project
+owner's. `CLAUDE.md` divides it in one sentence: "The division of labour is
+theirs to set direction and yours to make it real."
+
+**Sort by what the answer rests on, not by how hard the item looks.** An item
+answerable by reading the code, running a measurement, or applying a rule this
+repository already states is a session's, however long it takes to reach:
+`PL-74R0` and `PL-79YX` were both settled by measurement against briefs that
+expected argument. An item whose answer rests on what the project is for is the
+owner's, however obvious the answer seems from inside the session.
+
+**Most such items are both, and the halves are worked differently.** Do the
+half that does not depend on the answer, say that is what you did, then put the
+direction half in the reply with a recommendation and leave the item open. A
+session that closes it on its own reasoning has taken a decision the owner
+would have made differently often enough to matter: `PL-8GV5` was closed as
+"do not model anaesthesia's effect on cardiac output, and carry no roadmap
+line", the measured half of it correct and the disposition not, and the owner's
+answer was "not now, and keep it on the roadmap as an option" - which is a
+different project, and a better one, because an option can state its own
+uncertainty where a default cannot (`PL-4T90`).
+
 ### The `verify:` command, and running it before writing it down
 
 Triaging an item to `ready` means naming the command that proves it done.

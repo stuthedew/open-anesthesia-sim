@@ -5330,9 +5330,16 @@ lung, stores more of it and slows the rise of $`F_A`$ - is reachable by moving
 it and watching, which is also how the model's own directional gates assert it
 (`tests/reference/test_sevo_patient.py`). What is absent is the *automatic*
 coupling from the agent to the flow, and a reader should supply that
-themselves. `PL-8GV5` records the decision; it would be reopened by this model
-gaining a pharmacodynamic layer, or a second gas whose own hemodynamic profile
-differs materially from the volatile it accompanies.
+themselves.
+
+**This is where the model stands, not a question closed.** `ROADMAP.md`'s
+planned-milestone item 35 carries the coupling as a possible future feature,
+and carries it as an *option* a user would turn on rather than as a change to
+what a run does by default - which is the disposition the evidence above
+argues for, since an overlay may state its own uncertainty where a model's
+standing behaviour cannot. `PL-8GV5` records how that was decided: the
+measurements here are a session's, the direction is the project owner's
+(2026-09-13).
 
 **The MAC divisor is a limitation of the display, and a named one.** The
 second display unit divides by a tier-3 `mac_percent`, and "Delivery-limit
