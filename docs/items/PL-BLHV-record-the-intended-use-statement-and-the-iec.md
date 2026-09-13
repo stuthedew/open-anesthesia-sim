@@ -1,14 +1,16 @@
 ---
 id: PL-BLHV
 title: Record the intended-use statement and the IEC 62304 safety classification in docs/MODEL.md
-status: done
 priority: P2
 effort: M
+status: done
 classes: docs, planning
+milestone: v0.4.21
 touches: docs/MODEL.md
-verify: python3 tools/doc_check.py check && grep -qF 'not intended for entering, importing, or reproducing the parameter values of' docs/MODEL.md
 added: 2026-09-02
 closed: 2026-09-13
+pr: 547
+verify: python3 tools/doc_check.py check && grep -qF 'not intended for entering, importing, or reproducing the parameter values of' docs/MODEL.md
 ---
 
 **Problem.** `docs/MODEL.md` says what this application is *not* - "not a

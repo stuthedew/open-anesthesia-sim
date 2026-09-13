@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.4.21
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, tests/unit/test_ignore_check.py
 added: 2026-09-05
 closed: 2026-09-13

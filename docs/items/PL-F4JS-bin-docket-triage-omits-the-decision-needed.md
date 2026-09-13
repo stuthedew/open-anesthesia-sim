@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra, session-cost
 feature: dev-tooling
+milestone: v0.4.21
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-02
 closed: 2026-09-13

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: model-spec-accuracy
+milestone: v0.4.21
 touches: src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md
 added: 2026-09-13
 closed: 2026-09-13
