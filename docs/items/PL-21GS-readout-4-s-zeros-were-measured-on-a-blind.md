@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: planning-cadence
+milestone: v0.4.15
 touches: docs/items/, docs/releases/
 added: 2026-09-02
 closed: 2026-09-12
