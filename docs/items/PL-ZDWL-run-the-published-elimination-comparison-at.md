@@ -49,3 +49,81 @@ fraction are recorded in `docs/MODEL.md` with their page locators, the four
 cohort rows are re-measured at that operating point, and the second row of the
 candidate table either becomes a sourced result or is recorded as still
 unreadable from the text.
+
+## Read at the source 2026-09-13, and the premise in the title is wrong
+
+The corpus was attached (`add_repo`, then `git clone --depth 1`) and
+`yasuda-1991-comparison-of-kinetics-of-sevoflurane-and-isoflurane-in-humans.pdf`
+read with `pdftotext -layout`. **PubMed route: not applicable - read from the
+private reference corpus at full text.**
+
+**The Anesth Analg paper states no numeric ventilation anywhere.** This item's
+title says the methods text "states" the alveolar ventilation. It does not.
+What the text says:
+
+- § Methods: "Ventilation was controlled via a nonrebreathing system to produce
+  normocapnea (end-tidal carbon dioxide [CO2] of 5.5%-6.5%)". So ventilation was
+  **titrated to a CO2 target per subject**, not set to a figure - there is no
+  single number to read out.
+- § Methods: "Minute ventilation (VE) was measured, and mixed expired and
+  inspired samples were collected at 5, 7.5, 10, 12.5, 15, 20, 25, and 29 min."
+  Measured, used in the mass balance, and **its value is never reported**.
+- The `fA` derivation is confirmed verbatim - `FM = fA x FA + fD x FI`, "where
+  fA equals the fraction of ventilation coming from the alveoli and fD equals
+  the fraction of ventilation coming from the dead space", averaged over the
+  10-, 15- and 20-minute samples. **No numeric `fA` is printed either.**
+
+Searched the whole extracted text for `L/min`: the only hits are gas-chromato-
+graph carrier flows in mL/min and the two clearance figures below. There is no
+ventilation table and no subject-characteristics ventilation row.
+
+**What the paper does give, and it is not the same quantity.** Two fitted
+clearances from the five-compartment mammillary model:
+
+| Quantity | Sevoflurane | Isoflurane |
+| --- | --- | --- |
+| Pulmonary elimination clearance, `V_c x k_10` | 3.58 +/- 0.43 L/min | 3.62 +/- 0.41 L/min |
+| Total body clearance | 3.6 +/- 0.6 L/min | 3.6 +/- 0.5 L/min |
+
+For an agent that is essentially not metabolised, pulmonary clearance is the
+rate alveolar gas is cleared, so ~3.6 L/min is the closest published analogue
+of this model's alveolar ventilation - and it sits **0.4 L/min below the 4.0
+this project runs at**.
+
+**Do not treat that as the sourced operating point this item wanted.** Two
+reasons, and the first is disqualifying on its own:
+
+1. **It is fitted to the very curves the comparison is against.** `V_c` and
+   `k_10` come from fitting the five-compartment model to these subjects'
+   elimination data. Running this project's model at a ventilation derived from
+   the data, then scoring this project's model against the same data, is
+   circular. A measured ventilation would not be; this is not one.
+2. It is a lumped clearance from a different model structure - `V_c` is a
+   fitted 2.10 and 2.31 L "central compartment", not this model's alveolar gas
+   volume.
+
+**What it is still worth, and it strengthens `PL-RFLN` rather than reopening
+it.** 3.6 L/min is the operating point `PL-RFLN` already measured at f = 8
+breaths/min, so the answer needs no new run
+(`tests/reference/test_published_wash_in_and_elimination.py`, measured
+2026-09-13): desflurane moves from -2.33 to **-1.73 SD** while isoflurane goes
+to **+1.39 SD (n=7)** and **+1.82 SD (n=8)**, both outside their published
+spreads, and sevoflurane to +0.62 SD. The same common-mode failure, now at the
+nearest thing the study publishes to its own ventilation. Nothing about
+`PL-RFLN`'s conclusion changes.
+
+**The Anesthesiology paper is not in the corpus, which is the real gap.**
+Holdings are Mapleson 1963, Smith/Zwart/Beneken 1972, this one, and
+Nickalls/Mapleson 2003. **Yasuda et al. Anesthesiology 1991;74:489-98 (PMID
+2001028) is absent** - and that is the desflurane cohort, the one the residual
+is actually about, and the only one of the two whose methods section sites the
+end-tidal port and names the ~50 ml dead space. Per
+`.claude/rules/citing-sources.md`, a miss is an answer: recorded here and put to
+the project owner rather than narrowed around.
+
+**Done when** (replacing the version above, which assumed the value was
+printed). Either the *Anesthesiology* paper is supplied and its ventilation
+read, or this item closes as answered: the ventilation is not published in
+either abstract or in the one full text held, the nearest published analogue is
+a fitted clearance that cannot be used without circularity, and `docs/MODEL.md`
+says so beside the second candidate row.
