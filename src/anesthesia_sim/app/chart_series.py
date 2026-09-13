@@ -1,7 +1,7 @@
 """Assemble the compartment chart's traces and redraw them from the run.
 
 The shaping layer between the controller's evaluated window and the chart
-control: which instants a trace draws is `core/run_score.py`'s, what a
+control: which instants a trace draws is `core/run_definition.py`'s, what a
 trace *is* and how a frame updates it is this module's, and the dashboard
 that owns the chart is `simulation_view.py`'s. Nothing here reads
 simulation state, holds a setting, or performs a physiological or unit
@@ -22,7 +22,7 @@ series is `Any` to the checker - and `tests/unit/test_simulation_view.py`'s
 **Every drawn point is a state of the run at the instant it is drawn at.**
 Nothing in this module interpolates, extrapolates or synthesizes a value:
 the coordinates it writes are the ones `DrawnWindow` carries, evaluated
-from the run's score at instants chosen so that no sharp feature falls
+from the run's definition at instants chosen so that no sharp feature falls
 between two of them (`PL-2FM6`). The straight segment the chart rules
 between two points is the chart's own rendering, and it is honest here
 because a control event always gets its own column.
@@ -73,7 +73,7 @@ __all__ = [
 # the display can resolve.
 #
 # What this ceiling does *not* bound is how many drawn points move on a frame.
-# That is a property of where the columns sit: `RunScore.evaluate_anchored`
+# That is a property of where the columns sit: `RunDefinition.evaluate_anchored`
 # anchors them to multiples of the spacing measured from `t = 0`, so a window
 # following the run keeps every interior column and moves only its right-hand
 # end. PL-Q197 found every drawn point moving on every frame, and 1 788 of
@@ -411,7 +411,7 @@ def redraw_visible_window(plotted: Sequence[PlottedSeries], window: DrawnWindow)
     the controller answers `drawn_window` with the part of that axis the run
     covers, so nothing outside the plotted range crosses that boundary in
     the first place and there is nothing to slice off here (`PL-0VM7`).
-    Every trace draws the same instants - one evaluation of the score
+    Every trace draws the same instants - one evaluation of the run definition
     serves all of them, because a state carries every compartment at
     once - so a frame costs what it draws rather than what the window
     spans, and two traces cannot come from different instants.
@@ -430,7 +430,7 @@ def redraw_visible_window(plotted: Sequence[PlottedSeries], window: DrawnWindow)
         plotted: Every trace to draw this frame, each paired with the
             series it draws. A trace omitted is left holding its previous
             points.
-        window: The states this frame draws, evaluated from the run's score.
+        window: The states this frame draws, evaluated from the run's definition.
     """
 
     for series, recorded in plotted:
@@ -444,11 +444,11 @@ def redraw_series(series: fch.LineChartData, window: DrawnWindow, recorded: Reco
     already holds are reused rather than rebuilt.
 
     **Every drawn point is a state of the run at the instant it is drawn
-    at**, evaluated from the score rather than selected from recorded
+    at**, evaluated from the run definition rather than selected from recorded
     samples (`PL-2FM6`). Nothing between two drawn points is interpolated
     by this code - the straight segment the chart rules between them is the
     chart's own rendering - and the columns are placed so that no sharp
-    feature falls between them: `RunScore.evaluate_anchored` puts one on
+    feature falls between them: `RunDefinition.evaluate_anchored` puts one on
     every control event in the window, and between events the trajectory
     is a sum of exponentials with no hidden transients.
 
@@ -594,9 +594,9 @@ def redraw_wash_in_segments(
 
     Every segment draws the window's own columns, so a stretch that is not
     changing keeps the same instants from frame to frame - the anchoring
-    `RunScore.evaluate_anchored` provides, and the property that keeps the
+    `RunDefinition.evaluate_anchored` provides, and the property that keeps the
     client from being sent points that did not move. There is no budget to
-    split between segments: they all read one evaluation of the score, so
+    split between segments: they all read one evaluation of the run definition, so
     what a point sits at cannot depend on how many *other* segments happen
     to be on screen.
 

@@ -14,7 +14,7 @@ verify: python3 tools/doc_check.py check && grep -qi 'elimination' README.md
 **Problem.** README's validation paragraph states only the wash-in half, so a reader takes a passing validation for the whole of what the Yasuda comparison found
 
 `README.md`'s validation paragraph (around line 160) says that
-`tests/reference/test_published_wash_in.py` compares each agent's
+`tests/reference/test_published_wash_in_and_elimination.py` compares each agent's
 $F_A/F_I$ at 30 minutes against Yasuda et al. and that all three land inside
 the measured spread, then gives two of the module's four caveats. That was the
 whole of the module when the paragraph was written. The module now compares two
@@ -36,7 +36,7 @@ The work is a judgment about README voice rather than a fact to transcribe.
 `PL-N092` rewrote this file specifically to stop it descending into detail that
 belongs in `docs/MODEL.md`, so the answer is probably one or two sentences
 naming the second direction and its disagreement, with the numbers left in
-`docs/MODEL.md` § "Published wash-in validation test" - not the four-row table.
+`docs/MODEL.md` § "Published wash-in and elimination validation test" - not the four-row table.
 
 **Why it matters.** The README states a validation result and omits the
 direction that disagrees. Nothing in it is false, which is why this is a capture
@@ -54,5 +54,5 @@ repeated by somebody who read nothing else.
 
 **Done when.** `README.md`'s validation paragraph names the second direction and
 that it disagrees, in one or two sentences, with the numbers left in
-`docs/MODEL.md` § "Published wash-in validation test" - not the four-row table,
+`docs/MODEL.md` § "Published wash-in and elimination validation test" - not the four-row table,
 per `PL-N092`'s rewrite of this file's voice.

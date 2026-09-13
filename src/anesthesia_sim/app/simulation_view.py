@@ -2409,7 +2409,7 @@ class SimulationView:
         # method is synchronous, so no `await` can fall between them and the
         # simulation loop cannot advance a step in the gap. That is what
         # keeps the right-hand end of every trace the instant the readouts
-        # above were formatted from - `RunScore.evaluate_anchored` always
+        # above were formatted from - `RunDefinition.evaluate_anchored` always
         # draws the end of the range, so the two agree by construction
         # rather than by ordering. The window asked for is the axis just
         # set, clipped to the part of it the run covers (`PL-0VM7`).

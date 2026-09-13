@@ -7,7 +7,7 @@ status: done
 classes: science
 feature: numerical-domain
 milestone: v0.2.9
-touches: tests/reference/test_published_wash_in.py, docs/MODEL.md, README.md
+touches: tests/reference/test_published_wash_in_and_elimination.py, docs/MODEL.md, README.md
 added: 2026-08-30
 closed: 2026-09-02
 pr: 182
@@ -43,7 +43,7 @@ Yasuda et al. 1991 measuring 0.850 +/- 0.018, 0.733 +/- 0.027 and
   isoflurane, and halothane in humans.* Anesthesiology 1991;74:489-98.
   PMID 2001028.
 
-**Where.** New `tests/reference/test_published_wash_in.py`; `docs/MODEL.md`
+**Where.** New `tests/reference/test_published_wash_in_and_elimination.py`; `docs/MODEL.md`
 "Required tests" and the release gate at `:1351-1368`; `README.md:21`.
 
 **Approach.** Pin all three agents against the published means and SDs, with
@@ -114,7 +114,7 @@ carries by PMID: Anesth Analg 1991;72:316-24, PMID 1994760,
 doi:10.1213/00000539-199103000-00007 (n=7); Anesthesiology 1991;74:489-98,
 PMID 2001028, doi:10.1097/00000542-199103000-00017 (n=8).
 
-**Done when.** `tests/reference/test_published_wash_in.py` pins the three
+**Done when.** `tests/reference/test_published_wash_in_and_elimination.py` pins the three
 30-minute F_A/F_I values against the published means and SDs with the
 ventilation point and its sensitivity documented in the test,
 `docs/MODEL.md` records the two citations and names this as validation as

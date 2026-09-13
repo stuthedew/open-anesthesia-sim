@@ -21,7 +21,7 @@ tests are preserved unchanged (see "Preserved circuit reference tests" below).
 Version v0.1.0 extends that model through:
 
 ```text
-delivered sevoflurane
+delivered agent
         ↓
 breathing circuit
         ↓
@@ -50,7 +50,7 @@ The milestone must demonstrate:
 - mixed-venous return to the lungs;
 - dynamic changes in fresh gas flow, delivered concentration, alveolar ventilation, and cardiac output;
 - deterministic numerical behavior; and
-- explicit conservation of sevoflurane mass.
+- explicit conservation of agent mass.
 
 Only sevoflurane was modeled in v0.1.0. Isoflurane and desflurane were
 added in v0.2.0 as additional selectable agents, using this same section's
@@ -128,10 +128,10 @@ appear in one expression the tissue index is written out.
 
 The external inputs and outputs are:
 
-- sevoflurane entering through fresh gas;
+- agent entering through fresh gas;
 - carrier gas entering through fresh gas;
 - an equal volume of mixed circuit gas leaving through the circuit exhaust; and
-- no metabolism or other chemical destruction of sevoflurane.
+- no metabolism or other chemical destruction of the agent.
 
 The circuit and patient form a closed recirculating exchange path except for fresh-gas inflow and circuit exhaust.
 
@@ -216,16 +216,16 @@ the run it branched from at every sample they share.
 **What carries this once a state is derived rather than recorded.** The
 paragraph above is a claim about recorded samples, and it rests on every
 caller taking the same width: with the step fixed, there is only one sequence
-of arithmetic that reaches step *n*. A run held as its score records no
+of arithmetic that reaches step *n*. A run held as its definition records no
 samples and fixes no width — a state is computed when it is asked for, and the
 same instant can be reached by more than one sequence. "The canonical
 evaluation rule" under "Runtime controls" is what carries the guarantee there.
 It is stronger than this paragraph in one respect and narrower in another: two
-evaluations of one score at one instant are bit-identical rather than merely
-reproducible across runs, and only values from the canonical path may be
+evaluations of one run definition at one instant are bit-identical rather than
+merely reproducible across runs, and only values from the canonical path may be
 stored, exported or branched from. Both records are live in this release, so
 both halves are: the step count carries the recorded history, and the
-canonical rule carries the score.
+canonical rule carries the run definition.
 
 **Playing a run faster does not make it a different run.** The interface
 offers a playback rate — how much simulated time advances per second of real
@@ -298,14 +298,14 @@ $$
 
 ### Agent amount
 
-Every compartment stores sevoflurane as an equivalent gas volume at one documented reference temperature and pressure.
+Every compartment stores the agent as an equivalent gas volume at one documented reference temperature and pressure.
 
 The implementation must use the same reference conditions everywhere. It must not add gas fractions, dissolved blood concentrations, and tissue concentrations directly.
 
-Let $`M_x`$ denote the equivalent gas volume of sevoflurane stored in
+Let $`M_x`$ denote the equivalent gas volume of the agent stored in
 compartment $`x`$.
 
-The unit used in code is liters of equivalent pure sevoflurane gas unless the implementation document explicitly selects another consistent unit.
+The unit used in code is liters of equivalent pure agent gas unless the implementation document explicitly selects another consistent unit.
 
 ## Symbols
 
@@ -313,9 +313,9 @@ The unit used in code is liters of equivalent pure sevoflurane gas unless the im
 | --- | --- | --- |
 | $`t`$ | Explicit simulation time | s |
 | $`\Delta t`$ | Simulation step | s |
-| $`F_D`$ | Delivered fresh-gas sevoflurane fraction | dimensionless |
-| $`F_I`$ | Inspired sevoflurane fraction, which is the gas in the breathing circuit (see "Model boundary") | dimensionless |
-| $`F_A`$ | Alveolar sevoflurane fraction | dimensionless |
+| $`F_D`$ | Delivered fresh-gas agent fraction | dimensionless |
+| $`F_I`$ | Inspired agent fraction, which is the gas in the breathing circuit (see "Model boundary") | dimensionless |
+| $`F_A`$ | Alveolar agent fraction | dimensionless |
 | $`F_a`$ | Arterial partial-pressure-equivalent fraction (flow-limited: $`F_a \equiv F_A`$; not an independent state) | dimensionless |
 | $`F_v`$ | Venous blood partial-pressure-equivalent fraction | dimensionless |
 | $`F_i`$ | Tissue group $`i`$ partial-pressure-equivalent fraction | dimensionless |
@@ -328,24 +328,24 @@ The unit used in code is liters of equivalent pure sevoflurane gas unless the im
 | $`Q`$ | Cardiac output | L blood/min |
 | $`Q_i`$ | Blood flow to tissue group $`i`$ | L blood/min |
 | $`\mathrm{MAC}_\%`$ | Agent's 1 MAC, age-40 alveolar (display divisor only; not in any governing equation) | percent |
-| $`\lambda_{b:g}`$ | Sevoflurane blood:gas partition coefficient | dimensionless |
+| $`\lambda_{b:g}`$ | Agent blood:gas partition coefficient | dimensionless |
 | $`\lambda_{i:b}`$ | Tissue:blood partition coefficient for group $`i`$ | dimensionless |
-| $`M_C`$ | Sevoflurane stored in the breathing circuit | L equivalent gas |
-| $`M_A`$ | Sevoflurane stored in alveolar gas | L equivalent gas |
-| $`M_v`$ | Sevoflurane stored in venous blood | L equivalent gas |
-| $`M_i`$ | Sevoflurane stored in tissue group $`i`$ | L equivalent gas |
+| $`M_C`$ | Agent stored in the breathing circuit | L equivalent gas |
+| $`M_A`$ | Agent stored in alveolar gas | L equivalent gas |
+| $`M_v`$ | Agent stored in venous blood | L equivalent gas |
+| $`M_i`$ | Agent stored in tissue group $`i`$ | L equivalent gas |
 
 ## Compartment capacities
 
 ### Gas compartments
 
-The equivalent sevoflurane amount in the breathing circuit is:
+The equivalent agent amount in the breathing circuit is:
 
 $$
 M_C = V_C F_I
 $$
 
-The equivalent sevoflurane amount in the alveolar gas compartment is:
+The equivalent agent amount in the alveolar gas compartment is:
 
 $$
 M_A = V_A F_A
@@ -423,8 +423,8 @@ Each group has:
 - a tissue volume $`V_i`$;
 - a fraction of cardiac output $`f_i`$;
 - a tissue blood flow $`Q_i`$;
-- a sevoflurane tissue:blood partition coefficient $`\lambda_{i:b}`$;
-- a stored sevoflurane amount $`M_i`$; and
+- an agent tissue:blood partition coefficient $`\lambda_{i:b}`$;
+- a stored agent amount $`M_i`$; and
 - a derived partial-pressure-equivalent fraction $`F_i`$.
 
 Tissue flow is:
@@ -701,11 +701,11 @@ when $`Q>0`$.
 
 At zero cardiac output, pulmonary and tissue perfusion transfers are zero and no division by $`Q`$ is performed.
 
-## Conservation of sevoflurane
+## Conservation of agent mass
 
 ### External delivery
 
-The cumulative delivered sevoflurane amount is:
+The cumulative delivered agent amount is:
 
 $$
 M_{\mathrm{delivered}}(t) = \int_0^t \dot V_FF_D\,dt
@@ -713,7 +713,7 @@ $$
 
 ### Circuit exhaust
 
-The cumulative exhausted sevoflurane amount is:
+The cumulative exhausted agent amount is:
 
 $$
 M_{\mathrm{exhausted}}(t) = \int_0^t \dot V_FF_I\,dt
@@ -2442,7 +2442,7 @@ The supported ranges above are restated in the test file and checked against
 `core/supported_ranges.py`, so widening the model's declared domain cannot
 silently leave this gate measuring a subset of it.
 
-### Published wash-in validation test
+### Published wash-in and elimination validation test
 
 Every test above is **verification**: it asks whether the implementation
 solves the intended equations correctly, and answers it by comparing the
@@ -2455,14 +2455,11 @@ had settled the second.
 
 This test is the **validation** half, and it is the only required test whose
 expected values come from outside this repository
-(`tests/reference/test_published_wash_in.py`). The distinction matters to a
-reader of the two sections: "Independent-solution test" above and this one
-answer different questions, and conflating them over-reads both.
+(`tests/reference/test_published_wash_in_and_elimination.py`). The distinction
+matters to a reader of the two sections: "Independent-solution test" above and
+this one answer different questions, and conflating them over-reads both.
 
-**This section covers two comparisons, in opposite directions**, although its
-heading names only the first — the name is kept because five other passages
-in this document and in `src/` cite it, and a citation that no longer
-resolves is a worse defect than a heading that under-describes. The two are
+**This section covers two comparisons, in opposite directions.** They are
 $`F_A/F_I`$ at 30 minutes of **wash-in**, which agrees with the published
 measurements, and $`F_A/F_{A0}`$ at 5 minutes of **elimination**, which does
 not. Both come from the same volunteers in the same sitting.
@@ -2583,7 +2580,7 @@ flow; confirming it against the methods sections needs full texts that are
 not in PubMed Central and are not held in `docs/references/`.
 
 **The open-circuit diagnostic, and why its numbers are not this simulator's.**
-`tests/reference/test_published_wash_in.py` can run the same five minutes with
+`tests/reference/test_published_wash_in_and_elimination.py` can run the same five minutes with
 the rebreathing taken away: after each step of the elimination it discards
 whatever the patient exhaled into the circuit and records it as exhausted
 agent, which is what collecting the whole expirate does. That holds $`F_I`$ at
@@ -2896,13 +2893,14 @@ using the release tolerances documented above.
 ### Closed-form agreement test
 
 A run driven through its own controls must be answered identically by both of
-its records: the states derived from the score, at the instants the run
+its records: the states derived from the run definition, at the instants the run
 recorded, must equal the recorded samples.
 
 The comparison is over every compartment of every sample rather than
 endpoints, for the reason "Deterministic replay test" gives, and it must cross
 at least two setting changes, because a stretch of constant settings is the
-easy case — what a score has to get right is the boundary between two of them.
+easy case — what a run definition has to get right is the boundary between two
+of them.
 The tolerance is absolute rather than relative and is stated in fractions of
 one atmosphere, since that is what the compartments hold and what a readout
 converts: a relative tolerance would tighten without limit on the near-zero
@@ -2915,7 +2913,7 @@ the figure measured and the headroom left above it.
 
 While both records are live this test is what says they describe one run.
 Once the recorded half is retired it becomes the record of what the closed
-form replaced, and the stepped comparison in `tests/unit/test_run_score.py`
+form replaced, and the stepped comparison in `tests/unit/test_run_definition.py`
 is what carries the claim forward.
 
 ### Deterministic replay test
@@ -2953,7 +2951,7 @@ day it is added.
 A run queried as it is built must answer identically to the same run never
 queried: element for element, across the whole state vector, at every instant
 probed and in every keyframe stored. That is what says the canonical answer
-belongs to the score rather than to the caller, and it is the property a
+belongs to the run definition rather than to the caller, and it is the property a
 cache, a memoised propagator or a reused buffer would take away while looking
 like an optimisation.
 
@@ -3032,7 +3030,7 @@ interface section carries.
 **What is held.** A run is the settings in force at each moment — the four
 controls above, together with the patient and agent parameters the equations
 read — plus one *keyframe* per change: the state at the instant that change
-took effect. Nothing else is stored. `core/run_score.py` is where this lives.
+took effect. Nothing else is stored. `core/run_definition.py` is where this lives.
 
 **What is derived.** The equations are linear and time-invariant while every
 setting is held constant, so between two changes the propagator under
@@ -3060,8 +3058,8 @@ exported or branched value may be taken from is stated as a guarantee under
 **What this is for, measured rather than argued.** Recording one sample per
 step costs 130.8 bytes per sample, measured over 20 000 samples of a live
 run; a 30-day case at the fixed 0.1 s step is 25 920 000 samples, or 3.16 GiB.
-The same case as a score — a busy ICU day at 50 setting changes, so 1 501
-stretches — is 1.6 MiB, a factor of about two thousand. The second gain is
+The same case held as a definition — a busy ICU day at 50 setting changes, so
+1 501 stretches — is 1.6 MiB, a factor of about two thousand. The second gain is
 that answering a window stops depending on how long the run has been going: a
 one-hour window at 600 columns costs 10.6 ms on a two-hour run and 13.0 ms on
 a thirty-day one, against the 62.6 ms at four hours and 207.7 ms at twelve
@@ -3076,7 +3074,8 @@ the regime where the columns are sparser than the changes, in which sampling
 instead is an interface question rather than a model one.
 
 **Both records are live in this release.** The recorded history remains, and
-the chart is still drawn from it; the score is built and maintained beside it,
+the chart is still drawn from it; the run definition is built and maintained
+beside it,
 and the two are held to each other by "Closed-form agreement test" below.
 Retiring the recorded half is a separate change, and until it lands the
 agreement is what stands in for it: a divergence in either record fails that
@@ -3094,14 +3093,14 @@ horizon takes that away. This is the rule that replaces it.
   opening the stretch that contains it, over the interval between the two.
   Each keyframe is itself computed that way, one propagation per stretch,
   composed in recording order from the start of the run. Two evaluations of
-  one score at one instant therefore perform the identical sequence of
+  one run definition at one instant therefore perform the identical sequence of
   floating-point operations, and are **bit-identical** rather than equal to
-  within a tolerance. `RunScore.state_at` in `core/run_score.py` is this path.
+  within a tolerance. `RunDefinition.state_at` in `core/run_definition.py` is this path.
 - **Display.** Drawing a window of evenly spaced columns reuses one propagator
   across the columns inside a stretch, chaining from the first, which is what
   makes a frame cost the window rather than the run. It solves the same
   equations exactly and composes the operations in a different order.
-  `RunScore.evaluate` is this path.
+  `RunDefinition.evaluate` is this path.
 
 **What each may be used for.** Every value that is stored, exported, replayed,
 compared against another run, or taken as the state a branch opens from is
@@ -3111,7 +3110,7 @@ state.
 
 **The program enforces this; the paragraph above does not.** The display path
 returns its states wrapped in `DisplayState`, which is not a state vector, so
-it cannot be passed where one is expected — and `RunScore` refuses one as an
+it cannot be passed where one is expected — and `RunDefinition` refuses one as an
 opening state by name, saying which path the value came from rather than
 failing on a length. The wrapper is deliberately not a subclass of the state
 tuple: the sinks this has to hold at include ones that have not been written
@@ -3222,7 +3221,7 @@ numerically right.
 **What justifies refusing one is therefore what it always also was**, stated
 here now that it stands alone. These ranges define the **verification domain**:
 they are what "Independent-solution test" drives its trajectories over, what
-"Published wash-in validation test" compares against measured human data, and
+"Published wash-in and elimination validation test" compares against measured human data, and
 what every figure in this document is measured across. Outside them the
 implementation has not been checked against anything — and, more seriously,
 neither has the *model*. A cardiac output of 1000 L/min is not a patient, and
@@ -3604,8 +3603,8 @@ value, and the instant the numeric readouts were formatted from must always
 be drawn, so that the end of a trace and the readouts beside it cannot
 disagree.
 
-The chart meets this by **evaluating the run's score rather than reading
-samples back from a store**. `core/run_score.py` answers the state at any
+The chart meets this by **evaluating the run's definition rather than reading
+samples back from a store**. `core/run_definition.py` answers the state at any
 instant in closed form, so the columns a frame draws are chosen for the
 axis being drawn and computed for it, and there is no recorded series
 behind the trace that could disagree with it. Where the columns fall is
@@ -3623,7 +3622,7 @@ than optimisations:
   no hidden transients, so every sharp feature in a run is at an event
   boundary; a grid that stepped over one would draw a straight line through
   the single instant a reader is looking for. Each such column is read from
-  the keyframe the score already holds at that instant, so it is exact
+  the keyframe the run definition already holds at that instant, so it is exact
   rather than propagated.
 
 **So the drawn chart reproduces every control change**, to the last digit
@@ -4406,7 +4405,7 @@ and `tests/unit/test_wash_in.py` pins both.
 **Why the interface owes it.** This is the curve the uptake literature is
 taught from and the one every wash-in figure a reader has seen is drawn as.
 It is also the quantity this model has been compared against human
-measurement on — "Published wash-in validation test" is $`F_A/F_I`$ at
+measurement on — "Published wash-in and elimination validation test" is $`F_A/F_I`$ at
 30 minutes for all three shipped agents — so the trace and the validation are
 the same number, which
 `test_the_displayed_ratio_is_the_quantity_this_file_validates` asserts rather
@@ -4514,8 +4513,8 @@ on its denominator, so a run early in wash-in knows it far less finely than
 one at equilibrium and a single derived figure would over-claim at one end.
 The figure is set instead by what the quantity is read against — Yasuda et al.
 report 0.850, 0.733 and 0.90 with standard deviations of 0.018, 0.027 and 0.01
-— so a third decimal would be finer than the published spread. See "Published
-wash-in validation test".
+— so a third decimal would be finer than the published spread. See
+"Published wash-in and elimination validation test".
 
 **What it does not assert.** It is a modelled ratio, not a measurement; it
 carries the alveolar compartment's own limitation, that this model has no
@@ -5125,7 +5124,7 @@ Version v0.1.0 assumes:
   vaporizer and the alveoli, there being one perfectly mixed circuit with no
   dead space and no separate limbs (see "Model boundary");
 - tissue venous blood equilibrates with its tissue group;
-- carrier gases do not affect sevoflurane kinetics;
+- carrier gases do not affect agent kinetics;
 - temperature is constant;
 - ambient pressure is constant, and it is one atmosphere — 760 mmHg. Every
   concentration in this model is a fraction of that pressure, so the model is

@@ -65,7 +65,7 @@ from anesthesia_sim.core.governing_equations import (
     VENOUS_FRACTION,
 )
 from anesthesia_sim.core.parameters import load_agent_parameters
-from anesthesia_sim.core.run_score import DisplayState
+from anesthesia_sim.core.run_definition import DisplayState
 
 #: The agent whose run this suite replays, and so the substance its recorded
 #: samples are keyed by. The snapshot and the run must name the same one: the
@@ -130,7 +130,7 @@ class _ReplayController:
 
         The grid is anchored to multiples of the spacing measured from
         `t = 0`, and both ends of the drawn range are columns, which is
-        `RunScore.evaluate_anchored`'s contract restated over a fixture that
+        `RunDefinition.evaluate_anchored`'s contract restated over a fixture that
         has a closed form of its own. Anchoring is what these tests are
         about: a window following the run must keep every interior column,
         so only the moving edge is patched onto the client.

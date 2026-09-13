@@ -28,8 +28,8 @@ states that MAC is used only to pick a starting dial position and that no
 MAC-fraction readout is displayed, which the milestone makes false.
 
 **Where.** `docs/MODEL.md` § "Conventions", § "Runtime controls", § "Interface
-boundary", § "Minimum displayed outputs", § "Displayed precision"; `README.md`
-§ "Current status".
+boundary", § "Minimum displayed outputs", § "Displayed precision"; `README.md`'s then-current
+`Current status` section.
 
 **Done when.** Both documents describe the interface the milestone actually ships;
 the minimum-displayed-outputs list includes the run rate and the active unit; the

@@ -636,6 +636,71 @@ def test_citation_in_an_item_brief_that_resolves_is_not_an_error(tmp_path: Path)
     assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
 
 
+def test_a_section_mark_citation_is_checked_like_a_comma_one(tmp_path: Path) -> None:
+    """The form this project actually writes, and the one it went unchecked in.
+
+    `QUOTED_SOURCE_RE` allowed only `,` or `:` between the document and the
+    quotation, so every `§` citation matched nothing — and matching nothing is
+    silent. Measured 2026-09-13: 285 of the tree's 324 document-section
+    citations were in the `§` form, against 39 in the comma form, while the run
+    reported that the citations in the documentation, the queue and the source
+    docstrings all resolved (`PL-V13T`).
+    """
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md` § "A thread that was deleted".\n')
+    assert any(
+        'PL-0000-demo.md:1: quotes docs/MODEL.md as "A thread that was deleted"' in e
+        for e in _errors(root)
+    )
+
+
+def test_a_section_mark_citation_that_resolves_is_not_an_error(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md` § "Known limitations".\n')
+    assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_an_under_citation_after_the_document_is_checked(tmp_path: Path) -> None:
+    """`` `doc.md` under "X" `` - 11 in the tree, and `under` says outright it cites."""
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md` under "A deleted thread".\n')
+    assert any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_parenthesised_citation_is_checked(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md` ("A deleted thread").\n')
+    assert any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_possessive_quotation_of_prose_is_not_read_as_a_citation(tmp_path: Path) -> None:
+    """The form this check deliberately does not read, and why.
+
+    `` `CLAUDE.md`'s "..." `` quotes a *sentence* as often as it cites a
+    section, and nothing distinguishes the two without reading the meaning.
+    Admitting it reported 28 quotations of real prose as stale headings
+    (measured 2026-09-13, `PL-V13T`). `§` has no second use, which is what
+    makes it checkable and this not.
+    """
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md`\'s "a sentence quoted from it".\n')
+    assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_citation_wrapping_inside_a_blockquote_is_not_reported_stale(tmp_path: Path) -> None:
+    """A `>` opening the continued line belongs to the blockquote, not the quote.
+
+    Eleven citations of one heading that is present were reported stale this
+    way, all of them the Qt-port deferral note the project owner added to six
+    item files (`PL-V13T`).
+    """
+    root = _repo(tmp_path)
+    _item(
+        root, "PL-0000-demo", '> **Deferred.** `docs/MODEL.md` § "Known\n> limitations" names it.\n'
+    )
+    assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
 def test_citation_in_a_source_docstring_is_held_to_the_document_it_names(tmp_path: Path) -> None:
     """A contributor reading the class is sent somewhere; it has to still answer."""
     root = _repo(tmp_path)

@@ -171,8 +171,8 @@ class TissueGroupEquationSettings:
     def washin_rate_s(self) -> float:
         """Return $`Q_i / (V_i\\lambda_{i:b})`$, the reciprocal of $`\\tau_i`$.
 
-        `docs/MODEL.md` gives the tissue time constant as
-        $`\\tau_i = V_i\\lambda_{i:b}/Q_i`$, undefined at zero flow. This is
+        `docs/MODEL.md` § "Tissue uptake and return" gives the tissue time
+        constant as $`\\tau_i = V_i\\lambda_{i:b}/Q_i`$, undefined at zero flow. This is
         its reciprocal, which is zero there instead - an unperfused tissue
         exchanges nothing, which is what the document's zero-flow case says,
         and expressing it this way is what lets the matrix state that case
@@ -192,7 +192,7 @@ class UptakeEquationSettings:
     must not. Deriving the key from the same object the matrix is built from is
     what makes a stale propagator unrepresentable rather than merely unlikely.
 
-    Flows are per second, as `docs/MODEL.md`'s "Governing equations" requires,
+    Flows are per second, as `docs/MODEL.md` § "Governing equations" requires,
     and the conversion from the user-facing litres per minute happens once
     where this is constructed rather than inside an equation.
 
@@ -250,10 +250,16 @@ class UptakeEquationSettings:
 def build_system_matrix(settings: UptakeEquationSettings) -> Matrix:
     """Assemble $`A`$, so that $`\\exp(A\\Delta t)`$ advances the model exactly.
 
-    Each block below is one equation of `docs/MODEL.md`'s "Governing
+    Each block below is one equation of `docs/MODEL.md` § "Governing
     equations", written in that document's own order and symbols. The comment
     above each is the equation; the lines under it are its terms, one entry
-    each.
+    each. `docs/MODEL.md` § "Selected method (as implemented)" is the step this
+    matrix is assembled for, and names this module as where $`A`$ comes from.
+
+    The citation is in the section-mark form deliberately: `tools/doc_check.py`
+    reads that form and not the possessive one this docstring used to carry, so
+    a rename of either section now fails the gate instead of silently orphaning
+    the pointer (`PL-VZL0`, `PL-V13T`).
 
     Every off-diagonal entry is a transfer rate and is nonnegative; every
     diagonal is minus the total rate leaving that state. That makes the result

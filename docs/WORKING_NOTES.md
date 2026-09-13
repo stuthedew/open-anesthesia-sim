@@ -65,13 +65,13 @@ appropriate, and its entry here should be deleted rather than left stale.
   pattern documented at the top of `tests/unit/test_simulation_view.py`,
   which is still where its presentation logic is covered. The pure modules
   it delegates to are tested without that pattern: the displayed-value
-  formatters in `tests/unit/test_formatting.py`, the score the chart is
-  evaluated from in `tests/unit/test_run_score.py`, the recorded control
+  formatters in `tests/unit/test_formatting.py`, the run definition the chart is
+  evaluated from in `tests/unit/test_run_definition.py`, the recorded control
   changes in `tests/unit/test_control_timeline.py` and the wash-in ratio and its domain
   in `tests/unit/test_wash_in.py`, while `app/chart_series.py` is covered
   through the view, where a trace can be read back off the chart it was
   drawn on (PL-WB0X). The wash-in ratio is covered twice over on purpose:
-  `tests/reference/test_published_wash_in.py` asserts that the number the
+  `tests/reference/test_published_wash_in_and_elimination.py` asserts that the number the
   chart draws is the number the Yasuda comparison was made on, so the two
   cannot drift apart (PL-ZRSP). The one thing that
   pattern cannot answer - whether Flet's diff reports what a frame changed -
@@ -124,7 +124,7 @@ appropriate, and its entry here should be deleted rather than left stale.
   per sample, and the wash-in plot reclassified every visible sample against
   its domain. **Superseded 2026-09-08 (`PL-2FM6`).** The dyadic ladder of M4
   aggregates this paragraph described is gone with the sample store it
-  summarised: the run is its score, and a frame evaluates the states at the
+  summarised: the run is its definition, and a frame evaluates the states at the
   instants it plots, so there is nothing to aggregate and no window to
   materialise. The measurements below stand as the record of what the
   aggregate ladder achieved and why the flat cost mattered; the mechanism
@@ -1270,7 +1270,7 @@ predicted: **handing the frame to the toolkit costs 1.0-1.2 ms against Flet's
 ### The finding that was not predicted: `refresh` now dominates
 
 `refresh` is 5.2-6.2 ms, and **6.18 ms of a 6.24 ms frame read is
-`controller.drawn_window`** - the closed-form score evaluation. The percent
+`controller.drawn_window`** - the closed-form run definition evaluation. The percent
 conversion is 0.06 ms and `controller.snapshot()` is 0.02 ms. Measured
 directly on a 1 800 s run at the fitted 15-minute base:
 
@@ -1339,7 +1339,8 @@ entirely there. Measured on the spike, 1 800 s at 300x, median of 120 frames:
 
 **`handoff` moves from 1.28 ms to 2.08 ms for sixteen times the points**, which
 is the array transport doing exactly what `PL-QXSB` said it would. The whole
-cost of more columns is the score evaluation, and it is the same cost on either
+cost of more columns is the run definition evaluation, and it is the same cost
+on either
 toolkit.
 
 So `PL-GS3R`'s route 1 is affordable on Qt and is not on Flet. On `PL-GS3R`'s
@@ -1424,7 +1425,8 @@ the ratios are what carry, and `advance` is the same call on either toolkit.
 **At 1x the chart read costs 46 times the simulation** - `refresh` 8.84 ms
 against `advance` 0.19 ms - which is `PL-CNCF` confirmed on real hardware. The
 container put 99% of that stage in `controller.drawn_window`, and nothing about
-the toolkit changes it: it is the score evaluation, and it is the same cost on
+the toolkit changes it: it is the run definition evaluation, and it is the same
+cost on
 Flet. Inside Flet it was invisible under 26-45 ms of diff.
 
 ### What this does to `PL-QXSB`, which is the decision it feeds
@@ -1439,7 +1441,7 @@ add is that the *remaining* case is now measured rather than argued:
 - **Fidelity affordability**: `PL-GS3R`'s cheapest route out of 0.26 MAC of
   chord error is more columns, and `handoff` moves 1.28 to 2.08 ms for sixteen
   times the points (`PL-55DH`, container). The whole cost of that route is the
-  score evaluation, which both toolkits pay; the per-point charge that made it
+  run definition evaluation, which both toolkits pay; the per-point charge that made it
   unaffordable is Flet's alone.
 - **Headless verification**: `PL-2QMK`, exercised rather than argued -
   `qt_spike.py --screenshot` writes a PNG of the running interface in the very
@@ -1473,7 +1475,8 @@ budget**, which is the worst realistic case for a 600-column setting.
 **Two corrections to what this file said before.**
 
 **Paint scales strongly with points.** 8.04 to 21.57 ms - it is the largest
-single stage at 600 columns, above the score evaluation. The earlier claim that
+single stage at 600 columns, above the run definition evaluation. The earlier
+claim that
 it is near-constant held across *rates* at a fixed column count and does not
 generalise; that sentence is now qualified where it appears above.
 

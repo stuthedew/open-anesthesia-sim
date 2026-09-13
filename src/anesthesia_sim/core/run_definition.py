@@ -3,26 +3,31 @@
 `docs/MODEL.md`'s governing equations are linear and time-invariant while every
 setting is held constant, so `matrix_exponential` solves each such stretch
 exactly over any horizon. A run is therefore described completely by the
-settings in force at each moment - the *score* - and every state it passed
-through is a closed-form function of that score and the time asked for.
+settings in force at each moment - its *definition* - and every state it passed
+through is a closed-form function of that definition and the time asked for.
 Nothing has to be recorded for a value to be recoverable.
 
-**Why "score", since the word is doing real work here.** It is the musical
-sense: the written instruction set a performance is produced from, rather
-than a recording of one. That is exactly the distinction this module exists
-to draw - what is *held* is the ordered list of settings and when each took
-effect, and what a caller asks for is *derived* by playing it to a given
-instant. The vocabulary is already in the file: a `Keyframe` is the animation
-term for a stated instant a continuous motion is interpolated between, and
-the two words come from the same place. The names to reject are the ones that
-would suggest a stored trajectory - a run's `history`, `samples` or `record` -
+**What the name has to carry, and the term it replaced.** What is *held* is the
+ordered list of settings and when each took effect; what a caller asks for is
+*derived* by playing that list to a given instant. The names to reject are the
+ones suggesting a stored trajectory - a run's `history`, `samples` or `record` -
 because the whole point is that no such thing exists here.
+
+Through v0.4.x this quantity was a run's *score*, in the musical sense: the
+written instruction set a performance is produced from rather than a recording
+of one, the same borrowing that makes a `Keyframe` an animation term. The
+metaphor was exact but it had to be taught, and `.claude/rules/core-domain.md`
+holds this package to reading like the domain without a translation step - so
+the word was retired for the plain one (`PL-ZX12`, project owner, 2026-09-08).
+It is recorded here because `docs/releases/` and `ROADMAP.md`'s completed rows
+still speak of the score architecture, and a reader arriving from those needs
+the two words joined up.
 
 Two consequences carry this module, and both are what `PL-T691` exists for:
 
 - **Memory stops growing with the run.** A recorded run costs one sample per
-  solver step; a score costs one segment per setting change. Measured
-  2026-09-05, a 30-day case at 50 changes a day is about 70 KiB of score and
+  solver step; a run definition costs one segment per setting change. Measured
+  2026-09-05, a 30-day case at 50 changes a day is about 70 KiB of definition and
   keyframes against the 3.16 GB of samples the same run records today.
 - **The cost of answering a window stops depending on the run's length.** A
   window is answered from the keyframe bracketing it rather than by scanning
@@ -30,7 +35,7 @@ Two consequences carry this module, and both are what `PL-T691` exists for:
 
 **Two evaluation paths, and they are not interchangeable.** `state_at` is
 canonical: one matrix exponential per inter-event interval, composed in
-recording order from `t = 0`, so two evaluations of the same score at the same
+recording order from `t = 0`, so two evaluations of the same definition at the same
 instant perform the identical sequence of operations and agree bit for bit.
 `evaluate` is the display path: inside one segment it reuses a single
 propagator across uniformly spaced columns, which is what makes a frame cheap
@@ -94,7 +99,7 @@ class Keyframe:
 
 
 @dataclass(frozen=True, slots=True)
-class ScoreSegment:
+class RunSegment:
     """One stretch of a run during which every setting the equations read is constant.
 
     The settings and the state they start from travel together rather than in
@@ -144,7 +149,7 @@ class SampledWindow:
 
     The display path's answer. Times and states travel together and are
     checked to be the same length at construction, for the reason
-    `ScoreSegment` pairs its two fields: a trace drawn from one array against
+    `RunSegment` pairs its two fields: a trace drawn from one array against
     the other's time axis misstates the run from values that are individually
     correct, which `CLAUDE.md`'s safety-critical standard counts as a
     presentation failure rather than a lesser kind.
@@ -169,7 +174,7 @@ class SampledWindow:
             )
 
 
-class RunScore:
+class RunDefinition:
     """A run, as the settings it was computed under and the states they imply.
 
     Built with the settings a run starts under and the state it starts from,
@@ -187,7 +192,7 @@ class RunScore:
     validating it.
 
     **It answers only within the run.** `state_at` and `evaluate` refuse a
-    time past `duration_s`, because the score can be evaluated arbitrarily far
+    time past `duration_s`, because the run definition can be evaluated arbitrarily far
     ahead and what comes back would be a prediction of a run that has not
     happened. Drawn on the same axis as the run itself it would be
     indistinguishable from it.
@@ -218,13 +223,13 @@ class RunScore:
 
         _require_state(initial_state)
 
-        self._segments: tuple[ScoreSegment, ...] = (
-            ScoreSegment(settings=settings, opening=Keyframe(0.0, initial_state)),
+        self._segments: tuple[RunSegment, ...] = (
+            RunSegment(settings=settings, opening=Keyframe(0.0, initial_state)),
         )
         self._duration_s = 0.0
 
     @property
-    def segments(self) -> tuple[ScoreSegment, ...]:
+    def segments(self) -> tuple[RunSegment, ...]:
         """Every stretch of constant settings this run has had, oldest first."""
 
         return self._segments
@@ -239,14 +244,14 @@ class RunScore:
         """Move the time the run has reached to `elapsed_s`.
 
         Records no state: the states are already implied by the settings and
-        recovered on demand. What this changes is how far the score may be
+        recovered on demand. What this changes is how far the run definition may be
         evaluated, which is what stops a prediction being drawn as the run.
 
         Raises:
             SimulationConfigurationError: `elapsed_s` is not finite, or is
                 earlier than the time already reached. A run cannot un-happen,
                 and rewinding the reach would leave the segments recorded
-                after it describing a stretch the score would then refuse to
+                after it describing a stretch the run definition would then refuse to
                 evaluate.
         """
 
@@ -280,7 +285,7 @@ class RunScore:
         moved and moved back before a step ran - the stretch goes entirely,
         because nothing about the run differs.
 
-        The third is what keeps a score a record of the run rather than of the
+        The third is what keeps a run definition a record of the run rather than of the
         mouse, and it is the same rule the interface's own control timeline
         applies to the entries a reader sees.
         """
@@ -295,12 +300,12 @@ class RunScore:
                 self._segments = self._segments[:-1]
                 return
 
-            self._segments = (*self._segments[:-1], ScoreSegment(settings, open_segment.opening))
+            self._segments = (*self._segments[:-1], RunSegment(settings, open_segment.opening))
             return
 
         self._segments = (
             *self._segments,
-            ScoreSegment(
+            RunSegment(
                 settings, Keyframe(self._duration_s, self._canonical_state_at(self._duration_s))
             ),
         )
@@ -310,13 +315,13 @@ class RunScore:
 
         One matrix exponential from the keyframe that opens the segment
         `elapsed_s` falls in, over the interval between them. Two calls with
-        the same argument on the same score perform the identical sequence of
+        the same argument on the same definition perform the identical sequence of
         operations, so they return bit-identical values; this is the path a
         keyframe, an export or a fork's starting state is taken from, and
         `docs/MODEL.md` § "The canonical evaluation rule" is the guarantee it
         carries.
 
-        It is a function of the score and of nothing else - no cache, no
+        It is a function of the run definition and of nothing else - no cache, no
         memory of what was asked before - so a run queried at arbitrary
         instants as it goes answers identically to the same run never queried
         at all. `tests/reference/test_canonical_evaluation.py` gates that.
@@ -541,7 +546,7 @@ class RunScore:
 
         return times_s, [indexed[time_s] for time_s in times_s]
 
-    def _state_from_opening(self, segment: ScoreSegment, elapsed_s: float) -> tuple[float, ...]:
+    def _state_from_opening(self, segment: RunSegment, elapsed_s: float) -> tuple[float, ...]:
         """The state at `elapsed_s`, propagated from `segment`'s own keyframe.
 
         A column landing exactly on the keyframe is the event-column case,
@@ -638,7 +643,7 @@ class RunScore:
             )
 
 
-def _opening_of(segment: ScoreSegment) -> float:
+def _opening_of(segment: RunSegment) -> float:
     """When `segment` opens - the key the segment search is ordered on."""
 
     return segment.opening.elapsed_s
@@ -659,7 +664,7 @@ def _last_column_before(limit_s: float, times_s: tuple[float, ...], first_column
     return column
 
 
-def _propagator(segment: ScoreSegment, interval_s: float) -> Matrix | None:
+def _propagator(segment: RunSegment, interval_s: float) -> Matrix | None:
     """`exp(A * interval_s)` for `segment`'s settings, or `None` for no interval.
 
     `matrix_exponential` refuses a non-positive interval, and rightly: an
