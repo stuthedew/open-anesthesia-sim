@@ -4,11 +4,13 @@ title: doc_check reads a section citation in the comma form but not the section-
 priority: P2
 effort: S
 status: done
-closed: 2026-09-13
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.4.16
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/items/, ROADMAP.md
 added: 2026-09-13
+closed: 2026-09-13
+pr: 512
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_section_mark_citation_is_checked_like_a_comma_one' tests/unit/test_doc_check.py
 ---
 

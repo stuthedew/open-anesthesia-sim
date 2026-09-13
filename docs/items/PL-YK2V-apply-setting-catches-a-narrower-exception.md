@@ -1,13 +1,15 @@
 ---
 id: PL-YK2V
 title: _apply_setting catches a narrower exception class than the timer paths, so an unexpected raise escapes into Flet's dispatch
-status: done
 priority: P2
 effort: S
+status: done
 classes: defect, ux
+milestone: v0.4.16
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
 added: 2026-09-02
 closed: 2026-09-13
+pr: 510
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_a_settings_raise_outside_the_project_hierarchy_halts_the_run' tests/unit/test_simulation_view.py
 ---
 

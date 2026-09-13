@@ -4,11 +4,13 @@ title: Rename the wash-in validation module and its MODEL.md section now that bo
 priority: P2
 effort: S
 status: done
-closed: 2026-09-13
 classes: docs, refactor
 feature: numerical-domain
+milestone: v0.4.16
 touches: tests/reference/test_published_wash_in_and_elimination.py, docs/MODEL.md, docs/WORKING_NOTES.md, README.md, ROADMAP.md, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/core/supported_ranges.py, tests/unit/test_wash_in.py, docs/items/
 added: 2026-09-06
+closed: 2026-09-13
+pr: 512
 verify: python3 tools/doc_check.py check && ! grep -q 'Published wash-in and elimination validation test' docs/MODEL.md
 ---
 
