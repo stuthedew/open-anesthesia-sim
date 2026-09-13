@@ -1,9 +1,14 @@
 ---
 id: PL-R808
 title: Build the exact left-behind check as a tools/ script comparing a branch tip against refs/pull/<n>/head, declining where those refs are not fetched
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: infra
 feature: parallel-sessions
+touches: tools, tests/unit/test_left_behind_check.py, docket.toml
 added: 2026-09-12
+verify: uv run pytest -q tests/unit/test_tools_portability.py && grep -q 'tests/unit/test_left_behind_check.py' docket.toml
 ---
 
 **Problem.** Build the exact left-behind check as a tools/ script comparing a branch tip against refs/pull/<n>/head, declining where those refs are not fetched
@@ -77,3 +82,29 @@ permission, and no such ref.
 **Still to decide as part of the build:** where it is wired - CI, the digest, or
 `make check` - and what it prints when it and `vcs.orphaned` disagree, which is
 the case a reader most needs help with.
+
+**Why it matters.** The failure it reports is the one this project has actually
+suffered and cannot otherwise see: a pull request merges, the session pushes one
+more commit to the same branch, and nothing merges a merged pull request a
+second time. There is no conflict, no red check and no advisory - `#284` is the
+recorded instance, and `PL-3D2M` is the family. `vcs.orphaned` catches it today
+by comparing blob content, which is exactly the evidence a squash, a history
+rewrite and two sessions writing identical lines all destroy; `PL-XLQ5` is a
+false positive from that comparison and is a frozen Gate 1 entry.
+
+The ref comparison has none of those confounds. It names the commits between the
+branch tip and the head the pull request merged, with no content comparison at
+all, and where it cannot read the frozen head it says so instead of reporting
+clean - which is the property that makes it worth preferring to a better
+heuristic. `PL-VV4D` carries the decision and the costs accepted; this is the
+build.
+
+**Done when.** A standard-library script under `tools/` compares a branch tip
+against `refs/pull/<n>/head` and reports the commits left behind; it declines,
+distinguishably, on each of the three conditions - no network, no permission, no
+such ref - rather than reporting a clean answer; `#284` is covered as the
+positive case and `#499` as the silent one, with `#499` proving the squash does
+not confound it; `vcs.orphaned` is untouched; the new test is registered in
+`docket.toml`'s `workflow_paths`; and the two questions the brief leaves open -
+where it is wired, and what it prints when it and `vcs.orphaned` disagree - are
+answered in the item rather than left to the reader.

@@ -1,9 +1,14 @@
 ---
 id: PL-LF2C
 title: PL-VV4D's exact left-behind check rests on refs/pull/<n>/head being permanent, and GitHub is about to unreference 90 of them, so the check needs a third decline condition and one of its two test vectors dies
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, docs
 feature: parallel-sessions
+touches: docs/items/PL-R808-build-the-exact-left-behind-check-as-a-tools.md, subprojects/docket/src/docket/vcs.py
 added: 2026-09-12
+verify: python3 tools/doc_check.py check && grep -qF 'not a superset' subprojects/docket/src/docket/vcs.py
 ---
 
 **Problem.** PL-VV4D's exact left-behind check rests on refs/pull/<n>/head being permanent, and GitHub is about to unreference 90 of them, so the check needs a third decline condition and one of its two test vectors dies
@@ -48,6 +53,31 @@ deferred.
 **`PL-VV4D` is closed and is not rewritten** - a closed item's record says what
 was decided and on what basis, and this finding post-dates it. This item is the
 amendment, and `PL-R808` (the build) carries the consequences.
+
+**Why it matters.** Two of this item's three Done-when clauses are already
+satisfied: `PL-R808`'s brief now carries the third decline condition and has
+replaced the `#312` vector with `#499`. The clause left is the one that outlives
+both items, and it is the reason this was not simply folded into `PL-R808`.
+
+`PL-VV4D` decided to build the exact check *beside* `vcs.orphaned` rather than in
+place of it, and costed that as a deferral - the portable content comparison
+stays for now, and retiring it later stays available. That is no longer true.
+With `refs/pull/<n>/head` deletable on request, and 90 of this repository's own
+already requested under support ticket 4733783, the exact test cannot answer at
+all for a pull request whose frozen head is gone, and `vcs.orphaned` is the only
+thing that can. The exact check is therefore not a superset of the portable one
+even in principle, and retiring `orphaned` is foreclosed rather than deferred.
+
+That consequence lives nowhere a future session would meet it. `PL-VV4D` is
+closed and is not rewritten - a closed item records what was decided and on what
+basis, and this finding post-dates it. So a session reading `vcs.orphaned`'s
+docstring in a year, seeing the exact check exists, will reach for exactly the
+tidy-up this item exists to prevent, and the report it deletes is the one
+standing between a commit and being lost.
+
+**Where the remaining clause lands.** `vcs.orphaned`'s own docstring in
+`subprojects/docket/src/docket/vcs.py`, which is the file a session proposing the
+retirement has open.
 
 **Done when.** `PL-R808` states the third decline condition - a pull request
 whose head ref no longer resolves - and says what the check reports then; its

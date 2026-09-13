@@ -1,10 +1,14 @@
 ---
 id: PL-7XTS
 title: Nothing routes a close-out to bin/docket verify --self, so a session auditing its own branch runs the delegated mode PL-69JZ fixed and still gets a REJECT on correct work
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, docs
 feature: delegation
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-12
+verify: python3 tools/doc_check.py check && grep -qF 'verify --self' .claude/skills/docket/SKILL.md
 ---
 
 **Problem.** Nothing routes a close-out to bin/docket verify --self, so a session auditing its own branch runs the delegated mode PL-69JZ fixed and still gets a REJECT on correct work
@@ -42,3 +46,8 @@ follows the skill rather than the README.
 
 **Done when.** A session following the close-out procedure reaches
 `bin/docket verify --self <id>` without reading an item's brief to find it.
+
+**Confirmed at triage, 2026-09-12.** `grep -- '--self' .claude/skills/docket/SKILL.md
+CLAUDE.md` returns nothing from either file, so the absence this item describes is
+exact rather than approximate: the flag appears in neither document a session
+follows.
