@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .model import Item
+from .store import ID_PATTERN
 
 if TYPE_CHECKING:  # `roadmap` reads this module's version grammar, so the
     from .roadmap import Wave  # runtime import would close the cycle.
@@ -66,15 +67,30 @@ class Milestone:
         return self.name.lstrip("v")
 
 
-def unreleased(items: list[Item]) -> list[Item]:
+def unreleased(items: list[Item], resuming: str = "") -> list[Item]:
     """Finished work that has not gone out in any version yet.
 
     This is the default state of a closed item, not a state anyone has to put
     it into, which is the whole point: no one has to predict at capture time
     which release something will land in.
+
+    `resuming` names a release whose cut was interrupted, and folds the work
+    that cut already stamped back in. Without it a re-run sees only what the
+    first run had not reached, and ships a short release under the full one's
+    name: `PL-1MKQ` is 26 items of 33 stamped, a re-run reporting "7 finished
+    item(s)" and exiting 0, and notes that would have been the permanent
+    record of a 33-item release naming 7 of them. Reclaiming makes the cut of
+    a named version idempotent, which is the property that holds however far
+    the interrupted run got - and it is the stamp loop, not the bump, that is
+    the likely place to be interrupted, since it writes a file per item.
     """
     return sorted(
-        (i for i in items if i.status == "done" and not i.milestone),
+        (
+            i
+            for i in items
+            if i.status == "done"
+            and (not i.milestone or (bool(resuming) and i.milestone.strip() == resuming))
+        ),
         key=lambda i: (i.closed or date.min, i.identifier),
     )
 
@@ -139,6 +155,86 @@ def is_untagged(version: str, existing: frozenset[str]) -> bool:
 def notes_name(version: str) -> str:
     """The notes file a version's release is written to, with no leading path."""
     return f"v{version.strip().lstrip('v')}.md"
+
+
+#: An item id at the head of a notes bullet, which is the only place a release's
+#: notes *claim* an item. Anchored deliberately: the rest of the line is the
+#: item's title, and titles quote other ids - "PL-2GQW PL-L9JS's not-delegable
+#: reason rests on the recursion claim PL-20CQ disproved" names three. Reading
+#: every id in the file made 20 of this project's 37 healthy releases look
+#: inconsistent; reading the bullet's leader makes 36 of the 37 agree exactly,
+#: and the 37th predates the notes directory.
+NOTES_ENTRY_RE = re.compile(rf"^- ({ID_PATTERN})", re.M)
+
+
+def notes_by_version(root: Path, notes_dir: str = NOTES_DIR) -> dict[str, frozenset[str]]:
+    """Which items each cut release's notes file says it shipped.
+
+    The notes rather than the store, because the notes are the half that is
+    permanent: a `milestone:` stamp can be edited afterwards, while a released
+    `docs/releases/vX.Y.Z.md` is what a reader has. Comparing the two is
+    `checks._check_release_notes`; this reports only what is written.
+
+    A directory that does not exist is a project that does not write notes,
+    and comes back empty rather than raising.
+    """
+    directory = root / notes_dir
+    if not directory.is_dir():
+        return {}
+    return {
+        path.stem: frozenset(NOTES_ENTRY_RE.findall(path.read_text(encoding="utf-8")))
+        for path in sorted(directory.glob("v*.md"))
+        if SEMVER_RE.match(path.stem)
+    }
+
+
+def unrecorded_milestones(
+    items: list[Item], notes: dict[str, frozenset[str]], current_version: str = ""
+) -> list[str]:
+    """Releases the store says it shipped that no notes file records.
+
+    This is the state an interrupted cut leaves. `cmd_release` writes the
+    `milestone:` stamps one file at a time and the notes after them, so a run
+    that dies inside that loop leaves work stamped with a release that has no
+    record - and a plain re-run reads those items as already shipped, cuts the
+    remainder under the same name and exits 0 (`PL-1MKQ`: 26 items of 33
+    stamped, notes covering the other 7).
+
+    One rule, read by both halves of the repair: `cmd_release` resumes what
+    this names and `checks` reports it, so the command and the check cannot
+    disagree about what an interrupted cut is.
+
+    Releases cut before the project wrote notes at all are not judged. The
+    floor is the oldest version that does have a notes file, supplied by the
+    directory itself rather than configured so that it cannot go stale: this
+    project's v0.2.2 shipped eleven items before `docs/releases/` existed and
+    no file will ever be written for it.
+
+    The current version is a floor too, and it is the one that covers a
+    project's *first* release. There the interrupted cut has written no notes
+    file at all, so the directory offers no floor and every historical stamp
+    would otherwise be judged against a practice the project has not adopted.
+    Taking the lower of the two keeps the directory's answer wherever it has
+    one - it is always at or below the current version - and falls back to
+    "only the release being cut right now" where it has none.
+
+    With neither, there is nothing to measure against and nothing is judged.
+    """
+    floors = [version_key(name) for name in notes]
+    if SEMVER_RE.match(current_version.strip()):
+        floors.append(version_key(current_version))
+    if not floors:
+        return []
+    floor = min(floors)
+    stamped = {
+        item.milestone.strip()
+        for item in items
+        if item.milestone and SEMVER_RE.match(item.milestone.strip())
+    }
+    return sorted(
+        (name for name in stamped if name not in notes and version_key(name) >= floor),
+        key=version_key,
+    )
 
 
 def version_in(text: str) -> str:
@@ -308,11 +404,18 @@ class Readiness:
         return bool(self.completed_features) or len(self.shippable) >= 3
 
 
-def readiness(items: list[Item], current_version: str, minor_classes: tuple[str, ...]) -> Readiness:
-    """What could ship right now, and what it would be called."""
+def readiness(
+    items: list[Item], current_version: str, minor_classes: tuple[str, ...], resuming: str = ""
+) -> Readiness:
+    """What could ship right now, and what it would be called.
+
+    `resuming` is passed through to `unreleased`, and only `cmd_release`
+    supplies it: every other caller is asking what is shippable *now*, and an
+    interrupted cut's stamps are not that question.
+    """
     from .plan import features as group_features
 
-    shippable = unreleased(items)
+    shippable = unreleased(items, resuming)
     shipped_ids = {item.identifier for item in shippable}
 
     completed: list[str] = []

@@ -531,6 +531,29 @@ def test_a_capitalised_citation_is_checked_too(tmp_path: Path) -> None:
     )
 
 
+def test_a_quoted_measurement_before_above_is_not_a_citation(tmp_path: Path) -> None:
+    """Prose contrasting a figure with the one it replaced is not a citation.
+
+    Observed 2026-09-05 writing a measurement into `docs/WORKING_NOTES.md`:
+    the sentence quoted the old figure as it appeared in the note, and the run
+    hard-failed with `cites section "~88-256 B each" in this file`. The only
+    repair available was to reword prose that was not wrong, which teaches a
+    session to avoid quotation marks in documentation (`PL-KJ63`).
+    """
+    readme = '# Demo\n\nEach entry now costs 12 B, against "~88-256 B each" above.\n'
+
+    assert not any("cites section" in e for e in _errors(_repo(tmp_path, readme=readme)))
+
+
+def test_a_directed_citation_opening_on_a_letter_still_resolves(tmp_path: Path) -> None:
+    """The narrowing must not swallow the form it exists to check."""
+    readme = '# Demo\n\nSee "Renamed limitations" above for what it omits.\n'
+
+    assert any(
+        'cites section "Renamed limitations"' in e for e in _errors(_repo(tmp_path, readme=readme))
+    )
+
+
 def test_ordinary_quoted_prose_is_not_read_as_a_citation(tmp_path: Path) -> None:
     readme = '# Demo\n\nRecord it in "the same change" as the code.\n'
     assert not any("cites section" in e for e in _errors(_repo(tmp_path, readme=readme)))
@@ -610,6 +633,71 @@ def test_citation_in_an_item_brief_is_held_to_the_document_it_names(tmp_path: Pa
 def test_citation_in_an_item_brief_that_resolves_is_not_an_error(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md`, "Known limitations".\n')
+    assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_section_mark_citation_is_checked_like_a_comma_one(tmp_path: Path) -> None:
+    """The form this project actually writes, and the one it went unchecked in.
+
+    `QUOTED_SOURCE_RE` allowed only `,` or `:` between the document and the
+    quotation, so every `§` citation matched nothing — and matching nothing is
+    silent. Measured 2026-09-13: 285 of the tree's 324 document-section
+    citations were in the `§` form, against 39 in the comma form, while the run
+    reported that the citations in the documentation, the queue and the source
+    docstrings all resolved (`PL-V13T`).
+    """
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md` § "A thread that was deleted".\n')
+    assert any(
+        'PL-0000-demo.md:1: quotes docs/MODEL.md as "A thread that was deleted"' in e
+        for e in _errors(root)
+    )
+
+
+def test_a_section_mark_citation_that_resolves_is_not_an_error(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md` § "Known limitations".\n')
+    assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_an_under_citation_after_the_document_is_checked(tmp_path: Path) -> None:
+    """`` `doc.md` under "X" `` - 11 in the tree, and `under` says outright it cites."""
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md` under "A deleted thread".\n')
+    assert any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_parenthesised_citation_is_checked(tmp_path: Path) -> None:
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md` ("A deleted thread").\n')
+    assert any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_possessive_quotation_of_prose_is_not_read_as_a_citation(tmp_path: Path) -> None:
+    """The form this check deliberately does not read, and why.
+
+    `` `CLAUDE.md`'s "..." `` quotes a *sentence* as often as it cites a
+    section, and nothing distinguishes the two without reading the meaning.
+    Admitting it reported 28 quotations of real prose as stale headings
+    (measured 2026-09-13, `PL-V13T`). `§` has no second use, which is what
+    makes it checkable and this not.
+    """
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md`\'s "a sentence quoted from it".\n')
+    assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_citation_wrapping_inside_a_blockquote_is_not_reported_stale(tmp_path: Path) -> None:
+    """A `>` opening the continued line belongs to the blockquote, not the quote.
+
+    Eleven citations of one heading that is present were reported stale this
+    way, all of them the Qt-port deferral note the project owner added to six
+    item files (`PL-V13T`).
+    """
+    root = _repo(tmp_path)
+    _item(
+        root, "PL-0000-demo", '> **Deferred.** `docs/MODEL.md` § "Known\n> limitations" names it.\n'
+    )
     assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
 
 
@@ -768,6 +856,32 @@ def test_candidates_mode_reports_a_removed_heading_not_a_filename(
     # The document that changed is not searched for its own name; every other
     # file linking to `docs/MODEL.md` is not evidence of drift.
     assert "MODEL.md  (MODEL.md)" not in output
+
+
+def test_candidate_line_is_labelled_with_the_most_specific_term(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A line kept once has to be labelled by one of the terms that found it.
+
+    Keeping whichever arrived first labelled it by the sort order: a changed
+    `thing.py` contributes both `thing` and `thing.py`, `thing` sorts first,
+    and a line plainly about the module printed as `(thing)` (`PL-Z0G0`).
+    """
+    readme = README + "\nThe `thing.py` module is where that lives.\n"
+    root = _repo(tmp_path, readme=readme)
+    _git_init(root)
+
+    module = root / "src" / "anesthesia_sim" / "core" / "thing.py"
+    module.write_text("def advance_thing() -> None:\n    return None\n", encoding="utf-8")
+
+    assert doc_check.main(["candidates", "--root", str(root), "--base", "HEAD"]) == 0
+    labelled = [
+        line for line in capsys.readouterr().out.splitlines() if "README.md" in line and "(" in line
+    ]
+
+    assert labelled, "the line naming `thing.py` should be a candidate"
+    assert any("(thing.py)" in line for line in labelled)
+    assert not any(line.endswith("(thing)") for line in labelled)
 
 
 def test_candidates_mode_is_quiet_when_nothing_changed(
@@ -1919,6 +2033,39 @@ def test_math_latex_block_delimiters_are_reported(tmp_path: Path) -> None:
     errors = _math_errors(tmp_path / "repo", "docs/NOTE.md", "\\[F = 0.02\\]\n")
 
     assert len(errors) == 2
+
+
+def test_frontmatter_is_not_scanned_for_math_delimiters(tmp_path: Path) -> None:
+    """A `verify:` regex that escapes a parenthesis is a shell command, not LaTeX.
+
+    GitHub hides frontmatter or shows it as a table, so there is no math there
+    to render wrongly. Scanning it failed the run on `PL-6194`'s command and
+    the only repair available was to contort a working regex (`PL-WTQ1`).
+    """
+    body = (
+        "---\n"
+        "id: PL-6194\n"
+        "verify: uv run pytest && ! grep -rEq '=\\([a-z]*\\),?$' src/\n"
+        "---\n"
+        "\n"
+        "**Problem.** x\n"
+    )
+
+    assert _math_errors(tmp_path / "repo", "docs/items/PL-6194-x.md", body) == []
+
+
+def test_math_in_the_body_below_frontmatter_is_still_reported(tmp_path: Path) -> None:
+    """The skip is the frontmatter's span and nothing else.
+
+    A fix that silenced the whole file would be worse than the defect: the
+    body of an item renders on GitHub like any other prose.
+    """
+    body = "---\nid: PL-6194\n---\n\nThe step \\(\\Delta t\\) is explicit.\n"
+
+    errors = _math_errors(tmp_path / "repo", "docs/items/PL-6194-x.md", body)
+
+    assert len(errors) == 2
+    assert all("docs/items/PL-6194-x.md:5" in error for error in errors)
 
 
 def test_math_github_inline_syntax_is_quiet(tmp_path: Path) -> None:

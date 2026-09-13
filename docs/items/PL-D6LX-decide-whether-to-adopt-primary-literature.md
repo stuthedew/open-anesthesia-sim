@@ -7,7 +7,7 @@ status: done
 classes: science
 feature: model-spec-accuracy
 milestone: v0.3.2
-touches: src/anesthesia_sim/data/agents, docs/MODEL.md, tests/reference/test_multi_agent.py, tests/reference/test_published_wash_in.py, ROADMAP.md
+touches: src/anesthesia_sim/data/agents, docs/MODEL.md, tests/reference/test_multi_agent.py, tests/reference/test_published_wash_in_and_elimination.py, ROADMAP.md
 added: 2026-09-03
 closed: 2026-09-03
 pr: 257
@@ -92,7 +92,7 @@ most-scrutinized numbers at tier 3 permanently.
 *Option 2 — build a primary-literature set and replace.* Read Yasuda 1989's
 organ tables, decide and document a group-weighting scheme, derive twelve
 coefficients, re-baseline `tests/reference/test_multi_agent.py`, and re-check
-`tests/reference/test_published_wash_in.py` — whose comparison
+`tests/reference/test_published_wash_in_and_elimination.py` — whose comparison
 `docs/MODEL.md` already flags as partly circular because the shipped
 parameters descend from the same lineage as the data being tested against.
 That circularity weakens under this option, which is a genuine scientific

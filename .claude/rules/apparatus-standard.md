@@ -3,6 +3,7 @@ paths:
   - "/subprojects/docket/**"
   - "/tools/**"
   - "/.claude/**"
+  - "/.github/**"
   - "/docs/worker.md"
 ---
 

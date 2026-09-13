@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: docs
 feature: model-spec-accuracy
+milestone: v0.4.15
 touches: docs/MODEL.md
 added: 2026-08-30
 closed: 2026-09-13
+pr: 507
 verify: grep -q 'AGENT_ACCOUNTING_ABSOLUTE_TOLERANCE_L' docs/MODEL.md && ! grep -q 'MASS_BALANCE_ABSOLUTE_TOLERANCE' docs/MODEL.md
 ---
 

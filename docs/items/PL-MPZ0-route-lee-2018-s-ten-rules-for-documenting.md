@@ -27,7 +27,7 @@ audited one at a time against the tree, and only the gaps were routed.
 | Rule | State here | Disposition |
 | --- | --- | --- |
 | 1. Comment as you code | Coverage is near-total: every module and class under `src/` carries a docstring and 160 of 172 public functions do | Already practice |
-| 2. Examples, doubling as tests | `tests/reference/test_published_wash_in.py` is the paper's own recommendation, against Yasuda et al. rather than against the code | Already practice |
+| 2. Examples, doubling as tests | `tests/reference/test_published_wash_in_and_elimination.py` is the paper's own recommendation, against Yasuda et al. rather than against the code | Already practice |
 | 3. Quickstart | README carries Requirements, Setup, Running and Development | Owned by `PL-N092`, behind the README freeze |
 | 4. README basics | Install, test, license, docs map and per-target `make` descriptions all present | Already practice |
 | 5. CLI help | `bin/docket --help` lists 20 subcommands with a one-line description each, and every subcommand has its own | Already practice |

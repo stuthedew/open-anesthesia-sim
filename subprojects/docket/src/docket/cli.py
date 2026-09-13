@@ -30,9 +30,11 @@ from .model import LANE_CROSSING, SELECTABLE_LANES, Item
 from .plan import OfferedReport, features, gate, recommend, set_aside
 from .release import (
     NOTES_DIR,
+    Readiness,
     already_released,
     is_untagged,
     milestones,
+    notes_by_version,
     notes_name,
     outstanding_roadmap_edits,
     prepare_bump,
@@ -40,6 +42,7 @@ from .release import (
     readiness,
     release_notes,
     stamp,
+    unrecorded_milestones,
 )
 from .roadmap import MilestoneStates, Wave, milestone_states, wave
 from .store import find_item, new_id, read_items, write_item
@@ -328,6 +331,12 @@ def cmd_check(args: argparse.Namespace) -> int:
         # against the version the project is actually on, and an absent
         # version file leaves the question unasked rather than answered.
         version=read_version(root / config.version_file),
+        # The other half of the same record. A release writes its items'
+        # stamps and its notes in one run, so the two agreeing is a fact about
+        # that run having finished - and nothing compared them until an
+        # interrupted one made them disagree silently (`PL-1MKQ`). One
+        # directory read of about 36 small files.
+        notes=notes_by_version(root),
     )
     print(render.format_check(report))
     return 1 if report.errors else 0
@@ -946,7 +955,22 @@ def cmd_release(args: argparse.Namespace) -> int:
     directory, items, config = _load(args)
     root = args.items.parent if args.items else find_root()
     current = read_version(root / config.version_file)
-    ready = readiness(items, current, config.minor_classes)
+    # An interrupted cut is resumed, never cut around. The stamps go in one
+    # file at a time and the notes are written after the whole loop, so a run
+    # that dies inside it leaves work stamped with a release that has no
+    # notes - and a plain re-run reads exactly those items as already shipped,
+    # cuts the remainder under the same name and exits 0. Reclaiming them is
+    # what makes the cut of a named version idempotent, which is the property
+    # that holds however far the interrupted run got; `PL-1MKQ` carries the
+    # observed case and why reordering the writes does not close it.
+    #
+    # The newest, in the store's pathological case of two. One run stamps one
+    # name and the refusal below stops a second name being started while the
+    # first is unfinished, so two can only arrive by hand - and the check
+    # reports whichever this does not resume rather than leaving it silent.
+    interrupted = unrecorded_milestones(items, notes_by_version(root), current)
+    resuming = interrupted[-1] if interrupted else ""
+    ready = readiness(items, current, config.minor_classes, resuming)
 
     if not ready.shippable:
         print(f"Nothing to release: no finished work since {current}.")
@@ -956,13 +980,28 @@ def cmd_release(args: argparse.Namespace) -> int:
     # closed afterwards, so the refusal belongs here rather than in a reminder.
     # A dry run is allowed through with a warning: it exists to review the
     # notes and the bump, and withholding those would not make the tag appear.
-    if not getattr(args, "no_git", False) and is_untagged(current, tags(root)):
+    #
+    # Unless the interrupted cut is the current version, which happens when it
+    # got as far as its bump: `current` is then the release being finished
+    # rather than one that shipped and wants a tag, and refusing on it would
+    # block the only run that can write its notes.
+    if (
+        not getattr(args, "no_git", False)
+        and resuming.lstrip("v") != current.strip().lstrip("v")
+        and is_untagged(current, tags(root))
+    ):
         print(_untagged_warning(current))
         if not args.dry_run:
             return 1
         print()
 
-    if args.version is None and config.version_policy == "manual":
+    if resuming and args.version and args.version.strip().lstrip("v") != resuming.lstrip("v"):
+        print(_unfinished_cut_refusal(resuming, ready, args.version.strip().lstrip("v")))
+        return 1
+
+    # A resumed cut needs no version named: the interrupted run named it, and
+    # it is stamped on the items this one is picking back up.
+    if args.version is None and not resuming and config.version_policy == "manual":
         print(f"{len(ready.shippable)} finished item(s) since {current}:")
         for item in ready.shippable:
             print(f"  {item.identifier} {item.title}")
@@ -975,7 +1014,7 @@ def cmd_release(args: argparse.Namespace) -> int:
         )
         return 1
 
-    version = (args.version or ready.suggested_version).lstrip("v")
+    version = (args.version or resuming or ready.suggested_version).lstrip("v")
     name = f"v{version}"
 
     # The one change no in-flight guard can see, because it carries no item id
@@ -1019,6 +1058,13 @@ def cmd_release(args: argparse.Namespace) -> int:
     milestone = milestones(stamp(ready.shippable, name))[name]
     notes = release_notes(milestone, args.today or date.today())
 
+    if resuming:
+        already = sum(1 for item in ready.shippable if item.milestone)
+        print(
+            f"Resuming an interrupted cut of {resuming}: {already} of these "
+            f"{len(ready.shippable)} item(s) were stamped by the run that stopped, and "
+            f"{NOTES_DIR}/{notes_name(resuming)} was never written.\n"
+        )
     print(f"{len(ready.shippable)} finished item(s) since {current}.")
     if ready.completed_features:
         print(f"Completes: {', '.join(ready.completed_features)}")
@@ -1031,10 +1077,14 @@ def cmd_release(args: argparse.Namespace) -> int:
         print("Dry run: nothing was changed.")
         return 0
 
-    # Prove the bump before writing anything: a release records all of itself
-    # or none of it. Stamping first and bumping afterwards meant a version file
-    # the bump rejects left the store claiming a release that never happened,
-    # with nothing recording which stamps to unpick.
+    # Prove the bump before writing anything, so a version file the bump
+    # rejects costs an exit code rather than a stamped store claiming a release
+    # that never happened, with nothing recording which stamps to unpick.
+    #
+    # This settles the write that is *rejected*. The write that is
+    # interrupted - a lost container part way through the loop below - is
+    # settled by the resume above instead, because no ordering of these three
+    # writes prevents it: the stamps go in a file at a time (`PL-1MKQ`).
     try:
         bump = prepare_bump(root / config.version_file, version)
     except (OSError, ValueError) as error:
@@ -1087,6 +1137,37 @@ def _hand_off(root: Path, config: Config, name: str) -> str:
     lines.append(f'  git tag -a {name} <merge commit> -m "{name}"')
     lines.append(f"  git push origin {name}")
     return "\n".join(lines)
+
+
+def _unfinished_cut_refusal(resuming: str, ready: Readiness, requested: str) -> str:
+    """Say which cut is unfinished, and that re-running it is the whole repair.
+
+    Refused rather than warned, because cutting a second number over an
+    unfinished first one is how one interrupted release becomes two: both
+    stamp `milestone:` onto work the other claims, and the notes each writes
+    are then permanently wrong about the same items. The version is the one
+    thing this cannot infer past - the operator typed one and the store holds
+    another - so it is also the only thing to ask.
+
+    The command rather than the intent, for the reason `_untagged_warning`
+    gives: a session told what to intend has to reconstruct how, at the moment
+    it is trying to do something else.
+    """
+    already = sum(1 for item in ready.shippable if item.milestone)
+    return "\n".join(
+        [
+            f"A cut of {resuming} was interrupted and has not been finished: {already} "
+            f"item(s) carry `milestone: {resuming}` and",
+            f"{NOTES_DIR}/{notes_name(resuming)} was never written. Cutting v{requested} "
+            "on top would stamp a second release",
+            "onto work the first one already claims, and neither set of notes could then be right.",
+            "",
+            f"Finish {resuming} first - the re-run picks the stamped items back up, so it "
+            f"cuts all {len(ready.shippable)}:",
+            "",
+            f"  make release VERSION={resuming.lstrip('v')}",
+        ]
+    )
 
 
 def _duplicate_warning(name: str, base: str, evidence: list[str]) -> str:

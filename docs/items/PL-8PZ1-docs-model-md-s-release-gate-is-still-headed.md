@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, docs
 feature: model-spec-accuracy
+milestone: v0.4.15
 touches: docs/MODEL.md
 added: 2026-09-02
 closed: 2026-09-13
+pr: 507
 verify: python3 tools/doc_check.py check && ! grep -q 'Version v0.1.0 is complete only when' docs/MODEL.md
 ---
 

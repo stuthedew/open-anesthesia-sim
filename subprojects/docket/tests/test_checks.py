@@ -287,6 +287,72 @@ def test_an_item_cannot_block_itself() -> None:
     )
 
 
+def test_a_ready_item_waiting_on_open_work_is_an_error() -> None:
+    """`PL-KBD0`: the ranking reads the status and never the edge.
+
+    `plan.py` filters on `status != "blocked"`, so an item may declare
+    `blocked-by`, satisfy every other check, and still be offered ahead of the
+    work it says it waits on - with nothing saying so.
+    """
+
+    waiting = _item(status="ready", blocked_by=("PL-0002",))
+    blocker = _item("PL-0002", status="ready")
+
+    assert _has(_errors(waiting, blocker), "sits at `ready` while PL-0002 is still open")
+
+
+def test_a_ready_item_whose_blocker_has_closed_is_fine() -> None:
+    """The edge is a record once the blocker is done, not a contradiction."""
+
+    waiting = _item(status="ready", blocked_by=("PL-0002",))
+    blocker = _item("PL-0002", status="done", closed=date(2026, 8, 20), verify="true")
+
+    assert not _has(_errors(waiting, blocker), "sits at `ready`")
+
+
+def test_a_needs_decision_item_waiting_on_open_work_is_left_alone() -> None:
+    """The deliberate exemption, and the reason the check stops at `ready`.
+
+    `bin/docket gate` counts `needs-decision` as debt somebody can go and
+    resolve. Forcing it to `blocked` would take it out of that count, so the
+    item would leave the gate by being renamed rather than by being answered.
+    """
+
+    waiting = _item(
+        status="needs-decision",
+        blocked_by=("PL-0002",),
+        body=BRIEF + "**Decision needed.** Which way.\n",
+    )
+    blocker = _item("PL-0002", status="ready")
+
+    assert not _has(_errors(waiting, blocker), "sits at `ready`")
+
+
+def test_a_blocked_item_waiting_on_open_work_is_the_normal_case() -> None:
+    """The state this check exists to push authors into must not itself error."""
+
+    waiting = _item(status="blocked", blocked_by=("PL-0002",), body=BRIEF)
+    blocker = _item("PL-0002", status="ready")
+
+    assert not _has(_errors(waiting, blocker), "sits at `ready`")
+
+
+def test_a_ready_item_waiting_on_a_milestone_is_not_reached() -> None:
+    """Items only: a milestone clears by a scoping round, not by closing."""
+
+    assert not _has(_errors(_item(status="ready", blocked_by=("v0.5.1",))), "sits at `ready`")
+
+
+def test_every_open_blocker_is_named_in_one_error() -> None:
+    """One line per item, not one per edge, so the fix is read in one place."""
+
+    waiting = _item(status="ready", blocked_by=("PL-0002", "PL-0003"))
+    errors = _errors(waiting, _item("PL-0002", status="ready"), _item("PL-0003", status="ready"))
+
+    assert _has(errors, "PL-0002, PL-0003 are still open")
+    assert len([e for e in errors if "sits at `ready`" in e]) == 1
+
+
 DEPENDS_BRIEF = "**Problem.** Depends on `PL-0002`.\n**Why it matters.** y\n**Done when.** z\n"
 
 
@@ -869,6 +935,82 @@ def test_a_top_band_padded_with_blocked_items_is_not_overfull() -> None:
     advisories = analyze(startable + blocked, TODAY).advisories
 
     assert not _has(advisories, "a session can choose between at a glance")
+
+
+def test_an_overfull_top_band_says_how_much_of_it_is_demotable() -> None:
+    """The remedy has to be one the checker would not then reject.
+
+    `docket check` refuses to seat a `safety`- or `science`-classed item below
+    the top band, so "demote what is not genuinely next" prescribed an action
+    that was unavailable on twelve of the thirteen items making this store's
+    band overfull (`PL-CW14`). Where nothing is demotable the honest message
+    is what the number means, not an instruction nobody can follow.
+    """
+    band = [_item(f"PL-B1B{n}", priority="P1", classes=("safety",)) for n in range(6)]
+
+    advisories = analyze(band, TODAY).advisories
+
+    assert _has(advisories, "a session can choose between at a glance")
+    assert _has(advisories, "all 6 are pinned there by a safety or science class")
+    assert not _has(advisories, "demote what is not genuinely next")
+
+
+def test_an_overfull_top_band_still_prescribes_demotion_where_something_can_move() -> None:
+    """Reporting the split is not exempting the pinned items from the count.
+
+    `docket.toml`'s `top_band_limit` comment considered exempting them and
+    rejected it: a band that grows to twenty safety items is a real problem.
+    The count is unchanged; only the remedy narrows to what is available.
+    """
+    pinned = [_item(f"PL-B1B{n}", priority="P1", classes=("science",)) for n in range(5)]
+    movable = [_item("PL-C2C0", priority="P1", classes=("perf",))]
+
+    advisories = analyze(pinned + movable, TODAY).advisories
+
+    assert _has(advisories, "6 startable items")
+    assert _has(advisories, "5 are pinned there by a safety or science class, 1 is demotable")
+    assert _has(advisories, "demote what is not genuinely next")
+
+
+def test_a_filename_that_does_not_match_its_title_is_reported() -> None:
+    """A title edited in place leaves the slug behind, and nothing said so.
+
+    `PL-3D2M` sat on `origin/main` under the slug of a title it no longer
+    had, with `make check` passing (`PL-3833`).
+    """
+    drifted = _item("PL-K7QX", path="PL-K7QX-do-some-entirely-other-thing.md")
+
+    advisories = analyze([drifted], TODAY).advisories
+
+    assert _has(advisories, "1 item file carries a slug its title no longer generates")
+    assert _has(advisories, "PL-K7QX")
+
+
+def test_a_filename_matching_its_title_is_not_reported() -> None:
+    matching = _item("PL-K7QX", path="PL-K7QX-do-the-thing.md")
+
+    assert not _has(analyze([matching], TODAY).advisories, "no longer generates")
+
+
+def test_an_item_with_no_filename_is_not_checked_for_drift() -> None:
+    """Built in memory rather than read from disk: there is no name to disagree."""
+    assert not _has(analyze([_item()], TODAY).advisories, "no longer generates")
+
+
+def test_every_drifted_filename_is_named_on_one_line() -> None:
+    """One line, not one per file.
+
+    Nine advisory lines is the disease `PL-CW14` describes in the same
+    function: an advisory nobody can clear in the moment, printed often enough
+    to train a session to skim the one below it.
+    """
+    drifted = [_item(f"PL-B1B{n}", path=f"PL-B1B{n}-a-title-it-no-longer-has.md") for n in range(3)]
+
+    named = [m for m in analyze(drifted, TODAY).advisories if "no longer generates" in m]
+
+    assert len(named) == 1
+    assert "3 item files carry" in named[0]
+    assert all(item.identifier in named[0] for item in drifted)
 
 
 def test_a_top_band_of_mostly_open_decisions_is_an_advisory() -> None:

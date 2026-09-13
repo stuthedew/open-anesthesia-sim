@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: science, docs
 feature: model-spec-accuracy
+milestone: v0.4.15
 touches: docs/MODEL.md
 added: 2026-09-08
 closed: 2026-09-13
+pr: 507
 verify: python3 tools/doc_check.py check && grep -q 'lung tissue and pulmonary blood' docs/MODEL.md
 ---
 

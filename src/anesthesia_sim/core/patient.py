@@ -9,12 +9,14 @@ from dataclasses import dataclass
 
 from anesthesia_sim.core.blood import VenousBloodCompartment, VenousBloodCompartmentState
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
-from anesthesia_sim.core.parameters import AgentParameters, ReferenceAdultParameters
+from anesthesia_sim.core.parameters import (
+    FLOW_FRACTION_TOLERANCE,
+    AgentParameters,
+    ReferenceAdultParameters,
+)
 from anesthesia_sim.core.supported_ranges import require_supported_cardiac_output
 from anesthesia_sim.core.tissue import TissueGroup, TissueGroupState
 from anesthesia_sim.core.validation import require_concentration_fraction, require_positive_finite
-
-FLOW_FRACTION_TOLERANCE = 1e-12
 
 
 @dataclass(frozen=True, slots=True)

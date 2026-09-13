@@ -3,7 +3,8 @@ id: PL-W8DQ
 title: The four slider active tracks use ACCENT and miss the non-text minimum
 priority: P3
 effort: S
-status: ready
+status: blocked
+blocked-by: PL-L9RD
 classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, tools/contrast_check.py
@@ -68,3 +69,15 @@ reader knows whether `ACCENT` is still shared with the chart.
 **Depends on.** Nothing. It sequenced after `PL-GVXP` (separate the six chart
 traces by more than colour) to avoid picking a value that item would replace;
 that item closed on 2026-09-07 and this one is unblocked.
+
+**Deferred to the Qt port, 2026-09-13 (`PL-D143`, project owner).** `status:
+blocked`, `blocked-by: PL-L9RD` - the Qt re-expression of app/theme.py, where ACCENT is defined. `bin/docket next` therefore stops
+offering work that cannot be done until that port lands. The owner's 2026-09-10
+note above is the decision; this only makes the queue agree with it.
+
+It is blocked on the **item** rather than on `v0.5.1` because the two mean
+different things in this store: `blocked-by: <version>` says an item is waiting
+for a milestone to be *scoped*, and `docket check` promotes it back to `ready`
+the moment that section carries its four subsections - which v0.5.1's already
+does, so the version form raised "ready to promote" on every run. The port item
+is the edge that is actually true.

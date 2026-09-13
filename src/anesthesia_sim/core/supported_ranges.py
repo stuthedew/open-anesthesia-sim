@@ -92,7 +92,7 @@ MAXIMUM_CARDIAC_OUTPUT_L_MIN = 10.0
 # model leaves out.
 #
 # **The omission that binds is metabolism**, which `docs/MODEL.md`
-# § "Known limitations" records and § "Published wash-in validation test"
+# § "Known limitations" records and § "Published wash-in and elimination validation test"
 # already draws the consequence of: it rejects the Yasuda papers' own
 # multi-day elimination curves as a comparison, because over days the missing
 # metabolism is no longer negligible and neither is the fat group's flow,

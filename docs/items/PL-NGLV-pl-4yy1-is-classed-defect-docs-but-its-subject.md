@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.4.15
 touches: docs/items
 added: 2026-09-12
 closed: 2026-09-12

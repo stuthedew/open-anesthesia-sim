@@ -49,7 +49,10 @@ class VenousBloodCompartment:
 
     @property
     def capacity_l(self) -> float:
-        """Equivalent gas capacity at a fraction of one."""
+        """Equivalent gas capacity at a fraction of one, $`V_v\\lambda_{b:g}`$.
+
+        `docs/MODEL.md` § "Blood compartments" is the definition.
+        """
 
         return self.volume_l * self.blood_gas_partition_coefficient
 
@@ -61,7 +64,17 @@ class VenousBloodCompartment:
 
     @property
     def time_constant_s(self) -> float:
-        """Return the venous mixing time constant."""
+        """The venous mixing time constant $`\\tau_v = V_v/Q`$.
+
+        `docs/MODEL.md` § "Venous blood" defines it. No partition coefficient
+        appears: the pool and the blood flowing through it are the same phase,
+        so the $`\\lambda_{b:g}`$ in `capacity_l` cancels against the one in
+        the flow term. That is the whole difference from the tissue constant
+        above, and it is why this one is a mixing time rather than an uptake
+        time.
+
+        `inf` at zero flow, as there: nothing circulates, so nothing mixes.
+        """
 
         if self.blood_flow_l_min == 0.0:
             return inf

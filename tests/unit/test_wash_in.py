@@ -7,7 +7,7 @@ controller, real steps, the trace and the sentence beside it - is in
 `tests/unit/test_simulation_view.py`.
 
 The published values these tests compare against are the ones
-`docs/MODEL.md` § "Published wash-in validation test" already cites; this
+`docs/MODEL.md` § "Published wash-in and elimination validation test" already cites; this
 file does not restate the citation, it only shows that the displayed ratio
 is the same quantity that test validates.
 """

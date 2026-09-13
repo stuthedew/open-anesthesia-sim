@@ -7,14 +7,14 @@ status: done
 classes: science, test
 feature: numerical-domain
 milestone: v0.4.6
-touches: tests/reference/test_published_wash_in.py, docs/MODEL.md
+touches: tests/reference/test_published_wash_in_and_elimination.py, docs/MODEL.md
 added: 2026-09-03
 closed: 2026-09-06
 pr: 412
 verify: uv run pytest tests/reference/test_published_wash_in.py && grep -q 'def test_five_minute_elimination_ratio_against_published_human_measurement' tests/reference/test_published_wash_in.py
 ---
 
-**Problem.** `tests/reference/test_published_wash_in.py` is this project's only
+**Problem.** `tests/reference/test_published_wash_in_and_elimination.py` is this project's only
 external validation, and it spends one measured quantity per agent: F_A/F_I at
 30 minutes of wash-in. Both cited papers report a second, in the opposite
 direction, which nothing here uses - F_A/F_A0 after 5 minutes of *elimination*,
@@ -81,7 +81,7 @@ the SEM, where desflurane's +0.79 SD on wash-in is +2.2 SEM. The SD band is
 defensible - it asks whether the model is a plausible individual - but the
 module should state which of the two claims it is making.
 
-**Done when.** `tests/reference/test_published_wash_in.py` compares modelled
+**Done when.** `tests/reference/test_published_wash_in_and_elimination.py` compares modelled
 F_A/F_A0 at 5 minutes of elimination against all four published cohort values
 at the shipped defaults, the module's measured-sensitivity table is re-derived
 with the washout point in it, and `docs/MODEL.md` § "Published wash-in

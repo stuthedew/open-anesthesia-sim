@@ -27,9 +27,9 @@ from datetime import date
 from .config import Config
 from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item
 from .plan import OfferedReport
-from .release import SEMVER_RE, version_key
+from .release import NOTES_DIR, SEMVER_RE, notes_name, unrecorded_milestones, version_key
 from .roadmap import MilestoneStates
-from .store import ID_PATTERN, ID_RE
+from .store import ID_PATTERN, ID_RE, filename_for
 from .vcs import ClosureReport, LostReport, PullRequestHistory, RecordReport
 from .verify import LandedReport, reads_check_output, reenters_verify
 
@@ -491,6 +491,78 @@ def _check_milestones(report: Report, version: str | None) -> None:
             )
 
 
+def _named(identifiers: list[str], limit: int = 8) -> str:
+    """List ids for a reader, and stop before the list stops being readable."""
+    shown = ", ".join(identifiers[:limit])
+    rest = len(identifiers) - limit
+    return f"{shown} and {rest} more" if rest > 0 else shown
+
+
+def _check_release_notes(
+    report: Report, notes: dict[str, frozenset[str]] | None, version: str | None
+) -> None:
+    """Hold each release's notes to the items stamped with its milestone.
+
+    One release is recorded in two places - the `milestone:` on every item it
+    shipped, and the notes file naming them - written by one command in one
+    run, and until now nothing compared them. So an interruption between the
+    two halves left them disagreeing with nothing to say so: a cut of v0.4.15
+    stamped 26 items and died, and the re-run read those as already shipped,
+    cut the remaining 7 under the same name and exited 0. Only the two printed
+    counts, 33 from the dry run and 7 from the cut, distinguished it from a
+    correct 7-item release, and a person read them side by side (`PL-1MKQ`).
+
+    Both directions are errors, and the first is the dangerous one. Work
+    stamped with a release whose notes do not name it is shipped work with no
+    record - and a tag makes that permanent. Notes naming work that carries no
+    stamp is the milder inverse, but it is the same file pair disagreeing and
+    it is equally decidable.
+
+    Reported per release rather than per item. The inconsistency is a property
+    of the release - "this shipped 33 items and its notes name 7" - and saying
+    it 26 times would bury the number that matters.
+
+    Measured before it was made an error: across 37 releases and 231 items,
+    36 agree exactly and the 37th is v0.2.2, which shipped before
+    `docs/releases/` existed and is below the floor `unrecorded_milestones`
+    derives. So this costs nothing on a healthy store, which is the test a
+    check has to pass to earn a place in every run.
+
+    `None` is a caller that did not ask, which is every command but `check`.
+    """
+    if notes is None:
+        return
+    stamped_by_name: dict[str, list[Item]] = {}
+    for item in report.items:
+        if item.milestone:
+            stamped_by_name.setdefault(item.milestone.strip(), []).append(item)
+
+    for name in unrecorded_milestones(report.items, notes, version or ""):
+        stamped = sorted(item.identifier for item in stamped_by_name[name])
+        report.errors.append(
+            f"{len(stamped)} item(s) carry `milestone: {name}` but "
+            f"{NOTES_DIR}/{notes_name(name)} was never written, so that release has no "
+            f"record of what it shipped: {_named(stamped)}. That is what an interrupted "
+            f"`docket release` leaves; re-run the cut of {name}, which picks the stamped "
+            "items back up rather than shipping only the remainder"
+        )
+
+    for name, named in sorted(notes.items(), key=lambda pair: version_key(pair[0])):
+        carried = {item.identifier for item in stamped_by_name.get(name, [])}
+        if missing := sorted(carried - named):
+            report.errors.append(
+                f"{NOTES_DIR}/{notes_name(name)} does not name {len(missing)} item(s) "
+                f"stamped `milestone: {name}`, so {name} shipped work its own notes have "
+                f"no record of: {_named(missing)}"
+            )
+        if unstamped := sorted(named - carried):
+            report.errors.append(
+                f"{NOTES_DIR}/{notes_name(name)} names {len(unstamped)} item(s) that do "
+                f"not carry `milestone: {name}`, so the notes and the store disagree about "
+                f"what {name} shipped: {_named(unstamped)}"
+            )
+
+
 def _check_provenance(report: Report, history: PullRequestHistory | None) -> None:
     """Hold every recorded pull request to one the default branch has actually seen.
 
@@ -862,6 +934,7 @@ def _check_references(report: Report, milestones: MilestoneStates | None = None)
 
     known_items = {i.identifier: i for i in report.items}
     _outranks_its_blocker(report, known_items)
+    _ready_with_an_open_blocker(report, known_items)
     _check_prose_dependencies(report, known_items)
 
     duplicates = [
@@ -874,6 +947,53 @@ def _check_references(report: Report, milestones: MilestoneStates | None = None)
     for identifier in sorted(duplicates):
         paths = ", ".join(sorted(i.path for i in report.items if i.identifier == identifier))
         report.errors.append(f"{identifier}: used by more than one file ({paths})")
+
+
+def _check_filenames(report: Report) -> None:
+    """Report an item file whose name no longer matches the slug its title makes.
+
+    The store names a file from its title, so the two can only disagree after
+    a title is edited in place - and nothing then says so. `PL-3D2M` sat on
+    `origin/main` under the slug of a title it no longer had, with `make
+    check` passing, until an unrelated `bin/docket record` run happened to
+    re-render the file and rename it (`PL-3833`). The filename is how a
+    session finds an item by hand, so a stale slug sends it to the wrong
+    mental model of what the item is about.
+
+    An advisory rather than an error, and the reason is the remedy rather
+    than the rule. Deriving the slug and comparing it is exactly decidable,
+    which is what `CLAUDE.md` reserves hard failure for; renaming the file is
+    not, because the session that would do it has to know who else is holding
+    that file first. A rename arriving as a side effect of an unrelated
+    command is how `PL-36R4` became a rename-against-edit conflict for
+    whoever merged second, on 2026-09-08, and an error here would force
+    exactly that: nine files on this store carry drift today, so `make check`
+    would fail until someone renamed all nine in one pass, against whatever
+    branches were open at the time.
+
+    Named in one line rather than one per file. Nine advisory lines is the
+    disease `PL-CW14` describes in the same function - an advisory nobody can
+    clear in the moment, printed often enough to train a session to skim the
+    one below it.
+
+    Declines on an item carrying no path: those are built in memory rather
+    than read from disk, and there is no filename to disagree with.
+    """
+    drifted = [
+        item
+        for item in report.items
+        if item.path and item.identifier and item.path != filename_for(item)
+    ]
+    if not drifted:
+        return
+    one = len(drifted) == 1
+    report.advisories.append(
+        f"{len(drifted)} item file{'' if one else 's'} carr{'ies' if one else 'y'} a slug "
+        f"{'its' if one else 'their'} title no longer generates "
+        f"({', '.join(item.identifier for item in sorted(drifted, key=lambda i: i.identifier))}); "
+        "rename with `git mv` to the name `docket` would write, and check first that no open "
+        "branch is editing the file - a rename against someone else's edit conflicts"
+    )
 
 
 def _outranks_its_blocker(report: Report, known_items: dict[str, Item]) -> None:
@@ -962,6 +1082,60 @@ PROSE_DEPENDENCY_CONTINUATION = re.compile(
     rf"\band\s+(?:(?:up)?on|by)\b(?:\.?\*\*)?[^.\n;:()\"|—]{{0,40}}?`?({ID_PATTERN})`?",
     re.IGNORECASE,
 )
+
+
+def _ready_with_an_open_blocker(report: Report, known_items: dict[str, Item]) -> None:
+    """Refuse `ready` on an item that says it is waiting for something open.
+
+    `ready` asserts the work can be started now and `blocked-by` asserts it
+    cannot, so an item carrying both is a plain contradiction. The ranking
+    reads only the status - `plan.py` filters on `status != "blocked"` and
+    never opens `blocked_by`, which `concurrency.py` alone consumes - so the
+    edge can be declared, every other check pass, and `docket next` still
+    offer the item ahead of the work it says it waits on. Silently, which is
+    the property `CLAUDE.md` names as earning attention (`PL-KBD0`).
+
+    This is `PL-ZBRB`'s defect displaced by one step rather than fixed: that
+    advisory made an undeclared prose prerequisite visible, and this is the
+    state an author reaches after acting on it and stopping one field early.
+    `PL-ZBRB`'s message has to name both fields to work around it, which is a
+    message doing a checker's job.
+
+    **`needs-decision` is deliberately not reached**, though it can hold the
+    same contradiction. Forcing it to `blocked` would take it out of
+    `bin/docket gate`, which counts that status as debt somebody can go and
+    resolve - so the item would leave the gate by being renamed rather than by
+    being answered, and a pending decision would go quiet. Its declared edge
+    staying invisible to the ranking is the smaller harm of the two, and is
+    accepted here rather than overlooked.
+
+    Items only, never milestones. `blocking_items` is the fail-closed half of
+    the field, and a milestone blocker clears when a scoping round happens
+    rather than when an item closes, which `_groom` already reads the roadmap
+    to decide.
+
+    An unknown blocker is left alone: `_check_references` already errors on it
+    by name, and a second error here would say the fix is a status change when
+    it is a typo.
+    """
+
+    for item in report.items:
+        if item.status != "ready":
+            continue
+        open_blockers = [
+            identifier
+            for identifier in item.blocking_items
+            if (blocker := known_items.get(identifier)) is not None and blocker.is_open
+        ]
+        if not open_blockers:
+            continue
+        one = len(open_blockers) == 1
+        report.errors.append(
+            f"{_where(item)}: sits at `ready` while {', '.join(open_blockers)} "
+            f"{'is' if one else 'are'} still open; `ready` says the work can be started "
+            f"now, so set `status: blocked`, or drop the {'edge' if one else 'edges'} if "
+            "it no longer holds"
+        )
 
 
 def _check_prose_dependencies(report: Report, known_items: dict[str, Item]) -> None:
@@ -1420,10 +1594,40 @@ def _groom(
     if len(startable) > config.top_band_limit:
         held = len(top) - len(startable)
         note = f", and {held} more blocked and not counted" if held else ""
+        # Split the band by what may actually be moved. The same checker
+        # refuses to seat a `safety`- or `science`-classed item below the top
+        # band, so "demote what is not genuinely next" prescribes an action
+        # `docket check` would then reject as an error - and on this store
+        # that was twelve of the thirteen items making the band overfull
+        # (`PL-CW14`). Reporting the split is not the same as exempting the
+        # pinned items from the count: `docket.toml`'s `top_band_limit`
+        # comment considered that and rejected it, because a band that grows
+        # to twenty safety items is a real problem a session should be told
+        # about. The count stands; only the remedy is narrowed to what is
+        # available.
+        pinned = [i for i in startable if set(i.classes) & set(config.safety_classes)]
+        demotable = len(startable) - len(pinned)
+        if demotable:
+            one = demotable == 1
+            remedy = (
+                f"{len(pinned)} are pinned there by a {' or '.join(config.safety_classes)} "
+                f"class, {demotable} {'is' if one else 'are'} demotable; demote what is not "
+                "genuinely next"
+            )
+        else:
+            # Nothing is demotable, so say what the number means instead of
+            # prescribing an action nobody can take. A band that is entirely
+            # class-pinned is large because that much safety work is open,
+            # which is the debt gate's own signal and reads as one.
+            remedy = (
+                f"all {len(startable)} are pinned there by a "
+                f"{' or '.join(config.safety_classes)} class, so the band is large because "
+                "that much safety-critical work is open rather than because anything is "
+                "over-prioritized"
+            )
         report.advisories.append(
             f"{band}: {len(startable)} startable items{note}, past the "
-            f"{config.top_band_limit} a session can choose between at a glance; demote what is "
-            "not genuinely next"
+            f"{config.top_band_limit} a session can choose between at a glance; {remedy}"
         )
     undecided = [i for i in top if i.status == "needs-decision"]
     if len(undecided) > len(top) - len(undecided):
@@ -1526,6 +1730,7 @@ def analyze(
     lost: LostReport | None = None,
     version: str | None = None,
     milestones: MilestoneStates | None = None,
+    notes: dict[str, frozenset[str]] | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
@@ -1547,6 +1752,10 @@ def analyze(
     vX.Y.Z` asks - whether that milestone exists, and whether it has been
     scoped. Omitting it leaves both halves unjudged rather than guessed, which
     is what a bare checkout with no roadmap gets.
+
+    `notes` is what each cut release's notes file says it shipped, which is
+    the other half of a record the store holds one half of. Like the rest, a
+    caller that does not supply it leaves the comparison unmade.
     """
     settings = config or Config()
     ids = offered.ids if offered is not None else None
@@ -1555,7 +1764,9 @@ def analyze(
         _check_item(item, report, settings)
     _check_references(report, milestones)
     _check_feature_spellings(report)
+    _check_filenames(report)
     _check_milestones(report, version)
+    _check_release_notes(report, notes, version)
     _check_provenance(report, history)
     _check_landed(report, landed)
     _check_selects_nothing(report, landed, ids)

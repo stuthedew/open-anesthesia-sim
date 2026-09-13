@@ -918,17 +918,40 @@ only where a release is actually being offered, because the offer is where a
 duplicate release starts - refusing at `release` alone leaves the second
 session having already raised it and been approved.
 
-**A release writes all of itself or none of it.** Two things reach disk — the
-`milestone:` stamp on every item going out, and the version — and neither
-order is safe while the bump can still fail on the file it is about to
-rewrite. Stamping first left the store recording a release that never
-happened, with nothing saying which stamps to unpick; the next run then
-reported nothing to release, because the work it would have shipped claimed to
-have shipped already. So `prepare_bump` settles everything the bump can reject
-— an absent version file, one carrying no version field — before the first
-stamp is written, and hands back the text to put there. What a rejected file
-costs is then an exit code and a message naming it, rather than a half-written
-store.
+**A release that cannot finish writing itself is resumable, and one that is
+not resumed is reported.** Three things reach disk — the `milestone:` stamp on
+every item going out, the version, and the notes — and the failures between
+them are two different shapes.
+
+The first is a write that is *rejected*, and it is settled by proving the bump
+before anything is stamped. Stamping first left the store recording a release
+that never happened, with nothing saying which stamps to unpick; the next run
+then reported nothing to release, because the work it would have shipped
+claimed to have shipped already. So `prepare_bump` settles everything the bump
+can reject — an absent version file, one carrying no version field — before
+the first stamp is written, and hands back the text to put there. A rejected
+file costs an exit code and a message naming it, not a half-written store.
+
+The second is a write that is *interrupted*, which no ordering prevents: the
+stamps go in a file at a time, so a lost container leaves some written and the
+notes unwritten however the three are ordered. What the ordering decides is
+only which half is short, and the re-run was the dangerous part, because it
+succeeded — `unreleased` reads a stamped item as already shipped, so the second
+run cut the remainder under the same name, wrote notes covering it and exited
+0. A 33-item release recorded as 7, caught by a person reading the two printed
+counts side by side (`PL-1MKQ`).
+
+So the cut of a named version is idempotent instead. `release.unrecorded_milestones`
+defines an interrupted cut once — a milestone stamped in the store that no
+notes file records — and both halves of the repair read it: `cmd_release`
+folds those items back in and re-cuts the whole release, and
+`checks._check_release_notes` reports the state as an error wherever the
+re-run has not happened. A run asked for a *different* version while a cut is
+unfinished is refused, since two numbers over one unfinished cut make both
+sets of notes permanently wrong. Its floor is the lower of the oldest version
+with a notes file and the current version: the first exempts releases cut
+before the project wrote notes at all, the second covers a first release,
+where there is no notes directory to take a floor from.
 
 **The offer a session reads is reconciled with the plan before it is
 printed.** `readiness` reads the store and only the store, which is what
@@ -1132,6 +1155,16 @@ item may not outrank its own blocker — nothing can start before the thing
 gating it, so a `P1` waiting on a `P2` is an error rather than a priority. When
 the last blocker clears, `docket check` says so.
 
+**The pairing runs the other way too: an item at `ready` may not declare an
+open item blocker.** `ready` says the work can be started now and the edge says
+it cannot, and the ranking reads only the status — `docket next` filters on
+`status != "blocked"` and never opens the field — so without this the edge
+could be declared, every other check pass, and the item still be offered ahead
+of what it waits on, silently (`PL-KBD0`). `needs-decision` is deliberately
+exempt: `docket gate` counts that status as debt somebody can resolve, and
+forcing it to `blocked` would take a pending decision out of the gate by
+renaming it rather than by answering it.
+
 **The field takes two kinds of entry, on one line: an item id, and a milestone
 version.**
 
@@ -1226,7 +1259,9 @@ whole of what the field means. Nothing else writes it. An item carrying one
 before its release is cut claims to have shipped in a release that has not
 happened — and worse, silently: `release.unreleased` selects finished work
 with **no** milestone, so a stamped item is invisible to the release that
-would actually ship it and is left out of that release's generated notes. Ten
+would actually ship it and is left out of that release's generated notes. The
+one exception is a cut being resumed, which reclaims the items its own
+interrupted run stamped and nothing else. Ten
 items in the project this grew in were in exactly that state, hand-stamped for
 a release still being assembled, every one of them scoped to the release its
 own notes would have omitted it from.
@@ -1798,8 +1833,15 @@ sitting in a band it is not allowed to sit in, a `done` item recording a pull
 request the default branch has never seen. These are errors and they exit non-zero.
 
 Everything requiring judgment is left alone. The tool will tell you the top
-band has grown past what anyone can choose between at a glance, or that most of
-it is blocked on decisions nobody has made — but it will not tell you what to
+band has grown past what anyone can choose between at a glance — and how much
+of that band is pinned there by a class rather than demotable, because the
+same checker refuses to seat safety work lower and "demote what is not
+genuinely next" is otherwise advice it would reject — or that most of it is
+blocked on decisions nobody has made, or that an item file carries a slug its
+title no longer generates. That last one is an advisory rather than an error
+for a reason worth stating: deriving the slug and comparing it is exactly
+decidable, but renaming the file is not, because whoever does it has to know
+which open branch is holding that file first. But it will not tell you what to
 work on instead, and it does not try to decide whether an item is still worth
 doing. A tool that guessed at that would produce output that looks
 authoritative and is not. Where it does fail the run — an open item whose own
@@ -1834,3 +1876,30 @@ roadmap_file = "ROADMAP.md"
 Python 3.11 or newer, and nothing else. Standard library only, so a
 session-start hook can run it in a bare checkout with no virtualenv and no
 install step.
+
+## Running the tests
+
+From the **repository root**, never from inside `subprojects/docket/`:
+
+```bash
+uv run pytest subprojects/docket/tests
+```
+
+The root `pyproject.toml` declares
+`testpaths = ["tests", "subprojects/docket/tests"]` and puts
+`subprojects/docket/src` on `pythonpath`, so these tests are part of the root
+suite and resolve against the root environment and the root `uv.lock`. That is
+what `make check` and CI run, so it is where an answer about them has to come
+from.
+
+`cd subprojects/docket && uv run pytest` also works, and that is the problem
+rather than a convenience. This directory has its own `pyproject.toml`, so
+`uv` builds a **second** environment from a lockfile it resolves on the spot -
+and the tests then pass against a dependency set nobody reviewed and CI never
+runs, which is a weaker answer wearing the same green tick. It leaves a
+private virtual environment and a second lockfile behind, both of them
+ignored, so nothing in `git status` says it happened (`PL-8PT6`).
+
+Named in prose rather than by path, deliberately: both are ignored, so a
+citation to either resolves on a developer's machine and fails in a clean
+checkout, which is a check that passes locally and reddens CI.

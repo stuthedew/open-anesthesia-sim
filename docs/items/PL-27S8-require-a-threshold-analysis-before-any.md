@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: worker-instructions
+milestone: v0.4.15
 touches: .claude/rules/expert-review.md
 added: 2026-09-12
 closed: 2026-09-12

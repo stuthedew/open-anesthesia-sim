@@ -9,9 +9,20 @@ the case it exists for, which is the release build the test suite is never in.
 
 from __future__ import annotations
 
+import importlib
+import importlib.metadata
+from typing import Any
+
 import pytest
 
-from anesthesia_sim.app_metadata import APP_BUILD, APP_BUILD_VERSION, APP_VERSION, build_identifier
+from anesthesia_sim.app_metadata import (
+    APP_BUILD,
+    APP_BUILD_VERSION,
+    APP_VERSION,
+    APP_VERSION_IS_KNOWN,
+    UNKNOWN_VERSION,
+    build_identifier,
+)
 
 
 def test_a_clean_checkout_of_the_released_tag_adds_nothing() -> None:
@@ -91,3 +102,45 @@ def test_the_installed_version_is_never_silently_dropped() -> None:
     assert APP_BUILD_VERSION.startswith(APP_VERSION)
     if APP_BUILD is not None:
         assert APP_BUILD_VERSION == f"{APP_VERSION}+{APP_BUILD}"
+
+
+def test_this_build_knows_its_own_version() -> None:
+    """The ordinary case, pinned so the sentinel cannot quietly become normal."""
+
+    assert APP_VERSION_IS_KNOWN is True
+    assert APP_VERSION != UNKNOWN_VERSION
+
+
+def test_absent_package_metadata_makes_the_build_declare_itself_untraceable(
+    monkeypatch: Any,
+) -> None:
+    """`PL-KCWD`: the fallback has to be reportable, not just survivable.
+
+    Falling back rather than crashing on launch is the right policy - a
+    frozen or bundled build may not preserve installed-package metadata. What
+    the interface then needs is a way to *ask* whether the running build is
+    identified, so the provenance line can say there is no answer instead of
+    rendering "unknown" as though it were one.
+
+    The patch is on `importlib.metadata.version` rather than on the module's
+    own imported name, and that is the whole difficulty of this test: the
+    reload below re-executes `from importlib.metadata import ... version`,
+    which overwrites a patch applied to `anesthesia_sim.app_metadata.version`
+    and reports the real version and a false all-clear.
+    """
+
+    def _no_metadata(distribution_name: str) -> str:
+        raise importlib.metadata.PackageNotFoundError(distribution_name)
+
+    monkeypatch.setattr(importlib.metadata, "version", _no_metadata)
+
+    import anesthesia_sim.app_metadata as app_metadata
+
+    try:
+        reloaded = importlib.reload(app_metadata)
+
+        assert reloaded.APP_VERSION == reloaded.UNKNOWN_VERSION
+        assert reloaded.APP_VERSION_IS_KNOWN is False
+    finally:
+        monkeypatch.undo()
+        importlib.reload(app_metadata)
