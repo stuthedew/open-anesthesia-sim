@@ -2266,6 +2266,38 @@ where no provenance row could reach them and changed neither value.
   a teaching run. That is a design rationale, and the data file labels it as
   one rather than as a measurement.
 
+**One measured circle-system volume is now held, and it bounds the first row
+rather than replacing it** (`PL-QBKQ`). Targ, Yasuda and Eger measured a
+conventional circle system by water filling at **9860 ml** (*Anesth Analg*
+1989 Aug;69(2):218–25, PMID 2764290 — the same study behind the inert-circuit
+entry under "Known limitations"; read at full text 2026-09-13 from the private
+reference corpus). It is not adopted, and the reason is what it contained: the
+system it measured included a latex reservoir bag at the Y-piece **standing in
+for the patient's lungs**, so adopting 9.86 L as `circuit_volume_l` would put a
+lung inside the circuit and then model it again as the 2.5 L alveolar
+compartment. Subtracting the bag is not available — the paper states no bag
+volume, and a latex bag full of water distends past whatever it holds as a gas
+reservoir.
+
+What the measurement supplies instead is a **bound and an ordering**: a real
+conventional circle system's apparatus volume is at most 9.86 L, which leaves
+both the stored 6.0 L and the Workbook's 8.0 L admissible and puts the three
+figures in one order with only one of them measured. At 4.0 L/min the implied
+apparatus lags are 90 s, 120 s and 148 s.
+<!-- derived: 148 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
+
+**Read the like-for-like comparison, not the bare one.** Targ measured
+apparatus *plus* lung; this model's corresponding total is
+$`V_C + V_A`$ = 6.0 + 2.5 = 8.5 L, which is 13.8% below the measured 9.86 L
+where the bare 6.0 against 9.86 reads as 39% below. The study invites the
+comparison in that form: its Figures 3 and 5 draw the ideal wash-in and
+washout as $`100[1 - e^{-(\dot V/V_S)t}]`$ with $`V_S`$ = 9.86 L, so its own
+time constant is total system volume over inflow — the same $`V/\dot V_F`$
+this document uses. It remains a comparison and not an adoption: a latex bag
+is not a lung, and that apparatus had no patient taking up agent.
+<!-- derived: 8.5 L from data/machines/reference_circle_system.json circuit_volume_l = 6.0 -->
+<!-- derived: 8.5 L from data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
+
 There is no "arterial blood-pool volume" row: arterial blood is flow-limited
 and holds no independent state (see "Model boundary"). Tissue:blood
 coefficients are derived at load time (`AgentParameters` properties in
