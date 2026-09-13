@@ -7,14 +7,14 @@ status: done
 classes: science, test
 feature: numerical-domain
 milestone: v0.4.10
-touches: tests/reference/test_published_wash_in.py, docs/MODEL.md
+touches: tests/reference/test_published_wash_in_and_elimination.py, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-09-07
 pr: 461
 verify: uv run pytest tests/reference/test_published_wash_in.py && grep -q 'def test_five_minute_elimination_ratio_without_rebreathing_against_published_human_measurement' tests/reference/test_published_wash_in.py
 ---
 
-**Problem.** `tests/reference/test_published_wash_in.py` now compares modelled
+**Problem.** `tests/reference/test_published_wash_in_and_elimination.py` now compares modelled
 `F_A/F_A0` at five minutes of elimination against all four Yasuda cohorts, and
 the comparison misses every one of them by +1.0 to +5.0 published SD. Most of
 that is apparatus rather than physiology, measured on 2026-09-06: this model
@@ -57,8 +57,8 @@ outcomes are live here, since the diagnostic already puts sevoflurane and
 isoflurane inside the published spread (-0.25 and +0.54 SD) and desflurane 2.40
 SD outside it on the *other* side.
 
-**Where.** `tests/reference/test_published_wash_in.py` for the driver and the
-comparison, and `docs/MODEL.md` § "Published wash-in validation test" for the
+**Where.** `tests/reference/test_published_wash_in_and_elimination.py` for the driver and the
+comparison, and `docs/MODEL.md` § "Published wash-in and elimination validation test" for the
 restatement. Nothing under `src/` moves - that is what choosing the driver over
 a supported mode means.
 

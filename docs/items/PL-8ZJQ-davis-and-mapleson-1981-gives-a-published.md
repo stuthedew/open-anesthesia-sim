@@ -153,7 +153,7 @@ tenth of a gap that is already 1 to 5 SD wide for apparatus reasons.
 were re-derived through `_reference_state`; the largest movement is 8.3e-4
 relative and sits in the mixed-venous state, which is where a venous-pool
 change should show and nowhere else. `MODELLED_ELIMINATION_RATIOS`, the two
-measured tables in `test_published_wash_in.py`, and a pinned 60 s circuit load
+measured tables in `test_published_wash_in_and_elimination.py`, and a pinned 60 s circuit load
 in `test_uptake_system_failure.py` were re-measured with the reason recorded
 beside each.
 

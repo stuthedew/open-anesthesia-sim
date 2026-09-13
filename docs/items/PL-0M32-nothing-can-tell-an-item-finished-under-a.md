@@ -16,7 +16,7 @@ worth one item because the second is why the first was not caught.
 **The closure did not land with the work.** `#408` merged as `d92ba79`,
 subject `PL-HB58: validate washout against the same published cohorts the
 wash-in gate uses`, and the work is on `main`:
-`tests/reference/test_published_wash_in.py` gained six elimination tests and
+`tests/reference/test_published_wash_in_and_elimination.py` gained six elimination tests and
 the whole file passes. `docs/items/PL-HB58-...md` on `main` still reads
 `status: ready`. So `main` holds the work while the queue calls the item open -
 the failure `PL-D2GW` and `PL-P5S0` recorded, which closing in the same commit

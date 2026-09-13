@@ -2442,7 +2442,7 @@ The supported ranges above are restated in the test file and checked against
 `core/supported_ranges.py`, so widening the model's declared domain cannot
 silently leave this gate measuring a subset of it.
 
-### Published wash-in validation test
+### Published wash-in and elimination validation test
 
 Every test above is **verification**: it asks whether the implementation
 solves the intended equations correctly, and answers it by comparing the
@@ -2455,14 +2455,11 @@ had settled the second.
 
 This test is the **validation** half, and it is the only required test whose
 expected values come from outside this repository
-(`tests/reference/test_published_wash_in.py`). The distinction matters to a
-reader of the two sections: "Independent-solution test" above and this one
-answer different questions, and conflating them over-reads both.
+(`tests/reference/test_published_wash_in_and_elimination.py`). The distinction
+matters to a reader of the two sections: "Independent-solution test" above and
+this one answer different questions, and conflating them over-reads both.
 
-**This section covers two comparisons, in opposite directions**, although its
-heading names only the first — the name is kept because five other passages
-in this document and in `src/` cite it, and a citation that no longer
-resolves is a worse defect than a heading that under-describes. The two are
+**This section covers two comparisons, in opposite directions.** They are
 $`F_A/F_I`$ at 30 minutes of **wash-in**, which agrees with the published
 measurements, and $`F_A/F_{A0}`$ at 5 minutes of **elimination**, which does
 not. Both come from the same volunteers in the same sitting.
@@ -2583,7 +2580,7 @@ flow; confirming it against the methods sections needs full texts that are
 not in PubMed Central and are not held in `docs/references/`.
 
 **The open-circuit diagnostic, and why its numbers are not this simulator's.**
-`tests/reference/test_published_wash_in.py` can run the same five minutes with
+`tests/reference/test_published_wash_in_and_elimination.py` can run the same five minutes with
 the rebreathing taken away: after each step of the elimination it discards
 whatever the patient exhaled into the circuit and records it as exhausted
 agent, which is what collecting the whole expirate does. That holds $`F_I`$ at
@@ -3224,7 +3221,7 @@ numerically right.
 **What justifies refusing one is therefore what it always also was**, stated
 here now that it stands alone. These ranges define the **verification domain**:
 they are what "Independent-solution test" drives its trajectories over, what
-"Published wash-in validation test" compares against measured human data, and
+"Published wash-in and elimination validation test" compares against measured human data, and
 what every figure in this document is measured across. Outside them the
 implementation has not been checked against anything — and, more seriously,
 neither has the *model*. A cardiac output of 1000 L/min is not a patient, and
@@ -4408,7 +4405,7 @@ and `tests/unit/test_wash_in.py` pins both.
 **Why the interface owes it.** This is the curve the uptake literature is
 taught from and the one every wash-in figure a reader has seen is drawn as.
 It is also the quantity this model has been compared against human
-measurement on — "Published wash-in validation test" is $`F_A/F_I`$ at
+measurement on — "Published wash-in and elimination validation test" is $`F_A/F_I`$ at
 30 minutes for all three shipped agents — so the trace and the validation are
 the same number, which
 `test_the_displayed_ratio_is_the_quantity_this_file_validates` asserts rather
@@ -4516,8 +4513,8 @@ on its denominator, so a run early in wash-in knows it far less finely than
 one at equilibrium and a single derived figure would over-claim at one end.
 The figure is set instead by what the quantity is read against — Yasuda et al.
 report 0.850, 0.733 and 0.90 with standard deviations of 0.018, 0.027 and 0.01
-— so a third decimal would be finer than the published spread. See "Published
-wash-in validation test".
+— so a third decimal would be finer than the published spread. See
+"Published wash-in and elimination validation test".
 
 **What it does not assert.** It is a modelled ratio, not a measurement; it
 carries the alveolar compartment's own limitation, that this model has no

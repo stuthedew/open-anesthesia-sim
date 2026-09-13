@@ -7,7 +7,7 @@ status: done
 classes: science, docs
 feature: numerical-domain
 milestone: v0.4.10
-touches: src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md, tests/reference/test_published_wash_in.py
+touches: src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md, tests/reference/test_published_wash_in_and_elimination.py
 blocked-by: PL-W21J
 added: 2026-09-06
 closed: 2026-09-08
@@ -16,7 +16,7 @@ verify: uv run pytest tests/reference/test_published_wash_in.py && grep -q 'def 
 ---
 
 **Problem.** Measured 2026-09-06 while building the elimination comparison in
-`tests/reference/test_published_wash_in.py`: with rebreathing removed - the
+`tests/reference/test_published_wash_in_and_elimination.py`: with rebreathing removed - the
 inspired fraction held at zero through the elimination, which is a diagnostic
 rather than a supported configuration - sevoflurane and isoflurane land at -0.25
 and +0.54 SD of their published five-minute `F_A/F_A0`, while desflurane lands
@@ -40,7 +40,7 @@ put in that condition - which is a limit on what the answer here can claim.
 
 **Where.** `src/anesthesia_sim/data/agents/desflurane.json`,
 `docs/MODEL.md` "Parameter provenance", and the elimination comparison in
-`tests/reference/test_published_wash_in.py`.
+`tests/reference/test_published_wash_in_and_elimination.py`.
 
 **Done when.** The sign and size of desflurane's residual are either explained
 against the primary literature or recorded in `docs/MODEL.md` as a known

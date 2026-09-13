@@ -71,7 +71,7 @@ appropriate, and its entry here should be deleted rather than left stale.
   in `tests/unit/test_wash_in.py`, while `app/chart_series.py` is covered
   through the view, where a trace can be read back off the chart it was
   drawn on (PL-WB0X). The wash-in ratio is covered twice over on purpose:
-  `tests/reference/test_published_wash_in.py` asserts that the number the
+  `tests/reference/test_published_wash_in_and_elimination.py` asserts that the number the
   chart draws is the number the Yasuda comparison was made on, so the two
   cannot drift apart (PL-ZRSP). The one thing that
   pattern cannot answer - whether Flet's diff reports what a frame changed -

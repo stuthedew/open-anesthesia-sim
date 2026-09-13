@@ -150,7 +150,7 @@ the same adjustments: this trace's whole caveat is that it is the textbook
 curve only while inspired concentration is held constant, and a mark on the
 chart above leaves the plot that is actually being misread unannotated.
 
-`tests/reference/test_published_wash_in.py` now asserts that the number the
+`tests/reference/test_published_wash_in_and_elimination.py` now asserts that the number the
 chart draws is the number the Yasuda comparison was made on, so the validated
 quantity and the displayed quantity cannot drift apart.
 

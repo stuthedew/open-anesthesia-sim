@@ -69,7 +69,7 @@ horizon past which it is simply false:
 | Envelope corner (FGF 10, V_A 12, Q 10, 8%) | t = 876 s | 4.71e-10 L |
 
 The tests run to 1200 s, which is why they pass. At the corner the assertion
-would fail inside the 1800 s horizon `test_published_wash_in.py` already runs
+would fail inside the 1800 s horizon `test_published_wash_in_and_elimination.py` already runs
 at, and inside a case length a user of a teaching simulator would call
 ordinary.
 
