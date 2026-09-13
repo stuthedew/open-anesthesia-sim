@@ -1,8 +1,13 @@
 ---
 id: PL-5NR5
 title: A private reference corpus can be attached per session with add_repo, which is the fourth candidate PL-XJ5P does not list: owner-supplied full texts re-uploaded into every session that needs them
-status: untriaged
+priority: P2
+effort: S
+status: blocked
+blocked-by: PL-XJ5P
+classes: docs, infra
 feature: provenance
+touches: docs/references/README.md
 added: 2026-09-13
 ---
 
@@ -156,3 +161,16 @@ apt-get update -qq && apt-get install -y -qq poppler-utils || true
 `|| true` because a failed install must not stop the session from starting.
 `pdftotext -layout FILE -` is then far cheaper than page-image rendering and
 works for every holding except the Smith 1972 scan.
+
+**Done when.** `docs/references/README.md` names the private corpus: the
+repository it lives in, the `add_repo`-then-clone route, and the
+`poppler-utils` prerequisite the base image does not carry — so a session that
+has never read this item can reach a held source. The corpus itself is already
+standing and verified, which is why nothing here is about building it.
+
+**Blocked on `PL-XJ5P`** (citing-sources says there is always a route, but a
+pre-abstract subscription paper has none), which holds `docs/references/README.md`
+in flight and whose own "Done when" already requires that file to say what now
+stands where owner-supplied full texts used to. That sentence and this one are
+the same sentence, so this item closes with `PL-XJ5P` rather than beside it.
+Working it separately would mean two sessions resolving one paragraph.

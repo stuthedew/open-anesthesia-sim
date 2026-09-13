@@ -1,8 +1,13 @@
 ---
 id: PL-Z3V5
 title: Reading a source leaves no durable record a later session can use: the extracted values, units and page locators are not written back to the public repository, so the same PDF is re-read per session
-status: untriaged
+priority: P2
+effort: S
+status: blocked
+blocked-by: PL-XJ5P
+classes: docs
 feature: provenance
+touches: .claude/rules/citing-sources.md, docs/references/README.md
 added: 2026-09-13
 ---
 
@@ -69,3 +74,16 @@ An extraction note for that paper would record what the test file currently
 asserts without a holdable source: the two vectors, their SDs, n = 7 volunteers,
 the FA/FI values at 30 min, and the pages each sits on. That is the smallest
 worked example of the convention and it is owed to a file already in `tests/`.
+
+**Done when.** Reading an owner-supplied source obliges an extraction note, the
+obligation is stated in whichever of `.claude/rules/citing-sources.md` or
+`docs/references/README.md` `PL-XJ5P` settles on, and one note exists as the
+worked example — Yasuda et al. 1991, whose five-minute elimination vectors
+`tests/reference/test_published_wash_in_and_elimination.py` already asserts
+without a holdable source behind them.
+
+**Blocked on `PL-XJ5P`** (citing-sources says there is always a route, but a
+pre-abstract subscription paper has none), which holds both candidate files in
+flight and is deciding the surrounding question. The owner approved this
+obligation in principle on 2026-09-13; what is not settled is which of the two
+files carries it, and that is `PL-XJ5P`'s call rather than a second session's.
