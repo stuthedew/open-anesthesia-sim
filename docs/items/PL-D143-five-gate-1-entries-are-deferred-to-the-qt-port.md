@@ -57,3 +57,10 @@ the files - which is the good case. The bad case is not opening them.
 
 **Found** 2026-09-13, while picking a Gate 1 batch: all five were selected as
 the batch before their files were read, and the deferral is only in the file.
+
+**Done when.** The five entries carry a status that agrees with the decision -
+`blocked` with `blocked-by: v0.5.1` under option 1, moved out of the frozen
+list under option 2, or left as they are with `ROADMAP.md` saying plainly that
+Gate 1 does not reach zero before v0.5.0 under option 3 - and `bin/docket gate`
+and `bin/docket next` both report something a session can act on without
+opening the five files to find out.
