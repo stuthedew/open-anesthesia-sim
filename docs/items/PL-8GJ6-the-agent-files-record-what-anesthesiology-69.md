@@ -1,8 +1,15 @@
 ---
 id: PL-8GJ6
 title: The agent files record what Anesthesiology 69:A615 contains as unknown, and the authors' own reference list now confirms it is the 1988 abstract of the 1989 human-tissues paper
-status: untriaged
+status: done
 added: 2026-09-13
+closed: 2026-09-13
+priority: P3
+effort: S
+classes: docs
+feature: model-spec-accuracy
+touches: src/anesthesia_sim/data/agents/sevoflurane.json, src/anesthesia_sim/data/agents/isoflurane.json, src/anesthesia_sim/data/agents/desflurane.json, docs/MODEL.md
+verify: grep -q 'A615' src/anesthesia_sim/data/agents/sevoflurane.json
 ---
 **Problem.** `PL-ZP7Z` established that the Gas Man Workbook's reference 45 is
 `Anesthesiology 69:A615`, an ASA annual-meeting abstract, rather than the 1989
@@ -36,3 +43,15 @@ provenance", the bullet naming A615.
 **Done when.** All three files, and `docs/MODEL.md`, record that the identity of
 A615 is confirmed by the companion paper's own reference list, and keep the
 distinction between knowing which document it is and knowing what it says.
+
+**Closed 2026-09-13 alongside `PL-B9K7`, and its second half dissolved rather
+than being answered.** All three agent files record that the companion circuit
+paper's reference 10 cites A615 as the abstract of the human-tissues work, which
+confirms its identity from a primary document, and they keep saying its contents
+are unread.
+
+What changed is that the contents stopped mattering. A615 was interesting only
+as the nearest reachable form of the tissue measurements; the full paper is now
+held and the stored coefficients have been checked against it directly
+(`PL-B9K7`). Reading the abstract would settle nothing the full text has not
+already settled, so this closes without anyone needing to find it.

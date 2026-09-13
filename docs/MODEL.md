@@ -2138,15 +2138,50 @@ sufficient alone:
   measurement's own standard deviation. Close enough to suggest the route,
   never enough to name it.
 
-**The check that would settle it needs a document this project does not hold.**
-The stored coefficients are tissue:gas and the 1989 abstract reports tissue:blood
-only, which is why the comparison above has to pass through a blood:gas the
-Workbook attributes to nobody. The full paper reports both — Yasuda et al. 1991
-(*Anesth Analg* 1991;72:316–24, PMID 1994760), read at full text from the private
-reference corpus on 2026-09-13, cites it for the tissue/blood and the tissue/gas
-coefficients in the same methods paragraph. That paper is not in PubMed Central
-and not among the corpus's holdings, so the route ends there and the gap is
-recorded rather than inferred across (`PL-ZP7Z`).
+**The check has since been run, and the claim holds.** The project owner
+supplied Yasuda, Targ and Eger's full text later the same day; it was read at
+full text on 2026-09-13 and is in the private reference corpus. Its Table 1
+reports tissue:**gas** coefficients — the quantity the agent files store — from
+14 autopsy specimens, 6 to 10 per tissue, mean age 65.8 ± 14.4 yr, equilibrated
+at 37 °C. Against the nine stored values:
+
+| | vessel-rich (Yasuda's brain) | muscle | fat |
+| --- | ---: | ---: | ---: |
+| sevoflurane | 1.1 vs 1.15 ± 0.07 (−0.71 SD) | 2.4 vs 2.38 ± 1.03 (+0.02 SD) | 34.0 vs 34.0 ± 6.0 (exact) |
+| isoflurane | 2.1 vs 2.09 ± 0.10 (+0.10 SD) | 4.5 vs 4.40 ± 1.97 (+0.05 SD) | 70.0 vs 64.2 ± 12.3 (+0.47 SD) |
+| desflurane | 0.54 vs 0.54 ± 0.02 (exact) | 0.97 vs 0.94 ± 0.35 (+0.09 SD) | 13.0 vs 12.0 ± 2.0 (+0.50 SD) |
+
+All nine sit within 0.71 SD of the measured mean and three reproduce it to the
+stored precision, which is not a coincidence available to a parameter set
+assembled from somewhere else. So the Workbook's attribution is confirmed on the
+arithmetic rather than on its own say-so, and its self-contradiction resolves in
+Yasuda's favour: sevoflurane's three stored values match this paper, not a
+package insert.
+
+Two things follow that are not about provenance:
+
+- **The vessel-rich coefficient is Yasuda's *brain* value.** Table 1 measures
+  brain, heart, liver and kidney separately (sevoflurane 1.15, 1.21, 1.25,
+  0.78), and any weighted average of the four would land away from the stored
+  figure. The compartment this document calls the vessel-rich group is
+  parameterised as brain, and a learner reading its trace is reading a brain
+  trace.
+- **This paper is not a source for the stored blood:gas values.** It measured
+  none. Its Table 2 tissue:blood figures are calculated "by dividing the
+  tissue/gas partition coefficient by the published values for the blood/gas
+  coefficients adjusted for age", so Table 1 ÷ Table 2 recovers a 65.8-year-old
+  cohort's age-adjusted blood:gas, 4.9–9.4% above the three round figures stored
+  here.
+
+**The tier is not changed on this, and that is deliberate.** On this evidence
+the nine coefficients descend from a primary measurement, and marking them so
+would raise the further question of whether to store Yasuda's figures rather
+than Gas Man's rounding of them — isoflurane fat 64.2 against 70.0 and
+desflurane fat 12.0 against 13.0 move the fat time constant by 8.3% and 7.7%,
+and sevoflurane vessel-rich 1.15 against 1.1 moves its own by 4.5%. Those are
+displayed values, and `PL-D6LX`'s decision to keep the Gas Man set was the
+project owner's. `PL-B9K7` carries the case to them; nothing here changes
+pending it (`PL-ZP7Z`, `PL-B9K7`).
 
 Desflurane is markedly less soluble than sevoflurane, which is itself less
 soluble than isoflurane (blood:gas 0.42 < 0.65 < 1.3). This does not change
