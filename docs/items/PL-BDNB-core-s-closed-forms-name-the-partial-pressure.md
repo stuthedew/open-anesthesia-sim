@@ -1,0 +1,55 @@
+---
+id: PL-BDNB
+title: core/'s closed forms name the partial-pressure-equivalent fraction with bare _fraction locals, and integrated_circuit_fraction_s keeps the stutter PL-9SH6 removed from the accessor
+status: untriaged
+added: 2026-09-13
+---
+
+**Problem.** core/'s closed forms name the partial-pressure-equivalent fraction with bare _fraction locals, and integrated_circuit_fraction_s keeps the stutter PL-9SH6 removed from the accessor
+
+`PL-9SH6` gave every *accessor* one name for the dimensionless
+partial-pressure-equivalent fraction and deliberately stopped there. The local
+variables inside the closed forms were not in its table and still carry short
+names for the same quantity:
+
+| Where | Local | What it holds |
+| --- | --- | --- |
+| `core/circuit.py:247-252` | `initial_fraction`, `delivered_fraction`, `next_fraction` | `inspired_`/`delivered_partial_pressure_fraction` |
+| `core/circuit.py:259` | `integrated_circuit_fraction_s` | the inspired fraction integrated over the step, L·s/L |
+| `core/tissue.py:194-196` | `initial_fraction`, `next_fraction` | `partial_pressure_fraction` |
+| `core/blood.py:125-128` | `initial_fraction`, `next_fraction` | `partial_pressure_fraction` |
+| `core/governing_equations.py:283` | `delivered_fraction` | `settings.delivered_partial_pressure_fraction` |
+
+**Most of these are defensible and this item is not really about them.** A
+local bound one line below the accessor it reads, inside a five-line closed
+form, is not the translation step `.claude/rules/core-domain.md` objects to —
+the full name is in the reader's eye. `delivered_fraction` in
+`governing_equations.py` is the weakest of them, since it is bound at line 283
+and last read at line 331, which is far enough that the reader no longer has
+the accessor in view.
+
+**`integrated_circuit_fraction_s` is the one worth deciding.** It carries
+*both* defects `PL-9SH6` was written to remove. It is a short name for the
+partial-pressure-equivalent fraction, and `circuit_` stutters on a
+`BreathingCircuit` method exactly as `circuit_concentration_fraction` did —
+which is the name that rename replaced with `inspired_`. It is also not simply
+a fraction: it is the fraction integrated over the step, so its unit is
+seconds, which is what the `_s` suffix says and what makes
+`integrated_inspired_partial_pressure_fraction_s` the faithful form. Whether
+that is an improvement at 44 characters is the judgment this item asks for.
+
+**Why a tool will not catch it.** `tools/core_vocabulary_check.py`
+(`PL-FZ6T`) matches whole identifiers against `RETIRED_NAMES`, so none of
+these is a retired name and none is reported. That is correct rather than a
+gap: whether a name is the one a reader who knows the domain would guess is
+the judgment that file explicitly refuses to script.
+
+**Found.** `PL-FZ6T`, building the retired-name rule, 2026-09-13. Scanning
+`core/` for every identifier containing `_fraction` turned these up beside the
+names the rule was written for.
+
+**Not `PL-6KNM`.** That one is about `require_concentration_fraction`,
+`concentration.py` and the `Fraction` `NewType` — the *representation* layer,
+one question with three parts. These are locals inside the equations and can
+be decided separately.
+

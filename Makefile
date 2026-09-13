@@ -166,15 +166,23 @@ check: sync
 # colour Material substitutes and `contrast_check.py` above cannot reach
 # because it is declared in no source file (`PL-97VB`).
 #
+# `core_vocabulary_check.py` joined them under `PL-FZ6T`, and it is the reason
+# its three rules are not in `tools/doc_check.py` beside the other checks that
+# read `docs/MODEL.md`: it parses every module under `src/anesthesia_sim/core/`
+# with `ast` to resolve the Symbols table's Code column, and `doc_check.py` is
+# invoked by a bare `python3` on the line above and again in the CI floor
+# section. Putting a 3.14 parse behind either would break the promise both make.
+#
 # `tools/ignore_check.py` above is the same category for a different reason.
-# All four tools here stay standard-library-only and parse at the floor
+# All five tools here stay standard-library-only and parse at the floor
 # themselves, which is what `tests/unit/test_tools_portability.py` holds them
 # to; that suite's docstring states the rule this group is an instance of.
-# `PL-Y0RZ`, `PL-L17Q`, `PL-JBZK`, `PL-97VB`.
+# `PL-Y0RZ`, `PL-L17Q`, `PL-JBZK`, `PL-97VB`, `PL-FZ6T`.
 	uv run python tools/contrast_check.py
 	uv run python tools/agent_identity_check.py
 	uv run python tools/import_boundary_check.py
 	uv run python tools/workflow_paths_check.py
+	uv run python tools/core_vocabulary_check.py
 
 fix:
 	uv run ruff format .

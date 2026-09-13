@@ -308,6 +308,7 @@ tools/
 ├── branch_id_check.py    # refuses a branch ahead of the default base that carries no item id in its name and leads no commit subject with one, because every in-flight guard matches an id and work carrying none is invisible to all of them; scoped to the `claude/*` namespace, since a contributor has no queue to be visible in
 ├── dead_ends.py          # emits `docs/dead-ends.md`'s entry lines into session context at start, and holds that emitted half - never the file's preamble, which is instructions for adding an entry rather than for reading one - to 30 entries and 4,000 bytes, because a `SessionStart` hook's output is resent on every turn and an unbounded always-loaded store measurably degrades an agent rather than merely costing tokens; refuses an entry citing an id that resolves to nothing, since `bin/docket show <id>` is the entry's whole retrieval path
 ├── contrast_check.py     # computes every declared color requirement's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum, taking the better channel where an element's edge can be carried by either its fill or its border
+├── core_vocabulary_check.py  # holds `core/`'s identifiers to the vocabulary `docs/MODEL.md` establishes, in the three ways that are decidable: every `ClassName.accessor` in the Symbols table's Code column resolves to a real attribute, property or field - an em dash being accepted only where the cell says what the code reads instead; none of the accessor names `PL-9SH6` retired comes back, matched whole so that the live `require_concentration_fraction` and `circuit_volume_l` are not accused of containing one; and every `*partition_coefficient` identifier names both of its phases in the declared outward order, gas then blood then tissue, so a coefficient cannot be written as its own reciprocal in a literature that calls one quantity tissue-gas, tissue-blood and blood tissue in a single chapter. It runs under `uv run python`, not at the 3.11 floor, because it parses `core/` with `ast`; whether a name is the one a reader who knows the domain would guess stays a judgment and is deliberately not scripted
 ├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, the data files' declared source tiers, citations - in the documentation, in every `docs/items/` brief and in every source docstring, since those last two are where this project writes most of them - markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline, and the current gate's membership against the queue - unconditionally for the queue's `safety`- and `science`-classed items, and as a recorded disposition, placed or deferred, for every other open debt item; reports resident instruction size
 ├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, and `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`, so the payload/dataclass boundary and the never-wall-clock rule are measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
@@ -607,21 +608,32 @@ become unparseable by the interpreter that runs it.
 `tests/unit/test_tools_portability.py` covers both directories by path rather
 than by filename, so the guard follows the next hook without being extended.
 
-Two of them are nonetheless *invoked* under `uv run python`, and the
+Six of them are nonetheless *invoked* under `uv run python`, and the
 distinction is worth keeping straight, because it is about what a tool reads
-rather than what it needs. `ignore_check.py` shells out to mypy, so it wants
-the virtualenv that gate runs in. `import_boundary_check.py` parses
-`src/anesthesia_sim/`, and that source targets 3.14: `app/chart_series.py`
-declares `type PlottedSeries = ...`, a PEP 695 statement added in 3.12 and so
-a `SyntaxError` to the 3.11 parser, and `ast.parse`'s `feature_version` only
-narrows the syntax it accepts rather than extending it. A tool that parses
-repository source can only run under an interpreter that understands that
-source. Both still meet the promise above, which is what the portability suite
-holds them to. `contrast_check.py` reads `app/` too and ran bare until
-`PL-L17Q`, green only because the two files it reads happened to carry no
-3.12+ syntax; it now runs under `uv run python` beside
-`import_boundary_check.py`, and the rule the pair is an instance of is stated
-in `tests/unit/test_tools_portability.py`'s module docstring.
+rather than what it needs. `ignore_check.py` is the odd one and the only one
+of the six with a reason of its own: it shells out to mypy, so it wants the
+virtualenv that gate runs in.
+
+The other five are one reason repeated. `import_boundary_check.py`,
+`contrast_check.py`, `agent_identity_check.py`, `workflow_paths_check.py` and
+`core_vocabulary_check.py` each parse repository source with `ast`, and that
+source targets 3.14: `app/chart_series.py` declares `type PlottedSeries = ...`,
+a PEP 695 statement added in 3.12 and so a `SyntaxError` to the 3.11 parser,
+and `ast.parse`'s `feature_version` only narrows the syntax it accepts rather
+than extending it. A tool that parses repository source can only run under an
+interpreter that understands that source. All of them still meet the promise
+above — standard library only, parseable at the floor — which is what the
+portability suite holds them to, and it is why they stay in scope for it while
+being absent from the CI floor section.
+
+`contrast_check.py` is why the group is worth naming rather than left to each
+tool's own docstring. It ran bare until `PL-L17Q`, green only because the two
+files it reads happened to carry no 3.12+ syntax, so one PEP 695 generic added
+to either would have failed the floor section on a tool nobody had touched. The
+rule the five are an instance of is stated in
+`tests/unit/test_tools_portability.py`'s module docstring, and a tool joining
+them belongs on the `uv run python` lines in both `Makefile` and
+`.github/workflows/quality.yml`, never in that workflow's floor section.
 
 `tools/ruff.toml` is what keeps that true. The repository targets 3.14, where
 PEP 758 makes the parentheses in `except (OSError, TimeoutError):` redundant,
