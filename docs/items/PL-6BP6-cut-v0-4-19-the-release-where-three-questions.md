@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: planning, docs
 feature: release-process
+milestone: v0.4.20
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items/
 added: 2026-09-13
 closed: 2026-09-13
+pr: 537
 verify: python3 tools/doc_check.py check && grep -q '^version = "0.4.19"' pyproject.toml && test -f docs/releases/v0.4.19.md
 ---
 

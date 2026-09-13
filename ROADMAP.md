@@ -79,7 +79,8 @@ capability-boundary rule above governs.
 | v0.4.16 | Completed | **The release where one quantity stopped being stated two ways.** All thirteen entries are the same shape: two statements of one fact, drifted apart or free to drift. **Nothing computational moved** - `src/anesthesia_sim/data/` and `.github/` are byte-identical to `v0.4.15`, and `src/anesthesia_sim/core/` changes in docstrings, one moved constant and one rename, so no equation, parameter, unit, numerical method or solver step is touched. **What a reader sees is the clock.** `PL-SSBP` gave the chart a time base spanning a case, so an axis tick read `1h30m` while the clock and every recorded control stamp beside it read `5400.0 s`, and locating a control mark meant dividing by 3600 by hand; `PL-Y5WR`'s 24-hour envelope then made the clock's top reading `86400.0 s`, seven characters of tenths on a quantity a reader thinks about in hours. The clock, the stamps and the axis now share one compound form - `45s`, `1m30s`, `1h23m45.6s`, `24h` - built in one function, dropping a zero component and keeping a tenth only where there is one, so a stamp still resolves the `0.1 s` step the simulation advances by (`PL-Q4M4`, `PL-CZFY`). The old docstring's argument for two forms, that "a compound duration form would round the stamp away", was checkable and false; `format_elapsed` now also raises rather than printing `-1.0 s`. **Two error boundaries were false where they were stated:** `core/parameters.py` promised in its own docstring that every raise reaching a caller is a `SimulationConfigurationError` while a missing, unreadable or truncated data file escaped as `OSError`, `UnicodeDecodeError` or `JSONDecodeError` - three types where the audit named two, because the file is opened as text (`PL-B32L`) - and `_apply_setting` caught a narrower class than the timer paths beside it, so an unexpected raise escaped into Flet's dispatch (`PL-YK2V`). `FLOW_FRACTION_TOLERANCE` stood at `1e-12` in two modules guarding the two perfusion-sum checks independently; one definition now, identical value, so no threshold moved (`PL-TCW5`). **The provenance line stopped answering when it could not:** `APP_VERSION` falls back to `unknown`, which is a version-shaped string, and the header subtitle is the interface's only link between a displayed number and the model behind it, so a build that cannot identify itself now says "Version unavailable (this build is not traceable)" (`PL-KCWD`). **Three names had outlived what they name** - `RunScore` is `RunDefinition`, in the package that should read like the domain (`PL-ZX12`); the wash-in validation module and its `docs/MODEL.md` section cover elimination too (`PL-B9VL`); and `docs/MODEL.md` named sevoflurane in its headings, Purpose and symbol table four releases after three agents shipped (`PL-KGNF`). **And the citation tying `core/` to the specification is enforced rather than asserted.** `PL-VZL0` cites `docs/MODEL.md` from every `core/` function implementing a governing equation, precisely so a section rename cannot silently orphan it - and `tools/doc_check.py` read the comma form and not the section-mark form this repository writes, leaving 285 of the tree's 324 document-section citations unchecked while the run reported that they all resolve. Recognising the form surfaced eighteen errors: eleven were one false positive, a citation wrapped across two lines of a blockquote, and seven were genuinely stale pointers in closed items (`PL-V13T`). Five gate entries deferred to the Qt port by owner decision are `blocked` rather than counted as debt the gate could clear (`PL-D143`). Thirteen items, one of which is the v0.4.15 cut itself. |
 | v0.4.17 | Completed | **The release where `core/` said what it meant.** Four Gate 1 `needs-decision` entries, all of them about the core's own vocabulary rather than its arithmetic, and **no number the model produces moves**: `src/anesthesia_sim/data/` and `.github/` are byte-identical to `v0.4.16`, and every reference test carrying a pinned published or canonical value - `test_canonical_evaluation.py`, `test_coupled_dynamics.py`, `test_published_wash_in_and_elimination.py`, `test_circuit_wash_in.py`, `test_multi_agent.py`, `test_control_resolution.py` - is byte-identical too and still passes. Every executable line that changed is a type annotation erased at runtime, or a hand-written `* 100.0` replaced by an identically-defined named conversion, or the deletion of a method with no caller. **Three of the four decisions were settled by a measurement that changed the answer the brief expected.** `PL-74R0` asked which of five public `advance` methods should survive the exact step that replaced the operator split: one 60 s step against six hundred 0.1 s steps put the circuit, tissue and venous closed forms within 1.1e-14 of themselves and `PatientCompartments.advance` **25% apart**, which is not a closed form at all but the first-order split `PL-GS5X` deleted, kept alive as a public method with no error bound and a docstring giving a reader nothing to suspect. It is gone; the three exact ones stay, documented, and the criterion deciding them was already written in `alveolar.py` - nothing outside the governing equations may move agent between two modelled compartments. `PL-79YX` asked whether six `== 0.0` guards deserved any words: they turned out to be **three different arguments**, two of them load-bearing rather than stylistic - `V/0.0` raises in Python, and the circuit's exhausted-agent integral is `inf * 0.0` and therefore `nan` at zero flow for every state - while the item's own 2026-09-02 walk had been run at a loaded fraction where the third argument is invisible, so deleting either `advance` guard had been leaving the whole suite green. `PL-WVSK` asked whether a concentration fraction and a percent should differ at the type level, against a brief naming two implicit conversions: there were **twelve**, across six modules, six of them on the path to a displayed clinical value, and `docs/MODEL.md` had been asserting that "the interface alone converts" since the agent files began carrying a MAC. `core/concentration.py` now owns the factor and both directions, with `Fraction` and `Percent` as `NewType`s whose limits are documented rather than implied - erased at runtime, useless against a wrong magnitude, and unable to reach inside the equations at all, since `Fraction(0.5) * 2.0` is a plain `float`. **The fourth was the project owner's and a session took it.** `PL-8GV5` asked whether `ROADMAP.md` should carry intent for a dose-dependent haemodynamic response; the session measured the human volunteer literature - cardiac index unchanged under desflurane alone, falling dose-dependently in the same volunteers with nitrous oxide, and falling then returning to baseline at 2.0 MAC under sevoflurane - and then closed the item on that measurement. Whether a feature enters the roadmap is direction, not fact. The owner's answer was different and better: not now, and kept as **planned item 35, an option a user turns on**, because an overlay can state the uncertainty those three studies describe where a default behaviour cannot. `PL-4T90` is the routing gap fixed in the same session - the `docket` skill now sorts a `needs-decision` item by what its answer rests on rather than by how hard it looks. Eleven items, one of which is the v0.4.16 cut itself, and one of which - `PL-1YDK` - was a duplicate of `PL-8PT6` that had turned `main` red by passing its own `verify:` command. |
 | v0.4.18 | Completed | **The release where the project checked what it tells the next session.** Twelve of the seventeen entries are a statement this repository makes — to a session or to a reader — that was wrong, missing, or unreachable: the gate's own counts and deferrals (`PL-SL70`, `PL-9S30`), a recommendation that never said how the item it named related to the gate (`PL-J790`), `docs/MODEL.md`'s symbol map (`PL-H46J`, `PL-212V`) and a margin its prose called comfortable at three percent (`PL-WT07`), the architecture pointer no session was shown (`PL-39K7`), the apparatus test bar that was never written down (`PL-N6Y0`), a v0.4.0 Goal still in the present tense about problems since fixed (`PL-DXQC`), and the README's scope word (`PL-XF89`). Two go further and measure reception instead of correcting prose: `PL-VV16` instruments which item files sessions actually open, and `PL-NB35` gives failed approaches a bounded startup tier so they are not rediscovered. **Nothing a learner can observe was recomputed**, and this release says so with a measurement rather than a byte comparison: `src/anesthesia_sim/data/` and `.github/` are byte-identical to `v0.4.17`, and `core/` holds exactly the same 401 numeric literals before and after, so `PL-9SH6`'s accessor rename across every compartment moved not one number. The reference suite is *not* byte-identical this time, because that rename reaches it — what is measured instead is that no numeric literal was removed from it, so every pinned published and canonical value still stands. `PL-V6M0` is the one safety entry: `_apply_setting` caught the exception hierarchy's base class, so a `SimulationExecutionError` would have been reported as a refused setting over a run that kept producing readings. Seventeen items. |
-| v0.4.19 | Completed / current baseline | **The release where three questions were answered and `core/` did not change a line.** The second half of that is a tree-object identity rather than a reading of the diff: `src/anesthesia_sim/core/` resolves to `7a49512` at both `v0.4.18` and this release, and `src/anesthesia_sim/data/` to `d5a26cf`, so every equation, constant, numerical method, unit and stored parameter is byte-identical and not one number the model produces was recomputed; `tests/reference/` gained 251 lines and lost none, so every pinned published and canonical value still stands. All three `P1` entries settle a question instead of adding behavior. `PL-1XPX` decides what the readouts show while two branches are displayed — both runs, paired per compartment, each naming its run in text — and refuses a difference readout on a domain ground rather than a layout one, because the arithmetic difference of two alveolar fractions is not a quantity with a conventional clinical reading; the readout cap that was recommended and approved is recorded as refused by `docs/MODEL.md` § "Minimum displayed outputs", which already forbids a required value leaving the display with the curve that draws it. `PL-RFLN` removes a candidate for desflurane's five-minute washout residual: the published apparatus's dead space is an alveolar-ventilation decrement rather than an inspired fraction, and at the published magnitude it closes only a quarter to two fifths of the 2.33 published SD while pushing an isoflurane cohort that was inside its spread out of it — the common-mode failure every earlier candidate died of, now pinned by two mutation-checked reference tests, with the parameter file again unchanged. `PL-XJ5P` closes the hole under `.claude/rules/citing-sources.md`'s promise that "there is a route": a private reference corpus is adopted as the terminal route, verified end to end from a session before the rule was written, and what a *miss* means is written down — record the gap and put the reading to the owner, rather than narrowing the claim or taking a search summary for a reading. Three interface entries apply the same standard from the reader's side: the readout row names the substance its numbers belong to (`PL-TCD1`), the new-case dialog's carry-over sentence names only settings the reader can actually set (`PL-0Q1T`), and the wash-in panel's 786 characters of standing prose are gone (`PL-F9TQ`). Two more turn a convention into something that runs: `PL-FZ6T` holds `core/` to `docs/MODEL.md` in code — every Symbols Code cell must resolve to a real attribute, the retired accessor names may not reappear, and a partition-coefficient identifier must name both phases outward from the gas phase — and `PL-RC0M` replays a blocked item's `verify:` command so it cannot rot unnoticed and redden whichever pull request unblocks it. `PL-B667` states the upper bound `core/` has always enforced in five places. Ten items. |
+| v0.4.19 | Completed | **The release where three questions were answered and `core/` did not change a line.** The second half of that is a tree-object identity rather than a reading of the diff: `src/anesthesia_sim/core/` resolves to `7a49512` at both `v0.4.18` and this release, and `src/anesthesia_sim/data/` to `d5a26cf`, so every equation, constant, numerical method, unit and stored parameter is byte-identical and not one number the model produces was recomputed; `tests/reference/` gained 251 lines and lost none, so every pinned published and canonical value still stands. All three `P1` entries settle a question instead of adding behavior. `PL-1XPX` decides what the readouts show while two branches are displayed — both runs, paired per compartment, each naming its run in text — and refuses a difference readout on a domain ground rather than a layout one, because the arithmetic difference of two alveolar fractions is not a quantity with a conventional clinical reading; the readout cap that was recommended and approved is recorded as refused by `docs/MODEL.md` § "Minimum displayed outputs", which already forbids a required value leaving the display with the curve that draws it. `PL-RFLN` removes a candidate for desflurane's five-minute washout residual: the published apparatus's dead space is an alveolar-ventilation decrement rather than an inspired fraction, and at the published magnitude it closes only a quarter to two fifths of the 2.33 published SD while pushing an isoflurane cohort that was inside its spread out of it — the common-mode failure every earlier candidate died of, now pinned by two mutation-checked reference tests, with the parameter file again unchanged. `PL-XJ5P` closes the hole under `.claude/rules/citing-sources.md`'s promise that "there is a route": a private reference corpus is adopted as the terminal route, verified end to end from a session before the rule was written, and what a *miss* means is written down — record the gap and put the reading to the owner, rather than narrowing the claim or taking a search summary for a reading. Three interface entries apply the same standard from the reader's side: the readout row names the substance its numbers belong to (`PL-TCD1`), the new-case dialog's carry-over sentence names only settings the reader can actually set (`PL-0Q1T`), and the wash-in panel's 786 characters of standing prose are gone (`PL-F9TQ`). Two more turn a convention into something that runs: `PL-FZ6T` holds `core/` to `docs/MODEL.md` in code — every Symbols Code cell must resolve to a real attribute, the retired accessor names may not reappear, and a partition-coefficient identifier must name both phases outward from the gas phase — and `PL-RC0M` replays a blocked item's `verify:` command so it cannot rot unnoticed and redden whichever pull request unblocks it. `PL-B667` states the upper bound `core/` has always enforced in five places. Ten items. |
+| v0.4.20 | Completed / current baseline | **The release where four stored values' sources were read back against the publications, and not one number moved.** The second half is measured rather than asserted: every numeric value in every data file that existed at `v0.4.19` is identical at this release - all twelve partition coefficients, the eleven reference-patient parameters, every MAC and MAC-awake - and `src/anesthesia_sim/app/` and `.github/` resolve to the same tree objects. `src/anesthesia_sim/core/` is *not* byte-identical, and this release cannot make v0.4.19's claim: `PL-4YY1` moved `circuit_volume_l = 6.0` and `default_fresh_gas_flow_l_min = 4.0` out of `core/circuit.py`'s dataclass field defaults into a new `data/machines/reference_circle_system.json` - machine parameters as their own kind, beside patients and agents - changing neither value, and `AgentUptakeSystem.for_agent()` now passes both explicitly so that every scientific constant a run uses comes from a cited file. **They had been invisible to the only tool built to catch exactly this:** `tools/doc_check.py`'s `check_provenance` walks *data files* in both directions, so a constant that never entered one could not be missing from anything. The new file records that the Workbook's published circuit volume is 8.0 L against this project's 6.0, kept on the project owner's ruling of 2026-09-01 that the value is not critical, and what the departure is worth - $`\tau_C = V_C / \dot V_F`$ is 90 s here against 120 s at 8.0 L, a 25 percent shorter machine lag, which is the part of the early rise belonging to the apparatus rather than to uptake and the most-taught point about a circle system. `default_fresh_gas_flow_l_min` has no published counterpart at all, and the `provenance_gap` says so rather than leaving the silence to read as an oversight. The literals stay in `circuit.py` as defaults so a bare unit test can exercise circuit physics without loading package data, pinned to the file by `test_the_bare_circuit_defaults_match_the_shipped_machine_file`. **The other three read a source and came back with a negative, which is the outcome this kind of work mostly has.** `PL-0NQ1`: `reference_adult.json` stores vessel-rich perfusion 0.76, and De Wolf et al. 2012's Table 1 - the same table all twelve partition coefficients come from - prints 75.8 / 18 / 6, which sums to 99.8. The stored value does not move and *could not*: `_perfusion_fractions_must_sum_to_one` and `core/patient.py` independently reject any set differing from 1.0 by more than `FLOW_FRACTION_TOLERANCE = 1e-12`, so a session deciding the published figure was right would discover that only after editing the file. What the difference is worth is recorded instead - $`\tau = V_i / (Q_i \lambda)`$ scales inversely with perfusion, so 0.76 against 0.758 moves the vessel-rich time constant by 0.26 percent - and the finding as relayed was corrected rather than smoothed: the review said this file cites De Wolf, and it does not; the three *agent* files do, which makes the finding sharper, since the table carrying the discrepant number is one this file never cites. `PL-ZP7Z`: the Workbook's page-168 note says its volatile coefficients are Yasuda, Targ and Eger's and, one sentence later, that sevoflurane's are "taken from the package insert and Abbott data" - and its reference 45 is `Anesthesiology 69:A615`, the 1988 ASA meeting *abstract*, not the 1989 *Anesthesia & Analgesia* paper the agent files cite. The arithmetic is close and settles nothing about the route: 1.70 x 0.65 = 1.1050 against a stored 1.1, desflurane 1.29 x 0.42 = 0.5418 against 0.54, isoflurane 1.57 x 1.3 = 2.0410 against 2.1, missed by 2.9 percent and still inside half the measurement's own standard deviation. **The tier stays at 3 and would stay there even if the attribution were confirmed** - a program's statement about its own provenance is the program talking - and the one comparison that would settle it needs Yasuda 1989's tissue:gas tables, which are in neither PubMed Central nor the private corpus. `PL-ZDWL` is the flattest negative of the three and the one that closes a question: `PL-RFLN` had left the operating-point ventilation load-bearing, both Yasuda papers were read at full text from the private corpus, and **neither publishes a ventilation at all** - it was titrated per subject to normocapnia at an end-tidal carbon dioxide of 5.5-6.5 percent rather than set to a figure, with no $`\dot V_E`$ and no $`f_A`$ reported in either paper. What the *Anesthesiology* paper does settle is the definition the derivation needed, doses to the alveoli as $`F_I \dot V_A \times 30`$ min "where $`\dot V_A = f_A \dot V_E`$", so $`f_A`$ is the alveolar fraction of *total* minute ventilation; the candidate table's second row is recorded as still unreadable from the text rather than becoming a sourced result. Five items, one of which is the v0.4.19 cut itself. |  5 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -115,117 +116,119 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.4.19
+## Current baseline: v0.4.20
 
-v0.4.19 is the release in which three questions were answered and `core/` did
-not change a line.
+v0.4.20 is the release in which four stored values' sources were read back
+against the publications, and not one number moved.
 
-**The second half of that is a tree-object identity rather than a reading of
-the diff.** `src/anesthesia_sim/core/` resolves to `7a49512` at both `v0.4.18`
-and this release, and `src/anesthesia_sim/data/` to `d5a26cf`. Every equation,
-constant, numerical method, unit and stored parameter is byte-identical, so not
-one number the model produces was recomputed - a stronger claim than either
-`v0.4.17` or `v0.4.18` could make, since both carried a rename that reached
-`core/` and had to measure instead that no number inside it moved.
-`tests/reference/` gained 251 lines and lost none, so every pinned published and
-canonical value that stood at `v0.4.18` still stands; the additions are
-`PL-RFLN`'s. What changed is `src/anesthesia_sim/app/`, `docs/MODEL.md` and
-`.github/workflows/quality.yml`.
+**The second half of that is measured rather than asserted, and it is a
+different measurement from the last two releases'.** `v0.4.19` could resolve
+`src/anesthesia_sim/core/` to one tree object at both ends; this release cannot,
+because `PL-4YY1` moved two constants out of `core/`. What is measured instead
+is the thing a reader actually cares about: **every numeric value in every data
+file that existed at `v0.4.19` is identical at this release** - all twelve
+partition coefficients, the eleven reference-patient parameters, every MAC and
+MAC-awake figure - and `src/anesthesia_sim/app/` and `.github/` resolve to the
+same tree objects. The only numbers that are new are the two in
+`data/machines/reference_circle_system.json`, and both were already in the tree
+at the same values as `core/circuit.py` field defaults.
 
-**All three `P1` entries settle a question rather than adding behavior**, and
-two of the three are answered by elimination - the outcome is a candidate
-removed and a narrower question written down, which is the shape most easily
-mistaken for having achieved nothing.
+**`PL-4YY1` moves a scientific constant into a cited data file, and the reason
+it had never been caught is the interesting half.** `circuit_volume_l = 6.0` and
+`default_fresh_gas_flow_l_min = 4.0` were dataclass field defaults in
+`core/circuit.py`. `tools/doc_check.py`'s `check_provenance` - the only tool
+this project has for a missing citation - walks *data files* in both
+directions, so a constant that never entered one is not missing from anything
+it can see. It was structurally invisible rather than overlooked, which is the
+distinction that decides whether a check needs widening or a habit needs
+changing. Both now live in a new `data/machines/reference_circle_system.json`,
+machine parameters as their own kind beside patients and agents, and
+`AgentUptakeSystem.for_agent()` passes them explicitly so that every scientific
+constant a run uses comes from a cited file. The literals stay in `circuit.py`
+as defaults so that a bare unit test can exercise circuit physics without
+loading package data, and
+`test_the_bare_circuit_defaults_match_the_shipped_machine_file` fails if the two
+ever disagree - because a reader meeting `6.0` in the source will take it for
+the model's circuit volume whatever the docstring beside it says.
 
-**`PL-1XPX` decides what the readouts show while two branches are displayed:
-both runs, paired per compartment, every readout naming its run in text.** The
-alternative that preserves the current layout - show the selected run and state
-which one it is - introduces a mode, and a stale selection has no visual
-signature at all; stating the selection warns after the fact where pairing
-prevents. The third candidate, a difference readout, is refused on a domain
-ground rather than a layout one: the arithmetic difference of two alveolar
-fractions is not a quantity with a conventional clinical reading, and depth is
-reasoned about in MAC multiples and in time-to-target. The run is named in text
-because line width is already spent on it (`PL-HLD5`) and colour on the
-compartment, and position alone fails the reader who looks away and back, which
-is the failure the item is about. One part of this is recorded against the
-project's own process rather than against the code: the recommendation put to
-the owner paired the chosen candidate with capping the readouts at two
-compartments while comparing, that clause was named as the crux and approved,
-and it is not what landed - § "Minimum displayed outputs" already says a
-required value must not leave the display with the curve that draws it, so
-capping the readouts would have taken four required clinical values off the
-screen. Nothing renders two runs yet; this is the requirement, and `PL-B9PY` and
-`PL-8PSW` are what build it.
+**The new file records a deliberate departure and what it costs a learner.** The
+Workbook's published circuit volume is 8.0 L; this project stores 6.0, on the
+project owner's ruling of 2026-09-01 that the value is not critical here. The
+circuit's fresh-gas wash-in time constant is $`\tau_C = V_C / \dot V_F`$, so at
+this file's 4.0 L/min it is 90 s here against 120 s at the published figure - a
+25 percent shorter machine lag. That lag is the part of the early rise in
+inspired concentration that belongs to the apparatus rather than to uptake,
+which is the single most-taught point about a circle system, so the difference
+is visible on the curve even though it changes nothing about the patient. A run
+reproducing a published Gas Man trajectory must set 8.0 L rather than assume it,
+and the file says so. `default_fresh_gas_flow_l_min` has no published
+counterpart at all - the Workbook's parameter table gives the circuit row no
+flow entry - so the `provenance_gap` states that rather than leaving the silence
+to be read as an oversight.
 
-**`PL-RFLN` removes a candidate for desflurane's five-minute washout residual,
-and again changes no parameter.** The dead space of the published apparatus had
-been carried as an inspired-fraction effect. It is not one: with no agent being
-delivered, the rebreathed volume is an alveolar-ventilation decrement of dead
-space times respiratory rate and nothing else, so treating it as an inspired
-fraction describes this model's circuit rather than Yasuda's apparatus. Measured
-at the published magnitude across the conventional respiratory rates for a
-paralysed normocapnic adult, it closes 0.44 to 0.95 SD of the 2.33 published SD
-that desflurane sits at - a quarter to two fifths - and buys that by pushing the
-isoflurane cohort that was inside its spread at +0.94 SD out to between +1.59
-and +2.30. That is the common-mode failure every earlier candidate died of, and
-it is now pinned by two reference tests, both mutation-checked. What is left is
-one reachable candidate and one that is not: `PL-03ZG` bounds the end-tidal
-weighted bias, and the published value itself is something no measurement this
-project can run will settle.
+**The other three read a source and came back with a negative, which is the
+outcome this kind of work mostly has.** None of them changes a stored number,
+and saying so is the finding rather than a disclaimer.
 
-**`PL-XJ5P` closes the hole underneath the rule that tells a session "there is a
-route".** `.claude/rules/citing-sources.md` says a refusal is not evidence that
-the literature is unreachable, which is true of a PubMed Central paper and false
-of a pre-abstract subscription paper - it yields neither full text nor abstract,
-and the escape hatch that used to catch those closed when the public repository
-stopped being able to carry publisher-copyright material. A private reference
-corpus is adopted as the terminal route, verified end to end from a session
-before the rule was written rather than after, because a rule pointing at a
-repository nobody had opened would have been the same defect the item was filed
-on. The half that matters more is what a *miss* now means: the corpus holds what
-the owner has supplied, not the literature, so a source absent from it has
-genuinely run out of route - record the gap and put the reading to the owner.
-The two exits the item was filed on, narrowing the claim and taking a search
-summary for a reading, are named and refused there.
+**`PL-0NQ1`: the published figure disagrees, by 0.26 percent, and the schema
+forbids storing it.** `reference_adult.json` stores vessel-rich perfusion 0.76;
+De Wolf et al. 2012's Table 1 - the same table all twelve partition coefficients
+come from - prints 75.8 / 18 / 6, which sums to 99.8 rather than 100.
+`_ReferenceAdultPayload._perfusion_fractions_must_sum_to_one` and
+`core/patient.py` independently reject any set differing from 1.0 by more than
+`FLOW_FRACTION_TOLERANCE = 1e-12`, so a session that decided the published
+triple was the right one could not enter it, and would discover that only after
+editing the data file. What the difference is worth is recorded instead:
+$`\tau = V_i / (Q_i \lambda)`$ scales inversely with perfusion, so 0.76 against
+0.758 moves the vessel-rich time constant by 0.26 percent, far inside any
+interpretation a learner would draw from the curve. **The finding as relayed was
+also corrected rather than smoothed over**: the review described this file as
+citing De Wolf, and it does not - the three *agent* files do. That makes the
+finding sharper rather than weaker, since the table carrying the discrepant
+number is one this file never cites at all, but a session acting on it has to
+check the right table.
 
-**Three interface entries apply the same standard from the reader's side.** The
-readout row names the substance its numbers belong to, refreshed from the
-snapshot in the same pass as the MAC reference so it cannot lag an agent change
-(`PL-TCD1`). The new-case dialog's carry-over sentence names only settings the
-reader can actually set, the circuit volume having had no control since
-`PL-GYH2` retired its setter (`PL-0Q1T`). And the wash-in panel's two
-explanatory paragraphs - 786 characters, the largest standing prose block on the
-screen, and the bulk of the 47% of explanatory prose that `PL-6580` would have
-left behind - are gone (`PL-F9TQ`).
+**`PL-ZP7Z`: the reference implementation contradicts itself about its own
+sources, and the tier does not move.** The Workbook's page-168 note says its
+volatile coefficients are Yasuda, Targ and Eger's and, one sentence later, that
+sevoflurane's are "taken from the package insert and Abbott data". Its reference
+45 is `Anesthesiology 69:A615` - the 1988 ASA annual-meeting *abstract* - not the
+1989 *Anesthesia & Analgesia* paper the agent files cite, and an abstract and a
+full paper are not interchangeable sources. The arithmetic is close and says
+nothing about the route: this project's stored blood:gas times the measured
+brain:blood gives 1.1050 against a stored 1.1 for sevoflurane and 0.5418 against
+0.54 for desflurane, while isoflurane's 2.0410 misses a stored 2.1 by 2.9
+percent - still inside half the measurement's own standard deviation. **The
+twelve coefficients stay tier 3 and unadopted, and would stay there even if the
+attribution were confirmed**: a program's statement about its own provenance is
+the program talking, which is the same rule that stops De Wolf's journal name
+from promoting the table it prints. The one comparison that would settle it -
+Yasuda 1989's published tissue:gas values against the stored twelve - needs that
+paper's full text, which is in neither PubMed Central nor the private reference
+corpus, so the route ends there and the item says where.
 
-**Two entries turn a convention into something that runs.** `PL-FZ6T` holds
-`core/` to `docs/MODEL.md` in code: every Code cell in the Symbols table must
-resolve to a real attribute, the accessor names `PL-9SH6` retired may not
-reappear, and a partition-coefficient identifier must name both phases outward
-from the gas phase, so `tissue_blood_partition_coefficient` cannot be read as
-its own reciprocal. All three rules were watched failing against the real tree
-rather than only against the suite's synthetic ones, and an empty `core/` or an
-unreadable Symbols table is an error rather than a pass, because a rule that
-inspects nothing otherwise reports a success indistinguishable from the real
-one. `PL-RC0M` replays a blocked item's `verify:` command, which `docket` had
-never run: a command can rot while its item is blocked and then redden whichever
-pull request unblocks it, which is precisely when somebody is trying to start
-work.
+**`PL-ZDWL`: the study publishes no ventilation at all, which closes the
+question rather than leaving it open.** `PL-RFLN` had found that a series dead
+space is exactly an alveolar-ventilation decrement in this model, which made the
+operating point's ventilation the load-bearing number. Both Yasuda papers were
+supplied by the project owner and read at full text on 2026-09-13, and neither
+reports one: ventilation was titrated per subject to normocapnia - end-tidal
+carbon dioxide of 5.5-6.5 percent - rather than set to a figure, and no
+$`\dot V_E`$ and no $`f_A`$ appears in either paper. What the *Anesthesiology*
+paper does settle, at its total-body-clearance method, is the definition the
+derivation needed: doses delivered to the alveoli are computed as
+$`F_I \dot V_A \times 30`$ min "where $`\dot V_A = f_A \dot V_E`$", so $`f_A`$
+is the alveolar fraction of *total* minute ventilation. The second row of
+`docs/MODEL.md`'s candidate table is therefore recorded as still unreadable from
+the text rather than becoming a sourced operating point - and it is now a closed
+question rather than a free-parameter sweep waiting to be run.
 
-**`PL-B667` is the smallest entry and the one nearest the safety standard.**
-`docs/MODEL.md`'s required invariants said derived fractions stay finite and
-nonnegative. `core/` enforces the upper bound of 1 in five places, and every
-solved step is written back through the validated setters, so that bound is
-checked on every step's output. The list now says so, which matters because the
-list is what a reviewer reads to learn what the implementation must preserve.
-
-**What this release does not claim.** It does not claim the model improved: no
-line of `core/` moved, and `PL-RFLN` leaves its question narrower rather than
-answered. The user-visible change is three small interface entries, two of which
-remove text. What the release buys is that the specification, the screen and the
-source rules now say what the code and the literature actually support - and
-that two of those three are checked rather than asserted.
+**What this release does not claim.** It does not claim the model improved. No
+stored number moved, no equation changed, and three of the five entries end in a
+source that could not settle what it was read to settle. What it buys is that
+four values a clinician could be misled by now say where they came from, what
+disagrees with them, and by how much - and that the one constant which had no
+route into the provenance check at all now has one.
 
 
 ## The plan
