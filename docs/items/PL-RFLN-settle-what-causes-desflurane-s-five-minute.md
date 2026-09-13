@@ -66,3 +66,37 @@ end-tidal weighting could carry without settling that it does.
 
 No work should be scheduled on this before that answer, which is why it sits at
 `needs-decision` rather than `ready` despite being fully diagnosed.
+
+## Reachability re-checked 2026-09-13: the premise holds, the decision is unchanged
+
+Checked against the source rather than carried from this item's own text, since
+the whole decision rests on it. Both papers fetched through the PubMed MCP
+server: `identifiers` carries `pmid` and `doi` for each and **no `pmc` entry**,
+so PubMed Central holds neither and the methods sections remain unreachable by
+any route this project has. Nothing has changed that would let the question be
+settled without a copy.
+
+**What the abstracts do carry**, which is worth recording so the next session
+does not re-fetch them: the five-minute `F_A/F_A0` values this comparison uses,
+with their spreads - desflurane 0.14 +/- 0.02, isoflurane 0.22 +/- 0.02 and
+halothane 0.25 +/- 0.02 in the *Anesthesiology* paper, sevoflurane 0.157 +/-
+0.020 and isoflurane 0.223 +/- 0.024 in *Anesth Analg* - the 30-minute
+administration, the inspired fractions, the 65-70% nitrous oxide both protocols
+ran, and the recovery percentages `docs/MODEL.md`'s fourth caveat quotes. `F_A`
+is written "alveolar (end-tidal)" in both, so this item's first candidate rests
+on a sampling convention the abstract states rather than one inferred.
+
+**What they do not carry** is exactly the Route section's list: the breathing
+system, how the end-tidal sample was drawn, and the alveolar ventilation
+measured through the elimination. The first candidate "stands entirely on which
+units the end-tidal sample came from", and no abstract answers that.
+
+**Nitrous oxide was checked and is not a missing candidate.** `docs/MODEL.md`
+already carries it as the first of four caveats bounding the comparison - both
+protocols ran 65-70% N2O concurrently, giving the measured curves a second-gas
+effect this model cannot reproduce, "in a direction that is not obviously
+conservative". Recorded here only so the next session does not raise it as new.
+
+So **Decision needed** above stands as written and is still the owner's: obtain
+the methods pages, or record the question as unanswerable and say so in
+`docs/MODEL.md` in place of the two open candidates.

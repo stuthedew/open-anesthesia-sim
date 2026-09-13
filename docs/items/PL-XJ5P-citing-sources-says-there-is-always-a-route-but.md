@@ -122,3 +122,37 @@ range placed as an interlibrary loan and read without the repository holding
 the scan. `PL-GN8C` carries recording that route in
 `docs/references/README.md`. Whatever this item decides, it is deciding about
 a procedure that already works rather than about a hypothetical one.
+
+## Half landed 2026-09-13: the terminal case is stated, the disposition is not
+
+`.claude/rules/citing-sources.md` now carries a **fourth limit** saying that a
+metadata-only record is a terminal answer rather than a cue to keep looking,
+and the "there is a route" paragraph is qualified to mean *around the network
+refusal* rather than *for every citation*. That is the half of **Done when**
+that no decision gates - this item's own brief says "stating the metadata-only
+case as terminal is wanted whichever is chosen" - so it was done rather than
+held behind the question below.
+
+**One correction to this item's framing, and it makes the rule checkable.**
+"Pre-abstract" is the cause; it is not the test, and a session cannot apply it
+without knowing publication conventions by era. The observable marker is what
+the rule now names: the metadata call returns the literal string
+`[Abstract not available]` in the abstract field - a placeholder, not an absent
+key - together with no `pmc` entry under `identifiers`.
+
+Re-measured 2026-09-13 through the PubMed MCP server rather than carried from
+this item's 2026-09-06 and 2026-09-10 readings, since the whole point is to
+check rather than recall. All five are still terminal: PMIDs 13932730, 14164256
+and 4705482 (Mapleson, 1963-1973), 5050101 and 5031801 (Smith, Zwart and
+Beneken, 1972). Against them, PMIDs 2001028 and 1994760 (Yasuda et al., 1991,
+which `PL-RFLN` turns on) return **full abstracts** and still carry no `pmc`
+entry - so they are the *third* limit, not this one. That pair is why the rule
+keys on the field instead of the date: a 1991 paper has an abstract and no
+methods section, a 1963 paper has neither, and only one of those two states is
+terminal.
+
+**What remains, and it is the open decision.** What a session *does* on
+reaching the terminal state, and what `docs/references/README.md` says now
+stands where owner-supplied full texts used to. Both wait on the redistribution
+question in **Decision needed** above, which is the project owner's. Nothing
+was written into either on a session's guess.

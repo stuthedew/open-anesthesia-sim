@@ -44,3 +44,70 @@ label form the answer needs, `docs/MODEL.md`'s minimum displayed outputs.
 **Done when.** The question above is answered and recorded here, and the
 displayed-outputs section of `docs/MODEL.md` states what a readout names while
 two runs are shown.
+
+## Analysis 2026-09-13: two of the three candidates are already decided elsewhere
+
+Written as the half of this item that does not depend on the owner's answer.
+Nothing below changes the interface; the question in **Decision needed** is
+still open, narrowed rather than answered.
+
+**`PL-HLD5` is the governing precedent and this item's brief predates it.**
+That item settled the *chart's* encoding on 2026-09-07: compartment on line
+style and colour exactly as the single-run chart draws them, run on line width,
+and **at most two compartments drawn while two branches are shown**. Two things
+follow for the readouts.
+
+**First, the second candidate is ruled out on a rule this project has already
+applied.** "The selected run only, with the selection stated" is a mode, and
+`PL-HLD5` rejected run-by-colour for precisely that - "making it mean 'run' in
+compare mode would put two meanings on one channel either side of a mode
+change, on the chart where a misread is a misread of a clinical value", citing
+`.claude/rules/expert-review.md` on hidden modes and context-dependent
+behaviour. The readout version is the stronger case, not the weaker one: colour
+would at least change appearance, where a selected-run readout looks identical
+whichever run is selected, so a stale selection has no visual signature at all.
+`CLAUDE.md`'s "the correct number with the wrong patient context is still a
+safety failure" is that sentence exactly. Stating the selection is a warning
+after the fact, and `expert-review.md` asks for interfaces that prevent rather
+than warn. Recorded as ruled out rather than decided-away - overrule it if the
+reasoning does not hold.
+
+**Second, the crowding objection to the first candidate may already be
+answered.** The brief says pairing "doubles the readout block, which already
+wraps at some window widths (`PL-3355`)". That arithmetic assumed six
+compartments. Under `PL-HLD5`'s cap the chart shows two while comparing, and the
+roadmap already specifies one shared compartment selection across both runs - so
+if the readouts follow the cap, compare mode is *four* entries against today's
+six, and pairing costs nothing. Whether they should follow it is the real
+question this item now carries, and it is a genuine trade: following keeps one
+selection on the screen and loses the six-compartment readout while comparing;
+not following puts the chart on two compartments and the readouts on six, which
+is two different selections on one screen and a mode-awareness problem of its
+own.
+
+**Against the third candidate, and this is a domain point rather than a layout
+one.** A difference readout needs a sign convention, which the brief already
+names as its own ambiguity. The heavier objection is that the arithmetic
+difference of two alveolar fractions is not a quantity with a conventional
+clinical reading: anaesthetic depth is reasoned about in MAC multiples and in
+time-to-target, not in "these two managements are 0.006 apart", and a readout
+that displays a number implies one. `CLAUDE.md` requires displayed precision to
+be justified by "practical interpretability", and `expert-review.md` names
+ambiguous terminology and false precision as product-level risks. The chart
+already carries the comparison continuously, in the axis the reader is looking
+at, which is where a difference is legible without being named.
+
+**One constraint on whatever is chosen, which follows from the accessibility
+rule rather than from taste.** `PL-HLD5` put the run on line width because
+every other line-level channel was spent. Text has no width analogue, so the
+run has to be *named* in the readout - a label, not a colour and not position
+alone. Colour is spent on compartment, and position alone fails the reader who
+has looked away and back, which is the same stale-context failure as the second
+candidate. `PL-HLD5`'s own fallback note makes the general point: position
+survives every colour-vision deficiency, but it is being relied on here to carry
+identity rather than to separate marks.
+
+**Recommendation: the first candidate - both runs, paired per compartment, each
+naming its run in text - with the readouts following `PL-HLD5`'s two-compartment
+cap while comparing.** The crux the owner has to settle is that second clause,
+because it is what decides whether pairing is free or doubles the block.
