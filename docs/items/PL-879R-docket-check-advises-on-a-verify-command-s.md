@@ -96,3 +96,26 @@ judgment about whether the phrase is one only the work can produce is required.
 The repair was to scope the grep to the section the work touches (`sed -n
 '/^30\. Add patient factors/,/^31\./p' ROADMAP.md | grep -q ...`), which is
 probably the advice a warning should carry.
+
+**Two live instances, 2026-09-13, and they fell on opposite sides of the line
+this item draws** (found while closing the stale-name batch of Gate 1).
+
+- **Shape was checked, and it worked.** `PL-YTDN`'s `verify:` was written as
+  `bin/docket check` piped into `grep`. `docket check --verify` refused it by
+  shape - a nested run does not replay the open items' commands, so the grep
+  matches nothing whether the work is done or not. It was caught *before* it
+  could pass, which is what this item asks for, and the session had already run
+  the command and watched it exit 1 for the wrong reason without noticing.
+- **Shape was not checked, and it cost a red CI run.** `PL-L9FC`'s command was
+  `doc_check check && grep -qi 'elimination' README.md`. `PL-B9VL` renamed the
+  module that item's paragraph cites to
+  `test_published_wash_in_and_elimination.py`, so the grep began matching the
+  *filename in the citation* while the README paragraph it is about was
+  untouched. Reported only as "already passes", on the branch that broke it,
+  after the push.
+
+The second is the case this item names: a `grep` loose enough that another
+item's work satisfies it, invisible until it has already started passing. The
+pair is also the argument for the shape check being worth extending rather than
+retired - it caught one of the two at the right moment, and the one it missed
+was a bare case-insensitive word grep, which is a shape.
