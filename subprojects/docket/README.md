@@ -1851,3 +1851,26 @@ roadmap_file = "ROADMAP.md"
 Python 3.11 or newer, and nothing else. Standard library only, so a
 session-start hook can run it in a bare checkout with no virtualenv and no
 install step.
+
+## Running the tests
+
+From the **repository root**, never from inside `subprojects/docket/`:
+
+```bash
+uv run pytest subprojects/docket/tests
+```
+
+The root `pyproject.toml` declares
+`testpaths = ["tests", "subprojects/docket/tests"]` and puts
+`subprojects/docket/src` on `pythonpath`, so these tests are part of the root
+suite and resolve against the root environment and the root `uv.lock`. That is
+what `make check` and CI run, so it is where an answer about them has to come
+from.
+
+`cd subprojects/docket && uv run pytest` also works, and that is the problem
+rather than a convenience. This directory has its own `pyproject.toml`, so
+`uv` builds a **second** environment from a lockfile it resolves on the spot -
+and the tests then pass against a dependency set nobody reviewed and CI never
+runs, which is a weaker answer wearing the same green tick. It leaves `.venv/`
+and `uv.lock` behind, both of them ignored, so nothing in `git status` says it
+happened (`PL-8PT6`).
