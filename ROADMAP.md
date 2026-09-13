@@ -955,6 +955,21 @@ discipline PL-XCYB built is unaffected and still serves the `pr:` check.
   out to require a change to a modelled value, that is a finding for Gate 0
   and a scoped item of its own, not this release's work.
 
+**Two of the three counts above are deliberately left to the reader**
+(`PL-GLBF`, 2026-09-13). "Seven entries are marked `not-delegable`" is checked
+by `tools/doc_check.py`, because `not-delegable:` is a field on each item and
+the number is a query over it. The two in the bullets above are not, and the
+nearest field is a near miss rather than a gap: `touches:` records the files an
+item is *expected to change*, where these sentences record the scope an item is
+*permitted to reach*. On the second one's own three ids a checker over
+`touches:` computes two against a correct three - `PL-ZN0N` declares
+`pyproject.toml` and nothing else, and may still annotate `noqa` directives in
+`src/`. A check built on it would fail a correct sentence, which is worse than
+no check. Both are safe to leave unchecked for a second reason that holds only
+here: this list is frozen and every id on it is closed, so neither number can
+drift again. The same shape in a *live* section can, and that is a separate
+question rather than one this note settles.
+
 ### Explicitly out of scope for v0.2.8
 
 - Anything on Gate 0's frozen list, recorded under v0.4.0 below. That gate is

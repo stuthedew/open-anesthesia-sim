@@ -2342,10 +2342,13 @@ def test_a_gate_count_written_in_digits_is_read(tmp_path: Path) -> None:
 # while every count in the file agreed.
 
 
-def _queue_item(root: Path, identifier: str, *, classes: str, status: str = "ready") -> None:
+def _queue_item(
+    root: Path, identifier: str, *, classes: str, status: str = "ready", not_delegable: str = ""
+) -> None:
     """Write one item into the fixture repository's store."""
     store = root / "docs" / "items"
     store.mkdir(parents=True, exist_ok=True)
+    withheld = f"not-delegable: {not_delegable}\n" if not_delegable else ""
     (store / f"{identifier}-demo.md").write_text(
         "---\n"
         f"id: {identifier}\n"
@@ -2354,6 +2357,7 @@ def _queue_item(root: Path, identifier: str, *, classes: str, status: str = "rea
         "effort: S\n"
         f"status: {status}\n"
         f"classes: {classes}\n"
+        f"{withheld}"
         "added: 2026-09-07\n"
         "---\n\n"
         "**Problem.** A thing.\n",
@@ -2738,3 +2742,119 @@ def test_no_test_directory_declines_rather_than_failing(tmp_path: Path) -> None:
 
     assert not [e for e in report.errors if "test_absent_suite" in e]
     assert any("no test directory was found" in d for d in report.declined)
+
+
+# --- the `not-delegable` subset count ----------------------------------------
+#
+# The three counts above state a list's *length*. This one states a property of
+# its entries, and it is the only such count in the file that can be checked at
+# all: `docket` reads `not-delegable:` off each item, so the number is a query
+# over a field rather than a judgment about what an entry's work touches.
+# `PL-GLBF` records why its two neighbours in the same section - "the two
+# entries that change repository configuration" and "three entries reach into
+# `src/`" - are left to the reader instead.
+
+WITHHELD_GATE_ROADMAP = VERSIONED_GATE_ROADMAP.replace(
+    "### Definition of done",
+    "**Two entries are marked `not-delegable`,** which is worth knowing before\n"
+    "the work is planned.\n\n### Definition of done",
+)
+
+
+def _withheld_errors(root: Path) -> list[str]:
+    return [error for error in _errors(root) if "not-delegable" in error]
+
+
+def _withheld_repo(tmp_path: Path, roadmap: str = WITHHELD_GATE_ROADMAP) -> Path:
+    """A gate whose five entries hold two items withheld from delegation."""
+    root = _repo(tmp_path, roadmap=roadmap)
+    for identifier in ("PL-BBBB", "PL-CCCC", "PL-DDDD", "PL-FFFF", "PL-GGGG", "PL-HHHH"):
+        _queue_item(root, identifier, classes="defect")
+    _queue_item(root, "PL-BBBB", classes="defect", not_delegable="only a release proves it")
+    _queue_item(root, "PL-DDDD", classes="defect", not_delegable="the setting is outside the tree")
+    return root
+
+
+def test_not_delegable_subset_count(tmp_path: Path) -> None:
+    """A `not-delegable` count is held to the items, in both directions.
+
+    The failure this closes is `PL-GLBF`'s: the sentence is hand-maintained, so
+    it goes stale the next time an entry gains or loses the field, and until now
+    nothing failed when it did.
+    """
+    root = _withheld_repo(tmp_path)
+
+    assert _withheld_errors(root) == []
+
+    stale = WITHHELD_GATE_ROADMAP.replace("**Two entries are marked", "**Four entries are marked")
+    errors = _withheld_errors(_withheld_repo(tmp_path / "stale", roadmap=stale))
+
+    assert len(errors) == 1
+    assert "says 4 of v0.4.0's frozen entries" in errors[0]
+    assert "but 2 of them hold an item carrying that field" in errors[0]
+
+
+def test_a_not_delegable_count_counts_entries_rather_than_ids(tmp_path: Path) -> None:
+    """One problem recorded under two ids is one entry, as everywhere else here.
+
+    `PL-FFFF` and `PL-GGGG` share a line of the fixture's frozen list. Marking
+    both leaves the count at three, not four - the same rule `GateEntry` states
+    for the list's own size.
+    """
+    roadmap = WITHHELD_GATE_ROADMAP.replace("**Two entries are", "**Three entries are")
+    root = _withheld_repo(tmp_path, roadmap=roadmap)
+    for identifier in ("PL-FFFF", "PL-GGGG"):
+        _queue_item(root, identifier, classes="defect", not_delegable="one problem, two ids")
+
+    assert _withheld_errors(root) == []
+
+
+def test_a_not_delegable_count_outside_the_gate_subsection_is_left_alone(tmp_path: Path) -> None:
+    """Position fixes the meaning, so a sentence elsewhere counts nothing.
+
+    A `Definition of done` bullet saying what a *later* milestone withholds is
+    not a claim about this frozen list, and reading it as one would fail a
+    correct sentence.
+    """
+    roadmap = WITHHELD_GATE_ROADMAP.replace(
+        "- Everything above is done.",
+        "- Everything above is done, and nine entries are marked `not-delegable` in v0.5.0.",
+    )
+
+    assert _withheld_errors(_withheld_repo(tmp_path, roadmap=roadmap)) == []
+
+
+def test_a_not_delegable_count_is_declined_when_there_is_no_store(tmp_path: Path) -> None:
+    """A store that is not there decides nothing, and says so rather than failing.
+
+    `read_items` answers `[]` for an absent directory, which is right for the
+    advisory that already reads it and would be a confident wrong answer here -
+    every stated count would read as wrong by exactly its own size. A truncated
+    checkout is the live case.
+    """
+    root = _withheld_repo(tmp_path)
+    for item in (root / "docs" / "items").iterdir():
+        item.unlink()
+    (root / "docs" / "items").rmdir()
+
+    report = doc_check.analyze(root)
+
+    assert _withheld_errors(root) == []
+    assert any("not-delegable" in line and "did not answer" in line for line in report.declined)
+
+
+def test_a_not_delegable_count_is_declined_when_an_entry_id_has_no_item(tmp_path: Path) -> None:
+    """A missing id makes the count uncomputable, not smaller.
+
+    Read as "not withheld" it would fail a correct sentence and name the prose
+    as the fault, on a tree whose real fault is the store. Nothing else in this
+    file reports a frozen entry whose id has no item, so the decline is the
+    only place that state is visible.
+    """
+    root = _withheld_repo(tmp_path)
+    (root / "docs" / "items" / "PL-HHHH-demo.md").unlink()
+
+    report = doc_check.analyze(root)
+
+    assert _withheld_errors(root) == []
+    assert any("not-delegable" in line and "did not answer" in line for line in report.declined)
