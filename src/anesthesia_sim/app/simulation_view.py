@@ -937,17 +937,17 @@ class SimulationView:
         # them, and a label there would read as a gridline that is not ruled.
         self._time_axis = self._build_time_axis()
         self._wash_in_time_axis = self._build_time_axis()
-        # The two axis captions, held rather than built inline because both
-        # state the span the chart is currently showing, which moves. Saying
-        # it is not decoration: under "Fit run" the width is chosen by the
-        # run's length rather than by the reader, so the caption is the only
-        # place the plot says how much time it is showing.
+        # Held rather than built inline because it states the span the chart
+        # is currently showing, which moves. Saying it is not decoration:
+        # under "Fit run" the width is chosen by the run's length rather than
+        # by the reader, so the caption is the only place the plot says how
+        # much time it is showing.
+        #
+        # There was a second caption under the wash-in chart until `PL-F9TQ`,
+        # and it was not this: it was static, and its two halves restated that
+        # chart's own axis titles. `_build_wash_in_section` records where its
+        # one non-restating clause went.
         self._time_axis_caption = ft.Text(self._time_axis_caption_text(), color=MUTED)
-        self._wash_in_time_axis_caption = ft.Text(
-            "Vertical axis: dimensionless ratio, 0 to 1 | "
-            "Horizontal axis: simulated time, the same window as above",
-            color=MUTED,
-        )
         self._concentration_chart = fch.LineChart(
             data_series=self._chart_data_series(),
             min_x=0,
@@ -1911,16 +1911,46 @@ class SimulationView:
         them separate is looking for how far apart they are, which is
         what this plots.
 
-        The prose is not decoration. This is the graph the uptake
-        literature is taught from, so it arrives carrying a reader's
-        expectations about what it means, and three of those have to be
-        corrected at the point of display rather than in a document:
-        which concentration the denominator is, that the curve is the
-        textbook one only while that concentration is held constant, and
-        that the trace is bounded to the wash-in domain and stops
-        outside it. `docs/MODEL.md` § "F_A/F_I as a displayed ratio" is
-        the specification these three sentences are the display-side
-        half of.
+        This is the graph the uptake literature is taught from, so it
+        arrives carrying a reader's expectations, and three of those
+        still have to be corrected at the point of display rather than
+        in a document. Until `PL-F9TQ` they were corrected by 786
+        characters of italic paragraph - the largest standing block on
+        the screen, and larger than anything `PL-6580` removed from the
+        panel above. They are corrected by labels now (decided
+        2026-09-13):
+
+        - *which concentration the denominator is*: the heading names
+          it, and the label under the heading says what it is not, which
+          is the reading a specialist arrives with - F_I is where the
+          curve is taught with the vaporizer setting, and here it is the
+          circuit;
+        - *that the curve is the textbook one only while that
+          concentration is held constant*: the second half of the same
+          label, because the two are one fact. F_I is a denominator that
+          moves, so a rise across a control mark can be the denominator
+          shrinking rather than uptake. The warning is specific to this
+          ratio and is deliberately not in `_build_control_mark_legend_item`,
+          which the compartment chart shares: there a rise across a mark
+          really is the agent going up, and there is no denominator to
+          mistake it for;
+        - *that the trace is bounded to the wash-in domain and stops
+          outside it*: deleted, because `_format_wash_in_state` already
+          names which of the two boundaries it stopped at, at the moment
+          it stops. A message at the moment of need is not the standing
+          paragraph it replaces.
+
+        The axis key went with them. "Vertical axis: dimensionless
+        ratio, 0 to 1" restated this chart's left axis title and
+        "Horizontal axis: simulated time" its bottom one. Its one
+        non-restating clause, "the same window as above", is true by
+        construction rather than by assertion: `_apply_time_base`
+        computes one window per frame and writes both charts' `min_x`
+        and `max_x` from it.
+
+        `docs/MODEL.md` § "F_A/F_I as a displayed ratio" is the
+        specification, and is now the only place carrying the full
+        statement of each.
 
         Returns:
             The controls to append to the chart panel's column.
@@ -1928,37 +1958,21 @@ class SimulationView:
 
         return [
             ft.Text(
-                "Wash-in: F_A/F_I, alveolar as a fraction of inspired",
+                "Wash-in: F_A/F_I, alveolar as a fraction of the modelled circuit",
                 weight=ft.FontWeight.BOLD,
                 color=INK,
             ),
-            self._wash_in_time_axis_caption,
             ft.Text(
-                (
-                    "F_I is the modelled inspired concentration, not the vaporizer "
-                    "dial — the dial is what the circuit is filled from, and the "
-                    "circuit only approaches it over its own time constant. Inspired "
-                    "and circuit are one quantity in this model because it has a "
-                    "single perfectly mixed circuit, with no dead space and no "
-                    "separate inspiratory and expiratory limbs."
-                ),
+                "F_I = modelled circuit, not the vaporizer dial — a rise across a "
+                "control mark can be the denominator moving, not uptake",
                 color=MUTED,
-                italic=True,
             ),
-            ft.Text(
-                (
-                    "This is the wash-in curve of the uptake literature only while "
-                    "the inspired concentration is held constant. The vertical marks "
-                    "are where a setting was changed: a rise across one is a dial "
-                    "change, not uptake. The trace stops where no agent has yet "
-                    "reached the circuit, and it ends on the equilibrium line "
-                    "where alveolar reaches inspired — past that the patient is "
-                    "returning agent, which is elimination and not wash-in. "
-                    "Modelled, not measured."
-                ),
-                color=MUTED,
-                italic=True,
-            ),
+            # Its own line rather than the tail of a paragraph, where it was.
+            # Three words the safety-critical standard requires, at the end of
+            # 440 characters, is three words nobody reads. The control
+            # timeline's "Settings only — not a measurement." is the same
+            # move for the same reason.
+            ft.Text("Modelled, not measured", color=MUTED),
             ft.Row(
                 controls=[
                     self._build_legend_item("F_A/F_I", WASH_IN_COLOR, "solid"),

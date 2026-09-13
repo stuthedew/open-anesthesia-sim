@@ -4454,6 +4454,56 @@ def test_the_interface_says_which_trace_the_band_is_read_against() -> None:
     assert "population" in prose
 
 
+def test_nothing_between_the_wash_in_heading_and_its_plot_is_a_sentence() -> None:
+    """`PL-F9TQ`: the same rule as the panel above, applied to the panel below.
+
+    `PL-6580` stripped the compartment chart and named four paragraphs, all of
+    them in that panel. Executed as written it left the wash-in section's two -
+    786 characters, the largest standing block on the screen and larger than
+    anything it removed - so 47% of the explanatory prose survived the item
+    filed to remove it, and would have read afterwards as prose that passed
+    review.
+
+    What the three corrections became is in `_build_wash_in_section`'s
+    docstring. This asserts the outcome rather than the wording: labels above
+    the plot, no sentences, and the two the safety standard requires still
+    present.
+
+    `_wash_in_state_text` is exempt by identity, as the two state advisories
+    are in the test below. It is empty until it applies, which is the
+    distinction being drawn - a message at the moment of need is not a
+    standing paragraph.
+    """
+
+    view, _ = _build_view()
+    panel = view._build_chart_panel()
+    column = panel.content
+    assert isinstance(column, ft.Column)
+
+    section = view._build_wash_in_section()
+    above_the_plot: list[ft.Control] = []
+    for control in section:
+        if isinstance(control, ft.Container) and control.content is view._wash_in_chart:
+            break
+        above_the_plot.append(control)
+    else:  # pragma: no cover - the plot is in the section it is the section for
+        raise AssertionError("the wash-in chart is not in the wash-in section")
+
+    strings = _strings_in(above_the_plot, skip=(view._wash_in_state_text,))
+
+    for value in strings:
+        assert ". " not in value, value
+        assert not value.rstrip().endswith("."), value
+
+    joined = " ".join(sorted(strings))
+    # The denominator, which is the correction a specialist reader needs.
+    assert "not the vaporizer dial" in joined
+    # And the safety standard's own requirement, on a line of its own now.
+    assert "Modelled, not measured" in joined
+    # The axis key restated both axis titles and is gone with the paragraphs.
+    assert "dimensionless ratio" not in joined
+
+
 def test_nothing_between_the_chart_heading_and_the_plot_is_a_sentence() -> None:
     """The panel above the compartment plot is legend and labels, not prose.
 
@@ -5049,14 +5099,23 @@ def test_the_wash_in_plot_says_what_its_denominator_is() -> None:
     the modelled circuit fraction, which approaches the dial over the
     circuit's own time constant - and the difference is the whole reason
     the trace rises the way it does early in a run.
+
+    `PL-F9TQ` changed how this is said, not whether. Two of the four
+    assertions below named prose that is gone: the held-constant caveat is
+    now the denominator-moving reading rule, which is the same fact put as
+    something to do with it, and the model-structure justification for
+    circuit being inspired - a single perfectly mixed circuit, no dead
+    space, no separate limbs - is `docs/MODEL.md` § "F_A/F_I as a displayed
+    ratio"'s alone now. That one is deliberately not asserted here: it
+    explains why the label is true, and the label is what a reader needs to
+    read the plot.
     """
 
     view, page = _build_view()
     strings = " ".join(_mounted_interface_strings(view, page))
 
     assert "not the vaporizer dial" in strings
-    assert "no dead space" in strings
-    assert "held constant" in strings
+    assert "denominator moving" in strings
     assert "Equilibrium, F_A = F_I" in strings
 
 
