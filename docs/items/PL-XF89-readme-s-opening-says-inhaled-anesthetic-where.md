@@ -3,11 +3,13 @@ id: PL-XF89
 title: README's opening says inhaled-anesthetic where the About field and pyproject say volatile - decide which scope word the project's one-line self-description uses
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: docs
 feature: project-introduction
 touches: README.md, pyproject.toml
 added: 2026-09-06
+closed: 2026-09-13
+verify: python3 -c "import pathlib; r=' '.join(pathlib.Path('README.md').read_text().split()); p=' '.join(pathlib.Path('pyproject.toml').read_text().split()); raise SystemExit(0 if 'The scope word differs between this page and the package' in r and 'a package Summary describes the artifact' in p else 1)"
 ---
 
 **Problem.** The project's one-line self-description now exists in three
@@ -68,9 +70,39 @@ them.
 asked to: the About text is not in the tree, and the tool is standard-library
 only and runs offline in a bare checkout. `PL-4MHK` records the same finding.
 
-**Decision needed.** Do the three self-descriptions settle on one scope word,
+**Decision needed — ANSWERED 2026-09-13, see below.** Do the three self-descriptions settle on one scope word,
 or is the split deliberate and stated once - README and the GitHub "About"
 naming the teaching topic ("inhaled"), `pyproject.toml` naming what the release
 models ("volatile")? And separately, the About field's "anaesthetic" against
 the US spelling every other file uses. Both edits to the About field are the
 project owner's; the two files in the tree follow whichever answer.
+
+**Answered 2026-09-13 (project owner): the divergence is deliberate and is now
+stated once.** README and the GitHub "About" field describe the *project* —
+subject and destination — and say **inhaled**. `pyproject.toml`'s `description`
+describes the *release* and says **volatile**.
+
+**Why that way round rather than one word everywhere.** "Volatile" excludes the
+gaseous inhaled agents, and a package `Summary` is metadata about the artifact
+it ships with: a wheel that models sevoflurane, isoflurane and desflurane
+described as an inhaled-anesthetic simulator over-claims to the one reader —
+someone installing it — who has nothing but that line to go on. In the other
+direction, narrowing README to "volatile" would contradict the framing the
+project owner set on 2026-09-01, recorded in `docs/WORKING_NOTES.md` under
+"Mostly settled: the project's one-line self-description", that the volatile
+set "is the current build rather than the goal". Both words are therefore
+carrying their own load, and neither file changed its wording.
+
+**What did change.** `README.md` § "What it does not simulate" gains a
+paragraph stating the split and why, placed beside the MAC-multiple
+clarification because that paragraph is already where the page says what a term
+here does and does not mean. `pyproject.toml` gains a comment above
+`description`, which is the line a maintainer would otherwise "fix" into
+agreement with README.
+
+**Left for the project owner, and this item closes without it.** The GitHub
+"About" field, verified on 2026-09-13 as still reading "PRE-RELEASE
+Open-source deterministic simulator of volatile-anaesthetic uptake and
+distribution, for education." Under this answer it takes two edits: *volatile*
+to *inhaled*, and the British *anaesthetic* to the US *anesthetic* the package
+name, the module, the repository name and every document in the tree use.

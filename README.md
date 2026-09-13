@@ -110,6 +110,15 @@ the simulated patient's state of consciousness. The full list, with the
 simplifications each one rests on, is in `docs/MODEL.md` under "Known
 limitations" and "Model boundary".
 
+**The scope word differs between this page and the package, deliberately.**
+This page and the repository description say *inhaled*, which names the subject
+the project teaches and the direction it is going — nitrous oxide is a planned
+substance rather than a reshaping of the record. `pyproject.toml`'s package
+description says *volatile*, which names what the release actually models. A
+package summary describes the artifact it ships with, so the narrower word is
+the accurate one there and the broader one would over-claim the wheel. The
+bullet above is the boundary either word is read against (`PL-XF89`).
+
 ## Running it
 
 **There is no packaged application yet.** Installers, code signing and

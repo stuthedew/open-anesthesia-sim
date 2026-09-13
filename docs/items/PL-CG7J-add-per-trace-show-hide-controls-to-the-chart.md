@@ -53,6 +53,15 @@ The filter must preserve pairing, and the test must cover the filtered case.
 A hidden trace must also disappear from any legend, so the chart never labels
 a line it is not drawing.
 
+**That last sentence was not implemented as written, and `PL-YTX9` is the
+decision that settled it (2026-09-13, project owner).** What shipped keeps the
+entry and empties it — unchecked box, empty swatch, MUTED label — because the
+legend *is* the control and a vanishing entry needs a second control to bring
+the trace back. The purpose clause holds: nothing claims a line is on the plot
+when it is not. Read the sentence above as the requirement it was, and
+`PL-YTX9` as the answer to it; `_build_trace_legend_item`'s docstring carries
+the reasoning.
+
 **Promoted by the M4 decision on 2026-09-04, and un-promoted by measuring
 it the same day.** The argument was that drawing all four M4 tuples rather
 than min and max would roughly halve the columns affordable at a given

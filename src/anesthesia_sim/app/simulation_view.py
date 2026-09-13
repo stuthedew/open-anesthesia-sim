@@ -2091,6 +2091,18 @@ class SimulationView:
         reader clicks repeatedly, and a row that reflowed under the cursor
         would move the next box out from under it.
 
+        The entry stays on screen when its trace is off, and keeps its
+        line-style words while it is off (`PL-YTX9`, decided 2026-09-13).
+        `PL-CG7J`'s brief asked for the opposite - "a hidden trace must also
+        disappear from any legend, so the chart never labels a line it is not
+        drawing" - and that purpose clause is met without removing anything:
+        the unchecked box and the empty swatch already say the line is not
+        drawn, in two channels neither of which is colour. Removing the entry
+        would need a separate control to bring the trace back, which is the
+        second list of six compartments the first paragraph above exists to
+        prevent. The style words stay for the same reason the entry does: this
+        row is a control, so what it names is what switching it on will draw.
+
         Args:
             trace: The compartment whose entry this is.
 

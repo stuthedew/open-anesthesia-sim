@@ -2611,6 +2611,17 @@ and say why. `PL-B9PY` is not moved, for the reason in its entry above.
 - Keep each milestone narrow. New ideas belong below until promoted into a
   scoped release — or in `docs/items/` when they are a task rather
   than a release.
+- **A Goal is frozen at scoping and dated there.** It records the problem the
+  release was taken on to solve, in the tense and the state of that day, and
+  closing items do not amend it. What a milestone achieved is recorded in its
+  Required scope and its Definition of done, which is where a reader looking
+  for current state should be sent. Rewriting a Goal into the past one clause
+  at a time leaves the section describing neither the problem nor the product,
+  and it puts an edit to this file on the critical path of every closure.
+  `PL-DXQC` is why this is written down rather than left to imitation: two of
+  v0.4.0's three Goal bullets were fixed while the section still asserted them
+  in the present tense, and one had been stale for two releases before anybody
+  noticed there was no convention to breach.
 
 ## Keeping the toolchain current
 
