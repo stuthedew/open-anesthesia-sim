@@ -7,9 +7,10 @@ status: done
 classes: defect, ux
 feature: presentation-safety
 touches: tools/contrast_check.py, tools/agent_identity_check.py, docs/ARCHITECTURE.md
-verify: uv run pytest tests/unit/test_contrast_check.py tests/unit/test_agent_identity_check.py && grep -q 'PL-JRS3' tools/contrast_check.py
 added: 2026-09-08
 closed: 2026-09-14
+pr: 555
+verify: uv run pytest tests/unit/test_contrast_check.py tests/unit/test_agent_identity_check.py && grep -q 'PL-JRS3' tools/contrast_check.py
 ---
 
 **Problem.** Establish what a Qt port would cost the checks that read theme.py: contrast_check and agent_identity_check would pass silently on a tree they no longer describe

@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: tools/glyph_check.py, tests/unit/test_glyph_check.py, Makefile, .github/workflows/quality.yml, docs/ARCHITECTURE.md, docket.toml, tests/unit/test_tools_portability.py
 added: 2026-09-04
 closed: 2026-09-14
+pr: 555
 verify: uv run pytest tests/unit/test_tools_portability.py && python3 tools/glyph_check.py
 ---
 

@@ -4679,6 +4679,49 @@ A display that is merely frozen, with no state change at all, is worse still.
 
 The phrase “end-tidal-equivalent” must not imply that airway sampling dynamics, dead space, or capnography are modeled.
 
+**The alert colour deliberately does not follow the medical alarm-colour
+convention** (project owner, 2026-09-14). The agent colours above are adopted
+*because* a standard obligates them; this is the opposite decision about a
+different colour, and the two are recorded together so the difference is
+visible rather than inferred.
+
+IEC 60601-1-8 governs *visual alarm signals* — indicators encoding priority by
+colour together with a flash rate. This interface has none. Every use of
+`WARNING` in `app/theme.py` is bold coloured text: the run-status word, a
+transient notice line, the agent-accounting status word, the permanent
+educational disclaimer, and the case-discard dialog. There is no indicator
+lamp, no filled banner, no flashing element and no priority tier, so there is
+nothing for the convention to bind.
+
+The disclaimer is what settles it, and it points away from adoption rather than
+toward it. `WARNING` is the colour of a line that is on screen *always*, and a
+monitor's alarm colours carry meaning precisely because they are absent until
+something is wrong. A permanent element painted in a high- or medium-priority
+alarm colour would teach the opposite of the convention it borrowed. The
+divergence is also chosen for its own sake: a teaching tool that looks
+unmistakably unlike a monitor cannot be mistaken for one, which is the reading
+this project's disclaimers already take.
+
+The interface runs that as a signal economy one level down. The
+supported-run-length boundary is `MUTED`, not `WARNING`, because colouring a
+correct model's declared boundary as a fault teaches a reader to distrust a
+number that is sound, and would spend the one signal this interface has.
+
+Two things bind regardless, and neither is in question: any colour chosen still
+has to clear the contrast target `tools/contrast_check.py` enforces, and the
+ISO 5360 agent colours are untouched — they identify an agent and carry no
+urgency, which is why Table 2 footnote b obligates them and nothing obligates
+this one. **The decision binds `v0.5.1` as much as the current interface**: the
+port redecides the palette and is the moment an indicator-shaped surface could
+first appear, and it must not arrive carrying a monitor's priority palette.
+
+*The priority-to-colour mapping itself is deliberately not recorded here.* It
+could not be established from a primary source, and the secondary sources
+disagree — cyan, blue, and "green or blue" from three independent reports of
+the low-priority colour. Writing down a value that is wrong at least twice over
+would be worse than recording none, and the decision above does not depend on
+it.
+
 ### MAC multiples as a display unit
 
 Every compartment is displayed twice: as a percent of one atmosphere, and as

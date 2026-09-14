@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-02
 closed: 2026-09-14
+pr: 555
 verify: python3 tools/doc_check.py check && grep -q 'METRIC_GRID_COLUMNS' docs/MODEL.md
 ---
 
