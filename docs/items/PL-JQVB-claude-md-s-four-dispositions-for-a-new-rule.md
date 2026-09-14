@@ -5,11 +5,14 @@ priority: P3
 effort: S
 status: done
 classes: session-cost, docs
+milestone: v0.4.23
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/resident-instructions.md
 added: 2026-09-05
 closed: 2026-09-14
+pr: 558
 verify: python3 tools/doc_check.py check | grep -q 'instructions loaded on demand:' && grep -q 'def test_a_rule_routed_into_a_skill_moves_both_totals' tests/unit/test_doc_check.py
 ---
+
 **Problem.** `CLAUDE.md`'s four dispositions for a new rule — a check, a
 skill, a path-scoped rule, or resident — name no carrier for two things this
 repository already uses: a paste-able brief handed to a fresh session, and an

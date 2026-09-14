@@ -5,11 +5,14 @@ priority: P2
 effort: S
 status: done
 classes: planning, docs
+milestone: v0.4.23
 touches: .claude/rules/apparatus-standard.md
 added: 2026-09-05
 closed: 2026-09-14
+pr: 558
 verify: grep -q 'The floor: an answer has to be true' .claude/rules/apparatus-standard.md
 ---
+
 **Problem.** `.claude/rules/apparatus-standard.md` sets a deliberately
 lower bar for `subprojects/docket/`, `tools/`, `.claude/`, `docs/worker.md` and
 `CLAUDE.md`, and `.claude/rules/expert-review.md` scopes the specialist
