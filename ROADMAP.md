@@ -2780,10 +2780,30 @@ the last eight are the feature itself.
 - **The 30-day scenario cap becomes an explicit halt** (queue item PL-Y5WR).
   Safety-classed, and its only requiring item was dropped with `PL-011`, so it
   is carried here rather than lost.
-- **A recorded control timeline can be applied to a run** (queue item PL-J2TD),
-  which is the replay half of planned item 8 and the mechanism by which a point
-  *between* recorded samples is reached at all. Internal: no user-facing replay
-  control.
+- **A fork resumes into a live run** (queue item PL-J2TD): a run is opened at a
+  canonical keyframe state of another run, with its clock re-based by
+  subtracting the fork instant, and advances from there by the path a live run
+  already takes. A branch has to become something a learner can *manage*, which
+  is what separates it from a second curve, and it is what item 12's fork and
+  the in-loop crossing detection two bullets down both presuppose. Internal: no
+  user-facing replay control, which stays planned item 10 behind item 9's
+  save/load.
+
+  **Narrowed 2026-09-14** (project owner) from "a recorded control timeline can
+  be applied to a run ... the mechanism by which a point *between* recorded
+  samples is reached at all", which the first bullet of this list has since
+  made wrong twice over. `PL-T691` delivered the applied timeline: a
+  `RunDefinition`'s segment list *is* the recorded timeline and `state_at`
+  answers any instant of it in closed form, so a point between recorded samples
+  is already reached, and `tests/integration/test_controller.py` asserts the
+  reproduction to 6.7e-16 as a fraction of one atmosphere. The bullet's other
+  half — a resimulation driver sharing the live advance path — is now refused
+  by § "The canonical evaluation rule", which takes every replayed, compared or
+  branch-opening value canonically: a driver re-driving the fixed step path
+  composes a third order of floating-point operations, measured there at
+  1.8e-14 from the canonical answer, and the branch-reproduction entry below
+  asserts element-wise equality rather than a tolerance. What was left once
+  both halves went is the resumption, and that is what this entry now asks for.
 - **Time bookmarks and MAC targets, as two separately listed collections**
   (queue item PL-LPLD). The Gas Man reference simulator's own shape, and its
   scope floor: an absolute simulated time, and a percent of MAC on any graphed

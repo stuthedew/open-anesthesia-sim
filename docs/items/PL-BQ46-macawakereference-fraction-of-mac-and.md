@@ -9,6 +9,7 @@ feature: core-domain-language
 touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/app/formatting.py, tests/unit/test_formatting.py
 added: 2026-09-13
 closed: 2026-09-14
+pr: 561
 verify: uv run pytest tests/unit/test_formatting.py && grep -q 'def test_a_concentration_fraction_reaching_the_mac_awake_band_is_refused_by_mypy_alone' tests/unit/test_formatting.py
 ---
 
