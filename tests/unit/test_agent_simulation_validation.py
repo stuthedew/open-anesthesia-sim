@@ -13,6 +13,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationExecutionError,
     SimulationNumericalError,
 )
+from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 # The three constants that set how far a run's numbers may drift before
 # `require_valid_agent_accounting()` halts it, restated here rather than
@@ -389,3 +390,51 @@ def test_the_scale_floor_carries_the_relative_error_before_anything_is_delivered
     assert unaccounted.relative_error == pytest.approx(
         residual_l / DOCUMENTED_MINIMUM_RELATIVE_SCALE_L
     )
+
+
+def test_an_annihilated_propagator_cannot_reach_the_accounting_check(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`PL-3PRZ`: the regression at an alveolar volume of 1e-300 L.
+
+    The accounting identity above is not what failed here, and hardening it
+    would not have helped. At 1e-300 L the squarings drove the propagator to
+    the zero matrix, `propagate()` returned the zero state vector, and the
+    identity was then handed 0 + 0 - 0 - 0: it balanced, correctly, on totals
+    that had all been annihilated together. Nothing delivered, nothing
+    exhausted, nothing stored, and a reported alveolar fraction of exactly
+    0.0 - the plausible-looking number `CLAUDE.md` puts above every other
+    failure, produced with every guard in the path satisfied.
+
+    What fixes it is upstream, in `core/matrix_exponential.py`, which now
+    refuses a zero propagator because `exp(A*dt)` is nonsingular. This test
+    pins the end of the path rather than that refusal, so it still fails if
+    the guard is removed and the arithmetic reverts.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    system.alveoli.gas_volume_l = 1e-300
+
+    with pytest.raises(SimulationNumericalError, match="could not be completed"):
+        system.advance(0.1)
+
+    assert system.alveoli.agent_amount_l == 0.0
+    assert system.agent_simulation_validator.delivered_agent_l == 0.0
+
+
+def test_an_alveolar_volume_the_model_can_still_step_is_not_refused() -> None:
+    """The boundary the regression above must not have moved.
+
+    1e-6 L is four orders below anything a lung reaches and the model steps it
+    without complaint, which is the behaviour recorded in `PL-3PRZ`'s table
+    before the fix. A guard that took this with it would have traded a silent
+    wrong answer for a refusal of the model's own working range.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    system.alveoli.gas_volume_l = 1e-6
+
+    result = system.advance(0.1)
+
+    assert result.agent_accounting.passes_validation
+    assert result.fresh_gas_exchange.delivered_agent_l > 0.0
