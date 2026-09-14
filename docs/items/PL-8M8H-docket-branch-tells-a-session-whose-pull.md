@@ -264,3 +264,16 @@ still prints `MERGE`, which is correct: the detector ran and returned false.
 subject-derived and names ids from every branch that merged. It still prints
 under the new block, where it is now consistent with the advice above it rather
 than contradicting it two lines apart.
+
+**What the read costs, measured rather than assumed** (2026-09-14, this
+repository, warm cache): `landed_whole` is **87 ms** and `branch_state` as a
+whole is 107 ms on a branch in the `MERGE` state, so the verdict is about five
+sixths of that call. For comparison `_cuts`, the digest's other git walk,
+records 103 ms and is gated the same way.
+
+It is paid once per session and only on the one arm, which is what the gating
+buys: a session that starts on a fresh branch off `main` is `CURRENT` -
+`behind == 0` - and pays nothing at all, and so do `PULL`, `RESTART` and
+`REWRITTEN`. The arm that pays is a branch both behind and ahead, which is a
+resumed session or one whose base moved under it - the case where the wrong
+advice costs a commit.
