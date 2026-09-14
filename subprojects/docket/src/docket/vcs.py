@@ -32,7 +32,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from .model import CLOSED_STATUSES, parse_item
-from .release import version_in
+from .release import NOTES_DIR, version_in
 from .store import ID_PATTERN
 
 # The default branch, in the order it is looked for: a branch whose tip that
@@ -1442,6 +1442,12 @@ RESTART = "restart"
 PULL = "pull"
 MERGE = "merge"
 REWRITTEN = "rewritten"
+#: A branch the base has already taken work from, which has gained a commit
+#: since. The counts cannot reach it: a squash merge leaves the branch
+#: containing none of the commits that landed its content, so `ahead` counts
+#: them all and `RESTART` - which fires at `ahead == 0` - is never reached.
+#: It is read from the content instead, by `landed_whole` (`PL-8M8H`).
+LANDED = "landed"
 
 
 @dataclass(frozen=True)
@@ -1520,6 +1526,22 @@ class BranchState:
     behind: int = 0
     ahead: int = 0
     landed: tuple[str, ...] = ()
+    #: Whether the base has already taken a whole commit of this branch's work,
+    #: read from the content rather than from the counts or from `landed`.
+    #:
+    #: Populated by `branch_state` only where the counts would otherwise say
+    #: `MERGE`, because that is the one arm whose advice it changes and the
+    #: read costs three git calls that every other arm would pay for nothing.
+    #: `False` therefore means "not asked" as often as it means "no", which is
+    #: the safe direction: a branch wrongly left at `MERGE` is where this
+    #: started, and a branch wrongly sent to `LANDED` is told to restart.
+    #:
+    #: **Not `landed` above, which is subject-derived.** `_landed_since` reads
+    #: leading ids off the base's new subjects, so it proves nothing about
+    #: content and names ids from every branch that merged rather than this
+    #: one. It already contradicts the `MERGE` advice printed above it, two
+    #: lines apart, and it still must not be the detector.
+    landed_whole: bool = False
     rewrite: RewriteReport | None = None
     fetched: bool = False
     declined: str = ""
@@ -1527,13 +1549,23 @@ class BranchState:
 
     @property
     def disposition(self) -> str:
-        """Which of the five states this is, or `""` when there is no answer.
+        """Which of the six states this is, or `""` when there is no answer.
 
         `REWRITTEN` outranks both `PULL` and `MERGE` because it contradicts
         them: where the divergence is duplicated history, pulling or merging
         replays the base's own commits against themselves, and it is the
         default branch - the `PULL` case - where a local copy left on the old
         history does the most damage.
+
+        `LANDED` sits below `REWRITTEN` and above `MERGE` for the same reason
+        and in the same direction. It contradicts `MERGE` outright - a push to
+        a branch whose pull request already merged is merged by nothing, so
+        merging the base in and pushing loses the commit at the one moment
+        recovering it is still free (`#284`, `PL-8M8H`). And it must sit
+        *below* `REWRITTEN`, because a branch left on pre-rewrite history has
+        every mark of one whose pull request merged: the rewrite changed every
+        hash and left every byte alone, so the content split cannot tell them
+        apart, and the existing arm excludes that shape at no cost.
         """
         if self.declined:
             return ""
@@ -1543,7 +1575,9 @@ class BranchState:
             return REWRITTEN
         if self.is_default:
             return PULL
-        return RESTART if self.ahead == 0 else MERGE
+        if self.ahead == 0:
+            return RESTART
+        return LANDED if self.landed_whole else MERGE
 
     @property
     def is_default(self) -> bool:
@@ -1760,6 +1794,12 @@ def branch_state(root: Path, *, runner: Runner | None = None, fetched: bool = Fa
             ),
         )
 
+    # Asked only where the counts would otherwise say `MERGE`, which is the one
+    # arm whose advice this changes: behind, ahead, not the default branch, and
+    # not a rewrite. `CURRENT`, `PULL`, `RESTART` and `REWRITTEN` pay nothing,
+    # which matters because the session-start hook runs this every session and
+    # the read costs three git calls.
+    says_merge = bool(behind and ahead and rewrite is None and base.rsplit("/", 1)[-1] != branch)
     return BranchState(
         branch=branch,
         base=base,
@@ -1769,6 +1809,7 @@ def branch_state(root: Path, *, runner: Runner | None = None, fetched: bool = Fa
         # the base is then outside this history, and naming a release's worth
         # of ids would answer a question nobody asked.
         landed=_landed_since(fork, base, root, run) if behind and fork else (),
+        landed_whole=says_merge and landed_whole(base, root, run),
         rewrite=rewrite,
         fetched=fetched,
     )
@@ -1898,6 +1939,84 @@ class CutsInFlight:
     branches: tuple[BranchCut, ...] = ()
     unreadable: tuple[str, ...] = ()
     base: str = ""
+
+
+@dataclass(frozen=True)
+class CutWindow:
+    """What the default branch took while this checkout's release cut sat unmerged.
+
+    **The seam this exists to make visible.** `bin/docket release` stamps the
+    finished work with `milestone: vX.Y.Z` and renders the notes from it; the
+    tag then goes on the *merge* commit, per `ROADMAP.md` § "Tags". Anything
+    that merges between those two moments is inside the tag's span and named in
+    no release notes at all until the next release claims it, so two documents
+    answer "what shipped in vX.Y.Z" differently and neither is wrong on its own
+    terms (`PL-028F`).
+
+    **It is not rare, and it is invisible afterwards.** Measured 2026-09-14
+    across 47 tagged spans: 12 closing pull requests merged inside a tag's span
+    while its own notes named them nowhere, in 11 distinct spans - close to one
+    release in four. The window itself leaves no trace: a squash merge gives
+    the release commit the same author and commit date, so nothing in `main`'s
+    history records how long the branch was open. That is why the report is
+    made here, while the cut is still unmerged and re-running it would absorb
+    the newcomers, rather than reconciled later from a history that cannot say.
+
+    `landed` is **subject-derived**, and the advisory that prints it says so.
+    `_landed_since` reads leading ids off the base's new subjects, which names
+    a commit's own item and not necessarily a *closure*. That is the right
+    accuracy for something a person is asked to look at and would be the wrong
+    accuracy for anything acting on its own - `PL-8M8H` is the case where the
+    same read had to be refused for exactly that reason.
+    """
+
+    #: The version this checkout is cutting, without its `v`; empty when none.
+    version: str = ""
+    #: The ids leading subjects the base gained since the cut was written.
+    landed: tuple[str, ...] = ()
+    declined: str = ""
+
+
+def cut_window(
+    root: Path, *, notes_dir: str = NOTES_DIR, runner: Runner | None = None
+) -> CutWindow:
+    """Whether this checkout carries an unmerged cut, and what landed since.
+
+    Reads only the checkout's own `HEAD`, unlike `cuts_in_flight` which walks
+    every ref: the question here is what *this* session is about to merge and
+    tag, which is the one release it can still do anything about.
+
+    Args:
+        root: Repository root.
+        notes_dir: Where a cut writes its notes file.
+        runner: The git runner; the module default when omitted.
+
+    Returns:
+        An empty window where this checkout is not cutting anything, which is
+        every session but one. `declined` where git would not answer, because a
+        silent empty answer here would read as "nothing landed in the window".
+    """
+    run = runner or _run_git
+    base = default_base(root, runner=run)
+    if not run(["rev-parse", "--verify", "--quiet", base], root).strip():
+        return CutWindow(declined=f"this checkout has no {base} to compare against")
+    prefix = notes_dir.strip("/") + "/"
+    added = [
+        line.strip()
+        for line in run(
+            ["diff", "--name-only", "--diff-filter=A", f"{base}...HEAD", "--", notes_dir], root
+        ).splitlines()
+        if line.strip().startswith(prefix)
+    ]
+    if not added:
+        return CutWindow()
+    versions = sorted({name[len(prefix) :].removesuffix(".md").lstrip("v") for name in added})
+    fork = run(["merge-base", "HEAD", base], root).strip()
+    if not fork:
+        return CutWindow(
+            version=versions[-1], declined=f"this clone shares no readable history with {base}"
+        )
+    return CutWindow(version=versions[-1], landed=_landed_since(fork, base, root, run))
 
 
 def cuts_in_flight(
@@ -3161,6 +3280,73 @@ def _commits_by_landing(
         ):
             took_one_whole = True
     return tuple(found), took_one_whole
+
+
+def landed_whole(
+    base: str, root: Path, run: Runner, *, ref: str = "HEAD", items_dir: str = "docs/items"
+) -> bool:
+    """Whether the default branch has already taken a whole commit of this ref's work.
+
+    **The question the commit counts cannot answer.** A squash merge writes one
+    new commit carrying the branch's content and none of its commits, so the
+    branch still counts every one of them as `ahead` and never reaches the
+    `ahead == 0` that `RESTART` fires on. It reads as `MERGE` - "merge the base
+    in" - which on a merged pull request is advice that loses the commit the
+    session is holding, because nothing merges a merged pull request a second
+    time (`#284`, `PL-8M8H`).
+
+    **The reading is `orphaned`'s, deliberately not a second one.** Every guard
+    the verdict needs is already written and tested next door, and the project
+    owner's decision of 2026-09-12 requires them rather than the unqualified
+    "the landed side is non-empty" the item's own brief asserted: two documented
+    shapes satisfy that and neither is a merge. So the pipeline is reused whole
+    - `_landing_split` for the content split, `_superseded` to drop paths the
+    base's tip no longer needs (`PL-XLQ5`), and `_commits_by_landing` for the
+    unit test that a squash takes commits whole where convergence scatters
+    files inside them (`PL-JHJ3`, `PL-5TRV`) and for its refusal to read a
+    queue-only annotation as merge evidence (`PL-JBRC`).
+
+    **Where it differs from `orphaned`, and why.** That report wants a branch
+    whose work the base took only *part* of, so it requires a commit left
+    behind as well as one taken whole. This wants the whole of that family: a
+    branch whose every commit landed is exactly the case observed on
+    `claude/focused-carson-ji73cn`, where `git diff --diff-filter=A` against
+    the base was empty and the branch was still told to merge. Requiring
+    something left behind would decline the commonest instance of the defect.
+
+    **A wrong answer here is not symmetric, and the asymmetry decides the
+    trade.** Saying `MERGE` where the truth is `LANDED` is the defect - one
+    commit lost silently. Saying `LANDED` where the truth is `MERGE` costs a
+    reader one look at the pull request before restarting, and `format_branch_state`
+    prints the verdict rather than acting on it, as everything here does.
+    Nevertheless the narrowed reading is what is used, because the recovery it
+    leads to deletes a ref.
+
+    Args:
+        base: The default branch to compare against.
+        root: Repository root.
+        run: The git runner.
+        ref: Which side to read; the checkout's own `HEAD` by default.
+        items_dir: The queue directory, whose commits are not merge evidence.
+
+    Returns:
+        `True` only where the base holds a whole commit of this ref that is not
+        a queue annotation. `False` where it does not, and where git would not
+        answer - an unreadable fork point is the `MERGE` status quo rather than
+        an invitation to restart.
+    """
+    fork_point = run(["merge-base", base, ref], root).strip()
+    if not fork_point:
+        return False
+    landed, outstanding = _landing_split(ref, fork_point, _base_blobs(base, root, run), root, run)
+    if not landed:
+        return False
+    superseded = _superseded(ref, base, outstanding, root, run)
+    outstanding = tuple(path for path in outstanding if path not in superseded)
+    _, took_one_whole = _commits_by_landing(
+        ref, base, frozenset(landed), frozenset(outstanding), root, run, items_dir.strip("/") + "/"
+    )
+    return took_one_whole
 
 
 def orphaned(

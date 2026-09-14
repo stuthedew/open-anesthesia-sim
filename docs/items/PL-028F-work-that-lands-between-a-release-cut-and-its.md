@@ -3,10 +3,12 @@ id: PL-028F
 title: Work that lands between a release cut and its merge is inside the tag's span but absent from the release notes, and nothing reconciles the two
 priority: P2
 effort: M
-status: needs-decision
+status: done
+closed: 2026-09-14
 classes: defect, infra
 feature: release-roadmap-seam
-touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/checks.py, ROADMAP.md
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_checks.py, ROADMAP.md
+verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_vcs.py && grep -q 'def test_the_cut_window_names_what_landed_since_the_cut' subprojects/docket/tests/test_checks.py
 added: 2026-09-04
 ---
 
@@ -80,3 +82,87 @@ cheaper and puts the judgment where the context is. The third shape, moving the
 tag off the merge commit, this item rejects on sight. Whichever is taken,
 `ROADMAP.md` § "Tags" is where it is written down, since that is the section
 saying the tag goes on the merge commit without saying what that includes.
+
+## Decided and built 2026-09-14: report, do not act - and the count is what made it worth building
+
+**Decided: shape 2.** `bin/docket check` raises an advisory on a checkout
+carrying an unmerged cut, naming what the base has taken since and both
+dispositions. `ROADMAP.md` § "Tags" records what the span includes, which this
+brief's **Done when.** requires under either shape.
+
+### First, the number, because "structural rather than a one-off" was an assertion
+
+This brief rests on one observation. Measured across every tagged span, by
+matching each `(#N)` on the base against the `pr:` of the item it closed and
+asking whether that item's `milestone:` is a later release:
+
+| | |
+| --- | --- |
+| tagged spans examined | **47** |
+| spans whose tag covers a closing pull request its own notes never name | **11 (23%)** |
+| such pull requests in total | **12** |
+
+Close to one release in four, so the brief's claim holds and the build is
+justified. `PL-D9WD` reproduces exactly as recorded: `#311` merged 2026-09-04
+17:00:40, v0.3.8's release merge landed 17:15:00, and `git describe --contains`
+on it answers `v0.3.8~1` while `docs/releases/v0.3.8.md` names it nowhere.
+
+**A second measurement changed where the check had to go.** The window leaves
+no trace: a squash merge gives the release commit the same author and commit
+date on all 42 releases, so `main`'s own history cannot say how long a branch
+was open, and the divergence is recoverable only by matching pull request
+numbers against stamps. Anything that reconciles *after* the fact would be
+working from a record that cannot describe the thing it is reconciling. So the
+report has to happen while the cut is unmerged, which is also the only moment
+anything can still be done about it.
+
+**One recurring instance is a convention rather than a defect**, and it is
+excluded deliberately: a release's own cut item closes inside its own span and
+is stamped with the next release, which happens every time and which this
+project already writes down ("Twenty-one items, one of which is the v0.4.10 cut
+itself").
+
+### Why shape 1 loses, and it is not on cost
+
+*Re-stamp at merge* keeps the notes and the tag identical by construction, and
+it has no trigger here. `PL-N5WZ` established that a push made with
+`GITHUB_TOKEN` starts no workflow, so `main`'s required status checks can never
+report on a commit a merge-fired job pushes - the same wall the merge-time `pr:`
+write hit, and the reason that job was withdrawn. Every variant that does land
+needs a person at the merge, which is shape 2 with extra machinery.
+
+The judgment is also genuinely the person's. Absorbing a newcomer means the
+release narrative describing work this session did not do, which this brief
+already rejected on sight as the "recommend first, research afterwards"
+failure; letting it go to the next release is often right. `CLAUDE.md`: a tool
+that guesses at the judgment half is worse than no tool.
+
+Shape 3 stays rejected on the brief's own reasoning.
+
+### Built
+
+- `vcs.cut_window` reads the checkout's own `HEAD` for a notes file the base
+  lacks, and returns the version being cut with the ids the base gained since
+  the fork. It reads `HEAD` alone rather than every ref, unlike
+  `cuts_in_flight`: the question is what *this* session is about to tag.
+- `checks._check_cut_window` subtracts what the notes already name and what
+  this cut stamped, and advises on the rest. Advisory rather than error,
+  because both dispositions are legitimate; it fires only on a checkout
+  carrying an unmerged cut, so every other run pays one `git diff`.
+- The advisory names the remedy that already exists - re-running
+  `make release VERSION=X`, which reclaims what the cut stamped rather than
+  shipping the remainder - and says the ids are read from commit subjects, so
+  one may be in-progress work rather than a closure. That accuracy is right for
+  something a person looks at and was the wrong accuracy for `PL-8M8H`, which
+  had to refuse the same read because its verdict acts.
+- A `declined` window is said out loud rather than read as empty: silence there
+  would mean "nothing landed in the window", which is the one wrong answer.
+
+### Not done here, and named rather than folded in
+
+The 11 historical spans are not repaired. Re-tagging is destructive and the
+notes are a record of what each cut stamped, so the fix would be a sentence per
+release pointing at where the work is described - twelve edits to shipped
+history, which is a scoping call rather than this item's work. `ROADMAP.md`
+§ "Tags" now states the general rule instead, which is what makes the existing
+divergences legible without rewriting them.

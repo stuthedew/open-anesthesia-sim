@@ -267,11 +267,26 @@ happen outside: the network.
 
 **It prints; it does not act.** `git checkout -B` discards commits, so a check
 that fired unattended would be a worse failure than the staleness it cures. Two
-commands for the ordinary cases and no third: a branch behind with nothing of
-its own is restarted, a branch behind with work of its own merges the base in.
-Rebase is deliberately not offered - telling "only capture commits" from any
-other commits means guessing, and a rebase of a pushed branch needs a
-force-push, which this project's squash-merge path exists to avoid.
+commands for the ordinary cases: a branch behind with nothing of its own is
+restarted, a branch behind with work of its own merges the base in. Rebase is
+deliberately not offered - telling "only capture commits" from any other
+commits means guessing, and a rebase of a pushed branch needs a force-push,
+which this project's squash-merge path exists to avoid.
+
+**Two states replace that advice rather than adding to it, and both do so
+because the ordinary commands would destroy something.** The rewritten history
+below is one. The other is a branch whose pull request has already merged
+(`PL-8M8H`): a squash merge leaves the branch containing none of the commits
+that landed its content, so `ahead` counts them all, `restart` - which fires at
+`ahead == 0` - is never reached, and the branch reads as "merge the base in".
+Nothing merges a merged pull request a second time, so following that advice
+pushes a commit that lands nowhere, and `#284`'s follow-up was lost exactly
+that way. The verdict is read from the content instead, by `vcs.landed_whole`,
+which reuses `orphaned`'s narrowed reading whole rather than re-deriving it -
+the whole-commit test and the queue-only exclusion both travel with it. It is
+asked only where the counts would otherwise say "merge", so the other four
+states pay none of its three git calls, and it is ordered below the rewritten
+case, which a content comparison cannot tell it from.
 
 **A rewritten history is not divergence, and no count can tell them apart.**
 `filter-repo`, `filter-branch` and a force-pushed rebase of the default branch
@@ -805,6 +820,18 @@ asked for three concurrent gate items withheld the strongest one it had
 (`PL-VRMK`, 2026-09-06). A batch therefore stays the independent set when
 unlimited, and fills out with same-file work — annotated with what it shares
 and with which item — when `--limit` asks for a batch of a given size.
+
+**The same-file tier is reported by path rather than by item, rarest group
+first** (`PL-PGZK`). Tiering stopped the false refusals; it left a list whose
+entries all read alike, so the whole of it had to be read to find the two lines
+that mattered. The distribution is a short head and a long tail — measured
+2026-09-13, 237 open items declare 136 distinct paths, the largest of them 32
+items, while 72 of the 136 are declared by exactly one open item and so can
+never collide at all. One line per path collapses the head into something a
+reader can skip deliberately, and ordering by group size puts the rarely
+declared paths, where a collision is probably real, at the top. Nothing is
+dropped: every item still appears on the line of each path it shares, so this
+orders the evidence rather than filtering it.
 
 **`docket concurrent <id>` also reports what the branches in flight have
 already changed**, which is the other half of the question and the one that

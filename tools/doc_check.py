@@ -71,7 +71,7 @@ import json
 import re
 import subprocess
 import sys
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
@@ -92,7 +92,7 @@ try:
     # `bin/docket check` enforces, and the drift would be in the documents that
     # say which milestone is current and what it still owes.
     from docket.config import load as load_docket_config
-    from docket.model import CLOSED_STATUSES
+    from docket.model import CLOSED_STATUSES, Item
     from docket.roadmap import (
         BASELINE_MARK,
         BULLET_RE,
@@ -103,6 +103,7 @@ try:
         TABLE_ROW_RE,
         TIMELINE_HEADING,
         VERSION_TABLE_HEADING,
+        GateEntry,
         MilestoneSection,
         baseline_heading,
         parse_milestones,
@@ -1314,6 +1315,30 @@ GATE_GROUP_RE = re.compile(
     r"(?:,\s*(?P<ids>[\w-]+)\s+item ids?)?"
 )
 
+# A frozen list's count of the entries *withheld from delegation*, as in
+# `**Seven entries are marked `not-delegable`,**`. Unlike the two counts beside
+# it in `check_gate_counts`, this one states a property of the entries rather
+# than the list's length - and it is checkable for one reason only: `docket`
+# reads `not-delegable:` off each item, so the number is a query over fields
+# that already exist rather than a judgment about what an entry's work touches.
+#
+# `PL-GLBF` is where the line between the two was drawn, and it is worth having
+# in front of whoever extends this. The same section's "Three entries reach into
+# `src/`" looks equally checkable and is not: the nearest field, `touches:`,
+# records the files an item is *expected to change*, where the sentence records
+# the scope an item is *permitted to reach*. On that section's own three ids a
+# checker over `touches:` computes two against a correct three, because
+# `PL-ZN0N` may annotate `noqa` directives in `src/` without planning to edit a
+# file there. A check built on the near-miss field would fail a correct
+# sentence, which is worse than no check.
+#
+# Read only inside the gate subsection, so position fixes the meaning the way
+# it does for the group headings above: a sentence in one section counting
+# another section's list would otherwise be compared against the wrong list.
+NOT_DELEGABLE_COUNT_RE = re.compile(
+    r"(?P<count>[\w-]+)\s+entr(?:y|ies)\s+(?:is|are)\s+marked\s+`not-delegable`"
+)
+
 
 def _count_word(word: str) -> int | None:
     """The number a count word states, or `None` where it states none."""
@@ -1391,6 +1416,71 @@ def _table_counts(text: str, section: MilestoneSection) -> Iterator[tuple[int, s
                         yield line, where, stated
 
 
+def _read_store(root: Path) -> Mapping[str, Item] | None:
+    """Every item in the queue by id, or `None` where the store cannot answer.
+
+    `None` rather than an empty mapping, because the two mean opposite things
+    to a count that fails hard: an absent store can decide nothing, where an
+    empty one would make every stated count wrong by exactly its own size.
+    `read_items` returns `[]` for a directory that is not there, which is right
+    for the advisory that already reads it and would be a confident wrong
+    answer here, so the directory is asked about rather than inferred from the
+    result. The caller turns the `None` into a `declined` line naming what went
+    unchecked.
+    """
+    try:
+        config = load_docket_config(root)
+    except (OSError, ValueError):  # pragma: no cover - a config that will not parse
+        return None
+    store = root / config.items_dir
+    if not store.is_dir():
+        return None
+    try:
+        return {item.identifier: item for item in read_items(store)}
+    except (OSError, ValueError):  # pragma: no cover - a store that will not parse
+        return None
+
+
+def _withheld_counts(lines: Sequence[str], section: MilestoneSection) -> Iterator[tuple[int, int]]:
+    """Each `N entries are marked `not-delegable`` claim in one frozen list.
+
+    Yields the line and the number stated. Scanned over the gate subsection
+    alone - see `NOT_DELEGABLE_COUNT_RE` for why position rather than wording
+    is what bounds it.
+    """
+    for index in range(section.gate_line, _subsection_end(lines, section.gate_line)):
+        match = NOT_DELEGABLE_COUNT_RE.search(lines[index])
+        if match is None:
+            continue
+        stated = _count_word(match.group("count"))
+        if stated is not None:
+            yield index + 1, stated
+
+
+def _withheld_entries(
+    section: MilestoneSection, items: Mapping[str, Item]
+) -> list[GateEntry] | None:
+    """The section's entries holding an item marked `not-delegable`.
+
+    Entries rather than ids, matching every other count `check_gate_counts`
+    holds a frozen list to: one problem recorded under two ids is one entry,
+    and the prose counts entries.
+
+    `None` where the list names an id the store does not hold, because the
+    count is then not computable rather than smaller. Nothing else in this file
+    reports a frozen entry whose id has no item, so reading a missing one as
+    "not withheld" would fail a correct sentence on a truncated checkout and
+    name the sentence as the fault.
+    """
+    if any(identifier not in items for entry in section.gate_entries for identifier in entry.ids):
+        return None
+    return [
+        entry
+        for entry in section.gate_entries
+        if any(items[identifier].not_delegable for identifier in entry.ids)
+    ]
+
+
 def check_gate_counts(root: Path, report: Report) -> None:
     """Hold every count a frozen list states about itself to the list.
 
@@ -1420,6 +1510,7 @@ def check_gate_counts(root: Path, report: Report) -> None:
         return
     text = roadmap.read_text(encoding="utf-8")
     lines = text.splitlines()
+    items = _read_store(root)
 
     for section in parse_milestones(text):
         if not section.records_a_gate:
@@ -1452,6 +1543,22 @@ def check_gate_counts(root: Path, report: Report) -> None:
                 report.errors.append(
                     f"{ROADMAP}:{line}: the {where} row for {rendered} says {stated} "
                     f"entries, but its frozen list holds {total}"
+                )
+
+        withheld = None if items is None else _withheld_entries(section, items)
+        for line, stated in _withheld_counts(lines, section):
+            if withheld is None:
+                report.declined.append(
+                    f"{ROADMAP}:{line}: this `not-delegable` count of {rendered}'s frozen "
+                    "list was not compared, because the item store did not answer for every "
+                    "id on the list; `bin/docket check` is what reports why"
+                )
+                continue
+            if stated != len(withheld):
+                report.errors.append(
+                    f"{ROADMAP}:{line}: this sentence says {stated} of {rendered}'s frozen "
+                    f"entries are marked `not-delegable`, but {len(withheld)} of them hold "
+                    "an item carrying that field"
                 )
 
 

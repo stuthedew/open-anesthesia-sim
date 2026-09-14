@@ -19,10 +19,12 @@ from .concurrency import (
     ORDERING,
     SAME_AREA,
     SAME_FILE,
+    Conflict,
     conflicts_for,
     observed_conflicts,
     parallel_batch,
     sequenceable,
+    shared_by_path,
 )
 from .config import CONFIG_NAME, Config
 from .config import load as load_config
@@ -62,6 +64,7 @@ from .vcs import (
     churn,
     closed_by,
     closures_on_base,
+    cut_window,
     cuts_in_flight,
     default_base,
     fetch_remote,
@@ -337,6 +340,14 @@ def cmd_check(args: argparse.Namespace) -> int:
         # interrupted one made them disagree silently (`PL-1MKQ`). One
         # directory read of about 36 small files.
         notes=notes_by_version(root),
+        # The seam between those two halves. The notes are written at the cut
+        # and the tag goes on the merge, so anything landing in between is
+        # inside the tag's span and named in no notes - measured at 12 closing
+        # pull requests across 11 of 47 tagged spans (`PL-028F`). Answerable
+        # only while the cut is unmerged, which is where this runs: on the
+        # release branch and on its pull request, where re-running the cut
+        # still absorbs the newcomers.
+        window=cut_window(root),
     )
     print(render.format_check(report))
     return 1 if report.errors else 0
@@ -657,6 +668,20 @@ def _print_observed(args: argparse.Namespace, item: Item, flight: FlightReport) 
         print(f"    ({len(files.unreadable)} ref(s) unread: {', '.join(files.unreadable)})")
 
 
+def _print_shared_files(conflicts: list[Conflict]) -> None:
+    """The shared-file tier, one line per path rather than one per item.
+
+    `shared_by_path` decides the grouping and the order; this only prints it.
+    """
+    groups = shared_by_path(conflicts)
+    if not groups:
+        print("    nothing")
+        return
+    for path, identifiers in groups:
+        count = len(identifiers)
+        print(f"    {path} - {count} item{'' if count == 1 else 's'}: {', '.join(identifiers)}")
+
+
 def cmd_concurrent(args: argparse.Namespace) -> int:
     """What can be worked alongside what.
 
@@ -697,10 +722,8 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
             print("    nothing")
         print()
         print("  Shares a file - proceed, and land the smaller change first:")
-        for conflict in by_strength[SAME_FILE] or []:
-            print(f"    {conflict.describe()}")
-        if not by_strength[SAME_FILE]:
-            print("    nothing")
+        print("    (by path, rarest first: a path few items declare is the strong evidence)")
+        _print_shared_files(by_strength[SAME_FILE])
         print()
         print("  Same area only - one declaration is coarser than the other:")
         for conflict in by_strength[SAME_AREA] or []:

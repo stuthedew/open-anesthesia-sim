@@ -1,13 +1,14 @@
 ---
 id: PL-PGZK
 title: docket concurrent's answer is dominated by docs/MODEL.md, which nearly every item touches, so it rules out almost everything and cannot discriminate between real and nominal contention
-status: ready
+status: done
+closed: 2026-09-14
 added: 2026-09-03
 priority: P2
 effort: S
 classes: defect, infra
 feature: dev-tooling
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_concurrency.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/concurrency.py, subprojects/docket/tests/test_concurrency.py
 verify: uv run pytest subprojects/docket/tests/test_concurrency.py && grep -q 'def test_shares_a_file_groups_by_path' subprojects/docket/tests/test_concurrency.py
 ---
 
@@ -124,3 +125,35 @@ backfilled across 32 items to improve an advisory list nobody is refused by.
 **`touches:` corrected.** The brief named `render.py`; the two tier headings are
 printed from `subprojects/docket/src/docket/cli.py:693-699`. The test file is
 added because the `verify:` command names it.
+
+## Built 2026-09-14
+
+`concurrency.shared_by_path` regroups the `Shares a file` tier by path, fewest
+items first, and `cli._print_shared_files` prints it. The grouping is a pure
+function in `concurrency.py` rather than logic inside the printer, so the
+ordering - which is the decision - is testable without capturing stdout, and
+`cli.py` is left doing presentation only.
+
+Measured on this brief's own probe, `bin/docket concurrent PL-3PRZ`: the tier
+falls from 38 lines to 3, and the two that carry evidence are the first two.
+
+```
+  Shares a file - proceed, and land the smaller change first:
+    (by path, rarest first: a path few items declare is the strong evidence)
+    src/anesthesia_sim/core/agent_simulation_validation.py - 1 item: PL-6194
+    src/anesthesia_sim/core/alveolar.py - 2 items: PL-DJYF, PL-HXKC
+    docs/MODEL.md - 35 items: PL-024, PL-036, ... (35 ids)
+```
+
+The top line is the one a session acts on, and on this run it was immediately
+useful: `PL-DJYF` is in flight on `origin/claude/gate-items-batch-4fxcog` and
+has already changed `core/alveolar.py`, which the old form buried thirty lines
+down among items sharing `docs/MODEL.md` and nothing else.
+
+**`touches:` corrected again** - the grouping lives in `concurrency.py`, which
+the brief did not name.
+
+**The contract is unchanged and the output now says so twice**: every item
+still appears, on the line of each path it shares, so this orders the evidence
+rather than filtering it. `test_the_regrouped_tier_drops_no_item` is what holds
+that.

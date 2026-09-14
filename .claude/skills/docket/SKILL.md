@@ -218,6 +218,13 @@ git fetch origin main
 git checkout -B "$BRANCH" origin/main
 ```
 
+**`bin/docket branch` now names this case while the commit is still
+recoverable**, which is the cheaper end of the same problem: it prints the
+restart advice above rather than "merge the base in" where the base already
+holds a whole commit of the branch (`PL-8M8H`). That is the session holding the
+commit being told, rather than the next session finding it stranded. Reaching
+`stranded` still means the push already happened.
+
 **The first command is the project owner's, and the second is not a substitute
 for it.** `git branch -dr` clears this clone's remote-tracking ref and nothing
 else, so where the branch still exists on the remote the next `git fetch

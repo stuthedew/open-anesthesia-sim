@@ -7,7 +7,8 @@ classes: defect, docs
 feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_not_delegable_subset_count' tests/unit/test_doc_check.py
-status: ready
+status: done
+closed: 2026-09-13
 added: 2026-09-01
 ---
 
@@ -157,3 +158,28 @@ cannot go stale for the same reason a shipped section cannot.
 Whether that is worth a second pass is a scoping call rather than a defect, and
 it is deliberately not folded in here: doing so would turn an `S` item about
 three dead numbers into an open-ended audit of the roadmap's live prose.
+
+## Built 2026-09-13
+
+`tools/doc_check.py`'s `check_gate_counts` now holds a
+`**N entries are marked \`not-delegable\`**` sentence to the items the section's
+frozen list names, and `ROADMAP.md`'s Definition of done for v0.2.8 records why
+its two neighbours are left to the reader. The `not-delegable` count is entries
+rather than ids, matching every other count the function checks.
+
+**Two failure directions were closed that the decision did not name**, both
+found by writing the tests rather than by reading the code:
+
+- `read_items` answers `[]` for a store directory that is not there, so a
+  truncated checkout would have read as "no entry is withheld" and failed the
+  sentence by exactly its own size. `_read_store` asks whether the directory
+  exists rather than inferring it from the result, and returns `None`, which
+  the check turns into a `declined` line.
+- A frozen entry naming an id the store does not hold would have read as "not
+  withheld", failing a correct sentence and naming the prose as the fault.
+  Nothing else in `doc_check.py` reports that state, so `_withheld_entries`
+  returns `None` and the check declines instead.
+
+Proven by watching it fail first: `ROADMAP.md:848` edited from `Seven` to
+`Eight` reports `says 8 ... but 7 of them hold an item carrying that field`,
+and reverting clears it.

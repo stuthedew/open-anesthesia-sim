@@ -30,7 +30,14 @@ from .plan import OfferedReport
 from .release import NOTES_DIR, SEMVER_RE, notes_name, unrecorded_milestones, version_key
 from .roadmap import MilestoneStates
 from .store import ID_PATTERN, ID_RE, filename_for
-from .vcs import ClosureReport, LostReport, PullRequestHistory, RecordReport
+from .vcs import (
+    DEFAULT_BRANCHES,
+    ClosureReport,
+    CutWindow,
+    LostReport,
+    PullRequestHistory,
+    RecordReport,
+)
 from .verify import LandedReport, reads_check_output, reenters_verify
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
@@ -590,6 +597,69 @@ def _check_release_notes(
                 f"not carry `milestone: {name}`, so the notes and the store disagree about "
                 f"what {name} shipped: {_named(unstamped)}"
             )
+
+
+def _check_cut_window(
+    report: Report, window: CutWindow | None, notes: dict[str, frozenset[str]] | None
+) -> None:
+    """What the base took while this checkout's release cut sat unmerged.
+
+    **Report, do not act** - which is the decision `PL-028F` asked for, and it
+    was taken on two findings rather than on cost.
+
+    The alternative was to re-stamp at merge, so the notes and the tag span
+    agree by construction. That has no trigger in this repository: `PL-N5WZ`
+    established that a push made with `GITHUB_TOKEN` starts no workflow, so a
+    job fired by the merge can never satisfy `main`'s required status checks,
+    and the same wall the merge-time `pr:` write hit stands here. Every variant
+    that does land needs a person at the merge, which is this with extra
+    machinery.
+
+    And the judgment genuinely belongs to the person. Absorbing a newcomer
+    means the release narrative describes work this session did not do, which
+    `PL-028F` rejected on sight as the "recommend first, research afterwards"
+    failure; letting it go to the next release is often right. Nothing here can
+    decide that, and `CLAUDE.md` is explicit that a tool guessing the judgment
+    half is worse than no tool.
+
+    **An advisory rather than an error**, because both dispositions are
+    legitimate and because `landed` is subject-derived: `CutWindow` says why
+    that is the right accuracy here and the wrong accuracy for anything acting
+    on its own. It fires only on a checkout carrying an unmerged cut, which is
+    one session in a release, so it costs nothing on every other run - the test
+    `CLAUDE.md` requires a check to pass to keep its place.
+
+    The remedy it names already exists: re-running the cut of the same version
+    reclaims what it stamped and folds the newcomers in, which is the property
+    `unreleased`'s `resuming` argument was built for.
+    """
+    if window is None or not window.version:
+        return
+    if window.declined:
+        report.advisories.append(
+            f"the release being cut here could not be compared against {DEFAULT_BRANCHES[0]}, "
+            f"because {window.declined}; anything that merged while this cut has been open is "
+            "inside the tag's span and named in no notes"
+        )
+        return
+    named = (notes or {}).get(window.version, frozenset())
+    stamped = {
+        item.identifier
+        for item in report.items
+        if item.milestone.strip().lstrip("v") == window.version
+    }
+    strangers = sorted(set(window.landed) - named - stamped)
+    if not strangers:
+        return
+    report.advisories.append(
+        f"v{window.version} is cut here and not yet merged, and the base has taken "
+        f"{_named(strangers)} since - work inside the tag's span that "
+        f"{NOTES_DIR}/{notes_name(window.version)} does not name, because the tag goes on the "
+        "merge commit. Either absorb it - merge the base in and re-run "
+        f"`make release VERSION={window.version}`, which reclaims what this cut already "
+        "stamped - or let it go to the next release, which is often right. Read from commit "
+        "subjects, so an id here may be in-progress work rather than a closure"
+    )
 
 
 def _check_provenance(report: Report, history: PullRequestHistory | None) -> None:
@@ -1786,6 +1856,7 @@ def analyze(
     version: str | None = None,
     milestones: MilestoneStates | None = None,
     notes: dict[str, frozenset[str]] | None = None,
+    window: CutWindow | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
@@ -1811,6 +1882,10 @@ def analyze(
     `notes` is what each cut release's notes file says it shipped, which is
     the other half of a record the store holds one half of. Like the rest, a
     caller that does not supply it leaves the comparison unmade.
+
+    `window` is what the default branch took while a release cut on this
+    checkout sat unmerged - the seam between the notes, which are written at
+    the cut, and the tag, which goes on the merge.
     """
     settings = config or Config()
     ids = offered.ids if offered is not None else None
@@ -1822,6 +1897,7 @@ def analyze(
     _check_filenames(report)
     _check_milestones(report, version)
     _check_release_notes(report, notes, version)
+    _check_cut_window(report, window, notes)
     _check_provenance(report, history)
     _check_landed(report, landed)
     _check_selects_nothing(report, landed, ids)

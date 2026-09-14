@@ -3,10 +3,11 @@ id: PL-8M8H
 title: docket branch tells a session whose pull request already merged to merge the base in, not to restart, so the push that loses work looks correct
 priority: P2
 effort: M
-status: ready
+status: done
+closed: 2026-09-14
 classes: defect, infra
 feature: parallel-sessions
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_whose_work_the_base_already_holds_is_told_to_restart' subprojects/docket/tests/test_vcs.py
 added: 2026-09-04
 ---
@@ -203,3 +204,76 @@ the stale branch appearing to *remove* a release stamp — which is what sent th
 to look at the branch at all. Nothing about that check knows anything about merged
 branches. Without the coincident release, the `MERGE` line would have been followed,
 which is the path that lost `#284`'s commit.
+
+## Built 2026-09-14
+
+`disposition` gains `LANDED`, its sixth state, read from `BranchState.landed_whole`
+and ordered exactly where part one put it - after `REWRITTEN`, before `MERGE`.
+
+**The three things the decision said to get right, each as built.**
+
+1. **Ordered after `REWRITTEN`.** `disposition` returns `REWRITTEN` before reaching
+   the new arm, and `branch_state` does not even compute the verdict where
+   `rewrite is not None`, so `PL-Y31G`'s shape is excluded twice over.
+   `test_a_rewritten_history_outranks_the_landed_verdict` holds it against the
+   same `REWRITE` fixture the existing rewrite tests use.
+2. **`orphaned`'s verdict reused, not re-derived.** `vcs.landed_whole` runs the
+   pipeline whole - `_landing_split`, then `_superseded` (`PL-XLQ5`), then
+   `_commits_by_landing` for `took_one_whole` (`PL-JHJ3`, `PL-5TRV`) and its
+   refusal of a queue-only commit (`PL-JBRC`). Every guard part two requires
+   arrives with it.
+3. **`disposition` stays pure.** `branch_state` computes `says_merge` - behind,
+   ahead, not the default branch, no rewrite - and asks only on that arm, so
+   `CURRENT`, `PULL`, `RESTART` and `REWRITTEN` pay none of the three git calls.
+   `test_the_landing_verdict_is_not_asked_where_it_could_not_change_the_advice`
+   asserts the `rev-list --objects` walk is never run on the `RESTART` arm.
+
+**Where the build differs from `orphaned`, deliberately.** That report requires a
+commit left *behind* as well as one taken whole, because it is looking for partial
+loss. This requires only the whole-commit half: the case observed live on
+`claude/focused-carson-ji73cn` had `git diff --diff-filter=A origin/main HEAD`
+empty, so requiring something left behind would have declined the commonest
+instance of the defect.
+
+**The render arm, which is the half that would have failed quietly.** `MERGE` is
+`format_branch_state`'s `else` fallthrough, so a new state with no arm of its own
+renders as "merge the base in" - the exact wrong advice, silently.
+`test_the_landed_branch_line_refuses_the_merge_it_replaces` asserts the negative
+(`git merge origin/main` absent) rather than only the positive, which is the
+assertion that would have caught it.
+
+The block prints `CLAUDE.md`'s merged-branch rule, and names the diff that says
+what the branch still holds of its own before the restart discards anything:
+
+```text
+Branch: claude/pl-k7qx-live is 2 behind origin/main and 1 ahead.
+  Those commits are not work origin/main is waiting for: it already holds a whole
+  commit of this branch, so its pull request merged.
+  Nothing merges a merged pull request again, so do NOT merge and push.
+  Restart on the merged base and carry anything of your own forward:
+  git fetch origin main && git checkout -B claude/pl-k7qx-live origin/main
+  Check what only this branch holds first: git diff origin/main...HEAD
+```
+
+**Checked against the real repository, not only fixtures.** `bin/docket branch`
+on this session's own branch - 1 behind, 3 ahead, work genuinely outstanding -
+still prints `MERGE`, which is correct: the detector ran and returned false.
+
+**`landed` is not the detector, per the observation this item records.**
+`_landed_since` reads leading ids off the base's new subjects, so it is
+subject-derived and names ids from every branch that merged. It still prints
+under the new block, where it is now consistent with the advice above it rather
+than contradicting it two lines apart.
+
+**What the read costs, measured rather than assumed** (2026-09-14, this
+repository, warm cache): `landed_whole` is **87 ms** and `branch_state` as a
+whole is 107 ms on a branch in the `MERGE` state, so the verdict is about five
+sixths of that call. For comparison `_cuts`, the digest's other git walk,
+records 103 ms and is gated the same way.
+
+It is paid once per session and only on the one arm, which is what the gating
+buys: a session that starts on a fresh branch off `main` is `CURRENT` -
+`behind == 0` - and pays nothing at all, and so do `PULL`, `RESTART` and
+`REWRITTEN`. The arm that pays is a branch both behind and ahead, which is a
+resumed session or one whose base moved under it - the case where the wrong
+advice costs a commit.

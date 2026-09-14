@@ -101,6 +101,35 @@ every release branch, which is the failure PL-8HJ2 removed arriving by another
 door. `bin/docket release` refuses to cut the *next* release while that tag is
 still missing, which is what stops the window from staying open.
 
+**What that span includes, and why the notes are the narrower record**
+(`PL-028F`, decided 2026-09-14). The notes are rendered at the *cut* and the
+tag goes on the *merge*, so anything that merges while the release branch is
+open is inside the tag's span and named in no release notes until the next
+release claims it. That is not rare and it is not visible afterwards: measured
+2026-09-14 across 47 tagged spans, 12 closing pull requests merged inside a
+tag's span its own notes never named, in 11 distinct spans - close to one
+release in four - and a squash merge gives the release commit one date, so
+`main`'s own history cannot say how long the branch was open.
+
+So the two records answer different questions, deliberately. **The tag span is
+what shipped**; `git describe --contains` is authoritative for that and is the
+provenance guarantee above. **The notes are what the cut stamped**, which is
+the release's own account of the work it was for. Where they differ, the work
+is described in the *next* release's notes, and this project already writes
+that convention down for the one case that recurs every time - a release's own
+cut item, which the next release names.
+
+Nothing reconciles them automatically, and that was the decision rather than an
+omission. Re-stamping at merge would need a job fired by the merge, which
+cannot write to `main` here: a push made with `GITHUB_TOKEN` starts no
+workflow, so the required status checks can never report on it (`PL-N5WZ`).
+Every variant that does land needs a person at the merge anyway, and absorbing
+a newcomer means the release narrative describes work that session did not do,
+which is a judgment no tool should take. `bin/docket check` therefore raises an
+advisory on a checkout carrying an unmerged cut, naming what the base has taken
+since and both dispositions, while re-running `make release VERSION=X` would
+still absorb it.
+
 A version that has genuinely gone out untagged is named in a bold sentence
 here, and the checker holds the count that sentence states to the versions it
 names. There are none.
@@ -954,6 +983,21 @@ discipline PL-XCYB built is unaffected and still serves the `pr:` check.
   PL-69J3 may add, remove or annotate `noqa` directives. If any of them turns
   out to require a change to a modelled value, that is a finding for Gate 0
   and a scoped item of its own, not this release's work.
+
+**Two of the three counts above are deliberately left to the reader**
+(`PL-GLBF`, 2026-09-13). "Seven entries are marked `not-delegable`" is checked
+by `tools/doc_check.py`, because `not-delegable:` is a field on each item and
+the number is a query over it. The two in the bullets above are not, and the
+nearest field is a near miss rather than a gap: `touches:` records the files an
+item is *expected to change*, where these sentences record the scope an item is
+*permitted to reach*. On the second one's own three ids a checker over
+`touches:` computes two against a correct three - `PL-ZN0N` declares
+`pyproject.toml` and nothing else, and may still annotate `noqa` directives in
+`src/`. A check built on it would fail a correct sentence, which is worse than
+no check. Both are safe to leave unchecked for a second reason that holds only
+here: this list is frozen and every id on it is closed, so neither number can
+drift again. The same shape in a *live* section can, and that is a separate
+question rather than one this note settles.
 
 ### Explicitly out of scope for v0.2.8
 
