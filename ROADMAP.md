@@ -397,7 +397,7 @@ adds no capability and exists to clear the ground they are built on:
 | 3 | **v0.4.0 — the teachable case** | **Shipped 2026-09-05.** Scoped below. 13 items, of which 6 are gate-0 debt the milestone cleared itself. Twelve landed and the thirteenth, `PL-011`'s retention rule, was dropped as superseded; its Required-scope entry records why. | 7 M, 6 S |
 | — | **v0.4.x — the code is the model** | Planned-milestone item 29, shipping as a patch in the `v0.4.x` track. A patch, not a milestone. "No behavior changes" held until the 2026-09-03 re-scope and no longer does: the exact step moves the displayed value in its last digit. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped and then re-scoped 2026-09-03: the owner's bar is that a reviewer follow `core/` without a lookup table, which naming alone cannot reach, so the operator split is replaced by the exact matrix exponential (`PL-GS5X`). Still a patch — it crosses no capability boundary; see item 29 for why, and for why no exception is recorded. (Written `v0.4.1` until 2026-09-06, which contradicted this row's own rule that the track promises no particular patch number; v0.4.1 and v0.4.2 both shipped without the exact step, as that rule predicted.) **It freezes no gate and takes no section of its own (project owner, 2026-09-05).** The cadence's four beats run for *milestones*; Gate 1 is frozen when v0.5.0 is scoped, as row 4 records and as three of v0.4.0's own deferrals assume; and no patch in this project has ever had a section — v0.2.1 through v0.3.9 each took a version-table row and a baseline section at ship time and nothing more. That this was ever in question is a tooling artefact worth recording: `bin/docket wave` read this row as a milestone because it was written `v0.4.1` where item 29 already called it the `v0.4.x` row, and the gate it therefore asked to freeze was 105 entries against Gate 0's 21 — five times the largest gate this project has cleared, and 62% of the open queue. The row is now written `v0.4.x`, which is what makes the beat agree with the plan. **Eight items**, `PL-P0BB` having shipped in v0.3.2: `PL-GS5X` and `PL-X9KD` under `numerical-domain`, and `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T` under `core-domain-language` — plus `PL-X2XX`, which `PL-VZL0` requires and which neither list named until `PL-GGCN` taught the checker to read the second half of a compound prerequisite. Swapping `PL-P0BB` out for `PL-X2XX` leaves the effort totals unchanged. `PL-3TLK` leads; the rest of the naming work follows the exact step. `PL-011` was carried here at the v0.4.0 cut and is **not** part of this step: it was dropped 2026-09-05, superseded by `PL-T691` and `PL-2FM6`. Those two, with `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, are the score architecture the 2026-09-05 design round filed into `numerical-domain` behind `PL-GS5X`, and they are **v0.5.0's, not this track's** (project owner, 2026-09-05) — row 5 carries the reasoning. **This track promises no particular patch number,** which is what `v0.4.x` means: patches are cut as work accumulates and the exact step takes whichever number it lands on. Saying "ships as v0.4.1" would be a promise the release path cannot keep — `docket release` offers the next free number to whatever is finished, so any patch cut before the exact step lands would take it. | 1 L, 6 M, 2 S |
 | 4 | **Gate 1** | **Frozen 2026-09-06**, the day v0.5.0 was scoped, and recorded in that milestone's own section below rather than here. Contents were unknown by construction and are now the list: v0.4.0's findings, the queue's own defects, and the model-specification debt. Ships inside v0.5.0, not as its own release — except for the three items "The timeline" had already placed on the `v0.4.x` step, which that patch carries. | — |
-| 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. The placement argument above stands for what it placed, and is left as written. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 163 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. | — |
+| 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. The placement argument above stands for what it placed, and is left as written. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 164 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
 | — | **v0.5.1 — the interface moves to Qt** | **Scoped 2026-09-10**, on `PL-QXSB`'s decision the same day, and it has its own section below. The port `PL-55DH` spiked and `PL-X9T3` measured: the dashboard, the chart and the theme move to PySide6 + pyqtgraph, and nothing a learner can do is lost. **It replaces the `v0.5.x — the interface pass` row that stood here** and absorbs planned-milestone item 33 with it - a restyle of a dashboard about to be rewritten is the same work twice, since porting redecides palette, type scale, spacing and layout regardless. The placement is unchanged from that row's: after MVP, because the owner's standing principle is that UI ambition follows scientific-core maturity, and ahead of v0.6.0, because the schematic is a second large visual surface on a toolkit charged per control present per frame. **A patch number for a 3 619-line rewrite** because § "Versioning decision" chooses the number for the capability boundary crossed and this crosses none; v0.2.8 is the precedent for machinery at this scale taking one. **It takes a section, which no patch here ever has**, for one mechanical reason: `blocked-by: vX.Y.Z` resolves only against a version the roadmap places, a patch-track row is not a version, and `PL-GS3R` - `P1`, `safety`, sequenced behind this port - needs one or it ranks top of `bin/docket next` as startable work guarded only by prose (`PL-L09X`). **Gate 2's freeze is deferred** to when v0.5.0 ships: that gate holds v0.5.0's findings and v0.5.0 is not implemented, so freezing it today would freeze an empty list and then refuse the findings it exists for. **On the structural half, the `v0.5.x` row this replaces was wrong and the error is inherited no further.** It said `PL-2CS8`, `PL-NGF7` and `PL-B9PY` all "land ahead of v0.5.0". `PL-2CS8` did. `PL-B9PY` does not and must not: Gate 1 places it under "Cleared by v0.5.0 itself", because decomposing `SimulationView` so two runs render *is* what the branched-run milestone needs to exist - moving it behind this port would defer the MVP behind a toolkit change. It ships in v0.5.0 on Flet and is rewritten here, and that duplication is the price of shipping the MVP first, taken deliberately. What this port carries forward is its *shape*: the Qt view is built decomposed from the start. `PL-NGF7` is the one that moves - see the gate section. | 7 M |
 | 6 | **Gate 2** | Frozen when v0.6.0 is scoped; ships inside it. | — |
@@ -2101,6 +2101,29 @@ implementation begins.
 - PL-QBKQ (S) The only measured conventional circle-system volume this project holds is 9.86 L including a simulated lung, against a stored 6.0 L and Gas Man's published 8.0 L
 - PL-XWCY (M) Circuit-component absorption is ruled out as a cause of desflurane's residual by the one paper that measured it, and is a live candidate for the other two agents
 
+**Added 2026-09-14 under the unconditional safety/science exception — 1 entry**
+
+`PL-YVHK` is `safety`-classed, so it re-enters this gate whatever its presence
+answer, under the second of "The gate is a snapshot"'s two unconditional
+exceptions. It is written down here because that rule requires it to be, **and
+it is the one entry in this block that does not clear before implementation
+begins** - its disposition is in § "Sequenced past v0.5.0" → "Sequenced behind
+the port", and the two statements are not in conflict: the presence rule
+decides that a safety finding is recorded against the current gate, and the
+snapshot rule decides that a recorded deferral is how it may then be sequenced
+out of it. Silence is the third thing, and the only one forbidden.
+
+**What it is.** It is the build half of `PL-YLKR`, split from it on the project
+owner's decision of 2026-09-14. The design and its derivation landed on v0.4.x
+- `docs/MODEL.md` § "The chart's hover readout: what the tooltip may show" -
+and what remains is writing the hover against pyqtgraph, which cannot be done
+before the toolkit exists. It carries `safety` for the same reason its parent
+did: a number a reader stopped the simulation to look at, with nothing around
+it to say the value is modelled rather than measured, is the
+modelled-versus-measured failure `CLAUDE.md` names.
+
+- PL-YVHK (S) Implement the chart hover readout on pyqtgraph to the derivation docs/MODEL.md now carries, turn hoverable on so the affordance is not silently lost, and say in README.md that it exists
+
 ### Deferred to v0.5.1, because the port dissolves the defect — 1 entry
 
 **Recorded here because this list is frozen** and "The gate is a snapshot, not
@@ -2122,7 +2145,7 @@ any sense that survives the toolkit changing underneath it.
 resolves it rather than any work on it. That is recorded now so a later session
 does not read a dropped item as one that was skipped.
 
-### Sequenced past v0.5.0, so not clearable before it begins — 10 entries
+### Sequenced past v0.5.0, so not clearable before it begins — 11 entries
 
 **Recorded because the rule requires it, and until 2026-09-13 it was not.**
 § "The gate is a snapshot, not a moving target" allows a deferral only where
@@ -2147,10 +2170,25 @@ same lines twice. Each now carries `blocked-by: v0.5.1` beside the port item
 that does the work - which is what `PL-D143` intended and what its own
 `verify:` command tested for, and which shipped as the port item alone.
 
-**Sequenced behind the port — 1.** `PL-GS3R`, `P1` and `safety`-classed. It is
+**Sequenced behind the port — 2.** `PL-GS3R`, `P1` and `safety`-classed. It is
 designed already; what it waits for is the port *landing*, because the
 chord-width column rule costs frame time the port makes free. § "v0.5.1" →
 "Required scope" item 1 is where that was decided.
+
+`PL-YVHK` is the second, `P1` and `safety`-classed for the same reason, and it
+arrived after the freeze rather than at it (project owner, 2026-09-14,
+splitting `PL-YLKR`). The presence rule holds a `safety`-classed finding to the
+*current* gate whenever it was found, which is why it is dispositioned here
+rather than left to its `blocked-by` field. It is the build half of the hover
+readout `docs/MODEL.md` § "The chart's hover readout: what the tooltip may
+show" now specifies, and it is designed already in the same sense `PL-GS3R` is:
+nothing about it is an open question, and § "v0.5.1" → "Required scope" item 1
+names it. What it waits for is the toolkit. Writing it on Flet means roughly
+1 870 per-point strings onto a pause-transition frame `PL-KP7H` measured at
+71.9 ms and 90 KiB, deleted again at the port, where the same content is one
+format callable. **It is parity rather than new capability**, which is what
+separates it from `PL-16ZC` below: the Flet build has a hover and the Qt build
+would not, because `ScatterPlotItem` ships `hoverable` set to `False`.
 
 **Dissolved by the port — 1.** `PL-NGF7`, whose own block above carries the
 reasoning and its expected disposition of `dropped` rather than `done`.
@@ -2176,9 +2214,9 @@ between this and a parked item. `PL-16ZC` asks whether the references and the
 control marks should be hideable *at all* - a question about what the chart is
 for, which no toolkit answers and which its own Done-when allows to close the
 item writing no code. That half is answerable any day; only the build waits.
-It is the same split § "Deferred to v0.5.1" draws around `PL-YLKR`, whose
-design "is toolkit-independent and survives `v0.5.1`; only its implementation
-moves".
+It is the same split taken over `PL-YLKR` on 2026-09-14, whose design was
+toolkit-independent and landed on v0.4.x while its build moved to `PL-YVHK`
+above.
 
 **How this was found is worth one line**, because the general form of it is
 wrong. The project owner asked on 2026-09-14 whether all Flet-related gate
@@ -2200,7 +2238,7 @@ v0.5.0, but doing it means scoping that design round first, which is a
 milestone decision rather than gate work.
 
 **What reads this, and what reads past it.** `bin/docket wave` reaches the same
-nine from the items rather than from this prose - an open entry whose
+eleven from the items rather than from this prose - an open entry whose
 `blocked-by` chain leaves the frozen list is counted apart from the ones this
 gate can clear, so the beat asks for a number that is reachable (`PL-SL70`).
 Two independent readings of one fact is the point rather than duplication: if
