@@ -23,6 +23,7 @@ from. `tests/reference/test_canonical_evaluation.py` holds that guarantee; what
 is tested here is that the display path is refused where the rule says it is.
 """
 
+from bisect import bisect_right
 from math import inf, nan
 
 import pytest
@@ -862,3 +863,62 @@ def test_opening_a_branch_off_a_keyframe_does_not_reproduce_the_run() -> None:
 
     assert all(divergence > 0.0 for divergence in divergences)
     assert max(divergences) < FORK_OFF_KEYFRAME_DIVERGENCE_CEILING
+
+
+def test_a_pixel_wide_chord_misses_an_extremum_by_under_the_readout_s_resolution() -> None:
+    """`PL-GS3R`'s guarantee, at the one point the pixel argument does not reach.
+
+    Between two drawn instants both exact and no more than a pixel of time
+    apart, a *monotone* run and the segment ruled between them cross every
+    level inside the same pixel. Where the run turns between two dial
+    changes - the alveoli and the venous blood keep filling for a moment
+    after the vaporizer is turned down - it can rise above both drawn values
+    inside one interval, and the line falls short of it there. Measured
+    2026-09-14 over the supported envelope, the worst case is this one: a
+    desflurane overpressure induction at the fastest supported settings,
+    turned down at 600 s, drawn at the twelve-hour base on a 1 000 px plot,
+    where the mixed venous trace rises 0.0028 pp above the drawn line at
+    t = 609 s. Held at half the readout's resolution, so a real regression
+    fails and the closed form's floating-point wobble does not. The truth is
+    taken over the 1 800 s after each change, which is where every measured
+    departure sits; beyond it the same run is within 0.0024 pp even at the
+    290 s chord the fixed budget used to draw.
+    """
+
+    system = AgentUptakeSystem.for_agent("desflurane")
+    system.set_fresh_gas_flow(10.0)
+    system.set_alveolar_ventilation(12.0)
+    system.set_cardiac_output(10.0)
+    system.set_delivered_partial_pressure_fraction(0.12)
+    definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
+    definition.advance_to(600.0)
+    system.set_delivered_partial_pressure_fraction(0.06)
+    definition.record_change(system.equation_settings())
+    definition.advance_to(43_200.0)
+
+    pixel_s = 43_200.0 / 1000.0
+    drawn = definition.evaluate_anchored(0.0, 43_200.0, pixel_s)
+    last = len(drawn.states) - 1
+    fractions = (
+        INSPIRED_FRACTION,
+        ALVEOLAR_FRACTION,
+        VENOUS_FRACTION,
+        FIRST_TISSUE_FRACTION,
+        FIRST_TISSUE_FRACTION + 1,
+        FIRST_TISSUE_FRACTION + 2,
+    )
+    worst = 0.0
+
+    for opening_s in (0.0, 600.0):
+        truth = definition.evaluate_anchored(opening_s, opening_s + 1800.0, 0.1)
+
+        for instant_s, state in zip(truth.times_s, truth.states, strict=True):
+            after = bisect_right(drawn.times_s, instant_s)
+            left = drawn.states[max(after - 1, 0)].values
+            right = drawn.states[min(after, last)].values
+
+            for index in fractions:
+                low, high = min(left[index], right[index]), max(left[index], right[index])
+                worst = max(worst, state.values[index] - high, low - state.values[index])
+
+    assert worst * 100.0 < 0.005

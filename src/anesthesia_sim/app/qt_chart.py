@@ -494,6 +494,15 @@ class ConcentrationChart(QWidget):
 
         return self._frame
 
+    def plot_width_px(self) -> float:
+        """The width of the plot area in logical pixels, for `assemble_chart_frame`.
+
+        Hand `chart_frame` the wider of this and the other plot's, so that
+        neither draws a chord wider than a pixel (`PL-GS3R`).
+        """
+
+        return _plot_width_px(self._plot)
+
     def drawn_points(
         self, run: int, quantity: RecordedQuantity
     ) -> tuple[tuple[float, ...], tuple[float, ...]]:
@@ -745,6 +754,15 @@ class WashInChart(QWidget):
 
         return self._frame
 
+    def plot_width_px(self) -> float:
+        """The width of the plot area in logical pixels, for `assemble_chart_frame`.
+
+        Hand `chart_frame` the wider of this and the other plot's, so that
+        neither draws a chord wider than a pixel (`PL-GS3R`).
+        """
+
+        return _plot_width_px(self._plot)
+
     def drawn_stretches(self, run: int) -> tuple[tuple[tuple[float, float], ...], ...]:
         """Each shown stretch of one run, as its drawn (time, ratio) points."""
 
@@ -866,6 +884,20 @@ def _render(widget: QWidget) -> QImage:
     """The widget as it is painted, for a rendering check."""
 
     return widget.grab().toImage()
+
+
+def _plot_width_px(plot: Any) -> float:
+    """The width of `plot`'s plot area in logical pixels, for `chart_columns`.
+
+    The view box rather than the widget: the axes and their labels take the
+    rest, and it is the view box the time axis spans. Read from the geometry
+    Qt laid out, so before a chart is shown it answers whatever default size
+    the toolkit gave the unshown widget - which is why the caller draws its
+    first frame after the chart is shown, and why `chart_columns` floors
+    what it is handed.
+    """
+
+    return float(plot.getPlotItem().getViewBox().width())
 
 
 def _plot_pixel(plot: Any, x: float, y: float) -> tuple[int, int]:
