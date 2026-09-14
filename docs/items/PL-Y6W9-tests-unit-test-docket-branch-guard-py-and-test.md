@@ -3,10 +3,11 @@ id: PL-Y6W9
 title: tests/unit/test_docket_branch_guard.py and test_docket_digest_hook.py run the hooks under PATH=/usr/bin:/bin:/usr/local/bin, so on macOS bin/docket runs under the 3.9.6 system python3, fails on datetime.UTC, and eight tests are red on the owner's own machine while green in CI
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, test
 touches: tests/unit/test_docket_branch_guard.py, tests/unit/test_docket_digest_hook.py
 added: 2026-09-14
+closed: 2026-09-14
 verify: uv run pytest tests/unit/test_docket_branch_guard.py tests/unit/test_docket_digest_hook.py && grep -q 'def test_the_hook_runs_under_the_interpreter_running_this_suite' tests/unit/test_docket_branch_guard.py && grep -q 'def test_the_hook_runs_under_the_interpreter_running_this_suite' tests/unit/test_docket_digest_hook.py
 ---
 
@@ -34,3 +35,18 @@ has.
 
 **Done when.** The eight tests pass on a Mac whose `/usr/bin/python3` is 3.9,
 and still exercise the hook through `bin/docket` rather than bypassing it.
+
+**Fixed 2026-09-14.** Each file's fixture now links the interpreter running
+the suite (`sys.executable`) into the checkout's `bin/` as `python3`, beside
+the `bin/docket` shim it already installs, and the environment both hooks run
+under leads `PATH` with that `bin/` ahead of the system directories. So the
+bare `python3` `bin/docket` execs is the suite's own interpreter rather than
+whatever the machine ships, and the hook is still exercised through
+`bin/docket`. One test per file pins that as an identity rather than a floor:
+the `python3` the fixture's `PATH` resolves reports the same `sys.version` as
+the suite, which fails on any machine whose system `python3` is not the
+suite's - every machine - rather than only on one below the floor. Reproduced
+before the fix with a 3.10 `python3` standing in for Apple's 3.9: 8 failed and
+3 passed, `bin/docket` exiting 1 on `datetime.UTC`; the same run after it
+passes all 13. `PL-LKGW` carries the floor `bin/docket` still does not name,
+and `PL-8KPD` the duplicate capture on another branch.
