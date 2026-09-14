@@ -1409,3 +1409,143 @@ class SimulationController:
         # last place away. `origin_s` is 0.0 on a trunk, where the subtraction
         # is the identity.
         self._run_definition.advance_to(self._state.elapsed_s - self.origin_s)
+
+
+class BranchedCase:
+    """One case, held as the run that happened and the branches taken from it.
+
+    `SimulationController.resumed_at` makes a branch; this makes a *case* of
+    the runs that result, which is the relationship v0.5.0 exists to assert -
+    that two curves on one axis are one patient under two managements rather
+    than two patients. Without something holding it, the controllers two
+    `resumed_at` calls return are indistinguishable from two unrelated
+    sessions: each knows the instant it opened at (`opened_from`), and none of
+    them knows that the others opened from the same run.
+
+    **Flat by construction rather than by refusal** (`PL-TFX5`, project owner,
+    2026-08-25): one trunk with N branches, and sub-forks of forks deliberately
+    out, because they multiply without bound and buy little over re-branching
+    from the trunk. Every fork here is taken from the trunk, so a branch of a
+    branch is not an operation this class can express rather than one it
+    declines. `resumed_at` still refuses one, because a caller holding a branch
+    can reach it directly, and the two guards answer different questions: that
+    one says *this run* cannot be forked, this one says there is no second
+    generation to fork from. An interface in which the error cannot be stated
+    is the stronger of the two, which is why the weaker one is kept as well -
+    it is what covers the route around this class.
+
+    **Two branches may be taken at the same instant, deliberately.** That is
+    the comparison the milestone is named for - one decision point, two
+    managements - so nothing here makes a fork point unique.
+
+    **It computes nothing and advances nothing.** Running, pausing, settings
+    and stepping stay on the controllers, one per run; this holds which runs
+    there are and how they are related, so a view can loop over them and a
+    reader can attribute a curve to one. It is Flet-independent for the reason
+    the rest of `app/` outside the view is.
+    """
+
+    def __init__(self, trunk: SimulationController) -> None:
+        """Hold `trunk` as the run every branch of this case is taken from.
+
+        Raises:
+            SimulationConfigurationError: `trunk` is itself a branch. A case
+                built on one would be a second generation wearing a trunk's
+                clothes: its forks would be sub-forks, which this project
+                excluded rather than left unimplemented, and the instants it
+                offered would be measured from another case's fork rather than
+                from induction.
+        """
+
+        if trunk.opened_from is not None:
+            raise SimulationConfigurationError(
+                f"a case is rooted in a trunk, and this run is a branch opened at "
+                f"{trunk.opened_from.elapsed_s} s; branches of branches are excluded rather "
+                "than unimplemented, so build the case on the run the branch came from"
+            )
+
+        self._trunk = trunk
+        self._branches: tuple[SimulationController, ...] = ()
+
+    @property
+    def trunk(self) -> SimulationController:
+        """The run the case actually took, and the only one a fork is taken from."""
+
+        return self._trunk
+
+    @property
+    def branches(self) -> tuple[SimulationController, ...]:
+        """The branches taken from the trunk, in the order they were taken.
+
+        Oldest first, which is the order of the acts rather than of the fork
+        instants: a learner may fork late, then go back and fork early, and a
+        list re-sorted by instant would renumber the branch they were looking
+        at. Two branches taken at one instant keep the order they were made in.
+        """
+
+        return self._branches
+
+    @property
+    def runs(self) -> tuple[SimulationController, ...]:
+        """Every run of this case: the trunk first, then `branches`.
+
+        What a view loops over. The trunk leads because it is the run that
+        happened and every branch is a departure from it, so a reader meeting
+        the list in order meets the case before the alternatives to it.
+        """
+
+        return (self._trunk, *self._branches)
+
+    @property
+    def fork_points_s(self) -> tuple[float, ...]:
+        """The case instants a fork may be taken at, earliest first.
+
+        The trunk's keyframes: its opening at induction, and every setting
+        change the model was actually stepped under. That is what `PL-TFX5`
+        means by "any recorded control-input-timeline event" - the run holds a
+        keyframe at exactly those instants, and a fork taken anywhere else
+        would restart from two propagations where the run took one, which
+        `SimulationController.resumed_at` refuses rather than approximates.
+
+        Induction is included rather than filtered out. A fork at zero is a
+        second management of the whole case, which is a comparison a learner
+        may legitimately want; it is a strange one to offer under a control
+        labelled "branch here", but that is the interface's judgment to make
+        and not this list's to pre-empt.
+
+        A **bookmark** becomes one of these by the run halting at it: a halt
+        leaves the run standing at that instant with nothing computed past it,
+        so a keyframe recorded there moves no value the run has already
+        produced. `docs/ARCHITECTURE.md` § "What a branch is" carries the
+        measurement, and `PL-CTD7` is where the halt records it.
+        """
+
+        return tuple(segment.opening.elapsed_s for segment in self._trunk.run_segments)
+
+    def fork_at(self, elapsed_s: float) -> SimulationController:
+        """Take a branch from the trunk at `elapsed_s`, and keep it.
+
+        The trunk is left exactly as it was - `resumed_at` reads it and writes
+        nothing - so the case gains a run rather than trading one for another,
+        which is what makes this a comparison instead of an undo.
+
+        Args:
+            elapsed_s: The case instant to branch at, in seconds, from
+                `fork_points_s`.
+
+        Returns:
+            The new branch, paused at the trunk's state at that instant,
+            carrying the trunk's agent and patient. It is also appended to
+            `branches`, so a caller that discards the return value has not
+            lost it.
+
+        Raises:
+            SimulationConfigurationError: `elapsed_s` is not one of
+                `fork_points_s`, is not finite, or is not a whole number of
+                the trunk's steps. `resumed_at` raises these and names which.
+        """
+
+        branch = self._trunk.resumed_at(elapsed_s)
+        self._branches = (*self._branches, branch)
+
+        return branch
