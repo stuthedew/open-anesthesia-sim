@@ -3,7 +3,8 @@ id: PL-005
 title: Replace the full-screen startup window with a sized, centered one
 priority: P2
 effort: S
-status: ready
+status: blocked
+blocked-by: PL-25KS
 classes: ux
 feature: vaporizer-controls
 touches: src/anesthesia_sim/app/main.py

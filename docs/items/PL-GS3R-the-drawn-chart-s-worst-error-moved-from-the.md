@@ -4,7 +4,7 @@ title: The drawn chart's worst error moved from the control change to the steep 
 priority: P1
 effort: M
 status: blocked
-blocked-by: v0.5.1
+blocked-by: PL-G59B
 classes: defect, safety
 feature: teachable-case
 touches: src/anesthesia_sim/core/run_score.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_series.py, docs/MODEL.md

@@ -3,7 +3,8 @@ id: PL-LPLD
 title: Add time bookmarks and MAC targets as two separately listed collections
 priority: P2
 effort: M
-status: ready
+status: blocked
+blocked-by: PL-25KS
 classes: feature, ux
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, tests/unit

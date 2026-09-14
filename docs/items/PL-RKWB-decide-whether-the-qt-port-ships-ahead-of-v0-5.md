@@ -1,8 +1,14 @@
 ---
 id: PL-RKWB
 title: Decide whether the Qt port ships ahead of v0.5.0's display half: PL-8PSW is the only scheduled item the port rewrites, and on Flet it is built where no session can look at it
-status: untriaged
+status: ready
 added: 2026-09-14
+priority: P2
+effort: M
+classes: planning
+feature: qt-port
+touches: ROADMAP.md, docs/items
+verify: python3 tools/doc_check.py check && grep -qF 'Moved ahead of v0.5.0' ROADMAP.md
 ---
 
 **Problem.** Decide whether the Qt port ships ahead of v0.5.0's display half: PL-8PSW is the only scheduled item the port rewrites, and on Flet it is built where no session can look at it
@@ -74,3 +80,59 @@ takes the next patch number and v0.5.0 keeps both its number and its meaning.
 
 **Urgency.** A session was opened on `PL-8PSW` at 17:03 on 2026-09-14 and
 failed before starting. The next one will not.
+
+## Decided 2026-09-14 by the project owner: move it
+
+The port goes ahead of v0.5.0's display half. What that means concretely, and
+it is narrower than moving the whole milestone: **nothing new is built in
+`app/simulation_view.py` or `app/chart_series.py` before the port.** v0.5.0's
+port-neutral spine - `PL-CTD7`, `PL-B8MK`, `PL-Z3W6`, `PL-W7H9`, `PL-49R8` -
+is unaffected and still ships on the schedule it had.
+
+**The re-point is to items, not to a version, and that is the load-bearing
+half.** Seven of the nine entries carrying `blocked-by: v0.5.1` already named
+the port item beside the version; the version half is now dropped from all
+nine and the remaining two given the item that does the work. `PL-3355`'s own
+brief had already argued for this shape, and `PL-16ZC` already used it.
+
+| Item | Now blocked on | Because |
+| --- | --- | --- |
+| `PL-Q4VH`, `PL-THXF`, `PL-GS3R`, `PL-YVHK` | `PL-G59B` | the chart port |
+| `PL-3355`, `PL-TG60`, `PL-QR6Q`, `PL-005`, `PL-LPLD` | `PL-25KS` | the dashboard port |
+| `PL-W8DQ`, `PL-NGF7` | `PL-L9RD` | the theme port |
+| `PL-8PSW` | `PL-G59B` | the overlay is drawn on the ported chart |
+
+It makes every one of them independent of what number the port ships under,
+which is why the numbering question below blocks nothing.
+
+**`PL-005` and `PL-LPLD` carried the deferral in prose alone** and were
+`status: ready`, so `bin/docket next` would have offered either - which is
+exactly the defect `PL-D143` described for the other five and fixed only for
+them. Both are now `blocked` with the field to match.
+
+**Gate 2 needs no re-timing, which is a correction to what this item first
+said was owed.** § "v0.5.1" deferred its freeze to when v0.5.0 ships, because
+Gate 2 holds v0.5.0's findings and freezing it earlier would freeze an empty
+list. Moving the port into the pre-v0.5.0 window does not disturb that: the
+port takes no gate of its own, exactly as it did not before, and its findings
+go to Gate 2 with v0.5.0's.
+
+**The one question the reorder does open is the number**, and it is recorded
+here rather than answered. § "The cadence" says "A gate does not get a
+version" and forbids cutting an interim release partway through clearing one -
+and five of the port's carried fixes are Gate 1 entries. Two readings:
+
+1. **The port is a milestone that carries gate fixes, not gate work.** §
+   "Debt inside the milestone's own scope" already blesses this: the test is
+   whether the item appears in the milestone's `Required scope`, and all five
+   appear at item 8. It takes the next patch number and ships as its own
+   release, which is what v0.2.8 did for machinery at this scale.
+2. **The port ships inside v0.5.0 with no version of its own**, which is what
+   the cadence prescribes for anything landing between a milestone's
+   predecessor and its release.
+
+Reading 1 continues what the roadmap already decided twice and is what is
+written up. The hazard it inherits is the one the original section named:
+`bin/docket release` offers the next free number to whatever is finished, so a
+patch cut before the port lands takes the number and the section's heading
+moves to the next free one. That is a rename, not a re-scope.

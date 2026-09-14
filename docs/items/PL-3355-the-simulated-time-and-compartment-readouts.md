@@ -4,7 +4,7 @@ title: The 'Simulated time' and compartment readouts wrap their value onto a sec
 priority: P2
 effort: S
 status: blocked
-blocked-by: v0.5.1, PL-25KS
+blocked-by: PL-25KS
 classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
