@@ -1,8 +1,14 @@
 ---
 id: PL-8KPD
 title: Drop PL-0QLX as a duplicate of PL-Y6W9 once claude/pensive-haslett-0f5025 lands: both capture the hook tests red under macOS's system python3, and PL-Y6W9 is the one worked
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: planning
+touches: docs/items/
 added: 2026-09-14
+closed: 2026-09-14
+verify: grep -q '^status: dropped' docs/items/PL-0QLX-tests-unit-test-docket-branch-guard-py-and-test.md && grep -q '^reason: duplicate of PL-Y6W9' docs/items/PL-0QLX-tests-unit-test-docket-branch-guard-py-and-test.md
 ---
 
 **Problem.** Drop PL-0QLX as a duplicate of PL-Y6W9 once claude/pensive-haslett-0f5025 lands: both capture the hook tests red under macOS's system python3, and PL-Y6W9 is the one worked
@@ -17,3 +23,8 @@ to it would have collided at merge.
 
 **Done when.** `PL-0QLX` is `status: dropped` with a reason naming
 `PL-Y6W9`, on the default branch. Its file is not deleted.
+
+**Done 2026-09-14**, in the same session that filed it: `claude/pensive-haslett-0f5025`
+landed as #582 while `PL-Y6W9`'s pull request was open, so once #584 merged the
+drop was one field edit on the default branch and rode a second pull request
+from this session rather than waiting for the next triage pass.
