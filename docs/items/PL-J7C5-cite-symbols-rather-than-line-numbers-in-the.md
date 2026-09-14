@@ -4,11 +4,13 @@ title: Cite symbols rather than line numbers in the contrast table's reasons
 priority: P3
 effort: S
 status: done
-closed: 2026-09-14
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.4.22
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-02
+closed: 2026-09-14
+pr: 552
 verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'def test_a_line_number_citation_is_refused' tests/unit/test_contrast_check.py
 ---
 

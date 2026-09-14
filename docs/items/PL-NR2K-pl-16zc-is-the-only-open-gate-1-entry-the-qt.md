@@ -6,10 +6,12 @@ effort: S
 status: done
 classes: defect, planning, docs
 feature: presentation-safety
+milestone: v0.4.22
 touches: docs/items/, ROADMAP.md
-verify: python3 tools/doc_check.py check && bin/docket wave | grep -q 'blocked outside the gate:.*PL-16ZC' && grep -q 'Deferred past the port' ROADMAP.md
 added: 2026-09-14
 closed: 2026-09-14
+pr: 551
+verify: python3 tools/doc_check.py check && bin/docket wave | grep -q 'blocked outside the gate:.*PL-16ZC' && grep -q 'Deferred past the port' ROADMAP.md
 ---
 
 **Problem.** PL-16ZC is the only open Gate 1 entry the Qt port throws away entirely, and it sits in the gate's clearable 23 with no deferral marker, so a session clearing the gate builds a Flet control v0.5.1 deletes

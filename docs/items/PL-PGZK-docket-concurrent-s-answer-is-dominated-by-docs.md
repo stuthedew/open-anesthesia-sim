@@ -1,14 +1,16 @@
 ---
 id: PL-PGZK
 title: docket concurrent's answer is dominated by docs/MODEL.md, which nearly every item touches, so it rules out almost everything and cannot discriminate between real and nominal contention
-status: done
-closed: 2026-09-14
-added: 2026-09-03
 priority: P2
 effort: S
+status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.4.22
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/concurrency.py, subprojects/docket/tests/test_concurrency.py
+added: 2026-09-03
+closed: 2026-09-14
+pr: 552
 verify: uv run pytest subprojects/docket/tests/test_concurrency.py && grep -q 'def test_shares_a_file_groups_by_path' subprojects/docket/tests/test_concurrency.py
 ---
 

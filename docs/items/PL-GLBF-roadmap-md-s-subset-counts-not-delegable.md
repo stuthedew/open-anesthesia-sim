@@ -3,13 +3,15 @@ id: PL-GLBF
 title: ROADMAP.md's subset counts - not-delegable, entries reaching into src/ - are still hand-maintained and unchecked
 priority: P3
 effort: S
+status: done
 classes: defect, docs
 feature: dev-tooling
+milestone: v0.4.22
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, ROADMAP.md
-verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_not_delegable_subset_count' tests/unit/test_doc_check.py
-status: done
-closed: 2026-09-13
 added: 2026-09-01
+closed: 2026-09-13
+pr: 552
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_not_delegable_subset_count' tests/unit/test_doc_check.py
 ---
 
 **Problem.** PL-H8MQ made every count of a frozen list's *size* checkable, and

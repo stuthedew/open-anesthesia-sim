@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: science, docs
 feature: model-spec-accuracy
+milestone: v0.4.22
 touches: src/anesthesia_sim/data/machines/reference_circle_system.json, docs/MODEL.md
 added: 2026-09-13
 closed: 2026-09-13

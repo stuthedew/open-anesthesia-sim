@@ -2,6 +2,7 @@
 id: PL-THPB
 title: Tag v0.4.21 on the merge commit of #549: the release is cut and only the project owner can push a tag ref from this environment
 status: done
+milestone: v0.4.22
 added: 2026-09-13
 closed: 2026-09-13
 pr: 550
