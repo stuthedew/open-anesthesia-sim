@@ -458,7 +458,7 @@ def _build_view(
     history: tuple[_Sample, ...] | None = None, **snapshot_fields: Any
 ) -> tuple[SimulationView, _FakePage]:
     page = _FakePage()
-    view = SimulationView(page=page, controller=_fake_controller(history, **snapshot_fields))
+    view = SimulationView(page=page, controllers=(_fake_controller(history, **snapshot_fields),))
     return view, page
 
 
@@ -502,15 +502,15 @@ def test_the_sliders_span_the_supported_input_ranges() -> None:
     """
 
     page = _FakePage()
-    view = SimulationView(page=page, controller=SimulationController())
+    view = SimulationView(page=page, controllers=(SimulationController(),))
 
     assert (
-        view._fresh_gas_flow_slider.min,
-        view._fresh_gas_flow_slider.max,
-        view._alveolar_ventilation_slider.min,
-        view._alveolar_ventilation_slider.max,
-        view._cardiac_output_slider.min,
-        view._cardiac_output_slider.max,
+        view.runs[0]._fresh_gas_flow_slider.min,
+        view.runs[0]._fresh_gas_flow_slider.max,
+        view.runs[0]._alveolar_ventilation_slider.min,
+        view.runs[0]._alveolar_ventilation_slider.max,
+        view.runs[0]._cardiac_output_slider.min,
+        view.runs[0]._cardiac_output_slider.max,
     ) == (
         MINIMUM_FRESH_GAS_FLOW_L_MIN,
         MAXIMUM_FRESH_GAS_FLOW_L_MIN,
@@ -533,13 +533,19 @@ def test_every_slider_endpoint_is_a_setting_the_core_accepts() -> None:
     """
 
     page = _FakePage()
-    view = SimulationView(page=page, controller=SimulationController())
+    view = SimulationView(page=page, controllers=(SimulationController(),))
 
     sliders = (
-        (view._fresh_gas_flow_slider, view._handle_fresh_gas_flow_change),
-        (view._alveolar_ventilation_slider, view._handle_alveolar_ventilation_change),
-        (view._cardiac_output_slider, view._handle_cardiac_output_change),
-        (view._delivered_concentration_slider, view._handle_delivered_concentration_change),
+        (view.runs[0]._fresh_gas_flow_slider, view.runs[0]._handle_fresh_gas_flow_change),
+        (
+            view.runs[0]._alveolar_ventilation_slider,
+            view.runs[0]._handle_alveolar_ventilation_change,
+        ),
+        (view.runs[0]._cardiac_output_slider, view.runs[0]._handle_cardiac_output_change),
+        (
+            view.runs[0]._delivered_concentration_slider,
+            view.runs[0]._handle_delivered_concentration_change,
+        ),
     )
 
     for slider, handle_change in sliders:
@@ -547,9 +553,9 @@ def test_every_slider_endpoint_is_a_setting_the_core_accepts() -> None:
             slider.value = endpoint
             handle_change(ft.Event(name="change", control=slider))
 
-            assert view._rejected_setting_notice is None, (
+            assert view.runs[0]._rejected_setting_notice is None, (
                 f"the core refused {endpoint}, an endpoint of a slider the "
-                f"interface offers: {view._rejected_setting_notice}"
+                f"interface offers: {view.runs[0]._rejected_setting_notice}"
             )
 
 
@@ -577,24 +583,24 @@ def test_a_real_run_displays_a_filling_compartment_as_below_resolution() -> None
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
     controller.start()
 
     _advance_to(controller, 120.0)
     view._refresh_view()
 
     assert controller.snapshot().fat_partial_pressure_fraction > 0.0
-    assert view._fat_concentration_text.value == "<0.01%"
+    assert view.runs[0]._fat_concentration_text.value == "<0.01%"
 
     # The alveolar reading over the same interval is an ordinary value at
     # the documented resolution, so the marker is specific to what is
     # genuinely below it rather than a formatting quirk.
-    assert view._alveolar_concentration_text.value == "0.61%"
+    assert view.runs[0]._alveolar_concentration_text.value == "0.61%"
 
     _advance_to(controller, 1_200.0)
     view._refresh_view()
 
-    assert view._fat_concentration_text.value == "0.01%"
+    assert view.runs[0]._fat_concentration_text.value == "0.01%"
 
 
 def test_slider_drag_labels_match_the_readouts_beside_them() -> None:
@@ -608,39 +614,39 @@ def test_slider_drag_labels_match_the_readouts_beside_them() -> None:
     """
 
     page = _FakePage()
-    view = SimulationView(page=page, controller=SimulationController())
+    view = SimulationView(page=page, controllers=(SimulationController(),))
 
-    assert view._delivered_concentration_slider.round == CONCENTRATION_DISPLAY_DECIMALS
-    assert view._delivered_concentration_slider.label == "{value}%"
+    assert view.runs[0]._delivered_concentration_slider.round == CONCENTRATION_DISPLAY_DECIMALS
+    assert view.runs[0]._delivered_concentration_slider.label == "{value}%"
 
     for slider in (
-        view._fresh_gas_flow_slider,
-        view._alveolar_ventilation_slider,
-        view._cardiac_output_slider,
+        view.runs[0]._fresh_gas_flow_slider,
+        view.runs[0]._alveolar_ventilation_slider,
+        view.runs[0]._cardiac_output_slider,
     ):
         assert slider.round == FLOW_DISPLAY_DECIMALS
         assert slider.label == "{value} L/min"
 
     # The flow readouts these labels must agree with.
-    assert view._fresh_gas_flow_text.value == "4.0 L/min"
-    assert view._alveolar_ventilation_text.value == "4.0 L/min"
-    assert view._cardiac_output_text.value == "5.0 L/min"
+    assert view.runs[0]._fresh_gas_flow_text.value == "4.0 L/min"
+    assert view.runs[0]._alveolar_ventilation_text.value == "4.0 L/min"
+    assert view.runs[0]._cardiac_output_text.value == "5.0 L/min"
 
 
 def test_metric_placeholders_match_the_formatter_before_a_run() -> None:
     """The pre-run reading must not outlive a change to the resolution."""
 
     page = _FakePage()
-    view = SimulationView(page=page, controller=SimulationController())
+    view = SimulationView(page=page, controllers=(SimulationController(),))
 
     empty = format_percent(0.0)
     for text in (
-        view._circuit_concentration_text,
-        view._alveolar_concentration_text,
-        view._mixed_venous_concentration_text,
-        view._vessel_rich_concentration_text,
-        view._muscle_concentration_text,
-        view._fat_concentration_text,
+        view.runs[0]._circuit_concentration_text,
+        view.runs[0]._alveolar_concentration_text,
+        view.runs[0]._mixed_venous_concentration_text,
+        view.runs[0]._vessel_rich_concentration_text,
+        view.runs[0]._muscle_concentration_text,
+        view.runs[0]._fat_concentration_text,
     ):
         assert text.value == empty
 
@@ -684,7 +690,7 @@ def _parameter_labels_above(
     the blank spacer a readout panel would hold.
     """
 
-    for panel in view._build_parameter_controls().controls:
+    for panel in view.runs[0].build_parameter_controls().controls:
         label_control, *rest = panel.content.controls
         row = next(control for control in rest if isinstance(control, ft.Row))
         if slider not in row.controls:
@@ -705,7 +711,7 @@ def _metric_labels_above(view: SimulationView, value_text: ft.Text) -> tuple[ft.
     strings alone.
     """
 
-    for panel in view._build_concentration_metrics().controls:
+    for panel in view.runs[0]._build_concentration_metrics().controls:
         name_control, qualifier_control, panel_value_text, _mac_text = panel.content.controls
         if panel_value_text is value_text:
             return name_control, qualifier_control
@@ -797,7 +803,7 @@ def test_the_alveolar_readout_is_labelled_end_tidal_equivalent() -> None:
 
     view, _ = _build_view()
 
-    name, qualifier = _metric_labels_above(view, view._alveolar_concentration_text)
+    name, qualifier = _metric_labels_above(view, view.runs[0]._alveolar_concentration_text)
 
     assert name.value == _ALVEOLAR_METRIC_NAME
     assert qualifier.value == _ALVEOLAR_METRIC_QUALIFIER
@@ -829,7 +835,7 @@ def test_the_fresh_gas_flow_control_names_the_common_gas_outlet() -> None:
 
     view, _ = _build_view()
 
-    label, qualifier = _parameter_labels_above(view, view._fresh_gas_flow_slider)
+    label, qualifier = _parameter_labels_above(view, view.runs[0]._fresh_gas_flow_slider)
 
     assert label.value == _FRESH_GAS_FLOW_LABEL
     assert qualifier is not None, "the fresh-gas-flow control carries no gloss"
@@ -856,9 +862,9 @@ def test_the_other_three_controls_carry_no_gloss() -> None:
     view, _ = _build_view()
 
     for slider in (
-        view._delivered_concentration_slider,
-        view._alveolar_ventilation_slider,
-        view._cardiac_output_slider,
+        view.runs[0]._delivered_concentration_slider,
+        view.runs[0]._alveolar_ventilation_slider,
+        view.runs[0]._cardiac_output_slider,
     ):
         _label, qualifier = _parameter_labels_above(view, slider)
         assert qualifier is None
@@ -878,7 +884,7 @@ def test_the_header_shows_the_application_name_from_app_metadata() -> None:
     """
 
     page = _FakePage()
-    view = SimulationView(page=page, controller=_fake_controller())
+    view = SimulationView(page=page, controllers=(_fake_controller(),))
 
     assert APP_DISPLAY_NAME in _mounted_interface_strings(view, page)
 
@@ -906,7 +912,7 @@ def test_every_readout_reserves_a_qualifier_line_and_an_equal_column() -> None:
 
     view, _ = _build_view()
 
-    panels = view._build_concentration_metrics().controls
+    panels = view.runs[0]._build_concentration_metrics().controls
 
     for panel in panels:
         name, qualifier, value, second_unit = panel.content.controls
@@ -941,7 +947,7 @@ def test_no_interface_string_drops_the_end_tidal_equivalent_hedge() -> None:
     """
 
     page = _FakePage()
-    view = SimulationView(page=page, controller=_fake_controller())
+    view = SimulationView(page=page, controllers=(_fake_controller(),))
 
     strings = _mounted_interface_strings(view, page)
 
@@ -963,17 +969,17 @@ def test_refresh_view_formats_every_concentration_metric() -> None:
         history=(_sample(12.5, 0.02345, 0.01234, 0.00456, 0.00789, 0.00321, 0.00012),)
     )
 
-    assert view._elapsed_time_text.value == "12.5s"
-    assert view._circuit_concentration_text.value == "2.34%"
-    assert view._alveolar_concentration_text.value == "1.23%"
-    assert view._mixed_venous_concentration_text.value == "0.46%"
-    assert view._vessel_rich_concentration_text.value == "0.79%"
-    assert view._muscle_concentration_text.value == "0.32%"
-    assert view._fat_concentration_text.value == "0.01%"
-    assert view._fresh_gas_flow_text.value == "4.0 L/min"
-    assert view._delivered_concentration_text.value == "8.00%"
-    assert view._alveolar_ventilation_text.value == "4.0 L/min"
-    assert view._cardiac_output_text.value == "5.0 L/min"
+    assert view.runs[0]._elapsed_time_text.value == "12.5s"
+    assert view.runs[0]._circuit_concentration_text.value == "2.34%"
+    assert view.runs[0]._alveolar_concentration_text.value == "1.23%"
+    assert view.runs[0]._mixed_venous_concentration_text.value == "0.46%"
+    assert view.runs[0]._vessel_rich_concentration_text.value == "0.79%"
+    assert view.runs[0]._muscle_concentration_text.value == "0.32%"
+    assert view.runs[0]._fat_concentration_text.value == "0.01%"
+    assert view.runs[0]._fresh_gas_flow_text.value == "4.0 L/min"
+    assert view.runs[0]._delivered_concentration_text.value == "8.00%"
+    assert view.runs[0]._alveolar_ventilation_text.value == "4.0 L/min"
+    assert view.runs[0]._cardiac_output_text.value == "5.0 L/min"
 
 
 @pytest.mark.parametrize(
@@ -988,10 +994,10 @@ def test_refresh_view_reflects_running_state(
 ) -> None:
     view, _ = _build_view(is_running=is_running)
 
-    assert view._status_text.value == expected_status
-    assert view._status_text.color == (ACCENT_TEXT if is_running else MUTED)
-    assert view._start_button.disabled is expected_start_disabled
-    assert view._pause_button.disabled is expected_pause_disabled
+    assert view.runs[0]._status_text.value == expected_status
+    assert view.runs[0]._status_text.color == (ACCENT_TEXT if is_running else MUTED)
+    assert view.runs[0]._start_button.disabled is expected_start_disabled
+    assert view.runs[0]._pause_button.disabled is expected_pause_disabled
 
 
 def test_refresh_view_populates_chart_series_from_history() -> None:
@@ -1003,12 +1009,12 @@ def test_refresh_view_populates_chart_series_from_history() -> None:
     view, _ = _build_view(history=history)
 
     for series, quantity in (
-        (view._circuit_series, RecordedQuantity.CIRCUIT),
-        (view._alveolar_series, RecordedQuantity.ALVEOLAR),
-        (view._mixed_venous_series, RecordedQuantity.MIXED_VENOUS),
-        (view._vessel_rich_series, RecordedQuantity.VESSEL_RICH),
-        (view._muscle_series, RecordedQuantity.MUSCLE),
-        (view._fat_series, RecordedQuantity.FAT),
+        (view.runs[0].line_for(RecordedQuantity.CIRCUIT), RecordedQuantity.CIRCUIT),
+        (view.runs[0].line_for(RecordedQuantity.ALVEOLAR), RecordedQuantity.ALVEOLAR),
+        (view.runs[0].line_for(RecordedQuantity.MIXED_VENOUS), RecordedQuantity.MIXED_VENOUS),
+        (view.runs[0].line_for(RecordedQuantity.VESSEL_RICH), RecordedQuantity.VESSEL_RICH),
+        (view.runs[0].line_for(RecordedQuantity.MUSCLE), RecordedQuantity.MUSCLE),
+        (view.runs[0].line_for(RecordedQuantity.FAT), RecordedQuantity.FAT),
     ):
         assert len(series.points) == len(history)
 
@@ -1039,7 +1045,7 @@ def test_a_playing_run_draws_points_that_carry_no_tooltip() -> None:
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
     controller.start()
     _advance_to(controller, 60.0)
     view._refresh_view()
@@ -1063,7 +1069,7 @@ def test_pausing_gives_every_drawn_point_its_tooltip_back() -> None:
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
     controller.start()
     _advance_to(controller, 60.0)
     view._refresh_view()
@@ -1090,8 +1096,8 @@ def test_a_trace_restored_while_paused_answers_a_hover_like_the_others() -> None
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
-    trace = view._compartment_traces[0]
+    view = SimulationView(page=page, controllers=(controller,))
+    trace = view._traces[0]
 
     controller.start()
     _advance_to(controller, 60.0)
@@ -1103,7 +1109,7 @@ def test_a_trace_restored_while_paused_answers_a_hover_like_the_others() -> None
     trace.checkbox.value = True
     view._handle_trace_visibility_change(trace, ft.Event(name="change", control=trace.checkbox))
 
-    restored = [point for point in trace.plotted("sevoflurane")[0].points]
+    restored = [point for point in view.runs[0].line_for(trace.quantity).points]
 
     assert restored, "the restored trace drew nothing; the test proves nothing"
     assert all(point.tooltip is not None for point in restored)
@@ -1113,10 +1119,12 @@ def test_a_trace_restored_while_paused_answers_a_hover_like_the_others() -> None
 def test_refresh_view_reports_valid_agent_accounting() -> None:
     view, _ = _build_view(passes_validation=True)
 
-    assert view._agent_accounting_status_text.value == "Valid"
-    assert view._agent_accounting_status_text.color == ACCENT_TEXT
-    assert "still accounts for all delivered agent" in (view._agent_accounting_detail_text.value)
-    assert view._agent_amounts_text.value == (
+    assert view.runs[0]._agent_accounting_status_text.value == "Valid"
+    assert view.runs[0]._agent_accounting_status_text.color == ACCENT_TEXT
+    assert "still accounts for all delivered agent" in (
+        view.runs[0]._agent_accounting_detail_text.value
+    )
+    assert view.runs[0]._agent_amounts_text.value == (
         "Delivered: 0.012345 L\n"
         "Exhausted: 0.002345 L\n"
         "Stored: 0.010000 L\n"
@@ -1128,22 +1136,22 @@ def test_refresh_view_reports_valid_agent_accounting() -> None:
 def test_refresh_view_reports_failed_agent_accounting() -> None:
     view, _ = _build_view(passes_validation=False)
 
-    assert view._agent_accounting_status_text.value == "Validation failed"
-    assert view._agent_accounting_status_text.color == WARNING
-    assert "unaccounted agent" in view._agent_accounting_detail_text.value
+    assert view.runs[0]._agent_accounting_status_text.value == "Validation failed"
+    assert view.runs[0]._agent_accounting_status_text.color == WARNING
+    assert "unaccounted agent" in view.runs[0]._agent_accounting_detail_text.value
 
 
 def test_refresh_view_shows_current_agent_in_subtitle_and_dropdown() -> None:
     view, _ = _build_view(agent_id="isoflurane", agent_display_name="Isoflurane")
     scheme = AGENT_COLOR_SCHEMES["isoflurane"]
 
-    assert view._subtitle_text.value is not None
-    assert "Isoflurane" in view._subtitle_text.value
-    assert view._agent_dropdown.value == "isoflurane"
-    assert view._agent_header_badge.bgcolor == scheme.fill
-    assert view._subtitle_text.color == scheme.foreground
-    assert view._agent_dropdown.fill_color == scheme.fill
-    assert view._agent_dropdown.color == scheme.foreground
+    assert view.runs[0]._subtitle_text.value is not None
+    assert "Isoflurane" in view.runs[0]._subtitle_text.value
+    assert view.runs[0]._agent_dropdown.value == "isoflurane"
+    assert view.runs[0]._agent_header_badge.bgcolor == scheme.fill
+    assert view.runs[0]._subtitle_text.color == scheme.foreground
+    assert view.runs[0]._agent_dropdown.fill_color == scheme.fill
+    assert view.runs[0]._agent_dropdown.color == scheme.foreground
 
 
 def test_agent_dropdown_options_pair_every_color_with_the_agent_name() -> None:
@@ -1152,8 +1160,8 @@ def test_agent_dropdown_options_pair_every_color_with_the_agent_name() -> None:
     view, _ = _build_view()
     expected_names = dict(AVAILABLE_AGENTS)
 
-    assert {option.key for option in view._agent_dropdown.options} == set(expected_names)
-    for option in view._agent_dropdown.options:
+    assert {option.key for option in view.runs[0]._agent_dropdown.options} == set(expected_names)
+    for option in view.runs[0]._agent_dropdown.options:
         assert option.key is not None
         assert option.text == expected_names[option.key]
         assert option.style is not None
@@ -1171,15 +1179,15 @@ def test_refresh_view_applies_current_agent_color_to_control_and_header(
     view, _ = _build_view(agent_id=agent_id, agent_display_name=display_name)
     scheme = AGENT_COLOR_SCHEMES[agent_id]
 
-    assert view._agent_dropdown.value == agent_id
-    assert view._agent_dropdown.fill_color == scheme.fill
-    assert view._agent_dropdown.bgcolor == scheme.fill
-    assert view._agent_dropdown.color == scheme.foreground
-    assert view._agent_dropdown.text_style is not None
-    assert view._agent_dropdown.text_style.color == scheme.foreground
-    assert view._agent_header_badge.bgcolor == scheme.fill
-    assert view._subtitle_text.color == scheme.foreground
-    assert display_name in view._subtitle_text.value
+    assert view.runs[0]._agent_dropdown.value == agent_id
+    assert view.runs[0]._agent_dropdown.fill_color == scheme.fill
+    assert view.runs[0]._agent_dropdown.bgcolor == scheme.fill
+    assert view.runs[0]._agent_dropdown.color == scheme.foreground
+    assert view.runs[0]._agent_dropdown.text_style is not None
+    assert view.runs[0]._agent_dropdown.text_style.color == scheme.foreground
+    assert view.runs[0]._agent_header_badge.bgcolor == scheme.fill
+    assert view.runs[0]._subtitle_text.color == scheme.foreground
+    assert display_name in view.runs[0]._subtitle_text.value
 
 
 @pytest.mark.parametrize("agent_id", ["sevoflurane", "isoflurane", "desflurane"])
@@ -1189,7 +1197,7 @@ def test_agent_header_badge_is_bordered_against_the_panel(agent_id: str) -> None
     view, _ = _build_view(agent_id=agent_id, agent_display_name=agent_id.title())
     scheme = AGENT_COLOR_SCHEMES[agent_id]
 
-    border = view._agent_header_badge.border
+    border = view.runs[0]._agent_header_badge.border
     assert border is not None
     assert border.top is not None
     assert border.top.color == scheme.foreground
@@ -1222,13 +1230,13 @@ def test_agent_color_render_objects_survive_a_frame_instead_of_being_rebuilt() -
     view, _ = _build_view(agent_id="isoflurane", agent_display_name="Isoflurane")
     style = AGENT_RENDER_STYLES["isoflurane"]
 
-    assert view._agent_header_badge.border is style.badge_border
-    assert view._agent_dropdown.text_style is style.dropdown_text_style
+    assert view.runs[0]._agent_header_badge.border is style.badge_border
+    assert view.runs[0]._agent_dropdown.text_style is style.dropdown_text_style
 
     view._refresh_view()
 
-    assert view._agent_header_badge.border is style.badge_border
-    assert view._agent_dropdown.text_style is style.dropdown_text_style
+    assert view.runs[0]._agent_header_badge.border is style.badge_border
+    assert view.runs[0]._agent_dropdown.text_style is style.dropdown_text_style
 
 
 def test_switching_agent_repaints_the_header_badge_and_the_dropdown() -> None:
@@ -1240,7 +1248,7 @@ def test_switching_agent_repaints_the_header_badge_and_the_dropdown() -> None:
     """
 
     controller = _fake_controller(agent_id="sevoflurane", agent_display_name="Sevoflurane")
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
 
     controller.switch_agent(
         "desflurane", agent_display_name="Desflurane", max_delivered_concentration_percent=18.0
@@ -1250,19 +1258,19 @@ def test_switching_agent_repaints_the_header_badge_and_the_dropdown() -> None:
     scheme = AGENT_COLOR_SCHEMES["desflurane"]
     style = AGENT_RENDER_STYLES["desflurane"]
 
-    assert view._agent_header_badge.bgcolor == scheme.fill
-    assert view._agent_header_badge.border is style.badge_border
-    assert view._subtitle_text.color == scheme.foreground
-    assert view._subtitle_text.value is not None
-    assert "Desflurane" in view._subtitle_text.value
+    assert view.runs[0]._agent_header_badge.bgcolor == scheme.fill
+    assert view.runs[0]._agent_header_badge.border is style.badge_border
+    assert view.runs[0]._subtitle_text.color == scheme.foreground
+    assert view.runs[0]._subtitle_text.value is not None
+    assert "Desflurane" in view.runs[0]._subtitle_text.value
 
-    assert view._agent_dropdown.value == "desflurane"
-    assert view._agent_dropdown.fill_color == scheme.fill
-    assert view._agent_dropdown.bgcolor == scheme.fill
-    assert view._agent_dropdown.color == scheme.foreground
-    assert view._agent_dropdown.text_style is style.dropdown_text_style
-    assert view._agent_dropdown.border_color == scheme.foreground
-    assert view._agent_dropdown.focused_border_color == scheme.foreground
+    assert view.runs[0]._agent_dropdown.value == "desflurane"
+    assert view.runs[0]._agent_dropdown.fill_color == scheme.fill
+    assert view.runs[0]._agent_dropdown.bgcolor == scheme.fill
+    assert view.runs[0]._agent_dropdown.color == scheme.foreground
+    assert view.runs[0]._agent_dropdown.text_style is style.dropdown_text_style
+    assert view.runs[0]._agent_dropdown.border_color == scheme.foreground
+    assert view.runs[0]._agent_dropdown.focused_border_color == scheme.foreground
 
 
 def test_the_slider_tracks_the_dial_maximum_and_the_chart_no_longer_does() -> None:
@@ -1289,7 +1297,7 @@ def test_the_slider_tracks_the_dial_maximum_and_the_chart_no_longer_does() -> No
         max_delivered_concentration_percent=18.0,
     )
 
-    assert view._delivered_concentration_slider.max == 18.0
+    assert view.runs[0]._delivered_concentration_slider.max == 18.0
     assert view._concentration_chart.max_y == pytest.approx(18.0)
     assert view._concentration_chart.max_y == pytest.approx(CHART_AXIS_TOP_MAC * 6.0)
 
@@ -1299,7 +1307,7 @@ def test_the_slider_tracks_the_dial_maximum_and_the_chart_no_longer_does() -> No
         max_delivered_concentration_percent=5.0,
     )
 
-    assert view._delivered_concentration_slider.max == 5.0
+    assert view.runs[0]._delivered_concentration_slider.max == 5.0
     assert view._concentration_chart.max_y == pytest.approx(3.6), "1.2% MAC x 3, not the 5% dial"
 
 
@@ -1350,7 +1358,7 @@ def test_the_axis_top_is_the_same_mac_multiple_for_every_agent() -> None:
 def test_refresh_view_disables_agent_dropdown_while_running() -> None:
     view, _ = _build_view(is_running=True)
 
-    assert view._agent_dropdown.disabled is True
+    assert view.runs[0]._agent_dropdown.disabled is True
 
 
 @pytest.mark.parametrize(
@@ -1381,16 +1389,16 @@ def test_the_agent_name_stays_legible_while_the_run_disables_the_selector(
     view, _ = _build_view(agent_id=agent_id, agent_display_name=display_name, is_running=True)
     scheme = AGENT_COLOR_SCHEMES[agent_id]
 
-    assert view._running_agent_display.visible is True
-    assert view._running_agent_display.disabled in (False, None)
-    assert view._running_agent_display.bgcolor == scheme.fill
-    assert view._running_agent_text.value == display_name
-    assert view._running_agent_text.color == scheme.foreground
-    assert view._running_agent_lock_text.color == scheme.foreground
+    assert view.runs[0]._running_agent_display.visible is True
+    assert view.runs[0]._running_agent_display.disabled in (False, None)
+    assert view.runs[0]._running_agent_display.bgcolor == scheme.fill
+    assert view.runs[0]._running_agent_text.value == display_name
+    assert view.runs[0]._running_agent_text.color == scheme.foreground
+    assert view.runs[0]._running_agent_lock_text.color == scheme.foreground
 
     # The control that *is* recoloured when disabled carries no identity
     # while the run is going, because it is not on screen.
-    assert view._agent_dropdown.visible is False
+    assert view.runs[0]._agent_dropdown.visible is False
 
 
 def test_exactly_one_of_the_selector_and_the_running_agent_display_is_shown() -> None:
@@ -1405,8 +1413,10 @@ def test_exactly_one_of_the_selector_and_the_running_agent_display_is_shown() ->
     for is_running in (False, True):
         view, _ = _build_view(is_running=is_running)
 
-        assert view._agent_dropdown.visible is not view._running_agent_display.visible
-        assert view._running_agent_display.visible is is_running
+        assert (
+            view.runs[0]._agent_dropdown.visible is not view.runs[0]._running_agent_display.visible
+        )
+        assert view.runs[0]._running_agent_display.visible is is_running
 
 
 def test_the_running_agent_display_says_why_the_selector_is_gone() -> None:
@@ -1420,10 +1430,10 @@ def test_the_running_agent_display_says_why_the_selector_is_gone() -> None:
 
     view, _ = _build_view(agent_id="desflurane", agent_display_name="Desflurane", is_running=True)
 
-    assert view._running_agent_text.value == "Desflurane"
-    assert view._running_agent_lock_text.value == RUNNING_AGENT_LOCK_TEXT
-    assert view._running_agent_display.width == AGENT_SELECTOR_WIDTH
-    assert view._agent_dropdown.width == AGENT_SELECTOR_WIDTH
+    assert view.runs[0]._running_agent_text.value == "Desflurane"
+    assert view.runs[0]._running_agent_lock_text.value == RUNNING_AGENT_LOCK_TEXT
+    assert view.runs[0]._running_agent_display.width == AGENT_SELECTOR_WIDTH
+    assert view.runs[0]._agent_dropdown.width == AGENT_SELECTOR_WIDTH
 
 
 def test_the_running_agent_display_is_already_correct_before_it_is_shown() -> None:
@@ -1437,11 +1447,13 @@ def test_the_running_agent_display_is_already_correct_before_it_is_shown() -> No
     view, _ = _build_view(agent_id="isoflurane", agent_display_name="Isoflurane")
     scheme = AGENT_COLOR_SCHEMES["isoflurane"]
 
-    assert view._running_agent_display.visible is False
-    assert view._running_agent_display.bgcolor == scheme.fill
-    assert view._running_agent_display.border == AGENT_RENDER_STYLES["isoflurane"].badge_border
-    assert view._running_agent_text.value == "Isoflurane"
-    assert view._running_agent_text.color == scheme.foreground
+    assert view.runs[0]._running_agent_display.visible is False
+    assert view.runs[0]._running_agent_display.bgcolor == scheme.fill
+    assert (
+        view.runs[0]._running_agent_display.border == AGENT_RENDER_STYLES["isoflurane"].badge_border
+    )
+    assert view.runs[0]._running_agent_text.value == "Isoflurane"
+    assert view.runs[0]._running_agent_text.color == scheme.foreground
 
 
 def test_refresh_view_updates_delivered_concentration_label_for_current_agent() -> None:
@@ -1451,33 +1463,33 @@ def test_refresh_view_updates_delivered_concentration_label_for_current_agent() 
 
     view, _ = _build_view(agent_id="desflurane", agent_display_name="Desflurane")
 
-    assert view._delivered_concentration_label.value == "Delivered desflurane"
+    assert view.runs[0]._delivered_concentration_label.value == "Delivered desflurane"
 
 
 def test_start_pause_reset_handlers_drive_the_real_controller() -> None:
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
 
-    view._handle_start(ft.Event(name="click", control=view._start_button))
+    view.runs[0]._handle_start(ft.Event(name="click", control=view.runs[0]._start_button))
 
     assert controller.is_running is True
-    assert view._status_text.value == "Running"
-    assert view._start_button.disabled is True
-    assert view._pause_button.disabled is False
+    assert view.runs[0]._status_text.value == "Running"
+    assert view.runs[0]._start_button.disabled is True
+    assert view.runs[0]._pause_button.disabled is False
     assert page.update_calls == 1
 
     _advance_to(controller, elapsed_s=1.0)
-    view._handle_pause(ft.Event(name="click", control=view._pause_button))
+    view.runs[0]._handle_pause(ft.Event(name="click", control=view.runs[0]._pause_button))
 
     assert controller.is_running is False
-    assert view._status_text.value == "Paused"
+    assert view.runs[0]._status_text.value == "Paused"
     assert page.update_calls == 2
 
-    view._handle_reset(ft.Event(name="click", control=view._reset_button))
+    view.runs[0]._handle_reset(ft.Event(name="click", control=view.runs[0]._reset_button))
 
     assert controller.snapshot().elapsed_s == 0.0
-    assert view._elapsed_time_text.value == "0s"
+    assert view.runs[0]._elapsed_time_text.value == "0s"
     assert page.update_calls == 3
 
 
@@ -1491,15 +1503,15 @@ def test_agent_dropdown_handler_switches_the_real_controller() -> None:
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
-    view._agent_dropdown.value = "desflurane"
+    view = SimulationView(page=page, controllers=(controller,))
+    view.runs[0]._agent_dropdown.value = "desflurane"
 
-    view._handle_agent_change(ft.Event(name="select", control=view._agent_dropdown))
+    view.runs[0]._handle_agent_change(ft.Event(name="select", control=view.runs[0]._agent_dropdown))
 
     assert controller.snapshot().agent_id == "desflurane"
-    assert view._agent_dropdown.value == "desflurane"
-    assert view._subtitle_text.value is not None
-    assert "Desflurane" in view._subtitle_text.value
+    assert view.runs[0]._agent_dropdown.value == "desflurane"
+    assert view.runs[0]._subtitle_text.value is not None
+    assert "Desflurane" in view.runs[0]._subtitle_text.value
     assert page.dialogs == []
 
 
@@ -1526,9 +1538,9 @@ def _select_agent(
     """Mount a view over a controller and pick an agent from the dropdown."""
 
     page = _FakePage()
-    view = SimulationView(page=page, controller=controller)
-    view._agent_dropdown.value = agent_id
-    view._handle_agent_change(ft.Event(name="select", control=view._agent_dropdown))
+    view = SimulationView(page=page, controllers=(controller,))
+    view.runs[0]._agent_dropdown.value = agent_id
+    view.runs[0]._handle_agent_change(ft.Event(name="select", control=view.runs[0]._agent_dropdown))
 
     return view, page
 
@@ -1542,7 +1554,7 @@ def _click_dialog_action(view: SimulationView, label: str) -> None:
     assertion made against the handlers alone.
     """
 
-    dialog = view._new_case_dialog
+    dialog = view.runs[0]._new_case_dialog
     assert dialog is not None
 
     for action in dialog.actions:
@@ -1577,7 +1589,7 @@ def test_a_recorded_run_is_not_discarded_before_the_reader_has_answered() -> Non
     assert page.dialogs[0].open is True
     # The selector reads the agent that is actually running, not the one
     # being offered, for as long as the question is open.
-    assert view._agent_dropdown.value == before.agent_id
+    assert view.runs[0]._agent_dropdown.value == before.agent_id
 
 
 def test_a_declined_agent_change_leaves_the_run_and_the_selector_untouched() -> None:
@@ -1595,11 +1607,11 @@ def test_a_declined_agent_change_leaves_the_run_and_the_selector_untouched() -> 
     assert after.elapsed_s == before.elapsed_s
     assert after.control_timeline == before.control_timeline
     assert (controller.snapshot().elapsed_s, controller.run_segments) == run_before
-    assert view._agent_dropdown.value == "sevoflurane"
-    assert view._subtitle_text.value is not None
-    assert "Sevoflurane" in view._subtitle_text.value
+    assert view.runs[0]._agent_dropdown.value == "sevoflurane"
+    assert view.runs[0]._subtitle_text.value is not None
+    assert "Sevoflurane" in view.runs[0]._subtitle_text.value
     assert page.dialogs[0].open is False
-    assert view._new_case_dialog is None
+    assert view.runs[0]._new_case_dialog is None
 
 
 def test_a_confirmed_agent_change_starts_the_new_case() -> None:
@@ -1615,8 +1627,8 @@ def test_a_confirmed_agent_change_starts_the_new_case() -> None:
     assert after.elapsed_s == 0.0
     assert after.control_timeline == ()
     assert controller.snapshot().elapsed_s == 0.0
-    assert view._agent_dropdown.value == "desflurane"
-    assert view._delivered_concentration_label.value == "Delivered desflurane"
+    assert view.runs[0]._agent_dropdown.value == "desflurane"
+    assert view.runs[0]._delivered_concentration_label.value == "Delivered desflurane"
     assert page.dialogs[0].open is False
 
 
@@ -1632,10 +1644,12 @@ def test_the_dismissal_that_follows_a_confirmed_switch_does_not_undo_it() -> Non
     view, _ = _select_agent(controller)
     _click_dialog_action(view, START_NEW_CASE_TEMPLATE.format(agent="desflurane"))
 
-    view._handle_new_case_dismissed(ft.Event(name="dismiss", control=view._agent_dropdown))
+    view.runs[0]._handle_new_case_dismissed(
+        ft.Event(name="dismiss", control=view.runs[0]._agent_dropdown)
+    )
 
     assert controller.snapshot().agent_id == "desflurane"
-    assert view._agent_dropdown.value == "desflurane"
+    assert view.runs[0]._agent_dropdown.value == "desflurane"
 
 
 def test_dismissing_the_confirmation_keeps_the_current_case() -> None:
@@ -1645,11 +1659,13 @@ def test_dismissing_the_confirmation_keeps_the_current_case() -> None:
     before = controller.snapshot()
     view, _ = _select_agent(controller)
 
-    view._handle_new_case_dismissed(ft.Event(name="dismiss", control=view._agent_dropdown))
+    view.runs[0]._handle_new_case_dismissed(
+        ft.Event(name="dismiss", control=view.runs[0]._agent_dropdown)
+    )
 
     assert controller.snapshot().agent_id == before.agent_id
     assert controller.snapshot().elapsed_s == before.elapsed_s
-    assert view._agent_dropdown.value == before.agent_id
+    assert view.runs[0]._agent_dropdown.value == before.agent_id
 
 
 def test_reselecting_the_running_agent_discards_nothing_and_asks_nothing() -> None:
@@ -1669,7 +1685,7 @@ def test_reselecting_the_running_agent_discards_nothing_and_asks_nothing() -> No
     assert after.elapsed_s == before.elapsed_s
     assert after.control_timeline == before.control_timeline
     assert page.dialogs == []
-    assert view._new_case_dialog is None
+    assert view.runs[0]._new_case_dialog is None
 
 
 def test_the_confirmation_quotes_the_time_and_the_changes_the_panel_shows() -> None:
@@ -1685,7 +1701,7 @@ def test_the_confirmation_quotes_the_time_and_the_changes_the_panel_shows() -> N
     snapshot = controller.snapshot()
     view, _ = _select_agent(controller)
 
-    dialog = view._new_case_dialog
+    dialog = view.runs[0]._new_case_dialog
     assert dialog is not None
     content = cast(ft.Column, dialog.content)
     warning = cast(ft.Text, content.controls[1])
@@ -1704,7 +1720,7 @@ def test_the_confirmation_names_both_agents_and_what_survives_the_switch() -> No
     controller = _paused_run_with_history()
     view, _ = _select_agent(controller)
 
-    dialog = view._new_case_dialog
+    dialog = view.runs[0]._new_case_dialog
     assert dialog is not None
     title = cast(ft.Text, dialog.title)
     content = cast(ft.Column, dialog.content)
@@ -1750,7 +1766,7 @@ def test_the_confirmations_trailing_action_is_the_one_that_keeps_the_case() -> N
     controller = _paused_run_with_history()
     view, _ = _select_agent(controller)
 
-    dialog = view._new_case_dialog
+    dialog = view.runs[0]._new_case_dialog
     assert dialog is not None
     discard, keep = dialog.actions
 
@@ -1763,53 +1779,57 @@ def test_the_confirmations_trailing_action_is_the_one_that_keeps_the_case() -> N
 def test_fresh_gas_flow_slider_forwards_value_to_controller() -> None:
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
-    view._fresh_gas_flow_slider.value = 7.0
+    view = SimulationView(page=page, controllers=(controller,))
+    view.runs[0]._fresh_gas_flow_slider.value = 7.0
 
-    view._handle_fresh_gas_flow_change(ft.Event(name="change", control=view._fresh_gas_flow_slider))
+    view.runs[0]._handle_fresh_gas_flow_change(
+        ft.Event(name="change", control=view.runs[0]._fresh_gas_flow_slider)
+    )
 
     assert controller.snapshot().fresh_gas_flow_l_min == 7.0
-    assert view._fresh_gas_flow_text.value == "7.0 L/min"
+    assert view.runs[0]._fresh_gas_flow_text.value == "7.0 L/min"
 
 
 def test_delivered_concentration_slider_converts_percent_to_fraction() -> None:
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
-    view._delivered_concentration_slider.value = 6.5
+    view = SimulationView(page=page, controllers=(controller,))
+    view.runs[0]._delivered_concentration_slider.value = 6.5
 
-    view._handle_delivered_concentration_change(
-        ft.Event(name="change", control=view._delivered_concentration_slider)
+    view.runs[0]._handle_delivered_concentration_change(
+        ft.Event(name="change", control=view.runs[0]._delivered_concentration_slider)
     )
 
     assert controller.snapshot().delivered_partial_pressure_fraction == pytest.approx(0.065)
-    assert view._delivered_concentration_text.value == "6.50%"
+    assert view.runs[0]._delivered_concentration_text.value == "6.50%"
 
 
 def test_alveolar_ventilation_slider_forwards_value_to_controller() -> None:
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
-    view._alveolar_ventilation_slider.value = 8.0
+    view = SimulationView(page=page, controllers=(controller,))
+    view.runs[0]._alveolar_ventilation_slider.value = 8.0
 
-    view._handle_alveolar_ventilation_change(
-        ft.Event(name="change", control=view._alveolar_ventilation_slider)
+    view.runs[0]._handle_alveolar_ventilation_change(
+        ft.Event(name="change", control=view.runs[0]._alveolar_ventilation_slider)
     )
 
     assert controller.snapshot().alveolar_ventilation_l_min == 8.0
-    assert view._alveolar_ventilation_text.value == "8.0 L/min"
+    assert view.runs[0]._alveolar_ventilation_text.value == "8.0 L/min"
 
 
 def test_cardiac_output_slider_forwards_value_to_controller() -> None:
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
-    view._cardiac_output_slider.value = 6.5
+    view = SimulationView(page=page, controllers=(controller,))
+    view.runs[0]._cardiac_output_slider.value = 6.5
 
-    view._handle_cardiac_output_change(ft.Event(name="change", control=view._cardiac_output_slider))
+    view.runs[0]._handle_cardiac_output_change(
+        ft.Event(name="change", control=view.runs[0]._cardiac_output_slider)
+    )
 
     assert controller.snapshot().cardiac_output_l_min == 6.5
-    assert view._cardiac_output_text.value == "6.5 L/min"
+    assert view.runs[0]._cardiac_output_text.value == "6.5 L/min"
 
 
 @pytest.mark.parametrize(
@@ -1827,11 +1847,11 @@ def test_change_handlers_ignore_a_none_value(handler_name: str) -> None:
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
     before = controller.snapshot()
 
     unset_slider = ft.Slider(min=0, max=10)
-    handler = getattr(view, handler_name)
+    handler = getattr(view.runs[0], handler_name)
     handler(ft.Event(name="change", control=unset_slider))
 
     assert controller.snapshot() == before
@@ -1865,12 +1885,12 @@ def _select_time_base(view: SimulationView, span_s: float) -> None:
 
 def _all_series(view: SimulationView) -> tuple[fch.LineChartData, ...]:
     return (
-        view._circuit_series,
-        view._alveolar_series,
-        view._mixed_venous_series,
-        view._vessel_rich_series,
-        view._muscle_series,
-        view._fat_series,
+        view.runs[0].line_for(RecordedQuantity.CIRCUIT),
+        view.runs[0].line_for(RecordedQuantity.ALVEOLAR),
+        view.runs[0].line_for(RecordedQuantity.MIXED_VENOUS),
+        view.runs[0].line_for(RecordedQuantity.VESSEL_RICH),
+        view.runs[0].line_for(RecordedQuantity.MUSCLE),
+        view.runs[0].line_for(RecordedQuantity.FAT),
     )
 
 
@@ -1884,7 +1904,7 @@ def _drawn_series(view: SimulationView) -> tuple[fch.LineChartData, ...]:
     has to include it.
     """
 
-    return (*_all_series(view), *view._wash_in_segment_series)
+    return (*_all_series(view), *view.runs[0]._wash_in_segment_series)
 
 
 @pytest.mark.parametrize("sample_count", [3_000, 6_000, 18_000])
@@ -1937,7 +1957,7 @@ def test_the_chart_asks_the_run_for_exactly_the_window_it_draws() -> None:
 
     history = _run_history(6_000)
     controller = _fake_controller(history=history)
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
 
     (requested_start_s,) = controller.requested_window_starts
     assert requested_start_s == view._concentration_chart.min_x
@@ -1956,17 +1976,17 @@ def test_chart_right_edge_matches_the_numeric_readout() -> None:
     view, _ = _build_view(history=history)
 
     for series, quantity in (
-        (view._circuit_series, RecordedQuantity.CIRCUIT),
-        (view._alveolar_series, RecordedQuantity.ALVEOLAR),
-        (view._mixed_venous_series, RecordedQuantity.MIXED_VENOUS),
-        (view._vessel_rich_series, RecordedQuantity.VESSEL_RICH),
-        (view._muscle_series, RecordedQuantity.MUSCLE),
-        (view._fat_series, RecordedQuantity.FAT),
+        (view.runs[0].line_for(RecordedQuantity.CIRCUIT), RecordedQuantity.CIRCUIT),
+        (view.runs[0].line_for(RecordedQuantity.ALVEOLAR), RecordedQuantity.ALVEOLAR),
+        (view.runs[0].line_for(RecordedQuantity.MIXED_VENOUS), RecordedQuantity.MIXED_VENOUS),
+        (view.runs[0].line_for(RecordedQuantity.VESSEL_RICH), RecordedQuantity.VESSEL_RICH),
+        (view.runs[0].line_for(RecordedQuantity.MUSCLE), RecordedQuantity.MUSCLE),
+        (view.runs[0].line_for(RecordedQuantity.FAT), RecordedQuantity.FAT),
     ):
         assert series.points[-1].x == pytest.approx(latest.elapsed_s)
         assert series.points[-1].y == pytest.approx(_recorded(latest, quantity) * 100.0)
 
-    assert view._circuit_concentration_text.value == format_percent(
+    assert view.runs[0]._circuit_concentration_text.value == format_percent(
         _recorded(latest, RecordedQuantity.CIRCUIT)
     )
 
@@ -1980,12 +2000,12 @@ def test_chart_traces_stay_bound_to_their_own_compartment() -> None:
     # Distinct constant multiples in _run_history make a swapped pairing show
     # up as a trace whose values belong to another compartment.
     for series, quantity in (
-        (view._circuit_series, RecordedQuantity.CIRCUIT),
-        (view._alveolar_series, RecordedQuantity.ALVEOLAR),
-        (view._mixed_venous_series, RecordedQuantity.MIXED_VENOUS),
-        (view._vessel_rich_series, RecordedQuantity.VESSEL_RICH),
-        (view._muscle_series, RecordedQuantity.MUSCLE),
-        (view._fat_series, RecordedQuantity.FAT),
+        (view.runs[0].line_for(RecordedQuantity.CIRCUIT), RecordedQuantity.CIRCUIT),
+        (view.runs[0].line_for(RecordedQuantity.ALVEOLAR), RecordedQuantity.ALVEOLAR),
+        (view.runs[0].line_for(RecordedQuantity.MIXED_VENOUS), RecordedQuantity.MIXED_VENOUS),
+        (view.runs[0].line_for(RecordedQuantity.VESSEL_RICH), RecordedQuantity.VESSEL_RICH),
+        (view.runs[0].line_for(RecordedQuantity.MUSCLE), RecordedQuantity.MUSCLE),
+        (view.runs[0].line_for(RecordedQuantity.FAT), RecordedQuantity.FAT),
     ):
         by_time = {sample.elapsed_s: _recorded(sample, quantity) for sample in history}
 
@@ -2015,13 +2035,13 @@ def test_a_trace_above_the_fixed_axis_is_reported_rather_than_left_to_look_flat(
     )
     view, _ = _build_view(agent_id="sevoflurane", agent_display_name="Sevoflurane", history=history)
 
-    assert view._off_scale_text.visible is True
-    assert "Circuit" in view._off_scale_text.value
-    assert "Alveolar" not in view._off_scale_text.value
+    assert view.runs[0]._off_scale_text.visible is True
+    assert "Circuit" in view.runs[0]._off_scale_text.value
+    assert "Alveolar" not in view.runs[0]._off_scale_text.value
     # The notice has to say where the unclipped number is, or it reports a
     # problem and leaves the reader without the value.
-    assert "readouts above" in view._off_scale_text.value
-    assert "3.00 \u00d7MAC" in view._off_scale_text.value
+    assert "readouts above" in view.runs[0]._off_scale_text.value
+    assert "3.00 \u00d7MAC" in view.runs[0]._off_scale_text.value
 
 
 def test_the_off_scale_notice_stays_silent_for_a_run_inside_the_axis() -> None:
@@ -2037,8 +2057,8 @@ def test_the_off_scale_notice_stays_silent_for_a_run_inside_the_axis() -> None:
     )
     view, _ = _build_view(agent_id="sevoflurane", agent_display_name="Sevoflurane", history=history)
 
-    assert view._off_scale_text.visible is False
-    assert view._off_scale_text.value == ""
+    assert view.runs[0]._off_scale_text.visible is False
+    assert view.runs[0]._off_scale_text.value == ""
 
 
 def test_a_trace_exactly_at_the_ceiling_is_not_reported_off_scale() -> None:
@@ -2061,7 +2081,7 @@ def test_a_trace_exactly_at_the_ceiling_is_not_reported_off_scale() -> None:
         agent_id="isoflurane", agent_display_name="Isoflurane", history=at_ceiling
     )
 
-    assert view._off_scale_text.visible is False
+    assert view.runs[0]._off_scale_text.visible is False
 
     # ...and the tolerance is not so wide that it swallows a real excursion:
     # 3.62% clears the ceiling by more than the readouts can resolve.
@@ -2073,7 +2093,7 @@ def test_a_trace_exactly_at_the_ceiling_is_not_reported_off_scale() -> None:
         agent_id="isoflurane", agent_display_name="Isoflurane", history=above_ceiling
     )
 
-    assert view._off_scale_text.visible is True
+    assert view.runs[0]._off_scale_text.visible is True
 
 
 def test_a_hidden_trace_is_not_named_as_off_scale() -> None:
@@ -2090,12 +2110,12 @@ def test_a_hidden_trace_is_not_named_as_off_scale() -> None:
     )
     view, _ = _build_view(agent_id="sevoflurane", agent_display_name="Sevoflurane", history=history)
 
-    assert view._off_scale_text.visible is True
+    assert view.runs[0]._off_scale_text.visible is True
 
     _set_trace_shown(view, RecordedQuantity.CIRCUIT, False)
     view._refresh_view()
 
-    assert view._off_scale_text.visible is False
+    assert view.runs[0]._off_scale_text.visible is False
 
 
 def _set_trace_shown(view: SimulationView, quantity: RecordedQuantity, shown: bool) -> None:
@@ -2138,7 +2158,7 @@ def test_chart_traces_stay_bound_to_their_own_compartment_when_some_are_hidden()
         RecordedQuantity.VESSEL_RICH,
         RecordedQuantity.FAT,
     ):
-        series = view._trace(quantity).series
+        series = view.runs[0].line_for(quantity)
         by_time = {sample.elapsed_s: _recorded(sample, quantity) for sample in history}
 
         assert series.points
@@ -2148,8 +2168,8 @@ def test_chart_traces_stay_bound_to_their_own_compartment_when_some_are_hidden()
 
     # The pairing itself is unchanged: what a trace draws does not depend on
     # whether the reader is currently looking at it.
-    assert len(view._plotted_series(_DEFAULT_AGENT)) == len(view._compartment_traces)
-    assert len(view._visible_plotted_series(_DEFAULT_AGENT)) == 4
+    assert len(view.runs[0]._plotted_series(_DEFAULT_AGENT)) == len(view._traces)
+    assert len(view.runs[0]._visible_plotted_series(_DEFAULT_AGENT)) == 4
 
 
 def test_a_hidden_trace_is_not_drawn_rather_than_drawn_empty() -> None:
@@ -2165,24 +2185,26 @@ def test_a_hidden_trace_is_not_drawn_rather_than_drawn_empty() -> None:
     view, _ = _build_view(history=_run_history(600))
     fat = view._trace(RecordedQuantity.FAT)
 
-    assert fat.series in view._concentration_chart.data_series
+    assert view.runs[0].line_for(fat.quantity) in view._concentration_chart.data_series
 
     _set_trace_shown(view, RecordedQuantity.FAT, False)
 
-    assert fat.series not in view._concentration_chart.data_series
-    assert fat.plotted(_DEFAULT_AGENT) not in view._visible_plotted_series(_DEFAULT_AGENT)
+    assert view.runs[0].line_for(fat.quantity) not in view._concentration_chart.data_series
+    assert view.runs[0]._plotted(fat, _DEFAULT_AGENT) not in view.runs[0]._visible_plotted_series(
+        _DEFAULT_AGENT
+    )
 
     # Nothing else moved: the other five traces, both references and every
     # control mark are still on the chart.
-    for trace in view._compartment_traces:
+    for trace in view._traces:
         if trace is not fat:
-            assert trace.series in view._concentration_chart.data_series
+            assert view.runs[0].line_for(trace.quantity) in view._concentration_chart.data_series
 
     for furniture in (
         view._mac_awake_band_upper_edge,
         view._mac_awake_band_lower_edge,
         view._one_mac_line_series,
-        *view._control_mark_series,
+        *view.runs[0]._control_mark_series,
     ):
         assert furniture in view._concentration_chart.data_series
 
@@ -2200,7 +2222,7 @@ def test_the_drawing_order_survives_a_trace_being_hidden() -> None:
     _set_trace_shown(view, RecordedQuantity.CIRCUIT, False)
 
     order = view._concentration_chart.data_series
-    drawn = [series for series, _ in view._visible_plotted_series(_DEFAULT_AGENT)]
+    drawn = [series for series, _ in view.runs[0]._visible_plotted_series(_DEFAULT_AGENT)]
 
     assert len(drawn) == 5
 
@@ -2210,7 +2232,7 @@ def test_the_drawing_order_survives_a_trace_being_hidden() -> None:
         view._one_mac_line_series,
     )
 
-    for mark in view._control_mark_series:
+    for mark in view.runs[0]._control_mark_series:
         assert order.index(mark) < min(order.index(each) for each in references)
 
     for reference in references:
@@ -2229,11 +2251,11 @@ def test_a_hidden_trace_stops_being_redrawn_and_is_current_again_when_shown() ->
     """
 
     controller = _fake_controller(_run_history(200))
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
     fat = view._trace(RecordedQuantity.FAT)
 
     _set_trace_shown(view, RecordedQuantity.FAT, False)
-    frozen = [(point.x, point.y) for point in fat.series.points]
+    frozen = [(point.x, point.y) for point in view.runs[0].line_for(fat.quantity).points]
 
     later = _run_history(400)
     controller.advance_to(later)
@@ -2241,14 +2263,16 @@ def test_a_hidden_trace_stops_being_redrawn_and_is_current_again_when_shown() ->
 
     # The run moved on and this trace did not - and nothing on screen is
     # showing these points, because the series is off the chart.
-    assert [(point.x, point.y) for point in fat.series.points] == frozen
-    assert view._alveolar_series.points[-1].x == pytest.approx(later[-1].elapsed_s)
+    assert [(point.x, point.y) for point in view.runs[0].line_for(fat.quantity).points] == frozen
+    assert view.runs[0].line_for(RecordedQuantity.ALVEOLAR).points[-1].x == pytest.approx(
+        later[-1].elapsed_s
+    )
 
     _set_trace_shown(view, RecordedQuantity.FAT, True)
 
-    assert fat.series in view._concentration_chart.data_series
-    assert fat.series.points[-1].x == pytest.approx(later[-1].elapsed_s)
-    assert fat.series.points[-1].y == pytest.approx(
+    assert view.runs[0].line_for(fat.quantity) in view._concentration_chart.data_series
+    assert view.runs[0].line_for(fat.quantity).points[-1].x == pytest.approx(later[-1].elapsed_s)
+    assert view.runs[0].line_for(fat.quantity).points[-1].y == pytest.approx(
         _recorded(later[-1], RecordedQuantity.FAT) * 100.0
     )
 
@@ -2267,8 +2291,8 @@ def test_the_legend_says_exactly_which_traces_are_drawn() -> None:
 
     drawn = view._concentration_chart.data_series
 
-    for trace in view._compartment_traces:
-        on_chart = trace.series in drawn
+    for trace in view._traces:
+        on_chart = view.runs[0].line_for(trace.quantity) in drawn
 
         assert trace.visible is on_chart
         assert trace.checkbox.value is on_chart
@@ -2298,12 +2322,10 @@ def test_no_two_chart_traces_are_separated_by_colour_alone() -> None:
     """
 
     view, _ = _build_view()
-    traces = view._compartment_traces
+    traces = view._traces
 
     assert len(traces) == 6
-    patterns = [
-        tuple(trace.series.dash_pattern) if trace.series.dash_pattern else None for trace in traces
-    ]
+    patterns = [tuple(trace.dash_pattern) if trace.dash_pattern else None for trace in traces]
     assert len(set(patterns)) == len(traces), f"a dash pattern is drawn twice: {patterns}"
     styles = [trace.line_style for trace in traces]
     assert len(set(styles)) == len(traces), f"a legend style word is claimed twice: {styles}"
@@ -2321,10 +2343,10 @@ def test_every_trace_legend_entry_names_the_pattern_it_is_drawn_with() -> None:
     view, _ = _build_view()
     by_style = {}
 
-    for trace in view._compartment_traces:
+    for trace in view._traces:
         assert trace.checkbox.label is not None
         assert f"({trace.line_style})" in trace.checkbox.label
-        pattern = tuple(trace.series.dash_pattern) if trace.series.dash_pattern else None
+        pattern = tuple(trace.dash_pattern) if trace.dash_pattern else None
         assert by_style.setdefault(trace.line_style, pattern) == pattern
 
     assert by_style["solid"] is None
@@ -2343,8 +2365,8 @@ def test_no_trace_dash_is_as_wide_as_the_one_mac_reference_line() -> None:
     view, _ = _build_view()
     mark, gap = ONE_MAC_LINE_DASH_PATTERN
 
-    for trace in view._compartment_traces:
-        pattern = trace.series.dash_pattern
+    for trace in view._traces:
+        pattern = trace.dash_pattern
         if pattern is None:
             continue
         assert max(pattern[::2]) < mark, f"{trace.label} has a mark as long as the 1 MAC line"
@@ -2361,10 +2383,10 @@ def test_the_chart_says_so_when_no_compartment_is_drawn() -> None:
     # line exists to be revealed rather than being built on demand.
     assert NO_TRACES_SHOWN_TEXT in _mounted_interface_strings(view, page)
 
-    for trace in view._compartment_traces:
+    for trace in view._traces:
         _set_trace_shown(view, trace.quantity, False)
 
-    assert view._visible_plotted_series(_DEFAULT_AGENT) == ()
+    assert view.runs[0]._visible_plotted_series(_DEFAULT_AGENT) == ()
     assert view._hidden_traces_text.visible is True
 
     _set_trace_shown(view, RecordedQuantity.ALVEOLAR, True)
@@ -2386,22 +2408,26 @@ def test_hiding_a_trace_changes_only_what_is_drawn() -> None:
     history = _run_history(600)
     view, _ = _build_view(history=history)
     before = {
-        trace.quantity: [(point.x, point.y) for point in trace.series.points]
-        for trace in view._compartment_traces
+        trace.quantity: [
+            (point.x, point.y) for point in view.runs[0].line_for(trace.quantity).points
+        ]
+        for trace in view._traces
     }
 
     _set_trace_shown(view, RecordedQuantity.FAT, False)
 
-    for trace in view._compartment_traces:
+    for trace in view._traces:
         if trace.quantity is not RecordedQuantity.FAT:
-            assert [(point.x, point.y) for point in trace.series.points] == before[trace.quantity]
+            assert [
+                (point.x, point.y) for point in view.runs[0].line_for(trace.quantity).points
+            ] == before[trace.quantity]
 
     latest = history[-1]
 
     for text, quantity in (
-        (view._circuit_concentration_text, RecordedQuantity.CIRCUIT),
-        (view._muscle_concentration_text, RecordedQuantity.MUSCLE),
-        (view._fat_concentration_text, RecordedQuantity.FAT),
+        (view.runs[0]._circuit_concentration_text, RecordedQuantity.CIRCUIT),
+        (view.runs[0]._muscle_concentration_text, RecordedQuantity.MUSCLE),
+        (view.runs[0]._fat_concentration_text, RecordedQuantity.FAT),
     ):
         assert text.value == format_percent(_recorded(latest, quantity))
 
@@ -2411,7 +2437,7 @@ def test_every_compartment_has_exactly_one_trace() -> None:
 
     view, _ = _build_view()
 
-    assert {trace.quantity for trace in view._compartment_traces} == {
+    assert {trace.quantity for trace in view._traces} == {
         RecordedQuantity.CIRCUIT,
         RecordedQuantity.ALVEOLAR,
         RecordedQuantity.MIXED_VENOUS,
@@ -2561,7 +2587,7 @@ def test_the_window_s_own_ends_are_labelled_only_when_they_are_ticks() -> None:
     """
 
     controller = _fake_controller(history=_run_history(12_000))
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
 
     assert view._concentration_chart.min_x == 0.0
     assert view._time_axis.show_min
@@ -2660,7 +2686,7 @@ def test_choosing_a_time_base_changes_nothing_the_run_recorded() -> None:
     """
 
     controller = SimulationController()
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
     controller.start()
 
     for _ in range(200):
@@ -2687,7 +2713,7 @@ def test_the_time_base_is_never_disabled() -> None:
 
     view, _ = _build_view(is_running=True)
 
-    assert view._agent_dropdown.disabled
+    assert view.runs[0]._agent_dropdown.disabled
     assert not view._time_base_dropdown.disabled
 
 
@@ -2700,10 +2726,10 @@ def test_reset_leaves_the_selected_time_base_alone() -> None:
     """
 
     controller = SimulationController()
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
     _select_time_base(view, 1_800.0)
 
-    view._handle_reset(ft.Event(name="click", control=view._reset_button))
+    view.runs[0]._handle_reset(ft.Event(name="click", control=view.runs[0]._reset_button))
 
     assert view._time_base == time_base_for_span(1_800.0)
     assert view._time_base_dropdown.value == "1800.0"
@@ -2720,7 +2746,7 @@ def test_the_axis_labels_are_rebuilt_only_when_the_ticks_move() -> None:
     """
 
     controller = _fake_controller(history=_run_history(12_000))
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
     _select_time_base(view, 900.0)
 
     held = list(view._time_axis.labels)
@@ -2740,7 +2766,7 @@ def test_crossing_a_tick_relabels_the_axis() -> None:
     """The other half of the guard: a stale label is a wrong displayed time."""
 
     controller = _fake_controller(history=_run_history(12_000))
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
     _select_time_base(view, 900.0)
 
     before = [label.value for label in view._time_axis.labels]
@@ -2762,7 +2788,7 @@ def test_fitting_widens_the_axis_in_steps_rather_than_continuously() -> None:
     """
 
     controller = _fake_controller(history=_run_history(400))
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
     widths = []
 
     for sample_count in range(400, 1_400, 100):
@@ -2794,7 +2820,7 @@ def test_chart_points_are_moved_rather_than_rebuilt_each_frame() -> None:
     """
 
     controller = _fake_controller(history=_run_history(12_000))
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
     # A selected time base, so the window slides rather than widening: under
     # "Fit run" a run this length is drawn whole and the older points do not
     # move at all, which would leave the assertion below passing vacuously.
@@ -2865,7 +2891,7 @@ def test_refresh_allocates_no_chart_points_when_drawn_count_unchanged(
     monkeypatch.setattr(fch, "LineChartDataPoint", counted)
 
     controller = _fake_controller(history=_run_history(12_000))
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
     # A selected time base, so the window slides at its saturated width
     # rather than widening: under "Fit run" a run this length is drawn whole,
     # the older points never move, and the ceiling this defends is never
@@ -2939,11 +2965,11 @@ def test_simulation_loop_advances_without_rendering() -> None:
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
     controller.start()
     page.update_calls = 0
 
-    _run_briefly(view._run_simulation_timer, ticks=3, interval_s=SIMULATION_STEP_S)
+    _run_briefly(view.runs[0].run_simulation_timer, ticks=3, interval_s=SIMULATION_STEP_S)
 
     # How many ticks land in a fixed slice of real time is up to the host, so
     # the claim under test is that stepping happened and drawing did not.
@@ -2956,7 +2982,7 @@ def test_render_loop_draws_without_advancing() -> None:
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
     controller.start()
     page.update_calls = 0
 
@@ -2969,10 +2995,10 @@ def test_render_loop_draws_without_advancing() -> None:
 def test_neither_loop_does_anything_while_paused() -> None:
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
     page.update_calls = 0
 
-    _run_briefly(view._run_simulation_timer, ticks=2, interval_s=SIMULATION_STEP_S)
+    _run_briefly(view.runs[0].run_simulation_timer, ticks=2, interval_s=SIMULATION_STEP_S)
     _run_briefly(view._run_render_timer, ticks=1, interval_s=RENDER_INTERVAL_S)
 
     assert controller.snapshot().elapsed_s == 0.0
@@ -2990,15 +3016,17 @@ def test_a_dragged_slider_leaves_its_frame_to_the_render_tick() -> None:
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
     controller.start()
     page.update_calls = 0
 
-    view._fresh_gas_flow_slider.value = 7.0
-    view._handle_fresh_gas_flow_change(ft.Event(name="change", control=view._fresh_gas_flow_slider))
+    view.runs[0]._fresh_gas_flow_slider.value = 7.0
+    view.runs[0]._handle_fresh_gas_flow_change(
+        ft.Event(name="change", control=view.runs[0]._fresh_gas_flow_slider)
+    )
 
     assert controller.snapshot().fresh_gas_flow_l_min == 7.0
-    assert view._fresh_gas_flow_text.value == "7.0 L/min"
+    assert view.runs[0]._fresh_gas_flow_text.value == "7.0 L/min"
     assert page.update_calls == 0
     assert view._render_pending is True
 
@@ -3014,15 +3042,15 @@ def test_a_refused_slider_change_draws_its_own_frame() -> None:
 
     page = _FakePage()
     controller = SimulationController(agent_id="isoflurane")
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
     page.update_calls = 0
 
-    view._delivered_concentration_slider.value = 50.0
-    view._handle_delivered_concentration_change(
-        ft.Event(name="change", control=view._delivered_concentration_slider)
+    view.runs[0]._delivered_concentration_slider.value = 50.0
+    view.runs[0]._handle_delivered_concentration_change(
+        ft.Event(name="change", control=view.runs[0]._delivered_concentration_slider)
     )
 
-    assert view._notice_text.visible is True
+    assert view.runs[0]._notice_text.visible is True
     assert page.update_calls == 1
     assert view._render_pending is False
 
@@ -3032,20 +3060,20 @@ def test_the_frame_that_clears_a_refusal_is_drawn_too() -> None:
 
     page = _FakePage()
     controller = SimulationController(agent_id="isoflurane")
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
 
-    view._delivered_concentration_slider.value = 50.0
-    view._handle_delivered_concentration_change(
-        ft.Event(name="change", control=view._delivered_concentration_slider)
+    view.runs[0]._delivered_concentration_slider.value = 50.0
+    view.runs[0]._handle_delivered_concentration_change(
+        ft.Event(name="change", control=view.runs[0]._delivered_concentration_slider)
     )
     page.update_calls = 0
 
-    view._delivered_concentration_slider.value = 2.0
-    view._handle_delivered_concentration_change(
-        ft.Event(name="change", control=view._delivered_concentration_slider)
+    view.runs[0]._delivered_concentration_slider.value = 2.0
+    view.runs[0]._handle_delivered_concentration_change(
+        ft.Event(name="change", control=view.runs[0]._delivered_concentration_slider)
     )
 
-    assert view._notice_text.visible is False
+    assert view.runs[0]._notice_text.visible is False
     assert page.update_calls == 1
 
 
@@ -3058,10 +3086,10 @@ def test_a_discrete_action_still_draws_its_own_frame() -> None:
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
     page.update_calls = 0
 
-    view._handle_start(ft.Event(name="click", control=view._start_button))
+    view.runs[0]._handle_start(ft.Event(name="click", control=view.runs[0]._start_button))
 
     assert controller.is_running
     assert page.update_calls == 1
@@ -3079,10 +3107,12 @@ def test_the_render_tick_draws_a_pending_change_while_the_run_is_stopped() -> No
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
 
-    view._fresh_gas_flow_slider.value = 7.0
-    view._handle_fresh_gas_flow_change(ft.Event(name="change", control=view._fresh_gas_flow_slider))
+    view.runs[0]._fresh_gas_flow_slider.value = 7.0
+    view.runs[0]._handle_fresh_gas_flow_change(
+        ft.Event(name="change", control=view.runs[0]._fresh_gas_flow_slider)
+    )
     assert view._render_pending is True
     page.update_calls = 0
 
@@ -3106,10 +3136,10 @@ def test_simulation_time_does_not_depend_on_render_cadence() -> None:
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
     controller.start()
 
-    _run_briefly(view._run_simulation_timer, ticks=5, interval_s=SIMULATION_STEP_S)
+    _run_briefly(view.runs[0].run_simulation_timer, ticks=5, interval_s=SIMULATION_STEP_S)
     stepped_by_the_loop = controller.snapshot()
 
     reference = SimulationController()
@@ -3151,7 +3181,7 @@ def _drive_exact_ticks(view: SimulationView, ticks: int, monkeypatch: pytest.Mon
         await real_sleep(0.0 if wakeups <= ticks else 3600.0)
 
     async def drive() -> None:
-        task = asyncio.create_task(view._run_simulation_timer())
+        task = asyncio.create_task(view.runs[0].run_simulation_timer())
 
         for _ in range(ticks * 100):
             if wakeups > ticks:
@@ -3188,7 +3218,7 @@ def test_the_run_loop_takes_one_step_per_tick_at_real_time_and_never_catches_up(
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
     controller.start()
 
     ticks = 7
@@ -3249,8 +3279,8 @@ def test_the_run_loop_takes_the_playback_rates_steps_per_tick(
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
-    view._playback_rate = rate
+    view = SimulationView(page=page, controllers=(controller,))
+    view.runs[0]._playback_rate = rate
     controller.start()
 
     steps_requested: list[float] = []
@@ -3285,7 +3315,7 @@ def _panel_under(view: SimulationView, value_text: ft.Text) -> ft.Text:
     a reader would see under that particular reading.
     """
 
-    for panel in view._build_concentration_metrics().controls:
+    for panel in view.runs[0]._build_concentration_metrics().controls:
         _name, _qualifier, panel_value_text, secondary_text = panel.content.controls
         if panel_value_text is value_text:
             return secondary_text
@@ -3296,9 +3326,9 @@ def _panel_under(view: SimulationView, value_text: ft.Text) -> ft.Text:
 def _select_playback_rate(view: SimulationView, multiplier: int) -> None:
     """Drive the dropdown as a user selection would."""
 
-    view._playback_rate_dropdown.value = str(multiplier)
-    view._handle_playback_rate_change(
-        cast(Any, ft.Event(name="select", control=view._playback_rate_dropdown, data=None))
+    view.runs[0]._playback_rate_dropdown.value = str(multiplier)
+    view.runs[0]._handle_playback_rate_change(
+        cast(Any, ft.Event(name="select", control=view.runs[0]._playback_rate_dropdown, data=None))
     )
 
 
@@ -3315,7 +3345,7 @@ def test_the_playback_rate_is_drawn_under_the_clock_it_governs() -> None:
 
     view, _page = _build_view()
 
-    assert _panel_under(view, view._elapsed_time_text).value == format_playback_rate(
+    assert _panel_under(view, view.runs[0]._elapsed_time_text).value == format_playback_rate(
         DEFAULT_PLAYBACK_RATE.multiplier
     )
 
@@ -3341,8 +3371,8 @@ def test_the_default_playback_rate_is_real_time() -> None:
 
     view, _page = _build_view()
 
-    assert view._playback_rate == DEFAULT_PLAYBACK_RATE
-    assert view._playback_rate.multiplier == 1
+    assert view.runs[0]._playback_rate == DEFAULT_PLAYBACK_RATE
+    assert view.runs[0]._playback_rate.multiplier == 1
 
 
 def test_every_supported_playback_rate_is_offered_by_the_control() -> None:
@@ -3356,7 +3386,7 @@ def test_every_supported_playback_rate_is_offered_by_the_control() -> None:
     """
 
     view, _page = _build_view()
-    options = view._playback_rate_dropdown.options
+    options = view.runs[0]._playback_rate_dropdown.options
 
     assert [option.key for option in options] == [
         str(rate.multiplier) for rate in SUPPORTED_PLAYBACK_RATES
@@ -3372,9 +3402,9 @@ def test_the_control_and_the_clock_state_the_rate_identically() -> None:
     view, _page = _build_view()
 
     _select_playback_rate(view, 60)
-    offered = {option.key: option.text for option in view._playback_rate_dropdown.options}
+    offered = {option.key: option.text for option in view.runs[0]._playback_rate_dropdown.options}
 
-    assert view._playback_rate_text.value == offered["60"]
+    assert view.runs[0]._playback_rate_text.value == offered["60"]
 
 
 def test_selecting_a_rate_changes_the_loop_and_the_readout_together() -> None:
@@ -3389,13 +3419,13 @@ def test_selecting_a_rate_changes_the_loop_and_the_readout_together() -> None:
 
     _select_playback_rate(view, 60)
 
-    assert view._playback_rate.multiplier == 60
-    assert view._playback_rate_text.value == format_playback_rate(60)
+    assert view.runs[0]._playback_rate.multiplier == 60
+    assert view.runs[0]._playback_rate_text.value == format_playback_rate(60)
 
     _select_playback_rate(view, 1)
 
-    assert view._playback_rate.multiplier == 1
-    assert view._playback_rate_text.value == format_playback_rate(1)
+    assert view.runs[0]._playback_rate.multiplier == 1
+    assert view.runs[0]._playback_rate_text.value == format_playback_rate(1)
 
 
 def test_the_playback_control_is_never_disabled() -> None:
@@ -3411,8 +3441,8 @@ def test_the_playback_control_is_never_disabled() -> None:
     view, _page = _build_view(is_running=True)
     view._refresh_and_render()
 
-    assert view._agent_dropdown.disabled is True
-    assert view._playback_rate_dropdown.disabled in (False, None)
+    assert view.runs[0]._agent_dropdown.disabled is True
+    assert view.runs[0]._playback_rate_dropdown.disabled in (False, None)
 
 
 def test_reset_leaves_the_playback_rate_alone() -> None:
@@ -3424,13 +3454,15 @@ def test_reset_leaves_the_playback_rate_alone() -> None:
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
 
     _select_playback_rate(view, 20)
-    view._handle_reset(cast(Any, ft.Event(name="click", control=view._reset_button, data=None)))
+    view.runs[0]._handle_reset(
+        cast(Any, ft.Event(name="click", control=view.runs[0]._reset_button, data=None))
+    )
 
-    assert view._playback_rate == playback_rate_for(20)
-    assert view._playback_rate_text.value == format_playback_rate(20)
+    assert view.runs[0]._playback_rate == playback_rate_for(20)
+    assert view.runs[0]._playback_rate_text.value == format_playback_rate(20)
 
 
 def test_a_failed_step_abandons_the_rest_of_its_tick(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -3445,8 +3477,8 @@ def test_a_failed_step_abandons_the_rest_of_its_tick(monkeypatch: pytest.MonkeyP
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
-    view._playback_rate = playback_rate_for(60)
+    view = SimulationView(page=page, controllers=(controller,))
+    view.runs[0]._playback_rate = playback_rate_for(60)
     controller.start()
 
     calls = 0
@@ -3543,32 +3575,32 @@ def test_refresh_view_reports_a_failed_run_as_stopped_not_paused() -> None:
         failure_reason="SimulationNumericalError: the step could not be completed"
     )
 
-    assert view._status_text.value == "Stopped — simulation error"
-    assert view._status_text.color == WARNING
-    assert view._notice_text.visible is True
-    assert view._notice_text.value is not None
-    assert "the step could not be completed" in view._notice_text.value
+    assert view.runs[0]._status_text.value == "Stopped — simulation error"
+    assert view.runs[0]._status_text.color == WARNING
+    assert view.runs[0]._notice_text.visible is True
+    assert view.runs[0]._notice_text.value is not None
+    assert "the step could not be completed" in view.runs[0]._notice_text.value
     # PL-026: the numbers beside the banner are the last completed step,
     # because the core rolls a failed step back. The reader has to be told
     # that much - a banner that only says something went wrong leaves them
     # to guess whether the values are a solution of the model or debris.
-    assert "last completed step" in view._notice_text.value
-    assert "rolled back" in view._notice_text.value
+    assert "last completed step" in view.runs[0]._notice_text.value
+    assert "rolled back" in view.runs[0]._notice_text.value
 
 
 def test_refresh_view_does_not_offer_to_resume_a_failed_run() -> None:
     view, _ = _build_view(failure_reason="SimulationNumericalError: boom")
 
-    assert view._start_button.disabled is True
-    assert view._pause_button.disabled is True
+    assert view.runs[0]._start_button.disabled is True
+    assert view.runs[0]._pause_button.disabled is True
 
 
 def test_refresh_view_shows_no_notice_for_an_ordinary_run() -> None:
     for is_running in (True, False):
         view, _ = _build_view(is_running=is_running)
 
-        assert view._notice_text.visible is False
-        assert view._status_text.value in {"Running", "Paused"}
+        assert view.runs[0]._notice_text.visible is False
+        assert view.runs[0]._status_text.value in {"Running", "Paused"}
 
 
 def test_a_failed_step_stops_the_run_instead_of_killing_the_loop() -> None:
@@ -3581,17 +3613,17 @@ def test_a_failed_step_stops_the_run_instead_of_killing_the_loop() -> None:
 
     page = _FakePage()
     controller = _StepFailingController(_real_step_failure())
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
     controller.start()
 
-    _run_briefly(view._run_simulation_timer, ticks=3, interval_s=SIMULATION_STEP_S)
+    _run_briefly(view.runs[0].run_simulation_timer, ticks=3, interval_s=SIMULATION_STEP_S)
 
     assert controller.is_running is False
     assert controller.has_failed is True
-    assert view._status_text.value == "Stopped — simulation error"
-    assert view._notice_text.visible is True
-    assert view._notice_text.value is not None
-    assert "SimulationNumericalError" in view._notice_text.value
+    assert view.runs[0]._status_text.value == "Stopped — simulation error"
+    assert view.runs[0]._notice_text.visible is True
+    assert view.runs[0]._notice_text.value is not None
+    assert "SimulationNumericalError" in view.runs[0]._notice_text.value
     # The failure was drawn, not just recorded.
     assert page.update_calls >= 1
 
@@ -3605,17 +3637,17 @@ def test_the_simulation_loop_survives_a_failure_so_reset_can_restart_it() -> Non
 
     page = _FakePage()
     controller = _StepFailingController(_real_step_failure())
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
     controller.start()
 
     async def drive() -> None:
-        task = asyncio.create_task(view._run_simulation_timer())
+        task = asyncio.create_task(view.runs[0].run_simulation_timer())
 
         await asyncio.sleep(SIMULATION_STEP_S * 3)
         assert controller.has_failed is True
 
-        view._handle_reset(ft.Event(name="click", control=view._reset_button))
-        view._handle_start(ft.Event(name="click", control=view._start_button))
+        view.runs[0]._handle_reset(ft.Event(name="click", control=view.runs[0]._reset_button))
+        view.runs[0]._handle_start(ft.Event(name="click", control=view.runs[0]._start_button))
         await asyncio.sleep(SIMULATION_STEP_S * 3)
 
         task.cancel()
@@ -3627,8 +3659,8 @@ def test_the_simulation_loop_survives_a_failure_so_reset_can_restart_it() -> Non
 
     assert controller.has_failed is False
     assert controller.snapshot().elapsed_s > 0.0
-    assert view._status_text.value == "Running"
-    assert view._notice_text.visible is False
+    assert view.runs[0]._status_text.value == "Running"
+    assert view.runs[0]._notice_text.visible is False
 
 
 def test_a_failed_render_stops_the_run_rather_than_freezing_the_display() -> None:
@@ -3641,7 +3673,7 @@ def test_a_failed_render_stops_the_run_rather_than_freezing_the_display() -> Non
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
     controller.start()
 
     real_refresh_and_render = view._refresh_and_render
@@ -3662,9 +3694,9 @@ def test_a_failed_render_stops_the_run_rather_than_freezing_the_display() -> Non
     assert controller.has_failed is True
     # A plain programming error is treated exactly like a modelling one:
     # both kill the loop, and both leave the display claiming to be live.
-    assert view._status_text.value == "Stopped — simulation error"
-    assert view._notice_text.value is not None
-    assert "RuntimeError" in view._notice_text.value
+    assert view.runs[0]._status_text.value == "Stopped — simulation error"
+    assert view.runs[0]._notice_text.value is not None
+    assert "RuntimeError" in view.runs[0]._notice_text.value
 
 
 def test_a_refused_setting_is_reported_without_stopping_the_run() -> None:
@@ -3672,46 +3704,48 @@ def test_a_refused_setting_is_reported_without_stopping_the_run() -> None:
 
     page = _FakePage()
     controller = SimulationController(agent_id="isoflurane")
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
     controller.start()
     delivered_before = controller.snapshot().delivered_partial_pressure_fraction
 
-    view._delivered_concentration_slider.value = 50.0
-    view._handle_delivered_concentration_change(
-        ft.Event(name="change", control=view._delivered_concentration_slider)
+    view.runs[0]._delivered_concentration_slider.value = 50.0
+    view.runs[0]._handle_delivered_concentration_change(
+        ft.Event(name="change", control=view.runs[0]._delivered_concentration_slider)
     )
 
     assert controller.is_running is True
     assert controller.has_failed is False
-    assert view._status_text.value == "Running"
-    assert view._notice_text.visible is True
-    assert view._notice_text.value is not None
-    assert "Setting refused" in view._notice_text.value
-    assert "vaporizer maximum" in view._notice_text.value
+    assert view.runs[0]._status_text.value == "Running"
+    assert view.runs[0]._notice_text.visible is True
+    assert view.runs[0]._notice_text.value is not None
+    assert "Setting refused" in view.runs[0]._notice_text.value
+    assert "vaporizer maximum" in view.runs[0]._notice_text.value
 
     # The control must not keep showing a dial position the simulation is
     # not running at: that is the correct number under the wrong label.
     assert controller.snapshot().delivered_partial_pressure_fraction == delivered_before
-    assert view._delivered_concentration_slider.value == pytest.approx(delivered_before * 100.0)
+    assert view.runs[0]._delivered_concentration_slider.value == pytest.approx(
+        delivered_before * 100.0
+    )
 
 
 def test_a_refusal_notice_clears_once_a_setting_is_accepted() -> None:
     page = _FakePage()
     controller = SimulationController(agent_id="isoflurane")
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
 
-    view._delivered_concentration_slider.value = 50.0
-    view._handle_delivered_concentration_change(
-        ft.Event(name="change", control=view._delivered_concentration_slider)
+    view.runs[0]._delivered_concentration_slider.value = 50.0
+    view.runs[0]._handle_delivered_concentration_change(
+        ft.Event(name="change", control=view.runs[0]._delivered_concentration_slider)
     )
-    assert view._notice_text.visible is True
+    assert view.runs[0]._notice_text.visible is True
 
-    view._delivered_concentration_slider.value = 2.0
-    view._handle_delivered_concentration_change(
-        ft.Event(name="change", control=view._delivered_concentration_slider)
+    view.runs[0]._delivered_concentration_slider.value = 2.0
+    view.runs[0]._handle_delivered_concentration_change(
+        ft.Event(name="change", control=view.runs[0]._delivered_concentration_slider)
     )
 
-    assert view._notice_text.visible is False
+    assert view.runs[0]._notice_text.visible is False
     assert controller.snapshot().delivered_partial_pressure_fraction == pytest.approx(0.02)
 
 
@@ -3736,18 +3770,18 @@ def test_every_slider_handler_refuses_without_escaping_into_flet(
 
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
     controller.start()
 
-    slider = getattr(view, slider_name)
+    slider = getattr(view.runs[0], slider_name)
     slider.value = refused_value
-    getattr(view, handler_name)(ft.Event(name="change", control=slider))
+    getattr(view.runs[0], handler_name)(ft.Event(name="change", control=slider))
 
     assert controller.is_running is True
     assert controller.has_failed is False
-    assert view._notice_text.visible is True
-    assert view._notice_text.value is not None
-    assert "Setting refused" in view._notice_text.value
+    assert view.runs[0]._notice_text.visible is True
+    assert view.runs[0]._notice_text.value is not None
+    assert "Setting refused" in view.runs[0]._notice_text.value
     assert slider.value >= 0.0
 
 
@@ -3785,9 +3819,9 @@ def test_halt_run_stops_the_session_and_records_the_exception_type() -> None:
     whoever reads the banner.
     """
     controller = _recording_controller()
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
 
-    view._halt_run(ValueError("mass balance violated"))
+    view.runs[0]._halt_run(ValueError("mass balance violated"))
 
     assert controller.failures == ["ValueError: mass balance violated"]
     assert controller.is_running is False
@@ -3804,14 +3838,14 @@ def test_halt_run_survives_a_render_failure_and_leaves_the_run_stopped() -> None
     that the suppression is covered by a test rather than only by a comment.
     """
     controller = _recording_controller()
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
 
     def _explode() -> None:
         raise RuntimeError("the page is gone")
 
     view._refresh_and_render = _explode  # type: ignore[method-assign]
 
-    view._halt_run(ValueError("mass balance violated"))
+    view.runs[0]._halt_run(ValueError("mass balance violated"))
 
     assert controller.failures == ["ValueError: mass balance violated"]
     assert controller.is_running is False
@@ -3829,8 +3863,8 @@ def test_the_clock_panel_reads_in_the_chart_axis_form_past_an_hour() -> None:
 
     view, _ = _build_view(history=(_sample(5400.0, 0.02, 0.01, 0.005, 0.008, 0.003, 0.001),))
 
-    assert view._elapsed_time_text.value == "1h30m"
-    assert view._elapsed_time_text.value == format_chart_time_label(5400.0)
+    assert view.runs[0]._elapsed_time_text.value == "1h30m"
+    assert view.runs[0]._elapsed_time_text.value == format_chart_time_label(5400.0)
 
 
 def test_the_clock_reserves_its_width_so_the_panel_cannot_move() -> None:
@@ -3847,7 +3881,7 @@ def test_the_clock_reserves_its_width_so_the_panel_cannot_move() -> None:
 
     view, _ = _build_view()
 
-    assert view._elapsed_time_text.width == ELAPSED_VALUE_WIDTH
+    assert view.runs[0]._elapsed_time_text.width == ELAPSED_VALUE_WIDTH
 
 
 def test_a_settings_raise_outside_the_project_hierarchy_halts_the_run() -> None:
@@ -3866,16 +3900,16 @@ def test_a_settings_raise_outside_the_project_hierarchy_halts_the_run() -> None:
     """
 
     controller = _recording_controller(is_running=True)
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
 
     def _explode() -> None:
         raise TypeError("a future refactor changed a signature")
 
-    view._apply_setting(_explode)
+    view.runs[0]._apply_setting(_explode)
 
     assert controller.failures == ["TypeError: a future refactor changed a signature"]
     assert controller.is_running is False
-    assert view._rejected_setting_notice is None
+    assert view.runs[0]._rejected_setting_notice is None
 
 
 def test_a_refused_setting_is_still_a_notice_and_not_a_halt() -> None:
@@ -3889,16 +3923,16 @@ def test_a_refused_setting_is_still_a_notice_and_not_a_halt() -> None:
     """
 
     controller = _recording_controller(is_running=True)
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
 
     def _refuse() -> None:
         raise SimulationConfigurationError("a value the core refused")
 
-    view._apply_setting(_refuse)
+    view.runs[0]._apply_setting(_refuse)
 
     assert controller.failures == []
     assert controller.is_running is True
-    assert view._rejected_setting_notice == "Setting refused — a value the core refused"
+    assert view.runs[0]._rejected_setting_notice == "Setting refused — a value the core refused"
 
 
 def test_a_settings_execution_error_halts_the_run_instead_of_reading_as_refused() -> None:
@@ -3919,16 +3953,16 @@ def test_a_settings_execution_error_halts_the_run_instead_of_reading_as_refused(
     """
 
     controller = _recording_controller(is_running=True)
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
 
     def _cannot_continue() -> None:
         raise SimulationExecutionError("the run cannot continue safely")
 
-    view._apply_setting(_cannot_continue)
+    view.runs[0]._apply_setting(_cannot_continue)
 
     assert controller.failures == ["SimulationExecutionError: the run cannot continue safely"]
     assert controller.is_running is False
-    assert view._rejected_setting_notice is None
+    assert view.runs[0]._rejected_setting_notice is None
 
 
 def test_a_settings_domain_limit_reaches_the_supported_limit_channel() -> None:
@@ -3944,17 +3978,17 @@ def test_a_settings_domain_limit_reaches_the_supported_limit_channel() -> None:
     """
 
     controller = _recording_controller(is_running=True)
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
 
     def _out_of_domain() -> None:
         raise SimulationDomainLimitError("this run has reached 86400 s of simulated time")
 
-    view._apply_setting(_out_of_domain)
+    view.runs[0]._apply_setting(_out_of_domain)
 
     assert controller.supported_limits == ["this run has reached 86400 s of simulated time"]
     assert controller.failures == []
     assert controller.is_running is False
-    assert view._rejected_setting_notice is None
+    assert view.runs[0]._rejected_setting_notice is None
 
 
 def test_a_built_in_agent_without_an_identification_colour_fails_at_import() -> None:
@@ -4045,18 +4079,19 @@ def test_every_compartment_is_readable_in_mac_multiples() -> None:
     view, _ = _build_view(history=(_sample(60.0, 0.02, 0.016, 0.008, 0.006, 0.001, 5e-5),))
 
     mac_lines = [
-        panel.content.controls[3].value for panel in view._build_concentration_metrics().controls
+        panel.content.controls[3].value
+        for panel in view.runs[0]._build_concentration_metrics().controls
     ]
 
     # "Simulated time" holds the line open without a value; the six
     # compartments each carry one.
     assert sum(1 for line in mac_lines if line and "MAC" in line) == 6
-    assert view._circuit_mac_text.value == "1.00 ×MAC"
-    assert view._alveolar_mac_text.value == "0.80 ×MAC"
-    assert view._mixed_venous_mac_text.value == "0.40 ×MAC"
-    assert view._vessel_rich_mac_text.value == "0.30 ×MAC"
-    assert view._muscle_mac_text.value == "0.05 ×MAC"
-    assert view._fat_mac_text.value == "<0.01 ×MAC"
+    assert view.runs[0]._circuit_mac_text.value == "1.00 ×MAC"
+    assert view.runs[0]._alveolar_mac_text.value == "0.80 ×MAC"
+    assert view.runs[0]._mixed_venous_mac_text.value == "0.40 ×MAC"
+    assert view.runs[0]._vessel_rich_mac_text.value == "0.30 ×MAC"
+    assert view.runs[0]._muscle_mac_text.value == "0.05 ×MAC"
+    assert view.runs[0]._fat_mac_text.value == "<0.01 ×MAC"
 
 
 def test_each_mac_readout_uses_its_own_agent_divisor() -> None:
@@ -4077,9 +4112,9 @@ def test_each_mac_readout_uses_its_own_agent_divisor() -> None:
     """
 
     controller = _fake_controller(history=(_sample(60.0, 0.06, 0.06, 0.06, 0.06, 0.06, 0.06),))
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
 
-    assert view._alveolar_mac_text.value == "3.00 ×MAC"
+    assert view.runs[0]._alveolar_mac_text.value == "3.00 ×MAC"
 
     controller.switch_agent(
         "desflurane",
@@ -4089,8 +4124,8 @@ def test_each_mac_readout_uses_its_own_agent_divisor() -> None:
     )
     view._refresh_view()
 
-    assert view._alveolar_mac_text.value == "1.00 ×MAC"
-    assert view._fat_mac_text.value == "1.00 ×MAC"
+    assert view.runs[0]._alveolar_mac_text.value == "1.00 ×MAC"
+    assert view.runs[0]._fat_mac_text.value == "1.00 ×MAC"
 
 
 def test_the_display_names_the_mac_the_readouts_were_divided_by() -> None:
@@ -4104,7 +4139,7 @@ def test_the_display_names_the_mac_the_readouts_were_divided_by() -> None:
     """
 
     controller = _fake_controller()
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
 
     assert view._mac_reference_text.value == format_mac_reference("Sevoflurane", 2.0)
 
@@ -4134,16 +4169,16 @@ def test_the_readout_row_names_the_substance_its_numbers_belong_to() -> None:
     """
 
     controller = _fake_controller()
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
 
-    assert view._compartment_substance_text.value == "Modelled concentrations: Sevoflurane"
+    assert view.runs[0]._compartment_substance_text.value == "Modelled concentrations: Sevoflurane"
 
     controller.switch_agent(
         "desflurane", agent_display_name="Desflurane", max_delivered_concentration_percent=18.0
     )
     view._refresh_view()
 
-    assert view._compartment_substance_text.value == "Modelled concentrations: Desflurane"
+    assert view.runs[0]._compartment_substance_text.value == "Modelled concentrations: Desflurane"
 
 
 def test_the_interface_states_the_mac_divisor_and_writes_the_unit_as_a_ratio() -> None:
@@ -4171,7 +4206,7 @@ def test_the_interface_states_the_mac_divisor_and_writes_the_unit_as_a_ratio() -
     """
 
     page = _FakePage()
-    view = SimulationView(page=page, controller=_fake_controller())
+    view = SimulationView(page=page, controllers=(_fake_controller(),))
     view.mount()
 
     disclosure = " ".join(sorted(_mounted_interface_strings(view, page)))
@@ -4227,7 +4262,7 @@ def test_the_mac_axis_is_rebuilt_only_when_the_agent_or_the_range_moves() -> Non
     """
 
     controller = _fake_controller()
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
 
     before = view._mac_axis.labels
     view._refresh_view()
@@ -4255,9 +4290,9 @@ def test_the_dial_is_readable_in_the_unit_its_compartments_are() -> None:
 
     view, _ = _build_view()
 
-    assert view._delivered_concentration_text.value == format_percent(0.08)
-    assert view._delivered_concentration_mac_text.value == format_mac_multiple(0.08, 2.0)
-    assert view._delivered_concentration_mac_text.value == "4.00 ×MAC"
+    assert view.runs[0]._delivered_concentration_text.value == format_percent(0.08)
+    assert view.runs[0]._delivered_concentration_mac_text.value == format_mac_multiple(0.08, 2.0)
+    assert view.runs[0]._delivered_concentration_mac_text.value == "4.00 ×MAC"
 
 
 def test_the_end_to_end_mac_path_reaches_the_panel_from_a_real_run() -> None:
@@ -4270,7 +4305,7 @@ def test_the_end_to_end_mac_path_reaches_the_panel_from_a_real_run() -> None:
     """
 
     controller = SimulationController(agent_id="desflurane")
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
 
     controller.start()
 
@@ -4282,14 +4317,14 @@ def test_the_end_to_end_mac_path_reaches_the_panel_from_a_real_run() -> None:
     snapshot = controller.snapshot()
 
     assert snapshot.agent_mac_percent == 6.0
-    assert view._alveolar_mac_text.value == format_mac_multiple(
+    assert view.runs[0]._alveolar_mac_text.value == format_mac_multiple(
         snapshot.alveolar_partial_pressure_fraction, 6.0
     )
     # The dial starts at the agent's own 1 MAC, so after a minute of wash-in
     # the alveolar compartment is somewhere below it and above nothing.
     alveolar_mac = snapshot.alveolar_partial_pressure_fraction * 100.0 / 6.0
     assert 0.0 < alveolar_mac < 1.0
-    assert view._delivered_concentration_mac_text.value == "1.00 ×MAC"
+    assert view.runs[0]._delivered_concentration_mac_text.value == "1.00 ×MAC"
 
 
 def test_the_clinical_references_are_drawn_at_the_running_agents_own_values() -> None:
@@ -4420,7 +4455,7 @@ def test_the_clinical_references_follow_the_agent_when_it_changes() -> None:
     """
 
     controller = _fake_controller(agent_id="sevoflurane")
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
 
     sevoflurane = load_agent_parameters("sevoflurane")
     assert view._one_mac_line_series.points[0].y == pytest.approx(sevoflurane.mac_percent)
@@ -4469,7 +4504,7 @@ def test_the_clinical_references_are_not_compartment_traces() -> None:
 
     view, _ = _build_view()
 
-    plotted = [series for series, _ in view._plotted_series(_DEFAULT_AGENT)]
+    plotted = [series for series, _ in view.runs[0]._plotted_series(_DEFAULT_AGENT)]
     references = (
         view._mac_awake_band_upper_edge,
         view._mac_awake_band_lower_edge,
@@ -4577,7 +4612,7 @@ def test_nothing_between_the_wash_in_heading_and_its_plot_is_a_sentence() -> Non
     else:  # pragma: no cover - the plot is in the section it is the section for
         raise AssertionError("the wash-in chart is not in the wash-in section")
 
-    strings = _strings_in(above_the_plot, skip=(view._wash_in_state_text,))
+    strings = _strings_in(above_the_plot, skip=(view.runs[0]._wash_in_state_text,))
 
     for value in strings:
         assert ". " not in value, value
@@ -4632,7 +4667,9 @@ def test_nothing_between_the_chart_heading_and_the_plot_is_a_sentence() -> None:
     else:  # pragma: no cover - the plot is in the panel it is the panel for
         raise AssertionError("the compartment chart is not in the chart panel")
 
-    strings = _strings_in(above_the_plot, skip=(view._hidden_traces_text, view._off_scale_text))
+    strings = _strings_in(
+        above_the_plot, skip=(view._hidden_traces_text, view.runs[0]._off_scale_text)
+    )
 
     for value in strings:
         assert ". " not in value, value
@@ -4731,7 +4768,7 @@ def test_a_recorded_change_is_marked_on_the_chart_at_its_own_time() -> None:
         ),
     )
 
-    mark = view._control_mark_series[0]
+    mark = view.runs[0]._control_mark_series[0]
     assert [point.x for point in mark.points] == [12.0, 12.0]
 
 
@@ -4750,7 +4787,7 @@ def test_a_control_mark_spans_the_running_agents_plotted_range() -> None:
         ),
     )
 
-    mark = view._control_mark_series[0]
+    mark = view.runs[0]._control_mark_series[0]
     assert [point.y for point in mark.points] == [0.0, view._concentration_chart.max_y]
 
 
@@ -4765,7 +4802,7 @@ def test_unused_control_marks_are_parked_outside_the_plotted_window() -> None:
     )
 
     chart = view._concentration_chart
-    for mark in view._control_mark_series[1:]:
+    for mark in view.runs[0]._control_mark_series[1:]:
         assert all(point.x < chart.min_x for point in mark.points)
 
 
@@ -4782,13 +4819,13 @@ def test_a_control_mark_left_by_a_previous_frame_is_parked_when_it_ends() -> Non
             _control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
         ),
     )
-    view = SimulationView(page=_FakePage(), controller=cast(SimulationController, controller))
+    view = SimulationView(page=_FakePage(), controllers=(cast(SimulationController, controller),))
 
     controller.advance_to(_run_history(600))
     view._refresh_view()
 
     chart = view._concentration_chart
-    assert all(point.x < chart.min_x for point in view._control_mark_series[0].points)
+    assert all(point.x < chart.min_x for point in view.runs[0]._control_mark_series[0].points)
 
 
 def test_control_marks_are_not_compartment_traces() -> None:
@@ -4801,10 +4838,10 @@ def test_control_marks_are_not_compartment_traces() -> None:
 
     view, _ = _build_view()
 
-    plotted = [series for series, _ in view._plotted_series(_DEFAULT_AGENT)]
+    plotted = [series for series, _ in view.runs[0]._plotted_series(_DEFAULT_AGENT)]
     order = view._concentration_chart.data_series
 
-    for mark in view._control_mark_series:
+    for mark in view.runs[0]._control_mark_series:
         assert mark not in plotted
         assert order.index(mark) < min(order.index(each) for each in plotted)
         assert order.index(mark) < order.index(view._mac_awake_band_upper_edge)
@@ -4819,7 +4856,9 @@ def test_the_list_states_what_was_changed_and_to_what() -> None:
         ),
     )
 
-    assert view._control_timeline_text.value == ("12s · Fresh gas flow 4.0 L/min -> 2.0 L/min")
+    assert view.runs[0]._control_timeline_text.value == (
+        "12s · Fresh gas flow 4.0 L/min -> 2.0 L/min"
+    )
 
 
 def test_the_list_reads_most_recent_first() -> None:
@@ -4833,7 +4872,7 @@ def test_the_list_reads_most_recent_first() -> None:
         ),
     )
 
-    lines = view._control_timeline_text.value.splitlines()
+    lines = view.runs[0]._control_timeline_text.value.splitlines()
     assert lines[0].startswith("20s")
     assert lines[1].startswith("10s")
 
@@ -4841,8 +4880,8 @@ def test_the_list_reads_most_recent_first() -> None:
 def test_a_run_with_no_changes_says_so_rather_than_showing_an_empty_panel() -> None:
     view, _ = _build_view()
 
-    assert view._control_timeline_text.value == NO_CONTROL_CHANGES_TEXT
-    assert not view._control_timeline_overflow_text.visible
+    assert view.runs[0]._control_timeline_text.value == NO_CONTROL_CHANGES_TEXT
+    assert not view.runs[0]._control_timeline_overflow_text.visible
 
 
 def test_the_control_timeline_is_not_regrouped_when_it_has_not_grown(
@@ -4888,7 +4927,7 @@ def test_the_control_timeline_is_not_regrouped_when_it_has_not_grown(
     assert regroups == 0
     # The panel is still written from the grouping, so this is a cache
     # serving the right answer rather than a frame that stopped drawing.
-    assert view._control_timeline_text.value.splitlines()[0].startswith("3s")
+    assert view.runs[0]._control_timeline_text.value.splitlines()[0].startswith("3s")
 
 
 def test_a_change_superseded_within_a_step_reaches_the_panel() -> None:
@@ -4912,15 +4951,15 @@ def test_a_change_superseded_within_a_step_reaches_the_panel() -> None:
             _control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
         ),
     )
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
 
-    assert "4.0 L/min -> 2.0 L/min" in view._control_timeline_text.value
+    assert "4.0 L/min -> 2.0 L/min" in view.runs[0]._control_timeline_text.value
 
     superseding = (_control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 3.0, adjustment=1),)
     controller.snapshot_value = _snapshot(history=_run_history(600), control_timeline=superseding)
     view._refresh_view()
 
-    assert "4.0 L/min -> 3.0 L/min" in view._control_timeline_text.value
+    assert "4.0 L/min -> 3.0 L/min" in view.runs[0]._control_timeline_text.value
 
 
 def test_changes_the_panel_cannot_list_are_counted_rather_than_dropped() -> None:
@@ -4934,9 +4973,9 @@ def test_changes_the_panel_cannot_list_are_counted_rather_than_dropped() -> None
     )
     view, _ = _build_view(history=_run_history(600), control_timeline=timeline)
 
-    assert len(view._control_timeline_text.value.splitlines()) == MAX_LISTED_ADJUSTMENTS
-    assert view._control_timeline_overflow_text.visible
-    assert "3 earlier change(s) not listed" in view._control_timeline_overflow_text.value
+    assert len(view.runs[0]._control_timeline_text.value.splitlines()) == MAX_LISTED_ADJUSTMENTS
+    assert view.runs[0]._control_timeline_overflow_text.visible
+    assert "3 earlier change(s) not listed" in view.runs[0]._control_timeline_overflow_text.value
 
 
 def test_changes_the_chart_cannot_mark_are_counted_rather_than_dropped() -> None:
@@ -4950,8 +4989,8 @@ def test_changes_the_chart_cannot_mark_are_counted_rather_than_dropped() -> None
     )
     view, _ = _build_view(history=_run_history(600), control_timeline=timeline)
 
-    assert view._undrawn_control_marks == 2
-    assert "2 not marked on the chart" in view._control_timeline_overflow_text.value
+    assert view.runs[0]._undrawn_control_marks == 2
+    assert "2 not marked on the chart" in view.runs[0]._control_timeline_overflow_text.value
 
 
 def test_the_most_recent_changes_are_the_ones_marked() -> None:
@@ -4965,7 +5004,7 @@ def test_the_most_recent_changes_are_the_ones_marked() -> None:
     )
     view, _ = _build_view(history=_run_history(600), control_timeline=timeline)
 
-    marked = {mark.points[0].x for mark in view._control_mark_series}
+    marked = {mark.points[0].x for mark in view.runs[0]._control_mark_series}
     assert max(marked) == float(MAX_CHART_CONTROL_MARKS + 1)
     assert 0.0 not in marked
 
@@ -4982,10 +5021,10 @@ def test_a_drag_of_one_slider_is_marked_and_listed_once() -> None:
         ),
     )
 
-    assert len(view._control_timeline_text.value.splitlines()) == 1
-    assert view._control_mark_series[0].points[0].x == 10.0
+    assert len(view.runs[0]._control_timeline_text.value.splitlines()) == 1
+    assert view.runs[0]._control_mark_series[0].points[0].x == 10.0
     chart = view._concentration_chart
-    assert all(point.x < chart.min_x for point in view._control_mark_series[1].points)
+    assert all(point.x < chart.min_x for point in view.runs[0]._control_mark_series[1].points)
 
 
 def test_the_sliders_declare_an_adjustment_boundary_when_a_drag_begins() -> None:
@@ -4999,23 +5038,23 @@ def test_the_sliders_declare_an_adjustment_boundary_when_a_drag_begins() -> None
     view, _ = _build_view()
 
     for slider in (
-        view._fresh_gas_flow_slider,
-        view._delivered_concentration_slider,
-        view._alveolar_ventilation_slider,
-        view._cardiac_output_slider,
+        view.runs[0]._fresh_gas_flow_slider,
+        view.runs[0]._delivered_concentration_slider,
+        view.runs[0]._alveolar_ventilation_slider,
+        view.runs[0]._cardiac_output_slider,
     ):
-        assert slider.on_change_start == view._handle_adjustment_start
+        assert slider.on_change_start == view.runs[0]._handle_adjustment_start
 
 
 def test_a_declared_boundary_reaches_the_controller() -> None:
     page = _FakePage()
     controller = SimulationController()
-    view = SimulationView(page=page, controller=controller)
+    view = SimulationView(page=page, controllers=(controller,))
 
     controller.start()
     controller.set_fresh_gas_flow(3.0)
     controller.advance(SIMULATION_STEP_S)
-    view._handle_adjustment_start(cast(ft.Event[ft.Slider], None))
+    view.runs[0]._handle_adjustment_start(cast(ft.Event[ft.Slider], None))
     controller.set_fresh_gas_flow(2.0)
 
     assert {change.adjustment for change in controller.snapshot().control_timeline} == {1, 2}
@@ -5049,7 +5088,9 @@ def _wash_in_points(view: SimulationView) -> list[tuple[float, float]]:
     """Every point the wash-in trace is drawing, in x order across segments."""
 
     return [
-        (point.x, point.y) for series in view._wash_in_segment_series for point in series.points
+        (point.x, point.y)
+        for series in view.runs[0]._wash_in_segment_series
+        for point in series.points
     ]
 
 
@@ -5058,7 +5099,7 @@ def _drawn_wash_in_segments(view: SimulationView) -> list[list[tuple[float, floa
 
     return [
         [(point.x, point.y) for point in series.points]
-        for series in view._wash_in_segment_series
+        for series in view.runs[0]._wash_in_segment_series
         if series.points
     ]
 
@@ -5093,8 +5134,8 @@ def test_the_wash_in_trace_draws_nothing_before_agent_reaches_the_circuit() -> N
     view, _ = _build_view(history=_run_history(1))
 
     assert _wash_in_points(view) == []
-    assert "Not defined" in cast(str, view._wash_in_state_text.value)
-    assert "no agent has reached the circuit" in cast(str, view._wash_in_state_text.value)
+    assert "Not defined" in cast(str, view.runs[0]._wash_in_state_text.value)
+    assert "no agent has reached the circuit" in cast(str, view.runs[0]._wash_in_state_text.value)
 
 
 def test_the_wash_in_trace_stops_when_alveolar_exceeds_inspired() -> None:
@@ -5109,8 +5150,8 @@ def test_the_wash_in_trace_stops_when_alveolar_exceeds_inspired() -> None:
     # all - not clamped onto the ceiling, and not interpolated onto it.
     assert 2.0 not in drawn_times
     assert max(y for _, y in _wash_in_points(view)) <= WASH_IN_TERMINUS_CEILING
-    assert "alveolar exceeds inspired" in cast(str, view._wash_in_state_text.value)
-    assert "elimination" in cast(str, view._wash_in_state_text.value)
+    assert "alveolar exceeds inspired" in cast(str, view.runs[0]._wash_in_state_text.value)
+    assert "elimination" in cast(str, view.runs[0]._wash_in_state_text.value)
 
 
 def test_the_wash_in_trace_ends_on_the_equilibrium_line_it_crossed() -> None:
@@ -5139,7 +5180,7 @@ def test_a_stopped_wash_in_trace_ends_in_a_terminus_marker() -> None:
     crossing = _sample(2.0, 0.0800, 0.0801, 0.02, 0.02, 0.01, 0.01)
     view, _ = _build_view(history=(*_run_history(20), crossing))
 
-    drawn = [series for series in view._wash_in_segment_series if series.points]
+    drawn = [series for series in view.runs[0]._wash_in_segment_series if series.points]
 
     assert len(drawn) == 1
     assert drawn[0].points[-1].point is not None
@@ -5155,7 +5196,7 @@ def test_a_growing_wash_in_trace_carries_no_terminus_marker() -> None:
 
     view, _ = _build_view(history=_run_history(20))
 
-    drawn = [series for series in view._wash_in_segment_series if series.points]
+    drawn = [series for series in view.runs[0]._wash_in_segment_series if series.points]
 
     assert len(drawn) == 1
     assert all(point.point is None for point in drawn[0].points)
@@ -5236,13 +5277,13 @@ def test_a_control_change_is_marked_on_the_wash_in_plot_too() -> None:
 
     marked = [
         series.points[0].x
-        for series in view._wash_in_control_mark_series
+        for series in view.runs[0]._wash_in_control_mark_series
         if series.points[0].x >= 0.0
     ]
 
     assert marked == [1.0]
     # And it spans this chart's own range, not the percent chart's.
-    top = max(point.y for point in view._wash_in_control_mark_series[0].points)
+    top = max(point.y for point in view.runs[0]._wash_in_control_mark_series[0].points)
     assert top == WASH_IN_AXIS_MAXIMUM
 
 
@@ -5254,7 +5295,7 @@ def test_the_wash_in_reading_is_the_value_the_trace_ends_at() -> None:
 
     drawn_ratio = _wash_in_points(view)[-1][1]
 
-    assert format_wash_in_ratio(drawn_ratio) in cast(str, view._wash_in_state_text.value)
+    assert format_wash_in_ratio(drawn_ratio) in cast(str, view.runs[0]._wash_in_state_text.value)
 
 
 def test_the_wash_in_plot_says_what_its_denominator_is() -> None:
@@ -5297,7 +5338,7 @@ def test_a_real_run_draws_the_ratio_of_its_own_recorded_compartments() -> None:
     controller.start()
     _advance_to(controller, 60.0)
 
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
     snapshot = controller.snapshot()
     reading = read_wash_in(
         snapshot.alveolar_partial_pressure_fraction, snapshot.inspired_partial_pressure_fraction
@@ -5327,11 +5368,11 @@ def test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed() -
         is_running=False, supported_limit_reason="this run has reached 86400 s of simulated time"
     )
 
-    assert view._status_text.value == "Stopped — supported run length reached"
-    assert view._status_text.color != WARNING
-    assert view._notice_text.visible is True
-    assert view._notice_text.value is not None
-    assert "supported run length of 24 hours" in view._notice_text.value
+    assert view.runs[0]._status_text.value == "Stopped — supported run length reached"
+    assert view.runs[0]._status_text.color != WARNING
+    assert view.runs[0]._notice_text.visible is True
+    assert view.runs[0]._notice_text.value is not None
+    assert "supported run length of 24 hours" in view.runs[0]._notice_text.value
 
 
 def test_the_supported_run_length_notice_does_not_describe_a_failure() -> None:
@@ -5348,7 +5389,7 @@ def test_the_supported_run_length_notice_does_not_describe_a_failure() -> None:
         is_running=False, supported_limit_reason="this run has reached 86400 s of simulated time"
     )
 
-    notice = view._notice_text.value
+    notice = view.runs[0]._notice_text.value
 
     assert notice is not None
     assert "rolled back" not in notice
@@ -5367,7 +5408,7 @@ def test_refresh_view_does_not_offer_to_resume_a_run_at_the_supported_limit() ->
         is_running=False, supported_limit_reason="this run has reached 86400 s of simulated time"
     )
 
-    assert view._start_button.disabled is True
+    assert view.runs[0]._start_button.disabled is True
 
 
 def test_a_failure_outranks_the_supported_run_length_in_the_notice() -> None:
@@ -5379,9 +5420,9 @@ def test_a_failure_outranks_the_supported_run_length_in_the_notice() -> None:
         supported_limit_reason="this run has reached 86400 s of simulated time",
     )
 
-    assert view._status_text.value == "Stopped — simulation error"
-    assert view._notice_text.value is not None
-    assert "boom" in view._notice_text.value
+    assert view.runs[0]._status_text.value == "Stopped — simulation error"
+    assert view.runs[0]._notice_text.value is not None
+    assert "boom" in view.runs[0]._notice_text.value
 
 
 def test_halt_run_routes_the_supported_run_length_away_from_failure() -> None:
@@ -5394,10 +5435,10 @@ def test_halt_run_routes_the_supported_run_length_away_from_failure() -> None:
     """
 
     controller = _recording_controller()
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
     error = SimulationDomainLimitError("this run has reached 86400 s of simulated time")
 
-    view._halt_run(error)
+    view.runs[0]._halt_run(error)
 
     assert controller.supported_limits == ["this run has reached 86400 s of simulated time"]
     assert controller.failures == []
@@ -5408,9 +5449,9 @@ def test_halt_run_still_treats_an_unrecognised_exception_as_a_failure() -> None:
     """The narrow case is the named one, so anything else falls through safely."""
 
     controller = _recording_controller()
-    view = SimulationView(page=_FakePage(), controller=controller)
+    view = SimulationView(page=_FakePage(), controllers=(controller,))
 
-    view._halt_run(ValueError("mass balance violated"))
+    view.runs[0]._halt_run(ValueError("mass balance violated"))
 
     assert controller.failures == ["ValueError: mass balance violated"]
     assert controller.supported_limits == []

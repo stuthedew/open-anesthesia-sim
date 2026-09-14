@@ -285,7 +285,7 @@ def _mounted_view(
     connection = _RecordingConnection()
     session = Session(connection)
     controller = _ReplayController(sample_count, start=start, control_timeline=control_timeline)
-    view = SimulationView(page=session.page, controller=controller)
+    view = SimulationView(page=session.page, controllers=(controller,))
 
     if time_base_span_s is not None:
         view._time_base_dropdown.value = str(time_base_span_s)
@@ -310,7 +310,7 @@ def _wash_in_drawn(view: SimulationView) -> int:
     throughout, so in practice one segment holds all of it.
     """
 
-    return sum(len(series.points) for series in view._wash_in_segment_series)
+    return sum(len(series.points) for series in view.runs[0]._wash_in_segment_series)
 
 
 def _point_additions(connection: _RecordingConnection) -> list[list[Any]]:
@@ -351,13 +351,15 @@ def test_a_frame_of_moved_points_reaches_the_client() -> None:
 
     view, session, connection = _mounted_view()
 
-    before = [(point.x, point.y) for point in view._circuit_series.points]
+    before = [
+        (point.x, point.y) for point in view.runs[0].line_for(RecordedQuantity.CIRCUIT).points
+    ]
     assert len(before) > 4, "expected a decimated trace, not a handful of samples"
 
     view._refresh_view()
     session.page.update()
 
-    after = [(point.x, point.y) for point in view._circuit_series.points]
+    after = [(point.x, point.y) for point in view.runs[0].line_for(RecordedQuantity.CIRCUIT).points]
     moved = {y for (_, y), (_, previous_y) in zip(after, before, strict=True) if y != previous_y}
     assert moved, "the replayed run did not move the trace; the test proves nothing"
 
@@ -379,12 +381,12 @@ def test_a_steady_trace_length_is_patched_without_replacing_any_point() -> None:
     """
 
     view, session, connection = _mounted_view()
-    drawn = len(view._circuit_series.points)
+    drawn = len(view.runs[0].line_for(RecordedQuantity.CIRCUIT).points)
 
     view._refresh_view()
     session.page.update()
 
-    assert len(view._circuit_series.points) == drawn
+    assert len(view.runs[0].line_for(RecordedQuantity.CIRCUIT).points) == drawn
 
     operations = _patch_operations(connection)
     assert operations, "the frame sent nothing at all"
@@ -407,20 +409,22 @@ def test_a_shorter_trace_removes_the_points_it_no_longer_draws() -> None:
     # live headroom the run has not reached. Pinning the number would assert
     # the time base's rung and the headroom fraction rather than the buffer
     # behavior under test.
-    drawn_when_saturated = len(view._circuit_series.points)
+    drawn_when_saturated = len(view.runs[0].line_for(RecordedQuantity.CIRCUIT).points)
     assert 4 < drawn_when_saturated <= CHART_COLUMN_BUDGET_PER_SERIES + 2
 
     # A run barely over a second long covers a sliver of the axis, so it
     # draws the few grid columns inside that sliver and its two ends - far
     # shorter than the saturated trace already on screen. Resolution follows
     # the axis, which is the whole of what the reader can resolve.
-    view._controller = _ReplayController(12, start=12)  # type: ignore[assignment]
+    view.runs[0]._controller = _ReplayController(12, start=12)  # type: ignore[assignment]
     view._refresh_view()
     session.page.update()
 
-    assert len(view._circuit_series.points) < drawn_when_saturated
-    assert view._circuit_series.points[0].x == 0.0
-    assert view._circuit_series.points[-1].x == pytest.approx(11 * SIMULATION_STEP_S)
+    assert len(view.runs[0].line_for(RecordedQuantity.CIRCUIT).points) < drawn_when_saturated
+    assert view.runs[0].line_for(RecordedQuantity.CIRCUIT).points[0].x == 0.0
+    assert view.runs[0].line_for(RecordedQuantity.CIRCUIT).points[-1].x == pytest.approx(
+        11 * SIMULATION_STEP_S
+    )
 
     removals = [
         operation for operation in _patch_operations(connection) if operation[0] is Operation.Remove
@@ -432,17 +436,17 @@ def test_a_longer_trace_adds_the_points_it_has_gained() -> None:
     """The mirror of the shrink case: a growing run must reach the client."""
 
     view, session, connection = _mounted_view(start=12)
-    drawn_at_mount = len(view._circuit_series.points)
+    drawn_at_mount = len(view.runs[0].line_for(RecordedQuantity.CIRCUIT).points)
     wash_in_at_mount = _wash_in_drawn(view)
     assert drawn_at_mount < CHART_COLUMN_BUDGET_PER_SERIES
 
-    view._controller = _ReplayController(  # type: ignore[assignment]
+    view.runs[0]._controller = _ReplayController(  # type: ignore[assignment]
         SATURATED_SAMPLE_COUNT, start=SATURATED_SAMPLE_COUNT // 2
     )
     view._refresh_view()
     session.page.update()
 
-    drawn_now = len(view._circuit_series.points)
+    drawn_now = len(view.runs[0].line_for(RecordedQuantity.CIRCUIT).points)
     assert drawn_at_mount < drawn_now <= CHART_COLUMN_BUDGET_PER_SERIES + 2
 
     additions = _point_additions(connection)
@@ -617,7 +621,7 @@ def test_a_run_full_of_control_marks_costs_a_frame_nothing_extra() -> None:
 
     drawn = [
         series
-        for series in marked[0]._control_mark_series
+        for series in marked[0].runs[0]._control_mark_series
         if series.points[0].x != PARKED_CONTROL_MARK_X
     ]
     assert len(drawn) == MAX_CHART_CONTROL_MARKS, (
@@ -687,7 +691,7 @@ def test_pausing_puts_the_hover_back_and_the_client_is_told() -> None:
     session.page.update()
     connection.messages.clear()
 
-    view._controller.is_running = False
+    view.runs[0]._controller.is_running = False
     view._refresh_view()
     session.page.update()
 

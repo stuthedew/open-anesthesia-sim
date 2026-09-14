@@ -23,7 +23,7 @@ alternative — an asyncio task dying behind a display that still reads
 """
 
 import asyncio
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Final
 
@@ -430,6 +430,15 @@ AVAILABLE_AGENTS: tuple[tuple[str, str], ...] = tuple(
 # is not the one the controller is answering for until they confirm it.
 AGENT_DISPLAY_NAMES: Final[Mapping[str, str]] = dict(AVAILABLE_AGENTS)
 
+# How many runs the dashboard may draw at once. Two, because that is what
+# `ROADMAP.md` § "v0.5.0 - the case you can branch" puts in its own
+# out-of-scope list - "never more than two runs displayed at once" - and
+# because the encoding that tells one run from another is a two-level one
+# (`PL-HLD5`: the run on line width, under a cap of two compartments that
+# frees the width for it). A third run would have nothing left to be drawn
+# with, so this refuses rather than drawing a curve nothing identifies.
+MAX_DISPLAYED_RUNS: Final = 2
+
 # Adding a built-in agent without a verified identification color would make
 # the selector silently lose a safety cue. Fail at startup instead. This check
 # concerns presentation metadata only; agent/scientific parameters remain in
@@ -508,7 +517,7 @@ AGENT_RENDER_STYLES: Final[dict[str, _AgentRenderStyle]] = {
 
 @dataclass
 class _CompartmentTrace:
-    """One compartment trace: what it draws, how it is drawn, and whether it is.
+    """One compartment's trace: what it draws, how it is drawn, and whether it is.
 
     Everything that has to agree about a single compartment, held together in
     one object. Before this the same trace was described in three places -
@@ -519,83 +528,162 @@ class _CompartmentTrace:
     chart is not drawing misstates the run as surely as a wrong number does,
     which is why this is one record rather than three lists.
 
+    **This is the compartment, not the line.** A run draws one line per
+    compartment, so a chart showing two runs draws this trace twice, and what
+    is held here is everything those lines must have in common: the recorded
+    quantity, the colour, the dash pattern, the words the legend uses for it,
+    and whether the reader is looking at this compartment at all. `PL-HLD5`
+    is what divides it that way - across a comparison the compartment keeps
+    colour *and* line style exactly as the single-run chart draws them, the
+    run is carried on line width, and one selection applies to both runs at
+    once. The lines are the runs' own (`RunView.line_for`), because a line
+    holds points and points belong to the run that recorded them.
+
     **The pairing travels as one object, which is what makes filtering safe.**
-    `plotted` manufactures the `(series, quantity)` pair from this record's own
-    fields, so a filter over these records - which is how a hidden trace is
-    left out of a frame - cannot reorder or misalign the pairing the way a
-    filter over two parallel sequences could. That is the specific hazard
+    `RunView.plotted` manufactures the `(line, quantity)` pair from this
+    record's own `quantity` on both sides, so a filter over these records -
+    which is how a hidden trace is left out of a frame - cannot reorder or
+    misalign the pairing the way a filter over two parallel sequences could.
+    That is the specific hazard
     `test_chart_traces_stay_bound_to_their_own_compartment` guards, and it now
-    covers the filtered table too.
+    covers the filtered table and the two-run table too.
 
     Attributes:
         quantity: The one recorded quantity this trace draws.
         label: The compartment's name, as the legend and its control say it.
         color: The trace's line colour, and its legend swatch's fill.
+        stroke_width: Line width in display pixels, held here rather than
+            spent at construction because every run's line for this
+            compartment is drawn at it.
+        dash_pattern: Alternating dash and gap lengths in display pixels, or
+            None for a solid line.
         line_style: The dash pattern in words, for the legend. Kept beside
             the pattern it describes rather than in the legend's own code,
             so "dotted" cannot come to describe a line that is not.
-        series: The chart series this trace is drawn as.
         swatch: The legend's colour mark for it. Filled while the trace is
             drawn and empty while it is not.
         checkbox: The control that shows and hides it, whose label is this
             trace's legend text.
-        visible: Whether the chart is currently drawing it. Presentation
-            state only: it is never read by the simulation and changes
-            nothing the model computes.
+        visible: Whether the chart is currently drawing it, for every run at
+            once. Presentation state only: it is never read by the simulation
+            and changes nothing the model computes.
     """
 
     quantity: RecordedQuantity
     label: str
     color: str
+    stroke_width: float
+    dash_pattern: list[int] | None
     line_style: str
-    series: fch.LineChartData
     swatch: ft.Container
     checkbox: ft.Checkbox
     visible: bool = True
 
-    def plotted(self, substance_id: str) -> chart_series.PlottedSeries:
-        """This trace paired with the one recorded series it draws.
+    def build_line(self) -> fch.LineChartData:
+        """One run's line for this compartment.
 
-        The substance is the caller's because it is a property of the run
-        rather than of the trace: the six traces draw whichever agent the
-        controller is running, and `set_agent` starts a new run under a new
-        identifier. Holding a copy of it on the trace would be a second
-        place for the running agent to be recorded, free to disagree with
-        the snapshot the same frame formats its readouts from.
+        Called once per run rather than once per compartment: a Flet control
+        belongs to one place on one chart, so two runs drawn on one axis need
+        two objects even where they are drawn identically.
 
-        Args:
-            substance_id: The substance whose run is being drawn, from the
-                snapshot of the frame drawing it.
+        The dash pattern is copied rather than shared. Flet holds it as a
+        mutable list, and one list reaching two series would leave a change
+        to either silently changing the other's appearance - the same
+        aliasing `AGENT_RENDER_STYLES` is exempt from only because
+        `ft.Border` and `ft.TextStyle` are value types.
 
         Returns:
-            This trace bound to that substance's values for its compartment.
+            A series drawn in this compartment's colour, width and dash
+            pattern, with no points on it yet.
         """
 
-        return (self.series, RecordedSeries(substance_id, self.quantity))
+        return chart_series.build_series(
+            color=self.color,
+            stroke_width=self.stroke_width,
+            dash_pattern=None if self.dash_pattern is None else list(self.dash_pattern),
+        )
 
 
-class SimulationView:
-    """Render and update the volatile-agent patient interface.
+class RunView:
+    """One run's controls, readouts and chart lines, and the run behind them.
 
-    The view displays controller snapshots and forwards user interactions to
-    the controller. It does not perform compartment calculations, agent
-    accounting, or physiological state updates.
+    Everything on the dashboard that belongs to a *particular* run: the
+    controller it forwards settings to, the six readouts and their MAC lines,
+    the four setting controls, the transport, the agent it is running, the
+    record of what was changed during it, and the lines it draws on the
+    shared chart. One of these is one run. Two of them, against two
+    controllers, are a comparison.
+
+    **Why this is a class rather than a section of `SimulationView`.** v0.5.0
+    displays two branches of one case at once (`ROADMAP.md` § "v0.5.0 - the
+    case you can branch"), and a single object holding one controller
+    reference, one set of widgets and one refresh path is the shape that
+    cannot do it - not inconveniently, but at all. What is *not* here is as
+    load-bearing as what is: the chart, its time base and the compartment
+    selection stay with `SimulationView`, because `PL-8PSW` draws both
+    branches on one time axis under one selection rather than as two
+    dashboards side by side.
+
+    **It reaches its host through two callbacks and nothing else.** A run's
+    own handler cannot redraw only itself - the chart it draws on is shared,
+    so any change to this run changes a frame both runs appear in - and the
+    two callbacks are exactly the two things it may ask for: refresh every
+    displayed value on the dashboard, and leave the next submission to the
+    render tick. Nothing else about the dashboard is reachable from here,
+    which is what makes "two of these against two controllers" a property of
+    the code rather than a hope.
+
+    It performs no compartment calculation, agent accounting or physiological
+    state update, exactly as the dashboard around it does not.
 
     Attributes:
-        _page: Flet page hosting the interface.
-        _controller: Controller that owns the simulation and read-only history.
+        _page: Flet page hosting the dashboard. Used for the confirmation
+            dialog and to submit a frame, never to reach another run.
+        _controller: Controller that owns this run and its read-only history.
+        _traces: The compartment table, shared with every other run on the
+            same chart. Read for identity and for what the reader has shown;
+            never written here.
+        _lines: This run's own line per compartment, keyed by the recorded
+            quantity it draws.
     """
 
-    def __init__(self, page: ft.Page, controller: SimulationController) -> None:
-        """Initialize the interface and its visual controls.
+    def __init__(
+        self,
+        page: ft.Page,
+        controller: SimulationController,
+        traces: tuple[_CompartmentTrace, ...],
+        *,
+        refresh_dashboard: Callable[[], None],
+        defer_render: Callable[[], None],
+    ) -> None:
+        """Build one run's controls and readouts, and its lines on the chart.
+
+        Nothing is drawn here. The dashboard refreshes every run once its own
+        chart exists, so that the first frame is drawn from one window and one
+        snapshot per run rather than from whatever each run happened to build
+        itself from.
 
         Args:
             page: Flet page that will host the dashboard.
-            controller: Simulation controller supplying immutable snapshots.
+            controller: Simulation controller supplying immutable snapshots
+                for this run.
+            traces: The compartment table the chart draws, shared across every
+                run on it. One line is built per entry.
+            refresh_dashboard: Recompute every displayed value on the
+                dashboard, this run's and every other's, without submitting
+                the frame. A setting changed here moves the shared chart, so
+                refreshing this run alone would leave the axis and the other
+                run's traces describing the frame before it.
+            defer_render: Leave the submission of the current frame to the
+                next render tick. For the parameter sliders only, which report
+                continuously while dragged - `_apply_setting` records the
+                measurement that makes coalescing them the faster of the two.
         """
 
         self._page = page
-        self._page.padding = PAGE_PADDING
+        self._refresh_dashboard = refresh_dashboard
+        self._defer_render = defer_render
+
         self._controller = controller
         initial_snapshot = controller.snapshot()
 
@@ -616,19 +704,6 @@ class SimulationView:
         # carries the measurements and why its key is the record's identity
         # rather than its length.
         self._adjustment_grouping = AdjustmentGrouping()
-        # Whether the charts are currently answering a hover. Held so that
-        # `_apply_trace_visibility` can put a trace back on the chart in the
-        # mode the last frame set, rather than reading the run again and
-        # possibly disagreeing with the frame it was called from. Starts
-        # false so that the first frame's write is the one that decides it,
-        # whatever state the run is in when the dashboard is mounted.
-        self._chart_tooltips_enabled = False
-        # Whether a frame is owed to a setting change that chose not to draw
-        # its own. Set by a coalesced `_apply_setting` and cleared by the
-        # render tick that pays it, which is what lets that tick run while
-        # the simulation is stopped - a paused reader moving a dial still
-        # needs the readouts beside it to move.
-        self._render_pending = False
         # The agent a reader has asked for and not yet confirmed, and the
         # dialog asking them. Held here rather than passed through the
         # button callbacks because Flet hands a callback its own control and
@@ -702,163 +777,34 @@ class SimulationView:
         self._cardiac_output_text = ft.Text(
             format_flow(initial_snapshot.cardiac_output_l_min), color=INK
         )
-
-        # Every compartment trace, in the order they are drawn and listed.
-        # One table rather than three: `_CompartmentTrace` records why the
-        # series, the compartment it draws, and the legend entry that names
-        # it are declared together and never separately.
+        # The compartment table is the chart's, not this run's: it says what
+        # a compartment is called, what colour and dash pattern it is drawn
+        # in, and whether the reader has it shown - all of which are shared
+        # across every run on the axis (`PL-HLD5`). What is this run's is one
+        # line per compartment, because a line holds points and the points
+        # are this run's samples.
         #
-        # **Six patterns, all different, because the line style is what
-        # actually separates these curves.** The colours above cannot: the
-        # closest pair sits at 1.01 for normal colour vision and no palette
-        # reaches 3:1. Circuit and vessel-rich were both solid until PL-GVXP,
-        # which made the second channel redundant in name only for the one
-        # pair - and a reader who takes a value off the wrong curve has
-        # misread a clinical quantity, not a decoration.
-        #
-        # **Which style goes on which trace is decided by the colours, not
-        # chosen freely.** The two traces a reader can least separate by
-        # colour get the two marks they can most separate by shape, and so on
-        # outward. So the closest pairs - vessel-rich against fat at 1.01, and
-        # mixed venous against fat at 1.02 under simulated deuteranopia - are
-        # an even dash against an alternating dash-dot, and a short uniform
-        # dash against that same dash-dot: each differs from its partner in
-        # mark length, in gap length and in rhythm at once. The one genuinely
-        # confusable pair in the set, the 2 px dots against the 4 px short
-        # dash, is spent on mixed venous against muscle, which is the *widest*
-        # separation any pair of these six has (1.45). `docs/MODEL.md` carries
-        # the matrix this was read off.
-        self._compartment_traces: tuple[_CompartmentTrace, ...] = (
-            self._build_compartment_trace(
-                RecordedQuantity.CIRCUIT, "Circuit", CIRCUIT_COLOR, 3, "solid"
-            ),
-            self._build_compartment_trace(
-                RecordedQuantity.ALVEOLAR, "Alveolar", ALVEOLAR_COLOR, 3, "long dash", [10, 4]
-            ),
-            self._build_compartment_trace(
-                RecordedQuantity.MIXED_VENOUS,
-                "Mixed venous",
-                MIXED_VENOUS_COLOR,
-                2,
-                "short dash",
-                [4, 3],
-            ),
-            # Equal mark and gap, which is the one rhythm no other trace here
-            # has: the other four dashed traces all draw more ink than gap.
-            # Deliberately not a second long dash - at [8, 8] it read as the
-            # alveolar trace's [10, 4] with wider gaps, and those two sit at
-            # 1.08 under simulated deuteranopia, which is no place to put a
-            # pair that has to be told apart by mark length alone.
-            self._build_compartment_trace(
-                RecordedQuantity.VESSEL_RICH,
-                "Vessel-rich",
-                VESSEL_RICH_COLOR,
-                2,
-                "even dash",
-                [6, 6],
-            ),
-            self._build_compartment_trace(
-                RecordedQuantity.MUSCLE, "Muscle", MUSCLE_COLOR, 2, "dotted", [2, 3]
-            ),
-            self._build_compartment_trace(
-                RecordedQuantity.FAT, "Fat", FAT_COLOR, 2, "dash-dot", [12, 4, 2, 4]
-            ),
-        )
-        # One stable handle per trace, as the two references below have.
-        # Looked up by the quantity each draws rather than by position, so
-        # reordering the table cannot silently rebind a name onto another
-        # compartment's line - which is the same pairing failure the table
-        # itself exists to make impossible.
-        self._circuit_series = self._trace(RecordedQuantity.CIRCUIT).series
-        self._alveolar_series = self._trace(RecordedQuantity.ALVEOLAR).series
-        self._mixed_venous_series = self._trace(RecordedQuantity.MIXED_VENOUS).series
-        self._vessel_rich_series = self._trace(RecordedQuantity.VESSEL_RICH).series
-        self._muscle_series = self._trace(RecordedQuantity.MUSCLE).series
-        self._fat_series = self._trace(RecordedQuantity.FAT).series
-        # Said only when every compartment has been unchecked. Held rather
-        # than built inline because its visibility is written by
-        # `_apply_trace_visibility`, which is the one writer of everything
-        # that has to agree with what the chart is drawing.
-        # The companion to the notice above, and held for the same reason:
-        # both report something the plot is not showing, and both are written
-        # by exactly one method so the words and the picture cannot part.
-        # This one is written per frame, by `_refresh_off_scale_notice`,
-        # because whether a trace is off scale is a property of the samples
-        # rather than of the checkboxes.
+        # Keyed by the recorded quantity rather than held in a parallel list,
+        # so the line a frame draws and the values it draws into it are
+        # looked up by the same key. That is the pairing `_plotted`
+        # manufactures and the property
+        # `test_chart_traces_stay_bound_to_their_own_compartment` holds: a
+        # list would let a filter, a reorder or a second run's table put one
+        # compartment's samples on another's line, which misstates the run as
+        # surely as a wrong number would.
+        self._traces = traces
+        self._lines: dict[RecordedQuantity, fch.LineChartData] = {
+            trace.quantity: trace.build_line() for trace in traces
+        }
+        # Held rather than built inline because it is written by exactly one
+        # method, `_refresh_off_scale_notice`, so the words and the picture
+        # cannot part. It is this run's rather than the chart's: whether a
+        # trace is clipped is a property of the samples this run drew, and a
+        # single line over two runs could not say whose trace left the plot.
+        # The companion notice for a compartment nobody has checked is the
+        # chart's, since the selection is shared.
         self._off_scale_text = ft.Text(
             "", color=WARNING, size=METRIC_QUALIFIER_SIZE, italic=True, visible=False
-        )
-        self._hidden_traces_text = ft.Text(
-            NO_TRACES_SHOWN_TEXT,
-            color=MUTED,
-            size=METRIC_QUALIFIER_SIZE,
-            italic=True,
-            visible=False,
-        )
-        # The two clinical references. Deliberately not members of
-        # `_plotted_series` below: nothing reads a sample to place them, and
-        # the table they would join exists to bind a trace to the one
-        # compartment it draws.
-        # Two series for one mark: the upper edge carries the fill, cut off
-        # at the lower edge by `redraw_reference_band`, and the lower edge
-        # strokes the boundary that cut-off makes. Neither is a reference of
-        # its own and the legend shows one entry, because they are the two
-        # ends of a single published interval.
-        self._mac_awake_band_upper_edge = chart_series.build_reference_line(
-            color=MAC_AWAKE_BAND_COLOR, stroke_width=MAC_AWAKE_BAND_EDGE_STROKE_WIDTH
-        )
-        self._mac_awake_band_upper_edge.below_line_bgcolor = ft.Colors.with_opacity(
-            MAC_AWAKE_BAND_FILL_OPACITY, MAC_AWAKE_BAND_COLOR
-        )
-        self._mac_awake_band_lower_edge = chart_series.build_reference_line(
-            color=MAC_AWAKE_BAND_COLOR, stroke_width=MAC_AWAKE_BAND_EDGE_STROKE_WIDTH
-        )
-        self._one_mac_line_series = chart_series.build_reference_line(
-            color=ONE_MAC_LINE_COLOR,
-            stroke_width=ONE_MAC_LINE_STROKE_WIDTH,
-            dash_pattern=ONE_MAC_LINE_DASH_PATTERN,
-        )
-        # Two rulers against one set of traces. The plotted points stay in
-        # percent - `chart_series.redraw_series` converts nothing else - and
-        # the MAC axis is a relabelling of the same coordinate, so the two
-        # axes cannot come to disagree about where a trace is. That is the
-        # reason for a second axis rather than a unit toggle: a toggle would
-        # make the axis unit a hidden mode, and a chart read under the wrong
-        # assumed unit is a misreading no disclaimer catches.
-        # What the MAC axis labels currently stand for, so a frame that
-        # changes neither leaves them alone. They depend on the agent and the
-        # plotted range and on nothing that moves during a run, where the
-        # render loop runs several times a second: rebuilding them per frame
-        # would allocate a label control per tick per frame and send the
-        # client an add-and-remove of the whole axis each time - the same
-        # per-frame churn PL-010 removed from the traces, arriving by
-        # another door. `tests/integration/test_chart_patching.py` is what
-        # measures that, and it fails if this guard is dropped.
-        # One number, where this used to be two. The plotted range is now
-        # `CHART_AXIS_TOP_MAC` times this very quantity, so the agent's 1 MAC
-        # is the only thing either the ticks or the ceiling depend on, and
-        # the two cannot come to disagree about the scale they describe.
-        self._mac_axis_basis = initial_snapshot.agent_mac_percent
-        self._mac_axis = fch.ChartAxis(
-            # `×MAC`, the same token every numeric MAC readout on the page
-            # carries (`formatting.MAC_UNIT_SUFFIX`), rather than a second
-            # wording for one unit. The ticks read bare numbers - "0.5",
-            # "1.0" - so this title is the only thing that says what they
-            # are, which is exactly the position `docs/MODEL.md` § "MAC
-            # multiples as a display unit" writes the notation rule for:
-            # "0.80 MAC" is read as a depth of anesthesia and "0.80 ×MAC" as
-            # the partial-pressure ratio it is. The divisor is not repeated
-            # here because `_mac_reference_text` names it in full - "1 MAC
-            # sevoflurane = 2.0%" - a few lines above the plot (PL-6580).
-            title=ft.Text("×MAC", color=MUTED, size=METRIC_QUALIFIER_SIZE),
-            labels=self._build_mac_axis_labels(self._mac_axis_basis),
-            # The MAC ticks are the whole point of the axis, so the ends of
-            # the percent range must not add two more at whatever multiples
-            # they happen to fall on: isoflurane's 5% dial maximum is
-            # 4.17 MAC, and a label reading 4.17 beside labels reading 3.5
-            # and 4.0 would be read as a tick rather than as an endpoint.
-            show_min=False,
-            show_max=False,
         )
         # One series per mark, built once. Marks come first in the drawing
         # order - behind the references and behind every trace - because a
@@ -885,158 +831,12 @@ class SimulationView:
             chart_series.build_series(color=WASH_IN_COLOR, stroke_width=WASH_IN_STROKE_WIDTH)
             for _ in range(MAX_CHART_WASH_IN_SEGMENTS)
         ]
-        self._equilibrium_line_series = chart_series.build_reference_line(
-            color=EQUILIBRIUM_LINE_COLOR,
-            stroke_width=EQUILIBRIUM_LINE_STROKE_WIDTH,
-            dash_pattern=EQUILIBRIUM_LINE_DASH_PATTERN,
-        )
         self._wash_in_state_text = ft.Text("", color=MUTED, size=METRIC_QUALIFIER_SIZE)
         self._control_timeline_text = ft.Text(
             NO_CONTROL_CHANGES_TEXT, color=MUTED, size=METRIC_QUALIFIER_SIZE
         )
         self._control_timeline_overflow_text = ft.Text(
             "", color=MUTED, size=METRIC_QUALIFIER_SIZE, italic=True, visible=False
-        )
-        # The chart's time base: how wide the visible window is. `None` is
-        # "Fit run", the default, which is a rule for choosing the width each
-        # frame rather than one of the widths - the whole run, on the
-        # narrowest rung of `TIME_BASE_LADDER` that contains it. A rung here
-        # instead means the reader has chosen a width and the window follows
-        # the run at it.
-        #
-        # Like the compartment checkboxes and unlike the agent dropdown, this
-        # is a *view* control and reaches no model state: it changes which
-        # part of the recorded run is drawn and never what was recorded, so
-        # identical inputs still produce an identical run. It is therefore
-        # never disabled - the reason to reach for it is usually to widen the
-        # window on a run already going - and Reset leaves it alone, like
-        # every other reader setting.
-        self._time_base: ChartTimeBase | None = None
-        # What the last frame actually drew, which is not the line above:
-        # under "Fit run" the width is derived from the run's length, so it
-        # moves without anybody touching the control. Held so the axis labels
-        # and the caption can be rebuilt when it moves and left alone when it
-        # does not - the same guard, and for the same reason, as
-        # `_mac_axis_basis`.
-        self._drawn_time_base = INITIAL_CHART_TIME_BASE
-        self._drawn_tick_times: tuple[float, ...] = ()
-        self._time_base_dropdown = ft.Dropdown(
-            value=FIT_RUN_KEY,
-            options=[
-                ft.dropdown.Option(key=FIT_RUN_KEY, text="Fit run"),
-                *(
-                    ft.dropdown.Option(
-                        key=str(time_base.span_s), text=format_time_base(time_base.span_s)
-                    )
-                    for time_base in SELECTABLE_TIME_BASES
-                ),
-            ],
-            width=TIME_BASE_SELECTOR_WIDTH,
-            filled=True,
-            fill_color=PANEL,
-            bgcolor=PANEL,
-            color=INK,
-            border_color=MUTED,
-            focused_border_color=INK,
-            label="Time base",
-            on_select=self._handle_time_base_change,
-        )
-        # One axis object per chart rather than one shared between them: a
-        # Flet control belongs to a single chart, the same constraint the two
-        # pools of control marks are built around. `show_min` and `show_max`
-        # are off because the window's own edges are not ticks - while the
-        # window follows the run they fall wherever the newest sample puts
-        # them, and a label there would read as a gridline that is not ruled.
-        self._time_axis = self._build_time_axis()
-        self._wash_in_time_axis = self._build_time_axis()
-        # Held rather than built inline because it states the span the chart
-        # is currently showing, which moves. Saying it is not decoration:
-        # under "Fit run" the width is chosen by the run's length rather than
-        # by the reader, so the caption is the only place the plot says how
-        # much time it is showing.
-        #
-        # There was a second caption under the wash-in chart until `PL-F9TQ`,
-        # and it was not this: it was static, and its two halves restated that
-        # chart's own axis titles. `_build_wash_in_section` records where its
-        # one non-restating clause went.
-        self._time_axis_caption = ft.Text(self._time_axis_caption_text(), color=MUTED)
-        self._concentration_chart = fch.LineChart(
-            data_series=self._chart_data_series(),
-            min_x=0,
-            max_x=INITIAL_CHART_TIME_BASE.span_s,
-            min_y=0,
-            # Denominated in MAC rather than in the agent's dial maximum, so
-            # every agent is drawn against one ruler; `CHART_AXIS_TOP_MAC`
-            # carries why, and why it does not move during a run.
-            max_y=chart_axis_top_percent(initial_snapshot.agent_mac_percent),
-            left_axis=fch.ChartAxis(
-                # "percent of what" has to be on the axis, because after
-                # PL-6580 stripped the caption's axis key this is the only
-                # place the left scale is named. Not "vol %": that is a
-                # gas-phase volume fraction, true of the circuit and
-                # alveolar traces and a category error on the muscle, fat
-                # and vessel-rich ones, which hold a partial pressure that
-                # convention quotes as a percentage of an atmosphere.
-                # `docs/MODEL.md` § "MAC multiples as a display unit" states
-                # the compartments are displayed "as a percent of one
-                # atmosphere", and this is that phrase at axis length.
-                title=ft.Text("% of 1 atm", color=MUTED, size=METRIC_QUALIFIER_SIZE)
-            ),
-            right_axis=self._mac_axis,
-            bottom_axis=self._time_axis,
-            horizontal_grid_lines=fch.ChartGridLines(
-                interval=chart_grid_interval_percent(initial_snapshot.agent_mac_percent),
-                color=GRIDLINE,
-            ),
-            vertical_grid_lines=fch.ChartGridLines(
-                interval=INITIAL_CHART_TIME_BASE.tick_interval_s, color=GRIDLINE
-            ),
-            expand=True,
-        )
-        self._wash_in_chart = fch.LineChart(
-            data_series=[
-                *self._wash_in_control_mark_series,
-                self._equilibrium_line_series,
-                *self._wash_in_segment_series,
-            ],
-            min_x=0,
-            max_x=INITIAL_CHART_TIME_BASE.span_s,
-            min_y=0,
-            # Fixed, and fixed just above the equilibrium value rather than
-            # at whatever the run reaches. 0 to 1 is the scale every
-            # published wash-in figure uses, which is the whole point of
-            # drawing this curve at all; an axis that grew to fit an
-            # excursion above 1 would redraw the wash-in curve at a smaller
-            # height partway through a lesson, which is a shape change a
-            # reader would read as the model's rather than the axis's.
-            # `WASH_IN_AXIS_MAXIMUM` records why the top is not at 1 exactly,
-            # and `app/wash_in.py` why nothing past the crossing sample is
-            # drawn.
-            max_y=WASH_IN_AXIS_MAXIMUM,
-            left_axis=fch.ChartAxis(
-                title=ft.Text("F_A / F_I", color=MUTED, size=METRIC_QUALIFIER_SIZE),
-                labels=_build_wash_in_axis_labels(),
-                # Both, and for different reasons: `labels` says what the
-                # ticks read, `label_spacing` says which of them are drawn.
-                # Left to choose for itself the chart samples the list at a
-                # coarser interval than the gridlines, so the quarter marks
-                # are ruled and unlabelled.
-                label_spacing=WASH_IN_GRID_INTERVAL,
-                label_size=WASH_IN_AXIS_LABEL_SIZE,
-                # The scale ends at 1.00; the headroom above it is space, not
-                # a tick. Labelling the top of the frame would put "1.15" on
-                # an axis whose every other label is a quarter, and invite it
-                # being read as the range the ratio can reach.
-                show_max=False,
-            ),
-            bottom_axis=self._wash_in_time_axis,
-            horizontal_grid_lines=fch.ChartGridLines(
-                interval=WASH_IN_GRID_INTERVAL, color=GRIDLINE
-            ),
-            vertical_grid_lines=fch.ChartGridLines(
-                interval=INITIAL_CHART_TIME_BASE.tick_interval_s, color=GRIDLINE
-            ),
-            expand=True,
         )
         # Names the substance the six readouts below it belong to. It changes
         # with the agent, so it is held rather than built inline.
@@ -1045,24 +845,6 @@ class SimulationView:
             weight=ft.FontWeight.BOLD,
             color=INK,
         )
-        # Names the divisor every MAC number on this page was produced with,
-        # which is what makes those numbers traceable without opening a data
-        # file (`CLAUDE.md`, safety-critical clinical-output standard). It
-        # changes with the agent, so it is held rather than built inline.
-        self._mac_reference_text = ft.Text(
-            format_mac_reference(
-                initial_snapshot.agent_display_name, initial_snapshot.agent_mac_percent
-            ),
-            color=MUTED,
-        )
-        # The same traceability the line above gives the MAC axis, for the
-        # band: it has two free parameters rather than one - a published
-        # fraction and the divisor it is applied to - and both are named, so
-        # a reader who disagrees with either can see which.
-        self._mac_awake_reference_text = ft.Text(
-            self._format_mac_awake_reference(initial_snapshot), color=MUTED
-        )
-
         self._start_button = ft.Button(content="Start", on_click=self._handle_start)
         self._pause_button = ft.Button(content="Pause", disabled=True, on_click=self._handle_pause)
         self._reset_button = ft.OutlinedButton(content="Reset", on_click=self._handle_reset)
@@ -1107,7 +889,6 @@ class SimulationView:
             label="Playback",
             on_select=self._handle_playback_rate_change,
         )
-
         initial_agent_colors = AGENT_COLOR_SCHEMES[initial_snapshot.agent_id]
         initial_agent_style = AGENT_RENDER_STYLES[initial_snapshot.agent_id]
         self._agent_dropdown = ft.Dropdown(
@@ -1247,108 +1028,183 @@ class SimulationView:
             on_change_start=self._handle_adjustment_start,
         )
 
-        self._refresh_view()
+    def snapshot(self) -> SimulationSnapshot:
+        """This run's state at this instant.
 
-    def _build_compartment_trace(
-        self,
-        quantity: RecordedQuantity,
-        label: str,
-        color: str,
-        stroke_width: float,
-        line_style: str,
-        dash_pattern: list[int] | None = None,
-    ) -> _CompartmentTrace:
-        """Build one compartment's trace, its legend swatch, and its control.
-
-        All three from one call, so the colour and the dash pattern a trace
-        is drawn with and the ones its legend entry claims cannot be written
-        twice and drift apart.
-
-        The control is a checkbox carrying the legend's own text as its
-        label, which is what makes it a labelled control to a screen reader
-        and to a pointer rather than a bare box, and what stops the interface
-        holding two lists of the same six compartments.
-
-        Args:
-            quantity: The recorded quantity this trace draws.
-            label: The compartment's name, as the legend says it.
-            color: Line colour, and the legend swatch's fill.
-            stroke_width: Line width in display pixels.
-            dash_pattern: Alternating dash and gap lengths in display
-                pixels, or None for a solid line.
-            line_style: The same pattern in words, for the legend.
+        Read by the dashboard once per frame and handed back to `refresh`,
+        rather than read again here: one read is what makes the readouts and
+        the traces of a frame the same instant of the same run.
 
         Returns:
-            The trace, ready to be drawn and to be shown or hidden.
+            The controller's immutable snapshot.
         """
 
-        trace = _CompartmentTrace(
-            quantity=quantity,
-            label=label,
-            color=color,
-            line_style=line_style,
-            series=chart_series.build_series(
-                color=color, stroke_width=stroke_width, dash_pattern=dash_pattern
-            ),
-            swatch=ft.Container(
-                width=LEGEND_SWATCH_WIDTH, height=LEGEND_SWATCH_HEIGHT, bgcolor=color
-            ),
-            checkbox=ft.Checkbox(
-                value=True,
-                label=f"{label} ({line_style})",
-                label_style=ft.TextStyle(color=INK),
-                # Deliberately not one of the six trace colours, and not the
-                # slider accent either. This row has already spent its whole
-                # colour budget on six compartments - `.claude/rules/ui-color.md`
-                # judgment 3 - so a coloured box beside a coloured swatch
-                # would compete for the one channel that carries compartment
-                # identity. INK is the interface's own ink, reads as furniture,
-                # and is the pair `tools/contrast_check.py` already measures
-                # against PANEL at the text minimum, comfortably above SC
-                # 1.4.11's 3:1 for a control.
-                active_color=INK,
-                check_color=PANEL,
-                semantics_label=f"Draw the {label} compartment on the chart",
-            ),
-        )
-        trace.checkbox.on_change = lambda event: self._handle_trace_visibility_change(trace, event)
+        return self._controller.snapshot()
 
-        return trace
+    @property
+    def is_running(self) -> bool:
+        """Whether this run is advancing."""
 
-    def _trace(self, quantity: RecordedQuantity) -> _CompartmentTrace:
-        """The one trace that draws this quantity.
+        return self._controller.is_running
+
+    @property
+    def agent_header_badge(self) -> ft.Container:
+        """The badge naming the agent this run is on."""
+
+        return self._agent_header_badge
+
+    @property
+    def notice_text(self) -> ft.Text:
+        """The banner for a halted run or a refused setting on this run."""
+
+        return self._notice_text
+
+    @property
+    def off_scale_text(self) -> ft.Text:
+        """The line naming this run's traces that are above the plot."""
+
+        return self._off_scale_text
+
+    @property
+    def wash_in_state_text(self) -> ft.Text:
+        """The line stating what this run's F_A/F_I plot is showing."""
+
+        return self._wash_in_state_text
+
+    @property
+    def control_mark_series(self) -> list[fch.LineChartData]:
+        """This run's pool of control marks for the compartment chart."""
+
+        return self._control_mark_series
+
+    @property
+    def wash_in_control_mark_series(self) -> list[fch.LineChartData]:
+        """This run's pool of control marks for the wash-in chart."""
+
+        return self._wash_in_control_mark_series
+
+    @property
+    def wash_in_segment_series(self) -> list[fch.LineChartData]:
+        """This run's F_A/F_I segments."""
+
+        return self._wash_in_segment_series
+
+    def line_for(self, quantity: RecordedQuantity) -> fch.LineChartData:
+        """This run's line for one compartment.
+
+        Keyed by the recorded quantity rather than by the compartment record,
+        because the quantity is what both halves of `_plotted`'s pairing are
+        built from and a second key would be a second thing to keep in step.
 
         Args:
-            quantity: The recorded quantity to find the trace for.
+            quantity: The recorded quantity whose line is wanted.
 
         Returns:
-            Its trace.
+            The series this run draws that quantity on.
 
         Raises:
-            KeyError: If no trace draws it, which would mean the table has
-                lost a compartment rather than that a caller asked wrongly.
+            KeyError: If this run holds no line for it, which would mean the
+                run was built against a different compartment table than the
+                chart is drawing rather than that a caller asked wrongly.
         """
 
-        for trace in self._compartment_traces:
-            if trace.quantity is quantity:
-                return trace
+        return self._lines[quantity]
 
-        raise KeyError(f"no compartment trace draws {quantity}")
+    def build_transport_row(self) -> ft.Row:
+        """Build this run's agent selector, transport controls and status.
+
+        One row per run rather than one for the dashboard: each of these
+        reaches a particular controller - Start starts *this* run - and a
+        single shared transport would leave a reader unable to say which run
+        a press acted on.
+
+        Returns:
+            The row, tightly sized, for the dashboard's header.
+        """
+
+        return ft.Row(
+            controls=[
+                # Exactly one of these two is visible;
+                # `refresh` is the one writer of
+                # which, from `is_running`.
+                self._agent_dropdown,
+                self._running_agent_display,
+                self._start_button,
+                self._pause_button,
+                self._reset_button,
+                self._playback_rate_dropdown,
+                self._status_text,
+            ],
+            spacing=8,
+            tight=True,
+        )
+
+    def build_readout_section(self) -> list[ft.Control]:
+        """Build the row of this run's compartment readouts, named by agent.
+
+        The heading and the grid travel together because the heading is what
+        says whose concentrations the seven panels under it are - a question
+        with one answer while one run is displayed and two while two are.
+
+        Returns:
+            The controls to append to the dashboard's column.
+        """
+
+        return [self._compartment_substance_text, self._build_concentration_metrics()]
+
+    def build_sidebar_panels(self) -> list[ft.Control]:
+        """Build this run's accounting and control-timeline panels.
+
+        Both are records of one run: the mass-balance diagnostic is of this
+        run's own agent, and the timeline is what was changed during it.
+
+        Returns:
+            The panels, in the order they are stacked beside the chart.
+        """
+
+        return [self._build_agent_accounting_panel(), self._build_control_timeline_panel()]
+
+    def _plotted(self, trace: _CompartmentTrace, substance_id: str) -> chart_series.PlottedSeries:
+        """One compartment's line on this run, paired with what it draws.
+
+        Both halves are manufactured from the same `trace.quantity`, so a
+        filter over the compartment table - which is how a hidden trace is
+        left out of a frame - cannot misalign the pairing the way a filter
+        over two parallel sequences could.
+
+        The substance is the caller's because it is a property of the run
+        rather than of the compartment: the six lines draw whichever agent
+        this run's controller is on, and `set_agent` starts a new run under a
+        new identifier. Holding a copy of it would be a second place for the
+        running agent to be recorded, free to disagree with the snapshot the
+        same frame formats its readouts from.
+
+        Args:
+            trace: The compartment to pair.
+            substance_id: The substance whose run is being drawn, from the
+                snapshot of the frame drawing it.
+
+        Returns:
+            This run's line for that compartment, bound to that substance's
+            values for it.
+        """
+
+        return (self._lines[trace.quantity], RecordedSeries(substance_id, trace.quantity))
 
     def _plotted_series(self, substance_id: str) -> tuple[chart_series.PlottedSeries, ...]:
-        """Every trace paired with the series it draws, hidden ones included.
+        """Every compartment paired with what this run draws on it, hidden included.
 
-        The whole trace-to-series pairing: an entry naming the wrong
-        compartment - or, once a run records more than one substance, the
-        wrong substance - would plot one set of values on another's line,
-        which misstates the run as surely as a wrong number would. Nothing
-        in the type system can catch that - `flet_charts` ships no stubs,
-        so a chart series is `Any` to the checker - so
-        `test_chart_traces_stay_bound_to_their_own_compartment` is what
-        holds it, by giving each compartment a distinct multiple and
-        reading the drawn points back.
+        The whole line-to-values pairing for one run: an entry naming the
+        wrong compartment - or, once a run records more than one substance,
+        the wrong substance - would plot one set of values on another's line,
+        which misstates the run as surely as a wrong number would. Nothing in
+        the type system can catch that - `flet_charts` ships no stubs, so a
+        chart series is `Any` to the checker - so
+        `test_chart_traces_stay_bound_to_their_own_compartment` is what holds
+        it, by giving each compartment a distinct multiple and reading the
+        drawn points back.
 
-        Hidden traces are included because what a trace *draws* does not
+        Hidden traces are included because what a line *draws* does not
         change with whether it is currently on the chart.
         `_visible_plotted_series` is the frame's subset.
 
@@ -1356,919 +1212,44 @@ class SimulationView:
             substance_id: The substance whose run this frame is drawing.
         """
 
-        return tuple(trace.plotted(substance_id) for trace in self._compartment_traces)
+        return tuple(self._plotted(trace, substance_id) for trace in self._traces)
 
     def _visible_plotted_series(self, substance_id: str) -> tuple[chart_series.PlottedSeries, ...]:
         """The pairing above, filtered to the traces the reader is looking at.
 
-        The filter is over whole records, each carrying its own series and
-        its own quantity, so it cannot misalign the pairing - see
-        `_CompartmentTrace`.
+        The filter is over whole compartment records, each carrying the one
+        key both halves of the pair are built from, so it cannot misalign the
+        pairing - see `_CompartmentTrace`. The selection is the chart's rather
+        than this run's, so two runs on one axis are always showing the same
+        compartments as each other.
 
         Args:
             substance_id: The substance whose run this frame is drawing.
         """
 
-        return tuple(
-            trace.plotted(substance_id) for trace in self._compartment_traces if trace.visible
-        )
+        return tuple(self._plotted(trace, substance_id) for trace in self._traces if trace.visible)
 
-    def _chart_data_series(self) -> list[fch.LineChartData]:
-        """Every series the compartment chart holds, in drawing order.
+    def refresh(self, snapshot: SimulationSnapshot, chart_min_x: float, chart_max_x: float) -> None:
+        """Refresh every value this run states, and redraw its lines.
 
-        Marks first - behind the references and behind every trace - because
-        a vertical rule crossing the whole plot is the one annotation that
-        can obscure all six compartments at the moment a reader is trying to
-        see what the change did to them. References next, so every trace is
-        drawn over them: a compartment obscured by a reference band would be
-        the annotation hiding the run it annotates.
+        **The snapshot is the caller's, and that is the point.** The dashboard
+        reads it once per run per frame and hands it down here, so a run's
+        readouts and the traces beside them are one instant of one run rather
+        than two reads that happened to agree. The window is the caller's for
+        the same reason one step up: both runs are drawn on one axis, so the
+        span is settled once for the frame and every run draws into it.
 
-        A hidden trace is **absent** from this list rather than present and
-        empty. That is what stops the client holding its points at all,
-        which is the whole render-cost half of this control; leaving it in
-        place with an empty point list would keep the series, keep diffing
-        it, and leave a trace that is no longer redrawn one bug away from
-        showing the frame it was last drawn in.
-
-        Returns:
-            The chart's series list.
-        """
-
-        return [
-            *self._control_mark_series,
-            self._mac_awake_band_upper_edge,
-            self._mac_awake_band_lower_edge,
-            self._one_mac_line_series,
-            *(trace.series for trace in self._compartment_traces if trace.visible),
-        ]
-
-    def mount(self) -> None:
-        """Mount the complete patient simulation dashboard."""
-
-        self._page.add(
-            ft.SafeArea(
-                expand=True,
-                content=ft.Column(
-                    expand=True,
-                    scroll=ft.ScrollMode.AUTO,
-                    spacing=12,
-                    controls=[
-                        ft.Row(
-                            controls=[
-                                ft.Column(
-                                    controls=[
-                                        ft.Text(
-                                            APP_DISPLAY_NAME,
-                                            size=APP_TITLE_SIZE,
-                                            weight=ft.FontWeight.BOLD,
-                                            color=INK,
-                                        ),
-                                        self._agent_header_badge,
-                                    ],
-                                    spacing=2,
-                                    tight=True,
-                                ),
-                                ft.Row(
-                                    controls=[
-                                        # Exactly one of these two is visible;
-                                        # `_refresh_view` is the one writer of
-                                        # which, from `is_running`.
-                                        self._agent_dropdown,
-                                        self._running_agent_display,
-                                        self._start_button,
-                                        self._pause_button,
-                                        self._reset_button,
-                                        self._playback_rate_dropdown,
-                                        self._status_text,
-                                    ],
-                                    spacing=8,
-                                    tight=True,
-                                ),
-                            ],
-                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                            wrap=True,
-                        ),
-                        # Directly under the run controls and above every
-                        # displayed value, so a halted run is read before the
-                        # values it explains: a completed step, but not a
-                        # continuing one.
-                        self._notice_text,
-                        self._build_parameter_controls(),
-                        self._compartment_substance_text,
-                        self._build_concentration_metrics(),
-                        ft.ResponsiveRow(
-                            controls=[self._build_chart_panel(), self._build_chart_sidebar()],
-                            spacing=12,
-                            run_spacing=12,
-                        ),
-                        ft.Text(
-                            (
-                                "Educational simulation only. "
-                                "This idealized model is not a "
-                                "clinical prediction, monitoring, "
-                                "or dosing tool."
-                            ),
-                            color=WARNING,
-                            weight=ft.FontWeight.BOLD,
-                        ),
-                    ],
-                ),
-            )
-        )
-
-    def start_simulation_timer(self) -> None:
-        """Start the simulation and render loops as independent tasks."""
-
-        self._page.run_task(self._run_simulation_timer)
-        self._page.run_task(self._run_render_timer)
-
-    def _build_parameter_controls(self) -> ft.ResponsiveRow:
-        """Build the simulation-setting controls.
-
-        Returns:
-            Responsive controls for fresh gas flow in L/min, delivered
-            agent concentration in percent, alveolar ventilation in
-            L/min, and cardiac output in L/min.
-        """
-
-        return ft.ResponsiveRow(
-            controls=[
-                # "common gas outlet", never "Fresh gas flow" alone. The
-                # phrase on its own is what an anesthesia machine's flowmeter
-                # bank is labelled, and a flowmeter reads the carrier gas
-                # only; the model's own mass balance forces this setting to
-                # be the whole post-vaporizer stream, carrier plus the vapour
-                # the vaporizer added, which `docs/MODEL.md` § "Breathing
-                # circuit" states and derives. The two differ by
-                # 1/(1 - F_D) - under a percent at ordinary dial settings,
-                # 22% at desflurane's 18% Tec 6 maximum, where flowmeters at
-                # 2 L/min leave the common gas outlet at about 2.44 L/min -
-                # and the error lands on the circuit time constant
-                # `V_C/V̇_F`, which is the quantity the wash-in curve is
-                # about. Reading the slider as a flowmeter is therefore a
-                # wrong clinical inference from a correct number, which
-                # `CLAUDE.md` counts as a presentation-safety defect rather
-                # than a wording preference (PL-71CF, after PL-CXYT). Do not
-                # shorten it to fit a layout;
-                # `test_the_fresh_gas_flow_control_names_the_common_gas_outlet`
-                # holds the exact pair of strings.
-                self._build_parameter_panel(
-                    "Fresh gas flow",
-                    self._fresh_gas_flow_slider,
-                    self._fresh_gas_flow_text,
-                    qualifier="common gas outlet",
-                ),
-                self._build_parameter_panel(
-                    self._delivered_concentration_label,
-                    self._delivered_concentration_slider,
-                    self._delivered_concentration_text,
-                    self._delivered_concentration_mac_text,
-                ),
-                self._build_parameter_panel(
-                    "Alveolar ventilation",
-                    self._alveolar_ventilation_slider,
-                    self._alveolar_ventilation_text,
-                ),
-                self._build_parameter_panel(
-                    "Cardiac output", self._cardiac_output_slider, self._cardiac_output_text
-                ),
-            ]
-        )
-
-    def _build_parameter_panel(
-        self,
-        label: str | ft.Text,
-        slider: ft.Slider,
-        value_text: ft.Text,
-        secondary_value_text: ft.Text | None = None,
-        qualifier: str | None = None,
-    ) -> ft.Container:
-        """Build one compact simulation-setting panel.
+        Nothing here touches another run, the axes, the references or the
+        compartment selection. What this method writes is exactly what this
+        run owns, which is what lets two of them share a chart.
 
         Args:
-            label: User-facing setting name, or a pre-built Text control
-                for a label that changes later (e.g. names the agent).
-            slider: Slider controlling the setting.
-            value_text: Current value with its physical unit.
-            secondary_value_text: The same setting in a second display
-                unit, drawn under the slider, or None where the setting
-                has only one. Only the delivered agent has two: the three
-                flow settings are in L/min, which MAC does not convert.
-            qualifier: Where a setting's name alone would be read as a
-                different quantity than the model uses, the words that
-                separate the two, drawn smaller under the name as the
-                clinical gloss is on a readout (`_build_metric_panel`), or
-                None where the name is unambiguous. Unlike that gloss no
-                spacer is drawn in its place, because these four panels
-                are already of unequal height - the delivered agent
-                carries a MAC line the three flow settings have no
-                conversion for - so there is no shared baseline for a
-                blank line to keep.
-
-        Returns:
-            Responsive setting panel.
+            snapshot: This run's state, read once by the dashboard for this
+                frame.
+            chart_min_x: Left edge of the visible window, in simulated
+                seconds, shared with every other run on the chart.
+            chart_max_x: Right edge of the same window.
         """
-
-        label_control = (
-            label
-            if isinstance(label, ft.Text)
-            else ft.Text(label, weight=ft.FontWeight.BOLD, color=INK)
-        )
-
-        return ft.Container(
-            content=ft.Column(
-                controls=[
-                    label_control,
-                    *(
-                        []
-                        if qualifier is None
-                        else [
-                            ft.Text(
-                                qualifier, color=MUTED, size=PARAMETER_QUALIFIER_SIZE, italic=True
-                            )
-                        ]
-                    ),
-                    ft.Row(controls=[slider, value_text]),
-                    *([] if secondary_value_text is None else [secondary_value_text]),
-                ],
-                spacing=4,
-            ),
-            bgcolor=PANEL,
-            border_radius=PANEL_RADIUS,
-            padding=12,
-            col={"sm": 12, "md": 6, "lg": 3},
-        )
-
-    def _build_concentration_metrics(self) -> ft.ResponsiveRow:
-        """Build the compact concentration summary grid.
-
-        Each panel names a compartment on one line and, where one applies,
-        glosses it on a smaller line beneath: "Alveolar" over
-        "end-tidal-equivalent", "Circuit" over "inspired". The split is a
-        safety decision before it is a typographic one. What the model
-        computes is a compartment - the gas fraction of one perfectly-mixed
-        alveolus, the mixed contents of the circuit - and what a clinician
-        would set beside it on a monitor is a different, measured thing. Two
-        lines at two sizes say which is which; one line joined by a slash
-        offered them as alternative names for the same quantity, which is the
-        modeled-versus-measured confusion `CLAUDE.md` forbids (PL-NV9W, then
-        PL-8M05).
-
-        It also lets every reading in the row share a baseline. `docs/MODEL.md`
-        § "Displayed precision" says the six readouts "sit in one row and are
-        read comparatively" - the reason for showing them together is that a
-        reader can see "the circuit lead the alveoli lead the tissues" - and a
-        label that wrapped where its neighbours did not pushed one reading out
-        of that line. Splitting the two longest labels leaves no name long
-        enough to wrap, and a panel with no gloss still draws the gloss line,
-        so the seven blocks are the same height whatever they contain.
-
-        The row then reflows rather than squeezing: seven across at 1200 CSS
-        pixels and wider, four at 992, two at 768, one below that. Measured by
-        rendering the running app at each step.
-
-        Returns:
-            Seven responsive panels containing simulated time in the
-            compound form the chart's axis uses and compartment values in
-            percent.
-        """
-
-        return ft.ResponsiveRow(
-            columns=METRIC_GRID_COLUMNS,
-            controls=[
-                self._build_metric_panel(
-                    "Simulated time",
-                    None,
-                    self._elapsed_time_text,
-                    # The playback rate, in the slot the other six panels give
-                    # to a MAC multiple. It is not a second unit for the value
-                    # above it - simulated time has one unit and this is not
-                    # another reading of it - but it is the one thing a reader
-                    # needs in order to know what the clock beside it means,
-                    # and this is where a reader of this row is already
-                    # looking. Drawn at every rate including 1x, so that a
-                    # blank line never has to be read as "real time".
-                    self._playback_rate_text,
-                ),
-                self._build_metric_panel(
-                    "Circuit", "inspired", self._circuit_concentration_text, self._circuit_mac_text
-                ),
-                # "end-tidal-equivalent", never "end-tidal": the hedge is
-                # required by docs/MODEL.md § "Minimum displayed outputs", and
-                # the reason is stated there in terms - the phrase "must not
-                # imply that airway sampling dynamics, dead space, or
-                # capnography are modeled", none of which they are. Dead space,
-                # airway sampling delay, shunt and V/Q mismatch are all in
-                # MODEL.md's "Known limitations", so this value is not
-                # end-tidal in any patient. End-tidal is the name of a
-                # *measurement*, and this is the readout a clinician would most
-                # readily set beside a real agent monitor, which is what makes
-                # an unhedged label a presentation-safety defect rather than a
-                # wording preference (PL-NV9W). Do not shorten it to fit a
-                # layout; `test_the_alveolar_readout_is_labelled_end_tidal_equivalent`
-                # holds the exact pair of strings.
-                self._build_metric_panel(
-                    "Alveolar",
-                    "end-tidal-equivalent",
-                    self._alveolar_concentration_text,
-                    self._alveolar_mac_text,
-                ),
-                self._build_metric_panel(
-                    "Mixed venous",
-                    None,
-                    self._mixed_venous_concentration_text,
-                    self._mixed_venous_mac_text,
-                ),
-                self._build_metric_panel(
-                    "Vessel-rich group",
-                    None,
-                    self._vessel_rich_concentration_text,
-                    self._vessel_rich_mac_text,
-                ),
-                self._build_metric_panel(
-                    "Muscle", None, self._muscle_concentration_text, self._muscle_mac_text
-                ),
-                self._build_metric_panel(
-                    "Fat", None, self._fat_concentration_text, self._fat_mac_text
-                ),
-            ],
-        )
-
-    def _build_metric_panel(
-        self,
-        name: str,
-        qualifier: str | None,
-        value_text: ft.Text,
-        secondary_value_text: ft.Text | None,
-    ) -> ft.Container:
-        """Build one compact read-only metric panel.
-
-        Args:
-            name: The modeled quantity this panel displays, in the model's own
-                terms.
-            qualifier: What a clinician would compare that quantity against,
-                or None where nothing measured corresponds to it. Drawn
-                smaller than the name, because it is the weaker claim of the
-                two - see `_build_concentration_metrics`.
-            value_text: Formatted value with its physical unit.
-            secondary_value_text: The same quantity in the second display
-                unit - a MAC multiple - or None for a panel that has no
-                second unit. A spacer line is drawn in its place so the
-                panel keeps the height of the six that do.
-
-        Returns:
-            Responsive metric panel.
-        """
-
-        return ft.Container(
-            content=ft.Column(
-                controls=[
-                    ft.Text(name, color=MUTED, size=METRIC_NAME_SIZE),
-                    ft.Text(
-                        qualifier if qualifier is not None else EMPTY_METRIC_QUALIFIER,
-                        color=MUTED,
-                        size=METRIC_QUALIFIER_SIZE,
-                        italic=True,
-                    ),
-                    value_text,
-                    (
-                        secondary_value_text
-                        if secondary_value_text is not None
-                        else self._build_metric_secondary_value(EMPTY_METRIC_SECONDARY_VALUE)
-                    ),
-                ],
-                spacing=0,
-            ),
-            bgcolor=PANEL,
-            border_radius=PANEL_RADIUS,
-            padding=PANEL_PADDING,
-            col=1,
-        )
-
-    def _build_chart_panel(self) -> ft.Container:
-        """Build the multitrace compartment chart.
-
-        Returns:
-            Responsive chart panel with time in seconds and
-            concentration or relative partial pressure in percent.
-        """
-
-        return ft.Container(
-            content=ft.Column(
-                controls=[
-                    # The panel's own heading row, with the time base beside
-                    # it. The control sits at the top of the panel rather
-                    # than under the four legend rows because it governs the
-                    # axis the caption directly below it describes, and a
-                    # reader looking for "how much of the run am I seeing"
-                    # reads the caption first.
-                    ft.Row(
-                        controls=[
-                            ft.Text(
-                                ("Agent concentration and relative partial pressure over time"),
-                                weight=ft.FontWeight.BOLD,
-                                color=INK,
-                            ),
-                            self._time_base_dropdown,
-                        ],
-                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                        wrap=True,
-                        spacing=8,
-                        run_spacing=6,
-                    ),
-                    self._time_axis_caption,
-                    # The divisor every MAC number on this page was produced
-                    # with - "1 MAC sevoflurane = 2.0%" - which is the
-                    # traceability `CLAUDE.md`'s clinical-output standard
-                    # asks for, in the form it asks for it: a named value
-                    # rather than an explanation of one.
-                    #
-                    # PL-DHV7 also required the convention in prose here -
-                    # that a multiple on a non-alveolar compartment is a
-                    # partial-pressure ratio and not a depth of anesthesia.
-                    # PL-6580 removed that paragraph as tutorial for this
-                    # audience and left the notation to carry it, which is
-                    # what the axis title and the readouts' unit suffix are
-                    # for. `docs/MODEL.md` "MAC multiples as a display unit"
-                    # holds the full statement.
-                    self._mac_reference_text,
-                    # The compartment legend, which is also the control that
-                    # shows and hides each trace - `_build_trace_legend_item`
-                    # records why those are one row and not two. Labelled
-                    # like the two rows under it, so the three kinds of mark
-                    # read as three kinds.
-                    ft.Row(
-                        controls=[
-                            ft.Text("Compartments:", color=MUTED),
-                            *(
-                                self._build_trace_legend_item(trace)
-                                for trace in self._compartment_traces
-                            ),
-                        ],
-                        wrap=True,
-                        spacing=16,
-                        run_spacing=6,
-                    ),
-                    # `_hidden_traces_text` names the compartments currently
-                    # unchecked, which is what stops a hidden trace reading
-                    # as a compartment the model does not have. It is state,
-                    # and it stays.
-                    #
-                    # The paragraph above it until PL-6580 said that
-                    # unchecking removes a trace from the plot only and
-                    # leaves the run unchanged. Nothing was lost with it.
-                    # The readouts above the chart go on showing that
-                    # compartment's concentration while its curve is gone,
-                    # which shows the reader the claim rather than asserting
-                    # it - and `NO_TRACES_SHOWN_TEXT` states it in words at
-                    # the one moment it is not self-evident, when every
-                    # trace is off and the panel is blank. A standing
-                    # paragraph was the same sentence charged to every
-                    # reader on every frame.
-                    self._hidden_traces_text,
-                    self._off_scale_text,
-                    # The references get their own legend row rather than
-                    # joining the six above. They are not compartments, and a
-                    # single row would invite reading them as a seventh and
-                    # eighth trace - which is the misreading PL-F52R exists to
-                    # prevent, arriving through the legend instead of the
-                    # chart.
-                    #
-                    # Each entry names the compartment it is read against,
-                    # which `docs/MODEL.md` "Interface boundary" requires of
-                    # a reference in the same breath as it exempts one from
-                    # the drawn-trace rule: a published constant may be
-                    # drawn without a sample behind it, and it owes a reader
-                    # the value, the divisor, and the curve to read it
-                    # against in exchange. Both were in the prose PL-6580
-                    # removed, so the labels carry them now. Not a
-                    # restatement of the deleted paragraphs but the part of
-                    # them that was a label all along - and the part with
-                    # clinical consequence, since every way of pairing a
-                    # reference with the wrong trace here shortens the
-                    # apparent time to awakening.
-                    ft.Row(
-                        controls=[
-                            ft.Text("Clinical references:", color=MUTED),
-                            # Vessel-rich, not alveolar. The model has no
-                            # effect-site compartment and defines the
-                            # arterial fraction as the alveolar one, so the
-                            # alveolar trace is the fastest curve on the
-                            # chart and the furthest from where
-                            # responsiveness returns; the stored fractions
-                            # are slow-washout values, which Katoh measured
-                            # against cerebral concentration.
-                            self._build_band_legend_item(
-                                "MAC-awake (population, ±1 SD; read against vessel-rich trace)",
-                                MAC_AWAKE_BAND_COLOR,
-                            ),
-                            # Alveolar, because that is what MAC is defined
-                            # for - the end-tidal concentration in a nominal
-                            # 40-year-old - and the other five traces cross
-                            # this line at a partial-pressure ratio rather
-                            # than at a depth of anesthesia.
-                            self._build_legend_item(
-                                "1 MAC, reference adult (alveolar)", ONE_MAC_LINE_COLOR, "wide dash"
-                            ),
-                        ],
-                        wrap=True,
-                        spacing=16,
-                        run_spacing=6,
-                    ),
-                    # The band's two free parameters, named: the published
-                    # fraction and the divisor it was applied to, so a
-                    # reader who disagrees with either can see which.
-                    #
-                    # The paragraph that stood beside it until PL-6580 gave
-                    # the endpoint difference from MAC and the reason the
-                    # band belongs against the vessel-rich trace. Both are
-                    # in `docs/MODEL.md` "MAC-awake as a chart reference",
-                    # and the endpoint is fundamental knowledge for this
-                    # display's reader. The trace it is read against is not
-                    # tutorial and did not go with it: `docs/MODEL.md`
-                    # "Interface boundary" requires a reference to name the
-                    # compartment it is read against, so that moved into the
-                    # legend entry above, where a reader learns what a mark
-                    # is. It is load-bearing rather than a caution - the
-                    # alveolar trace crosses the band about 2.3x earlier
-                    # than the vessel-rich one, so a band read against the
-                    # wrong curve teaches an early wake-up.
-                    self._mac_awake_reference_text,
-                    # A third legend row, because a control mark is neither
-                    # of the two kinds above it. A compartment trace is a
-                    # modelled quantity and a clinical reference is a
-                    # published constant; this is a record of something the
-                    # *user* did, which is a claim of a different type
-                    # altogether, and a row of its own is what says so
-                    # before a reader has to work it out from the shape.
-                    ft.Row(
-                        controls=[
-                            ft.Text("Run record:", color=MUTED),
-                            self._build_control_mark_legend_item(),
-                        ],
-                        wrap=True,
-                        spacing=8,
-                        run_spacing=2,
-                    ),
-                    ft.Container(height=CHART_HEIGHT, content=self._concentration_chart),
-                    ft.Divider(height=SECTION_DIVIDER_HEIGHT, color=GRIDLINE),
-                    *self._build_wash_in_section(),
-                ]
-            ),
-            bgcolor=PANEL,
-            border_radius=PANEL_RADIUS,
-            padding=PANEL_PADDING,
-            col={"sm": 12, "lg": 9},
-        )
-
-    def _build_wash_in_section(self) -> list[ft.Control]:
-        """Build the F_A/F_I plot and everything a reader needs to read it.
-
-        Under the compartment chart rather than beside it, on the same
-        time window, because it is that chart's alveolar and circuit
-        traces expressed as one number: a reader who has just watched
-        them separate is looking for how far apart they are, which is
-        what this plots.
-
-        This is the graph the uptake literature is taught from, so it
-        arrives carrying a reader's expectations, and three of those
-        still have to be corrected at the point of display rather than
-        in a document. Until `PL-F9TQ` they were corrected by 786
-        characters of italic paragraph - the largest standing block on
-        the screen, and larger than anything `PL-6580` removed from the
-        panel above. They are corrected by labels now (decided
-        2026-09-13):
-
-        - *which concentration the denominator is*: the heading names
-          it, and the label under the heading says what it is not, which
-          is the reading a specialist arrives with - F_I is where the
-          curve is taught with the vaporizer setting, and here it is the
-          circuit;
-        - *that the curve is the textbook one only while that
-          concentration is held constant*: the second half of the same
-          label, because the two are one fact. F_I is a denominator that
-          moves, so a rise across a control mark can be the denominator
-          shrinking rather than uptake. The warning is specific to this
-          ratio and is deliberately not in `_build_control_mark_legend_item`,
-          which the compartment chart shares: there a rise across a mark
-          really is the agent going up, and there is no denominator to
-          mistake it for;
-        - *that the trace is bounded to the wash-in domain and stops
-          outside it*: deleted, because `_format_wash_in_state` already
-          names which of the two boundaries it stopped at, at the moment
-          it stops. A message at the moment of need is not the standing
-          paragraph it replaces.
-
-        The axis key went with them. "Vertical axis: dimensionless
-        ratio, 0 to 1" restated this chart's left axis title and
-        "Horizontal axis: simulated time" its bottom one. Its one
-        non-restating clause, "the same window as above", is true by
-        construction rather than by assertion: `_apply_time_base`
-        computes one window per frame and writes both charts' `min_x`
-        and `max_x` from it.
-
-        `docs/MODEL.md` § "F_A/F_I as a displayed ratio" is the
-        specification, and is now the only place carrying the full
-        statement of each.
-
-        Returns:
-            The controls to append to the chart panel's column.
-        """
-
-        return [
-            ft.Text(
-                "Wash-in: F_A/F_I, alveolar as a fraction of the modelled circuit",
-                weight=ft.FontWeight.BOLD,
-                color=INK,
-            ),
-            ft.Text(
-                "F_I = modelled circuit, not the vaporizer dial — a rise across a "
-                "control mark can be the denominator moving, not uptake",
-                color=MUTED,
-            ),
-            # Its own line rather than the tail of a paragraph, where it was.
-            # Three words the safety-critical standard requires, at the end of
-            # 440 characters, is three words nobody reads. The control
-            # timeline's "Settings only — not a measurement." is the same
-            # move for the same reason.
-            ft.Text("Modelled, not measured", color=MUTED),
-            ft.Row(
-                controls=[
-                    self._build_legend_item("F_A/F_I", WASH_IN_COLOR, "solid"),
-                    self._build_legend_item(
-                        "Equilibrium, F_A = F_I", EQUILIBRIUM_LINE_COLOR, "wide dash"
-                    ),
-                    self._build_control_mark_legend_item(),
-                    self._wash_in_state_text,
-                ],
-                wrap=True,
-                spacing=16,
-                run_spacing=6,
-            ),
-            ft.Container(height=WASH_IN_CHART_HEIGHT, content=self._wash_in_chart),
-        ]
-
-    def _build_chart_sidebar(self) -> ft.Container:
-        """Build the column of panels that stands beside the chart.
-
-        The control-input timeline sits under the accounting panel rather
-        than beneath the chart, because it is read *against* the chart: a
-        mark on the plot and the line that says what it was are one piece
-        of information split across two places, and putting them side by
-        side is what lets a reader pair them without scrolling.
-
-        Returns:
-            Responsive column holding the accounting and timeline panels.
-        """
-
-        return ft.Container(
-            content=ft.Column(
-                controls=[
-                    self._build_agent_accounting_panel(),
-                    self._build_control_timeline_panel(),
-                ],
-                spacing=12,
-            ),
-            col={"sm": 12, "lg": 3},
-        )
-
-    def _build_control_timeline_panel(self) -> ft.Container:
-        """Build the list of settings changed during this run.
-
-        The record half of the chart's vertical marks. It states what the
-        marks cannot - which control moved, and from what to what - and it
-        is deliberately a record of *inputs*: nothing in it is a measured
-        or a modelled quantity, and nothing about it says what the patient
-        did in response, which is what the traces beside it are for.
-
-        Newest first. The panel is a fixed height beside a chart rather
-        than a scrollback, so the entry a reader has just produced has to
-        be the one they can see; oldest-first would push each new
-        adjustment off the bottom at the moment it was made.
-
-        Returns:
-            Panel holding the run's adjustments, most recent first.
-        """
-
-        return ft.Container(
-            content=ft.Column(
-                controls=[
-                    ft.Text("Control changes", weight=ft.FontWeight.BOLD, color=INK),
-                    ft.Text(
-                        "What was changed during this run, most recent first. "
-                        "Settings only — not a measurement.",
-                        color=MUTED,
-                        size=METRIC_QUALIFIER_SIZE,
-                        italic=True,
-                    ),
-                    self._control_timeline_text,
-                    self._control_timeline_overflow_text,
-                ],
-                spacing=4,
-            ),
-            bgcolor=PANEL,
-            border_radius=PANEL_RADIUS,
-            padding=PANEL_PADDING,
-        )
-
-    def _build_agent_accounting_panel(self) -> ft.Container:
-        """Build the agent-conservation diagnostic panel.
-
-        Returns:
-            Validation panel containing agent amounts in equivalent liters
-            of agent gas.
-        """
-
-        return ft.Container(
-            content=ft.Column(
-                controls=[
-                    ft.Text("Agent accounting validation", weight=ft.FontWeight.BOLD, color=INK),
-                    self._agent_accounting_status_text,
-                    self._agent_accounting_detail_text,
-                    self._agent_amounts_text,
-                ]
-            ),
-            bgcolor=PANEL,
-            border_radius=PANEL_RADIUS,
-            padding=PANEL_PADDING,
-        )
-
-    @staticmethod
-    def _build_legend_item(label: str, color: str, line_style: str) -> ft.Row:
-        """Build one compact chart legend entry.
-
-        Args:
-            label: Modeled compartment name.
-            color: Hexadecimal chart-line color.
-            line_style: Text description of the line pattern.
-
-        Returns:
-            Tightly sized chart legend entry.
-        """
-
-        return ft.Row(
-            controls=[
-                ft.Container(width=LEGEND_SWATCH_WIDTH, height=LEGEND_SWATCH_HEIGHT, bgcolor=color),
-                ft.Text(f"{label} ({line_style})", color=INK),
-            ],
-            spacing=6,
-            tight=True,
-        )
-
-    @staticmethod
-    def _build_trace_legend_item(trace: _CompartmentTrace) -> ft.Row:
-        """Build one compartment's legend entry, which is also its control.
-
-        One row rather than a legend beside a separate row of checkboxes.
-        Two lists of the same six compartments is exactly how a legend comes
-        to name a line the chart is not drawing - they agree only while
-        somebody keeps them agreeing. Here the entry *is* the state: the box,
-        the swatch and the label are written in one place,
-        `_apply_trace_visibility`, from the same flag the chart's own series
-        list is built from, so there is no second copy to fall out of step.
-
-        The swatch carries the trace's colour while it is drawn and nothing
-        while it is not, so the legend never shows a line the plot does not
-        have. Its size does not change with the state: this is a control a
-        reader clicks repeatedly, and a row that reflowed under the cursor
-        would move the next box out from under it.
-
-        The entry stays on screen when its trace is off, and keeps its
-        line-style words while it is off (`PL-YTX9`, decided 2026-09-13).
-        `PL-CG7J`'s brief asked for the opposite - "a hidden trace must also
-        disappear from any legend, so the chart never labels a line it is not
-        drawing" - and that purpose clause is met without removing anything:
-        the unchecked box and the empty swatch already say the line is not
-        drawn, in two channels neither of which is colour. Removing the entry
-        would need a separate control to bring the trace back, which is the
-        second list of six compartments the first paragraph above exists to
-        prevent. The style words stay for the same reason the entry does: this
-        row is a control, so what it names is what switching it on will draw.
-
-        Args:
-            trace: The compartment whose entry this is.
-
-        Returns:
-            Tightly sized legend entry and visibility control.
-        """
-
-        return ft.Row(controls=[trace.swatch, trace.checkbox], spacing=6, tight=True)
-
-    @staticmethod
-    def _build_control_mark_legend_item() -> ft.Row:
-        """Build the legend entry for a recorded control change.
-
-        Drawn as an upright swatch rather than the flat bar every other
-        entry uses, so the legend carries the same non-colour channel the
-        mark itself does: what makes a control mark unmistakable on the
-        chart is that it is the only vertical thing there, and a legend
-        that showed it as one more horizontal bar would give a reader no
-        way to connect the two.
-
-        Returns:
-            Tightly sized chart legend entry.
-        """
-
-        return ft.Row(
-            controls=[
-                ft.Container(
-                    width=CONTROL_MARK_SWATCH_WIDTH,
-                    height=CONTROL_MARK_SWATCH_HEIGHT,
-                    bgcolor=CONTROL_MARK_COLOR,
-                ),
-                ft.Text("Control change (vertical, fine dash)", color=INK),
-            ],
-            spacing=6,
-            tight=True,
-        )
-
-    @staticmethod
-    def _build_band_legend_item(label: str, color: str) -> ft.Row:
-        """Build the legend entry for a reference band, drawn as a band.
-
-        A filled swatch ruled on both edges rather than the 4px line every
-        other entry uses. The mark type is what distinguishes a measured
-        population value with real spread from a definitional anchor, so a
-        legend that drew both as lines would lose the one channel carrying
-        that distinction - and a swatch ruled on one edge only would teach
-        the reader the wrong mark for the one on the chart, which is the
-        same defect `PL-90Y6` fixed there.
-
-        Args:
-            label: Reference name, including what its extent means.
-            color: Hexadecimal edge color; the fill is this at
-                `MAC_AWAKE_BAND_FILL_OPACITY`, as on the chart.
-
-        Returns:
-            Tightly sized chart legend entry.
-        """
-
-        return ft.Row(
-            controls=[
-                ft.Container(
-                    width=BAND_SWATCH_WIDTH,
-                    height=BAND_SWATCH_HEIGHT,
-                    bgcolor=ft.Colors.with_opacity(MAC_AWAKE_BAND_FILL_OPACITY, color),
-                    border=ft.Border(
-                        top=ft.BorderSide(MAC_AWAKE_BAND_EDGE_STROKE_WIDTH, color),
-                        bottom=ft.BorderSide(MAC_AWAKE_BAND_EDGE_STROKE_WIDTH, color),
-                    ),
-                ),
-                ft.Text(label, color=INK),
-            ],
-            spacing=6,
-            tight=True,
-        )
-
-    @staticmethod
-    def _mac_awake_band_percent(snapshot: SimulationSnapshot) -> tuple[float, float]:
-        """Place this snapshot's MAC-awake band on the percent axis.
-
-        Both the fraction and the divisor it scales come out of one
-        snapshot, so the band can never be drawn from one agent's MAC-awake
-        at another agent's MAC — the correct number at the wrong height on a
-        labelled axis.
-
-        Args:
-            snapshot: The frame being rendered.
-
-        Returns:
-            Lower and upper edges as a percent of one atmosphere.
-        """
-
-        mac_awake = snapshot.agent_mac_awake
-
-        return mac_awake_band_percent(
-            fraction_of_mac=mac_awake.fraction_of_mac,
-            standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
-            mac_percent=snapshot.agent_mac_percent,
-        )
-
-    @staticmethod
-    def _format_mac_awake_reference(snapshot: SimulationSnapshot) -> str:
-        """State what this snapshot's MAC-awake band was drawn from.
-
-        Args:
-            snapshot: The frame being rendered.
-
-        Returns:
-            A one-line statement of the band's centre and its edges.
-        """
-
-        mac_awake = snapshot.agent_mac_awake
-
-        return format_mac_awake_reference(
-            snapshot.agent_display_name,
-            fraction_of_mac=mac_awake.fraction_of_mac,
-            standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
-            mac_percent=snapshot.agent_mac_percent,
-        )
-
-    def _refresh_view(self) -> None:
-        """Refresh every visible value from one controller snapshot."""
-
-        snapshot = self._controller.snapshot()
 
         self._subtitle_text.value = format_subtitle(snapshot.agent_display_name)
         self._apply_agent_color_scheme(snapshot.agent_id)
@@ -2291,32 +1272,10 @@ class SimulationView:
         self._delivered_concentration_slider.value = percent_from_fraction(
             snapshot.delivered_partial_pressure_fraction
         )
-        # The ceiling and the rules move with the agent because both are
-        # multiples of its 1 MAC - which is exactly what keeps the *scale*
-        # still: 0 to 3 MAC, ruled every half MAC, whichever agent is
-        # running. Set every frame like the slider above, because they are
-        # cheap scalars; the axis labels below are not, and are guarded.
-        self._concentration_chart.max_y = chart_axis_top_percent(snapshot.agent_mac_percent)
-        self._concentration_chart.horizontal_grid_lines.interval = chart_grid_interval_percent(
-            snapshot.agent_mac_percent
-        )
-        # The divisor is what every tick is placed against, so a MAC axis
-        # carried over from the previous agent would label the same traces
-        # against the wrong scale. Rebuilt only when it actually moves, for
-        # the reason recorded at `_mac_axis_basis`.
-        mac_axis_basis = snapshot.agent_mac_percent
-
-        if mac_axis_basis != self._mac_axis_basis:
-            self._mac_axis_basis = mac_axis_basis
-            self._mac_axis.labels = self._build_mac_axis_labels(mac_axis_basis)
 
         self._compartment_substance_text.value = COMPARTMENT_SUBSTANCE_TEMPLATE.format(
             agent=snapshot.agent_display_name
         )
-        self._mac_reference_text.value = format_mac_reference(
-            snapshot.agent_display_name, snapshot.agent_mac_percent
-        )
-        self._mac_awake_reference_text.value = self._format_mac_awake_reference(snapshot)
 
         has_failed = snapshot.failure_reason is not None
 
@@ -2443,56 +1402,24 @@ class SimulationView:
             f"{snapshot.agent_accounting_absolute_error_l:.3e} L"
         )
 
-        # The visible window, and the two modes it can be in. "Fit run"
-        # derives the width from the run so the whole of it is drawn, pinned
-        # at zero; a chosen width is held exactly and follows the newest
-        # sample, so a trace's slope on the plot means the same thing at
-        # every moment of the run. `app/chart_time_base.py` carries both
-        # rules and why they are not one.
-        if self._time_base is None:
-            time_base = fit_to_run(snapshot.elapsed_s)
-            chart_min_x, chart_max_x = fitted_window(time_base)
-        else:
-            time_base = self._time_base
-            chart_min_x, chart_max_x = following_window(time_base, snapshot.elapsed_s)
-
-        self._concentration_chart.max_x = chart_max_x
-        self._concentration_chart.min_x = chart_min_x
-        self._apply_time_base(time_base, chart_min_x, chart_max_x)
-
-        # The references span the same window as the traces and are moved in
-        # the same frame, so a scroll can never leave one ruled across part of
-        # the chart or drawn at the previous agent's height.
-        mac_awake_lower_percent, mac_awake_upper_percent = self._mac_awake_band_percent(snapshot)
-        chart_series.redraw_reference_band(
-            self._mac_awake_band_upper_edge,
-            self._mac_awake_band_lower_edge,
-            chart_min_x,
-            chart_max_x,
-            mac_awake_lower_percent,
-            mac_awake_upper_percent,
-        )
-        chart_series.redraw_reference_line(
-            self._one_mac_line_series, chart_min_x, chart_max_x, snapshot.agent_mac_percent
-        )
-
-        # Two reads of one controller, and they cannot disagree: this
-        # method is synchronous, so no `await` can fall between them and the
-        # simulation loop cannot advance a step in the gap. That is what
-        # keeps the right-hand end of every trace the instant the readouts
-        # above were formatted from - `RunDefinition.evaluate_anchored` always
-        # draws the end of the range, so the two agree by construction
-        # rather than by ordering. The window asked for is the axis just
-        # set, clipped to the part of it the run covers (`PL-0VM7`).
+        # The snapshot above and this read cannot disagree: this method is
+        # synchronous, so no `await` can fall between them and the simulation
+        # loop cannot advance a step in the gap. That is what keeps the
+        # right-hand end of every trace the instant the readouts above were
+        # formatted from - `RunDefinition.evaluate_anchored` always draws the
+        # end of the range, so the two agree by construction rather than by
+        # ordering. The window asked for is the axis the dashboard just set,
+        # clipped to the part of it this run covers (`PL-0VM7`).
         #
         # Read once and drawn twice: both plots span the same window, so one
         # read is what makes them the same *instants* and not merely the
         # same axis numbers.
         # Only the traces the reader has left shown. A hidden trace costs
         # nothing here and holds nothing on the client, because
-        # `_chart_data_series` has taken it off the chart as well - the two
-        # go together, and `chart_series.redraw_visible_window` says why
-        # doing one without the other would leave a stale curve drawn.
+        # `SimulationView._chart_data_series` has taken it off the chart as
+        # well - the two go together, and
+        # `chart_series.redraw_visible_window` says why doing one without
+        # the other would leave a stale curve drawn.
         window = self._controller.drawn_window(
             chart_min_x, chart_max_x, chart_series.CHART_COLUMN_BUDGET_PER_SERIES
         )
@@ -2512,11 +1439,6 @@ class SimulationView:
         adjustments = self._adjustment_grouping.of(snapshot.control_timeline)
         self._redraw_control_marks(adjustments, chart_min_x, chart_max_x, snapshot)
         self._refresh_wash_in(snapshot, window, chart_min_x, chart_max_x)
-        # Last, after every call above that can have appended a point: a
-        # point built this frame carries no tooltip (`chart_series.build_point`),
-        # so a run paused with a trace still growing would otherwise show a
-        # hover that answered over part of a curve and not the rest.
-        self._apply_chart_tooltips(enabled=not snapshot.is_running)
         self._refresh_control_timeline(adjustments)
 
     def _refresh_off_scale_notice(self, snapshot: SimulationSnapshot) -> None:
@@ -2551,11 +1473,11 @@ class SimulationView:
         # which is 3.5999999999999996 rather than 3.6.
         off_scale = [
             trace.label
-            for trace in self._compartment_traces
+            for trace in self._traces
             if trace.visible
             and any(
                 point.y - top_percent > CONCENTRATION_DISPLAY_RESOLUTION_PERCENT
-                for point in trace.series.points
+                for point in self._lines[trace.quantity].points
             )
         ]
 
@@ -2634,6 +1556,11 @@ class SimulationView:
         passed down rather than re-read, so the two cannot even differ by
         a step the run took in between.
 
+        The plot itself, its axis and the equilibrium line ruled across it
+        belong to the dashboard - F_A = F_I is a property of the ratio rather
+        than of any run drawn against it - so what is redrawn here is this
+        run's own segments and the line that says what they are showing.
+
         Args:
             snapshot: The frame being rendered.
             window: The samples the compartment chart was just drawn from.
@@ -2643,14 +1570,6 @@ class SimulationView:
                 seconds.
         """
 
-        self._wash_in_chart.min_x = chart_min_x
-        self._wash_in_chart.max_x = chart_max_x
-        # Moved in the same frame as the trace that ends on it, so a scroll
-        # can never leave the line ruled across part of the plot while the
-        # curve terminating on it spans the whole of it.
-        chart_series.redraw_reference_line(
-            self._equilibrium_line_series, chart_min_x, chart_max_x, WASH_IN_EQUILIBRIUM_RATIO
-        )
         self._undrawn_wash_in_segments = chart_series.redraw_wash_in_segments(
             self._wash_in_segment_series, window, snapshot.agent_id, WASH_IN_TERMINUS_CEILING
         )
@@ -2725,260 +1644,6 @@ class SimulationView:
         self._control_timeline_overflow_text.value = "; ".join(notes)
         self._control_timeline_overflow_text.visible = bool(notes)
 
-    def _apply_trace_visibility(self) -> None:
-        """Put exactly the shown traces on the chart, and say the legend's part.
-
-        The one writer of everything that has to agree about which
-        compartments are drawn: the chart's series list, each entry's
-        checkbox, swatch and label, and the line said when none is drawn.
-        They are written from one flag in one pass, which is what makes the
-        legend's agreement with the plot a property of the code rather than
-        of somebody's diligence.
-
-        **Called when visibility changes and at no other time.** Reassigning
-        the chart's series list is the whole-list churn `_mac_axis_basis`
-        guards the axis against, and nothing about it belongs on a render
-        tick: `visible` is only ever moved by a reader clicking a box.
-
-        **A trace being shown again still holds the points of the frame it
-        was last drawn in.** The caller must redraw before calling this, so
-        that a stale curve is never on the chart even momentarily -
-        `_handle_trace_visibility_change` is the caller and records the
-        ordering.
-        """
-
-        self._concentration_chart.data_series = self._chart_data_series()
-
-        for trace in self._compartment_traces:
-            trace.checkbox.value = trace.visible
-            trace.checkbox.label_style = ft.TextStyle(color=INK if trace.visible else MUTED)
-            trace.swatch.bgcolor = trace.color if trace.visible else None
-
-        self._hidden_traces_text.visible = not any(
-            trace.visible for trace in self._compartment_traces
-        )
-        # A trace being shown again joins the chart *after* the redraw that
-        # `_handle_trace_visibility_change` runs first, so the frame's own
-        # tooltip pass never saw it. Re-applied here in the mode that frame
-        # set, which is what stops a trace restored while paused being the
-        # one curve on the chart that answers no hover.
-        self._apply_chart_tooltips(enabled=self._chart_tooltips_enabled)
-
-    def _handle_trace_visibility_change(
-        self, trace: _CompartmentTrace, event: ft.Event[ft.Checkbox]
-    ) -> None:
-        """Show or hide one compartment trace at the reader's request.
-
-        The flag lives in the view rather than in the controller, for the
-        reason `_rejected_setting_notice` does: which traces someone is
-        looking at changes nothing about the simulation and must not.
-        Identical inputs still produce identical results whatever is on
-        screen, so nothing here reads or writes model state, and this is
-        not routed through `_apply_setting` - there is no value for the core
-        to refuse.
-
-        Args:
-            trace: The compartment whose box was clicked.
-            event: The checkbox event carrying its new state.
-        """
-
-        trace.visible = bool(event.control.value)
-        # Redrawn before it is put back on the chart, never after. A trace
-        # hidden for a while still carries the points of the frame it was
-        # last drawn in, and adding it to the chart first would put that
-        # stale curve one raise away from reaching the client. Nothing is
-        # sent until `update()`, so a reader sees only the finished frame.
-        self._refresh_view()
-        self._apply_trace_visibility()
-        self._page.update()
-
-    def _apply_chart_tooltips(self, *, enabled: bool) -> None:
-        """The one writer of whether either chart answers a hover.
-
-        **The hover is offered while the run is paused and withdrawn while
-        it plays**, which is a performance decision and a reading decision
-        that happen to agree.
-
-        The performance half. A tooltip is an object per point, and Flet's
-        diff descends into it on every point on every frame - about half the
-        cost of a frame, measured at 42.8 ms against 22.5 ms on a saturated
-        chart at 300x (`PL-KP7H`, and `PL-YSZN` for where the rest of the
-        frame goes). That bill is only presented while frames are being
-        pushed: `_run_render_timer` takes no frame while the run is stopped,
-        so a paused chart carrying tooltips costs nothing per second. The
-        feature is therefore restored exactly where it is free.
-
-        The reading half, which is why this is not merely an optimization
-        dressed as a feature. A trace at 300x advances a simulated minute
-        between frames, so a value read under a moving cursor is stale
-        before it is read; and a drawn point is the run's state at that
-        instant, which is a thing to study rather than to glance at.
-        Pausing is what a reader does to inspect, and it is
-        the state in which the number under the cursor still means what it
-        said.
-
-        What the tooltip *says* is `flet_charts`' default and was designed
-        by nobody - `PL-YLKR` is the item for that, and it matters more now
-        than it did, because this makes the tooltip a readout a reader
-        deliberately stops to consult rather than one they brush past.
-
-        `interactive` is the documented switch ("enables automatic tooltips
-        and points highlighting when hovering over the chart") and is what
-        makes the behaviour change in contract; the per-point write is what
-        makes it cheap. Both are done here so the two cannot come to
-        disagree - a chart left interactive over tooltipless points, or
-        tooltips carried by points no hover can reach, are each half of this
-        applied without the other.
-
-        Args:
-            enabled: Whether a hover should answer. Read from the frame's
-                snapshot by `_refresh_view`, which is the only place the run
-                state is consulted.
-        """
-
-        for chart in (self._concentration_chart, self._wash_in_chart):
-            chart.interactive = enabled
-            chart_series.apply_point_tooltips(chart.data_series, enabled=enabled)
-
-        self._chart_tooltips_enabled = enabled
-
-    def _apply_agent_color_scheme(self, agent_id: str) -> None:
-        """Apply the verified agent color to every control that carries identity.
-
-        Three of them: the header badge, the selector, and the chip that
-        stands in the selector's place while a run is going. All three are
-        written on every tick whether or not they are visible, so the one
-        that becomes visible on the next state change is already correct -
-        a chip revealed in the previous agent's colour would be the wrong
-        label over the right numbers for as long as one frame.
-        """
-
-        scheme = AGENT_COLOR_SCHEMES[agent_id]
-        style = AGENT_RENDER_STYLES[agent_id]
-        self._agent_header_badge.bgcolor = scheme.fill
-        self._agent_header_badge.border = style.badge_border
-        self._subtitle_text.color = scheme.foreground
-
-        self._running_agent_display.bgcolor = scheme.fill
-        self._running_agent_display.border = style.badge_border
-        self._running_agent_text.color = scheme.foreground
-        self._running_agent_lock_text.color = scheme.foreground
-
-        self._agent_dropdown.fill_color = scheme.fill
-        self._agent_dropdown.bgcolor = scheme.fill
-        self._agent_dropdown.color = scheme.foreground
-        self._agent_dropdown.text_style = style.dropdown_text_style
-        self._agent_dropdown.border_color = scheme.foreground
-        self._agent_dropdown.focused_border_color = scheme.foreground
-
-    def _refresh_and_render(self) -> None:
-        """Refresh the dashboard and submit it to the Flet page."""
-
-        self._refresh_view()
-        self._page.update()
-
-    def _apply_setting(self, apply_setting: Callable[[], None], *, coalesce: bool = False) -> None:
-        """Apply one user setting, reporting a refusal instead of losing it.
-
-        A `SimulationConfigurationError` here means the core rejected the
-        value and changed nothing, so the run is untouched and must not be
-        marked failed. What must not happen is the raise escaping into
-        Flet's event dispatch: the control would keep the refused value
-        while the simulation kept running at the old one, which is the
-        correct number under the wrong label that `CLAUDE.md` treats as a
-        safety failure. `_refresh_view` restores the control from the
-        snapshot, on the frame this draws or on the next tick.
-
-        **Anything that is not a `SimulationConfigurationError` halts the
-        run**, which is the policy the two timer loops already apply to the
-        same class of error (`PL-YK2V`). The distinction is what the core is
-        saying, and it is drawn at that class rather than at the hierarchy's
-        base because only that class means *a value was rejected and nothing
-        was miscalculated* - so a notice over a continuing run is the whole
-        of the correct response. A `TypeError` from a future refactor means
-        the handler broke part-way and what is on screen can no longer be
-        trusted to describe the run.
-
-        **`SimulationExecutionError` is on the halting side, and catching it
-        here would invert its meaning** (`PL-V6M0`). `core/exceptions.py`
-        defines it as the run being unable to continue safely, so reporting
-        one as a refused setting would leave a run that must stop producing
-        readings under a notice about one control. Its
-        `SimulationDomainLimitError` branch is the same fault in the milder
-        direction: the run has reached the edge of the supported domain, and
-        `_halt_run` routes that to its own channel precisely so it is not
-        read as either a failure or a refusal. Narrowing the arm to
-        `SimulationConfigurationError` sends both there for free. A bare
-        `AnesthesiaSimulationError` raised directly is unclassified and falls
-        through to `_halt_run` too, which is the same asymmetry `_halt_run`
-        itself states - the narrow case is the named one, and anything
-        unrecognised takes the more cautious branch.
-
-        No route raises either type into this method today: the setting
-        handlers call controller setters, and `SimulationExecutionError` is
-        raised from `advance()`. The arm is narrowed before such a route
-        exists rather than after, because the failure it would produce is
-        silent. Left to escape into Flet's dispatch, that second case
-        skipped the `_refresh_view()` below and left the dropdown showing
-        the agent the reader picked while the badge and all six readouts
-        still showed the previous one, with the run silently paused and
-        nothing on screen saying so - a display labelled with the wrong
-        patient model, which is the failure `CLAUDE.md` names rather than a
-        missing log line. `_halt_run` draws its own frame, so this returns
-        instead of falling through to the refresh below.
-
-        **`_refresh_view` is never what waits.** It runs on every call,
-        coalesced or not, so the control objects always agree with the
-        snapshot the moment a setting has been applied - which is the
-        property `PL-018` established and the one a reader's dial position
-        rests on. What waits is only `page.update()`, the submission of
-        those objects to the client, and it is that which costs 23-59 ms on
-        a saturated chart against this method's 3-4 ms (`PL-R2YM`,
-        `PL-YSZN`). Deferring the cheap half as well would buy a further
-        tenth of the drag and give up a stated invariant for it.
-
-        **A refusal draws its own frame, whatever `coalesce` says**, and so
-        does the call that clears one. A refusal is the one case where the
-        control on screen and the simulation disagree - the reader dragged
-        the dial somewhere the core would not go - so waiting even a tick
-        would leave a dial stating a setting the run is not using, and
-        leaving the notice up a tick after it stopped being true is the
-        same fault backwards. An accepted setting with no notice on either
-        side of it has nothing on screen to correct: the snapshot already
-        says what the dial says.
-
-        Args:
-            apply_setting: The setter to run. Called once. A
-                `SimulationConfigurationError` it raises is reported as a
-                refused setting; anything else, the rest of the project
-                hierarchy included, halts the run. Neither is propagated.
-            coalesce: Whether this call may leave its frame to the next
-                render tick. True for the parameter sliders, which report
-                continuously while dragged; false for every discrete
-                action, where one action is one frame and a tick of delay
-                would read as lag.
-        """
-
-        settled_notice = self._rejected_setting_notice
-
-        try:
-            apply_setting()
-        except SimulationConfigurationError as error:
-            self._rejected_setting_notice = f"Setting refused — {error}"
-        except Exception as error:  # broad by design - see the docstring
-            self._halt_run(error)
-            return
-        else:
-            self._rejected_setting_notice = None
-
-        self._refresh_view()
-
-        if coalesce and settled_notice is None and self._rejected_setting_notice is None:
-            self._render_pending = True
-            return
-
-        self._page.update()
-
     def _refresh_notice(
         self, failure_reason: str | None, supported_limit_reason: str | None
     ) -> None:
@@ -3042,6 +1707,149 @@ class SimulationView:
 
         self._notice_text.value = ""
         self._notice_text.visible = False
+
+    def _apply_agent_color_scheme(self, agent_id: str) -> None:
+        """Apply the verified agent color to every control that carries identity.
+
+        Three of them: the header badge, the selector, and the chip that
+        stands in the selector's place while a run is going. All three are
+        written on every tick whether or not they are visible, so the one
+        that becomes visible on the next state change is already correct -
+        a chip revealed in the previous agent's colour would be the wrong
+        label over the right numbers for as long as one frame.
+        """
+
+        scheme = AGENT_COLOR_SCHEMES[agent_id]
+        style = AGENT_RENDER_STYLES[agent_id]
+        self._agent_header_badge.bgcolor = scheme.fill
+        self._agent_header_badge.border = style.badge_border
+        self._subtitle_text.color = scheme.foreground
+
+        self._running_agent_display.bgcolor = scheme.fill
+        self._running_agent_display.border = style.badge_border
+        self._running_agent_text.color = scheme.foreground
+        self._running_agent_lock_text.color = scheme.foreground
+
+        self._agent_dropdown.fill_color = scheme.fill
+        self._agent_dropdown.bgcolor = scheme.fill
+        self._agent_dropdown.color = scheme.foreground
+        self._agent_dropdown.text_style = style.dropdown_text_style
+        self._agent_dropdown.border_color = scheme.foreground
+        self._agent_dropdown.focused_border_color = scheme.foreground
+
+    def _refresh_and_render(self) -> None:
+        """Refresh the whole dashboard and submit it to the Flet page.
+
+        The whole dashboard rather than this run alone. The chart, its axis
+        and its window are shared, so a change made here moves a frame the
+        other run appears in too, and drawing half of it would leave one run
+        describing the frame before this one.
+        """
+
+        self._refresh_dashboard()
+        self._page.update()
+
+    def _apply_setting(self, apply_setting: Callable[[], None], *, coalesce: bool = False) -> None:
+        """Apply one user setting, reporting a refusal instead of losing it.
+
+        A `SimulationConfigurationError` here means the core rejected the
+        value and changed nothing, so the run is untouched and must not be
+        marked failed. What must not happen is the raise escaping into
+        Flet's event dispatch: the control would keep the refused value
+        while the simulation kept running at the old one, which is the
+        correct number under the wrong label that `CLAUDE.md` treats as a
+        safety failure. `_refresh_view` restores the control from the
+        snapshot, on the frame this draws or on the next tick.
+
+        **Anything that is not a `SimulationConfigurationError` halts the
+        run**, which is the policy the two timer loops already apply to the
+        same class of error (`PL-YK2V`). The distinction is what the core is
+        saying, and it is drawn at that class rather than at the hierarchy's
+        base because only that class means *a value was rejected and nothing
+        was miscalculated* - so a notice over a continuing run is the whole
+        of the correct response. A `TypeError` from a future refactor means
+        the handler broke part-way and what is on screen can no longer be
+        trusted to describe the run.
+
+        **`SimulationExecutionError` is on the halting side, and catching it
+        here would invert its meaning** (`PL-V6M0`). `core/exceptions.py`
+        defines it as the run being unable to continue safely, so reporting
+        one as a refused setting would leave a run that must stop producing
+        readings under a notice about one control. Its
+        `SimulationDomainLimitError` branch is the same fault in the milder
+        direction: the run has reached the edge of the supported domain, and
+        `_halt_run` routes that to its own channel precisely so it is not
+        read as either a failure or a refusal. Narrowing the arm to
+        `SimulationConfigurationError` sends both there for free. A bare
+        `AnesthesiaSimulationError` raised directly is unclassified and falls
+        through to `_halt_run` too, which is the same asymmetry `_halt_run`
+        itself states - the narrow case is the named one, and anything
+        unrecognised takes the more cautious branch.
+
+        No route raises either type into this method today: the setting
+        handlers call controller setters, and `SimulationExecutionError` is
+        raised from `advance()`. The arm is narrowed before such a route
+        exists rather than after, because the failure it would produce is
+        silent. Left to escape into Flet's dispatch, that second case
+        skipped the `_refresh_view()` below and left the dropdown showing
+        the agent the reader picked while the badge and all six readouts
+        still showed the previous one, with the run silently paused and
+        nothing on screen saying so - a display labelled with the wrong
+        patient model, which is the failure `CLAUDE.md` names rather than a
+        missing log line. `_halt_run` draws its own frame, so this returns
+        instead of falling through to the refresh below.
+
+        **The dashboard refresh is never what waits.** It runs on every call,
+        coalesced or not, so the control objects always agree with the
+        snapshot the moment a setting has been applied - which is the
+        property `PL-018` established and the one a reader's dial position
+        rests on. What waits is only `page.update()`, the submission of
+        those objects to the client, and it is that which costs 23-59 ms on
+        a saturated chart against this method's 3-4 ms (`PL-R2YM`,
+        `PL-YSZN`). Deferring the cheap half as well would buy a further
+        tenth of the drag and give up a stated invariant for it.
+
+        **A refusal draws its own frame, whatever `coalesce` says**, and so
+        does the call that clears one. A refusal is the one case where the
+        control on screen and the simulation disagree - the reader dragged
+        the dial somewhere the core would not go - so waiting even a tick
+        would leave a dial stating a setting the run is not using, and
+        leaving the notice up a tick after it stopped being true is the
+        same fault backwards. An accepted setting with no notice on either
+        side of it has nothing on screen to correct: the snapshot already
+        says what the dial says.
+
+        Args:
+            apply_setting: The setter to run. Called once. A
+                `SimulationConfigurationError` it raises is reported as a
+                refused setting; anything else, the rest of the project
+                hierarchy included, halts the run. Neither is propagated.
+            coalesce: Whether this call may leave its frame to the next
+                render tick. True for the parameter sliders, which report
+                continuously while dragged; false for every discrete
+                action, where one action is one frame and a tick of delay
+                would read as lag.
+        """
+
+        settled_notice = self._rejected_setting_notice
+
+        try:
+            apply_setting()
+        except SimulationConfigurationError as error:
+            self._rejected_setting_notice = f"Setting refused — {error}"
+        except Exception as error:  # broad by design - see the docstring
+            self._halt_run(error)
+            return
+        else:
+            self._rejected_setting_notice = None
+
+        self._refresh_dashboard()
+
+        if coalesce and settled_notice is None and self._rejected_setting_notice is None:
+            self._defer_render()
+            return
+
+        self._page.update()
 
     def _handle_start(self, event: ft.Event[ft.Button]) -> None:
         del event
@@ -3342,8 +2150,12 @@ class SimulationView:
             lambda: self._controller.set_cardiac_output(cardiac_output_l_min), coalesce=True
         )
 
-    def _halt_run(self, error: Exception) -> None:
-        """Stop the run and say on screen why it stopped.
+    def halt(self, error: Exception) -> None:
+        """Stop this run, and record which of the two stopped states it is in.
+
+        Stopping only. `_halt_run` is what draws the frame that says so, and
+        the split is there because a dashboard holding two runs has one frame
+        for both of them.
 
         The type still does not decide **whether** to stop - every exception
         stops the run, because a `TypeError` from a future refactor kills the
@@ -3370,6 +2182,20 @@ class SimulationView:
         else:
             self._controller.fail(f"{type(error).__name__}: {error}")
 
+    def _halt_run(self, error: Exception) -> None:
+        """Halt this run and draw the frame that says so.
+
+        The two halves are separate because they have different owners once
+        a dashboard holds more than one run. Stopping the run is this run's -
+        a raise out of *this* controller's step or setter says nothing about
+        the other. Drawing is the dashboard's, and there is one frame for
+        every run on it, so it is done once here rather than once per halted
+        run: `SimulationView._halt_every_run` is the case where the frame
+        itself could not be drawn and every run on it is therefore stopped.
+        """
+
+        self.halt(error)
+
         try:
             self._refresh_and_render()
         except Exception:  # broad by design - see the comment below
@@ -3380,7 +2206,7 @@ class SimulationView:
             # actively misleading.
             pass
 
-    async def _run_simulation_timer(self) -> None:
+    async def run_simulation_timer(self) -> None:
         """Advance the running simulation by the playback rate's steps per tick.
 
         Stepping is deliberately separate from drawing, and how many steps a
@@ -3459,6 +2285,1783 @@ class SimulationView:
             except Exception as error:  # broad by design - see _halt_run
                 self._halt_run(error)
 
+    def build_parameter_controls(self) -> ft.ResponsiveRow:
+        """Build the simulation-setting controls.
+
+        Returns:
+            Responsive controls for fresh gas flow in L/min, delivered
+            agent concentration in percent, alveolar ventilation in
+            L/min, and cardiac output in L/min.
+        """
+
+        return ft.ResponsiveRow(
+            controls=[
+                # "common gas outlet", never "Fresh gas flow" alone. The
+                # phrase on its own is what an anesthesia machine's flowmeter
+                # bank is labelled, and a flowmeter reads the carrier gas
+                # only; the model's own mass balance forces this setting to
+                # be the whole post-vaporizer stream, carrier plus the vapour
+                # the vaporizer added, which `docs/MODEL.md` § "Breathing
+                # circuit" states and derives. The two differ by
+                # 1/(1 - F_D) - under a percent at ordinary dial settings,
+                # 22% at desflurane's 18% Tec 6 maximum, where flowmeters at
+                # 2 L/min leave the common gas outlet at about 2.44 L/min -
+                # and the error lands on the circuit time constant
+                # `V_C/V̇_F`, which is the quantity the wash-in curve is
+                # about. Reading the slider as a flowmeter is therefore a
+                # wrong clinical inference from a correct number, which
+                # `CLAUDE.md` counts as a presentation-safety defect rather
+                # than a wording preference (PL-71CF, after PL-CXYT). Do not
+                # shorten it to fit a layout;
+                # `test_the_fresh_gas_flow_control_names_the_common_gas_outlet`
+                # holds the exact pair of strings.
+                self._build_parameter_panel(
+                    "Fresh gas flow",
+                    self._fresh_gas_flow_slider,
+                    self._fresh_gas_flow_text,
+                    qualifier="common gas outlet",
+                ),
+                self._build_parameter_panel(
+                    self._delivered_concentration_label,
+                    self._delivered_concentration_slider,
+                    self._delivered_concentration_text,
+                    self._delivered_concentration_mac_text,
+                ),
+                self._build_parameter_panel(
+                    "Alveolar ventilation",
+                    self._alveolar_ventilation_slider,
+                    self._alveolar_ventilation_text,
+                ),
+                self._build_parameter_panel(
+                    "Cardiac output", self._cardiac_output_slider, self._cardiac_output_text
+                ),
+            ]
+        )
+
+    def _build_parameter_panel(
+        self,
+        label: str | ft.Text,
+        slider: ft.Slider,
+        value_text: ft.Text,
+        secondary_value_text: ft.Text | None = None,
+        qualifier: str | None = None,
+    ) -> ft.Container:
+        """Build one compact simulation-setting panel.
+
+        Args:
+            label: User-facing setting name, or a pre-built Text control
+                for a label that changes later (e.g. names the agent).
+            slider: Slider controlling the setting.
+            value_text: Current value with its physical unit.
+            secondary_value_text: The same setting in a second display
+                unit, drawn under the slider, or None where the setting
+                has only one. Only the delivered agent has two: the three
+                flow settings are in L/min, which MAC does not convert.
+            qualifier: Where a setting's name alone would be read as a
+                different quantity than the model uses, the words that
+                separate the two, drawn smaller under the name as the
+                clinical gloss is on a readout (`_build_metric_panel`), or
+                None where the name is unambiguous. Unlike that gloss no
+                spacer is drawn in its place, because these four panels
+                are already of unequal height - the delivered agent
+                carries a MAC line the three flow settings have no
+                conversion for - so there is no shared baseline for a
+                blank line to keep.
+
+        Returns:
+            Responsive setting panel.
+        """
+
+        label_control = (
+            label
+            if isinstance(label, ft.Text)
+            else ft.Text(label, weight=ft.FontWeight.BOLD, color=INK)
+        )
+
+        return ft.Container(
+            content=ft.Column(
+                controls=[
+                    label_control,
+                    *(
+                        []
+                        if qualifier is None
+                        else [
+                            ft.Text(
+                                qualifier, color=MUTED, size=PARAMETER_QUALIFIER_SIZE, italic=True
+                            )
+                        ]
+                    ),
+                    ft.Row(controls=[slider, value_text]),
+                    *([] if secondary_value_text is None else [secondary_value_text]),
+                ],
+                spacing=4,
+            ),
+            bgcolor=PANEL,
+            border_radius=PANEL_RADIUS,
+            padding=12,
+            col={"sm": 12, "md": 6, "lg": 3},
+        )
+
+    def _build_concentration_metrics(self) -> ft.ResponsiveRow:
+        """Build the compact concentration summary grid.
+
+        Each panel names a compartment on one line and, where one applies,
+        glosses it on a smaller line beneath: "Alveolar" over
+        "end-tidal-equivalent", "Circuit" over "inspired". The split is a
+        safety decision before it is a typographic one. What the model
+        computes is a compartment - the gas fraction of one perfectly-mixed
+        alveolus, the mixed contents of the circuit - and what a clinician
+        would set beside it on a monitor is a different, measured thing. Two
+        lines at two sizes say which is which; one line joined by a slash
+        offered them as alternative names for the same quantity, which is the
+        modeled-versus-measured confusion `CLAUDE.md` forbids (PL-NV9W, then
+        PL-8M05).
+
+        It also lets every reading in the row share a baseline. `docs/MODEL.md`
+        § "Displayed precision" says the six readouts "sit in one row and are
+        read comparatively" - the reason for showing them together is that a
+        reader can see "the circuit lead the alveoli lead the tissues" - and a
+        label that wrapped where its neighbours did not pushed one reading out
+        of that line. Splitting the two longest labels leaves no name long
+        enough to wrap, and a panel with no gloss still draws the gloss line,
+        so the seven blocks are the same height whatever they contain.
+
+        The row then reflows rather than squeezing: seven across at 1200 CSS
+        pixels and wider, four at 992, two at 768, one below that. Measured by
+        rendering the running app at each step.
+
+        Returns:
+            Seven responsive panels containing simulated time in the
+            compound form the chart's axis uses and compartment values in
+            percent.
+        """
+
+        return ft.ResponsiveRow(
+            columns=METRIC_GRID_COLUMNS,
+            controls=[
+                self._build_metric_panel(
+                    "Simulated time",
+                    None,
+                    self._elapsed_time_text,
+                    # The playback rate, in the slot the other six panels give
+                    # to a MAC multiple. It is not a second unit for the value
+                    # above it - simulated time has one unit and this is not
+                    # another reading of it - but it is the one thing a reader
+                    # needs in order to know what the clock beside it means,
+                    # and this is where a reader of this row is already
+                    # looking. Drawn at every rate including 1x, so that a
+                    # blank line never has to be read as "real time".
+                    self._playback_rate_text,
+                ),
+                self._build_metric_panel(
+                    "Circuit", "inspired", self._circuit_concentration_text, self._circuit_mac_text
+                ),
+                # "end-tidal-equivalent", never "end-tidal": the hedge is
+                # required by docs/MODEL.md § "Minimum displayed outputs", and
+                # the reason is stated there in terms - the phrase "must not
+                # imply that airway sampling dynamics, dead space, or
+                # capnography are modeled", none of which they are. Dead space,
+                # airway sampling delay, shunt and V/Q mismatch are all in
+                # MODEL.md's "Known limitations", so this value is not
+                # end-tidal in any patient. End-tidal is the name of a
+                # *measurement*, and this is the readout a clinician would most
+                # readily set beside a real agent monitor, which is what makes
+                # an unhedged label a presentation-safety defect rather than a
+                # wording preference (PL-NV9W). Do not shorten it to fit a
+                # layout; `test_the_alveolar_readout_is_labelled_end_tidal_equivalent`
+                # holds the exact pair of strings.
+                self._build_metric_panel(
+                    "Alveolar",
+                    "end-tidal-equivalent",
+                    self._alveolar_concentration_text,
+                    self._alveolar_mac_text,
+                ),
+                self._build_metric_panel(
+                    "Mixed venous",
+                    None,
+                    self._mixed_venous_concentration_text,
+                    self._mixed_venous_mac_text,
+                ),
+                self._build_metric_panel(
+                    "Vessel-rich group",
+                    None,
+                    self._vessel_rich_concentration_text,
+                    self._vessel_rich_mac_text,
+                ),
+                self._build_metric_panel(
+                    "Muscle", None, self._muscle_concentration_text, self._muscle_mac_text
+                ),
+                self._build_metric_panel(
+                    "Fat", None, self._fat_concentration_text, self._fat_mac_text
+                ),
+            ],
+        )
+
+    def _build_metric_panel(
+        self,
+        name: str,
+        qualifier: str | None,
+        value_text: ft.Text,
+        secondary_value_text: ft.Text | None,
+    ) -> ft.Container:
+        """Build one compact read-only metric panel.
+
+        Args:
+            name: The modeled quantity this panel displays, in the model's own
+                terms.
+            qualifier: What a clinician would compare that quantity against,
+                or None where nothing measured corresponds to it. Drawn
+                smaller than the name, because it is the weaker claim of the
+                two - see `_build_concentration_metrics`.
+            value_text: Formatted value with its physical unit.
+            secondary_value_text: The same quantity in the second display
+                unit - a MAC multiple - or None for a panel that has no
+                second unit. A spacer line is drawn in its place so the
+                panel keeps the height of the six that do.
+
+        Returns:
+            Responsive metric panel.
+        """
+
+        return ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Text(name, color=MUTED, size=METRIC_NAME_SIZE),
+                    ft.Text(
+                        qualifier if qualifier is not None else EMPTY_METRIC_QUALIFIER,
+                        color=MUTED,
+                        size=METRIC_QUALIFIER_SIZE,
+                        italic=True,
+                    ),
+                    value_text,
+                    (
+                        secondary_value_text
+                        if secondary_value_text is not None
+                        else self._build_metric_secondary_value(EMPTY_METRIC_SECONDARY_VALUE)
+                    ),
+                ],
+                spacing=0,
+            ),
+            bgcolor=PANEL,
+            border_radius=PANEL_RADIUS,
+            padding=PANEL_PADDING,
+            col=1,
+        )
+
+    def _build_agent_accounting_panel(self) -> ft.Container:
+        """Build the agent-conservation diagnostic panel.
+
+        Returns:
+            Validation panel containing agent amounts in equivalent liters
+            of agent gas.
+        """
+
+        return ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Text("Agent accounting validation", weight=ft.FontWeight.BOLD, color=INK),
+                    self._agent_accounting_status_text,
+                    self._agent_accounting_detail_text,
+                    self._agent_amounts_text,
+                ]
+            ),
+            bgcolor=PANEL,
+            border_radius=PANEL_RADIUS,
+            padding=PANEL_PADDING,
+        )
+
+    def _build_control_timeline_panel(self) -> ft.Container:
+        """Build the list of settings changed during this run.
+
+        The record half of the chart's vertical marks. It states what the
+        marks cannot - which control moved, and from what to what - and it
+        is deliberately a record of *inputs*: nothing in it is a measured
+        or a modelled quantity, and nothing about it says what the patient
+        did in response, which is what the traces beside it are for.
+
+        Newest first. The panel is a fixed height beside a chart rather
+        than a scrollback, so the entry a reader has just produced has to
+        be the one they can see; oldest-first would push each new
+        adjustment off the bottom at the moment it was made.
+
+        Returns:
+            Panel holding the run's adjustments, most recent first.
+        """
+
+        return ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Text("Control changes", weight=ft.FontWeight.BOLD, color=INK),
+                    ft.Text(
+                        "What was changed during this run, most recent first. "
+                        "Settings only — not a measurement.",
+                        color=MUTED,
+                        size=METRIC_QUALIFIER_SIZE,
+                        italic=True,
+                    ),
+                    self._control_timeline_text,
+                    self._control_timeline_overflow_text,
+                ],
+                spacing=4,
+            ),
+            bgcolor=PANEL,
+            border_radius=PANEL_RADIUS,
+            padding=PANEL_PADDING,
+        )
+
+    @staticmethod
+    def _build_metric_value(initial_value: str) -> ft.Text:
+        """Build a formatted dashboard metric.
+
+        Args:
+            initial_value: Initial formatted value including its
+                physical unit.
+
+        Returns:
+            Styled Flet text control.
+        """
+
+        return ft.Text(initial_value, size=METRIC_VALUE_SIZE, weight=ft.FontWeight.BOLD, color=INK)
+
+    @staticmethod
+    def _build_metric_secondary_value(initial_value: str) -> ft.Text:
+        """Build the second-unit line drawn under a dashboard metric.
+
+        Args:
+            initial_value: Initial formatted value including its unit, or
+                `EMPTY_METRIC_SECONDARY_VALUE` for a panel with no second
+                unit.
+
+        Returns:
+            Styled Flet text control, subordinate to the reading above it.
+        """
+
+        return ft.Text(initial_value, size=METRIC_SECONDARY_VALUE_SIZE, color=MUTED)
+
+
+class SimulationView:
+    """Render and update the volatile-agent patient interface.
+
+    The dashboard: the page, the chart everything is drawn on, and the runs
+    drawn on it. It displays controller snapshots and forwards user
+    interactions to the controller, and performs no compartment calculation,
+    agent accounting or physiological state update.
+
+    **What it holds itself is what two runs must share, and nothing else.**
+    The compartment chart and the wash-in chart under it, their axes, the
+    window both are drawn in, the time base that chooses it, the clinical
+    references ruled across it, and the compartment selection that decides
+    which traces are on it. Everything belonging to a *particular* run - its
+    controller, its readouts, its settings, its transport, its record of what
+    was changed during it, and the lines it draws - is a `RunView`, and this
+    holds one per run.
+
+    That division is `ROADMAP.md` § "v0.5.0 - the case you can branch" read
+    back into the code: two branches of one case are compared by overlaying
+    them on **one** time axis under **one** compartment selection (`PL-8PSW`,
+    `PL-HLD5`), rather than as two dashboards side by side. Two independent
+    dashboards is the reading that decision rules out, so the shared half is
+    deliberately not duplicated into each run.
+
+    **A second run renders; it is not yet distinguishable, and that is
+    `PL-8PSW`'s.** This class will draw every run it is given, but nothing
+    here encodes *which* run a curve belongs to - the run is to be carried on
+    line width, under a cap of two compartments that frees the width for it,
+    and inventing a different encoding here would be deciding that question
+    in the wrong place. Until it lands, `main.py` builds one run.
+
+    Attributes:
+        _page: Flet page hosting the interface.
+        _runs: The runs drawn on this dashboard, in the order they were
+            given. The first is the one the shared MAC ruler and the clinical
+            references are read from; the constructor refuses runs that
+            disagree about the agent, so that is a tie-break rather than a
+            privilege.
+        _traces: The compartment table, shared by every run on the chart.
+    """
+
+    def __init__(self, page: ft.Page, controllers: Sequence[SimulationController]) -> None:
+        """Initialize the dashboard, its chart and one view per run.
+
+        Args:
+            page: Flet page that will host the dashboard.
+            controllers: One controller per run to display, in the order they
+                are to be drawn.
+
+        Raises:
+            ValueError: If no run is given; if more runs are given than may
+                be displayed at once (`MAX_DISPLAYED_RUNS`); or if the runs
+                are not all on one agent, which the single MAC axis and the
+                single set of clinical references below could not describe.
+        """
+
+        self._page = page
+        self._page.padding = PAGE_PADDING
+
+        if not controllers:
+            raise ValueError("a dashboard displays at least one run; none was given")
+
+        if len(controllers) > MAX_DISPLAYED_RUNS:
+            raise ValueError(
+                f"{len(controllers)} runs given; at most {MAX_DISPLAYED_RUNS} may be displayed "
+                "at once"
+            )
+
+        # One ×MAC ruler, one MAC-awake band and one 1 MAC line are drawn
+        # across a chart every run shares, and all three are the agent's own
+        # published values. Two agents on one axis would therefore have one
+        # run's traces read against the other's divisor - a correct number
+        # under the wrong label, which `CLAUDE.md`'s safety-critical standard
+        # treats as a failure of the value rather than of its presentation.
+        #
+        # Refused here rather than per frame, and refused rather than papered
+        # over by dropping the MAC axis, because this is a programming error
+        # and not a state a run can reach: v0.5.0 compares two *branches of
+        # one case*, which carry the agent they were forked from, and the one
+        # route to a different agent - `set_agent` - starts a new case rather
+        # than changing a running one.
+        agent_ids = {controller.snapshot().agent_id for controller in controllers}
+
+        if len(agent_ids) > 1:
+            raise ValueError(
+                "every displayed run must be on the same agent, because they share one MAC "
+                f"axis and one set of clinical references; given {', '.join(sorted(agent_ids))}"
+            )
+
+        initial_snapshot = controllers[0].snapshot()
+        # Every compartment trace, in the order they are drawn and listed.
+        # One table rather than three: `_CompartmentTrace` records why the
+        # compartment it draws, how it is drawn, and the legend entry that
+        # names it are declared together and never separately - and why the
+        # table is the chart's rather than any one run's.
+        #
+        # **Six patterns, all different, because the line style is what
+        # actually separates these curves.** The colours above cannot: the
+        # closest pair sits at 1.01 for normal colour vision and no palette
+        # reaches 3:1. Circuit and vessel-rich were both solid until PL-GVXP,
+        # which made the second channel redundant in name only for the one
+        # pair - and a reader who takes a value off the wrong curve has
+        # misread a clinical quantity, not a decoration.
+        #
+        # **Which style goes on which trace is decided by the colours, not
+        # chosen freely.** The two traces a reader can least separate by
+        # colour get the two marks they can most separate by shape, and so on
+        # outward. So the closest pairs - vessel-rich against fat at 1.01, and
+        # mixed venous against fat at 1.02 under simulated deuteranopia - are
+        # an even dash against an alternating dash-dot, and a short uniform
+        # dash against that same dash-dot: each differs from its partner in
+        # mark length, in gap length and in rhythm at once. The one genuinely
+        # confusable pair in the set, the 2 px dots against the 4 px short
+        # dash, is spent on mixed venous against muscle, which is the *widest*
+        # separation any pair of these six has (1.45). `docs/MODEL.md` carries
+        # the matrix this was read off.
+        self._traces: tuple[_CompartmentTrace, ...] = (
+            self._build_compartment_trace(
+                RecordedQuantity.CIRCUIT, "Circuit", CIRCUIT_COLOR, 3, "solid"
+            ),
+            self._build_compartment_trace(
+                RecordedQuantity.ALVEOLAR, "Alveolar", ALVEOLAR_COLOR, 3, "long dash", [10, 4]
+            ),
+            self._build_compartment_trace(
+                RecordedQuantity.MIXED_VENOUS,
+                "Mixed venous",
+                MIXED_VENOUS_COLOR,
+                2,
+                "short dash",
+                [4, 3],
+            ),
+            # Equal mark and gap, which is the one rhythm no other trace here
+            # has: the other four dashed traces all draw more ink than gap.
+            # Deliberately not a second long dash - at [8, 8] it read as the
+            # alveolar trace's [10, 4] with wider gaps, and those two sit at
+            # 1.08 under simulated deuteranopia, which is no place to put a
+            # pair that has to be told apart by mark length alone.
+            self._build_compartment_trace(
+                RecordedQuantity.VESSEL_RICH,
+                "Vessel-rich",
+                VESSEL_RICH_COLOR,
+                2,
+                "even dash",
+                [6, 6],
+            ),
+            self._build_compartment_trace(
+                RecordedQuantity.MUSCLE, "Muscle", MUSCLE_COLOR, 2, "dotted", [2, 3]
+            ),
+            self._build_compartment_trace(
+                RecordedQuantity.FAT, "Fat", FAT_COLOR, 2, "dash-dot", [12, 4, 2, 4]
+            ),
+        )
+        # Built before the chart, because each run brings its own lines and
+        # its own pool of control marks and the chart's series list is
+        # assembled from them.
+        self._runs = tuple(
+            RunView(
+                page,
+                controller,
+                self._traces,
+                refresh_dashboard=self._refresh_view,
+                defer_render=self._defer_render,
+            )
+            for controller in controllers
+        )
+        # Whether the charts are currently answering a hover. Held so that
+        # `_apply_trace_visibility` can put a trace back on the chart in the
+        # mode the last frame set, rather than reading the run again and
+        # possibly disagreeing with the frame it was called from. Starts
+        # false so that the first frame's write is the one that decides it,
+        # whatever state the run is in when the dashboard is mounted.
+        self._chart_tooltips_enabled = False
+        # Whether a frame is owed to a setting change that chose not to draw
+        # its own. Set by a coalesced `_apply_setting` and cleared by the
+        # render tick that pays it, which is what lets that tick run while
+        # the simulation is stopped - a paused reader moving a dial still
+        # needs the readouts beside it to move.
+        self._render_pending = False
+        # Said only when every compartment has been unchecked. Held rather
+        # than built inline because its visibility is written by
+        # `_apply_trace_visibility`, which is the one writer of everything
+        # that has to agree with what the chart is drawing.
+        self._hidden_traces_text = ft.Text(
+            NO_TRACES_SHOWN_TEXT,
+            color=MUTED,
+            size=METRIC_QUALIFIER_SIZE,
+            italic=True,
+            visible=False,
+        )
+        # The two clinical references. Deliberately not members of
+        # `_plotted_series` below: nothing reads a sample to place them, and
+        # the table they would join exists to bind a trace to the one
+        # compartment it draws.
+        # Two series for one mark: the upper edge carries the fill, cut off
+        # at the lower edge by `redraw_reference_band`, and the lower edge
+        # strokes the boundary that cut-off makes. Neither is a reference of
+        # its own and the legend shows one entry, because they are the two
+        # ends of a single published interval.
+        self._mac_awake_band_upper_edge = chart_series.build_reference_line(
+            color=MAC_AWAKE_BAND_COLOR, stroke_width=MAC_AWAKE_BAND_EDGE_STROKE_WIDTH
+        )
+        self._mac_awake_band_upper_edge.below_line_bgcolor = ft.Colors.with_opacity(
+            MAC_AWAKE_BAND_FILL_OPACITY, MAC_AWAKE_BAND_COLOR
+        )
+        self._mac_awake_band_lower_edge = chart_series.build_reference_line(
+            color=MAC_AWAKE_BAND_COLOR, stroke_width=MAC_AWAKE_BAND_EDGE_STROKE_WIDTH
+        )
+        self._one_mac_line_series = chart_series.build_reference_line(
+            color=ONE_MAC_LINE_COLOR,
+            stroke_width=ONE_MAC_LINE_STROKE_WIDTH,
+            dash_pattern=ONE_MAC_LINE_DASH_PATTERN,
+        )
+        # Two rulers against one set of traces. The plotted points stay in
+        # percent - `chart_series.redraw_series` converts nothing else - and
+        # the MAC axis is a relabelling of the same coordinate, so the two
+        # axes cannot come to disagree about where a trace is. That is the
+        # reason for a second axis rather than a unit toggle: a toggle would
+        # make the axis unit a hidden mode, and a chart read under the wrong
+        # assumed unit is a misreading no disclaimer catches.
+        # What the MAC axis labels currently stand for, so a frame that
+        # changes neither leaves them alone. They depend on the agent and the
+        # plotted range and on nothing that moves during a run, where the
+        # render loop runs several times a second: rebuilding them per frame
+        # would allocate a label control per tick per frame and send the
+        # client an add-and-remove of the whole axis each time - the same
+        # per-frame churn PL-010 removed from the traces, arriving by
+        # another door. `tests/integration/test_chart_patching.py` is what
+        # measures that, and it fails if this guard is dropped.
+        # One number, where this used to be two. The plotted range is now
+        # `CHART_AXIS_TOP_MAC` times this very quantity, so the agent's 1 MAC
+        # is the only thing either the ticks or the ceiling depend on, and
+        # the two cannot come to disagree about the scale they describe.
+        self._mac_axis_basis = initial_snapshot.agent_mac_percent
+        self._mac_axis = fch.ChartAxis(
+            # `×MAC`, the same token every numeric MAC readout on the page
+            # carries (`formatting.MAC_UNIT_SUFFIX`), rather than a second
+            # wording for one unit. The ticks read bare numbers - "0.5",
+            # "1.0" - so this title is the only thing that says what they
+            # are, which is exactly the position `docs/MODEL.md` § "MAC
+            # multiples as a display unit" writes the notation rule for:
+            # "0.80 MAC" is read as a depth of anesthesia and "0.80 ×MAC" as
+            # the partial-pressure ratio it is. The divisor is not repeated
+            # here because `_mac_reference_text` names it in full - "1 MAC
+            # sevoflurane = 2.0%" - a few lines above the plot (PL-6580).
+            title=ft.Text("×MAC", color=MUTED, size=METRIC_QUALIFIER_SIZE),
+            labels=self._build_mac_axis_labels(self._mac_axis_basis),
+            # The MAC ticks are the whole point of the axis, so the ends of
+            # the percent range must not add two more at whatever multiples
+            # they happen to fall on: isoflurane's 5% dial maximum is
+            # 4.17 MAC, and a label reading 4.17 beside labels reading 3.5
+            # and 4.0 would be read as a tick rather than as an endpoint.
+            show_min=False,
+            show_max=False,
+        )
+        self._equilibrium_line_series = chart_series.build_reference_line(
+            color=EQUILIBRIUM_LINE_COLOR,
+            stroke_width=EQUILIBRIUM_LINE_STROKE_WIDTH,
+            dash_pattern=EQUILIBRIUM_LINE_DASH_PATTERN,
+        )
+        # The chart's time base: how wide the visible window is. `None` is
+        # "Fit run", the default, which is a rule for choosing the width each
+        # frame rather than one of the widths - the whole run, on the
+        # narrowest rung of `TIME_BASE_LADDER` that contains it. A rung here
+        # instead means the reader has chosen a width and the window follows
+        # the run at it.
+        #
+        # Like the compartment checkboxes and unlike the agent dropdown, this
+        # is a *view* control and reaches no model state: it changes which
+        # part of the recorded run is drawn and never what was recorded, so
+        # identical inputs still produce an identical run. It is therefore
+        # never disabled - the reason to reach for it is usually to widen the
+        # window on a run already going - and Reset leaves it alone, like
+        # every other reader setting.
+        self._time_base: ChartTimeBase | None = None
+        # What the last frame actually drew, which is not the line above:
+        # under "Fit run" the width is derived from the run's length, so it
+        # moves without anybody touching the control. Held so the axis labels
+        # and the caption can be rebuilt when it moves and left alone when it
+        # does not - the same guard, and for the same reason, as
+        # `_mac_axis_basis`.
+        self._drawn_time_base = INITIAL_CHART_TIME_BASE
+        self._drawn_tick_times: tuple[float, ...] = ()
+        self._time_base_dropdown = ft.Dropdown(
+            value=FIT_RUN_KEY,
+            options=[
+                ft.dropdown.Option(key=FIT_RUN_KEY, text="Fit run"),
+                *(
+                    ft.dropdown.Option(
+                        key=str(time_base.span_s), text=format_time_base(time_base.span_s)
+                    )
+                    for time_base in SELECTABLE_TIME_BASES
+                ),
+            ],
+            width=TIME_BASE_SELECTOR_WIDTH,
+            filled=True,
+            fill_color=PANEL,
+            bgcolor=PANEL,
+            color=INK,
+            border_color=MUTED,
+            focused_border_color=INK,
+            label="Time base",
+            on_select=self._handle_time_base_change,
+        )
+        # One axis object per chart rather than one shared between them: a
+        # Flet control belongs to a single chart, the same constraint the two
+        # pools of control marks are built around. `show_min` and `show_max`
+        # are off because the window's own edges are not ticks - while the
+        # window follows the run they fall wherever the newest sample puts
+        # them, and a label there would read as a gridline that is not ruled.
+        self._time_axis = self._build_time_axis()
+        self._wash_in_time_axis = self._build_time_axis()
+        # Held rather than built inline because it states the span the chart
+        # is currently showing, which moves. Saying it is not decoration:
+        # under "Fit run" the width is chosen by the run's length rather than
+        # by the reader, so the caption is the only place the plot says how
+        # much time it is showing.
+        #
+        # There was a second caption under the wash-in chart until `PL-F9TQ`,
+        # and it was not this: it was static, and its two halves restated that
+        # chart's own axis titles. `_build_wash_in_section` records where its
+        # one non-restating clause went.
+        self._time_axis_caption = ft.Text(self._time_axis_caption_text(), color=MUTED)
+        self._concentration_chart = fch.LineChart(
+            data_series=self._chart_data_series(),
+            min_x=0,
+            max_x=INITIAL_CHART_TIME_BASE.span_s,
+            min_y=0,
+            # Denominated in MAC rather than in the agent's dial maximum, so
+            # every agent is drawn against one ruler; `CHART_AXIS_TOP_MAC`
+            # carries why, and why it does not move during a run.
+            max_y=chart_axis_top_percent(initial_snapshot.agent_mac_percent),
+            left_axis=fch.ChartAxis(
+                # "percent of what" has to be on the axis, because after
+                # PL-6580 stripped the caption's axis key this is the only
+                # place the left scale is named. Not "vol %": that is a
+                # gas-phase volume fraction, true of the circuit and
+                # alveolar traces and a category error on the muscle, fat
+                # and vessel-rich ones, which hold a partial pressure that
+                # convention quotes as a percentage of an atmosphere.
+                # `docs/MODEL.md` § "MAC multiples as a display unit" states
+                # the compartments are displayed "as a percent of one
+                # atmosphere", and this is that phrase at axis length.
+                title=ft.Text("% of 1 atm", color=MUTED, size=METRIC_QUALIFIER_SIZE)
+            ),
+            right_axis=self._mac_axis,
+            bottom_axis=self._time_axis,
+            horizontal_grid_lines=fch.ChartGridLines(
+                interval=chart_grid_interval_percent(initial_snapshot.agent_mac_percent),
+                color=GRIDLINE,
+            ),
+            vertical_grid_lines=fch.ChartGridLines(
+                interval=INITIAL_CHART_TIME_BASE.tick_interval_s, color=GRIDLINE
+            ),
+            expand=True,
+        )
+        self._wash_in_chart = fch.LineChart(
+            data_series=self._wash_in_chart_data_series(),
+            min_x=0,
+            max_x=INITIAL_CHART_TIME_BASE.span_s,
+            min_y=0,
+            # Fixed, and fixed just above the equilibrium value rather than
+            # at whatever the run reaches. 0 to 1 is the scale every
+            # published wash-in figure uses, which is the whole point of
+            # drawing this curve at all; an axis that grew to fit an
+            # excursion above 1 would redraw the wash-in curve at a smaller
+            # height partway through a lesson, which is a shape change a
+            # reader would read as the model's rather than the axis's.
+            # `WASH_IN_AXIS_MAXIMUM` records why the top is not at 1 exactly,
+            # and `app/wash_in.py` why nothing past the crossing sample is
+            # drawn.
+            max_y=WASH_IN_AXIS_MAXIMUM,
+            left_axis=fch.ChartAxis(
+                title=ft.Text("F_A / F_I", color=MUTED, size=METRIC_QUALIFIER_SIZE),
+                labels=_build_wash_in_axis_labels(),
+                # Both, and for different reasons: `labels` says what the
+                # ticks read, `label_spacing` says which of them are drawn.
+                # Left to choose for itself the chart samples the list at a
+                # coarser interval than the gridlines, so the quarter marks
+                # are ruled and unlabelled.
+                label_spacing=WASH_IN_GRID_INTERVAL,
+                label_size=WASH_IN_AXIS_LABEL_SIZE,
+                # The scale ends at 1.00; the headroom above it is space, not
+                # a tick. Labelling the top of the frame would put "1.15" on
+                # an axis whose every other label is a quarter, and invite it
+                # being read as the range the ratio can reach.
+                show_max=False,
+            ),
+            bottom_axis=self._wash_in_time_axis,
+            horizontal_grid_lines=fch.ChartGridLines(
+                interval=WASH_IN_GRID_INTERVAL, color=GRIDLINE
+            ),
+            vertical_grid_lines=fch.ChartGridLines(
+                interval=INITIAL_CHART_TIME_BASE.tick_interval_s, color=GRIDLINE
+            ),
+            expand=True,
+        )
+        # Names the divisor every MAC number on this page was produced with,
+        # which is what makes those numbers traceable without opening a data
+        # file (`CLAUDE.md`, safety-critical clinical-output standard). It
+        # changes with the agent, so it is held rather than built inline.
+        self._mac_reference_text = ft.Text(
+            format_mac_reference(
+                initial_snapshot.agent_display_name, initial_snapshot.agent_mac_percent
+            ),
+            color=MUTED,
+        )
+        # The same traceability the line above gives the MAC axis, for the
+        # band: it has two free parameters rather than one - a published
+        # fraction and the divisor it is applied to - and both are named, so
+        # a reader who disagrees with either can see which.
+        self._mac_awake_reference_text = ft.Text(
+            self._format_mac_awake_reference(initial_snapshot), color=MUTED
+        )
+
+        self._refresh_view()
+
+    @property
+    def runs(self) -> tuple[RunView, ...]:
+        """The runs this dashboard draws, in the order they were given."""
+
+        return self._runs
+
+    def mount(self) -> None:
+        """Mount the complete patient simulation dashboard.
+
+        Every per-run section is drawn once per run and every shared one
+        once, which is the whole of what this method knows about how many
+        runs there are. With one run the tree is exactly what it was before
+        the runs were separable.
+        """
+
+        self._page.add(
+            ft.SafeArea(
+                expand=True,
+                content=ft.Column(
+                    expand=True,
+                    scroll=ft.ScrollMode.AUTO,
+                    spacing=12,
+                    controls=[
+                        ft.Row(
+                            controls=[
+                                ft.Column(
+                                    controls=[
+                                        ft.Text(
+                                            APP_DISPLAY_NAME,
+                                            size=APP_TITLE_SIZE,
+                                            weight=ft.FontWeight.BOLD,
+                                            color=INK,
+                                        ),
+                                        *(run.agent_header_badge for run in self._runs),
+                                    ],
+                                    spacing=2,
+                                    tight=True,
+                                ),
+                                *(run.build_transport_row() for run in self._runs),
+                            ],
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                            wrap=True,
+                        ),
+                        # Directly under the run controls and above every
+                        # displayed value, so a halted run is read before the
+                        # values it explains: a completed step, but not a
+                        # continuing one.
+                        *(run.notice_text for run in self._runs),
+                        *(run.build_parameter_controls() for run in self._runs),
+                        *(control for run in self._runs for control in run.build_readout_section()),
+                        ft.ResponsiveRow(
+                            controls=[self._build_chart_panel(), self._build_chart_sidebar()],
+                            spacing=12,
+                            run_spacing=12,
+                        ),
+                        ft.Text(
+                            (
+                                "Educational simulation only. "
+                                "This idealized model is not a "
+                                "clinical prediction, monitoring, "
+                                "or dosing tool."
+                            ),
+                            color=WARNING,
+                            weight=ft.FontWeight.BOLD,
+                        ),
+                    ],
+                ),
+            )
+        )
+
+    def start_simulation_timer(self) -> None:
+        """Start each run's simulation loop, and the one render loop.
+
+        One simulation task per run, because the playback rate is that run's
+        own setting and a step advances that run's controller alone; one
+        render task for the dashboard, because there is one page and one
+        frame for every run drawn on it.
+        """
+
+        for run in self._runs:
+            self._page.run_task(run.run_simulation_timer)
+
+        self._page.run_task(self._run_render_timer)
+
+    def _chart_data_series(self) -> list[fch.LineChartData]:
+        """Every series the compartment chart holds, in drawing order.
+
+        Marks first - behind the references and behind every trace - because
+        a vertical rule crossing the whole plot is the one annotation that
+        can obscure all six compartments at the moment a reader is trying to
+        see what the change did to them. References next, so every trace is
+        drawn over them: a compartment obscured by a reference band would be
+        the annotation hiding the run it annotates.
+
+        A hidden trace is **absent** from this list rather than present and
+        empty. That is what stops the client holding its points at all,
+        which is the whole render-cost half of this control; leaving it in
+        place with an empty point list would keep the series, keep diffing
+        it, and leave a trace that is no longer redrawn one bug away from
+        showing the frame it was last drawn in.
+
+        **The compartment is the outer loop and the run the inner one**, so
+        the lines a reader has to tell apart are adjacent in the list. That
+        is what `PL-HLD5` rests on: the run is to be carried on line width,
+        which is a weak channel that only has to be read *locally*, between
+        two curves of one compartment. Ordering by run instead would put the
+        two curves of a compartment at opposite ends of the drawing order.
+
+        Returns:
+            The chart's series list.
+        """
+
+        return [
+            *(series for run in self._runs for series in run.control_mark_series),
+            self._mac_awake_band_upper_edge,
+            self._mac_awake_band_lower_edge,
+            self._one_mac_line_series,
+            *(
+                run.line_for(trace.quantity)
+                for trace in self._traces
+                if trace.visible
+                for run in self._runs
+            ),
+        ]
+
+    def _wash_in_chart_data_series(self) -> list[fch.LineChartData]:
+        """Every series the wash-in chart holds, in drawing order.
+
+        The same ordering argument as the compartment chart above: each run's
+        marks first, the one equilibrium line over them, and every run's
+        F_A/F_I segments over that. The equilibrium line is the chart's
+        rather than a run's because F_A = F_I is a property of the ratio and
+        not of any run drawn against it.
+
+        Returns:
+            The wash-in chart's series list.
+        """
+
+        return [
+            *(series for run in self._runs for series in run.wash_in_control_mark_series),
+            self._equilibrium_line_series,
+            *(series for run in self._runs for series in run.wash_in_segment_series),
+        ]
+
+    def _build_compartment_trace(
+        self,
+        quantity: RecordedQuantity,
+        label: str,
+        color: str,
+        stroke_width: float,
+        line_style: str,
+        dash_pattern: list[int] | None = None,
+    ) -> _CompartmentTrace:
+        """Build one compartment's record, its legend swatch, and its control.
+
+        All three from one call, so the colour and the dash pattern a trace
+        is drawn with and the ones its legend entry claims cannot be written
+        twice and drift apart. No line is built here: the lines belong to the
+        runs that draw them, one per run, and `_CompartmentTrace.build_line`
+        is what makes each from these values.
+
+        The control is a checkbox carrying the legend's own text as its
+        label, which is what makes it a labelled control to a screen reader
+        and to a pointer rather than a bare box, and what stops the interface
+        holding two lists of the same six compartments.
+
+        Args:
+            quantity: The recorded quantity this trace draws.
+            label: The compartment's name, as the legend says it.
+            color: Line colour, and the legend swatch's fill.
+            stroke_width: Line width in display pixels.
+            dash_pattern: Alternating dash and gap lengths in display
+                pixels, or None for a solid line.
+            line_style: The same pattern in words, for the legend.
+
+        Returns:
+            The compartment, ready for a run to build its line from and for
+            the reader to show or hide.
+        """
+
+        trace = _CompartmentTrace(
+            quantity=quantity,
+            label=label,
+            color=color,
+            stroke_width=stroke_width,
+            dash_pattern=dash_pattern,
+            line_style=line_style,
+            swatch=ft.Container(
+                width=LEGEND_SWATCH_WIDTH, height=LEGEND_SWATCH_HEIGHT, bgcolor=color
+            ),
+            checkbox=ft.Checkbox(
+                value=True,
+                label=f"{label} ({line_style})",
+                label_style=ft.TextStyle(color=INK),
+                # Deliberately not one of the six trace colours, and not the
+                # slider accent either. This row has already spent its whole
+                # colour budget on six compartments - `.claude/rules/ui-color.md`
+                # judgment 3 - so a coloured box beside a coloured swatch
+                # would compete for the one channel that carries compartment
+                # identity. INK is the interface's own ink, reads as furniture,
+                # and is the pair `tools/contrast_check.py` already measures
+                # against PANEL at the text minimum, comfortably above SC
+                # 1.4.11's 3:1 for a control.
+                active_color=INK,
+                check_color=PANEL,
+                semantics_label=f"Draw the {label} compartment on the chart",
+            ),
+        )
+        trace.checkbox.on_change = lambda event: self._handle_trace_visibility_change(trace, event)
+
+        return trace
+
+    def _trace(self, quantity: RecordedQuantity) -> _CompartmentTrace:
+        """The one trace that draws this quantity.
+
+        Args:
+            quantity: The recorded quantity to find the trace for.
+
+        Returns:
+            Its trace.
+
+        Raises:
+            KeyError: If no trace draws it, which would mean the table has
+                lost a compartment rather than that a caller asked wrongly.
+        """
+
+        for trace in self._traces:
+            if trace.quantity is quantity:
+                return trace
+
+        raise KeyError(f"no compartment trace draws {quantity}")
+
+    def _build_chart_panel(self) -> ft.Container:
+        """Build the multitrace compartment chart.
+
+        Returns:
+            Responsive chart panel with time in seconds and
+            concentration or relative partial pressure in percent.
+        """
+
+        return ft.Container(
+            content=ft.Column(
+                controls=[
+                    # The panel's own heading row, with the time base beside
+                    # it. The control sits at the top of the panel rather
+                    # than under the four legend rows because it governs the
+                    # axis the caption directly below it describes, and a
+                    # reader looking for "how much of the run am I seeing"
+                    # reads the caption first.
+                    ft.Row(
+                        controls=[
+                            ft.Text(
+                                ("Agent concentration and relative partial pressure over time"),
+                                weight=ft.FontWeight.BOLD,
+                                color=INK,
+                            ),
+                            self._time_base_dropdown,
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        wrap=True,
+                        spacing=8,
+                        run_spacing=6,
+                    ),
+                    self._time_axis_caption,
+                    # The divisor every MAC number on this page was produced
+                    # with - "1 MAC sevoflurane = 2.0%" - which is the
+                    # traceability `CLAUDE.md`'s clinical-output standard
+                    # asks for, in the form it asks for it: a named value
+                    # rather than an explanation of one.
+                    #
+                    # PL-DHV7 also required the convention in prose here -
+                    # that a multiple on a non-alveolar compartment is a
+                    # partial-pressure ratio and not a depth of anesthesia.
+                    # PL-6580 removed that paragraph as tutorial for this
+                    # audience and left the notation to carry it, which is
+                    # what the axis title and the readouts' unit suffix are
+                    # for. `docs/MODEL.md` "MAC multiples as a display unit"
+                    # holds the full statement.
+                    self._mac_reference_text,
+                    # The compartment legend, which is also the control that
+                    # shows and hides each trace - `_build_trace_legend_item`
+                    # records why those are one row and not two. Labelled
+                    # like the two rows under it, so the three kinds of mark
+                    # read as three kinds.
+                    ft.Row(
+                        controls=[
+                            ft.Text("Compartments:", color=MUTED),
+                            *(self._build_trace_legend_item(trace) for trace in self._traces),
+                        ],
+                        wrap=True,
+                        spacing=16,
+                        run_spacing=6,
+                    ),
+                    # `_hidden_traces_text` names the compartments currently
+                    # unchecked, which is what stops a hidden trace reading
+                    # as a compartment the model does not have. It is state,
+                    # and it stays.
+                    #
+                    # The paragraph above it until PL-6580 said that
+                    # unchecking removes a trace from the plot only and
+                    # leaves the run unchanged. Nothing was lost with it.
+                    # The readouts above the chart go on showing that
+                    # compartment's concentration while its curve is gone,
+                    # which shows the reader the claim rather than asserting
+                    # it - and `NO_TRACES_SHOWN_TEXT` states it in words at
+                    # the one moment it is not self-evident, when every
+                    # trace is off and the panel is blank. A standing
+                    # paragraph was the same sentence charged to every
+                    # reader on every frame.
+                    self._hidden_traces_text,
+                    *(run.off_scale_text for run in self._runs),
+                    # The references get their own legend row rather than
+                    # joining the six above. They are not compartments, and a
+                    # single row would invite reading them as a seventh and
+                    # eighth trace - which is the misreading PL-F52R exists to
+                    # prevent, arriving through the legend instead of the
+                    # chart.
+                    #
+                    # Each entry names the compartment it is read against,
+                    # which `docs/MODEL.md` "Interface boundary" requires of
+                    # a reference in the same breath as it exempts one from
+                    # the drawn-trace rule: a published constant may be
+                    # drawn without a sample behind it, and it owes a reader
+                    # the value, the divisor, and the curve to read it
+                    # against in exchange. Both were in the prose PL-6580
+                    # removed, so the labels carry them now. Not a
+                    # restatement of the deleted paragraphs but the part of
+                    # them that was a label all along - and the part with
+                    # clinical consequence, since every way of pairing a
+                    # reference with the wrong trace here shortens the
+                    # apparent time to awakening.
+                    ft.Row(
+                        controls=[
+                            ft.Text("Clinical references:", color=MUTED),
+                            # Vessel-rich, not alveolar. The model has no
+                            # effect-site compartment and defines the
+                            # arterial fraction as the alveolar one, so the
+                            # alveolar trace is the fastest curve on the
+                            # chart and the furthest from where
+                            # responsiveness returns; the stored fractions
+                            # are slow-washout values, which Katoh measured
+                            # against cerebral concentration.
+                            self._build_band_legend_item(
+                                "MAC-awake (population, ±1 SD; read against vessel-rich trace)",
+                                MAC_AWAKE_BAND_COLOR,
+                            ),
+                            # Alveolar, because that is what MAC is defined
+                            # for - the end-tidal concentration in a nominal
+                            # 40-year-old - and the other five traces cross
+                            # this line at a partial-pressure ratio rather
+                            # than at a depth of anesthesia.
+                            self._build_legend_item(
+                                "1 MAC, reference adult (alveolar)", ONE_MAC_LINE_COLOR, "wide dash"
+                            ),
+                        ],
+                        wrap=True,
+                        spacing=16,
+                        run_spacing=6,
+                    ),
+                    # The band's two free parameters, named: the published
+                    # fraction and the divisor it was applied to, so a
+                    # reader who disagrees with either can see which.
+                    #
+                    # The paragraph that stood beside it until PL-6580 gave
+                    # the endpoint difference from MAC and the reason the
+                    # band belongs against the vessel-rich trace. Both are
+                    # in `docs/MODEL.md` "MAC-awake as a chart reference",
+                    # and the endpoint is fundamental knowledge for this
+                    # display's reader. The trace it is read against is not
+                    # tutorial and did not go with it: `docs/MODEL.md`
+                    # "Interface boundary" requires a reference to name the
+                    # compartment it is read against, so that moved into the
+                    # legend entry above, where a reader learns what a mark
+                    # is. It is load-bearing rather than a caution - the
+                    # alveolar trace crosses the band about 2.3x earlier
+                    # than the vessel-rich one, so a band read against the
+                    # wrong curve teaches an early wake-up.
+                    self._mac_awake_reference_text,
+                    # A third legend row, because a control mark is neither
+                    # of the two kinds above it. A compartment trace is a
+                    # modelled quantity and a clinical reference is a
+                    # published constant; this is a record of something the
+                    # *user* did, which is a claim of a different type
+                    # altogether, and a row of its own is what says so
+                    # before a reader has to work it out from the shape.
+                    ft.Row(
+                        controls=[
+                            ft.Text("Run record:", color=MUTED),
+                            self._build_control_mark_legend_item(),
+                        ],
+                        wrap=True,
+                        spacing=8,
+                        run_spacing=2,
+                    ),
+                    ft.Container(height=CHART_HEIGHT, content=self._concentration_chart),
+                    ft.Divider(height=SECTION_DIVIDER_HEIGHT, color=GRIDLINE),
+                    *self._build_wash_in_section(),
+                ]
+            ),
+            bgcolor=PANEL,
+            border_radius=PANEL_RADIUS,
+            padding=PANEL_PADDING,
+            col={"sm": 12, "lg": 9},
+        )
+
+    def _build_wash_in_section(self) -> list[ft.Control]:
+        """Build the F_A/F_I plot and everything a reader needs to read it.
+
+        Under the compartment chart rather than beside it, on the same
+        time window, because it is that chart's alveolar and circuit
+        traces expressed as one number: a reader who has just watched
+        them separate is looking for how far apart they are, which is
+        what this plots.
+
+        This is the graph the uptake literature is taught from, so it
+        arrives carrying a reader's expectations, and three of those
+        still have to be corrected at the point of display rather than
+        in a document. Until `PL-F9TQ` they were corrected by 786
+        characters of italic paragraph - the largest standing block on
+        the screen, and larger than anything `PL-6580` removed from the
+        panel above. They are corrected by labels now (decided
+        2026-09-13):
+
+        - *which concentration the denominator is*: the heading names
+          it, and the label under the heading says what it is not, which
+          is the reading a specialist arrives with - F_I is where the
+          curve is taught with the vaporizer setting, and here it is the
+          circuit;
+        - *that the curve is the textbook one only while that
+          concentration is held constant*: the second half of the same
+          label, because the two are one fact. F_I is a denominator that
+          moves, so a rise across a control mark can be the denominator
+          shrinking rather than uptake. The warning is specific to this
+          ratio and is deliberately not in `_build_control_mark_legend_item`,
+          which the compartment chart shares: there a rise across a mark
+          really is the agent going up, and there is no denominator to
+          mistake it for;
+        - *that the trace is bounded to the wash-in domain and stops
+          outside it*: deleted, because `_format_wash_in_state` already
+          names which of the two boundaries it stopped at, at the moment
+          it stops. A message at the moment of need is not the standing
+          paragraph it replaces.
+
+        The axis key went with them. "Vertical axis: dimensionless
+        ratio, 0 to 1" restated this chart's left axis title and
+        "Horizontal axis: simulated time" its bottom one. Its one
+        non-restating clause, "the same window as above", is true by
+        construction rather than by assertion: `_apply_time_base`
+        computes one window per frame and writes both charts' `min_x`
+        and `max_x` from it.
+
+        `docs/MODEL.md` § "F_A/F_I as a displayed ratio" is the
+        specification, and is now the only place carrying the full
+        statement of each.
+
+        Returns:
+            The controls to append to the chart panel's column.
+        """
+
+        return [
+            ft.Text(
+                "Wash-in: F_A/F_I, alveolar as a fraction of the modelled circuit",
+                weight=ft.FontWeight.BOLD,
+                color=INK,
+            ),
+            ft.Text(
+                "F_I = modelled circuit, not the vaporizer dial — a rise across a "
+                "control mark can be the denominator moving, not uptake",
+                color=MUTED,
+            ),
+            # Its own line rather than the tail of a paragraph, where it was.
+            # Three words the safety-critical standard requires, at the end of
+            # 440 characters, is three words nobody reads. The control
+            # timeline's "Settings only — not a measurement." is the same
+            # move for the same reason.
+            ft.Text("Modelled, not measured", color=MUTED),
+            ft.Row(
+                controls=[
+                    self._build_legend_item("F_A/F_I", WASH_IN_COLOR, "solid"),
+                    self._build_legend_item(
+                        "Equilibrium, F_A = F_I", EQUILIBRIUM_LINE_COLOR, "wide dash"
+                    ),
+                    self._build_control_mark_legend_item(),
+                    *(run.wash_in_state_text for run in self._runs),
+                ],
+                wrap=True,
+                spacing=16,
+                run_spacing=6,
+            ),
+            ft.Container(height=WASH_IN_CHART_HEIGHT, content=self._wash_in_chart),
+        ]
+
+    def _build_chart_sidebar(self) -> ft.Container:
+        """Build the column of panels that stands beside the chart.
+
+        The control-input timeline sits under the accounting panel rather
+        than beneath the chart, because it is read *against* the chart: a
+        mark on the plot and the line that says what it was are one piece
+        of information split across two places, and putting them side by
+        side is what lets a reader pair them without scrolling.
+
+        Both panels are a run's own - the mass balance is of that run's
+        agent, and the timeline is what was changed during it - so the column
+        holds one pair per run.
+
+        Returns:
+            Responsive column holding each run's accounting and timeline
+            panels.
+        """
+
+        return ft.Container(
+            content=ft.Column(
+                controls=[panel for run in self._runs for panel in run.build_sidebar_panels()],
+                spacing=12,
+            ),
+            col={"sm": 12, "lg": 3},
+        )
+
+    @staticmethod
+    def _build_legend_item(label: str, color: str, line_style: str) -> ft.Row:
+        """Build one compact chart legend entry.
+
+        Args:
+            label: Modeled compartment name.
+            color: Hexadecimal chart-line color.
+            line_style: Text description of the line pattern.
+
+        Returns:
+            Tightly sized chart legend entry.
+        """
+
+        return ft.Row(
+            controls=[
+                ft.Container(width=LEGEND_SWATCH_WIDTH, height=LEGEND_SWATCH_HEIGHT, bgcolor=color),
+                ft.Text(f"{label} ({line_style})", color=INK),
+            ],
+            spacing=6,
+            tight=True,
+        )
+
+    @staticmethod
+    def _build_trace_legend_item(trace: _CompartmentTrace) -> ft.Row:
+        """Build one compartment's legend entry, which is also its control.
+
+        One row rather than a legend beside a separate row of checkboxes.
+        Two lists of the same six compartments is exactly how a legend comes
+        to name a line the chart is not drawing - they agree only while
+        somebody keeps them agreeing. Here the entry *is* the state: the box,
+        the swatch and the label are written in one place,
+        `_apply_trace_visibility`, from the same flag the chart's own series
+        list is built from, so there is no second copy to fall out of step.
+
+        The swatch carries the trace's colour while it is drawn and nothing
+        while it is not, so the legend never shows a line the plot does not
+        have. Its size does not change with the state: this is a control a
+        reader clicks repeatedly, and a row that reflowed under the cursor
+        would move the next box out from under it.
+
+        The entry stays on screen when its trace is off, and keeps its
+        line-style words while it is off (`PL-YTX9`, decided 2026-09-13).
+        `PL-CG7J`'s brief asked for the opposite - "a hidden trace must also
+        disappear from any legend, so the chart never labels a line it is not
+        drawing" - and that purpose clause is met without removing anything:
+        the unchecked box and the empty swatch already say the line is not
+        drawn, in two channels neither of which is colour. Removing the entry
+        would need a separate control to bring the trace back, which is the
+        second list of six compartments the first paragraph above exists to
+        prevent. The style words stay for the same reason the entry does: this
+        row is a control, so what it names is what switching it on will draw.
+
+        Args:
+            trace: The compartment whose entry this is.
+
+        Returns:
+            Tightly sized legend entry and visibility control.
+        """
+
+        return ft.Row(controls=[trace.swatch, trace.checkbox], spacing=6, tight=True)
+
+    @staticmethod
+    def _build_control_mark_legend_item() -> ft.Row:
+        """Build the legend entry for a recorded control change.
+
+        Drawn as an upright swatch rather than the flat bar every other
+        entry uses, so the legend carries the same non-colour channel the
+        mark itself does: what makes a control mark unmistakable on the
+        chart is that it is the only vertical thing there, and a legend
+        that showed it as one more horizontal bar would give a reader no
+        way to connect the two.
+
+        Returns:
+            Tightly sized chart legend entry.
+        """
+
+        return ft.Row(
+            controls=[
+                ft.Container(
+                    width=CONTROL_MARK_SWATCH_WIDTH,
+                    height=CONTROL_MARK_SWATCH_HEIGHT,
+                    bgcolor=CONTROL_MARK_COLOR,
+                ),
+                ft.Text("Control change (vertical, fine dash)", color=INK),
+            ],
+            spacing=6,
+            tight=True,
+        )
+
+    @staticmethod
+    def _build_band_legend_item(label: str, color: str) -> ft.Row:
+        """Build the legend entry for a reference band, drawn as a band.
+
+        A filled swatch ruled on both edges rather than the 4px line every
+        other entry uses. The mark type is what distinguishes a measured
+        population value with real spread from a definitional anchor, so a
+        legend that drew both as lines would lose the one channel carrying
+        that distinction - and a swatch ruled on one edge only would teach
+        the reader the wrong mark for the one on the chart, which is the
+        same defect `PL-90Y6` fixed there.
+
+        Args:
+            label: Reference name, including what its extent means.
+            color: Hexadecimal edge color; the fill is this at
+                `MAC_AWAKE_BAND_FILL_OPACITY`, as on the chart.
+
+        Returns:
+            Tightly sized chart legend entry.
+        """
+
+        return ft.Row(
+            controls=[
+                ft.Container(
+                    width=BAND_SWATCH_WIDTH,
+                    height=BAND_SWATCH_HEIGHT,
+                    bgcolor=ft.Colors.with_opacity(MAC_AWAKE_BAND_FILL_OPACITY, color),
+                    border=ft.Border(
+                        top=ft.BorderSide(MAC_AWAKE_BAND_EDGE_STROKE_WIDTH, color),
+                        bottom=ft.BorderSide(MAC_AWAKE_BAND_EDGE_STROKE_WIDTH, color),
+                    ),
+                ),
+                ft.Text(label, color=INK),
+            ],
+            spacing=6,
+            tight=True,
+        )
+
+    @staticmethod
+    def _mac_awake_band_percent(snapshot: SimulationSnapshot) -> tuple[float, float]:
+        """Place this snapshot's MAC-awake band on the percent axis.
+
+        Both the fraction and the divisor it scales come out of one
+        snapshot, so the band can never be drawn from one agent's MAC-awake
+        at another agent's MAC — the correct number at the wrong height on a
+        labelled axis.
+
+        Args:
+            snapshot: The frame being rendered.
+
+        Returns:
+            Lower and upper edges as a percent of one atmosphere.
+        """
+
+        mac_awake = snapshot.agent_mac_awake
+
+        return mac_awake_band_percent(
+            fraction_of_mac=mac_awake.fraction_of_mac,
+            standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
+            mac_percent=snapshot.agent_mac_percent,
+        )
+
+    @staticmethod
+    def _format_mac_awake_reference(snapshot: SimulationSnapshot) -> str:
+        """State what this snapshot's MAC-awake band was drawn from.
+
+        Args:
+            snapshot: The frame being rendered.
+
+        Returns:
+            A one-line statement of the band's centre and its edges.
+        """
+
+        mac_awake = snapshot.agent_mac_awake
+
+        return format_mac_awake_reference(
+            snapshot.agent_display_name,
+            fraction_of_mac=mac_awake.fraction_of_mac,
+            standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
+            mac_percent=snapshot.agent_mac_percent,
+        )
+
+    def _refresh_view(self) -> None:
+        """Refresh every visible value, from one snapshot per run.
+
+        The frame is settled in four steps, and the order is what makes two
+        runs one picture rather than two: the shared ruler is set from the
+        reference run, the window is chosen so that it contains every run,
+        the references are ruled across that window, and only then does each
+        run draw its own readouts and its own lines into it.
+
+        **Each run's snapshot is read exactly once, here, and paired with the
+        run it came from at the moment of the read.** That pairing is the
+        hazard worth naming: a snapshot applied to the wrong run would label
+        one run's numbers with another's, which is the wrong-patient-context
+        failure `CLAUDE.md`'s standard names outright. Building the pairs in
+        one expression is what makes a misalignment unrepresentable rather
+        than merely unlikely.
+        """
+
+        frames = tuple((run, run.snapshot()) for run in self._runs)
+        reference_snapshot = frames[0][1]
+
+        self._apply_chart_scale(reference_snapshot)
+
+        chart_min_x, chart_max_x = self._chart_window(snapshot for _, snapshot in frames)
+        self._redraw_references(reference_snapshot, chart_min_x, chart_max_x)
+
+        for run, snapshot in frames:
+            run.refresh(snapshot, chart_min_x, chart_max_x)
+
+        # Last, after every call above that can have appended a point: a
+        # point built this frame carries no tooltip (`chart_series.build_point`),
+        # so a run paused with a trace still growing would otherwise show a
+        # hover that answered over part of a curve and not the rest.
+        #
+        # One switch for one chart, so it is off while *any* run is playing:
+        # a hover answers over whichever curve is under the cursor, and a
+        # value read off a curve that is still advancing is stale before it
+        # is read whichever run it belongs to.
+        self._apply_chart_tooltips(enabled=not any(run.is_running for run in self._runs))
+
+    def _apply_chart_scale(self, snapshot: SimulationSnapshot) -> None:
+        """Rule the value axis, and name the divisor every MAC number used.
+
+        Read from one run - the first - because there is one ruler. The
+        constructor refuses runs on different agents, so which run it is
+        read from cannot change what it says.
+
+        Args:
+            snapshot: The reference run's state for this frame.
+        """
+
+        # The ceiling and the rules move with the agent because both are
+        # multiples of its 1 MAC - which is exactly what keeps the *scale*
+        # still: 0 to 3 MAC, ruled every half MAC, whichever agent is
+        # running. Set every frame, because they are
+        # cheap scalars; the axis labels below are not, and are guarded.
+        self._concentration_chart.max_y = chart_axis_top_percent(snapshot.agent_mac_percent)
+        self._concentration_chart.horizontal_grid_lines.interval = chart_grid_interval_percent(
+            snapshot.agent_mac_percent
+        )
+        # The divisor is what every tick is placed against, so a MAC axis
+        # carried over from the previous agent would label the same traces
+        # against the wrong scale. Rebuilt only when it actually moves, for
+        # the reason recorded at `_mac_axis_basis`.
+        mac_axis_basis = snapshot.agent_mac_percent
+
+        if mac_axis_basis != self._mac_axis_basis:
+            self._mac_axis_basis = mac_axis_basis
+            self._mac_axis.labels = self._build_mac_axis_labels(mac_axis_basis)
+
+        self._mac_reference_text.value = format_mac_reference(
+            snapshot.agent_display_name, snapshot.agent_mac_percent
+        )
+        self._mac_awake_reference_text.value = self._format_mac_awake_reference(snapshot)
+
+    def _chart_window(self, snapshots: Iterable[SimulationSnapshot]) -> tuple[float, float]:
+        """Choose the span of simulated time this frame draws.
+
+        One window for every run on the chart, taken from the longest of
+        them: under "Fit run" a window fitted to the shorter run would draw
+        the longer one off the end of the axis, and under a chosen width a
+        window following the shorter run would leave the longer one's newest
+        samples outside the frame. Either way a reader would be comparing two
+        runs while seeing only part of one, which is worse than seeing
+        neither.
+
+        Args:
+            snapshots: This frame's snapshot for each run drawn.
+
+        Returns:
+            The left and right edges of the window, in simulated seconds.
+        """
+
+        elapsed_s = max(snapshot.elapsed_s for snapshot in snapshots)
+
+        # The visible window, and the two modes it can be in. "Fit run"
+        # derives the width from the run so the whole of it is drawn, pinned
+        # at zero; a chosen width is held exactly and follows the newest
+        # sample, so a trace's slope on the plot means the same thing at
+        # every moment of the run. `app/chart_time_base.py` carries both
+        # rules and why they are not one.
+        if self._time_base is None:
+            time_base = fit_to_run(elapsed_s)
+            chart_min_x, chart_max_x = fitted_window(time_base)
+        else:
+            time_base = self._time_base
+            chart_min_x, chart_max_x = following_window(time_base, elapsed_s)
+
+        self._concentration_chart.max_x = chart_max_x
+        self._concentration_chart.min_x = chart_min_x
+        # Both plots, from the one window, so they can never be showing
+        # different spans of the run while sitting one above the other.
+        self._wash_in_chart.min_x = chart_min_x
+        self._wash_in_chart.max_x = chart_max_x
+        self._apply_time_base(time_base, chart_min_x, chart_max_x)
+
+        return chart_min_x, chart_max_x
+
+    def _redraw_references(
+        self, snapshot: SimulationSnapshot, chart_min_x: float, chart_max_x: float
+    ) -> None:
+        """Rule the two clinical references across the window this frame draws.
+
+        One band and one 1 MAC line whatever the chart holds, for the reason
+        `_apply_chart_scale` is read from one run: both are published values
+        of the agent, and the constructor refuses runs that disagree about
+        it. Drawing a second copy per run would invite reading a published
+        constant as something a run produced.
+
+        Args:
+            snapshot: The reference run's state for this frame.
+            chart_min_x: Left edge of the visible window, in simulated seconds.
+            chart_max_x: Right edge of the same window.
+        """
+
+        # The references span the same window as the traces and are moved in
+        # the same frame, so a scroll can never leave one ruled across part of
+        # the chart or drawn at the previous agent's height.
+        mac_awake_lower_percent, mac_awake_upper_percent = self._mac_awake_band_percent(snapshot)
+        chart_series.redraw_reference_band(
+            self._mac_awake_band_upper_edge,
+            self._mac_awake_band_lower_edge,
+            chart_min_x,
+            chart_max_x,
+            mac_awake_lower_percent,
+            mac_awake_upper_percent,
+        )
+        chart_series.redraw_reference_line(
+            self._one_mac_line_series, chart_min_x, chart_max_x, snapshot.agent_mac_percent
+        )
+        # The wash-in plot's own reference, moved in the same frame as the
+        # traces that end on it, so a scroll can never leave the line ruled
+        # across part of that plot while a curve terminating on it spans the
+        # whole of it.
+        chart_series.redraw_reference_line(
+            self._equilibrium_line_series, chart_min_x, chart_max_x, WASH_IN_EQUILIBRIUM_RATIO
+        )
+
+    def _apply_trace_visibility(self) -> None:
+        """Put exactly the shown traces on the chart, and say the legend's part.
+
+        The one writer of everything that has to agree about which
+        compartments are drawn: the chart's series list, each entry's
+        checkbox, swatch and label, and the line said when none is drawn.
+        They are written from one flag in one pass, which is what makes the
+        legend's agreement with the plot a property of the code rather than
+        of somebody's diligence.
+
+        **Called when visibility changes and at no other time.** Reassigning
+        the chart's series list is the whole-list churn `_mac_axis_basis`
+        guards the axis against, and nothing about it belongs on a render
+        tick: `visible` is only ever moved by a reader clicking a box.
+
+        **A trace being shown again still holds the points of the frame it
+        was last drawn in.** The caller must redraw before calling this, so
+        that a stale curve is never on the chart even momentarily -
+        `_handle_trace_visibility_change` is the caller and records the
+        ordering.
+        """
+
+        self._concentration_chart.data_series = self._chart_data_series()
+
+        for trace in self._traces:
+            trace.checkbox.value = trace.visible
+            trace.checkbox.label_style = ft.TextStyle(color=INK if trace.visible else MUTED)
+            trace.swatch.bgcolor = trace.color if trace.visible else None
+
+        self._hidden_traces_text.visible = not any(trace.visible for trace in self._traces)
+        # A trace being shown again joins the chart *after* the redraw that
+        # `_handle_trace_visibility_change` runs first, so the frame's own
+        # tooltip pass never saw it. Re-applied here in the mode that frame
+        # set, which is what stops a trace restored while paused being the
+        # one curve on the chart that answers no hover.
+        self._apply_chart_tooltips(enabled=self._chart_tooltips_enabled)
+
+    def _handle_trace_visibility_change(
+        self, trace: _CompartmentTrace, event: ft.Event[ft.Checkbox]
+    ) -> None:
+        """Show or hide one compartment trace at the reader's request.
+
+        The flag lives in the view rather than in the controller, for the
+        reason `_rejected_setting_notice` does: which traces someone is
+        looking at changes nothing about the simulation and must not.
+        Identical inputs still produce identical results whatever is on
+        screen, so nothing here reads or writes model state, and this is
+        not routed through `_apply_setting` - there is no value for the core
+        to refuse.
+
+        Args:
+            trace: The compartment whose box was clicked.
+            event: The checkbox event carrying its new state.
+        """
+
+        trace.visible = bool(event.control.value)
+        # Redrawn before it is put back on the chart, never after. A trace
+        # hidden for a while still carries the points of the frame it was
+        # last drawn in, and adding it to the chart first would put that
+        # stale curve one raise away from reaching the client. Nothing is
+        # sent until `update()`, so a reader sees only the finished frame.
+        self._refresh_view()
+        self._apply_trace_visibility()
+        self._page.update()
+
+    def _apply_chart_tooltips(self, *, enabled: bool) -> None:
+        """The one writer of whether either chart answers a hover.
+
+        **The hover is offered while the run is paused and withdrawn while
+        it plays**, which is a performance decision and a reading decision
+        that happen to agree.
+
+        The performance half. A tooltip is an object per point, and Flet's
+        diff descends into it on every point on every frame - about half the
+        cost of a frame, measured at 42.8 ms against 22.5 ms on a saturated
+        chart at 300x (`PL-KP7H`, and `PL-YSZN` for where the rest of the
+        frame goes). That bill is only presented while frames are being
+        pushed: `_run_render_timer` takes no frame while the run is stopped,
+        so a paused chart carrying tooltips costs nothing per second. The
+        feature is therefore restored exactly where it is free.
+
+        The reading half, which is why this is not merely an optimization
+        dressed as a feature. A trace at 300x advances a simulated minute
+        between frames, so a value read under a moving cursor is stale
+        before it is read; and a drawn point is the run's state at that
+        instant, which is a thing to study rather than to glance at.
+        Pausing is what a reader does to inspect, and it is
+        the state in which the number under the cursor still means what it
+        said.
+
+        What the tooltip *says* is `flet_charts`' default and was designed
+        by nobody - `PL-YLKR` is the item for that, and it matters more now
+        than it did, because this makes the tooltip a readout a reader
+        deliberately stops to consult rather than one they brush past.
+
+        `interactive` is the documented switch ("enables automatic tooltips
+        and points highlighting when hovering over the chart") and is what
+        makes the behaviour change in contract; the per-point write is what
+        makes it cheap. Both are done here so the two cannot come to
+        disagree - a chart left interactive over tooltipless points, or
+        tooltips carried by points no hover can reach, are each half of this
+        applied without the other.
+
+        Args:
+            enabled: Whether a hover should answer. Read from the frame's
+                snapshot by `_refresh_view`, which is the only place the run
+                state is consulted.
+        """
+
+        for chart in (self._concentration_chart, self._wash_in_chart):
+            chart.interactive = enabled
+            chart_series.apply_point_tooltips(chart.data_series, enabled=enabled)
+
+        self._chart_tooltips_enabled = enabled
+
+    def _refresh_and_render(self) -> None:
+        """Refresh the dashboard and submit it to the Flet page."""
+
+        self._refresh_view()
+        self._page.update()
+
+    def _defer_render(self) -> None:
+        """Leave the current frame's submission to the next render tick.
+
+        The dashboard's rather than a run's, because there is one page and
+        one frame: two runs coalescing separately would each be waiting for
+        a submission the other might make first, and the flag says only that
+        *a* frame is owed.
+        """
+
+        self._render_pending = True
+
+    def _halt_every_run(self, error: Exception) -> None:
+        """Stop every run, for a failure of the frame rather than of a run.
+
+        The render loop draws all of them at once, so a raise out of it is
+        not attributable to any one run and leaves nothing on screen that can
+        be trusted to describe any of them. Stopping only the run that
+        happened to be mid-refresh would leave the others advancing behind a
+        display that had stopped following them, which is the failure the
+        guarded loops exist to prevent rather than a milder form of it.
+
+        The frame is drawn once, after every run is stopped, for the reason
+        `RunView._halt_run` records: one dashboard, one frame.
+
+        Args:
+            error: The raise the render loop could not complete through.
+        """
+
+        for run in self._runs:
+            run.halt(error)
+
+        try:
+            self._refresh_and_render()
+        except Exception:  # broad by design - see `RunView._halt_run`
+            # The interface could not be updated to show the failure. Every
+            # run is stopped regardless, which is the part that matters.
+            pass
+
     async def _run_render_timer(self) -> None:
         """Redraw the running simulation on its own, slower cadence.
 
@@ -3492,50 +4095,24 @@ class SimulationView:
 
         Guarded for the mirror-image reason the simulation loop is: a dead
         render loop leaves a frozen display over a simulation that is still
-        advancing, so the values on screen silently stop being current.
+        advancing, so the values on screen silently stop being current. It
+        halts *every* run rather than one, because one frame is drawn for all
+        of them and a raise here says nothing about which run's values it
+        failed over - `_halt_every_run` carries that argument.
         """
 
         while True:
             await asyncio.sleep(RENDER_INTERVAL_S)
 
-            if not self._controller.is_running and not self._render_pending:
+            if not any(run.is_running for run in self._runs) and not self._render_pending:
                 continue
 
             self._render_pending = False
 
             try:
                 self._refresh_and_render()
-            except Exception as error:  # broad by design - see _halt_run
-                self._halt_run(error)
-
-    @staticmethod
-    def _build_metric_value(initial_value: str) -> ft.Text:
-        """Build a formatted dashboard metric.
-
-        Args:
-            initial_value: Initial formatted value including its
-                physical unit.
-
-        Returns:
-            Styled Flet text control.
-        """
-
-        return ft.Text(initial_value, size=METRIC_VALUE_SIZE, weight=ft.FontWeight.BOLD, color=INK)
-
-    @staticmethod
-    def _build_metric_secondary_value(initial_value: str) -> ft.Text:
-        """Build the second-unit line drawn under a dashboard metric.
-
-        Args:
-            initial_value: Initial formatted value including its unit, or
-                `EMPTY_METRIC_SECONDARY_VALUE` for a panel with no second
-                unit.
-
-        Returns:
-            Styled Flet text control, subordinate to the reading above it.
-        """
-
-        return ft.Text(initial_value, size=METRIC_SECONDARY_VALUE_SIZE, color=MUTED)
+            except Exception as error:  # broad by design - see _halt_every_run
+                self._halt_every_run(error)
 
     @staticmethod
     def _build_time_axis() -> fch.ChartAxis:

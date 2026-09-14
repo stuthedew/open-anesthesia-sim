@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: refactor
 feature: scenario-branching
-touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/main.py, tests/unit/test_simulation_view.py, tests/integration/test_chart_patching.py, docs/ARCHITECTURE.md
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_two_run_views_drive_two_controllers' tests/unit/test_simulation_view.py
 added: 2026-09-02
 ---
