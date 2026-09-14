@@ -3,7 +3,8 @@ id: PL-16ZC
 title: The two clinical references and the control marks have no show/hide control, though the chart's traces now do
 priority: P3
 effort: M
-status: needs-decision
+status: blocked
+blocked-by: PL-G59B
 classes: ux
 feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py
@@ -14,6 +15,24 @@ added: 2026-09-04
 > queued *fixes* in the surface it rewrites, and this is a control that does not
 > exist today - new capability by that rule, however small. It stays a queue
 > item on its own merits.
+>
+> **And therefore sequenced past v0.5.0, not clearable before it begins**
+> (project owner, 2026-09-14, on `PL-NR2K`). The same rule that keeps this out
+> of the port makes building it on Flet first the one piece of open Gate 1 work
+> the port throws away whole: the legend table it extends lives in
+> `app/simulation_view.py`, which `v0.5.1` Required scope item 2 rewrites from
+> scratch. `blocked-by: PL-G59B` rather than `v0.5.1`, because that field means
+> *ships with this milestone* through `MilestoneStates.ships_with` and this
+> deliberately does not - `PL-G59B` is the chart port, which builds the legend
+> and the two references this control would toggle. `ROADMAP.md` Gate 1
+> § "Sequenced past v0.5.0" carries the disposition, which is where the
+> snapshot rule requires a frozen entry's deferral to be written.
+>
+> **The decision half is not deferred with it, and can close this item for
+> nothing.** "Whether the references and the control marks are hideable at all"
+> is a question about what the chart is for, not about a toolkit, and the
+> Done-when below already admits an answer that writes no code: if they are not
+> hideable, this records the reason and closes. Only the build waits.
 
 **Problem.** `PL-CG7J` gave each of the six compartment traces a checkbox in
 the legend. The two clinical references — the MAC-awake band and the 1 MAC

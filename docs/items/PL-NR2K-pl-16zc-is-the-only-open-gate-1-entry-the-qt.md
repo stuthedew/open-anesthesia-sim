@@ -1,8 +1,15 @@
 ---
 id: PL-NR2K
 title: PL-16ZC is the only open Gate 1 entry the Qt port throws away entirely, and it sits in the gate's clearable 23 with no deferral marker, so a session clearing the gate builds a Flet control v0.5.1 deletes
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, planning, docs
+feature: presentation-safety
+touches: docs/items/, ROADMAP.md
+verify: python3 tools/doc_check.py check && bin/docket wave | grep -q 'blocked outside the gate:.*PL-16ZC' && grep -q 'Deferred past the port' ROADMAP.md
 added: 2026-09-14
+closed: 2026-09-14
 ---
 
 **Problem.** PL-16ZC is the only open Gate 1 entry the Qt port throws away entirely, and it sits in the gate's clearable 23 with no deferral marker, so a session clearing the gate builds a Flet control v0.5.1 deletes
@@ -69,3 +76,38 @@ filed against and `PL-9S30` fixed for the other nine.
 **Done when** `PL-16ZC` carries a disposition that `bin/docket wave` and
 `bin/docket next` can both see without opening the file, and ROADMAP.md's
 Gate 1 section records it where the other deferrals are recorded.
+
+## Answered 2026-09-14: deferred, and by the frozen-entry route rather than the one first proposed
+
+**The project owner agreed to the recommendation** the same day. Carrying it out
+turned up that the precedent named in the recommendation does not govern this
+case, which is recorded because it changes the mechanism rather than the
+outcome.
+
+`PL-5B1N`, `PL-3JP0` and `PL-HKTB` were **declined to Gate 2**, and all three
+were captured *after* the 2026-09-06 freeze - they were never in Gate 1's
+frozen list, so declining them added nothing to it and removed nothing from it.
+`PL-16ZC` was captured 2026-09-04 and **is** a frozen entry. § "The gate is a
+snapshot, not a moving target" allows a frozen entry to be deferred only where
+the gate's own section "says so and says why", and `PL-9S30` had already fixed
+exactly this for the other nine: a deferral living only in a `blocked-by` field
+is renegotiation by frontmatter. So the disposition is written into Gate 1's
+§ "Sequenced past v0.5.0, so not clearable before it begins", which goes from
+nine entries to ten, and the entry stays written where the freeze put it -
+the `PL-NGF7` pattern, which that section states as "this is their disposition,
+not their deletion".
+
+**`blocked-by: PL-G59B`, not `v0.5.1`.** The field means *ships with this
+milestone* through `MilestoneStates.ships_with`, which reads a section's
+`Required scope`; `PL-16ZC` is deliberately not in v0.5.1's, so naming the
+version would assert something false and reopen `PL-D143`'s
+permanently-firing advisory. `PL-G59B` is the chart port, which builds the
+legend and both clinical references the control would toggle.
+
+**The decision half is explicitly not deferred**, in the item and in the gate
+section both. "Whether the references and the control marks are hideable at
+all" is a question about what the chart is for, and `PL-16ZC`'s own Done-when
+already admits an answer that closes it writing no code. Only the build waits.
+
+**Effect.** `bin/docket wave` moves from "23 this gate can clear, 9 waiting on
+work outside it" to 22 and 10.
