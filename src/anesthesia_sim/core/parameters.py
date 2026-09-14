@@ -31,7 +31,7 @@ from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, ConfigDict, field_validator, model_validator
 from pydantic import ValidationError as PydanticValidationError
 
-from anesthesia_sim.core.concentration import Percent
+from anesthesia_sim.core.concentration import MacMultiple, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 SUPPORTED_SCHEMA_VERSION = 2
@@ -118,8 +118,8 @@ class MacAwakeReference:
     context" failure `CLAUDE.md` names.
     """
 
-    fraction_of_mac: float
-    standard_deviation_fraction_of_mac: float
+    fraction_of_mac: MacMultiple
+    standard_deviation_fraction_of_mac: MacMultiple
     mac_reference_basis: str
 
 
@@ -325,6 +325,38 @@ SchemaVersion = Annotated[int, BeforeValidator(_validate_schema_version)]
 PositiveFinite = Annotated[float, BeforeValidator(_validate_positive_finite)]
 PositiveFraction = Annotated[float, BeforeValidator(_validate_positive_fraction)]
 PositivePercent = Annotated[float, BeforeValidator(_validate_positive_percent)]
+"""**Which vocabulary a new field in this file takes** (`PL-KL2Q`).
+
+Two overlapping vocabularies meet here and they do opposite halves of one job.
+The `Positive*` aliases above are Pydantic `BeforeValidator`s: they check a
+range at parse time and are plain `float` to `mypy`. `core/concentration.py`'s
+`Fraction`, `Percent` and `MacMultiple` are `NewType`s: they separate the
+dimensionless conventions at every call site and check nothing at runtime. The
+rule is the layer, not the quantity:
+
+- **A `_...Payload` field takes a `Positive*` alias.** The payload's job is to
+  refuse a bad file, and it is discarded immediately afterwards, so a type that
+  marks a boundary buys nothing on a value about to be thrown away.
+- **A public dataclass field takes the `concentration` `NewType`.** The public
+  types are what the rest of the application holds, so they are where a
+  conversion can be missed and where a marked boundary is worth having.
+  `parse_agent_parameters` and `parse_reference_adult_parameters` are the one
+  crossing, and they wrap explicitly — `Percent(model.mac_percent)`,
+  `MacMultiple(model.mac_awake.fraction_of_mac)`.
+- **A dimensionless quantity that is neither a concentration nor a ratio to MAC
+  takes `PositiveFraction` and stays a bare `float` on the public side** —
+  `perfusion_fraction` is the instance. Giving each such quantity a `NewType`
+  of its own would be a type per parameter rather than a type per boundary that
+  a wrong value can cross, and `core/concentration.py` states why a `NewType`
+  is worth only the latter.
+
+**Merging the two was priced and refused.**
+`Annotated[Fraction, BeforeValidator(_validate_positive_fraction)]` would
+validate and separate in one annotation, and would delete the boundary
+`_StrictPayload`'s docstring says is deliberate: the payload would then be
+carrying the public type, so nothing would distinguish a value that has been
+through `parse_*` from one that has not.
+"""
 
 
 class _StrictPayload(BaseModel):
@@ -603,8 +635,10 @@ def parse_agent_parameters(payload: object) -> AgentParameters:
         max_delivered_concentration_percent=(Percent(model.max_delivered_concentration_percent)),
         mac_percent=Percent(model.mac_percent),
         mac_awake=MacAwakeReference(
-            fraction_of_mac=model.mac_awake.fraction_of_mac,
-            standard_deviation_fraction_of_mac=model.mac_awake.standard_deviation_fraction_of_mac,
+            fraction_of_mac=MacMultiple(model.mac_awake.fraction_of_mac),
+            standard_deviation_fraction_of_mac=MacMultiple(
+                model.mac_awake.standard_deviation_fraction_of_mac
+            ),
             mac_reference_basis=model.mac_awake.mac_reference_basis,
         ),
         sources=_sources_to_tuple(model.sources),

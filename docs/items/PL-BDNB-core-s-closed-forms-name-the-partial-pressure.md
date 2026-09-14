@@ -3,11 +3,13 @@ id: PL-BDNB
 title: core/'s closed forms name the partial-pressure-equivalent fraction with bare _fraction locals, and integrated_circuit_fraction_s keeps the stutter PL-9SH6 removed from the accessor
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: refactor
 feature: core-domain-language
 touches: src/anesthesia_sim/core
 added: 2026-09-13
+closed: 2026-09-14
+verify: uv run pytest tests/unit/test_circuit.py && grep -q 'integrated_inspired_partial_pressure_fraction_s' src/anesthesia_sim/core/circuit.py
 ---
 
 **Problem.** core/'s closed forms name the partial-pressure-equivalent fraction with bare _fraction locals, and integrated_circuit_fraction_s keeps the stutter PL-9SH6 removed from the accessor
@@ -76,3 +78,37 @@ the weakest of them: bound at line 283 and last read at line 331, far enough
 that the accessor is no longer in the reader's eye.
 
 **Decision needed.** Is `integrated_circuit_fraction_s` renamed to the faithful `integrated_inspired_partial_pressure_fraction_s`, at 44 characters, or kept with its reason written beside it?
+
+**Decided 2026-09-14: `integrated_circuit_fraction_s` is renamed; the other
+four locals are deliberately left, and the reasons are written where each is
+read.**
+
+**Renamed to `integrated_inspired_partial_pressure_fraction_s`.** It carried
+both defects `PL-9SH6` was written to remove — a short name for the
+partial-pressure-equivalent fraction, and a `circuit_` stutter on a
+`BreathingCircuit` member — and it is the integral of
+`inspired_partial_pressure_fraction` exactly, so the faithful name is the one
+the project's own convention generates. Forty-six characters is the cost;
+`.claude/rules/core-domain.md`'s test is whether a reader who knows the domain
+would guess the name, and `integrated_circuit_fraction_s` fails it twice over
+while a length does not. A comment at the binding states what the quantity is
+($`\int F_I \mathrm{d}t`$, hence the seconds) and that the short locals above
+it are left on purpose, so this is not re-raised.
+
+**`initial_fraction`, `delivered_fraction`, `next_fraction`,
+`fraction_remaining` in `circuit.py`, `tissue.py` and `blood.py` stay.** Each is
+bound one line below the accessor it reads, inside a closed form short enough
+that the full name is still in the reader's eye. That is not the translation
+step the rule objects to.
+
+**`delivered_fraction` in `core/governing_equations.py` stays, and the brief
+was right that it needed an argument rather than the same sentence.** Bound at
+line 283 and last read at line 331 — but every matrix row that reads it sits
+directly under a comment writing the equation in the specification's own
+symbols (`dM_delivered/dt = V_F * F_D`), so the reader has $`F_D`$ in view *at
+the row* rather than carrying the binding down the module. Its neighbours
+(`fresh_gas_l_s`, `ventilation_l_s`, `blood_gas`) are short for the same
+reason, and the full `delivered_partial_pressure_fraction` would wrap the two
+rows that read it — which is the case `.claude/rules/core-domain.md` settles
+the other way: where a naming choice makes the model harder to see, the model
+wins. The reasoning is now a comment at the binding.

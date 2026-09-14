@@ -42,7 +42,7 @@ from math import isfinite
 from typing import Final
 
 from anesthesia_sim.app_metadata import APP_BUILD_VERSION, APP_VERSION_IS_KNOWN
-from anesthesia_sim.core.concentration import Fraction, Percent, percent_from_fraction
+from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, percent_from_fraction
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
 __all__ = [
@@ -245,7 +245,7 @@ def format_percent(partial_pressure_fraction: Fraction) -> str:
     return f"{rendered}%"
 
 
-def mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percent) -> float:
+def mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percent) -> MacMultiple:
     """Convert a partial-pressure-equivalent fraction to multiples of 1 MAC.
 
     The whole arithmetic of the second display unit, in one place, so the
@@ -288,7 +288,7 @@ def mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percent) -> f
     if not mac_percent > 0.0:
         raise ValueError(f"mac_percent must be strictly positive, got {mac_percent!r}")
 
-    return percent_from_fraction(partial_pressure_fraction) / mac_percent
+    return MacMultiple(percent_from_fraction(partial_pressure_fraction) / mac_percent)
 
 
 def format_mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percent) -> str:
@@ -360,7 +360,10 @@ def format_mac_reference(agent_display_name: str, mac_percent: float) -> str:
 
 
 def mac_awake_band_percent(
-    *, fraction_of_mac: float, standard_deviation_fraction_of_mac: float, mac_percent: float
+    *,
+    fraction_of_mac: MacMultiple,
+    standard_deviation_fraction_of_mac: MacMultiple,
+    mac_percent: float,
 ) -> tuple[float, float]:
     """Place the MAC-awake band on the chart's percent axis, as (lower, upper).
 
@@ -431,8 +434,8 @@ def mac_awake_band_percent(
 def format_mac_awake_reference(
     agent_display_name: str,
     *,
-    fraction_of_mac: float,
-    standard_deviation_fraction_of_mac: float,
+    fraction_of_mac: MacMultiple,
+    standard_deviation_fraction_of_mac: MacMultiple,
     mac_percent: float,
 ) -> str:
     """State what the MAC-awake band was drawn from, in one line.

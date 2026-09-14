@@ -3,11 +3,13 @@ id: PL-BQ46
 title: MacAwakeReference.fraction_of_mac and formatting.mac_multiple are a third and fourth dimensionless convention beside Fraction, and neither is distinguished from a concentration fraction at the type level
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: refactor
 feature: core-domain-language
-touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/app/formatting.py
+touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/app/formatting.py, tests/unit/test_formatting.py
 added: 2026-09-13
+closed: 2026-09-14
+verify: uv run pytest tests/unit/test_formatting.py && grep -q 'def test_a_concentration_fraction_reaching_the_mac_awake_band_is_refused_by_mypy_alone' tests/unit/test_formatting.py
 ---
 
 **Problem.** MacAwakeReference.fraction_of_mac and formatting.mac_multiple are a third and fourth dimensionless convention beside Fraction, and neither is distinguished from a concentration fraction at the type level
@@ -47,3 +49,45 @@ explicitly is annotating `MacAwakeReference`'s two fields with the existing
 one is annotated with it, or the decision not to add one is recorded where the
 next reader of `MacAwakeReference.fraction_of_mac` and `mac_multiple()` will
 meet it, saying what `mypy` does and does not separate here.
+
+**Decided 2026-09-14: a MAC-relative type earns its place, and it lives in
+`core/concentration.py`.** `MacMultiple` is a `NewType` over `float` beside
+`Fraction` and `Percent`.
+
+**Why it earns its place.** The hazard the brief names is reachable rather than
+theoretical, and the test added with this item is the demonstration.
+Sevoflurane's MAC-awake band is 0.34 ± 0.05 MAC against a MAC of 2.0%, so it is
+drawn at 0.58–0.78% — the decrement a falling alveolar trace has to cross for
+arousal. Pass a *circuit fraction* at the vaporizer's own 8% maximum into the
+same call and every runtime guard accepts it, because 0.08 − 0.05 is still
+positive: the band is then drawn at 0.06–0.26%, below the awakening
+concentration, where a trace crosses it late or never. Nothing on the screen
+says so, and `CLAUDE.md` treats a clinical reference in the wrong place as a
+safety failure rather than a presentation one. `tools/ignore_check.py` reports
+the two new directives live, so the refusal is real and not asserted.
+
+**Why `core/concentration.py` and not a module of its own.** `docs/MODEL.md`
+§ "Concentrations" — the section that module implements — is where the MAC
+multiple is *defined*, as $`100F/\mathrm{MAC}_\%`$, a rescaling of the same
+$`F`$ by one per-agent constant. A type for it therefore widens no subject; it
+completes one. `PL-6KNM` settles the module's name on the same ground.
+
+**One type, not two.** A ratio to MAC and a multiple of MAC are one kind
+differing only in range, so a second `NewType` for the bounded case would
+reintroduce the multiplicity this one removes. The bound that matters —
+`MacAwakeReference` staying below 1 MAC — is held by `_MacAwakePayload`'s
+validator, which checks values; a `NewType` marks boundaries and checks
+nothing.
+
+**Annotated at the boundaries, not at the locals**, because the module docstring
+already measured that arithmetic erases a `NewType`: `MacAwakeReference`'s two
+fields, `parse_agent_parameters`' construction of them, `mac_multiple()`'s
+return, and the `fraction_of_mac` / `standard_deviation_fraction_of_mac`
+parameters of `mac_awake_band_percent` and `format_mac_awake_reference`.
+`mac_axis_ticks`' `span_mac` and `step_mac` are locals inside one function and
+are left alone.
+
+**Left, and filed.** `mac_percent` is a `Percent` in two `app/formatting.py`
+signatures and a bare `float` in five others — one parameter, two types, in one
+module. It is not a MAC-relative value, so it is outside what this item decides:
+`PL-W3Q5`.

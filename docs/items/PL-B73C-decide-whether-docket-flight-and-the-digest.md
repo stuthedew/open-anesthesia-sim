@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-04
 closed: 2026-09-14
+pr: 558
 verify: grep -q 'def test_a_ref_naming_no_item_anywhere_is_reported_as_unattributed' subprojects/docket/tests/test_vcs.py && uv run pytest subprojects/docket/tests/test_vcs.py -q -k attribut
 ---
 

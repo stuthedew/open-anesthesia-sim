@@ -3,12 +3,13 @@ id: PL-XP6W
 title: MODEL.md's Symbols table has no row for f_i, the stored per-group perfusion fraction its own Tissue groups section uses in Q_i = f_i Q
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: core-domain-language
-touches: docs/MODEL.md
+touches: docs/MODEL.md, tests/unit/test_core_vocabulary_check.py
 added: 2026-09-13
 verify: python3 tools/doc_check.py check && grep -qF 'TissueGroup.perfusion_fraction' docs/MODEL.md
+closed: 2026-09-14
 ---
 
 **Problem.** MODEL.md's Symbols table has no row for f_i, the stored per-group perfusion fraction its own Tissue groups section uses in Q_i = f_i Q
@@ -40,3 +41,10 @@ other indexed rows use.
 **Done when.** § "Symbols" carries a row for $`f_i`$ - dimensionless, with
 `TissueGroup.perfusion_fraction` in the Code column and the same "for group
 $`i`$" phrasing the other indexed rows use - and `make doc-check` passes.
+
+**Done 2026-09-14.** § "Symbols" carries a row for $`f_i`$ — "Fraction of
+cardiac output reaching tissue group $`i`$, so that $`Q_i = f_iQ`$",
+dimensionless, `TissueGroup.perfusion_fraction` in the Code column — placed
+directly under $`Q_i`$, the quantity it defines. The row count
+`tests/unit/test_core_vocabulary_check.py` pins moved from 24 to 25, which is
+what stops the table being parsed halfway and passing on what it read.

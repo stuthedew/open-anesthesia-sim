@@ -529,6 +529,7 @@ get through the code is a defect in the code rather than a use for the table.
 | $`\dot V_A`$ | Alveolar ventilation | L gas/min | `AlveolarCompartment.alveolar_ventilation_l_min` |
 | $`Q`$ | Cardiac output | L blood/min | `PatientCompartments.cardiac_output_l_min` |
 | $`Q_i`$ | Blood flow to tissue group $`i`$ | L blood/min | `TissueGroup.blood_flow_l_min` |
+| $`f_i`$ | Fraction of cardiac output reaching tissue group $`i`$, so that $`Q_i = f_iQ`$ | dimensionless | `TissueGroup.perfusion_fraction` |
 | $`\mathrm{MAC}_\%`$ | Agent's 1 MAC, age-40 alveolar (display divisor only; not in any governing equation) | percent | `AgentParameters.mac_percent` |
 | $`\lambda_{b:g}`$ | Agent blood:gas partition coefficient | dimensionless | `AgentParameters.blood_gas_partition_coefficient` |
 | $`\lambda_{i:g}`$ | Tissue:gas partition coefficient for group $`i`$, which is the coefficient the agent data files store | dimensionless | `TissueGroup.tissue_gas_partition_coefficient` |

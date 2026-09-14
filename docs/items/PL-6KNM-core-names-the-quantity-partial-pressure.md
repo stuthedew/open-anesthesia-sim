@@ -3,11 +3,13 @@ id: PL-6KNM
 title: core/ names the quantity partial_pressure_fraction but still validates it with require_concentration_fraction, from a module called concentration.py
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: refactor
 feature: core-domain-language
-touches: src/anesthesia_sim/core, src/anesthesia_sim/app, tests, docs/MODEL.md
+touches: src/anesthesia_sim/core, src/anesthesia_sim/app, tests, docs/MODEL.md, docs/ARCHITECTURE.md, tools/core_vocabulary_check.py
 added: 2026-09-13
+closed: 2026-09-14
+verify: uv run pytest tests/unit/test_validation.py && grep -q 'def require_fraction' src/anesthesia_sim/core/validation.py
 ---
 
 **Problem.** core/ names the quantity partial_pressure_fraction but still validates it with require_concentration_fraction, from a module called concentration.py
@@ -70,3 +72,51 @@ one change rather than three. Whichever is chosen,
 for the reasons the brief already gives.
 
 **Decision needed.** Do `require_concentration_fraction`, `core/concentration.py` and the `Fraction` `NewType` name a representation - a number in [0, 1] that need not know which fraction it guards - or the quantity, in which case all three move with `docs/MODEL.md` § "Concentrations"?
+
+**Decided 2026-09-14: the guard names a representation, the module and the
+`NewType`s name the quantity.** The three parts turned out to answer
+differently, which is why one answer for all three would have been wrong
+either way.
+
+**`require_concentration_fraction` is now `require_fraction`.** Three pieces of
+evidence, none of them a preference:
+
+1. **Every caller already disagrees with the old name.** All eleven call sites
+   in `core/` pass a `..._partial_pressure_fraction` string; not one passes a
+   concentration. A reader of `alveolar.py` met
+   `require_concentration_fraction("partial_pressure_fraction", ...)` — two
+   names for one kind, on one line, which is exactly the defect `PL-9SH6`
+   removed from the accessors.
+2. **`core/validation.py`'s own convention is representation-naming**, and this
+   function was the only exception to it. `require_positive_finite` and
+   `require_nonnegative_finite` each name a property of the number. The guard
+   checks a range and nothing else; it cannot tell which $`F`$ it holds and
+   does not need to.
+3. **The same range already guards quantities that are not concentrations.**
+   `core/parameters.py`'s `PositiveFraction` validates `perfusion_fraction` and
+   the MAC-awake ratio. A [0, 1] guard is a statement about the number.
+
+**`core/concentration.py` and `Fraction`/`Percent` keep their names.** The
+module is the implementation of `docs/MODEL.md` § "Concentrations" and takes
+its subject from that section, which is the strongest traceability this project
+can give a module name: the specification section and the module that
+implements it are one word. That section defines all of the dimensionless forms
+the model carries, which is also what let `PL-BQ46`'s `MacMultiple` land here
+rather than needing a home of its own. And the `NewType`s are quantity types
+rather than range types — their whole job is to refuse a percent of an
+atmosphere where a fraction of one is wanted, which is a statement about
+*which* quantity. `PL-BQ46` rules out the opposite reading independently: a
+MAC-awake ratio may not be annotated `Fraction`, so `Fraction` cannot be "any
+dimensionless number in [0, 1]".
+
+**Consequence worth recording.** `tools/core_vocabulary_check.py` matched whole
+identifiers rather than substrings because two live names would otherwise have
+been reported, and this rename removes one of them. Measured 2026-09-14 across
+`core/`: no live identifier contains a retired name as a substring, so a
+substring rule would pass today and would have caught this guard by itself.
+That is filed as `PL-JW9J` rather than done here — it is a different rule and
+owes its own false-positive argument — and the tool's docstring, its test and
+`docs/ARCHITECTURE.md` all now say so instead of citing a name that is gone.
+
+`max_delivered_concentration_percent` under `src/anesthesia_sim/data/` is
+untouched, as the brief required.
