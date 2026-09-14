@@ -1,0 +1,47 @@
+---
+id: PL-FWJF
+title: The Qt port is the next substantial work but sits on a — timeline row, so bin/docket wave anchors on v0.5.0 and every port item reads as placed by no section
+status: untriaged
+added: 2026-09-14
+---
+
+**Problem.** The Qt port is the next substantial work but sits on a — timeline row, so bin/docket wave anchors on v0.5.0 and every port item reads as placed by no section
+
+**Found while landing `PL-RKWB`** (the 2026-09-14 decision moving the Qt port
+ahead of v0.5.0's display half).
+
+**What happens.** `bin/docket wave` anchors its `Scope` on the next *numbered*
+milestone, which is v0.5.0. The port sits on a `—` row, like the `v0.4.x` track
+and the `MVP complete` marker, so its own `Required scope` is never read. Every
+port item therefore prints the third relation - "Placed by no section of v0.5.0:
+neither its frozen list nor its `Required scope` names this id" - which is
+literally true and reads as *unplaced* at the exact moment the port is the work
+the plan calls for. `PL-G59B` is `P1` and ranks third in `bin/docket next` with
+that sentence under it.
+
+Naming the build items in the port's `Required scope` was done under `PL-RKWB`
+and does not fix this: the section is correct, and nothing reads it.
+
+**Two candidate answers, and the choice is the project owner's** because it is a
+question about the plan's shape rather than about the tool:
+
+1. **Number the timeline row.** The port is a milestone by this file's own test
+   - its own goal, required scope, definition of done and out-of-scope list -
+   and it now sits between Gate 1 and v0.5.0 as the next substantial work. This
+   renumbers rows 5-9 and is the honest reading of what the row has become.
+2. **Teach `wave` to anchor on any section-bearing row**, numbered or not. This
+   leaves the plan alone and fixes the reading for the `v0.4.x` track too, which
+   has the same shape and the same blind spot.
+
+Option 1 is a roadmap edit; option 2 is apparatus work in
+`subprojects/docket/`. They are not exclusive.
+
+**Why it matters.** The skill's own guidance says "placed nowhere" is the
+relation that goes wrong, because silence is indistinguishable from not having
+looked. A session offered `PL-G59B` today reads that it is placed by nothing
+while the timeline places it ahead of the milestone it is being compared
+against - and the rule is to say what the gate says before recommending
+off-gate work, which here would state the opposite of the plan.
+
+**Done when** a port item offered by `bin/docket next` carries a placement
+sentence that agrees with the timeline.

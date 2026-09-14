@@ -1,7 +1,7 @@
 ---
 id: PL-G59B
 title: Port the concentration chart to pyqtgraph: six traces, both clinical references, both axes, the control marks and the wash-in plot
-priority: P2
+priority: P1
 effort: L
 status: ready
 classes: feature, ux
@@ -49,3 +49,24 @@ marks (`PL-DR1Z`'s vertical input-timeline series) and the wash-in plot all
 render under pyqtgraph from `controller.drawn_window`; the MAC marks resolve
 against the snapshot's own divisor; the dash patterns survive; and
 `tools/contrast_check.py` passes against the new theme.
+
+## Raised to P1 on 2026-09-14
+
+Not on its own merits - it is `feature`/`ux` classed and nothing it draws is
+newly wrong. It is raised because the Qt port moved ahead of v0.5.0
+(`PL-RKWB`), and re-pointing the items that waited on the port from
+`blocked-by: v0.4.25` to the port item that does their work put two `P1`
+`safety`-classed items directly behind this one:
+
+- `PL-GS3R` - 0.26 MAC of departure between the drawn trace and the run at the
+  12 h base, worst in the steep early wash-in. Its fix is the chord-width
+  column rule, which this port is what makes affordable.
+- `PL-YVHK` - the chart hover readout, which `ScatterPlotItem` loses by default
+  (`hoverable` is `False`), so a port silent about it removes an affordance the
+  Flet build has.
+
+`bin/docket check` refuses a `P1` waiting on a `P2` for exactly this reason:
+nothing behind this item can start before it does, so the band it ranks in has
+to be the band of the most urgent thing it gates. This is the safety debt of
+the chart arriving at the item that unblocks it, rather than a re-banding of
+the port's own risk.

@@ -1,13 +1,14 @@
 ---
 id: PL-RKWB
 title: Decide whether the Qt port ships ahead of v0.5.0's display half: PL-8PSW is the only scheduled item the port rewrites, and on Flet it is built where no session can look at it
-status: ready
+status: done
+closed: 2026-09-14
 added: 2026-09-14
 priority: P2
 effort: M
 classes: planning
 feature: qt-port
-touches: ROADMAP.md, docs/items
+touches: ROADMAP.md, docs/items, docs/WORKING_NOTES.md
 verify: python3 tools/doc_check.py check && grep -qF 'Moved ahead of v0.5.0' ROADMAP.md
 ---
 
@@ -80,6 +81,23 @@ takes the next patch number and v0.5.0 keeps both its number and its meaning.
 
 **Urgency.** A session was opened on `PL-8PSW` at 17:03 on 2026-09-14 and
 failed before starting. The next one will not.
+
+**Why it matters.** The sequencing decides whether the most
+presentation-safety-loaded item in v0.5.0 is built on a toolkit no session in
+this container can look at. `PL-8PSW` draws two runs on one axis with six
+channels already spent and a two-compartment cap the design rests on; on Flet
+`PL-2QMK` means nobody can see it and `PL-7J96`, the Flet rendering check, is
+`dropped` as superseded, so it would ship with no automated rendering check at
+all. It also decides how long two `P1` `safety`-classed items stay blocked:
+`PL-GS3R` is 0.26 MAC of drawn departure at the 12 h base and `PL-YVHK` is a
+hover readout that prints five decimals past the derived resolution, and both
+wait only on the toolkit. Getting this wrong is not a lost afternoon - it is a
+milestone's worth of safety debt held open and a clinical display built blind.
+
+**Done when** the roadmap places the port ahead of v0.5.0 with the decision and
+the count recorded, every item that waited on the port names the port item
+rather than a version, `PL-8PSW` and `PL-LPLD` can no longer be started on
+Flet, and `make check` is green on the result.
 
 ## Decided 2026-09-14 by the project owner: move it
 

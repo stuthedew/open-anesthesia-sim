@@ -324,9 +324,9 @@ adds no capability and exists to clear the ground they are built on:
 | 3 | **v0.4.0 — the teachable case** | **Shipped 2026-09-05.** Scoped below. 13 items, of which 6 are gate-0 debt the milestone cleared itself. Twelve landed and the thirteenth, `PL-011`'s retention rule, was dropped as superseded; its Required-scope entry records why. | 7 M, 6 S |
 | — | **v0.4.x — the code is the model** | Planned-milestone item 29, shipping as a patch in the `v0.4.x` track. A patch, not a milestone. "No behavior changes" held until the 2026-09-03 re-scope and no longer does: the exact step moves the displayed value in its last digit. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped and then re-scoped 2026-09-03: the owner's bar is that a reviewer follow `core/` without a lookup table, which naming alone cannot reach, so the operator split is replaced by the exact matrix exponential (`PL-GS5X`). Still a patch — it crosses no capability boundary; see item 29 for why, and for why no exception is recorded. (Written `v0.4.1` until 2026-09-06, which contradicted this row's own rule that the track promises no particular patch number; v0.4.1 and v0.4.2 both shipped without the exact step, as that rule predicted.) **It freezes no gate and takes no section of its own (project owner, 2026-09-05).** The cadence's four beats run for *milestones*; Gate 1 is frozen when v0.5.0 is scoped, as row 4 records and as three of v0.4.0's own deferrals assume; and no patch in this project has ever had a section — v0.2.1 through v0.3.9 each took a version-table row and a baseline section at ship time and nothing more. That this was ever in question is a tooling artefact worth recording: `bin/docket wave` read this row as a milestone because it was written `v0.4.1` where item 29 already called it the `v0.4.x` row, and the gate it therefore asked to freeze was 105 entries against Gate 0's 21 — five times the largest gate this project has cleared, and 62% of the open queue. The row is now written `v0.4.x`, which is what makes the beat agree with the plan. **Eight items**, `PL-P0BB` having shipped in v0.3.2: `PL-GS5X` and `PL-X9KD` under `numerical-domain`, and `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T` under `core-domain-language` — plus `PL-X2XX`, which `PL-VZL0` requires and which neither list named until `PL-GGCN` taught the checker to read the second half of a compound prerequisite. Swapping `PL-P0BB` out for `PL-X2XX` leaves the effort totals unchanged. `PL-3TLK` leads; the rest of the naming work follows the exact step. `PL-011` was carried here at the v0.4.0 cut and is **not** part of this step: it was dropped 2026-09-05, superseded by `PL-T691` and `PL-2FM6`. Those two, with `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, are the score architecture the 2026-09-05 design round filed into `numerical-domain` behind `PL-GS5X`, and they are **v0.5.0's, not this track's** (project owner, 2026-09-05) — row 5 carries the reasoning. **This track promises no particular patch number,** which is what `v0.4.x` means: patches are cut as work accumulates and the exact step takes whichever number it lands on. Saying "ships as v0.4.1" would be a promise the release path cannot keep — `docket release` offers the next free number to whatever is finished, so any patch cut before the exact step lands would take it. | 1 L, 6 M, 2 S |
 | 4 | **Gate 1** | **Frozen 2026-09-06**, the day v0.5.0 was scoped, and recorded in that milestone's own section below rather than here. Contents were unknown by construction and are now the list: v0.4.0's findings, the queue's own defects, and the model-specification debt. Ships inside v0.5.0, not as its own release — except for the three items "The timeline" had already placed on the `v0.4.x` step, which that patch carries. | — |
+| — | **v0.4.25 — the interface moves to Qt** | **Scoped 2026-09-10**, on `PL-QXSB`'s decision the same day, and it has its own section below. The port `PL-55DH` spiked and `PL-X9T3` measured: the dashboard, the chart and the theme move to PySide6 + pyqtgraph, and nothing a learner can do is lost. It absorbs planned-milestone item 33, the interface pass - a restyle of a dashboard about to be rewritten is the same work twice, since porting redecides palette, type scale, spacing and layout regardless. **Moved ahead of v0.5.0 on 2026-09-14** (project owner, on `PL-RKWB`), from the row it held after MVP. The question put was whether v0.5.0's work would be redone after the port, and **the count says mostly not**: of v0.5.0's eight open Required-scope ids, one is wholly inside the rewritten surface (`PL-8PSW`, the two-branch overlay), two have a slice there, and five never touch it - because `tools/import_boundary_check.py` confines Flet to three modules and the milestone's landed work (`PL-T691`, `PL-J2TD`, `PL-TFX5`, `PL-B9PY`) all sits on the surviving side. **Three other grounds carried it, and they are the reasons of record.** `PL-8PSW` is the most presentation-safety-loaded item in the milestone and on Flet it is built where no session can look at it (`PL-2QMK`), while the spike already screenshots offscreen in that same container and `PL-YCWZ` adds headless rendering tests over the real interface. `PL-GS3R` and `PL-YVHK` are both `P1` and `safety`-classed and both sat blocked behind this port for the whole of a milestone. And this port's definition of done is parity against a **closed** enumeration, which is cheapest to check before compare mode - the largest new visual surface in the project - joins the list. **The operative form of the decision is narrower than the move**: nothing new is built in `app/simulation_view.py` or `app/chart_series.py` before the port, and v0.5.0's port-neutral spine (`PL-CTD7`, `PL-B8MK`, `PL-Z3W6`, `PL-W7H9`, `PL-49R8`) is untouched by it. **A patch number for a 5 133-line rewrite** because § "Versioning decision" chooses the number for the capability boundary crossed and this crosses none; v0.2.8 is the precedent for machinery at this scale taking one. **It no longer needs a section for the mechanical reason it had one** - every item that waited on it now names the port item doing the work rather than a version, so `blocked-by` resolves with no placed version - and it keeps one because a rewrite this size is not a patch-track row. **Gate 2's freeze is unchanged**: still when v0.5.0 ships, because that gate holds v0.5.0's findings and this port takes no gate of its own. | 2 L, 2 M, 3 S |
 | 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. The placement argument above stands for what it placed, and is left as written. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 164 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
-| — | **v0.5.1 — the interface moves to Qt** | **Scoped 2026-09-10**, on `PL-QXSB`'s decision the same day, and it has its own section below. The port `PL-55DH` spiked and `PL-X9T3` measured: the dashboard, the chart and the theme move to PySide6 + pyqtgraph, and nothing a learner can do is lost. **It replaces the `v0.5.x — the interface pass` row that stood here** and absorbs planned-milestone item 33 with it - a restyle of a dashboard about to be rewritten is the same work twice, since porting redecides palette, type scale, spacing and layout regardless. The placement is unchanged from that row's: after MVP, because the owner's standing principle is that UI ambition follows scientific-core maturity, and ahead of v0.6.0, because the schematic is a second large visual surface on a toolkit charged per control present per frame. **A patch number for a 3 619-line rewrite** because § "Versioning decision" chooses the number for the capability boundary crossed and this crosses none; v0.2.8 is the precedent for machinery at this scale taking one. **It takes a section, which no patch here ever has**, for one mechanical reason: `blocked-by: vX.Y.Z` resolves only against a version the roadmap places, a patch-track row is not a version, and `PL-GS3R` - `P1`, `safety`, sequenced behind this port - needs one or it ranks top of `bin/docket next` as startable work guarded only by prose (`PL-L09X`). **Gate 2's freeze is deferred** to when v0.5.0 ships: that gate holds v0.5.0's findings and v0.5.0 is not implemented, so freezing it today would freeze an empty list and then refuse the findings it exists for. **On the structural half, the `v0.5.x` row this replaces was wrong and the error is inherited no further.** It said `PL-2CS8`, `PL-NGF7` and `PL-B9PY` all "land ahead of v0.5.0". `PL-2CS8` did. `PL-B9PY` does not and must not: Gate 1 places it under "Cleared by v0.5.0 itself", because decomposing `SimulationView` so two runs render *is* what the branched-run milestone needs to exist - moving it behind this port would defer the MVP behind a toolkit change. It ships in v0.5.0 on Flet and is rewritten here, and that duplication is the price of shipping the MVP first, taken deliberately. What this port carries forward is its *shape*: the Qt view is built decomposed from the start. `PL-NGF7` is the one that moves - see the gate section. | 7 M |
 | 6 | **Gate 2** | Frozen when v0.6.0 is scoped; ships inside it. | — |
 | 7 | **v0.6.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. | — |
 | 8 | **Gate 3** | Frozen when v0.7.0 is scoped; ships inside it. | — |
@@ -346,7 +346,8 @@ Gates 1 onward hold one milestone's findings and ship inside the milestone
 they gate, which is why rows 4, 6 and 8 carry no version.
 
 Row 5 was scoped on 2026-09-06 and has its own section below, as is the
-`v0.5.1` row beneath it, scoped 2026-09-10. Rows 7 and 9 are
+`v0.4.25` row above it, scoped 2026-09-10 and moved ahead of row 5 on
+2026-09-14. Rows 7 and 9 are
 the intended order and are not yet scoped; each becomes real only when it gets
 its own goal, required scope, definition of done and out-of-scope list here,
 per the development rules.
@@ -1433,7 +1434,368 @@ v0.4.0 is complete only when:
   above; stage 3 stays at Gate 1, because only v0.5.0's side-by-side
   comparison of two branches needs it (project owner, 2026-09-02).
 
+## v0.4.25 - the interface moves to Qt
+
+**Scoped 2026-09-10**, on `PL-QXSB`'s decision the same day. `PL-55DH` built
+the spike, `PL-X9T3` measured it on the project owner's own machine, and the
+owner chose to move.
+
+**Moved ahead of v0.5.0 on 2026-09-14** (project owner, on `PL-RKWB`), from the
+position after MVP that it held when it was scoped. The question put was whether
+v0.5.0's work would have to be redone after the port.
+
+**Counted rather than answered from the shape of the question**, which is the
+same method § "Sequenced past v0.5.0" used on 2026-09-14 when the general form
+of this was asked about the gate entries. Of v0.5.0's eight open Required-scope
+ids, **one** is wholly inside the surface this port rewrites - `PL-8PSW`, the
+two-branch overlay - two have a slice there (`PL-RD3B`, `PL-LPLD`, both of whose
+durable halves are in `app/controller.py`), and five never touch it at all
+(`PL-CTD7`, `PL-B8MK`, `PL-Z3W6`, `PL-W7H9`, `PL-49R8`).
+`tools/import_boundary_check.py` is why: exactly three modules import Flet, and
+the milestone's landed work - `PL-T691`'s score, `PL-J2TD`'s keyframe opening,
+`PL-TFX5`'s fork, `PL-B9PY`'s decomposition - all sits on the surviving side.
+**So the premise of the question did not hold, and the move was taken on three
+other grounds:**
+
+1. **`PL-8PSW` would otherwise be built blind.** `PL-2QMK` records that no
+   session in the web container can visually confirm a chart change, because
+   Flet's renderer fetches Flutter assets the egress proxy denies;
+   `spikes/qt/qt_spike.py --screenshot` already renders offscreen in that same
+   container, and Required scope item 6 adds headless rendering tests over the
+   real interface. `PL-7J96`, the Flet equivalent, is `dropped` as superseded -
+   so the Flet build gets no automated rendering check at all. `PL-8PSW` is the
+   most presentation-safety-loaded item in v0.5.0: six channels already spent,
+   a two-compartment cap the design rests on, and every curve owing an
+   attribution to its run.
+2. **Two `P1` `safety`-classed items sat blocked behind this port.** `PL-GS3R`
+   (0.26 MAC of drawn departure at the 12 h base, worst in the steep early
+   wash-in) and `PL-YVHK` (the hover readout). Both are designed; both waited
+   only on the toolkit, and ordering v0.5.0 first kept them blocked for the
+   whole of a milestone.
+3. **The parity target is smaller now than it will ever be again.** This
+   milestone's definition of done is parity against a **closed** enumeration.
+   Landing v0.5.0 first would add compare mode - the largest new visual surface
+   in the project - to the list that has to be checked.
+
+**What was decided is narrower than "move the milestone", and that is the form
+to apply**: nothing new is built in `app/simulation_view.py` or
+`app/chart_series.py` before this port. v0.5.0's port-neutral spine is untouched
+and still ships on its own schedule; only its display half waits. `PL-8PSW` and
+`PL-LPLD`'s bookmark list are the two open items that moved.
+
+**Why this number, which is a patch number for a rewrite of the whole
+dashboard.** § "Versioning decision" chooses the number for the capability
+boundary a release crosses, and a learner can do nothing after this port that
+they could not do before - the same argument the `v0.5.x` row made for the
+restyle it replaces. v0.2.8 is the precedent for machinery at this scale taking
+a patch: thirty-eight frozen entries, no simulator change.
+
+**Why it takes a section, which no patch in this project ever has - and the
+reason has changed.** It was mechanical: `blocked-by: vX.Y.Z` resolves only
+against a version the roadmap *places*, a patch-track row is not a version, and
+`PL-GS3R` - `P1`, `safety`-classed - would otherwise have sat at the top of
+`bin/docket next` as startable work guarded only by a paragraph in its brief
+(`PL-L09X`). **That reason is spent as of 2026-09-14.** Every item that waited
+on this port now names the port *item* that does the work - `PL-G59B` for the
+chart, `PL-25KS` for the dashboard, `PL-L9RD` for the theme - which is the shape
+`PL-3355`'s brief had already argued for and `PL-16ZC` already used. Nothing
+resolves against this heading any more, so the number below is free to move
+without dragging a `blocked-by` field with it.
+
+The section stays for an ordinary reason instead: a rewrite of 5 133 lines with
+its own goal, required scope, definition of done and out-of-scope list is a
+milestone by this file's own test, whatever number it ships under.
+
+**The one risk, recorded rather than engineered around.** `bin/docket release`
+offers the next free number to whatever is finished, so a patch cut before this
+lands would take `v0.4.25` - the hazard the `v0.4.x` row names. If that happens,
+this section's heading moves to the next free number and **nothing else moves
+with it**, since no item's `blocked-by` names a version any longer. That is a
+rename, not a re-scope.
+
+**The one question the reorder leaves open is this number, and it is recorded
+rather than settled.** § "The cadence" says a gate does not get a version and
+that no interim release is cut partway through clearing one - and five of the
+fixes this port carries are Gate 1 entries. The reading taken here is that this
+port is a milestone that *carries* gate fixes rather than being gate work:
+§ "Debt inside the milestone's own scope" makes the test whether the item
+appears in the milestone's `Required scope`, and all five appear at item 8. The
+alternative - that it ships inside v0.5.0 with no version of its own - is
+recorded in `PL-RKWB` and would change this heading and nothing else.
+
+**It absorbs planned-milestone item 33**, the interface pass, which the
+`v0.5.x` row placed here. A restyle of a dashboard that is about to be rewritten
+is the same work done twice: porting rewrites `theme.py`, every layout and every
+density decision regardless, so palette, type scale, spacing rhythm and layout
+are decided once, during the port, rather than applied to Flet and then again to
+Qt.
+
+**Gate 2's freeze is deferred, deliberately, and moving this port did not
+disturb it.** "The debt gate"'s cadence would freeze it as this milestone is
+scoped. Gate 2 is meant to hold *v0.5.0's* findings, and v0.5.0 has not been
+implemented, so a gate frozen today would be empty by construction and would
+then refuse the findings it exists for. It freezes when v0.5.0 ships, and this
+port takes no gate of its own - as was already true when it sat after MVP - so
+its own findings go to Gate 2 alongside v0.5.0's.
+
+**What the move does change is Gate 1, and in the direction `PL-D143`
+asked for.** Nine of the twelve entries that gate could not clear were waiting
+on this port; with the port ahead of v0.5.0 they clear before the milestone
+they gate begins, instead of after the release that follows it. Gate 1's own
+§ "Sequenced past v0.5.0" carries the revised disposition.
+
+### Goal
+
+**Run the same simulator on PySide6 + pyqtgraph, with nothing a learner can do
+today lost, and the interface pass done once on the way.**
+
+The measured case is in `docs/WORKING_NOTES.md` under "Measured on real
+hardware", and none of it is speed. The lag this question was opened on is gone:
+the owner reports the Flet build as no longer noticeably slow after `PL-2FM6`.
+Four grounds survive:
+
+- **Input latency** 0.85-2.46 ms p90 against Flet's 20-30 ms, which is the axis
+  "laggy" named. The mechanism rather than the hardware is the gap: Flet's event
+  loop is blocked by a control-tree diff every frame, and Qt has no diff.
+- **`PL-GS3R` is a safety decision this one decides.** Its cheapest route out of
+  0.26 MAC of chord error is more columns: 49.4 ms of a 200 ms budget on Qt
+  against about 78 ms for Flet's diff alone, before its client renders anything.
+- **`PL-2QMK`**, exercised rather than argued - the spike writes a PNG of the
+  running interface in the very container where Flet's renderer cannot load.
+  Most of `presentation-safety` waits on that.
+- **Headroom** for v0.6.0's schematic, which is a second large visual surface on
+  a toolkit charged per control present per frame.
+
+### Required scope
+
+1. **The chart** (queue item `PL-G59B`). Six compartment traces, the two
+   clinical references, both axes, the control marks and the wash-in plot, on
+   pyqtgraph. `PL-GS3R`'s
+   chord-width column rule lands here rather than separately - the port is what
+   makes it affordable, and it is the reason `PL-GS3R` is sequenced behind this.
+
+   *`PL-YVHK`, the chart's hover readout, lands here too* (project owner,
+   2026-09-14, splitting `PL-YLKR`). What it shows is already decided:
+   `docs/MODEL.md` § "The chart's hover readout: what the tooltip may show"
+   derives it, in v0.4.x, so this is a build against a written specification
+   rather than a design round inside a port. **It is parity rather than new
+   capability**, and the distinction is load-bearing here: `ScatterPlotItem`
+   ships `hoverable` set to `False` and a plotted line carries no hover at
+   all, so a port silent about it *loses* the Flet build's hover instead of
+   reproducing it. Building it on Flet first was refused because the same
+   content is roughly 1 870 per-point strings there and one format callable
+   here - see that item for the measurement.
+2. **The dashboard** (queue item `PL-25KS`). The readout row, the parameter
+   controls, the agent selector, the transport, the new-case dialog and the
+   notice banner -
+   `app/simulation_view.py`, 4 321 lines as measured 2026-09-14.
+
+   *It reserves for planned-milestone item 34 and builds none of it (project
+   owner, 2026-09-12).* Each of those surfaces becomes an independent widget
+   inside nested `QSplitter`s rather than a fixed layout, and **the splitter
+   handles stay inert**: item 34 is what turns them live and adds the split/join
+   affordance, the workspace tabs and the savable presets.
+
+   The reservation is close to free, because the components it needs are
+   already owed. `PL-B9PY` decomposes `SimulationView` in v0.5.0 and records
+   that "the Qt view is built decomposed from the start", so what this decides
+   is only the container those components go into - nested splitters rather
+   than fixed layouts. The alternative is laying out every panel twice, which
+   is the argument this milestone already makes for absorbing item 33.
+
+   *The inert handles are the deliberate half, not an oversight.* A draggable
+   splitter is something a learner can do that they cannot do today, so live
+   handles would be new capability - which § "Fixes this port carries" excludes
+   "whatever its size", and which would put a fourth entry beside `PL-16ZC` on
+   the wrong side of that line. Parity below means "identical except for this
+   list", and it is checkable only while the enumeration stays closed. Flipping
+   the handles live is item 34's first step and costs a line.
+3. **The theme, and item 33 with it** (queue item `PL-L9RD`). `app/theme.py`
+   re-expressed for Qt, and the visual pass decided once: palette, type scale,
+   spacing rhythm, density, layout.
+4. **The two checks that read the theme.** `tools/contrast_check.py` and
+   `tools/agent_identity_check.py` both parse `theme.py`; after a port they
+   would not fail, they would *pass* on a tree they no longer describe.
+   `PL-JRS3` is that item and is the one most likely to stop this cheaply.
+   `PL-NGF7` is the other, and the port *dissolves* it rather than fixing
+   it - see § "Items this port moots or transforms" below, and Gate 1's
+   own disposition of it.
+5. **Packaging and dependencies** (queue item `PL-3SQT`). PySide6-Essentials,
+   pyqtgraph and numpy enter; `flet` and `flet-charts` leave. numpy arriving under a plotting
+   library reopens the scope of `docs/WORKING_NOTES.md`'s "Decided: no numpy"
+   rather than contradicting its conclusion, and that note is re-argued rather
+   than cited either way.
+6. **Headless rendering tests** (queue item `PL-YCWZ`), which is what `PL-2QMK`
+   has been waiting for and what makes the rest of `presentation-safety`
+   workable. With this port ahead of v0.5.0 it also means `PL-8PSW` is the first
+   large display this project builds with a rendering check in place rather
+   than after one.
+7. **Deletion** (queue item `PL-7SVX`). `spikes/` goes, and so does every Flet
+   import. `PL-C92D` retires the Flet frame-cost table that predates the port.
+8. **The queued fixes named below**, on the rule stated there: `PL-3355`,
+   `PL-Q4VH`, `PL-THXF`, `PL-W8DQ`, `PL-TG60` and `PL-005`. Named here and
+   not only under that heading because `MilestoneStates.ships_with` reads
+   `Required scope` and nothing else: it is what separates `blocked-by:
+   v0.4.25` meaning *ships with this milestone* from the same field meaning
+   *waits for it to be scoped*, which is the relation `PL-L09X` costed and
+   the roadmap already carries rather than a field anyone writes twice.
+
+### Fixes this port carries, and why that is not scope creep
+
+**Asked by the project owner, 2026-09-10**: "if we already had things we needed
+to fix, wouldn't it make sense to fix those as part of the port, and not just
+reintroduce old bugs still needing fixed?" Yes, and the rule is narrow enough
+to keep this a patch.
+
+**The rule: a queued fix rides the port when the port rewrites the code the
+defect lives in, and it changes nothing a learner can do.** Everything else
+waits. That is not a taste judgment - it follows from what a port is. Porting a
+known defect means deliberately reproducing it in code being written from
+scratch, then rewriting the same lines again to fix it. The fix is cheaper
+inside the port than either side of it.
+
+**What it does not license.** New capability stays out, whatever its size,
+which is what keeps § "Versioning decision"'s patch argument true. A defect in
+`core/` or in the Flet-free modules stays out too - the port does not touch
+them, so fixing one there is unrelated work wearing this milestone's name.
+
+**The enumeration is the point.** "Parity with the Flet build" is this
+milestone's checkable definition of done, and a port that also changes behaviour
+cannot be diffed against the old build to prove nothing was lost. So every
+carried fix is named here in advance, and parity means *identical except for
+this list*. That is stricter than an unenumerated parity, not looser.
+
+**Defects in the rewritten surface** - reproduce none of these:
+
+- `PL-3355` - the readouts wrap their value onto a second line at some widths.
+- `PL-Q4VH` - the percent axis is labelled at a different interval from the
+  gridlines it rules.
+- `PL-THXF` - the legend swatch is a solid bar for a trace that is dashed, so
+  the legend misdescribes the chart it explains.
+- `PL-W8DQ` - the four slider active tracks miss the WCAG non-text minimum.
+- `PL-TG60` - six decimals printed on an exhaust integral good to three.
+- `PL-005` - the startup window is full-screen rather than sized and centred.
+
+**Decisions the port has to make anyway**, so they are made deliberately rather
+than by default: `PL-YTX9` (whether a hidden trace keeps its legend entry),
+`PL-CZFY` and `PL-Q4M4` (the elapsed-time readout reads in seconds while the
+axis reads in hours), `PL-LL9Y` (the warning and alert colours against the
+medical alarm-colour convention).
+
+**`PL-16ZC` is out (project owner, 2026-09-10)**, and it is the case that shows
+where the line is. A show/hide control for the clinical references and the
+control marks is small, and it is squarely in the rewritten surface - but it is
+a control that does not exist today, so it is new capability, and the rule
+admits fixes rather than features. It stays a queue item on its own merits.
+
+**It is nonetheless sequenced behind this port** (project owner, 2026-09-14, on
+`PL-NR2K`), which is not a reversal of the line above but its consequence: a
+fix in the rewritten surface rides the port, and a *feature* in the rewritten
+surface waits for it, because either one written on Flet first is written
+twice. Gate 1 § "Sequenced past v0.5.0, so not clearable before it begins"
+carries the disposition and the reasoning. It is not in this milestone's
+Required scope and does not ship with it; what it waits on is `PL-G59B`
+landing, after which it is an ordinary queue item against the Qt chart.
+
+### Items this port moots or transforms
+
+Recorded because the cost of missing them is not a defect - it is work done and
+thrown away.
+
+- **`PL-B9PY`** was listed here on 2026-09-10 as work the port would throw
+  away, and **that was wrong**. Gate 1 places it under "Cleared by v0.5.0
+  itself", not ahead of v0.5.0: decomposing `SimulationView` so two runs render
+  is what the branched-run milestone *is*, so it could not wait for a port that
+  then shipped after it without deferring the MVP. **It landed on Flet on
+  2026-09-14, before this port moved ahead of v0.5.0**, so the ordering question
+  it raised is closed rather than re-opened: the decomposition exists and this
+  port inherits it. The duplication is real and was the accepted price of
+  shipping the MVP first. **What this port owes it is the shape, not the code**:
+  the Qt view is built decomposed from the start, so `PL-B9PY`'s design is a
+  required input to `PL-25KS` rather than a pass to redo. It is also the reason
+  the move costs less than it would have a week ago - the shape the Qt view
+  needs is already designed and already reviewed.
+- **`PL-NGF7`** is a defect *of Flet*: every colour a control takes when
+  Material disables it comes from the Material theme rather than from
+  `theme.py`, so `tools/contrast_check.py` cannot reach it. Qt supplies no such
+  theme, so the port dissolves the defect rather than fixing it. It is also
+  placed ahead of v0.5.0 today.
+- **`PL-F0L8`** asks what accessibility Flet's rendering backend can deliver.
+  After the port the question is `QAccessible`'s, which is a different
+  investigation against a different backend.
+- **`PL-7J96`** ("nothing in this repository draws the interface") is what
+  `PL-YCWZ` now does. **Decided for `PL-YCWZ` (project owner, 2026-09-13), and
+  `PL-7J96` is `dropped` as superseded.** `PL-YCWZ`'s capability is demonstrated
+  rather than assumed - `spikes/qt/qt_spike.py --screenshot` already renders the
+  interface offscreen inside the web container - where `PL-7J96` would have built
+  a Playwright renderer for the interface this milestone replaces. What that
+  accepts is that the shipped Flet build gets no automated wrapping check before
+  the port; the two defects `PL-7J96` records are filed and dispositioned
+  separately, so what is given up is the gate rather than the fixes. Its Gate 1
+  line stays written where the freeze put it, per § "The gate is a snapshot, not
+  a moving target". `PL-MBP6` was blocked on it and is re-pointed at `PL-YCWZ`.
+- **`PL-NC2P`** and **`PL-YMY7`** are coverage items over `app/main.py` and
+  `app/simulation_view.py`'s Flet-construction paths - files this milestone
+  replaces.
+- **`PL-027`** confirms the per-frame slider write-back on a live Flet client.
+
+**`PL-NGF7` is deferred to this milestone (project owner, 2026-09-10)**, and
+the deferral is recorded in Gate 1's own section rather than only here, because
+that gate is frozen and "The gate is a snapshot" requires a deferral to say so
+and say why. `PL-B9PY` is not moved, for the reason in its entry above.
+
+### Definition of done
+
+- Every capability the Flet build has, the Qt build has. No learner-visible
+  regression, checked against the readout labels, the hedges `PL-NV9W`
+  requires, the MAC axis, both clinical references and the control timeline.
+- `make check` green, including the two theme-reading checks re-pointed rather
+  than passing vacuously.
+- A headless rendering test asserts on the real interface, and `PL-2QMK` closes
+  on it.
+- `PL-GS3R`'s worst drawn departure re-measured at every rung of
+  `TIME_BASE_LADDER` and recorded in `docs/MODEL.md`.
+- `docs/ARCHITECTURE.md` describes the interface that exists.
+- `spikes/` is deleted and no module imports Flet.
+
+### Explicitly out of scope for v0.4.25
+
+- **Any new learner-facing capability.** This release adds none, which is what
+  makes it a patch - and it is the line the carried-fix rule below is drawn
+  against, not an exception to it.
+- **The branched run.** v0.5.0's bookmarks, forking and comparison are that
+  milestone's, and this one does not touch them.
+- **Anything under `core/`.** The port's whole tractability rests on `core/`,
+  `app/controller.py`, `app/formatting.py`, `app/chart_time_base.py`,
+  `app/playback.py`, `app/wash_in.py` and `app/control_timeline.py` surviving
+  untouched - `tools/import_boundary_check.py` enforces that boundary and the
+  spike proved it by driving the real `SimulationController` with no adaptation
+  whatever.
+- **v0.6.0's schematic**, which this makes affordable and does not begin.
+- **Flet's web target**, which is given up rather than reimplemented. Nothing
+  ships it today.
+
 ## v0.5.0 - the case you can branch
+
+**Its display half now builds on Qt (project owner, 2026-09-14, on `PL-RKWB`).**
+The Qt port moved ahead of this milestone - § "v0.4.25 - the interface moves to
+Qt" carries the decision, the count behind it and the three grounds - so
+`PL-8PSW`, the two-branch overlay, and `PL-LPLD`'s bookmark list are built once,
+on pyqtgraph, rather than on Flet and then again. **Nothing else about this
+milestone moves.** Its goal, required scope, definition of done and out-of-scope
+list are unchanged; its port-neutral spine - `PL-CTD7`, `PL-B8MK`, `PL-Z3W6`,
+`PL-W7H9`, `PL-49R8`, and the durable halves of `PL-RD3B` and `PL-LPLD` - is
+untouched by the port and ships on the schedule it had. The milestone still
+keeps its number and its meaning: it is the release that crosses the branching
+capability boundary, and the port crosses none.
+
+**What this costs and what it buys, recorded so it is not re-litigated.** It
+costs the MVP its place in the queue for the length of the port. It buys
+`PL-8PSW` a toolkit a session can actually look at (`PL-2QMK`), unblocks two
+`P1` `safety`-classed items that were waiting on the toolkit (`PL-GS3R`,
+`PL-YVHK`), and makes it possible for Gate 1 to reach zero before the milestone
+it gates begins, which § "Sequenced past v0.5.0" records as the structural debt
+`PL-D143` named and could not pay.
 
 ### Goal
 
@@ -1933,7 +2295,7 @@ number instead of glancing at a trace: so the tooltip is the surface a reader
 meets with the most time to draw a conclusion from it and the least context to
 draw one from, and a modelled alveolar fraction read as a measurement is the
 confusion `CLAUDE.md` names in terms. The design is toolkit-independent and
-survives `v0.5.1`; only its implementation moves.
+survives `v0.4.25`; only its implementation moves.
 
 **The seventh is the paragraph immediately above** (`PL-DZFJ`, found by the
 `PL-0QQP` triage pass, 2026-09-12; corrected 2026-09-13). Until that date the
@@ -2066,7 +2428,7 @@ modelled-versus-measured failure `CLAUDE.md` names.
 
 - PL-YVHK (S) Implement the chart hover readout on pyqtgraph to the derivation docs/MODEL.md now carries, turn hoverable on so the affordance is not silently lost, and say in README.md that it exists
 
-### Deferred to v0.5.1, because the port dissolves the defect — 1 entry
+### Deferred to v0.4.25, because the port dissolves the defect — 1 entry
 
 **Recorded here because this list is frozen** and "The gate is a snapshot, not
 a moving target" allows a deferral only if it says so and says why. `PL-NGF7`
@@ -2076,18 +2438,70 @@ this is its disposition, not its deletion.
 **`PL-NGF7`** - `tools/contrast_check.py` can see no disabled-state colour,
 because Flet/Material supplies every colour a disabled control takes and none
 of them is a constant in `theme.py`. That is a defect *of Flet*: Qt supplies no
-such theme, so `v0.5.1`'s `theme.py` declares those colours itself and the tool
+such theme, so `v0.4.25`'s `theme.py` declares those colours itself and the tool
 can reach them. Clearing it before v0.5.0 means building a mechanism to measure
 a half of the interface that is about to stop existing. It is `infra`/`test`
 classed, so `check_gate_reentries`' unconditional `safety`/`science`/`P0`
 re-entry does not hold it here, and its problem does not predate the freeze in
 any sense that survives the toolkit changing underneath it.
 
-**Expected disposition when `v0.5.1` lands: `dropped`, not `done`** - the port
+**Expected disposition when `v0.4.25` lands: `dropped`, not `done`** - the port
 resolves it rather than any work on it. That is recorded now so a later session
 does not read a dropped item as one that was skipped.
 
 ### Sequenced past v0.5.0, so not clearable before it begins — 11 entries
+
+**Nine of these eleven became clearable on 2026-09-14, when the Qt port moved
+ahead of v0.5.0** (project owner, on `PL-RKWB`; § "v0.4.25 - the interface moves
+to Qt" carries the decision and the count behind it). The heading and every
+entry below stay written as the freeze put them, per § "The gate is a snapshot,
+not a moving target" - this is their disposition, not their deletion, and it is
+the same treatment `PL-NGF7` already had.
+
+**What changed is the port's position, not any entry's judgment.** Each of the
+nine was sequenced behind a port that shipped *after* the milestone this list
+gates, which is what made it unclearable before v0.5.0 began; the port now
+lands before v0.5.0, so each clears in the ordinary way:
+
+| Entry | Relation to the port | Now clears |
+| --- | --- | --- |
+| `PL-3355`, `PL-Q4VH`, `PL-THXF`, `PL-TG60`, `PL-W8DQ` | carried by it | before v0.5.0 |
+| `PL-GS3R`, `PL-YVHK` | sequenced behind it, both `P1` `safety` | before v0.5.0 |
+| `PL-NGF7` | dissolved by it | before v0.5.0, as `dropped` |
+| `PL-16ZC` | deferred past it | before v0.5.0, behind `PL-G59B` |
+| `PL-8PS6`, `PL-WZVZ` | behind a design round the roadmap places nowhere | unchanged |
+
+**`bin/docket wave` still prints all twelve as "waiting on work outside it", and
+that is correct rather than stale.** It asks whether an entry's `blocked-by`
+chain leaves the frozen list, and these chains still do - they name `PL-G59B`,
+`PL-25KS` and `PL-L9RD`, which are port items rather than gate entries. What
+changed is *when* that outside work happens, which is a fact about the timeline
+above and not one any field carries. The two readings answer different
+questions and both are true: the count says the gate cannot clear these by
+itself, and this section says the work they wait on now precedes the milestone
+they gate. Do not "fix" the count to agree with the prose.
+
+**This is what `PL-D143` asked for and could not get.** That item recorded the
+contradiction plainly: recorded debt is cleared *before* the milestone it gates,
+and these could not be, because the decision was that they are fixed during a
+release that comes *after* the release being gated - so the gate could not reach
+zero until after the thing it was gating. The beat `bin/docket wave` printed,
+"clear the gate", was asking for something the plan forbade. Moving the port is
+what makes the beat satisfiable; it was not the reason the port moved, but it is
+the structural debt the move happens to pay.
+
+**The two that do not move are the two that never depended on the toolkit.**
+`PL-8PS6` and `PL-WZVZ` wait on `PL-FG9D`, the base anesthesia-machine
+abstraction, which no milestone section names. Nothing forbids clearing them
+before v0.5.0; doing it means scoping that design round first, which is a
+milestone decision rather than gate work.
+
+**The re-point that carries this is in the items, not here.** All nine named a
+version in `blocked-by` or in prose; each now names the port item that does the
+work, so none of them depends on what number the port ships under. `PL-005` and
+`PL-LPLD` carried the deferral in prose alone and were `status: ready` - the
+exact defect `PL-D143` described and fixed for only five of the six - and are
+now `blocked` with the field to match.
 
 **Recorded because the rule requires it, and until 2026-09-13 it was not.**
 § "The gate is a snapshot, not a moving target" allows a deferral only where
@@ -2101,20 +2515,20 @@ written where the freeze put it, exactly as `PL-NGF7` does - this is their
 disposition, not their deletion. Five still sit under headings reading "Cleared
 before v0.5.0 begins", and those headings record what the list said on
 2026-09-06 rather than a claim about today. Each sequencing call was the
-project owner's, taken on 2026-09-10 when `v0.5.1` was scoped, and each is
+project owner's, taken on 2026-09-10 when `v0.4.25` was scoped, and each is
 argued where it was taken; this is the index, not the argument.
 
 **Carried by the Qt port — 5.** `PL-3355`, `PL-Q4VH`, `PL-THXF`, `PL-TG60`
-and `PL-W8DQ`, on the rule in § "v0.5.1 — the interface moves to Qt" → "Fixes
+and `PL-W8DQ`, on the rule in § "v0.4.25 — the interface moves to Qt" → "Fixes
 this port carries, and why that is not scope creep": each defect lives in code
 that milestone rewrites from scratch, so fixing it on Flet means writing the
-same lines twice. Each now carries `blocked-by: v0.5.1` beside the port item
+same lines twice. Each now carries `blocked-by: v0.4.25` beside the port item
 that does the work - which is what `PL-D143` intended and what its own
 `verify:` command tested for, and which shipped as the port item alone.
 
 **Sequenced behind the port — 2.** `PL-GS3R`, `P1` and `safety`-classed. It is
 designed already; what it waits for is the port *landing*, because the
-chord-width column rule costs frame time the port makes free. § "v0.5.1" →
+chord-width column rule costs frame time the port makes free. § "v0.4.25" →
 "Required scope" item 1 is where that was decided.
 
 `PL-YVHK` is the second, `P1` and `safety`-classed for the same reason, and it
@@ -2124,7 +2538,7 @@ splitting `PL-YLKR`). The presence rule holds a `safety`-classed finding to the
 rather than left to its `blocked-by` field. It is the build half of the hover
 readout `docs/MODEL.md` § "The chart's hover readout: what the tooltip may
 show" now specifies, and it is designed already in the same sense `PL-GS3R` is:
-nothing about it is an open question, and § "v0.5.1" → "Required scope" item 1
+nothing about it is an open question, and § "v0.4.25" → "Required scope" item 1
 names it. What it waits for is the toolkit. Writing it on Flet means roughly
 1 870 per-point strings onto a pause-transition frame `PL-KP7H` measured at
 71.9 ms and 90 KiB, deleted again at the port, where the same content is one
@@ -2140,14 +2554,14 @@ reasoning and its expected disposition of `dropped` rather than `done`.
 control marks (project owner, 2026-09-14, on `PL-NR2K`). It is the mirror image
 of the five carried by the port and it arrives at the same place by the
 opposite route. Those are defects the port must not reproduce; this is new
-capability, which § "v0.5.1" → "Fixes this port carries" excludes "whatever its
+capability, which § "v0.4.25" → "Fixes this port carries" excludes "whatever its
 size" - and the owner ruled it out on 2026-09-10 for exactly that reason. But
 the control extends the legend table `PL-CG7J` built inside
-`app/simulation_view.py`, all 3 734 lines of which Required scope item 2
+`app/simulation_view.py`, all 4 321 lines of which Required scope item 2
 rewrites, so the same rule that keeps it out of the port makes writing it on
 Flet first the one piece of open Gate 1 work that is purely written twice.
 Its `blocked-by` names `PL-G59B`, the chart port that builds the legend and
-both references this would toggle, rather than `v0.5.1`, which would assert
+both references this would toggle, rather than `v0.4.25`, which would assert
 through `MilestoneStates.ships_with` that it ships with that milestone when it
 deliberately does not.
 
@@ -2231,7 +2645,7 @@ six need their own ground, because "wholly in the workflow lane" is not true of
 them, so it is stated rather than stretched.
 
 **Four are waiting on the port rather than on anybody's attention.** `PL-7SVX`
-*is* `v0.5.1`'s Required scope item 7 and deleting `spikes/` before the port
+*is* `v0.4.25`'s Required scope item 7 and deleting `spikes/` before the port
 lands would remove the working reference every other item in that milestone
 reads from. `PL-C92D` asks for a caveat on a Flet measurement whose toolkit is
 being removed, and was re-scoped in the same pass to stop asking for a
@@ -2243,7 +2657,7 @@ hurried in front of the port.
 
 **Two are decisions this gate should not force.** `PL-3JP0` and `PL-HKTB` both
 ask whether a piece of the interface should change or be recorded as
-deliberate, and `PL-L9RD` - the `v0.5.1` pass that makes the interface's visual
+deliberate, and `PL-L9RD` - the `v0.4.25` pass that makes the interface's visual
 decisions once - is where both are cheapest to answer. Pulling them into Gate 1
 would mean deciding them twice, which is the duplication that item exists to
 prevent.
@@ -2303,7 +2717,7 @@ were declined on** (`PL-5B1N`, triaged 2026-09-13). It is not apparatus and cann
 be declined on the refilling-queue ground: it asks what visual channel separates a
 committed run from an uncommitted preview, which is a question about a displayed
 clinical value and reaches a reader of the simulator directly. It is declined
-because v0.5.1 rewrites the chart on pyqtgraph and redecides dash pattern, alpha
+because v0.4.25 rewrites the chart on pyqtgraph and redecides dash pattern, alpha
 and stroke width along with it, so answering against the Flet chart would mean
 answering twice - the same reason those two wait for `PL-L9RD`.
 
@@ -2747,268 +3161,6 @@ v0.5.0 is complete only when:
 - Any change to the governing equations, the parameter set, or the exact
   solution the matrix exponential computes. This milestone changes what the
   model can be *asked*, never what it answers.
-
-## v0.5.1 - the interface moves to Qt
-
-**Scoped 2026-09-10**, on `PL-QXSB`'s decision the same day. `PL-55DH` built
-the spike, `PL-X9T3` measured it on the project owner's own machine, and the
-owner chose to move.
-
-**Why this number, which is a patch number for a rewrite of the whole
-dashboard.** § "Versioning decision" chooses the number for the capability
-boundary a release crosses, and a learner can do nothing after this port that
-they could not do before - the same argument the `v0.5.x` row made for the
-restyle it replaces. v0.2.8 is the precedent for machinery at this scale taking
-a patch: thirty-eight frozen entries, no simulator change.
-
-**Why it takes a section, which no patch in this project ever has.** One
-reason, and it is mechanical rather than aesthetic: `blocked-by: vX.Y.Z`
-resolves only against a version the roadmap *places*, and a patch-track row is
-not a version. `PL-GS3R` is `P1` and `safety`-classed, it is sequenced behind
-this port by the owner's decision of 2026-09-10, and without a version to name
-it sits at the top of `bin/docket next` as startable work guarded only by a
-paragraph in its brief. `PL-L09X` records that gap. A section closes it.
-
-**The one risk, recorded rather than engineered around.** `bin/docket release`
-offers the next free number to whatever is finished, so a patch cut before this
-lands would take `v0.5.1` - the hazard the `v0.4.x` row names. If that happens,
-this section's heading moves to the next free number and `PL-GS3R`'s
-`blocked-by` moves with it. That is a rename, not a re-scope.
-
-**It absorbs planned-milestone item 33**, the interface pass, which the
-`v0.5.x` row placed here. A restyle of a dashboard that is about to be rewritten
-is the same work done twice: porting rewrites `theme.py`, every layout and every
-density decision regardless, so palette, type scale, spacing rhythm and layout
-are decided once, during the port, rather than applied to Flet and then again to
-Qt.
-
-**Gate 2's freeze is deferred, deliberately.** "The debt gate"'s cadence would
-freeze it as this milestone is scoped. Gate 2 is meant to hold *v0.5.0's*
-findings, and v0.5.0 has not been implemented, so a gate frozen today would be
-empty by construction and would then refuse the findings it exists for. It
-freezes when v0.5.0 ships. Gate 1 is unaffected and still clears before v0.5.0's
-implementation begins.
-
-### Goal
-
-**Run the same simulator on PySide6 + pyqtgraph, with nothing a learner can do
-today lost, and the interface pass done once on the way.**
-
-The measured case is in `docs/WORKING_NOTES.md` under "Measured on real
-hardware", and none of it is speed. The lag this question was opened on is gone:
-the owner reports the Flet build as no longer noticeably slow after `PL-2FM6`.
-Four grounds survive:
-
-- **Input latency** 0.85-2.46 ms p90 against Flet's 20-30 ms, which is the axis
-  "laggy" named. The mechanism rather than the hardware is the gap: Flet's event
-  loop is blocked by a control-tree diff every frame, and Qt has no diff.
-- **`PL-GS3R` is a safety decision this one decides.** Its cheapest route out of
-  0.26 MAC of chord error is more columns: 49.4 ms of a 200 ms budget on Qt
-  against about 78 ms for Flet's diff alone, before its client renders anything.
-- **`PL-2QMK`**, exercised rather than argued - the spike writes a PNG of the
-  running interface in the very container where Flet's renderer cannot load.
-  Most of `presentation-safety` waits on that.
-- **Headroom** for v0.6.0's schematic, which is a second large visual surface on
-  a toolkit charged per control present per frame.
-
-### Required scope
-
-1. **The chart.** Six compartment traces, the two clinical references, both
-   axes, the control marks and the wash-in plot, on pyqtgraph. `PL-GS3R`'s
-   chord-width column rule lands here rather than separately - the port is what
-   makes it affordable, and it is the reason `PL-GS3R` is sequenced behind this.
-
-   *`PL-YVHK`, the chart's hover readout, lands here too* (project owner,
-   2026-09-14, splitting `PL-YLKR`). What it shows is already decided:
-   `docs/MODEL.md` § "The chart's hover readout: what the tooltip may show"
-   derives it, in v0.4.x, so this is a build against a written specification
-   rather than a design round inside a port. **It is parity rather than new
-   capability**, and the distinction is load-bearing here: `ScatterPlotItem`
-   ships `hoverable` set to `False` and a plotted line carries no hover at
-   all, so a port silent about it *loses* the Flet build's hover instead of
-   reproducing it. Building it on Flet first was refused because the same
-   content is roughly 1 870 per-point strings there and one format callable
-   here - see that item for the measurement.
-2. **The dashboard.** The readout row, the parameter controls, the agent
-   selector, the transport, the new-case dialog and the notice banner -
-   `app/simulation_view.py`, 3 619 lines.
-
-   *It reserves for planned-milestone item 34 and builds none of it (project
-   owner, 2026-09-12).* Each of those surfaces becomes an independent widget
-   inside nested `QSplitter`s rather than a fixed layout, and **the splitter
-   handles stay inert**: item 34 is what turns them live and adds the split/join
-   affordance, the workspace tabs and the savable presets.
-
-   The reservation is close to free, because the components it needs are
-   already owed. `PL-B9PY` decomposes `SimulationView` in v0.5.0 and records
-   that "the Qt view is built decomposed from the start", so what this decides
-   is only the container those components go into - nested splitters rather
-   than fixed layouts. The alternative is laying out every panel twice, which
-   is the argument this milestone already makes for absorbing item 33.
-
-   *The inert handles are the deliberate half, not an oversight.* A draggable
-   splitter is something a learner can do that they cannot do today, so live
-   handles would be new capability - which § "Fixes this port carries" excludes
-   "whatever its size", and which would put a fourth entry beside `PL-16ZC` on
-   the wrong side of that line. Parity below means "identical except for this
-   list", and it is checkable only while the enumeration stays closed. Flipping
-   the handles live is item 34's first step and costs a line.
-3. **The theme, and item 33 with it.** `app/theme.py` re-expressed for Qt, and
-   the visual pass decided once: palette, type scale, spacing rhythm, density,
-   layout.
-4. **The two checks that read the theme.** `tools/contrast_check.py` and
-   `tools/agent_identity_check.py` both parse `theme.py`; after a port they
-   would not fail, they would *pass* on a tree they no longer describe.
-   `PL-JRS3` is that item and is the one most likely to stop this cheaply.
-   `PL-NGF7` is the other, and the port *dissolves* it rather than fixing
-   it - see § "Items this port moots or transforms" below, and Gate 1's
-   own disposition of it.
-5. **Packaging and dependencies.** PySide6-Essentials, pyqtgraph and numpy
-   enter; `flet` and `flet-charts` leave. numpy arriving under a plotting
-   library reopens the scope of `docs/WORKING_NOTES.md`'s "Decided: no numpy"
-   rather than contradicting its conclusion, and that note is re-argued rather
-   than cited either way.
-6. **Headless rendering tests**, which is what `PL-2QMK` has been waiting for
-   and what makes the rest of `presentation-safety` workable.
-7. **Deletion.** `spikes/` goes, and so does every Flet import.
-8. **The queued fixes named below**, on the rule stated there: `PL-3355`,
-   `PL-Q4VH`, `PL-THXF`, `PL-W8DQ`, `PL-TG60` and `PL-005`. Named here and
-   not only under that heading because `MilestoneStates.ships_with` reads
-   `Required scope` and nothing else: it is what separates `blocked-by:
-   v0.5.1` meaning *ships with this milestone* from the same field meaning
-   *waits for it to be scoped*, which is the relation `PL-L09X` costed and
-   the roadmap already carries rather than a field anyone writes twice.
-
-### Fixes this port carries, and why that is not scope creep
-
-**Asked by the project owner, 2026-09-10**: "if we already had things we needed
-to fix, wouldn't it make sense to fix those as part of the port, and not just
-reintroduce old bugs still needing fixed?" Yes, and the rule is narrow enough
-to keep this a patch.
-
-**The rule: a queued fix rides the port when the port rewrites the code the
-defect lives in, and it changes nothing a learner can do.** Everything else
-waits. That is not a taste judgment - it follows from what a port is. Porting a
-known defect means deliberately reproducing it in code being written from
-scratch, then rewriting the same lines again to fix it. The fix is cheaper
-inside the port than either side of it.
-
-**What it does not license.** New capability stays out, whatever its size,
-which is what keeps § "Versioning decision"'s patch argument true. A defect in
-`core/` or in the Flet-free modules stays out too - the port does not touch
-them, so fixing one there is unrelated work wearing this milestone's name.
-
-**The enumeration is the point.** "Parity with the Flet build" is this
-milestone's checkable definition of done, and a port that also changes behaviour
-cannot be diffed against the old build to prove nothing was lost. So every
-carried fix is named here in advance, and parity means *identical except for
-this list*. That is stricter than an unenumerated parity, not looser.
-
-**Defects in the rewritten surface** - reproduce none of these:
-
-- `PL-3355` - the readouts wrap their value onto a second line at some widths.
-- `PL-Q4VH` - the percent axis is labelled at a different interval from the
-  gridlines it rules.
-- `PL-THXF` - the legend swatch is a solid bar for a trace that is dashed, so
-  the legend misdescribes the chart it explains.
-- `PL-W8DQ` - the four slider active tracks miss the WCAG non-text minimum.
-- `PL-TG60` - six decimals printed on an exhaust integral good to three.
-- `PL-005` - the startup window is full-screen rather than sized and centred.
-
-**Decisions the port has to make anyway**, so they are made deliberately rather
-than by default: `PL-YTX9` (whether a hidden trace keeps its legend entry),
-`PL-CZFY` and `PL-Q4M4` (the elapsed-time readout reads in seconds while the
-axis reads in hours), `PL-LL9Y` (the warning and alert colours against the
-medical alarm-colour convention).
-
-**`PL-16ZC` is out (project owner, 2026-09-10)**, and it is the case that shows
-where the line is. A show/hide control for the clinical references and the
-control marks is small, and it is squarely in the rewritten surface - but it is
-a control that does not exist today, so it is new capability, and the rule
-admits fixes rather than features. It stays a queue item on its own merits.
-
-**It is nonetheless sequenced behind this port** (project owner, 2026-09-14, on
-`PL-NR2K`), which is not a reversal of the line above but its consequence: a
-fix in the rewritten surface rides the port, and a *feature* in the rewritten
-surface waits for it, because either one written on Flet first is written
-twice. Gate 1 § "Sequenced past v0.5.0, so not clearable before it begins"
-carries the disposition and the reasoning. It is not in this milestone's
-Required scope and does not ship with it; what it waits on is `PL-G59B`
-landing, after which it is an ordinary queue item against the Qt chart.
-
-### Items this port moots or transforms
-
-Recorded because the cost of missing them is not a defect - it is work done and
-thrown away.
-
-- **`PL-B9PY`** was listed here on 2026-09-10 as work the port would throw
-  away, and **that was wrong**. Gate 1 places it under "Cleared by v0.5.0
-  itself", not ahead of v0.5.0: decomposing `SimulationView` so two runs render
-  is what the branched-run milestone *is*, so it cannot wait for a port that
-  ships after it without deferring the MVP. It ships on Flet in v0.5.0 and is
-  rewritten here. The duplication is real and is the accepted price of shipping
-  the MVP first. **What this port owes it is the shape, not the code**: the Qt
-  view is built decomposed from the start, so `PL-B9PY`'s design is a required
-  input to `PL-25KS` rather than a pass to redo.
-- **`PL-NGF7`** is a defect *of Flet*: every colour a control takes when
-  Material disables it comes from the Material theme rather than from
-  `theme.py`, so `tools/contrast_check.py` cannot reach it. Qt supplies no such
-  theme, so the port dissolves the defect rather than fixing it. It is also
-  placed ahead of v0.5.0 today.
-- **`PL-F0L8`** asks what accessibility Flet's rendering backend can deliver.
-  After the port the question is `QAccessible`'s, which is a different
-  investigation against a different backend.
-- **`PL-7J96`** ("nothing in this repository draws the interface") is what
-  `PL-YCWZ` now does. **Decided for `PL-YCWZ` (project owner, 2026-09-13), and
-  `PL-7J96` is `dropped` as superseded.** `PL-YCWZ`'s capability is demonstrated
-  rather than assumed - `spikes/qt/qt_spike.py --screenshot` already renders the
-  interface offscreen inside the web container - where `PL-7J96` would have built
-  a Playwright renderer for the interface this milestone replaces. What that
-  accepts is that the shipped Flet build gets no automated wrapping check before
-  the port; the two defects `PL-7J96` records are filed and dispositioned
-  separately, so what is given up is the gate rather than the fixes. Its Gate 1
-  line stays written where the freeze put it, per § "The gate is a snapshot, not
-  a moving target". `PL-MBP6` was blocked on it and is re-pointed at `PL-YCWZ`.
-- **`PL-NC2P`** and **`PL-YMY7`** are coverage items over `app/main.py` and
-  `app/simulation_view.py`'s Flet-construction paths - files this milestone
-  replaces.
-- **`PL-027`** confirms the per-frame slider write-back on a live Flet client.
-
-**`PL-NGF7` is deferred to this milestone (project owner, 2026-09-10)**, and
-the deferral is recorded in Gate 1's own section rather than only here, because
-that gate is frozen and "The gate is a snapshot" requires a deferral to say so
-and say why. `PL-B9PY` is not moved, for the reason in its entry above.
-
-### Definition of done
-
-- Every capability the Flet build has, the Qt build has. No learner-visible
-  regression, checked against the readout labels, the hedges `PL-NV9W`
-  requires, the MAC axis, both clinical references and the control timeline.
-- `make check` green, including the two theme-reading checks re-pointed rather
-  than passing vacuously.
-- A headless rendering test asserts on the real interface, and `PL-2QMK` closes
-  on it.
-- `PL-GS3R`'s worst drawn departure re-measured at every rung of
-  `TIME_BASE_LADDER` and recorded in `docs/MODEL.md`.
-- `docs/ARCHITECTURE.md` describes the interface that exists.
-- `spikes/` is deleted and no module imports Flet.
-
-### Explicitly out of scope for v0.5.1
-
-- **Any new learner-facing capability.** This release adds none, which is what
-  makes it a patch - and it is the line the carried-fix rule below is drawn
-  against, not an exception to it.
-- **The branched run.** v0.5.0's bookmarks, forking and comparison are that
-  milestone's, and this one does not touch them.
-- **Anything under `core/`.** The port's whole tractability rests on `core/`,
-  `app/controller.py`, `app/formatting.py`, `app/chart_time_base.py`,
-  `app/playback.py`, `app/wash_in.py` and `app/control_timeline.py` surviving
-  untouched - `tools/import_boundary_check.py` enforces that boundary and the
-  spike proved it by driving the real `SimulationController` with no adaptation
-  whatever.
-- **v0.6.0's schematic**, which this makes affordable and does not begin.
-- **Flet's web target**, which is given up rather than reimplemented. Nothing
-  ships it today.
 
 ## Development rules for scientific milestones
 
@@ -4075,11 +4227,11 @@ once someone is ready to scope it.
     `saveState()`/`restoreState()` for a layout, `QSettings` or a project file
     for a named preset.
 
-    *Unplaced, and the timing question is live.* v0.5.1 rewrites every layout
+    *Unplaced, and the timing question is live.* v0.4.25 rewrites every layout
     in the dashboard onto Qt, and the argument that release already makes for
     absorbing item 33 — that applying a decision to Flet and then again to Qt is
     the same work twice — applies to layout *architecture* at least as strongly
-    as to palette and spacing. Whether v0.5.1 builds the tiled shell, reserves
+    as to palette and spacing. Whether v0.4.25 builds the tiled shell, reserves
     for it, or ignores it is the project owner's call and is not recorded here.
 
 35. Add an optional model of anaesthesia's own effect on cardiac output and
