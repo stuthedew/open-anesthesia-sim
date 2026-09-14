@@ -4819,7 +4819,7 @@ Two things bind regardless, and neither is in question: any colour chosen still
 has to clear the contrast target `tools/contrast_check.py` enforces, and the
 ISO 5360 agent colours are untouched — they identify an agent and carry no
 urgency, which is why Table 2 footnote b obligates them and nothing obligates
-this one. **The decision binds `v0.5.1` as much as the current interface**: the
+this one. **The decision binds the Qt port as much as the current interface**: the
 port redecides the palette and is the moment an indicator-shaped surface could
 first appear, and it must not arrive carrying a monitor's priority palette.
 

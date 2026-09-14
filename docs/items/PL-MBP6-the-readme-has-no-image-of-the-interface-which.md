@@ -70,7 +70,7 @@ the port. `PL-YCWZ` renders Qt, and a README image is - by this brief's own
 paragraph 2 - a displayed clinical value that "will be read as representative",
 so a Qt screenshot cannot ship while the built interface is Flet without
 asserting a display that does not exist yet. In effect this item now waits for
-`v0.5.1` to *land*, not merely for `PL-YCWZ` to be built.
+the Qt port to *land*, not merely for `PL-YCWZ` to be built.
 
 **One route does not wait, and is not taken here.** This item's "Done when" asks
 that "the project has recorded how it was produced and when it is retaken" - not

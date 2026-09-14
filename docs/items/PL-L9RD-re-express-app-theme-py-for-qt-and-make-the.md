@@ -13,7 +13,7 @@ verify: uv run python tools/import_boundary_check.py && grep -q 'PySide6' src/an
 
 **Problem.** Re-express app/theme.py for Qt and make the interface pass's visual decisions once, absorbing ROADMAP item 33
 
-**`v0.5.1`'s Required scope, item 3**, and it absorbs planned-milestone item
+**The Qt port's Required scope, item 3**, and it absorbs planned-milestone item
 33 - the interface pass the `v0.5.x` row used to carry. A restyle of a
 dashboard about to be rewritten is the same work twice, so palette, type scale,
 spacing rhythm, density and layout are decided once, here.

@@ -1,8 +1,15 @@
 ---
 id: PL-YVM1
 title: Twenty-nine open items, src/anesthesia_sim/app/theme.py and docs/MODEL.md still name the Qt port v0.5.1 across 51 references, a version ROADMAP.md no longer contains, and doc_check cannot see it because none of them is a section citation
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: docs
+feature: release-roadmap-seam
+touches: docs/items/, docs/MODEL.md, docs/WORKING_NOTES.md, src/anesthesia_sim/app/theme.py
 added: 2026-09-14
+closed: 2026-09-14
+verify: '! grep -rq "^\*\*.v0.5.1..s Required scope" docs/items/ && ! grep -qF "v0.5.1" src/anesthesia_sim/app/theme.py docs/MODEL.md'
 ---
 
 **Problem.** Twenty-nine open items, src/anesthesia_sim/app/theme.py and docs/MODEL.md still name the Qt port v0.5.1 across 51 references, a version ROADMAP.md no longer contains, and doc_check cannot see it because none of them is a section citation
@@ -54,3 +61,36 @@ across the queue rather than a fix to one file:
 **Done when** no file outside `ROADMAP.md` names the port by a version that
 `ROADMAP.md` does not currently carry, and `src/anesthesia_sim/app/theme.py`
 and `docs/MODEL.md` read correctly against the plan as it stands.
+
+## Swept 2026-09-14, to the port's name (option 1, project owner, 2026-09-14)
+
+**The rule adopted.** Outside `ROADMAP.md`, the port is named by what it is -
+"the Qt port", or the port item doing the work - never by a version. The
+version lives in `ROADMAP.md`'s heading and timeline row, and in the `§`
+citations of that heading, which `tools/doc_check.py` resolves and so fails
+loudly when the heading moves. Prose carries no number because a number in
+prose is checked by nothing, and this one had already been wrong twice.
+
+**What changed: 56 edits across 32 files**, each asserting its line occurred
+exactly once before it was touched. The six build items' openers
+(`PL-G59B`, `PL-25KS`, `PL-L9RD`, `PL-3SQT`, `PL-YCWZ`, `PL-7SVX`) now read
+"The Qt port's Required scope, item N". The ten deferral blockquotes - `PL-T7PY`'s
+four and the six "rides the Qt port" - carry no version. The five "blocked on
+the item rather than on the version" paragraphs say so in those words.
+`src/anesthesia_sim/app/theme.py:60` and `docs/MODEL.md:4822` bind the
+decision to "the Qt port". `docs/WORKING_NOTES.md:684` defers `PL-NGF7` to
+the port by name.
+
+**"Done when", refined.** The line above says "a version `ROADMAP.md` does not
+currently carry"; the honest reading is *present-tense* naming. A dated record
+of what the port was called on a given day is history and stays: the `reason:`
+fields on `PL-7J96` and `PL-F0L8`, closed items' bodies, and the probe output
+quoted in `PL-VFD8` (a literal `wave` fixture line, not a claim). This item's
+own title and `PL-T7PY`'s describe the defect and stay as written.
+
+**Left where it was, deliberately.** `ROADMAP.md`'s twenty-four `v0.4.25`
+mentions are the cut's to move (`PL-G7RD`), since they change to whatever
+number the port takes and the citations among them are what `doc_check`
+guards. `subprojects/docket/` docstrings and `tools/doc_check.py` comments
+quoting `v0.5.1` describe historical bugs in the tool and are fixtures rather
+than claims about the plan.

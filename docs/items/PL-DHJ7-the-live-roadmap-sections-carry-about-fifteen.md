@@ -19,7 +19,7 @@ section into an open-ended audit of the roadmap's live prose.
 **Why the live ones are the real risk.** `PL-GLBF` established that its own
 three examples cannot go stale — the v0.2.8 list is frozen and all ten ids it
 names are closed. The same *shape* recurs about fifteen times in Gate 1's
-declines and v0.5.1's dispositions, and those lists are still growing with each
+declines and the Qt port's dispositions, and those lists are still growing with each
 triage pass, so they genuinely can drift.
 
 **They do not want one answer.** Sampling shows three kinds:
@@ -48,7 +48,7 @@ record rather than a live claim. The second kind needs nothing.
 **Why it matters.** `PL-GLBF` (the ROADMAP subset counts are hand-maintained
 and unchecked) rests on three numbers that cannot go stale, which is the
 weakest case for the rule it establishes. These fifteen are the strong one:
-they sit in Gate 1's declines and v0.5.1's dispositions, both of which grow
+they sit in Gate 1's declines and the Qt port's dispositions, both of which grow
 with every triage pass - the 2026-09-13 pass added two paragraphs of exactly
 that shape and moved a heading count by thirteen. A subset count that is wrong
 is read as the project's own statement of what it owes, and `bin/docket wave`

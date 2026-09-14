@@ -12,7 +12,7 @@ closed: 2026-09-13
 reason: superseded by PL-YCWZ, on the project owner's decision of 2026-09-13 - ROADMAP.md's v0.5.1 section asked which of the two supersedes the other, and PL-YCWZ is the one whose capability is already demonstrated rather than assumed
 ---
 
-> **The Qt port (`v0.5.1`) moots or transforms this.** `ROADMAP.md` § "v0.4.25 -
+> **The Qt port moots or transforms this.** `ROADMAP.md` § "v0.4.25 -
 > the interface moves to Qt" names this item under "Items this port moots or
 > transforms". Read that entry before starting: the work may be thrown away by
 > the port, or may be a different question after it. Found 2026-09-10.

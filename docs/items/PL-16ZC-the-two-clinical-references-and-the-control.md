@@ -11,7 +11,7 @@ touches: src/anesthesia_sim/app/simulation_view.py
 added: 2026-09-04
 ---
 
-> **Not carried by the Qt port** (project owner, 2026-09-10). `v0.5.1` admits
+> **Not carried by the Qt port** (project owner, 2026-09-10). The port admits
 > queued *fixes* in the surface it rewrites, and this is a control that does not
 > exist today - new capability by that rule, however small. It stays a queue
 > item on its own merits.
@@ -20,8 +20,8 @@ added: 2026-09-04
 > (project owner, 2026-09-14, on `PL-NR2K`). The same rule that keeps this out
 > of the port makes building it on Flet first the one piece of open Gate 1 work
 > the port throws away whole: the legend table it extends lives in
-> `app/simulation_view.py`, which `v0.5.1` Required scope item 2 rewrites from
-> scratch. `blocked-by: PL-G59B` rather than `v0.5.1`, because that field means
+> `app/simulation_view.py`, which the port's Required scope item 2 rewrites from
+> scratch. `blocked-by: PL-G59B` rather than the port's version, because that field means
 > *ships with this milestone* through `MilestoneStates.ships_with` and this
 > deliberately does not - `PL-G59B` is the chart port, which builds the legend
 > and the two references this control would toggle. `ROADMAP.md` Gate 1

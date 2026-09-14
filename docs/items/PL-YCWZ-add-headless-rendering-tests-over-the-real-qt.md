@@ -13,7 +13,7 @@ verify: uv run python tools/import_boundary_check.py && test -f tests/integratio
 
 **Problem.** Add headless rendering tests over the real Qt interface, which is what PL-2QMK has been waiting for
 
-**`v0.5.1`'s Required scope, item 6, and it closes `PL-2QMK`.**
+**The Qt port's Required scope, item 6, and it closes `PL-2QMK`.**
 
 `PL-2QMK` records that no session in the web container can visually confirm a
 chart change, because Flet's web renderer fetches Flutter assets the egress

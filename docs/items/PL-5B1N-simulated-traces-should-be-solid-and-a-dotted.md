@@ -65,7 +65,7 @@ answer all three:
 
 **Prerequisites and dependencies.**
 
-- **v0.5.1, the Qt port.** The chart is rewritten on pyqtgraph in that release;
+- **The Qt port.** The chart is rewritten on pyqtgraph in that release;
   deciding this against the Flet chart is the work done twice that the port's
   own scoping argument refuses.
 - The forward curve is a second integration from the current state under a
@@ -83,11 +83,11 @@ dashed trace) is open and touches the same legend this would have to extend.
 
 **Triaged 2026-09-13.** `P2`, `M`, `feature`, `needs-decision`.
 
-**`needs-decision` rather than blocked on v0.5.1, which was tried and is wrong.**
+**`needs-decision` rather than blocked on the port's version, which was tried and is wrong.**
 The brief's prerequisite is real - answering the channel question against the Flet
-chart is the work done twice, since v0.5.1 rewrites the chart on pyqtgraph and
+chart is the work done twice, since the port rewrites the chart on pyqtgraph and
 redecides dash patterns, alpha and stroke widths with it. But `blocked-by:
-<version>` holds only until that version is *scoped*, and v0.5.1 was scoped
+<version>` holds only until that version is *scoped*, and the port was scoped
 2026-09-10, so `docket check` promotes the item straight back out - it says so
 outright. The carve-out is for a milestone nobody has scoped yet, which is
 `PL-B9PY`'s case and not this one.

@@ -53,7 +53,7 @@ not, or this is `dropped` and `docs/WORKING_NOTES.md` records that measuring ad
 hoc and keeping the numbers in the item is deliberate.
 
 **Weigh the Qt decision into the answer before building anything.** `PL-QXSB`
-decided to leave Flet and `v0.5.1` scopes the port, so a harness built on
+decided to leave Flet and `ROADMAP.md` scopes the port, so a harness built on
 `flet.messaging.session.Session` measures a toolkit this project is removing.
 The *method* may survive the port - a real controller, a real view, a real
 serializing transport, timed in three stages - but the harness as written does

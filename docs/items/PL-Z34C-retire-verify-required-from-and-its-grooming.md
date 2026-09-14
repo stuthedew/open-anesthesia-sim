@@ -109,7 +109,7 @@ gaining a command.
 **Two of the fifteen will not drain by being worked.** `PL-NC2P` and `PL-YMY7`
 are coverage items over `app/main.py` and `app/simulation_view.py`'s
 Flet-construction paths, which `ROADMAP.md` § "Items this port moots or
-transforms" names as files `v0.5.1` replaces. They will most likely close as
+transforms" names as files the port replaces. They will most likely close as
 `dropped`, which still removes them from the set — noted because it means the
 count reaching zero does not require all fifteen to be *done*.
 
@@ -164,7 +164,7 @@ added 2026-08-23 to 2026-08-26, and nothing can join it - so enumerating them is
 exact rather than a snapshot that goes stale. Recounted today: still 15, the same
 ids. `blocked-by` takes a list, `resolved` counts `dropped` as well as `done`
 (which matters, because `PL-NC2P` and `PL-YMY7` are coverage items over files
-`v0.5.1` replaces and will most likely drop), and `checks.py` already raises
+the port replaces and will most likely drop), and `checks.py` already raises
 "every blocker has closed; it is ready to promote" at exactly the moment the
 count reaches zero. **The trigger nobody was tracking is now tracked by a check
 that already existed.**

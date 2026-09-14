@@ -13,7 +13,7 @@ verify: uv run python tools/import_boundary_check.py && grep -rq 'pyqtgraph' src
 
 **Problem.** Port the concentration chart to pyqtgraph: six traces, both clinical references, both axes, the control marks and the wash-in plot
 
-**`v0.5.1`'s Required scope, item 1.** The spike (`spikes/qt/`, `PL-55DH`)
+**The Qt port's Required scope, item 1.** The spike (`spikes/qt/`, `PL-55DH`)
 is the working reference for the traces, both axes and both clinical
 references - it draws them from `controller.drawn_window` with the real
 `SimulationController` and no adaptation. What it deliberately does **not**
@@ -23,7 +23,7 @@ input-timeline series) and the wash-in plot.
 **`PL-GS3R` lands here rather than separately.** Its chord-width column rule -
 columns as a function of the selected span, with
 `CHART_COLUMN_BUDGET_PER_SERIES` becoming a floor - is what this milestone
-makes affordable, and it is why that item is `blocked-by: v0.5.1`. Measured:
+makes affordable, and it is why that item is blocked on this one. Measured:
 49.4 ms of a 200 ms budget at 3 204 points on Qt, against about 78 ms for
 Flet's diff alone.
 
@@ -55,7 +55,7 @@ against the snapshot's own divisor; the dash patterns survive; and
 Not on its own merits - it is `feature`/`ux` classed and nothing it draws is
 newly wrong. It is raised because the Qt port moved ahead of v0.5.0
 (`PL-RKWB`), and re-pointing the items that waited on the port from
-`blocked-by: v0.4.25` to the port item that does their work put two `P1`
+`blocked-by: <the port's version>` to the port item that does their work put two `P1`
 `safety`-classed items directly behind this one:
 
 - `PL-GS3R` - 0.26 MAC of departure between the drawn trace and the run at the

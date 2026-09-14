@@ -13,7 +13,7 @@ verify: uv run python tools/import_boundary_check.py && ! grep -rq 'import flet'
 
 **Problem.** Delete spikes/ and the last Flet import once the port is complete
 
-**`v0.5.1`'s Required scope, item 7, and it is the last one.**
+**The Qt port's Required scope, item 7, and it is the last one.**
 
 Two deletions: `spikes/` entire - `PL-55DH` built it to throw away cleanly, and
 `rm -rf spikes/` is the whole procedure - and the last `import flet`.

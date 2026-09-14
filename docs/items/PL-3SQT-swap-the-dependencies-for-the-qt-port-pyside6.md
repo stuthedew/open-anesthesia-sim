@@ -13,7 +13,7 @@ verify: uv run python tools/import_boundary_check.py && grep -q 'PySide6' pyproj
 
 **Problem.** Swap the dependencies for the Qt port: PySide6-Essentials, pyqtgraph and numpy in, flet and flet-charts out, and re-argue the 'Decided: no numpy' note on its new scope
 
-**`v0.5.1`'s Required scope, item 5.** PySide6-Essentials, pyqtgraph and numpy
+**The Qt port's Required scope, item 5.** PySide6-Essentials, pyqtgraph and numpy
 enter; `flet` and `flet-charts` leave.
 
 **numpy is the part that needs an argument rather than an edit.**

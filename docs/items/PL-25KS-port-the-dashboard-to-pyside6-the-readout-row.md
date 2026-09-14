@@ -13,7 +13,7 @@ verify: uv run python tools/import_boundary_check.py && grep -rq 'PySide6' src/a
 
 **Problem.** Port the dashboard to PySide6: the readout row, the four parameter controls, the agent selector, the transport, the new-case dialog and the notice banner
 
-**`v0.5.1`'s Required scope, item 2** - the bulk of it.
+**The Qt port's Required scope, item 2** - the bulk of it.
 `app/simulation_view.py` is 3 619 lines and this is most of what replaces it.
 
 **The hedges are requirements, not labels.** "end-tidal-equivalent" and
