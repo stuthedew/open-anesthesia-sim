@@ -9,6 +9,7 @@ feature: core-domain-language
 touches: src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/concentration.py
 added: 2026-09-13
 closed: 2026-09-14
+pr: 561
 verify: uv run pytest tests/unit/test_parameters.py && grep -qF 'Which vocabulary a new field in this file takes' src/anesthesia_sim/core/parameters.py
 ---
 

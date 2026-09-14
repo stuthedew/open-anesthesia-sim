@@ -8,8 +8,9 @@ classes: docs
 feature: core-domain-language
 touches: docs/MODEL.md, tests/unit/test_core_vocabulary_check.py
 added: 2026-09-13
-verify: python3 tools/doc_check.py check && grep -qF 'TissueGroup.perfusion_fraction' docs/MODEL.md
 closed: 2026-09-14
+pr: 561
+verify: python3 tools/doc_check.py check && grep -qF 'TissueGroup.perfusion_fraction' docs/MODEL.md
 ---
 
 **Problem.** MODEL.md's Symbols table has no row for f_i, the stored per-group perfusion fraction its own Tissue groups section uses in Q_i = f_i Q
