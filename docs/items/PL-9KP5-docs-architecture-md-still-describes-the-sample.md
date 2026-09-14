@@ -9,6 +9,7 @@ feature: documentation-standard
 touches: docs/ARCHITECTURE.md
 added: 2026-09-14
 closed: 2026-09-14
+pr: 582
 verify: python3 tools/doc_check.py check && ! grep -qF 'history_window()' docs/ARCHITECTURE.md
 ---
 

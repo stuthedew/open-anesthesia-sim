@@ -9,9 +9,9 @@ feature: planning-cadence
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/tests/test_release.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-14
 closed: 2026-09-14
+pr: 580
 verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_a_section_bearing_row_without_a_number_is_the_beat_once_the_gate_is_clear' subprojects/docket/tests/test_roadmap.py
 ---
-
 
 **Problem.** The Qt port is the next substantial work but sits on a — timeline row, so bin/docket wave anchors on v0.5.0 and every port item reads as placed by no section
 

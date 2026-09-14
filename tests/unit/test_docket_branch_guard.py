@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -55,7 +56,23 @@ def _clone_of_a_moved_remote(tmp_path: Path, *, moved: bool = True) -> Path:
     shim.parent.mkdir()
     shim.write_text(f'#!/bin/sh\nexec "{REPO / "bin" / "docket"}" "$@"\n', encoding="utf-8")
     shim.chmod(0o755)
+    # `bin/docket` execs bare `python3`, and `_guard_env` leads `PATH` with this
+    # `bin/`, so the hook runs under the interpreter running this suite rather
+    # than the machine's own - Apple's 3.9 on macOS, below docket's 3.11 floor,
+    # which failed three tests here on the project owner's Mac while CI stayed
+    # green (`PL-Y6W9`). `test_docket_digest_hook.py` carries the full account.
+    (work / "bin" / "python3").symlink_to(sys.executable)
     return work
+
+
+def _guard_env(root: Path, tmp_path: Path) -> dict[str, str]:
+    """The environment the hook runs under, fixed so nothing leaks in from pytest's."""
+    return {
+        "CLAUDE_PROJECT_DIR": str(root),
+        "PATH": f"{root / 'bin'}:/usr/bin:/bin:/usr/local/bin",
+        "HOME": str(root),
+        "TMPDIR": str(tmp_path / "markers"),
+    }
 
 
 def _run_guard(root: Path, tmp_path: Path, session: str = "s1") -> subprocess.CompletedProcess[str]:
@@ -63,12 +80,7 @@ def _run_guard(root: Path, tmp_path: Path, session: str = "s1") -> subprocess.Co
         ["bash", str(HOOK)],
         cwd=root,
         input=json.dumps({"session_id": session, "tool_name": "Edit", "cwd": str(root)}),
-        env={
-            "CLAUDE_PROJECT_DIR": str(root),
-            "PATH": "/usr/bin:/bin:/usr/local/bin",
-            "HOME": str(root),
-            "TMPDIR": str(tmp_path / "markers"),
-        },
+        env=_guard_env(root, tmp_path),
         capture_output=True,
         text=True,
         check=False,
@@ -147,3 +159,24 @@ def test_branch_guard_lets_the_edit_through_when_it_cannot_run(tmp_path: Path) -
 
     assert result.returncode == 0
     assert result.stdout == ""
+
+
+def test_the_hook_runs_under_the_interpreter_running_this_suite(tmp_path: Path) -> None:
+    """`bin/docket` execs bare `python3`, and the fixture decides which one that is.
+
+    An identity rather than a floor, for the reason `test_docket_digest_hook.py`
+    gives: a floor fails only where the project owner is standing, and this
+    fails anywhere the fixture goes back to the system directories.
+    """
+    (tmp_path / "markers").mkdir()
+    work = _clone_of_a_moved_remote(tmp_path, moved=False)
+
+    found = subprocess.run(
+        ["bash", "-c", "python3 -c 'import sys; print(sys.version)'"],
+        env=_guard_env(work, tmp_path),
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+
+    assert found == sys.version, f"the hook gets {found}, not this suite's {sys.version}"

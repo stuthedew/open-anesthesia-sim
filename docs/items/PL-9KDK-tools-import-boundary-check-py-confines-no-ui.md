@@ -9,6 +9,7 @@ feature: qt-port
 touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-14
 closed: 2026-09-14
+pr: 581
 verify: uv run python tools/import_boundary_check.py && grep -q 'package="flet"' tools/import_boundary_check.py
 ---
 

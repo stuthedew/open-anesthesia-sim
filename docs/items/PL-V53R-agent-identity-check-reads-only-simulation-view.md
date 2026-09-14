@@ -9,9 +9,9 @@ feature: qt-port
 touches: tools/agent_identity_check.py, tests/unit/test_agent_identity_check.py, docs/ARCHITECTURE.md, Makefile
 added: 2026-09-14
 closed: 2026-09-14
+pr: 581
 verify: uv run pytest tests/unit/test_agent_identity_check.py && grep -q 'def test_the_writer_is_found_in_whichever_app_module_holds_it' tests/unit/test_agent_identity_check.py
 ---
-
 
 **Problem.** agent_identity_check reads only simulation_view.py and keys on _apply_agent_color_scheme by name, so moving one class out of that module silences it rather than failing
 
