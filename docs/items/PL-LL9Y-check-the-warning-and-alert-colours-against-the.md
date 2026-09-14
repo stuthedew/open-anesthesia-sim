@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: presentation-safety
+milestone: v0.4.23
 touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
 added: 2026-09-02
 closed: 2026-09-14

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: presentation-safety
+milestone: v0.4.23
 touches: tools/contrast_check.py, tools/agent_identity_check.py, docs/ARCHITECTURE.md
 added: 2026-09-08
 closed: 2026-09-14

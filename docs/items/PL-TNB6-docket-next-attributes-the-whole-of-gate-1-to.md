@@ -1,14 +1,15 @@
 ---
 id: PL-TNB6
 title: docket next attributes the whole of Gate 1 to the v0.4.x step, where the plan makes Gate 1 its own row that no patch may ship
-status: ready
+status: done
 added: 2026-09-06
+closed: 2026-09-14
 priority: P2
 effort: S
 classes: defect, infra
 feature: planning-cadence
-touches: subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py
-verify: uv run pytest subprojects/docket/tests/test_plan.py && grep -q 'def test_the_placement_line_names_the_step_that_clears_the_gate' subprojects/docket/tests/test_plan.py
+touches: subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_cli.py
+verify: uv run pytest subprojects/docket/tests/test_plan.py && grep -q 'def test_the_gate_reason_says_which_step_is_current_not_which_clears_the_gate' subprojects/docket/tests/test_plan.py
 ---
 
 **Problem.** Every ranked item in `bin/docket next` now carries a placement
@@ -52,3 +53,23 @@ the timeline and "The cadence" already say what is true.
 says which step is current without implying it clears anything, and a test
 pins whichever wording is chosen against a store with a frozen gate and a
 current step that is not the gate.
+
+**Closed 2026-09-14. It is a message fix, which is what the brief left open.**
+`Scope.step_label` carries the row the project stands on and nothing else, and
+`milestone_scope` attributes no gate to it: the label is passed in by `wave`
+whenever the step's version differs from the gated milestone's, and the reading
+underneath was already right. Only the sentence built from it was wrong.
+
+**The second wording was taken.** The line now reads "On the debt gate recorded
+under v0.5.0 — the case you can branch, which clears before that milestone is
+implemented; the project stands on v0.4.x — the code is the model." Naming the
+step that actually clears the gate was the other option and it cannot be built
+from what `Scope` holds: the gate is a timeline row of its own, `Scope` carries
+no row for it, and the milestone the gate is recorded under is already the
+first clause. This says which step is current and leaves the clearing where
+"The cadence" puts it.
+
+The same claim was asserted twice — `test_plan.py` on the reason line and
+`test_cli.py` end to end through `docket next` — so `tests/test_cli.py` joined
+this item's `touches`. Both now assert the new wording and that "clears it"
+appears nowhere in the output.

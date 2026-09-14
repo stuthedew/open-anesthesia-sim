@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning, docs
 feature: release-process
+milestone: v0.4.23
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items/
 added: 2026-09-14
 closed: 2026-09-14
@@ -29,8 +30,10 @@ two files, neither of which moves a number: a docstring on
 `core/alveolar.py` and one `sources` entry plus a rewritten `provenance_gap` on
 `data/machines/reference_circle_system.json`.
 
-**What the release is about**, in one line each, is in `ROADMAP.md` §
-"Current baseline: v0.4.22": the specification stopped saying a measurement had
+**What the release is about**, in one line each, is in `ROADMAP.md`'s
+`v0.4.22` version-table row under § "Versioning decision" - it was the current
+baseline when this item closed, and `v0.4.23` has since taken that heading: the
+specification stopped saying a measurement had
 not been sought (`PL-QBKQ`, `PL-XWCY`, `PL-DJYF`); what a number says when
 nothing around it qualifies it (`PL-YLKR`, `PL-DNHM`, `PL-3M3K`); and nine
 apparatus items, one of which recommended destroying work (`PL-8M8H`).

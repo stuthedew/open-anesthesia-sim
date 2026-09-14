@@ -908,6 +908,18 @@ list does not hold — cannot be closed by clearing this gate in any order, so i
 is counted apart and the beat asks for the rest. The entry stays on the list;
 the list is frozen, and this is a count of what it can be asked for today.
 
+A second carve-out splits them again, and this one is read from the roadmap:
+debt the gated milestone's own `Required scope` names is cleared *by* that
+milestone rather than before it, so the gate is open once everything outside
+that scope is clear. Membership in `Required scope` is the whole test, because
+that is how the rule states it — the group heading a frozen list writes the
+same split under is a person's summary and is not parsed. The two carve-outs
+are disjoint and `blocked_outside` is computed first: an entry that is
+milestone work *and* waits on work off the list is not something the milestone
+can simply clear, and the three counts add back up to the open one either way.
+Without this the beat kept asking a gate to clear work that implementing the
+milestone is what closes, which is a target the roadmap forbids.
+
 Once that gate is clear it counts the milestone's own `Required scope` the same
 way, and the split decides the beat: ids still open leave an `implement`, and
 all of them closed leaves a `release`. Without it a milestone recording a gate

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: core-guard-coverage
+milestone: v0.4.23
 touches: src/anesthesia_sim/core/matrix_exponential.py, tests/unit/test_matrix_exponential.py, tests/unit/test_agent_simulation_validation.py, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-09-14

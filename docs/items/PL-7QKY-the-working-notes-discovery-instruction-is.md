@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, session-cost
 feature: dev-tooling
+milestone: v0.4.23
 touches: subprojects/docket/src/docket/notes.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_notes.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, docket.toml, docs/WORKING_NOTES.md
 added: 2026-09-01
 closed: 2026-09-14

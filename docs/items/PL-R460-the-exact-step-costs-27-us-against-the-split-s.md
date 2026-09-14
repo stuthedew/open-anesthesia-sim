@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: perf
 feature: numerical-domain
+milestone: v0.4.23
 touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/matrix_exponential.py, tests/unit/test_state_capture.py, tests/unit/test_matrix_exponential.py, tests/unit/test_governing_equations.py, docs/WORKING_NOTES.md
 added: 2026-09-06
 closed: 2026-09-14

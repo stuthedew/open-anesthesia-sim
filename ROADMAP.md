@@ -82,7 +82,8 @@ capability-boundary rule above governs.
 | v0.4.19 | Completed | **The release where three questions were answered and `core/` did not change a line.** The second half of that is a tree-object identity rather than a reading of the diff: `src/anesthesia_sim/core/` resolves to `7a49512` at both `v0.4.18` and this release, and `src/anesthesia_sim/data/` to `d5a26cf`, so every equation, constant, numerical method, unit and stored parameter is byte-identical and not one number the model produces was recomputed; `tests/reference/` gained 251 lines and lost none, so every pinned published and canonical value still stands. All three `P1` entries settle a question instead of adding behavior. `PL-1XPX` decides what the readouts show while two branches are displayed — both runs, paired per compartment, each naming its run in text — and refuses a difference readout on a domain ground rather than a layout one, because the arithmetic difference of two alveolar fractions is not a quantity with a conventional clinical reading; the readout cap that was recommended and approved is recorded as refused by `docs/MODEL.md` § "Minimum displayed outputs", which already forbids a required value leaving the display with the curve that draws it. `PL-RFLN` removes a candidate for desflurane's five-minute washout residual: the published apparatus's dead space is an alveolar-ventilation decrement rather than an inspired fraction, and at the published magnitude it closes only a quarter to two fifths of the 2.33 published SD while pushing an isoflurane cohort that was inside its spread out of it — the common-mode failure every earlier candidate died of, now pinned by two mutation-checked reference tests, with the parameter file again unchanged. `PL-XJ5P` closes the hole under `.claude/rules/citing-sources.md`'s promise that "there is a route": a private reference corpus is adopted as the terminal route, verified end to end from a session before the rule was written, and what a *miss* means is written down — record the gap and put the reading to the owner, rather than narrowing the claim or taking a search summary for a reading. Three interface entries apply the same standard from the reader's side: the readout row names the substance its numbers belong to (`PL-TCD1`), the new-case dialog's carry-over sentence names only settings the reader can actually set (`PL-0Q1T`), and the wash-in panel's 786 characters of standing prose are gone (`PL-F9TQ`). Two more turn a convention into something that runs: `PL-FZ6T` holds `core/` to `docs/MODEL.md` in code — every Symbols Code cell must resolve to a real attribute, the retired accessor names may not reappear, and a partition-coefficient identifier must name both phases outward from the gas phase — and `PL-RC0M` replays a blocked item's `verify:` command so it cannot rot unnoticed and redden whichever pull request unblocks it. `PL-B667` states the upper bound `core/` has always enforced in five places. Ten items. |
 | v0.4.20 | Completed | **The release where four stored values' sources were read back against the publications, and not one number moved.** The second half is measured rather than asserted: every numeric value in every data file that existed at `v0.4.19` is identical at this release - all twelve partition coefficients, the eleven reference-patient parameters, every MAC and MAC-awake - and `src/anesthesia_sim/app/` and `.github/` resolve to the same tree objects. `src/anesthesia_sim/core/` is *not* byte-identical, and this release cannot make v0.4.19's claim: `PL-4YY1` moved `circuit_volume_l = 6.0` and `default_fresh_gas_flow_l_min = 4.0` out of `core/circuit.py`'s dataclass field defaults into a new `data/machines/reference_circle_system.json` - machine parameters as their own kind, beside patients and agents - changing neither value, and `AgentUptakeSystem.for_agent()` now passes both explicitly so that every scientific constant a run uses comes from a cited file. **They had been invisible to the only tool built to catch exactly this:** `tools/doc_check.py`'s `check_provenance` walks *data files* in both directions, so a constant that never entered one could not be missing from anything. The new file records that the Workbook's published circuit volume is 8.0 L against this project's 6.0, kept on the project owner's ruling of 2026-09-01 that the value is not critical, and what the departure is worth - $`\tau_C = V_C / \dot V_F`$ is 90 s here against 120 s at 8.0 L, a 25 percent shorter machine lag, which is the part of the early rise belonging to the apparatus rather than to uptake and the most-taught point about a circle system. `default_fresh_gas_flow_l_min` has no published counterpart at all, and the `provenance_gap` says so rather than leaving the silence to read as an oversight. The literals stay in `circuit.py` as defaults so a bare unit test can exercise circuit physics without loading package data, pinned to the file by `test_the_bare_circuit_defaults_match_the_shipped_machine_file`. **The other three read a source and came back with a negative, which is the outcome this kind of work mostly has.** `PL-0NQ1`: `reference_adult.json` stores vessel-rich perfusion 0.76, and De Wolf et al. 2012's Table 1 - the same table all twelve partition coefficients come from - prints 75.8 / 18 / 6, which sums to 99.8. The stored value does not move and *could not*: `_perfusion_fractions_must_sum_to_one` and `core/patient.py` independently reject any set differing from 1.0 by more than `FLOW_FRACTION_TOLERANCE = 1e-12`, so a session deciding the published figure was right would discover that only after editing the file. What the difference is worth is recorded instead - $`\tau = V_i / (Q_i \lambda)`$ scales inversely with perfusion, so 0.76 against 0.758 moves the vessel-rich time constant by 0.26 percent - and the finding as relayed was corrected rather than smoothed: the review said this file cites De Wolf, and it does not; the three *agent* files do, which makes the finding sharper, since the table carrying the discrepant number is one this file never cites. `PL-ZP7Z`: the Workbook's page-168 note says its volatile coefficients are Yasuda, Targ and Eger's and, one sentence later, that sevoflurane's are "taken from the package insert and Abbott data" - and its reference 45 is `Anesthesiology 69:A615`, the 1988 ASA meeting *abstract*, not the 1989 *Anesthesia & Analgesia* paper the agent files cite. The arithmetic is close and settles nothing about the route: 1.70 x 0.65 = 1.1050 against a stored 1.1, desflurane 1.29 x 0.42 = 0.5418 against 0.54, isoflurane 1.57 x 1.3 = 2.0410 against 2.1, missed by 2.9 percent and still inside half the measurement's own standard deviation. **The tier stays at 3 and would stay there even if the attribution were confirmed** - a program's statement about its own provenance is the program talking - and the one comparison that would settle it needs Yasuda 1989's tissue:gas tables, which are in neither PubMed Central nor the private corpus. `PL-ZDWL` is the flattest negative of the three and the one that closes a question: `PL-RFLN` had left the operating-point ventilation load-bearing, both Yasuda papers were read at full text from the private corpus, and **neither publishes a ventilation at all** - it was titrated per subject to normocapnia at an end-tidal carbon dioxide of 5.5-6.5 percent rather than set to a figure, with no $`\dot V_E`$ and no $`f_A`$ reported in either paper. What the *Anesthesiology* paper does settle is the definition the derivation needed, doses to the alveoli as $`F_I \dot V_A \times 30`$ min "where $`\dot V_A = f_A \dot V_E`$", so $`f_A`$ is the alveolar fraction of *total* minute ventilation; the candidate table's second row is recorded as still unreadable from the text rather than becoming a sourced result. Five items, one of which is the v0.4.19 cut itself. |  5 items |
 | v0.4.21 | Completed | **The release where the stored coefficients were checked against the measurement they descend from, and the specification learned to argue backwards from harm.** Nothing a reader of the simulator sees changed, and that is measured: `src/anesthesia_sim/app/` and `tests/reference/` resolve to the same tree objects as at `v0.4.20` (`7586231`, `e519afd`), so no interface changed and no pinned reference state was recomputed; every numeric leaf of all five data files is identical across the two trees - zero differences, the whole of that diff being source metadata - and `src/anesthesia_sim/core/` changed by one docstring. **The document three releases could not reach arrived.** Yasuda, Targ and Eger's *Solubility of I-653, sevoflurane, isoflurane, and halothane in human tissues*, Anesth Analg 1989;69(3):370-3 (PMID 2774233), was supplied by the project owner and read at full text; `PL-B9K7` checked its Table 1 - tissue:gas, 14 autopsy specimens, 6-10 per tissue, mean age 65.8 +/- 14.4 yr - against the nine stored tissue:gas coefficients and found **all nine inside 0.71 SD of the measured mean**, two of them (sevoflurane fat 34.0, desflurane vessel-rich 0.54) the measurement itself. A set assembled from anywhere else does not do that, and the Workbook's self-contradiction for sevoflurane resolves in Yasuda's favour on the same arithmetic. `PL-FN5F` split the decision and the project owner took both halves: **adopt the paper, do not store its figures.** One flag moves - the Yasuda entry becomes `"adopted": true` in all three agent files, its `tier` having already been `primary`, because what was wrong was the flag saying the stored values came from somewhere else when they came from there - and De Wolf et al.'s authority narrows to `blood_gas_partition_coefficient` alone, that paper having measured no coefficient, which is exactly why its table could turn out to be somebody else's measurement passed along. Provenance counts move from 25 tier-3 values to 16 and from 9 tier-1 to 18. Storing the published figures was refused on three costs: it would move displayed time constants by -8.3 to +4.5 percent, require recomputing every pinned reference state, and end the property the cross-agent comparison rests on - today all twelve coefficients carry one implementation's identical rounding, so every agent shares the same error, which is what a MAC-normalized comparison needs. **Two findings from the same reading are not about provenance and are now in the files:** the vessel-rich coefficient is Yasuda's *brain* value rather than a weighted group - Table 1 measures brain, heart, liver and kidney separately (sevoflurane 1.15, 1.21, 1.25, 0.78) and no weighting lands where the stored figures land, so a learner reading the vessel-rich trace is reading a brain trace - and the paper is **not** a source for the stored blood:gas values, having measured none. `PL-8GJ6` closed by dissolving: the companion paper's own reference 10 confirms `Anesthesiology 69:A615` is the human-tissues abstract, and what it reports stopped mattering once the full text was held. `PL-LS3H` quantifies what the ideal circuit omits from that companion paper (PMID 2764290) - plastic/gas and rubber/gas coefficients for every component, the PVC mask pad reaching 51.7, 104, 170 and 323 for desflurane, sevoflurane, isoflurane and halothane, the ranking holding at every equilibration time from 7.5 min to 9 weeks - so `docs/MODEL.md` "Known limitations" and `core/circuit.py`'s docstring now carry the measured cost and the consequence a learner needs: the inert circuit is most nearly true for desflurane and least for halothane. No equation changed, and the item says why not. **The specification learned to argue in the other direction.** `PL-BLHV` writes the positive intended-use statement `docs/MODEL.md` never had, drawing the exclusion **at the data** rather than at physical proximity - which would forbid a resident running the simulator on a workstation during a case, carrying no hazard, and permit a run built from a real patient's weight, age and cardiac output at a desk, which is a prediction about that patient - and records **Class C uniformly**, on Annex B.4.3's rule that a software failure's probability is *set to 1*, after the brief's own "undocumented classification defaults to Class C" claim was found in no reachable source and corrected rather than written down. `PL-FDBK` adds the first hazard table: six rows of how a reader could be misled, what stops it, and the test that holds the stop, with `check_named_tests` in `tools/doc_check.py` resolving every test name the document cites so the last column cannot decay into decoration - scoped to the specification on a count rather than a preference, 161 names cited tree-wide and the 21 that resolve to nothing all in `docs/items/`, where a forward reference is correct. **Fourteen apparatus items, nine of them a command asserting something untrue**: a commit count for a branch with none (`PL-NB4D`), a diff line that had been removed (`PL-VP40`), a checkbox contradicting the figure above it (`PL-VFVW`), a rules block missing a rule it presented as complete (`PL-F4JS`), an argument order that swallowed the title (`PL-YNCW`), a placeholder a shell read as redirection (`PL-HKF4`), a recovery that cleared the wrong ref (`PL-K2C8`), a beat calling a finished milestone unfinished while the owner asked for that release and was right (`PL-KD98`), and a feature survey with no plan placement (`PL-BZCM`). Beside them: a lane that sent apparatus work to a simulator session (`PL-GVNS`), an exclusion inside a scope bullet read as membership (`PL-NBCS`), nine items recovered from five abandoned branches (`PL-ZGK2`) and the undeclared `blocked-by` edge the first check after that recovery surfaced (`PL-YPWT`), and a lost handover fixed with a rule rather than a mechanism (`PL-H1JD`). Twenty-one items, one of which is the v0.4.20 cut itself. |  21 items |
-| v0.4.22 | Completed / current baseline | **The release where what this project says about itself was checked against what is true.** Nothing a reader of the simulator sees changed, and that is measured rather than asserted: `src/anesthesia_sim/app/`, `tests/reference/` and `.github/` resolve to the same tree objects as at `v0.4.21` (`7586231`, `e519afd`, `5aa42db`), so no interface element, no pinned reference state and no CI gate moved. The whole of `src/` changes in two files and neither changes a number - `core/alveolar.py` gains a docstring, `data/machines/reference_circle_system.json` gains one `sources` entry and a rewritten `provenance_gap` - so `2.5`, `4.0` and `6.0` stand where they stood, and no equation, parameter, unit, numerical method or solver step is touched. **The science half is the specification understating what it knows.** `PL-QBKQ`: `reference_circle_system.json` said a measured circle-system volume "has not been sought yet", and one had been - Targ, Yasuda and Eger's 9860 ml by water filling, which does *not* close the gap because it includes a latex reservoir bag standing in for the patient's lungs, and the apparatus's own share cannot be recovered from a volume obtained by filling that bag with water. What it supplies is a measured **upper bound**, ordering three figures of which one is measured: this project's 6.0 L, Gas Man's published 8.0 L, and that 9.86 L. The like-for-like comparison is the one to read - apparatus plus lung is 6.0 + 2.5 = 8.5 L against 9.86, 13.8% below, where the bare 6.0 reads as 39% below. `PL-XWCY`: the same paper strikes circuit-wall absorption as the cause of desflurane's washout residual and, in the same measurement, says a real circle system measurably retards sevoflurane and isoflurane relative to ideal - a named, quantified mechanism this model has no term for, bearing on cohorts already sitting at +3.79 and +4.15 SD. `PL-DJYF`: `AlveolarCompartment` restated the reference patient's 2.5 L and 4.0 L/min as dataclass defaults while `reference_adult.json` stored both with their provenance, the same restatement `PL-4YY1` found on `BreathingCircuit`; the docstring now names the file as the authority and `test_the_bare_alveolar_defaults_match_the_shipped_patient_file` fails if the two ever disagree, because a reader meeting `2.5` in `core/` will take it for the model's alveolar volume whatever the prose says. **The safety half is what a displayed value may say when nothing around it qualifies it.** `PL-YLKR` derives the chart's hover readout the way § "Displayed precision" derives the numeric readouts - three lines with the qualifiers ahead of the number, every number through `app/formatting.py`, the readouts' own resolution with the argument for a finer one answered rather than inherited, and which series answer at all. The measurement that decides it: `pyqtgraph.ScatterPlotItem` defaults `tip` to `'x: {x:.3g}\ny: {y:.3g}'`, which on the fat compartment at 48.3 s of a 1 MAC sevoflurane hour prints `3.52e-05` where the readout beside it says `<0.01%` - five decimal places past the derived resolution, no unit, on a chart carrying two axes a factor of two apart. Its build is split to `PL-YVHK` behind the port, which is also where the second finding lands: `ScatterPlotItem` ships `hoverable` set to `False` and a plotted line carries no hover at all, so a port silent about it *loses* the affordance rather than inheriting it (`PL-DNHM`), against a milestone whose definition of done is parity. `PL-3M3K` corrects the brief that said the paused-only restriction transfers whole to Qt; it was a property of Flet's per-frame per-point diff. **The apparatus half is commands answering confidently and wrongly.** `bin/docket branch` told a session whose pull request had already merged to merge the base in rather than restart, which is exactly the push that loses the work (`PL-8M8H`); `bin/docket concurrent` was dominated by `docs/MODEL.md` - 16 of one probe's 22 rule-outs shared only that file - so it refused nearly everything and discriminated nothing, and now groups the tier by path, rarest first, so the strong evidence reads as strong (`PL-PGZK`); work landing between a release cut and its merge sat inside the tag's span and outside its notes with nothing reconciling the two (`PL-028F`); `ROADMAP.md`'s subset counts were hand-maintained and unchecked, and the one a field can decide now is (`PL-GLBF`); the contrast table's reasons cited line numbers that drift, and now cite symbols (`PL-J7C5`); and `PL-16ZC` sat in the gate's clearable set with no deferral marker, so a session clearing the gate would have built a Flet control `v0.5.1` deletes (`PL-NR2K`). `PL-JYR4` closed by its branch merging rather than by work on it. Fifteen items, one of which is the v0.4.21 cut itself. | 15 items |
+| v0.4.22 | Completed | **The release where what this project says about itself was checked against what is true.** Nothing a reader of the simulator sees changed, and that is measured rather than asserted: `src/anesthesia_sim/app/`, `tests/reference/` and `.github/` resolve to the same tree objects as at `v0.4.21` (`7586231`, `e519afd`, `5aa42db`), so no interface element, no pinned reference state and no CI gate moved. The whole of `src/` changes in two files and neither changes a number - `core/alveolar.py` gains a docstring, `data/machines/reference_circle_system.json` gains one `sources` entry and a rewritten `provenance_gap` - so `2.5`, `4.0` and `6.0` stand where they stood, and no equation, parameter, unit, numerical method or solver step is touched. **The science half is the specification understating what it knows.** `PL-QBKQ`: `reference_circle_system.json` said a measured circle-system volume "has not been sought yet", and one had been - Targ, Yasuda and Eger's 9860 ml by water filling, which does *not* close the gap because it includes a latex reservoir bag standing in for the patient's lungs, and the apparatus's own share cannot be recovered from a volume obtained by filling that bag with water. What it supplies is a measured **upper bound**, ordering three figures of which one is measured: this project's 6.0 L, Gas Man's published 8.0 L, and that 9.86 L. The like-for-like comparison is the one to read - apparatus plus lung is 6.0 + 2.5 = 8.5 L against 9.86, 13.8% below, where the bare 6.0 reads as 39% below. `PL-XWCY`: the same paper strikes circuit-wall absorption as the cause of desflurane's washout residual and, in the same measurement, says a real circle system measurably retards sevoflurane and isoflurane relative to ideal - a named, quantified mechanism this model has no term for, bearing on cohorts already sitting at +3.79 and +4.15 SD. `PL-DJYF`: `AlveolarCompartment` restated the reference patient's 2.5 L and 4.0 L/min as dataclass defaults while `reference_adult.json` stored both with their provenance, the same restatement `PL-4YY1` found on `BreathingCircuit`; the docstring now names the file as the authority and `test_the_bare_alveolar_defaults_match_the_shipped_patient_file` fails if the two ever disagree, because a reader meeting `2.5` in `core/` will take it for the model's alveolar volume whatever the prose says. **The safety half is what a displayed value may say when nothing around it qualifies it.** `PL-YLKR` derives the chart's hover readout the way § "Displayed precision" derives the numeric readouts - three lines with the qualifiers ahead of the number, every number through `app/formatting.py`, the readouts' own resolution with the argument for a finer one answered rather than inherited, and which series answer at all. The measurement that decides it: `pyqtgraph.ScatterPlotItem` defaults `tip` to `'x: {x:.3g}\ny: {y:.3g}'`, which on the fat compartment at 48.3 s of a 1 MAC sevoflurane hour prints `3.52e-05` where the readout beside it says `<0.01%` - five decimal places past the derived resolution, no unit, on a chart carrying two axes a factor of two apart. Its build is split to `PL-YVHK` behind the port, which is also where the second finding lands: `ScatterPlotItem` ships `hoverable` set to `False` and a plotted line carries no hover at all, so a port silent about it *loses* the affordance rather than inheriting it (`PL-DNHM`), against a milestone whose definition of done is parity. `PL-3M3K` corrects the brief that said the paused-only restriction transfers whole to Qt; it was a property of Flet's per-frame per-point diff. **The apparatus half is commands answering confidently and wrongly.** `bin/docket branch` told a session whose pull request had already merged to merge the base in rather than restart, which is exactly the push that loses the work (`PL-8M8H`); `bin/docket concurrent` was dominated by `docs/MODEL.md` - 16 of one probe's 22 rule-outs shared only that file - so it refused nearly everything and discriminated nothing, and now groups the tier by path, rarest first, so the strong evidence reads as strong (`PL-PGZK`); work landing between a release cut and its merge sat inside the tag's span and outside its notes with nothing reconciling the two (`PL-028F`); `ROADMAP.md`'s subset counts were hand-maintained and unchecked, and the one a field can decide now is (`PL-GLBF`); the contrast table's reasons cited line numbers that drift, and now cite symbols (`PL-J7C5`); and `PL-16ZC` sat in the gate's clearable set with no deferral marker, so a session clearing the gate would have built a Flet control `v0.5.1` deletes (`PL-NR2K`). `PL-JYR4` closed by its branch merging rather than by work on it. Fifteen items, one of which is the v0.4.21 cut itself. | 15 items |
+| v0.4.23 | Completed / current baseline | **The release where standing decisions were re-taken by counting, and the counts moved them.** `.claude/rules/expert-review.md` asks for the number that would change your mind *before* anything is tightened, and most of this release is that rule run against positions the project had already settled - four of which did not survive it. **No stored scientific value moved, and that is a tree-object identity rather than a reading of the diff:** `src/anesthesia_sim/data/` resolves to `6960c78` at both `v0.4.22` and here, so every partition coefficient, reference-patient parameter, MAC and MAC-awake stands where it stood. `src/` does change, in nine files, and the pinned reference states are the evidence that no number followed - `tests/reference/` differs in exactly three lines, all of them one redundant parenthesis removed, with every expected value untouched. **The core half is two guards that passed on ground they no longer described.** `PL-3PRZ`: at an alveolar volume of 1e-300 L the run advanced, returned a concentration of exactly zero, and the agent-accounting check passed - `CLAUDE.md`'s "prefer an obvious failure to a plausible-looking number" inverted in the one regime the guard was expected to cover most easily, while every larger absurd volume from 1e-9 to 1e-100 L failed loudly. The mechanism is not the one the brief assumed: it is not the amounts that underflow but the **propagator**, which becomes the zero matrix, and `_require_finite` accepted it because the zero matrix is finite and entrywise nonnegative - both properties `core/matrix_exponential.py` states of its output held of a matrix that solved nothing. A second failure surfaced in the same sweep at 1e-309 L, where the row sum is finite at 1.2e+307, the scaling to the series bound reaches `inf`, and `ceil(log2(inf))` raised a bare `OverflowError` outside `core/exceptions.py` and outside the module's documented failures. **Two stronger invariants were tried first and both measured too strict, which is why the weakest sufficient one shipped** - a strictly positive diagonal refuses `exp(-0.5 * 3600)`, a real number no double can hold, and the provable per-entry bound is violated at ulp level by `test_propagating_twice_matches_propagating_once`. Measured across every decade from 1e0 to 1e-323 L, before and after: the same 120 volumes advance, so nothing that worked is refused, and the 116 silent zero-propagator cases plus the one `OverflowError` account exactly for the rise from 77 refusals to 194. The shape worth carrying forward is stated rather than left implicit - **a residual formed from quantities that a single failure can reach together proves nothing when that failure occurs** - and `PL-2MD9` carries the remainder, a constant state row drifting to 2.28e+222 between 1e-8 and 1e-19 L against `UNIT_STATE`'s own docstring guarantee, whose remedy is a change to the numerical method rather than another guard on the result. **`PL-R460` is the release's cleanest reversal, and it reversed a prediction this project made about itself.** `PL-GS5X` predicted that a cached propagator would make each step one matrix-vector product and asked for a measurement rather than an assumption; the measurement says the opposite. At held settings the exact step costs 26.8 us against the operator split's 18.4 us, and **1200 us on every settings change**. The profile says where - `propagate()` 11.6 us for the product itself, `_propagator_for()` 6.9 of which `equation_settings()` is 6.2, `state_vector()` 0.8 - so a propagator cache key closes the settings-change cost, and the residual 6 percent is deliberately not chased, the next 3 us available being `propagate()`'s own per-step guards. Two properties are now pinned that were previously load-bearing and unstated: the cache key is checked entry-by-entry against `dataclasses.fields()` of both settings classes, so a settings field added with no entry fails rather than reintroducing a stale propagator, and CPython's Neumaier-compensated `sum` is what makes the two spellings bit-identical rather than merely close, which is also why the obvious next optimization would be a different function. **A second number in the same measurement matters more than the first:** `docs/WORKING_NOTES.md` asked for its 3.3 ms frame figure to be re-measured, and it is **7.64 ms, or 14.13 ms across five inter-event segments** - 14 ms of a 16.7 ms frame at 60 fps is not the headroom 3.3 ms implied, and `PL-T691` was to lean on it. **The presentation half is three claims about what a reader sees, each checked against the code rather than the prose.** `PL-8XPQ` builds `tools/glyph_check.py` into `make check` and CI, after U+2192 drew as a replacement box in the control-change list on 2026-09-04 - the arrow in `5.60%` to `0.95%`, which is the one thing that line exists to state, failing silently and invisibly to the whole test suite. Both open questions were answered on evidence and both the other way from the brief: per character rather than per Unicode block, because Latin-1 Supplement would admit thousands on the evidence of the three this interface has shown; and the scope widens rather than narrows, `core/` being covered because a `SimulationConfigurationError` is rendered verbatim into the banner and `data/` because `display_name` reaches the readouts, each measured to hold no refused character today so the cost was zero and two silent routes closed. Documentation is excluded structurally - a bare expression statement - after U+00A7 was found only in attribute docstrings, where a first-statement test would have missed it and put a prose character into a list that means *this was rendered*. `PL-LL9Y` asks and answers the alarm-colour question the project had never asked: **deliberately diverge**, with `WARNING = "#8A4B08"` unchanged and no hex constant in `app/theme.py` moved. IEC 60601-1-8 governs visual alarm *signals* - priority encoded by colour together with a flash rate - and this interface has none of it, all five `WARNING` surfaces being bold coloured text with no indicator, no filled banner, no flash and no priority tier; the project owner supplied the half a session could not, that a teaching tool which looks unmistakably unlike a monitor cannot be mistaken for one. It is recorded beside the constant and, in `docs/MODEL.md`, deliberately adjacent to the ISO 5360 agent colours, because the two are opposite answers about different colours and the difference should be visible rather than inferred - the agent colours adopted *because* Table 2 footnote b obligates them, and nothing obligating this one. The priority-to-colour mapping is still not written down and no longer needs to be: it cannot be reached from this environment and three independent secondary sources disagree about the low-priority colour, which `docs/MODEL.md` now says rather than implying a reading of a text nobody opened. `PL-11YF` qualifies the specification's unconditional claim that the six readouts "sit in one row", with the widths read from `METRIC_GRID_COLUMNS` - seven panels side by side at 1200 CSS pixels and wider, four from 992, two from 768, one below - and the finding is the asymmetry the brief could not have known: the ordinal reading weakens below 1200 but only its *invitation* narrows, the 1 485 000 pair comparisons behind the ordering claim comparing displayed values rather than positions, while **the uniform resolution holds at every width**, its argument resting on glyph alignment within a column rather than on a single line. Qualifying that one as though it weakened would have recorded a claim weaker than the code supports. **`PL-JRS3` answers what a Qt port costs the two checks guarding the accessibility floor, by porting the tree and running them.** The dependency is split and not as the question assumed: `contrast_check.py` reads values and survives, `agent_identity_check.py` reads Flet's control objects and goes silent - and its silence is worse than nothing, printing "6 control(s) carry the agent colour, none of them rendered disabled" and exiting 0 on a tree where all six are driven by `setEnabled()` with no paired hide, a sentence a reader cannot tell from the same sentence earned. Where it does fail loudly it misdiagnoses, reporting that the writer never writes the six controls when the writer writes all six through `setStyleSheet`. A latent third finding is filed rather than fixed: a hex constant in any module that is neither `theme.py` nor `simulation_view.py` is measured by nothing, a probe placing a selection colour at 1.07:1 drew `0 errors`, and nothing exploits it today only because no such constant exists under `src/` - the decomposed Qt view being exactly what creates the modules that would. `PL-6194` sweeps 50 redundant parentheses across 15 files and **proves rather than tests** it: every file's `ast.dump` is byte-identical before and after, asserted per file before writing, which is the verification this class of change is entitled to and which `make check` being green is the weaker statement of. Its own re-measurement disagreed with the prediction the brief had recorded to keep the question closed - `tests/` went from 6 occurrences to 15 in eleven days, so somebody typed nine new ones - and that is filed as `PL-YNYK` for the owner rather than acted on. **The apparatus half is four settled positions re-counted, and three of the four moved.** `PL-B73C` reverses a decline whose premise had expired: it rested on the repository holding exactly one ref attributable to no item, and re-measurement found 10 unlanded heads, 10 with no id in the name and **0** with no leading id in any subject, `PL-JX2T` having closed `origin/Review_articles` in `v0.3.7`. So the steady state is silence, `flight` and the digest name such a ref with no suppression rule at all, and the most promising of the four designs considered would have been machinery for an empty set - what keeps the set empty being `tools/branch_id_check.py` rather than luck. It refuses to overclaim twice: an unread ref is never called unattributed, and a local branch collapses with its tracking ref before comparison, without which the session running the check reported its own branch as nameless - a live bug on the first real run. `PL-JQVB` answers one question no and the other with a number nobody had counted. The four dispositions gain nothing, because a pasted brief reaches only the sessions someone pastes it into, which is the property `PL-1H3H` built it for rather than a gap - decisively, a consultant reviewing the apparatus would otherwise load, by opening the thing under review, the rule telling it that tree is not worth reviewing. And skills are measured on a **second line** rather than folded into the resident total, because a skill never invoked costs a session nothing and one total cannot mean both quantities. The count that settled it, taken from the tags across `v0.4.0` to `v0.4.22`: 19 253 characters of instruction text added over twenty-two patch releases, of which the growth instrument reported 3 135 - **16 percent** - and none at all over the last two releases, `CLAUDE.md` having not moved since `v0.4.18` while the skill gained 1 729. The two sets now stand at 50 570 resident characters against 113 203 reachable on demand. `PL-WGXJ` gives the apparatus standard the floor it never had, binding the answer-giving surface rather than the path list: what the apparatus tells a session must be true, or must say what it could not read, a partial reading handed over as a complete one being the violation because at the point of use the two are indistinguishable. The property was chosen by counting - of 41 open apparatus-only `defect` items, about 35 describe a command, check or brief handing a session a confident answer that is wrong or incomplete, recorded in the rule as an order of magnitude rather than a statistic, with the four clear exceptions named - and the strongest justification is measured rather than argued: `PL-MVC2` records a class misspelt as `safey`, which matched no rule, so work a clinician could be misled by stayed seatable in the bottom band while the check reported zero errors. It costs **zero resident characters**, being path-scoped, and asks for no polish, coverage target, abstraction or prose, so it cannot be quoted as the specialist standard arriving by another door - `PL-6SBB` running the other way. `PL-7790` closes the residual `PL-X3WZ` left, and the reading is the item's own declared `touches` rather than the commit's paths: a queue-only commit stakes a claim when the item's copy **on the base** declares a `touches` that never leaves `docs/items/`, which costs back none of `PL-X3WZ`'s eight false marks and excludes a capture for free, the choice of tree being the clause. Two measurements changed the answer here too - none of the eleven unlanded refs carried an id in its name, every branch being harness-generated before its session starts, so the branch-name cover is structurally unavailable in this repository; and the bound that said "the mark returns on the first commit outside the queue" fails hardest on exactly the items whose whole deliverable is a queue edit. A live instance was running while it was decided: `origin/claude/loving-ride-mo6njm` carried "PL-XR8K: close the v0.4.22 tag item" with its whole diff in `docs/items/`, and `flight` named only `PL-JRS3`. `PL-7QKY` un-circularises `docs/WORKING_NOTES.md`'s own instruction, which could not be evaluated without doing the thing it gated: `bin/docket show <id>` now points at the threads concerning that id, through a new standard-library `notes.py`, reading bodies as well as headings because headings alone would have printed nothing for 75 of 106 ids and silence is indistinguishable from "no thread concerns your item". It points and does not summarize, since a generated precis of a stale thread would be read as current, and it is silent in the three cases where there is nothing to say. The file's cost is now stated where the instruction is: 34.5 KB when the item was written, **95 KB and 1 603 lines** now. A test was caught passing vacuously while writing it - `store.ID_ALPHABET` excludes vowels, so an invented `PL-AAAA` matched nothing and the assertion held for the wrong reason. Fourteen items, two of which are the `v0.4.22` cut and its tag. | 14 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -147,208 +148,335 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.4.22
+## Current baseline: v0.4.23
 
-v0.4.22 is the release in which what this project says about itself was checked
-against what is true.
+v0.4.23 is the release in which standing decisions were re-taken by counting,
+and the counts moved them.
 
-**Nothing a reader of the simulator sees changed, and that is measured rather
-than asserted.** `src/anesthesia_sim/app/`, `tests/reference/` and `.github/`
-resolve to the same tree objects as at `v0.4.21` - `7586231`, `e519afd` and
-`5aa42db` - so no interface element moved, no pinned reference state was
-recomputed, and no CI gate changed. The whole of `src/` differs in two files
-and neither of them moves a number: `core/alveolar.py` gains a docstring, and
-`data/machines/reference_circle_system.json` gains one `sources` entry and a
-rewritten `provenance_gap`. `2.5`, `4.0` and `6.0` stand where they stood. No
-equation, parameter, unit, numerical method or solver step is touched.
+`.claude/rules/expert-review.md` asks for the number that would change your
+mind *before* anything is tightened, and then for that number to be gone and
+counted. Most of this release is that rule run against positions this project
+had already settled - a prediction about its own performance, a decline
+recorded ten days earlier, a growth instrument nobody had checked the coverage
+of, and a bound stated in an item brief. Four did not survive.
 
-**What it changed is the accuracy of three kinds of claim**, and the three are
-the sections below: what the specification says is known about a stored value,
-what a displayed value says about itself when nothing around it qualifies it,
-and what a command tells a session about the state of the repository.
+**No stored scientific value moved, and that is a tree-object identity rather
+than a reading of the diff.** `src/anesthesia_sim/data/` resolves to `6960c78`
+at `v0.4.22` and at this release, so every partition coefficient,
+reference-patient parameter, MAC and MAC-awake stands where it stood.
 
-### The specification stopped saying a measurement had not been sought
+**`src/` does change - in nine files - and the pinned reference states are the
+evidence that no displayed number followed.** `tests/reference/` differs in
+exactly three lines, each of them one redundant parenthesis removed by
+`PL-6194`, with every expected value untouched. `src/anesthesia_sim/app/`
+changes in three files: two parenthesis sweeps and, in `theme.py`, thirty-one
+lines that are entirely comment - no hex constant moved. The substantive `src/`
+changes are `core/matrix_exponential.py` and `core/uptake_system.py`, and both
+are guards and a cache key rather than arithmetic: no equation, parameter,
+unit, numerical method or solver step is touched.
 
-`reference_circle_system.json` said, of a published circle-system internal
-volume, that it "has not been sought yet". One had been sought and found the
-day before, and the file had not caught up (`PL-QBKQ`).
+### The two guards that passed on ground they no longer described
 
-**The measurement is Targ, Yasuda and Eger 1989**, read at full text from the
-private reference corpus: "The total volume of the system, as measured by water
-filling, was 9860 ml". It is tier 1 and it is **cited and not adopted**, for a
-reason the entry records in full because a reader will otherwise try to use it.
-The system measured was three corrugated tubes, a Y-piece, a soda lime absorber
-and a bellows - and a latex reservoir bag attached at the elbow *to simulate the
-patient's lungs*. This project stores the apparatus alone, with the patient
-modelled separately, so adopting 9.86 L would count a lung twice.
+**`PL-3PRZ`: an alveolar volume of 1e-300 L advanced, returned a concentration
+of exactly zero, and the agent-accounting check passed.** That is `CLAUDE.md`'s
+"prefer an obvious failure to a plausible-looking number" inverted, in the one
+regime the guard was expected to cover most easily - and every larger absurd
+volume, from 1e-9 L through 1e-100 L, failed loudly as required. Only the
+bottom of the range succeeded quietly and handed back a number.
 
-**Subtracting the bag is not available, and the method is why.** The paper
-states no bag volume, so any subtraction is a guess, and a latex bag filled with
-*water* distends well past the capacity it carries as a gas reservoir by an
-amount depending on a static head that is not reported. A second direction
-points the same way: the paper does not say whether the absorber held soda lime,
-and if the canister was measured empty then 9.86 L includes space the granules
-occupy in use. Every unresolved direction inflates the figure, which is why the
-only claim made is a bound.
+**The mechanism is not the one the brief assumed, and the difference is what
+generalizes.** The brief expected the *amounts* to underflow, so that the
+residual the accounting check forms is itself annihilated. What actually
+underflows is the **propagator**: it becomes the zero matrix, and
+`_require_finite` accepted it, because the zero matrix is finite and entrywise
+nonnegative and both properties `core/matrix_exponential.py` states of its
+output therefore held of a matrix that solved nothing. A second failure
+surfaced in the same sweep at 1e-309 L, where the row sum is finite at
+1.2e+307, the scaling to the series bound reaches `inf`, and `ceil(log2(inf))`
+raised a bare `OverflowError` - outside `core/exceptions.py` and outside this
+module's documented failures, so `advance()` neither restated it nor recognised
+it.
 
-**What it establishes is an upper bound, and an ordering.** A real conventional
-circle system's apparatus gas volume is at most 9.86 L on the one measurement in
-evidence. That sits above the Workbook's published 8.0 L, which sits above this
-file's stored 6.0 L: three figures in one order, one of them measured, and none
-measuring quite the same thing.
+**Two stronger invariants were tried first and both were measured too strict,
+which is why the weakest sufficient one shipped.** A strictly positive
+diagonal is provable from the shift and refuses
+`test_diagonal_matrix_matches_scalar_decay[3600.0]`, where `exp(-0.5 * 3600)`
+is a real number no double can hold and `0.0` is the correct entry. The
+provable per-entry bound is violated at ulp level by
+`test_propagating_twice_matches_propagating_once`.
 
-**The like-for-like comparison is the one a reader should weigh**, and it is
-much closer than the bare numbers suggest. What Targ measured is apparatus plus
-lung; this model's corresponding total is `circuit_volume_l` plus the reference
-patient's `alveolar_gas_volume_l`, 6.0 + 2.5 = 8.5 L against 9.86 L - 13.8%
-below, where 6.0 against 9.86 reads as 39% below. The paper supports the
-comparison being made in that form: its own ideal curves use $`V_s = 9.86`$ L as
-a total system volume in $`\tau = V/\dot{V}_F`$, which is the same time constant
-this file's other entries use. On that constant the spread is 90 s at the stored
-6.0 L, 120 s at 8.0 L and 148 s at 9.86 L - the part of the early rise in
-inspired concentration belonging to the apparatus rather than to uptake, so it
-is visible to a learner while changing nothing about the patient.
+**Measured across every decade from 1e0 to 1e-323 L, before and after.** The
+same 120 volumes advance with the constant state row exact, so no volume that
+worked before is refused; 77 were already refused as non-finite and 194 are
+refused now, and the 116 that had silently returned a zero propagator plus the
+one `OverflowError` account for the difference exactly.
 
-**No stored value moves**, and that is not this entry's call to make: the
-project owner ruled on 2026-09-01 that which circuit volume is used is not
-critical here, and a measurement that cannot supply an apparatus-alone figure
-does not disturb the ruling. What changed is the state of the evidence, and the
-`provenance_gap` now states it at its true width - not "unsought", but "no
-published apparatus-alone volume has been found".
+**The shape worth carrying forward is stated rather than left implicit:** a
+residual formed from quantities that a single failure can reach together proves
+nothing when that failure occurs. `PL-2MD9` carries what is left - between
+1e-8 and 1e-19 L the propagator stays finite and nonzero while the constant
+state row drifts to 2.28e+222, against `governing_equations.UNIT_STATE`'s own
+docstring guarantee - and its remedy is a change to the numerical method rather
+than a third guard on the result, which is exactly what the two rejected
+invariants above fail to catch.
 
-**The same paper carries a second finding that is not bookkeeping** (`PL-XWCY`).
-Its wash-in and washout against the ideal exponential strike circuit-component
-absorption off as the cause of desflurane's five-minute washout residual - and,
-in the same measurement, say that a real circle system measurably retards
-sevoflurane and isoflurane relative to ideal. That is a named, quantified
-mechanism this model has no term for, bearing directly on cohorts in
-`tests/reference/test_published_wash_in_and_elimination.py` that already sit at
-+3.79 and +4.15 SD. The strike is bookkeeping; the retardation is a limitation
-now written down.
+### The prediction this project made about its own performance, measured
 
-**And one constant was stated in two places with nothing holding them equal**
-(`PL-DJYF`). `AlveolarCompartment` carried `gas_volume_l = 2.5` and
-`alveolar_ventilation_l_min = 4.0` as dataclass field defaults while
-`data/patients/reference_adult.json` stored both with their provenance - the
-same restatement `PL-4YY1` found and fixed on `BreathingCircuit`. Every shipped
-path builds the compartment through `AgentUptakeSystem.for_agent()`, which reads
-the file and passes both explicitly, so the literals are reached only by a bare
-unit-test construction. They are kept as defaults so such a test need not load
-package data to exercise an equation, and
-`test_the_bare_alveolar_defaults_match_the_shipped_patient_file` now fails if
-the two disagree. The docstring says which is the authority, because a reader
-meeting `2.5` in `core/` will take it for the model's alveolar volume whatever
-the prose says. Importing the loader is deliberately not the fix:
-`core/parameters.py` is the one module permitted to import Pydantic, and reading
-package data at class-definition time would make a pure physics class depend on
-the installed distribution's files.
+**`PL-R460` is the release's cleanest reversal.** `PL-GS5X` predicted that a
+cached propagator would reduce each step to "one 7x7 matrix-vector product -
+49 multiply-adds and no transcendentals, against the five `exp()` calls the
+split makes every step", and asked for a measurement rather than an assumption.
+The measurement says the opposite:
 
-### What a number says when nothing around it qualifies it
+| | Per step |
+| --- | --- |
+| Settings held, propagator cached | 26.8 us |
+| Any setting moved, propagator rebuilt | 1200 us |
+| The operator split it replaced | 18.4 us |
 
-The chart answers a pointer held over a trace with a small floating readout, and
-what it said was the charting library's default. `PL-YLKR` derives what it may
-say, the way § "Displayed precision" derives the numeric readouts', and
-`docs/MODEL.md` § "The chart's hover readout: what the tooltip may show" is
-where that lives.
+The matrix-vector product is indeed cheap. What the prediction did not cover is
+everything around it: `propagate()` is 11.6 us for the product itself,
+`_propagator_for()` 6.9 us of which `equation_settings()` alone is 6.2, and
+`state_vector()` 0.8. A propagator cache key closes the settings-change cost.
+The residual 6 percent is deliberately not chased - the next 3 us available are
+`propagate()`'s own per-step guards, which is the trade `CLAUDE.md` puts
+correctness above.
 
-**The problem is detachment.** The six numeric readouts sit under a heading
-naming the agent and calling the values modelled, beside a legend naming each
-compartment, on a panel whose alveolar entry carries the `end-tidal-equivalent`
-gloss this project requires. A floating box carries none of that: it appears
-over the plot, it can cover the heading it would otherwise be read under, and it
-is the one place in the interface where a number is presented with nothing
-around it. Every qualifier the row gets from its surroundings, the box has to
-supply itself. It is also the display a reader has most deliberately stopped to
-consult, which makes it the one most likely to be written down.
+**Two properties that were load-bearing and unstated are now pinned.** The
+cache key is checked entry-by-entry against `dataclasses.fields()` of both
+settings classes, so a settings field added with no entry in the key fails
+rather than reintroducing a stale propagator. And CPython's `sum` is
+Neumaier-compensated on floats, which is *why* the two spellings are
+bit-identical rather than merely close - both hand `sum` the same floats, and
+the compensation makes the result independent of how they were produced. That
+is also why the obvious next optimization, an explicit accumulator loop, would
+be faster and would not be the same function.
 
-**What it shows is three lines, and the order carries the safety argument:**
-run context - the modelled marker, the agent, the instant - then the compartment
-with its gloss, then the value in both units. The qualifiers precede the number
-so that a reader reaches it *through* them, because a hedge placed below the
-value it hedges is a warning rather than a prevention.
+**A second number in the same measurement matters more than the first.**
+`docs/WORKING_NOTES.md` had asked for its 3.3 ms frame figure to be
+re-measured. It is **7.64 ms, or 14.13 ms across five inter-event segments**.
+Fourteen milliseconds of a 16.7 ms frame at 60 fps is not the headroom 3.3 ms
+implied, and `PL-T691` was to lean on it; the per-column cost is the smaller
+half once there is more than one segment, so the number to design against is
+the segment count.
 
-**Every number in it comes from `app/formatting.py`**, never from the chart
-library, and the measured table is why. `pyqtgraph.ScatterPlotItem` defaults
-`tip` to `'x: {x:.3g}\ny: {y:.3g}\ndata={data}'.format`; run at 1 MAC
-sevoflurane on the reference adult, that prints `3.52e-05` on the fat
-compartment at 48.3 s where the readout beside it says `<0.01%`. Three defects
-in one default: five decimal places past the derived resolution; no unit, on a
-chart carrying a percent axis and a MAC axis that differ by a factor of two for
-sevoflurane; and a decimal count that *varies with magnitude*, which asserts the
-model resolves small values more finely than large ones.
+### What the interface may say, and what the specification may claim about it
 
-**The resolution is the readouts' own, and the argument for a finer one is
-answered rather than inherited.** § "Displayed precision" separates how finely
-two moments within one run can be told apart - about nine decimal places finer
-than the readout shows - from how finely this model resolves a concentration in
-a patient, which is much coarser. A hover is closer to the first than the
-readout row is, so the within-run question would license a third decimal. It
-does not get one: a reader cannot tell which question a printed digit answers,
-and the hover is the display most exposed to the patient reading.
+**`PL-8XPQ` builds `tools/glyph_check.py` into `make check` and CI**, after an
+arrow drew as a replacement box in the control-change list on 2026-09-04 - the
+U+2192 in `5.60%` to `0.95%`, which is the direction of a setting change and the
+one thing that line exists to state. Nothing in the repository could have caught
+it: every string assertion here compares text the same font-less Python process
+produced.
 
-**The affordance answers running or paused**, which reverses a restriction that
-was a property of the toolkit rather than of the affordance. `PL-KP7H` withdrew
-the hover during a run because Flet's control-tree diff descends into every
-point's tooltip object on every frame. Qt has no such cost by either route a
-readout can be built on, so nothing has to be withdrawn, there is no hidden mode
-and no caption is needed to announce one. `PL-YLKR`'s brief had said that
-problem transfers whole to Qt; it does not, and `PL-3M3K` is that correction.
+Both open questions were answered on evidence, and both the other way from the
+brief. **Per character rather than per Unicode block**, because Latin-1
+Supplement admits thousands of characters on the evidence of the three this
+interface has actually shown, and "adding a character is a deliberate act that
+says I rendered this and saw it" stops being true the moment the first block
+goes in. **The scope widens rather than narrows:** `core/` is covered, because
+a `SimulationConfigurationError` is rendered verbatim into the halted-run
+banner, and `data/` is covered, because `display_name` reaches the readouts and
+a data file is the one place an edit lands without touching Python. Each was
+measured to hold no refused character today, so covering them cost nothing now
+and closed two routes by which one could have arrived unseen. Documentation is
+excluded structurally - a string that is a bare expression statement - after
+U+00A7 was found only in attribute docstrings, where a first-statement test would
+have missed it and put a prose character into a list that means *this was
+rendered*.
 
-**The build is split to `PL-YVHK`, behind the port** (project owner,
-2026-09-14), because the design is toolkit-independent and the implementation is
-not: on Flet it is roughly 1 870 per-point strings onto a pause-transition frame
-already measured at 71.9 ms, deleted again at the port, where the same content
-is one format callable. The shipped Flet build therefore keeps its
-library-default hover until v0.5.1, which is a stated cost rather than an
-oversight.
+**`PL-LL9Y` asks and answers the alarm-colour question the project had never
+asked: deliberately diverge.** `WARNING = "#8A4B08"` is unchanged and no hex
+constant in `app/theme.py` moved; what changed is that the question now has an
+answer. IEC 60601-1-8 governs visual alarm *signals* - indicators encoding
+priority by colour together with a flash rate - and this interface has none of
+that: all five `WARNING` surfaces are bold coloured text, with no indicator
+lamp, no filled banner, no flashing element and no priority tier. The permanent
+educational disclaimer points the same way, an alarm colour on an element that
+is on screen always teaching the opposite of the convention it borrowed. The
+project owner supplied the half a session could not: a teaching tool that looks
+unmistakably unlike a monitor cannot be mistaken for one.
 
-**The second finding is the one that would have gone unnoticed** (`PL-DNHM`).
-`ScatterPlotItem` ships `hoverable` set to `False`, and a plotted line carries
-no hover at all, so a port silent about this does not inherit the Flet build's
-hover - it loses it, against a milestone whose definition of done is "every
-capability the Flet build has, the Qt build has". Nothing written for the new
-build would have noticed, because nothing would have been asserting on a feature
-nobody remembered.
+It is recorded beside the constant and, in `docs/MODEL.md`, deliberately
+adjacent to the ISO 5360 agent-colour section - the two being opposite answers
+about different colours, and the difference worth seeing rather than inferring.
+The agent colours are adopted *because* Table 2 footnote b obligates them;
+nothing obligates this one. It binds `v0.5.1`, which redecides the palette and
+is the first moment an indicator-shaped surface could appear, and both records
+say so. **The priority-to-colour mapping is still not written down and no
+longer needs to be:** it cannot be reached from this environment and three
+independent secondary sources disagree about the low-priority colour, which
+`docs/MODEL.md` now says rather than implying a reading of a text nobody
+opened.
 
-### Nine apparatus items, and one of them recommended destroying work
+**`PL-11YF` qualifies the specification's unconditional claim that the six
+readouts "sit in one row".** The widths are read from `METRIC_GRID_COLUMNS`
+rather than from the brief: seven panels seat side by side at 1200 CSS pixels
+and wider, four from 992 to 1199, two from 768 to 991, and one below 768.
 
-**`bin/docket branch` told a session whose pull request had already merged to
-merge the base in rather than restart** (`PL-8M8H`) - which is precisely the
-push that loses the work, and it looked correct while doing it. `CLAUDE.md`'s
-merged-branch rule says restart on the merged `main` and carry the commit
-forward; the command now reads the content split rather than the commit counts,
-and says so.
+**The finding is the asymmetry, which the brief could not have known.** The
+ordinal reading weakens below 1200, as expected - but only its *invitation*
+narrows, because the 1 485 000 pair comparisons behind the ordering claim
+compare displayed values rather than their positions. The uniform resolution
+**holds at every width**: its argument is that differing decimal counts put
+different magnitudes at the same glyph position, and the grid aligns value
+glyphs within a column at every breakpoint, so it never rested on a single
+line. Qualifying that one as though it weakened would have recorded a claim
+weaker than the code supports. One thing the brief did not ask for is recorded
+too: `app/main.py` opens the window full screen, so the conditional widths are
+reachable only by resizing today, and `PL-005` - the sized startup window
+shipping with the port - turns them into the ordinary case.
 
-**`bin/docket concurrent` refused nearly everything and discriminated nothing**
-(`PL-PGZK`). `docs/MODEL.md` is declared by a large fraction of the queue, so it
-dominated every answer - one probe returned 22 rule-outs of which 16 shared only
-that file. The `Shares a file` tier is now grouped by path, rarest first, so a
-path declared by one other item keeps its own line and reads as the strong
-evidence it is, while a hub path collapses into one line a session can skip
-deliberately. The command's contract is unchanged and restated in the output: it
-rules work out, it never certifies it.
+**`PL-JRS3` establishes what a Qt port costs the two checks guarding the
+accessibility floor, by porting the tree and running them against it.** The
+dependency is split, and not the way the question assumed: `contrast_check.py`
+reads *values* and survives, `agent_identity_check.py` reads Flet's *control
+objects* and goes silent. Its silence is worse than nothing - in one probe it
+printed "6 control(s) carry the agent colour, none of them rendered disabled"
+and exited 0, on a tree where all six are driven by `setEnabled()` with no
+paired hide, and a reader cannot tell that sentence from the same sentence
+earned. Where it does fail loudly it misdiagnoses, reporting that the writer
+never writes the six controls when the writer writes all six through
+`setStyleSheet`. A latent third finding is filed rather than repaired: a hex
+constant in any module that is neither `theme.py` nor `simulation_view.py` is
+measured by nothing, a probe placing a selection colour at 1.07:1 drew
+`0 errors`, and nothing exploits it today only because no such constant exists
+anywhere under `src/` - the decomposed Qt view being exactly what creates the
+modules that would.
 
-**Work landing between a release cut and its merge sat inside the tag's span and
-outside its notes** (`PL-028F`), with nothing reconciling the two. `bin/docket
-check` now raises an advisory on a checkout carrying an unmerged cut, naming
-what the base has taken since and both dispositions, and § "Tags" records what
-the span includes.
+**`PL-6194` sweeps 50 redundant parentheses across 15 files and proves rather
+than tests it.** Every file's `ast.dump` is byte-identical before and after,
+asserted per file before writing, so a file whose AST moved would have been
+left untouched and named. None was. That is the verification this class of
+change is entitled to - parentheses around a single expression leave no trace
+in the AST, so a correct sweep cannot change the dump and an incorrect one
+cannot avoid changing it - and `make check` being green on top of it is the
+weaker of the two statements. Its own re-measurement then disagreed with the
+prediction the brief had recorded in order to keep the question closed: a
+`tools/` check was declined on the grounds that it "would fire once, on this
+sweep, and then never again unless somebody typed a new one", and `tests/` went
+from 6 occurrences to 15 in the eleven days the item sat open. That is filed as
+`PL-YNYK` for the owner rather than acted on here.
 
-**Three more are a claim nothing checked.** `ROADMAP.md`'s subset counts were
-hand-maintained; the one a field can decide is now checked and the two it cannot
-are recorded as such (`PL-GLBF`). The contrast table's reasons cited line
-numbers, which drift the moment anything above them moves, and now cite symbols
-(`PL-J7C5`). And `PL-16ZC` sat in the gate's clearable set with no deferral
-marker, so a session clearing the gate would have built a Flet control `v0.5.1`
-deletes - it is now deferred past the port, with the reasoning recorded where
-the snapshot rule requires (`PL-NR2K`).
+### The four settled apparatus positions, re-counted
 
-**`PL-JYR4` closed by its branch merging rather than by work on it**: the
-stranded branch carrying four closed Gate 1 items and the three agent files'
-Yasuda adoption reached `main`, which is the condition the item named.
+**`PL-B73C` reverses a decline whose premise had expired**, which is the
+cleanest reason to revisit a decision. The decline of 2026-09-04 rested on one
+sentence: the repository has exactly one ref attributable to no item, so naming
+it would put a line nobody acts on into every session. Re-measured against
+`git ls-remote --heads origin`:
 
-**Gate 1 stands at 137 of 164 entries cleared** with this release - 16 still
-clearable before v0.5.0 begins, and 11 waiting on work outside it.
+| | 2026-09-04 | 2026-09-14 |
+| --- | --- | --- |
+| unlanded heads on the remote | - | 10 |
+| carrying no id in the name | - | 10 |
+| carrying no leading id in any subject | 1 | **0** |
+
+`PL-JX2T` closed `origin/Review_articles` in `v0.3.7` and the branch is gone,
+so the steady state is silence. `bin/docket flight` and the digest now name
+such a ref with no suppression rule at all - none of the four designs
+considered was needed, and the most promising was also the most machinery,
+which would have been machinery for an empty set. What holds the set empty is
+`tools/branch_id_check.py` rather than luck, so this is the read side of a rule
+whose write side is already guarded. It refuses to overclaim twice: an *unread*
+ref is never called unattributed, because a walk that stopped at a truncated
+history never established the absence; and a local branch collapses with its
+tracking ref before comparison, without which the session running the check
+reported **its own branch** as nameless - a live bug caught on the first run
+against the real tree.
+
+**`PL-JQVB` answers one question no, and the other with a number nobody had
+counted.** The four dispositions gain no entry for a pasted brief or an agent
+definition, and `CLAUDE.md` is unchanged: a brief reaches only the sessions
+someone pastes it into, which is the property `PL-1H3H` built it for rather
+than a gap, and decisively, a consultant reviewing the apparatus would
+otherwise load - by opening the thing under review -
+`.claude/rules/apparatus-standard.md` telling it that tree is not worth
+reviewing. Skills enter the measurement on a **second line** rather than the
+resident total, because a skill never invoked costs a session nothing and one
+total cannot mean both quantities.
+
+**The count that settled the second question is the half the brief could not
+have.** Measured from the tags, `v0.4.0` to `v0.4.22`:
+
+| file | v0.4.0 | v0.4.22 | growth | seen by the advisory |
+| --- | --- | --- | --- | --- |
+| `CLAUDE.md` | 29 675 | 32 810 | +3 135 | yes |
+| `.claude/skills/docket/SKILL.md` | 54 352 | 69 768 | +15 416 | no |
+| `docs/worker.md` | 12 877 | 13 579 | +702 | no |
+
+19 253 characters of instruction text were added over twenty-two patch releases
+and the growth instrument reported **16 percent** of them. Over the last two
+releases it reported none at all: `CLAUDE.md` has not moved since `v0.4.18`
+while the skill gained 1 729. That is where four fifths of the growth actually
+went, not a hypothetical blind spot. The two sets now stand at 50 570 resident
+characters against 113 203 reachable on demand.
+
+**`PL-WGXJ` gives the apparatus standard the floor it never had.** It binds the
+answer-giving surface rather than the path list: what the apparatus tells a
+session must be true, or must say what it could not read - a partial reading
+handed over as a complete one being the violation, because at the point of use
+the two are indistinguishable. A formatter, a fixture and a Makefile target
+have no answer to get wrong; `bin/docket`'s output, the digest, a check's
+report and an item brief's claim about the tree all do.
+
+**The property was chosen by counting rather than by argument.** Of the 41 open
+apparatus-only `defect` items, about 35 describe a command, check or brief
+handing a session a confident answer that is wrong or incomplete - recorded in
+the rule as an order of magnitude rather than a statistic, with the four clear
+exceptions named. The strongest justification is measured rather than argued:
+`PL-MVC2` records a class misspelt as `safey`, which matched no rule, so work a
+clinician could be misled by stayed seatable in the bottom band while the check
+reported zero errors. That is the line from an apparatus defect to the
+simulator's own standard, and it is a real instance rather than a construction.
+The floor costs **zero resident characters**, being path-scoped, and asks for
+no polish, coverage target, abstraction or prose - so it cannot be quoted as
+the specialist standard arriving by another door, which is what `PL-6SBB` cost
+running the other way.
+
+**`PL-7790` closes the residual `PL-X3WZ` left**, and the reading is the item's
+own declared `touches` rather than the commit's paths: a commit whose whole
+diff sits in `docs/items/` stakes a claim for an item whose copy **on the base**
+declares a `touches` that never leaves the queue directory. Tested against
+`PL-X3WZ`'s eight false marks, which is the bar it had to clear: not one of
+them declares a queue-only `touches`, so the fix costs back none of the eight.
+A capture is excluded for free and the choice of tree is the clause - a capture
+creates the item file, so the base holds no copy to declare anything.
+
+**Two measurements changed the answer here too.** None of the eleven unlanded
+refs carried an id in its name, every branch this project works on being
+generated by the web harness before its session starts, so the brief's first
+bound - a branch named for the item - is structurally unavailable in this
+repository, and the `docket` skill now says so where it asks for the first
+push. And the third bound, that "the mark returns on the first commit outside
+the queue", fails hardest on exactly the items this covers: one whose whole
+deliverable is a queue edit never makes such a commit, so for that class the
+mark never returned at all. A live instance was running while it was being
+decided - `origin/claude/loving-ride-mo6njm` carried "PL-XR8K: close the
+v0.4.22 tag item" with its whole diff in `docs/items/`, and `bin/docket flight`
+named only `PL-JRS3`. It was not constructed as a test case; it was the state
+of the repository.
+
+**`PL-7QKY` un-circularises `docs/WORKING_NOTES.md`'s own instruction**, which
+asked a session to read the file "at the start of a task that touches one of
+its open threads" - a condition that cannot be evaluated without doing the
+thing it gates. `bin/docket show <id>` now points at the threads concerning
+that id, through a new standard-library `notes.py` that hardcodes nothing and
+leaves a project without such a file unchanged. Reading bodies as well as
+headings matches 105 of 106 ids, where headings alone would have printed
+nothing for 75 - and silence is indistinguishable from "no thread concerns your
+item", which is this defect rather than a cheaper version of it. The output
+distinguishes `(about)` from `(mentions)` so a session with a budget can spend
+one jump on the right thread. **It points and does not summarize**, a generated
+precis of a stale thread being read as current, and it is silent in the three
+cases where there is nothing to say. The file's cost is now stated where the
+instruction is: 34.5 KB when the item was written, **95 KB and 1 603 lines**
+now, roughly 24k tokens. A test was caught passing vacuously while this was
+written - `store.ID_ALPHABET` excludes vowels, so an invented `PL-AAAA` matched
+nothing and the assertion held for the wrong reason.
+
+**`PL-MHYG` and `PL-XR8K` are the `v0.4.22` cut and its tag**, closing inside
+this release rather than the one they named.
 
 ## The plan
 
