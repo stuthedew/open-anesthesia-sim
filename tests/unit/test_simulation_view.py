@@ -25,6 +25,7 @@ import flet as ft
 import flet_charts as fch
 import pytest
 
+from anesthesia_sim.app import control_timeline as control_timeline_module
 from anesthesia_sim.app.chart_series import CHART_COLUMN_BUDGET_PER_SERIES
 from anesthesia_sim.app.chart_time_base import (
     FIT_RUN_KEY,
@@ -32,7 +33,7 @@ from anesthesia_sim.app.chart_time_base import (
     TIME_BASE_LADDER,
     time_base_for_span,
 )
-from anesthesia_sim.app.control_timeline import group_adjustments
+from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustments
 from anesthesia_sim.app.controller import (
     COMPARTMENT_STATE_INDEX,
     CONTROL_INPUT_UNITS,
@@ -4842,6 +4843,84 @@ def test_a_run_with_no_changes_says_so_rather_than_showing_an_empty_panel() -> N
 
     assert view._control_timeline_text.value == NO_CONTROL_CHANGES_TEXT
     assert not view._control_timeline_overflow_text.visible
+
+
+def test_the_control_timeline_is_not_regrouped_when_it_has_not_grown(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A frame in which nobody touched a control pays nothing for the record.
+
+    `group_adjustments` is O(entries) and the render loop needs its answer
+    every frame, so before `PL-1PSX` a run that had accumulated a long
+    record paid for the whole of it 5 times a second forever - 0.88 ms per
+    frame at 1,000 entries and 8.8 ms at 10,000, measured against a 200 ms
+    `RENDER_INTERVAL_S`. The record is a property of the run rather than of
+    the frame, and the overwhelming majority of frames follow one that
+    changed nothing.
+
+    Counted rather than timed: a timing assertion would be a flake on a
+    loaded runner, and the defect is the recomputation rather than any
+    particular duration.
+    """
+
+    timeline = tuple(
+        _control_change(
+            float(index), ControlInput.FRESH_GAS_FLOW, 4.0, 4.0 - index * 0.1, adjustment=index + 1
+        )
+        for index in range(4)
+    )
+    view, _ = _build_view(history=_run_history(600), control_timeline=timeline)
+
+    regroups = 0
+    real = control_timeline_module.group_adjustments
+
+    def counted(recorded: Sequence[ControlChange]) -> tuple[ControlAdjustment, ...]:
+        nonlocal regroups
+        regroups += 1
+        return real(recorded)
+
+    monkeypatch.setattr(control_timeline_module, "group_adjustments", counted)
+
+    view._refresh_view()
+    view._refresh_view()
+    view._refresh_view()
+
+    assert regroups == 0
+    # The panel is still written from the grouping, so this is a cache
+    # serving the right answer rather than a frame that stopped drawing.
+    assert view._control_timeline_text.value.splitlines()[0].startswith("3s")
+
+
+def test_a_change_superseded_within_a_step_reaches_the_panel() -> None:
+    """The record can change without growing, and the display must follow.
+
+    `SimulationController._record_control_change` replaces the newest entry
+    when one control moves twice inside a single simulation step: the run
+    was integrated only under the value standing when the step ran, so the
+    record is the same length and a different record. A grouping cached
+    against the record's *length* - which is what `PL-1PSX` proposed before
+    this case was found - would go on showing the superseded value, and the
+    panel would state a setting the run was never computed under. That is a
+    presentation-correctness failure of the kind `CLAUDE.md` classes as
+    safety-critical, which is why this is a regression test rather than a
+    performance one.
+    """
+
+    controller = _fake_controller(
+        history=_run_history(600),
+        control_timeline=(
+            _control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
+        ),
+    )
+    view = SimulationView(page=_FakePage(), controller=controller)
+
+    assert "4.0 L/min -> 2.0 L/min" in view._control_timeline_text.value
+
+    superseding = (_control_change(12.0, ControlInput.FRESH_GAS_FLOW, 4.0, 3.0, adjustment=1),)
+    controller.snapshot_value = _snapshot(history=_run_history(600), control_timeline=superseding)
+    view._refresh_view()
+
+    assert "4.0 L/min -> 3.0 L/min" in view._control_timeline_text.value
 
 
 def test_changes_the_panel_cannot_list_are_counted_rather_than_dropped() -> None:
