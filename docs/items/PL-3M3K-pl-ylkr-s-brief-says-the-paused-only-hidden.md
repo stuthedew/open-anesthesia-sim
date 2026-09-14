@@ -4,11 +4,13 @@ title: PL-YLKR's brief says the paused-only hidden-mode problem transfers whole 
 priority: P2
 effort: S
 status: done
-closed: 2026-09-14
 classes: docs
 feature: presentation-safety
+milestone: v0.4.22
 touches: docs/items, docs/MODEL.md
 added: 2026-09-14
+closed: 2026-09-14
+pr: 553
 verify: python3 tools/doc_check.py check && grep -qF 'Qt has no such cost to avoid' docs/MODEL.md
 ---
 

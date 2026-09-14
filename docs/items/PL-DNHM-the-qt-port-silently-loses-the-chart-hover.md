@@ -4,11 +4,13 @@ title: The Qt port silently loses the chart hover unless something names it: pyq
 priority: P2
 effort: S
 status: done
-closed: 2026-09-14
 classes: defect, ux
 feature: presentation-safety
+milestone: v0.4.22
 touches: docs/items, docs/MODEL.md, ROADMAP.md
 added: 2026-09-14
+closed: 2026-09-14
+pr: 553
 verify: python3 tools/doc_check.py check && grep -qF "ships `hoverable` set to `False`" docs/MODEL.md
 ---
 

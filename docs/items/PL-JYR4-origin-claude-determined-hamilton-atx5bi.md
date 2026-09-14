@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: parallel-sessions
+milestone: v0.4.22
 touches: docs/items
 added: 2026-09-13
 closed: 2026-09-13

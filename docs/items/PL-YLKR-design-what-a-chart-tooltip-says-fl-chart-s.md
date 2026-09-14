@@ -4,11 +4,13 @@ title: Design what a chart tooltip says: fl_chart's default is a bare number, an
 priority: P1
 effort: M
 status: done
-closed: 2026-09-14
 classes: safety, ux
 feature: presentation-safety
+milestone: v0.4.22
 touches: docs/MODEL.md, ROADMAP.md, docs/items
 added: 2026-09-08
+closed: 2026-09-14
+pr: 553
 verify: python3 tools/doc_check.py check && grep -qF 'what the tooltip may show' docs/MODEL.md
 ---
 

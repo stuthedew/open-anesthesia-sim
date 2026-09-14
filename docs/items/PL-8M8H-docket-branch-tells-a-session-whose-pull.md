@@ -4,12 +4,14 @@ title: docket branch tells a session whose pull request already merged to merge 
 priority: P2
 effort: M
 status: done
-closed: 2026-09-14
 classes: defect, infra
 feature: parallel-sessions
+milestone: v0.4.22
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py
-verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_whose_work_the_base_already_holds_is_told_to_restart' subprojects/docket/tests/test_vcs.py
 added: 2026-09-04
+closed: 2026-09-14
+pr: 552
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_whose_work_the_base_already_holds_is_told_to_restart' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** `BranchState.disposition` picks between four states from the

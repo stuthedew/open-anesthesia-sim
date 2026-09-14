@@ -4,12 +4,14 @@ title: Work that lands between a release cut and its merge is inside the tag's s
 priority: P2
 effort: M
 status: done
-closed: 2026-09-14
 classes: defect, infra
 feature: release-roadmap-seam
+milestone: v0.4.22
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_checks.py, ROADMAP.md
-verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_vcs.py && grep -q 'def test_the_cut_window_names_what_landed_since_the_cut' subprojects/docket/tests/test_checks.py
 added: 2026-09-04
+closed: 2026-09-14
+pr: 552
+verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_vcs.py && grep -q 'def test_the_cut_window_names_what_landed_since_the_cut' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** `bin/docket release` stamps the items finished since the last

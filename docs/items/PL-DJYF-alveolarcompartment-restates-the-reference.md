@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, science, docs
 feature: model-spec-accuracy
+milestone: v0.4.22
 touches: src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/parameters.py, docs/MODEL.md, tests/unit/test_alveolar.py
 added: 2026-09-13
 closed: 2026-09-13
