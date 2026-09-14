@@ -20,7 +20,7 @@ from docket.release import (
     suggest_version,
     version_key,
 )
-from docket.roadmap import IMPLEMENT, RELEASE, Wave, wave
+from docket.roadmap import CLEAR, IMPLEMENT, RELEASE, Wave, wave
 
 TODAY = date(2026, 8, 24)
 
@@ -876,6 +876,20 @@ ON_THE_MILESTONE_ROW = GATED_SCOPE_ROADMAP.replace(
 
 GATED_SCOPE_IDS = frozenset({"PL-GT01", "PL-SC02"})
 
+#: The same roadmap with the milestone's `Required scope` subsection removed,
+#: which is v0.2.8's shape: the frozen list is the whole of the section's
+#: content, so clearing it finishes the milestone. `_release_due` says so only
+#: where the project stands on that milestone's own row, and here it stands on
+#: the patch track beneath the milestone before it.
+GATE_ONLY_ROADMAP = GATED_SCOPE_ROADMAP.replace(
+    """### Required scope
+
+- A displayed clinical unit (queue item PL-SC02).
+
+""",
+    "",
+)
+
 
 def _gated(version: str, closed: frozenset[str], roadmap: str = GATED_SCOPE_ROADMAP) -> Wave:
     return wave(roadmap, version, closed, GATED_SCOPE_IDS, {})
@@ -936,6 +950,72 @@ def test_the_digest_still_declines_while_the_scope_is_unfinished() -> None:
 
     assert plan.beat == IMPLEMENT
     assert 'No release to offer: the roadmap gives 0.4.0 to "the teachable case"' in digest
+
+
+def test_the_reservation_reads_the_milestone_the_beat_names_not_only_the_step() -> None:
+    """`PL-6T4L`: the branch `PL-KD98` fixed for the release beat and not here.
+
+    The project stands on the patch-track row, whose `(0, 3, -1)` is a track
+    marker rather than a number anything can be cut at - so a guard comparing
+    the bump against `step` alone matches nothing, and the offer stands on the
+    very version the roadmap has given to the milestone the beat is asking to
+    implement.
+    """
+    from docket.release import RESERVED, release_offer
+
+    plan = _gated("0.3.0", frozenset({"PL-GT01"}))
+    offer = release_offer(_ready("0.3.9", "0.4.0"), plan)
+
+    assert plan.beat == IMPLEMENT
+    assert plan.step is not None and plan.step.version == (0, 3, -1)
+    assert (offer.kind, offer.version, offer.milestone) == (RESERVED, "0.4.0", "the teachable case")
+
+
+def test_the_reservation_holds_while_the_gate_under_that_milestone_is_open() -> None:
+    """The same carrier one beat earlier, where the number is spoken for twice
+    over: the gate that guards v0.4.0 is open *and* its scope is untouched."""
+    from docket.release import RESERVED, release_offer
+
+    plan = _gated("0.3.0", frozenset())
+    offer = release_offer(_ready("0.3.9", "0.4.0"), plan)
+
+    assert plan.beat == CLEAR
+    assert (offer.kind, offer.version, offer.milestone) == (RESERVED, "0.4.0", "the teachable case")
+
+
+def test_the_digest_stops_offering_the_version_of_the_milestone_it_says_to_implement() -> None:
+    """The two lines of one digest the item was filed on, read together.
+
+    `Offer 0.4.0 before taking new work` sat directly above a beat counting
+    that same milestone's scope as unfinished - and the offer is the only line
+    in the digest that tells a session to do something.
+    """
+    from docket.checks import Report
+    from docket.render import format_digest
+
+    plan = _gated("0.3.0", frozenset({"PL-GT01"}))
+    digest = format_digest(Report(items=[_item("PL-4444")]), None, _ready("0.3.9", "0.4.0"), plan)
+
+    assert "Offer 0.4.0 before taking new work" not in digest
+    assert 'No release to offer: the roadmap gives 0.4.0 to "the teachable case"' in digest
+    assert "implement v0.4.0 — the teachable case" in digest
+
+
+def test_no_reservation_is_read_off_a_beat_that_counts_nothing() -> None:
+    """`PL-J45M`: `implement` is also `wave`'s fall-through when `_release_due`
+    matches no arrangement, and one shape it falls through on is a *finished*
+    milestone - a gate-only section whose frozen list has cleared, reached from
+    a step that is not its own row. Withholding the offer there would print
+    "which is unfinished" against a milestone that is done, so the carrier
+    answers only where `own_scope` counts something."""
+    from docket.release import STANDS, release_offer
+
+    plan = _gated("0.3.0", frozenset({"PL-GT01"}), roadmap=GATE_ONLY_ROADMAP)
+    offer = release_offer(_ready("0.3.9", "0.4.0"), plan)
+
+    assert plan.beat == IMPLEMENT and plan.own_scope is None
+    assert plan.gate is not None and plan.gate.is_clear
+    assert (offer.kind, offer.version) == (STANDS, "0.4.0")
 
 
 def test_wave_reports_the_scope_split_once_the_gate_is_clear() -> None:
