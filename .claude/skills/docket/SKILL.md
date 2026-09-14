@@ -444,8 +444,11 @@ silence is indistinguishable from not having looked; and it means *no milestone
 section places it*, which is narrower than it sounds. `Scope` reads exactly two
 structures — a section's frozen list and its `Required scope` — so a milestone
 recording scope in prose alone records it invisibly, and a **timeline row**
-places nothing at all. `PL-FZ6T` is the worked example: `docket next` gives it
-no gate sentence, while `ROADMAP.md`'s `v0.4.x` row names it outright. So
+places nothing at all. A row that *bears* a section places through it,
+numbered or not - the Qt port's `—` row anchors the beat while its scope is
+open (`PL-FWJF`) - but the `v0.4.x` row bears none. `PL-FZ6T` is the worked
+example: `docket next` gives it no gate sentence, while `ROADMAP.md`'s
+`v0.4.x` row names it outright. So
 "placed nowhere" is a fact about the two structures and never a claim that the
 roadmap is silent — read the row for the step before saying either.
 

@@ -93,6 +93,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Qt's offscreen platform plugin links `libEGL.so.1`, which
+      # `ubuntu-latest` does not carry; without it the first
+      # `import PySide6.QtGui` in the suite dies at collection (`PL-VHLZ`).
+      # `libgl1`, `libxkbcommon0`, `libdbus-1-3` and `libfontconfig1` - the
+      # rest of what the PySide6 wheels expect from the OS - are already on the
+      # runner image. Installed here, before the floor section below, because
+      # it is an OS package rather than a toolchain: nothing about the
+      # no-virtualenv proof that section makes depends on which shared
+      # libraries the runner carries.
+      - name: Qt's system libraries, for the offscreen platform plugin
+        run: sudo apt-get update && sudo apt-get install -y libegl1
+
       # The floor section, and it runs FIRST - before uv exists on this runner.
       #
       # `tools/` and `subprojects/docket/` promise to run under a bare `python3`

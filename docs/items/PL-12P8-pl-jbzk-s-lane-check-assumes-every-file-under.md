@@ -50,3 +50,10 @@ check with the reason recorded; or leave the rule and stop the failure message
 naming `workflow_paths` as the remedy for a file that is not a test. The first
 is the most useful and the most work, the third is nearly free and leaves the
 judgment with the author.
+
+**A second instance, 2026-09-14 (`PL-G59B`).** `tests/conftest.py` - one
+line, `os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")`, which exists so
+the *product's* Qt chart can render under pytest - imports no `anesthesia_sim`
+and was told to declare itself apparatus. It is listed in `workflow_paths` to
+keep `make check` green, which is the wrong lane for it and is exactly this
+item's defect.

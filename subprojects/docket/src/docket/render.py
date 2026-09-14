@@ -1498,24 +1498,45 @@ def _beat_line(plan: Wave) -> str:
         # scope of its own is released because that scope closed too, and
         # saying only "its gate is clear" of it would name the smaller half of
         # what the reader is being asked to act on (`PL-KD98`).
+        cleared = _gate_clause(plan)
         if plan.own_scope is not None and plan.own_scope.is_complete:
             closed = _plural(len(plan.own_scope.ids), "Required scope id", "Required scope ids")
-            return f"release {plan.subject} - its gate is clear and all {closed} have closed"
-        return f"release {plan.subject} - its gate is clear"
+            return f"release {plan.subject} - {cleared} and all {closed} have closed"
+        return f"release {plan.subject} - {cleared}"
     if plan.beat == IMPLEMENT:
+        cleared = _gate_clause(plan)
         if plan.own_scope is not None and plan.own_scope.ids:
             left = len(plan.own_scope.outstanding) + len(plan.own_scope.unknown_ids)
             return (
-                f"implement {plan.subject} - its gate is clear, "
+                f"implement {plan.subject} - {cleared}, "
                 f"{len(plan.own_scope.closed)} of {len(plan.own_scope.ids)} "
                 f"Required scope ids closed and {left} still open"
             )
-        return f"implement {plan.subject} - its gate is clear"
+        return f"implement {plan.subject} - {cleared}"
     if plan.beat == FREEZE:
         return f"freeze and record {plan.subject}'s debt list in its section"
     if plan.subject:
         return f"scope {plan.subject} here, which freezes its gate"
     return "scope the next milestone; the timeline names none after this version"
+
+
+def _gate_clause(plan: Wave) -> str:
+    """Whose gate cleared, where the beat's milestone is not the one that recorded it.
+
+    A section-bearing `—` row between a clear gate and the milestone that
+    recorded it is the beat's work while its scope is open, and it takes no gate
+    of its own - the Qt port sits between Gate 1 and v0.5.0 exactly so
+    (`PL-FWJF`). "Its gate is clear" of such a row would name a gate it does not
+    have, so the clause says which milestone's gate it was.
+    """
+    gate = plan.gate
+    if (
+        gate is not None
+        and plan.milestone is not None
+        and plan.milestone.version != gate.milestone.version
+    ):
+        return f"the timeline puts it before {gate.milestone.label}, whose gate is clear"
+    return "its gate is clear"
 
 
 # One set of widths for the header and for every row, so the two cannot drift

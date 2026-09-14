@@ -1,9 +1,16 @@
 ---
 id: PL-4PC5
 title: bin/docket wave counts ids cited in a Required scope section's prose as scope entries, so v0.5.0 reads 21 ids with 11 closed against the section's own stated eighteen with 8 closed
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
+feature: planning-cadence
+touches: subprojects/docket/src/docket/roadmap.py, tests/unit/test_docket_digest_hook.py
 added: 2026-09-14
+verify: uv run pytest tests/unit/test_docket_digest_hook.py && bin/docket wave | grep -q 'Scope.*(19 ids)'
 ---
+
 
 **Problem.** bin/docket wave counts ids cited in a Required scope section's prose as scope entries, so v0.5.0 reads 21 ids with 11 closed against the section's own stated eighteen with 8 closed
 
@@ -57,3 +64,27 @@ a measurement this item should take rather than assume.
 record how many of its entries are closed, for the reason the v0.4.0 section
 gives: a count written into a document goes stale the next time an item
 closes. The fix belongs in the reader.
+
+**Still reproduces 2026-09-14, with the numbers moved.** `ROADMAP.md`'s
+`### Required scope` opens "Nineteen items, in the order the dependencies
+allow"; `bin/docket wave` reports `Scope: the Required scope of v0.5.0 (25 ids),
+17 closed, 8 open`. At capture it was 21 against eighteen. The gap has widened
+rather than closed, which is what an id cited in prose does: every re-brief that
+mentions another item adds one.
+
+**Why it matters.** `bin/docket wave` is what the `docket` skill tells a session
+to read before the queue, and `ROADMAP.md` states `Required scope` as the test
+for what a milestone contains. A session is therefore told a milestone is
+larger than the document says it is, with no way to see which six ids are the
+difference - and the same over-count feeds the closed/open split that decides
+whether the gate reads as clear.
+
+**`PL-C4RS` is the same disagreement from the document's side** - whether the
+group headings and the stated count agree - and the two have to land agreeing
+with each other. This one is the tool: `scope_status` reads
+`section.own_scope_ids`, which is populated from more than the list.
+
+**Done when.** `bin/docket wave` counts only the ids a `Required scope` section
+*lists* as entries, not ids its prose cites in passing, so the reported count
+matches the section's own - 19 against 19 on v0.5.0 today - and
+`tests/unit/` covers a section whose prose cites an id it does not list.

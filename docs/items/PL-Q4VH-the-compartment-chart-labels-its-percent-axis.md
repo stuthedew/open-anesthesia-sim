@@ -4,7 +4,7 @@ title: The compartment chart labels its percent axis at a different interval fro
 priority: P2
 effort: S
 status: blocked
-blocked-by: PL-G59B
+blocked-by: PL-7SVX
 classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
@@ -62,3 +62,8 @@ for a milestone to be *scoped*, and `docket check` promotes it back to `ready`
 the moment that section carries its four subsections - which the port's already
 does, so the version form raised "ready to promote" on every run. The port item
 is the edge that is actually true.
+
+**Fixed by construction in the Qt chart, 2026-09-14 (`PL-G59B`).**
+`tests/integration/test_qt_chart.py::test_both_axes_are_labelled_where_they_are_ruled` holds it there. The Flet chart
+still has the defect and is still the shipped chart, so this stays open until
+`PL-7SVX` deletes it, and closes then with nothing left to write.

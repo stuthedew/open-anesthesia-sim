@@ -59,8 +59,28 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
 ]
 dependencies = [
+    # Both toolkits, for the length of the Qt port and no longer. The port
+    # lands a chart, then a dashboard, then deletes Flet (`ROADMAP.md`
+    # § "v0.4.26 - the interface moves to Qt", Required scope items 1, 2 and
+    # 7), and the Flet build stays the shipped interface until the second of
+    # those. So PySide6 and pyqtgraph enter here with `PL-G59B`, the chart,
+    # and `flet` leaves with `PL-7SVX`, the deletion - the two halves of
+    # `PL-3SQT`, taken in the order the port needs them.
+    #
+    # `PySide6-Essentials` rather than `PySide6`: the Essentials wheel is the
+    # Qt modules this interface draws with (Core, Gui, Widgets) and none of
+    # the Addons (WebEngine, Multimedia, 3D), which are the bulk of the full
+    # distribution's download and are imported by nothing here.
+    #
+    # numpy is deliberately not declared, though pyqtgraph installs it: nothing
+    # under `src/` imports it, and whether it should is the half of `PL-3SQT`
+    # that re-argues `docs/WORKING_NOTES.md` § "Decided: no numpy" on its new
+    # scope. Declaring it before that argument is made would settle the
+    # question by accident.
+    "PySide6-Essentials>=6.9,<7.0",
     "flet-charts>=0.86,<1.0",
     "flet[all]>=0.86,<1.0",
+    "pyqtgraph>=0.13.7,<0.15",
     # A floor, not an exact pin. pydantic 2.12.4 began passing
     # `prefer_fwd_module=` to `typing._eval_type`, a keyword CPython added
     # between 3.14.0rc2 and 3.14.0 final, so on the release candidate this
@@ -180,6 +200,16 @@ strict = true
 
 [[tool.mypy.overrides]]
 module = ["flet_charts", "flet_charts.*"]
+ignore_missing_imports = true
+
+# pyqtgraph ships neither stubs nor `py.typed`, so under `strict` every plot
+# item is `Any` to the checker. `app/qt_chart.py` keeps that surface small by
+# holding its own typed state beside the items, and holds the geometry it
+# hands them - which curve draws which compartment - in `app/chart_frame.py`,
+# which imports no toolkit and is typed in full. PySide6 needs no entry: its
+# wheels carry stubs.
+[[tool.mypy.overrides]]
+module = ["pyqtgraph", "pyqtgraph.*"]
 ignore_missing_imports = true
 
 # `msgpack` ships no stubs and no `py.typed`. It is imported in exactly one

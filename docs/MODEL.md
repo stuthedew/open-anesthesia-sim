@@ -6250,13 +6250,16 @@ percent nor a MAC reading:
 
 ```
 Modelled sevoflurane · 20m8s
-Wash-in F_A/F_I (alveolar ÷ modelled circuit)
+Wash-in F_A/F_I (alveolar / modelled circuit)
 0.71
 ```
 
 `format_wash_in_ratio` produces the number, and the parenthesis is the caption
 `app/wash_in.py` already carries, for the reason stated there: $`F_I`$ is the
-modelled circuit rather than the vaporizer dial.
+modelled circuit rather than the vaporizer dial. A solidus rather than a
+division sign, because every non-ASCII character that reaches a reader has to
+have been rendered and seen first (`tools/glyph_check.py`), and the sign has
+not been.
 
 **The clinical references and the control marks do not answer, and the reason
 is interaction rather than content.** The 1 MAC line spans the plot
@@ -6300,6 +6303,20 @@ rather than a defect to design around — every other readout in the interface
 moves too, and a reader who wants to study a value pauses, which is what they
 would do in any case. What is not acceptable is the affordance being absent
 while they look for it.
+
+**Built on pyqtgraph as the nearest drawn point** (`PL-G59B`, 2026-09-14):
+`app/chart_frame.py` holds the derivation above as code — `format_trace_hover`
+and `format_wash_in_hover` produce the three lines, and `nearest_trace_point`
+answers only for a compartment the reader has left shown, within a pixel
+radius of a point the plot actually draws — and `app/qt_chart.py` shows it
+wherever the pointer is, running or paused. The instant on the first line is
+stated at the step the run advances by, `HOVER_INSTANT_RESOLUTION_S`: a drawn
+column sits wherever the anchored grid puts it, and the state reported is the
+state at exactly that instant, but printing it to four decimals would claim a
+resolution no other display on the screen has. `tests/unit/test_chart_frame.py`
+holds the worked example above verbatim, and
+`tests/integration/test_qt_chart.py` holds the rendered readout against a real
+run.
 
 ## Assumptions
 

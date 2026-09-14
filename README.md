@@ -136,6 +136,10 @@ Building from source needs two things:
   `pyproject.toml` is a floor, so an older build stops with a clear message
   rather than quietly resolving the interpreter pin against a list that
   predates it.
+- **On Linux, `libegl1`** (`apt install libegl1`), which the Qt chart the
+  interface is moving to needs and the PySide6 wheels do not carry. Nothing
+  else: the other libraries Qt expects are on an ordinary desktop already, and
+  macOS and Windows need nothing extra.
 
 ```bash
 git clone https://github.com/stuthedew/open-anesthesia-sim.git
