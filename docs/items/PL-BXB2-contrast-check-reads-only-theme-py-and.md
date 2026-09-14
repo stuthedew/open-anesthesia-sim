@@ -9,9 +9,9 @@ feature: qt-port
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py, docs/ARCHITECTURE.md
 added: 2026-09-14
 closed: 2026-09-14
+pr: 581
 verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'def test_a_color_declared_in_any_other_app_module_is_measured' tests/unit/test_contrast_check.py
 ---
-
 
 **Problem.** contrast_check reads only theme.py and simulation_view.py, so a colour declared in any other app/ module is measured by nothing and missed by nothing, and check_colors_live_in_the_theme inspects only the view
 

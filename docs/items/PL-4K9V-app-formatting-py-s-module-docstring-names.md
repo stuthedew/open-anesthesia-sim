@@ -9,6 +9,7 @@ feature: documentation-standard
 touches: src/anesthesia_sim/app/formatting.py
 added: 2026-09-14
 closed: 2026-09-14
+pr: 582
 verify: uv run pytest tests/unit/test_formatting.py && ! grep -q 'SimulationHistorySample' src/anesthesia_sim/app/formatting.py
 ---
 

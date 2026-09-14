@@ -21,7 +21,10 @@ The one it did hold - VLDB's M4 aggregation paper, redistributable under
 CC BY-NC-ND 3.0 - was removed with the code that cited it (`PL-8LXM`,
 2026-09-08): this directory holds papers the code is founded on, and a paper
 nothing founds is a question a reader has to answer (project owner,
-2026-09-05).
+2026-09-05). It is founded again since 2026-09-14 - the chart's drawing
+guarantee cites its result (`PL-GS3R`) - and lives in the private corpus below
+rather than here, by the project owner's decision, with its entry and reading
+note under "The documents".
 
 **Two publisher-copyright full texts were removed on 2026-09-06**, by the
 `git filter-repo` pass and force-push this section used to name as a
@@ -102,6 +105,55 @@ treats the anesthetic gases specifically, deriving how transfer depends on
 solubility in blood and in each tissue. Read it when a compartment structure,
 a governing equation, or a solubility-driven assumption in `docs/MODEL.md` is
 being questioned or extended.
+
+### Jugel et al. 2014 — M4 time series aggregation
+
+**Not held here.** Held in the private corpus,
+`stuthedew/open-anesthesia-sim-references`, which "Where owner-supplied full
+texts live now" above says how to attach. Its licence, CC BY-NC-ND 3.0 per the
+statement on its first page, would let this public repository carry it, and it
+did from 2026-09-04 until `PL-8LXM` removed it with the M4 decimation module
+on 2026-09-08 as a paper nothing then founded. Supplied again by the project
+owner on 2026-09-14 - the same bytes, by checksum - and placed in the private
+corpus by their decision, with every other owner-supplied full text.
+
+> Jugel U, Jerzak Z, Hackenbroich G, Markl V. M4: A Visualization-Oriented
+> Time Series Data Aggregation. *Proceedings of the VLDB Endowment*.
+> 2014;7(10):797–808. ISSN 2150-8097.
+
+Every field above is taken from the paper's own title page and running
+footer, read with `pdftotext` on 2026-09-14, which is all this entry asserts.
+**No DOI is recorded, deliberately.** The PDF prints none — only the ISSN and
+the copyright line — `doi.org` and `www.vldb.org` are both blocked by the
+session egress proxy, and PubMed does not index the venue, so nothing could be
+checked against a registry. A remembered DOI written down becomes a fact by
+tomorrow. A session that can reach a registry should confirm the record and
+add one.
+
+**What the chart takes from it, and what it does not.** `docs/MODEL.md`
+§ "What the chart draws" holds the chord between two drawn instants to one
+pixel of time. This paper is the published form of the argument behind that,
+seen from the other side. For recorded data grouped into pixel columns,
+Theorem 1 proves `vis_wh(G_M4(T)) = vis_wh(T)`: the two-colour line
+visualization of the four tuples Definition 2 selects per column — the
+`min(v)`, `max(v)`, first and last tuples — equals that of the whole series,
+and the proof (Lemmas 1 and 2) is that every inner-column pixel follows from
+the column's top and bottom, and every inter-column line from the last tuple
+of one column and the first of the next. The chart selects nothing: it
+evaluates the run at one instant per pixel boundary, so on a stretch monotone
+within the pixel the two boundary values are that column's top and bottom and
+the segment between them is its inter-column line. Two things the paper's
+guarantee has that the chart's does not, both stated in `docs/MODEL.md`. It
+holds only with groups aligned to pixel columns — §6: "the engineers have to
+make sure that nh = w", or any integer factor of w — and the chart's grid is
+anchored to the case's zero rather than to the viewport, so the chart's claim
+is "within one pixel of time", not pixel identity. And it needs the min and
+max tuples for a stretch that turns inside a column, which the chart does not
+evaluate, so an extremum between two dial changes is the one measured
+residual, 0.0028 pp at worst over the supported envelope.
+
+Read in full text on 2026-09-14 for the sections named above. §4.3's error
+taxonomy and §5's query rewriting were not read for this entry.
 
 ### Schüttler & Schwilden 2008 — *Modern Anesthetics*
 

@@ -9,9 +9,9 @@ feature: qt-port
 touches: tools/agent_identity_check.py, tests/unit/test_agent_identity_check.py, docs/ARCHITECTURE.md
 added: 2026-09-14
 closed: 2026-09-14
+pr: 581
 verify: uv run pytest tests/unit/test_agent_identity_check.py && grep -q 'def test_an_identity_set_with_no_disabled_write_read_anywhere_is_an_error' tests/unit/test_agent_identity_check.py
 ---
-
 
 **Problem.** agent_identity_check prints 'none of them rendered disabled' from an empty measurement set, so the affirmative sentence cannot be told apart from the same sentence earned
 
