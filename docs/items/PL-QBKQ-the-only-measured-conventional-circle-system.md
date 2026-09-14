@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/machines/reference_circle_system.json, docs/MODEL.md
 added: 2026-09-13
 closed: 2026-09-13
+pr: 550
 verify: python3 tools/doc_check.py check && grep -q '2764290' src/anesthesia_sim/data/machines/reference_circle_system.json
 ---
 

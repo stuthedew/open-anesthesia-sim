@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: docs/MODEL.md, tests/reference/test_published_wash_in_and_elimination.py
 added: 2026-09-13
 closed: 2026-09-13
+pr: 550
 verify: python3 tools/doc_check.py check && grep -qi 'circuit-wall absorption' docs/MODEL.md
 ---
 

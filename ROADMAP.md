@@ -2755,6 +2755,18 @@ Four grounds survive:
    axes, the control marks and the wash-in plot, on pyqtgraph. `PL-GS3R`'s
    chord-width column rule lands here rather than separately - the port is what
    makes it affordable, and it is the reason `PL-GS3R` is sequenced behind this.
+
+   *`PL-YVHK`, the chart's hover readout, lands here too* (project owner,
+   2026-09-14, splitting `PL-YLKR`). What it shows is already decided:
+   `docs/MODEL.md` § "The chart's hover readout: what the tooltip may show"
+   derives it, in v0.4.x, so this is a build against a written specification
+   rather than a design round inside a port. **It is parity rather than new
+   capability**, and the distinction is load-bearing here: `ScatterPlotItem`
+   ships `hoverable` set to `False` and a plotted line carries no hover at
+   all, so a port silent about it *loses* the Flet build's hover instead of
+   reproducing it. Building it on Flet first was refused because the same
+   content is roughly 1 870 per-point strings there and one format callable
+   here - see that item for the measurement.
 2. **The dashboard.** The readout row, the parameter controls, the agent
    selector, the transport, the new-case dialog and the notice banner -
    `app/simulation_view.py`, 3 619 lines.

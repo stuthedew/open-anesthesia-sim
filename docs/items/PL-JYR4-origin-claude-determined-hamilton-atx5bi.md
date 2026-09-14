@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: docs/items
 added: 2026-09-13
 closed: 2026-09-13
+pr: 548
 verify: bin/docket check && grep -q '^status: done' docs/items/PL-B9K7-yasuda-targ-and-eger-1989-s-tissue-solubility.md
 ---
 

@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: src/anesthesia_sim/core/alveolar.py, src/anesthesia_sim/core/parameters.py, docs/MODEL.md, tests/unit/test_alveolar.py
 added: 2026-09-13
 closed: 2026-09-13
+pr: 550
 verify: uv run pytest tests/unit/test_alveolar.py && grep -q 'def test_the_bare_alveolar_defaults_match_the_shipped_patient_file' tests/unit/test_alveolar.py
 ---
 
