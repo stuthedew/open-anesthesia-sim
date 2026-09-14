@@ -72,3 +72,31 @@ bounded today: `state_at` has **no production caller in `src/`** - only
 site rather than across the tree. Under the alternative that hazard cannot be
 expressed, and the new one it creates *is* refusable, which is why the guard
 above is the whole of its cost.
+
+**Measured 2026-09-14 while working `PL-TFX5`, and it changes this item's cost
+rather than its answer.**
+
+- **The guard this brief calls blocking is free, and independent of the
+  decision.** Moving `_require_within_run`'s lower bound from the literal `0.0`
+  to `self._segments[0].opening.elapsed_s`, and making `_segment_index_at`
+  refuse a negative index rather than wrap, is a strict no-op on the current
+  tree: the whole suite passes with both patched in. So it can land on its own,
+  before or without an answer here, and this item stops carrying it as a cost.
+- **The wrap is unreachable today, on a trunk and on a branch alike.**
+  `_segment_index_at` returned no negative index across 460 public calls,
+  because `RunDefinition.__init__` opens the first segment at `0.0` and
+  `_require_within_run` refuses anything below it. Under the shape this item
+  proposes it becomes real and silent, for the reason the brief gives:
+  `_propagator` returns `None` for a non-positive interval, so `state_at` hands
+  back the last segment's keyframe unchanged instead of refusing.
+- **`PL-TFX5`'s own work is not exposed to the answer.** `BranchedCase` and the
+  `set_agent` refusal reference `origin_s` nowhere and convert no frame; every
+  executable site a "yes" would rewrite is `PL-J2TD`'s - four in
+  `app/controller.py`, three in `core/run_definition.py` - plus about ten lines
+  of `docs/ARCHITECTURE.md` prose, which already names this item as open.
+- **Both evidence sources this brief waited for have arrived.** `PL-B9PY` is
+  closed and `PL-2R2C` is filed and measured, so "the evidence for answering it
+  arrives with" is satisfied. `PL-2R2C` is reachable today: on a 0-120 s axis of
+  13 columns, a branch forked at 55.3 s shares 2 of its 8 drawn instants with
+  the trunk, against 7 of 7 for a fork at 60.0 s. Nothing draws a branch yet, so
+  it costs nothing until `PL-8PSW`, which is the item that needs this answered.
