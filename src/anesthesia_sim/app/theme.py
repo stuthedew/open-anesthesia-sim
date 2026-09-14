@@ -38,6 +38,37 @@ INK = "#243B53"
 # BACKGROUND. The hue and saturation are unchanged (210 deg, 0.355) so the
 # label/value hierarchy against INK reads as it did.
 MUTED = "#59728A"
+# The one signal this interface has, and it deliberately does NOT follow the
+# medical alarm-colour convention (project owner, 2026-09-14, on PL-LL9Y).
+#
+# IEC 60601-1-8 governs *visual alarm signals* - indicators that encode
+# priority by colour together with a flash rate - and this interface has none.
+# Every use of WARNING is `ft.Text`, bold and coloured: the run-status word,
+# the transient notice line, the agent-accounting status word, the permanent
+# educational disclaimer, and the case-discard dialog. No indicator lamp, no
+# filled banner, no flashing element, no priority tier.
+#
+# The disclaimer is the surface that settles it, and it points away from
+# adoption. WARNING is the colour of a line that is on screen *always*, and a
+# monitor's alarm colours mean what they mean precisely because they are
+# absent until something is wrong. Painting a permanent element in a
+# high- or medium-priority alarm colour would teach the opposite of the
+# convention it borrowed: an alarm colour that means nothing, from the moment
+# the app opens. The deliberate divergence also keeps a teaching tool from
+# being mistaken for a monitor, which is the reason the owner chose it.
+#
+# This binds the Qt port as much as this file. `v0.5.1` redecides the palette
+# and is the moment an indicator-shaped surface could first appear; it must
+# not arrive carrying a monitor's priority palette. Two things are unaffected:
+# PL-MMYM's contrast target binds whatever colour is chosen, and the ISO 5360
+# agent colours below are untouched - they identify an agent and carry no
+# urgency, which is why footnote b obligates them and nothing obligates this.
+#
+# The interface already runs this as a signal economy one level down, at
+# `simulation_view.py`'s supported-run-length boundary: that boundary is
+# MUTED, not WARNING, because colouring a correct model's declared boundary as
+# a fault teaches a reader to distrust a number that is sound, and would spend
+# the one signal this interface has for a real one.
 WARNING = "#8A4B08"
 
 

@@ -8,6 +8,7 @@ classes: refactor
 touches: src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, tests/integration/test_controller.py, tests/reference/test_multi_agent.py, tests/reference/test_published_wash_in_and_elimination.py, tests/reference/test_sevo_patient.py, tests/unit/test_circuit.py, tests/unit/test_formatting.py, tests/unit/test_simulation_view.py, tests/unit/test_uptake_system_failure.py
 added: 2026-09-03
 closed: 2026-09-14
+pr: 555
 verify: uv run pytest tests/unit/test_uptake_system_failure.py tests/unit/test_simulation_view.py && ! grep -rEq '^ +[a-z_]+=[(][a-zA-Z_][a-zA-Z0-9_.]*[)],?$' src/ --include=*.py
 ---
 

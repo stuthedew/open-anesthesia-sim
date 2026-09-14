@@ -3,11 +3,13 @@ id: PL-LL9Y
 title: Check the warning and alert colours against the medical alarm-colour convention
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
 added: 2026-09-02
+closed: 2026-09-14
+verify: uv run python tools/contrast_check.py && grep -q 'deliberately does NOT follow the' src/anesthesia_sim/app/theme.py && grep -q 'deliberately does not follow the medical alarm-colour' docs/MODEL.md
 ---
 
 **Problem.** `app/theme.py:12` defines `WARNING = "#8A4B08"` — a dark brown-orange
@@ -196,3 +198,47 @@ colour-to-urgency mapping transfers, or deliberately diverge so nobody mistakes
 a teaching tool for a monitor. The answer does not depend on the table: it is a
 question about what the simulator is for. The table is needed only after the
 answer is "follow the convention", and only for the colours themselves.
+
+## Decided 2026-09-14 by the project owner: deliberately diverge
+
+**The simulator does not follow the medical alarm-colour convention, and the
+reason is recorded rather than the colour being left unexamined** — which is
+what this brief correctly called indefensible about the original state.
+`WARNING = "#8A4B08"` is unchanged; what changes is that the question has now
+been asked and answered.
+
+**The grounds, which are the ones the 2026-09-13 pass established from the
+code.** IEC 60601-1-8 governs *visual alarm signals* — indicators encoding
+priority by colour together with a flash rate — and this interface has none:
+all five `WARNING` surfaces are bold coloured text, with no indicator lamp, no
+filled banner, no flashing element and no priority tier. The permanent
+educational disclaimer is the surface that settles it, and it points away from
+adoption: an alarm colour on an element that is on screen always would teach
+the opposite of the convention it borrowed.
+
+**The owner's own ground, which is the half a session could not supply.** A
+teaching tool that looks unmistakably unlike a monitor cannot be mistaken for
+one. That is the question this brief said rests on what the simulator is *for*,
+and it is answered: diverge, deliberately, and say so.
+
+**Recorded in two places, per this brief's Approach.**
+`src/anesthesia_sim/app/theme.py` beside the constant, and `docs/MODEL.md`
+beside the ISO 5360 agent-colour section — deliberately adjacent to it, because
+the two are opposite answers about different colours and the difference should
+be visible rather than inferred: the agent colours are adopted *because* Table 2
+footnote b obligates them, and nothing obligates this one.
+
+**It binds `v0.5.1`.** The port redecides the palette and is the moment an
+indicator-shaped surface could first appear. Both records say so, so the
+decision cannot be lost at the milestone that raises it — which is the reason
+the 2026-09-13 pass left this open rather than closing it on today's surface.
+
+**Two things are unaffected and neither was in question:** `PL-MMYM`'s contrast
+target binds whatever colour is chosen, and the ISO 5360 agent colours are
+untouched.
+
+**The priority-to-colour mapping is deliberately still not recorded**, and no
+longer needs to be. The 2026-09-14 pass established that it cannot be reached
+from this environment and that three independent secondary sources disagree
+about the low-priority colour. `docs/MODEL.md` says that rather than implying a
+reading of a text nobody opened.
