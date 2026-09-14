@@ -71,7 +71,7 @@ import json
 import re
 import subprocess
 import sys
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
@@ -150,6 +150,17 @@ DOC_GLOBS = (
 # file.
 RESIDENT_ROOTS = ("CLAUDE.md", ".claude/CLAUDE.md")
 RULES_DIR = ".claude/rules"
+SKILLS_DIR = ".claude/skills"
+WORKER_DOC = "docs/worker.md"
+# Instruction text a session loads only once something makes it load: a skill
+# when it is invoked, a path-scoped rule when a matching file is read, the
+# worker instructions when a worker run starts. Measured apart from the
+# resident set rather than folded into it, because "loads at launch" and "may
+# be made to load" are different quantities and one number cannot mean both
+# (`PL-JQVB`). `docs/consultant-brief.md` is deliberately absent: it is pasted
+# by a person as a user message rather than loaded by a session, which is the
+# property it was built for, so no session loads it at all.
+ON_DEMAND_ROOTS = (SKILLS_DIR, RULES_DIR, WORKER_DOC)
 
 # A top-level `paths` key inside the YAML frontmatter block. Read this way
 # rather than with a YAML parser because this tool is standard library only,
@@ -480,6 +491,10 @@ class Report:
     # number is the point rather than any verdict on it. `None` only when the
     # checkout holds no resident instruction file at all.
     resident: ResidentInstructions | None = None
+    # Instruction text a session loads only on demand, measured the same way
+    # and reported on its own line. Never added to `resident`: the two answer
+    # different questions, and a single total would answer neither.
+    on_demand: ResidentInstructions | None = None
 
 
 @dataclass(frozen=True)
@@ -2799,6 +2814,20 @@ def _measure(name: str, text: str) -> ResidentFile | None:
     return ResidentFile(name, len(text), len(text.splitlines()))
 
 
+def _measure_on_demand(name: str, text: str) -> ResidentFile | None:
+    """One instruction file a session loads only once something makes it load.
+
+    The mirror of `_measure`, and the `paths:` test runs the other way round
+    for exactly that reason: a rule that defers itself to a path is not
+    resident, which is why `_measure` drops it - and it is the clearest case of
+    text a session may be made to load, which is why this keeps it. A rule with
+    no `paths:` is already counted as resident and must not be counted twice.
+    """
+    if name.startswith(f"{RULES_DIR}/") and not is_path_scoped(text):
+        return None
+    return ResidentFile(name, len(text), len(text.splitlines()))
+
+
 def measure_resident(root: Path) -> list[ResidentFile]:
     """Which instruction files load at launch in this working tree, and how big."""
     measured: list[ResidentFile] = []
@@ -2810,6 +2839,43 @@ def measure_resident(root: Path) -> list[ResidentFile]:
         )
     for name in names:
         row = _measure(name, (root / name).read_text(encoding="utf-8"))
+        if row is not None:
+            measured.append(row)
+    return measured
+
+
+def _markdown_under(root: Path, roots: Sequence[str]) -> list[str]:
+    """Every `.md` at or beneath the named files and directories, once each."""
+    names: list[str] = []
+    for entry in roots:
+        path = root / entry
+        if path.is_file():
+            names.append(entry)
+        elif path.is_dir():
+            names += (
+                found.relative_to(root).as_posix()
+                for found in path.rglob("*.md")
+                if found.is_file()
+            )
+    return sorted(dict.fromkeys(names))
+
+
+def measure_on_demand(root: Path) -> list[ResidentFile]:
+    """Which instruction files this tree can make a session load, and how big.
+
+    Measured because the growth instrument could not see them, and four fifths
+    of this project's instruction growth went where it could not look: between
+    `v0.4.0` and `v0.4.22`, `CLAUDE.md` grew 3,135 characters and
+    `.claude/skills/docket/SKILL.md` grew 15,416, of which the resident
+    advisory reported the first number and none of the second (`PL-JQVB`).
+    Routing a rule into a skill is the *right* answer under `CLAUDE.md`'s four
+    dispositions, so nothing here scolds it - but a routing pass that reads as
+    a pure reduction when it is a relocation cannot be checked, and this is
+    what makes both halves of the move visible in one place.
+    """
+    measured: list[ResidentFile] = []
+    for name in _markdown_under(root, ON_DEMAND_ROOTS):
+        row = _measure_on_demand(name, (root / name).read_text(encoding="utf-8"))
         if row is not None:
             measured.append(row)
     return measured
@@ -2838,14 +2904,22 @@ def _resident_baseline(root: Path) -> tuple[str, tuple[ResidentFile, ...]] | Non
     on the default branch" - which a merge base cannot see, since it reports
     nothing when the growth arrived on the branch being merged into.
 
-    Both sides are measured here by the same `_measure`, from file contents
-    read out of git rather than from any number written down, so changing what
-    is measured cannot make a stored baseline incomparable with a fresh one.
+    Both sides are measured here by the same measure function, from file
+    contents read out of git rather than from any number written down, so
+    changing what is measured cannot make a stored baseline incomparable with a
+    fresh one. That is also why the measure travels as an argument: the
+    on-demand set needs the same comparison against the same ref, and a second
+    copy of this walk would be free to drift from this one.
     """
+    return _baseline(root, (*RESIDENT_ROOTS, RULES_DIR), _measure)
+
+
+def _baseline(
+    root: Path, roots: Sequence[str], measure: Callable[[str, str], ResidentFile | None]
+) -> tuple[str, tuple[ResidentFile, ...]] | None:
+    """One measured set as it stands at the tip of the default branch."""
     for ref in DEFAULT_BRANCHES:
-        listing = _git_text(
-            root, "ls-tree", "-r", "--name-only", ref, "--", *RESIDENT_ROOTS, RULES_DIR
-        )
+        listing = _git_text(root, "ls-tree", "-r", "--name-only", ref, "--", *roots)
         if listing is None:
             continue
         measured: list[ResidentFile] = []
@@ -2855,7 +2929,7 @@ def _resident_baseline(root: Path) -> tuple[str, tuple[ResidentFile, ...]] | Non
             text = _git_text(root, "show", f"{ref}:{name}")
             if text is None:
                 continue
-            row = _measure(name, text)
+            row = measure(name, text)
             if row is not None:
                 measured.append(row)
         return ref, tuple(measured)
@@ -2941,6 +3015,34 @@ def check_resident_instructions(root: Path, report: Report) -> None:
         )
 
 
+def check_on_demand_instructions(root: Path, report: Report) -> None:
+    """Report the instruction text a session can be made to load, and nothing else.
+
+    Printed, never advised on, and the silence is the design. `CLAUDE.md`'s
+    four dispositions make routing a rule into a skill or onto a path the
+    *preferred* answer to the resident growth advisory, so a signal that fired
+    when one happened would fire on the project doing the right thing - which
+    is the check `CLAUDE.md` says is a defect in the check. What was missing
+    was never a verdict but a number: the growth advisory reads one set, a
+    routing pass moves text into the other, and the move showed up as a
+    reduction with nothing on the far side of it.
+
+    The two totals are printed together for that reason, and are never summed.
+    A session comparing a branch against the base can see both move, which is
+    all this needs to do; whether the new home is the right one at the moment
+    the rule is needed stays the routing judgment `CLAUDE.md` asks for.
+    """
+    files = measure_on_demand(root)
+    if not files:
+        return
+    baseline = _baseline(root, ON_DEMAND_ROOTS, _measure_on_demand)
+    report.on_demand = ResidentInstructions(
+        files=tuple(files),
+        baseline_ref=None if baseline is None else baseline[0],
+        baseline_files=None if baseline is None else baseline[1],
+    )
+
+
 def _check_reference_files_exist(root: Path, report: Report) -> None:
     """Refuse a source document the reference index names but does not hold.
 
@@ -3004,6 +3106,7 @@ def analyze(root: Path) -> Report:
     check_coverage_gate(root, report)
     check_math_delimiters(root, report)
     check_resident_instructions(root, report)
+    check_on_demand_instructions(root, report)
     _check_reference_files_exist(root, report)
     return report
 
@@ -3012,23 +3115,39 @@ def _plural(count: int, singular: str, plural: str) -> str:
     return f"{count} {singular if count == 1 else plural}"
 
 
-def _format_resident(resident: ResidentInstructions) -> str:
-    """One line: what every session loads, and how that compares to the base."""
-    breakdown = ", ".join(f"{row.name} {row.characters}/{row.lines}" for row in resident.files)
-    growth = resident.growth
+def _format_measured(label: str, when: str, measured: ResidentInstructions) -> str:
+    """One line: how much instruction text a set holds, and how it moved against the base."""
+    breakdown = ", ".join(f"{row.name} {row.characters}/{row.lines}" for row in measured.files)
+    growth = measured.growth
     if growth is None:
         against = "no default branch here to compare against"
     elif growth > 0:
-        against = f"{growth} more characters than {resident.baseline_ref}"
+        against = f"{growth} more characters than {measured.baseline_ref}"
     elif growth < 0:
-        against = f"{-growth} fewer characters than {resident.baseline_ref}"
+        against = f"{-growth} fewer characters than {measured.baseline_ref}"
     else:
-        against = f"unchanged against {resident.baseline_ref}"
+        against = f"unchanged against {measured.baseline_ref}"
     return (
-        f"resident instructions: {_plural(resident.total, 'character', 'characters')} over "
-        f"{_plural(resident.total_lines, 'line', 'lines')} loaded at launch "
+        f"{label}: {_plural(measured.total, 'character', 'characters')} over "
+        f"{_plural(measured.total_lines, 'line', 'lines')} {when} "
         f"(chars/lines: {breakdown}) - {against}"
     )
+
+
+def _format_resident(resident: ResidentInstructions) -> str:
+    """One line: what every session loads, and how that compares to the base."""
+    return _format_measured("resident instructions", "loaded at launch", resident)
+
+
+def _format_on_demand(on_demand: ResidentInstructions) -> str:
+    """One line: what this tree can make a session load, printed beside the resident total.
+
+    Deliberately not summed with it. A skill that never fires costs a session
+    nothing, and a rule scoped to `src/**` costs a workflow session nothing, so
+    a combined figure would overstate every session's load and understate the
+    one it happened to describe.
+    """
+    return _format_measured("instructions loaded on demand", "reachable this way", on_demand)
 
 
 def format_check(report: Report) -> str:
@@ -3042,6 +3161,8 @@ def format_check(report: Report) -> str:
     lines = [summary]
     if report.resident is not None:
         lines.append(_format_resident(report.resident))
+    if report.on_demand is not None:
+        lines.append(_format_on_demand(report.on_demand))
     if report.errors:
         lines.append("")
         lines.append("Errors (the documentation is wrong; fix before committing):")

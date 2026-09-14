@@ -408,6 +408,30 @@ were open, startable, and hidden from every session for it. So the paths are
 read alongside the subject, from the same `git log` rather than a `git show`
 per commit, and a commit that only wrote to the queue stakes no claim.
 
+**An item whose own work *is* a queue edit is the exception, and it is read
+from the item rather than from the commit.** A release tag item, a triage pass
+and a stranded recovery all deliver nothing but a write to `docs/items/`, so
+the path test excludes the very work it was built to find. `_queue_only_work`
+asks the default branch what each edited item declares in `touches` and
+promotes the ones that never leave the queue; an item the base does not hold at
+all is a capture creating its own file, and is not promoted. Measured against
+the eight false marks above, not one declares `touches` inside the queue alone,
+so the fix costs none of them back. Measured live on 2026-09-14, `PL-XR8K` was
+being closed on a branch and appeared in no reading of the report.
+
+**A ref naming nothing at all is the third outcome, and it is reported rather
+than dropped.** `unreadable` says the commits could not be read; `unattributed`
+says they were read and named no item — no id in the branch name, none at the
+front of any subject. Such a ref used to be dropped silently, so the report was
+complete about what it could not read and silent about work it could. It is
+named in `flight` and in the session digest with nothing suppressing it,
+because the steady state is empty: `tools/branch_id_check.py` fails a
+`claude/*` branch of one's own that names no id, and on 2026-09-14 none of this
+repository's ten unlanded heads was unattributable. A bookkeeping push is not
+one of these — a capture, a triage pass and a `docket record` write all name
+the item they concern, so they are attributable even though `_annotates_only`
+withholds their claim. That distinction is what keeps the line quiet.
+
 It fails toward keeping the mark. A merge prints no paths under `--name-only`,
 and a path git quoted does not match the prefix; neither is evidence of
 bookkeeping, so both keep their claim. What it cannot see is a session that

@@ -363,6 +363,16 @@ def format_digest(
         )
     if unread := format_unread(flight):
         lines.append(f"  {unread}")
+    if flight.unattributed:
+        # Printed here, not only in `flight`, and with nothing suppressing it:
+        # on 2026-09-14 no ref in this repository is unattributed and
+        # `tools/branch_id_check.py` is what keeps it that way, so the steady
+        # state is silence and a line means a ref genuinely nobody can name
+        # (`PL-B73C`).
+        lines.append(
+            f"  Unlanded and attributable to no item: {', '.join(sorted(flight.unattributed))}. "
+            "Nothing names it, so no guard here can see it - file an item or delete the branch."
+        )
     if stranded is not None and stranded.items:
         named = ", ".join(
             f"{item.identifier} ({_gloss(item.title)})" for item in stranded.items[:2]
@@ -607,6 +617,14 @@ def format_flight(report: FlightReport, today: date) -> str:
     weaker mark prints where it changes a decision instead: `triage`, which is
     about to write to one of those files, and `show`, which is about to start
     the item (`PL-N1JK`).
+
+    **`FlightReport.unattributed` is printed, and that is the opposite call for
+    the opposite reason** (`PL-B73C`). A ref nobody can name fires on no run at
+    all in the steady state - `tools/branch_id_check.py` refuses a `claude/*`
+    branch of one's own that names none - so it is not an advisory firing every
+    run, it is one firing only when something has escaped every guard this
+    repository has. That is the reading the whole report is silent about
+    otherwise: read perfectly well, and attributable to nothing.
     """
     lines: list[str] = []
     if report.branches:
@@ -627,6 +645,15 @@ def format_flight(report: FlightReport, today: date) -> str:
         )
     else:
         lines.append("No branch carries an item id, in its name or at the front of a commit.")
+
+    if report.unattributed:
+        lines.append("")
+        lines.append(
+            f"{_plural(len(report.unattributed), 'ref carries', 'refs carry')} no item id, in "
+            "the name or at the front of any commit, so no guard in this repository can see "
+            f"{'it' if len(report.unattributed) == 1 else 'them'}:"
+        )
+        lines.extend(f"  {name}" for name in report.unattributed)
 
     if report.unreadable:
         lines.append("")

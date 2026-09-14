@@ -2000,6 +2000,109 @@ def test_this_repository_reports_its_own_resident_total() -> None:
     assert ".claude/rules/expert-review.md" in measured
 
 
+# --- instructions loaded on demand -------------------------------------------
+
+
+SKILL_BODY = """---
+name: thing
+description: Do the thing.
+---
+
+# thing
+
+One line.
+"""
+
+
+def _on_demand_names(root: Path) -> set[str]:
+    return {row.name for row in doc_check.measure_on_demand(root)}
+
+
+def _skilled(root: Path, name: str = "thing", body: str = SKILL_BODY) -> Path:
+    directory = root / ".claude" / "skills" / name
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "SKILL.md").write_text(body, encoding="utf-8")
+    return root
+
+
+def test_a_skill_is_measured_on_demand_and_never_as_resident(tmp_path: Path) -> None:
+    """The blind spot this exists to close: a skill loads, and nothing counted it."""
+    root = _skilled(_instructed(_repo(tmp_path)))
+
+    assert ".claude/skills/thing/SKILL.md" in _on_demand_names(root)
+    assert ".claude/skills/thing/SKILL.md" not in _resident_names(root)
+
+
+def test_a_rule_is_counted_in_exactly_one_of_the_two_sets(tmp_path: Path) -> None:
+    """`paths:` decides which set a rule lands in, and nothing lands in both.
+
+    Double-counting would not fail anything - neither total gates a build - so
+    only a test says whether the two numbers can be read side by side at all.
+    """
+    root = _instructed(_repo(tmp_path), scoped=SCOPED_RULE, always=UNSCOPED_RULE)
+
+    assert ".claude/rules/scoped.md" in _on_demand_names(root)
+    assert ".claude/rules/scoped.md" not in _resident_names(root)
+    assert ".claude/rules/always.md" in _resident_names(root)
+    assert ".claude/rules/always.md" not in _on_demand_names(root)
+
+
+def test_the_worker_instructions_are_measured_on_demand(tmp_path: Path) -> None:
+    """A worker run loads them in full; no other session loads them at all."""
+    root = _instructed(_repo(tmp_path))
+    (root / "docs" / "worker.md").write_text("# Worker\n\nOne line.\n", encoding="utf-8")
+
+    assert "docs/worker.md" in _on_demand_names(root)
+
+
+def test_a_tree_with_nothing_loadable_on_demand_reports_nothing(tmp_path: Path) -> None:
+    assert doc_check.analyze(_instructed(_repo(tmp_path))).on_demand is None
+
+
+def test_a_rule_routed_into_a_skill_moves_both_totals(tmp_path: Path) -> None:
+    """The exact move the resident advisory could not see (`PL-JQVB`).
+
+    Routing a rule out of `CLAUDE.md` and into a skill is the answer
+    `CLAUDE.md`'s four dispositions prefer, so nothing here is an advisory. The
+    defect was that only one side of it was ever reported: the resident total
+    fell and the text it held reappeared nowhere, which reads as a deletion.
+    """
+    root = _skilled(_instructed(_repo(tmp_path), claude=CLAUDE_BODY + RULE_LINE * 2))
+    _on_main(root)
+    (root / "CLAUDE.md").write_text(CLAUDE_BODY, encoding="utf-8")
+    _skilled(root, body=SKILL_BODY + RULE_LINE * 2)
+
+    report = doc_check.analyze(root)
+
+    assert report.resident is not None
+    assert report.on_demand is not None
+    assert report.resident.growth == -2 * len(RULE_LINE)
+    assert report.on_demand.growth == 2 * len(RULE_LINE)
+    assert report.on_demand.deltas() == [(".claude/skills/thing/SKILL.md", 2 * len(RULE_LINE))]
+
+
+def test_the_two_totals_are_reported_separately_and_never_summed(tmp_path: Path) -> None:
+    """A skill that never fires costs a session nothing, so one figure would lie."""
+    root = _skilled(_instructed(_repo(tmp_path)))
+
+    rendered = doc_check.format_check(doc_check.analyze(root))
+
+    assert "resident instructions:" in rendered
+    assert "instructions loaded on demand:" in rendered
+
+
+def test_this_repository_measures_its_own_skill_on_demand(tmp_path: Path) -> None:
+    """Run against the real tree: the `docket` skill is the text this was built for."""
+    root = Path(doc_check.__file__).resolve().parent.parent
+    on_demand = doc_check.analyze(root).on_demand
+
+    assert on_demand is not None
+    measured = {row.name: row for row in on_demand.files}
+    assert ".claude/skills/docket/SKILL.md" in measured
+    assert ".claude/rules/apparatus-standard.md" in measured
+    assert ".claude/rules/instruction-writing.md" not in measured
+
+
 # --- math delimiters --------------------------------------------------------
 
 

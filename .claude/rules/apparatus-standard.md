@@ -52,3 +52,47 @@ independently calculated test vectors. The line is mechanical rather than a
 judgment made per file — `tools/workflow_paths_check.py` decides it by exactly
 that import, on the rule that "A test file under `tests/` is apparatus when it
 does not import the product package, and product when it does."
+
+## The floor: an answer has to be true, or has to say it could not answer
+
+"Working reliably" is the outcome; this is the one property of it that refuses
+things, and the paragraphs above deliberately did not state one (`PL-WGXJ`).
+**What this apparatus tells a session must be true, or must say what it could
+not read.** Handing over a partial reading as a complete one is the violation,
+because at the point of use the two are indistinguishable.
+
+It binds the **answer-giving surface** rather than the path list at the top of
+this file: `bin/docket`'s output, the session-start digest, what a check
+reports, and what an item brief claims about the tree. A formatter, a fixture,
+a Makefile target has no answer to get wrong and stays under the paragraph
+above with nothing extra asked of it. Scoping the floor to everything would
+refuse nothing in particular, which is the defect it exists to remove arriving
+one level up.
+
+**Why this property and not another: it is the failure this apparatus actually
+has.** Of the 41 open apparatus-only `defect` items on 2026-09-14, about 35
+describe a command, check or brief handing a session a confident answer that is
+wrong or incomplete — a reading of their titles rather than a script's count,
+so treat it as an order of magnitude and not a statistic. `docket next` hid
+eight startable items behind annotation commits (`PL-X3WZ`); `check --items`
+reports a clean store as 112 errors (`PL-K5PW`); a verify replay reports green
+rather than declining to answer (`PL-T7VS`). What is left is cleanups, renames
+and design debt.
+
+**And the consequence does not stay inside the apparatus.** `docket check` is
+what pins `safety`- and `science`-classed work to `P1`. A class misspelt as
+`safey` matched no rule, so work a clinician could be misled by stayed seatable
+in the bottom band while the check reported zero errors (`PL-MVC2`). The
+apparatus decides which safety work a session is offered, so a silent wrong
+answer here defers that work without anyone having decided to.
+
+Writing the floor down costs nothing because the code already holds to it:
+`FlightReport.unreadable`, `PullRequestHistory.declined` and `doc_check`'s
+`Report.declined` all exist so that what went unread travels with the answer
+instead of being rounded off. The floor is the rule those three are instances
+of.
+
+**It is not the specialist standard arriving by another door.** It asks for no
+polish, no coverage target, no abstraction, no prose. A five-line script that
+prints the right answer clears it; a well-factored, well-tested mechanism that
+quietly answers from a partial read does not.

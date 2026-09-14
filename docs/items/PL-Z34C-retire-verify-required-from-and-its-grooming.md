@@ -1,10 +1,11 @@
 ---
 id: PL-Z34C
 title: Retire verify_required_from and its grooming advisory once the grandfathered set reaches zero
-status: needs-decision
+status: blocked
 priority: P3
 effort: S
 classes: infra, session-cost
+blocked-by: PL-005, PL-024, PL-027, PL-029, PL-036, PL-038, PL-043, PL-41YP, PL-8LDF, PL-LJVD, PL-NC2P, PL-RZPX, PL-YMY7, PL-Z7LY, PL-ZBR6
 touches: docket.toml, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py
 added: 2026-09-03
 ---
@@ -147,3 +148,53 @@ store should represent is a store-design call, and picking `ready` to clear the
 gate count would put unworkable work in front of `bin/docket next`, which is the
 failure `.claude/skills/docket/SKILL.md` names for `L` items arriving in the
 queue.
+
+## Worked 2026-09-14: the store already represents this, and the entry it wanted is the fifteen items themselves
+
+**Answered: no new vocabulary. This item is now `status: blocked` with
+`blocked-by:` naming the fifteen items whose closure drains the set.** The
+question the last pass left open - what the store should represent for
+"decided, waiting on a measurable condition" - had an answer already in the
+store, and it needed nothing built.
+
+**Why it works, and why it is not a workaround.** The condition here is not an
+abstract trigger; it is *these fifteen items being closed*. The brief already
+established the set is closed - the test is the capture date, every member was
+added 2026-08-23 to 2026-08-26, and nothing can join it - so enumerating them is
+exact rather than a snapshot that goes stale. Recounted today: still 15, the same
+ids. `blocked-by` takes a list, `resolved` counts `dropped` as well as `done`
+(which matters, because `PL-NC2P` and `PL-YMY7` are coverage items over files
+`v0.5.1` replaces and will most likely drop), and `checks.py` already raises
+"every blocker has closed; it is ready to promote" at exactly the moment the
+count reaches zero. **The trigger nobody was tracking is now tracked by a check
+that already existed.**
+
+**Each of the three statuses now says something true.** `blocked` says the work
+cannot start, `blocked-by` says what it waits on, and the promote advisory says
+when it can. `docket next` excludes it, so no session is handed work it will put
+straight back down. And `infra, session-cost` are not `debt_classes`, so leaving
+`needs-decision` takes this item out of Gate 1 - which is right, because its
+question is answered.
+
+**Why not a third kind of `blocked-by` entry.** That was the shape considered:
+`PL-W8XP` already gave the field two kinds, told apart syntactically - `PL-` for
+an id, `v` for a milestone - so a third for a *command* whose success is the
+condition is a small step, and it would make any trigger decidable. It is
+refused on a count. `PL-GLBF`, the other instance this brief named, closed
+`done` in `v0.4.22`; this item is expressible today without it; so the third
+kind would be machinery for zero live instances, against an apparatus standard
+whose whole instruction is to stay streamlined. It would also put arbitrary
+command execution into `bin/docket check`, which already spends 148s of CI on
+verify replays.
+
+**What would change that answer, stated so it can be recognised:** a condition
+that cannot be written as a set of items - a date, an upstream release, a
+platform behaviour. `PL-LF2C` is the nearest candidate in the store today
+(GitHub is about to unreference 90 pull-request head refs), and if a second of
+that shape arrives, the third `blocked-by` kind is the right build and this
+paragraph is the evidence for it.
+
+**The decision itself is unchanged**: retire `verify_required_from`, the
+advisory, `_verify_required` and the skill paragraph when the set reaches zero;
+keep `verify_required_at_close_from` and `_verify_required_at_close`, which are
+permanent for the two reasons this brief records.
