@@ -299,6 +299,13 @@ class RunDefinition:
         recovered on demand. What this changes is how far the run definition may be
         evaluated, which is what stops a prediction being drawn as the run.
 
+        The reach has no lower bound of its own because it cannot need one:
+        `__init__` seeds it from `opened_at_s` and this is the only writer,
+        which never lowers it. That invariant is what lets `_require_within_run`
+        treat the opening and the reach as a closed span, so a second writer of
+        `_reached_s` - a reset in place, a deserializer restoring a saved run -
+        would have to re-establish it rather than assume it.
+
         Raises:
             SimulationConfigurationError: `instant_s` is not finite, or is
                 earlier than the time already reached. A run cannot un-happen,
@@ -463,16 +470,27 @@ class RunDefinition:
         The chart's own display path, and it differs from `evaluate` in the
         two ways a drawn trace needs and a bare window does not.
 
-        **The grid is anchored to `t = 0`, not to the window.** Columns land
-        on multiples of `spacing_s` measured from the run's start, so a
-        window that follows the run reuses every column time it had last
-        frame and gains at most one. `evaluate` spaces its columns across
-        whichever bounds it is given, which makes every column a new instant
-        on every frame: the drawn points then all move, and `PL-Q197`
-        measured that as what saturated the Flutter client - 2 700 discrete
-        control mutations a frame - before decimation was anchored to the run
-        for exactly this reason. Anchoring the *evaluation* times is that
-        same fix one level over.
+        **The grid is anchored to the case's zero, not to the window and not
+        to `opened_at_s`.** Columns land on absolute multiples of `spacing_s`
+        on the case's own axis, so a window that follows the run reuses every
+        column time it had last frame and gains at most one. `evaluate` spaces
+        its columns across whichever bounds it is given, which makes every
+        column a new instant on every frame: the drawn points then all move,
+        and `PL-Q197` measured that as what saturated the Flutter client -
+        2 700 discrete control mutations a frame - before decimation was
+        anchored for exactly this reason. Anchoring the *evaluation* times is
+        that same fix one level over.
+
+        **Do not re-anchor this to the run's own opening.** For a run opening
+        at induction the two are the same number, so the distinction looks
+        like pedantry; for a branch they are not, and anchoring per-run is
+        precisely the defect `PL-2R2C` recorded. Measured there: a branch
+        forked at 55.3 s and drawn on a 13-column 120 s axis shared 2 of its
+        8 columns with its trunk when anchored to its own opening, and 8 of 8
+        anchored here. Two traces on one axis can only be read against each
+        other at matched instants, so a difference trace or a shared tooltip
+        built over per-run grids would be wrong rather than merely coarse.
+        `docs/MODEL.md` § "What the chart draws" states the same rule.
 
         **Every control event inside the window gets its own column, and it
         costs nothing.** Between events the trajectory is a sum of
