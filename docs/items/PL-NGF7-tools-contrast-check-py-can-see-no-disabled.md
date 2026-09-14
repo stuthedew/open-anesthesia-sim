@@ -11,7 +11,7 @@ blocked-by: PL-L9RD
 added: 2026-09-06
 ---
 
-> **Deferred to `v0.5.1`, which dissolves this rather than fixing it** (project
+> **Deferred to the Qt port, which dissolves this rather than fixing it** (project
 > owner, 2026-09-10). The unreachable colours are Flet/Material's; Qt supplies
 > no such theme, so the port's `theme.py` declares them and the tool can measure
 > them. Clearing this first would build a mechanism to measure a half of the

@@ -6,14 +6,14 @@ effort: L
 status: ready
 classes: feature, ux
 feature: qt-port
-touches: src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/wash_in.py, src/anesthesia_sim/app/simulation_view.py, tests/integration
+touches: src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, tests/integration
 added: 2026-09-10
 verify: uv run python tools/import_boundary_check.py && grep -rq 'pyqtgraph' src/anesthesia_sim/app/
 ---
 
 **Problem.** Port the concentration chart to pyqtgraph: six traces, both clinical references, both axes, the control marks and the wash-in plot
 
-**`v0.5.1`'s Required scope, item 1.** The spike (`spikes/qt/`, `PL-55DH`)
+**The Qt port's Required scope, item 1.** The spike (`spikes/qt/`, `PL-55DH`)
 is the working reference for the traces, both axes and both clinical
 references - it draws them from `controller.drawn_window` with the real
 `SimulationController` and no adaptation. What it deliberately does **not**
@@ -23,7 +23,7 @@ input-timeline series) and the wash-in plot.
 **`PL-GS3R` lands here rather than separately.** Its chord-width column rule -
 columns as a function of the selected span, with
 `CHART_COLUMN_BUDGET_PER_SERIES` becoming a floor - is what this milestone
-makes affordable, and it is why that item is `blocked-by: v0.5.1`. Measured:
+makes affordable, and it is why that item is blocked on this one. Measured:
 49.4 ms of a 200 ms budget at 3 204 points on Qt, against about 78 ms for
 Flet's diff alone.
 
@@ -55,7 +55,7 @@ against the snapshot's own divisor; the dash patterns survive; and
 Not on its own merits - it is `feature`/`ux` classed and nothing it draws is
 newly wrong. It is raised because the Qt port moved ahead of v0.5.0
 (`PL-RKWB`), and re-pointing the items that waited on the port from
-`blocked-by: v0.4.25` to the port item that does their work put two `P1`
+`blocked-by: <the port's version>` to the port item that does their work put two `P1`
 `safety`-classed items directly behind this one:
 
 - `PL-GS3R` - 0.26 MAC of departure between the drawn trace and the run at the
@@ -70,3 +70,14 @@ nothing behind this item can start before it does, so the band it ranks in has
 to be the band of the most urgent thing it gates. This is the safety debt of
 the chart arriving at the item that unblocks it, rather than a re-banding of
 the port's own risk.
+
+**Rider, 2026-09-14 (pre-port survey).** Two sequencing facts no field carries.
+`src/anesthesia_sim/app/wash_in.py` was in this item's `touches` and is
+removed: § "Explicitly out of scope" names it among the modules that survive
+untouched, and the wash-in *plot* is drawn by `chart_series.py` and
+`simulation_view.py`, which are already listed. And PySide6, pyqtgraph and
+numpy are neither installed nor declared (`ModuleNotFoundError: No module
+named 'PySide6'` on a bare checkout), so this item cannot import pyqtgraph
+until `PL-3SQT`'s *additive* half lands - the dependencies in, Flet left in
+place for `PL-7SVX`. Start there, in this item's own first commit if `PL-3SQT`
+has not been started.

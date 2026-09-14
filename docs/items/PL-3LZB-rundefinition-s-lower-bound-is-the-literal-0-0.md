@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, safety
 feature: scenario-branching
+milestone: v0.4.25
 touches: src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py
 added: 2026-09-14
 closed: 2026-09-14

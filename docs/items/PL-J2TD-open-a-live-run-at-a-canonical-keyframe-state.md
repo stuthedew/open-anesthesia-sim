@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature, refactor
 feature: scenario-branching
+milestone: v0.4.25
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core, tests/unit, tests/integration, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-09-14

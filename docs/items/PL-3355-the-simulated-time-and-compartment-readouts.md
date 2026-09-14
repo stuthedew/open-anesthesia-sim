@@ -12,7 +12,7 @@ added: 2026-09-04
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_no_metric_value_wraps_away_from_its_unit' tests/unit/test_simulation_view.py
 ---
 
-> **This fix rides the Qt port (`v0.4.25`), not Flet.** `ROADMAP.md` § "v0.4.25 -
+> **This fix rides the Qt port, not Flet.** `ROADMAP.md` § "v0.4.26 -
 > the interface moves to Qt" names this item under "Fixes this port carries":
 > the defect lives in code that milestone rewrites from scratch, so fixing it
 > on Flet means writing the same lines twice. Project owner, 2026-09-10.
@@ -50,9 +50,9 @@ blocked`, `blocked-by: PL-25KS` - the dashboard port, which rewrites the readout
 offering work that cannot be done until that port lands. The owner's 2026-09-10
 note above is the decision; this only makes the queue agree with it.
 
-It is blocked on the **item** rather than on `v0.5.1` because the two mean
+It is blocked on the **item** rather than on the port's version because the two mean
 different things in this store: `blocked-by: <version>` says an item is waiting
 for a milestone to be *scoped*, and `docket check` promotes it back to `ready`
-the moment that section carries its four subsections - which v0.5.1's already
+the moment that section carries its four subsections - which the port's already
 does, so the version form raised "ready to promote" on every run. The port item
 is the edge that is actually true.

@@ -31,7 +31,7 @@ without its units is `CLAUDE.md`'s "correct number with the wrong units", which
 that standard calls a safety failure rather than an accessibility gap.
 
 **Why it is this item and not `PL-F0L8`.** `PL-F0L8` asked the same question of
-Flet, and was `dropped` on 2026-09-13 because `v0.5.1` replaces Flet with
+Flet, and was `dropped` on 2026-09-13 because the Qt port replaces Flet with
 PySide6 + pyqtgraph. `ROADMAP.md` § "Items this port moots or transforms" states
 the reason in its own words: "After the port the question is `QAccessible`'s,
 which is a different investigation against a different backend." This item is
@@ -65,10 +65,10 @@ Then either narrow `ROADMAP.md` item 20 to what is achievable, or file the items
 that close the gap.
 
 **Blocked rather than ready, on the version and on the item**, which is the
-`blocked-by: v0.5.1, PL-25KS` pattern `ROADMAP.md` § "Sequenced past v0.5.0"
+`blocked-by: PL-25KS` pattern `ROADMAP.md` § "Sequenced past v0.5.0"
 already uses for the five defects the port carries. Both halves are needed and
 the version alone is not enough: `blocked-by: <version>` resolves as soon as
-that milestone is *scoped*, and `v0.5.1` is scoped already, so on the version
+that milestone is *scoped*, and the port is scoped already, so on the version
 alone `docket check` correctly advises promoting this to `ready` — which would
 put a question that cannot be asked yet in front of `bin/docket next`. `PL-25KS`
 (port the dashboard to PySide6 — the readout row, the controls, the transport,

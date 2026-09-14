@@ -6,14 +6,14 @@ effort: S
 status: ready
 classes: refactor, infra
 feature: qt-port
-touches: spikes, tools/import_boundary_check.py, src/anesthesia_sim/app
+touches: spikes, tools/import_boundary_check.py, src/anesthesia_sim/app, docs/ARCHITECTURE.md
 added: 2026-09-10
 verify: uv run python tools/import_boundary_check.py && ! grep -rq 'import flet' src/anesthesia_sim/
 ---
 
 **Problem.** Delete spikes/ and the last Flet import once the port is complete
 
-**`v0.5.1`'s Required scope, item 7, and it is the last one.**
+**The Qt port's Required scope, item 7, and it is the last one.**
 
 Two deletions: `spikes/` entire - `PL-55DH` built it to throw away cleanly, and
 `rm -rf spikes/` is the whole procedure - and the last `import flet`.
@@ -42,3 +42,11 @@ a boundary so the absence is held rather than merely current.
 
 **Do not run this early.** The spike is the working reference every other item
 in this milestone reads from, so it goes last.
+
+**Rider, 2026-09-14 (pre-port survey).** Deleting
+`tests/integration/test_chart_patching.py` (which imports
+`flet.messaging.protocol`, `flet.controls.object_patch` and
+`flet.pubsub.pubsub_hub`) orphans two `[[tool.mypy.overrides]]` in
+`pyproject.toml`: `flet_charts`, and `msgpack`, whose comment names that file
+as its only importer. mypy will not report them - `strict` does not enable
+`warn_unused_configs`. Delete both in the same commit.
