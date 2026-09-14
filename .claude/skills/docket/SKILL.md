@@ -1005,8 +1005,8 @@ knows what has shipped and what has not, so there is nothing for the owner to
 look up and asking them to is pure friction.
 
 Where the digest says `No release to offer` instead, the version a bump would
-arrive at is one `ROADMAP.md` has already given to a step it has not finished,
-and the line names that step. There is nothing to raise then: the beat printed
+arrive at is one `ROADMAP.md` has already given to a step or a milestone it has
+not finished, and the line names the one holding it. There is nothing to raise then: the beat printed
 under it is the work, and cutting the version anyway would ship a milestone
 under its own name with most of it missing.
 
