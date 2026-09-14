@@ -51,6 +51,7 @@ from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S
 
 _STEP_S = 0.1
+_PLOT_WIDTH_PX = 900.0
 
 
 def _advance(controller: SimulationController, seconds: float) -> None:
@@ -155,7 +156,9 @@ def test_the_hover_gloss_is_the_readout_row_s_required_hedge() -> None:
 
 def test_every_trace_of_a_run_draws_the_same_instants_and_ends_at_the_readout() -> None:
     controller = _run(600.0)
-    frame = assemble_chart_frame([_input(controller)], None, COMPARTMENT_QUANTITIES)
+    frame = assemble_chart_frame(
+        [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+    )
     run = frame.runs[0]
 
     assert run.times_s[-1] == pytest.approx(controller.snapshot().elapsed_s)
@@ -171,17 +174,22 @@ def test_every_trace_of_a_run_draws_the_same_instants_and_ends_at_the_readout() 
 
 def test_the_frame_refuses_no_runs_and_runs_on_different_agents() -> None:
     with pytest.raises(ValueError, match="at least one run"):
-        assemble_chart_frame([], None, COMPARTMENT_QUANTITIES)
+        assemble_chart_frame([], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX)
 
     with pytest.raises(ValueError, match="same agent"):
         assemble_chart_frame(
-            [_input(_run(10.0)), _input(_run(10.0, "desflurane"))], None, COMPARTMENT_QUANTITIES
+            [_input(_run(10.0)), _input(_run(10.0, "desflurane"))],
+            None,
+            COMPARTMENT_QUANTITIES,
+            plot_width_px=_PLOT_WIDTH_PX,
         )
 
 
 def test_the_window_fits_the_longer_of_two_runs_and_both_draw_into_it() -> None:
     short, long = _run(60.0), _run(500.0)
-    frame = assemble_chart_frame([_input(short), _input(long)], None, COMPARTMENT_QUANTITIES)
+    frame = assemble_chart_frame(
+        [_input(short), _input(long)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+    )
 
     assert frame.fitted
     assert frame.start_s == 0.0
@@ -193,7 +201,9 @@ def test_the_window_fits_the_longer_of_two_runs_and_both_draw_into_it() -> None:
 def test_a_chosen_width_is_held_exactly_and_follows_the_run() -> None:
     controller = _run(1200.0)
     base = time_base_for_span(900.0)
-    frame = assemble_chart_frame([_input(controller)], base, COMPARTMENT_QUANTITIES)
+    frame = assemble_chart_frame(
+        [_input(controller)], base, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+    )
 
     assert not frame.fitted
     assert frame.time_base == base
@@ -207,7 +217,10 @@ def test_a_chosen_width_is_held_exactly_and_follows_the_run() -> None:
 def test_hidden_traces_are_left_out_of_the_visible_set_but_still_evaluated() -> None:
     controller = _run(60.0)
     frame = assemble_chart_frame(
-        [_input(controller)], None, [RecordedQuantity.FAT, RecordedQuantity.CIRCUIT]
+        [_input(controller)],
+        None,
+        [RecordedQuantity.FAT, RecordedQuantity.CIRCUIT],
+        plot_width_px=_PLOT_WIDTH_PX,
     )
 
     assert frame.visible == (RecordedQuantity.CIRCUIT, RecordedQuantity.FAT)
@@ -218,7 +231,9 @@ def test_the_references_are_placed_from_the_running_agent_s_own_values() -> None
     for agent_id in ("sevoflurane", "isoflurane", "desflurane"):
         controller = _run(10.0, agent_id)
         snapshot = controller.snapshot()
-        frame = assemble_chart_frame([_input(controller)], None, COMPARTMENT_QUANTITIES)
+        frame = assemble_chart_frame(
+            [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        )
 
         assert frame.mac_percent == snapshot.agent_mac_percent
         assert frame.one_mac_percent == snapshot.agent_mac_percent
@@ -232,7 +247,10 @@ def test_control_marks_are_the_most_recent_that_fit_and_the_rest_are_counted() -
     controller = _run(1200.0)
     inside = tuple(float(at_s) for at_s in range(10, 10 + 5 * (MAX_CHART_CONTROL_MARKS + 6), 5))
     frame = assemble_chart_frame(
-        [_input(controller, -50.0, *inside, 5000.0)], None, COMPARTMENT_QUANTITIES
+        [_input(controller, -50.0, *inside, 5000.0)],
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
     )
     run = frame.runs[0]
 
@@ -240,11 +258,53 @@ def test_control_marks_are_the_most_recent_that_fit_and_the_rest_are_counted() -
     assert run.undrawn_control_marks == 6
 
 
-def test_chart_columns_answers_the_floor_at_every_rung_today() -> None:
-    """`PL-GS3R`'s chord-width rule replaces this body; until then the count is the floor."""
+def test_chart_columns_is_one_per_pixel_boundary_and_never_below_the_floor() -> None:
+    """`PL-GS3R`: the count follows the plot, not the span, and a fraction rounds up."""
+
+    for width in (0.0, 1.0, 100.0, 149.0):
+        assert chart_columns(width) == CHART_COLUMN_BUDGET_PER_SERIES
+
+    assert chart_columns(150.0) == 151
+    assert chart_columns(1000.0) == 1001
+    assert chart_columns(1000.4) == 1002
+
+    for width in (-1.0, float("nan"), float("inf")):
+        with pytest.raises(ValueError, match="pixels wide"):
+            chart_columns(width)
+
+
+def test_no_chord_is_wider_than_one_pixel_of_time() -> None:
+    """The guarantee `docs/MODEL.md` § "What the chart draws" states, at every rung.
+
+    A frame drawn for a plot `_PLOT_WIDTH_PX` wide divides the axis into at
+    least that many intervals, so consecutive drawn instants are never more
+    than `span / width` apart - one pixel of time - whichever width the
+    reader chose. Held on the drawn instants themselves rather than on the
+    column count alone, because the instants are what the plot rules between.
+    """
+
+    controller = _run(1200.0)
 
     for base in TIME_BASE_LADDER:
-        assert chart_columns(base.span_s) == CHART_COLUMN_BUDGET_PER_SERIES
+        frame = assemble_chart_frame(
+            [_input(controller)], base, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+        )
+        pixel_s = base.span_s / _PLOT_WIDTH_PX
+        times = frame.runs[0].times_s
+
+        assert frame.columns - 1 >= _PLOT_WIDTH_PX
+        assert frame.plot_width_px == _PLOT_WIDTH_PX
+        assert len(times) > 1
+        assert max(b - a for a, b in zip(times, times[1:], strict=False)) <= pixel_s + 1e-9
+
+
+def test_a_frame_refuses_a_width_that_is_not_a_width() -> None:
+    """A frame drawn for no stated width would be drawn at the floor, silently."""
+
+    controller = _run(10.0)
+
+    with pytest.raises(ValueError, match="pixels wide"):
+        assemble_chart_frame([_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=-1.0)
 
 
 # ------------------------------------------------------------------ the axes
@@ -305,7 +365,9 @@ def test_a_run_that_crosses_equilibrium_ends_its_stretch_with_a_terminus() -> No
     # patient returns agent, which is elimination and not wash-in.
     controller.set_delivered_partial_pressure_fraction(0.0)
     _advance(controller, 300.0)
-    frame = assemble_chart_frame([_input(controller)], None, COMPARTMENT_QUANTITIES)
+    frame = assemble_chart_frame(
+        [_input(controller)], None, COMPARTMENT_QUANTITIES, plot_width_px=_PLOT_WIDTH_PX
+    )
     run = frame.runs[0]
 
     assert len(run.wash_in) == 1
@@ -349,6 +411,7 @@ def _frame(
         stop_s=3600.0,
         tick_times_s=(0.0, 600.0),
         columns=CHART_COLUMN_BUDGET_PER_SERIES,
+        plot_width_px=_PLOT_WIDTH_PX,
         mac_percent=2.0,
         axis_top_percent=6.0,
         grid_interval_percent=1.0,

@@ -4429,8 +4429,10 @@ decided by two rules, and both are properties this document requires rather
 than optimisations:
 
 - **The columns sit on a grid anchored to the case's zero**, at absolute
-  multiples of the spacing the selected time base and the per-trace column
-  budget imply. A window following the run therefore keeps every column it had
+  multiples of the spacing the selected time base and the width of the plot
+  imply: one column per pixel boundary of the plot the frame is drawn on, and
+  never fewer than 150 (`chart_columns` in `app/chart_frame.py`, `PL-GS3R`).
+  A window following the run therefore keeps every column it had
   and gains at most one, so a steady trace is not redrawn on every frame. A
   grid anchored to the viewport instead would move on every scroll and resize,
   and rewrite the whole chart on every frame. The anchor is the case's zero
@@ -4449,15 +4451,68 @@ than optimisations:
 **So the drawn chart reproduces every control change**, to the last digit
 the readouts display, while the stored record need not — there is no stored
 record (project owner, 2026-09-05, recorded here when the sample store was
-deleted). The interpolation error at every cadence sits at the instant the
-dial moves and scales as O(h) rather than O(h²) — the signature of a kink,
-since the derivative of the circuit fraction is discontinuous at a control
-change — so the fidelity question is entirely a question about control
-events, and placing a column on each is the whole of the answer. Away from
-one the trajectory is faithful to about 1e-3 percentage points even at a 2 s
-cadence, a tenth of the display resolution.
+deleted). The interpolation error at the instant the dial moves scales as
+O(h) rather than O(h²) — the signature of a kink, since the derivative of the
+circuit fraction is discontinuous at a control change — and placing a column
+on each event is the whole of the answer to it.
 
-Pegging the guarantee to the displayed resolution is deliberate, and it does
+**Between events the guarantee is a pixel of time, not a number of percentage
+points** (`PL-GS3R`, decided 2026-09-14). Between two drawn instants no more
+than a pixel apart, both exact, a monotone run and the straight segment the
+plot rules between them cross every level inside the same pixel: the drawn
+line is within one pixel of time of the run everywhere, and on it at every
+drawn instant. The numeric departure between drawn instants is deliberately
+not the guarantee. Where the trace is steep, one pixel of time is many
+percentage points of value, and no display reads a value between drawn
+instants — the hover answers only at a point the plot draws (§ "The chart's
+hover readout"). The pixel is a logical pixel of the plot, which is the
+resolution the axis is ruled and labelled at.
+
+That guarantee was the answer to a measurement. A fixed budget of 150 columns
+at every width — the rule from `PL-2FM6` until `PL-GS3R` — ruled a 290 s chord
+across the twelve-hour base and drew the steep early wash-in below the run: by
+0.53 pp on the alveolar trace (0.26 MAC) and 0.89 pp on the circuit trace for
+sevoflurane 2% to 4% at the fastest supported settings (FGF 10 L/min, V_A
+12 L/min, Q 10 L/min), and by 3.8 pp on the alveolar trace (0.64 MAC) and
+5.5 pp on the circuit for a desflurane overpressure induction, 0% to 12% then
+6% at 600 s. Holding a numeric bound instead — 0.01 pp, the readout's
+resolution, everywhere on every trace — needs a 2 s chord on that desflurane
+case, 21 601 columns across twelve hours, which no hardware this project has
+measured can draw inside its frame budget; and the whole of that error sits
+within 1 800 s of a dial change, beyond which the 290 s chord itself is within
+0.0024 pp. Measured 2026-09-14 against the closed-form state every 0.1 s, the
+step the run advances by, over five twelve-hour runs built in closed form.
+
+What the one-pixel rule leaves between drawn instants, measured on a 1 000 px
+plot, where the chord is the rung's span over 1 000:
+
+| Time base | Chord | Sevoflurane 2% to 4%, worst trace | Desflurane 0% to 12% to 6%, worst trace | Desflurane, alveolar |
+| --- | ---: | ---: | ---: | ---: |
+| 15 min | 0.9 s | 0.0004 pp | 0.0025 pp | 0.0025 pp |
+| 1 h | 3.6 s | 0.0052 pp | 0.032 pp | 0.032 pp |
+| 4 h | 14.4 s | 0.048 pp (circuit) | 0.28 pp (circuit) | 0.21 pp |
+| 12 h | 43.2 s | 0.21 pp (circuit) | 1.21 pp (circuit) | 0.26 pp |
+
+Those are the mid-chord departures of a straight segment from a curve that
+passes through both of its ends: a vertical gap at an instant no display
+reads, and under one pixel horizontally by the argument above. They grow with
+the chord, so a narrower plot draws a larger one and a wider plot a smaller,
+and they are the bound a reader should have in mind for a trace's *shape*
+inside a single pixel column, never for a value.
+
+**The one case the pixel argument does not reach is an extremum between two
+dial changes.** The alveoli and the venous blood keep filling for a moment
+after the vaporizer is turned down, so a trace can turn inside one interval
+and rise above both drawn values, where the line falls short of it. Measured
+over five runs — the two sevoflurane cases at the fastest settings, 2% to 4%
+and 4% to 0%; the desflurane case at the fastest and at slow settings (FGF
+0.5 L/min, V_A 2 L/min, Q 2 L/min); and the reference adult at 1 to 2 MAC —
+the worst such gap at any rung is 0.0028 pp, on the mixed venous trace at the
+desflurane dial-down on the twelve-hour base: under a third of the readout's
+resolution. `tests/unit/test_run_definition.py` holds that case under half of
+it.
+
+Pegging that residual to the displayed resolution is deliberate, and it does
 not cross the line drawn under "Supported simulation step". That section
 forbids traffic in the other direction — the readout's decimal count must not
 reach back into the model, which is why the step tolerance and the supported
@@ -4466,6 +4521,17 @@ the *chart*, expressed in the units a reader actually reads it in. Nor is the
 peg arbitrary: the two-decimal readout is itself derived from model fidelity
 under "Displayed precision", one published SD of a partition coefficient
 displacing a compartment by 8.7e-4 to 6.8e-2 percentage points.
+
+The pixel-column framing is the one Jugel, Jerzak, Hackenbroich and Markl
+prove from the other side, for recorded data: that a line chart is fixed by
+at most four values per pixel column (M4: A Visualization-Oriented Time
+Series Data Aggregation, *Proceedings of the VLDB Endowment* 2014;7(10):797-808).
+Their selection itself is not used. Nothing is selected from a store, the run
+is evaluated at the column instants, and a control event is a column whatever
+the pixel width, which is what a selection of recorded extremes could not
+guarantee (`PL-4RBD`). The Flet chart, which cannot afford a column per pixel
+(`PL-YSZN`), keeps the 150-column budget through `app/chart_series.py` until
+`PL-25KS` ports the dashboard.
 
 The drawn columns are display-path values, taken under "The canonical
 evaluation rule" below: they may be drawn and nothing else, and the program

@@ -283,8 +283,9 @@ which sample they show. The selection is therefore anchored to absolute
 sample index rather than to position within the window, so appending a
 sample leaves every completed bucket choosing what it already chose
 (PL-Q197). `app/chart_frame.py` is the layer above it — it holds the
-per-trace column floor and reads the window once per run for every trace,
-and `app/chart_series.py`, for the Flet chart, converts each drawn value into its own axis's unit,
+column-per-pixel rule and its floor (`chart_columns`) and reads the window
+once per run for every trace, and `app/chart_series.py`, for the Flet chart,
+converts each drawn value into its own axis's unit,
 and moves the points a trace already holds — and it is separate for the same
 reason: which quantity a line carries is a correctness claim, and the view
 passes it in as one `PlottedSeries` table declared beside the traces

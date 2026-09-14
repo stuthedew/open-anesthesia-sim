@@ -3,11 +3,12 @@ id: PL-GS3R
 title: The drawn chart's worst error moved from the control change to the steep early wash-in, and PL-4RBD's 0.32 MAC only fell to 0.26 MAC: uniform columns chord across the same width M4's buckets did
 priority: P1
 effort: M
-status: needs-decision
+status: done
+closed: 2026-09-14
 classes: defect, safety
 feature: teachable-case
-touches: src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_frame.py, tests/unit/test_chart_frame.py, tests/unit/test_run_definition.py, docs/MODEL.md
-verify: uv run pytest tests/unit/test_chart_time_base.py && grep -qF 'chord width' docs/MODEL.md
+touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, tests/unit/test_chart_frame.py, tests/unit/test_run_definition.py, tests/integration/test_qt_chart.py, docs/MODEL.md, docs/ARCHITECTURE.md
+verify: uv run pytest tests/unit/test_chart_frame.py && grep -q 'def test_no_chord_is_wider_than_one_pixel_of_time' tests/unit/test_chart_frame.py
 added: 2026-09-08
 ---
 
@@ -369,3 +370,55 @@ principled and cheap per opening, its constants the worst supported case's,
 and the most code. Under every route the Flet dashboard keeps its 150 columns
 until `PL-25KS` ports it and `PL-7SVX` removes it: its per-point charge is what
 forbade the raise in the first place, and `chart_columns` is the Qt chart's.
+
+## Decided, 2026-09-14: route D - the chord is one pixel of time
+
+**The project owner chose D** ("Agree with recs"), having asked whether the M4
+citation was a leftover: the algorithm is gone and nothing uses it; what D
+borrows is the paper's result seen from the other side - one evaluated instant
+per pixel boundary makes the drawn line pixel-faithful on a stretch that is
+monotone within the pixel - and the argument is stated and tested directly
+rather than cited as authority.
+
+**The guarantee, stated precisely.** Between two drawn instants no more than a
+pixel of time apart, both exact, a monotone run and the straight segment drawn
+between them cross every level inside the same pixel: the drawn line is within
+one pixel of time of the run everywhere, and exactly on it at every drawn
+instant. The numeric departure between drawn instants is therefore not the
+guarantee - where the trace is steep, one pixel of time is many percentage
+points of value - and it is recorded as a bound no display reads: the hover
+answers only at drawn instants. The one thing the argument does not cover is
+an extremum *between* two dial changes falling inside a pixel, where the run
+rises above or falls below both neighbouring drawn values. Measured at a
+1 000 px plot over the same five runs (sevoflurane 2 -> 4% and 4 -> 0% at the
+fast corner, desflurane 0 -> 12 -> 6% at the fast and slow corners, the
+reference adult 1 -> 2 MAC), the worst such gap at any rung is **0.0028 pp**
+(mixed venous, desflurane dial-down, 12 h base), under a third of the
+readout's resolution.
+
+**What is built.** `chart_columns` takes the plot's width in logical pixels and
+answers one column per pixel boundary, floored at
+`CHART_COLUMN_BUDGET_PER_SERIES`; `assemble_chart_frame` takes that width the
+way it takes the time base, so a frame is drawn for the plot it is drawn on;
+the two Qt charts report their plot area's width for the caller to hand in,
+the wider of the two so neither draws a chord wider than a pixel. The Flet
+dashboard keeps its 150 columns until `PL-25KS` ports it and `PL-7SVX` removes
+it. `docs/MODEL.md` § "What the chart draws" carries the guarantee, the
+mid-chord departure per rung at 1 000 px, and the extremum gap.
+
+**Done, 2026-09-14.** `chart_columns(plot_width_px)` answers one column per
+pixel boundary, floored at 150, and refuses a negative or non-finite width;
+`assemble_chart_frame` takes `plot_width_px` as a required keyword and the
+frame records it; `ConcentrationChart.plot_width_px` and
+`WashInChart.plot_width_px` report the view box's width in logical pixels for
+the caller to hand in. `tests/unit/test_chart_frame.py` holds the rule and
+that no two drawn instants are further apart than a pixel of time at any
+rung; `tests/integration/test_qt_chart.py` holds that the width a chart
+reports is the width its axis spans and that the twelve-hour base is drawn
+above the floor for it; `tests/unit/test_run_definition.py` holds the
+extremum gap on the worst measured case under half the readout's
+resolution. `docs/MODEL.md` § "What the chart draws" states the guarantee,
+the per-rung mid-chord departure at 1 000 px, the extremum gap, and the
+citation; `docs/ARCHITECTURE.md` names the rule. The Flet dashboard is
+unchanged at 150 columns. Nothing yet calls `assemble_chart_frame` in the
+shipped interface - `PL-25KS` ports the dashboard and will hand the width in.

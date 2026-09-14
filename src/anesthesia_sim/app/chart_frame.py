@@ -16,7 +16,9 @@ columns the axis is divided into, plus one column per control event in the
 window and the two ends of the drawn range (`PL-2FM6`), so nothing here
 interpolates, extrapolates or synthesizes a value. The straight segment a
 plot rules between two points is the plot's own rendering, and it is honest
-because a control event always gets its own column.
+twice over: a control event always gets its own column, and the columns are
+one per pixel of the plot they are drawn on (`chart_columns`, `PL-GS3R`), so
+no segment is wider than a pixel of time.
 
 **One evaluation serves every trace of a run.** A state carries every
 compartment at once, so a frame reads the window once per run and every
@@ -45,7 +47,7 @@ from __future__ import annotations
 from bisect import bisect_left, bisect_right
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
-from math import floor, sqrt
+from math import ceil, floor, isfinite, sqrt
 from types import MappingProxyType
 from typing import Final
 
@@ -115,36 +117,27 @@ __all__ = [
     "wash_in_stretches",
 ]
 
-# Per-trace floor on the *grid columns* an axis is divided into, which the
-# chart's evaluated instants are placed on. The count of points follows from
-# it rather than being set: the grid columns inside the drawn range, plus the
-# two ends of that range, plus one column per control event in the window -
-# bounded in turn by the marks the chart already draws
-# (`MAX_CHART_CONTROL_MARKS`).
+# Floor on the *grid columns* an axis is divided into, which the chart's
+# evaluated instants are placed on. The count a frame actually uses is decided
+# by `chart_columns` from the width of the plot in pixels - one column per
+# pixel boundary, so that no chord ruled between two drawn instants is wider
+# than a pixel of time (`PL-GS3R`, decided 2026-09-14) - and this is what it
+# answers for a plot narrower than 150 px, or one not yet laid out. The count
+# of points follows from it rather than being set: the grid columns inside
+# the drawn range, plus the two ends of that range, plus one column per
+# control event in the window - bounded in turn by the marks the chart already
+# draws (`MAX_CHART_CONTROL_MARKS`).
 #
-# It was a bucket count while the chart selected recorded samples, and a point
-# ceiling before that when the algorithm was min/max envelope decimation. It
-# is now the resolution the run is *evaluated* at, which is the first time the
-# number has meant a spacing rather than a summary (`PL-2FM6`).
-#
-# 150 columns across a chart a few hundred pixels wide is already finer than
-# the display can resolve *where the trace is nearly straight*. Where it is
-# not - the steep early wash-in - the chord ruled between two columns departs
-# from the run by an amount that grows with the width the columns span, which
-# at a fixed count is the selected time base: 6 s of chord at the 15-minute
-# base against 288 s at the 12-hour one, and 0.006 MAC of worst departure
-# against 0.260 (`PL-GS3R`, measured 2026-09-08). The project owner's decision
-# on that item is to hold the *chord width* rather than the column count, so
-# this number is a floor and `chart_columns` is where the rule that raises it
-# above the floor lives.
-#
-# Why 150 was the ceiling and is now the floor: on Flet the chart's share of a
-# frame was this budget times the traces drawn times about 24.5 us per point
-# control, paid on every frame whether or not the point moved (`PL-YSZN`,
-# `PL-YDKJ`), so more columns bought fidelity at the price of the frame. On
-# Qt the same 3 204 points cost 49.4 ms of a 200 ms frame including paint,
-# measured on the project owner's own hardware (`PL-X9T3`), which is what
-# makes the raise affordable and why it waited for the port.
+# It was a bucket count while the chart selected recorded samples, a point
+# ceiling before that when the algorithm was min/max envelope decimation, and
+# a fixed budget from `PL-2FM6` until `PL-GS3R`: 150 columns at every width,
+# which at the 12-hour base ruled a 290 s chord through the steep early
+# wash-in and drew the alveolar trace up to 0.53 pp (sevoflurane 2% to 4%)
+# and 3.8 pp (a desflurane overpressure induction) below the run. The floor
+# stays at the number the fixed budget was because nothing narrower has been
+# measured, and because the Flet chart, which cannot afford more (`PL-YSZN`,
+# `PL-YDKJ`), still draws at exactly this count through `app/chart_series.py`
+# until `PL-25KS` ports the dashboard.
 CHART_COLUMN_BUDGET_PER_SERIES: Final = 150
 
 # How many control marks the chart can stand at once. A fixed pool rather than
@@ -347,29 +340,47 @@ def trace_style(quantity: RecordedQuantity) -> TraceStyle:
     return _TRACE_STYLE_BY_QUANTITY[quantity]
 
 
-def chart_columns(span_s: float) -> int:
-    """Grid columns the axis is divided into, for a window this wide.
+def chart_columns(plot_width_px: float) -> int:
+    """Grid columns the axis is divided into, for a plot this many pixels wide.
 
-    The one place the column count is decided, so that the rule `PL-GS3R`
-    chose - hold the chord width, not the column count - lands as one edit
-    here rather than at every caller. Today it answers the floor for every
-    width: the chord-width rule's target width is chosen against the
-    0.01 pp the readout resolves and the drawn polyline's worst departure
-    re-measured at every rung of `TIME_BASE_LADDER`, and both are that
-    item's to record in `docs/MODEL.md` before the rule is written. Until
-    then the count is what it was, and the chord at the 12-hour base is the
-    288 s that item measured.
+    One column per pixel boundary - `plot_width_px` intervals across the
+    axis, so one more column than that - floored at
+    `CHART_COLUMN_BUDGET_PER_SERIES`. The rule `PL-GS3R` chose: hold the
+    chord at one pixel of time, whatever the time base. Between two drawn
+    instants no more than a pixel apart, both exact, a monotone run and the
+    straight segment ruled between them cross every level inside the same
+    pixel, so the drawn line is within a pixel of time of the run everywhere
+    and on it at every drawn instant. The count therefore follows the plot
+    rather than the span: a twelve-hour axis on a 1 000 px plot draws 1 001
+    columns at a 43 s chord, and a fifteen-minute axis on the same plot draws
+    1 001 columns at 0.9 s. `docs/MODEL.md` § "What the chart draws" carries
+    the guarantee, what it leaves between drawn instants, and what was
+    measured against it.
+
+    The width is in logical pixels, as Qt lays the plot out, which is the
+    resolution the axis is ruled and labelled at; a high-DPI display draws
+    each chord across its device-pixel ratio's worth of device pixels.
 
     Args:
-        span_s: The width of the axis, in simulated seconds.
+        plot_width_px: The width of the plot area the axis spans, in logical
+            pixels. Zero for a plot not yet laid out, which answers the
+            floor. A fractional width is rounded up.
 
     Returns:
         The number of grid columns, at least `CHART_COLUMN_BUDGET_PER_SERIES`.
+
+    Raises:
+        ValueError: If the width is negative or not finite. A caller that
+            has no width says so by passing zero, not by passing whatever
+            it holds.
     """
 
-    del span_s
+    if not isfinite(plot_width_px) or plot_width_px < 0.0:
+        raise ValueError(
+            f"a plot is a nonnegative, finite number of pixels wide, not {plot_width_px}"
+        )
 
-    return CHART_COLUMN_BUDGET_PER_SERIES
+    return max(CHART_COLUMN_BUDGET_PER_SERIES, ceil(plot_width_px) + 1)
 
 
 @dataclass(frozen=True, slots=True)
@@ -471,7 +482,11 @@ class ChartFrame:
         tick_times_s: Where the gridlines and axis labels fall, on both
             plots - multiples of the interval measured from the case's zero,
             so the grid stands still as the window slides.
-        columns: The grid columns the window was divided into.
+        columns: The grid columns the window was divided into: one per
+            pixel boundary of `plot_width_px`, floored, per `chart_columns`.
+        plot_width_px: The width of the plot the frame was drawn for, in
+            logical pixels. Recorded so a frame says what it was drawn for,
+            which is what makes its chord width checkable after the fact.
         mac_percent: The agent's 1 MAC as a percent of one atmosphere, the
             divisor every MAC-denominated mark below is placed against.
         axis_top_percent: Top of the compartment chart's percent axis.
@@ -491,6 +506,7 @@ class ChartFrame:
     stop_s: float
     tick_times_s: tuple[float, ...]
     columns: int
+    plot_width_px: float
     mac_percent: float
     axis_top_percent: float
     grid_interval_percent: float
@@ -523,7 +539,11 @@ class RunInput:
 
 
 def assemble_chart_frame(
-    runs: Sequence[RunInput], time_base: ChartTimeBase | None, shown: Collection[RecordedQuantity]
+    runs: Sequence[RunInput],
+    time_base: ChartTimeBase | None,
+    shown: Collection[RecordedQuantity],
+    *,
+    plot_width_px: float,
 ) -> ChartFrame:
     """Read every run once and settle everything the frame draws.
 
@@ -538,13 +558,20 @@ def assemble_chart_frame(
             each is drawn from.
         time_base: The width the reader chose, or `None` for "Fit run".
         shown: The compartments the reader has left drawn.
+        plot_width_px: The width of the plot the frame will be drawn on, in
+            logical pixels - the wider of the two where both plots draw it,
+            since the wash-in stretches are formed from the same columns.
+            `ConcentrationChart.plot_width_px` and `WashInChart.plot_width_px`
+            report it. Required rather than defaulted: a frame drawn for a
+            width nobody stated would be drawn at the floor, silently.
 
     Returns:
         The frame.
 
     Raises:
-        ValueError: If no run is given, or if the runs are not all on one
-            agent. One ×MAC ruler, one MAC-awake band and one 1 MAC line are
+        ValueError: If the width is negative or not finite (see
+            `chart_columns`); if no run is given; or if the runs are not all
+            on one agent. One ×MAC ruler, one MAC-awake band and one 1 MAC line are
             drawn across a chart every run shares, and all three are the
             agent's own published values; two agents on one axis would have
             one run's traces read against the other's divisor - a correct
@@ -577,7 +604,7 @@ def assemble_chart_frame(
         base = time_base
         start_s, stop_s = following_window(base, elapsed_s)
 
-    columns = chart_columns(base.span_s)
+    columns = chart_columns(plot_width_px)
     mac_percent = reference.agent_mac_percent
     top_percent = chart_axis_top_percent(mac_percent)
     grid_percent = chart_grid_interval_percent(mac_percent)
@@ -590,6 +617,7 @@ def assemble_chart_frame(
         stop_s=stop_s,
         tick_times_s=tick_times(start_s, stop_s, base.tick_interval_s),
         columns=columns,
+        plot_width_px=plot_width_px,
         mac_percent=mac_percent,
         axis_top_percent=top_percent,
         grid_interval_percent=grid_percent,
