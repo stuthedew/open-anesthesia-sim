@@ -4,7 +4,7 @@ title: The compartment chart labels its percent axis at a different interval fro
 priority: P2
 effort: S
 status: blocked
-blocked-by: v0.5.1, PL-G59B
+blocked-by: PL-G59B
 classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
@@ -12,7 +12,7 @@ added: 2026-09-04
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_percent_axis_labels_the_values_it_rules' tests/unit/test_simulation_view.py
 ---
 
-> **This fix rides the Qt port (`v0.5.1`), not Flet.** `ROADMAP.md` § "v0.5.1 -
+> **This fix rides the Qt port (`v0.4.25`), not Flet.** `ROADMAP.md` § "v0.4.25 -
 > the interface moves to Qt" names this item under "Fixes this port carries":
 > the defect lives in code that milestone rewrites from scratch, so fixing it
 > on Flet means writing the same lines twice. Project owner, 2026-09-10.

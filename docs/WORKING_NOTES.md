@@ -681,7 +681,7 @@ restructure against, and it is the shape `PL-25KS` (port the dashboard to
 PySide6) is to be built to from the start rather than ported into. Of the
 three named above, `PL-2CS8` (consolidate the scattered display constants)
 closed in `v0.4.11`; `PL-NGF7` (`contrast_check.py` can see no disabled-state
-colour) is deferred to `v0.5.1`, which dissolves it rather than fixing it, and
+colour) is deferred to `v0.4.25`, which dissolves it rather than fixing it, and
 its expected disposition is `dropped`.
 
 One correction the resumption is worth recording. The assessment below is of

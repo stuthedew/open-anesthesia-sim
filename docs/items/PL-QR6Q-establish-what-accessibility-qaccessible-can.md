@@ -2,7 +2,7 @@
 id: PL-QR6Q
 title: Establish what accessibility QAccessible can deliver, and settle ROADMAP item 20 against it
 status: blocked
-blocked-by: v0.5.1, PL-25KS
+blocked-by: PL-25KS
 priority: P3
 effort: M
 classes: planning

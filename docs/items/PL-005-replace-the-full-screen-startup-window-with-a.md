@@ -3,14 +3,15 @@ id: PL-005
 title: Replace the full-screen startup window with a sized, centered one
 priority: P2
 effort: S
-status: ready
+status: blocked
+blocked-by: PL-25KS
 classes: ux
 feature: vaporizer-controls
 touches: src/anesthesia_sim/app/main.py
 added: 2026-08-23
 ---
 
-> **This fix rides the Qt port (`v0.5.1`), not Flet.** `ROADMAP.md` § "v0.5.1 -
+> **This fix rides the Qt port (`v0.4.25`), not Flet.** `ROADMAP.md` § "v0.4.25 -
 > the interface moves to Qt" names this item under "Fixes this port carries":
 > the defect lives in code that milestone rewrites from scratch, so fixing it
 > on Flet means writing the same lines twice. Project owner, 2026-09-10.

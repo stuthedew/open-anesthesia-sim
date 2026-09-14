@@ -4,7 +4,7 @@ title: Implement the chart hover readout on pyqtgraph to the derivation docs/MOD
 priority: P1
 effort: S
 status: blocked
-blocked-by: v0.5.1
+blocked-by: PL-G59B
 classes: safety, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, README.md, tests/integration

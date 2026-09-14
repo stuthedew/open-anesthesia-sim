@@ -4,7 +4,7 @@ title: The four slider active tracks use ACCENT and miss the non-text minimum
 priority: P3
 effort: S
 status: blocked
-blocked-by: v0.5.1, PL-L9RD
+blocked-by: PL-L9RD
 classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, tools/contrast_check.py
@@ -12,7 +12,7 @@ added: 2026-09-02
 verify: python3 tools/contrast_check.py && ! grep -q '("ACCENT", "PANEL"): ' tools/contrast_check.py
 ---
 
-> **This fix rides the Qt port (`v0.5.1`), not Flet.** `ROADMAP.md` § "v0.5.1 -
+> **This fix rides the Qt port (`v0.4.25`), not Flet.** `ROADMAP.md` § "v0.4.25 -
 > the interface moves to Qt" names this item under "Fixes this port carries":
 > the defect lives in code that milestone rewrites from scratch, so fixing it
 > on Flet means writing the same lines twice. Project owner, 2026-09-10.

@@ -4,7 +4,7 @@ title: The 'Simulated time' and compartment readouts wrap their value onto a sec
 priority: P2
 effort: S
 status: blocked
-blocked-by: v0.5.1, PL-25KS
+blocked-by: PL-25KS
 classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
@@ -12,7 +12,7 @@ added: 2026-09-04
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_no_metric_value_wraps_away_from_its_unit' tests/unit/test_simulation_view.py
 ---
 
-> **This fix rides the Qt port (`v0.5.1`), not Flet.** `ROADMAP.md` § "v0.5.1 -
+> **This fix rides the Qt port (`v0.4.25`), not Flet.** `ROADMAP.md` § "v0.4.25 -
 > the interface moves to Qt" names this item under "Fixes this port carries":
 > the defect lives in code that milestone rewrites from scratch, so fixing it
 > on Flet means writing the same lines twice. Project owner, 2026-09-10.

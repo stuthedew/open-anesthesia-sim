@@ -10,7 +10,7 @@ touches: tests/unit/test_bootstrap.py, src/anesthesia_sim/app/main.py
 added: 2026-08-25
 ---
 
-> **The Qt port (`v0.5.1`) moots or transforms this.** `ROADMAP.md` § "v0.5.1 -
+> **The Qt port (`v0.5.1`) moots or transforms this.** `ROADMAP.md` § "v0.4.25 -
 > the interface moves to Qt" names this item under "Items this port moots or
 > transforms". Read that entry before starting: the work may be thrown away by
 > the port, or may be a different question after it. Found 2026-09-10.

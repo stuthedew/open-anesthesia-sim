@@ -7,7 +7,7 @@ status: blocked
 classes: infra, test
 feature: presentation-safety
 touches: tools/contrast_check.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_contrast_check.py
-blocked-by: v0.5.1
+blocked-by: PL-L9RD
 added: 2026-09-06
 ---
 

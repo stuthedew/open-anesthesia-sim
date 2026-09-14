@@ -4,7 +4,7 @@ title: Overlay two branches on one time axis, with every curve attributable to i
 priority: P2
 effort: L
 status: blocked
-blocked-by: PL-TFX5, PL-B9PY
+blocked-by: PL-TFX5, PL-B9PY, PL-G59B
 classes: feature, ux
 feature: scenario-branching
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/theme.py, tests/unit
