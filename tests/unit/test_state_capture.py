@@ -38,6 +38,11 @@ from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValid
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.blood import VenousBloodCompartment
 from anesthesia_sim.core.circuit import BreathingCircuit
+from anesthesia_sim.core.governing_equations import (
+    TISSUE_GROUP_COUNT,
+    TissueGroupEquationSettings,
+    UptakeEquationSettings,
+)
 from anesthesia_sim.core.patient import PatientCompartmentsState
 from anesthesia_sim.core.tissue import TissueGroup
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem, AgentUptakeSystemState
@@ -364,3 +369,101 @@ def test_restoring_the_system_cannot_raise_on_a_state_a_run_produced() -> None:
     assert system.circuit.fresh_gas_flow_l_min == 0.5
     assert system.alveoli.alveolar_ventilation_l_min == 1.0
     assert system.circuit.circuit_volume_l == 0.5
+
+
+# `PL-R460`: the propagator cache is keyed on a raw tuple of floats rather than
+# on `UptakeEquationSettings`, because building the settings object cost 7.2 us
+# of a 33 us step to answer a question whose answer is "no" on all but a few
+# steps of a run. The key is only safe while it stays a bijection of the
+# settings, and the failure if it stops being one is the one this file exists
+# for: silent, and invisible in the values it leaves behind. A setting with no
+# entry in the key would be changed, the key would not move, and the run would
+# keep propagating with the matrix for the old setting.
+
+
+def test_the_propagator_cache_key_covers_every_equation_setting() -> None:
+    """One key entry per settings field, counted rather than trusted.
+
+    `tissues` expands to its groups instead of contributing one entry, and
+    `TissueGroupEquationSettings.name` contributes none because
+    `build_system_matrix()` never reads it - hence a `- 1` on each. Adding a
+    field to either settings class without an entry in
+    `_propagator_cache_key()` fails here.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+
+    scalar_settings = len(fields(UptakeEquationSettings)) - 1
+    per_tissue = len(fields(TissueGroupEquationSettings)) - 1
+    expected = 1 + scalar_settings + TISSUE_GROUP_COUNT * per_tissue
+
+    assert len(system._propagator_cache_key(0.1)) == expected
+    assert len(system.equation_settings().tissues) == TISSUE_GROUP_COUNT
+
+
+@pytest.mark.parametrize(
+    ("move", "description"),
+    [
+        (lambda s: s.circuit.set_circuit_volume(7.0), "circuit volume"),
+        (lambda s: setattr(s.alveoli, "gas_volume_l", 3.0), "alveolar volume"),
+        (lambda s: setattr(s.patient.venous_blood, "volume_l", 6.0), "venous volume"),
+        (lambda s: s.set_fresh_gas_flow(3.0), "fresh gas flow"),
+        (lambda s: s.set_alveolar_ventilation(5.0), "alveolar ventilation"),
+        (lambda s: s.set_cardiac_output(6.0), "cardiac output"),
+        (
+            lambda s: setattr(s.patient.venous_blood, "blood_gas_partition_coefficient", 0.9),
+            "blood:gas partition coefficient",
+        ),
+        (
+            lambda s: s.set_delivered_partial_pressure_fraction(0.03),
+            "delivered partial pressure fraction",
+        ),
+        (lambda s: setattr(s.patient.tissues[0], "volume_l", 9.0), "a tissue volume"),
+        (lambda s: setattr(s.patient.tissues[1], "blood_flow_l_min", 1.5), "a tissue blood flow"),
+        (
+            lambda s: setattr(s.patient.tissues[2], "tissue_gas_partition_coefficient", 90.0),
+            "a tissue partition coefficient, moved through the gas coefficient it derives from",
+        ),
+    ],
+)
+def test_moving_any_setting_moves_the_propagator_cache_key(
+    move: Callable[[AgentUptakeSystem], None], description: str
+) -> None:
+    """The property the counting test above cannot establish.
+
+    Each case is written straight onto the compartment where no setter exists,
+    which is the path that has no guard of its own and the one the key exists
+    to catch: `_propagator_for()` compares values rather than trusting a setter
+    to invalidate, so a setting reached around the control surface must move
+    the key just the same.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    before = system._propagator_cache_key(0.1)
+
+    move(system)
+
+    assert system._propagator_cache_key(0.1) != before, f"{description} left the key unchanged"
+
+
+def test_a_step_after_a_setting_moved_propagates_with_the_new_matrix() -> None:
+    """End to end: the key change reaches the propagator, not just the tuple.
+
+    Two systems stepped under the same final ventilation must agree, whether
+    that ventilation was set before the first step or after it. If the cache
+    returned the stale propagator they would not.
+    """
+
+    changed = AgentUptakeSystem.for_agent("sevoflurane")
+    changed.advance(0.1)
+    changed.set_alveolar_ventilation(8.0)
+    changed.advance(0.1)
+
+    rebuilt = AgentUptakeSystem.for_agent("sevoflurane")
+    rebuilt.advance(0.1)
+    rebuilt.set_alveolar_ventilation(8.0)
+    rebuilt._propagator = None
+    rebuilt._propagator_key = None
+    rebuilt.advance(0.1)
+
+    assert changed.state_vector() == rebuilt.state_vector()

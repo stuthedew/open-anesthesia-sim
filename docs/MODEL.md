@@ -4113,9 +4113,49 @@ the mass-balance guard rather than any declared domain, which is the required
 "obvious failure rather than a plausible-looking number" arriving by accident
 of arithmetic. It is not a limit this document declares and it must not be read
 as one — it sits six orders of magnitude below any volume a caller would pass
-by mistake, it says nothing about the physiological question above, and far
-enough down it stops firing at all. Circuit volume has no such point: it was
-advanced up to $`10^{300}`$ L with accounting passing throughout.
+by mistake, and it says nothing about the physiological question above.
+Circuit volume has no such point: it was advanced up to $`10^{300}`$ L with
+accounting passing throughout.
+
+**Below that the mass-balance guard stopped firing, and what refuses now is
+upstream of it** (`PL-3PRZ`). At $`10^{-300}`$ L the run advanced and returned
+an alveolar fraction of exactly 0.0 with accounting passing. The guard was not
+weak: the propagator had been driven to the zero matrix, so `propagate()`
+returned the zero state vector, and the identity was handed
+$`0 + 0 - 0 - 0`$ on totals that had all been annihilated together. Zero does
+balance zero. Every term of the check had been destroyed before the check ran,
+which is the shape to look for wherever a residual is formed from quantities
+the same failure can reach.
+
+`core/matrix_exponential.py` now refuses a zero propagator, because
+$`\exp(A\,\Delta t)`$ is nonsingular for every finite $`A`$ — its determinant
+is $`e^{\operatorname{tr}(A)\Delta t}`$ — so the zero matrix is the
+exponential of nothing and can only be a floating-point artifact. It also
+refuses the case where scaling the matrix norm down to the series bound
+overflows, which reached `ceil(log2(inf))` and raised a bare `OverflowError`
+at $`10^{-309}`$ L, outside the hierarchy in `core/exceptions.py` that a
+caller keys on. Both arrive as `SimulationNumericalError` through
+`AgentUptakeSystem.advance()`, with the step rolled back.
+
+**Measured across every decade from $`10^{0}`$ to $`10^{-323}`$ L**, before
+and after: 120 advance with the constant state row exact, and the same 120
+advance now; 77 were already refused as non-finite and 194 are refused now;
+the 116 that returned a zero propagator silently, and the one that raised
+`OverflowError`, make up the difference exactly. Nothing that advanced before
+is refused now. A single mode decaying below the smallest subnormal is still
+propagated as 0.0, which is correct — `exp(-0.5 * 3600)` is a real number no
+double can hold — and is what separates a decayed entry from an annihilated
+matrix.
+
+**One failure in this family is still open.** Between $`10^{-8}`$ and
+$`10^{-19}`$ L the propagator stays finite and nonzero, and the constant state
+row — which no interval may move, and whose row in $`A`$ is empty for exactly
+that reason — drifts: 1.0000610 at $`10^{-12}`$ L, then 2.718, then
+$`2.28\times10^{+222}`$ at $`10^{-19}`$ L. The shift is what admits it, and
+the squarings amplify it by $`2^{j}`$. The mass-balance guard catches this
+band today, at $`10^{-9}`$ L and below, so no value reaches a display; it is
+tracked as its own item rather than fixed here, because the remedy is a change
+to the numerical method rather than a guard on its result.
 
 **What is left open, stated plainly.** A caller writing Python against
 `core/` can still construct `BreathingCircuit(circuit_volume_l=10_000.0)` or

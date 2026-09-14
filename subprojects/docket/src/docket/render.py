@@ -11,7 +11,7 @@ here and the one that compounds.
 
 from __future__ import annotations
 
-from collections.abc import Collection, Mapping
+from collections.abc import Collection, Mapping, Sequence
 from datetime import UTC, date
 
 from .checks import DONE_WHEN, REQUIRED_BRIEF, STATUS_REQUIREMENTS, Report, brief_gaps
@@ -26,6 +26,7 @@ from .model import (
     SELECTABLE_LANES,
     Item,
 )
+from .notes import Thread
 from .plan import PLACEMENT_MARKS, Feature, Gate, effort_total, placement_mark, recommend, set_aside
 from .release import PLANNED, RESERVED, Readiness, release_offer
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Scope, Wave
@@ -664,6 +665,27 @@ def format_flight(report: FlightReport, today: date) -> str:
             f"{base} on the history this checkout holds, so what {carried} is unknown:"
         )
         lines.extend(f"  {name}" for name in report.unreadable)
+    return "\n".join(lines)
+
+
+def format_notes_threads(threads: Sequence[Thread], identifier: str, notes_path: str) -> str:
+    """Which notes threads concern this item, as a pointer rather than a summary.
+
+    A file:line for each, so the read is one jump rather than a scan, and the
+    title so a session can skip a thread it already knows. Nothing about what
+    the thread says: whether it is still true is the judgment this deliberately
+    leaves with the reader, and a generated precis of a stale thread would be
+    read as current (`PL-7QKY`).
+
+    Threads the heading names are what the thread is *about*; the rest mention
+    the id in passing and are marked as such, because a session with a budget
+    should be able to tell which pointer is the one to follow.
+    """
+    lines = [f"  notes: {len(threads)} thread(s) in {notes_path} name {identifier}"]
+    for thread in threads:
+        about = "about" if identifier in thread.about else "mentions"
+        lines.append(f"    {notes_path}:{thread.line} ({about}) {thread.title}")
+    lines.append("    Whether a thread is still true is not something this can tell you.")
     return "\n".join(lines)
 
 

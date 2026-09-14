@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md
 added: 2026-09-02
 closed: 2026-09-14
+pr: 557
 verify: uv run python tools/contrast_check.py && grep -q 'deliberately does NOT follow the' src/anesthesia_sim/app/theme.py && grep -q 'deliberately does not follow the medical alarm-colour' docs/MODEL.md
 ---
 

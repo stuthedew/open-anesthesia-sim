@@ -3565,3 +3565,97 @@ def test_next_reports_the_same_open_count_as_status(
     from_list = re.search(r"Docket: (\d+) open", list_out)
     assert from_next and from_list, (next_out, list_out)
     assert from_next.group(1) == from_list.group(1) == "2", (next_out, list_out)
+
+
+# `PL-7QKY`: `show` is where a notes thread becomes reachable. It is the
+# command a session runs having been handed an item, which is the path
+# `docket next` never sees, and the file's own "read this if your task touches
+# an open thread" cannot be evaluated without reading the file.
+
+NOTES_ITEM = """---
+id: PL-B1B1
+title: A ready item
+priority: P1
+effort: S
+status: ready
+classes: perf
+touches: a.py
+added: 2026-08-01
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+
+def _notes_project(tmp_path: Path, notes_file: str = "NOTES.md") -> Path:
+    store = _store(tmp_path, NOTES_ITEM)
+    (tmp_path / "docket.toml").write_text(
+        f'[docket]\nnotes_file = "{notes_file}"\n', encoding="utf-8"
+    )
+    (tmp_path / "NOTES.md").write_text(
+        "# Notes\n\n## Open thread: the chart - PL-B1B1\n\nBody.\n\n"
+        "## Another thread\n\nMentions PL-B1B1 in passing.\n",
+        encoding="utf-8",
+    )
+    return store
+
+
+def test_show_names_the_notes_threads_that_concern_the_item(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The pointer, with the line to jump to and which kind of mention it is."""
+    store = _notes_project(tmp_path)
+
+    assert _run("show", "PL-B1B1", "--items", str(store)) == 0
+
+    out = capsys.readouterr().out
+    assert "notes: 2 thread(s) in NOTES.md name PL-B1B1" in out
+    assert "NOTES.md:3 (about) Open thread: the chart - PL-B1B1" in out
+    assert "NOTES.md:7 (mentions) Another thread" in out
+    assert "Whether a thread is still true is not something this can tell you." in out
+
+
+def test_show_says_nothing_when_no_thread_names_the_item(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Silence is the common case, and a line reporting it would print on nearly
+    every `show` while changing no decision."""
+    store = _store(tmp_path, NOTES_ITEM)
+    (tmp_path / "docket.toml").write_text('[docket]\nnotes_file = "NOTES.md"\n', encoding="utf-8")
+    (tmp_path / "NOTES.md").write_text("# Notes\n\n## A thread about nothing\n\nx\n", "utf-8")
+
+    assert _run("show", "PL-B1B1", "--items", str(store)) == 0
+
+    assert "notes:" not in capsys.readouterr().out
+
+
+def test_show_says_nothing_when_the_project_configures_no_notes_file(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The setting is empty by default, so most projects must see no change."""
+    store = _store(tmp_path, NOTES_ITEM)
+
+    assert _run("show", "PL-B1B1", "--items", str(store)) == 0
+
+    assert "notes:" not in capsys.readouterr().out
+
+
+def test_show_survives_a_notes_file_the_checkout_does_not_have(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A configured path that is absent must not fail a sound item.
+
+    The file may have been deleted or moved, or the checkout truncated. Failing
+    `show` on any of those would break the one command a session runs before
+    starting work.
+    """
+    store = _store(tmp_path, NOTES_ITEM)
+    (tmp_path / "docket.toml").write_text('[docket]\nnotes_file = "gone.md"\n', encoding="utf-8")
+
+    assert _run("show", "PL-B1B1", "--items", str(store)) == 0
+
+    out = capsys.readouterr().out
+    assert "notes:" not in out
+    assert "PL-B1B1 A ready item" in out

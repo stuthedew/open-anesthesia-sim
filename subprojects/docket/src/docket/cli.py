@@ -13,7 +13,7 @@ from dataclasses import replace as with_fields
 from datetime import date
 from pathlib import Path
 
-from . import render
+from . import notes, render
 from .checks import analyze
 from .concurrency import (
     ORDERING,
@@ -637,10 +637,27 @@ def cmd_show(args: argparse.Namespace) -> int:
         # the one thing it could not learn here was that another branch had
         # already written to the file it was about to write to (`PL-N1JK`).
         print(render.format_queue_edit(edit, args.today or date.today()))
+    if threads := _notes_threads(root, config, item.identifier):
+        print(render.format_notes_threads(threads, item.identifier, config.notes_file))
     print()
     print(item.body.strip())
     _say_unread(flight)
     return 0
+
+
+def _notes_threads(root: Path, config: Config, identifier: str) -> tuple[notes.Thread, ...]:
+    """The notes threads naming this id, or nothing where the project keeps none.
+
+    Silent in three cases, all of which are "there is nothing to say": no
+    `notes_file` configured, no such file in this checkout, no thread naming
+    the id. A line reporting any of them would print on almost every `show`
+    and change no decision, which `CLAUDE.md` calls a defect in the check
+    rather than thoroughness (`PL-7QKY`).
+    """
+
+    if not config.notes_file:
+        return ()
+    return notes.concerning(notes.read(root / config.notes_file), identifier)
 
 
 def _print_observed(args: argparse.Namespace, item: Item, flight: FlightReport) -> None:

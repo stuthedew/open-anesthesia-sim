@@ -130,6 +130,7 @@ that the whole propagator is rebuilt only when a setting changes.
 
 from collections.abc import Sequence
 from math import ceil, exp, isfinite, log2
+from operator import mul
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.validation import require_positive_finite
@@ -221,6 +222,7 @@ def matrix_exponential(matrix: Matrix, interval_s: float) -> Matrix:
         propagator = multiply(propagator, propagator)
 
     _require_finite(propagator, "the propagator")
+    _require_a_nonzero_propagator(propagator)
 
     return propagator
 
@@ -235,6 +237,19 @@ def propagate(propagator: Matrix, state: Sequence[float]) -> tuple[float, ...]:
     own entries are checked where they are produced - `matrix_exponential`
     validates its input and its result - and the object is immutable, so
     walking them again here would cost every step and change no decision.
+
+    The product is written through `map(mul, ...)` rather than as a generator
+    over `range(size)`: the same floats reach `sum` in the same order, and the
+    index arithmetic and two subscriptions per term move into C. Every result
+    is bit-identical, so the determinism `CLAUDE.md` requires is untouched -
+    and it holds for a stronger reason than matching order, because `sum`'s
+    float path is Neumaier-compensated and its answer does not depend on how
+    the terms were produced. `test_propagate_sums_each_row_with_the_
+    compensation_sum_provides` pins that, since an explicit accumulator loop
+    would be faster still and would not be the same function. Measured on the
+    9x9 the model steps at 5.0 us against 8.5 us, and the whole step at
+    23.8 us against 32.7 us with the cache key in `uptake_system.py`
+    (`PL-R460`).
 
     Raises:
         SimulationConfigurationError: `propagator` is not square, `state` is
@@ -252,7 +267,11 @@ def propagate(propagator: Matrix, state: Sequence[float]) -> tuple[float, ...]:
         if not isfinite(value):
             raise SimulationConfigurationError(f"state[{index}] is {value}, which is not finite")
 
-    return tuple(sum(row[column] * state[column] for column in range(size)) for row in propagator)
+    # `strict=False`: `_require_square` has established that every row is `size`
+    # long and the check above that `state` is too, so the lengths cannot differ
+    # here. `strict=True` re-checks that on every step of every run and can never
+    # fire; it measures 2.0 us of the 8.3 us this function costs.
+    return tuple(sum(map(mul, row, state, strict=False)) for row in propagator)
 
 
 def _require_square(matrix: Matrix, name: str) -> int:
@@ -293,6 +312,53 @@ def _require_finite(matrix: Matrix, name: str) -> None:
                 )
 
 
+def _require_a_nonzero_propagator(propagator: Matrix) -> None:
+    """Refuse the all-zero matrix, which the squarings can produce and which
+    `_require_finite` accepts.
+
+    $`\\exp(A\\,\\Delta t)`$ is nonsingular for every finite $`A`$ and every
+    finite interval - its determinant is $`e^{\\operatorname{tr}(A)\\Delta t}`$,
+    which is positive - so the zero matrix is not the propagator of anything
+    and can only be a floating-point artifact. That makes this an exact
+    statement rather than a tolerance: there is no margin to choose, and no
+    legitimate argument approaches it from one side.
+
+    Reached by driving `AlveolarCompartment.gas_volume_l` to 1e-300 L. The
+    scaled interval is then small enough that the series entries land near the
+    subnormal floor; the first squaring multiplies two of them to zero, and
+    every squaring after that keeps the whole matrix there. The result is
+    finite and entrywise nonnegative, so both properties this module states
+    hold of it, and `propagate()` then returns the zero state vector: every
+    compartment empty, nothing delivered, nothing exhausted. The mass-balance
+    identity in `agent_simulation_validation.py` passes on it, because every
+    term of that identity has been annihilated too and zero does balance zero.
+    A concentration of exactly 0.0 is reported, and no guard anywhere in the
+    path objects (`PL-3PRZ`).
+
+    **Individual zero entries are left alone, including on the diagonal.** A
+    mode that has genuinely decayed below the smallest subnormal returns 0.0
+    correctly: `exp(-0.5 * 3600)` is a real number no double can hold, and
+    `test_diagonal_matrix_matches_scalar_decay` propagates exactly that. What
+    distinguishes the failure from the decay is that *nothing* survives it -
+    in the model, not even the constant row that no interval may move.
+
+    Args:
+        propagator: the matrix the squarings produced.
+
+    Raises:
+        SimulationConfigurationError: every entry is zero.
+    """
+
+    if any(value != 0.0 for row in propagator for value in row):
+        return
+
+    raise SimulationConfigurationError(
+        f"the propagator is the {len(propagator)}x{len(propagator)} zero matrix, which is "
+        "singular and so is the exponential of nothing; its entries have underflowed and "
+        "it no longer solves the system"
+    )
+
+
 def _require_metzler(matrix: Matrix) -> None:
     """Require nonnegative off-diagonal entries, which a transfer rate is.
 
@@ -313,14 +379,37 @@ def _require_metzler(matrix: Matrix) -> None:
 
 
 def _squarings_for(shifted: Matrix, interval_s: float) -> int:
-    """Return how many squarings bring the series argument under the bound."""
+    """Return how many squarings bring the series argument under the bound.
+
+    Raises:
+        SimulationConfigurationError: dividing the norm down to the series
+            bound overflows. The norm itself is finite in this case - at an
+            alveolar volume of 1e-309 L it is 1.2e+307 - and it is the
+            division by $`2^{-4}`$ that reaches `inf`, after which `log2` is
+            `inf` and `ceil` raises `OverflowError`. That is outside this
+            module's documented failures and outside the hierarchy in
+            `core/exceptions.py` that a caller keys on, so
+            `AgentUptakeSystem.advance()` neither restates it nor rolls back
+            on it by type; only its `finally` clause saves the state
+            (`PL-3PRZ`).
+    """
 
     norm = max(sum(row) for row in shifted) * interval_s
 
     if norm <= MAXIMUM_SERIES_ARGUMENT_NORM:
         return 0
 
-    return ceil(log2(norm / MAXIMUM_SERIES_ARGUMENT_NORM))
+    scaled_norm = norm / MAXIMUM_SERIES_ARGUMENT_NORM
+
+    if not isfinite(scaled_norm):
+        raise SimulationConfigurationError(
+            f"the shifted matrix has a row sum of {norm} over {interval_s} s, and "
+            f"scaling it to the series bound of {MAXIMUM_SERIES_ARGUMENT_NORM} overflows, "
+            "so the number of squarings is not computable; the rates in this matrix are "
+            "too large to propagate in double precision"
+        )
+
+    return ceil(log2(scaled_norm))
 
 
 def _shifted_series(shifted: Matrix, interval_s: float) -> Matrix:

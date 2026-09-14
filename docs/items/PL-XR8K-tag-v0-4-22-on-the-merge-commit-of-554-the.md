@@ -9,8 +9,9 @@ feature: release-process
 touches: docs/items/
 added: 2026-09-14
 closed: 2026-09-14
-not-delegable: Proving this means pushing a tag ref to the remote, which no session in this environment can do - `PL-N936` measured the failure and found it convincing rather than obvious. There is nothing to run before the work, because the work is the project owner's.
+pr: 557
 verify: git ls-remote --tags origin v0.4.22 | grep -q 'refs/tags/v0.4.22'
+not-delegable: Proving this means pushing a tag ref to the remote, which no session in this environment can do - `PL-N936` measured the failure and found it convincing rather than obvious. There is nothing to run before the work, because the work is the project owner's.
 ---
 
 **Problem.** Tag v0.4.22 on the merge commit of #554: the release is cut and only the project owner can push a tag ref from this environment

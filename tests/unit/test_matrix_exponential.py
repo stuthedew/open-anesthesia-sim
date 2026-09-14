@@ -324,3 +324,88 @@ def test_multiply_rejects_a_ragged_operand() -> None:
         match="^right has 2 rows but row 1 has 1 entries, so it is not square$",
     ):
         multiply(_identity(2), ((0.0, 0.0), (0.0,)))
+
+
+# `PL-3PRZ`: what the squarings can produce that is finite, entrywise
+# nonnegative, and still not a propagator. `_require_finite` accepted both of
+# the states below, and `AgentUptakeSystem` then stepped on them and reported a
+# concentration of exactly zero with its mass-balance check passing.
+
+
+def test_refuses_the_zero_matrix_the_squarings_can_produce() -> None:
+    """The route an alveolar volume of 1e-300 L reaches.
+
+    The scaled interval is small enough that the series entries land near the
+    subnormal floor; the first squaring multiplies two of them to zero and
+    every squaring after that keeps the matrix there. The zero matrix is finite
+    and entrywise nonnegative, so both properties this module states hold of it.
+    """
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=(
+            r"^the propagator is the 2x2 zero matrix, which is singular and so is the "
+            r"exponential of nothing; its entries have underflowed and it no longer "
+            r"solves the system$"
+        ),
+    ):
+        matrix_exponential(((-1e299, 0.0), (0.0, 0.0)), 0.1)
+
+
+def test_a_single_mode_decaying_past_the_subnormal_floor_is_not_refused() -> None:
+    """The case the refusal above must not catch.
+
+    `exp(-0.5 * 3600)` is a real number no double can hold, so 0.0 is the
+    correct entry for that mode over that horizon. What separates it from the
+    failure is that the undamped mode beside it still propagates.
+    """
+
+    propagator = matrix_exponential(((-0.5, 0.0), (0.0, 0.0)), 3600.0)
+
+    assert propagator[0][0] == 0.0
+    assert propagator[1][1] == 1.0
+
+
+def test_refuses_a_matrix_whose_scaled_norm_overflows_rather_than_raising_overflowerror() -> None:
+    """`ceil(log2(inf))` raises `OverflowError`, which no caller here keys on.
+
+    The row sum is finite - 1.3e+307 over 0.1 s - and it is the division by
+    `MAXIMUM_SERIES_ARGUMENT_NORM` that reaches `inf`. Reached in the model at
+    an alveolar volume of 1e-309 L.
+    """
+
+    with pytest.raises(
+        SimulationConfigurationError,
+        match=(
+            r"^the shifted matrix has a row sum of 1\.3000000000000002e\+307 over 0\.1 s, "
+            r"and scaling it to the series bound of 0\.0625 overflows, so the number of "
+            r"squarings is not computable; the rates in this matrix are too large to "
+            r"propagate in double precision$"
+        ),
+    ):
+        matrix_exponential(((-1.3e308, 0.0), (0.0, 0.0)), 0.1)
+
+
+def test_propagate_sums_each_row_with_the_compensation_sum_provides() -> None:
+    """`PL-R460`: the property that made rewriting the inner product free.
+
+    `propagate()` sums each row's products with the built-in `sum`, whose float
+    path is Neumaier-compensated: the products below are `1.0`, `1e16` and
+    `-1e16`, where a naive left fold loses the `1.0` when it adds it to `1e16`
+    and returns `0.0`, and `sum` returns the exact `1.0`.
+
+    That is why `sum(map(mul, row, state))` and the generator over `range(size)`
+    it replaced are bit-identical rather than merely close - both hand `sum` the
+    same floats, and the compensation makes the answer independent of how they
+    were produced. A rewrite to an explicit accumulator loop would be neither,
+    and would move a safety-critical result without changing a test that only
+    checked the products. This is what pins it.
+    """
+
+    ones = ((1.0, 1.0, 1.0), (1.0, 0.0, 0.0), (0.0, 0.0, 1.0))
+
+    advanced = propagate(ones, (1.0, 1e16, -1e16))
+
+    assert advanced[0] == 1.0
+    assert advanced[1] == 1.0
+    assert advanced[2] == -1e16
