@@ -53,6 +53,7 @@ from anesthesia_sim.app.formatting import (
     format_case_discard_warning,
     format_chart_time_label,
     format_elapsed,
+    format_flow,
     format_mac_awake_reference,
     format_mac_multiple,
     format_mac_reference,
@@ -77,6 +78,7 @@ from anesthesia_sim.app.simulation_view import (
     MAC_AWAKE_BAND_EDGE_STROKE_WIDTH,
     MAC_AWAKE_BAND_FILL_OPACITY,
     MAX_CHART_CONTROL_MARKS,
+    MAX_DISPLAYED_RUNS,
     MAX_LISTED_ADJUSTMENTS,
     METRIC_GRID_COLUMNS,
     NEW_CASE_CARRYOVER_TEMPLATE,
@@ -91,6 +93,7 @@ from anesthesia_sim.app.simulation_view import (
     START_NEW_CASE_TEMPLATE,
     WASH_IN_AXIS_MAXIMUM,
     WASH_IN_TERMINUS_CEILING,
+    RunView,
     SimulationView,
 )
 from anesthesia_sim.app.theme import (
@@ -5455,3 +5458,299 @@ def test_halt_run_still_treats_an_unrecognised_exception_as_a_failure() -> None:
 
     assert controller.failures == ["ValueError: mass balance violated"]
     assert controller.supported_limits == []
+
+
+def _set_fresh_gas_flow(run: RunView, flow_l_min: float) -> None:
+    """Drag one run's fresh-gas-flow slider, the way a reader would.
+
+    Through the control the run actually holds and the handler it actually
+    wired to it, so the tests below assert the wiring as well as the effect:
+    a handler bound to the wrong run is exactly the mistake a comparison of
+    two runs has to be proof against, and it would leave every readout
+    assertion here passing against one run's numbers twice.
+    """
+
+    run._fresh_gas_flow_slider.value = flow_l_min
+    run._handle_fresh_gas_flow_change(ft.Event(name="change", control=run._fresh_gas_flow_slider))
+
+
+def test_two_run_views_drive_two_controllers() -> None:
+    """Two runs, two controllers, and neither states the other's numbers.
+
+    The property `PL-B9PY` exists for and the one a single class holding one
+    controller reference could not have: v0.5.0 compares two branches of a
+    case managed differently, so every value a run states has to come from
+    that run's own controller while both are drawn on one chart.
+
+    A regression here would not look like a crash. It would look like one
+    branch's readouts standing over the other branch's numbers, which is the
+    wrong-patient-context failure `CLAUDE.md`'s safety-critical standard
+    names - and the reason this is asserted end to end, from the dial a
+    reader moves through to the displayed string and the drawn point.
+    """
+
+    page = _FakePage()
+    lean = SimulationController()
+    generous = SimulationController()
+    view = SimulationView(page=page, controllers=(lean, generous))
+    lean_run, generous_run = view.runs
+
+    _set_fresh_gas_flow(lean_run, 1.0)
+    _set_fresh_gas_flow(generous_run, 6.0)
+
+    lean.start()
+    generous.start()
+    _advance_to(lean, 120.0)
+    _advance_to(generous, 60.0)
+    view._refresh_view()
+
+    # Each dial reached its own controller, and no other.
+    assert lean.snapshot().fresh_gas_flow_l_min == pytest.approx(1.0)
+    assert generous.snapshot().fresh_gas_flow_l_min == pytest.approx(6.0)
+
+    # Each run's readouts are its own run's, at its own simulated time.
+    assert lean_run._fresh_gas_flow_text.value == format_flow(1.0)
+    assert generous_run._fresh_gas_flow_text.value == format_flow(6.0)
+    assert lean_run._elapsed_time_text.value == format_elapsed(120.0)
+    assert generous_run._elapsed_time_text.value == format_elapsed(60.0)
+
+    # And each run's alveolar curve is its own, on one chart. The two flows
+    # fill the circuit at different rates, so the readings differ - which is
+    # the comparison the milestone exists to make readable.
+    lean_line = lean_run.line_for(RecordedQuantity.ALVEOLAR)
+    generous_line = generous_run.line_for(RecordedQuantity.ALVEOLAR)
+
+    drawn = {id(series) for series in view._concentration_chart.data_series}
+
+    assert lean_line is not generous_line
+    assert id(lean_line) in drawn
+    assert id(generous_line) in drawn
+    assert lean_line.points and generous_line.points
+    assert lean_line.points[-1].y != pytest.approx(generous_line.points[-1].y)
+
+
+def test_each_run_draws_only_its_own_recorded_values() -> None:
+    """The pairing hazard, doubled: a line must carry its run and its compartment.
+
+    `_plotted` builds both halves of the pair from one key, so a filter
+    cannot misalign it - but with two runs on one chart there is a second way
+    to get it wrong, which is to draw one run's samples on the other run's
+    line. Nothing in the type system can catch that: `flet_charts` ships no
+    stubs, so a chart series is `Any` to the checker.
+
+    Each run is given a distinct multiple of the same recorded shape, so a
+    line carrying the wrong run's values is visible in the drawn points
+    rather than inferred.
+    """
+
+    history = _run_history(600)
+    doubled = tuple(
+        dataclasses.replace(
+            sample,
+            substances={
+                substance: {quantity: value * 2.0 for quantity, value in compartments.items()}
+                for substance, compartments in sample.substances.items()
+            },
+        )
+        for sample in history
+    )
+    page = _FakePage()
+    view = SimulationView(
+        page=page, controllers=(_fake_controller(history), _fake_controller(doubled))
+    )
+    single, double = view.runs
+
+    view._refresh_view()
+
+    for trace in view._traces:
+        single_points = single.line_for(trace.quantity).points
+        double_points = double.line_for(trace.quantity).points
+
+        assert single_points, f"{trace.label} drew nothing on the first run"
+        assert len(single_points) == len(double_points)
+
+        for single_point, double_point in zip(single_points, double_points, strict=True):
+            assert single_point.x == pytest.approx(double_point.x)
+            assert double_point.y == pytest.approx(single_point.y * 2.0)
+
+
+def test_one_compartment_selection_applies_to_every_run() -> None:
+    """Unchecking a compartment takes it off the chart for both runs at once.
+
+    `PL-HLD5` makes this load-bearing rather than convenient: at most two
+    compartments may be drawn while two branches are shown, because that is
+    what frees line width to carry the run. A selection that applied to one
+    run only would leave a compartment drawn for one branch and not the
+    other, which reads as the model having lost a compartment rather than as
+    a control having been clicked.
+    """
+
+    history = _run_history(600)
+    page = _FakePage()
+    view = SimulationView(
+        page=page, controllers=(_fake_controller(history), _fake_controller(history))
+    )
+    first, second = view.runs
+
+    def drawn() -> set[int]:
+        # By identity: Flet compares a chart series by value, and two runs
+        # of the same recorded history draw identical points, so membership
+        # by value would answer for whichever of the pair came first.
+        return {id(series) for series in view._concentration_chart.data_series}
+
+    _set_trace_shown(view, RecordedQuantity.FAT, False)
+
+    assert id(first.line_for(RecordedQuantity.FAT)) not in drawn()
+    assert id(second.line_for(RecordedQuantity.FAT)) not in drawn()
+
+    _set_trace_shown(view, RecordedQuantity.FAT, True)
+
+    assert id(first.line_for(RecordedQuantity.FAT)) in drawn()
+    assert id(second.line_for(RecordedQuantity.FAT)) in drawn()
+
+
+def test_the_two_lines_of_one_compartment_are_drawn_next_to_each_other() -> None:
+    """Adjacency is what `PL-HLD5`'s encoding rests on, so it is asserted.
+
+    The run is to be carried on line width, which is a weak channel at two
+    levels and only has to be read *locally* - between two curves of the same
+    compartment. That argument holds only while those two curves are
+    adjacent, so the compartment is the outer loop of the drawing order and
+    the run the inner one. Ordering by run instead would put a compartment's
+    two curves at opposite ends of the list.
+    """
+
+    history = _run_history(120)
+    page = _FakePage()
+    view = SimulationView(
+        page=page, controllers=(_fake_controller(history), _fake_controller(history))
+    )
+    first, second = view.runs
+    # By identity, not by `list.index`: two of these series hold the same
+    # points, and Flet compares a chart series by value, so a search would
+    # find the first of an equal pair rather than the one asked for.
+    position = {
+        id(series): index for index, series in enumerate(view._concentration_chart.data_series)
+    }
+
+    for trace in view._traces:
+        first_index = position[id(first.line_for(trace.quantity))]
+        second_index = position[id(second.line_for(trace.quantity))]
+
+        assert abs(first_index - second_index) == 1, (
+            f"{trace.label}'s two lines are {abs(first_index - second_index)} apart in the "
+            "drawing order, so the run cannot be read locally off line width"
+        )
+
+
+def test_the_window_fits_the_longer_of_two_runs() -> None:
+    """One window, wide enough for both, or one run is compared half-drawn.
+
+    Under "Fit run" a window fitted to the shorter run would draw the longer
+    one off the end of the axis. A reader would then be comparing two runs
+    while seeing all of one and part of the other, with nothing on screen
+    saying so - which is worse than seeing neither.
+    """
+
+    page = _FakePage()
+    short = SimulationController()
+    long = SimulationController()
+    view = SimulationView(page=page, controllers=(short, long))
+
+    short.start()
+    long.start()
+    _advance_to(short, 60.0)
+    _advance_to(long, 600.0)
+    view._refresh_view()
+
+    assert view._concentration_chart.max_x >= 600.0
+    assert view._wash_in_chart.max_x == view._concentration_chart.max_x
+    assert view.runs[1].line_for(RecordedQuantity.ALVEOLAR).points[-1].x == pytest.approx(600.0)
+
+
+def test_halting_one_run_leaves_the_other_advancing() -> None:
+    """A raise out of one run's step says nothing about the other run.
+
+    Both branches of a comparison are stepped by their own loop, so a failure
+    in one is that run's. Stopping both would discard a run that is still
+    sound; stopping neither would leave a display reading "Running" over
+    numbers that had stopped advancing, which is the failure the guarded
+    loops exist to prevent.
+    """
+
+    halted = _recording_controller(is_running=True)
+    untouched = _recording_controller(is_running=True)
+    view = SimulationView(page=_FakePage(), controllers=(halted, untouched))
+
+    view.runs[0]._halt_run(ValueError("mass balance violated"))
+
+    assert halted.failures == ["ValueError: mass balance violated"]
+    assert halted.is_running is False
+    assert untouched.failures == []
+    assert untouched.supported_limits == []
+    assert untouched.is_running is True
+
+
+def test_a_frame_that_cannot_be_drawn_halts_every_run() -> None:
+    """The render loop draws all of them, so a raise out of it is nobody's.
+
+    Nothing on screen can be trusted to describe any run after it, and the
+    runs left advancing would be advancing behind a display that had stopped
+    following them.
+    """
+
+    first = _recording_controller(is_running=True)
+    second = _recording_controller(is_running=True)
+    view = SimulationView(page=_FakePage(), controllers=(first, second))
+
+    view._halt_every_run(ValueError("the frame could not be built"))
+
+    assert first.failures == ["ValueError: the frame could not be built"]
+    assert second.failures == ["ValueError: the frame could not be built"]
+    assert first.is_running is False
+    assert second.is_running is False
+
+
+def test_a_dashboard_refuses_two_runs_on_different_agents() -> None:
+    """One ×MAC ruler and one set of references cannot describe two agents.
+
+    The MAC axis, the MAC-awake band and the 1 MAC line are all the agent's
+    own published values, drawn once across a chart both runs share. Two
+    agents on it would leave one run's traces read against the other's
+    divisor - a correct number under the wrong label, which `CLAUDE.md`'s
+    standard treats as a failure of the value rather than of its
+    presentation. Refused rather than papered over by dropping the axis:
+    v0.5.0 compares two branches of one case, which carry the agent they were
+    forked from, so this is a programming error and not a state a run reaches.
+    """
+
+    with pytest.raises(ValueError, match="same agent"):
+        SimulationView(
+            page=_FakePage(),
+            controllers=(_fake_controller(), _fake_controller(agent_id="desflurane")),
+        )
+
+
+def test_a_dashboard_refuses_more_runs_than_may_be_displayed() -> None:
+    """`ROADMAP.md` bounds the comparison at two, and the cap is why.
+
+    At three runs the encoding that tells one from another has nothing left:
+    colour and line style carry the compartment and line width is a two-level
+    channel. A third curve would be drawn with nothing identifying it, so
+    this refuses rather than drawing it.
+    """
+
+    assert MAX_DISPLAYED_RUNS == 2
+
+    with pytest.raises(ValueError, match="at most 2"):
+        SimulationView(
+            page=_FakePage(),
+            controllers=tuple(_fake_controller() for _ in range(MAX_DISPLAYED_RUNS + 1)),
+        )
+
+
+def test_a_dashboard_refuses_to_be_built_with_no_run() -> None:
+    """A dashboard with no run has no agent, no ruler and nothing to draw."""
+
+    with pytest.raises(ValueError, match="at least one run"):
+        SimulationView(page=_FakePage(), controllers=())
