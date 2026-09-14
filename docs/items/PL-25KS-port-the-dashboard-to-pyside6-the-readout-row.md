@@ -62,3 +62,20 @@ its package map is held to disk in both directions by `tools/doc_check.py`, so
 every module this item adds or removes edits that map in the same commit or
 fails `make check`. The line count above is corrected from 3 619 to 4 321,
 `PL-B9PY` having grown the file since the brief was written.
+
+**What the chart port left for this item, 2026-09-14 (`PL-G59B`).** The
+dashboard assembles one `chart_frame.ChartFrame` per render tick -
+`assemble_chart_frame` over a `RunInput` per run (controller, the snapshot
+the same tick formats the readouts from, and the `AdjustmentGrouping`'s
+adjustments), the selected time base or `None` for "Fit run", and
+`TraceLegend.shown` - and calls `draw` on `qt_chart.ConcentrationChart` and
+`qt_chart.WashInChart` with it; `TraceLegend.visibility_changed` is the
+signal to redraw on. The chart panel's captions are this item's, read off the
+frame rather than re-derived: the time-axis caption from `ChartFrame.fitted`
+and `time_base`, `format_mac_reference` and `format_mac_awake_reference` from
+the reference snapshot, the wash-in state sentence from `read_wash_in` and
+`RunFrame.undrawn_wash_in_stretches`, the off-scale notice from
+`RunFrame.percents` against `axis_top_percent`, and the unmarked-adjustments
+count from `RunFrame.undrawn_control_marks`. The `README.md` hover line
+(`PL-YVHK` item 5) lands here too, since this is what makes the Qt chart the
+shipped one.
