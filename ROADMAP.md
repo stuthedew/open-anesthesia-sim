@@ -1673,7 +1673,7 @@ this list*. That is stricter than an unenumerated parity, not looser.
 than by default: `PL-YTX9` (whether a hidden trace keeps its legend entry),
 `PL-CZFY` and `PL-Q4M4` (the elapsed-time readout reads in seconds while the
 axis reads in hours), `PL-LL9Y` (the warning and alert colours against the
-medical alarm-colour convention).
+medical alarm-colour convention), and `PL-2K1R` (an interpretation disclaimer beside the use disclaimer, stating that the readouts and traces are modelled rather than measured - text the dashboard states, not a control a learner operates, so a decision rather than capability; project owner, 2026-09-14).
 
 **`PL-16ZC` is out (project owner, 2026-09-10)**, and it is the case that shows
 where the line is. A show/hide control for the clinical references and the
