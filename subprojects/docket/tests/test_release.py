@@ -1018,6 +1018,54 @@ def test_no_reservation_is_read_off_a_beat_that_counts_nothing() -> None:
     assert (offer.kind, offer.version) == (STANDS, "0.4.0")
 
 
+#: `GATED_SCOPE_ROADMAP` with a section-bearing `—` row between the patch track
+#: and the gated milestone - the Qt port's shape after `PL-RKWB` moved it ahead
+#: of v0.5.0 and numbered it as a patch.
+PORTED_ROADMAP = GATED_SCOPE_ROADMAP.replace(
+    "| 2 | **v0.4.0 — the teachable case** |",
+    "| — | **v0.3.5 — the interface port** | Scoped below. | 1 L |\n"
+    "| 2 | **v0.4.0 — the teachable case** |",
+).replace(
+    "## Next milestone: v0.4.0 - the teachable case",
+    """## v0.3.5 - the interface port
+
+### Goal
+
+Move the dashboard.
+
+### Required scope
+
+- The chart (queue item PL-PT03).
+
+### Definition of done
+
+Parity.
+
+### Explicitly out of scope for v0.3.5
+
+Compare mode.
+
+## Next milestone: v0.4.0 - the teachable case""",
+)
+
+
+def test_the_reservation_reads_the_row_the_beat_anchors_on_before_the_gated_milestone() -> None:
+    """`PL-188T`'s arrangement, answered by `PL-FWJF` binding the beat's
+    milestone to the port's section: a patch bump arriving at the port's own
+    number is reserved while the port's scope is open, where reading the gated
+    milestone alone offered it as free. The guard is unchanged - it reads
+    `plan.milestone`, and `wave` now binds that to the row the timeline puts
+    first."""
+    from docket.release import RESERVED, release_offer
+
+    plan = wave(PORTED_ROADMAP, "0.3.0", frozenset({"PL-GT01"}), GATED_SCOPE_IDS | {"PL-PT03"}, {})
+    offer = release_offer(_ready("0.3.0", "0.3.5"), plan)
+
+    assert plan.beat == IMPLEMENT
+    assert plan.milestone is not None and plan.milestone.version == (0, 3, 5)
+    assert (offer.kind, offer.version, offer.milestone) == (RESERVED, "0.3.5", "the interface port")
+
+
 def test_wave_reports_the_scope_split_once_the_gate_is_clear() -> None:
     from docket.render import format_wave
 

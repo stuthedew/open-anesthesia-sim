@@ -106,8 +106,8 @@ Importers to update: `app/chart_series.py`, `app/simulation_view.py`,
 `tests/integration/test_controller.py`, `tests/integration/test_sevo_controller.py`.
 `docs/ARCHITECTURE.md`'s package map gains a row - `tools/doc_check.py`'s
 `check_package_maps` holds that tree to the files on disk in both directions,
-so `make doc-check` fails until it does. `docs/MODEL.md` § "What a recorded
-sample is" cites `app/controller.py`'s `RecordedQuantity` by module and needs
+so `make doc-check` fails until it does. `docs/MODEL.md` § "What a drawn window is" (headed *What a recorded sample
+is* until `PL-27H0` renamed it) cites `app/controller.py`'s `RecordedQuantity` by module and needs
 re-pointing; that section has a second, separate problem, which is `PL-27H0`.
 
 **Sequencing: satisfied 2026-09-14.** `PL-B9PY` (decompose `SimulationView` so

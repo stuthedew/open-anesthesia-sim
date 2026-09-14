@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from docket.checks import Report
 from docket.model import parse_item
-from docket.render import format_digest
+from docket.render import format_digest, format_wave
 from docket.roadmap import (
     CLEAR,
     FREEZE,
@@ -572,8 +572,8 @@ def test_the_exclusion_heading_is_parsed_apart_from_required_scope() -> None:
 
     Parsed and not yet *placed*: making an exclusion speak in the ranking is
     `PL-6P9Y`. An exclusion recorded by a milestone the project has already
-    passed says what was true then, and `milestone_scope` reads no section at or
-    below the anchor - so the answer here stays `UNPLACED`, as the test above
+    passed says what was true then, and `wave` hands `milestone_scope` no
+    released section - so the answer here stays `UNPLACED`, as the test above
     this one asserts.
     """
     section = _section((0, 4, 0))
@@ -592,11 +592,20 @@ def test_the_scope_places_an_id_by_the_milestone_whose_section_names_it() -> Non
 
 
 def test_a_released_milestones_section_places_nothing() -> None:
-    """Its narrative records where a problem was raised, not what is current."""
-    scope = milestone_scope(parse_milestones(ROADMAP), _section((0, 4, 0)))
+    """Its narrative records where a problem was raised, not what is current.
 
-    assert scope.placement("PL-PQRS") == UNPLACED
-    assert scope.placement("PL-MNPQ") == IN_SCOPE
+    Released is decided by the version the project is on: `wave` hands
+    `milestone_scope` the unreleased sections alone, so v0.2.0's section never
+    reaches it and PL-PQRS is placed by nobody. Read directly with every
+    section, `milestone_scope` would report it as later work - which is the
+    right answer for an unreleased section below the anchor (`PL-FWJF`) and
+    the wrong one for a shipped one, and only `wave` knows which it is.
+    """
+    plan = _wave("0.2.5", frozenset(GATE_IDS))
+
+    assert plan.scope.anchor == "v0.4.0 — the teachable case"
+    assert plan.scope.placement("PL-PQRS") == UNPLACED
+    assert plan.scope.placement("PL-MNPQ") == IN_SCOPE
 
 
 def test_the_wave_carries_the_scope_of_the_milestone_the_beat_is_about() -> None:
@@ -667,6 +676,128 @@ def test_a_plan_with_no_milestone_to_anchor_on_places_nothing() -> None:
 
     assert scope.anchor == ""
     assert scope.placement("PL-001") == UNPLACED
+
+
+# --- a section-bearing row the `#` column skips (`PL-FWJF`) ------------------
+
+#: The same roadmap with a `—` row between the patch track and v0.4.0 that
+#: bears a section of its own - the Qt port's shape: not a step by the `#`
+#: column, numbered as a patch, placed between the gate and the milestone that
+#: recorded it, and carrying a `Required scope`. Standing on the patch track
+#: with the gate clear, this row is the work the plan lists next, and it is
+#: what anchoring on the next *numbered* milestone read straight past.
+PORT_ROADMAP = ROADMAP.replace(
+    "| 2 | **v0.4.0 — the teachable case** |",
+    "| — | **v0.3.5 — the interface port** | Scoped below. A patch, on the timeline. | 1 L |\n"
+    "| 2 | **v0.4.0 — the teachable case** |",
+).replace(
+    "## Milestone after next: v0.4.0 - the teachable case",
+    """## v0.3.5 - the interface port
+
+### Goal
+
+Move the dashboard.
+
+### Required scope
+
+The chart (queue item PL-PRT7).
+
+### Definition of done
+
+Parity.
+
+### Explicitly out of scope for v0.3.5
+
+Compare mode.
+
+## Milestone after next: v0.4.0 - the teachable case""",
+)
+PORT_KNOWN = KNOWN | {"PL-PRT7"}
+
+
+def _ported(version: str, closed: frozenset[str] = frozenset()):
+    return _wave(version, closed, roadmap=PORT_ROADMAP, known=PORT_KNOWN)
+
+
+def test_a_section_bearing_row_without_a_number_is_the_beat_once_the_gate_is_clear() -> None:
+    """The port's arrangement: the beat is the row's own work, the step stays
+    on the patch track - which bears no section by grammar and is passed over,
+    as the live `v0.4.x` row is - and the scope anchors on the row, so its ids
+    read as the current step's and the gated milestone's own scope as later.
+    Before this, `wave` printed `implement v0.4.0` and the port's ids were
+    placed by no section."""
+    plan = _ported("0.3.0", frozenset(GATE_IDS))
+
+    assert plan.step is not None and plan.step.kind == "patch-track"
+    assert plan.gate is not None and plan.gate.is_clear
+    assert plan.beat == IMPLEMENT
+    assert plan.subject == "v0.3.5 — the interface port"
+    assert plan.milestone is not None and plan.milestone.version == (0, 3, 5)
+    assert plan.own_scope is not None and plan.own_scope.milestone.version == (0, 3, 5)
+    assert plan.scope.anchor == "v0.3.5 — the interface port"
+    assert plan.scope.step_label == "v0.3.x — a readability pass"
+    assert plan.scope.placement("PL-PRT7") == IN_SCOPE
+    assert plan.scope.placement("PL-MNPQ") == OUT_OF_SCOPE
+    assert plan.scope.milestone("PL-MNPQ") == "v0.4.0"
+
+
+def test_the_beat_names_whose_gate_cleared_when_the_row_takes_none_of_its_own() -> None:
+    """ "Its gate is clear" of the port would name a gate it does not have."""
+    printed = format_wave(_ported("0.3.0", frozenset(GATE_IDS)))
+
+    assert (
+        "Beat      implement v0.3.5 — the interface port - the timeline puts it before "
+        "v0.4.0 — the teachable case, whose gate is clear, 0 of 1 Required scope ids "
+        "closed and 1 still open"
+    ) in printed
+    assert "Scope     the Required scope of v0.3.5 — the interface port (1 id)" in printed
+
+
+def test_the_row_is_a_release_once_its_own_scope_closes() -> None:
+    plan = _ported("0.3.0", frozenset(GATE_IDS | {"PL-PRT7"}))
+
+    assert plan.beat == RELEASE
+    assert plan.subject == "v0.3.5 — the interface port"
+    assert (plan.release_version, plan.release_name) == ((0, 3, 5), "the interface port")
+
+
+def test_once_the_row_ships_the_beat_returns_to_the_gated_milestone() -> None:
+    """Released is decided by the version: once the row's number is cut the
+    project stands on the row after it, the gated milestone's own scope is the
+    beat again, and the shipped section places nothing - its ids are unplaced
+    rather than later work."""
+    plan = _ported("0.3.5", frozenset(GATE_IDS | {"PL-PRT7"}))
+
+    assert plan.step is not None and plan.step.label == "v0.4.0 — the teachable case"
+    assert plan.beat == IMPLEMENT and plan.subject == "v0.4.0 — the teachable case"
+    assert plan.scope.placement("PL-MNPQ") == IN_SCOPE
+    assert plan.scope.placement("PL-PRT7") == UNPLACED
+
+
+def test_while_the_gate_is_open_the_rows_scope_is_work_the_step_has_not_reached() -> None:
+    """The gate is the beat whatever else is written. The row below the anchor
+    is unreleased rather than released, so its ids are later work mapped to the
+    row - where reading "below the anchor" as "released" placed them nowhere."""
+    plan = _ported("0.3.0")
+
+    assert plan.beat == CLEAR
+    assert plan.scope.anchor == "v0.4.0 — the teachable case"
+    assert plan.scope.placement("PL-PRT7") == OUT_OF_SCOPE
+    assert plan.scope.milestone("PL-PRT7") == "v0.3.5"
+
+
+def test_a_row_bearing_no_section_between_the_gate_and_its_milestone_is_passed_over() -> None:
+    """The limit, stated: a `—` row with nothing written under it cannot be
+    counted, so the beat names the gated milestone as it did before."""
+    unscoped = ROADMAP.replace(
+        "| 2 | **v0.4.0 — the teachable case** |",
+        "| — | **v0.3.5 — the interface port** | Not yet scoped. | — |\n"
+        "| 2 | **v0.4.0 — the teachable case** |",
+    )
+    plan = _wave("0.3.0", frozenset(GATE_IDS), roadmap=unscoped)
+
+    assert plan.beat == IMPLEMENT and plan.subject == "v0.4.0 — the teachable case"
+    assert plan.scope.anchor == "v0.4.0 — the teachable case"
 
 
 # --- what the answer refuses to do ------------------------------------------

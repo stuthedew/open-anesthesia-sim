@@ -3,11 +3,12 @@ id: PL-4K9V
 title: app/formatting.py's module docstring names SimulationHistorySample, which was deleted with the sample store
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: documentation-standard
 touches: src/anesthesia_sim/app/formatting.py
 added: 2026-09-14
+closed: 2026-09-14
 verify: uv run pytest tests/unit/test_formatting.py && ! grep -q 'SimulationHistorySample' src/anesthesia_sim/app/formatting.py
 ---
 
