@@ -5832,10 +5832,13 @@ The chart plots the same percentages on a shared linear axis running from 0 to
 3 ×MAC of the running agent, and carries a second axis on the right reading
 the identical coordinate in MAC multiples. Its resolution is set by pixels
 rather than by decimals, and it is coarser than the numeric readouts
-throughout; the readouts, not the traces, are where a value is read. The MAC
-axis is labelled on round MAC values rather than on round percentages — half-MAC
-steps, which the fixed 3 ×MAC range gives for every agent, so the gridline a
-reader learns under one agent means the same thing under the next. "The chart's
+throughout: a trace is where a *shape* is read, and every number the chart
+offers is rendered at the resolution above rather than at the axis's — the
+readout row, and the hover readout § "The chart's hover readout: what the
+tooltip may show" derives below. The MAC axis is labelled on round MAC values
+rather than on round percentages — half-MAC steps, which the fixed 3 ×MAC
+range gives for every agent, so the gridline a reader learns under one agent
+means the same thing under the next. "The chart's
 vertical range is denominated in MAC, and fixed" above carries why the range
 is what it is. Its horizontal extent is the selected time base rather than a
 fixed span, so seconds per pixel is the reader's choice; "The chart's time
@@ -5857,6 +5860,212 @@ checks it against `app/formatting.py`, because the ordering claim above is a
 property of the rounded values and adding a decimal would change what that
 claim proves without changing anything it reads. A change to the resolution
 is a change to this section.
+
+### The chart's hover readout: what the tooltip may show
+
+A pointer held over a trace is answered with a small floating readout. This
+section derives its contents as § "Displayed precision" above derives the
+numeric readouts', and for the same reason: what a hover reports is a
+clinically meaningful displayed value, so what it may show is a claim about the
+model rather than a formatting convention.
+
+**It needs a derivation of its own because it is read detached from everything
+that qualifies it.** The six numeric readouts sit under a heading naming the
+agent and calling the values modelled, beside a legend naming each compartment,
+on a panel whose alveolar entry carries the `end-tidal-equivalent` gloss this
+document requires above. A floating box carries none of that. It appears over
+the plot, it can cover the heading it would otherwise be read under, and it is
+the one place in this interface where a number is presented with nothing around
+it. Every qualifier the readout row gets from its surroundings, the box has to
+supply itself.
+
+**And it is the display a reader has most deliberately stopped to consult.** A
+value in the readout row is glanced at while a run plays; a value under a
+cursor is one somebody went looking for. That makes it the display most likely
+to be written down, and the one where being mistaken for a measurement costs
+most.
+
+#### What it shows
+
+Three lines: run context, then what the value is, then the value.
+
+```
+Modelled sevoflurane · 20m8s
+Alveolar (end-tidal-equivalent)
+1.43%   0.71 ×MAC
+```
+
+**The order carries the safety argument and is not typographic.** The
+qualifiers precede the number, so a reader reaches `1.43%` through "modelled"
+and through the compartment it belongs to rather than meeting them afterwards.
+`.claude/rules/expert-review.md` states the general form — prefer an interface
+that prevents an error to one that warns after it — and a hedge placed below
+the number it hedges is a warning: the number has already been read.
+
+Each line, and what obliges it:
+
+1. **Run context — the modelled marker, the agent, and the instant.** The
+   marker is on every hover, not only on the compartments with a measured
+   twin, because the box is detached from the heading that would otherwise
+   carry it. The agent is there because the same percentage means different
+   things under different agents — 1.43% is 0.71 MAC of sevoflurane and 0.24
+   MAC of desflurane — and a floating box cannot rely on the header being
+   visible behind it. The instant is `format_elapsed`'s compound form, the
+   same form the clock, every control stamp and the time axis use.
+2. **What the value is — the compartment, with its gloss where the readout row
+   has one.** `Alveolar (end-tidal-equivalent)` and `Circuit (inspired)`; the
+   other four carry none, because the readout row carries none. Those two
+   glosses exist for the two compartments a clinician would most readily set
+   beside a monitor reading, which § "Minimum displayed outputs" decided and
+   this reuses rather than re-takes.
+3. **The value, in both units the chart carries.** Percent and MAC multiple,
+   the same pair the readout panel shows, because the chart itself has two
+   axes and a single number could be read against either.
+
+**Every number in it is produced by `app/formatting.py`, never by the chart
+library.** `format_percent`, `format_mac_multiple` and `format_elapsed` are the
+whole of it. This is the rule that the rest of this section exists to justify,
+and it is not a style preference: a charting library formats a coordinate,
+which is a different thing from formatting a clinical value, and every default
+this project has met formats the coordinate.
+
+The MAC multiple resolves against the snapshot's own `mac_percent`, exactly as
+the MAC axis and the readout row do. A hover reporting a MAC multiple computed
+from any other divisor would be the traceability failure `CLAUDE.md` forbids,
+arriving through the one display that looks least like a calculation.
+
+#### Resolution: the readouts' derivation applies unchanged
+
+Two decimals of a percent and two decimals of a MAC multiple, with the
+below-resolution forms `<0.01%` and `<0.01 ×MAC`. § "Displayed precision"
+derives both and nothing in it is a property of where the number appears: the
+ceiling is one measured standard deviation of a partition coefficient, which
+displaces a trajectory rather than a display, and the floor is a teaching
+judgment about what a reader can learn from the slow compartments.
+
+**The one argument for a finer hover readout is answered rather than
+inherited.** That section separates two questions a printed digit could be
+answering — how finely two moments *within one run* can be told apart, which
+is about nine decimal places finer than the readout shows, and how finely
+this model resolves a concentration *in a patient*, which is much coarser. A
+hover is closer to the first than the readout row is: it reports one trace at
+one instant, which is the shape of a within-run comparison, and the within-run
+question would license a third decimal.
+
+It does not get one, and the reason is the same sentence that settles the
+readouts: a reader cannot tell which of the two questions a printed digit is
+answering. The hover makes that worse rather than better. It is the display
+most likely to be transcribed, it appears over a chart whose whole subject is a
+patient, and it is read without the row of five other compartments that make a
+within-run comparison obviously what is on offer. So the display most exposed
+to the patient reading is the last one that should carry a digit only the
+within-run reading supports.
+
+**The below-resolution form is required here, not optional.** Fat sits under
+0.01% for the first thirteen minutes at 1 MAC sevoflurane and muscle for the
+first two; those minutes are the slow-compartment wash-in the chart exists to
+show. `<0.01%` says what is known. A hover printing a number there would assert
+resolution the model does not have, on the compartment where a reader has least
+ability to notice.
+
+#### What a chart library prints instead, measured
+
+The default matters because it is what ships if nothing overrides it, and
+because both toolkits this project has used default to formatting the
+coordinate. `flet_charts.LineChartDataPoint` defaults to a
+`LineChartDataPointTooltip` whose `text` this application never writes into;
+`pyqtgraph.ScatterPlotItem` defaults `tip` — the hoverable-points route's
+formatter — to `'x: {x:.3g}\ny: {y:.3g}\ndata={data}'.format`.
+
+Measured 2026-09-14: the reference adult, sevoflurane delivered at 0.02
+(1 MAC), the shipped column budget over a one-hour axis, `.3g` applied to the
+drawn y as `ScatterPlotItem` would apply it and `format_percent` applied to the
+same value. Four instants of the first hour:
+
+| Instant | Compartment | `.3g` on the drawn y | This readout |
+| --- | --- | ---: | ---: |
+| 48.3 s | Alveolar | `0.262` | `0.26%` |
+| 48.3 s | Muscle | `0.000656` | `<0.01%` |
+| 48.3 s | Fat | `3.52e-05` | `<0.01%` |
+| 289.9 s | Fat | `0.00116` | `<0.01%` |
+| 1208.1 s | Fat | `0.00888` | `0.01%` |
+| 3600.0 s | Alveolar | `1.54` | `1.54%` |
+
+Three separate defects, and the third is the one that would not be noticed:
+
+- **Resolution.** `3.52e-05` carries five decimal places past the resolution
+  this document derives, on the compartment where the readout row deliberately
+  refuses to print a number at all. A reader comparing the hover against the
+  panel would find them disagreeing about whether the value is known.
+- **Units.** `.3g` prints no unit. The chart carries a percent axis and a MAC
+  axis, so a bare `1.54` is ambiguous between two scales that differ by a
+  factor of about two for sevoflurane; `3.52e-05` is worse, being equally
+  readable as a fraction of an atmosphere, a hundredfold out.
+- **A varying number of decimals.** Three significant figures gives two
+  decimals at `1.54`, three at `0.262` and six at `0.000656`. The readout row
+  is fixed at two, and the whole of § "Displayed precision" is the argument for
+  a *uniform* resolution: a display whose precision changes with the magnitude
+  of what it shows asserts the model resolves small values more finely than
+  large ones, which is the opposite of true.
+
+#### Which series answer a hover, and which do not
+
+The six compartment traces answer, in the form above. The wash-in trace answers
+in its own units, because $`F_A/F_I`$ is dimensionless and has neither a
+percent nor a MAC reading:
+
+```
+Modelled sevoflurane · 20m8s
+Wash-in F_A/F_I (alveolar ÷ modelled circuit)
+0.71
+```
+
+`format_wash_in_ratio` produces the number, and the parenthesis is the caption
+`app/wash_in.py` already carries, for the reason stated there: $`F_I`$ is the
+modelled circuit rather than the vaporizer dial.
+
+**The clinical references and the control marks do not answer, and the reason
+is interaction rather than content.** The 1 MAC line spans the plot
+horizontally and the MAC-awake band is a horizontal region; the control marks
+are vertical and full height. All three cross every trace, so making them
+hoverable would put an annotation under the pointer whenever a reader aims at a
+trace that passes behind one — and the annotations are exactly where a reader
+is most likely to want a reading, since a trace crossing 1 MAC is the event the
+reference is drawn for. What they would report is also already on screen: the
+divisor is stated beside the chart, and each control change is listed with its
+old and new value in the input timeline.
+
+#### When it answers
+
+Whenever the pointer is over the plot, running or paused.
+
+**This reverses a restriction that was a property of the toolkit rather than of
+the affordance.** `PL-KP7H` withdrew the hover while a run plays, because
+Flet's control-tree diff descends into every point's tooltip object on every
+frame and the tooltips were half the cost of a saturated frame. A hover that
+answers only while paused is a hidden mode: a reader who tries it during a run
+gets nothing, concludes the chart is not interactive, and never finds it again.
+
+Qt has no such cost to avoid, by either route the readout could be built on. A
+crosshair is driven by the scene's own `sigMouseMoved`, rate-limited through a
+`SignalProxy`; hoverable points carry a `tip` callable evaluated when the
+pointer arrives rather than a tooltip object stored per point. Both cost per
+pointer event, and neither is a function of how many points are drawn. Nothing
+has to be withdrawn, so there is no mode to announce and no caption to write:
+the affordance is discoverable by being present.
+
+**It is not a default, though, and that is what has to be checked rather than
+assumed.** `ScatterPlotItem` ships `hoverable` set to `False`, and a plotted
+line carries no hover of its own at all, so a port that says nothing about
+this loses the affordance outright rather than inheriting it. "Every
+capability the Flet build has, the Qt build has" is the parity it is owed
+under.
+
+At high playback the reported value moves as the run does, and that is correct
+rather than a defect to design around — every other readout in the interface
+moves too, and a reader who wants to study a value pauses, which is what they
+would do in any case. What is not acceptable is the affordance being absent
+while they look for it.
 
 ## Assumptions
 

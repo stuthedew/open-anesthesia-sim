@@ -4,6 +4,7 @@ title: Tag v0.4.21 on the merge commit of #549: the release is cut and only the 
 status: done
 added: 2026-09-13
 closed: 2026-09-13
+pr: 550
 verify: git ls-remote --tags origin v0.4.21 | grep -q 'refs/tags/v0.4.21'
 ---
 
