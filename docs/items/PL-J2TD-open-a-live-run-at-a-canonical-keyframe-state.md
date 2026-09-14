@@ -159,3 +159,100 @@ tree - `tests/integration/test_controller.py` passes its 71 tests and the
 `grep` finds nothing - which is the paired shape the `docket` skill asks for
 rather than a bare `-k` that would select nothing and prove the same either
 way.
+
+---
+
+## Session of 2026-09-14: the core half built, and one question put to the owner
+
+**Built and pushed, because it is the same under either answer to the question
+below.** `AgentUptakeSystem.resume_at(state, initial_agent_l)` stands a live
+system at a canonical state; `governing_equations.require_canonical_state` is
+the entry guard it now shares with `RunDefinition`, so the definition and the
+live system cannot come to disagree about what a state is;
+`tests/unit/test_resume_at.py` holds all of it. Not built: the controller entry
+point, whose clock handling *is* the question.
+
+**Four measurements taken this session, each against the source rather than
+reasoned about.** They are recorded here because they were expensive to get and
+each one decides something.
+
+1. **The accounting anchor must be carried, not derived.** Deriving it as the
+   value that closes the mass-balance identity exactly returns the canonical
+   path's own conservation residual with its sign reversed. Across 72 keyframes
+   - three agents, four dial instants, three flow instants - **16 of them, 22%,
+   put it below zero**, worst -1.1e-13 L, and an anchor is an amount of agent
+   that `AgentSimulationValidator` rightly refuses below zero. Carried instead,
+   the residual stays inside the check, at 6.9e-14 L against 1e-12 L.
+2. **A branch's definition opens from the parent's `Keyframe`, never from the
+   seeded system's `state_vector()`.** A compartment stores an amount and
+   derives its fraction back from its capacity, so the round trip is not the
+   identity: over a 1e-6 grid across the first two percent of an atmosphere the
+   **alveolar compartment returns a different float for 11.7% of fractions**,
+   mixed venous for 11.6%, fat for 3.4% - and the circuit for none, which is
+   what would let it survive a spot check. `SimulationController._build_state`
+   opens the trunk's definition from `state_vector()`, correctly; copying that
+   line at the fork would break `ROADMAP.md` item 12's element-wise
+   reproduction on exactly those entries.
+3. **A branch's settings are read off the parent's compartments in L/min, never
+   recovered from a `RunSegment`.** The L/min to L/s conversion does not
+   round-trip for **7 of 101 cardiac outputs** across the supported range,
+   first at 1.9 L/min, because the per-tissue flows are derived before it.
+   Captured as `PL-SM5V`.
+4. **A `SimulationState` can be constructed already past the 24 h envelope** -
+   `step_count=1_000_000, simulation_step_s=0.1` gives 27.8 h - and only the
+   next `advance()` refuses. Unreachable from `src/` today; reachable the
+   moment a branch is constructed mid-run. Captured as `PL-BMY5`.
+
+**The question put to the project owner: what does a branch's clock read?**
+Both arrangements subtract, and both are bit-identical to the parent at every
+shared instant (0 of 6 probes differ, either way), so exactness does not decide
+it. What differs is what the branch's own clock *says*.
+
+- **As documented** - the branch's definition opens at zero and a caller asks
+  it for `p - fork`. Then `SimulationState.step_count` restarts at zero, and
+  three consequences follow: the branch gets **a fresh 24 h run-length
+  envelope**, so a fork at 23 h can be advanced to 47 h of case time with every
+  guard passing, in the regime `core/supported_ranges.py` argues the omitted
+  metabolism dominates; the clock, every control-change stamp and the chart
+  axis - which `format_elapsed` says "state one quantity one way" - are all
+  early by the fork instant; and case time has to be reconstructed as
+  `origin + n*step`, a running total that
+  `docs/MODEL.md` § "Simulated time is a count of steps, not a running total"
+  forbids for the trunk.
+- **The alternative** - `RunDefinition` takes an optional `opened_at_s`, so the
+  branch's definition opens *at* the fork instant carrying the parent's
+  keyframe, and the branch's `SimulationState` continues the parent's step
+  count. The run-length guard is then correct with no new code; the clock, the
+  stamps and the axis all read case time with no new field and no new label;
+  and there is no offset a caller could name, so the round-trip hazard
+  `docs/MODEL.md` records - `(900.0 + 1e-6) - 900.0` is 9.999999974752427e-07 -
+  becomes unrepresentable rather than guarded against.
+
+**The clock-disagreement figure is not the argument, and saying so matters.**
+`origin + n*step` differs from the trunk's own `(k+n)*step` at the same instant,
+worst measured 1.5e-11 s over the full envelope. That moves a compartment
+fraction by at most 3.6e-14 and an accumulator by 7.2e-13 L, against displayed
+resolutions of 1e-4 and 1e-6 L - harmless by six to nine orders. A
+recommendation resting on it would be wrong.
+
+**What the alternative costs, and one of it is a real guard rather than prose.**
+`RunDefinition.__init__` gains a parameter (four lines); `docs/MODEL.md`'s
+"What this requires of a branch" paragraph is nineteen lines and loses one of
+its two bullets; `ROADMAP.md`'s Required-scope clause at 2589-2590 is re-worded,
+which is why this is the owner's; `tests/reference/test_canonical_evaluation.py`'s
+fork test gets shorter and strictly stronger; and this item's own title and
+`verify:` grep name a test asserting the re-basing, so both change. Outside this
+file, "re-based" appears in exactly three places in the repository.
+
+The guard is not optional. `_require_within_run`'s lower bound is hard-coded to
+`0.0`, so a definition opened at 600 s accepts an instant before its own
+opening, `_segment_index_at` returns `-1`, Python indexes the **last** segment,
+and `state_at(100.0)` returns a plausible state for an instant the branch never
+existed at - measured at 0.005664 alveolar fraction, with
+`evaluate_anchored(0, 500, 100)` drawing a *varying* curve across a span the
+case spent at zero. Under the alternative that bound moves to the opening and
+the failure becomes refusable; under the documented arrangement the analogous
+error - handing a zero-based child a case instant once the branch is older than
+the fork instant - is a legal, in-range, exact-but-wrong answer that no bounds
+check can refuse, because both frames are legal non-negative floats inside the
+run.
