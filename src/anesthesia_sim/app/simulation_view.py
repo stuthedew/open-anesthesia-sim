@@ -1215,18 +1215,18 @@ class SimulationView:
             round=CONCENTRATION_DISPLAY_DECIMALS,
             active_color=ACCENT,
             expand=True,
-            on_change=(self._handle_delivered_concentration_change),
+            on_change=self._handle_delivered_concentration_change,
             on_change_start=self._handle_adjustment_start,
         )
         self._alveolar_ventilation_slider = ft.Slider(
             min=MINIMUM_ALVEOLAR_VENTILATION_L_MIN,
             max=MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
-            value=(initial_snapshot.alveolar_ventilation_l_min),
+            value=initial_snapshot.alveolar_ventilation_l_min,
             label="{value} L/min",
             round=FLOW_DISPLAY_DECIMALS,
             active_color=ACCENT,
             expand=True,
-            on_change=(self._handle_alveolar_ventilation_change),
+            on_change=self._handle_alveolar_ventilation_change,
             on_change_start=self._handle_adjustment_start,
         )
         self._cardiac_output_slider = ft.Slider(
@@ -1414,7 +1414,7 @@ class SimulationView:
                                         ft.Text(
                                             APP_DISPLAY_NAME,
                                             size=APP_TITLE_SIZE,
-                                            weight=(ft.FontWeight.BOLD),
+                                            weight=ft.FontWeight.BOLD,
                                             color=INK,
                                         ),
                                         self._agent_header_badge,
@@ -1439,7 +1439,7 @@ class SimulationView:
                                     tight=True,
                                 ),
                             ],
-                            alignment=(ft.MainAxisAlignment.SPACE_BETWEEN),
+                            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                             wrap=True,
                         ),
                         # Directly under the run controls and above every
@@ -2235,7 +2235,7 @@ class SimulationView:
 
         return mac_awake_band_percent(
             fraction_of_mac=mac_awake.fraction_of_mac,
-            standard_deviation_fraction_of_mac=(mac_awake.standard_deviation_fraction_of_mac),
+            standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
             mac_percent=snapshot.agent_mac_percent,
         )
 
@@ -2255,7 +2255,7 @@ class SimulationView:
         return format_mac_awake_reference(
             snapshot.agent_display_name,
             fraction_of_mac=mac_awake.fraction_of_mac,
-            standard_deviation_fraction_of_mac=(mac_awake.standard_deviation_fraction_of_mac),
+            standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
             mac_percent=snapshot.agent_mac_percent,
         )
 

@@ -749,7 +749,7 @@ def _private_washed_in_system(
     if vessel_rich_tissue_gas_partition_coefficient is not None:
         system.patient.vessel_rich = replace(
             system.patient.vessel_rich,
-            tissue_gas_partition_coefficient=(vessel_rich_tissue_gas_partition_coefficient),
+            tissue_gas_partition_coefficient=vessel_rich_tissue_gas_partition_coefficient,
         )
 
     system.set_fresh_gas_flow(fresh_gas_flow_l_min)

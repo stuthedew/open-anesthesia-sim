@@ -672,8 +672,8 @@ def _controller_one_setting_from_a_failed_step() -> SimulationController:
         name=original.name,
         volume_l=original.volume_l,
         perfusion_fraction=original.perfusion_fraction,
-        blood_gas_partition_coefficient=(original.blood_gas_partition_coefficient),
-        tissue_gas_partition_coefficient=(original.tissue_gas_partition_coefficient),
+        blood_gas_partition_coefficient=original.blood_gas_partition_coefficient,
+        tissue_gas_partition_coefficient=original.tissue_gas_partition_coefficient,
         blood_flow_l_min=original.blood_flow_l_min,
         agent_amount_l=original.agent_amount_l,
     )

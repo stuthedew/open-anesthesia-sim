@@ -330,6 +330,7 @@ tools/
 ├── contrast_check.py     # computes every declared color requirement's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum, taking the better channel where an element's edge can be carried by either its fill or its border
 ├── core_vocabulary_check.py  # holds `core/`'s identifiers to the vocabulary `docs/MODEL.md` establishes, in the three ways that are decidable: every `ClassName.accessor` in the Symbols table's Code column resolves to a real attribute, property or field - an em dash being accepted only where the cell says what the code reads instead; none of the accessor names `PL-9SH6` retired comes back, matched whole so that the live `require_concentration_fraction` and `circuit_volume_l` are not accused of containing one; and every `*partition_coefficient` identifier names both of its phases in the declared outward order, gas then blood then tissue, so a coefficient cannot be written as its own reciprocal in a literature that calls one quantity tissue-gas, tissue-blood and blood tissue in a single chapter. It runs under `uv run python`, not at the 3.11 floor, because it parses `core/` with `ast`; whether a name is the one a reader who knows the domain would guess stays a judgment and is deliberately not scripted
 ├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, the data files' declared source tiers, citations - in the documentation, in every `docs/items/` brief and in every source docstring, since those last two are where this project writes most of them - markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline, and the current gate's membership against the queue - unconditionally for the queue's `safety`- and `science`-classed items, and as a recorded disposition, placed or deferred, for every other open debt item; that no milestone names one id under both its `Required scope` and its `Explicitly out of scope`, advising where a scope bullet carries exclusion language; that every test `MODEL.md` names resolves to one that exists; reports resident instruction size
+├── glyph_check.py        # refuses a non-ASCII character that nobody has confirmed the client can draw, from any string that can reach a reader - every string literal outside a docstring under `app/` and `core/`, and every string in the `data/` JSON - because `→` (U+2192) has no glyph in the Flutter client, drew as a replacement box in the control-change list, and no test in this repository could see it: every string assertion here compares text the same font-less Python process produced; the allowlist is per character rather than per Unicode block, and each entry records what was rendered and looked at
 ├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, and `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`, so the payload/dataclass boundary and the never-wall-clock rule are measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 ├── item_reads.py         # reports, from the local untracked `.docket-reads.log` that `.claude/hooks/item_read_log.py` writes, how many distinct items sessions actually open, what share of those are closed, and how many citation edges are traversed within a session - the read-side measurements every argument about the store's shape had been assuming; states the sample size first and chooses between none of the readings a low count admits
@@ -466,6 +467,66 @@ it is constructed and never written there is the check's other error, and is
 what keeps that coverage claim true rather than asserted. Like the two tools
 above it decides nothing else — whether a control's identity is legible, and
 whether a pairing is the right one for it, stay judgments.
+
+**What a Qt port costs these two, measured rather than estimated (`PL-JRS3`).**
+The dependency is split, and not the way the question assumed: one reads
+*values* and survives, the other reads Flet's *control objects* and goes
+silent. Measured 2026-09-14 by rewriting `app/theme.py` and
+`app/simulation_view.py` on the AST — every Flet property assignment replaced
+by the PySide6 setter call that supplants it — and running both against the
+result.
+
+`contrast_check.py` survives. Its whole input is module-level
+`NAME = "#RRGGBB"` constants, which no toolkit owns, and every way of removing
+a declared one is loud: renaming `FAT_COLOR` failed with the constant named,
+and moving `SimulationView` to its own module — which `PL-B9PY` records the
+port doing from the start — failed with 68 unresolved citations, from the
+symbol rule `PL-J7C5` added for an unrelated reason. Its one hole is
+**additive**, and the port is what opens it: a colour declared in a module that
+is neither of the two read here is measured by nothing and missed by nothing,
+and a new chart-panel module holding a selection colour at 1.07:1 on the panel
+passed with `0 errors`. Nothing exploits it today — no hex constant sits outside those
+two files.
+
+`agent_identity_check.py` does not survive, and its failure is worse than
+silence. Rule 1 reads `self.X.disabled = EXPR` paired with
+`self.X.visible = not EXPR`; PySide6 spells both as calls, so `property_writes`
+returns nothing and the pairing loop runs zero times. On a tree where all six
+identity controls are driven by `setEnabled()` with no paired hide it printed
+"6 control(s) carry the agent colour, none of them rendered disabled" and
+exited 0 — an affirmative claim about a tree it had not measured, which a
+reader cannot tell from the same sentence earned. Whether it goes quiet turns
+on a choice the port makes incidentally: porting the colour writes as well
+trips rule 2 and moving the class trips the empty-set guard, so both of those
+are loud, but rule 2 then misdiagnoses, reporting that the writer "never
+writes" controls it writes through `setStyleSheet`.
+
+So the port's cost side gains one entry rather than two, and it is specific:
+rule 1 of `agent_identity_check.py` is inside the port's scope, and
+`contrast_check.py`'s two read paths widen to whatever modules the decomposed
+view declares colours in.
+
+`tools/glyph_check.py` covers the half of presentation correctness that no
+string assertion here can reach. Every such assertion compares text the same
+font-less Python process produced, so the suite is blind to whether the client
+can *draw* what it is given: `→` (U+2192) has no glyph in the Flutter client
+and drew as a replacement box in the control-change list on 2026-09-04, in the
+arrow of `5.60% -> 0.95%` — the direction of a setting change, which is the one
+thing that line exists to state (`PL-8XPQ`). The rule is default-deny: every
+non-ASCII character in a string that can reach a reader must appear in
+`CONFIRMED`, whose entries each record what somebody rendered and saw. Per
+character rather than per Unicode block, because Latin-1 Supplement admits `¤`,
+`þ` and `ð` beside the `·`, `±` and `×` this interface has actually shown — a
+block set would admit thousands on the evidence of three. It reads three trees,
+not the one the item first named: `app/` draws the strings, `core/` raises the
+text the view prints verbatim — `_apply_setting` renders `f"Setting refused —
+{error}"` from a `SimulationConfigurationError` — and `data/` holds
+`display_name`, which reaches the readouts and is the one place an edit lands
+without touching Python. Documentation is exempt by a structural test, a string
+that is a bare expression statement, which is what keeps `§` out of a list
+meant to record what was rendered. Like the tools above it decides nothing
+else: whether an unlisted character *would* render needs a real client, so it
+refuses and never approves.
 
 `tools/import_boundary_check.py` measures two claims the source makes about
 itself. `_StrictPayload`'s docstring says that the `_...Payload`/public-
@@ -628,15 +689,16 @@ become unparseable by the interpreter that runs it.
 `tests/unit/test_tools_portability.py` covers both directories by path rather
 than by filename, so the guard follows the next hook without being extended.
 
-Six of them are nonetheless *invoked* under `uv run python`, and the
+Seven of them are nonetheless *invoked* under `uv run python`, and the
 distinction is worth keeping straight, because it is about what a tool reads
 rather than what it needs. `ignore_check.py` is the odd one and the only one
-of the six with a reason of its own: it shells out to mypy, so it wants the
+of the seven with a reason of its own: it shells out to mypy, so it wants the
 virtualenv that gate runs in.
 
-The other five are one reason repeated. `import_boundary_check.py`,
-`contrast_check.py`, `agent_identity_check.py`, `workflow_paths_check.py` and
-`core_vocabulary_check.py` each parse repository source with `ast`, and that
+The other six are one reason repeated. `import_boundary_check.py`,
+`contrast_check.py`, `agent_identity_check.py`, `workflow_paths_check.py`,
+`core_vocabulary_check.py` and `glyph_check.py` each parse repository source
+with `ast`, and that
 source targets 3.14: `app/chart_series.py` declares `type PlottedSeries = ...`,
 a PEP 695 statement added in 3.12 and so a `SyntaxError` to the 3.11 parser,
 and `ast.parse`'s `feature_version` only narrows the syntax it accepts rather
@@ -650,7 +712,7 @@ being absent from the CI floor section.
 tool's own docstring. It ran bare until `PL-L17Q`, green only because the two
 files it reads happened to carry no 3.12+ syntax, so one PEP 695 generic added
 to either would have failed the floor section on a tool nobody had touched. The
-rule the five are an instance of is stated in
+rule the six are an instance of is stated in
 `tests/unit/test_tools_portability.py`'s module docstring, and a tool joining
 them belongs on the `uv run python` lines in both `Makefile` and
 `.github/workflows/quality.yml`, never in that workflow's floor section.

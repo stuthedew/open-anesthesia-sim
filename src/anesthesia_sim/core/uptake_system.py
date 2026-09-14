@@ -242,15 +242,15 @@ class AgentUptakeSystem:
         return cls(
             circuit=BreathingCircuit(
                 circuit_volume_l=circuit_parameters.circuit_volume_l,
-                fresh_gas_flow_l_min=(circuit_parameters.default_fresh_gas_flow_l_min),
+                fresh_gas_flow_l_min=circuit_parameters.default_fresh_gas_flow_l_min,
                 delivered_partial_pressure_fraction=(fraction_from_percent(agent.mac_percent)),
                 max_delivered_partial_pressure_fraction=(
                     fraction_from_percent(agent.max_delivered_concentration_percent)
                 ),
             ),
             alveoli=AlveolarCompartment(
-                gas_volume_l=(patient_parameters.alveolar_gas_volume_l),
-                alveolar_ventilation_l_min=(patient_parameters.default_alveolar_ventilation_l_min),
+                gas_volume_l=patient_parameters.alveolar_gas_volume_l,
+                alveolar_ventilation_l_min=patient_parameters.default_alveolar_ventilation_l_min,
             ),
             patient=PatientCompartments.from_parameters(agent=agent, patient=patient_parameters),
         )
@@ -270,7 +270,7 @@ class AgentUptakeSystem:
         """Check that all delivered agent is still accounted for."""
 
         return self.agent_simulation_validator.check_agent_accounting(
-            currently_stored_agent_l=(self.total_stored_agent_l)
+            currently_stored_agent_l=self.total_stored_agent_l
         )
 
     def set_fresh_gas_flow(self, fresh_gas_flow_l_min: float) -> None:
@@ -444,18 +444,18 @@ class AgentUptakeSystem:
         )
 
         self.agent_simulation_validator.record_external_agent_transfer(
-            delivered_agent_l=(fresh_gas_exchange.delivered_agent_l),
-            exhausted_agent_l=(fresh_gas_exchange.exhausted_agent_l),
+            delivered_agent_l=fresh_gas_exchange.delivered_agent_l,
+            exhausted_agent_l=fresh_gas_exchange.exhausted_agent_l,
         )
 
         accounting_check = self.agent_simulation_validator.require_valid_agent_accounting(
-            currently_stored_agent_l=(self.total_stored_agent_l)
+            currently_stored_agent_l=self.total_stored_agent_l
         )
 
         return UptakeStepResult(
             fresh_gas_exchange=fresh_gas_exchange,
-            circuit_to_alveolar_agent_l=(circuit_to_alveolar_agent_l),
-            patient_agent_change_l=(patient_agent_change_l),
+            circuit_to_alveolar_agent_l=circuit_to_alveolar_agent_l,
+            patient_agent_change_l=patient_agent_change_l,
             agent_accounting=accounting_check,
         )
 
@@ -483,14 +483,14 @@ class AgentUptakeSystem:
             fresh_gas_flow_l_s=(self.circuit.fresh_gas_flow_l_min / SECONDS_PER_MINUTE),
             alveolar_ventilation_l_s=(self.alveoli.alveolar_ventilation_l_min / SECONDS_PER_MINUTE),
             cardiac_output_l_s=(patient.cardiac_output_l_min / SECONDS_PER_MINUTE),
-            blood_gas_partition_coefficient=(venous_blood.blood_gas_partition_coefficient),
-            delivered_partial_pressure_fraction=(self.circuit.delivered_partial_pressure_fraction),
+            blood_gas_partition_coefficient=venous_blood.blood_gas_partition_coefficient,
+            delivered_partial_pressure_fraction=self.circuit.delivered_partial_pressure_fraction,
             tissues=tuple(
                 TissueGroupEquationSettings(
                     name=tissue.name,
                     volume_l=tissue.volume_l,
                     blood_flow_l_s=(tissue.blood_flow_l_min / SECONDS_PER_MINUTE),
-                    tissue_blood_partition_coefficient=(tissue.tissue_blood_partition_coefficient),
+                    tissue_blood_partition_coefficient=tissue.tissue_blood_partition_coefficient,
                 )
                 for tissue in patient.tissues
             ),

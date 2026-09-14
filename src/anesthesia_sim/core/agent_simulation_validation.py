@@ -104,7 +104,7 @@ class AgentSimulationValidator:
             initial_agent_l=self.initial_agent_l,
             delivered_agent_l=self.delivered_agent_l,
             exhausted_agent_l=self.exhausted_agent_l,
-            currently_stored_agent_l=(currently_stored_agent_l),
+            currently_stored_agent_l=currently_stored_agent_l,
             unaccounted_agent_l=unaccounted_agent_l,
             absolute_error_l=absolute_error_l,
             relative_error=relative_error,

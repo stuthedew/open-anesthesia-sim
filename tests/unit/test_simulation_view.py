@@ -3509,8 +3509,8 @@ def _real_step_failure() -> SimulationNumericalError:
         name=original.name,
         volume_l=original.volume_l,
         perfusion_fraction=original.perfusion_fraction,
-        blood_gas_partition_coefficient=(original.blood_gas_partition_coefficient),
-        tissue_gas_partition_coefficient=(original.tissue_gas_partition_coefficient),
+        blood_gas_partition_coefficient=original.blood_gas_partition_coefficient,
+        tissue_gas_partition_coefficient=original.tissue_gas_partition_coefficient,
         blood_flow_l_min=original.blood_flow_l_min,
     )
 
@@ -4498,7 +4498,7 @@ def test_the_band_states_the_fraction_and_the_divisor_it_was_drawn_from() -> Non
         expected = format_mac_awake_reference(
             agent.display_name,
             fraction_of_mac=agent.mac_awake.fraction_of_mac,
-            standard_deviation_fraction_of_mac=(agent.mac_awake.standard_deviation_fraction_of_mac),
+            standard_deviation_fraction_of_mac=agent.mac_awake.standard_deviation_fraction_of_mac,
             mac_percent=agent.mac_percent,
         )
 

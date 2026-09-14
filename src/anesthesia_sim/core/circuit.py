@@ -311,7 +311,7 @@ class BreathingCircuit:
         """
 
         return BreathingCircuitState(
-            inspired_partial_pressure_fraction=(self.inspired_partial_pressure_fraction)
+            inspired_partial_pressure_fraction=self.inspired_partial_pressure_fraction
         )
 
     def restore_state(self, state: BreathingCircuitState) -> None:
