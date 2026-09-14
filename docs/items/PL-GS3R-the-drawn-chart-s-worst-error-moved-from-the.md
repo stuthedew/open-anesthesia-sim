@@ -342,8 +342,10 @@ afforded on any hardware this project has measured. Four ways out:
 - **D. Hold the chord at one pixel: columns are the plot's width in logical
   pixels, floored at 150.** Visually exact at every base by construction:
   within one pixel column a monotone stretch rasterises to the same vertical
-  run whatever its shape, which is the property Jugel et al. 2014 (M4, held in
-  `docs/references/` and already cited by the chart) prove. Numerically the
+  run whatever its shape, which is the property Jugel et al. 2014 prove - the
+  M4 paper `PL-4RBD` cited, whose citation `PL-8LXM` records in full and whose
+  full text left the tree with the M4 module in `#488`; nothing in `src/`
+  cites it today, so this route would cite it afresh in `docs/MODEL.md`. Numerically the
   line between two drawn points is still a chord - 1.2 pp on the circuit and
   0.25 pp on the alveolar at 12 h on the desflurane case at 1 000 px - stated
   in `docs/MODEL.md` as a bound no display reads: the hover answers only at
