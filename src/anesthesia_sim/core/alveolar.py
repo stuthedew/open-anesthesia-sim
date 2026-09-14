@@ -37,7 +37,30 @@ class AlveolarCompartmentState:
 
 @dataclass(slots=True)
 class AlveolarCompartment:
-    """One ideal, perfectly mixed alveolar gas compartment."""
+    """One ideal, perfectly mixed alveolar gas compartment.
+
+    **`data/patients/reference_adult.json` is the authority for the first two
+    fields, and this class is not.** Every shipped path builds the compartment
+    through `AgentUptakeSystem.for_agent()`, which reads
+    `alveolar_gas_volume_l` and `default_alveolar_ventilation_l_min` from that
+    file and passes both explicitly, so the literals below are reached only by
+    a bare unit-test construction of alveolar physics. They are kept as
+    defaults rather than made required so that such a test does not have to
+    load package data to exercise an equation - and
+    `test_the_bare_alveolar_defaults_match_the_shipped_patient_file` in
+    `tests/unit/test_alveolar.py` fails if the two ever disagree, because a
+    reader meeting `2.5` here will take it for the model's alveolar volume
+    whatever this paragraph says (`PL-DJYF`, seated on `PL-4YY1`, which found
+    and fixed the same restatement on `BreathingCircuit`). The patient file
+    also carries what is known about where each figure came from, which is
+    that no primary measurement is adopted for either.
+
+    Deliberately not solved by importing the loader here: `core/parameters.py`
+    is the one module permitted to import Pydantic
+    (`tools/import_boundary_check.py` enforces it), and reading package data at
+    class-definition time would make a pure physics class depend on the
+    installed distribution's files.
+    """
 
     gas_volume_l: float = 2.5
     alveolar_ventilation_l_min: float = 4.0
