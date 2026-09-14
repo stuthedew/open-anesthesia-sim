@@ -38,7 +38,7 @@ the nine state entries at six probes out to an hour.**
   computed* moves — every instant before the bookmark stays bit-identical — but
   everything the case goes on to say afterwards is displaced. It also needs new
   core API (`RunDefinition.record_change` drops a call whose settings equal the
-  ones in force, and takes no instant, so it can only act at `duration_s`;
+  ones in force, and takes no instant, so it can only act at `reached_s`;
   `advance_to` refuses to rewind), and it breaks the invariant
   `test_a_setting_change_opens_a_segment_where_the_run_saw_it` asserts — that
   the control timeline's stamps are exactly the segment openings after the
@@ -57,6 +57,32 @@ keyframe and the fork, which the branch did not live through, so `drawn_window`
 would draw it back past its own beginning unless clipped; and `_open_at` — which
 `reset()` shares — must restore the fork state rather than the segment's
 opening state. Four named edits, all inside `app/controller.py`.
+
+**Re-priced 2026-09-14, and the second route got cheaper rather than only
+different** (`PL-ZMRT`, which left the application one simulated-time frame).
+The paragraph above is kept because it is what the measurement was weighed
+against; two of its four costs have since been paid or deleted outright, and
+neither is owed by this route any more:
+
+- **`origin_s` no longer exists**, with both subtractions. There is no reader
+  that subtracts one and so none that needs to know which number it wants.
+  What the route now asks for is a `RunDefinition` opened at the keyframe
+  before the bookmark while the clock stands at the bookmark — two different
+  case instants on one axis, which the constructor already takes as
+  `opened_at_s` and the clock already carries. The distinction the old cost
+  described was between two *frames*; there is one.
+- **`drawn_window` already clips at the definition's own opening** —
+  `first_s = max(start_s, self._run_definition.opened_at_s)` in
+  `app/controller.py`. Drawing a branch back past its own beginning is
+  refused in the shipped tree rather than owed by this route. `PL-3LZB`
+  landed the refusal underneath it, so asking a run for an instant before it
+  opened raises rather than answering from the nearest keyframe.
+
+What survives is `_open_at` restoring the fork state rather than the segment's
+opening state, which is this route's own work and was always the substantive
+half. So: **two named edits rather than four**, and the route this item already
+recommends is the one that got cheaper. Re-read the four-edit count above as
+history, not as the price.
 
 **Not decided here.** `PL-TFX5` shipped the control-event half and
 `docs/ARCHITECTURE.md` § "What a branch is, and what it shares with its parent"

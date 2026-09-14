@@ -240,9 +240,10 @@ def test_two_systems_resumed_at_one_state_step_identically() -> None:
 def test_a_resumed_system_continues_the_case_s_cumulative_totals() -> None:
     """The litres reported are the patient's, not the branch's.
 
-    A keyframe's two accumulators are cumulative from the start of the run it
-    belongs to, so carrying them is what makes a branch's mass-balance readout
-    describe the case the patient is actually in.
+    A keyframe's two accumulators are cumulative from the start of the case
+    rather than of the run holding the keyframe - which is what leaves a
+    branch anything to carry - so carrying them is what makes a branch's
+    mass-balance readout describe the case the patient is actually in.
     """
 
     system_parent, definition = _run()

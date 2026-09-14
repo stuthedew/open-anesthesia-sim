@@ -2858,7 +2858,7 @@ def test_refresh_allocates_no_chart_points_when_drawn_count_unchanged(
 
     Stated as a conditional, because the unconditional form is false. The
     drawn count is not fixed frame to frame even at a saturated window: the
-    grid is anchored to the run's start, so a sliding window admits a new
+    grid is anchored to the case's zero, so a sliding window admits a new
     column whenever its edge crosses a multiple of the spacing, and the
     total moves by a point per trace when it does. A
     frame that grows a trace *must* build the difference. What must never

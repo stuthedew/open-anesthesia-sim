@@ -1702,11 +1702,17 @@ def test_a_branch_s_drawn_window_is_on_the_case_s_axis() -> None:
     """The chart reads one time axis whichever run fills it.
 
     `drawn_window` takes the axis the caller has set and returns the instants
-    it drew, and both are the case's time on a branch as on a trunk - the
-    definition's own frame stays inside the controller. A window that came back
-    in the branch's frame would draw a correct trace at the wrong place on a
-    labelled axis, which `CLAUDE.md`'s safety-critical standard counts as a
-    presentation failure rather than a lesser kind.
+    it drew, and both are the case's time on a branch as on a trunk - there is
+    no second frame for either to be in since `PL-ZMRT`. A window that came
+    back measured from the fork would draw a correct trace at the wrong place
+    on a labelled axis, which `CLAUDE.md`'s safety-critical standard counts as
+    a presentation failure rather than a lesser kind.
+
+    This passes a left edge below the branch's fork deliberately: it is what
+    exercises the clamp in `drawn_window`, which clips to the run's own
+    opening rather than to zero. Clipping to zero would ask the definition for
+    an instant before the branch existed, which it refuses, so an ordinary
+    frame on a branch would raise out of the render loop.
     """
 
     trunk = _trunk_with_two_changes()
@@ -1927,9 +1933,13 @@ def test_a_branch_of_a_branch_is_refused_rather_than_silently_flattened() -> Non
     """`PL-TFX5`'s shape: one trunk with N branches, and sub-forks deliberately out.
 
     They multiply without bound and buy little over re-branching from the
-    trunk. Refusing also keeps one frame per run: a branch's keyframes are its
-    definition's own, so an instant handed to this on a branch would mean
-    something different from the same number handed to the trunk.
+    trunk, and that is the whole of the reason. It once also rested on a
+    branch's keyframes being its definition's own, so that an instant handed
+    to this on a branch meant something other than the same number handed to
+    the trunk; `PL-ZMRT` retired that - every run's instants are the case's
+    now - and `SimulationController.resumed_at` states the surviving reason
+    alone. A guard defended by an argument that has stopped being true is one
+    a later reader removes.
     """
 
     trunk = _trunk_with_two_changes()

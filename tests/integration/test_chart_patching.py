@@ -141,6 +141,10 @@ class _ReplayController:
         """
 
         spacing_s = (stop_s - start_s) / (columns - 1)
+        # A trunk's opening, which is the only kind this fixture models.
+        # `SimulationController.drawn_window` clamps to the run's own
+        # opening (`max(start_s, opened_at_s)`), so pointing this replay at a
+        # branch would diverge from the contract it exists to mirror.
         first_s = max(0.0, start_s)
         last_s = min(stop_s, (min(self._cursor, self._sample_count) - 1) * SIMULATION_STEP_S)
 

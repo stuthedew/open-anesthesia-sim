@@ -299,3 +299,20 @@ shipped and needs no change), `docs/ARCHITECTURE.md` (checked: it describes
 branch *is* and what it shares with its parent is `PL-TFX5`'s to write there),
 `README.md` (checked: no branch or fork claim). `make check` is green,
 including the 100% branch-coverage gate on `core/`.
+
+**Amended 2026-09-14 by `PL-ZMRT`** (open a branch's run definition at the fork
+instant, leaving one simulated-time frame). This item's title and the account
+below both name the clock re-basing, and that is an accurate record of what
+shipped here - it is no longer how the application works. The branch's
+definition now opens *at* the fork on the case's own axis, so there is one
+frame, `SimulationController.origin_s` and both subtractions are gone, and no
+caller converts. The mechanism was replaced; the scope this item delivered -
+a fork resuming into a live run that advances by the ordinary path - is
+unchanged, and `ROADMAP.md`'s v0.5.0 clause carries the same dated amendment.
+
+The `verify:` command above no longer resolves, because the test it greps for
+was renamed to `test_a_fork_opens_at_a_keyframe_on_the_case_s_own_axis`.
+**Leave it.** `subprojects/docket/README.md` is explicit that a closed item's
+command is the record of an experiment that was performed rather than one that
+still runs, and that re-pointing it manufactures a false provenance where there
+was a true one.

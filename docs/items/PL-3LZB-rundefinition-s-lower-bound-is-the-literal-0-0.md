@@ -9,6 +9,7 @@ feature: scenario-branching
 touches: src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py
 added: 2026-09-14
 closed: 2026-09-14
+pr: 572
 verify: uv run pytest tests/unit/test_run_definition.py && grep -q 'def test_a_run_definition_is_under_no_settings_before_it_opens' tests/unit/test_run_definition.py
 ---
 
