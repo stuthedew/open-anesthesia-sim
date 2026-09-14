@@ -1,8 +1,15 @@
 ---
 id: PL-3LZB
 title: RunDefinition's lower bound is the literal 0.0 and _segment_index_at wraps, so any definition opening after zero would answer from its last segment instead of refusing
-status: untriaged
+priority: P1
+effort: S
+status: done
+classes: defect, safety
+feature: scenario-branching
+touches: src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py
 added: 2026-09-14
+closed: 2026-09-14
+verify: uv run pytest tests/unit/test_run_definition.py && grep -q 'def test_a_run_definition_is_under_no_settings_before_it_opens' tests/unit/test_run_definition.py
 ---
 
 **Problem.** RunDefinition's lower bound is the literal 0.0 and _segment_index_at wraps, so any definition opening after zero would answer from its last segment instead of refusing

@@ -454,6 +454,97 @@ def test_a_run_definition_has_no_state_before_the_run_began() -> None:
         definition.state_at(-0.1)
 
 
+def _opening_after_zero(monkeypatch: pytest.MonkeyPatch) -> RunDefinition:
+    """A definition whose first segment opens at 600 s, which nothing public builds yet.
+
+    `RunDefinition.__init__` opens the first segment at `0.0`, so the two
+    guards below are unreachable from the public API on this tree and the
+    substitution here is the only way to reach them. The keyframes are a real
+    run's rather than invented: the run is built and advanced through the
+    ordinary path, and the stretch before 600 s is then dropped, which leaves
+    the two segments a branch opening at 600 s would carry.
+
+    `PL-ZMRT` - open a branch's run definition at the fork instant - is what
+    would make this shape public, and this helper is what moves to it.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    system.set_delivered_partial_pressure_fraction(0.02)
+    definition = RunDefinition(system.equation_settings(), system.state_vector())
+
+    definition.advance_to(600.0)
+    system.set_delivered_partial_pressure_fraction(0.01)
+    definition.record_change(system.equation_settings())
+
+    definition.advance_to(900.0)
+    system.set_delivered_partial_pressure_fraction(0.005)
+    definition.record_change(system.equation_settings())
+
+    definition.advance_to(1200.0)
+
+    monkeypatch.setattr(definition, "_segments", definition.segments[1:])
+
+    return definition
+
+
+def test_a_run_definition_that_opens_after_zero_refuses_the_span_before_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The lower bound is the run's own opening, never the literal zero.
+
+    What a bound fixed at zero admits is not a wrong refusal but a silent
+    wrong answer. `_segment_index_at` answers `-1` for an instant before the
+    first opening, Python reads that as the *last* segment, and `_propagator`
+    returns `None` for the non-positive interval that follows - so the caller
+    is handed that segment's keyframe as the state at an instant the run did
+    not exist for. Measured on this definition before the guard:
+    `state_at(0.0)`, `state_at(100.0)` and `state_at(599.9)` all returned the
+    same 0.005664 alveolar fraction rather than refusing, and
+    `evaluate_anchored(0.0, 500.0, 100.0)` drew a varying curve across a span
+    the run had no state for.
+    """
+
+    definition = _opening_after_zero(monkeypatch)
+
+    for elapsed_s in (0.0, 100.0, 599.9):
+        with pytest.raises(SimulationConfigurationError, match="before it began"):
+            definition.state_at(elapsed_s)
+
+    with pytest.raises(SimulationConfigurationError, match="before it began"):
+        definition.evaluate_anchored(0.0, 500.0, 100.0)
+
+    with pytest.raises(SimulationConfigurationError, match="before it began"):
+        definition.evaluate(0.0, 500.0, 6)
+
+
+def test_a_run_definition_answers_at_its_own_opening(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The bound admits the opening itself, which is where the run's first keyframe is."""
+
+    definition = _opening_after_zero(monkeypatch)
+
+    assert definition.state_at(600.0) == definition.segments[0].opening.state
+
+
+def test_a_run_definition_is_under_no_settings_before_it_opens(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The second of the two guards, which only a direct call can reach.
+
+    `_require_within_run` refuses the instant on every public path, so this
+    one can never fire through `state_at`, `evaluate` or `evaluate_anchored`
+    while that bound is right. It is here because the two protect against the
+    same silent answer by different means: the bound says the run has no state
+    there, and this says the search found no segment. A future caller reaching
+    the walk without the bound - `_canonical_state_at` is already one, by
+    design - meets a refusal rather than the last segment's keyframe.
+    """
+
+    definition = _opening_after_zero(monkeypatch)
+
+    with pytest.raises(SimulationConfigurationError, match="under no settings"):
+        definition._segment_index_at(599.9)
+
+
 def test_a_run_definition_refuses_to_predict_past_the_run() -> None:
     """Answering past the run would return a prediction indistinguishable from it."""
 

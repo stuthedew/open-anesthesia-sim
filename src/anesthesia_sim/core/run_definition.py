@@ -583,9 +583,33 @@ class RunDefinition:
         closed form exists to take it out of. The openings ascend because
         `record_change` only ever appends at `duration_s`, which never
         decreases.
+
+        **An instant before the first opening is refused rather than wrapped.**
+        `bisect_right` answers zero there, so the index is `-1`, which Python
+        reads as the *last* segment - the one furthest from any right answer.
+        Nothing then fails: `_propagator` returns `None` for the non-positive
+        interval that follows, so the caller is handed that segment's keyframe
+        as though it were the state at an instant the run did not exist for.
+        `_require_within_run` already refuses such an instant on every public
+        path, which makes this the second of two guards rather than the first;
+        it is here because what it prevents is silent and what it costs is one
+        comparison. `_canonical_state_at` is the caller that reaches this walk
+        without the bound, by design.
+
+        Raises:
+            SimulationConfigurationError: `elapsed_s` precedes the instant the
+                run opens at.
         """
 
-        return bisect_right(self._segments, elapsed_s, key=_opening_of) - 1
+        index = bisect_right(self._segments, elapsed_s, key=_opening_of) - 1
+
+        if index < 0:
+            raise SimulationConfigurationError(
+                f"this run opens at {self._segments[0].opening.elapsed_s} s, so it was under "
+                f"no settings at {elapsed_s} s"
+            )
+
+        return index
 
     def _advance_index_to(self, elapsed_s: float, from_index: int) -> int:
         """Index of the segment holding `elapsed_s`, searching forward from `from_index`.
@@ -623,17 +647,27 @@ class RunDefinition:
     def _require_within_run(self, elapsed_s: float) -> None:
         """Refuse an instant the run has not reached, or one before it began.
 
+        **The lower bound is the run's own opening rather than the literal
+        zero.** They are the same number for a run opening at induction and
+        they are not for one opening anywhere else, so reading the bound off
+        the segments keeps the refusal true of both without a caller naming
+        which kind it holds - and a bound left at zero would admit the whole
+        span before such a run existed, which `_segment_index_at` answers
+        silently rather than by failing.
+
         Raises:
-            SimulationConfigurationError: `elapsed_s` is not finite, is
-                negative, or is past `duration_s`.
+            SimulationConfigurationError: `elapsed_s` is not finite, precedes
+                the instant the run opens at, or is past `duration_s`.
         """
 
         if not isfinite(elapsed_s):
             raise SimulationConfigurationError(f"{elapsed_s} s is not a finite instant")
 
-        if elapsed_s < 0.0:
+        opening_s = self._segments[0].opening.elapsed_s
+
+        if elapsed_s < opening_s:
             raise SimulationConfigurationError(
-                f"a run has no state at {elapsed_s} s, before it began"
+                f"a run that opens at {opening_s} s has no state at {elapsed_s} s, before it began"
             )
 
         if elapsed_s > self._duration_s:
