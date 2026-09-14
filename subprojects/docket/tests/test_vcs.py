@@ -3659,3 +3659,190 @@ def test_a_renamed_item_file_recovers_its_own_pull_request() -> None:
     numbers = closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-the-new-title.md"}, runner=run).numbers
 
     assert numbers == {"PL-K7QX": 313}
+
+
+# --- the branch whose pull request already merged ----------------------------
+#
+# `PL-8M8H`. `disposition` picked between four states from the commit counts,
+# and a squash merge leaves the branch containing none of the commits that
+# landed its content - so a merged branch that gains one commit reads `ahead=1,
+# behind=N`, which is `MERGE`. That is what the session holding `#284`'s
+# follow-up commit was told, and merging the base in and pushing is what it did;
+# nothing merges a merged pull request again, so the commit landed nowhere.
+
+
+def _landed_runner(
+    *,
+    branch: str = "claude/pl-k7qx-live",
+    behind: int = 2,
+    ahead: int = 1,
+    adds: tuple[tuple[str, str], ...] = (),
+    on_base: frozenset[str] = frozenset(),
+    commits: tuple[tuple[str, tuple[str, ...]], ...] = (),
+    divergence: str = "",
+):
+    """A git holding a branch position *and* the content behind it.
+
+    `_branch_runner` answers the counts and nothing else, which is all the four
+    original states needed. This one also answers the three reads the landing
+    verdict makes: the blobs the base's history holds (`adds` and `on_base`
+    together decide the split), the two-dot numstat, and the commit walk
+    (`commits`, as subject and paths, newest first).
+
+    `adds` is `(blob oid, path)` for each path the branch introduces since its
+    fork point; `on_base` names the oids the base has held at some point, which
+    is the whole of what separates a merged branch from one still carrying work.
+    """
+
+    def run(args: list[str], root: Path) -> str:
+        if args[:3] == ["rev-parse", "--abbrev-ref", "HEAD"]:
+            return f"{branch}\n"
+        if args[0] == "rev-parse":
+            return f"{args[-1]}\n" if args[-1] == BASE else ""
+        if args[0] == "merge-base":
+            return "0123456789abcdef\n"
+        if args[:3] == ["rev-list", "--left-right", "--count"]:
+            return f"{behind}\t{ahead}\n"
+        if args[:2] == ["rev-list", "--objects"]:
+            return "\n".join(f"{oid} {path}" for oid, path in adds if oid in on_base)
+        if args[:2] == ["diff", "--raw"]:
+            return "\n".join(f":000000 100644 {'0' * 40} {oid} A\t{path}" for oid, path in adds)
+        if args[:2] == ["diff", "--numstat"]:
+            # Every outstanding path still differs from the base's tip, which
+            # is what a branch genuinely carrying work looks like.
+            return ""
+        if args[:2] == ["log", "--topo-order"]:
+            return divergence
+        if "--name-only" in args:
+            return "".join(
+                "\x1e" + f"c{position}" + "\x1f" + subject + "\n" + "\n".join(paths) + "\n"
+                for position, (subject, paths) in enumerate(commits)
+            )
+        if args[0] == "log":
+            return ""
+        return ""
+
+    return run
+
+
+#: One squash-merged commit: the base's history holds the blob it introduced.
+MERGED_WHOLE = {
+    "adds": (("a1", "src/landed.py"),),
+    "on_base": frozenset({"a1"}),
+    "commits": (("PL-K7QX the work the pull request took", ("src/landed.py",)),),
+}
+
+
+def test_a_branch_whose_work_the_base_already_holds_is_told_to_restart() -> None:
+    """The defect, in its smallest form: `MERGE` where the truth is `LANDED`.
+
+    The counts say `behind=2, ahead=1`, which is `MERGE` under the old rule and
+    was for every squash-merged branch, because `RESTART` fires at `ahead == 0`
+    and a squash leaves the branch containing all of its own commits.
+    """
+    state = branch_state(ROOT, runner=_landed_runner(**MERGED_WHOLE))
+
+    assert (state.behind, state.ahead) == (2, 1)
+    assert state.landed_whole is True
+    assert state.disposition == "landed"
+
+
+def test_a_branch_carrying_work_the_base_has_never_held_still_merges() -> None:
+    """The ordinary case, which must not move: work of its own, on a base that moved."""
+    state = branch_state(
+        ROOT,
+        runner=_landed_runner(
+            adds=(("b1", "src/live.py"),),
+            on_base=frozenset(),
+            commits=(("PL-K7QX the work this session is doing", ("src/live.py",)),),
+        ),
+    )
+
+    assert state.landed_whole is False
+    assert state.disposition == "merge"
+
+
+def test_a_landed_commit_that_only_wrote_to_the_queue_is_not_merge_evidence() -> None:
+    """Two sessions running `bin/docket record` write identical lines (`PL-JBRC`).
+
+    Convergence is not a merge, and the recovery a `landed` verdict leads to
+    deletes the ref - so the queue-only narrowing `orphaned` already carries is
+    inherited rather than re-derived, which is what the project owner's
+    part-two decision requires.
+    """
+    state = branch_state(
+        ROOT,
+        runner=_landed_runner(
+            adds=(("a1", "docs/items/PL-K7QX-recorded.md"),),
+            on_base=frozenset({"a1"}),
+            commits=(
+                (
+                    "PL-K7QX record the merged pull request number",
+                    ("docs/items/PL-K7QX-recorded.md",),
+                ),
+            ),
+        ),
+    )
+
+    assert state.landed_whole is False
+    assert state.disposition == "merge"
+
+
+def test_a_rewritten_history_outranks_the_landed_verdict() -> None:
+    """A rewrite changes every hash and no byte, so content cannot tell it from a merge.
+
+    `PL-Y31G` is one of the two false-positive shapes the part-two decision
+    names. Ordering `LANDED` below `REWRITTEN` excludes it at no cost, and the
+    recovery matters: the rewritten block keeps commits held nowhere else,
+    where a restart discards them.
+    """
+    state = branch_state(
+        ROOT, runner=_landed_runner(behind=3, ahead=3, divergence=REWRITE, **MERGED_WHOLE)
+    )
+
+    assert state.disposition == "rewritten"
+
+
+def test_the_landing_verdict_is_not_asked_where_it_could_not_change_the_advice() -> None:
+    """Three git calls the session-start hook would pay on every session for nothing.
+
+    `CURRENT`, `PULL`, `RESTART` and `REWRITTEN` are unaffected by the content,
+    so only the arm that would otherwise say `MERGE` asks.
+    """
+    asked: list[list[str]] = []
+    inner = _landed_runner(behind=4, ahead=0, **MERGED_WHOLE)
+
+    def run(args: list[str], root: Path) -> str:
+        asked.append(args)
+        return inner(args, root)
+
+    state = branch_state(ROOT, runner=run)
+
+    assert state.disposition == "restart"
+    assert state.landed_whole is False
+    assert not any(args[:2] == ["rev-list", "--objects"] for args in asked)
+
+
+def test_the_landed_branch_line_refuses_the_merge_it_replaces() -> None:
+    """`MERGE` is the `else` fallthrough, so a state with no arm renders as its advice.
+
+    That is the one way this change could fail silently: the right verdict
+    printing the wrong instruction, with no error anywhere.
+    """
+    from docket.render import format_branch_state
+
+    printed = format_branch_state(
+        BranchState(
+            branch="claude/pl-k7qx-live",
+            base=BASE,
+            behind=2,
+            ahead=1,
+            landed_whole=True,
+            fetched=True,
+        )
+    )
+
+    assert f"git merge {BASE}" not in printed
+    assert "its pull request merged" in printed
+    assert f"git checkout -B claude/pl-k7qx-live {BASE}" in printed
+    assert f"git diff {BASE}...HEAD" in printed

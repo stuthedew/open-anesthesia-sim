@@ -32,6 +32,7 @@ from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Scope, W
 from .trend import APPARATUS, BY_DAY, EFFORT_POINTS, LANES, PRODUCT_BUCKETS, QUEUE, Trend
 from .vcs import (
     CURRENT,
+    LANDED,
     PULL,
     RESTART,
     REWRITTEN,
@@ -787,6 +788,16 @@ def format_branch_state(state: BranchState, flight: FlightReport | None = None) 
         lines.append(f"Branch: {branch} is {state.behind} behind {base} with nothing of its own.")
         lines.append("  Its work is merged or it never had any. Restart it before editing:")
         lines.append(f"  git checkout main && git pull && git checkout -B {branch} {base}")
+    elif state.disposition == LANDED:
+        lines.append(f"Branch: {branch} is {state.behind} behind {base} and {state.ahead} ahead.")
+        lines.append(
+            f"  Those commits are not work {base} is waiting for: it already holds a whole "
+            "commit of this branch, so its pull request merged."
+        )
+        lines.append("  Nothing merges a merged pull request again, so do NOT merge and push.")
+        lines.append("  Restart on the merged base and carry anything of your own forward:")
+        lines.append(f"  git fetch origin main && git checkout -B {branch} {base}")
+        lines.append(f"  Check what only this branch holds first: git diff {base}...HEAD")
     else:
         lines.append(f"Branch: {branch} is {state.behind} behind {base} and {state.ahead} ahead.")
         lines.append(f"  Merge {base} before your first edit, not at push time:")
