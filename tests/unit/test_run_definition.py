@@ -689,17 +689,22 @@ def test_an_anchored_window_refuses_bounds_the_run_has_not_reached() -> None:
 """Why a fork opens at a keyframe, measured rather than asserted (`PL-TFX5`).
 
 `SimulationController.resumed_at` refuses an instant the run holds no keyframe
-for, and `docs/ARCHITECTURE.md` § "What a branch is, and what it shares with
-its parent" states the size of what that refusal is avoiding. These are what
-hold that number to the code, and what would catch the refusal being relaxed
-into an approximation on the grounds that the difference is small.
+for, and `docs/MODEL.md` § "The canonical evaluation rule" says why: restarting
+from the canonical state at such an instant replaces one propagation over an
+interval with two over its halves. That section measures what the substitution
+costs; this measures that it costs anything at all, which is the half a refusal
+rests on. Without it nothing would catch the refusal being relaxed into an
+approximation on the grounds that the difference is too small to matter.
 """
 
-# One hour past a fork at 655.3 s on the two-change sevoflurane run below. The
-# figure `docs/ARCHITECTURE.md` quotes, pinned as a ceiling rather than as an
-# equality: it is a floating-point composition difference, so a compiler, a
-# platform or an unrelated change in `matrix_exponential` may move it, and what
-# the documented claim needs is that it is real and this small.
+# One hour past a fork at 655.3 s on the two-change sevoflurane run below,
+# pinned as a ceiling rather than as an equality: it is a floating-point
+# composition difference, so a compiler, a platform or an unrelated change in
+# `matrix_exponential` may move it, and what the claim needs is that it is real
+# and this small. The order of magnitude agrees with the 5.3e-13 accumulator
+# figure `docs/MODEL.md` records for the same substitution on a different run;
+# that section is the authority for the size, and this is not a second claim
+# about it.
 FORK_OFF_KEYFRAME_DIVERGENCE_CEILING = 1e-12
 
 FORK_S = 655.3
