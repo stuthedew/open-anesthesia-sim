@@ -4,7 +4,7 @@ title: Assert a branch reproduces its parent element-wise at every sampled point
 priority: P2
 effort: M
 status: blocked
-blocked-by: PL-TFX5
+blocked-by: PL-B8MK
 classes: safety, science, test, anticipated
 feature: scenario-branching
 touches: tests/reference, tests/integration, docs/MODEL.md
@@ -43,3 +43,21 @@ branch sits relative to that.
 two of them each reproduce the parent element-wise at every sampled point up to
 the branch point, asserted by test; and `docs/MODEL.md` states the guarantee
 and its limits.
+
+**Its blocker moved from `PL-TFX5` to `PL-B8MK` on 2026-09-14**, when the
+project owner split `PL-TFX5`'s bookmark clause out and `PL-TFX5` closed on the
+control-event half. The fork mechanism this item asserts against now exists -
+`SimulationController.resumed_at` and `BranchedCase` - so the first half of
+Done when, "a branch taken on a recorded sample", is assertable today. The
+second, "a branch taken between two of them", is not: an instant the run holds
+no keyframe for is refused rather than approximated, and whether it stops being
+refused - and by which of two measured routes - is `PL-B8MK`. Starting this
+item before that answer would either assert half of what it promises or assert
+the other half against a mechanism that may change shape.
+
+`PL-TFX5` also measured what this item's tolerance language is about, which is
+worth having before the assertions are written: a branch opened off a keyframe
+disagrees with the run it claims to continue at essentially every later
+instant, and `tests/unit/test_run_definition.py` now pins that as non-zero and
+under 1e-12. That is the divergence this item's "where exactness is unreachable"
+clause would have to bound and show.

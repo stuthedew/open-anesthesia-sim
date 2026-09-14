@@ -28,6 +28,7 @@ from math import inf, nan
 import pytest
 
 from anesthesia_sim.core import run_definition
+from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
     ALVEOLAR_FRACTION,
@@ -683,3 +684,72 @@ def test_an_anchored_window_refuses_bounds_the_run_has_not_reached() -> None:
 
     with pytest.raises(SimulationConfigurationError):
         definition.evaluate_anchored(5.0, 1.0, 1.0)
+
+
+"""Why a fork opens at a keyframe, measured rather than asserted (`PL-TFX5`).
+
+`SimulationController.resumed_at` refuses an instant the run holds no keyframe
+for, and `docs/MODEL.md` § "The canonical evaluation rule" says why: restarting
+from the canonical state at such an instant replaces one propagation over an
+interval with two over its halves. That section measures what the substitution
+costs; this measures that it costs anything at all, which is the half a refusal
+rests on. Without it nothing would catch the refusal being relaxed into an
+approximation on the grounds that the difference is too small to matter.
+"""
+
+# One hour past a fork at 655.3 s on the two-change sevoflurane run below,
+# pinned as a ceiling rather than as an equality: it is a floating-point
+# composition difference, so a compiler, a platform or an unrelated change in
+# `matrix_exponential` may move it, and what the claim needs is that it is real
+# and this small. The order of magnitude agrees with the 5.3e-13 accumulator
+# figure `docs/MODEL.md` records for the same substitution on a different run;
+# that section is the authority for the size, and this is not a second claim
+# about it.
+FORK_OFF_KEYFRAME_DIVERGENCE_CEILING = 1e-12
+
+FORK_S = 655.3
+PROBES_S = (700.0, 800.0, 900.0, 1200.0, 1800.0, 3600.0)
+
+
+def _two_change_run() -> RunDefinition:
+    """A sevoflurane run to an hour, carrying two setting changes."""
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+    definition = RunDefinition(system.equation_settings(), system.state_vector())
+
+    definition.advance_to(300.0)
+    system.set_delivered_partial_pressure_fraction(Fraction(0.02))
+    definition.record_change(system.equation_settings())
+    definition.advance_to(600.0)
+    system.set_fresh_gas_flow(1.0)
+    definition.record_change(system.equation_settings())
+    definition.advance_to(3600.0)
+
+    return definition
+
+
+def _worst(left: tuple[float, ...], right: tuple[float, ...]) -> float:
+    return max(abs(a - b) for a, b in zip(left, right, strict=True))
+
+
+def test_opening_a_branch_off_a_keyframe_does_not_reproduce_the_run() -> None:
+    """The refusal's reason, as a number.
+
+    A branch opened from the canonical state at an instant the run holds no
+    keyframe for reaches that state by one propagation and then continues by a
+    second, where the run answers the same later instant with one propagation
+    over the whole span. The two are the same exact solution rounded
+    differently, which is precisely what `PL-Z3W6`'s element-wise requirement
+    refuses - so this asserts the disagreement is non-zero as well as small,
+    because a test that only bounded it would pass if forking became exact by
+    accident and stop describing anything.
+    """
+
+    parent = _two_change_run()
+    branch = RunDefinition(parent.segments[-1].settings, parent.state_at(FORK_S))
+    branch.advance_to(3600.0 - FORK_S)
+
+    divergences = [_worst(branch.state_at(p - FORK_S), parent.state_at(p)) for p in PROBES_S]
+
+    assert all(divergence > 0.0 for divergence in divergences)
+    assert max(divergences) < FORK_OFF_KEYFRAME_DIVERGENCE_CEILING

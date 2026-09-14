@@ -2543,10 +2543,10 @@ the defect.
 
 ### Required scope
 
-Eighteen items, in the order the dependencies allow. The first five are the
+Nineteen items, in the order the dependencies allow. The first five are the
 score architecture the 2026-09-05 design round filed and the project owner
 placed here; the next five are boundary work this milestone's own code moves;
-the last eight are the feature itself.
+the last nine are the feature itself.
 
 - **The run becomes a closed-form function of its control-input timeline**
   (queue item PL-T691). Keyframes are held at every control event and any
@@ -2627,9 +2627,29 @@ the last eight are the feature itself.
   a different concentration depending on how fast the learner was running —
   a presentation-correctness failure by `CLAUDE.md`'s standard, and one that
   also breaks reproducibility of any branch taken there.
-- **A run forks at any control-input event or bookmark** (queue item PL-TFX5),
-  flat rather than as a tree: one trunk with N branches, and no sub-forks. The
-  branch carries its parent's agent and patient rather than re-choosing them.
+- **A run forks at any control-input event** (queue item PL-TFX5), flat rather
+  than as a tree: one trunk with N branches, and no sub-forks. The branch
+  carries its parent's agent and patient rather than re-choosing them.
+
+  **Split 2026-09-14** (project owner). This entry read "at any control-input
+  event **or bookmark**" until the fork was built, and the bookmark half turned
+  out not to be unbuilt work but a *refused* operation: a bookmark's instant is
+  not in general a keyframe, and the keyframe-only rule `PL-J2TD` landed
+  deliberately admits no other opening. On the 120 s two-change run the fork
+  tests use, 3 of the 1 201 instants a halt could land on are keyframes. The
+  clause is the entry below, behind the two items that build a bookmark and its
+  halt; what this entry keeps is what shipped.
+- **A bookmark is a forkable instant** (queue item PL-B8MK), so a branch can be
+  taken where a learner deliberately stopped rather than only where they moved
+  a control. Two routes are measured in that item and the obvious one is the
+  worse: recording a keyframe where the run halts makes the branch exact
+  against the trunk it forked from, while moving that trunk's own later answers
+  away from what the case would have said unmarked - so marking a run changes
+  it. Opening the branch's definition at the keyframe *before* the bookmark
+  costs the trunk nothing and is exact too. Behind `PL-LPLD` and `PL-CTD7`,
+  which build the bookmark and the halt it would be recorded at, and ahead of
+  the entry below, whose branch "taken between two recorded samples" is this
+  one.
 - **The branch reproduces its parent element-wise up to the branch point**
   (queue item PL-Z3W6), asserted by test at every sampled point rather than
   within a tolerance. Where exactness is unreachable the divergence is bounded,

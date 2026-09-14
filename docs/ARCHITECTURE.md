@@ -62,7 +62,7 @@ src/anesthesia_sim/
 │   ├── agent_simulation_validation.py  # mass-balance / agent-accounting tracker
 │   └── simulation.py              # SimulationState: explicit elapsed time (bounded) + AgentUptakeSystem
 ├── app/                  # Flet user interface
-│   ├── controller.py               # SimulationController: run controls, read-only snapshots
+│   ├── controller.py               # SimulationController: run controls, read-only snapshots; ResumePoint and BranchedCase: where a branch opened, and the trunk it belongs to
 │   ├── simulation_view.py          # renders snapshots as the dashboard; no domain logic. Two classes since PL-B9PY: `RunView` is one run - its controller, readouts, settings, transport and the lines it draws - and `SimulationView` is what two runs share, the charts, their axes, the window, the time base and the compartment selection
 │   ├── formatting.py               # modeled value -> displayed string; Flet-independent
 │   ├── playback.py                 # playback rate -> whole simulation steps per tick; Flet-independent
@@ -287,6 +287,88 @@ the six compartment traces are drawn in percent and the wash-in ratio in its
 own dimensionless unit, through one shared point-writing primitive. Stepping and drawing also run as separate loops on separate intervals,
 so simulation time stays a function of steps taken rather than of how long a
 frame took.
+
+## What a branch is, and what it shares with its parent
+
+A **branch** is a second live run of the same case, opened at a state the
+first run passed through. The run it was taken from is the **trunk**. One
+trunk with N branches is the whole of the structure — sub-forks of forks are
+excluded rather than unimplemented (project owner, 2026-08-25): they multiply
+without bound and buy little over branching from the trunk again.
+
+This is the object map. What a branch *guarantees* — that it opens at a
+keyframe and why, that its definition's clock is re-based by subtraction and
+never by a caller naming an offset, and what both are worth in floating point —
+is `docs/MODEL.md` § "The canonical evaluation rule", which is the one place
+those are stated and measured.
+
+Three objects in `app/controller.py` carry it:
+
+- `SimulationController.resumed_at(elapsed_s)` makes one. It builds a second
+  controller through the ordinary constructor, replays the trunk's settings
+  from the recorded control timeline into it, seeds its system with the
+  trunk's canonical state at `elapsed_s`, and hands it back paused. The trunk
+  is read and never written, so the two runs share no compartment, no
+  accounting and no clock — which is what lets both be advanced.
+- `ResumePoint` is where the branch came from: the trunk stretch it opened
+  inside, the case's step count there, the step it was taken at, and the
+  agent its accounting period started from. `opened_from` is `None` on a
+  trunk and this on a branch, so every run knows which it is.
+- `BranchedCase` holds a trunk and the branches taken from it. It is what
+  makes two controllers one case rather than two unrelated sessions, and it
+  is where the flat shape stops being a refusal: the trunk is the only run it
+  will fork, so a sub-fork is not an operation it can express. `resumed_at`
+  keeps its own refusal for the caller that holds a branch directly.
+
+**What a branch inherits, and why each is not re-chosen.** The agent and the
+patient, because changing either makes it a second case rather than a second
+management of this one — `set_agent` already starts a new run for that reason,
+and refuses outright on a branch. The circuit volume, applied before any state
+is, because `BreathingCircuit.set_circuit_volume` conserves agent by rewriting
+the inspired fraction and a volume set afterwards would move the branch off the
+state it opened at. The four live controls, replayed from the recorded timeline
+in the units the compartments hold, and then checked against the settings the
+trunk's own stretch carries rather than trusted. What it does not inherit is
+the trunk's control timeline, which starts empty: the branch's record is of
+what the learner does to *it*, and `opened_from` is what still places the fork
+on the case's axis.
+
+**Two time frames, and which readers are in which.** A branch continues the
+case's step count, so `snapshot().elapsed_s`, every control-change stamp and
+`drawn_window`'s instants are all case time; its `RunDefinition` opens at its
+own zero, and `origin_s` is the difference — zero on a trunk, the fork instant
+on a branch. `run_segments` is the one reader handing out the definition's own
+instants rather than the case's. `docs/MODEL.md` carries why the split falls
+there; `PL-ZMRT` is an open question about whether it should exist at all, and
+answering it yes would leave one frame and delete `origin_s` along with the
+subtractions in `advance` and `drawn_window`.
+
+**Where a branch may be taken.** At any keyframe the trunk holds —
+`BranchedCase.fork_points_s` — which is its opening at induction and every
+setting change the model was actually stepped under. Anywhere else is refused
+rather than approximated, for the arithmetic reason `docs/MODEL.md` measures.
+`tests/unit/test_run_definition.py` holds the other side of that refusal: that
+a branch opened off a keyframe really does stop reproducing the run it claims
+to continue, rather than the refusal guarding against nothing.
+
+A **bookmark is not yet one of those instants**, and how it becomes one is
+open. Bookmarks are `PL-LPLD` and the halt that stops a run on the step
+crossing one is `PL-CTD7`; neither is built. A bookmark's instant is not in
+general a setting change, so the trunk holds no keyframe there and `resumed_at`
+refuses it like any other — on a 120 s run with two control changes, 3 of the
+1 201 instants a halt could land on are keyframes. Two routes to a forkable
+bookmark are measured in `PL-B8MK`, and the obvious one is the worse of them:
+recording a keyframe where the run halts makes the branch exact against the
+trunk it forked from, but it moves that trunk's own later answers away from
+what the case would have said unmarked, so marking a run changes it. Opening
+the branch's *definition* at the keyframe before the bookmark, while its clock
+and its live system stand at the bookmark, costs the trunk nothing and is exact
+too. Neither is built or chosen here.
+
+What a comparison between two branches *asserts* — what a difference between
+them may be attributed to, and that neither is a prediction for a patient — is
+not here and is not yet written anywhere. It is `PL-W7H9`, which places it in
+`docs/MODEL.md` and in this document.
 
 ## Data files (`data/`)
 

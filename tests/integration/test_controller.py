@@ -7,6 +7,7 @@ from anesthesia_sim.app.controller import (
     COMPARTMENT_QUANTITIES,
     COMPARTMENT_STATE_INDEX,
     CONTROL_INPUT_UNITS,
+    BranchedCase,
     ControlInput,
     RecordedQuantity,
     RecordedSeries,
@@ -1869,3 +1870,236 @@ def test_a_branch_is_the_agent_and_patient_its_parent_was() -> None:
     assert at_fork.agent_id == "desflurane"
     assert at_fork.cardiac_output_l_min == trunk.snapshot().cardiac_output_l_min
     assert at_fork.circuit_volume_l == trunk.snapshot().circuit_volume_l
+
+
+"""`PL-TFX5`: a case is one trunk and the branches taken from it, held flat.
+
+The clause `SimulationController.resumed_at` cannot carry on its own. It makes
+one branch and hands it back detached, so two calls produce two controllers
+that each know the instant they opened at and none of which knows the others
+exist. `BranchedCase` is what makes them one case, and what makes the flat
+shape structural: the trunk is the only run it will fork, so a sub-fork is not
+an operation to decline.
+"""
+
+
+def test_a_case_forks_at_every_instant_the_trunk_offers() -> None:
+    """`PL-TFX5`'s first clause: any recorded control event is a branch point.
+
+    `fork_points_s` is the run's keyframes, which are its opening and every
+    setting change the model was actually stepped under - so this asserts the
+    two agree as well as that each one forks, because a fork point list that
+    quietly omitted one would still pass a test that only walked the list.
+    """
+
+    case = BranchedCase(_trunk_with_two_changes())
+    timeline = case.trunk.snapshot().control_timeline
+
+    assert case.fork_points_s == (0.0, *(change.elapsed_s for change in timeline))
+
+    for elapsed_s in case.fork_points_s:
+        branch = case.fork_at(elapsed_s)
+
+        assert branch.origin_s == elapsed_s
+        assert branch.snapshot().elapsed_s == elapsed_s
+
+    assert len(case.branches) == len(case.fork_points_s)
+    assert case.runs == (case.trunk, *case.branches)
+
+
+def test_a_case_holds_two_branches_taken_at_one_decision_point() -> None:
+    """The comparison the milestone is named for, so nothing makes a point unique.
+
+    Coast against hold, from the same instant: two branches at one fork point
+    are the normal case rather than a duplicate to reject, and they must be
+    separately managed once taken.
+    """
+
+    case = BranchedCase(_trunk_with_two_changes())
+    fork_s = case.fork_points_s[-1]
+
+    coasting = case.fork_at(fork_s)
+    holding = case.fork_at(fork_s)
+
+    assert case.branches == (coasting, holding)
+    assert coasting is not holding
+
+    coasting.set_fresh_gas_flow(0.5)
+    holding.set_fresh_gas_flow(6.0)
+
+    assert coasting.snapshot().fresh_gas_flow_l_min == 0.5
+    assert holding.snapshot().fresh_gas_flow_l_min == 6.0
+
+
+def test_forking_a_case_repeatedly_leaves_the_trunk_where_it_was() -> None:
+    """`PL-TFX5`'s third clause, against the whole of `fork_points_s`.
+
+    The trunk surviving is what separates a comparison from an undo. It is
+    checked after every branch has been advanced and re-dialled, because a
+    branch sharing a compartment with its parent would show nothing until
+    something moved.
+    """
+
+    case = BranchedCase(_trunk_with_two_changes())
+    before = case.trunk.snapshot()
+    segments_before = case.trunk.run_segments
+
+    for elapsed_s in case.fork_points_s:
+        branch = case.fork_at(elapsed_s)
+        branch.set_cardiac_output(2.5)
+        branch.start()
+        _advance_for(branch, duration_s=30.0)
+        branch.pause()
+
+    assert case.trunk.snapshot() == before
+    assert case.trunk.run_segments == segments_before
+    assert case.trunk.origin_s == 0.0
+    assert case.trunk.opened_from is None
+
+
+def test_a_case_cannot_be_rooted_in_a_branch() -> None:
+    """`PL-TFX5`'s fourth clause, as an interface that cannot state a sub-fork.
+
+    `resumed_at` refuses a branch of a branch and keeps doing so - that is the
+    guard for a caller holding two controllers. This is the other half: a case
+    built on a branch would offer `fork_at` over a second generation, so it is
+    refused at construction rather than at the fork.
+    """
+
+    trunk = _trunk_with_two_changes()
+    branch = BranchedCase(trunk).fork_at(trunk.run_segments[-1].opening.elapsed_s)
+
+    with pytest.raises(SimulationConfigurationError, match="branches of branches are excluded"):
+        BranchedCase(branch)
+
+
+def test_a_case_refuses_a_fork_at_an_instant_the_trunk_holds_no_keyframe_for() -> None:
+    """The refusal reaches through the case rather than being softened by it."""
+
+    case = BranchedCase(_trunk_with_two_changes())
+    between_s = (case.fork_points_s[-2] + case.fork_points_s[-1]) / 2.0
+
+    assert between_s not in case.fork_points_s
+
+    with pytest.raises(SimulationConfigurationError, match="holds no keyframe"):
+        case.fork_at(between_s)
+
+    assert case.branches == ()
+
+
+def test_a_case_s_branches_carry_the_trunk_s_agent_and_patient_at_the_fork() -> None:
+    """`PL-TFX5`'s last clause, against a patient value that moves during the run.
+
+    Cardiac output is the one patient quantity a control can move, so it is
+    the only one that distinguishes "the branch carries its parent's patient"
+    from "the branch rebuilds the same reference patient from the same data
+    file". A run that never moves it asserts the second while reading like the
+    first, because `_setting_at` then falls through to the value in force now.
+    So this moves it mid-run and forks *before* the move: the branch must carry
+    the value the case was computed under at the fork, which is no longer the
+    value the trunk is standing at.
+    """
+
+    trunk = SimulationController(agent_id="isoflurane", cardiac_output_l_min=4.2)
+    trunk.start()
+    _advance_for(trunk, duration_s=30.0)
+    trunk.set_cardiac_output(6.5)
+    _advance_for(trunk, duration_s=30.0)
+    trunk.pause()
+
+    case = BranchedCase(trunk)
+    before_s, after_s = case.fork_points_s
+
+    assert trunk.snapshot().cardiac_output_l_min == 6.5
+
+    at_earlier_fork = case.fork_at(before_s).snapshot()
+    at_later_fork = case.fork_at(after_s).snapshot()
+
+    assert at_earlier_fork.cardiac_output_l_min == 4.2
+    assert at_later_fork.cardiac_output_l_min == 6.5
+
+    for at_fork in (at_earlier_fork, at_later_fork):
+        assert at_fork.agent_id == "isoflurane"
+        assert at_fork.circuit_volume_l == trunk.snapshot().circuit_volume_l
+
+
+def test_a_branch_cannot_change_its_agent_out_from_under_the_case() -> None:
+    """`PL-TFX5`: a branch that could re-choose its agent is a second case.
+
+    `set_agent` begins a new run, and `_build_state` clears `opened_from` with
+    everything else - so without this refusal a branch becomes a trunk in
+    silence, `reset()` stops returning it to its fork, `resumed_at` accepts it,
+    and the case it was taken from goes on listing it. The trunk is unaffected:
+    changing the case's agent is still the explicit new case it always was.
+    """
+
+    trunk = _trunk_with_two_changes()
+    case = BranchedCase(trunk)
+    branch = case.fork_at(case.fork_points_s[-1])
+
+    with pytest.raises(SimulationConfigurationError, match="carries the agent of the case"):
+        branch.set_agent("desflurane")
+
+    assert branch.snapshot().agent_id == trunk.snapshot().agent_id
+    assert branch.opened_from is not None
+
+    trunk.set_agent("desflurane")
+
+    assert trunk.snapshot().agent_id == "desflurane"
+
+
+def test_every_recorded_control_event_is_an_instant_the_run_can_be_forked_at() -> None:
+    """`PL-TFX5`'s first clause, against the case that used to break it.
+
+    "A run can be forked at any recorded control event" binds two records that
+    collapse redundant changes by different rules, so it holds only while those
+    rules agree. `RunDefinition.record_change` compares whole settings against
+    the previous stretch and is order-independent; the control timeline
+    compares one entry, and used to compare only the newest one.
+
+    Two dials nudged and both put back **interleaved** - F up, C up, F back, C
+    back - is what separated them: each move's predecessor was the other
+    control, so no collapse fired, and four entries stood at an instant the run
+    never changed at while the definition correctly held no keyframe there. The
+    nested order collapsed to nothing, so the defect was order-dependent and
+    invisible to a test that moved two controls once each. A learner reaches it
+    while paused, where `advance()` is a no-op and every control they touch
+    carries one instant.
+
+    Asserted as the property rather than as the repair: every stamp the reader
+    is shown is an instant the run holds a keyframe for, and `resumed_at`
+    accepts each one.
+    """
+
+    trunk = SimulationController()
+    trunk.start()
+    _advance_for(trunk, duration_s=30.0)
+
+    opening = trunk.snapshot()
+    trunk.pause()
+
+    trunk.set_fresh_gas_flow(opening.fresh_gas_flow_l_min + 1.0)
+    trunk.set_cardiac_output(opening.cardiac_output_l_min + 1.0)
+    trunk.set_fresh_gas_flow(opening.fresh_gas_flow_l_min)
+    trunk.set_cardiac_output(opening.cardiac_output_l_min)
+
+    timeline = trunk.snapshot().control_timeline
+    openings = [segment.opening.elapsed_s for segment in trunk.run_segments]
+
+    # Nothing the model saw differs, so neither record has anything to say.
+    assert [change.elapsed_s for change in timeline] == openings[1:]
+    assert openings == [0.0]
+
+    # And the general property, on a run that does change: every stamp a reader
+    # is shown is a fork point, which is what the clause promises.
+    trunk.start()
+    _advance_for(trunk, duration_s=30.0)
+    trunk.set_alveolar_ventilation(6.0)
+    _advance_for(trunk, duration_s=30.0)
+    trunk.pause()
+
+    case = BranchedCase(trunk)
+
+    for change in trunk.snapshot().control_timeline:
+        assert change.elapsed_s in case.fork_points_s
+        assert case.fork_at(change.elapsed_s).origin_s == change.elapsed_s
