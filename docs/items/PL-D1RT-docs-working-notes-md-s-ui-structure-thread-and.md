@@ -1,9 +1,16 @@
 ---
 id: PL-D1RT
 title: docs/WORKING_NOTES.md's UI-structure thread and PL-037Y still describe the port as following v0.5.0, which the 2026-09-14 reorder makes stale
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs, defect
+feature: planning-cadence
+touches: docs/WORKING_NOTES.md, ROADMAP.md
 added: 2026-09-14
+verify: python3 tools/doc_check.py check && ! grep -qF '`v0.5.x — the interface pass` row of "The timeline"' ROADMAP.md
 ---
+
 
 **Problem.** docs/WORKING_NOTES.md's UI-structure thread and PL-037Y still describe the port as following v0.5.0, which the 2026-09-14 reorder makes stale
 
@@ -26,3 +33,34 @@ working as intended.
 
 **Done when** item 34's timing paragraph and `PL-037Y` read correctly against a
 port that precedes v0.5.0.
+
+**Verified 2026-09-14, and the finding is wider than the title.** The row both
+documents cite **no longer exists**. "The timeline" at `ROADMAP.md:320-332` now
+runs v0.2.8, v0.3.0, v0.4.0, `v0.4.x`, Gate 1, **v0.4.25**, v0.5.0, MVP
+complete, Gate 2, v0.6.0, Gate 3, v0.7.0, Beyond - there is no `v0.5.x - the
+interface pass` row, because `ROADMAP.md:1526` records that v0.4.25 **absorbs**
+planned-milestone item 33. Two places still point at the deleted row:
+
+- `ROADMAP.md:4162`, item 33's own placement note: "the `v0.5.x - the interface
+  pass` row of 'The timeline'. A patch track rather than a numbered milestone".
+- `docs/WORKING_NOTES.md:664-667`, the "Shelved, then resumed: UI
+  structure/form mockups" thread: item 33 has "the `v0.5.x - the interface
+  pass` row of 'The timeline' giving it a position between v0.5.0 and v0.6.0".
+
+**Why it matters.** Both sentences place the interface pass *after* v0.5.0, and
+the 2026-09-14 reorder put it *before* - inside v0.4.25, which is the next
+substantial work. A session reading either one concludes the interface work is
+somebody else's problem for two milestones, when it is the milestone about to
+start. `bin/docket wave` cannot correct the impression: it reads sections and
+`Required scope`, not the prose in a planned-milestone entry or a notes thread.
+
+**The `PL-037Y` half is in flight elsewhere.** That item - the same thread
+glossing `PL-NGF7` as "decides the theme object" - is carried on
+`origin/claude/bold-mayer-ij89qm` as of 2026-09-14, so it is not answered here.
+The two edits are in the same paragraph and whichever lands second should read
+the other's change rather than re-deriving it.
+
+**Done when.** Neither `ROADMAP.md` nor `docs/WORKING_NOTES.md` cites a
+`v0.5.x - the interface pass` timeline row, item 33's placement note says it is
+absorbed by v0.4.25, and the notes thread says the interface pass now runs
+*ahead* of v0.5.0 rather than between v0.5.0 and v0.6.0.

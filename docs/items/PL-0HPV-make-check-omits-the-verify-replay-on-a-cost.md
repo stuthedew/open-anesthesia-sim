@@ -1,9 +1,15 @@
 ---
 id: PL-0HPV
 title: make check omits the verify replay on a cost measured before --verify-base narrowed it, so a PR-only failure class is only ever found from CI
-status: untriaged
+priority: P3
+effort: S
+status: needs-decision
+classes: session-cost, infra
+feature: ci-cost
+touches: Makefile, .github/workflows/quality.yml
 added: 2026-09-14
 ---
+
 
 **Problem.** make check omits the verify replay on a cost measured before --verify-base narrowed it, so a PR-only failure class is only ever found from CI
 
@@ -47,3 +53,34 @@ this wrong is how often the replay changes a session's answer: a check firing
 every run without changing a decision is a defect in the check by `CLAUDE.md`'s
 own standard. One observed instance is not a rate. Count how many pull requests
 have been red on this step before recommending it.
+
+**Why it matters.** The gap is real and the item's own brief prices it
+honestly: a failure class that only CI can find costs a round trip every time it
+fires, and `PL-TFX5` paid one. What the item correctly refuses to do is treat
+the 7.1 s as the argument. `CLAUDE.md` holds that a check firing every run
+without changing a decision is a defect in the check, so adding one to `make
+check` is only right if it changes an answer often enough to earn the seconds it
+takes from every session forever - and one observed instance is not a rate.
+
+**Decision needed.** Whether `make check` should run the narrowed verify replay,
+`bin/docket check --verify --verify-base origin/main`.
+
+Two things have to be settled, and the cost is the lesser of them:
+
+1. **The rate.** How many pull requests have gone red on
+   `bin/docket check --verify` while `make check` was green. That is a countable
+   fact from the run history of `.github/workflows/quality.yml`, and nobody has
+   counted it. If the answer is one - `PL-TFX5` - the change is not justified
+   and this item closes `dropped` with the count as its reason.
+2. **The degradation, which is the actual design.** `make check` is expected to
+   work in a bare checkout, and `--verify-base origin/main` needs a ref that may
+   be absent or stale there. Whatever lands has to fall back to today's
+   behaviour when no base resolves, rather than failing the gate for a reason
+   unrelated to the work - the problem `PL-0999` already solved for `docket
+   verify` by refreshing rather than trusting a local `main`.
+
+The `Makefile`'s own comment beside the `bin/docket check` line prices the
+refusal at "60.0 s with the replay against 29.5 s without", which is the
+whole-store form; the narrowed form measured 7.1 s on a branch touching 11
+items and falls to nothing on a branch that changes no item. Update that comment
+whichever way this is decided, so the recorded price matches the one in force.

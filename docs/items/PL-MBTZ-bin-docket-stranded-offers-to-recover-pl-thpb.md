@@ -1,9 +1,16 @@
 ---
 id: PL-MBTZ
 title: bin/docket stranded offers to recover PL-THPB from origin/claude/next-version-release-o2zzaf, where the branch's copy is older than main's: the recover line would overwrite a done item with an untriaged one
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, tests/unit
 added: 2026-09-14
+verify: uv run pytest tests/unit/test_docket_branch_guard.py && grep -q 'def test_a_branch_copy_older_than_the_base_is_not_offered' tests/unit/test_docket_branch_guard.py
 ---
+
 
 **Problem.** bin/docket stranded offers to recover PL-THPB from origin/claude/next-version-release-o2zzaf, where the branch's copy is older than main's: the recover line would overwrite a done item with an untriaged one
 
@@ -49,3 +56,27 @@ and which is the project owner's to run.
 
 **Found.** 2026-09-14, verifying the session-start digest's stranded line
 before repeating it.
+
+**The named instance no longer reproduces, and the defect does.** Checked
+2026-09-14 after `git fetch origin`: `origin/claude/next-version-release-o2zzaf`
+is no longer among the refs this checkout holds, so `bin/docket stranded` no
+longer offers `PL-THPB`. What it offers today is three items on
+`origin/claude/bold-mayer-ij89qm`, which is a live session's branch and
+correctly left alone. The instance being gone is luck rather than a fix: nothing
+in the command learned to compare the two copies.
+
+**Why it matters.** `stranded` prints a `git checkout <branch> -- <file>` line
+and the `docket` skill tells a session to run it. That line overwrites
+unconditionally, so where the branch's copy is *older* than the base's - the
+item closed on `main` while an unmerged branch still holds the untriaged
+version - following the advice reverts a done item to `untriaged` and silently
+discards its `closed`, `milestone` and `pr`. The command is confident and
+specific, which is what makes it dangerous: `CLAUDE.md` names "gives a wrong
+answer silently" as the first of its three compounding-friction tests, and a
+destructive recipe presented as a recovery is that test squarely. `PL-XLQ5`
+already cost this project the same shape once.
+
+**Done when.** `bin/docket stranded` compares the branch's copy against the
+base's before offering a recovery: an item the base already holds in a *newer*
+state is not offered, or is offered with the difference named and the checkout
+line withheld. `tests/unit/` covers a branch copy that is behind the base.
