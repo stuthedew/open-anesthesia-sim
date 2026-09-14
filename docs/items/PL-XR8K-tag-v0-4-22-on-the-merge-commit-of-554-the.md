@@ -9,8 +9,9 @@ feature: release-process
 touches: docs/items/
 added: 2026-09-14
 closed: 2026-09-14
-not-delegable: Proving this means pushing a tag ref to the remote, which no session in this environment can do - `PL-N936` measured the failure and found it convincing rather than obvious. There is nothing to run before the work, because the work is the project owner's.
+pr: 557
 verify: git ls-remote --tags origin v0.4.22 | grep -q 'refs/tags/v0.4.22'
+not-delegable: Proving this means pushing a tag ref to the remote, which no session in this environment can do - `PL-N936` measured the failure and found it convincing rather than obvious. There is nothing to run before the work, because the work is the project owner's.
 ---
 
 **Problem.** Tag v0.4.22 on the merge commit of #554: the release is cut and only the project owner can push a tag ref from this environment
@@ -48,17 +49,33 @@ went out in, and that mapping is not recoverable afterwards. Every later
 release is blocked behind it by a deliberate refusal, so an untagged release
 stops the release train rather than merely leaving a gap in it.
 
-**Done 2026-09-14.** `git ls-remote --tags origin` shows
-`8cf9be39a2d8f0be7c205fbe5a45d46728ba2778 refs/tags/v0.4.22`, dereferencing to
-`82f00d3a80bbee5eac25635e0901398e17f8f967`, which is `#554`'s merge commit — so
-the tag exists on the remote and sits where this item asked for it. The project
-owner pushed it, as the item said only they could.
+## Done 2026-09-14 — and leaving it open is what turned `main` red
 
-**It was closed because CI said so, which is the point of the `verify:` line.**
-`quality.yml` run #1884 on `82f00d3a` failed `make docket` with "PL-XR8K is open
-but its `verify:` command already passes", and that error was the only thing red
-on `main`. The item's own evidence command is what noticed the tag had landed;
-no session watched for it. A `verify:` line that names something only the work
-creates turns "did the owner do the thing yet" into a check that fails loudly
-the moment the answer changes, rather than a request that decays in a closing
-block (`PL-H1JD`).
+The project owner pushed the tag. Verified against the remote rather than
+recalled:
+
+```text
+$ git ls-remote --tags origin v0.4.22
+8cf9be39a2d8f0be7c205fbe5a45d46728ba2778	refs/tags/v0.4.22
+```
+
+`8cf9be3` is an annotated tag object pointing at `82f00d3`, the merge commit of
+`#554`, which is exactly what the Done-when asks for.
+
+**The item's own `verify:` is what caught that it had been left open**, through
+the route nothing else covers. `.github/workflows/quality.yml` runs the
+whole-store `verify:` replay only on push to `main` (`PL-SDHR`), so its failures
+land on a run no pull request shows. Run #1884 on `82f00d3` failed with:
+
+> `PL-XR8K` is open but its `verify:` command already passes (1 of 116
+> checked). Either the work landed and the item was never closed - close it -
+> or the command does not discriminate and proves nothing.
+
+It is the first branch, and the check's wording is what made that decidable:
+the command names a tag ref only the work creates, so its passing means the
+work landed rather than that the command is weak. **This is the
+`tools/main_ci_status.py` path working end to end** — a red `main` that no
+pull request would have surfaced, reported into a session at start, and traced
+to one open item.
+
+**`PL-2M5T` is unblocked** by the tag existing, as this brief said it would be.

@@ -173,16 +173,23 @@ check: sync
 # invoked by a bare `python3` on the line above and again in the CI floor
 # section. Putting a 3.14 parse behind either would break the promise both make.
 #
+# `glyph_check.py` joined them under `PL-8XPQ`. It holds every string that can
+# reach a reader to characters somebody has rendered and looked at - `->`
+# (U+2192) drew as a replacement box on 2026-09-04 and no test could see it -
+# and it reads `app/`, `core/` and `data/`, because the view prints a `core/`
+# validation message verbatim and `display_name` comes out of a data file.
+#
 # `tools/ignore_check.py` above is the same category for a different reason.
-# All five tools here stay standard-library-only and parse at the floor
+# All six tools here stay standard-library-only and parse at the floor
 # themselves, which is what `tests/unit/test_tools_portability.py` holds them
 # to; that suite's docstring states the rule this group is an instance of.
-# `PL-Y0RZ`, `PL-L17Q`, `PL-JBZK`, `PL-97VB`, `PL-FZ6T`.
+# `PL-Y0RZ`, `PL-L17Q`, `PL-JBZK`, `PL-97VB`, `PL-FZ6T`, `PL-8XPQ`.
 	uv run python tools/contrast_check.py
 	uv run python tools/agent_identity_check.py
 	uv run python tools/import_boundary_check.py
 	uv run python tools/workflow_paths_check.py
 	uv run python tools/core_vocabulary_check.py
+	uv run python tools/glyph_check.py
 
 fix:
 	uv run ruff format .

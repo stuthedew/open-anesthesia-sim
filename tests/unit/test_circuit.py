@@ -148,7 +148,7 @@ def test_rejects_invalid_vaporizer_maximum(max_delivered_partial_pressure_fracti
     with pytest.raises(SimulationConfigurationError):
         BreathingCircuit(
             delivered_partial_pressure_fraction=0.0,
-            max_delivered_partial_pressure_fraction=(max_delivered_partial_pressure_fraction),
+            max_delivered_partial_pressure_fraction=max_delivered_partial_pressure_fraction,
         )
 
 
