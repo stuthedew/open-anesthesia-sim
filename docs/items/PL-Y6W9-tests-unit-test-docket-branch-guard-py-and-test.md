@@ -1,8 +1,13 @@
 ---
 id: PL-Y6W9
 title: tests/unit/test_docket_branch_guard.py and test_docket_digest_hook.py run the hooks under PATH=/usr/bin:/bin:/usr/local/bin, so on macOS bin/docket runs under the 3.9.6 system python3, fails on datetime.UTC, and eight tests are red on the owner's own machine while green in CI
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, test
+touches: tests/unit/test_docket_branch_guard.py, tests/unit/test_docket_digest_hook.py
 added: 2026-09-14
+verify: uv run pytest tests/unit/test_docket_branch_guard.py tests/unit/test_docket_digest_hook.py && grep -q 'def test_the_hook_runs_under_the_interpreter_running_this_suite' tests/unit/test_docket_branch_guard.py && grep -q 'def test_the_hook_runs_under_the_interpreter_running_this_suite' tests/unit/test_docket_digest_hook.py
 ---
 
 **Problem.** tests/unit/test_docket_branch_guard.py and test_docket_digest_hook.py run the hooks under PATH=/usr/bin:/bin:/usr/local/bin, so on macOS bin/docket runs under the 3.9.6 system python3, fails on datetime.UTC, and eight tests are red on the owner's own machine while green in CI
