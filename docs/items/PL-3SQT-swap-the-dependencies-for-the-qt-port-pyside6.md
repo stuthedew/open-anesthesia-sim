@@ -87,3 +87,14 @@ relink, conveying the LGPL text) attach when a binary is *conveyed*, and this
 project ships none, `uv` installing from PyPI per user. Record that reading
 in `docs/ARCHITECTURE.md` when the dependency lands, so the day a bundled
 build is proposed the obligation is already written down.
+
+**The additive half landed with `PL-G59B`** (2026-09-14), on this item's own
+rider: `PySide6-Essentials>=6.9,<7.0` and `pyqtgraph>=0.13.7,<0.15` are
+declared in `pyproject.toml` and locked (pyside6-essentials 6.11.2, pyqtgraph
+0.14.0, shiboken6 6.11.2, numpy 2.5.3 as pyqtgraph's own dependency), `flet`
+and `flet-charts` left in place for `PL-7SVX`, and a mypy override for the
+stubless pyqtgraph added beside the one for `flet_charts`. **numpy is
+deliberately not declared** - nothing under `src/` imports it, and declaring
+it before the re-argument this item owes would settle that question by
+accident. What is left here is the subtractive half, which waits on `PL-7SVX`,
+and the numpy argument, which does not.

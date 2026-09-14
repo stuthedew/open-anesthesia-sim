@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: feature, ux
 feature: qt-port
-touches: src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, tests/integration
+touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_chart_frame.py, tests/integration/test_qt_chart.py, tests/conftest.py, pyproject.toml, uv.lock, .github/workflows/quality.yml, docs/ARCHITECTURE.md, docs/MODEL.md
 added: 2026-09-10
 verify: uv run python tools/import_boundary_check.py && grep -rq 'pyqtgraph' src/anesthesia_sim/app/
 ---
