@@ -307,8 +307,27 @@ def test_a_gate_shipping_as_another_version_is_not_called_the_current_step() -> 
     (pick,) = recommend([_item("PL-1111")], scope=scope, limit=1)
 
     assert f"On the debt gate recorded under {STEP}" in pick.reason
-    assert "v0.3.0 — the foundation clears it" in pick.reason
+    assert "the project stands on v0.3.0 — the foundation" in pick.reason
     assert "the step the project is on" not in pick.reason
+
+
+def test_the_gate_reason_says_which_step_is_current_not_which_clears_the_gate() -> None:
+    """`PL-TNB6`: the clause read "v0.4.x — the code is the model clears it" of
+    a whole frozen gate. `ROADMAP.md`'s timeline makes the gate a row of its
+    own after the patch track, and "The cadence" has cleared gate work ship
+    inside the milestone that recorded it - so the line contradicted the plan
+    on the one question the cadence exists to settle, in the command every
+    session opens with. The row the project stands on is still worth naming;
+    what it may not do is claim to clear anything."""
+    scope = _scope(current=("PL-1111",), step_label="v0.4.x — the code is the model", clearing=True)
+
+    (pick,) = recommend([_item("PL-1111")], scope=scope, limit=1)
+
+    assert "clears it" not in pick.reason
+    assert f"recorded under {STEP}, which clears before that milestone is implemented" in (
+        pick.reason
+    )
+    assert "the project stands on v0.4.x — the code is the model" in pick.reason
 
 
 def test_a_milestone_clearing_its_own_gate_still_reads_as_the_current_step() -> None:

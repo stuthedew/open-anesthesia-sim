@@ -672,7 +672,8 @@ def test_next_leads_with_what_the_current_step_names(
     # fixture puts the gate under v0.4.0 and the step on v0.3.0, and calling
     # the first the second is what PL-1J0P fixed.
     assert "On the debt gate recorded under v0.4.0 — the teachable case" in out
-    assert "v0.3.0 — the foundation clears it" in out
+    assert "the project stands on v0.3.0 — the foundation" in out
+    assert "clears it" not in out
     assert "the step the project is on" not in out
 
 

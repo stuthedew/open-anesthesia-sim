@@ -449,9 +449,22 @@ def recommend(
             # on" of either told every session the project was on a release it
             # had not reached.
             if scope.clearing and scope.step_label:
+                # Which row is current, and never which row clears the gate.
+                # The two labels differ here, and the shorter sentence naming
+                # one as clearing the other was read as the plan's own answer:
+                # `ROADMAP.md`'s timeline makes the gate a row of its own, and
+                # "The cadence" has cleared gate work ship inside the milestone
+                # that recorded it rather than in the patch track beneath it -
+                # so "v0.4.x - the code is the model clears it" told every
+                # session a patch may carry the gate, on the one question the
+                # cadence exists to settle (`PL-TNB6`). `Scope` carries no row
+                # for the gate itself, so the honest line says where the
+                # project stands and leaves the clearing to the milestone the
+                # gate is recorded under, which the first clause already names.
                 reason = (
-                    f"On the debt gate recorded under {scope.anchor}; "
-                    f"{scope.step_label} clears it. {reason}"
+                    f"On the debt gate recorded under {scope.anchor}, which clears before "
+                    f"that milestone is implemented; the project stands on "
+                    f"{scope.step_label}. {reason}"
                 )
             elif scope.clearing:
                 reason = f"On {scope.anchor}'s frozen list, the step the project is on. {reason}"

@@ -1395,15 +1395,22 @@ def format_wave(plan: Wave) -> str:
         ids = _plural(len(gate.ids), "id", "ids")
         lines.append(f'Gate      recorded under "{gate.milestone.title}" ({entries}, {ids})')
         counted = f"{len(gate.cleared)} cleared, {len(gate.outstanding)} open"
+        # The three sets are disjoint by construction, so the split adds back up
+        # to the open count and a reader can check it without being told to.
+        aside = []
+        if gate.self_cleared:
+            aside.append(f"{len(gate.self_cleared)} the milestone clears itself")
         if gate.blocked_outside:
-            counted += (
-                f" - {len(gate.clearable)} this gate can clear, "
-                f"{len(gate.blocked_outside)} waiting on work outside it"
-            )
+            aside.append(f"{len(gate.blocked_outside)} waiting on work outside it")
+        if aside:
+            counted += f" - {len(gate.clearable)} this gate can clear, " + ", ".join(aside)
         lines.append(f"          {counted}")
         if gate.clearable:
             open_ids = [identifier for entry in gate.clearable for identifier in entry.ids]
             lines.append(f"          {', '.join(open_ids)}")
+        if gate.self_cleared:
+            own = [identifier for entry in gate.self_cleared for identifier in entry.ids]
+            lines.append(f"          cleared by the milestone itself: {', '.join(own)}")
         if gate.blocked_outside:
             held = [identifier for entry in gate.blocked_outside for identifier in entry.ids]
             lines.append(f"          blocked outside the gate: {', '.join(held)}")
@@ -1475,9 +1482,13 @@ def _beat_line(plan: Wave) -> str:
     if plan.beat == CLEAR and plan.gate is not None:
         remaining = _plural(len(plan.gate.clearable), "entry", "entries")
         line = f"clear the gate - {remaining} of {len(plan.gate.entries)} still open"
-        held = len(plan.gate.blocked_outside)
-        if held:
-            line += f" here, {held} more blocked outside it"
+        aside = []
+        if plan.gate.self_cleared:
+            aside.append(f"{len(plan.gate.self_cleared)} the milestone clears itself")
+        if plan.gate.blocked_outside:
+            aside.append(f"{len(plan.gate.blocked_outside)} blocked outside it")
+        if aside:
+            line += " here, " + ", ".join(aside)
         return line
     if plan.beat == RELEASE:
         # Three arrangements reach this beat and they are released for
