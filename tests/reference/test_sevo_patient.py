@@ -132,7 +132,7 @@ def _build_system_with_blood_gas_coefficient(
         ),
         alveoli=AlveolarCompartment(
             gas_volume_l=patient_parameters.alveolar_gas_volume_l,
-            alveolar_ventilation_l_min=(patient_parameters.default_alveolar_ventilation_l_min),
+            alveolar_ventilation_l_min=patient_parameters.default_alveolar_ventilation_l_min,
         ),
         patient=PatientCompartments.from_parameters(agent=agent, patient=patient_parameters),
     )

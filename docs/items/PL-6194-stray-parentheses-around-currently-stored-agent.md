@@ -3,10 +3,11 @@ id: PL-6194
 title: 46 redundant parentheses around bare keyword-argument values across src/, from the initial build
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
-touches: src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py
+touches: src/anesthesia_sim/core/agent_simulation_validation.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/patient.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, tests/integration/test_controller.py, tests/reference/test_multi_agent.py, tests/reference/test_published_wash_in_and_elimination.py, tests/reference/test_sevo_patient.py, tests/unit/test_circuit.py, tests/unit/test_formatting.py, tests/unit/test_simulation_view.py, tests/unit/test_uptake_system_failure.py
 added: 2026-09-03
+closed: 2026-09-14
 verify: uv run pytest tests/unit/test_uptake_system_failure.py tests/unit/test_simulation_view.py && ! grep -rEq '^ +[a-z_]+=[(][a-zA-Z_][a-zA-Z0-9_.]*[)],?$' src/ --include=*.py
 ---
 
@@ -84,3 +85,42 @@ size; sweeping now means sweeping twice. Do it last in the v0.4.1 sequence, or
 fold it into the `PL-9SH6` rename only if that item's "this is a rename and
 nothing else" rule can be squared with it - which it probably cannot, so
 separately and after.
+
+## Swept 2026-09-14, and proved rather than tested
+
+**50 occurrences across 15 files**, and every file's `ast.dump` is byte-identical
+before and after. That is the verification this change is entitled to:
+parentheses around a single expression leave no trace in the AST, so a correct
+sweep *cannot* change the dump, and an incorrect one cannot avoid changing it.
+The sweep asserted the equality per file before writing, so a file whose AST
+moved would have been left untouched and named. None was. `make check` is green
+on top of that, but it is the weaker of the two statements.
+
+**The table was re-measured first, as the v0.4.1 note required, and it had
+moved in both directions:**
+
+| File | 2026-09-03 | 2026-09-14 |
+| --- | --- | --- |
+| `src/anesthesia_sim/core/uptake_system.py` | 8 | 12 |
+| `src/anesthesia_sim/app/controller.py` | 16 | 6 |
+| `src/anesthesia_sim/core/patient.py` | 8 | 7 |
+| `src/anesthesia_sim/app/simulation_view.py` | 5 | 7 |
+| `src/anesthesia_sim/core/agent_simulation_validation.py` | 1 | 1 |
+| `src/anesthesia_sim/core/circuit.py` | 1 | 1 |
+| `src/anesthesia_sim/core/parameters.py` | 1 | 1 |
+| **`src/` total** | **40** | **35** |
+| **`tests/` total** | **6** | **15** |
+
+Sweeping last in the sequence was the right call: `PL-GS5X` and `PL-9SH6` moved
+five of these out of `src/` on their own, and `controller.py` fell by ten.
+
+**One finding, filed as `PL-YNYK` rather than acted on here.** This brief
+rejected a `tools/` check on the prediction that it "would fire once, on this
+sweep, and then never again unless somebody typed a new one", and recorded that
+so the question would not be re-opened each time the item surfaced. The
+re-measurement is not a re-opening on the same grounds — it is the number that
+prediction implied, and it disagrees with it: `tests/` went from 6 to 15 over
+the eleven days the item sat open, so somebody typed nine new ones in that
+window. Whether nine in eleven days clears `CLAUDE.md`'s "will it genuinely run
+again" gate is a judgment, and it is the owner's; what has changed is that it
+is no longer answerable by the premise written here.

@@ -488,7 +488,7 @@ def test_the_mac_awake_band_is_the_stored_fraction_scaled_by_the_stored_mac() ->
 
         lower, upper = mac_awake_band_percent(
             fraction_of_mac=mac_awake.fraction_of_mac,
-            standard_deviation_fraction_of_mac=(mac_awake.standard_deviation_fraction_of_mac),
+            standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
             mac_percent=agent.mac_percent,
         )
 
@@ -521,7 +521,7 @@ def test_the_mac_awake_band_uses_the_fraction_rather_than_a_published_percent() 
 
     lower, upper = mac_awake_band_percent(
         fraction_of_mac=mac_awake.fraction_of_mac,
-        standard_deviation_fraction_of_mac=(mac_awake.standard_deviation_fraction_of_mac),
+        standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
         mac_percent=desflurane.mac_percent,
     )
     centre = (lower + upper) / 2.0
@@ -594,12 +594,12 @@ def test_format_mac_awake_reference_names_both_free_parameters() -> None:
         rendered = format_mac_awake_reference(
             agent.display_name,
             fraction_of_mac=mac_awake.fraction_of_mac,
-            standard_deviation_fraction_of_mac=(mac_awake.standard_deviation_fraction_of_mac),
+            standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
             mac_percent=agent.mac_percent,
         )
         lower, upper = mac_awake_band_percent(
             fraction_of_mac=mac_awake.fraction_of_mac,
-            standard_deviation_fraction_of_mac=(mac_awake.standard_deviation_fraction_of_mac),
+            standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
             mac_percent=agent.mac_percent,
         )
 

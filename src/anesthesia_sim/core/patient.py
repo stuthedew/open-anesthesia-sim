@@ -68,11 +68,11 @@ class PatientCompartments:
         blood_gas = agent.blood_gas_partition_coefficient
 
         return cls(
-            cardiac_output_l_min=(patient.default_cardiac_output_l_min),
+            cardiac_output_l_min=patient.default_cardiac_output_l_min,
             vessel_rich=TissueGroup(
                 name="vessel_rich",
                 volume_l=patient.vessel_rich_volume_l,
-                perfusion_fraction=(patient.vessel_rich_perfusion_fraction),
+                perfusion_fraction=patient.vessel_rich_perfusion_fraction,
                 blood_gas_partition_coefficient=blood_gas,
                 tissue_gas_partition_coefficient=(
                     agent.vessel_rich_tissue_gas_partition_coefficient
@@ -81,21 +81,21 @@ class PatientCompartments:
             muscle=TissueGroup(
                 name="muscle",
                 volume_l=patient.muscle_volume_l,
-                perfusion_fraction=(patient.muscle_perfusion_fraction),
+                perfusion_fraction=patient.muscle_perfusion_fraction,
                 blood_gas_partition_coefficient=blood_gas,
-                tissue_gas_partition_coefficient=(agent.muscle_tissue_gas_partition_coefficient),
+                tissue_gas_partition_coefficient=agent.muscle_tissue_gas_partition_coefficient,
             ),
             fat=TissueGroup(
                 name="fat",
                 volume_l=patient.fat_volume_l,
-                perfusion_fraction=(patient.fat_perfusion_fraction),
+                perfusion_fraction=patient.fat_perfusion_fraction,
                 blood_gas_partition_coefficient=blood_gas,
-                tissue_gas_partition_coefficient=(agent.fat_tissue_gas_partition_coefficient),
+                tissue_gas_partition_coefficient=agent.fat_tissue_gas_partition_coefficient,
             ),
             venous_blood=VenousBloodCompartment(
                 volume_l=patient.venous_pool_volume_l,
                 blood_gas_partition_coefficient=blood_gas,
-                blood_flow_l_min=(patient.default_cardiac_output_l_min),
+                blood_flow_l_min=patient.default_cardiac_output_l_min,
             ),
         )
 
