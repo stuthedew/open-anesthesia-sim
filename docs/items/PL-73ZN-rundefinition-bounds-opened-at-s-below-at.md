@@ -1,9 +1,16 @@
 ---
 id: PL-73ZN
 title: RunDefinition bounds opened_at_s below at induction but not above, so a definition may declare an opening past the 24 h envelope the model is claimed over
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
+feature: numerical-domain
+touches: src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py
 added: 2026-09-14
+verify: uv run pytest tests/unit/test_run_definition.py && grep -q 'def test_opening_past_the_supported_envelope_is_refused' tests/unit/test_run_definition.py
 ---
+
 
 **Problem.** RunDefinition bounds opened_at_s below at induction but not above, so a definition may declare an opening past the 24 h envelope the model is claimed over
 
@@ -37,3 +44,27 @@ Related: `PL-3LZB` was the same shape - a latent guard in this class that
 nothing could reach - and it was worth landing because `PL-ZMRT` was about to
 make it reachable. Nothing here is about to make this one reachable, so the
 docstring answer is the likelier right one.
+
+**Verified 2026-09-14.** `core/run_definition.py:262-267` checks `opened_at_s`
+for finiteness and for `>= 0.0` - "a run opens at or after induction" - and
+there is no upper bound. So a definition may declare an opening at any finite
+instant, including one past the 24 h envelope the model is claimed over.
+
+**Why it matters.** `CLAUDE.md`'s safety-critical standard asks for model
+applicability to be validated *before* calculation rather than after, and this
+is the boundary where a run's domain is declared. The declared opening is also
+what a branch inherits, so an out-of-envelope instant does not stay in one
+object: it becomes the origin of every instant the branch reports.
+
+**Why not `safety`, stated rather than assumed.** Nothing downstream computes
+from an out-of-envelope opening without refusing: the run-length guard fires on
+the advancing path before any state is produced, so the failure mode is a late
+error rather than a plausible wrong number. `CLAUDE.md` prefers an obvious
+failure to a plausible-looking value, and the code already fails obviously - it
+just fails later than the standard asks. `PL-BMY5` is the same shape one level
+down, on `SimulationState`, and the two are worth doing together.
+
+**Done when.** `RunDefinition.open` refuses an `opened_at_s` beyond the supported
+run length with a message naming the envelope and the value, the bound is read
+from `core/supported_ranges.py` rather than restated, and
+`tests/unit/test_run_definition.py` covers both edges.

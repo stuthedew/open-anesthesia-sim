@@ -1,10 +1,16 @@
 ---
 id: PL-VFD8
 title: The reserved-version guard cannot see a milestone that has a timeline row but no section yet, so the digest will offer v0.6.0 the moment v0.5.x is behind it
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
 feature: release-roadmap-seam
+touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/roadmap.py, tests/unit/test_docket_digest_hook.py
 added: 2026-09-14
+verify: uv run pytest tests/unit/test_docket_digest_hook.py && grep -q 'def test_a_timeline_row_with_no_section_reserves_its_version' tests/unit/test_docket_digest_hook.py
 ---
+
 
 **Problem.** The reserved-version guard cannot see a milestone that has a timeline row but no section yet, so the digest will offer v0.6.0 the moment v0.5.x is behind it
 
@@ -65,3 +71,25 @@ construction; the release beat returns before the comparison, so the version a
 release is actually due at is still offered. Measured on the live roadmap the
 day this was filed, the addition changes no answer: from 0.4.24 the bump can
 only arrive at 0.5.0, which the beat's milestone already holds.
+
+**Why it matters.** The guard exists so a session is never offered a version
+the roadmap has already promised to an unfinished milestone - the failure
+`PL-6T4L` caught, where the digest would have stamped `milestone: 0.5.0` onto
+four items and tagged a branching release with no branching in it. A milestone
+that has a timeline row but no section yet is exactly the state every milestone
+passes through between being placed and being scoped, so the blind spot is not
+an edge case; it is the window in which the next version is most likely to be
+reached. `PL-FWJF` is the same structural gap seen from the `wave` side - a
+`-` row carrying real intent that the readers skip.
+
+**Done when.** A version named by a timeline row is reserved whether or not a
+section for it exists yet, so a digest between v0.5.x and v0.6.0 declines to
+offer v0.6.0 and says which row holds it. `tests/unit/` covers a row with no
+section.
+
+**`PL-188T` is this defect by a third door** (filed 2026-09-14 by the
+pre-port survey, and it says so itself): once `v0.4.25` was cut and the port's
+section moved to `v0.4.26`, `wave` binds `step = v0.4.x` and
+`milestone = v0.5.0`, so a simulated `release_offer` on a `0.4.26` bump returns
+`stands` and a patch cut mid-port is offered the port's own number. Its
+`Done when` is this item's verbatim. Close both together.
