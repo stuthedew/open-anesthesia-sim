@@ -689,15 +689,16 @@ become unparseable by the interpreter that runs it.
 `tests/unit/test_tools_portability.py` covers both directories by path rather
 than by filename, so the guard follows the next hook without being extended.
 
-Six of them are nonetheless *invoked* under `uv run python`, and the
+Seven of them are nonetheless *invoked* under `uv run python`, and the
 distinction is worth keeping straight, because it is about what a tool reads
 rather than what it needs. `ignore_check.py` is the odd one and the only one
-of the six with a reason of its own: it shells out to mypy, so it wants the
+of the seven with a reason of its own: it shells out to mypy, so it wants the
 virtualenv that gate runs in.
 
-The other five are one reason repeated. `import_boundary_check.py`,
-`contrast_check.py`, `agent_identity_check.py`, `workflow_paths_check.py` and
-`core_vocabulary_check.py` each parse repository source with `ast`, and that
+The other six are one reason repeated. `import_boundary_check.py`,
+`contrast_check.py`, `agent_identity_check.py`, `workflow_paths_check.py`,
+`core_vocabulary_check.py` and `glyph_check.py` each parse repository source
+with `ast`, and that
 source targets 3.14: `app/chart_series.py` declares `type PlottedSeries = ...`,
 a PEP 695 statement added in 3.12 and so a `SyntaxError` to the 3.11 parser,
 and `ast.parse`'s `feature_version` only narrows the syntax it accepts rather
@@ -711,7 +712,7 @@ being absent from the CI floor section.
 tool's own docstring. It ran bare until `PL-L17Q`, green only because the two
 files it reads happened to carry no 3.12+ syntax, so one PEP 695 generic added
 to either would have failed the floor section on a tool nobody had touched. The
-rule the five are an instance of is stated in
+rule the six are an instance of is stated in
 `tests/unit/test_tools_portability.py`'s module docstring, and a tool joining
 them belongs on the `uv run python` lines in both `Makefile` and
 `.github/workflows/quality.yml`, never in that workflow's floor section.
