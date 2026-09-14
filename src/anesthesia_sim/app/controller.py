@@ -735,7 +735,29 @@ class SimulationController:
         § "Agent-change behavior" states what the interface owes a user
         first, and `SimulationSnapshot.has_recorded_run` is what tells it
         whether this call would cost anything.
+
+        **A branch refuses it** (`PL-TFX5`). A branch inherits its parent's
+        agent rather than re-choosing it, because changing agent is already an
+        explicit new case and a branch that could change it would be a second
+        case wearing a comparison's clothes. Without the refusal the
+        conversion is silent and total: `_build_state` clears `opened_from`, so
+        the run stops being a branch, `reset()` stops returning it to its fork,
+        `resumed_at` starts accepting it as a trunk - a branch of a branch by
+        the back door - and a `BranchedCase` goes on listing it among branches
+        of a case it is no longer part of. Every one of those is a mode change
+        with nothing on screen saying so. A learner who wants a different agent
+        starts a new case, which is what `PL-R3KB` made that gesture mean.
+
+        Raises:
+            SimulationConfigurationError: This run is a branch.
         """
+
+        if self._opened_from is not None:
+            raise SimulationConfigurationError(
+                f"this run is a branch opened at {self._opened_from.elapsed_s} s, and a branch "
+                "carries the agent of the case it continues; changing agent begins a new case, "
+                "so change it on the run this branch came from or start a new one"
+            )
 
         self.pause()
         current = self.snapshot()

@@ -1987,19 +1987,62 @@ def test_a_case_refuses_a_fork_at_an_instant_the_trunk_holds_no_keyframe_for() -
     assert case.branches == ()
 
 
-def test_a_case_s_branches_carry_the_trunk_s_agent_and_patient() -> None:
-    """`PL-TFX5`'s last clause: a branch that could change either is a second case."""
+def test_a_case_s_branches_carry_the_trunk_s_agent_and_patient_at_the_fork() -> None:
+    """`PL-TFX5`'s last clause, against a patient value that moves during the run.
+
+    Cardiac output is the one patient quantity a control can move, so it is
+    the only one that distinguishes "the branch carries its parent's patient"
+    from "the branch rebuilds the same reference patient from the same data
+    file". A run that never moves it asserts the second while reading like the
+    first, because `_setting_at` then falls through to the value in force now.
+    So this moves it mid-run and forks *before* the move: the branch must carry
+    the value the case was computed under at the fork, which is no longer the
+    value the trunk is standing at.
+    """
 
     trunk = SimulationController(agent_id="isoflurane", cardiac_output_l_min=4.2)
-    _run_with_two_changes(trunk)
+    trunk.start()
+    _advance_for(trunk, duration_s=30.0)
+    trunk.set_cardiac_output(6.5)
+    _advance_for(trunk, duration_s=30.0)
     trunk.pause()
 
     case = BranchedCase(trunk)
-    at_trunk = trunk.snapshot()
+    before_s, after_s = case.fork_points_s
 
-    for elapsed_s in case.fork_points_s:
-        at_fork = case.fork_at(elapsed_s).snapshot()
+    assert trunk.snapshot().cardiac_output_l_min == 6.5
 
-        assert at_fork.agent_id == at_trunk.agent_id
-        assert at_fork.cardiac_output_l_min == at_trunk.cardiac_output_l_min
-        assert at_fork.circuit_volume_l == at_trunk.circuit_volume_l
+    at_earlier_fork = case.fork_at(before_s).snapshot()
+    at_later_fork = case.fork_at(after_s).snapshot()
+
+    assert at_earlier_fork.cardiac_output_l_min == 4.2
+    assert at_later_fork.cardiac_output_l_min == 6.5
+
+    for at_fork in (at_earlier_fork, at_later_fork):
+        assert at_fork.agent_id == "isoflurane"
+        assert at_fork.circuit_volume_l == trunk.snapshot().circuit_volume_l
+
+
+def test_a_branch_cannot_change_its_agent_out_from_under_the_case() -> None:
+    """`PL-TFX5`: a branch that could re-choose its agent is a second case.
+
+    `set_agent` begins a new run, and `_build_state` clears `opened_from` with
+    everything else - so without this refusal a branch becomes a trunk in
+    silence, `reset()` stops returning it to its fork, `resumed_at` accepts it,
+    and the case it was taken from goes on listing it. The trunk is unaffected:
+    changing the case's agent is still the explicit new case it always was.
+    """
+
+    trunk = _trunk_with_two_changes()
+    case = BranchedCase(trunk)
+    branch = case.fork_at(case.fork_points_s[-1])
+
+    with pytest.raises(SimulationConfigurationError, match="carries the agent of the case"):
+        branch.set_agent("desflurane")
+
+    assert branch.snapshot().agent_id == trunk.snapshot().agent_id
+    assert branch.opened_from is not None
+
+    trunk.set_agent("desflurane")
+
+    assert trunk.snapshot().agent_id == "desflurane"

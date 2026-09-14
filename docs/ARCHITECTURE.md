@@ -288,6 +288,89 @@ own dimensionless unit, through one shared point-writing primitive. Stepping and
 so simulation time stays a function of steps taken rather than of how long a
 frame took.
 
+## What a branch is, and what it shares with its parent
+
+A **branch** is a second live run of the same case, opened at a state the
+first run passed through. The run it was taken from is the **trunk**. One
+trunk with N branches is the whole of the structure — sub-forks of forks are
+excluded rather than unimplemented (project owner, 2026-08-25): they multiply
+without bound and buy little over branching from the trunk again.
+
+Three objects carry it, in `app/controller.py`:
+
+- `SimulationController.resumed_at(elapsed_s)` makes one. It builds a second
+  controller through the ordinary constructor, replays the trunk's settings
+  from the recorded control timeline into it, seeds its system with the
+  trunk's canonical state at `elapsed_s`, and hands it back paused. The trunk
+  is read and never written, so the two runs share no compartment, no
+  accounting and no clock — which is what lets both be advanced.
+- `ResumePoint` is where the branch came from: the trunk stretch it opened
+  inside, the case's step count there, the step it was taken at, and the
+  agent its accounting period started from. `opened_from` is `None` on a
+  trunk and this on a branch, so every run knows which it is.
+- `BranchedCase` holds a trunk and the branches taken from it. It is what
+  makes two controllers one case rather than two unrelated sessions, and it
+  is where the flat shape stops being a refusal: the trunk is the only run it
+  will fork, so a sub-fork is not an operation it can express. `resumed_at`
+  keeps its own refusal for the caller that holds a branch directly.
+
+**What a branch inherits, and why each is not re-chosen.** The agent and the
+patient, because changing either makes it a second case rather than a second
+management of this one — `set_agent` already starts a new run for that reason.
+The circuit volume, applied before any state is, because
+`BreathingCircuit.set_circuit_volume` conserves agent by rewriting the inspired
+fraction and a volume set afterwards would move the branch off the state it
+opened at. The four live controls, replayed from the recorded timeline in the
+units the compartments hold, and then checked against the settings the trunk's
+own stretch carries rather than trusted. What it does not inherit is the
+trunk's control timeline, which starts empty: the branch's record is of what
+the learner does to *it*.
+
+**The clock is the case's; the run definition's is its own.** A branch
+continues the case's step count, because a branch is one patient's case under a
+second management and uptake is a function of time since induction — so the 24 h
+supported run length is spent from where the case actually is, and the readouts,
+the control stamps and the chart axis all read one quantity. The branch's
+`RunDefinition`, by contrast, opens at its own zero, and `origin_s` is the
+difference: zero on a trunk, the fork instant on a branch, subtracted by
+`advance` and `drawn_window` rather than named by any caller.
+`SimulationController.run_segments` is the one reader that hands out the
+definition's own instants; everything else this class exposes is already the
+case's.
+
+**Where a branch may be taken.** At any keyframe the trunk holds —
+`BranchedCase.fork_points_s` — which is its opening at induction and every
+setting change the model was actually stepped under. Anywhere else is refused
+rather than approximated, and the reason is arithmetic rather than caution:
+restarting from the canonical state at an instant with no keyframe replaces one
+propagation over an interval with two over its halves, so the branch and the
+trunk answer the same later instant differently. Measured 2026-09-14 on a
+sevoflurane run of two setting changes forked at 655.3 s, that disagreement
+reaches 8.1e-13 across the state at one hour — invisible against the 1e-4 a
+two-decimal percent readout resolves, and still a divergence nobody declared on
+the chart the release exists for.
+
+A **bookmark is not yet one of those instants**, and what it will take is
+recorded here because it is arithmetic rather than preference. Bookmarks are
+`PL-LPLD` and the halt that stops a run on the step crossing one is `PL-CTD7`;
+neither is built. A bookmark's instant is not in general a setting change, so
+nothing gives the trunk a keyframe there, and `resumed_at` refuses it like any
+other. The cheap way to earn one is at the halt: a halt leaves the run
+standing at that instant with nothing computed past it, so a keyframe recorded
+there moves no value the run has already produced, and a branch from it then
+reproduces the trunk element-wise rather than within a tolerance. Recorded
+*retroactively*, at an instant the run has already passed, the same split moves
+the trunk's own later answers by that same 8.1e-13 — which is why the halt is
+where it belongs rather than the fork. `PL-CTD7` is where that would be built
+and where the arithmetic above is measured; nothing in the tree records a
+keyframe at a halt today. `docs/MODEL.md` § "The canonical evaluation rule" is
+the guarantee both halves rest on.
+
+What a comparison between two branches *asserts* — what a difference between
+them may be attributed to, and that neither is a prediction for a patient — is
+not here. It belongs with the model rather than with the code, and
+`docs/MODEL.md` is where it is stated.
+
 ## Data files (`data/`)
 
 Each JSON file carries a `schema_version`, an `id`, the parameter values, and
