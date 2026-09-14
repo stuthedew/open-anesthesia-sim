@@ -4,12 +4,13 @@ title: The drawn chart's worst error moved from the control change to the steep 
 priority: P1
 effort: M
 status: done
-closed: 2026-09-14
 classes: defect, safety
 feature: teachable-case
 touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, tests/unit/test_chart_frame.py, tests/unit/test_run_definition.py, tests/integration/test_qt_chart.py, docs/MODEL.md, docs/ARCHITECTURE.md
-verify: uv run pytest tests/unit/test_chart_frame.py && grep -q 'def test_no_chord_is_wider_than_one_pixel_of_time' tests/unit/test_chart_frame.py
 added: 2026-09-08
+closed: 2026-09-14
+pr: 583
+verify: uv run pytest tests/unit/test_chart_frame.py && grep -q 'def test_no_chord_is_wider_than_one_pixel_of_time' tests/unit/test_chart_frame.py
 ---
 
 > **This ships with the Qt port, not before it.** The project owner decided
