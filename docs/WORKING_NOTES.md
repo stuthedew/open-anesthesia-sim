@@ -671,6 +671,19 @@ polish and does not wait for it (`PL-2CS8` consolidates the display constants,
 round was authorised, so the paragraph below still governs the mockups
 themselves: they are a record of what was tried, not a starting point.
 
+**The component seam landed on 2026-09-14.** `PL-B9PY` (decompose
+`SimulationView` so two runs can be rendered at once) split the class in two:
+`RunView` holds one run - its controller, readouts, four settings, transport,
+notices and the lines it draws - and `SimulationView` holds what two runs
+share, the two charts, their axes, the window both are drawn in, the time base
+and the compartment selection. That is the seam the interface pass would
+restructure against, and it is the shape `PL-25KS` (port the dashboard to
+PySide6) is to be built to from the start rather than ported into. Of the
+three named above, `PL-2CS8` (consolidate the scattered display constants)
+closed in `v0.4.11`; `PL-NGF7` (`contrast_check.py` can see no disabled-state
+colour) is deferred to `v0.5.1`, which dissolves it rather than fixing it, and
+its expected disposition is `dropped`.
+
 One correction the resumption is worth recording. The assessment below is of
 "the current v0.1.0 interface", and it was accurate then; ten interface-changing
 releases later it is a statement about a baseline rather than about today, and

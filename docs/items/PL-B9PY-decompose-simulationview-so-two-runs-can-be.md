@@ -3,12 +3,13 @@ id: PL-B9PY
 title: Decompose SimulationView so two runs can be rendered at once
 priority: P2
 effort: M
-status: ready
+status: done
 classes: refactor
 feature: scenario-branching
-touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/main.py, tests/unit/test_simulation_view.py, tests/integration/test_chart_patching.py, docs/ARCHITECTURE.md, docs/WORKING_NOTES.md
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_two_run_views_drive_two_controllers' tests/unit/test_simulation_view.py
 added: 2026-09-02
+closed: 2026-09-14
 ---
 
 > **This ships in v0.5.0, on Flet, and is rewritten by the Qt port after it.**
@@ -110,3 +111,53 @@ for `PL-WB0X`, and all 192 of them pass today.
 the instance `PL-4C41` (a brief can contradict itself about its own sequencing)
 was filed against. One item cannot sit in two milestones, so the split is what
 makes the approved placement representable.
+
+**Built 2026-09-14, and the shape is the brief's.** `RunView` holds one run -
+its controller, its readouts, its four settings, its transport, its agent
+identity, its record of what was changed during it, its notices, and the lines
+it draws - and is instantiable more than once. `SimulationView` holds what two
+runs share: the compartment chart and the wash-in chart, their axes, the window
+both are drawn in, the time base that chooses it, the clinical references ruled
+across it, and the compartment selection. It takes a sequence of controllers
+and builds one `RunView` per run. `_CompartmentTrace` became the compartment
+rather than the line, which is the split `PL-HLD5` implies: identity, colour,
+dash pattern, legend entry and visibility are shared, and each run builds its
+own `fch.LineChartData` from them.
+
+**Three refusals were added rather than left to be discovered.** Runs on
+different agents cannot share one ×MAC ruler and one MAC-awake band, so the
+constructor refuses them; `MAX_DISPLAYED_RUNS` holds the milestone's own "never
+more than two runs displayed at once", because at three the encoding that tells
+one run from another has nothing left; and a dashboard with no run is refused,
+having no agent and nothing to rule an axis from.
+
+**Both classes stayed in `simulation_view.py`, deliberately.**
+`tools/contrast_check.py` and `tools/agent_identity_check.py` both hard-code
+that path, and the second matches `_apply_agent_color_scheme` by name inside
+it, so giving the per-run class a module of its own would have left the
+accessibility check reporting a pass over an empty identity set. `PL-V53R` is
+the finding; `PL-BXB2` is its companion for the other tool. The module
+boundary is `PL-25KS`'s to draw, since the port builds the view decomposed from
+the start and creates those modules anyway.
+
+**What this does not do, and `PL-8PSW` does.** Two runs render; nothing yet
+says *which* run a curve belongs to. The run is to be carried on line width
+under a cap of two compartments, and inventing a different encoding here would
+have decided that question in the wrong place. Recorded in `SimulationView`'s
+own docstring so that a reader who constructs two runs today finds out from the
+code rather than from the chart.
+
+**Verified.** The whole suite is green at 2726 tests. `tests/unit/test_simulation_view.py`
+holds 221 of them: the **211 that existed before**, unchanged except for
+reaching the sole run through `view.runs[0]`, which is what holds "no displayed
+value, format or behaviour changes for a single run" - and **ten new ones** for
+what only two runs can show. Those are `test_two_run_views_drive_two_controllers`
+(the one this brief names), `test_each_run_draws_only_its_own_recorded_values`,
+`test_one_compartment_selection_applies_to_every_run`,
+`test_the_two_lines_of_one_compartment_are_drawn_next_to_each_other`,
+`test_the_window_fits_the_longer_of_two_runs`,
+`test_halting_one_run_leaves_the_other_advancing`,
+`test_a_frame_that_cannot_be_drawn_halts_every_run`, and one for each of the
+three refusals above.
+`contrast_check`, `agent_identity_check` and `glyph_check` all still read the
+same module and report what they did before.
