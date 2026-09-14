@@ -21,8 +21,8 @@ the next re-derivation reaches one place.
 
 The displayed resolution is a property of the display alone. Everything
 upstream carries full binary64 - the compartment states, every integration
-step, every `SimulationHistorySample` - and the rounding happens exactly
-once, here.
+step, every state of the `DrawnWindow` the chart is drawn from - and the
+rounding happens exactly once, here.
 
 Two display units, one resolution. A compartment is shown as a percent of
 one atmosphere and as a multiple of the running agent's 1 MAC, which is the

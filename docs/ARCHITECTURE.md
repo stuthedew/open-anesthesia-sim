@@ -147,26 +147,29 @@ a fixed model parameter rather than a control, so the per-parameter setters
 named above are the four the interface offers and no fifth exists.
 `docs/MODEL.md` § "What is not bounded this way" carries the argument. The
 snapshot is the run's state at one instant: a fixed number of values,
-however long the run has been going. The recorded run itself — one
-`SimulationHistorySample` per simulation step, not trimmed — is answered for
-separately, by `history_window()`, which returns the samples at or after a
-time the caller names. The two were one field until PL-0VM7: the snapshot
-carried every sample ever recorded, so a frame's cost grew with the length
-of the run while the chart discarded all but the few hundred inside its
-axis. The snapshot does carry the run's `ControlChange` timeline — one entry
+however long the run has been going. The run itself is answered for
+separately, by `drawn_window(start_s, stop_s, columns)`, which evaluates the
+states at the instants a chart is about to plot across the axis the caller
+names and returns them as a `DrawnWindow`. The two were one field until
+PL-0VM7: the snapshot carried every sample the run had then recorded, so a
+frame's cost grew with the length of the run while the chart discarded all
+but the few hundred inside its axis; PL-2FM6 later removed the record itself.
+The snapshot does carry the run's `ControlChange` timeline — one entry
 per setting the model was actually stepped under, so re-applying the
 timeline reproduces the run rather than approximating it, and a timeline is
 bounded by how often a user touches a control rather than by how long they
 watch.
 
 **A run is its inputs, and its states are derived from them** (PL-T691).
-Beside the recorded history the controller holds a `core/run_definition.py`
+The controller holds the run as a `core/run_definition.py`
 `RunDefinition`: the settings in force at each moment, plus one keyframe — the
-state at that instant — per change. Because the equations are linear and
-time-invariant while the settings hold, the propagator is exact over any
-horizon and not only over a step, so every state the run passed through is
-one propagation from the keyframe bracketing it and none of them has to have
-been recorded. `evaluate_window(start_s, stop_s, columns)` is that read, and
+state at that instant — per change, and nothing else. Because the equations
+are linear and time-invariant while the settings hold, the propagator is exact
+over any horizon and not only over a step, so every state the run passed
+through is one propagation from the keyframe bracketing it and none of them
+has to have been recorded. `RunDefinition.evaluate(start_s, stop_s, columns)`
+and `evaluate_anchored(start_s, stop_s, spacing_s)` are that read — the second
+is the chart's, reached through `SimulationController.drawn_window` — and
 `run_segments` hands the record itself out as frozen segments — readable
 without being advanceable, so nothing above the controller can move the
 run definition's reach past where the run actually got to and have a prediction
@@ -176,20 +179,22 @@ and every state is derived from it" carries the measurements, and § "The
 canonical evaluation rule" states which of the two evaluation paths a stored,
 exported, replayed or branched value may be taken from.
 
-**That boundary is a type rather than a convention.** `evaluate_window` hands
-back `DisplayState` values, which are not state vectors, so a drawn column
-cannot become a keyframe, an exported figure or a branch's opening state by
-being the same nine numbers in the same order; `RunDefinition` refuses one as an
+**That boundary is a type rather than a convention.** `evaluate` and
+`evaluate_anchored` hand back `DisplayState` values, which are not state
+vectors, so a drawn column cannot become a keyframe, an exported figure or a
+branch's opening state by being the same nine numbers in the same order;
+`RunDefinition` refuses one as an
 opening state by name. A layer above the controller therefore cannot cross
 that boundary by forgetting it is there, which is the only way a boundary
 stated in prose is ever crossed.
 
-Both records are live in this release and the chart still draws from the
-recorded one; § "Closed-form agreement test" is what holds them to each
-other while that is true. Which representation the interface reads is not a
-question the layering leaves open — the run definition is the run and the samples are
-a second copy of it — so this is a transition rather than a choice, and
-PL-2FM6 is what finishes it.
+There is one record. Until PL-2FM6 landed in v0.4.12 the controller kept a
+per-step sample history beside the definition and the chart drew from it,
+with `docs/MODEL.md` § "Closed-form agreement test" holding the two to each
+other; that change deleted the history, because the run definition is the run
+and the samples were a second copy of it. What the chart draws now is what
+`drawn_window` evaluates, and nothing exists behind those states to disagree
+with them.
 `app/simulation_view.py` reads only those two — it builds the
 controls, drives the chart, and wires slider/button callbacks through
 `_apply_setting` to controller setters. It performs no physiological or
@@ -227,7 +232,8 @@ reason, as `SimulationSnapshot.agent_mac_awake` beside that divisor, because
 the chart's MAC-awake band is the one multiplied by the other and pairing
 two agents' values would place a correct number at the wrong height. A
 reference is built and moved by `app/chart_series.py` but is deliberately
-not a member of the view's trace-to-compartment table: it reads no sample.
+not a member of the view's trace-to-compartment table: it reads no state
+of the run.
 A control mark is a third kind of series on the same terms and for a
 stronger version of the reason — it draws no value at all, only a simulated
 time — and it is likewise outside that table.
@@ -279,10 +285,12 @@ produced — so the rules that place them are stated in `docs/MODEL.md` § "What
 the chart draws" and tested on their own. Bounding how many points are drawn
 is only half of it: the client is
 patched per point, so what a frame costs is how many drawn points *changed*
-which sample they show. The selection is therefore anchored to absolute
-sample index rather than to position within the window, so appending a
-sample leaves every completed bucket choosing what it already chose
-(PL-Q197). `app/chart_frame.py` is the layer above it — it holds the
+which instant they show. The evaluated instants are therefore anchored to an
+absolute grid measured from the case's zero rather than to position within
+the window, so a window following the run keeps every column it had and
+gains at most one (`RunDefinition.evaluate_anchored`; PL-Q197 established
+the rule over recorded samples and PL-2FM6 carried it over to evaluated
+columns). `app/chart_frame.py` is the layer above it — it holds the
 per-trace column floor and reads the window once per run for every trace,
 and `app/chart_series.py`, for the Flet chart, converts each drawn value into its own axis's unit,
 and moves the points a trace already holds — and it is separate for the same
@@ -927,14 +935,17 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   is not a tidiness matter: a run's panel put on the dashboard would state one
   branch's numbers over both, and a shared control duplicated into each run
   would let a comparison be read under two different settings. Either way,
-  read only what `SimulationSnapshot` already carries and what a recorded
-  sample already records — a `SimulationHistorySample` holds its values per
-  substance, under `RecordedQuantity`'s identifiers, rather than as named
-  fields; if the UI needs a value that doesn't exist yet, add it in
-  `app/controller.py`, computed in `core/`, never computed in the view. A
-  panel wanting the run rather than the instant asks `history_window()` for
-  the span it draws, and never for the whole run: what crosses that boundary
-  has to stay bounded by the display rather than by the run's length.
+  read only what `SimulationSnapshot` already carries and what a
+  `DrawnWindow` already answers — a window holds its states per substance,
+  and a trace addresses one value in them as a `RecordedSeries`, a
+  substance-and-`RecordedQuantity` pair, rather than as a named field; if the
+  UI needs a value that doesn't exist yet, add it in `app/controller.py`,
+  computed in `core/`, never computed in the view. A panel wanting the run
+  rather than the instant asks
+  `SimulationController.drawn_window(start_s, stop_s, columns)` for the span
+  it draws, and never for the whole run: the states come back evaluated for
+  the instants that span plots, so what crosses that boundary is bounded by
+  the display rather than by the run's length.
 - A new way of *rendering* a value a reader interprets — a unit, a decimal
   count, a marker for what the display cannot resolve → `app/formatting.py`,
   as a pure function with its own test, and with the reason recorded in
@@ -951,11 +962,11 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   table with the substance the frame is drawing — the agent its own snapshot
   names, since the run is recorded under that identifier — and
   `RunView._visible_plotted_series` is the subset a frame draws; neither is
-  edited directly. A series that draws no recorded sample — a
+  edited directly. A series that draws no state of the run — a
   clinical reference, a control mark — stays out of that table by
   construction, and owes the labelling requirement `docs/MODEL.md`
-  § "Interface boundary" puts in place of the sample rule instead. So does a
-  trace of a *derived* quantity with a domain, such as the wash-in ratio: the
-  table binds a line to one recorded field, and a value that is sometimes
-  absent has no such field to be bound to. It owes its domain in
+  § "Interface boundary" puts in place of the drawn-point rule instead. So
+  does a trace of a *derived* quantity with a domain, such as the wash-in
+  ratio: the table binds a line to one `RecordedSeries`, and a value that is
+  sometimes absent has no such series to be bound to. It owes its domain in
   `docs/MODEL.md` and at the point of display instead.
