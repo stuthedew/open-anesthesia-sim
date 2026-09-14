@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: core-domain-language
+milestone: v0.4.24
 touches: docs/MODEL.md, tests/unit/test_core_vocabulary_check.py
 added: 2026-09-13
 closed: 2026-09-14

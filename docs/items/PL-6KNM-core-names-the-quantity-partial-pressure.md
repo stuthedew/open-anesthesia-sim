@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: refactor
 feature: core-domain-language
+milestone: v0.4.24
 touches: src/anesthesia_sim/core, src/anesthesia_sim/app, tests, docs/MODEL.md, docs/ARCHITECTURE.md, tools/core_vocabulary_check.py
 added: 2026-09-13
 closed: 2026-09-14

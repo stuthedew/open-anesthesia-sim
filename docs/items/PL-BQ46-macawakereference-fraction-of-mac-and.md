@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: refactor
 feature: core-domain-language
+milestone: v0.4.24
 touches: src/anesthesia_sim/core/concentration.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/app/formatting.py, tests/unit/test_formatting.py
 added: 2026-09-13
 closed: 2026-09-14
