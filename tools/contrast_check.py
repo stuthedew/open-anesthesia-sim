@@ -35,22 +35,26 @@ published reference values in `tests/unit/test_contrast_check.py`: black on
 white is exactly 21:1, `#767676` on white is 4.54:1 (the darkest grey that
 fails nothing at AA), and `#949494` on white is 3.03:1.
 
-**Colors are read, not imported.** `app/simulation_view.py` imports Flet, so a
-standard-library-only tool cannot import it. The constants are extracted with
-`ast`, which also means this runs in a bare checkout with no virtualenv - the
-promise every tool here makes.
+**Colors are read, not imported, from every module under `app/`.** The view
+imports Flet, so a standard-library-only tool cannot import it. The constants
+are extracted with `ast` from every `.py` under `APP` - the theme first, so an
+alias of a theme name resolves, then the rest in path order - which also means
+this runs in a bare checkout with no virtualenv, the promise every tool here
+makes. Every module rather than two named paths since PL-BXB2: a colour
+declared in a module this tool did not read was measured by nothing and missed
+by nothing, and the decomposed Qt view is what would have created such modules.
 
 **Descriptions cite code by symbol, and the citation is checked.** A `why`
 below names where its pair is drawn by putting a symbol in backticks - from
-`app/theme.py`, which holds every color since PL-2CS8, or from
-`app/simulation_view.py`, which holds the methods that draw them. It used to
+`app/theme.py`, which holds every color since PL-2CS8, or from whichever
+module under `app/` holds the method that draws them. It used to
 give line numbers, and every one of them rotted: on 2026-09-05 fourteen cited
 lines were read and not one landed on what its entry claimed - `:682`, cited as
 the run-status word, was a list of chart control marks (PL-GJDW). A wrong
 citation is worse than none, because it looks authoritative and quietly makes
 the check's own coverage unauditable. `check_citations` now refuses a line
-number outright and resolves every cited symbol against the two modules, so the
-form that rotted cannot come back.
+number outright and resolves every cited symbol against every module under
+`app/`, so the form that rotted cannot come back.
 Whether the named symbol is really where that color matters stays a
 person's judgment, exactly as the pair itself does.
 
@@ -70,16 +74,25 @@ this tool against the result: it reported `0 errors` on the ported tree, which
 is the correct answer. Every way of *removing* a declared color is loud:
 renaming `FAT_COLOR` failed with the constant named in `missing`, and moving
 `SimulationView` to its own module - which PL-B9PY records the port doing from
-the start - failed with 68 unresolved citations.
+the start - failed with 68 unresolved citations. That last failure is gone
+since PL-BXB2, correctly: a symbol is resolved against every module under
+`app/`, so a class moving to its own module is a citation that still resolves
+rather than one that has to be re-pointed.
 
-**The one hole is additive, and the port is what opens it.** A color declared
-in a module that is neither `app/theme.py` nor `app/simulation_view.py` is
-measured by nothing and missed by nothing: a new chart-panel module holding a
-selection color at 1.07:1 on the panel passed with `0 errors`.
-`check_colors_live_in_the_theme` does not catch it either, inspecting only the
-view. Nothing exploits this today - no hex constant sits outside those two
-files - so it is latent, and it opens when the decomposed Qt view declares a
-color in a module named here by neither `THEME` nor `VIEW`.
+**The one hole was additive, and PL-BXB2 closed it before the port could open
+it.** A color declared in a module that was neither `app/theme.py` nor
+`app/simulation_view.py` was measured by nothing and missed by nothing: PL-JRS3's
+probe D1 put a selection color at 1.07:1 on the panel in a new chart-panel
+module and this tool reported `0 errors`. Every module under `app/` is read
+now, so that color is measured, and `check_colors_live_in_the_theme` refuses it
+for being outside the theme - as a named constant, or as a hex literal written
+inline in a call, which has no name a requirement could cite and so could never
+be measured at all. The report says how many modules it read, so a decomposed
+view being measured is visible rather than assumed. What remains unread, and is
+stated rather than hidden: a color that is neither a module-level constant nor
+a literal - one computed, or taken from a toolkit's own palette by name - is
+not a value this tool can see, and `tools/agent_identity_check.py` exists for
+the one such case that has bitten.
 """
 
 from __future__ import annotations
@@ -92,11 +105,17 @@ from dataclasses import dataclass
 from itertools import combinations
 from pathlib import Path
 
-THEME = Path("src/anesthesia_sim/app/theme.py")
-VIEW = Path("src/anesthesia_sim/app/simulation_view.py")
+#: Every module under this tree is read; nothing under it is named by path.
+APP = Path("src/anesthesia_sim/app")
+#: The one module colors belong in (PL-2CS8), read first so that a name another
+#: module aliases from it resolves to a color.
+THEME = APP / "theme.py"
+
+#: A six-digit sRGB hex literal, the only form a color takes in this tree.
+HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
 #: How a requirement description cites the code its pair is drawn in: a bare
-#: symbol from one of the two modules above, in backticks. Bare, so `mount` and
+#: symbol from a module under `APP`, in backticks. Bare, so `mount` and
 #: not `mount()`; a span holding anything else - a path, a prose word, an item
 #: id - is left alone, which is what keeps `.claude/rules/ui-color.md` and
 #: `docs/MODEL.md` readable as the citations they are.
@@ -770,19 +789,43 @@ def _collect_agent_schemes(node: ast.expr, known: dict[str, str]) -> dict[str, s
     return found
 
 
+def app_modules(root: Path) -> tuple[Path, ...]:
+    """Every module under `APP`, relative to `root`, the theme first.
+
+    The theme first because `_string_value` resolves a name against what has
+    already been read, so `STRAY = INK` in another module is a color only once
+    `INK` is known; the rest in path order, so a report reads the same way
+    twice. Recursive, so a subpackage the port adds is read rather than
+    skipped. Two named paths until PL-BXB2, which is how a color in a third
+    module was measured by nothing.
+
+    Raises:
+        FileNotFoundError: The theme is not in the tree. Every color lives
+            there (PL-2CS8), so a tree without it has nothing to measure and
+            saying so beats reporting every requirement as missing.
+    """
+    modules = sorted(path.relative_to(root) for path in (root / APP).rglob("*.py"))
+    if THEME not in modules:
+        raise FileNotFoundError(
+            f"{THEME.as_posix()} is not in the tree; every color is declared there "
+            "(PL-2CS8), so there is nothing to measure without it"
+        )
+    return (THEME, *(module for module in modules if module != THEME))
+
+
 def read_palette(root: Path) -> dict[str, str]:
-    """Extract every named color from the two modules that can define them.
+    """Extract every named color from every module under `app/`.
 
     PL-2CS8 moved every color into `app/theme.py`, and
     `check_colors_live_in_the_theme` below is what holds them there. This still
-    reads both, deliberately: narrowing it to the theme would make a color
-    added to the view invisible here, which is the exact failure that item
-    existed to fix - `"#D9E2EC"` sat unmeasured at five view sites while the
-    file it was in reported as checked. Enforce the convention, and keep
+    reads every module, deliberately: narrowing it to the theme would make a
+    color added anywhere else invisible here, which is the exact failure that
+    item existed to fix - `"#D9E2EC"` sat unmeasured at five view sites while
+    the file it was in reported as checked. Enforce the convention, and keep
     measuring what the convention is meant to prevent.
 
-    Read with `ast` rather than imported: `app/simulation_view.py` imports Flet,
-    which a standard-library-only tool running in a bare checkout does not have.
+    Read with `ast` rather than imported: the view imports Flet, which a
+    standard-library-only tool running in a bare checkout does not have.
 
     Args:
         root: Repository root.
@@ -792,7 +835,7 @@ def read_palette(root: Path) -> dict[str, str]:
         `<agent>.fill` and `<agent>.foreground`.
     """
     palette: dict[str, str] = {}
-    for relative in (THEME, VIEW):
+    for relative in app_modules(root):
         path = root / relative
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for statement in tree.body:
@@ -817,12 +860,12 @@ def read_palette(root: Path) -> dict[str, str]:
 
 
 def read_symbols(root: Path) -> frozenset[str]:
-    """Every name the theme and the view define, for resolving a citation.
+    """Every name any module under `app/` defines, for resolving a citation.
 
     Four kinds, because those are the four a description has cause to cite:
     module-level constants, classes, functions and methods, and the `self.X`
     attributes the view builds its controls into. Read with `ast` for the same
-    reason the palette is - `app/simulation_view.py` imports Flet.
+    reason the palette is - the view imports Flet.
 
     Deliberately a flat set rather than a scope-aware resolution. It answers
     "does this name exist here", which is the whole of what a citation check
@@ -836,7 +879,7 @@ def read_symbols(root: Path) -> frozenset[str]:
         Every defined name, unqualified.
     """
     names: set[str] = set()
-    for relative in (THEME, VIEW):
+    for relative in app_modules(root):
         path = root / relative
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):
@@ -850,7 +893,7 @@ def read_symbols(root: Path) -> frozenset[str]:
 
 
 def check_colors_live_in_the_theme(root: Path) -> tuple[str, ...]:
-    """Refuse a color constant declared in the view rather than in the theme.
+    """Refuse a color declared in any module under `app/` other than the theme.
 
     PL-2CS8 consolidated every display token into `app/theme.py`; this is what
     keeps them there. Without it the convention is a habit, and the failure it
@@ -858,34 +901,62 @@ def check_colors_live_in_the_theme(root: Path) -> tuple[str, ...]:
     sites in `app/simulation_view.py`, named nowhere, so the tool that reports
     on colors could not see it while the file it sat in reported as checked.
 
-    `read_palette` deliberately still reads both modules, so a color put back
-    in the view is *measured* rather than lost. This makes it an error as well,
-    which is the difference between a convention and a guarantee.
+    Two forms are refused. A module-level constant resolving to a color, which
+    `read_palette` deliberately still reads so that it is *measured* rather than
+    lost - the error is then the difference between a convention and a
+    guarantee. And a hex literal written inline, in a call or anywhere else,
+    which has no name a requirement could cite and so could never be measured
+    at all: the only correct treatment is to send it to the theme, where it
+    gains one. Every module rather than the view alone since PL-BXB2.
 
     Returns:
-        One message per offending assignment, empty when the view declares none.
+        One message per offending declaration, empty when only the theme
+        declares a color.
     """
     theme = read_palette(root)
-    path = root / VIEW
-    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     offenders: list[str] = []
-    for statement in tree.body:
-        targets: list[ast.expr] = []
-        value: ast.expr | None = None
-        if isinstance(statement, ast.Assign):
-            targets, value = list(statement.targets), statement.value
-        elif isinstance(statement, ast.AnnAssign) and statement.value is not None:
-            targets, value = [statement.target], statement.value
-        if value is None:
+    for relative in app_modules(root):
+        if relative == THEME:
             continue
-        for target in targets:
-            if not isinstance(target, ast.Name):
+        path = root / relative
+        module = relative.as_posix()
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        # Values already reported as a named constant, so the literal walk
+        # below does not report the same line a second time.
+        reported: set[int] = set()
+        for statement in tree.body:
+            targets: list[ast.expr] = []
+            value: ast.expr | None = None
+            if isinstance(statement, ast.Assign):
+                targets, value = list(statement.targets), statement.value
+            elif isinstance(statement, ast.AnnAssign) and statement.value is not None:
+                targets, value = [statement.target], statement.value
+            if value is None:
                 continue
-            resolved = _string_value(value, theme)
-            if resolved is not None and resolved.startswith("#"):
+            for target in targets:
+                if not isinstance(target, ast.Name):
+                    continue
+                resolved = _string_value(value, theme)
+                if resolved is not None and resolved.startswith("#"):
+                    reported.add(id(value))
+                    offenders.append(
+                        f"  {target.id} is declared in {module}; every color belongs in "
+                        f"{THEME.as_posix()} (PL-2CS8). Move the constant, and its comment "
+                        "with it."
+                    )
+        for node in ast.walk(tree):
+            if id(node) in reported:
+                continue
+            if (
+                isinstance(node, ast.Constant)
+                and isinstance(node.value, str)
+                and HEX_COLOR_RE.match(node.value)
+            ):
                 offenders.append(
-                    f"  {target.id} is declared in {VIEW.name}; every color belongs in "
-                    f"{THEME.name} (PL-2CS8). Move the constant, and its comment with it."
+                    f"  {node.value} is written inline at {module}:{node.lineno}; a literal "
+                    "has no name a requirement can cite, so it can never be measured. "
+                    f"Declare it in {THEME.as_posix()} and cite the constant (PL-2CS8, "
+                    "PL-BXB2)."
                 )
     return tuple(offenders)
 
@@ -919,8 +990,8 @@ def check_citations(root: Path) -> tuple[str, ...]:
         for name in SYMBOL_SPAN_RE.findall(requirement.why):
             if name not in symbols:
                 errors.append(
-                    f"  {pair}: cites `{name}`, which {THEME.name} and {VIEW.name} do "
-                    "not define. A renamed symbol leaves the requirement pointing at "
+                    f"  {pair}: cites `{name}`, which no module under {APP.as_posix()}/ "
+                    "defines. A renamed symbol leaves the requirement pointing at "
                     "nothing."
                 )
     return tuple(errors)
@@ -955,12 +1026,15 @@ class Report:
     unexpected: tuple[Result, ...]
     repaired: tuple[Result, ...]
     citations: tuple[str, ...]
-    #: Colors declared in the view rather than the theme (PL-2CS8).
+    #: Colors declared anywhere under `app/` other than the theme (PL-2CS8).
     misplaced_colors: tuple[str, ...]
     #: `(trace, trace, vision model, ratio)`, every pair in every model.
     trace_pairs: tuple[tuple[str, str, str, float], ...]
     #: `(trace, vision model, ratio)` for each trace under `TRACE_FLOOR`.
     below_trace_floor: tuple[tuple[str, str, float], ...]
+    #: How many modules under `APP` the palette and the symbols came from, so
+    #: the report says what it read rather than leaving that to be assumed.
+    modules_read: int
 
     @property
     def errors(self) -> bool:
@@ -1036,6 +1110,7 @@ def analyze(root: Path) -> Report:
         misplaced_colors=check_colors_live_in_the_theme(root),
         trace_pairs=trace_pairs,
         below_trace_floor=below_trace_floor,
+        modules_read=len(app_modules(root)),
     )
 
 
@@ -1051,6 +1126,7 @@ def format_report(report: Report, *, matrix: bool) -> str:
     )
     lines = [
         f"contrast: {met} of {len(report.results)} declared requirements meet WCAG 2.2 AA, "
+        f"{report.modules_read} modules read under {APP.as_posix()}/, "
         f"{len(KNOWN_SHORTFALLS)} known shortfalls, "
         f"{error_count} errors"
     ]

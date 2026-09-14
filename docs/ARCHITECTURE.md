@@ -500,11 +500,14 @@ already leads needs no item of its own. A release commit is exempt, exactly:
 
 `tools/contrast_check.py` holds the interface to the accessibility target
 `docs/MODEL.md` states — WCAG 2.2 Level AA. It reads the color constants with `ast`
-rather than importing them, because `app/simulation_view.py` imports Flet and
-these tools run under a bare `python3`. Since `PL-2CS8` every color is declared
+rather than importing them, because the view imports Flet and
+these tools run under a bare `python3`, and it reads them from every module
+under `app/` — the theme first, then the rest in path order — rather than from
+two named paths (`PL-BXB2`). Since `PL-2CS8` every color is declared
 in `app/theme.py`, and `check_colors_live_in_the_theme` fails the build on one
-declared anywhere else; it still parses `app/simulation_view.py` as well, so a
-color put back there is measured rather than lost, which is the failure that
+declared anywhere else, as a named constant or as a hex literal written inline
+in a call; every module is still parsed for colors as well, so a
+color put back outside the theme is measured rather than lost, which is the failure that
 item was filed for. Its `REQUIREMENTS` table is the specification: each entry names
 the colors that appear on screen together, the success criterion, the minimum,
 and the reason, which cites the code they are drawn in by symbol. Most entries
@@ -518,7 +521,7 @@ channels an element really has, and whether
 a non-color channel is genuinely redundant, are judgments, and
 `.claude/rules/ui-color.md` carries them. The one thing it does decide about
 the prose is the half a script can: a description may cite no line number, and
-every symbol it names must exist in the two modules read above. Those citations
+every symbol it names must exist in some module under `app/`. Those citations
 were line numbers until `PL-GJDW`, and all fourteen had rotted into unrelated
 code, which made the tool's own coverage unauditable while looking audited. Requirements that fall short
 today are listed against the item that closes each, and a listed shortfall that
@@ -570,12 +573,15 @@ result.
 a declared one is loud: renaming `FAT_COLOR` failed with the constant named,
 and moving `SimulationView` to its own module — which `PL-B9PY` records the
 port doing from the start — failed with 68 unresolved citations, from the
-symbol rule `PL-J7C5` added for an unrelated reason. Its one hole is
-**additive**, and the port is what opens it: a colour declared in a module that
-is neither of the two read here is measured by nothing and missed by nothing,
-and a new chart-panel module holding a selection colour at 1.07:1 on the panel
-passed with `0 errors`. Nothing exploits it today — no hex constant sits outside those
-two files.
+symbol rule `PL-J7C5` added for an unrelated reason. Its one hole was
+**additive**, and `PL-BXB2` closed it before the port could open it: a colour
+declared in a module that was neither of the two then read was measured by
+nothing and missed by nothing, and a new chart-panel module holding a selection
+colour at 1.07:1 on the panel passed with `0 errors`. The tool now reads every
+module under `app/`, so that colour is measured and refused, an inline hex
+literal outside the theme is refused with it, the moved-class probe resolves
+its citations instead of failing, and the report's first line says how many
+modules it read.
 
 `agent_identity_check.py` does not survive, and its failure is worse than
 silence. Rule 1 reads `self.X.disabled = EXPR` paired with
@@ -591,9 +597,9 @@ are loud, but rule 2 then misdiagnoses, reporting that the writer "never
 writes" controls it writes through `setStyleSheet`.
 
 So the port's cost side gains one entry rather than two, and it is specific:
-rule 1 of `agent_identity_check.py` is inside the port's scope, and
-`contrast_check.py`'s two read paths widen to whatever modules the decomposed
-view declares colours in.
+rule 1 of `agent_identity_check.py` is inside the port's scope.
+`contrast_check.py`'s widening to every module under `app/` landed ahead of the
+port (`PL-BXB2`).
 
 `tools/glyph_check.py` covers the half of presentation correctness that no
 string assertion here can reach. Every such assertion compares text the same
@@ -813,7 +819,7 @@ being absent from the CI floor section.
 
 `contrast_check.py` is why the group is worth naming rather than left to each
 tool's own docstring. It ran bare until `PL-L17Q`, green only because the two
-files it reads happened to carry no 3.12+ syntax, so one PEP 695 generic added
+files it then read happened to carry no 3.12+ syntax, so one PEP 695 generic added
 to either would have failed the floor section on a tool nobody had touched. The
 rule the six are an instance of is stated in
 `tests/unit/test_tools_portability.py`'s module docstring, and a tool joining

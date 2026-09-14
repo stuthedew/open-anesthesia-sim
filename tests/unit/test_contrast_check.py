@@ -14,10 +14,11 @@ check has a test that breaks the palette and asserts the tool notices, and a
 matching test that asserts the correct form stays quiet. A checker that fires
 on correct work gets disabled, which is the same as not having it.
 
-Fixtures build a miniature `src/anesthesia_sim/app/` with two modules, and the
-requirement table is substituted per test so a fixture names only what it is
-about. The real palette is checked once, at the end, by the same entry point
-`make check` runs.
+Fixtures build a miniature `src/anesthesia_sim/app/` holding the theme, the
+view and - where a test is about a module the tool used not to read - a third
+module, and the requirement table is substituted per test so a fixture names
+only what it is about. The real palette is checked once, at the end, by the
+same entry point `make check` runs.
 """
 
 from __future__ import annotations
@@ -78,12 +79,20 @@ class SimulationView:
 '''
 
 
-def _repo(tmp_path: Path, *, theme: str = THEME_SOURCE, view: str = VIEW_SOURCE) -> Path:
-    """Build a miniature repository holding only the two color-defining modules."""
+def _repo(
+    tmp_path: Path, *, theme: str = THEME_SOURCE, view: str = VIEW_SOURCE, **modules: str
+) -> Path:
+    """Build a miniature repository: the theme, the view, and any further `app/` module.
+
+    Keyword arguments beyond the two are written as `app/<name>.py`, which is
+    how a test stands in for the module the decomposed Qt view will add.
+    """
     app = tmp_path / "src" / "anesthesia_sim" / "app"
     app.mkdir(parents=True)
     (app / "theme.py").write_text(theme, encoding="utf-8")
     (app / "simulation_view.py").write_text(view, encoding="utf-8")
+    for name, source in modules.items():
+        (app / f"{name}.py").write_text(source, encoding="utf-8")
     return tmp_path
 
 
@@ -739,3 +748,97 @@ def test_a_misplaced_color_fails_the_build(tmp_path: Path, declare) -> None:
 def test_the_shipped_view_declares_no_color() -> None:
     """The real tree, which is what PL-2CS8 actually changed."""
     assert contrast_check.check_colors_live_in_the_theme(REPO_ROOT) == ()
+
+
+# --- every module under app/ is read (PL-BXB2) -------------------------------
+
+
+def test_a_color_declared_in_any_other_app_module_is_measured(tmp_path: Path, declare) -> None:
+    """`PL-JRS3`'s probe D1, which passed with `0 errors` when only two paths were read.
+
+    A new chart-panel module declaring a selection colour at about 1.1:1 on
+    the panel. It has to be *measured* - the requirement naming it is
+    evaluated and found short - and refused for being outside the theme,
+    which is the same colour reported twice for two different reasons.
+    """
+    declare((_requirement("SELECTION", "PANEL", 3.0),))
+    root = _repo(tmp_path, chart_panel='SELECTION = "#F4F4F4"\n')
+
+    report = contrast_check.analyze(root)
+
+    assert "SELECTION" not in report.missing
+    assert [result.requirement.label for result in report.unexpected] == ["SELECTION"]
+    assert any("chart_panel.py" in message for message in report.misplaced_colors)
+    assert report.errors
+
+
+def test_a_symbol_defined_in_any_other_app_module_resolves(tmp_path: Path, declare) -> None:
+    """`PL-JRS3`'s probe C: a class moving to its own module is not a broken citation.
+
+    The 68 unresolved citations that probe produced were the tool reading the
+    wrong module, not requirements pointing at nothing. `PL-B9PY` records the
+    Qt view being built decomposed from the start, so this is the shape the
+    port will leave.
+    """
+    declare((_requirement("INK", "PANEL", 4.5, why="drawn in `RunView`'s `mount`"),))
+    root = _repo(tmp_path, run_view="class RunView:\n    def mount(self) -> None:\n        pass\n")
+
+    assert contrast_check.check_citations(root) == ()
+
+
+def test_the_theme_is_read_first_whatever_its_name_sorts_as(tmp_path: Path) -> None:
+    """An alias of a theme name in a module that sorts before `theme.py` is still a colour.
+
+    `STRAY = INK` resolves only against a palette that already holds `INK`, so
+    reading modules in bare path order would let a module named `aaa.py`
+    alias a theme colour unseen. The theme goes first, deliberately.
+    """
+    root = _repo(tmp_path, aaa="from anesthesia_sim.app.theme import INK\nSTRAY = INK\n")
+
+    assert any(
+        "STRAY" in message for message in contrast_check.check_colors_live_in_the_theme(root)
+    )
+
+
+def test_a_hex_literal_written_inline_outside_the_theme_is_refused(tmp_path: Path) -> None:
+    """A literal in a call has no name a requirement could cite, so it can never be measured.
+
+    Refused rather than measured, because measuring needs a name and the only
+    way it gains one is by moving to the theme. The line is named so the
+    reader does not have to search for a string of six hex digits.
+    """
+    view = VIEW_SOURCE + '\nCONTROLS = ft.Text("Paused", color="#123456")\n'
+
+    misplaced = contrast_check.check_colors_live_in_the_theme(_repo(tmp_path, view=view))
+
+    assert len(misplaced) == 1
+    assert "#123456" in misplaced[0]
+    assert "simulation_view.py:9" in misplaced[0]
+
+
+def test_a_named_constant_is_reported_once_not_also_as_a_literal(tmp_path: Path) -> None:
+    """`STRAY = "#123456"` is one offence, not a constant and a literal on the same line."""
+    root = _repo(tmp_path, view=VIEW_SOURCE + '\nSTRAY = "#123456"\n')
+
+    assert len(contrast_check.check_colors_live_in_the_theme(root)) == 1
+
+
+def test_a_missing_theme_is_an_error_rather_than_an_empty_palette(tmp_path: Path) -> None:
+    """A moved theme must not read as a tree with nothing to measure."""
+    app = tmp_path / "src" / "anesthesia_sim" / "app"
+    app.mkdir(parents=True)
+    (app / "simulation_view.py").write_text(VIEW_SOURCE, encoding="utf-8")
+
+    with pytest.raises(FileNotFoundError, match="theme.py"):
+        contrast_check.app_modules(tmp_path)
+
+
+def test_the_report_says_how_many_modules_it_read(tmp_path: Path, declare) -> None:
+    """What was read is stated, so a decomposed view being measured is visible."""
+    declare(())
+    report = contrast_check.analyze(_repo(tmp_path, chart_panel="WIDTH = 3\n"))
+
+    assert report.modules_read == 3
+    assert "3 modules read under src/anesthesia_sim/app/" in contrast_check.format_report(
+        report, matrix=False
+    )

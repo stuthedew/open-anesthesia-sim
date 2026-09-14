@@ -4207,8 +4207,8 @@ once someone is ready to scope it.
     suite structurally cannot see, so both land first.
 
     *Three constraints on any palette, recorded here so scoping does not
-    rediscover them.* `tools/contrast_check.py` parses `app/theme.py` and
-    `app/simulation_view.py` with `ast`, holds every declared pair to WCAG 2.2
+    rediscover them.* `tools/contrast_check.py` parses every module under
+    `app/` with `ast` (`PL-BXB2`), holds every declared pair to WCAG 2.2
     AA under four vision models, and fails the build on a renamed or undeclared
     colour constant — so a restyle is also a `REQUIREMENTS` rewrite, in the same
     change, per `.claude/rules/ui-color.md` judgment 1. The three ISO 5360:2016
