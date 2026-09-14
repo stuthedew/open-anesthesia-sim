@@ -33,6 +33,7 @@ from typing import Final
 
 import flet_charts as fch
 
+from anesthesia_sim.app.chart_frame import CHART_COLUMN_BUDGET_PER_SERIES, wash_in_stretches
 from anesthesia_sim.app.controller import DrawnWindow, RecordedSeries
 from anesthesia_sim.app.wash_in import is_wash_in
 from anesthesia_sim.core.concentration import Fraction, percent_from_fraction
@@ -58,50 +59,11 @@ __all__ = [
     "redraw_wash_in_segments",
 ]
 
-# Per-trace ceiling on the *grid columns* an axis is divided into, which the
-# chart's evaluated instants are placed on. The count of points follows from
-# it rather than being set: the grid columns inside the drawn range, plus the
-# two ends of that range, plus one column per control event in the window -
-# bounded in turn by the marks the chart already draws
-# (`simulation_view.MAX_CHART_CONTROL_MARKS`).
-#
-# It was a bucket count while the chart selected recorded samples, and a point
-# ceiling before that when the algorithm was min/max envelope decimation. It
-# is now the resolution the run is *evaluated* at, which is the first time the
-# number has meant a spacing rather than a summary (`PL-2FM6`).
-#
-# 150 columns across a chart a few hundred pixels wide is already finer than
-# the display can resolve.
-#
-# What this ceiling does *not* bound is how many drawn points move on a frame.
-# That is a property of where the columns sit: `RunDefinition.evaluate_anchored`
-# anchors them to multiples of the spacing measured from `t = 0`, so a window
-# following the run keeps every interior column and moves only its right-hand
-# end. PL-Q197 found every drawn point moving on every frame, and 1 788 of
-# them at 5 Hz saturated the Flutter client while Python idled;
-# `tests/integration/test_chart_patching.py` is what keeps that fixed.
-#
-# **What it does bound is the frame, and this number is the only lever on
-# it.** Decided by the project owner on 2026-09-08, closing `PL-YDKJ`: the
-# chart goes on patching one Flet control per plotted point, and the ceiling
-# that buys is accepted rather than engineered around. Flet's `object_patch`
-# walks every control on the page on every `page.update()` whether or not any
-# of them moved - `PL-YSZN` measured an idle update at the cost of a full
-# frame, both linear in the point count at about 24.5 us each - so the
-# chart's share of a frame is this budget times the traces drawn times that
-# constant, and nothing about where the columns sit can reduce it.
-#
-# So the ceiling this budget sizes against is a frame, not a wire. Halving
-# this number halves the chart's share of one: measured 2026-09-08, a
-# saturated frame at 300x fell from 42.8 ms to 28.3 ms at 75 columns, against
-# a 200 ms budget. That is the trade to make if a future chart wants more
-# traces or a faster cadence - fewer columns, and less trace resolution for
-# them - and it is the whole of what is available, because the two routes
-# that would remove the per-point cost were measured and both lose.
-# `docs/WORKING_NOTES.md` § "Measured and answered: a server-rendered chart
-# is not the way out" carries those measurements and why option 4, a sweep
-# display, buys this path nothing: the walk is indifferent to what moved.
-CHART_COLUMN_BUDGET_PER_SERIES: Final = 150
+# `CHART_COLUMN_BUDGET_PER_SERIES` is defined in `app/chart_frame.py`, which
+# holds everything the chart draws that is independent of the toolkit, and is
+# re-exported here for the two callers that still read it from this module.
+# Its own comment there records what the number bounds and why it became a
+# floor rather than a ceiling with the Qt port (`PL-GS3R`).
 
 #: One chart trace bound to the recorded series it draws.
 #:
@@ -628,13 +590,13 @@ def redraw_wash_in_segments(
     """
 
     quotients = window.wash_in_quotients(substance_id)
-    segments = _wash_in_segments(quotients, extension_ceiling)
+    segments = wash_in_stretches(quotients, extension_ceiling)
     drawn = segments[-len(segment_series) :] if segment_series else []
 
     for series, (start, stop) in zip(segment_series, drawn, strict=False):
         # Every column of a stretch has a quotient: the anchors are inside
         # the domain, and the one extending column at each end was chosen
-        # for having one. `_wash_in_segments` is where that holds.
+        # for having one. `wash_in_stretches` is where that holds.
         ratios = [quotients[column] for column in range(start, stop)]
         redraw_points(
             series,
@@ -691,86 +653,3 @@ def _mark_wash_in_terminus(series: fch.LineChartData, ends_above_equilibrium: bo
 
     if ends_above_equilibrium and series.points:
         series.points[-1].point = WASH_IN_TERMINUS_MARKER
-
-
-def _wash_in_segments(
-    quotients: Sequence[float | None], extension_ceiling: float
-) -> list[tuple[int, int]]:
-    """The stretches the chart draws, as ranges over the drawn columns.
-
-    A column *anchors* a stretch when its quotient is inside the wash-in
-    domain `app/wash_in.py` states. A column *extends* one when it has a
-    quotient at all - its denominator was above the display floor - that
-    quotient is no higher than `extension_ceiling`, and it neighbours an
-    anchor. So a stretch is a run of in-domain columns plus, at each end,
-    the one crossing column that shows where the curve left the domain and
-    that the plot can still show.
-
-    **Computed over the drawn columns rather than maintained as the run
-    records samples** (`PL-2FM6`). The run kept these stretches
-    incrementally because reclassifying every sample a window spanned was
-    work proportional to the run; there are now only the columns being
-    drawn, so classifying all of them is proportional to the frame. It is
-    also the stronger guarantee: a boundary can fall only on an instant the
-    chart actually plots.
-
-    Two anchor runs separated by a single extendable column both reach it,
-    and it is drawn once as each stretch's endpoint. That is the honest
-    rendering of a run that left the domain and returned within one column,
-    and it is the only case where one column appears twice.
-
-    Args:
-        quotients: One entry per drawn column, `None` where the column has
-            no quotient at all.
-        extension_ceiling: Highest quotient a crossing column may carry and
-            still extend a stretch.
-
-    Returns:
-        One `(start, stop)` pair of column indices per stretch, oldest
-        first, extended within the window.
-    """
-
-    segments: list[tuple[int, int]] = []
-    start: int | None = None
-
-    for column, quotient in enumerate(quotients):
-        anchors = quotient is not None and is_wash_in(quotient)
-
-        if anchors and start is None:
-            start = column
-        elif not anchors and start is not None:
-            segments.append((start, column))
-            start = None
-
-    if start is not None:
-        segments.append((start, len(quotients)))
-
-    return [
-        (
-            start - 1 if _extends_a_stretch(quotients, start - 1, extension_ceiling) else start,
-            stop + 1 if _extends_a_stretch(quotients, stop, extension_ceiling) else stop,
-        )
-        for start, stop in segments
-    ]
-
-
-def _extends_a_stretch(
-    quotients: Sequence[float | None], column: int, extension_ceiling: float
-) -> bool:
-    """Whether the column at `column` is the crossing point to draw.
-
-    `None` is how a column with no quotient at all is carried -
-    `app/wash_in.py`'s rule 1, no agent in the circuit yet - and there is
-    nothing there to draw. Every other out-of-domain column crossed
-    equilibrium, and it is drawn when it is close enough to stay on the
-    plot. A column outside the window extends nothing, which is what the
-    bounds check answers rather than an error: a stretch running to the
-    edge of the frame simply has no crossing column on that side yet.
-    """
-
-    if not 0 <= column < len(quotients):
-        return False
-
-    quotient = quotients[column]
-
-    return quotient is not None and quotient <= extension_ceiling

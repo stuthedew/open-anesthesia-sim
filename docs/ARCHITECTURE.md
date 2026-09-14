@@ -61,12 +61,14 @@ src/anesthesia_sim/
 │   ├── run_definition.py               # a run as its settings over time; any state in closed form
 │   ├── agent_simulation_validation.py  # mass-balance / agent-accounting tracker
 │   └── simulation.py              # SimulationState: explicit elapsed time (bounded) + AgentUptakeSystem
-├── app/                  # Flet user interface
+├── app/                  # user interface - Flet, with the chart already on pyqtgraph while the port lands (ROADMAP.md § "v0.4.26 - the interface moves to Qt")
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots; ResumePoint and BranchedCase: where a branch opened, and the trunk it belongs to
 │   ├── simulation_view.py          # renders snapshots as the dashboard; no domain logic. Two classes since PL-B9PY: `RunView` is one run - its controller, readouts, settings, transport and the lines it draws - and `SimulationView` is what two runs share, the charts, their axes, the window, the time base and the compartment selection
 │   ├── formatting.py               # modeled value -> displayed string; Flet-independent
 │   ├── playback.py                 # playback rate -> whole simulation steps per tick; Flet-independent
-│   ├── chart_series.py             # builds and redraws the chart's traces, references and control marks
+│   ├── chart_frame.py              # what one frame of both plots draws, as plain values: the trace table, the window, the axes' ticks, the references, the marks, the wash-in stretches and the hover text; toolkit-independent
+│   ├── chart_series.py             # builds and redraws the Flet chart's traces, references and control marks; leaves with PL-7SVX
+│   ├── qt_chart.py                 # the concentration chart, the wash-in plot and the legend on pyqtgraph, moved per frame to match a chart_frame.ChartFrame; declares no colour and formats no value
 │   ├── chart_time_base.py          # how wide the chart's window is and how it is ruled; Flet-independent
 │   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; Flet-independent
 │   ├── wash_in.py                  # F_A/F_I and the domain it holds on; Flet-independent
@@ -197,8 +199,11 @@ rather than a layout one and each must be readable and testable without a
 Flet interface: `app/formatting.py` turns a fraction into the strings a
 reader sees — a percent and a multiple of the running agent's 1 MAC — at the
 resolutions `docs/MODEL.md` § "Displayed precision" derives,
-`app/chart_series.py` builds the traces and redraws them from the recorded
-run, `app/control_timeline.py` turns the recorded control changes into
+`app/chart_frame.py` settles what one frame of the chart claims - which
+compartment a curve carries, which instants are drawn, where the references
+stand, what a hover says - as plain values with no toolkit loaded, and
+`app/qt_chart.py` moves pyqtgraph items to match it while `app/chart_series.py`
+still does the same for the Flet chart, `app/control_timeline.py` turns the recorded control changes into
 the adjustments a reader sees, `app/playback.py` turns the playback rate a
 reader selects into the number of whole simulation steps a tick takes, and
 `app/wash_in.py` divides the alveolar fraction by the inspired one. The last
@@ -277,8 +282,9 @@ patched per point, so what a frame costs is how many drawn points *changed*
 which sample they show. The selection is therefore anchored to absolute
 sample index rather than to position within the window, so appending a
 sample leaves every completed bucket choosing what it already chose
-(PL-Q197). `app/chart_series.py` is the layer above it — it holds the
-per-trace point budget, converts each drawn value into its own axis's unit,
+(PL-Q197). `app/chart_frame.py` is the layer above it — it holds the
+per-trace column floor and reads the window once per run for every trace,
+and `app/chart_series.py`, for the Flet chart, converts each drawn value into its own axis's unit,
 and moves the points a trace already holds — and it is separate for the same
 reason: which quantity a line carries is a correctness claim, and the view
 passes it in as one `PlottedSeries` table declared beside the traces
@@ -885,7 +891,13 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   validator, a parameter loader, the controller, the displayed-value
   formatters, the view).
 - **`tests/integration/`** — components wired together as the app assembles
-  them (e.g. controller driving a full `AgentUptakeSystem`).
+  them (e.g. controller driving a full `AgentUptakeSystem`), and the Qt chart
+  drawn headless against a real run (`test_qt_chart.py`), which reads the
+  plotted items and the painted pixels back. `tests/conftest.py` selects Qt's
+  `offscreen` platform plugin before any `PySide6` import, so the suite renders
+  on a runner with no display; on Linux that plugin needs `libegl1` from the
+  OS, which `.github/workflows/quality.yml` installs and the PySide6 wheels
+  do not carry (`PL-VHLZ`).
 - **`tests/reference/`** — analytic/independent reference cases the
   implementation must reproduce (e.g. the closed-form circuit wash-in
   solution, the sevoflurane patient reference scenario, and the from-scratch
@@ -927,11 +939,13 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   count, a marker for what the display cannot resolve → `app/formatting.py`,
   as a pure function with its own test, and with the reason recorded in
   `docs/MODEL.md` § "Displayed precision".
-- A new chart series, or a change to how one is drawn → `app/chart_series.py`,
-  with a new *compartment* trace declared in `SimulationView`'s `_traces`
-  table, which is where the quantity it draws, how it is drawn, the legend
-  entry that names it and whether it is currently shown are written as one
-  record. The table is the chart's rather than any one run's: each run builds
+- A new chart series, or a change to how one is drawn → what it *claims* in
+  `app/chart_frame.py` and how pyqtgraph paints it in `app/qt_chart.py`, with
+  a new *compartment* trace declared in `chart_frame.COMPARTMENT_TRACES`,
+  which is where the quantity it draws, how it is drawn, the legend words that
+  name it and the gloss its hover carries are written as one record; the Flet
+  dashboard's `_traces` table is built from that one and leaves with
+  `PL-7SVX`. The table is the chart's rather than any one run's: each run builds
   its own line from it (`_CompartmentTrace.build_line`), because a line holds
   points and the points are a run's. `RunView._plotted_series` pairs that
   table with the substance the frame is drawing — the agent its own snapshot

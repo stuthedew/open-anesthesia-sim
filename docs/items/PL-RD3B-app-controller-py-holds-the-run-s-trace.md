@@ -3,8 +3,7 @@ id: PL-RD3B
 title: app/controller.py holds the run's trace vocabulary and drawn window as well as the UI-to-core boundary, and they are separable
 priority: P2
 effort: M
-status: blocked
-blocked-by: PL-G59B
+status: ready
 classes: refactor
 feature: teachable-case
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_series.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, tests/integration/test_chart_patching.py, tests/integration/test_controller.py, docs/ARCHITECTURE.md, docs/MODEL.md
@@ -136,3 +135,5 @@ rather than split it, because the split's *point* is where the drawn-run
 vocabulary lands, and that module is the one the chart port rewrites. The
 field encodes the roadmap's own freeze so `bin/docket next` stops offering it
 as the product lane's pick.
+
+**Promoted to `ready`, 2026-09-14**, `PL-G59B` having closed. The Qt chart reads `controller.drawn_window` through `app/chart_frame.py`, so the split this item makes now has two readers to keep working: `chart_frame.py` for the Qt chart and `chart_series.py` for the Flet one until `PL-7SVX`.

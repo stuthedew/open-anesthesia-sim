@@ -31,6 +31,14 @@ import flet as ft
 import flet_charts as fch
 
 from anesthesia_sim.app import chart_series
+from anesthesia_sim.app.chart_frame import (
+    COMPARTMENT_TRACES,
+    MAX_CHART_CONTROL_MARKS,
+    MAX_CHART_WASH_IN_SEGMENTS,
+    WASH_IN_AXIS_MAXIMUM,
+    WASH_IN_GRID_INTERVAL,
+    WASH_IN_TERMINUS_CEILING,
+)
 from anesthesia_sim.app.chart_time_base import (
     FIT_RUN_KEY,
     SELECTABLE_TIME_BASES,
@@ -89,12 +97,10 @@ from anesthesia_sim.app.theme import (
     ACCOUNTING_STATUS_SIZE,
     AGENT_COLOR_SCHEMES,
     AGENT_SELECTOR_WIDTH,
-    ALVEOLAR_COLOR,
     APP_TITLE_SIZE,
     BAND_SWATCH_HEIGHT,
     BAND_SWATCH_WIDTH,
     CHART_HEIGHT,
-    CIRCUIT_COLOR,
     CONTROL_MARK_COLOR,
     CONTROL_MARK_DASH_PATTERN,
     CONTROL_MARK_STROKE_WIDTH,
@@ -104,7 +110,6 @@ from anesthesia_sim.app.theme import (
     EQUILIBRIUM_LINE_COLOR,
     EQUILIBRIUM_LINE_DASH_PATTERN,
     EQUILIBRIUM_LINE_STROKE_WIDTH,
-    FAT_COLOR,
     GRIDLINE,
     INK,
     LEGEND_SWATCH_HEIGHT,
@@ -116,8 +121,6 @@ from anesthesia_sim.app.theme import (
     METRIC_QUALIFIER_SIZE,
     METRIC_SECONDARY_VALUE_SIZE,
     METRIC_VALUE_SIZE,
-    MIXED_VENOUS_COLOR,
-    MUSCLE_COLOR,
     MUTED,
     NEW_CASE_DIALOG_SPACING,
     NEW_CASE_DIALOG_WIDTH,
@@ -133,7 +136,6 @@ from anesthesia_sim.app.theme import (
     RUNNING_AGENT_DISPLAY_PADDING,
     SECTION_DIVIDER_HEIGHT,
     TIME_BASE_SELECTOR_WIDTH,
-    VESSEL_RICH_COLOR,
     WARNING,
     WASH_IN_AXIS_LABEL_SIZE,
     WASH_IN_CHART_HEIGHT,
@@ -299,13 +301,6 @@ OFF_SCALE_NOTICE_TEMPLATE = (
 )
 
 
-# How many control marks the chart can stand at once. The pool is built at
-# construction and its members are moved from frame to frame, exactly as the
-# traces are (PL-010), so this is a ceiling on control count rather than on
-# how many adjustments a run may record - the list beside the chart shows
-# them whether or not there is a mark left to draw one, and says so when
-# there is not.
-MAX_CHART_CONTROL_MARKS = 24
 # What the list says before anything has been changed. It states the run's
 # state rather than leaving an empty panel, which reads as a panel that has
 # failed to load.
@@ -385,38 +380,6 @@ START_NEW_CASE_TEMPLATE = "Discard and start {agent}"
 # for the case would be a mode statement contradicted by the next click.
 RUNNING_AGENT_LOCK_TEXT = "Locked while running"
 
-# Gridlines at quarter-fractions, which is the ruling every published wash-in
-# figure carries and the spacing a reader compares against. The axis is
-# labelled at exactly these values rather than at whatever interval the chart
-# would choose for itself: a rule at 0.25 beside a label at 0.2 puts two
-# different scales on one axis, and a reader taking a value off the nearest
-# gridline would take it off the wrong one.
-WASH_IN_GRID_INTERVAL = 0.25
-# The axis stands above equilibrium rather than at it, which is a legibility
-# requirement rather than a spare margin. The trace ends where it crosses
-# `WASH_IN_EQUILIBRIUM_RATIO`, and with the axis topping out there that
-# ending lands on the frame - where a line that stopped and a line the plot
-# cut off look exactly alike. Lifting the axis puts clear space above the
-# ending, so the stop is visibly the trace's own. 1.15 leaves that space
-# without adding a fifth labelled interval: the ruling and the labels stop at
-# 1.00, which is where the readable scale ends, and `show_max` keeps the
-# chart from labelling the top of the frame.
-WASH_IN_AXIS_MAXIMUM = 1.15
-# How far past equilibrium the trace may be drawn so that its ending lands on
-# the line rather than a step short of it. `chart_series.redraw_wash_in_segments`
-# carries the whole reasoning, including why the bound is stated rather than
-# taken from the measured 1.00235 a 0.1 s step actually produces. Set below
-# `WASH_IN_AXIS_MAXIMUM` rather than at it, so even the widest crossing this
-# admits still has clear space above it.
-WASH_IN_TERMINUS_CEILING = 1.05
-# How many separated stretches of wash-in the chart can draw at once. The
-# trace breaks wherever the ratio leaves the domain `app/wash_in.py` states -
-# a vaporizer turned off and later reopened is two stretches, not one line
-# drawn through the washout between them - and the pool is fixed at
-# construction for the reason the control-mark pool is. Eight is more
-# stretches than a taught case produces inside one chart window; what does
-# not fit is counted and said, never dropped in silence.
-MAX_CHART_WASH_IN_SEGMENTS = 8
 
 # (agent_id, display_name) for every built-in agent, in AGENT_DATA_FILENAMES
 # order. Loaded once at import time; each file is tiny and this avoids
@@ -2735,61 +2698,23 @@ class SimulationView:
         # names it are declared together and never separately - and why the
         # table is the chart's rather than any one run's.
         #
-        # **Six patterns, all different, because the line style is what
-        # actually separates these curves.** The colours above cannot: the
-        # closest pair sits at 1.01 for normal colour vision and no palette
-        # reaches 3:1. Circuit and vessel-rich were both solid until PL-GVXP,
-        # which made the second channel redundant in name only for the one
-        # pair - and a reader who takes a value off the wrong curve has
-        # misread a clinical quantity, not a decoration.
-        #
-        # **Which style goes on which trace is decided by the colours, not
-        # chosen freely.** The two traces a reader can least separate by
-        # colour get the two marks they can most separate by shape, and so on
-        # outward. So the closest pairs - vessel-rich against fat at 1.01, and
-        # mixed venous against fat at 1.02 under simulated deuteranopia - are
-        # an even dash against an alternating dash-dot, and a short uniform
-        # dash against that same dash-dot: each differs from its partner in
-        # mark length, in gap length and in rhythm at once. The one genuinely
-        # confusable pair in the set, the 2 px dots against the 4 px short
-        # dash, is spent on mixed venous against muscle, which is the *widest*
-        # separation any pair of these six has (1.45). `docs/MODEL.md` carries
-        # the matrix this was read off.
-        self._traces: tuple[_CompartmentTrace, ...] = (
+        # The colours, widths, dash patterns and line-style words are
+        # `chart_frame.COMPARTMENT_TRACES`, which the Qt chart draws from
+        # too; this dashboard builds its Flet controls from that one table
+        # rather than keeping a second copy of six patterns that have to
+        # stay different (`PL-2CS8`). Why each pattern is on the compartment
+        # it is on - decided by the colours, not chosen freely - is recorded
+        # beside the table.
+        self._traces: tuple[_CompartmentTrace, ...] = tuple(
             self._build_compartment_trace(
-                RecordedQuantity.CIRCUIT, "Circuit", CIRCUIT_COLOR, 3, "solid"
-            ),
-            self._build_compartment_trace(
-                RecordedQuantity.ALVEOLAR, "Alveolar", ALVEOLAR_COLOR, 3, "long dash", [10, 4]
-            ),
-            self._build_compartment_trace(
-                RecordedQuantity.MIXED_VENOUS,
-                "Mixed venous",
-                MIXED_VENOUS_COLOR,
-                2,
-                "short dash",
-                [4, 3],
-            ),
-            # Equal mark and gap, which is the one rhythm no other trace here
-            # has: the other four dashed traces all draw more ink than gap.
-            # Deliberately not a second long dash - at [8, 8] it read as the
-            # alveolar trace's [10, 4] with wider gaps, and those two sit at
-            # 1.08 under simulated deuteranopia, which is no place to put a
-            # pair that has to be told apart by mark length alone.
-            self._build_compartment_trace(
-                RecordedQuantity.VESSEL_RICH,
-                "Vessel-rich",
-                VESSEL_RICH_COLOR,
-                2,
-                "even dash",
-                [6, 6],
-            ),
-            self._build_compartment_trace(
-                RecordedQuantity.MUSCLE, "Muscle", MUSCLE_COLOR, 2, "dotted", [2, 3]
-            ),
-            self._build_compartment_trace(
-                RecordedQuantity.FAT, "Fat", FAT_COLOR, 2, "dash-dot", [12, 4, 2, 4]
-            ),
+                style.quantity,
+                style.label,
+                style.color,
+                style.stroke_width,
+                style.line_style,
+                None if style.dash_pattern is None else list(style.dash_pattern),
+            )
+            for style in COMPARTMENT_TRACES
         )
         # Built before the chart, because each run brings its own lines and
         # its own pool of control marks and the chart's series list is
