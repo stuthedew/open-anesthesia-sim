@@ -1673,7 +1673,7 @@ this list*. That is stricter than an unenumerated parity, not looser.
 than by default: `PL-YTX9` (whether a hidden trace keeps its legend entry),
 `PL-CZFY` and `PL-Q4M4` (the elapsed-time readout reads in seconds while the
 axis reads in hours), `PL-LL9Y` (the warning and alert colours against the
-medical alarm-colour convention).
+medical alarm-colour convention), and `PL-2K1R` (an interpretation disclaimer beside the use disclaimer, stating that the readouts and traces are modelled rather than measured - text the dashboard states, not a control a learner operates, so a decision rather than capability; project owner, 2026-09-14).
 
 **`PL-16ZC` is out (project owner, 2026-09-10)**, and it is the case that shows
 where the line is. A show/hide control for the clinical references and the
@@ -2398,7 +2398,7 @@ implementation begins.
 - PL-QBKQ (S) The only measured conventional circle-system volume this project holds is 9.86 L including a simulated lung, against a stored 6.0 L and Gas Man's published 8.0 L
 - PL-XWCY (M) Circuit-component absorption is ruled out as a cause of desflurane's residual by the one paper that measured it, and is a live candidate for the other two agents
 
-**Added 2026-09-14 under the unconditional safety/science exception — 1 entry**
+**Added 2026-09-14 under the unconditional safety/science exception — 3 entries**
 
 `PL-YVHK` is `safety`-classed, so it re-enters this gate whatever its presence
 answer, under the second of "The gate is a snapshot"'s two unconditional
@@ -2419,40 +2419,34 @@ did: a number a reader stopped the simulation to look at, with nothing around
 it to say the value is modelled rather than measured, is the
 modelled-versus-measured failure `CLAUDE.md` names.
 
+**`PL-2K1R` is the second**, found 2026-09-13 and triaged 2026-09-14 (project
+owner): `P1` `safety`, an interpretation disclaimer beside the use disclaimer,
+so that the compartment readouts and chart traces are stated to be modelled
+rather than measured - the line `CLAUDE.md`'s safety standard draws on the
+surface a clinician reads. It rides the Qt port behind `PL-25KS` (port the
+dashboard) on the carried-fix rule, text on a dashboard rewritten from scratch
+being written once, and clears before v0.5.0 begins like the five carried
+entries; § "Sequenced past v0.5.0" below carries it in that table, and the
+port names it under "Decisions the port has to make anyway" so its parity
+claim stays checkable.
+
+- PL-2K1R (S) The interface carries a use disclaimer but no interpretation one, so nothing tells a reader the compartment readouts and chart traces are modelled rather than measured
 - PL-YVHK (S) Implement the chart hover readout on pyqtgraph to the derivation docs/MODEL.md now carries, turn hoverable on so the affordance is not silently lost, and say in README.md that it exists
 
-**Added 2026-09-14 under the unconditional safety/science exception — 2 entries**
-
-Found by the triage pass over the 45 captures open that day (`PL-6FJ5`), which
-is also where the thirty-four declines below come from. Both are `safety`-classed
-and so re-enter this gate whatever their presence answer, under the second of
-"The gate is a snapshot"'s two unconditional exceptions. Neither is inside this
-milestone's `Required scope`, so both clear before implementation begins - and
-that is the consequence worth stating plainly rather than burying: **this gate
-was clear before the pass and is not clear after it.**
-
-`PL-27H0` is the model specification still describing the per-step recorded
-sample store `PL-2FM6` deleted. What makes it `safety` rather than `docs` is
-narrower than the whole sweep: `docs/MODEL.md` tells a reader that every point
-drawn on the chart *is a recorded sample*, and `app/chart_series.py` says the
-opposite deliberately - "Every drawn point is a state of the run at the instant
-it is drawn at, evaluated from the run definition rather than selected from
-recorded samples". That is the provenance of a displayed value, which
-`CLAUDE.md` names as a safety failure in its own right, and the numbers are
-correct throughout, which is what makes it hard to notice.
-
-`PL-2K1R` is the interface carrying a *use* disclaimer and no *interpretation*
-one. The running application says "Educational simulation only ... not a
-clinical prediction, monitoring, or dosing tool"; nothing says that the
-compartment readouts and chart traces are modelled states rather than
-measurements. `CLAUDE.md` states that as its own requirement - "Do not present a
-predicted value in a way that could reasonably be mistaken for a measurement" -
-and, in the same section, that disclaimers do not lower the standard for these
-paths. It is admitted rather than deferred to the port for that reason, and the
-port is expected to carry it rather than follow it.
+**`PL-27H0` is the third**, and it is the same
+modelled-versus-measured line drawn in the specification rather than on the
+screen. `docs/MODEL.md` still tells a reader that every point drawn on the
+chart *is a recorded sample*, selected from a per-step store; `PL-2FM6` deleted
+that store, and `app/chart_series.py` now says the opposite deliberately -
+"Every drawn point is a state of the run at the instant it is drawn at,
+evaluated from the run definition rather than selected from recorded samples".
+What makes it `safety` rather than `docs` is that the sentence is about the
+provenance of a displayed value, which `CLAUDE.md` names as a safety failure in
+its own right, and that the numbers are correct throughout - which is what makes
+it hard to notice. Unlike the two above it needs no toolkit and clears before
+implementation begins.
 
 - PL-27H0 (M) docs/MODEL.md still specifies a per-step recorded sample store and a display operation that selects which recorded samples a trace draws, both of which PL-2FM6 deleted
-- PL-2K1R (M) The interface carries a use disclaimer but no interpretation one, so nothing tells a reader the compartment readouts and chart traces are modelled rather than measured
 
 ### Deferred to v0.4.26, because the port dissolves the defect — 1 entry
 
@@ -2475,7 +2469,7 @@ any sense that survives the toolkit changing underneath it.
 resolves it rather than any work on it. That is recorded now so a later session
 does not read a dropped item as one that was skipped.
 
-### Sequenced past v0.5.0, so not clearable before it begins — 11 entries
+### Sequenced past v0.5.0, so not clearable before it begins — 12 entries
 
 **Nine of these eleven became clearable on 2026-09-14, when the Qt port moved
 ahead of v0.5.0** (project owner, on `PL-RKWB`; § "v0.4.26 - the interface moves
@@ -2496,8 +2490,20 @@ lands before v0.5.0, so each clears in the ordinary way:
 | `PL-NGF7` | dissolved by it | before v0.5.0, as `dropped` |
 | `PL-16ZC` | deferred past it | before v0.5.0, behind `PL-G59B` |
 | `PL-8PS6`, `PL-WZVZ` | behind a design round the roadmap places nowhere | unchanged |
+| `PL-2K1R` | rides it, added after the freeze | before v0.5.0 |
 
-**`bin/docket wave` still prints all twelve as "waiting on work outside it", and
+**`PL-2K1R` is the twelfth, added after the freeze** (project owner, 2026-09-14):
+`P1` `safety`, an interpretation disclaimer beside the use disclaimer, stating
+that the readouts and traces are modelled rather than measured. Sequenced
+behind `PL-25KS` on the rule the five carried entries already follow - text on
+a dashboard rewritten from scratch is written once, in the port - and clearing
+before v0.5.0 like them. It is named under the port's "Decisions the port has
+to make anyway", which is what keeps the port's parity claim checkable with it
+on the list. A `safety` entry re-enters the current gate whenever it is found,
+per § "The cadence", which is why it is recorded here rather than left to
+Gate 2.
+
+**`bin/docket wave` still prints all thirteen as "waiting on work outside it", and
 that is correct rather than stale.** It asks whether an entry's `blocked-by`
 chain leaves the frozen list, and these chains still do - they name `PL-G59B`,
 `PL-25KS` and `PL-L9RD`, which are port items rather than gate entries. What
@@ -2977,7 +2983,8 @@ included.
 **Thirty-four more from the 2026-09-14 triage pass** (`PL-6FJ5`), which took the
 45 captures the v0.4.2x range left untriaged and verified each finding against
 the tree before assigning fields. Two of the 36 debt-classed results are
-`safety` and are admitted above; these thirty-four are declined, on two
+`safety` - `PL-27H0` and `PL-2K1R`, both admitted to the frozen list above -
+and these thirty-four are declined, on two
 different grounds, and the split is stated rather than averaged.
 
 **Nine were introduced by this milestone's own implementation work, so the

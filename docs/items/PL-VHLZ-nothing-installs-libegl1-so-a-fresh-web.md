@@ -63,3 +63,10 @@ runs it.
 environment setup script carries the line (recorded here as done by them, since
 no file in this tree can prove it), and `PL-YCWZ`'s first rendering test passes
 in CI on a runner that never had the library.
+
+**The environment half is done** (project owner, 2026-09-14): the setup-script
+line above was added to the cloud environment after `#576` merged. Recorded
+here as done by them, as "Done when" provides, since no file in this tree can
+prove it; the first fresh session in that environment that imports
+`PySide6.QtGui` without an `apt` step is the proof. What remains is the CI
+step in `quality.yml`, which rides whichever session takes this item.
