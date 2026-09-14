@@ -297,47 +297,73 @@ The reference adult's own settings (FGF 4, V_A 4, Q 5), 1 MAC -> 2 MAC at
    cost is linear in the span whatever the slope, and the ladder is meant to
    grow toward days (`PL-SSBP`).
 
-**Decision needed, again: which route to the same end state.** Route 1 as
-decided on 2026-09-10 - hold the chord at the width that reaches 0.01 pp -
-costs what is tabulated above. Three ways out, and they are not equivalent:
+**Desflurane moves every number above by a factor of five to seven** (same
+method, same day). 0 -> 12% at the fast corner, then 6% at 600 s - an
+overpressure induction the interface allows - departs by **5.52 pp on the
+circuit trace and 3.83 pp on the alveolar, 0.64 MAC**, at the shipped 290 s
+chord. 0.01 pp on the alveolar trace needs a **2 s** chord there (1 s: 0.0031,
+2 s: 0.0113, 5 s: 0.0549 pp); 18 s of chord leaves 0.36 pp on the circuit and
+0.25 pp on the alveolar (0.04 MAC). Beyond 1 800 s of an opening the 290 s chord
+is within 0.0024 pp. The slow corner (FGF 0.5, V_A 2, Q 2, same steps) is
+benign: 0.31 pp on the circuit at 290 s, 0.0118 pp at 24 s, 0.0015 beyond
+1 800 s. So this item is banded on the wrong agent - the defect is 0.64 MAC,
+not 0.26 - and a uniform chord that reaches 0.01 pp on every supported case is
+2 s: 21 601 columns at 12 h, 130 000 drawn points.
 
-- **A. Hold the chord at 5 s everywhere.** The decision as taken. Five lines in
-  `chart_columns`; 0.01 pp at every rung; 8 641 columns at 12 h, 17 281 at
-  24 h, and about 320-630 ms of frame on the extrapolation above, linear in
-  the span. Affordable only if the paint slope on the owner's hardware is a
-  third of what the two readings imply, which the spike's column ladder could
-  measure if extended past 2 400.
-- **B. Hold the chord at 5 s up to a column ceiling, and state the residual
-  above it.** The same five lines plus a ceiling. At 2 400 columns the bases
-  up to 4 h reach 0.01 pp and the 8 h and 12 h bases sit at 0.04 and 0.07 pp
-  on the circuit trace (0.02 MAC on the alveolar), stated in `docs/MODEL.md`;
-  about 110 ms per frame at 12 h on the same extrapolation. Leaves four to
-  seven counts of the last displayed digit in the first minute of a fast
-  induction at the two widest bases.
-- **C. Two spacings: the coarse chord the span implies everywhere, and a fine
-  5 s chord for the first stretch after every segment opening in view.** The
-  route-2 sketch in this item's own brief - "a fixed dyadic refinement near
-  each segment opening, which keeps the spacing uniform within each
-  refinement level" - reduced to one level, because a propagator costs
-  1.29 ms against 5.8 us per chained column, so one uniform fine level per
-  opening is cheaper than a dyadic stack. 0.01 pp at every rung for a cost
-  that follows the openings in view rather than the span: about 870 columns
-  for a 12 h window with two changes in it (the coarse 150 plus 360 per
-  opening at 5 s over 1 800 s, the stretch beyond which the coarse chord is
-  within 0.0011 pp on both runs above), about 11 ms of evaluation, and the
-  same at a 24 h fit or a week. Worst case is a window holding `MAX_CHART_CONTROL_MARKS` changes,
-  which costs on that frame what A costs on every frame. Uniform spacing
-  within each level, so the chained propagator holds; fine columns anchored
-  to the opening, which does not move, so the grid is as stable frame to
-  frame as the coarse one. Costs the evaluator a second spacing and a
-  refinement span (`evaluate_anchored`, `drawn_window`, `chart_frame`), the
-  two constants chosen by measurement across the supported envelope, and
-  tests for the merged grid.
+**Decision needed, again: what fidelity the drawn line owes, and by which
+mechanism.** Route 1 as decided on 2026-09-10 - hold the chord at the width
+that reaches 0.01 pp - is 2 s of chord on the shipped envelope, and cannot be
+afforded on any hardware this project has measured. Four ways out:
 
-**Recommendation: C.** A meets the target and cannot be afforded as measured;
-B is affordable and does not meet the target; C meets it at about a twentieth
-of A's cost, and its cost has the right shape - it follows the run's events,
-which is where the curvature is, rather than the axis, which is where it is
-not. That is what "spend them where the error is" meant. The extra code lands
-in the evaluator, which is where the project already keeps the display grid's
-rules.
+- **A. Hold the chord at the width that reaches 0.01 pp everywhere.** The
+  decision as taken. Five lines in `chart_columns`; 21 601 columns at 12 h,
+  43 201 at a 24 h fit; about 160 ms of Python and 600 ms of paint per frame
+  on the figures above. Out of reach, and linear in the span.
+- **B. Hold a chord up to a column ceiling, and state the residual above it.**
+  The same five lines plus a ceiling. At 2 400 columns the 12 h base draws an
+  18 s chord: 0.07 pp (sevoflurane) and 0.36 pp (desflurane) on the circuit
+  trace, 0.04 pp / 0.25 pp (0.02 / 0.04 MAC) on the alveolar, stated in
+  `docs/MODEL.md`; 22 ms of Python here and about 110 ms per frame at 12 h on
+  the paint extrapolation. Leaves a stated numeric residual and no visual
+  guarantee.
+- **C. The coarse chord the span implies everywhere, plus a fine chord for the
+  first stretch after every segment opening in view.** The route-2 sketch in
+  this item's own brief, made concrete. Reaches 0.01 pp on every trace for
+  every supported case, with the constants set by the worst of them: 2 s over
+  1 800 s, which is 900 columns per opening as a single level, or about 125 per
+  opening as a dyadic stack (2, 4, 8, 16, 32 s to 60, 120, 300, 600 and 1 800 s)
+  at five propagators - 6.5 ms - per opening. Cost follows the openings in
+  view rather than the span: five openings is about 4 650 columns single-level
+  or 775 dyadic. Uniform spacing within each level, so the chained propagator
+  holds; fine columns anchored to the opening, which does not move. Costs the
+  evaluator a second spacing and a refinement span (`evaluate_anchored`,
+  `drawn_window`, `chart_frame`), tests for the merged grid, and a re-measure
+  of the constants whenever the envelope grows - a new agent, a wider dial.
+- **D. Hold the chord at one pixel: columns are the plot's width in logical
+  pixels, floored at 150.** Visually exact at every base by construction:
+  within one pixel column a monotone stretch rasterises to the same vertical
+  run whatever its shape, which is the property Jugel et al. 2014 (M4, held in
+  `docs/references/` and already cited by the chart) prove. Numerically the
+  line between two drawn points is still a chord - 1.2 pp on the circuit and
+  0.25 pp on the alveolar at 12 h on the desflurane case at 1 000 px - stated
+  in `docs/MODEL.md` as a bound no display reads: the hover answers only at
+  drawn points, and nothing else reads between them. Cost is 1 000-1 400
+  columns at every base: about 13 ms of Python here and 40 ms of paint on the
+  owner's hardware on the extrapolation, twice today's chart cost, independent
+  of the span, and the same for any agent, dial or future rung. Five lines in
+  `chart_columns` plus the plot width passed into the frame the way the time
+  base already is, and testable at the pixel level with
+  `tests/integration/test_qt_chart.py`'s painted-image harness: the chart at
+  the 12 h base against the same run drawn at a 0.1 s chord. A fixed count at
+  the widest plot the interface draws is the same route without the plumbing,
+  at a fixed cost.
+
+**Recommendation: D.** It matches the failure mode - what a learner sees -
+holds for every case by construction rather than by constants measured against
+an envelope that grows, costs five lines, and is testable end to end in the
+pixels it claims. A cannot be afforded; B leaves a residual and guarantees
+nothing visually; C is the route if the *line itself* must be within 0.01 pp -
+principled and cheap per opening, its constants the worst supported case's,
+and the most code. Under every route the Flet dashboard keeps its 150 columns
+until `PL-25KS` ports it and `PL-7SVX` removes it: its per-point charge is what
+forbade the raise in the first place, and `chart_columns` is the Qt chart's.
