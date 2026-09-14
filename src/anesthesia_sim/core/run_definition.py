@@ -92,11 +92,16 @@ class Keyframe:
             nothing.
         state: The trajectory in `governing_equations`' own state order,
             `STATE_SIZE` entries long. The two accumulator states are
-            cumulative from the start of the run rather than per segment,
+            cumulative from the start of the *case* rather than per segment,
             because their rows have no diagonal entry: a propagator maps each
             of them to itself with coefficient one, so carrying a running
             total through is the same arithmetic as starting from zero and
-            adding.
+            adding. The case rather than the run holding the keyframe: a
+            branch opens carrying its parent's totals, so its first keyframe's
+            accumulators count litres delivered before the branch existed.
+            That is the point - the agent a patient has received is the
+            case's, and a branch restarting the count at zero would report a
+            mass balance for a patient nobody has.
     """
 
     instant_s: float

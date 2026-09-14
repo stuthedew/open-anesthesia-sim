@@ -629,7 +629,9 @@ class AgentUptakeSystem:
         rather than derived.** `state_vector()` reports each step's own
         delivered and exhausted agent, because the propagator integrates them
         over the interval it is given; a keyframe's are cumulative from the
-        start of the run it belongs to. Writing those in continues the
+        start of the *case*, which for a branch's keyframes is earlier than
+        the run holding them - a branch opens carrying its parent's running
+        totals. Writing those in continues the
         parent's mass-balance readout across the fork instead of restarting it
         at zero, which a learner comparing two managements of one case needs,
         since the agent the patient has received is the case's and not the

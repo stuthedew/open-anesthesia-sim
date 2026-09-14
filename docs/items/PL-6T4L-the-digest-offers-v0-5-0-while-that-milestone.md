@@ -9,6 +9,7 @@ feature: release-roadmap-seam
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-14
 closed: 2026-09-14
+pr: 571
 verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_the_reservation_reads_the_milestone_the_beat_names_not_only_the_step' subprojects/docket/tests/test_release.py
 ---
 

@@ -9,6 +9,7 @@ feature: scenario-branching
 touches: src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/app/controller.py, tests/unit, tests/integration, tests/reference, docs/MODEL.md, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-14
 closed: 2026-09-14
+pr: 572
 verify: uv run pytest tests/integration/test_controller.py && grep -q 'def test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from' tests/integration/test_controller.py
 ---
 

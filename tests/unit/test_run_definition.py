@@ -656,7 +656,7 @@ def test_the_first_stretch_is_kept_even_when_a_change_returns_to_it() -> None:
 
 
 def test_anchored_columns_land_on_multiples_of_the_spacing() -> None:
-    """The grid is measured from the run's start, not from the window's left edge.
+    """The grid is measured from the case's zero, not from the window's left edge.
 
     This is what makes a following window reuse its column times, and it is
     the property `evaluate` deliberately does not have.

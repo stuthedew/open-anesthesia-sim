@@ -184,3 +184,12 @@ the right field again, so the two moved back in this commit.
 learner take a fork or select between runs), `PL-NC62` (the settings-mismatch
 refusal names one cause for every failure), `PL-LLBV` (the whole-step guard and
 a typed time).
+
+**Amended 2026-09-14 by `PL-ZMRT`** (one simulated-time frame). The close-out
+above says it wrote "the two time frames and which readers are in which" into
+`docs/ARCHITECTURE.md` § "What a branch is, and what it shares with its
+parent". That passage now reads "**One time frame, and every reader is in
+it.**" - the second frame it described was removed the same day, along with
+`SimulationController.origin_s` and the subtractions in `advance` and
+`drawn_window`. What this item delivered is unchanged; only the paragraph it
+points at has been rewritten under it.

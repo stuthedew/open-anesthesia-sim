@@ -210,7 +210,7 @@ def time_base_for_span(span_s: float) -> ChartTimeBase:
 
 
 def fitted_window(time_base: ChartTimeBase) -> tuple[float, float]:
-    """The axis bounds of the "Fit run" mode: the whole run, pinned at zero.
+    """The axis bounds of the "Fit run" mode: the whole case, pinned at induction.
 
     The other half of `fit_to_run`, and trivial by design. It is a named
     rule rather than an expression at the call site because *which* end is
@@ -269,8 +269,11 @@ def following_window(time_base: ChartTimeBase, newest_sample_s: float) -> tuple[
 def tick_times(start_s: float, stop_s: float, interval_s: float) -> tuple[float, ...]:
     """Where the gridlines and axis labels fall inside one window.
 
-    Multiples of the interval measured from the run's own start, never from
-    the window's left edge. That is what keeps a gridline standing at the
+    Multiples of the interval measured from the case's zero, never from
+    the window's left edge - and from the case's zero rather than from any one
+    run's opening, so a trunk and a branch drawn on one axis are ruled by the
+    same gridlines. `docs/MODEL.md` § "Minimum displayed outputs" states the
+    same rule. That is what keeps a gridline standing at the
     same simulated time as the window slides underneath it: ticks derived
     from the edge would drift with it, so the grid would crawl and every
     label would be rewritten on every frame.
