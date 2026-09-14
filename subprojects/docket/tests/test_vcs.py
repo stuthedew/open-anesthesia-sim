@@ -1265,6 +1265,34 @@ def test_the_digest_stays_silent_when_every_ref_was_read() -> None:
     assert "could not be compared" not in _digest(flight=READ)
 
 
+def test_the_digest_names_a_ref_nothing_can_attribute() -> None:
+    """It is the digest that has to carry it, and only in the case that earns it.
+
+    Every session reads the digest and few run `flight`, which is the whole
+    argument for the unread line above. The 2026-09-04 decline feared the
+    mirror image - a line nobody acts on, resent on every turn - and the count
+    that settled it is that no ref in this repository is unattributed today,
+    with `tools/branch_id_check.py` holding that (`PL-B73C`).
+    """
+    unattributed = FlightReport(
+        branches=UNREAD.branches, unattributed=("origin/Review_articles",), base=BASE
+    )
+    stated = [
+        line
+        for line in _digest(flight=unattributed).splitlines()
+        if "attributable to no item" in line
+    ]
+
+    assert len(stated) == 1
+    assert "origin/Review_articles" in stated[0]
+    assert "file an item or delete the branch" in stated[0]
+
+
+def test_the_digest_stays_silent_when_every_unlanded_ref_names_something() -> None:
+    """The steady state, and the reason no suppression rule was built."""
+    assert "attributable to no item" not in _digest(flight=READ)
+
+
 def test_the_queue_listing_says_when_a_ref_went_unread() -> None:
     from docket.render import format_list
 
@@ -1377,6 +1405,90 @@ def test_flight_names_a_ref_that_contributes_by_name_in_both_halves() -> None:
     assert "no commit of its own this checkout can read" in printed
     assert "so what its commits carry is unknown" in printed
     assert printed.count(NAMED_UNREADABLE) == 2
+
+
+# --- read perfectly well, and attributable to nothing ------------------------
+
+
+UNNAMED = "origin/Review_articles"
+
+
+def test_a_ref_naming_no_item_anywhere_is_reported_as_unattributed() -> None:
+    """The third outcome of the read, which used to be dropped (`PL-B73C`).
+
+    `origin/Review_articles` is the shape: one commit ahead of the base from
+    before the `claude/` convention, no id in the name, none at the front of
+    its subject. It was read without difficulty and named nowhere.
+    """
+    report = _report([UNNAMED], commits={UNNAMED: [("1", "Added review articles on math models")]})
+
+    assert report.unattributed == (UNNAMED,)
+    assert report.branches == ()
+    assert report.unreadable == ()
+
+
+def test_a_queue_only_push_is_attributable_even_though_it_claims_nothing() -> None:
+    """The discriminator the whole reading rests on.
+
+    A capture, a triage pass and a `docket record` write are all withheld from
+    `branches` by `_annotates_only` - they name an item they are not working.
+    They are still *attributable*, and reading them as unattributed would put a
+    line in every session for the most routine push this project makes.
+    """
+    ref = "claude/loving-ride-mo6njm"
+    report = _report(
+        [ref],
+        commits={ref: [("1", "PL-XR8K: close the tag item", "c1", "docs/items/PL-XR8K-tag.md")]},
+    )
+
+    assert report.branches == (), "a queue-only diff still claims nothing"
+    assert report.unattributed == (), "but the ref names the item it concerns"
+
+
+def test_a_ref_named_for_its_item_is_never_unattributed() -> None:
+    """The name is read whatever the subjects say, so it settles this too."""
+    report = _report(
+        ["claude/pl-k7qx-do-the-thing"],
+        commits={"claude/pl-k7qx-do-the-thing": [("1", "wip, no id in the subject")]},
+    )
+
+    assert report.unattributed == ()
+
+
+def test_an_unread_ref_is_not_called_unattributed() -> None:
+    """Absence of an id has to be read, never assumed from a walk that stopped.
+
+    A ref whose commits this checkout could not reach contributes no subjects
+    at all, so calling it unattributed would be inventing the absence rather
+    than reading it - the same overclaim `unreadable` exists to prevent.
+    """
+    report = branches_in_flight(ROOT, runner=_runner([TRUNCATED], unrelated=(TRUNCATED,)))
+
+    assert report.unreadable == (TRUNCATED,)
+    assert report.unattributed == ()
+
+
+def test_a_local_branch_and_its_tracking_ref_are_one_unattributed_line() -> None:
+    """`--source` credits a commit to whichever ref it reached first.
+
+    So the two sides are collapsed before they are compared. Without it a
+    branch whose commits git credited to its tracking ref reads as naming
+    nothing, and the live session running this check reported its own branch.
+    """
+    report = _report(["work", "origin/work"], commits={"origin/work": [("1", "no id anywhere")]})
+
+    assert report.unattributed == ("work",)
+
+
+def test_flight_names_an_unattributed_ref_and_says_no_guard_can_see_it() -> None:
+    from docket.render import format_flight
+
+    report = _report([UNNAMED], commits={UNNAMED: [("1", "Added review articles on math models")]})
+    printed = format_flight(report, date(2026, 8, 31))
+
+    assert "1 ref carries no item id" in printed
+    assert "no guard in this repository can see it" in printed
+    assert UNNAMED in printed
 
 
 def _commits(*entries: tuple[str, str, str, str, str]) -> str:

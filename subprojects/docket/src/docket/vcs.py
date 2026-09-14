@@ -188,6 +188,23 @@ class FlightReport:
 
     branches: tuple[Branch, ...] = ()
     unreadable: tuple[str, ...] = ()
+    #: Unlanded refs this checkout read perfectly well and could attribute to
+    #: no item at all - no id in the name, and none at the front of any commit
+    #: subject. The third outcome of the read, and until `PL-B73C` there was
+    #: nowhere for it to go: such a ref was dropped, so the report was complete
+    #: about what it could not read and silent about work it could.
+    #:
+    #: Reported with no suppression rule, on a count rather than an argument.
+    #: The decline of 2026-09-04 rested on `origin/Review_articles` being one
+    #: such ref and a line about it therefore appearing in every session for as
+    #: long as it existed; `PL-JX2T` closed it, the branch is gone, and on
+    #: 2026-09-14 none of the remote's ten non-default heads is unattributed.
+    #: `tools/branch_id_check.py` is what holds that: it fails a `claude/*`
+    #: branch of one's own that names no id. So the steady state is empty by
+    #: construction and there is nothing for an age, a push-date floor or an
+    #: allow-list to suppress. Should a line start appearing that nobody acts
+    #: on, `CLAUDE.md`'s retirement test governs this like any other check.
+    unattributed: tuple[str, ...] = ()
     #: Refs that have edited an item's file without claiming to work it, for
     #: the items no `Branch` already accounts for. Disjoint from `branches` by
     #: construction: where both would fire the stronger mark is the one a
@@ -238,7 +255,7 @@ _UNDATED = Stake(when=datetime.min.replace(tzinfo=UTC), commit="")
 class _Walk:
     """What one pass over the unlanded refs produced.
 
-    Five readings of the same commits. They are kept together because they come
+    Six readings of the same commits. They are kept together because they come
     from one `git log`: separating them into functions of their own would mean
     walking the history once per question, and the questions are asked together
     every time.
@@ -246,6 +263,13 @@ class _Walk:
 
     last: dict[str, date]
     ids: dict[str, str]
+    #: Refs at least one of whose commit subjects opened with an item id, read
+    #: before `_annotates_only` has a say. `ids` answers "who is working what";
+    #: this answers the weaker question "is this ref attributable to anything
+    #: at all", which is what separates a capture push from a ref nobody can
+    #: name (`PL-B73C`). A ref appears here and contributes no claim whenever
+    #: its whole diff sits in the queue.
+    named: set[str]
     #: Per item id, the ref whose commits changed its file and the path they
     #: changed. The path rides along because the mark is only worth raising
     #: where the edit is still unmerged, which `branches_in_flight` tests
@@ -448,7 +472,7 @@ def _unmerged_commits(
     it apart from the stronger one for exactly that reason.
     """
     if not refs:
-        return _Walk({}, {}, {}, {}, {}, set())
+        return _Walk({}, {}, set(), {}, {}, {}, set())
     # `--name-only` rather than a `git show --stat` per commit, and that is the
     # whole reason the diff can be read at all here. This walk is on the hot
     # path of `next`, `list`, `triage`, `status` and the session-start digest,
@@ -465,6 +489,7 @@ def _unmerged_commits(
     prefix = items_dir.strip("/") + "/"
     last: dict[str, date] = {}
     ids: dict[str, str] = {}
+    named: set[str] = set()
     edited: dict[str, tuple[str, str]] = {}
     staked: dict[tuple[str, str], Stake] = {}
     opened: dict[str, Stake] = {}
@@ -498,6 +523,12 @@ def _unmerged_commits(
             held_edit = edited.get(identifier)
             if nearer(ref, None if held_edit is None else held_edit[0]):
                 edited[identifier] = (ref, path)
+        # Before the annotation test, deliberately: a capture, a triage pass
+        # and a `docket record` write all name the item they concern, and a
+        # ref that has done one of those is attributable even though it claims
+        # nothing. Only a ref that names nothing anywhere is unattributed.
+        if leading_ids(subject):
+            named.add(ref)
         if _annotates_only(paths, prefix):
             return
         for identifier in leading_ids(subject):
@@ -541,7 +572,13 @@ def _unmerged_commits(
         pending = (ref, stake, subject)
     credit_claims()
     return _Walk(
-        last=last, ids=ids, edited=edited, staked=staked, opened=opened, unbounded=unbounded
+        last=last,
+        ids=ids,
+        named=named,
+        edited=edited,
+        staked=staked,
+        opened=opened,
+        unbounded=unbounded,
     )
 
 
@@ -1048,9 +1085,28 @@ def branches_in_flight(
         and path not in _superseded(name, base, (path,), root, run)
     }
     edited = {identifier: _preferred(name, candidates) for identifier, name in edited.items()}
+    # **Read, and attributable to nothing.** Confined to refs whose commits the
+    # walk actually reached: an unread ref contributes no subjects, so calling
+    # it unattributed would be inventing the absence of an id rather than
+    # reading one. `_preferred` collapses a local branch and its tracking ref,
+    # which are one piece of work named twice.
+    # `--source` credits a commit to whichever of two refs holding it git
+    # reached first, and a local branch and its tracking ref are one piece of
+    # work; so both sides are collapsed through `_preferred` before they are
+    # compared, or a branch whose commits git credited to its tracking ref
+    # reads as naming nothing.
+    attributed = {_preferred(name, candidates) for name in walk.named}
+    unattributed = {
+        preferred
+        for preferred in (
+            _preferred(name, candidates) for name in candidates if name in unlanded_set
+        )
+        if preferred not in attributed and BRANCH_ID_RE.search(preferred) is None
+    }
     return FlightReport(
         branches=tuple(sorted(in_flight.values(), key=lambda branch: branch.item_id)),
         unreadable=tuple(name for name in candidates if name in unreadable),
+        unattributed=tuple(name for name in candidates if name in unattributed),
         editing=tuple(
             QueueEdit(name=name, item_id=identifier, last_commit=last_commit.get(name))
             for identifier, name in sorted(edited.items())
