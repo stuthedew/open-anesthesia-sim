@@ -13,7 +13,7 @@ added: 2026-09-08
 ---
 
 > **This ships with the Qt port, not before it.** The project owner decided
-> 2026-09-10 that the fix waits for `v0.5.1` (`PL-QXSB`, decided the same day);
+> 2026-09-10 that the fix waits for the Qt port (`PL-QXSB`, decided the same day);
 > on Flet a wider budget costs frame time `PL-2FM6` had just given back, and
 > after the port it is nearly free. `blocked-by` now says so, so nothing has to
 > rely on a reader seeing this paragraph.
@@ -196,12 +196,12 @@ port does not change what gets built, only when.
 **The status was a compromise for one day and is not any more.** `blocked` is
 the accurate status and the store rejects it without a blocker; on 2026-09-10
 the blocker was a milestone decided and not yet named, and `blocked-by` accepts
-only a version `ROADMAP.md` places. The port was scoped as `v0.5.1` the same
-day, so this now carries the closest edge the store has.
+only a version `ROADMAP.md` places. The port was scoped the same day, so this
+now carries the closest edge the store has.
 
 **It is not an honest edge, and `PL-L09X` says why.** `blocked-by: <version>`
 means blocked until that milestone is *scoped* - `PL-W8XP` built it for exactly
-that - and `v0.5.1` is scoped, so `docket check` advises this item is "ready to
+that - and the port is scoped, so `docket check` advises this item is "ready to
 promote". It is not: it is fully designed and waiting for the port to *land*.
 `blocked` is kept anyway because `bin/docket next` excludes blocked items, so
 the `P1` ranking hazard is gone and the only route to promotion runs through a

@@ -49,7 +49,7 @@ read from the frozen list a milestone records and its `Required scope`, never
 from a mention elsewhere in the section" - so this is the implementation
 disagreeing with the documented behaviour rather than an undecided question.
 
-**Check the other direction too.** v0.5.1's Required scope and the two frozen
+**Check the other direction too.** The Qt port's Required scope and the two frozen
 gate lists are read by the same code; whether they carry the same inflation is
 a measurement this item should take rather than assume.
 

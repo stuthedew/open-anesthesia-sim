@@ -54,7 +54,7 @@ stays; only the numbers change.
 
 **Do not re-measure.** This item was written to re-take `PL-YSZN`'s Flet frame
 table on the post-`PL-2FM6` tree so the Qt/Flet comparison would rest on three
-comparable rows. `PL-QXSB` has since decided to leave Flet and `v0.5.1` scopes
+comparable rows. `PL-QXSB` has since decided to leave Flet and `ROADMAP.md` scopes
 the port, so the decision the comparison supported is taken, and the tree being
 re-measured is one this project is deleting. The headline the decision actually
 rested on - handing a frame to the toolkit costs about 1 ms on Qt against 26-45

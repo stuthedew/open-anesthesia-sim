@@ -1,14 +1,16 @@
 ---
 id: PL-RKWB
 title: Decide whether the Qt port ships ahead of v0.5.0's display half: PL-8PSW is the only scheduled item the port rewrites, and on Flet it is built where no session can look at it
-status: done
-closed: 2026-09-14
-added: 2026-09-14
 priority: P2
 effort: M
+status: done
 classes: planning
 feature: qt-port
+milestone: v0.4.25
 touches: ROADMAP.md, docs/items, docs/WORKING_NOTES.md
+added: 2026-09-14
+closed: 2026-09-14
+pr: 573
 verify: python3 tools/doc_check.py check && grep -qF 'Moved ahead of v0.5.0' ROADMAP.md
 ---
 

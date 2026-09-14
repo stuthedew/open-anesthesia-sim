@@ -41,12 +41,12 @@ first; it is the specification, and this item is the build.
 **The one thing that will go wrong if nobody names it.**
 `pyqtgraph.ScatterPlotItem` ships `'hoverable': False`, and a plotted line
 carries no hover at all, so a port that says nothing about this does not
-inherit the Flet build's hover — it loses it. `v0.5.1`'s own definition of done
+inherit the Flet build's hover — it loses it. The port's own definition of done
 is "every capability the Flet build has, the Qt build has", so silence here is
 a parity failure rather than a deferral. `PL-DNHM` recorded the finding and is
 closed onto this item.
 
-**Why it is `blocked-by: v0.5.1` rather than done on Flet.** Implementing on
+**Why it waits for the port rather than being done on Flet.** Implementing on
 `flet_charts` means writing a `text` string onto every one of roughly 1 870
 point objects, onto a pause-transition frame `PL-KP7H` already measured at
 71.9 ms and 90 KiB — and then deleting all of it, because under pyqtgraph the

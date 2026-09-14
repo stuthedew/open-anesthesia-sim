@@ -3,7 +3,8 @@ id: PL-2QMK
 title: No session in the web container can visually confirm a chart change, because Flet's web renderer fetches its Flutter assets from a host the egress proxy denies
 priority: P2
 effort: M
-status: ready
+status: blocked
+blocked-by: PL-YCWZ
 classes: infra, session-cost, ux
 touches: docs/worker.md
 added: 2026-09-05
@@ -67,3 +68,9 @@ describe, not what Flet draws from them.
 **Done when.** A session in this container can produce a screenshot of the
 running application, or `docs/worker.md` and the `run` skill state that it
 cannot and say what to do instead.
+
+**Blocked on `PL-YCWZ`, 2026-09-14.** Both the port's definition of done
+("a headless rendering test asserts on the real interface, and `PL-2QMK`
+closes on it") and `PL-YCWZ`'s own brief say that item is what closes this
+one; the field now says so too, so `bin/docket next` stops offering this as
+startable work.

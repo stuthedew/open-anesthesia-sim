@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: queue-hygiene
+milestone: v0.4.25
 touches: docs/items, ROADMAP.md
 added: 2026-09-14
 closed: 2026-09-14

@@ -13,7 +13,7 @@ verify: uv run python tools/import_boundary_check.py && grep -q 'PySide6' src/an
 
 **Problem.** Re-express app/theme.py for Qt and make the interface pass's visual decisions once, absorbing ROADMAP item 33
 
-**`v0.5.1`'s Required scope, item 3**, and it absorbs planned-milestone item
+**The Qt port's Required scope, item 3**, and it absorbs planned-milestone item
 33 - the interface pass the `v0.5.x` row used to carry. A restyle of a
 dashboard about to be rewritten is the same work twice, so palette, type scale,
 spacing rhythm, density and layout are decided once, here.
@@ -47,3 +47,14 @@ dash patterns intact, the interface pass's visual decisions recorded once,
 `tools/agent_identity_check.py` both passing against the new file - which is
 `PL-JRS3`'s subject, since after a port they would otherwise pass on a tree they
 no longer describe.
+
+**Rider, 2026-09-14 (pre-port survey).** `tools/glyph_check.py`'s six
+`CONFIRMED` entries (U+00A0, U+00B1, U+00B7, U+00D7, U+2013, U+2014) record
+evidence against the Flutter client - "rendered in the wash-in tolerance
+readout (PL-8XPQ, 2026-09-04)" and the like - and U+00A0's rests on a Flutter
+layout fact ("a blank string collapses to zero height"). The module says it
+has no rot guard, deliberately. Once the Qt dashboard renders, display all
+six, look at them, and rewrite each evidence string to name the Qt build and
+the date; re-check U+00A0's premise specifically, since Qt lays out a blank
+label differently. The check passes throughout the port either way, which is
+why this is written down rather than left to be noticed.

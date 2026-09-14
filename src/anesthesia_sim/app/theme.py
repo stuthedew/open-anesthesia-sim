@@ -57,7 +57,7 @@ MUTED = "#59728A"
 # the app opens. The deliberate divergence also keeps a teaching tool from
 # being mistaken for a monitor, which is the reason the owner chose it.
 #
-# This binds the Qt port as much as this file. `v0.5.1` redecides the palette
+# This binds the Qt port as much as this file. The port redecides the palette
 # and is the moment an indicator-shaped surface could first appear; it must
 # not arrive carrying a monitor's priority palette. Two things are unaffected:
 # PL-MMYM's contrast target binds whatever colour is chosen, and the ISO 5360

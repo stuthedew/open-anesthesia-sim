@@ -1,0 +1,25 @@
+---
+id: PL-188T
+title: The reserved-version guard cannot see the Qt port's section once the port is numbered past the current patch, so a patch cut mid-port is offered the port's own number as free
+status: untriaged
+added: 2026-09-14
+---
+
+**Problem.** The reserved-version guard cannot see the Qt port's section once the port is numbered past the current patch, so a patch cut mid-port is offered the port's own number as free
+
+**Found 2026-09-14** by the pre-port survey, and it is `PL-VFD8`'s defect by
+a third door. `PL-6T4L` taught `release_offer`'s reserved-version guard to
+read `plan.step` and `plan.milestone`. Once `PL-G7RD` cuts `v0.4.25` and the
+port's section moves to `v0.4.26`, `wave` binds `step = v0.4.x` and
+`milestone = v0.5.0` - the port section is neither - and a simulated
+`release_offer` on a `0.4.26` bump returns `ReleaseOffer(kind='stands',
+version='0.4.26')`. So any patch cut mid-port is offered the port's own
+number as free, which is the collision `ROADMAP.md` § "the interface moves to
+Qt" records as its one risk, arriving again from the tool that exists to
+prevent it.
+
+**Done when** the guard answers from every version the roadmap names ahead of
+the current one - which is `PL-VFD8`'s "Done when" verbatim, so this is
+evidence for that item rather than a second mechanism; close both together.
+Until then, a patch cut during the port names `0.4.27` rather than accepting
+the offer.
