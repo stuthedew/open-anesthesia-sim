@@ -351,16 +351,19 @@ rather than approximated, for the arithmetic reason `docs/MODEL.md` measures.
 a branch opened off a keyframe really does stop reproducing the run it claims
 to continue, rather than the refusal guarding against nothing.
 
-A **bookmark is not yet one of those instants.** Bookmarks are `PL-LPLD` and
-the halt that stops a run on the step crossing one is `PL-CTD7`; neither is
-built, and nothing in the tree records a keyframe at a halt today. A bookmark's
-instant is not in general a setting change, so the trunk holds no keyframe
-there and `resumed_at` refuses it like any other. The cheap way to earn one is
-at the halt rather than at the fork: a halt leaves the run standing at that
-instant with nothing computed past it, so a keyframe recorded there moves no
-value the run has already produced, where the same split recorded at an instant
-the run has already passed moves the trunk's own later answers. `PL-CTD7` is
-where that would be built and measured.
+A **bookmark is not yet one of those instants**, and how it becomes one is
+open. Bookmarks are `PL-LPLD` and the halt that stops a run on the step
+crossing one is `PL-CTD7`; neither is built. A bookmark's instant is not in
+general a setting change, so the trunk holds no keyframe there and `resumed_at`
+refuses it like any other — on a 120 s run with two control changes, 3 of the
+1 201 instants a halt could land on are keyframes. Two routes to a forkable
+bookmark are measured in `PL-B8MK`, and the obvious one is the worse of them:
+recording a keyframe where the run halts makes the branch exact against the
+trunk it forked from, but it moves that trunk's own later answers away from
+what the case would have said unmarked, so marking a run changes it. Opening
+the branch's *definition* at the keyframe before the bookmark, while its clock
+and its live system stand at the bookmark, costs the trunk nothing and is exact
+too. Neither is built or chosen here.
 
 What a comparison between two branches *asserts* — what a difference between
 them may be attributed to, and that neither is a prediction for a patient — is

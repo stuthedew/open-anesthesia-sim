@@ -1,0 +1,37 @@
+---
+id: PL-LLBV
+title: The whole-step guard on a fork instant refuses 35.5% of the one-decimal times a user could type
+status: untriaged
+added: 2026-09-14
+---
+
+**Problem.** The whole-step guard on a fork instant refuses 35.5% of the one-decimal times a user could type
+
+`SimulationController._resume_point_at` requires the fork instant to be a whole
+number of the run's steps, so that the branch can continue the case's step
+count exactly:
+
+```python
+step_count = round(elapsed_s / simulation_step_s)
+if step_count * simulation_step_s != elapsed_s:
+    raise SimulationConfigurationError(...)
+```
+
+The guard is correct and should stay: a branch whose step count did not land on
+the case's would not continue it. What it refuses is the point.
+
+**Measured 2026-09-14 at the shipped 0.1 s step.** Of the 864 001 instants
+`k * 0.1` that a run can actually stand at across a 24 h case, **0 fail**. Of
+whole seconds 0 to 86 400, **0 fail**. But of the one-decimal times a user
+would type — 0.0 to 3600.0 s — **12 767 of 36 001 fail (35.5%)**, the first
+being 0.3, 0.6, 0.7, 1.2 and 1.4 s: `453 * 0.1 == 45.3` is `False`, and
+`round(45.3 / 0.1) * 0.1` is 45.300000000000004.
+
+**So it is not a defect today and becomes one with time bookmarks.** Every
+instant reached by stepping passes, and today a fork instant only ever comes
+from `run_segments`, which holds instants the run stood at. `PL-LPLD`'s time
+bookmark is an absolute simulated time a learner *names*, and that is the first
+input that can miss the grid while looking like it should not. The fix is at
+the boundary that accepts the typed value — snap it to `round(t / step) * step`
+once, where the user can see the instant that was taken — rather than by
+loosening a guard whose exactness the branch's clock rests on.
