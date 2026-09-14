@@ -1,8 +1,15 @@
 ---
 id: PL-FWJF
 title: The Qt port is the next substantial work but sits on a — timeline row, so bin/docket wave anchors on v0.5.0 and every port item reads as placed by no section
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: defect, infra
+feature: release-roadmap-seam
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/tests/test_release.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-14
+closed: 2026-09-14
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_a_section_bearing_row_without_a_number_is_the_beat_once_the_gate_is_clear' subprojects/docket/tests/test_roadmap.py
 ---
 
 **Problem.** The Qt port is the next substantial work but sits on a — timeline row, so bin/docket wave anchors on v0.5.0 and every port item reads as placed by no section
@@ -45,3 +52,52 @@ off-gate work, which here would state the opposite of the plan.
 
 **Done when** a port item offered by `bin/docket next` carries a placement
 sentence that agrees with the timeline.
+
+**Decided 2026-09-14: option 2** (project owner, in the session that cut
+v0.4.25). Option 1 buys one row and churns the plan; option 2 fixes the
+reading for every `—` row that bears a section.
+
+**Done 2026-09-14.** Two readings changed, both in
+`subprojects/docket/src/docket/roadmap.py`:
+
+- `wave` binds the beat's milestone to the first section-bearing timeline row
+  between the project and the gated milestone, numbered or not, once the gate
+  is clear (`_due_before`). The row's own `Required scope` decides `implement`
+  or `release` for it exactly as `_release_due`'s third arrangement does for
+  the milestone itself, and the gated milestone returns as the beat when the
+  row's number is cut. Only a row whose section records its own scope is read;
+  a row with no section, or none with a `Required scope`, is passed over and
+  the beat stays on the gated milestone - stated in the docstring rather than
+  guessed at. The `v0.4.x` row is passed over by the same test, because a
+  patch-track heading has two numbers and `SECTION_VERSION_RE` wants three, so
+  it can bear no section - which is what keeps it the step while the port is
+  the work.
+- `milestone_scope` no longer reads "below the anchor" as "released". `wave`
+  hands it the unreleased sections alone, so released is decided by the version
+  the project is on, and an unreleased section below the anchor - the port
+  while Gate 1 is the beat - places its ids as later work mapped to it, where
+  before they were placed by nobody.
+
+`render.py`'s beat sentence says whose gate cleared when the beat's milestone
+is not the one that recorded it, because "its gate is clear" of the port would
+name a gate it does not have. Live, `bin/docket wave` now prints `implement
+v0.4.26 — the interface moves to Qt - the timeline puts it before v0.5.0 — the
+case you can branch, whose gate is clear, 4 of 26 Required scope ids closed and
+22 still open`, and `bin/docket next` places a port item with `In scope for
+v0.4.26 — the interface moves to Qt, which the step the project is on (v0.4.x —
+the code is the model) comes before`.
+
+**A consequence worth knowing.** v0.5.0's open `Required scope` ids now read as
+later work - `scoped to v0.5.0, which the current step has not reached` - and
+rank below unplaced items, which is what the timeline says. The row's prose
+that the port-neutral spine is untouched by the port is judgment the tool does
+not read, so a session offering one of those items says so itself.
+
+**`PL-VFD8` and `PL-188T` stay open.** No new carrier was added to `Wave`; the
+fix binds the existing `milestone` carrier to the row the timeline puts first.
+That reserves the port's own number while the port is the beat's milestone,
+which is `PL-188T`'s arrangement, and a test in `test_release.py` pins it - but
+their "Done when" is the guard answering from every version the roadmap names
+ahead, and a row with no section still binds nothing (`PL-VFD8`'s v0.6.0).
+`PL-B5DW` captures the one thing the sweep found: `docket status`'s plan header
+still calls the anchor "the step the project is on".

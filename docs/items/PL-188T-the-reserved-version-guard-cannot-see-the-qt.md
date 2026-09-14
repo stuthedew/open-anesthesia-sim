@@ -23,3 +23,12 @@ the current one - which is `PL-VFD8`'s "Done when" verbatim, so this is
 evidence for that item rather than a second mechanism; close both together.
 Until then, a patch cut during the port names `0.4.27` rather than accepting
 the offer.
+
+**Update 2026-09-14 (`PL-FWJF`).** `wave` now binds `milestone` to the port's
+section while the port is the beat's work - a section-bearing `—` row between
+the clear gate and the milestone that recorded it - so a `0.4.26` bump is
+`RESERVED` naming the port, and `test_release.py` pins that arrangement. This
+is the existing carrier reaching the port rather than the guard reading every
+version ahead, so the "Done when" above still stands: once the port ships and
+v0.5.0 is the milestone again, the guard sees exactly what it saw before, and
+`PL-VFD8`'s v0.6.0 is still offered.
