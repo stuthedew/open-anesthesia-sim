@@ -5693,8 +5693,10 @@ taken from; "Independent-solution test" above records the withdrawal in full.
 
 The comparison the interface actually invites is therefore no longer at risk
 from the solver, and that is a measurement rather than an assurance. The six
-readouts are placed in one row to be read *ordinally* — the circuit leads the
-alveoli lead the tissues — and an ordinal reading is corrupted only if the
+readouts are placed in one row — at 1200 CSS pixels and wider; § "The row has a
+width condition, and both arguments above rest on it" below states what happens
+under that — to be read *ordinally*: the circuit leads the
+alveoli lead the tissues. An ordinal reading is corrupted only if the
 error can invert which of two compartments is displayed as higher. Across every
 trajectory in "Independent-solution test", all three agents, comparing every
 pair of the six readouts at every step — 1 485 000 pair comparisons —
@@ -5723,8 +5725,9 @@ measurement: twice the tolerance, which is $`1.0\times10^{-7}`$ counts against
 the 3.0 counts the split's bound allowed.
 
 **Why the resolution is uniform rather than per-compartment.** The six
-readouts sit in one row and are read comparatively — the reason for showing
-them together is that a reader can see the circuit lead the alveoli lead the
+readouts sit together — in one row at 1200 CSS pixels and wider, in a grid
+below that — and are read comparatively; the reason for showing them together
+is that a reader can see the circuit lead the alveoli lead the
 tissues. Different decimal counts across those tiles would put different
 magnitudes at the same glyph position, so a value scanned rather than read
 would be misjudged by a factor of ten. That is a property of the reading task
@@ -5740,6 +5743,39 @@ across all six compartments and all four coefficients, a spread of under two
 orders on a row whose *values* span four. A single absolute resolution is the
 direct expression of that, set by the compartments where the displacement is
 largest and conservative in the ones where it is not.
+
+**The row has a width condition, and both arguments above rest on it.** The
+interface is responsive, and until now this section stated the one-row
+arrangement without qualification, which a reader is entitled to take as a
+commitment. `METRIC_GRID_COLUMNS` in `src/anesthesia_sim/app/simulation_view.py`
+sets the grid's column count per breakpoint and every panel spans exactly one
+column — `test_every_readout_reserves_a_qualifier_line_and_an_equal_column`
+holds both — so the seven panels seat **side by side at 1200 CSS pixels and
+wider, four per line from 992 to 1199, two from 768 to 991, and one below 768**.
+
+The two arguments are not affected equally, and neither is withdrawn.
+
+- **The ordinal reading is the one that weakens.** Below 1200 CSS pixels the
+  six readouts are on two or more lines, and the comparison the row invites
+  stops being a single glance and becomes a scan across them. The *measurement*
+  behind the claim is untouched — it compares displayed values, not their
+  positions, and the 1 485 000 pair comparisons say nothing about layout — so
+  what narrows is the claim that the arrangement invites the comparison, not
+  the claim that the ordering is faithful.
+- **The uniform resolution holds at every width**, and the reflow does not
+  weaken its argument. That argument is that differing decimal counts would put
+  different magnitudes at the same glyph position; the grid aligns value glyphs
+  within a column at every breakpoint, so a reader scanning two panels reads
+  them against a common position whether they are side by side or stacked. It
+  never rested on the six being in a single line.
+
+**In practice the row is at the widest breakpoint today**, because
+`src/anesthesia_sim/app/main.py` opens the window full screen, and the
+conditional arrangement is reachable only by a reader who resizes it. That is a
+property of the current startup behaviour rather than of the specification, and
+it is due to change: `PL-005` replaces the full-screen startup window with a
+sized, centered one and ships with the Qt port, at which point the widths above
+become the ordinary case rather than the resized one.
 
 **Why not a significant-figures rule.** A significant-figures rule gives the
 smallest values the most decimal places, and the small values are exactly
