@@ -519,6 +519,29 @@ row by substance.
   A 3-hour run reconstructs from t=0 in **2.0 s** and 24 hours in **15.9 s**,
   against the 1 s and 8 s above. The conclusion survives the correction: 2 s is
   still imperceptible for the interactive case the owner described.
+
+  **That figure is the operator split's, and the exact step that replaced it
+  costs more** (`PL-R460`). It is kept because it is what eleven releases
+  shipped and a reader comparing versions needs it, but it must not be read as
+  the current cost. `PL-GS5X` predicted the exact step would be faster and
+  asked for a measurement; the measurement said the opposite - 26.8 us against
+  18.4 us on the machine of 2026-09-06, a factor of 1.46. On the container of
+  2026-09-14, best of five, `SimulationState.advance` measures **33.98 us
+  before `PL-R460` and 24.56 us after**, a 27.7% reduction, which puts the
+  exact step at about 1.06x the split rather than 1.46x. The two eras cannot be
+  compared in absolute microseconds - different machines - which is why the
+  ratio is the figure to carry.
+
+  Where it went: `equation_settings()` was rebuilding four frozen dataclasses
+  and about twenty validation guards on every step, at 7.2 us, purely to form
+  the propagator cache key, and the key is now a raw tuple of floats read off
+  the compartments (the guards still run whenever the key moves, which is
+  whenever they could discover anything). `propagate()` was spending 8.5 us on
+  a generator over `range(size)` where `map(mul, ...)` costs 5.0 us for
+  bit-identical output. What the remaining 6% buys is in `docs/MODEL.md`
+  § "Selected method (as implemented)": the solution rather than a first-order
+  approximation of it, mass balance closing at rounding, and a propagator that
+  cannot drive a compartment out of range.
 - *The per-step history is still the expensive thing, and it is now measured
   rather than estimated: **127.9 B per sample**, one substance.* Not the
   `~88-256 B each` above, which sized a `SimulationHistorySample` object that
@@ -999,7 +1022,10 @@ are the three declared, and none pulls it in.
   for vectorization to win.
 - **The write path is append-dominated, which is numpy's weakest operation.**
   `record()` including ladder maintenance costs 0.46 us per sample per series,
-  so **3.2 us per run tick for all seven, against `advance()` at 18.4 us**.
+  so **3.2 us per run tick for all seven, against `advance()` at 18.4 us**
+  (the operator split's figure; the exact step that replaced it measures 24.6 us
+  on the 2026-09-14 container - see the `PL-R460` correction above, which does
+  not disturb this bullet's conclusion).
   numpy has no append: the ladder would need hand-rolled capacity doubling, or
   `np.append`, which reallocates and is quadratic. `array` gives amortized
   append for free, so **numpy would make the compaction harder, not easier**.
@@ -1041,12 +1067,24 @@ spaced and one exponential serves a whole inter-event segment. That
 measurement was taken against a Pade-13 scaling-and-squaring implementation;
 what `PL-GS5X` shipped is scaling and squaring with a shifted truncated Taylor
 series, which rejects Pade by name for needing a linear solve whose denominator
-conditions badly on this system's eigenvalue spread. The timing conclusion is
-unaffected - both are a handful of small matrix multiplies per segment - but
-the figure should be re-measured against the shipped propagator before
-`PL-T691` leans on it. numpy would win nothing there either. Kept rather
-than rewritten: the question is what recurs, and the note records that it was
-asked and answered before.
+conditions badly on this system's eigenvalue spread. numpy would win nothing
+there either. Kept rather than rewritten: the question is what recurs, and the
+note records that it was asked and answered before.
+
+**Re-measured against the shipped propagator, 2026-09-14 (`PL-R460`), and it
+is 7.6 ms rather than 3.3 ms.** A 600-column frame over a 1 h window costs
+7.64 ms with one inter-event segment and 14.13 ms with five, after that item's
+optimizations. The split is 1.3 ms per `matrix_exponential` call and 6.3 us
+per `propagate` call, so one segment is 1.3 ms of exponential against 3.8 ms
+of column evaluation and each further segment adds its own 1.3 ms.
+
+The conclusion the note drew - that this is not a reason to take numpy - still
+holds, and the timing conclusion "a handful of small matrix multiplies per
+segment" was right about the shape. What was wrong is the magnitude, by 2.3x,
+and it is the magnitude `PL-T691` would be leaning on: 14 ms of a 16.7 ms
+frame at 60 fps is not the headroom 3.3 ms implied. The number to design
+against is the segment count, since the per-column cost is the smaller half
+once there is more than one.
 
 ## Decided: control resolution is not what the interface promised at speed - PL-X9KD, PL-NBWP, PL-NBCJ (2026-09-06)
 

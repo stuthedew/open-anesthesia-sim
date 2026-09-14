@@ -197,10 +197,10 @@ class AgentUptakeSystem:
         default_factory=AgentSimulationValidator
     )
     _propagator: Matrix | None = field(default=None, init=False, repr=False, compare=False)
-    _propagator_key: tuple[UptakeEquationSettings, float] | None = field(
+    _propagator_key: tuple[float, ...] | None = field(
         default=None, init=False, repr=False, compare=False
     )
-    """The settings and step the cached propagator was built for.
+    """The step and the raw compartment values the cached propagator was built for.
 
     Not captured by `capture_state()` and not restored: a propagator is a
     function of the settings, which a step never writes and a rollback never
@@ -510,12 +510,27 @@ class AgentUptakeSystem:
         The comparison is the price. It is a handful of floats per step
         against a matrix exponential per settings change, and settings are
         constant for all but a few steps of a run.
+
+        **What is compared is `_propagator_cache_key()`, not
+        `equation_settings()`** (`PL-R460`). The two answer the same question -
+        the key is a bijection of the settings, so equal keys mean equal
+        settings - but the settings object costs four frozen dataclasses and
+        about twenty validation guards to build, and it was being rebuilt at
+        full cost on every step to answer a question whose answer is "no" on
+        all but a few steps of a run. Measured at 7.1 us of a 33.5 us step.
+
+        **The guards still run whenever they can discover anything.** They are
+        skipped only where the key is unchanged, which is where the values are
+        the ones `equation_settings()` already validated when this propagator
+        was built. Any change to any of them - through a setter or written
+        straight onto a compartment - moves the key, and the rebuild below
+        validates before it builds.
         """
 
-        settings = self.equation_settings()
-        key = (settings, simulation_step_s)
+        key = self._propagator_cache_key(simulation_step_s)
 
         if self._propagator is None or self._propagator_key != key:
+            settings = self.equation_settings()
             propagator = matrix_exponential(build_system_matrix(settings), simulation_step_s)
             self._propagator = propagator
             self._propagator_key = key
@@ -523,6 +538,53 @@ class AgentUptakeSystem:
             return propagator
 
         return self._propagator
+
+    def _propagator_cache_key(self, simulation_step_s: float) -> tuple[float, ...]:
+        """Return the step and every compartment value the system matrix reads.
+
+        One entry per field of `UptakeEquationSettings`, in its order, read
+        straight off the compartments and converted by nothing.
+        `test_the_propagator_cache_key_covers_every_equation_setting` holds the
+        two in step against `dataclasses.fields()`, so a field added to the
+        settings without an entry here fails rather than reintroducing the
+        stale propagator this key exists to make unrepresentable.
+
+        Flows are the litres per minute the compartments hold, where the
+        settings carry litres per second. Dividing by 60 is injective on the
+        values that reach it, so equal settings still imply an equal key; and
+        were it ever not, the error would be a rebuild that was not needed
+        rather than a reuse that was not allowed.
+
+        `TissueGroupEquationSettings.name` is the one settings field with no
+        entry, because `build_system_matrix()` never reads it - the group's
+        position in the tuple is what places its rows.
+        `test_the_system_matrix_does_not_depend_on_a_tissue_group_s_name` is
+        what keeps that true.
+        """
+
+        patient = self.patient
+        venous_blood = patient.venous_blood
+
+        return (
+            simulation_step_s,
+            self.circuit.circuit_volume_l,
+            self.alveoli.gas_volume_l,
+            venous_blood.volume_l,
+            self.circuit.fresh_gas_flow_l_min,
+            self.alveoli.alveolar_ventilation_l_min,
+            patient.cardiac_output_l_min,
+            venous_blood.blood_gas_partition_coefficient,
+            self.circuit.delivered_partial_pressure_fraction,
+            *(
+                value
+                for tissue in patient.tissues
+                for value in (
+                    tissue.volume_l,
+                    tissue.blood_flow_l_min,
+                    tissue.tissue_blood_partition_coefficient,
+                )
+            ),
+        )
 
     def state_vector(self) -> tuple[float, ...]:
         """Read the trajectory out of the compartments, in equation order.

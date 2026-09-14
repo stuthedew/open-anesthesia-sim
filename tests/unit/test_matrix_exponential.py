@@ -384,3 +384,28 @@ def test_refuses_a_matrix_whose_scaled_norm_overflows_rather_than_raising_overfl
         ),
     ):
         matrix_exponential(((-1.3e308, 0.0), (0.0, 0.0)), 0.1)
+
+
+def test_propagate_sums_each_row_with_the_compensation_sum_provides() -> None:
+    """`PL-R460`: the property that made rewriting the inner product free.
+
+    `propagate()` sums each row's products with the built-in `sum`, whose float
+    path is Neumaier-compensated: the products below are `1.0`, `1e16` and
+    `-1e16`, where a naive left fold loses the `1.0` when it adds it to `1e16`
+    and returns `0.0`, and `sum` returns the exact `1.0`.
+
+    That is why `sum(map(mul, row, state))` and the generator over `range(size)`
+    it replaced are bit-identical rather than merely close - both hand `sum` the
+    same floats, and the compensation makes the answer independent of how they
+    were produced. A rewrite to an explicit accumulator loop would be neither,
+    and would move a safety-critical result without changing a test that only
+    checked the products. This is what pins it.
+    """
+
+    ones = ((1.0, 1.0, 1.0), (1.0, 0.0, 0.0), (0.0, 0.0, 1.0))
+
+    advanced = propagate(ones, (1.0, 1e16, -1e16))
+
+    assert advanced[0] == 1.0
+    assert advanced[1] == 1.0
+    assert advanced[2] == -1e16

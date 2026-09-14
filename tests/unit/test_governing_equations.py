@@ -454,3 +454,27 @@ def test_equal_settings_compare_equal_so_the_propagator_cache_is_keyed_by_value(
     )
 
     assert _settings() != _settings(tissues=fatter)
+
+
+def test_the_system_matrix_does_not_depend_on_a_tissue_group_s_name() -> None:
+    """`PL-R460`: what lets the propagator cache key leave the name out.
+
+    The key `AgentUptakeSystem` compares per step carries one float per
+    settings field, and `TissueGroupEquationSettings.name` is the one field
+    with no entry: a group's rows are placed by its position in the tuple, not
+    by what it is called. If that ever stopped being true, two runs differing
+    only in a group's name would share a propagator and one of them would be
+    wrong.
+    """
+
+    renamed = tuple(
+        TissueGroupEquationSettings(
+            name=f"renamed-{index}",
+            volume_l=tissue.volume_l,
+            blood_flow_l_s=tissue.blood_flow_l_s,
+            tissue_blood_partition_coefficient=tissue.tissue_blood_partition_coefficient,
+        )
+        for index, tissue in enumerate(_settings().tissues)
+    )
+
+    assert build_system_matrix(_settings(tissues=renamed)) == build_system_matrix(_settings())
