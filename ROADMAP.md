@@ -2122,7 +2122,7 @@ any sense that survives the toolkit changing underneath it.
 resolves it rather than any work on it. That is recorded now so a later session
 does not read a dropped item as one that was skipped.
 
-### Sequenced past v0.5.0, so not clearable before it begins — 9 entries
+### Sequenced past v0.5.0, so not clearable before it begins — 10 entries
 
 **Recorded because the rule requires it, and until 2026-09-13 it was not.**
 § "The gate is a snapshot, not a moving target" allows a deferral only where
@@ -2154,6 +2154,43 @@ chord-width column rule costs frame time the port makes free. § "v0.5.1" →
 
 **Dissolved by the port — 1.** `PL-NGF7`, whose own block above carries the
 reasoning and its expected disposition of `dropped` rather than `done`.
+
+**Deferred past the port, because building it first is the work thrown away —
+1.** `PL-16ZC`, a show/hide control for the two clinical references and the
+control marks (project owner, 2026-09-14, on `PL-NR2K`). It is the mirror image
+of the five carried by the port and it arrives at the same place by the
+opposite route. Those are defects the port must not reproduce; this is new
+capability, which § "v0.5.1" → "Fixes this port carries" excludes "whatever its
+size" - and the owner ruled it out on 2026-09-10 for exactly that reason. But
+the control extends the legend table `PL-CG7J` built inside
+`app/simulation_view.py`, all 3 734 lines of which Required scope item 2
+rewrites, so the same rule that keeps it out of the port makes writing it on
+Flet first the one piece of open Gate 1 work that is purely written twice.
+Its `blocked-by` names `PL-G59B`, the chart port that builds the legend and
+both references this would toggle, rather than `v0.5.1`, which would assert
+through `MilestoneStates.ships_with` that it ships with that milestone when it
+deliberately does not.
+
+**What is not deferred is the decision**, and saying so is the difference
+between this and a parked item. `PL-16ZC` asks whether the references and the
+control marks should be hideable *at all* - a question about what the chart is
+for, which no toolkit answers and which its own Done-when allows to close the
+item writing no code. That half is answerable any day; only the build waits.
+It is the same split § "Deferred to v0.5.1" draws around `PL-YLKR`, whose
+design "is toolkit-independent and survives `v0.5.1`; only its implementation
+moves".
+
+**How this was found is worth one line**, because the general form of it is
+wrong. The project owner asked on 2026-09-14 whether all Flet-related gate
+entries should be dropped or postponed now that the interface moves to Qt.
+Counted rather than answered from the shape of the question: of the 23 entries
+this gate can clear, 13 never touch the interface, 9 of the remaining 10
+survive the port or are inputs to it - `PL-JRS3` is the port's own Required
+scope item 4, `PL-LL9Y` is named under "Decisions the port has to make anyway",
+`PL-YLKR`'s design is toolkit-independent, and `PL-B9PY` ships on Flet in
+v0.5.0 by the decision recorded in § "Items this port moots or transforms".
+One entry was left, and it is this one. The general proposal would have
+suppressed nine real entries to catch it.
 
 **Behind a design round the roadmap places nowhere — 2.** `PL-8PS6` and
 `PL-WZVZ` both wait on `PL-FG9D`, the base anesthesia-machine abstraction,
@@ -2864,6 +2901,15 @@ where the line is. A show/hide control for the clinical references and the
 control marks is small, and it is squarely in the rewritten surface - but it is
 a control that does not exist today, so it is new capability, and the rule
 admits fixes rather than features. It stays a queue item on its own merits.
+
+**It is nonetheless sequenced behind this port** (project owner, 2026-09-14, on
+`PL-NR2K`), which is not a reversal of the line above but its consequence: a
+fix in the rewritten surface rides the port, and a *feature* in the rewritten
+surface waits for it, because either one written on Flet first is written
+twice. Gate 1 § "Sequenced past v0.5.0, so not clearable before it begins"
+carries the disposition and the reasoning. It is not in this milestone's
+Required scope and does not ship with it; what it waits on is `PL-G59B`
+landing, after which it is an ordinary queue item against the Qt chart.
 
 ### Items this port moots or transforms
 
