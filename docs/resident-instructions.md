@@ -239,11 +239,50 @@ The carrier has to be observed firing, not assumed. Each of the three routings
 recorded above names a file and a test, and each was run against the tree before
 the rule was removed.
 
+## What is not a carrier, and why the list stays at four
+
+`CLAUDE.md`'s dispositions are for a **rule** — text that binds a session
+whether or not anyone remembers to supply it. Two things this repository uses
+look like carriers and are not, and the list is right to omit them (`PL-JQVB`).
+
+- **A paste-able brief** — `docs/consultant-brief.md`. It reaches a session
+  only when the project owner pastes it, so a rule routed there binds the
+  sessions they happen to paste it into and no others, which is not a rule. Its
+  whole design depends on that: `PL-1H3H` chose a pasted user message over a
+  skill precisely so that `.claude/rules/instruction-writing.md`'s precedence
+  block and `.claude/rules/apparatus-standard.md`'s scoping would *not* reach
+  it — a consultant reviewing the apparatus must not load, by opening the thing
+  under review, a rule saying that tree is not worth reviewing. A carrier for a
+  *pass* rather than for a rule.
+- **An agent definition** — a custom subagent. None exists in this tree, and
+  `PL-1H3H` records why the one that was considered was refused: a subagent
+  returns a summary to a parent and cannot hold a conversation, and a custom
+  agent inherits the whole `CLAUDE.md` hierarchy anyway, so the isolation it
+  appears to buy is smaller than it looks. Should one ever land, it is a
+  *reader* of the rules rather than a carrier of them, and the disposition it
+  routes to is still one of the four.
+
+Nothing is lost by the omission: a rule that would have gone to either belongs
+in a skill, on a path, or resident, and the list already names those.
+
 ## Re-running the measurement
 
 `make check` prints the total in characters over lines, the per-file breakdown
 in both, and the change in characters against the default branch on every run;
-`python3 tools/doc_check.py check` alone is the same line. Characters are the
+`python3 tools/doc_check.py check` alone is the same line.
+
+**A second line prints beside it: the instruction text a session can be made to
+load** — `.claude/skills/**`, the path-scoped rules, and `docs/worker.md`. It is
+reported separately and never summed with the resident total, because a skill
+that is never invoked and a rule scoped to `src/**` cost most sessions nothing,
+so one figure would overstate every session and describe none. What it closes is
+a blind spot rather than a policy gap: between `v0.4.0` and `v0.4.22` this
+project's `CLAUDE.md` grew 3,135 characters and `.claude/skills/docket/SKILL.md`
+grew 15,416, so the growth advisory reported 16% of the instruction text that
+was actually added and a routing pass into the skill read as a pure reduction
+(`PL-JQVB`). Routing a rule into a skill remains the preferred answer to the
+growth advisory, so the second line raises no advisory of its own — printing
+both halves of the move is the whole of what was missing. Characters are the
 unit that decides, because a line count resolves nothing inside an unwrapped
 paragraph and the two resident files are not wrapped alike (`PL-QV1F`). Growth raises the routing question at the moment text is added,
 which is what `PL-H7XN` built and what this file is the first application of.
