@@ -3,7 +3,8 @@ id: PL-RD3B
 title: app/controller.py holds the run's trace vocabulary and drawn window as well as the UI-to-core boundary, and they are separable
 priority: P2
 effort: M
-status: ready
+status: blocked
+blocked-by: PL-G59B
 classes: refactor
 feature: teachable-case
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_series.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, tests/integration/test_chart_patching.py, tests/integration/test_controller.py, docs/ARCHITECTURE.md, docs/MODEL.md
@@ -124,3 +125,14 @@ imports it without importing `app/controller.py` at all, `app/controller.py` is
 back to the boundary its docstring describes, the package map names the new
 module, `docs/MODEL.md`'s citation points at it, and no behavior changed - the
 existing tests pass with no change but their imports.
+
+**Blocked on `PL-G59B`, 2026-09-14** (project owner, in the session that cut
+v0.4.25). Not for anything in this brief: `ROADMAP.md` § "v0.4.26 - the
+interface moves to Qt" records that "nothing new is built in
+`app/simulation_view.py` or `app/chart_series.py` before this port", and this
+item's `touches` names both. Its durable half is in `app/controller.py`, so it
+could be narrowed to that and started now; the owner chose to hold it whole
+rather than split it, because the split's *point* is where the drawn-run
+vocabulary lands, and that module is the one the chart port rewrites. The
+field encodes the roadmap's own freeze so `bin/docket next` stops offering it
+as the product lane's pick.

@@ -10,6 +10,7 @@ milestone: v0.4.25
 touches: docs/items/
 added: 2026-09-14
 closed: 2026-09-14
+pr: 576
 verify: '! grep -rq "^> \*\*The Qt port (.v0.5.1.) moots" docs/items/'
 ---
 
