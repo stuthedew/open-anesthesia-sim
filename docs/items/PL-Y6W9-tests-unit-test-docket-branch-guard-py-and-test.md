@@ -8,6 +8,7 @@ classes: defect, test
 touches: tests/unit/test_docket_branch_guard.py, tests/unit/test_docket_digest_hook.py
 added: 2026-09-14
 closed: 2026-09-14
+pr: 584
 verify: uv run pytest tests/unit/test_docket_branch_guard.py tests/unit/test_docket_digest_hook.py && grep -q 'def test_the_hook_runs_under_the_interpreter_running_this_suite' tests/unit/test_docket_branch_guard.py && grep -q 'def test_the_hook_runs_under_the_interpreter_running_this_suite' tests/unit/test_docket_digest_hook.py
 ---
 
