@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: perf
 feature: numerical-domain
+milestone: v0.4.23
 touches: src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/core/matrix_exponential.py, tests/unit/test_state_capture.py, tests/unit/test_matrix_exponential.py, tests/unit/test_governing_equations.py, docs/WORKING_NOTES.md
 added: 2026-09-06
 closed: 2026-09-14
+pr: 556
 verify: uv run pytest tests/unit/test_state_capture.py tests/unit/test_matrix_exponential.py tests/unit/test_governing_equations.py && grep -q '_propagator_cache_key' src/anesthesia_sim/core/uptake_system.py
 not-delegable: the Done-when is a judgment on a profile rather than a pass/fail. Both outcomes - the per-step cost back under 18.4 us, or a measurement saying why it should not be - are read off timings against a figure measured on one machine, and a threshold assertion tight enough to discriminate would flake on any other. The change itself is to the propagator cache key in `core/`, which `protected_paths` withholds from delegation whatever proves it: that key is what makes a stale propagator unrepresentable rather than merely unlikely, so replacing it with a cheaper one is a safety-critical edit wearing a performance hat.
 ---
