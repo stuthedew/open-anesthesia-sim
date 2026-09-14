@@ -1,8 +1,14 @@
 ---
 id: PL-9KDK
 title: tools/import_boundary_check.py confines no UI toolkit and no numpy, so nothing stops PySide6, pyqtgraph or numpy landing in core/ during the port, and ROADMAP.md credits it with a Flet count it does not check
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: qt-port
+touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-14
+verify: uv run python tools/import_boundary_check.py && grep -q 'package="flet"' tools/import_boundary_check.py
 ---
 
 **Problem.** tools/import_boundary_check.py confines no UI toolkit and no numpy, so nothing stops PySide6, pyqtgraph or numpy landing in core/ during the port, and ROADMAP.md credits it with a Flet count it does not check
@@ -27,3 +33,16 @@ the tool that should carry it does not.
 modules above while it lasts, and the roadmap sentence cites a check that
 exists. Lands with `PL-BXB2` and `PL-V53R`, the other two `tools/` re-pointings
 the port needs first, so `tools/` is opened once.
+
+**Why it matters.** `CLAUDE.md`'s first architecture rule is that simulation
+code stays independent of the UI toolkit, and the port is the one change that
+introduces three packages the rule has never been tested against. A boundary
+declared before they arrive fails the first commit that lets one into `core/`;
+one declared afterwards is written against whatever the port already did. The
+roadmap sentence is the other half: a claim that reads as verified while
+nothing verifies it is the exact shape this tool's own docstring names as the
+reason it exists, and the count it credits the tool with is one the tool does
+not make. Confining `flet` to its three modules also turns the tool's own
+unused-allowance error into the port's checklist - each module the port frees
+of Flet must drop its allowance in the same commit, and the last one takes the
+boundary with it.

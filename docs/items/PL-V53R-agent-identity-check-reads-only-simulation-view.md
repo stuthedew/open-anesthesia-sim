@@ -1,8 +1,14 @@
 ---
 id: PL-V53R
 title: agent_identity_check reads only simulation_view.py and keys on _apply_agent_color_scheme by name, so moving one class out of that module silences it rather than failing
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: defect, safety, infra
+feature: qt-port
+touches: tools/agent_identity_check.py, tests/unit/test_agent_identity_check.py, docs/ARCHITECTURE.md, Makefile
 added: 2026-09-14
+verify: uv run pytest tests/unit/test_agent_identity_check.py && grep -q 'def test_the_writer_is_found_in_whichever_app_module_holds_it' tests/unit/test_agent_identity_check.py
 ---
 
 **Problem.** agent_identity_check reads only simulation_view.py and keys on _apply_agent_color_scheme by name, so moving one class out of that module silences it rather than failing
@@ -35,3 +41,24 @@ for the empty-identity-set answer would go.
 **Done when.** A view split across more than one module under `src/anesthesia_sim/app/`
 is measured rather than silently skipped, and an identity set that comes back
 empty is an error rather than a pass.
+
+**Corrected on triage, 2026-09-14.** The paragraph above overstates one case.
+Moving the class that holds `_apply_agent_color_scheme` out of
+`simulation_view.py` does *not* exit 0: `problems()` returns the empty-set
+error the moment `identity_controls` finds no writer, which is `PL-JRS3`'s
+probe C failing with the correct message. The silent case is the *other* class
+moving. A control constructed with an agent colour in a module the tool does
+not read is outside rule 2, and a `disabled` write on an identity control in
+such a module is outside rule 1, and neither absence prints anything. `PL-B9PY`
+kept both classes in one file to stay inside the tool's view; the port will
+not, so the tool has to read whatever module the view is split across.
+
+**Done when, restated.** The tool reads every module under
+`src/anesthesia_sim/app/`. The writer is found in whichever module holds it,
+exactly once - none is the existing error, two is a second writer of agent
+colour, which the single-writer design exists to prevent. Rule 1 reads the
+`disabled`/`visible` pairing inside the writer's own class, so a same-named
+control in another class is not mistaken for the identity control; rule 2
+reads every class in every module, so a control built from an agent colour
+anywhere in the interface must be one the writer writes. The reading side of
+`PL-0PJG` lands in the same change.
