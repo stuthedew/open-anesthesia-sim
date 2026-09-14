@@ -8,7 +8,7 @@ classes: infra, feature
 feature: qt-port
 touches: pyproject.toml, uv.lock, docs/WORKING_NOTES.md
 added: 2026-09-10
-verify: uv run python tools/import_boundary_check.py && grep -q 'PySide6' pyproject.toml
+verify: uv run python tools/import_boundary_check.py && ! grep -qE '^\s*"flet' pyproject.toml
 ---
 
 **Problem.** Swap the dependencies for the Qt port: PySide6-Essentials, pyqtgraph and numpy in, flet and flet-charts out, and re-argue the 'Decided: no numpy' note on its new scope
@@ -96,5 +96,13 @@ and `flet-charts` left in place for `PL-7SVX`, and a mypy override for the
 stubless pyqtgraph added beside the one for `flet_charts`. **numpy is
 deliberately not declared** - nothing under `src/` imports it, and declaring
 it before the re-argument this item owes would settle that question by
-accident. What is left here is the subtractive half, which waits on `PL-7SVX`,
-and the numpy argument, which does not.
+accident. What is left here is the subtractive half, which lands after
+`PL-7SVX` has removed the last Flet import, and the numpy argument, which can
+be made at any time.
+
+**`verify:` rewritten 2026-09-14.** The command this item carried -
+`grep -q 'PySide6' pyproject.toml` - started passing the moment the additive
+half landed, and `docket check --verify` refused it on `PL-G59B`'s branch:
+a command that passes before the work proves nothing. It now names the one
+thing only the subtractive half creates, a `pyproject.toml` with no `flet`
+dependency line; run and seen to fail (exit 1) with both lines still there.

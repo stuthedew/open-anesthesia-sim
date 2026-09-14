@@ -3,8 +3,7 @@ id: PL-GS3R
 title: The drawn chart's worst error moved from the control change to the steep early wash-in, and PL-4RBD's 0.32 MAC only fell to 0.26 MAC: uniform columns chord across the same width M4's buckets did
 priority: P1
 effort: M
-status: blocked
-blocked-by: PL-G59B
+status: ready
 classes: defect, safety
 feature: teachable-case
 touches: src/anesthesia_sim/core/run_score.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_series.py, docs/MODEL.md
@@ -220,3 +219,5 @@ chord) because the chord that matters is the first one on a curve whose time
 constant is 36 s, and the frame cost of the count that reaches 0.01 pp is not
 measured on any hardware. That is this item's measurement, and the port did
 not take it.
+
+**Promoted to `ready`, 2026-09-14**, `PL-G59B` having closed. The seam is `chart_frame.chart_columns`; see the note above.

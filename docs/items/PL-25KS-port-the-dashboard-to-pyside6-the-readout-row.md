@@ -8,7 +8,7 @@ classes: feature, ux
 feature: qt-port
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/main.py, tests/unit, tests/integration, docs/ARCHITECTURE.md
 added: 2026-09-10
-verify: uv run python tools/import_boundary_check.py && grep -rq 'PySide6' src/anesthesia_sim/app/
+verify: uv run python tools/import_boundary_check.py && grep -q 'PySide6' src/anesthesia_sim/app/main.py
 ---
 
 **Problem.** Port the dashboard to PySide6: the readout row, the four parameter controls, the agent selector, the transport, the new-case dialog and the notice banner
@@ -85,3 +85,9 @@ the reference snapshot, the wash-in state sentence from `read_wash_in` and
 count from `RunFrame.undrawn_control_marks`. The `README.md` hover line
 (`PL-YVHK` item 5) lands here too, since this is what makes the Qt chart the
 shipped one.
+
+**`verify:` rewritten 2026-09-14.** `grep -rq 'PySide6' src/anesthesia_sim/app/`
+started passing when `PL-G59B` put `app/qt_chart.py` in the tree, so
+`docket check --verify` refused it. It now names `app/main.py`, which this
+item alone rewrites to build the Qt application, and which imports Flet
+today; run and seen to fail (exit 1).
