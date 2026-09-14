@@ -1,7 +1,13 @@
 ---
 id: PL-B8MK
 title: A bookmark instant is not forkable, and the obvious route to making one changes the case it marks
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+blocked-by: PL-LPLD, PL-CTD7
+classes: science, feature, anticipated
+feature: scenario-branching
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/run_definition.py, tests/unit, tests/integration, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-09-14
 ---
 
@@ -58,3 +64,29 @@ records that a bookmark is not yet a fork point and points here. The choice
 belongs with `PL-LPLD` and `PL-CTD7`, which build the bookmark and its halt;
 the measurements are recorded now because they were expensive to get and
 because the obvious route is the worse one.
+
+**Placed in v0.5.0's Required scope (project owner, 2026-09-14).** This began
+as a capture made while `PL-TFX5` was built. The owner's decision that day
+split `PL-TFX5`'s "at any control-input event **or bookmark**" clause in two
+and gave the bookmark half to this item, so this is now a scope entry of its
+own in `ROADMAP.md` § "Required scope" rather than a finding beside one. Two
+things follow.
+
+`ROADMAP.md`'s Definition of done for v0.5.0 asks that "a branch taken at any
+recorded control event **or bookmark** reproduces its parent element-wise at
+every sampled point up to the branch point". The control-event half is shipped.
+This item is what makes the other half reachable at all, so the milestone is
+not complete without it - it is not a nice-to-have left behind by the split.
+
+And `PL-Z3W6` waits on this rather than on `PL-TFX5`. Its Done-when asks for "a
+branch taken on a recorded sample **and** a branch taken between two of them",
+and a branch between two recorded samples is precisely a fork at an instant the
+run holds no keyframe for - this item's subject. Its `blocked-by` was moved
+here when `PL-TFX5` closed.
+
+**Triaged `science` rather than `feature` alone**, and banded `P2` under the
+`blocked` exception the checker allows: what is decided here is a numerical
+guarantee about a displayed comparison, not a capability. Route one moves the
+trunk's own curve, which is a run changing because it was observed; route two
+does not. Nothing is reachable today - no bookmark exists - which is why this
+sits at `P2` beside `PL-Z3W6` rather than in the top band.

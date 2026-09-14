@@ -2046,3 +2046,60 @@ def test_a_branch_cannot_change_its_agent_out_from_under_the_case() -> None:
     trunk.set_agent("desflurane")
 
     assert trunk.snapshot().agent_id == "desflurane"
+
+
+def test_every_recorded_control_event_is_an_instant_the_run_can_be_forked_at() -> None:
+    """`PL-TFX5`'s first clause, against the case that used to break it.
+
+    "A run can be forked at any recorded control event" binds two records that
+    collapse redundant changes by different rules, so it holds only while those
+    rules agree. `RunDefinition.record_change` compares whole settings against
+    the previous stretch and is order-independent; the control timeline
+    compares one entry, and used to compare only the newest one.
+
+    Two dials nudged and both put back **interleaved** - F up, C up, F back, C
+    back - is what separated them: each move's predecessor was the other
+    control, so no collapse fired, and four entries stood at an instant the run
+    never changed at while the definition correctly held no keyframe there. The
+    nested order collapsed to nothing, so the defect was order-dependent and
+    invisible to a test that moved two controls once each. A learner reaches it
+    while paused, where `advance()` is a no-op and every control they touch
+    carries one instant.
+
+    Asserted as the property rather than as the repair: every stamp the reader
+    is shown is an instant the run holds a keyframe for, and `resumed_at`
+    accepts each one.
+    """
+
+    trunk = SimulationController()
+    trunk.start()
+    _advance_for(trunk, duration_s=30.0)
+
+    opening = trunk.snapshot()
+    trunk.pause()
+
+    trunk.set_fresh_gas_flow(opening.fresh_gas_flow_l_min + 1.0)
+    trunk.set_cardiac_output(opening.cardiac_output_l_min + 1.0)
+    trunk.set_fresh_gas_flow(opening.fresh_gas_flow_l_min)
+    trunk.set_cardiac_output(opening.cardiac_output_l_min)
+
+    timeline = trunk.snapshot().control_timeline
+    openings = [segment.opening.elapsed_s for segment in trunk.run_segments]
+
+    # Nothing the model saw differs, so neither record has anything to say.
+    assert [change.elapsed_s for change in timeline] == openings[1:]
+    assert openings == [0.0]
+
+    # And the general property, on a run that does change: every stamp a reader
+    # is shown is a fork point, which is what the clause promises.
+    trunk.start()
+    _advance_for(trunk, duration_s=30.0)
+    trunk.set_alveolar_ventilation(6.0)
+    _advance_for(trunk, duration_s=30.0)
+    trunk.pause()
+
+    case = BranchedCase(trunk)
+
+    for change in trunk.snapshot().control_timeline:
+        assert change.elapsed_s in case.fork_points_s
+        assert case.fork_at(change.elapsed_s).origin_s == change.elapsed_s

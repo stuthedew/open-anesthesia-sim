@@ -1379,24 +1379,47 @@ class SimulationController:
             self._open_adjustment_control = control
             self._open_adjustment = self._adjustment_count
 
-        if self._control_timeline:
-            latest = self._control_timeline[-1]
+        # Two changes to one control inside a single step are one act: the
+        # model integrated only the last value, so recording both would
+        # describe a run of settings it was never computed under. Compared on
+        # the instant, which is what a step *is* now that there is no sample
+        # index to stand in for one (`PL-2FM6`).
+        #
+        # **Searched back across this instant rather than read off the newest
+        # entry** (`PL-TFX5`). Looking only at `[-1]` collapses a control moved
+        # twice in a row and misses the same control moved twice with another
+        # control's move between them - so two dials nudged and both put back,
+        # interleaved, left four entries standing at an instant the run did not
+        # change at, while `RunDefinition.record_change` - which compares whole
+        # settings against the previous stretch and is therefore
+        # order-independent - correctly recorded nothing. The two records then
+        # disagreed about when the run changed, which is the one thing they are
+        # supposed to agree about, and a recorded control event with no keyframe
+        # behind it is one `resumed_at` refuses to fork at. Reachable while
+        # paused, where `advance()` is a no-op and every control a learner
+        # touches carries one instant.
+        for index in reversed(range(len(self._control_timeline))):
+            entry = self._control_timeline[index]
 
-            # Two changes to one control inside a single step are one act:
-            # the model integrated only the last value, so recording both
-            # would describe a run of settings it was never computed under.
-            # Compared on the instant, which is what a step *is* now that
-            # there is no sample index to stand in for one (`PL-2FM6`).
-            if latest.control is control and latest.elapsed_s == self._state.elapsed_s:
-                if latest.previous_value == new_value:
-                    self._control_timeline = self._control_timeline[:-1]
-                    return
+            if entry.elapsed_s != self._state.elapsed_s:
+                break
 
+            if entry.control is not control:
+                continue
+
+            if entry.previous_value == new_value:
                 self._control_timeline = (
-                    *self._control_timeline[:-1],
-                    replace(latest, new_value=new_value),
+                    *self._control_timeline[:index],
+                    *self._control_timeline[index + 1 :],
                 )
                 return
+
+            self._control_timeline = (
+                *self._control_timeline[:index],
+                replace(entry, new_value=new_value),
+                *self._control_timeline[index + 1 :],
+            )
+            return
 
         self._control_timeline = (
             *self._control_timeline,

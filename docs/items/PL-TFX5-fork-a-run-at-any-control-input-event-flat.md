@@ -1,14 +1,15 @@
 ---
 id: PL-TFX5
-title: Fork a run at any control-input event or bookmark, flat rather than as a tree
+title: Fork a run at any control-input event, flat rather than as a tree
 priority: P2
 effort: L
-status: needs-decision
+status: done
 classes: feature
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core, tests/unit, tests/integration, docs/ARCHITECTURE.md
 added: 2026-09-06
-not-delegable: what is left is an answer rather than code - whether the bookmark clause stays in this item or moves to PL-B8MK - and no command proves a decision. The command that proved the code half is in the brief, and becomes this item's `verify:` if the answer closes it here
+closed: 2026-09-14
+verify: uv run pytest tests/integration/test_controller.py && grep -q 'def test_a_case_forks_at_every_instant_the_trunk_offers' tests/integration/test_controller.py
 ---
 
 **Problem.** Comparing two managements of the same case - coast on low flow
@@ -106,23 +107,58 @@ elements, worst 8.07e-13 — so marking a run changes it. Opening the branch's
 definition at the keyframe *before* the bookmark costs the trunk nothing and is
 exact too.
 
-**Decision needed.** Does the bookmark clause stay in this item, or move to
-`PL-B8MK` behind `PL-LPLD` and `PL-CTD7`? Recommendation: move it, and close
-this item on the control-event half. It is the only clause outstanding, it
-cannot be worked until bookmarks exist, and holding this item open holds
-`PL-8PSW` and `PL-Z3W6` with it — `PL-8PSW`'s overlay needs the
-trunk-and-branches structure, which is shipped, and nothing about bookmarks.
+**Split, and this item closed on the control-event half (project owner,
+2026-09-14).** The question put was whether the bookmark clause stays here or
+moves, and it was the owner's because answering it re-words `ROADMAP.md`'s
+Required-scope bullet for this item - the same reason `PL-J2TD`'s narrowing
+three days earlier was. It moves. `PL-B8MK` carries it, behind `PL-LPLD` (the
+bookmarks themselves) and `PL-CTD7` (the halt a keyframe would be recorded at),
+and `ROADMAP.md`'s § "Required scope" now runs to nineteen entries with the
+bookmark clause as one of its own rather than a clause inside this one - which
+is what `PL-4PC5` says an id must be to be counted at all.
 
-**The disposition is the project owner's**, because it re-words
-`ROADMAP.md`'s Required-scope bullet for this item, which is the same reason
-`PL-J2TD`'s narrowing was. Either this item closes on the control-event half
-with the bookmark half carried by `PL-B8MK` behind `PL-LPLD` and `PL-CTD7` —
-which also unblocks `PL-8PSW`, whose overlay needs the trunk-and-branches
-structure and nothing about bookmarks — or it stays open until a bookmark can
-be forked, and `PL-8PSW` and `PL-Z3W6` wait with it.
+Two consequences, both intended. `PL-8PSW` (overlay two branches) has both its
+blockers closed: its overlay needs the trunk-and-branches structure, which
+shipped here, and nothing about bookmarks. `PL-Z3W6` (assert element-wise
+reproduction) does not: its Done-when asks for "a branch taken on a recorded
+sample **and** a branch taken between two of them", and the second of those is
+exactly what `PL-B8MK` decides, so its `blocked-by` moves from this item to
+that one rather than clearing.
 
-**What proved the code half, and why this item carries no `verify:` today.**
-The command is:
+**Clause 1 had a hole, found by an adversarial verification pass after the
+first close-out was written, and fixed here.** "A run can be forked at any
+recorded control event" binds two records that collapse redundant changes by
+different rules, and it holds only while those rules agree.
+`RunDefinition.record_change` compares whole settings against the previous
+stretch, so it is order-independent. `_record_control_change` compared one
+entry - and only the *newest* one.
+
+Two dials nudged and both put back, **interleaved** - fresh gas flow up,
+cardiac output up, flow back, output back - separates them: each move's
+predecessor is the other control, so no collapse fires. Measured on a trunk at
+a 30 s step boundary, four entries stood in `snapshot().control_timeline` at an
+instant the run never changed at, while the definition correctly held no
+keyframe there - so `resumed_at` refused the very instant the timeline was
+showing as a control event. The **nested** order (F+ C+ C- F-) collapsed to
+nothing in both records, which is why the defect was order-dependent and why
+`test_a_setting_change_opens_a_segment_where_the_run_saw_it` did not catch it:
+that test moves two controls once each, which cannot reach the case.
+
+A learner reaches it while **paused**, where `advance()` is a no-op and every
+control they touch carries one instant, so fiddling with two sliders and
+putting both back is the direct path. What was on screen was four adjustments
+the model never saw, drawn as control marks at an instant the run held
+constant - the presentation failure `CLAUDE.md`'s standard names, rather than
+only a fork that was refused.
+
+The collapse now searches back across the entries at this instant instead of
+reading `[-1]`, and `test_every_recorded_control_event_is_an_instant_the_run_
+can_be_forked_at` asserts the property rather than the repair: every stamp a
+reader is shown is an instant the run holds a keyframe for, and `resumed_at`
+accepts each one. It fails on the tree without the fix, with the four extra
+entries named in its output.
+
+**What proved it.** The command is:
 
 ```
 uv run pytest tests/integration/test_controller.py && grep -q 'def test_a_case_forks_at_every_instant_the_trunk_offers' tests/integration/test_controller.py
@@ -130,14 +166,16 @@ uv run pytest tests/integration/test_controller.py && grep -q 'def test_a_case_f
 
 It was run before being recorded and seen to fail for the right reason: against
 `origin/main`'s copy of that file the pytest half passes its 90 tests and the
-`grep` finds nothing, so the pair exits 1. It is *not* in `verify:` while this
-item is open, because it passes on this branch and `docket check --verify`
-rightly errors on an open item whose command already passes — an item whose
-command passes has either landed and should close, or proves nothing. Neither
-is true here: it proved the code half exactly, and what is open is the scope
-answer above. `not-delegable:` is what the store has for work no command can
-prove, and a decision is that. If the answer closes this item on the
-control-event half, this command becomes its `verify:` in the same commit.
+`grep` finds nothing, so the pair exits 1.
+
+It sat in `not-delegable:` rather than `verify:` for the hours this item stood
+at `needs-decision`, and that is worth recording because the reason was not the
+usual one. `docket check --verify` errors on an open item whose command already
+passes, offering two readings - the work landed unclosed, or the command does
+not discriminate - and neither was true: it discriminated exactly, and what was
+open was the scope answer above. A decision is work no command proves, which is
+what `not-delegable:` is for. Closing the item is what makes a passing command
+the right field again, so the two moved back in this commit.
 
 **Captured this session and not fixed here:** `PL-B8MK` (the bookmark routes),
 `PL-9KP5` and `PL-4K9V` (`PL-2FM6`'s unswept sample-store prose in
