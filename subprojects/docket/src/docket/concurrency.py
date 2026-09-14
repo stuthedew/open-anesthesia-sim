@@ -27,6 +27,7 @@ are reported side by side rather than merged into one verdict.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
@@ -130,6 +131,44 @@ def conflicts_for(item: Item, candidates: list[Item]) -> list[Conflict]:
         elif covering:
             found.append(Conflict(other, "declares an area covering it", SAME_AREA, covering))
     return found
+
+
+def shared_by_path(conflicts: Sequence[Conflict]) -> list[tuple[str, tuple[str, ...]]]:
+    """The shared-file tier regrouped by the path, rarest group first.
+
+    One entry per item said nothing about which collisions were real. A path
+    almost every item declares is weak evidence and one that two declare is
+    strong, and the per-item form read identically either way, so the whole
+    tier had to be read to find the two lines that mattered. Measured
+    2026-09-13 across the store: 237 open items declare 136 distinct paths;
+    the largest, `docs/MODEL.md`, is declared by 32 of them, while 72 of the
+    136 are declared by exactly one open item and so can never collide at all.
+    A short head and a long tail, reported one item per line.
+
+    Ordering by group size, smallest first, puts the tail where it is read and
+    collapses the head into a line a reader can skip deliberately. The tier's
+    contract is unchanged: every item still appears, on the line of each path
+    it shares, so this orders the evidence rather than filtering it.
+
+    Args:
+        conflicts: The `SAME_FILE` conflicts for one item. A conflict of
+            another strength contributes nothing, having no shared path to
+            group under.
+
+    Returns:
+        `(path, item ids)` pairs, fewest ids first and ties broken on the
+        path, with the ids of each group sorted.
+    """
+    grouped: dict[str, set[str]] = {}
+    for conflict in conflicts:
+        if conflict.strength != SAME_FILE:
+            continue
+        for path in conflict.paths:
+            grouped.setdefault(path, set()).add(conflict.other.identifier)
+    return [
+        (path, tuple(sorted(identifiers)))
+        for path, identifiers in sorted(grouped.items(), key=lambda pair: (len(pair[1]), pair[0]))
+    ]
 
 
 def refusals(conflicts: list[Conflict]) -> list[Conflict]:

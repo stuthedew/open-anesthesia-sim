@@ -19,10 +19,12 @@ from .concurrency import (
     ORDERING,
     SAME_AREA,
     SAME_FILE,
+    Conflict,
     conflicts_for,
     observed_conflicts,
     parallel_batch,
     sequenceable,
+    shared_by_path,
 )
 from .config import CONFIG_NAME, Config
 from .config import load as load_config
@@ -657,6 +659,20 @@ def _print_observed(args: argparse.Namespace, item: Item, flight: FlightReport) 
         print(f"    ({len(files.unreadable)} ref(s) unread: {', '.join(files.unreadable)})")
 
 
+def _print_shared_files(conflicts: list[Conflict]) -> None:
+    """The shared-file tier, one line per path rather than one per item.
+
+    `shared_by_path` decides the grouping and the order; this only prints it.
+    """
+    groups = shared_by_path(conflicts)
+    if not groups:
+        print("    nothing")
+        return
+    for path, identifiers in groups:
+        count = len(identifiers)
+        print(f"    {path} - {count} item{'' if count == 1 else 's'}: {', '.join(identifiers)}")
+
+
 def cmd_concurrent(args: argparse.Namespace) -> int:
     """What can be worked alongside what.
 
@@ -697,10 +713,8 @@ def cmd_concurrent(args: argparse.Namespace) -> int:
             print("    nothing")
         print()
         print("  Shares a file - proceed, and land the smaller change first:")
-        for conflict in by_strength[SAME_FILE] or []:
-            print(f"    {conflict.describe()}")
-        if not by_strength[SAME_FILE]:
-            print("    nothing")
+        print("    (by path, rarest first: a path few items declare is the strong evidence)")
+        _print_shared_files(by_strength[SAME_FILE])
         print()
         print("  Same area only - one declaration is coarser than the other:")
         for conflict in by_strength[SAME_AREA] or []:

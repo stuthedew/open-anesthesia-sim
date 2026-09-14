@@ -18,6 +18,7 @@ from docket.concurrency import (
     parallel_batch,
     refusals,
     sequenceable,
+    shared_by_path,
     shared_paths,
     undeclared,
 )
@@ -243,3 +244,70 @@ def test_an_item_declaring_nothing_observes_nothing() -> None:
     item = _item("PL-1111")
 
     assert observed_conflicts(item, _files(("origin/other", ("PL-2222",), ("a.py",)))) == []
+
+
+# --- the shared-file tier, regrouped ----------------------------------------
+#
+# `PL-PGZK`. The tier reported one line per item, so a hub path every item
+# declares and a path two items declare read identically and the whole list had
+# to be read to find the strong evidence. Measured 2026-09-13 across the store:
+# 237 open items declare 136 paths, the largest at 32 items, and 72 of the 136
+# are declared by exactly one open item.
+
+
+def test_shares_a_file_groups_by_path() -> None:
+    """One line per path, rarest first, with nothing dropped.
+
+    The ordering is the point rather than a tidy-up: the hub goes last because
+    it is weak evidence, and the path two items declare goes first because it
+    is the collision most likely to be real.
+    """
+    item = _item("PL-1111", ("docs/MODEL.md", "src/app/view.py", "src/core/tissue.py"))
+    others = [
+        _item("PL-2222", ("docs/MODEL.md",)),
+        _item("PL-3333", ("docs/MODEL.md",)),
+        _item("PL-4444", ("docs/MODEL.md", "src/app/view.py")),
+        _item("PL-5555", ("src/core/tissue.py",)),
+    ]
+
+    groups = shared_by_path(conflicts_for(item, others))
+
+    assert groups == [
+        ("src/app/view.py", ("PL-4444",)),
+        ("src/core/tissue.py", ("PL-5555",)),
+        ("docs/MODEL.md", ("PL-2222", "PL-3333", "PL-4444")),
+    ]
+
+
+def test_the_regrouped_tier_drops_no_item() -> None:
+    """Ordering the evidence is not filtering it, so the contract is unchanged.
+
+    An item sharing two paths appears under both, which is what keeps a reader
+    from concluding from one line that a collision is confined to one file.
+    """
+    item = _item("PL-1111", ("docs/MODEL.md", "src/app/view.py"))
+    others = [_item("PL-2222", ("docs/MODEL.md", "src/app/view.py"))]
+
+    groups = shared_by_path(conflicts_for(item, others))
+
+    assert {identifier for _, identifiers in groups for identifier in identifiers} == {"PL-2222"}
+    assert [path for path, _ in groups] == ["docs/MODEL.md", "src/app/view.py"]
+
+
+def test_only_the_shared_file_tier_is_grouped() -> None:
+    """A refusal and a coarser declaration are other tiers and stay in them.
+
+    Grouping an `ORDERING` edge under a path would put a conflict that forbids
+    the work into a tier headed "proceed, and land the smaller change first".
+    """
+    item = _item("PL-1111", ("src/app/view.py",), blocked_by=("PL-2222",))
+    others = [_item("PL-2222", ("src/app/view.py",)), _item("PL-3333", ("src/app",))]
+
+    assert shared_by_path(conflicts_for(item, others)) == []
+
+
+def test_an_item_with_no_shared_file_groups_nothing() -> None:
+    assert (
+        shared_by_path(conflicts_for(_item("PL-1111", ("a.py",)), [_item("PL-2222", ("b.py",))]))
+        == []
+    )
