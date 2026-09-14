@@ -2591,9 +2591,9 @@ the last nine are the feature itself.
   Safety-classed, and its only requiring item was dropped with `PL-011`, so it
   is carried here rather than lost.
 - **A fork resumes into a live run** (queue item PL-J2TD): a run is opened at a
-  canonical keyframe state of another run, with its clock re-based by
-  subtracting the fork instant, and advances from there by the path a live run
-  already takes. A branch has to become something a learner can *manage*, which
+  canonical keyframe state of another run, on the case's own clock and with its
+  run definition opening at the fork instant, and advances from there by the
+  path a live run already takes. A branch has to become something a learner can *manage*, which
   is what separates it from a second curve, and it is what item 12's fork and
   the in-loop crossing detection two bullets down both presuppose. Internal: no
   user-facing replay control, which stays planned item 10 behind item 9's
@@ -2614,6 +2614,20 @@ the last nine are the feature itself.
   1.8e-14 from the canonical answer, and the branch-reproduction entry below
   asserts element-wise equality rather than a tolerance. What was left once
   both halves went is the resumption, and that is what this entry now asks for.
+
+  **Mechanism replaced 2026-09-14** (project owner, queue item PL-ZMRT), with
+  the scope unchanged. This entry read "with its clock re-based by subtracting
+  the fork instant" until the fork was built and drawn. That arrangement gave
+  the branch a second time frame - the clock on the case's axis, the definition
+  on its own - and made exactness conditional on every caller subtracting the
+  fork instant rather than naming the branch's own elapsed time. What ships
+  instead opens the branch's definition *at* the fork on the case's axis, so
+  there is one frame, `SimulationController.origin_s` and both subtractions are
+  gone, and the round-trip hazard the old rule guarded against is
+  unrepresentable rather than forbidden. It also dissolves PL-2R2C - a branch's
+  drawn columns anchored to its own zero, landing at case instants the trunk
+  never draws - which needed no fix of its own once both runs shared an axis.
+  `docs/MODEL.md` § "The canonical evaluation rule" carries the measurements.
 - **Time bookmarks and MAC targets, as two separately listed collections**
   (queue item PL-LPLD). The Gas Man reference simulator's own shape, and its
   scope floor: an absolute simulated time, and a percent of MAC on any graphed

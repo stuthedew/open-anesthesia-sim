@@ -97,7 +97,7 @@ def _run(
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
-    definition = RunDefinition(system.equation_settings(), system.state_vector())
+    definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
 
     for step in range(1, steps + 1):
         system.advance(SIMULATION_STEP_S)
@@ -197,7 +197,7 @@ def test_a_resumed_system_steps_the_way_the_run_it_resumes_did() -> None:
 
     system.resume_at(opening.state, initial_agent_l=0.0)
 
-    ahead = RunDefinition(segment.settings, opening.state)
+    ahead = RunDefinition(segment.settings, opening.state, opened_at_s=0.0)
 
     for step in range(1, 601):
         system.advance(SIMULATION_STEP_S)
@@ -305,7 +305,7 @@ def test_the_accounting_anchor_is_carried_rather_than_derived() -> None:
     segment = definition.segments[-1]
     opening = segment.opening
 
-    assert opening.elapsed_s == 600.0
+    assert opening.instant_s == 600.0
 
     system = _like(system_parent)
     system.resume_at(opening.state, initial_agent_l=0.0)
@@ -500,13 +500,13 @@ def test_a_keyframe_resumes_a_system_without_being_unwrapped_first() -> None:
     opening = segment.opening
 
     assert isinstance(opening, Keyframe)
-    assert definition.state_at(opening.elapsed_s) == opening.state
+    assert definition.state_at(opening.instant_s) == opening.state
 
     from_keyframe = _like(system_parent)
     from_keyframe.resume_at(opening.state, initial_agent_l=0.0)
 
     from_state_at = _like(system_parent)
-    from_state_at.resume_at(definition.state_at(opening.elapsed_s), initial_agent_l=0.0)
+    from_state_at.resume_at(definition.state_at(opening.instant_s), initial_agent_l=0.0)
 
     assert from_keyframe.state_vector() == from_state_at.state_vector()
 
@@ -567,7 +567,7 @@ def test_a_definition_opens_from_the_keyframe_and_never_from_the_seeded_system()
     _, definition = _run()
 
     for segment in definition.segments:
-        assert definition.state_at(segment.opening.elapsed_s) == segment.opening.state
+        assert definition.state_at(segment.opening.instant_s) == segment.opening.state
 
 
 def test_a_segment_and_its_opening_travel_together() -> None:

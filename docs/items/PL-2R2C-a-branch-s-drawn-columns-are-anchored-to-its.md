@@ -1,8 +1,15 @@
 ---
 id: PL-2R2C
 title: A branch's drawn columns are anchored to its own zero, so most land at case instants the trunk never draws
-status: untriaged
+priority: P2
+effort: S
+status: dropped
+classes: defect, ux
+feature: scenario-branching
+touches: src/anesthesia_sim/app/controller.py
 added: 2026-09-14
+closed: 2026-09-14
+reason: Dissolved by PL-ZMRT rather than fixed. Route 3 of the three this brief lists was taken - a branch's run definition now opens at the fork instant, so every definition on one axis shares an origin and `_anchored_columns` puts them on the same multiples of the spacing. Measured on this brief's own case, a fork off the grid at 55.3 s on a 13-column 120 s axis: the branch's drawn columns went from 2 of 8 shared with the trunk to 8 of 8, with no parameter added to the display path and no second evaluation per frame. `test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from` holds it.
 ---
 
 **Problem.** A branch's drawn columns are anchored to its own zero, so most land at case instants the trunk never draws

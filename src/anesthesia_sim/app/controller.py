@@ -536,7 +536,7 @@ class ResumePoint:
     def elapsed_s(self) -> float:
         """The fork instant, in the case's own time."""
 
-        return self.segment.opening.elapsed_s
+        return self.segment.opening.instant_s
 
 
 class SimulationController:
@@ -625,11 +625,12 @@ class SimulationController:
         # so a run's recorded substance is always the one its samples were
         # produced by.
         self._run_definition = RunDefinition(
-            uptake_system.equation_settings(), uptake_system.state_vector()
+            uptake_system.equation_settings(), uptake_system.state_vector(), opened_at_s=0.0
         )
-        # A run built here is a trunk: it opened at the case's own zero, so
-        # its clock and its definition's are one quantity and every
-        # translation below is against 0.0. `resumed_at()` is what sets this.
+        # A run built here is a trunk, so it opens at the case's own zero.
+        # `resumed_at()` is what sets this, and a branch built there opens its
+        # definition at the fork instead - on the same axis, which is why
+        # nothing here converts between the two.
         self._opened_from: ResumePoint | None = None
         self._clear_control_timeline()
 
@@ -830,33 +831,16 @@ class SimulationController:
         the run never reached. Save, replay and forking read this;
         `ROADMAP.md` items 9 to 12 are what they are.
 
-        **These instants are the run definition's, so on a branch they are
-        measured from the fork rather than from the case's induction.** Add
-        `origin_s` to place one on the case's own axis - it is zero on a trunk,
-        so the two frames coincide there. Everything else this class exposes -
-        `snapshot().elapsed_s`, the control timeline's stamps, `drawn_window`'s
-        instants - is already in the case's time, and this is the one reader
-        that is not, because a `Keyframe`'s instant belongs to the definition
-        that computed it and restating it in another frame would hand out a
-        keyframe no definition holds.
+        **These instants are the case's**, as is everything else this class
+        exposes - `snapshot().elapsed_s`, the control timeline's stamps,
+        `drawn_window`'s instants. A branch's definition opens *at* the fork
+        rather than at a zero of its own, so a keyframe read here needs no
+        conversion to be placed on the case's axis and there is no offset for
+        a caller to add. `PL-ZMRT` is where that was decided; before it, this
+        was the one reader handing out instants in a second frame.
         """
 
         return self._run_definition.segments
-
-    @property
-    def origin_s(self) -> float:
-        """The case instant this run opened at: zero for a trunk, the fork for a branch.
-
-        What separates the two frames this class touches. `snapshot().elapsed_s`,
-        every control-change stamp and `drawn_window`'s instants are the
-        *case's* time, because a branch is one patient's case continuing and
-        uptake is a function of time since induction; the run definition's
-        instants are its own, because a definition opens at its own zero. This
-        is the difference between them, and it is what `advance` and
-        `drawn_window` subtract.
-        """
-
-        return 0.0 if self._opened_from is None else self._opened_from.elapsed_s
 
     @property
     def opened_from(self) -> ResumePoint | None:
@@ -906,9 +890,13 @@ class SimulationController:
         instant plus the branch's own, which `docs/MODEL.md` § "Simulated time
         is a count of steps, not a running total" is the rule against.
 
-        The *definition* is the thing re-based, by subtracting the fork instant
-        in `advance` and `drawn_window` rather than by any caller naming an
-        offset, which is what § "The canonical evaluation rule" gates.
+        **The definition opens at the fork rather than at a zero of its own**,
+        so the branch's clock and its definition's instants are one quantity
+        and nothing converts between them (`PL-ZMRT`). That is what
+        § "The canonical evaluation rule" requires: asked for a case instant,
+        the branch forms its interval from the same two floats its parent did,
+        where a definition re-based to its own zero would depend on a
+        subtraction that does not always round-trip.
 
         **The settings are replayed from the control timeline, and then
         checked.** A branch is built through the ordinary constructor so that
@@ -1018,7 +1006,11 @@ class SimulationController:
         # which on `resumed_at` are the segment's - checked there before
         # anything was written - and on `reset` are whatever the learner has
         # dialled since, because reset preserves settings and restores state.
-        self._run_definition = RunDefinition(system.equation_settings(), segment.opening.state)
+        # It opens *at* the keyframe's own instant, on the case's axis, which
+        # is what leaves the clock and the definition's reach one quantity.
+        self._run_definition = RunDefinition(
+            system.equation_settings(), segment.opening.state, opened_at_s=segment.opening.instant_s
+        )
         self._opened_from = resume_point
         self._clear_control_timeline()
 
@@ -1043,10 +1035,10 @@ class SimulationController:
                 f"a run is opened at a finite instant, not {elapsed_s}"
             )
 
-        openings = [segment.opening.elapsed_s for segment in self._run_definition.segments]
+        openings = [segment.opening.instant_s for segment in self._run_definition.segments]
 
         for segment in self._run_definition.segments:
-            if segment.opening.elapsed_s == elapsed_s:
+            if segment.opening.instant_s == elapsed_s:
                 break
         else:
             raise SimulationConfigurationError(
@@ -1163,15 +1155,14 @@ class SimulationController:
             )
 
         spacing_s = (stop_s - start_s) / (columns - 1)
-        # Into the definition's frame, and back out again below. On a trunk
-        # the origin is 0.0 and both are the identity on every finite instant,
-        # so nothing about a trunk's window moves. On a branch this is the
-        # subtraction `docs/MODEL.md` § "The canonical evaluation rule"
-        # requires: the definition is asked in its own time, and no caller
-        # names an offset.
-        origin_s = self.origin_s
-        first_s = max(0.0, start_s - origin_s)
-        last_s = min(stop_s - origin_s, self._run_definition.duration_s)
+        # The axis and the definition are on one clock, so nothing is
+        # converted here - only clipped to the span the run actually holds. The
+        # lower clip is the run's *opening* rather than zero: a branch opens at
+        # its fork, the axis legitimately reaches to the left of that, and
+        # `RunDefinition` refuses an instant before a run existed rather than
+        # answering from the nearest keyframe it has.
+        first_s = max(start_s, self._run_definition.opened_at_s)
+        last_s = min(stop_s, self._run_definition.reached_s)
 
         if last_s < first_s:
             # The axis lies entirely ahead of the run - an ordinary state at
@@ -1187,9 +1178,7 @@ class SimulationController:
         )
 
         return DrawnWindow(
-            substance_id=self._agent_id,
-            times_s=tuple(time_s + origin_s for time_s in window.times_s),
-            states=window.states,
+            substance_id=self._agent_id, times_s=window.times_s, states=window.states
         )
 
     def start(self) -> None:
@@ -1258,7 +1247,7 @@ class SimulationController:
             return
 
         self._run_definition = RunDefinition(
-            uptake_system.equation_settings(), uptake_system.state_vector()
+            uptake_system.equation_settings(), uptake_system.state_vector(), opened_at_s=0.0
         )
         self._clear_control_timeline()
 
@@ -1447,13 +1436,13 @@ class SimulationController:
             return
 
         self._state.advance(simulation_step_s)
-        # The clock is the case's and the definition's is its own, so the reach
-        # is re-based here by subtracting the fork instant - never by a caller
-        # naming how far the branch has come, which `docs/MODEL.md`
-        # § "The canonical evaluation rule" measures as landing one unit in the
-        # last place away. `origin_s` is 0.0 on a trunk, where the subtraction
-        # is the identity.
-        self._run_definition.advance_to(self._state.elapsed_s - self.origin_s)
+        # The clock and the definition's reach are one quantity on one axis, on
+        # a branch as much as on a trunk, so the reach is the clock and no
+        # offset is named here or anywhere. That is what `docs/MODEL.md`
+        # § "The canonical evaluation rule" now requires: a branch asked for an
+        # instant of the case computes its interval from the same two floats
+        # its parent did, rather than from a difference that may not round-trip.
+        self._run_definition.advance_to(self._state.elapsed_s)
 
 
 class BranchedCase:
@@ -1497,9 +1486,12 @@ class BranchedCase:
             SimulationConfigurationError: `trunk` is itself a branch. A case
                 built on one would be a second generation wearing a trunk's
                 clothes: its forks would be sub-forks, which this project
-                excluded rather than left unimplemented, and the instants it
-                offered would be measured from another case's fork rather than
-                from induction.
+                excluded rather than left unimplemented. The refusal rests on
+                that alone. It once also rested on such a case offering
+                instants measured from another case's fork, which `PL-ZMRT`
+                retired - every run's instants are the case's now - and a
+                guard defended by an argument that has stopped being true is
+                one a later reader removes.
         """
 
         if trunk.opened_from is not None:
@@ -1565,7 +1557,7 @@ class BranchedCase:
         measurement, and `PL-CTD7` is where the halt records it.
         """
 
-        return tuple(segment.opening.elapsed_s for segment in self._trunk.run_segments)
+        return tuple(segment.opening.instant_s for segment in self._trunk.run_segments)
 
     def fork_at(self, elapsed_s: float) -> SimulationController:
         """Take a branch from the trunk at `elapsed_s`, and keep it.
