@@ -124,3 +124,16 @@ imports it without importing `app/controller.py` at all, `app/controller.py` is
 back to the boundary its docstring describes, the package map names the new
 module, `docs/MODEL.md`'s citation points at it, and no behavior changed - the
 existing tests pass with no change but their imports.
+
+**Blocked on `PL-G59B`, 2026-09-14** (project owner, in the session that cut
+v0.4.25). Not for anything in this brief: `ROADMAP.md` § "v0.4.26 - the
+interface moves to Qt" records that "nothing new is built in
+`app/simulation_view.py` or `app/chart_series.py` before this port", and this
+item's `touches` names both. Its durable half is in `app/controller.py`, so it
+could be narrowed to that and started now; the owner chose to hold it whole
+rather than split it, because the split's *point* is where the drawn-run
+vocabulary lands, and that module is the one the chart port rewrites. The
+field encodes the roadmap's own freeze so `bin/docket next` stops offering it
+as the product lane's pick.
+
+**Promoted to `ready`, 2026-09-14**, `PL-G59B` having closed. The Qt chart reads `controller.drawn_window` through `app/chart_frame.py`, so the split this item makes now has two readers to keep working: `chart_frame.py` for the Qt chart and `chart_series.py` for the Flet one until `PL-7SVX`.

@@ -62,3 +62,13 @@ before any PySide6 import - not a prefix on the pytest line in `Makefile` or
 item's `touches:`. (2) `libegl1`: `PL-VHLZ` carries the CI step and the
 environment line; this item's first rendering test cannot pass in CI until
 that lands, because `import PySide6.QtGui` dies before collection.
+
+**Started by `PL-G59B`, 2026-09-14.** `tests/conftest.py` carries the
+`QT_QPA_PLATFORM` line this rider asked for, `quality.yml` installs `libegl1`
+(`PL-VHLZ`'s CI half), and `tests/integration/test_qt_chart.py` renders the
+chart headless and reads pixels back -
+`test_the_references_and_the_ruling_are_painted_and_the_ruling_sits_underneath`
+is the first assertion of the durable kind this brief asks for, and it caught
+a real defect (pyqtgraph's grid painting over the 1 MAC line). What is left
+is the dashboard-level rendering: the real interface at a fixed size, once
+`PL-25KS` has one.

@@ -854,11 +854,17 @@ class Scope:
     nowhere, and reading that silence as exclusion would be a verdict rather
     than a fact.
 
-    A section *earlier* than the anchor places nothing either. A released
-    milestone's narrative names the items it discussed, which records where a
-    problem was raised rather than what is current work - `PL-026` sits in
-    v0.2.7's release narrative and on v0.4.0's frozen gate list, and only the
-    second of those says anything about what to do now.
+    A *released* section places nothing either. Its narrative names the items
+    it discussed, which records where a problem was raised rather than what is
+    current work - `PL-026` sits in v0.2.7's release narrative and on v0.4.0's
+    frozen gate list, and only the second of those says anything about what to
+    do now. Released is decided by the version the project is on, never by
+    position relative to the anchor: `wave` hands `milestone_scope` the
+    unreleased sections alone, and an unreleased section *below* the anchor is
+    work the step has not reached. The Qt port is that shape - numbered v0.4.26
+    and placed between Gate 1's row and v0.5.0's - so while the gate is the
+    beat its ids are later work mapped to the port, where reading "below the
+    anchor" as "released" left them placed by nobody (`PL-FWJF`).
 
     Two structures are the whole of the evidence, per `SECTION_ID_RE`: the
     frozen list a section records, and its `Required scope`. So a milestone
@@ -911,10 +917,15 @@ def milestone_scope(
 ) -> Scope:
     """Read each milestone section for the ids it places, against the anchor.
 
-    `sections` is expected in version order, so the *earliest* later milestone
-    placing an id is the one reported: an item placed by both v0.3.0 and
-    v0.4.0 is v0.3.0's, and saying so is what stops the marking overstating
-    how far off the work is.
+    `sections` are the sections still ahead of the project - `wave` passes the
+    unreleased ones, which is what makes a released section place nothing.
+    They are read in version order, which is timeline order for milestone rows
+    numbered or not, since `_timeline_order` fails a row written out of it. So
+    the *earliest* section placing an id is the one reported: an item placed by
+    both v0.3.0 and v0.4.0 is v0.3.0's, and saying so is what stops the marking
+    overstating how far off the work is. That holds for a section below the
+    anchor too, which is where the port sits while the gate above it is being
+    cleared (`PL-FWJF`).
 
     **`clearing_gate` narrows the anchor to its gate.** A section places ids
     through two structures, and while a gate is open only one of them is work
@@ -932,21 +943,25 @@ def milestone_scope(
     """
     if anchor is None:
         return Scope(anchor="", current=frozenset(), later={})
-    anchor_label = "v{}.{}.{}".format(*anchor.version)
     placed = frozenset(anchor.scope_ids)
     if clearing_gate is None:
         current = placed
-        later: dict[str, str] = {}
     else:
         current = frozenset(
             identifier for entry in clearing_gate.entries for identifier in entry.ids
         )
-        later = {identifier: anchor_label for identifier in placed - current}
-    for section in sections:
-        if section.version <= anchor.version:
-            continue
+    later: dict[str, str] = {}
+    # The anchor is read at its own position in the order, so that an id it
+    # shares with a section below it is reported as the earlier section's. It
+    # contributes only what `current` left out, which is empty unless a gate is
+    # being cleared; added to the set rather than assumed present, so a caller
+    # passing sections without it still has the anchor's own scope placed.
+    for section in sorted({*sections, anchor}, key=lambda candidate: candidate.version):
+        ids = (
+            placed - current if section.version == anchor.version else frozenset(section.scope_ids)
+        )
         label = "v{}.{}.{}".format(*section.version)
-        for identifier in section.scope_ids:
+        for identifier in sorted(ids):
             if identifier not in current:
                 later.setdefault(identifier, label)
     return Scope(
@@ -977,12 +992,18 @@ class Wave:
     total_steps: int
     #: The open gate, when one is recorded under a milestone not yet released.
     gate: GateStatus | None
-    #: That gate's milestone's own `Required scope`, counted - `None` when no
-    #: gate is recorded or its milestone records no scope subsection. Distinct
-    #: from `scope` below, which answers placement for any id; this answers
-    #: whether the milestone's own content is finished.
+    #: The beat's milestone's own `Required scope`, counted - `None` when no
+    #: gate is recorded or that milestone records no scope subsection. Usually
+    #: the gate's milestone; the section on a row the timeline puts before it
+    #: while that row is the beat's work. Distinct from `scope` below, which
+    #: answers placement for any id; this answers whether the milestone's own
+    #: content is finished.
     own_scope: ScopeStatus | None
     #: The milestone the beat is about, when the roadmap has a section for it.
+    #: Read off the timeline row rather than the `#` column: a section-bearing
+    #: `—` row between a clear gate and the milestone that recorded it is the
+    #: beat's work while its scope is open, whatever number it takes
+    #: (`_due_before`).
     milestone: MilestoneSection | None
     #: Which items that milestone names, and which a later one names instead.
     scope: Scope
@@ -1145,7 +1166,9 @@ def _current_step(
     The row after the last milestone it has released, which is not the same as
     the first milestone above the current version: a gate, a patch track or a
     boundary marker can sit between them, and standing on one of those is a
-    real position on the plan rather than a gap in it.
+    real position on the plan rather than a gap in it. A milestone row is one
+    by its label rather than by the `#` column, so a `—` row carrying a version
+    is released, and stepped past, exactly as a numbered one is.
     """
     if not steps:
         return None
@@ -1160,6 +1183,51 @@ def _current_step(
         return 0
     following = released[-1] + 1
     return following if following < len(steps) else None
+
+
+def _due_before(
+    steps: Sequence[TimelineStep],
+    sections: Sequence[MilestoneSection],
+    current: tuple[int, int, int] | None,
+    milestone: MilestoneSection,
+) -> MilestoneSection | None:
+    """The section-bearing timeline row the plan puts before `milestone`, if any.
+
+    The rows between the project and the milestone whose gate has just cleared
+    are read in timeline order, numbered or not. The `#` column says whether a
+    row is a step of its own, and the Qt port is not one: it sits on a `—` row
+    between Gate 1 and v0.5.0, takes a patch number, and carries a section with
+    a `Required scope`. Anchoring on the next *numbered* milestone read straight
+    past it, so `wave` printed `implement v0.5.0` for the whole of the port and
+    `docket next` told every session the port's items were placed by no section
+    (`PL-FWJF`).
+
+    Only a row whose section records its own scope is returned, because that is
+    the one thing here that can be counted. A row with no section, or a section
+    with no `Required scope`, says nothing this can read and is passed over
+    rather than named as unfinished. A patch-track row bears no section by
+    grammar - `SECTION_VERSION_RE` wants three numbers and `v0.4.x` has two - and
+    is passed over the same way, which is what keeps `v0.4.x` the step the
+    project stands on while the port is the work.
+
+    "Before" is by version, which the timeline grammar makes agree with row
+    order for milestone rows: `_timeline_order` fails one written out of
+    sequence. A row placed above its gate's row is not told apart from one
+    below it, deliberately - an open gate is the beat whatever else is written,
+    and this is consulted only once the gate is clear.
+    """
+    by_version = {section.version: section for section in sections}
+    for step in steps:
+        if step.kind != "milestone" or step.version is None:
+            continue
+        if current is not None and step.version <= current:
+            continue
+        if step.version >= milestone.version:
+            return None
+        section = by_version.get(step.version)
+        if section is not None and section.records_its_own_scope:
+            return section
+    return None
 
 
 @dataclass(frozen=True)
@@ -1249,7 +1317,10 @@ def wave(
     - a gate that is clear leaves either a release to cut, when the step the
       project stands on is the milestone that carries the gate's work, or the
       milestone that recorded the gate to implement - `_release_due`
-      holds the three arrangements that make it a release;
+      holds the three arrangements that make it a release - unless the
+      timeline puts a section-bearing row between the project and that
+      milestone, numbered or not, in which case that row's own scope is the
+      work and decides `implement` or `release` for it first (`_due_before`);
     - with no gate recorded, the next milestone either has its four scoping
       subsections and wants its gate frozen, or does not and wants scoping.
 
@@ -1290,11 +1361,24 @@ def wave(
         beat, milestone, subject = CLEAR, gate.milestone, gate.milestone.label
         clearing = gate
     elif gate is not None:
-        due = _release_due(step, gate, own_scope)
-        if due is not None:
-            beat, milestone, subject = RELEASE, gate.milestone, due.label
+        before = _due_before(steps, sections, current, gate.milestone)
+        if before is not None:
+            # The cadence reaches the gated milestone only once the row before
+            # it has shipped, so that row's own scope is what the beat counts,
+            # split between the two beats exactly as `_release_due`'s third
+            # arrangement splits the milestone's own.
+            own_scope = scope_status(before, closed_ids, known_ids)
+            if own_scope.is_complete:
+                due = ReleaseDue(before.label, before.version, before.name)
+                beat, milestone, subject = RELEASE, before, due.label
+            else:
+                beat, milestone, subject = IMPLEMENT, before, before.label
         else:
-            beat, milestone, subject = IMPLEMENT, gate.milestone, gate.milestone.label
+            due = _release_due(step, gate, own_scope)
+            if due is not None:
+                beat, milestone, subject = RELEASE, gate.milestone, due.label
+            else:
+                beat, milestone, subject = IMPLEMENT, gate.milestone, gate.milestone.label
     else:
         ahead = [
             candidate
@@ -1325,7 +1409,7 @@ def wave(
         own_scope=own_scope,
         milestone=milestone,
         scope=milestone_scope(
-            sections,
+            unreleased,
             milestone,
             clearing_gate=clearing,
             # Only when they differ: naming the step where it *is* the anchor

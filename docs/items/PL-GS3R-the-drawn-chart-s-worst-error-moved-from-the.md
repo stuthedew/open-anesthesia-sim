@@ -3,8 +3,7 @@ id: PL-GS3R
 title: The drawn chart's worst error moved from the control change to the steep early wash-in, and PL-4RBD's 0.32 MAC only fell to 0.26 MAC: uniform columns chord across the same width M4's buckets did
 priority: P1
 effort: M
-status: blocked
-blocked-by: PL-G59B
+status: ready
 classes: defect, safety
 feature: teachable-case
 touches: src/anesthesia_sim/core/run_score.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_series.py, docs/MODEL.md
@@ -207,3 +206,18 @@ promote". It is not: it is fully designed and waiting for the port to *land*.
 the `P1` ranking hazard is gone and the only route to promotion runs through a
 groomer reading this brief. The standing false advisory is the price, and
 `PL-L09X` carries it.
+
+**The seam is in place, 2026-09-14 (`PL-G59B`).** `chart_frame.chart_columns`
+is the one function the chord-width rule replaces: every frame asks it for
+the column count of the axis width it is about to draw, and it answers
+`CHART_COLUMN_BUDGET_PER_SERIES` at every rung until this item chooses the
+target width and re-measures the departure. Deliberately left at the floor
+rather than set here: the target width is to be chosen against the 0.01 pp
+the readout resolves, the worst departure at the 12 h base is not quadratic
+in the chord (0.0117, 0.0401, 0.199 and 0.532 pp at 6, 24, 96 and 288 s of
+chord) because the chord that matters is the first one on a curve whose time
+constant is 36 s, and the frame cost of the count that reaches 0.01 pp is not
+measured on any hardware. That is this item's measurement, and the port did
+not take it.
+
+**Promoted to `ready`, 2026-09-14**, `PL-G59B` having closed. The seam is `chart_frame.chart_columns`; see the note above.

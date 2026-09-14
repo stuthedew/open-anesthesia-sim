@@ -12,6 +12,7 @@ closed: 2026-09-14
 verify: uv run pytest tests/unit/test_agent_identity_check.py && grep -q 'def test_the_writer_is_found_in_whichever_app_module_holds_it' tests/unit/test_agent_identity_check.py
 ---
 
+
 **Problem.** agent_identity_check reads only simulation_view.py and keys on _apply_agent_color_scheme by name, so moving one class out of that module silences it rather than failing
 
 **Why it matters.** This is the "silence is indistinguishable from a pass"
@@ -77,3 +78,34 @@ run reports 6 identity controls, 3 disabled-state writes read across 11
 modules, 1 of them on an identity control - and the four new tests cover the
 writer in another module, rule 2 reaching another module, a second writer, and
 a same-named control in another class staying quiet.
+
+**Triaged twice on 2026-09-14.** A second pass (`PL-6FJ5`, `PL-66X4`) verified
+the finding independently and triaged it at `P2` under `dev-tooling`; the
+fields above are the project owner's (`P1`, `safety`, `qt-port`, 2026-09-14),
+and the work closed on that basis. The second pass's verification and brief
+follow unchanged, because a merge that keeps one of two answers is what
+`PL-N1JK` recorded, and its "Done when" is compared against what landed
+where the two differ.
+
+**Verified 2026-09-14.** `tools/agent_identity_check.py:102` fixes
+`VIEW = Path("src/anesthesia_sim/app/simulation_view.py")` and `:107` fixes
+`IDENTITY_WRITER = "_apply_agent_color_scheme"`. The module's own docstring
+concedes the gap at `:44-51` and `:67` - rule 1 is "every `self.X` that
+`_apply_agent_color_scheme` writes", and a writer outside that method "is
+invisible to both rules. None exists today".
+
+**Why it matters.** The check's reach is defined by a file path and a method
+name rather than by the property it is protecting, so the ordinary act of
+moving a class out of a 4 321-line module silences it. It does not fail; it
+reports a pass over a smaller world. That is the same defect as `PL-0PJG` seen
+from the other side, and it is due before rather than after the Qt port:
+`v0.4.25` rewrites `app/simulation_view.py` wholesale, so a check anchored to
+that path will either break loudly or - if a file of that name survives with
+different contents - go quiet while appearing to work.
+
+**Done when.** The check decides its own surface from the tree rather than from
+a hard-coded path and method name: any module under `src/anesthesia_sim/app/`
+that writes an agent identity colour is measured, a writer outside
+`_apply_agent_color_scheme` is found rather than ignored, and
+`tests/unit/test_agent_identity_check.py` covers a control that carries identity
+from a module other than `simulation_view.py`.

@@ -63,3 +63,22 @@ runs it.
 environment setup script carries the line (recorded here as done by them, since
 no file in this tree can prove it), and `PL-YCWZ`'s first rendering test passes
 in CI on a runner that never had the library.
+
+**The environment half is done** (project owner, 2026-09-14): the setup-script
+line above was added to the cloud environment after `#576` merged. Recorded
+here as done by them, as "Done when" provides, since no file in this tree can
+prove it; the first fresh session in that environment that imports
+`PySide6.QtGui` without an `apt` step is the proof. What remains is the CI
+step in `quality.yml`, which rides whichever session takes this item.
+
+**The CI half rode `PL-G59B`** (2026-09-14): the chart port's first commit adds
+the `libegl1` step to `.github/workflows/quality.yml`, between `checkout` and
+the floor section, because that commit is also the one that puts the first
+`PySide6.QtGui` import into the suite and the two cannot land apart. The
+environment proof named above was observed the same day: this container's
+`/usr/lib/x86_64-linux-gnu/` carried `libEGL.so.1` at session start with no
+`apt` step run, and `uv run --with PySide6-Essentials python -c "import
+PySide6.QtGui"` succeeded. What this item still owes is the third place, the
+OS-requirement line in `docs/ARCHITECTURE.md`, and the observation of the CI
+step passing on a runner that never had the library, which the chart port's
+own pull request supplies.

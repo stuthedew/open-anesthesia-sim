@@ -4,7 +4,7 @@ title: Implement the chart hover readout on pyqtgraph to the derivation docs/MOD
 priority: P1
 effort: S
 status: blocked
-blocked-by: PL-G59B
+blocked-by: PL-25KS
 classes: safety, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, README.md, tests/integration
@@ -79,3 +79,21 @@ The affordance does not survive the port by default. `hoverable` is `False` and
 a line has no hover, so unless this is built the Qt chart answers nothing, no
 test notices, and the interface loses a capability the parity criterion says it
 keeps.
+
+**Built with `PL-G59B`, 2026-09-14; the README line waits.** The hover is on
+the pyqtgraph chart to the derivation, as the nearest drawn point within a
+pixel radius rather than as hoverable scatter points - the route
+`docs/MODEL.md` § "When it answers" allows, and the one that answers for a
+drawn state only: `chart_frame.format_trace_hover` and `format_wash_in_hover`
+produce the three lines through `app/formatting.py`, `nearest_trace_point`
+answers only for compartments the reader has left shown, the references and
+the marks are never candidates, and it answers running or paused.
+`tests/unit/test_chart_frame.py::test_the_hover_reads_as_the_specification_shows`
+holds the worked example verbatim and
+`tests/integration/test_qt_chart.py::test_the_hover_reports_the_drawn_state_through_the_formatters`
+holds the rendered readout against a real run. What is left is item 5,
+`README.md` saying the affordance exists - which it cannot say until the Qt
+chart is the shipped chart, so it rides `PL-25KS`. The `verify:` above names
+a test in `test_formatting.py` that this build did not write, since the
+formatting is composed rather than a new formatter; the two tests named here
+are what prove it.

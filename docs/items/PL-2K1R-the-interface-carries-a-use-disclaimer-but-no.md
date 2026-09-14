@@ -1,7 +1,13 @@
 ---
 id: PL-2K1R
 title: The interface carries a use disclaimer but no interpretation one, so nothing tells a reader the compartment readouts and chart traces are modelled rather than measured
-status: untriaged
+priority: P1
+effort: S
+status: blocked
+blocked-by: PL-25KS
+classes: safety, ux
+feature: presentation-safety
+touches: src/anesthesia_sim/app, docs/MODEL.md
 added: 2026-09-13
 ---
 
@@ -48,3 +54,15 @@ unless the chart is separable from the readouts in use.
 they are model outputs rather than measurements; a test names the string; and
 `docs/MODEL.md`'s hazard row is updated from "partially mitigated" to naming
 that test.
+
+**Triaged 2026-09-14: rides the Qt port** (project owner). `P1` because it is
+the modelled-versus-measured line `CLAUDE.md`'s safety standard draws, on the
+dashboard a clinician reads; `S` because it is text beside values that already
+exist. Blocked on `PL-25KS` (port the dashboard) rather than built on Flet
+first: the readouts and chart it sits beside are rewritten from scratch there,
+so a Flet version is the same lines written twice - the port's own carried-fix
+rule. It is named on `ROADMAP.md` § "v0.4.26 - the interface moves to Qt" →
+"Decisions the port has to make anyway", which is what keeps the port's parity
+claim - "identical except for this list" - checkable with this on it. It is
+text the dashboard states, not a control a learner operates, so it is not new
+capability by the `PL-16ZC` line.

@@ -1,10 +1,16 @@
 ---
 id: PL-WNQT
 title: bin/docket stranded reports a one-path commit as work left behind whenever a later merge edits that file, and its recovery recipe would revert the newer work
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
 feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, tests/unit/test_docket_branch_guard.py
 added: 2026-09-14
+verify: uv run pytest tests/unit/test_docket_branch_guard.py && grep -q 'def test_a_later_merge_touching_the_file_is_not_work_left_behind' tests/unit/test_docket_branch_guard.py
 ---
+
 
 **Problem.** bin/docket stranded reports a one-path commit as work left behind whenever a later merge edits that file, and its recovery recipe would revert the newer work
 
@@ -53,3 +59,19 @@ is a content comparison of the kind `_orphaned`'s docstring already refuses -
 "no content comparison of the outstanding three can see that". The unit is the
 question: the rule counts paths because a squash takes whole commits, and a
 one-path commit is where counting has nothing to count.
+
+**Why it matters.** This is the other half of `bin/docket stranded`'s output
+from `PL-MBTZ` - the "work its own pull request left behind" walk rather than
+the item-recovery walk - and it fails the same way, by prescribing a fix that
+destroys the newer state. A one-path commit is read as left behind whenever any
+later merge edits that path, which is the common case on a file more than one
+session touches, and the recipe then reverts the later work. Both halves of one
+command therefore produce confidently wrong, destructive advice under conditions
+that are normal rather than exotic, and the skill's own text tells a session to
+follow it. That is `CLAUDE.md`'s "gives a wrong answer silently" test, and it is
+the reason these two are worth doing together rather than in queue order.
+
+**Done when.** The left-behind walk distinguishes a commit whose content the
+base has since superseded from one the base never took, so a path edited by a
+later merge is not reported as left behind, and the recovery it prints cannot
+revert newer work. `tests/unit/` covers a path a later merge edited.

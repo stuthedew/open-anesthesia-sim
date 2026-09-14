@@ -1,14 +1,14 @@
 ---
 id: PL-25KS
 title: Port the dashboard to PySide6: the readout row, the four parameter controls, the agent selector, the transport, the new-case dialog and the notice banner
-priority: P2
+priority: P1
 effort: L
 status: ready
 classes: feature, ux
 feature: qt-port
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/main.py, tests/unit, tests/integration, docs/ARCHITECTURE.md
 added: 2026-09-10
-verify: uv run python tools/import_boundary_check.py && grep -rq 'PySide6' src/anesthesia_sim/app/
+verify: uv run python tools/import_boundary_check.py && grep -q 'PySide6' src/anesthesia_sim/app/main.py
 ---
 
 **Problem.** Port the dashboard to PySide6: the readout row, the four parameter controls, the agent selector, the transport, the new-case dialog and the notice banner
@@ -62,3 +62,32 @@ its package map is held to disk in both directions by `tools/doc_check.py`, so
 every module this item adds or removes edits that map in the same commit or
 fails `make check`. The line count above is corrected from 3 619 to 4 321,
 `PL-B9PY` having grown the file since the brief was written.
+
+**Raised to `P1`, 2026-09-14.** `PL-2K1R` (the interpretation disclaimer,
+`P1` `safety`) now waits on this item, and the store's band rule is that
+nothing waits on a blocker below its own band - the same reason `PL-G59B` is
+`P1` for `PL-GS3R` and `PL-YVHK`. The port's two build items now sit at the
+band the safety work behind them already held.
+
+**What the chart port left for this item, 2026-09-14 (`PL-G59B`).** The
+dashboard assembles one `chart_frame.ChartFrame` per render tick -
+`assemble_chart_frame` over a `RunInput` per run (controller, the snapshot
+the same tick formats the readouts from, and the `AdjustmentGrouping`'s
+adjustments), the selected time base or `None` for "Fit run", and
+`TraceLegend.shown` - and calls `draw` on `qt_chart.ConcentrationChart` and
+`qt_chart.WashInChart` with it; `TraceLegend.visibility_changed` is the
+signal to redraw on. The chart panel's captions are this item's, read off the
+frame rather than re-derived: the time-axis caption from `ChartFrame.fitted`
+and `time_base`, `format_mac_reference` and `format_mac_awake_reference` from
+the reference snapshot, the wash-in state sentence from `read_wash_in` and
+`RunFrame.undrawn_wash_in_stretches`, the off-scale notice from
+`RunFrame.percents` against `axis_top_percent`, and the unmarked-adjustments
+count from `RunFrame.undrawn_control_marks`. The `README.md` hover line
+(`PL-YVHK` item 5) lands here too, since this is what makes the Qt chart the
+shipped one.
+
+**`verify:` rewritten 2026-09-14.** `grep -rq 'PySide6' src/anesthesia_sim/app/`
+started passing when `PL-G59B` put `app/qt_chart.py` in the tree, so
+`docket check --verify` refused it. It now names `app/main.py`, which this
+item alone rewrites to build the Qt application, and which imports Flet
+today; run and seen to fail (exit 1).
