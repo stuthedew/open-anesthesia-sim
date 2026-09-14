@@ -8,7 +8,7 @@ classes: feature
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core, tests/unit, tests/integration, docs/ARCHITECTURE.md
 added: 2026-09-06
-verify: uv run pytest tests/integration/test_controller.py && grep -q 'def test_a_case_forks_at_every_instant_the_trunk_offers' tests/integration/test_controller.py
+not-delegable: what is left is an answer rather than code - whether the bookmark clause stays in this item or moves to PL-B8MK - and no command proves a decision. The command that proved the code half is in the brief, and becomes this item's `verify:` if the answer closes it here
 ---
 
 **Problem.** Comparing two managements of the same case - coast on low flow
@@ -120,6 +120,24 @@ with the bookmark half carried by `PL-B8MK` behind `PL-LPLD` and `PL-CTD7` —
 which also unblocks `PL-8PSW`, whose overlay needs the trunk-and-branches
 structure and nothing about bookmarks — or it stays open until a bookmark can
 be forked, and `PL-8PSW` and `PL-Z3W6` wait with it.
+
+**What proved the code half, and why this item carries no `verify:` today.**
+The command is:
+
+```
+uv run pytest tests/integration/test_controller.py && grep -q 'def test_a_case_forks_at_every_instant_the_trunk_offers' tests/integration/test_controller.py
+```
+
+It was run before being recorded and seen to fail for the right reason: against
+`origin/main`'s copy of that file the pytest half passes its 90 tests and the
+`grep` finds nothing, so the pair exits 1. It is *not* in `verify:` while this
+item is open, because it passes on this branch and `docket check --verify`
+rightly errors on an open item whose command already passes — an item whose
+command passes has either landed and should close, or proves nothing. Neither
+is true here: it proved the code half exactly, and what is open is the scope
+answer above. `not-delegable:` is what the store has for work no command can
+prove, and a decision is that. If the answer closes this item on the
+control-event half, this command becomes its `verify:` in the same commit.
 
 **Captured this session and not fixed here:** `PL-B8MK` (the bookmark routes),
 `PL-9KP5` and `PL-4K9V` (`PL-2FM6`'s unswept sample-store prose in
