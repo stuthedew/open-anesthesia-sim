@@ -1,14 +1,15 @@
 ---
 id: PL-TNB6
 title: docket next attributes the whole of Gate 1 to the v0.4.x step, where the plan makes Gate 1 its own row that no patch may ship
-status: done
-added: 2026-09-06
-closed: 2026-09-14
 priority: P2
 effort: S
+status: done
 classes: defect, infra
 feature: planning-cadence
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_cli.py
+added: 2026-09-06
+closed: 2026-09-14
+pr: 560
 verify: uv run pytest subprojects/docket/tests/test_plan.py && grep -q 'def test_the_gate_reason_says_which_step_is_current_not_which_clears_the_gate' subprojects/docket/tests/test_plan.py
 ---
 
