@@ -1787,7 +1787,7 @@ than joining.
 - PL-Y5WR (M) The 30-day scenario cap is enforced nowhere as an explicit halt, and dropping PL-011 removes the only item that required it
 - PL-1PSX (M) The control-input timeline is unbounded and regrouped in full on every frame
 - PL-B9PY (M) Decompose SimulationView so two runs can be rendered at once
-- PL-RD3B (M) app/controller.py now holds the run's storage as well as the UI-to-core boundary, and they are separable
+- PL-RD3B (M) app/controller.py holds the run's trace vocabulary and drawn window as well as the UI-to-core boundary, and they are separable
 - PL-TCD1 (M) SimulationSnapshot still names six flat compartment floats, so the readouts cannot express a second substance now that the recorded run can
 - PL-YDKJ (S) Decide whether the chart should keep patching one control per plotted point
 
@@ -2766,9 +2766,14 @@ the last eight are the feature itself.
 - **A path-scoped rule against re-introducing a sample store** (queue item
   PL-49R8), so a later session adding a convenience buffer is told why the
   store is absent rather than rediscovering it.
-- **The controller's storage and its UI-to-core boundary are separated**
-  (queue item PL-RD3B). Two runs need the boundary without a second copy of
-  the storage.
+- **The controller's trace vocabulary and its UI-to-core boundary are
+  separated** (queue item PL-RD3B). Two runs need the boundary, and each needs
+  its own drawn window addressed through the same vocabulary. **Re-briefed
+  2026-09-14** (`PL-5328`): this entry read "The controller's storage ...
+  without a second copy of the storage" until `PL-2FM6` deleted the store, so
+  what is left to separate is the vocabulary a trace is addressed by and the
+  window a frame draws, not a store. The scope is unchanged; only the noun
+  was stale.
 - **The snapshot stops naming six flat compartment floats** (queue item
   PL-TCD1), so a readout can name which run and which substance it describes.
 - **The control-input timeline is bounded and stops being regrouped in full on
