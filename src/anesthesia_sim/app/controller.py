@@ -1165,9 +1165,12 @@ class SimulationController:
         last_s = min(stop_s, self._run_definition.reached_s)
 
         if last_s < first_s:
-            # The axis lies entirely ahead of the run - an ordinary state at
-            # the very start of one rather than an error - and an empty
-            # window draws nothing, which is not the same as drawing a zero.
+            # The axis and the run do not overlap. Two ordinary states rather
+            # than errors: an axis entirely ahead of a run at the very start of
+            # one, and an axis entirely to the left of a branch's fork, which
+            # is what a learner sees before the branch point scrolls into view.
+            # An empty window draws nothing, which is not the same as drawing a
+            # zero.
             return DrawnWindow(substance_id=self._agent_id, times_s=(), states=())
 
         # An axis of no width is one instant, and it is still drawn: both

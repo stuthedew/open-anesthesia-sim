@@ -420,6 +420,31 @@ def test_a_run_definition_refuses_a_state_whose_unit_is_not_one() -> None:
         RunDefinition(system.equation_settings(), tuple(state), opened_at_s=0.0)
 
 
+@pytest.mark.parametrize("opened_at_s", [nan, inf])
+def test_a_run_definition_refuses_to_open_at_a_non_finite_instant(opened_at_s: float) -> None:
+    """The opening is validated where the state vector is, and for the same reason.
+
+    It is the instant every later answer is measured from: a definition opened
+    at a non-finite one would propagate over a non-finite interval and hand
+    back a state of `nan`, which no bounds check downstream can distinguish
+    from a run that genuinely reached one.
+    """
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+
+    with pytest.raises(SimulationConfigurationError, match="not a finite instant"):
+        RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=opened_at_s)
+
+
+def test_a_run_definition_refuses_to_open_before_induction() -> None:
+    """The case's axis starts at induction, so no run on it opens before zero."""
+
+    system = AgentUptakeSystem.for_agent("sevoflurane")
+
+    with pytest.raises(SimulationConfigurationError, match="at or after induction"):
+        RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=-1.0)
+
+
 def test_a_run_refuses_to_go_backwards() -> None:
     system = AgentUptakeSystem.for_agent("sevoflurane")
     definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)

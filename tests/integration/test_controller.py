@@ -1385,6 +1385,31 @@ def test_an_axis_entirely_ahead_of_the_run_draws_nothing() -> None:
     assert window.states == ()
 
 
+def test_an_axis_entirely_before_a_branch_s_fork_draws_nothing() -> None:
+    """The other half of the same ordinary state, and the one a branch reaches.
+
+    A branch holds no state before the instant it was forked at, and since
+    `PL-ZMRT` its run definition refuses such an instant rather than answering
+    from the nearest keyframe it happens to hold. So the window is clipped to
+    the run's opening and comes back empty where the axis ends to the left of
+    it - not raised out of the render loop, which is what clipping to a literal
+    zero instead of to the opening would have caused on an ordinary frame.
+    """
+
+    trunk = _trunk_with_two_changes()
+    fork_s = trunk.run_segments[-1].opening.instant_s
+    branch = trunk.resumed_at(fork_s)
+
+    window = branch.drawn_window(0.0, fork_s / 2, 150)
+
+    assert window.times_s == ()
+    assert window.states == ()
+
+    # And the trunk, on the same axis, draws it: the two differ because the
+    # branch did not exist yet, not because the axis was rejected.
+    assert trunk.drawn_window(0.0, fork_s / 2, 150).times_s != ()
+
+
 def test_a_control_change_is_drawn_at_every_time_base_the_reader_can_select() -> None:
     """`PL-4RBD`: a dial change that leaves the trace rising is still a drawn point.
 
@@ -1764,6 +1789,40 @@ def test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from() -> No
     # at its opening rather than refused, and starts exactly there.
     assert branch_columns[0] == fork_s
     assert branch_columns[-1] == trunk_columns[-1]
+
+
+def test_a_control_moved_before_a_branch_steps_reopens_its_first_segment() -> None:
+    """The learner's actual first act on a branch, which is to change something.
+
+    `RunDefinition.record_change` replaces the open segment's settings in place
+    where the run has not advanced past that segment's own opening, rather than
+    recording a zero-length stretch nothing was ever computed under. That test
+    is an equality between the run's reach and its first keyframe's instant,
+    and on a branch both of those are now the fork instant where they used to
+    be zero - so it is worth asserting rather than reading, since a version
+    that seeded only one of the two would open a zero-length segment here and
+    the run would still look right.
+    """
+
+    trunk = _trunk_with_two_changes()
+    fork_s = trunk.run_segments[-1].opening.instant_s
+    branch = trunk.resumed_at(fork_s)
+
+    assert len(branch.run_segments) == 1
+
+    branch.set_delivered_partial_pressure_fraction(0.01)
+
+    assert len(branch.run_segments) == 1
+    assert branch.run_segments[0].opening.instant_s == fork_s
+    assert branch.run_segments[0].opening.state == trunk.run_segments[-1].opening.state
+
+    # And the new settings are the ones the run is then computed under.
+    branch.start()
+    _advance_for(branch, duration_s=10.0)
+    branch.pause()
+
+    assert branch.run_segments[0].settings.delivered_partial_pressure_fraction == 0.01
+    assert len(branch.run_segments) == 1
 
 
 def test_a_branch_carries_the_case_s_delivered_and_exhausted_totals() -> None:
