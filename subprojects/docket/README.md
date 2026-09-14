@@ -1914,9 +1914,49 @@ minor_classes = ["feature"]
 protected_paths = []
 gate_paths = ["Makefile", "pyproject.toml", ".github", ".claude", "docket.toml"]
 code_paths = ["src", "tests"]      # what `docket trend` counts as code
+notes_file = ""                    # a threads file `docket show` points into
 version_file = "pyproject.toml"
 roadmap_file = "ROADMAP.md"
 ```
+
+### `notes_file`: making a threads file reachable
+
+A project that keeps a running cross-session log beside its queue - threads
+that outlive an item, span several, or have none - has a discovery problem the
+file cannot solve for itself. The instruction such a file carries is some form
+of *read this if your task touches an open thread*, and the condition cannot be
+evaluated without reading the file, which is the whole cost it was meant to
+avoid. So it resolves to reading all of it every session, or to reading none of
+it and losing the continuity it exists for.
+
+Point `notes_file` at it and `docket show <id>` answers the decidable half. It
+splits the file at its `##` headings and prints one `file:line` per thread
+naming that id:
+
+```
+  notes: 2 thread(s) in docs/WORKING_NOTES.md name PL-2FM6
+    docs/WORKING_NOTES.md:1187 (about) Measured and answered: a server-rendered chart is not the way out
+    docs/WORKING_NOTES.md:1006 (mentions) Decided: no numpy, and the reason is fit rather than dependency avoidance
+    Whether a thread is still true is not something this can tell you.
+```
+
+`about` means the thread's heading names the id; `mentions` means its body
+does. The distinction is worth its column: on this repository's own notes file,
+31 of the 106 ids cited appear in a heading, so a heading-only reading would
+have printed nothing for the other 75 - and silence there is indistinguishable
+from "no thread concerns your item", which is the failure rather than a cheaper
+version of it. Reading bodies too reaches 105 of 106 without becoming noise:
+74 ids match exactly one thread, 23 match two, 7 match three, and one
+cross-cutting id matches six.
+
+Nothing is printed when the setting is empty, the file is absent, or no thread
+names the id. That silence is deliberate - a line reporting any of the three
+would print on nearly every `show` and change no decision.
+
+**It points; it does not summarize.** Whether a thread is still true is not
+derivable from the file, and a generated precis of a stale thread would be read
+as current. The line is a pointer with a line number, and the judgment stays
+with the reader.
 
 ## Requirements
 

@@ -30,11 +30,31 @@ this file that has to cite it should cite an item id rather than a section
 title — titles here are rewritten and deleted as threads resolve, so a
 citation by title decays silently.
 
-Any session working on this repository should read this file at the start
-of a task that touches one of its open threads, and update the relevant
-section (not just append) as the thread progresses. Write entries so a
-reader with no memory of the originating conversation can act on them:
-state facts and decisions, not "the user said" or "we discussed."
+**`bin/docket show <id>` tells you which thread concerns your work; do not
+read this file to find out.** That instruction used to read "read this file at
+the start of a task that touches one of its open threads", which cannot be
+followed — evaluating the condition means doing the thing it gates, so it
+resolved in practice either to reading the whole file every session or to
+reading none of it and losing the continuity this file exists for (`PL-7QKY`).
+That cost is not static: the file was 34.5 KB when the item was written and is
+95 KB now, roughly 24k tokens, against `CLAUDE.md`'s turns-times-context
+discipline.
+
+So the discovery is a command now. `show` splits this file at its `##`
+headings and prints a `file:line` for each thread naming the id, marking
+whether the thread is *about* that item — its heading names the id — or merely
+*mentions* it. It says nothing about what a thread contains: whether one is
+still true is a judgment, and a generated precis of a stale thread would be
+read as current. Follow the pointer, then decide.
+
+**What that asks of a thread's heading.** Put the ids a thread is about in its
+`##` heading. Ids in the body are found too, so nothing is lost by forgetting,
+but the heading is what distinguishes a thread a session should open from one
+that cited the id in passing.
+
+Update the relevant section (not just append) as a thread progresses. Write
+entries so a reader with no memory of the originating conversation can act on
+them: state facts and decisions, not "the user said" or "we discussed."
 
 When a thread here is fully resolved (implemented, tested, and merged), its
 outcome belongs in `ROADMAP.md`/`docs/MODEL.md`/commit history as

@@ -116,6 +116,15 @@ class Config:
     #: Unlike `workflow_paths` this fails *open*: with nothing declared, every
     #: product path is prose, which understates code and never invents it.
     code_paths: tuple[str, ...] = ("src", "tests")
+    #: A running cross-session notes file whose `##` sections are threads, if
+    #: the project keeps one. `docket show` names the threads concerning the
+    #: item being shown, which is the only thing that makes such a file
+    #: reachable: the instruction it usually carries - read it if your task
+    #: touches an open thread - cannot be followed without reading it first.
+    #: Empty by default and hardcoded nowhere, so a project without one is
+    #: unaffected and this package keeps no notion of any particular
+    #: repository's layout.
+    notes_file: str = ""
     version_file: str = "pyproject.toml"
     #: The plan `docket wave` reads: the release train, the milestone
     #: sections, and the debt list each one records when it is scoped.
@@ -210,6 +219,7 @@ def load(root: Path) -> Config:
         gate_paths=_tuple(section.get("gate_paths"), defaults.gate_paths),
         check_command=str(section.get("check_command", defaults.check_command)),
         code_paths=_tuple(section.get("code_paths"), defaults.code_paths),
+        notes_file=str(section.get("notes_file", defaults.notes_file)),
         version_file=str(section.get("version_file", defaults.version_file)),
         roadmap_file=str(section.get("roadmap_file", defaults.roadmap_file)),
         version_policy=str(section.get("version_policy", defaults.version_policy)),

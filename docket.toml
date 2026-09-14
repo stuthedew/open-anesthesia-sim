@@ -5,6 +5,17 @@
 [docket]
 items_dir = "docs/items"
 
+# The running cross-session log beside the queue. `docket show` splits it at its
+# `##` headings and names the threads concerning the item being shown, which is
+# what makes the file reachable at all: its own instruction to read it "at the
+# start of a task that touches one of its open threads" cannot be evaluated
+# without reading it (`PL-7QKY`).
+#
+# Not a package default - it is empty there, and nothing in `subprojects/docket/`
+# knows this path. A notes file is this repository's convention rather than the
+# tool's.
+notes_file = "docs/WORKING_NOTES.md"
+
 # Subject matter that may not sit in the lower bands however small the task
 # looks, per CLAUDE.md's safety-critical standard.
 safety_classes = ["safety", "science"]
