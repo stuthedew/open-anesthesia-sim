@@ -817,7 +817,11 @@ answer below is:
   (`PL-NBCS`) - but nothing feeds it into placement, so the ranking still says
   nothing in either direction. Reporting it there is queue item `PL-6P9Y`.
 - A released milestone's section places nothing. Its narrative records where a
-  problem was raised, not what is current work.
+  problem was raised, not what is current work. Released is decided by the
+  version the project is on, never by position relative to the anchor: an
+  unreleased section *below* the anchor - the Qt port, numbered as a patch and
+  placed between Gate 1 and v0.5.0 - is work the step has not reached, and its
+  ids read as later work mapped to it (`PL-FWJF`).
 
 ### Concurrency is computed, and honestly qualified
 
@@ -930,6 +934,21 @@ count is strict where the gate's is not: a scope id waiting on work outside the
 milestone still holds the milestone, because it ships when its scope is done and
 not when the remainder is somebody else's fault, and an id the store does not
 hold withholds completeness rather than being guessed either way.
+
+The milestone the beat is about is read off the timeline row rather than the
+`#` column. A `—` row bearing a section with a `Required scope` of its own,
+placed between a gate and the milestone that recorded it, comes before that
+milestone: once the gate is clear the row's own scope is what the beat counts,
+`implement` while it is open and `release` once it has closed, and the gated
+milestone returns as the beat when the row's number is cut. The Qt port is that
+row — `v0.4.26`, between Gate 1 and v0.5.0 — and anchoring on the next
+*numbered* milestone read straight past it: `wave` printed `implement v0.5.0`
+for the whole of the port and `next` told every session the port's items were
+placed by no section (`PL-FWJF`). What is passed over is stated rather than
+guessed at: a row with no section, or one with no `Required scope`, cannot be
+counted and leaves the beat on the gated milestone, and a patch-track row bears
+no section by grammar, which is what keeps `v0.4.x` the step while the port is
+the work.
 
 The beat and the step also ride in `docket digest`, as one line. A command
 nobody runs unprompted does not change where "what next" gets answered from,
