@@ -20,6 +20,7 @@ import pytest
 from PySide6.QtWidgets import QApplication
 
 from anesthesia_sim.app.chart_frame import (
+    CHART_COLUMN_BUDGET_PER_SERIES,
     COMPARTMENT_TRACES,
     MAX_CHART_CONTROL_MARKS,
     WASH_IN_HOVER_LABEL,
@@ -27,6 +28,7 @@ from anesthesia_sim.app.chart_frame import (
     ChartFrame,
     RunInput,
     assemble_chart_frame,
+    chart_columns,
     format_trace_hover,
 )
 from anesthesia_sim.app.chart_time_base import time_base_for_span
@@ -77,8 +79,14 @@ def _run_with_a_dial_change(agent_id: str = "sevoflurane") -> SimulationControll
     return controller
 
 
+_PLOT_WIDTH_PX = 900.0
+
+
 def _frame(
-    *controllers: SimulationController, shown=COMPARTMENT_QUANTITIES, span_s=None
+    *controllers: SimulationController,
+    shown=COMPARTMENT_QUANTITIES,
+    span_s=None,
+    plot_width_px: float = _PLOT_WIDTH_PX,
 ) -> ChartFrame:
     grouping = AdjustmentGrouping()
     runs = []
@@ -87,7 +95,12 @@ def _frame(
         snapshot = controller.snapshot()
         runs.append(RunInput(controller, snapshot, grouping.of(snapshot.control_timeline)))
 
-    return assemble_chart_frame(runs, None if span_s is None else time_base_for_span(span_s), shown)
+    return assemble_chart_frame(
+        runs,
+        None if span_s is None else time_base_for_span(span_s),
+        shown,
+        plot_width_px=plot_width_px,
+    )
 
 
 def _shown(application: QApplication, chart: ConcentrationChart | WashInChart, height: int):
@@ -300,6 +313,28 @@ def test_a_recorded_change_is_marked_on_both_plots_at_its_own_time(
     assert wash_in.control_mark_times(0) == (pytest.approx(600.0),)
 
 
+def test_the_plot_reports_the_width_a_frame_is_drawn_for(application: QApplication) -> None:
+    """`PL-GS3R`: the width the chart reports is the width its time axis actually spans.
+
+    So a frame assembled for it divides the axis into at least that many
+    intervals, and the twelve-hour base is drawn at a chord of one pixel
+    rather than the 290 s a fixed budget of 150 columns ruled.
+    """
+
+    controller = _run_with_a_dial_change()
+    chart = _shown(application, ConcentrationChart(), 480)
+    width = chart.plot_width_px()
+    frame = _frame(controller, span_s=43_200.0, plot_width_px=width)
+    chart.draw(frame)
+    left, _ = chart.plot_pixel(frame.start_s, 0.0)
+    right, _ = chart.plot_pixel(frame.stop_s, 0.0)
+
+    assert 0.0 < width < 900.0
+    assert frame.columns == chart_columns(width) > CHART_COLUMN_BUDGET_PER_SERIES
+    assert right - left == pytest.approx(width, abs=2.0)
+    assert (frame.stop_s - frame.start_s) / (frame.columns - 1) <= 43_200.0 / width
+
+
 def test_marks_beyond_the_pool_are_the_oldest_left_unmarked(application: QApplication) -> None:
     controller = _run_with_a_dial_change()
     snapshot = controller.snapshot()
@@ -308,7 +343,10 @@ def test_marks_beyond_the_pool_are_the_oldest_left_unmarked(application: QApplic
         for at_s in range(10, 10 + 5 * (MAX_CHART_CONTROL_MARKS + 3), 5)
     )
     frame = assemble_chart_frame(
-        [RunInput(controller, snapshot, crowded)], None, COMPARTMENT_QUANTITIES
+        [RunInput(controller, snapshot, crowded)],
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
     )
     chart = _shown(application, ConcentrationChart(), 480)
     chart.draw(frame)

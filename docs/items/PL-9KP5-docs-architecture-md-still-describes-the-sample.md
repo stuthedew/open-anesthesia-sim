@@ -3,11 +3,12 @@ id: PL-9KP5
 title: docs/ARCHITECTURE.md still describes the sample store PL-2FM6 deleted, and routes every new-code session at history_window()
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs, defect
 feature: documentation-standard
 touches: docs/ARCHITECTURE.md
 added: 2026-09-14
+closed: 2026-09-14
 verify: python3 tools/doc_check.py check && ! grep -qF 'history_window()' docs/ARCHITECTURE.md
 ---
 

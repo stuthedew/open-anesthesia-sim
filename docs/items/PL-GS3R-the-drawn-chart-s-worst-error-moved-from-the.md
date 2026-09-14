@@ -3,11 +3,12 @@ id: PL-GS3R
 title: The drawn chart's worst error moved from the control change to the steep early wash-in, and PL-4RBD's 0.32 MAC only fell to 0.26 MAC: uniform columns chord across the same width M4's buckets did
 priority: P1
 effort: M
-status: ready
+status: done
+closed: 2026-09-14
 classes: defect, safety
 feature: teachable-case
-touches: src/anesthesia_sim/core/run_score.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_series.py, docs/MODEL.md
-verify: uv run pytest tests/unit/test_chart_time_base.py && grep -qF 'chord width' docs/MODEL.md
+touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, tests/unit/test_chart_frame.py, tests/unit/test_run_definition.py, tests/integration/test_qt_chart.py, docs/MODEL.md, docs/ARCHITECTURE.md
+verify: uv run pytest tests/unit/test_chart_frame.py && grep -q 'def test_no_chord_is_wider_than_one_pixel_of_time' tests/unit/test_chart_frame.py
 added: 2026-09-08
 ---
 
@@ -221,3 +222,203 @@ measured on any hardware. That is this item's measurement, and the port did
 not take it.
 
 **Promoted to `ready`, 2026-09-14**, `PL-G59B` having closed. The seam is `chart_frame.chart_columns`; see the note above.
+
+## Measured 2026-09-14, on `main` after the port (`#578`): the chord that reaches 0.01 pp, and what it costs
+
+The measurement the port left to this item, taken on the shipped read path. A
+12 h sevoflurane run at the envelope corner (FGF 10, V_A 12, Q 10 - the maxima
+`core/supported_ranges.py` declares), delivered 2% -> 4% at t = 600 s, built as
+a `RunDefinition` in closed form (`advance_to(600)`, `record_change`,
+`advance_to(43 200)`), so nothing is stepped. Truth is `evaluate_anchored` at
+0.1 s, the step the run advances by: 432 001 instants. The drawn polyline at
+chord h is `evaluate_anchored(0, 43 200, h)` - the anchored grid plus every
+event column, which is the union of what `SimulationController.drawn_window`
+draws across every window at that spacing - ruled straight between adjacent
+columns, as pyqtgraph rules it. Error is |polyline - truth| at every truth
+instant, on all six drawn compartments, in the percentage points the readout is
+in. Same method as the 2026-09-08 table, which it reproduces (0.0116 pp at 6 s
+of chord; 0.532 pp on the alveolar trace at 290 s).
+
+| Chord | Columns at 12 h | Worst, any trace | Alveolar | as MAC | Beyond 300 s of an opening | Beyond 600 s | Beyond 1 800 s |
+| ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 5 s | 8 641 | 0.0088 pp (alveolar, t = 2.3 s) | 0.0088 pp | 0.004 | 0.0000 | 0.0000 | 0.0000 |
+| 6 s | 7 201 | 0.0116 pp (alveolar, t = 2.7 s) | 0.0116 pp | 0.006 | 0.0001 | 0.0000 | 0.0000 |
+| 10 s | 4 321 | 0.0271 pp (circuit, t = 604.6 s) | 0.0226 pp | 0.011 | 0.0001 | 0.0000 | 0.0000 |
+| 15 s | 2 881 | 0.0509 pp (circuit) | 0.0330 pp | 0.016 | 0.0003 | 0.0000 | 0.0000 |
+| 18 s | 2 402 | 0.0665 pp (circuit) | 0.0368 pp | 0.018 | 0.0005 | 0.0001 | 0.0000 |
+| 24 s | 1 801 | 0.0995 pp (circuit) | 0.0401 pp | 0.020 | 0.0009 | 0.0001 | 0.0000 |
+| 36 s | 1 202 | 0.168 pp (circuit) | 0.0510 pp | 0.026 | 0.0018 | 0.0003 | 0.0000 |
+| 72 s | 602 | 0.362 pp (circuit) | 0.124 pp | 0.062 | 0.0077 | 0.0011 | 0.0001 |
+| 144 s | 302 | 0.627 pp (circuit) | 0.314 pp | 0.157 | 0.0251 | 0.0042 | 0.0003 |
+| 290 s | 151 | 0.888 pp (circuit, t = 67.9 s) | 0.532 pp | 0.266 | 0.0665 | 0.0111 | 0.0011 |
+
+The reference adult's own settings (FGF 4, V_A 4, Q 5), 1 MAC -> 2 MAC at
+600 s, same run length: 0.0016 pp at 5 s of chord, 0.0109 at 15 s, 0.0472 at
+36 s, and 0.556 pp on the circuit trace (0.206 pp on the alveolar, 0.10 MAC) at
+290 s; beyond 1 800 s of an opening, 0.0011 pp at 290 s.
+
+**Four things the table settles.**
+
+1. **The circuit trace is the worst-drawn one, not the alveolar.** 0.888 pp at
+   the 12 h base, against the 0.532 pp this item and `PL-4RBD` reported for the
+   alveolar trace. The circuit is the compartment with the shortest time
+   constant (V/FGF = 36 s at FGF 10), so it is where a chord departs most. The
+   alveolar figure was right; it was never the worst.
+2. **0.01 pp on every trace needs a chord of 5 s**; 6 s gives 0.0116 pp. At the
+   12 h base that is 8 641 columns - 58 times the floor - and 17 281 at a fitted
+   24 h run, the supported length.
+3. **The error is at the openings and nowhere else.** Beyond 1 800 s of any
+   segment opening the shipped 290 s chord departs by 0.0011 pp on either run,
+   a tenth of the readout's resolution, and beyond 600 s by 0.011 at the
+   corner and 0.025 at the reference settings. A uniform grid spends 99% of
+   its columns where the error is 1e-3 pp.
+4. **Route 1 at the target is not affordable as measured.** Closed-form
+   evaluation of the 12 h window on the web container (`evaluate_anchored`,
+   median of 7):
+
+   | Columns | 1 change in view | 5 | 20 |
+   | ---: | ---: | ---: | ---: |
+   | 150 | 9.4 ms | 21.8 ms | 67.5 ms |
+   | 600 | 11.2 ms | 23.1 ms | 66.7 ms |
+   | 2 400 | 21.6 ms | 31.6 ms | 70.3 ms |
+   | 8 640 | 59.7 ms | 67.7 ms | 105.6 ms |
+   | 15 000 | 98.9 ms | 110.5 ms | 148.0 ms |
+
+   About 5.8 us per column plus 1.29 ms per change in view. On the ported
+   path itself, offscreen on the same container, a 6-trace frame costs
+   7.3 ms of Python at 150 columns, 22.0 ms at 2 400 and 65.3 ms at 8 641
+   (`assemble_chart_frame` plus `ConcentrationChart.draw`, the evaluation
+   being 57 ms of the last figure), before the toolkit paints. Paint is the
+   larger term, and it is only extrapolated: `PL-X9T3`'s two readings on the
+   owner's own hardware - 8.04 ms at 294 points, 21.57 ms at 3 204 - are
+   4.65 us per drawn point over a 6.7 ms floor, which puts the 51 846 points
+   of six traces at 8 641 columns at about 250 ms of paint alone, and the
+   frame at about 320 ms at the 12 h base and 630 ms at a 24 h fit, against
+   the 200 ms budget. Extrapolated from two points and not measured; but the
+   cost is linear in the span whatever the slope, and the ladder is meant to
+   grow toward days (`PL-SSBP`).
+
+**Desflurane moves every number above by a factor of five to seven** (same
+method, same day). 0 -> 12% at the fast corner, then 6% at 600 s - an
+overpressure induction the interface allows - departs by **5.52 pp on the
+circuit trace and 3.83 pp on the alveolar, 0.64 MAC**, at the shipped 290 s
+chord. 0.01 pp on the alveolar trace needs a **2 s** chord there (1 s: 0.0031,
+2 s: 0.0113, 5 s: 0.0549 pp); 18 s of chord leaves 0.36 pp on the circuit and
+0.25 pp on the alveolar (0.04 MAC). Beyond 1 800 s of an opening the 290 s chord
+is within 0.0024 pp. The slow corner (FGF 0.5, V_A 2, Q 2, same steps) is
+benign: 0.31 pp on the circuit at 290 s, 0.0118 pp at 24 s, 0.0015 beyond
+1 800 s. So this item is banded on the wrong agent - the defect is 0.64 MAC,
+not 0.26 - and a uniform chord that reaches 0.01 pp on every supported case is
+2 s: 21 601 columns at 12 h, 130 000 drawn points.
+
+**Decision needed, again: what fidelity the drawn line owes, and by which
+mechanism.** Route 1 as decided on 2026-09-10 - hold the chord at the width
+that reaches 0.01 pp - is 2 s of chord on the shipped envelope, and cannot be
+afforded on any hardware this project has measured. Four ways out:
+
+- **A. Hold the chord at the width that reaches 0.01 pp everywhere.** The
+  decision as taken. Five lines in `chart_columns`; 21 601 columns at 12 h,
+  43 201 at a 24 h fit; about 160 ms of Python and 600 ms of paint per frame
+  on the figures above. Out of reach, and linear in the span.
+- **B. Hold a chord up to a column ceiling, and state the residual above it.**
+  The same five lines plus a ceiling. At 2 400 columns the 12 h base draws an
+  18 s chord: 0.07 pp (sevoflurane) and 0.36 pp (desflurane) on the circuit
+  trace, 0.04 pp / 0.25 pp (0.02 / 0.04 MAC) on the alveolar, stated in
+  `docs/MODEL.md`; 22 ms of Python here and about 110 ms per frame at 12 h on
+  the paint extrapolation. Leaves a stated numeric residual and no visual
+  guarantee.
+- **C. The coarse chord the span implies everywhere, plus a fine chord for the
+  first stretch after every segment opening in view.** The route-2 sketch in
+  this item's own brief, made concrete. Reaches 0.01 pp on every trace for
+  every supported case, with the constants set by the worst of them: 2 s over
+  1 800 s, which is 900 columns per opening as a single level, or about 125 per
+  opening as a dyadic stack (2, 4, 8, 16, 32 s to 60, 120, 300, 600 and 1 800 s)
+  at five propagators - 6.5 ms - per opening. Cost follows the openings in
+  view rather than the span: five openings is about 4 650 columns single-level
+  or 775 dyadic. Uniform spacing within each level, so the chained propagator
+  holds; fine columns anchored to the opening, which does not move. Costs the
+  evaluator a second spacing and a refinement span (`evaluate_anchored`,
+  `drawn_window`, `chart_frame`), tests for the merged grid, and a re-measure
+  of the constants whenever the envelope grows - a new agent, a wider dial.
+- **D. Hold the chord at one pixel: columns are the plot's width in logical
+  pixels, floored at 150.** Visually exact at every base by construction:
+  within one pixel column a monotone stretch rasterises to the same vertical
+  run whatever its shape, which is the property Jugel et al. 2014 prove - the
+  M4 paper `PL-4RBD` cited, whose citation `PL-8LXM` records in full and whose
+  full text left the tree with the M4 module in `#488`; nothing in `src/`
+  cites it today, so this route would cite it afresh in `docs/MODEL.md`. Numerically the
+  line between two drawn points is still a chord - 1.2 pp on the circuit and
+  0.25 pp on the alveolar at 12 h on the desflurane case at 1 000 px - stated
+  in `docs/MODEL.md` as a bound no display reads: the hover answers only at
+  drawn points, and nothing else reads between them. Cost is 1 000-1 400
+  columns at every base: about 13 ms of Python here and 40 ms of paint on the
+  owner's hardware on the extrapolation, twice today's chart cost, independent
+  of the span, and the same for any agent, dial or future rung. Five lines in
+  `chart_columns` plus the plot width passed into the frame the way the time
+  base already is, and testable at the pixel level with
+  `tests/integration/test_qt_chart.py`'s painted-image harness: the chart at
+  the 12 h base against the same run drawn at a 0.1 s chord. A fixed count at
+  the widest plot the interface draws is the same route without the plumbing,
+  at a fixed cost.
+
+**Recommendation: D.** It matches the failure mode - what a learner sees -
+holds for every case by construction rather than by constants measured against
+an envelope that grows, costs five lines, and is testable end to end in the
+pixels it claims. A cannot be afforded; B leaves a residual and guarantees
+nothing visually; C is the route if the *line itself* must be within 0.01 pp -
+principled and cheap per opening, its constants the worst supported case's,
+and the most code. Under every route the Flet dashboard keeps its 150 columns
+until `PL-25KS` ports it and `PL-7SVX` removes it: its per-point charge is what
+forbade the raise in the first place, and `chart_columns` is the Qt chart's.
+
+## Decided, 2026-09-14: route D - the chord is one pixel of time
+
+**The project owner chose D** ("Agree with recs"), having asked whether the M4
+citation was a leftover: the algorithm is gone and nothing uses it; what D
+borrows is the paper's result seen from the other side - one evaluated instant
+per pixel boundary makes the drawn line pixel-faithful on a stretch that is
+monotone within the pixel - and the argument is stated and tested directly
+rather than cited as authority.
+
+**The guarantee, stated precisely.** Between two drawn instants no more than a
+pixel of time apart, both exact, a monotone run and the straight segment drawn
+between them cross every level inside the same pixel: the drawn line is within
+one pixel of time of the run everywhere, and exactly on it at every drawn
+instant. The numeric departure between drawn instants is therefore not the
+guarantee - where the trace is steep, one pixel of time is many percentage
+points of value - and it is recorded as a bound no display reads: the hover
+answers only at drawn instants. The one thing the argument does not cover is
+an extremum *between* two dial changes falling inside a pixel, where the run
+rises above or falls below both neighbouring drawn values. Measured at a
+1 000 px plot over the same five runs (sevoflurane 2 -> 4% and 4 -> 0% at the
+fast corner, desflurane 0 -> 12 -> 6% at the fast and slow corners, the
+reference adult 1 -> 2 MAC), the worst such gap at any rung is **0.0028 pp**
+(mixed venous, desflurane dial-down, 12 h base), under a third of the
+readout's resolution.
+
+**What is built.** `chart_columns` takes the plot's width in logical pixels and
+answers one column per pixel boundary, floored at
+`CHART_COLUMN_BUDGET_PER_SERIES`; `assemble_chart_frame` takes that width the
+way it takes the time base, so a frame is drawn for the plot it is drawn on;
+the two Qt charts report their plot area's width for the caller to hand in,
+the wider of the two so neither draws a chord wider than a pixel. The Flet
+dashboard keeps its 150 columns until `PL-25KS` ports it and `PL-7SVX` removes
+it. `docs/MODEL.md` § "What the chart draws" carries the guarantee, the
+mid-chord departure per rung at 1 000 px, and the extremum gap.
+
+**Done, 2026-09-14.** `chart_columns(plot_width_px)` answers one column per
+pixel boundary, floored at 150, and refuses a negative or non-finite width;
+`assemble_chart_frame` takes `plot_width_px` as a required keyword and the
+frame records it; `ConcentrationChart.plot_width_px` and
+`WashInChart.plot_width_px` report the view box's width in logical pixels for
+the caller to hand in. `tests/unit/test_chart_frame.py` holds the rule and
+that no two drawn instants are further apart than a pixel of time at any
+rung; `tests/integration/test_qt_chart.py` holds that the width a chart
+reports is the width its axis spans and that the twelve-hour base is drawn
+above the floor for it; `tests/unit/test_run_definition.py` holds the
+extremum gap on the worst measured case under half the readout's
+resolution. `docs/MODEL.md` § "What the chart draws" states the guarantee,
+the per-rung mid-chord departure at 1 000 px, the extremum gap, and the
+citation; `docs/ARCHITECTURE.md` names the rule. The Flet dashboard is
+unchanged at 150 columns. Nothing yet calls `assemble_chart_frame` in the
+shipped interface - `PL-25KS` ports the dashboard and will hand the width in.

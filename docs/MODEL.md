@@ -318,8 +318,8 @@ $$
 
 Wall-clock time may schedule interface updates, but it must never be used as simulation time.
 
-Seconds are the unit everywhere this document, the core, and the recorded
-history state a time. The interface renders that one stored quantity in **one**
+Seconds are the unit everywhere this document, the core, and the run
+definition state a time. The interface renders that one quantity in **one**
 form and introduces no second unit doing so: the clock, every recorded control
 stamp and the chart's axis ticks all read as compound durations whose every
 component carries its own unit — `45s`, `1m30s`, `1h23m45.6s`, `24h`. A
@@ -355,10 +355,10 @@ to 1.0.
 
 A step differing from the one a run has already taken is refused as a
 `SimulationConfigurationError` rather than added to the count. The product
-needs a single step to multiply by, and a history recorded at two cadences
-has a sample spacing that is not a constant of the run — which every reader
-that maps a recorded sample index to a time assumes it is. Reset clears the
-count and the step together, so a fresh run may take a different one.
+needs a single step to multiply by: a count of steps means a time only while
+every step in it is the same size, and a run stepped at two cadences would
+leave `elapsed_s` no step to multiply by. Reset clears the count and the step
+together, so a fresh run may take a different one.
 
 #### The reproducibility guarantee
 
@@ -369,8 +369,8 @@ measurement the loop makes: no tick takes extra steps to make up simulated
 time a slow tick lost, and the run loop reads no clock. A machine
 that wakes the loop late, drops a frame, or runs the whole session slowly
 therefore produces a run that reaches a given step *later in real time* and
-is identical in every recorded sample. It runs slower; it does not run
-differently.
+is identical in every state, keyframe and control stamp. It runs slower; it
+does not run differently.
 
 **This is measured, not asserted.** `tools/import_boundary_check.py` runs in
 `make check` and CI and fails the build on a `time`, `datetime`, `random`,
@@ -390,14 +390,15 @@ between *machines* as well as between runs.
 
 So, given the same initial state, parameters, step size, setting changes and
 event ordering, two runs taken to the same step count produce **element-wise
-identical** recorded histories and snapshots — identical, not agreeing
-within a tolerance — and recorded sample *n* is at simulated time *n* times
-the step in both. This is the property a comparison of one run against
-another rests on, including the planned comparison of a branched run against
-the run it branched from at every sample they share.
+identical** run definitions and snapshots — identical, not agreeing within a
+tolerance: the same segments, the same keyframes, and the same state at step
+*n*, which is at simulated time *n* times the step in both. This is the
+property a comparison of one run against another rests on, including the
+comparison of a branched run against the run it branched from at every
+instant they share.
 
-**What carries this once a state is derived rather than recorded.** The
-paragraph above is a claim about recorded samples, and it rests on every
+**What carries this for a state that is derived rather than stepped to.** The
+paragraph above is a claim about the stepped system, and it rests on every
 caller taking the same width: with the step fixed, there is only one sequence
 of arithmetic that reaches step *n*. A run held as its definition records no
 samples and fixes no width — a state is computed when it is asked for, and the
@@ -406,17 +407,17 @@ evaluation rule" under "Runtime controls" is what carries the guarantee there.
 It is stronger than this paragraph in one respect and narrower in another: two
 evaluations of one run definition at one instant are bit-identical rather than
 merely reproducible across runs, and only values from the canonical path may be
-stored, exported or branched from. Both records are live in this release, so
-both halves are: the step count carries the recorded history, and the
-canonical rule carries the run definition.
+stored, exported or branched from. The two halves share the work: the step
+count carries the stepped system the snapshot is read from, and the canonical
+rule carries every state derived from the run definition.
 
 **Playing a run faster does not make it a different run.** The interface
 offers a playback rate — how much simulated time advances per second of real
 time — and it is implemented as the number of *whole steps* a tick takes,
 never as a larger step. The same case played at real time and at three
 hundred times real time is therefore the same steps, in the same order, at
-the same size: element-wise identical recorded histories, reached at
-different real times. A rate that resized the step instead would fall under
+the same size: an element-wise identical run definition and snapshot, reached
+at different real times. A rate that resized the step instead would fall under
 the first of the four exclusions immediately below — it would be a second
 numerical solution of the same equations rather than the same run watched
 faster — and
@@ -2581,8 +2582,8 @@ The implementation must preserve the following invariants:
 - derived partial-pressure-equivalent fractions remain finite and within 0 through 1;
 - no compartment creates agent spontaneously;
 - internal transfers remove and add equal amounts;
-- identical runs produce identical state and history, element for element,
-  however the steps were grouped in real time;
+- identical runs produce identical state and run definition, element for
+  element, however the steps were grouped in real time;
 - simulated time is the number of completed steps times the run's step, and
   a step differing from the one a run has already taken is refused, not
   counted;
@@ -3557,11 +3558,12 @@ using the release tolerances documented above.
 
 ### Closed-form agreement test
 
-A run driven through its own controls must be answered identically by both of
-its records: the states derived from the run definition, at the instants the run
-recorded, must equal the recorded samples.
+A run driven through its own controls must be answered identically by the
+closed form and by the stepped solver: the states derived from the run
+definition, at instants the stepped system passed through, must equal the
+states that system reached by stepping.
 
-The comparison is over every compartment of every sample rather than
+The comparison is over every compartment at every instant probed rather than
 endpoints, for the reason "Deterministic replay test" gives, and it must cross
 at least two setting changes, because a stretch of constant settings is the
 easy case — what a run definition has to get right is the boundary between two
@@ -3573,13 +3575,18 @@ tissue fractions of an induction and say nothing about a displayed digit.
 
 The agreement required is far below the two-decimal percent under "Displayed
 precision" and far above floating-point noise, so a real divergence fails and
-a rounding difference does not; `tests/integration/test_controller.py` records
-the figure measured and the headroom left above it.
+a rounding difference does not. `tests/unit/test_run_definition.py` holds
+`state_at` and `evaluate` against a run stepped alongside its definition and
+records the figures measured; `tests/unit/test_resume_at.py` and
+`tests/integration/test_controller.py` apply the same comparison to a system
+stood at a keyframe and stepped from there, and to a branch against its
+parent, each recording its own figure and the headroom left above it.
 
-While both records are live this test is what says they describe one run.
-Once the recorded half is retired it becomes the record of what the closed
-form replaced, and the stepped comparison in `tests/unit/test_run_definition.py`
-is what carries the claim forward.
+Until PL-2FM6 the run also kept one recorded sample per step and the chart
+drew from it, and this test was what said the two records described one run.
+The recorded half is gone; the comparison against the stepped system is what
+carries the claim, because the stepped solver is the independently written
+solution of the same equations that the closed form is checked against.
 
 ### Deterministic replay test
 
@@ -3591,13 +3598,14 @@ Two runs with identical:
 - event ordering; and
 - simulation steps
 
-must produce identical snapshots and histories.
+must produce identical snapshots and identical run definitions.
 
-Identical means element for element — every recorded sample of one run equal
-to the sample at the same index of the other, not merely equal endpoints and
-not agreement within a tolerance. Comparing endpoints would pass a pair of
-runs that diverged and returned, and the comparison a branched run will make
-against its parent is sample-by-sample.
+Identical means element for element — every segment and keyframe of one run's
+definition equal to the same segment and keyframe of the other's, and the
+snapshot the same in every field — not merely equal endpoints and not
+agreement within a tolerance. Comparing endpoints would pass a pair of runs
+that diverged and returned, and the comparison a branched run makes against
+its parent is at every instant they share.
 
 The two runs must also be driven differently in real time: the same steps
 taken one per tick in one run and in ragged bursts in the other, with the
@@ -3662,9 +3670,10 @@ Changing delivered concentration does not alter existing circuit concentration.
 alone.** The interface carries settings of its own that also change during a
 run without resetting state — the playback rate, the chart's time base, and
 which compartment traces are drawn — and none of them appears here, because
-none of them reaches model state: no step is resized, no recorded sample is
-added, discarded or altered, and identical inputs still produce identical
-results. "Interface boundary" is where they are bounded. The distinction is
+none of them reaches model state: no step is resized, no segment or keyframe
+of the run definition is added, discarded or altered, and identical inputs
+still produce identical results. "Interface boundary" is where they are
+bounded. The distinction is
 worth stating rather than leaving to be inferred from which document a control
 is described in: a reader who took the playback rate for a model input would
 read a case played at sixty times real time as a different run rather than as
@@ -3720,14 +3729,15 @@ exported or branched value may be taken from is stated as a guarantee under
 "The canonical evaluation rule" below.
 
 **What this is for, measured rather than argued.** Recording one sample per
-step costs 130.8 bytes per sample, measured over 20 000 samples of a live
-run; a 30-day case at the fixed 0.1 s step is 25 920 000 samples, or 3.16 GiB.
+step, as the run did until PL-2FM6, cost 130.8 bytes per sample, measured
+over 20 000 samples of a live run; a 30-day case at the fixed 0.1 s step is
+25 920 000 samples, or 3.16 GiB.
 The same case held as a definition — a busy ICU day at 50 setting changes, so
 1 501 stretches — is 1.6 MiB, a factor of about two thousand. The second gain is
 that answering a window stops depending on how long the run has been going: a
 one-hour window at 600 columns costs 10.6 ms on a two-hour run and 13.0 ms on
 a thirty-day one, against the 62.6 ms at four hours and 207.7 ms at twelve
-that the recorded path costs.
+that the recorded path cost.
 
 **Where the cost does still move is the number of changes inside the window**,
 because each stretch in view needs its own propagator. Measured on the same
@@ -3737,13 +3747,14 @@ the regime where the columns are sparser than the changes, in which sampling
 600 instants is the wrong way to draw the run in any case; what to draw
 instead is an interface question rather than a model one.
 
-**Both records are live in this release.** The recorded history remains, and
-the chart is still drawn from it; the run definition is built and maintained
-beside it,
-and the two are held to each other by "Closed-form agreement test" below.
-Retiring the recorded half is a separate change, and until it lands the
-agreement is what stands in for it: a divergence in either record fails that
-test.
+**This is the only record.** Until PL-2FM6 a recorded history remained
+beside the definition and the chart was drawn from it, with "Closed-form
+agreement test" holding the two to each other; that change deleted the
+history, so the chart is drawn from the definition —
+`SimulationController.drawn_window`, through `RunDefinition.evaluate_anchored`
+— and there is no second record for a divergence to appear in. The stepped
+system the run is advanced through remains, and the agreement test holds the
+definition to it.
 
 #### The canonical evaluation rule
 
@@ -4300,7 +4311,8 @@ Reset must:
   from, and release the step the run was taking so a fresh run may take a
   different one;
 - clear circuit, alveolar, blood, and tissue agent amounts;
-- clear concentration and mass-accounting history;
+- open a fresh run definition at the cleared state, so no state of the run
+  being discarded can be derived or drawn;
 - clear the recorded control-input timeline, which belongs to the run that
   recorded it;
 - reset cumulative delivered and exhausted amounts;
@@ -4321,22 +4333,23 @@ that agent's own 1 MAC rather than carrying the old agent's percentage — the
 same number is a different clinical depth for each agent.
 
 Because it begins a new run it **destroys one**, and that is a requirement on
-the interface rather than only on the controller. The recorded history, the
+the interface rather than only on the controller. The run definition, the
 control-input timeline and the simulated time a run reached are the whole of
-what a learner has to look back at, nothing in this application stores them,
-and there is no undo. So:
+what a learner has to look back at, nothing in this application persists
+them, and there is no undo. So:
 
-- the interface must not discard a run holding recorded state — any elapsed
+- the interface must not discard a run holding anything — any elapsed
   simulated time, or any recorded control change — without first stating that
   it will be discarded and obtaining the user's confirmation;
 - the statement must name what is lost in the terms the display already uses
   for it, so that it can be checked against the readouts it describes;
-- declining must leave the run, its history, its timeline and the control
+- declining must leave the run, its definition, its timeline and the control
   that offered the change exactly as they were; and
 - a selection that resolves to the agent already running must change nothing,
   since it proposes no new case.
 
-A run that holds no recorded state is exempt: there is nothing to discard, and
+A run that holds nothing — no elapsed time and no recorded control change —
+is exempt: there is nothing to discard, and
 a confirmation that fires where nothing is at stake is answered without being
 read by the time one is. Reset is therefore also the way to make a change of
 agent free.
@@ -4353,10 +4366,11 @@ The Flet interface may:
   run can be played faster than real time, subject to the constraint below;
 - halt a run and record why when the core raises, and report a value the
   core refused;
-- render the run's recorded history;
+- render the run's states across a window of its axis, evaluated from its
+  definition;
 - choose how wide a window of the run the chart draws, and how that window is
   ruled, subject to the constraint below;
-- select which recorded samples a plotted trace draws, subject to the
+- choose the instants a plotted trace is evaluated at, subject to the
   constraint below;
 - draw a subset of the compartment traces, at the reader's request, subject
   to the constraint below;
@@ -4369,13 +4383,16 @@ The Flet interface may:
   subject to the constraint below; and
 - display mass-balance status.
 
-**What a recorded sample is.** The recorded history is one sample per
-simulation step, and each sample is a simulated time together with one entry
-*per substance* — each entry carrying that substance's six compartment
-values, as fractions of one atmosphere, under the stable identifiers
-`app/controller.py`'s `RecordedQuantity` names. A run records one substance
-today, the agent it is a run of; changing agent starts a new run rather than
-adding to this one, so the mapping is one entry wide.
+**What a drawn window is.** What a chart draws from is a `DrawnWindow`
+(`app/controller.py`): the states at the instants one frame plots, evaluated
+from the run's definition by `SimulationController.drawn_window`, with nothing
+stored behind them. Each state is bound to the substance the run is of and
+carries that substance's six compartment values, as fractions of one
+atmosphere, under the stable identifiers `RecordedQuantity` names; a trace
+addresses one of them as a `RecordedSeries`, a substance-and-quantity pair. A
+run is of one substance today, the agent it is a run of; changing agent
+starts a new run rather than adding to this one, so a window describes one
+substance.
 
 It is keyed by substance rather than by six named fields because a
 compartment fraction asserts nothing without the substance it is a fraction
@@ -4394,7 +4411,7 @@ instantaneous state a frame is rendered from — `app/controller.py`'s
 `SimulationSnapshot` — carries the six compartment values as flat named
 fields rather than as the per-substance mapping above. That asymmetry is
 decided rather than unfinished (`PL-TCD1`, 2026-09-13). A snapshot is one
-instant's transient state for the running agent: unlike the recorded history
+instant's transient state for the running agent: unlike the run definition
 it is never stored, never compared against a later run, and never read back,
 so giving it a second substance later adds a field rather than invalidating
 anything already written. That is the test `ROADMAP.md` § "Designed for
@@ -4429,8 +4446,10 @@ decided by two rules, and both are properties this document requires rather
 than optimisations:
 
 - **The columns sit on a grid anchored to the case's zero**, at absolute
-  multiples of the spacing the selected time base and the per-trace column
-  budget imply. A window following the run therefore keeps every column it had
+  multiples of the spacing the selected time base and the width of the plot
+  imply: one column per pixel boundary of the plot the frame is drawn on, and
+  never fewer than 150 (`chart_columns` in `app/chart_frame.py`, `PL-GS3R`).
+  A window following the run therefore keeps every column it had
   and gains at most one, so a steady trace is not redrawn on every frame. A
   grid anchored to the viewport instead would move on every scroll and resize,
   and rewrite the whole chart on every frame. The anchor is the case's zero
@@ -4449,15 +4468,68 @@ than optimisations:
 **So the drawn chart reproduces every control change**, to the last digit
 the readouts display, while the stored record need not — there is no stored
 record (project owner, 2026-09-05, recorded here when the sample store was
-deleted). The interpolation error at every cadence sits at the instant the
-dial moves and scales as O(h) rather than O(h²) — the signature of a kink,
-since the derivative of the circuit fraction is discontinuous at a control
-change — so the fidelity question is entirely a question about control
-events, and placing a column on each is the whole of the answer. Away from
-one the trajectory is faithful to about 1e-3 percentage points even at a 2 s
-cadence, a tenth of the display resolution.
+deleted). The interpolation error at the instant the dial moves scales as
+O(h) rather than O(h²) — the signature of a kink, since the derivative of the
+circuit fraction is discontinuous at a control change — and placing a column
+on each event is the whole of the answer to it.
 
-Pegging the guarantee to the displayed resolution is deliberate, and it does
+**Between events the guarantee is a pixel of time, not a number of percentage
+points** (`PL-GS3R`, decided 2026-09-14). Between two drawn instants no more
+than a pixel apart, both exact, a monotone run and the straight segment the
+plot rules between them cross every level inside the same pixel: the drawn
+line is within one pixel of time of the run everywhere, and on it at every
+drawn instant. The numeric departure between drawn instants is deliberately
+not the guarantee. Where the trace is steep, one pixel of time is many
+percentage points of value, and no display reads a value between drawn
+instants — the hover answers only at a point the plot draws (§ "The chart's
+hover readout"). The pixel is a logical pixel of the plot, which is the
+resolution the axis is ruled and labelled at.
+
+That guarantee was the answer to a measurement. A fixed budget of 150 columns
+at every width — the rule from `PL-2FM6` until `PL-GS3R` — ruled a 290 s chord
+across the twelve-hour base and drew the steep early wash-in below the run: by
+0.53 pp on the alveolar trace (0.26 MAC) and 0.89 pp on the circuit trace for
+sevoflurane 2% to 4% at the fastest supported settings (FGF 10 L/min, V_A
+12 L/min, Q 10 L/min), and by 3.8 pp on the alveolar trace (0.64 MAC) and
+5.5 pp on the circuit for a desflurane overpressure induction, 0% to 12% then
+6% at 600 s. Holding a numeric bound instead — 0.01 pp, the readout's
+resolution, everywhere on every trace — needs a 2 s chord on that desflurane
+case, 21 601 columns across twelve hours, which no hardware this project has
+measured can draw inside its frame budget; and the whole of that error sits
+within 1 800 s of a dial change, beyond which the 290 s chord itself is within
+0.0024 pp. Measured 2026-09-14 against the closed-form state every 0.1 s, the
+step the run advances by, over five twelve-hour runs built in closed form.
+
+What the one-pixel rule leaves between drawn instants, measured on a 1 000 px
+plot, where the chord is the rung's span over 1 000:
+
+| Time base | Chord | Sevoflurane 2% to 4%, worst trace | Desflurane 0% to 12% to 6%, worst trace | Desflurane, alveolar |
+| --- | ---: | ---: | ---: | ---: |
+| 15 min | 0.9 s | 0.0004 pp | 0.0025 pp | 0.0025 pp |
+| 1 h | 3.6 s | 0.0052 pp | 0.032 pp | 0.032 pp |
+| 4 h | 14.4 s | 0.048 pp (circuit) | 0.28 pp (circuit) | 0.21 pp |
+| 12 h | 43.2 s | 0.21 pp (circuit) | 1.21 pp (circuit) | 0.26 pp |
+
+Those are the mid-chord departures of a straight segment from a curve that
+passes through both of its ends: a vertical gap at an instant no display
+reads, and under one pixel horizontally by the argument above. They grow with
+the chord, so a narrower plot draws a larger one and a wider plot a smaller,
+and they are the bound a reader should have in mind for a trace's *shape*
+inside a single pixel column, never for a value.
+
+**The one case the pixel argument does not reach is an extremum between two
+dial changes.** The alveoli and the venous blood keep filling for a moment
+after the vaporizer is turned down, so a trace can turn inside one interval
+and rise above both drawn values, where the line falls short of it. Measured
+over five runs — the two sevoflurane cases at the fastest settings, 2% to 4%
+and 4% to 0%; the desflurane case at the fastest and at slow settings (FGF
+0.5 L/min, V_A 2 L/min, Q 2 L/min); and the reference adult at 1 to 2 MAC —
+the worst such gap at any rung is 0.0028 pp, on the mixed venous trace at the
+desflurane dial-down on the twelve-hour base: under a third of the readout's
+resolution. `tests/unit/test_run_definition.py` holds that case under half of
+it.
+
+Pegging that residual to the displayed resolution is deliberate, and it does
 not cross the line drawn under "Supported simulation step". That section
 forbids traffic in the other direction — the readout's decimal count must not
 reach back into the model, which is why the step tolerance and the supported
@@ -4467,6 +4539,17 @@ peg arbitrary: the two-decimal readout is itself derived from model fidelity
 under "Displayed precision", one published SD of a partition coefficient
 displacing a compartment by 8.7e-4 to 6.8e-2 percentage points.
 
+The pixel-column framing is the one Jugel, Jerzak, Hackenbroich and Markl
+prove from the other side, for recorded data: that a line chart is fixed by
+at most four values per pixel column (M4: A Visualization-Oriented Time
+Series Data Aggregation, *Proceedings of the VLDB Endowment* 2014;7(10):797-808).
+Their selection itself is not used. Nothing is selected from a store, the run
+is evaluated at the column instants, and a control event is a column whatever
+the pixel width, which is what a selection of recorded extremes could not
+guarantee (`PL-4RBD`). The Flet chart, which cannot afford a column per pixel
+(`PL-YSZN`), keeps the 150-column budget through `app/chart_series.py` until
+`PL-25KS` ports the dashboard.
+
 The drawn columns are display-path values, taken under "The canonical
 evaluation rule" below: they may be drawn and nothing else, and the program
 enforces that rather than describing it.
@@ -4475,17 +4558,17 @@ enforces that rather than describing it.
 choice may not change anything else.** Two compartments cannot be compared
 against four other lines crossing them, so the interface may draw a subset of
 the six. Three things bound it. The selection is presentation only: it reaches
-no model state, changes no recorded sample, and leaves identical inputs
-producing identical results. Every compartment's concentration stays in the
-numeric readouts whatever is drawn, so a chart showing two curves is a chosen
-view of six modelled compartments rather than a model with two. And the
+no model state, changes nothing in the run definition, and leaves identical
+inputs producing identical results. Every compartment's concentration stays
+in the numeric readouts whatever is drawn, so a chart showing two curves is a
+chosen view of six modelled compartments rather than a model with two. And the
 display must state, for every compartment, whether its trace is currently
 drawn — a legend entry for a line that is not on the plot is a claim about the
 run the run does not support, which is the defect an unlabelled reference
 would be arriving from the other direction.
 
 A **reference** is not a trace and is deliberately exempt from the rule
-above: it draws no recorded sample, because it is a published constant
+above: it draws no state of the run, because it is a published constant
 rather than a modeled quantity. That exemption is bounded by a labelling
 requirement in its place. A reference must state the value and the divisor
 it was drawn from, must name the compartment it is to be read against, and
@@ -4497,16 +4580,17 @@ through the chart. See "MAC-awake as a chart reference".
 
 A **displayed ratio** of two modelled fractions is a trace and is *not*
 exempt from the rule above: every point it draws is still computed from one
-recorded sample, and nothing about it may be interpolated, smoothed or
-averaged. What it needs in addition is a **stated domain**, because a
-quotient of two modelled states can be undefined (a zero denominator) or
-outside what the plot claims to show, and neither case has a number the
-interface may substitute. So: the domain is documented here and enforced in
-one place in code; a sample outside it contributes no point, rather than a
-clamped, extrapolated or defaulted one; the trace breaks where the domain
-does, rather than joining across the samples it skipped, which would draw
-values the run never produced; the display states which two quantities the
-ratio is of, in the terms this document uses for them; and where the trace
+evaluated state of the run, at the instant it is drawn at, and nothing about
+it may be interpolated, smoothed or averaged. What it needs in addition is a
+**stated domain**, because a quotient of two modelled states can be undefined
+(a zero denominator) or outside what the plot claims to show, and neither case
+has a number the interface may substitute. So: the domain is documented here
+and enforced in one place in code; a drawn instant outside it contributes no
+point, rather than a clamped, extrapolated or defaulted one; the trace breaks
+where the domain does, rather than joining across the instants it skipped,
+which would draw values the run never produced; the display states which two
+quantities the ratio is of, in the terms this document uses for them; and where
+the trace
 is absent the display says which boundary it stopped at, since an absent
 trace otherwise reads as a run that stopped. See "F_A/F_I as a displayed
 ratio", the only such quantity today.
@@ -4534,9 +4618,9 @@ two.
 may not change the run.** A case runs for hours and the moment a learner is
 most likely to be watching is minutes long, so no single window serves both.
 Three things bound the choice. It is a view control: it reaches no model
-state, alters no recorded sample, and leaves identical inputs producing
-identical results, so it sits outside "Runtime controls" with the other
-interface settings. The width in force must be a fixed property of the
+state, alters nothing in the run definition, and leaves identical inputs
+producing identical results, so it sits outside "Runtime controls" with the
+other interface settings. The width in force must be a fixed property of the
 selection rather than of how long the run has been going, since a window that
 grew with the run would rescale every trace's slope while the underlying
 rates did not. And a mode that claims to show the whole run must show the
@@ -4558,7 +4642,7 @@ a whole number of steps is refused rather than rounded, because the
 alternatives are a step of a different size or a run advancing at a rate
 other than the one displayed. This is what keeps a faster playback inside
 "The reproducibility guarantee" rather than making it a second numerical
-solution: identical inputs still produce identical recorded histories, and
+solution: identical inputs still produce identical run definitions, and
 two learners comparing the same case at different speeds are comparing the
 same arithmetic.
 
@@ -4991,14 +5075,16 @@ readable — the two are separate controls because they answer separate
 questions, how fast the run advances and how much of it is in view.
 
 **A time base is a view control and reaches no model state.** Choosing one
-changes which part of the recorded run is drawn and nothing else: no step is
-resized, no sample is added, discarded or altered, and no calculation is
-re-run. "The reproducibility guarantee" is therefore untouched by it, and the
-same case watched at fifteen minutes and at twelve hours is the same run,
-sample for sample. Every point drawn at any width is still a recorded sample,
-selected under the constraint "Interface boundary" places on a plotted trace,
-so a wider window is a coarser *selection* of real samples and never a
-resampling, an interpolation or a stored image zoomed into.
+changes which part of the run is drawn, and at what column spacing, and
+nothing else: no step is resized, nothing in the run definition is added,
+discarded or altered, and the run is not re-stepped. "The reproducibility
+guarantee" is therefore untouched by it, and the same case watched at fifteen
+minutes and at twelve hours is the same run, keyframe for keyframe. Every
+point drawn at any width is still a state the run reached at the instant it
+is drawn at, evaluated from the run definition under the constraint
+"Interface boundary" places on a plotted trace, so a wider window is a
+coarser *grid* of exact states and never a resampling, an interpolation or a
+stored image zoomed into.
 
 **Why a fixed ladder rather than a free zoom.** The selected width is the
 width of the window at every point of every run, so seconds per pixel is a
@@ -5284,9 +5370,9 @@ accessor that applies it is called. An identifier taken from the code would
 retire the vocabulary of every already-recorded run the next time the code
 was renamed. A fifth string, `circuit_volume`, was recorded here until the
 circuit volume was established as a fixed model parameter rather than a
-control (§ "What is not bounded this way"); retiring it cost no recorded
-history, because a timeline is held in memory and cleared with its run
-rather than persisted.
+control (§ "What is not bounded this way"); retiring it cost no
+already-recorded timeline, because a timeline is held in memory and cleared
+with its run rather than persisted.
 
 **Bounds are displayed, not silent.** The chart carries a fixed number of
 marks and the list a fixed number of lines, so a run may record more
@@ -5324,7 +5410,7 @@ which point the record is under 9 MB.
 window, drawing $`F_A/F_I`$ — the modelled alveolar fraction divided by the
 modelled inspired fraction — on a dimensionless axis fixed from 0 to 1. It is
 a *displayed* quantity: `core/` computes it nowhere, no governing equation
-reads it, and it is not recorded in the run's history. `app/wash_in.py` is
+reads it, and it is no part of the run's definition. `app/wash_in.py` is
 where this section terminates, the way `app/formatting.py` terminates
 "Displayed precision": it holds the arithmetic, the domain, and nothing else,
 and `tests/unit/test_wash_in.py` pins both.
@@ -5358,8 +5444,8 @@ marks of "The control-input timeline" are drawn on this plot as well as on the
 compartment chart above it, in the same pass over the same adjustments, so the
 plot that would be misread is the plot that carries the annotation.
 
-**The plotted domain, and why it has two boundaries.** A sample contributes a
-point only where both hold:
+**The plotted domain, and why it has two boundaries.** A drawn column
+contributes a point only where both hold:
 
 1. $`F_I \geq 10^{-4}`$, one displayed unit of concentration. $`F_I`$ is
    exactly zero before any agent reaches the circuit — at the start of every
@@ -5382,25 +5468,28 @@ The trace is therefore a set of segments rather than one polyline, and it
 breaks where the domain does.
 
 **One point past the boundary, so the ending is legible.** A stretch is
-extended by its *crossing* sample at each end — the neighbouring sample that
-has a ratio but sits outside the domain — because without it the curve stops
-at the last sample at or below equilibrium, which is up to one simulation step
-below the line it stopped at. A trace halting in clear space short of a
-boundary is indistinguishable from one the frame cut off, and this one is
-still climbing steeply when it stops; with the crossing sample drawn it meets
-the equilibrium reference and terminates on it, carrying a point marker that
-says the series ended rather than ran out of view.
+extended by its *crossing* column at each end — the neighbouring drawn column
+that has a ratio but sits outside the domain — because without it the curve
+stops at the last column at or below equilibrium, which can sit a whole column
+spacing's rise below the line it stopped at. A trace halting in clear space
+short of a boundary is indistinguishable from one the frame cut off, and this
+one is still climbing steeply when it stops; with the crossing column drawn it
+meets the equilibrium reference and terminates on it, carrying a point marker
+that says the series ended rather than ran out of view. The stretches are
+classified over the columns each frame draws rather than maintained as the
+run goes, so a boundary can fall only on an instant the chart actually plots
+(`app/chart_series.py`, PL-2FM6).
 
 That extension is bounded by a stated ceiling rather than by a property of the
 model. A run stepped at 0.1 s crosses equilibrium by a hair — measured across
 every shipped agent and every supported alveolar ventilation and cardiac
-output at the maximum fresh gas flow, the first sample above equilibrium
-reaches 1.00235 — but the ratio is not continuous in general:
+output at the maximum fresh gas flow, the first stepped state above
+equilibrium reaches 1.00235 — but the ratio is not continuous in general:
 `BreathingCircuit.set_circuit_volume` conserves the agent in the circuit while
 changing the volume it is divided by, so a circuit volume doubled between two
 steps halves $`F_I`$ and doubles the ratio. No interface control does that
 today, and a rule holding only because a slider is absent is not one to build
-on. A crossing sample above the ceiling is therefore not drawn at all, and the
+on. A crossing column above the ceiling is therefore not drawn at all, and the
 stretch ends where it would have: not clamped onto the ceiling, not
 interpolated onto it.
 
@@ -5837,8 +5926,8 @@ rather than silently over-claiming.
 
 **The resolution is a property of the display alone.** Everything upstream of
 the formatter carries full binary64: the compartment states, every
-integration step, the mixed-venous and tissue transfers, and every
-`SimulationHistorySample` the chart is drawn from. Nothing in `core/` rounds,
+integration step, the mixed-venous and tissue transfers, and every state of
+the `DrawnWindow` the chart is drawn from. Nothing in `core/` rounds,
 the snapshot fields the interface reads are raw fractions, and a slider's
 value reaches the model unquantized — the rounding happens exactly once, in
 the readout. So the two decimals are a statement about what is worth

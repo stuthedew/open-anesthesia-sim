@@ -3,11 +3,12 @@ id: PL-27H0
 title: docs/MODEL.md still specifies a per-step recorded sample store and a display operation that selects which recorded samples a trace draws, both of which PL-2FM6 deleted
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-14
+closed: 2026-09-14
 verify: python3 tools/doc_check.py check && ! grep -qF 'Every point drawn at any width is still a recorded sample' docs/MODEL.md && ! grep -qF 'SimulationHistorySample' docs/MODEL.md
 ---
 

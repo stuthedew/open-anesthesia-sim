@@ -2,7 +2,7 @@
 """Hold `src/anesthesia_sim/` to the import boundaries declared in `BOUNDARIES`.
 
 A boundary names a package, the tree it is confined within, and the modules
-permitted to import it - which may be no module at all. Two invariants are
+permitted to import it - which may be no module at all. Three invariants are
 declared today, and they are confined for unrelated reasons.
 
 **Pydantic, to one module.** `core/parameters.py` pairs each `_...Payload`
@@ -18,10 +18,24 @@ a function of its inputs and of the number of steps taken and of nothing else.
 A compartment reaching for `time`, `datetime`, `random`, `secrets` or `uuid`
 breaks that promise by an amount the machine chooses rather than the model.
 
-Nothing measured either. Both held on 2026-09-04 - `pydantic` appeared in
-exactly two lines of that one file, and no module under `core/` imported a
-clock, a generator or an identifier minted from either - but any later change
-could import one and every gate
+**The UI toolkit, and the numerics that arrive with it, out of `core/`.**
+`CLAUDE.md`'s first architecture rule keeps simulation code independent of the
+toolkit. Flet is two distributions with two root packages - `flet` and
+`flet_charts` - and each is confined to the interface modules that import it
+today, three modules between them; `PySide6`, `pyqtgraph` and `numpy` - the
+three packages the Qt port (`ROADMAP.md` § "v0.4.26 - the interface moves to
+Qt") brings in - are permitted in no module under `core/` before any of them
+exists in the tree, so the first commit that lets one into a compartment fails
+rather than the port being measured after the fact. The two Flet allowances
+are deliberately the tool's own checklist for that port: its unused-allowance
+error fires as each module stops importing one, so the entry goes in the same
+commit and the last entry takes its boundary with it (`PL-9KDK`).
+
+Nothing measured any of them. The first two held on 2026-09-04 - `pydantic`
+appeared in exactly two lines of that one file, and no module under `core/`
+imported a clock, a generator or an identifier minted from either - and the
+Flet count was true on 2026-09-14 while `ROADMAP.md` credited this tool with
+enforcing it and nothing did. Any later change could import one and every gate
 would stay green. The failure that makes this worth a tool is not the coupling
 on its own: it is that the docstring and the guarantee asserting the property
 would go on asserting it, reading as verified when it is not. `CLAUDE.md` names
@@ -48,7 +62,11 @@ here, permitted there" is a rule they have to look up. The clock boundary stops
 at `core/` for the opposite reason: `app/` is where a clock legitimately
 belongs, and the same guarantee says so - *the interface schedules its ticks
 with the wall clock*, and what it must not do is let a tick's real duration
-reach the run.
+reach the run. The toolkit boundaries follow the clock's shape - `app/` is
+where a widget legitimately belongs - except the two Flet packages, which are
+confined across the whole package to the modules that import them, because the
+number of those modules is a figure the roadmap reasons from and a figure is
+worth holding exactly while it is true.
 
 **Every import counts, including one guarded by `TYPE_CHECKING`.** Such an
 import creates no runtime dependency, so a narrower check could pass it. It is
@@ -198,6 +216,77 @@ BOUNDARIES: tuple[Boundary, ...] = (
             "makes the result differ between machines as well as between runs. An identifier "
             "a compartment mints for itself is not an input to the run; one the run needs "
             "arrives with the other inputs, where a caller can hold it fixed"
+        ),
+    ),
+    Boundary(
+        package="flet",
+        tree="src/anesthesia_sim",
+        allowed=("src/anesthesia_sim/app/main.py", "src/anesthesia_sim/app/simulation_view.py"),
+        why=(
+            "`CLAUDE.md`'s first architecture rule keeps simulation code independent of "
+            'Flet, and `ROADMAP.md` § "v0.4.26 - the interface moves to Qt" reasons from '
+            "the count - exactly three modules import Flet, this package and "
+            "`flet_charts` below between them - to decide what the port rewrites and what "
+            "survives it. The count was true and unenforced (PL-9KDK). Confined to the "
+            "modules importing it while Flet lasts: as the port frees each one, this "
+            "tool's unused-allowance error asks for the entry to go in the same commit, "
+            "and the last entry takes the boundary with it"
+        ),
+    ),
+    Boundary(
+        package="flet_charts",
+        tree="src/anesthesia_sim",
+        allowed=(
+            "src/anesthesia_sim/app/chart_series.py",
+            "src/anesthesia_sim/app/simulation_view.py",
+        ),
+        why=(
+            "the other half of Flet - `flet-charts` is its own distribution with its own "
+            "root package, and `app/chart_series.py` imports it and not `flet`, which is "
+            "how a boundary on `flet` alone counted two modules where the roadmap counts "
+            "three (PL-9KDK, found by declaring it). Same rule and same checklist as the "
+            "entry above; the port's chart lands on pyqtgraph, and this entry leaves with "
+            "the last `flet_charts` import"
+        ),
+    ),
+    Boundary(
+        package="PySide6",
+        tree="src/anesthesia_sim/core",
+        allowed=(),
+        why=(
+            'the toolkit the interface moves to (`ROADMAP.md` § "v0.4.26 - the interface '
+            'moves to Qt"), held to the same rule as the one it replaces: `CLAUDE.md` keeps '
+            "simulation code independent of the UI toolkit, and a compartment that imports "
+            "a widget library has taken a dependency on a display it does not have. "
+            "Declared before the first `PySide6` import exists in the tree, so the port's "
+            "first commit is measured against it rather than the rule being written after "
+            "the port decided where things went (PL-9KDK)"
+        ),
+    ),
+    Boundary(
+        package="pyqtgraph",
+        tree="src/anesthesia_sim/core",
+        allowed=(),
+        why=(
+            "the plotting library the chart moves to, and a widget library by another "
+            "name - it imports Qt at module load. What `core/` produces is a history of "
+            "modelled quantities; how a history is drawn is the interface's question, and "
+            "`app/chart_series.py` is where the seam between the two already sits"
+        ),
+    ),
+    Boundary(
+        package="numpy",
+        tree="src/anesthesia_sim/core",
+        allowed=(),
+        why=(
+            "it arrives under pyqtgraph as the chart's array type, not as the model's. "
+            '`docs/WORKING_NOTES.md` "Decided: no numpy" (2026-09-05) measured that the '
+            "model's read path and its append-dominated write path gain nothing from it, "
+            'and `docs/MODEL.md` "The reproducibility guarantee" rests on a pure-Python '
+            "propagator whose every operation is `math` and `float`. Confining it out of "
+            "`core/` keeps that a decision the tree enforces rather than one the port's "
+            "dependency list quietly reopens; widening it means re-arguing that note, and "
+            "the entry to add here would carry the argument"
         ),
     ),
 )
