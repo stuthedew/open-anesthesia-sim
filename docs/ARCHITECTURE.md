@@ -467,6 +467,44 @@ what keeps that coverage claim true rather than asserted. Like the two tools
 above it decides nothing else — whether a control's identity is legible, and
 whether a pairing is the right one for it, stay judgments.
 
+**What a Qt port costs these two, measured rather than estimated (`PL-JRS3`).**
+The dependency is split, and not the way the question assumed: one reads
+*values* and survives, the other reads Flet's *control objects* and goes
+silent. Measured 2026-09-14 by rewriting `app/theme.py` and
+`app/simulation_view.py` on the AST — every Flet property assignment replaced
+by the PySide6 setter call that supplants it — and running both against the
+result.
+
+`contrast_check.py` survives. Its whole input is module-level
+`NAME = "#RRGGBB"` constants, which no toolkit owns, and every way of removing
+a declared one is loud: renaming `FAT_COLOR` failed with the constant named,
+and moving `SimulationView` to its own module — which `PL-B9PY` records the
+port doing from the start — failed with 68 unresolved citations, from the
+symbol rule `PL-J7C5` added for an unrelated reason. Its one hole is
+**additive**, and the port is what opens it: a colour declared in a module that
+is neither of the two read here is measured by nothing and missed by nothing,
+and a new chart-panel module holding a selection colour at 1.07:1 on the panel
+passed with `0 errors`. Nothing exploits it today — no hex constant sits outside those
+two files.
+
+`agent_identity_check.py` does not survive, and its failure is worse than
+silence. Rule 1 reads `self.X.disabled = EXPR` paired with
+`self.X.visible = not EXPR`; PySide6 spells both as calls, so `property_writes`
+returns nothing and the pairing loop runs zero times. On a tree where all six
+identity controls are driven by `setEnabled()` with no paired hide it printed
+"6 control(s) carry the agent colour, none of them rendered disabled" and
+exited 0 — an affirmative claim about a tree it had not measured, which a
+reader cannot tell from the same sentence earned. Whether it goes quiet turns
+on a choice the port makes incidentally: porting the colour writes as well
+trips rule 2 and moving the class trips the empty-set guard, so both of those
+are loud, but rule 2 then misdiagnoses, reporting that the writer "never
+writes" controls it writes through `setStyleSheet`.
+
+So the port's cost side gains one entry rather than two, and it is specific:
+rule 1 of `agent_identity_check.py` is inside the port's scope, and
+`contrast_check.py`'s two read paths widen to whatever modules the decomposed
+view declares colours in.
+
 `tools/import_boundary_check.py` measures two claims the source makes about
 itself. `_StrictPayload`'s docstring says that the `_...Payload`/public-
 dataclass pairs exist so the rest of `core/` never imports Pydantic, and

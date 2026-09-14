@@ -69,6 +69,24 @@ and rule 2 is what keeps the first route from opening one quietly. The check
 also refuses a tree where the writer method is missing or writes nothing,
 because a coverage set that can silently go empty is worse than no check.
 
+**A Qt port silences rule 1, and the silence speaks (PL-JRS3).** Rule 1 reads
+two *attribute assignments* - `self.X.disabled = EXPR` paired with
+`self.X.visible = not EXPR` - and PySide6 spells both as calls, `setEnabled`
+and `setVisible`. Measured 2026-09-14 by rewriting `app/simulation_view.py` on
+the AST into those setters: `property_writes` returned nothing, the pairing
+loop ran zero times, and this tool printed `6 control(s) carry the agent
+colour, none of them rendered disabled` and exited 0 - on a tree where all six
+are driven by `setEnabled()` with no paired hide. That is worse than a silent
+pass, because the sentence is an affirmative claim about a tree the check did
+not measure, and a reader has no way to tell it from the same sentence earned.
+
+Whether it goes quiet at all turns on a choice the port makes incidentally.
+Porting the colour writes to `setStyleSheet` as well trips rule 2, and moving
+the class out of this module trips the empty-set guard above; both fail loudly.
+But rule 2's message then *misdiagnoses*, reporting that the writer "never
+writes" controls it writes through `setStyleSheet`. So rule 1 is part of the
+port's scope rather than collateral, and it is the half to port first.
+
 Standard library only, like every tool here, so it runs in a bare checkout.
 """
 

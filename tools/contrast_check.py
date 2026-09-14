@@ -60,6 +60,26 @@ there against the item that closes each one keeps `make check` green while makin
 gap visible and owned, which is the opposite of the comment-that-nobody-checks
 this file replaces. The list cannot rot: a shortfall that starts *passing* is
 an error too, so fixing one forces its entry out.
+
+**What a Qt port costs this check, measured rather than estimated (PL-JRS3).**
+It survives, because its whole input is module-level `NAME = "#RRGGBB"`
+constants and no toolkit owns those. Measured 2026-09-14 by rewriting
+`app/theme.py` and `app/simulation_view.py` on the AST - every Flet property
+assignment replaced by the PySide6 setter call that supplants it - and running
+this tool against the result: it reported `0 errors` on the ported tree, which
+is the correct answer. Every way of *removing* a declared color is loud:
+renaming `FAT_COLOR` failed with the constant named in `missing`, and moving
+`SimulationView` to its own module - which PL-B9PY records the port doing from
+the start - failed with 68 unresolved citations.
+
+**The one hole is additive, and the port is what opens it.** A color declared
+in a module that is neither `app/theme.py` nor `app/simulation_view.py` is
+measured by nothing and missed by nothing: a new chart-panel module holding a
+selection color at 1.07:1 on the panel passed with `0 errors`.
+`check_colors_live_in_the_theme` does not catch it either, inspecting only the
+view. Nothing exploits this today - no hex constant sits outside those two
+files - so it is latent, and it opens when the decomposed Qt view declares a
+color in a module named here by neither `THEME` nor `VIEW`.
 """
 
 from __future__ import annotations
