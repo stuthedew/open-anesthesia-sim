@@ -324,13 +324,20 @@ def _annotates_only(paths: list[str], prefix: str) -> bool:
 
     The residual case it cannot see is a session that *starts* an item by
     pushing only a `touches` fill or a `verify:` command, which is annotation
-    by this rule and a claim in fact. A branch the session names for the item
-    still carries the claim in its own name, which is read whatever the diff
-    says; a branch the harness named does not, and goes unmarked until its
-    first commit outside the queue - though `show` now reports the file edit
-    underneath, which is the warning that case previously had nowhere to come
-    from. `.claude/skills/docket/SKILL.md` says so where it asks for that first
-    push.
+    by this rule and a claim in fact. **Half of that residual is recovered a
+    level up, and not here** (`PL-7790`): `_queue_only_work` reads the item's
+    own declared `touches`, so an item whose whole deliverable *is* a queue
+    edit - a tag item, a triage item, a recovery item - is promoted back to a
+    claim by `branches_in_flight` after this function has withheld it. Nothing
+    changes in this test, deliberately: it answers "did this commit reach past
+    the queue", which is a fact about the commit, and the promotion answers
+    "does this item live in the queue", which is a fact about the item. Reading
+    them in one place is what made the two path-level refinements fail.
+
+    What is left is a session filling in the `touches` of an item whose work is
+    elsewhere, which stays unmarked until its first commit outside the queue -
+    though `show` reports the file edit underneath, which is the warning that
+    case previously had nowhere to come from.
     """
     return bool(paths) and all(path.startswith(prefix) for path in paths)
 
@@ -914,6 +921,68 @@ def _closed_on_base(
     return frozenset(closed)
 
 
+def _queue_only_work(
+    ids: set[str], items_dir: str, base: str, root: Path, run: Runner
+) -> frozenset[str]:
+    """Of `ids`, those whose whole declared deliverable is a write to the queue.
+
+    **The reading that separates "filed this item" from "started this item",
+    and it reads the item rather than the commit** (`PL-7790`). `_annotates_only`
+    decides from the diff's paths, so a session that genuinely starts an item by
+    pushing only a `touches` fill - or by doing work whose entire output is a
+    queue edit - stakes a claim that looks exactly like a capture. Two
+    path-level refinements were tried against `PL-X3WZ`'s eight false marks and
+    both reintroduced them; anything that recovers this case has to read
+    something other than the paths, and the item's own `touches` is the
+    something.
+
+    Measured against those eight ids - `PL-HKF4`, `PL-PGZK`, `PL-5WFS`,
+    `PL-22Z3`, `PL-WW08`, `PL-PMT7`, `PL-55JM`, `PL-N5WZ` - not one declares
+    `touches` inside the queue alone, so all eight stay excluded on this test
+    with no path-level help at all. 61 of 920 items declare one, about twenty of
+    them open: the tag items, the triage items, the recovery items, whose work
+    *is* editing item files.
+
+    **Read from the base, and a file the base does not hold is not queue-only
+    work.** That is what keeps a capture out: a capture creates the item file,
+    so the base has no copy to declare anything and the id is dropped rather
+    than marked. It is also the one tree that cannot be carrying an unmerged
+    session's answer, which is why `_closed_on_base` reads the same one.
+
+    One tree listing and one `git show` per id asked about, and it is asked only
+    about the handful `FlightReport.editing` already holds - never the store.
+    """
+    if not ids:
+        return frozenset()
+    prefix = items_dir.strip("/")
+    names: dict[str, str] = {}
+    for line in run(["ls-tree", "--name-only", base, "--", prefix + "/"], root).splitlines():
+        path = line.strip()
+        if not path:
+            continue
+        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
+        if match is not None:
+            names.setdefault(match.group(1).upper(), path)
+
+    def inside(declared: str) -> bool:
+        """Whether one `touches` entry names the queue directory or something in it."""
+        declared = declared.strip().rstrip("/")
+        return declared == prefix or declared.startswith(prefix + "/")
+
+    queue_only: set[str] = set()
+    for identifier in ids:
+        path = names.get(identifier.upper(), "")
+        if not path:
+            continue
+        text = run(["show", f"{base}:{path}"], root)
+        if not text:
+            continue
+        touches = parse_item(text, path.rsplit("/", 1)[-1]).touches
+        if touches and all(inside(declared) for declared in touches):
+            queue_only.add(identifier)
+    return frozenset(queue_only)
+
+
 def branches_in_flight(
     root: Path,
     *,
@@ -975,6 +1044,21 @@ def branches_in_flight(
     progress; read as claims they withheld startable items from every session
     until the branch merged. `_annotates_only` carries that reading and the
     error it prefers.
+
+    **Unless the item's own work is a queue edit, which is read from the item
+    rather than from the commit** (`PL-7790`). Some items deliver nothing but a
+    write to `docs/items/` - a release tag item, a triage pass, a stranded
+    recovery - and for those the path test excludes the very work it was built
+    to find. `_queue_only_work` asks the base what each edited item declares in
+    `touches` and promotes the ones that never leave the queue. Measured live
+    on 2026-09-14: `PL-XR8K` was being closed on `origin/claude/loving-ride-mo6njm`
+    and appeared in no reading of this report at all.
+
+    **And a ref that names nothing is reported rather than dropped**
+    (`PL-B73C`). `unattributed` is the third outcome beside a claim and an
+    unreadable ref: read without difficulty, and attributable to no item. It
+    fires on nothing in the steady state, because `tools/branch_id_check.py`
+    refuses a `claude/*` branch of one's own that names no id.
     """
     run = runner or _run_git
 
@@ -1085,6 +1169,27 @@ def branches_in_flight(
         and path not in _superseded(name, base, (path,), root, run)
     }
     edited = {identifier: _preferred(name, candidates) for identifier, name in edited.items()}
+
+    # **An item whose whole deliverable is a queue edit is being worked, not
+    # annotated** (`PL-7790`). `_annotates_only` withheld the claim because the
+    # diff never left `docs/items/`, which for these items is where the work
+    # lives - so the mark is restored from the item's own `touches` rather than
+    # from the commit's paths. Asked of the few ids `editing` already holds, and
+    # asked of the base, so a capture creating the file is not promoted.
+    #
+    # Closedness is re-asked rather than assumed: `_closed_on_base` above ran
+    # against `in_flight` before any of these existed, and a `docket record`
+    # write onto a shipped tag item is exactly this shape. Naming a closed item
+    # under "do not start these again" is `PL-6BDX`, which that guard exists to
+    # stop.
+    promoted = set(_queue_only_work(set(edited), items_dir, base, root, run))
+    promoted -= _closed_on_base(promoted, items_dir, base, root, run)
+    for identifier in sorted(promoted):
+        carrier = edited.pop(identifier)
+        in_flight[identifier] = Branch(
+            name=carrier, item_id=identifier, last_commit=last_commit.get(carrier)
+        )
+
     # **Read, and attributable to nothing.** Confined to refs whose commits the
     # walk actually reached: an unread ref contributes no subjects, so calling
     # it unattributed would be inventing the absence of an id rather than

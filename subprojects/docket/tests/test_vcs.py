@@ -86,6 +86,7 @@ def _runner(
     tips: dict[str, dict[str, tuple[str, str]]] | None = None,
     duplicated: tuple[str, ...] = (),
     closed: tuple[str, ...] = (),
+    base_items: dict[str, str] | None = None,
 ):
     """A git that holds `refs`, with `commits` mapping a ref to (day, subject).
 
@@ -125,7 +126,10 @@ def _runner(
 
     `closed` names the items the default branch's own copy records as closed,
     which is what tells an item that shipped from one a live session is closing
-    on its own branch.
+    on its own branch. `base_items` maps an id to the `touches` its copy on the
+    base declares, for the reading that promotes an edit to a claim when the
+    item's whole deliverable is a queue write - an id absent from both is an
+    item the base does not hold at all, which is what a capture looks like.
 
     `adds` maps a ref to the blobs it introduces since its fork point and
     `on_base` names the blobs the default branch has held at some point, which
@@ -168,7 +172,8 @@ def _runner(
             # base. The store names each file for its item, which is what
             # `filename_for` guarantees and what this relies on.
             prefix = args[-1].rstrip("/")
-            return "\n".join(f"{prefix}/{identifier}-shipped.md" for identifier in closed)
+            held = [*closed, *(base_items or {})]
+            return "\n".join(f"{prefix}/{identifier}-shipped.md" for identifier in held)
         if args[0] == "show":
             # `git show <base>:<path>`, which is how the closure is read off the
             # base rather than off this checkout.
@@ -176,6 +181,13 @@ def _runner(
             # The id is the first two dash-separated pieces of the basename
             # (`PL-GVXP-shipped.md`), not the first one.
             identifier = "-".join(wanted.rsplit("/", 1)[-1].split("-")[:2])
+            declared = (base_items or {}).get(identifier)
+            if declared is not None:
+                status = "done" if identifier in closed else "ready"
+                return (
+                    f"---\nid: {identifier}\ntitle: shipped\nstatus: {status}\n"
+                    f"touches: {declared}\n---\n\nOn the base.\n"
+                )
             if identifier not in closed:
                 return ""
             return f"---\nid: {identifier}\ntitle: shipped\nstatus: done\n---\n\nDone.\n"
@@ -280,6 +292,7 @@ def _report(
     ran_out: tuple[str, ...] = (),
     tips: dict[str, dict[str, tuple[str, str]]] | None = None,
     closed: tuple[str, ...] = (),
+    base_items: dict[str, str] | None = None,
 ) -> FlightReport:
     """The whole report, for the tests reading the file edits beside the work.
 
@@ -290,7 +303,16 @@ def _report(
     flight and not also listed as edited.
     """
     runner = _runner(
-        refs, merged, commits, unrelated, adds, on_base, ran_out=ran_out, tips=tips, closed=closed
+        refs,
+        merged,
+        commits,
+        unrelated,
+        adds,
+        on_base,
+        ran_out=ran_out,
+        tips=tips,
+        closed=closed,
+        base_items=base_items,
     )
     return branches_in_flight(ROOT, runner=runner)
 
@@ -482,6 +504,91 @@ def test_a_commit_that_only_writes_to_the_queue_is_not_work() -> None:
     )
 
     assert found == ()
+
+
+def test_an_item_whose_whole_deliverable_is_a_queue_edit_is_work_after_all() -> None:
+    """The residual `_annotates_only` could not see, recovered (`PL-7790`).
+
+    Some items *are* queue edits - the tag items, the triage items, the
+    recovery items - and for those a diff that never leaves `docs/items/` is
+    the work rather than a note about it. Observed live on 2026-09-14:
+    `origin/claude/loving-ride-mo6njm` held one commit closing `PL-XR8K`, whose
+    `touches` is `docs/items/`, and `flight` reported the branch not at all
+    while a session was working it.
+    """
+    report = _report(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-14", "PL-XR8K: close the tag item", "c1", QUEUE_ONLY)]},
+        base_items={"PL-K7QX": "docs/items/"},
+    )
+
+    assert [branch.item_id for branch in report.branches] == ["PL-K7QX"]
+    assert report.editing == (), "promoted to the stronger mark, never reported as both"
+
+
+def test_an_annotated_item_whose_own_work_is_code_stays_out_of_flight() -> None:
+    """The eight false marks, re-tested against the new reading.
+
+    Not one of `PL-X3WZ`'s eight declares `touches` inside the queue alone, so
+    reading the item rather than the commit leaves every one of them excluded.
+    `PL-N5WZ` is one of the eight and this is its shape: a `docket record`
+    write, leading with the id of an item whose work is in `cli.py`.
+    """
+    report = _report(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-04", "PL-K7QX: record `pr: 265`", "c1", QUEUE_ONLY)]},
+        base_items={"PL-K7QX": "subprojects/docket/src/docket/cli.py"},
+    )
+
+    assert report.branches == ()
+    assert [edit.item_id for edit in report.editing] == ["PL-K7QX"]
+
+
+def test_an_item_reaching_code_as_well_as_the_queue_is_not_promoted() -> None:
+    """`PL-5WFS`'s shape, and one of the eight: `plan.py` beside `docs/items/`.
+
+    "Entirely inside the queue" is the test, not "mentions the queue", or the
+    reading would readmit every item that fixes a brief alongside its code.
+    """
+    report = _report(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-04", "PL-K7QX: fill in touches", "c1", QUEUE_ONLY)]},
+        base_items={"PL-K7QX": "subprojects/docket/src/docket/plan.py, docs/items/"},
+    )
+
+    assert report.branches == ()
+
+
+def test_a_capture_creating_the_item_file_is_not_promoted() -> None:
+    """What keeps a capture out, and it costs no extra rule.
+
+    A capture creates the file, so the base holds no copy of it to declare
+    anything - and an id the base cannot answer for is dropped rather than
+    marked. This is the direction that matters: a capture is the commonest
+    queue-only push this project makes.
+    """
+    report = _report(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-04", "PL-K7QX: capture the finding", "c1", QUEUE_ONLY)]},
+    )
+
+    assert report.branches == ()
+
+
+def test_a_write_onto_a_shipped_queue_only_item_does_not_resurrect_it() -> None:
+    """`_closed_on_base` ran before these existed, so it is asked again.
+
+    A `docket record` write onto a shipped tag item is exactly this shape, and
+    naming a closed item under "do not start these again" is `PL-6BDX`.
+    """
+    report = _report(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-14", "PL-K7QX: record `pr: 554`", "c1", QUEUE_ONLY)]},
+        base_items={"PL-K7QX": "docs/items/"},
+        closed=("PL-K7QX",),
+    )
+
+    assert report.branches == ()
 
 
 def test_a_commit_reaching_past_the_queue_is_work() -> None:
