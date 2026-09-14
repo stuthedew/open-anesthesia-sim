@@ -128,14 +128,29 @@ Nothing yet.
 GATE_IDS = frozenset({"PL-001", "PL-BCDF", "PL-GHJK", "PL-KLMN"})
 KNOWN = GATE_IDS | {"PL-MNPQ"}
 
+#: The same roadmap with one entry of the frozen list *also* named in the
+#: milestone's own `Required scope` - the arrangement `ROADMAP.md` § "Debt
+#: inside the milestone's own scope" carves out, and which Gate 1 writes in
+#: prose as "Cleared by v0.5.0 itself". A variant rather than a change to the
+#: fixture above, so the entry and id counts every other test asserts stay put.
+SELF_CLEARING = ROADMAP.replace(
+    "- Not an entry at all:",
+    "- PL-SLF9 (M) An entry the milestone's own Required scope names\n- Not an entry at all:",
+).replace(
+    "A displayed clinical unit (queue item PL-MNPQ).",
+    "A displayed clinical unit (queue item PL-MNPQ), and the decomposition PL-SLF9.",
+)
+SELF_KNOWN = KNOWN | {"PL-SLF9"}
+
 
 def _wave(
     version: str,
     closed: frozenset[str] = frozenset(),
     roadmap: str = ROADMAP,
     blockers: dict[str, tuple[str, ...]] | None = None,
+    known: frozenset[str] = KNOWN,
 ):
-    return wave(roadmap, version, closed, KNOWN, blockers or {})
+    return wave(roadmap, version, closed, known, blockers or {})
 
 
 # --- the release train ------------------------------------------------------
@@ -281,6 +296,82 @@ def test_two_entries_waiting_on_each_other_stay_inside_the_gate() -> None:
         "0.2.5", frozenset({"PL-001"}), blockers={"PL-KLMN": ("PL-BCDF",), "PL-BCDF": ("PL-KLMN",)}
     )
     assert plan.gate is not None and not plan.gate.blocked_outside
+
+
+# --- debt the milestone clears itself (PL-WZBX) ------------------------------
+
+
+def test_an_entry_the_milestones_own_scope_names_is_not_this_gates_to_clear() -> None:
+    """`ROADMAP.md` § "Debt inside the milestone's own scope": debt a milestone
+    exists to clear is cleared *by* it, and the gate is open once everything
+    outside that scope is clear. The test is `Required scope` membership, so
+    the three entries the scope does not name stay this gate's work."""
+    plan = _wave("0.2.5", frozenset(), roadmap=SELF_CLEARING, known=SELF_KNOWN)
+
+    assert plan.gate is not None
+    assert len(plan.gate.entries) == 4
+    assert [entry.ids for entry in plan.gate.self_cleared] == [("PL-SLF9",)]
+    assert [entry.ids for entry in plan.gate.clearable] == [
+        ("PL-001",),
+        ("PL-BCDF", "PL-GHJK"),
+        ("PL-KLMN",),
+    ]
+    assert plan.beat == CLEAR
+
+
+def test_a_gate_is_open_when_its_only_open_entries_are_the_milestone_s_own_scope() -> None:
+    """The failure `PL-WZBX` was filed on: read from every open entry, the beat
+    stayed `clear the gate` for work that implementing the milestone is what
+    closes, and the transition the cadence specifies never arrived."""
+    plan = _wave("0.2.5", frozenset(GATE_IDS), roadmap=SELF_CLEARING, known=SELF_KNOWN)
+
+    assert plan.gate is not None and plan.gate.is_clear
+    assert len(plan.gate.outstanding) == 1 and not plan.gate.clearable
+    assert plan.beat != CLEAR
+
+
+def test_an_entry_read_off_the_frozen_list_alone_is_not_the_milestones_scope() -> None:
+    """`scope_ids` is the union of the frozen list and `Required scope`, and
+    reading placement from it here would make every entry its own excuse. The
+    narrower `own_scope_ids` is what the rule names, and this is the guard."""
+    plan = _wave("0.2.5", frozenset(), roadmap=ROADMAP)
+
+    assert plan.gate is not None and not plan.gate.self_cleared
+
+
+def test_an_entry_the_milestone_names_and_a_later_release_holds_reads_as_blocked() -> None:
+    """Both carve-outs at once. The milestone cannot simply clear an entry that
+    waits on work off the list, so `blocked_outside` is computed first and the
+    two stay disjoint - the reassuring half would otherwise hide the
+    constraint, and the three counts would stop adding up to the open one."""
+    plan = _wave(
+        "0.2.5",
+        frozenset(),
+        roadmap=SELF_CLEARING,
+        blockers={"PL-SLF9": ("v0.9.0",)},
+        known=SELF_KNOWN,
+    )
+
+    assert plan.gate is not None
+    assert [entry.ids for entry in plan.gate.blocked_outside] == [("PL-SLF9",)]
+    assert not plan.gate.self_cleared
+    assert len(plan.gate.clearable) + len(plan.gate.self_cleared) + len(
+        plan.gate.blocked_outside
+    ) == len(plan.gate.outstanding)
+
+
+def test_the_wave_block_names_what_the_milestone_clears_itself() -> None:
+    """The split is only worth computing if the reader is told which of the
+    three a given id is in, which is where the beat's own count comes from."""
+    from docket.render import format_wave
+
+    printed = format_wave(_wave("0.2.5", frozenset(), roadmap=SELF_CLEARING, known=SELF_KNOWN))
+
+    assert "3 this gate can clear, 1 the milestone clears itself" in printed
+    assert "cleared by the milestone itself: PL-SLF9" in printed
+    assert "clear the gate - 3 entries of 4 still open here, 1 the milestone clears itself" in (
+        printed
+    )
 
 
 def test_a_clear_gate_below_the_milestone_that_recorded_it_is_a_release() -> None:

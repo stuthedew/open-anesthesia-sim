@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-05
 closed: 2026-09-14
+pr: 558
 verify: uv run pytest subprojects/docket/tests/test_vcs.py -q -k 'deliverable or promoted or resurrect' && grep -q '_queue_only_work' subprojects/docket/src/docket/vcs.py
 ---
 

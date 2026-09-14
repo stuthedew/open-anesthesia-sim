@@ -730,6 +730,21 @@ class GateStatus:
     #: frozen list keeps every id it froze, and this says which of them the
     #: beat below cannot honestly ask for.
     blocked_outside: tuple[GateEntry, ...]
+    #: Open entries the milestone clears *itself*, because its own `Required
+    #: scope` names them. `ROADMAP.md` § "Debt inside the milestone's own
+    #: scope" is the rule and states the test in one sentence - "whether the
+    #: item appears in the milestone's `Required scope`" - and then says the
+    #: gate "is open when everything *outside* the milestone's scope is clear".
+    #: So this is the gate's second carve-out beside `blocked_outside`, and
+    #: the two are subsets of `outstanding` for the same reason: the frozen
+    #: list keeps every id it froze, and these say which of them the beat
+    #: cannot honestly ask for before the milestone begins.
+    #:
+    #: Disjoint from `blocked_outside`, which is computed first and wins. An
+    #: entry that is milestone work *and* waits on work off the list is not
+    #: something the milestone can simply clear, and filing it under this
+    #: heading would hide the constraint behind the reassuring half of it.
+    self_cleared: tuple[GateEntry, ...]
     #: Ids the gate names that the store does not hold. A gate cannot be shown
     #: clear while one of these stands: the entry may be a typo or a file that
     #: never existed, and either way its state is unknown rather than closed.
@@ -743,14 +758,18 @@ class GateStatus:
     def clearable(self) -> tuple[GateEntry, ...]:
         """The open entries this gate can actually close before its milestone.
 
-        What the beat is counted from, and what `is_clear` reads. An entry
-        waiting on a version later than the gated milestone, or on an item the
-        list does not hold, is open and is not work this gate can be asked to
-        finish - counting it leaves the beat asking for a target the plan
-        forbids, which is what `PL-SL70` was filed on.
+        What the beat is counted from, and what `is_clear` reads. Two kinds of
+        open entry are not it. An entry waiting on a version later than the
+        gated milestone, or on an item the list does not hold, is open and is
+        not work this gate can be asked to finish - counting it leaves the beat
+        asking for a target the plan forbids, which is what `PL-SL70` was filed
+        on. An entry the milestone's own `Required scope` names is the same
+        failure one rule along: the roadmap's carve-out has it cleared *by* the
+        milestone, so a beat counting it keeps saying `clear the gate` for work
+        that implementing the milestone is what closes (`PL-WZBX`).
         """
-        blocked = set(self.blocked_outside)
-        return tuple(entry for entry in self.outstanding if entry not in blocked)
+        held = set(self.blocked_outside) | set(self.self_cleared)
+        return tuple(entry for entry in self.outstanding if entry not in held)
 
     @property
     def is_clear(self) -> bool:
@@ -1054,6 +1073,22 @@ def gate_status(
     reported apart from the ones that can - see `GateStatus.blocked_outside`.
     It stays on the list either way: the list is frozen, and this is a count
     of what it can be asked for today rather than an edit to it.
+
+    The milestone's own `Required scope` splits them a third way, on the
+    carve-out `ROADMAP.md` § "Debt inside the milestone's own scope" states:
+    debt the milestone exists to clear is cleared *by* it, and the gate is
+    open once everything outside that scope is clear. `own_scope_ids` is that
+    subsection alone, which is what the rule names - the union `scope_ids`
+    would fold the frozen list back in and make every entry its own excuse.
+
+    **The section's group headings are not read, and are not the test.** Gate 1
+    writes the same split in prose - "Cleared by v0.5.0 itself" - and the two
+    disagreed on three ids when this was built: `PL-2FM6` and `PL-8LXM` sit
+    under the `v0.4.x` track's heading and `PL-GVXP` under the product lane's,
+    while all three appear in v0.5.0's `Required scope`. All three had closed,
+    so nothing rode on it; the rule is followed rather than the heading because
+    the rule is what `ROADMAP.md` states as the test, and because `_gate_entries`
+    deliberately does not parse a person's summary of the same facts.
     """
     cleared: list[GateEntry] = []
     outstanding: list[GateEntry] = []
@@ -1075,12 +1110,29 @@ def gate_status(
             for identifier in entry.ids
         )
     )
+    held = set(blocked_outside)
+    own_scope = frozenset(milestone.own_scope_ids)
+    # Every *open* id, rather than every id: an entry holding a closed id and an
+    # open one is asked only for the half that is left. An unknown id counts
+    # against it, because an id the store cannot place is not one the milestone
+    # can be shown to carry - `unknown_ids` withholds `is_clear` anyway, and
+    # agreeing with it here keeps the two from disagreeing on one entry.
+    self_cleared = tuple(
+        entry
+        for entry in outstanding
+        if entry not in held
+        and all(
+            identifier in closed_ids or (identifier in known_ids and identifier in own_scope)
+            for identifier in entry.ids
+        )
+    )
     return GateStatus(
         milestone=milestone,
         entries=milestone.gate_entries,
         cleared=tuple(cleared),
         outstanding=tuple(outstanding),
         blocked_outside=blocked_outside,
+        self_cleared=self_cleared,
         unknown_ids=tuple(unknown),
     )
 
