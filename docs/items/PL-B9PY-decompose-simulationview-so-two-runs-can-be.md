@@ -147,13 +147,17 @@ have decided that question in the wrong place. Recorded in `SimulationView`'s
 own docstring so that a reader who constructs two runs today finds out from the
 code rather than from the chart.
 
-**Verified.** The whole suite is green at 2726 tests, of which 221 are the view
-tests that hold "no displayed value, format or behaviour changes for a single
-run" - the same tests as before, reaching one run through `view.runs[0]`. Eight
-new tests cover what only two runs can show: two controllers driven
-independently end to end, each run drawing only its own recorded values, one
-compartment selection applying to both, the two lines of a compartment drawn
-adjacent, the window fitting the longer run, a halt on one run leaving the
-other advancing, a frame failure halting every run, and the three refusals.
+**Verified.** The whole suite is green at 2726 tests. `tests/unit/test_simulation_view.py`
+holds 221 of them: the **211 that existed before**, unchanged except for
+reaching the sole run through `view.runs[0]`, which is what holds "no displayed
+value, format or behaviour changes for a single run" - and **ten new ones** for
+what only two runs can show. Those are `test_two_run_views_drive_two_controllers`
+(the one this brief names), `test_each_run_draws_only_its_own_recorded_values`,
+`test_one_compartment_selection_applies_to_every_run`,
+`test_the_two_lines_of_one_compartment_are_drawn_next_to_each_other`,
+`test_the_window_fits_the_longer_of_two_runs`,
+`test_halting_one_run_leaves_the_other_advancing`,
+`test_a_frame_that_cannot_be_drawn_halts_every_run`, and one for each of the
+three refusals above.
 `contrast_check`, `agent_identity_check` and `glyph_check` all still read the
 same module and report what they did before.
