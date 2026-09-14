@@ -330,6 +330,7 @@ tools/
 ├── contrast_check.py     # computes every declared color requirement's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum, taking the better channel where an element's edge can be carried by either its fill or its border
 ├── core_vocabulary_check.py  # holds `core/`'s identifiers to the vocabulary `docs/MODEL.md` establishes, in the three ways that are decidable: every `ClassName.accessor` in the Symbols table's Code column resolves to a real attribute, property or field - an em dash being accepted only where the cell says what the code reads instead; none of the accessor names `PL-9SH6` retired comes back, matched whole so that the live `require_concentration_fraction` and `circuit_volume_l` are not accused of containing one; and every `*partition_coefficient` identifier names both of its phases in the declared outward order, gas then blood then tissue, so a coefficient cannot be written as its own reciprocal in a literature that calls one quantity tissue-gas, tissue-blood and blood tissue in a single chapter. It runs under `uv run python`, not at the 3.11 floor, because it parses `core/` with `ast`; whether a name is the one a reader who knows the domain would guess stays a judgment and is deliberately not scripted
 ├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, the data files' declared source tiers, citations - in the documentation, in every `docs/items/` brief and in every source docstring, since those last two are where this project writes most of them - markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline, and the current gate's membership against the queue - unconditionally for the queue's `safety`- and `science`-classed items, and as a recorded disposition, placed or deferred, for every other open debt item; that no milestone names one id under both its `Required scope` and its `Explicitly out of scope`, advising where a scope bullet carries exclusion language; that every test `MODEL.md` names resolves to one that exists; reports resident instruction size
+├── glyph_check.py        # refuses a non-ASCII character that nobody has confirmed the client can draw, from any string that can reach a reader - every string literal outside a docstring under `app/` and `core/`, and every string in the `data/` JSON - because `→` (U+2192) has no glyph in the Flutter client, drew as a replacement box in the control-change list, and no test in this repository could see it: every string assertion here compares text the same font-less Python process produced; the allowlist is per character rather than per Unicode block, and each entry records what was rendered and looked at
 ├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, and `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`, so the payload/dataclass boundary and the never-wall-clock rule are measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 ├── item_reads.py         # reports, from the local untracked `.docket-reads.log` that `.claude/hooks/item_read_log.py` writes, how many distinct items sessions actually open, what share of those are closed, and how many citation edges are traversed within a session - the read-side measurements every argument about the store's shape had been assuming; states the sample size first and chooses between none of the readings a low count admits
@@ -504,6 +505,28 @@ So the port's cost side gains one entry rather than two, and it is specific:
 rule 1 of `agent_identity_check.py` is inside the port's scope, and
 `contrast_check.py`'s two read paths widen to whatever modules the decomposed
 view declares colours in.
+
+`tools/glyph_check.py` covers the half of presentation correctness that no
+string assertion here can reach. Every such assertion compares text the same
+font-less Python process produced, so the suite is blind to whether the client
+can *draw* what it is given: `→` (U+2192) has no glyph in the Flutter client
+and drew as a replacement box in the control-change list on 2026-09-04, in the
+arrow of `5.60% -> 0.95%` — the direction of a setting change, which is the one
+thing that line exists to state (`PL-8XPQ`). The rule is default-deny: every
+non-ASCII character in a string that can reach a reader must appear in
+`CONFIRMED`, whose entries each record what somebody rendered and saw. Per
+character rather than per Unicode block, because Latin-1 Supplement admits `¤`,
+`þ` and `ð` beside the `·`, `±` and `×` this interface has actually shown — a
+block set would admit thousands on the evidence of three. It reads three trees,
+not the one the item first named: `app/` draws the strings, `core/` raises the
+text the view prints verbatim — `_apply_setting` renders `f"Setting refused —
+{error}"` from a `SimulationConfigurationError` — and `data/` holds
+`display_name`, which reaches the readouts and is the one place an edit lands
+without touching Python. Documentation is exempt by a structural test, a string
+that is a bare expression statement, which is what keeps `§` out of a list
+meant to record what was rendered. Like the tools above it decides nothing
+else: whether an unlisted character *would* render needs a real client, so it
+refuses and never approves.
 
 `tools/import_boundary_check.py` measures two claims the source makes about
 itself. `_StrictPayload`'s docstring says that the `_...Payload`/public-
