@@ -3,10 +3,10 @@ id: PL-GS3R
 title: The drawn chart's worst error moved from the control change to the steep early wash-in, and PL-4RBD's 0.32 MAC only fell to 0.26 MAC: uniform columns chord across the same width M4's buckets did
 priority: P1
 effort: M
-status: ready
+status: needs-decision
 classes: defect, safety
 feature: teachable-case
-touches: src/anesthesia_sim/core/run_score.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_series.py, docs/MODEL.md
+touches: src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/chart_frame.py, tests/unit/test_chart_frame.py, tests/unit/test_run_definition.py, docs/MODEL.md
 verify: uv run pytest tests/unit/test_chart_time_base.py && grep -qF 'chord width' docs/MODEL.md
 added: 2026-09-08
 ---
@@ -221,3 +221,123 @@ measured on any hardware. That is this item's measurement, and the port did
 not take it.
 
 **Promoted to `ready`, 2026-09-14**, `PL-G59B` having closed. The seam is `chart_frame.chart_columns`; see the note above.
+
+## Measured 2026-09-14, on `main` after the port (`#578`): the chord that reaches 0.01 pp, and what it costs
+
+The measurement the port left to this item, taken on the shipped read path. A
+12 h sevoflurane run at the envelope corner (FGF 10, V_A 12, Q 10 - the maxima
+`core/supported_ranges.py` declares), delivered 2% -> 4% at t = 600 s, built as
+a `RunDefinition` in closed form (`advance_to(600)`, `record_change`,
+`advance_to(43 200)`), so nothing is stepped. Truth is `evaluate_anchored` at
+0.1 s, the step the run advances by: 432 001 instants. The drawn polyline at
+chord h is `evaluate_anchored(0, 43 200, h)` - the anchored grid plus every
+event column, which is the union of what `SimulationController.drawn_window`
+draws across every window at that spacing - ruled straight between adjacent
+columns, as pyqtgraph rules it. Error is |polyline - truth| at every truth
+instant, on all six drawn compartments, in the percentage points the readout is
+in. Same method as the 2026-09-08 table, which it reproduces (0.0116 pp at 6 s
+of chord; 0.532 pp on the alveolar trace at 290 s).
+
+| Chord | Columns at 12 h | Worst, any trace | Alveolar | as MAC | Beyond 300 s of an opening | Beyond 600 s | Beyond 1 800 s |
+| ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 5 s | 8 641 | 0.0088 pp (alveolar, t = 2.3 s) | 0.0088 pp | 0.004 | 0.0000 | 0.0000 | 0.0000 |
+| 6 s | 7 201 | 0.0116 pp (alveolar, t = 2.7 s) | 0.0116 pp | 0.006 | 0.0001 | 0.0000 | 0.0000 |
+| 10 s | 4 321 | 0.0271 pp (circuit, t = 604.6 s) | 0.0226 pp | 0.011 | 0.0001 | 0.0000 | 0.0000 |
+| 15 s | 2 881 | 0.0509 pp (circuit) | 0.0330 pp | 0.016 | 0.0003 | 0.0000 | 0.0000 |
+| 18 s | 2 402 | 0.0665 pp (circuit) | 0.0368 pp | 0.018 | 0.0005 | 0.0001 | 0.0000 |
+| 24 s | 1 801 | 0.0995 pp (circuit) | 0.0401 pp | 0.020 | 0.0009 | 0.0001 | 0.0000 |
+| 36 s | 1 202 | 0.168 pp (circuit) | 0.0510 pp | 0.026 | 0.0018 | 0.0003 | 0.0000 |
+| 72 s | 602 | 0.362 pp (circuit) | 0.124 pp | 0.062 | 0.0077 | 0.0011 | 0.0001 |
+| 144 s | 302 | 0.627 pp (circuit) | 0.314 pp | 0.157 | 0.0251 | 0.0042 | 0.0003 |
+| 290 s | 151 | 0.888 pp (circuit, t = 67.9 s) | 0.532 pp | 0.266 | 0.0665 | 0.0111 | 0.0011 |
+
+The reference adult's own settings (FGF 4, V_A 4, Q 5), 1 MAC -> 2 MAC at
+600 s, same run length: 0.0016 pp at 5 s of chord, 0.0109 at 15 s, 0.0472 at
+36 s, and 0.556 pp on the circuit trace (0.206 pp on the alveolar, 0.10 MAC) at
+290 s; beyond 1 800 s of an opening, 0.0011 pp at 290 s.
+
+**Four things the table settles.**
+
+1. **The circuit trace is the worst-drawn one, not the alveolar.** 0.888 pp at
+   the 12 h base, against the 0.532 pp this item and `PL-4RBD` reported for the
+   alveolar trace. The circuit is the compartment with the shortest time
+   constant (V/FGF = 36 s at FGF 10), so it is where a chord departs most. The
+   alveolar figure was right; it was never the worst.
+2. **0.01 pp on every trace needs a chord of 5 s**; 6 s gives 0.0116 pp. At the
+   12 h base that is 8 641 columns - 58 times the floor - and 17 281 at a fitted
+   24 h run, the supported length.
+3. **The error is at the openings and nowhere else.** Beyond 1 800 s of any
+   segment opening the shipped 290 s chord departs by 0.0011 pp on either run,
+   a tenth of the readout's resolution, and beyond 600 s by 0.011 at the
+   corner and 0.025 at the reference settings. A uniform grid spends 99% of
+   its columns where the error is 1e-3 pp.
+4. **Route 1 at the target is not affordable as measured.** Closed-form
+   evaluation of the 12 h window on the web container (`evaluate_anchored`,
+   median of 7):
+
+   | Columns | 1 change in view | 5 | 20 |
+   | ---: | ---: | ---: | ---: |
+   | 150 | 9.4 ms | 21.8 ms | 67.5 ms |
+   | 600 | 11.2 ms | 23.1 ms | 66.7 ms |
+   | 2 400 | 21.6 ms | 31.6 ms | 70.3 ms |
+   | 8 640 | 59.7 ms | 67.7 ms | 105.6 ms |
+   | 15 000 | 98.9 ms | 110.5 ms | 148.0 ms |
+
+   About 5.8 us per column plus 1.29 ms per change in view. On the ported
+   path itself, offscreen on the same container, a 6-trace frame costs
+   7.3 ms of Python at 150 columns, 22.0 ms at 2 400 and 65.3 ms at 8 641
+   (`assemble_chart_frame` plus `ConcentrationChart.draw`, the evaluation
+   being 57 ms of the last figure), before the toolkit paints. Paint is the
+   larger term, and it is only extrapolated: `PL-X9T3`'s two readings on the
+   owner's own hardware - 8.04 ms at 294 points, 21.57 ms at 3 204 - are
+   4.65 us per drawn point over a 6.7 ms floor, which puts the 51 846 points
+   of six traces at 8 641 columns at about 250 ms of paint alone, and the
+   frame at about 320 ms at the 12 h base and 630 ms at a 24 h fit, against
+   the 200 ms budget. Extrapolated from two points and not measured; but the
+   cost is linear in the span whatever the slope, and the ladder is meant to
+   grow toward days (`PL-SSBP`).
+
+**Decision needed, again: which route to the same end state.** Route 1 as
+decided on 2026-09-10 - hold the chord at the width that reaches 0.01 pp -
+costs what is tabulated above. Three ways out, and they are not equivalent:
+
+- **A. Hold the chord at 5 s everywhere.** The decision as taken. Five lines in
+  `chart_columns`; 0.01 pp at every rung; 8 641 columns at 12 h, 17 281 at
+  24 h, and about 320-630 ms of frame on the extrapolation above, linear in
+  the span. Affordable only if the paint slope on the owner's hardware is a
+  third of what the two readings imply, which the spike's column ladder could
+  measure if extended past 2 400.
+- **B. Hold the chord at 5 s up to a column ceiling, and state the residual
+  above it.** The same five lines plus a ceiling. At 2 400 columns the bases
+  up to 4 h reach 0.01 pp and the 8 h and 12 h bases sit at 0.04 and 0.07 pp
+  on the circuit trace (0.02 MAC on the alveolar), stated in `docs/MODEL.md`;
+  about 110 ms per frame at 12 h on the same extrapolation. Leaves four to
+  seven counts of the last displayed digit in the first minute of a fast
+  induction at the two widest bases.
+- **C. Two spacings: the coarse chord the span implies everywhere, and a fine
+  5 s chord for the first stretch after every segment opening in view.** The
+  route-2 sketch in this item's own brief - "a fixed dyadic refinement near
+  each segment opening, which keeps the spacing uniform within each
+  refinement level" - reduced to one level, because a propagator costs
+  1.29 ms against 5.8 us per chained column, so one uniform fine level per
+  opening is cheaper than a dyadic stack. 0.01 pp at every rung for a cost
+  that follows the openings in view rather than the span: about 870 columns
+  for a 12 h window with two changes in it (the coarse 150 plus 360 per
+  opening at 5 s over 1 800 s, the stretch beyond which the coarse chord is
+  within 0.0011 pp on both runs above), about 11 ms of evaluation, and the
+  same at a 24 h fit or a week. Worst case is a window holding `MAX_CHART_CONTROL_MARKS` changes,
+  which costs on that frame what A costs on every frame. Uniform spacing
+  within each level, so the chained propagator holds; fine columns anchored
+  to the opening, which does not move, so the grid is as stable frame to
+  frame as the coarse one. Costs the evaluator a second spacing and a
+  refinement span (`evaluate_anchored`, `drawn_window`, `chart_frame`), the
+  two constants chosen by measurement across the supported envelope, and
+  tests for the merged grid.
+
+**Recommendation: C.** A meets the target and cannot be afforded as measured;
+B is affordable and does not meet the target; C meets it at about a twentieth
+of A's cost, and its cost has the right shape - it follows the run's events,
+which is where the curvature is, rather than the axis, which is where it is
+not. That is what "spend them where the error is" meant. The extra code lands
+in the evaluator, which is where the project already keeps the display grid's
+rules.
