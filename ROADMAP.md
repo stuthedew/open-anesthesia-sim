@@ -1433,8 +1433,9 @@ two-branch overlay - two have a slice there (`PL-RD3B`, `PL-LPLD`, both of whose
 durable halves are in `app/controller.py`), and five never touch it at all
 (`PL-CTD7`, `PL-B8MK`, `PL-Z3W6`, `PL-W7H9`, `PL-49R8`).
 Exactly three modules import Flet - `app/main.py`, `app/simulation_view.py`
-and `app/chart_series.py`; `PL-9KDK` records that `tools/import_boundary_check.py`
-does not yet enforce that - and the milestone's landed work - `PL-T691`'s score, `PL-J2TD`'s keyframe opening,
+and `app/chart_series.py`, and `tools/import_boundary_check.py` holds `flet` and
+`flet_charts` to those three between them since `PL-9KDK`, whose unused-allowance
+error then asks each port commit that frees a module to drop its entry - and the milestone's landed work - `PL-T691`'s score, `PL-J2TD`'s keyframe opening,
 `PL-TFX5`'s fork, `PL-B9PY`'s decomposition - all sits on the surviving side.
 **So the premise of the question did not hold, and the move was taken on three
 other grounds:**

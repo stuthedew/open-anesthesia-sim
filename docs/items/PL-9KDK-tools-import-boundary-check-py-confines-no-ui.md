@@ -3,11 +3,12 @@ id: PL-9KDK
 title: tools/import_boundary_check.py confines no UI toolkit and no numpy, so nothing stops PySide6, pyqtgraph or numpy landing in core/ during the port, and ROADMAP.md credits it with a Flet count it does not check
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: qt-port
 touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-14
+closed: 2026-09-14
 verify: uv run python tools/import_boundary_check.py && grep -q 'package="flet"' tools/import_boundary_check.py
 ---
 
@@ -46,3 +47,14 @@ not make. Confining `flet` to its three modules also turns the tool's own
 unused-allowance error into the port's checklist - each module the port frees
 of Flet must drop its allowance in the same commit, and the last one takes the
 boundary with it.
+
+**Found by declaring it, 2026-09-14.** Flet is two distributions with two root
+packages. `app/chart_series.py` imports `flet_charts` and not `flet`, so a
+single `flet` boundary naming all three modules failed on its own
+unused-allowance rule the first time it ran. The declaration is two
+boundaries - `flet` in `main.py` and `simulation_view.py`, `flet_charts` in
+`chart_series.py` and `simulation_view.py` - which between them name exactly
+the three modules the roadmap counts, and a test pins that union. The other
+three entries (`PySide6`, `pyqtgraph`, `numpy`) permit no module under
+`core/`, the shape the clock boundaries already use, and are declared before
+any of the three exists in the tree.

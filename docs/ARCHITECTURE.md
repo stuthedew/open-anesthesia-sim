@@ -420,7 +420,7 @@ tools/
 ├── core_vocabulary_check.py  # holds `core/`'s identifiers to the vocabulary `docs/MODEL.md` establishes, in the three ways that are decidable: every `ClassName.accessor` in the Symbols table's Code column resolves to a real attribute, property or field - an em dash being accepted only where the cell says what the code reads instead; none of the accessor names `PL-9SH6` retired comes back, matched whole rather than as substrings, so that an identifier merely containing a retired name is not accused of reviving it - a rule with no live counterexample in `core/` since `PL-6KNM` renamed `require_concentration_fraction` to `require_fraction`, and `PL-JW9J` is where tightening it is decided; and every `*partition_coefficient` identifier names both of its phases in the declared outward order, gas then blood then tissue, so a coefficient cannot be written as its own reciprocal in a literature that calls one quantity tissue-gas, tissue-blood and blood tissue in a single chapter. It runs under `uv run python`, not at the 3.11 floor, because it parses `core/` with `ast`; whether a name is the one a reader who knows the domain would guess stays a judgment and is deliberately not scripted
 ├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, the data files' declared source tiers, citations - in the documentation, in every `docs/items/` brief and in every source docstring, since those last two are where this project writes most of them - markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline, and the current gate's membership against the queue - unconditionally for the queue's `safety`- and `science`-classed items, and as a recorded disposition, placed or deferred, for every other open debt item; that no milestone names one id under both its `Required scope` and its `Explicitly out of scope`, advising where a scope bullet carries exclusion language; that every test `MODEL.md` names resolves to one that exists; reports resident instruction size
 ├── glyph_check.py        # refuses a non-ASCII character that nobody has confirmed the client can draw, from any string that can reach a reader - every string literal outside a docstring under `app/` and `core/`, and every string in the `data/` JSON - because `→` (U+2192) has no glyph in the Flutter client, drew as a replacement box in the control-change list, and no test in this repository could see it: every string assertion here compares text the same font-less Python process produced; the allowlist is per character rather than per Unicode block, and each entry records what was rendered and looked at
-├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, and `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`, so the payload/dataclass boundary and the never-wall-clock rule are measured rather than asserted
+├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`; `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`; `flet` and `flet_charts` anywhere but the three interface modules that import them today; and `PySide6`, `pyqtgraph` or `numpy` in any module under `core/` - so the payload/dataclass boundary, the never-wall-clock rule and the toolkit-independence rule are measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 ├── item_reads.py         # reports, from the local untracked `.docket-reads.log` that `.claude/hooks/item_read_log.py` writes, how many distinct items sessions actually open, what share of those are closed, and how many citation edges are traversed within a session - the read-side measurements every argument about the store's shape had been assuming; states the sample size first and chooses between none of the readings a low count admits
 ├── main_ci_status.py     # reports the default branch's last quality verdict, and nothing at all when it was a success, because the whole-store `verify:` replay runs only on push to `main` and its failures therefore land on a run no pull request shows; the session-start hook calls it, it gates nothing, and it is the one tool here that reads the network
@@ -617,21 +617,27 @@ meant to record what was rendered. Like the tools above it decides nothing
 else: whether an unlisted character *would* render needs a real client, so it
 refuses and never approves.
 
-`tools/import_boundary_check.py` measures two claims the source makes about
+`tools/import_boundary_check.py` measures three claims the source makes about
 itself. `_StrictPayload`'s docstring says that the `_...Payload`/public-
-dataclass pairs exist so the rest of `core/` never imports Pydantic, and
+dataclass pairs exist so the rest of `core/` never imports Pydantic;
 `docs/MODEL.md` "The reproducibility guarantee" says that a run is a function of
 its inputs and of the number of steps taken and of nothing else — so the run
-loop reads no clock. Nothing checked either, so a leak into a compartment would
-have left both paragraphs reading as verified while being false — worse than the
-coupling itself. Its `BOUNDARIES` table is the specification, and the tool
+loop reads no clock; and `CLAUDE.md`'s first architecture rule keeps simulation
+code independent of the UI toolkit, which `ROADMAP.md` § "v0.4.26 - the
+interface moves to Qt" turns into a figure — exactly three modules import Flet
+— and reasons from. Nothing checked any of them, so a leak into a compartment
+would have left the paragraphs reading as verified while being false — worse than the
+coupling itself; the Flet count was true and unenforced until `PL-9KDK`, and
+`PySide6`, `pyqtgraph` and `numpy` are held out of `core/` from before the
+first import of any of them exists, so the port's first commit is measured
+rather than the rule written after it. Its `BOUNDARIES` table is the specification, and the tool
 decides nothing beyond it: which packages ought to be confined, and where the
 exception belongs, are judgments written there with the reason beside them.
 Three further states are errors, each closing a way the check could pass while
 meaning nothing — an allowance naming a file that no longer exists, an allowance
 no longer used, and a declared tree matching no source files at all.
 
-The two boundaries cover different trees, and the asymmetry is deliberate. The
+The boundaries cover different trees, and the asymmetry is deliberate. The
 Pydantic boundary covers `app/` as well as `core/`, so the rule reads *exactly
 one module in this package imports Pydantic*. The `time`, `datetime`,
 `random`, `secrets` and `uuid` boundaries stop at `core/` and permit no module
@@ -639,7 +645,15 @@ at all, because the
 guarantee they defend explicitly allows the interface its wall clock — what it
 forbids is a tick's real duration reaching the run. A test pins that asymmetry
 end-to-end, so widening the tree to the whole package would fail on an import
-the design permits rather than passing quietly (`PL-J833`).
+the design permits rather than passing quietly (`PL-J833`). The toolkit
+boundaries follow the clock's shape — `app/` is where a widget belongs — except
+Flet's two root packages, `flet` and `flet_charts`, which cover the whole
+package and between them name the three modules, because the count is what the
+roadmap reasons from; declaring one boundary for `flet` alone counted two,
+since `app/chart_series.py` imports only `flet_charts`. Those allowances are
+also the port's checklist through the tool's own unused-entry error: each
+module the port frees of either package drops its entry in the same commit,
+and the last entry takes the boundary with it.
 
 `tools/main_ci_status.py` is the one tool here that gates nothing, and the only
 one that reads the network. `.github/workflows/quality.yml` runs the whole-store
