@@ -1,9 +1,16 @@
 ---
 id: PL-037Y
 title: docs/WORKING_NOTES.md's UI-structure thread glosses PL-NGF7 as 'decides the theme object', which is not what that item is or does
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
+feature: queue-hygiene
+touches: docs/WORKING_NOTES.md
 added: 2026-09-14
+verify: python3 tools/doc_check.py check && ! grep -q '`PL-NGF7` decides the theme object' docs/WORKING_NOTES.md
 ---
+
 
 **Problem.** docs/WORKING_NOTES.md's UI-structure thread glosses PL-NGF7 as 'decides the theme object', which is not what that item is or does
 
@@ -30,3 +37,29 @@ structure/form mockups" thread.
 
 **Done when.** The line names an item that exists and does what the line says,
 or a missing item has been filed and the line points at it.
+
+**Verified 2026-09-14, and the first of the two readings is the right one.**
+`docs/WORKING_NOTES.md:668-669` still glosses the middle item as "`PL-NGF7`
+decides the theme object". `PL-NGF7`'s actual title is that
+`tools/contrast_check.py` can see no disabled-state colour, because none of them
+is a constant in `theme.py`. Those are not the same item, and the paragraph
+eleven lines below in the same thread already describes `PL-NGF7` correctly -
+"(`contrast_check.py` can see no disabled-state colour) is deferred to
+`v0.4.26`, which dissolves it rather than fixing it, and its expected
+disposition is `dropped`". So the thread contradicts itself about one id in one
+section, which settles it: the gloss is simply wrong rather than evidence of a
+missing item.
+
+**Why it matters.** The gloss is inside the record of a project-owner decision
+(2026-09-08, the structural half of an interface overhaul), and it is the only
+record that decision exists. A reader following the line finds an item that does
+something else and cannot tell whether the decision named a third thing that was
+never filed - which is expensive to resolve and cheap to prevent.
+
+**`PL-D1RT` is in the same paragraph** and corrects its placement claim. Whoever
+lands second should read the other's change rather than re-deriving it; the two
+edits are two sentences apart.
+
+**Done when.** The thread describes `PL-NGF7` as what it is, consistently with
+the paragraph below it, and the three items named as the structural half are each
+glossed accurately.

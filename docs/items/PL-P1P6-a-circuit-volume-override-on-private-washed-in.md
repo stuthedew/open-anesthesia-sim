@@ -1,9 +1,16 @@
 ---
 id: PL-P1P6
 title: A circuit-volume override on _private_washed_in_system would let one test pin the direction that a larger circuit-side agent store can only slow the elimination
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: test
+feature: model-spec-accuracy
+touches: tests/reference/test_published_wash_in_and_elimination.py
 added: 2026-09-13
+verify: uv run pytest tests/reference/test_published_wash_in_and_elimination.py && grep -q 'def test_a_larger_circuit_cannot_speed_the_elimination' tests/reference/test_published_wash_in_and_elimination.py
 ---
+
 
 **Problem.** A circuit-volume override on _private_washed_in_system would let one test pin the direction that a larger circuit-side agent store can only slow the elimination
 
@@ -41,3 +48,27 @@ ratio is established and signed. What neither pins is monotonicity in the
 *store* rather than in the flow, which is the exact claim. So the question to
 settle is whether that gap is worth a fixture change, and the honest answer may
 be no.
+
+**Verified 2026-09-14.** `_private_washed_in_system` is defined at
+`tests/reference/test_published_wash_in_and_elimination.py:710` and called at
+`:829` and `:976`. It takes no circuit-volume argument, so a test cannot vary
+the circuit-side store while holding everything else fixed.
+
+**Why it matters.** The claim the override would pin is directional and
+currently rests on argument rather than on a test: a larger circuit-side agent
+store can only *slow* the elimination, never speed it. That direction is load
+bearing in `docs/MODEL.md`'s account of desflurane's washout residual - it is
+what lets circuit volume be set aside as a candidate - and an untested
+directional claim in a safety-critical narrative is exactly what `CLAUDE.md`
+means by preferring verification to assertion. Pinning it is cheap and makes the
+elimination discussion falsifiable.
+
+**Why P3 and `test`.** It adds an affordance and a test; it changes no shipped
+behaviour, no stored value and no displayed number. It is worth doing when
+somebody is next in that file rather than on its own.
+
+**Done when.** `_private_washed_in_system` accepts a circuit volume, defaulting
+to the shipped one so every existing caller is unchanged, and
+`tests/reference/test_published_wash_in_and_elimination.py` has a test that runs
+the same cohort at a larger circuit volume and asserts the elimination is not
+faster.

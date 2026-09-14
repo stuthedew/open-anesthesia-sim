@@ -1,9 +1,16 @@
 ---
 id: PL-0MLZ
 title: uv run pytest writes bytecode that survives a source restore, so a mutation test can silently keep running the mutated build
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: pyproject.toml, Makefile, tests/unit/test_tools_portability.py
 added: 2026-09-13
+verify: uv run python -c "import sys; raise SystemExit(0 if sys.dont_write_bytecode else 1)"
 ---
+
 
 **Problem.** uv run pytest writes bytecode that survives a source restore, so a mutation test can silently keep running the mutated build
 
@@ -50,3 +57,31 @@ about its coverage being narrower than the workflows that need it.
 entry point. `-p no:cacheprovider` does not help; this is interpreter bytecode,
 not pytest's cache. Worth checking whether `pytest`'s own
 `--import-mode=importlib` changes the picture before choosing.
+
+**Verified 2026-09-14.** `grep -rn PYTHONDONTWRITEBYTECODE` across `Makefile`,
+`pyproject.toml`, `uv.toml`, `.env` and `.claude/` returns exactly one hit:
+`Makefile:21`. So the guard is set by the *entry point* and not by the
+interpreter, and every invocation that does not go through `make` writes
+bytecode - which is `uv run pytest` directly, the form this store's own
+`verify:` commands use, the form the `docket` skill recommends while iterating
+(`pytest -q`), and the form a session reaches for by hand.
+
+**Why it matters.** It makes a verification step lie, in the direction of a
+false pass. The observed sequence in the brief above caught both mutations, so
+it cost nothing; the failure that costs something is the mirror - restore a
+file, watch the suite go green, and conclude that a test bites when what
+actually ran was bytecode from a build where it did not. `CLAUDE.md`'s
+safety-critical standard requires a regression test that would have caught each
+safety bug, and this is a way to believe such a test exists when it does not.
+That is also `CLAUDE.md`'s first compounding-friction test exactly - a check
+passing while the guarantee it stands for is void - so it is worth doing ahead
+of ordinary queue order rather than in it.
+
+**Done when.** `PYTHONDONTWRITEBYTECODE` is set where the interpreter reads it
+rather than where `make` does, so a bare `uv run pytest` inherits it -
+`[tool.uv]`'s `env` or `env-file` in `pyproject.toml` is the cheapest candidate -
+and a source restore is therefore never shadowed by a stale `.pyc`. The
+`Makefile` export may stay or go, but no workflow depends on it being the only
+carrier. The hypothesis in the brief above about PEP 552 hash-based invalidation
+is either confirmed by reading the 16-byte `.pyc` header flag word or dropped
+from the brief; the fix does not depend on which.

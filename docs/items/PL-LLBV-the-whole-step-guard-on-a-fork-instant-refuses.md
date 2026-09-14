@@ -1,9 +1,16 @@
 ---
 id: PL-LLBV
 title: The whole-step guard on a fork instant refuses 35.5% of the one-decimal times a user could type
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, ux
+feature: scenario-branching
+touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
 added: 2026-09-14
+verify: uv run pytest tests/integration/test_controller.py && grep -q 'def test_a_one_decimal_fork_instant_is_accepted' tests/integration/test_controller.py
 ---
+
 
 **Problem.** The whole-step guard on a fork instant refuses 35.5% of the one-decimal times a user could type
 
@@ -35,3 +42,27 @@ input that can miss the grid while looking like it should not. The fix is at
 the boundary that accepts the typed value — snap it to `round(t / step) * step`
 once, where the user can see the instant that was taken — rather than by
 loosening a guard whose exactness the branch's clock rests on.
+
+**Reproduced 2026-09-14.** `SimulationController.fork_at`
+(`app/controller.py:1565`) documents the refusal at `:1584` - the instant "is
+not finite, or is not a whole number of" steps. Tested against the shipped
+0.1 s step over the one-decimal times from 0.1 s to 360.0 s: **1 235 of 3 600,
+34.3%**, fail an exact whole-step test, because `12.3 / 0.1` is
+`122.99999999999999` rather than `123`. The title says 35.5% over a different
+range; the finding is the same and the order of magnitude is confirmed.
+
+**Why it matters.** A third of the times a learner can type are refused, and
+they are refused for a reason that has nothing to do with the model: the instant
+is a valid fork point, and binary floating point cannot represent the division
+exactly. `.claude/rules/expert-review.md` asks for interfaces that prevent
+errors rather than warn after one, and this is the inverse - an interface
+rejecting correct input and reporting it as the user's mistake. The pattern is
+also one this project has already paid for once, in `PL-SM5V`: an exact
+comparison over a quantity that reached the code through a unit conversion.
+
+**Done when.** A fork instant the learner can express at the resolution the
+interface offers is accepted whenever it names a real step - compared by
+rounding to the nearest step and checking the residual against a stated
+tolerance, or by taking the step index rather than the time - and the refusal is
+reserved for an instant that genuinely falls between steps.
+`tests/integration/` covers the one-decimal times that fail today.

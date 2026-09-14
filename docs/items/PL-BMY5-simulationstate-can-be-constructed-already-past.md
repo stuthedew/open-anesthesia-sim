@@ -1,9 +1,16 @@
 ---
 id: PL-BMY5
 title: SimulationState can be constructed already past the supported run length, and only the next advance refuses it
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
+feature: numerical-domain
+touches: src/anesthesia_sim/core/simulation.py, tests/unit/test_simulation.py
 added: 2026-09-14
+verify: uv run pytest tests/unit/test_simulation.py && grep -q 'def test_a_state_past_the_supported_run_length_is_refused_at_construction' tests/unit/test_simulation.py
 ---
+
 
 **Problem.** SimulationState can be constructed already past the supported run length, and only the next advance refuses it
 
@@ -35,3 +42,29 @@ everywhere else - refused rather than clamped: call
 through, since a run standing *exactly* at the cap is a legal state to be in
 and an illegal one to step from, and `require_supported_run_length` is written
 for the second question.
+
+**Verified 2026-09-14.** `SimulationState.__post_init__`
+(`core/simulation.py:68-77`) calls `_require_step_count` - whole and nonnegative -
+and `require_supported_simulation_step`, and does **not** call
+`require_supported_run_length`. That guard is reached only on the advancing
+path, at `core/simulation.py:130`. So a state carrying a `step_count` whose
+implied elapsed time is past the supported run length constructs cleanly and is
+refused only by the next advance.
+
+**Why it matters.** The same argument as `PL-73ZN` one level down, and it
+matters more here because `SimulationState` is what a branch is *opened at*: a
+fork resumes into a canonical keyframe state, so a state accepted at
+construction is a state a branch can be built on. `CLAUDE.md` asks for ranges
+and model applicability to be validated before calculation; this validates them
+one operation late.
+
+**Why not `safety`.** As with `PL-73ZN`, the advance refuses before any state is
+produced or displayed, so the failure is a late error rather than a plausible
+wrong value. Do these two in one branch - they are one rule applied at two
+levels, and splitting them across sessions means writing the same argument
+twice.
+
+**Done when.** `SimulationState.__post_init__` refuses a `step_count` and
+`simulation_step_s` pair whose implied elapsed time exceeds the supported run
+length, using `require_supported_run_length` rather than a restated bound, and
+`tests/unit/test_simulation.py` covers construction at and just past the edge.

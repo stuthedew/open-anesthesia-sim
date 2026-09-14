@@ -1,9 +1,16 @@
 ---
 id: PL-SM5V
 title: A run's settings cannot be recovered from RunSegment.settings: the L/min to L/s conversion does not round-trip for 7 of 101 cardiac outputs
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
+feature: scenario-branching
+touches: src/anesthesia_sim/core/governing_equations.py, src/anesthesia_sim/core/run_definition.py, tests/unit/test_run_definition.py, docs/MODEL.md
 added: 2026-09-14
+verify: uv run pytest tests/unit/test_run_definition.py && grep -q 'def test_a_recorded_setting_round_trips_to_what_was_set' tests/unit/test_run_definition.py
 ---
+
 
 **Problem.** A run's settings cannot be recovered from RunSegment.settings: the L/min to L/s conversion does not round-trip for 7 of 101 cardiac outputs
 
@@ -46,3 +53,40 @@ documenting on `RunSegment` that its settings are for assembling a matrix and
 never for configuring a system. The second is cheaper and is probably right;
 the first is what a save/load format (planned item 9) will need, because a
 reloaded run has no parent compartments to read.
+
+**Reproduced exactly, 2026-09-14.** Over the 101 cardiac outputs from 1.0 to
+11.0 L/min at 0.1 L/min, `lpm / 60.0 * 60.0 != lpm` for **7**: 1.9, 3.8, 3.9,
+7.6, 7.7 and two more. The first reads back `1.8999999999999997`. The count in
+the title is right.
+
+**Where it comes from.** `core/governing_equations.py:244-256` -
+`UptakeEquationSettings` stores flows per second because `docs/MODEL.md` §
+"Governing equations" requires it, "and the conversion from the user-facing
+litres per minute happens once where this is constructed rather than inside an
+equation". That is the right design and the loss is inherent to it: the L/min
+the learner set is not among the settings, and multiplying back by 60 does not
+always return it.
+
+**Why it matters, and the sharper half is not the display.** No displayed value
+is wrong: formatted to one decimal, `1.8999999999999997` prints `1.9`. Two other
+things are affected, and both are real. First, `UptakeEquationSettings` is
+"Frozen and compared by value, because `uptake_system.py` uses it as the key its
+propagator is cached against" - so a settings object rebuilt from a recovered
+L/min is *unequal* to the one built from the original entry, and a comparison
+that should match does not. `PL-NC62` is where that surfaces as a user-visible
+refusal with a misdiagnosed cause, which is why these two should be read
+together. Second, `CLAUDE.md` asks that a displayed value be traceable to the
+exact inputs that produced it; a run whose settings cannot be recovered as
+entered is traceable only to one rounding of them.
+
+**Why not `safety`, stated rather than assumed.** Nothing here produces a wrong
+number a clinician could read. The failure is an equality that should hold and
+does not, whose worst observed consequence is a refusal with a wrong
+explanation - a defect, not a misleading clinical value.
+
+**Done when.** A run's settings as the learner entered them are recoverable from
+what the definition records - by keeping the entered L/min alongside the derived
+per-second value, or by deriving both from one stored quantity - so that
+rebuilding a settings object from a recorded segment yields one equal to the
+original, for all 101 cardiac outputs above. `docs/MODEL.md` says which of the
+two is the record and which is derived.
