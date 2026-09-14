@@ -8,7 +8,7 @@ classes: docs, defect
 feature: planning-cadence
 touches: ROADMAP.md, tools/doc_check.py
 added: 2026-09-14
-verify: python3 tools/doc_check.py check && grep -q 'Twenty-five items' ROADMAP.md
+verify: python3 tools/doc_check.py check && ! grep -q 'Nineteen items, in the order the dependencies allow' ROADMAP.md
 ---
 
 

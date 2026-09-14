@@ -47,3 +47,9 @@ only if the second number is a clear majority of the first.
 
 Whoever answers it should take the count first; the answer follows from it
 rather than from an argument.
+
+**Done when.** The count above has been taken and acted on: either
+`tools/core_vocabulary_check.py` matches on substrings with
+`tests/unit/test_core_vocabulary_check.py` covering a retired name embedded in a
+longer identifier, or this item is closed `dropped` with the count as its
+reason.

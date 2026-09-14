@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: commit-provenance
-touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/cli.py, tests/unit
+touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/cli.py, tests/unit/test_docket_digest_hook.py
 added: 2026-09-14
 verify: python3 -c "import pathlib,re; t=pathlib.Path('docs/releases/v0.4.22.md').read_text(); b=[l for l in t.splitlines() if l.startswith('- ')]; raise SystemExit(1 if [l for l in b if not re.search(r'#[0-9]+', l)] else 0)"
 ---

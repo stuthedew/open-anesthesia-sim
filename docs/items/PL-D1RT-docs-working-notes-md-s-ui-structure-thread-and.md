@@ -35,15 +35,14 @@ working as intended.
 port that precedes v0.5.0.
 
 **Verified 2026-09-14, and the finding is wider than the title.** The row both
-documents cite **no longer exists**. "The timeline" at `ROADMAP.md:320-332` now
-runs v0.2.8, v0.3.0, v0.4.0, `v0.4.x`, Gate 1, **v0.4.25**, v0.5.0, MVP
+documents cite **no longer exists**. "The timeline" at 'The timeline' now runs v0.2.8, v0.3.0, v0.4.0, `v0.4.x`, Gate 1, **v0.4.26**, v0.5.0, MVP
 complete, Gate 2, v0.6.0, Gate 3, v0.7.0, Beyond - there is no `v0.5.x - the
-interface pass` row, because `ROADMAP.md:1526` records that v0.4.25 **absorbs**
+interface pass` row, because `ROADMAP.md` records that the port **absorbs**
 planned-milestone item 33. Two places still point at the deleted row:
 
-- `ROADMAP.md:4162`, item 33's own placement note: "the `v0.5.x - the interface
+- `ROADMAP.md:4155`, item 33's own placement note: "the `v0.5.x - the interface
   pass` row of 'The timeline'. A patch track rather than a numbered milestone".
-- `docs/WORKING_NOTES.md:664-667`, the "Shelved, then resumed: UI
+- `docs/WORKING_NOTES.md:666`, the "Shelved, then resumed: UI
   structure/form mockups" thread: item 33 has "the `v0.5.x - the interface
   pass` row of 'The timeline' giving it a position between v0.5.0 and v0.6.0".
 
@@ -62,5 +61,10 @@ the other's change rather than re-deriving it.
 
 **Done when.** Neither `ROADMAP.md` nor `docs/WORKING_NOTES.md` cites a
 `v0.5.x - the interface pass` timeline row, item 33's placement note says it is
-absorbed by v0.4.25, and the notes thread says the interface pass now runs
+absorbed by the port milestone, and the notes thread says the interface pass now runs
 *ahead* of v0.5.0 rather than between v0.5.0 and v0.6.0.
+
+**Re-checked 2026-09-14 after `#576` merged**, which cut `v0.4.25` and
+renumbered the port's section to `v0.4.26`. Both citations survive the
+renumber unchanged, because what they name is a row that no longer exists at
+any number.

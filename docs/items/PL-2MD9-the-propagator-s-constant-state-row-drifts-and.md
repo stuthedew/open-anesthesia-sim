@@ -4,7 +4,7 @@ title: "The propagator's constant state row drifts and the squarings amplify it:
 priority: P2
 effort: M
 status: ready
-classes: defect, science, anticipated
+classes: defect
 feature: numerical-domain
 touches: src/anesthesia_sim/core/matrix_exponential.py, src/anesthesia_sim/core/governing_equations.py, tests/unit/test_matrix_exponential.py, docs/MODEL.md
 added: 2026-09-14
@@ -89,7 +89,13 @@ rather than about one parameter: the amplification mechanism is
 $`(1+\delta)^{2^{j}}`$ across the squarings, so it is the scaling-and-squaring
 path that carries it, not the alveolar volume specifically.
 
-**Why P2 and `anticipated` rather than P1.** The brief's own last paragraph is
+**Why P2, and why `science` is withheld.** `.claude/rules/expert-review.md`
+separates verification - the implementation solves the intended equations
+correctly - from validation, whether the equations represent the phenomenon.
+This is a verification defect: the algebra is right and the implementation does
+not keep it. `science` in this store marks the validation half, and using it
+here would pin the item to P1 on a reading the finding does not support. The
+second reason is reachability. The brief's own last paragraph is
 the reason, and it is load-bearing: no shipped path reaches these volumes - the
 alveolar volume is a fixed model parameter with no setter on
 `SimulationController` - and the mass-balance guard halts the run at 1e-9 L and

@@ -84,3 +84,10 @@ refusal at "60.0 s with the replay against 29.5 s without", which is the
 whole-store form; the narrowed form measured 7.1 s on a branch touching 11
 items and falls to nothing on a branch that changes no item. Update that comment
 whichever way this is decided, so the recorded price matches the one in force.
+
+**Done when.** `make check` either runs the narrowed verify replay - degrading
+to today's behaviour when no base ref resolves, rather than failing the gate -
+or this item is closed `dropped` with the pull-request count that showed the
+replay would not have changed an answer. Either way the `Makefile` comment
+beside `bin/docket check` states the price in force rather than the whole-store
+figure it carries today.

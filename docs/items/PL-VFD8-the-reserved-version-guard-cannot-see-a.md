@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: release-roadmap-seam
-touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/roadmap.py, tests/unit
+touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/roadmap.py, tests/unit/test_docket_digest_hook.py
 added: 2026-09-14
 verify: uv run pytest tests/unit/test_docket_digest_hook.py && grep -q 'def test_a_timeline_row_with_no_section_reserves_its_version' tests/unit/test_docket_digest_hook.py
 ---
@@ -86,3 +86,10 @@ reached. `PL-FWJF` is the same structural gap seen from the `wave` side - a
 section for it exists yet, so a digest between v0.5.x and v0.6.0 declines to
 offer v0.6.0 and says which row holds it. `tests/unit/` covers a row with no
 section.
+
+**`PL-188T` is this defect by a third door** (filed 2026-09-14 by the
+pre-port survey, and it says so itself): once `v0.4.25` was cut and the port's
+section moved to `v0.4.26`, `wave` binds `step = v0.4.x` and
+`milestone = v0.5.0`, so a simulated `release_offer` on a `0.4.26` bump returns
+`stands` and a patch cut mid-port is offered the port's own number. Its
+`Done when` is this item's verbatim. Close both together.

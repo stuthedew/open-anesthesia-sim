@@ -6,7 +6,7 @@ effort: S
 status: needs-decision
 classes: defect
 feature: dev-tooling
-touches: tools, .github, tests/unit
+touches: tools, .github
 added: 2026-09-14
 ---
 
@@ -48,3 +48,8 @@ landed, and count what has reappeared. The three answers:
 
 Do not answer this from the figures in the title. They were taken with a pattern
 this item does not state, and they do not reproduce under the one `PL-6194` used.
+
+**Done when.** The regrowth count above has been taken on a date far enough past
+`PL-6194`'s sweep to mean something, and either a check exists with its own test,
+or this item is closed `dropped` recording the count and the date it was taken -
+so the next session to wonder does not re-derive it.

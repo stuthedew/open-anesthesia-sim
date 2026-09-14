@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: parallel-sessions
-touches: subprojects/docket/src/docket/vcs.py, tests/unit
+touches: subprojects/docket/src/docket/vcs.py, tests/unit/test_docket_branch_guard.py
 added: 2026-09-14
 verify: uv run pytest tests/unit/test_docket_branch_guard.py && grep -q 'def test_a_later_merge_touching_the_file_is_not_work_left_behind' tests/unit/test_docket_branch_guard.py
 ---

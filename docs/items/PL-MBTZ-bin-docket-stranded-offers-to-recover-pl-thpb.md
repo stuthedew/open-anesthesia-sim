@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: defect
 feature: parallel-sessions
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, tests/unit
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, tests/unit/test_docket_branch_guard.py
 added: 2026-09-14
 verify: uv run pytest tests/unit/test_docket_branch_guard.py && grep -q 'def test_a_branch_copy_older_than_the_base_is_not_offered' tests/unit/test_docket_branch_guard.py
 ---

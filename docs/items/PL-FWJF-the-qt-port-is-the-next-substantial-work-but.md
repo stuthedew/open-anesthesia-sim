@@ -6,9 +6,9 @@ effort: M
 status: ready
 classes: defect
 feature: planning-cadence
-touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/roadmap.py, tests/unit
+touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/roadmap.py, tests/unit/test_docket_digest_hook.py
 added: 2026-09-14
-verify: uv run pytest tests/unit/test_docket_digest_hook.py && bin/docket wave | grep -q 'Beat.*v0.4.25'
+verify: uv run pytest tests/unit/test_docket_digest_hook.py && bin/docket wave | grep -q 'Beat.*v0.4.26'
 ---
 
 
@@ -54,20 +54,20 @@ off-gate work, which here would state the opposite of the plan.
 sentence that agrees with the timeline.
 
 **Verified 2026-09-14, and half of it has moved since capture.** The port now
-*has* a section - `## v0.4.25 - the interface moves to Qt`, with its own Goal,
+*has* a section - `## v0.4.26 - the interface moves to Qt`, with its own Goal,
 `Required scope` and Definition of done - so "every port item reads as placed by
 no section" is no longer true; `bin/docket next` places `PL-G59B` by it. What
 remains true is the anchoring half, and it is the consequential one:
 `bin/docket wave` still reports `Step: between numbered steps (- on the
 timeline): v0.4.x - the code is the model`, `Next: Gate 1`, `Scope: the Required
-scope of v0.5.0` and `Beat: implement v0.5.0`, with no mention of v0.4.25 at
+scope of v0.5.0` and `Beat: implement v0.5.0`, with no mention of the port's row at
 all - even though the timeline places that row *between* Gate 1 and v0.5.0.
 
 **Why it matters.** `wave` is what the `docket` skill tells a session to read
 first, above the queue, precisely because the queue cannot say which beat is
 due. It is now naming the wrong milestone: the next substantial work is the Qt
 port, and a session following `wave` starts v0.5.0's Required scope instead - on
-the surface `v0.4.25` is about to rewrite. The cause is that the anchor is found
+the surface the port is about to rewrite. The cause is that the anchor is found
 by scanning for the next *numbered* step, and the port deliberately sits on a
 `-` row; that is the general defect, and `PL-VFD8` is the same blind spot
 reported from the reserved-version side.
@@ -76,3 +76,9 @@ reported from the reserved-version side.
 own scoped section, so a project standing between Gate 1 and v0.5.0 is told the
 beat is v0.4.25, with that section's `Required scope` counted the way v0.5.0's
 is. A numbered step behind an unstarted `-` row does not become the beat.
+
+**Re-checked 2026-09-14 after `#576` merged.** `v0.4.25` was cut and the
+port's section renumbered to `v0.4.26`; `bin/docket wave` still reports
+`Beat: implement v0.5.0`, so the anchoring defect survived the renumber
+intact - which is the point, since it is about the row's shape rather than
+its number.

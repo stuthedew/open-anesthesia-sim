@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect
 feature: release-roadmap-seam
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, tests/unit
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/release.py, tests/unit/test_docket_digest_hook.py
 added: 2026-09-14
 verify: uv run pytest tests/unit/test_docket_digest_hook.py && grep -q RESERVED subprojects/docket/src/docket/cli.py
 ---

@@ -1,9 +1,15 @@
 ---
 id: PL-JFYT
 title: Flet compares a chart series by value, so 'series in chart.data_series' and list.index answer for the first of an equal pair - invisible while one run drew each compartment once
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: test, defect
+feature: teachable-case
+touches: src/anesthesia_sim/app/chart_series.py, tests/unit/test_simulation_view.py
 added: 2026-09-14
 ---
+
 
 **Problem.** Flet compares a chart series by value, so 'series in chart.data_series' and list.index answer for the first of an equal pair - invisible while one run drew each compartment once
 
@@ -44,3 +50,36 @@ control lists a frame assembles.
 **Done when.** No assertion in the view tests can pass because a *different*
 run's line happened to be equal to the one it asked about, and the reason is
 recorded where the next person writing such an assertion will read it.
+
+**Decision needed.** Which of three mechanisms stops a chart series ever being
+searched for by value, now that `PL-B9PY`'s decomposition makes two equal series
+possible. The brief's own "Open question" above names them; this records what
+each costs so the question can be answered in one read.
+
+1. **A test helper that searches by identity.** Cheapest, and it fixes the
+   assertions that exist. It does not stop the next test being written the
+   wrong way, so it relies on review catching it every time.
+2. **A note in `chart_series.py` that a chart series must never be looked up by
+   value.** Free, and it puts the reasoning where the lists are built - but a
+   note is not a check, and `CLAUDE.md` prefers the decidable half be moved into
+   code wherever it can be.
+3. **A check that fails a test file using `in` or `.index` against
+   `data_series`.** The only one that holds after the people who remember this
+   have gone. It is also the one that can be wrong: a legitimate membership test
+   would be refused, and `CLAUDE.md` warns that a check firing without changing
+   a decision is itself a defect.
+
+**This is a session's call rather than the project owner's** - it rests on what
+the code should look like, not on what the project is for - so whoever picks it
+up should choose, say why, and record the rejected two.
+
+**The measurement is sound and does not need redoing.** `fch.LineChartData` is a
+dataclass carrying a generated `__eq__`; two freshly built series with the same
+colour and stroke width compare equal while not being identical, and
+`[a, b].index(b)` returns `0`.
+
+**Why P2 rather than P3.** Nothing shipped searches by value today, so nothing
+is currently wrong. What makes it worth doing before `PL-8PSW` - overlay two
+branches on one time axis - is that `PL-8PSW` is what makes two equal series
+routine, and every assertion written between now and then is written against a
+property that is about to stop holding.

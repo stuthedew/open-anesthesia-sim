@@ -10,6 +10,7 @@ milestone: v0.4.25
 touches: docs/items/, docs/MODEL.md, docs/WORKING_NOTES.md, src/anesthesia_sim/app/theme.py
 added: 2026-09-14
 closed: 2026-09-14
+pr: 576
 verify: '! grep -rq "^\*\*.v0.5.1..s Required scope" docs/items/ && ! grep -qF "v0.5.1" src/anesthesia_sim/app/theme.py docs/MODEL.md'
 ---
 
