@@ -3683,11 +3683,10 @@ where the claim above was found overstated.
 ### The control-input record
 
 Every change to a runtime control that the model actually runs under is
-recorded against the simulated time it took effect, alongside the
-concentration history, and cleared with it. What that record is for, what
-it does and does not assert, and why it is shaped the way it is are under
-"The control-input timeline" below, with the display rules the rest of the
-interface section carries.
+recorded against the simulated time it took effect, held with the run, and
+cleared with it. What that record is for, what it does and does not assert,
+and why it is shaped the way it is are under "The control-input timeline"
+below, with the display rules the rest of the interface section carries.
 
 #### The run is that record, and every state is derived from it
 
@@ -5142,11 +5141,10 @@ three.
 
 ### The control-input timeline
 
-**What it is.** A record of the settings a run was given, kept beside the
-concentration history and cleared with it. Each entry is one change the
-model actually ran under: the simulated time it took effect, the index of
-the history sample it took effect at, which control, the values before and
-after, and the unit both are in.
+**What it is.** A record of the settings a run was given, held with the run
+and cleared with it. Each entry is one change the model actually ran under:
+the simulated time it took effect, which user adjustment it belongs to,
+which control, the values before and after, and the unit both are in.
 
 **Why the model needs one at all.** A curve without its inputs is not a
 result anybody can check. The exercises this simulator exists to support
