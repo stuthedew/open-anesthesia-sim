@@ -3,12 +3,13 @@ id: PL-J7C5
 title: Cite symbols rather than line numbers in the contrast table's reasons
 priority: P3
 effort: S
-status: ready
+status: done
+closed: 2026-09-14
 classes: defect, infra
 feature: dev-tooling
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-02
-verify: uv run pytest tests/unit/test_contrast_check.py && ! grep -qE '[.]py:[0-9]' tools/contrast_check.py
+verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'def test_a_line_number_citation_is_refused' tests/unit/test_contrast_check.py
 ---
 
 **Problem.** Each `Requirement` in `tools/contrast_check.py`'s `REQUIREMENTS`
@@ -56,3 +57,66 @@ across the documentation tree, and asserting that a cited symbol still exists
 in the cited module is the same kind of question asked of a different token.
 Worth deciding as one mechanism rather than two, and worth noting that item
 files are the larger surface.
+
+## Worked 2026-09-14: the requirement table is done, the item files are refused on a count, and this item's own `verify:` could never have passed
+
+**The requirement table half is built, by `PL-GJDW` rather than here.** No
+`reason` in `REQUIREMENTS` names a line number; `check_citations` refuses one
+outright through `LINE_CITATION_RE` and resolves every cited symbol against
+`app/theme.py` and `app/simulation_view.py` with `ast`. Both halves are tested -
+`test_a_line_number_citation_is_refused` and, against the real tree rather than
+a fixture, `test_every_requirement_names_a_symbol_that_exists`. That is the
+"extend `tools/doc_check.py`" option this brief proposed, landed in
+`contrast_check.py` where the table it guards lives.
+
+**This item's `verify:` command could never have passed, and is corrected.**
+`! grep -qE '[.]py:[0-9]' tools/contrast_check.py` matches exactly one line -
+`tools/contrast_check.py:85`, the comment that documents `LINE_CITATION_RE` by
+showing the form it refuses. A pattern cannot document itself without
+containing an instance, so the command failed on the presence of the guard
+rather than on its absence. It now names the test instead. Written away from
+the work and never run, which is the failure the skill's `verify:` section
+describes.
+
+### The item-file half: refused, on the count this project asks for before tightening anything
+
+The brief says item bodies "cite line numbers routinely, nothing checks them",
+names item files "the larger surface", and asks whether the same mechanism
+should cover them. Measured 2026-09-14 across `docs/items/`:
+
+| | |
+| --- | --- |
+| `path.py:N` citations in item files | **268** across 103 files |
+| whose path resolves in the tree | 264 |
+| whose **line** is past end of file | **0** |
+| whose **path** no longer exists | 4 |
+
+**A line-existence check would catch nothing.** Zero of 264. The drift this
+item was filed for - `PL-YMY7`'s eleven cited lines landing on entirely
+different statements twice in nine days - moves a citation to a *valid line
+holding different content*, which is the half no checker can decide. That is
+the same line `CLAUDE.md` draws for `doc_check.py`: it decides whether a cited
+path exists, never whether the sentence around it is still true.
+
+**A path check over the 4 would fail correct prose.** `PL-69J3` cites
+`verify_findings.py:83` inside a sentence whose subject *is* the retirement:
+"PL-STNV retired `tools/review-verification/`, taking three of the original
+sites ... with it". The citation is a historical record and the sentence says
+so. One false positive against three real finds, on a hard error, is what this
+file's own comments refuse repeatedly - and `PL-KJ63` already cost a rewording
+of prose that was not wrong. Demoting it to an advisory fails `CLAUDE.md`'s
+retirement test on arrival: four lines every run, one of them wrong, nobody
+acting on them.
+
+**So: symbol names alone are enough, and the rule is where a citation must
+stay true rather than where it appears.** A `reason` in `REQUIREMENTS` is a
+live specification and is checked. A line citation in an item brief is a dated
+measurement - what a file said on a day, often a day on which it was about to
+be deleted - and stays.
+
+**The one genuinely misleading citation is fixed rather than checked.**
+`PL-VP7N` cited `core/respiratory_system.py:138` twice, in sentences saying
+nothing about a rename, so a reader followed it to a file that has not existed
+since `PL-006` renamed it to `core/uptake_system.py`. Both now name
+`core/uptake_system.py`'s `advance`, and the first records the old name and the
+item that changed it.

@@ -18,8 +18,9 @@ verify: uv run pytest -k maximum_simulation_step
 **Problem.** `core/` accepts any simulation step and returns a plausible wrong
 number. `docs/MODEL.md:560-561` states the operator split "has an applicability
 domain, and stepping outside it must fail rather than produce a number", but the
-only check on the step is `require_positive_finite("simulation_step_s", ...)` at
-`core/respiratory_system.py:138`, which has no upper bound. Measured over 600 s
+only check on the step is `require_positive_finite("simulation_step_s", ...)` in
+`core/uptake_system.py`'s `advance`, which has no upper bound. (The module was
+`core/respiratory_system.py` when this was measured; `PL-006` renamed it.) Measured over 600 s
 of sevoflurane wash-in, against the same run at the shipped 0.1 s step:
 
 | Step | Alveolar error at 600 s |
@@ -47,9 +48,8 @@ is explicit that an obvious failure is preferred to a plausible-looking number
 when correctness cannot be established; this is the path where that is not
 true.
 
-**Where.** `core/respiratory_system.py:138` (`advance`),
-`core/simulation.py` (`SimulationState.advance`), `app/simulation_view.py:39`,
-`docs/MODEL.md:560-566`.
+**Where.** `core/uptake_system.py` (`advance`), `core/simulation.py`
+(`SimulationState.advance`), `app/simulation_view.py`, `docs/MODEL.md`.
 
 **Decided approach.** A documented `MAXIMUM_SIMULATION_STEP_S` in core,
 validated in `RespiratorySystem.advance` and `SimulationState.advance`, raising
