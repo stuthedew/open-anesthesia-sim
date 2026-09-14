@@ -9,6 +9,7 @@ feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core, tests/unit, tests/integration, docs/ARCHITECTURE.md
 added: 2026-09-06
 closed: 2026-09-14
+pr: 570
 verify: uv run pytest tests/integration/test_controller.py && grep -q 'def test_a_case_forks_at_every_instant_the_trunk_offers' tests/integration/test_controller.py
 ---
 

@@ -35,7 +35,7 @@ Two consequences carry this module, and both are what `PL-T691` exists for:
 
 **Two evaluation paths, and they are not interchangeable.** `state_at` is
 canonical: one matrix exponential per inter-event interval, composed in
-recording order from `t = 0`, so two evaluations of the same definition at the same
+recording order from the run's opening, so two evaluations of the same definition at the same
 instant perform the identical sequence of operations and agree bit for bit.
 `evaluate` is the display path: inside one segment it reuses a single
 propagator across uniformly spaced columns, which is what makes a frame cheap
@@ -76,15 +76,20 @@ from anesthesia_sim.core.matrix_exponential import Matrix, matrix_exponential, p
 class Keyframe:
     """The exact state at one segment boundary, computed canonically.
 
-    One of these per setting change, and one at `t = 0`, is the whole of what
-    a run stores besides its settings. Everything between two of them is
+    One of these per setting change, and one at the run's opening, is the
+    whole of what a run stores besides its settings. Everything between two of them is
     recovered by propagating the earlier one forward, which is why a keyframe
     is computed canonically even though the values drawn from it are not:
     an error here is inherited by every value derived from it, while an error
     on the display path affects one column of one frame.
 
     Attributes:
-        elapsed_s: Simulated time this state was reached at, in seconds.
+        instant_s: The instant this state was reached at, in seconds, on the
+            case's own axis - simulated time since induction. It is not time
+            elapsed since the run holding it began, which are the same number
+            for a run opening at induction and are not for a branch: a branch
+            forked at 900 s opens with a keyframe stamped 900.0 having lasted
+            nothing.
         state: The trajectory in `governing_equations`' own state order,
             `STATE_SIZE` entries long. The two accumulator states are
             cumulative from the start of the run rather than per segment,
@@ -94,7 +99,7 @@ class Keyframe:
             adding.
     """
 
-    elapsed_s: float
+    instant_s: float
     state: tuple[float, ...]
 
 
@@ -110,7 +115,7 @@ class RunSegment:
 
     Attributes:
         settings: What `build_system_matrix` assembles $`A`$ from, in force
-            from `opening.elapsed_s` until the next segment begins.
+            from `opening.instant_s` until the next segment begins.
         opening: The state at the segment's first instant.
     """
 
@@ -192,41 +197,88 @@ class RunDefinition:
     validating it.
 
     **It answers only within the run.** `state_at` and `evaluate` refuse a
-    time past `duration_s`, because the run definition can be evaluated arbitrarily far
+    time past `reached_s`, because the run definition can be evaluated arbitrarily far
     ahead and what comes back would be a prediction of a run that has not
     happened. Drawn on the same axis as the run itself it would be
     indistinguishable from it.
     """
 
-    __slots__ = ("_duration_s", "_segments")
+    __slots__ = ("_reached_s", "_segments")
 
-    def __init__(self, settings: UptakeEquationSettings, initial_state: tuple[float, ...]) -> None:
-        """Open a run at `t = 0` under `settings`, from `initial_state`.
+    def __init__(
+        self,
+        settings: UptakeEquationSettings,
+        initial_state: tuple[float, ...],
+        *,
+        opened_at_s: float,
+    ) -> None:
+        """Open a run at `opened_at_s` under `settings`, from `initial_state`.
+
+        **The opening instant is on the case's axis, and it is required.** A
+        run that begins at induction opens at zero and a branch opens at the
+        instant it was forked from, and those are the same axis: simulated
+        time is measured from induction for both, because uptake is a function
+        of time since induction and a branch is one patient's case continuing.
+        The parameter has no default deliberately - a default of zero would be
+        wrong exactly once, at the branch, and wrong there means a whole
+        trajectory drawn under a patient context the case never had, with
+        every value in it individually correct. `CLAUDE.md`'s safety-critical
+        standard refuses a silently substituted default for that reason, so a
+        caller says which instant it means and a caller that forgets is a
+        `TypeError` rather than a plausible run.
 
         Args:
             settings: The settings the run begins under.
-            initial_state: The state at `t = 0`, in `governing_equations`'
-                state order. Its accumulators are the run's starting totals,
-                which is zero for a run that has delivered nothing.
+            initial_state: The state at `opened_at_s`, in
+                `governing_equations`' state order. Its accumulators are the
+                run's starting totals, which is zero for a run that has
+                delivered nothing and the parent's running totals for a fork.
+            opened_at_s: The case instant this run opens at, in seconds. Zero
+                for a run beginning at induction; the fork instant for a
+                branch, which carries the parent's keyframe as its
+                `initial_state`.
 
         Raises:
-            SimulationConfigurationError: `initial_state` came from the
-                display path, is not `STATE_SIZE` long, holds a non-finite
-                value, or does not carry exactly one in `UNIT_STATE`. The
-                first is a fork opening from a drawing value, which
-                `docs/MODEL.md` § "The canonical evaluation rule" refuses;
-                the last is what makes every forcing term in
-                `build_system_matrix` mean what it says; a state that carried
-                anything else there would scale the whole of the delivery term
-                without changing any setting a reader can see.
+            SimulationConfigurationError: `opened_at_s` is not finite or is
+                negative, since no case instant precedes induction; or
+                `initial_state` came from the display path, is not
+                `STATE_SIZE` long, holds a non-finite value, or does not carry
+                exactly one in `UNIT_STATE`. The display-path case is a fork
+                opening from a drawing value, which `docs/MODEL.md`
+                § "The canonical evaluation rule" refuses; the last is what
+                makes every forcing term in `build_system_matrix` mean what it
+                says; a state that carried anything else there would scale the
+                whole of the delivery term without changing any setting a
+                reader can see.
         """
 
         _require_state(initial_state)
 
+        if not isfinite(opened_at_s):
+            raise SimulationConfigurationError(f"{opened_at_s} s is not a finite instant")
+
+        if opened_at_s < 0.0:
+            raise SimulationConfigurationError(
+                f"a run opens at or after induction, not at {opened_at_s} s"
+            )
+
         self._segments: tuple[RunSegment, ...] = (
-            RunSegment(settings=settings, opening=Keyframe(0.0, initial_state)),
+            RunSegment(settings=settings, opening=Keyframe(opened_at_s, initial_state)),
         )
-        self._duration_s = 0.0
+        self._reached_s = opened_at_s
+
+    @property
+    def opened_at_s(self) -> float:
+        """The case instant this run opens at: zero at induction, the fork for a branch.
+
+        Read off the first segment rather than stored beside it, so there is
+        one place the run's opening is recorded and no second copy to fall out
+        of step with it. `_require_within_run` reads the same field, which is
+        what makes this the instant a caller may clip an axis to and be sure
+        of not being refused.
+        """
+
+        return self._segments[0].opening.instant_s
 
     @property
     def segments(self) -> tuple[RunSegment, ...]:
@@ -235,42 +287,49 @@ class RunDefinition:
         return self._segments
 
     @property
-    def duration_s(self) -> float:
+    def reached_s(self) -> float:
         """The simulated time the run has reached, in seconds."""
 
-        return self._duration_s
+        return self._reached_s
 
-    def advance_to(self, elapsed_s: float) -> None:
-        """Move the time the run has reached to `elapsed_s`.
+    def advance_to(self, instant_s: float) -> None:
+        """Move the time the run has reached to `instant_s`.
 
         Records no state: the states are already implied by the settings and
         recovered on demand. What this changes is how far the run definition may be
         evaluated, which is what stops a prediction being drawn as the run.
 
+        The reach has no lower bound of its own because it cannot need one:
+        `__init__` seeds it from `opened_at_s` and this is the only writer,
+        which never lowers it. That invariant is what lets `_require_within_run`
+        treat the opening and the reach as a closed span, so a second writer of
+        `_reached_s` - a reset in place, a deserializer restoring a saved run -
+        would have to re-establish it rather than assume it.
+
         Raises:
-            SimulationConfigurationError: `elapsed_s` is not finite, or is
+            SimulationConfigurationError: `instant_s` is not finite, or is
                 earlier than the time already reached. A run cannot un-happen,
                 and rewinding the reach would leave the segments recorded
                 after it describing a stretch the run definition would then refuse to
                 evaluate.
         """
 
-        if not isfinite(elapsed_s):
+        if not isfinite(instant_s):
             raise SimulationConfigurationError(
-                f"a run's elapsed time is {elapsed_s}, which is not finite"
+                f"a run cannot reach {instant_s} s, which is not a finite instant"
             )
 
-        if elapsed_s < self._duration_s:
+        if instant_s < self._reached_s:
             raise SimulationConfigurationError(
-                f"a run cannot go back from {self._duration_s} s to {elapsed_s} s"
+                f"a run cannot go back from {self._reached_s} s to {instant_s} s"
             )
 
-        self._duration_s = elapsed_s
+        self._reached_s = instant_s
 
     def record_change(self, settings: UptakeEquationSettings) -> None:
         """Note that the run continues under `settings` from now on.
 
-        "Now" is `duration_s`, the time the run has reached; see the class
+        "Now" is `reached_s`, the time the run has reached; see the class
         docstring for why that is not an argument.
 
         Three calls change nothing and are dropped rather than recorded, each
@@ -295,7 +354,7 @@ class RunDefinition:
         if settings == open_segment.settings:
             return
 
-        if self._duration_s == open_segment.opening.elapsed_s:
+        if self._reached_s == open_segment.opening.instant_s:
             if len(self._segments) > 1 and settings == self._segments[-2].settings:
                 self._segments = self._segments[:-1]
                 return
@@ -306,15 +365,15 @@ class RunDefinition:
         self._segments = (
             *self._segments,
             RunSegment(
-                settings, Keyframe(self._duration_s, self._canonical_state_at(self._duration_s))
+                settings, Keyframe(self._reached_s, self._canonical_state_at(self._reached_s))
             ),
         )
 
-    def state_at(self, elapsed_s: float) -> tuple[float, ...]:
-        """The canonical state at `elapsed_s`, in `governing_equations`' state order.
+    def state_at(self, instant_s: float) -> tuple[float, ...]:
+        """The canonical state at `instant_s`, in `governing_equations`' state order.
 
         One matrix exponential from the keyframe that opens the segment
-        `elapsed_s` falls in, over the interval between them. Two calls with
+        `instant_s` falls in, over the interval between them. Two calls with
         the same argument on the same definition perform the identical sequence of
         operations, so they return bit-identical values; this is the path a
         keyframe, an export or a fork's starting state is taken from, and
@@ -327,13 +386,13 @@ class RunDefinition:
         at all. `tests/reference/test_canonical_evaluation.py` gates that.
 
         Raises:
-            SimulationConfigurationError: `elapsed_s` is not finite, is
-                negative, or is past the time the run has reached.
+            SimulationConfigurationError: `instant_s` is not finite, precedes
+                `opened_at_s`, or is past the time the run has reached.
         """
 
-        self._require_within_run(elapsed_s)
+        self._require_within_run(instant_s)
 
-        return self._canonical_state_at(elapsed_s)
+        return self._canonical_state_at(instant_s)
 
     def evaluate(self, start_s: float, stop_s: float, columns: int) -> SampledWindow:
         """`columns` states evenly spaced across `[start_s, stop_s]`, for drawing.
@@ -362,8 +421,9 @@ class RunDefinition:
 
         Raises:
             SimulationConfigurationError: `columns` is below one; either bound
-                is not finite; `start_s` is negative; `stop_s` precedes
-                `start_s`; or `stop_s` is past the time the run has reached.
+                is not finite; either bound precedes `opened_at_s`; `stop_s`
+                precedes `start_s`; or `stop_s` is past the time the run has
+                reached.
         """
 
         if columns < 1:
@@ -388,7 +448,7 @@ class RunDefinition:
             segment = self._segments[segment_index]
             last = _last_column_before(self._opening_after(segment_index), times_s, column)
             state = _advanced(
-                _propagator(segment, times_s[column] - segment.opening.elapsed_s),
+                _propagator(segment, times_s[column] - segment.opening.instant_s),
                 segment.opening.state,
             )
             states.append(state)
@@ -410,16 +470,27 @@ class RunDefinition:
         The chart's own display path, and it differs from `evaluate` in the
         two ways a drawn trace needs and a bare window does not.
 
-        **The grid is anchored to `t = 0`, not to the window.** Columns land
-        on multiples of `spacing_s` measured from the run's start, so a
-        window that follows the run reuses every column time it had last
-        frame and gains at most one. `evaluate` spaces its columns across
-        whichever bounds it is given, which makes every column a new instant
-        on every frame: the drawn points then all move, and `PL-Q197`
-        measured that as what saturated the Flutter client - 2 700 discrete
-        control mutations a frame - before decimation was anchored to the run
-        for exactly this reason. Anchoring the *evaluation* times is that
-        same fix one level over.
+        **The grid is anchored to the case's zero, not to the window and not
+        to `opened_at_s`.** Columns land on absolute multiples of `spacing_s`
+        on the case's own axis, so a window that follows the run reuses every
+        column time it had last frame and gains at most one. `evaluate` spaces
+        its columns across whichever bounds it is given, which makes every
+        column a new instant on every frame: the drawn points then all move,
+        and `PL-Q197` measured that as what saturated the Flutter client -
+        2 700 discrete control mutations a frame - before decimation was
+        anchored for exactly this reason. Anchoring the *evaluation* times is
+        that same fix one level over.
+
+        **Do not re-anchor this to the run's own opening.** For a run opening
+        at induction the two are the same number, so the distinction looks
+        like pedantry; for a branch they are not, and anchoring per-run is
+        precisely the defect `PL-2R2C` recorded. Measured there: a branch
+        forked at 55.3 s and drawn on a 13-column 120 s axis shared 2 of its
+        8 columns with its trunk when anchored to its own opening, and 8 of 8
+        anchored here. Two traces on one axis can only be read against each
+        other at matched instants, so a difference trace or a shared tooltip
+        built over per-run grids would be wrong rather than merely coarse.
+        `docs/MODEL.md` § "What the chart draws" states the same rule.
 
         **Every control event inside the window gets its own column, and it
         costs nothing.** Between events the trajectory is a sum of
@@ -456,9 +527,9 @@ class RunDefinition:
 
         Raises:
             SimulationConfigurationError: `spacing_s` is not positive or not
-                finite; either bound is not finite; `start_s` is negative;
-                `stop_s` precedes `start_s`; or `stop_s` is past the time the
-                run has reached.
+                finite; either bound is not finite; either bound precedes
+                `opened_at_s`; `stop_s` precedes `start_s`; or `stop_s` is
+                past the time the run has reached.
         """
 
         if not isfinite(spacing_s) or spacing_s <= 0.0:
@@ -534,7 +605,7 @@ class RunDefinition:
                 indexed.setdefault(time_s, multiple)
 
         for segment in self._segments:
-            event_s = segment.opening.elapsed_s
+            event_s = segment.opening.instant_s
 
             if start_s < event_s < stop_s:
                 # An event column overrides a grid column at the same
@@ -546,49 +617,73 @@ class RunDefinition:
 
         return times_s, [indexed[time_s] for time_s in times_s]
 
-    def _state_from_opening(self, segment: RunSegment, elapsed_s: float) -> tuple[float, ...]:
-        """The state at `elapsed_s`, propagated from `segment`'s own keyframe.
+    def _state_from_opening(self, segment: RunSegment, instant_s: float) -> tuple[float, ...]:
+        """The state at `instant_s`, propagated from `segment`'s own keyframe.
 
         A column landing exactly on the keyframe is the event-column case,
         and it is answered by reading the keyframe rather than by forming a
         propagator over a zero interval.
         """
 
-        if elapsed_s == segment.opening.elapsed_s:
+        if instant_s == segment.opening.instant_s:
             return segment.opening.state
 
         return _advanced(
-            _propagator(segment, elapsed_s - segment.opening.elapsed_s), segment.opening.state
+            _propagator(segment, instant_s - segment.opening.instant_s), segment.opening.state
         )
 
-    def _canonical_state_at(self, elapsed_s: float) -> tuple[float, ...]:
+    def _canonical_state_at(self, instant_s: float) -> tuple[float, ...]:
         """`state_at` without the bounds check, for the keyframe path.
 
-        `record_change` evaluates at `duration_s`, which is inside the run by
+        `record_change` evaluates at `reached_s`, which is inside the run by
         construction, so it would otherwise re-check what it just established.
         """
 
-        segment = self._segments[self._segment_index_at(elapsed_s)]
+        segment = self._segments[self._segment_index_at(instant_s)]
 
         return _advanced(
-            _propagator(segment, elapsed_s - segment.opening.elapsed_s), segment.opening.state
+            _propagator(segment, instant_s - segment.opening.instant_s), segment.opening.state
         )
 
-    def _segment_index_at(self, elapsed_s: float) -> int:
-        """Index of the segment the run was under at `elapsed_s`.
+    def _segment_index_at(self, instant_s: float) -> int:
+        """Index of the segment the run was under at `instant_s`.
 
         By binary search, which is what keeps the cost of answering a window a
         property of the window rather than of the run: a linear walk would put
         the run's whole length back into every frame, in the one method the
         closed form exists to take it out of. The openings ascend because
-        `record_change` only ever appends at `duration_s`, which never
+        `record_change` only ever appends at `reached_s`, which never
         decreases.
+
+        **An instant before the first opening is refused rather than wrapped.**
+        `bisect_right` answers zero there, so the index is `-1`, which Python
+        reads as the *last* segment - the one furthest from any right answer.
+        Nothing then fails: `_propagator` returns `None` for the non-positive
+        interval that follows, so the caller is handed that segment's keyframe
+        as though it were the state at an instant the run did not exist for.
+        `_require_within_run` already refuses such an instant on every public
+        path, which makes this the second of two guards rather than the first;
+        it is here because what it prevents is silent and what it costs is one
+        comparison. `_canonical_state_at` is the caller that reaches this walk
+        without the bound, by design.
+
+        Raises:
+            SimulationConfigurationError: `instant_s` precedes the instant the
+                run opens at.
         """
 
-        return bisect_right(self._segments, elapsed_s, key=_opening_of) - 1
+        index = bisect_right(self._segments, instant_s, key=_opening_of) - 1
 
-    def _advance_index_to(self, elapsed_s: float, from_index: int) -> int:
-        """Index of the segment holding `elapsed_s`, searching forward from `from_index`.
+        if index < 0:
+            raise SimulationConfigurationError(
+                f"this run opens at {self._segments[0].opening.instant_s} s, so it was under "
+                f"no settings at {instant_s} s"
+            )
+
+        return index
+
+    def _advance_index_to(self, instant_s: float, from_index: int) -> int:
+        """Index of the segment holding `instant_s`, searching forward from `from_index`.
 
         The window walk's own lookup. It hands back the index it last used, so
         the whole walk costs one pass over the segments the window covers
@@ -601,7 +696,7 @@ class RunDefinition:
 
         while (
             index + 1 < len(self._segments)
-            and self._segments[index + 1].opening.elapsed_s <= elapsed_s
+            and self._segments[index + 1].opening.instant_s <= instant_s
         ):
             index += 1
 
@@ -616,37 +711,47 @@ class RunDefinition:
         """
 
         if index + 1 < len(self._segments):
-            return self._segments[index + 1].opening.elapsed_s
+            return self._segments[index + 1].opening.instant_s
 
         return inf
 
-    def _require_within_run(self, elapsed_s: float) -> None:
+    def _require_within_run(self, instant_s: float) -> None:
         """Refuse an instant the run has not reached, or one before it began.
 
+        **The lower bound is the run's own opening rather than the literal
+        zero.** They are the same number for a run opening at induction and
+        they are not for one opening anywhere else, so reading the bound off
+        the segments keeps the refusal true of both without a caller naming
+        which kind it holds - and a bound left at zero would admit the whole
+        span before such a run existed, which `_segment_index_at` answers
+        silently rather than by failing.
+
         Raises:
-            SimulationConfigurationError: `elapsed_s` is not finite, is
-                negative, or is past `duration_s`.
+            SimulationConfigurationError: `instant_s` is not finite, precedes
+                the instant the run opens at, or is past `reached_s`.
         """
 
-        if not isfinite(elapsed_s):
-            raise SimulationConfigurationError(f"{elapsed_s} s is not a finite instant")
+        if not isfinite(instant_s):
+            raise SimulationConfigurationError(f"{instant_s} s is not a finite instant")
 
-        if elapsed_s < 0.0:
+        opening_s = self._segments[0].opening.instant_s
+
+        if instant_s < opening_s:
             raise SimulationConfigurationError(
-                f"a run has no state at {elapsed_s} s, before it began"
+                f"a run that opens at {opening_s} s has no state at {instant_s} s, before it began"
             )
 
-        if elapsed_s > self._duration_s:
+        if instant_s > self._reached_s:
             raise SimulationConfigurationError(
-                f"this run has reached {self._duration_s} s, so it has no state at "
-                f"{elapsed_s} s; that would be a prediction rather than the run"
+                f"this run has reached {self._reached_s} s, so it has no state at "
+                f"{instant_s} s; that would be a prediction rather than the run"
             )
 
 
 def _opening_of(segment: RunSegment) -> float:
     """When `segment` opens - the key the segment search is ordered on."""
 
-    return segment.opening.elapsed_s
+    return segment.opening.instant_s
 
 
 def _last_column_before(limit_s: float, times_s: tuple[float, ...], first_column: int) -> int:

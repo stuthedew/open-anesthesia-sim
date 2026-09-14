@@ -3811,33 +3811,43 @@ the right answer.
 
 **What this requires of a branch.** `ROADMAP.md` item 12 asks a branched run
 to reproduce its parent element-wise rather than within a tolerance, and this
-rule supplies that under two conditions, both measured rather than assumed:
+rule supplies that under one condition and one property of how a branch is
+built, both measured rather than assumed:
 
 - **A branch opens at a keyframe.** Restarting from the canonical state at an
   instant the parent has no keyframe for replaces one propagation over an
   interval with two over its halves, which is a different rounding of the same
   exact solution: measured at up to 5.3e-13 in an accumulator. Opening at a
   stretch boundary reproduces the parent bit for bit.
-- **The child's clock is re-based by subtracting the fork instant**, rather
-  than by the caller naming an offset, because that subtraction does not
-  always round-trip. With a fork at 900 s, `(900.0 + 1e-6) - 900.0` is
-  9.999999974752427e-07 and not 1e-6, so a child asked for its own `1e-6`
-  propagates over a different interval from its parent and lands one unit in
-  the last place away.
+- **The branch's run definition opens *at* the fork instant, on the case's own
+  axis**, carrying the parent's keyframe. Parent and child then name the same
+  case instant, and each forms its propagation interval as that instant minus
+  the opening of the segment holding it — from the identical keyframe, by the
+  identical subtraction. The reproduction follows from construction rather
+  than from a caller having performed the right conversion.
 
-Neither is a defect in the rule. They are the two places a plausible branch
-implementation would lose the guarantee silently, so they are gated where the
-rule is.
+The first is a defect a plausible branch implementation would introduce. The
+second is what removes a second one: until 2026-09-14 (`PL-ZMRT`, project
+owner) a branch's definition opened at a zero of its own, and the rule here
+required every caller to reach it by *subtracting* the fork instant from the
+case's time rather than by naming the branch's own elapsed time. That
+distinction was load-bearing, because the subtraction does not always
+round-trip — with a fork at 900 s, `(900.0 + 1e-6) - 900.0` is
+9.999999974752427e-07 and not 1e-6, so a child asked for its own `1e-6`
+propagated over a different interval from its parent and landed one unit in
+the last place away. The measurement is still arithmetically true and it no
+longer describes a hazard this program can express: with one frame there is no
+offset for a caller to name and no conversion to get right.
 
-**The clock re-based is the run definition's, and it is the only one.** A
-branch's *simulated time* — what the clock displays, what stamps every recorded
-control change, what rules the chart's axis, and what the supported run length
-is measured against — continues the case's rather than restarting at the fork.
-The two are separate quantities and only the first is re-based:
-`SimulationController.resumed_at()` opens the branch's definition at its own
-zero, and `advance()` and `drawn_window()` subtract the fork instant from the
-case's time before the definition is asked anything. No caller ever names an
-offset, which is what the bullet above requires.
+**One simulated-time frame, and every reader is in it.** A branch's *simulated
+time* — what the clock displays, what stamps every recorded control change,
+what rules the chart's axis, what the supported run length is measured
+against, and what its run definition's segments and keyframes are stamped in —
+is the case's, measured from induction, and continues the parent's rather than
+restarting at the fork. `SimulationController.resumed_at()` opens the branch's
+definition at the fork instant; `advance()` and `drawn_window()` pass case time
+straight through to it. Nothing converts between frames anywhere, because there
+is only the one.
 
 Continuing the case's time is not a presentation preference. Uptake and
 distribution is a function of time since induction, so a branch counting from
@@ -3847,16 +3857,32 @@ wrong patient context, which `CLAUDE.md`'s safety-critical standard counts as a
 failure in its own right. It also keeps simulated time one multiplication under
 "Simulated time is a count of steps, not a running total": a branch's instants
 are the case's step count times the step, not the fork instant plus a second
-total.
+total. Since `PL-ZMRT` that holds of the run definition's instants as well as
+of the clock's, where before it held only of the clock.
 
-**What the subtraction is worth, measured 2026-09-14.** On a 120 s sevoflurane
-run forked at its 60 s keyframe and advanced 60 s further, over the 601 case
-instants the two share: asking the branch for its own `steps × step` gives a
-different answer from the parent at **354 of them**, while subtracting the fork
-instant gives the same answer at every one. Both are exact solutions of the
-same equations; only the second is the same sequence of floating-point
-operations, which is the kind of sameness `ROADMAP.md` item 12 asks for.
-`tests/integration/test_controller.py` holds both halves.
+**What one frame is worth, measured 2026-09-14.** Two measurements, on a 120 s
+sevoflurane run and the branches taken from it.
+
+The first is the reproduction. A branch forked at the 60 s keyframe and
+advanced 60 s further agrees with its parent at all 601 case instants the two
+share, because both are handed the same float — the case's own `steps × step` —
+and neither performs any arithmetic on it. A definition opened at a zero of its
+own and asked for its own `steps × step` instead differs from the parent at
+**354 of those 601**. Both are exact solutions of the same equations; only the
+first is the same sequence of floating-point operations, which is the kind of
+sameness `ROADMAP.md` item 12 asks for. The old arrangement could reach the
+first answer too, but only through a caller-side subtraction it could not
+enforce; this one cannot express the second.
+
+The second is what a reader sees. Drawn columns sit on absolute multiples of
+the spacing (§ "What the chart draws"), so one frame puts a trunk and a branch
+on the same column instants without the display path being told anything. On a
+13-column 120 s axis with the fork deliberately off the grid at 55.3 s, **all 8
+of the branch's columns** are instants the trunk also draws; with the branch
+anchored to its own zero it drew 55.3, 65.3, 75.3 … and shared **2 of 8**, so
+the two traces could not be read against each other at matched points.
+`tests/integration/test_controller.py` and
+`tests/reference/test_canonical_evaluation.py` hold both.
 
 ### Supported input ranges
 
@@ -4402,12 +4428,16 @@ behind the trace that could disagree with it. Where the columns fall is
 decided by two rules, and both are properties this document requires rather
 than optimisations:
 
-- **The columns sit on a grid anchored to the run's start**, at the spacing
-  the selected time base and the per-trace column budget imply. A window
-  following the run therefore keeps every column it had and gains at most
-  one, so a steady trace is not redrawn on every frame. A grid anchored to
-  the viewport instead would move on every scroll and resize, and rewrite
-  the whole chart on every frame.
+- **The columns sit on a grid anchored to the case's zero**, at absolute
+  multiples of the spacing the selected time base and the per-trace column
+  budget imply. A window following the run therefore keeps every column it had
+  and gains at most one, so a steady trace is not redrawn on every frame. A
+  grid anchored to the viewport instead would move on every scroll and resize,
+  and rewrite the whole chart on every frame. The anchor is the case's zero
+  rather than each run's own opening, which is what puts a branch's columns on
+  the same instants as the trunk's and lets the two be read against each other
+  at matched points; a per-run anchor put a branch forked at 55.3 s on 55.3,
+  65.3, 75.3 … while the trunk drew 0, 10, 20 ….
 - **Every control event inside the window is a column of its own.** Between
   events the trajectory is a sum of exponentials with bounded curvature and
   no hidden transients, so every sharp feature in a run is at an event
@@ -4987,9 +5017,10 @@ gridlines and labels fall at, and every rung is ruled into four to six
 intervals — the range that reads as a grid rather than as either a bare axis
 or a hatch. A single fixed interval cannot do that across the ladder: the 60 s
 interval this replaced would rule a twelve-hour axis into 720 lines and a solid
-block. Ticks stand at multiples of the interval measured from the run's own
-start rather than from the window's left edge, so a gridline holds the same
-simulated time as the window slides underneath it.
+block. Ticks stand at multiples of the interval measured from the case's zero
+rather than from the window's left edge, so a gridline holds the same
+simulated time as the window slides underneath it — and holds it for every run
+on the axis, since a branch is on the same clock as the trunk it came from.
 
 **Fitting always fits.** It is the default mode, and past the widest declared
 rung the ladder continues by doubling rather than holding at the widest and

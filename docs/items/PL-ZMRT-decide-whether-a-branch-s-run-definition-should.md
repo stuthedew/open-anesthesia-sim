@@ -1,8 +1,15 @@
 ---
 id: PL-ZMRT
 title: Decide whether a branch's run definition should open at the fork instant, leaving the app one simulated-time frame instead of two
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: refactor
+feature: scenario-branching
+touches: src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/app/controller.py, tests/unit, tests/integration, tests/reference, docs/MODEL.md, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-14
+closed: 2026-09-14
+verify: uv run pytest tests/integration/test_controller.py && grep -q 'def test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from' tests/integration/test_controller.py
 ---
 
 **Problem.** Decide whether a branch's run definition should open at the fork instant, leaving the app one simulated-time frame instead of two
@@ -100,3 +107,53 @@ rather than its answer.**
   13 columns, a branch forked at 55.3 s shares 2 of its 8 drawn instants with
   the trunk, against 7 of 7 for a fork at 60.0 s. Nothing draws a branch yet, so
   it costs nothing until `PL-8PSW`, which is the item that needs this answered.
+
+**Decided yes, 2026-09-14** (project owner): the branch's run definition opens
+at the fork instant, leaving one simulated-time frame. What settled it was not
+precision - the brief is right that 0 of 601 probe instants differ either way -
+but which mistake each arrangement can *express*. Under two frames a caller
+handing a case instant to a branch's `state_at` got an exact, in-range,
+wrong-by-the-fork-instant answer that no bounds check could refuse, because
+both frames are legal non-negative floats inside the run. Under one frame there
+is no offset to name, so it cannot be said; the hazard the arrangement creates
+instead - an instant before the run opened - is refusable, and `PL-3LZB` landed
+the refusal ahead of it.
+
+**What shipped.**
+
+- `RunDefinition.__init__` takes a required keyword-only `opened_at_s` and
+  opens its first segment there; `opened_at_s` is readable, because the display
+  path clips to it. Required rather than defaulted: exactly one of the three
+  constructions in `src/` is non-zero, so a default would be wrong only at the
+  branch, and wrong there means a whole trajectory under a patient context the
+  case never had. A caller that forgets gets a `TypeError`.
+- `SimulationController.origin_s` is gone, with both subtractions - in
+  `advance` and in `drawn_window` - and `run_segments`' caveat about handing
+  out instants in a second frame.
+- `duration_s` became `reached_s` and the `elapsed_s` instants in
+  `core/run_definition.py` became `instant_s`, including `Keyframe.instant_s`.
+  On a branch `duration_s` was no longer a duration - a run forked at 900 s and
+  advanced 300 s reported 1200.0 - and the right number under a label that lies
+  is a safety failure by `CLAUDE.md`'s standard. `Keyframe.elapsed_s` was the
+  same defect one field over, and its spelling collision with
+  `SimulationState.elapsed_s` is what made `self._state.elapsed_s -
+  self.origin_s` writable in the first place.
+
+**Measured after the change, 2026-09-14.**
+
+- **Reproduction.** The branch agrees with its parent at all 601 shared case
+  instants, both handed the same float. A definition opened at its own zero and
+  asked for its own `steps x step` differs at **354 of 601** -
+  `test_a_branch_on_its_own_axis_would_not_reproduce_its_parent` builds that
+  rejected arrangement explicitly, since the controller can no longer produce
+  one.
+- **`PL-2R2C` is dissolved rather than fixed.** On a 13-column 120 s axis with
+  the fork off the grid at 55.3 s, the branch's drawn columns went from 2 of 8
+  shared with the trunk to **8 of 8**, with nothing added to the display path.
+- **Two tests would have kept passing while asserting a construction nothing
+  performs** - `test_a_fork_opening_from_a_keyframe_reproduces_its_parent` at
+  reference tier and `test_opening_a_branch_off_a_keyframe_does_not_reproduce_the_run` -
+  because a self-consistent zero-based definition still satisfies both. Both
+  were migrated; the first gained `opening.instant_s + 1e-6` as a probe, which
+  is the exact instant the old arrangement could only reach through a
+  caller-side subtraction.

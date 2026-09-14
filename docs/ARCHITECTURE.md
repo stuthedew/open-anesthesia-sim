@@ -297,10 +297,10 @@ excluded rather than unimplemented (project owner, 2026-08-25): they multiply
 without bound and buy little over branching from the trunk again.
 
 This is the object map. What a branch *guarantees* — that it opens at a
-keyframe and why, that its definition's clock is re-based by subtraction and
-never by a caller naming an offset, and what both are worth in floating point —
-is `docs/MODEL.md` § "The canonical evaluation rule", which is the one place
-those are stated and measured.
+keyframe and why, that its run definition opens at that keyframe's own case
+instant so no clock is re-based and no conversion is performed, and what both
+are worth in floating point — is `docs/MODEL.md` § "The canonical evaluation
+rule", which is the one place those are stated and measured.
 
 Three objects in `app/controller.py` carry it:
 
@@ -330,18 +330,25 @@ state it opened at. The four live controls, replayed from the recorded timeline
 in the units the compartments hold, and then checked against the settings the
 trunk's own stretch carries rather than trusted. What it does not inherit is
 the trunk's control timeline, which starts empty: the branch's record is of
-what the learner does to *it*, and `opened_from` is what still places the fork
-on the case's axis.
+what the learner does to *it*, and `opened_from` is what records where the
+fork was taken — the definition's own first segment stands at the same instant,
+so `opened_from` carries the provenance rather than being the only copy of the
+number.
 
-**Two time frames, and which readers are in which.** A branch continues the
-case's step count, so `snapshot().elapsed_s`, every control-change stamp and
-`drawn_window`'s instants are all case time; its `RunDefinition` opens at its
-own zero, and `origin_s` is the difference — zero on a trunk, the fork instant
-on a branch. `run_segments` is the one reader handing out the definition's own
-instants rather than the case's. `docs/MODEL.md` carries why the split falls
-there; `PL-ZMRT` is an open question about whether it should exist at all, and
-answering it yes would leave one frame and delete `origin_s` along with the
-subtractions in `advance` and `drawn_window`.
+**One time frame, and every reader is in it.** A branch continues the case's
+step count, so `snapshot().elapsed_s`, every control-change stamp,
+`drawn_window`'s instants *and* the instants `run_segments` hands out are all
+case time. Its `RunDefinition` opens at the fork rather than at a zero of its
+own, so a keyframe read from a branch needs no conversion to be placed on the
+case's axis and no reader has to know which kind of run it is holding.
+
+Until 2026-09-14 there were two frames and a `SimulationController.origin_s`
+holding the difference, which `advance` and `drawn_window` subtracted and
+`run_segments` warned about. `PL-ZMRT` (project owner, 2026-09-14) removed the
+second frame: `origin_s` and both subtractions are gone, and `PL-2R2C` — a
+branch's drawn columns anchored to its own zero, landing at case instants the
+trunk never draws — was dissolved by it rather than fixed separately.
+`docs/MODEL.md` § "The canonical evaluation rule" measures what that is worth.
 
 **Where a branch may be taken.** At any keyframe the trunk holds —
 `BranchedCase.fork_points_s` — which is its opening at induction and every

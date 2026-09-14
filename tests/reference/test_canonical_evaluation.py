@@ -26,13 +26,17 @@ than one route.
   the parent has no keyframe for does not, differing by up to 5.3e-13 in a
   cumulative accumulator - the restart is one propagation over an interval
   against two over its halves, which is a different rounding of the same exact
-  solution. And the child's clock must be re-based **by subtracting the fork
-  instant**, because that subtraction does not always round-trip: with a fork
-  at 900 s, `(900.0 + 1e-6) - 900.0` is 9.999999974752427e-07 rather than
-  1e-6, so a child asked for its own `1e-6` propagates over a different
-  interval from the parent and lands one unit in the last place away. Both
-  conditions constrain how a fork may be built, which is why this file gates
-  them rather than leaving them to be discovered by item 12.
+  solution. And the child's definition must open **at the fork instant on the
+  case's own axis**, so that parent and child are asked for the same instant in
+  the same float and form their intervals by the same subtraction. That
+  condition replaced a rule (`PL-ZMRT`, 2026-09-14): while the child opened at
+  a zero of its own, exactness depended on every caller reaching it by
+  subtracting the fork instant rather than naming the child's own elapsed time,
+  and the two differ because the subtraction does not always round-trip - with
+  a fork at 900 s, `(900.0 + 1e-6) - 900.0` is 9.999999974752427e-07 rather
+  than 1e-6. One frame makes that difference unrepresentable instead of
+  forbidden. That condition constrains how a fork may be built, which is why
+  this file gates it rather than leaving it to be discovered by item 12.
 - *The display path is separated in code.* A `DisplayState` cannot open a
   definition. `docs/MODEL.md` states the rule; this is what makes the statement
   true of the program rather than of the reader.
@@ -158,7 +162,7 @@ def _run_definition(length_s: float = RUN_LENGTH_S, probe: Random | None = None)
     """
 
     system = AgentUptakeSystem.for_agent("sevoflurane")
-    definition = RunDefinition(system.equation_settings(), system.state_vector())
+    definition = RunDefinition(system.equation_settings(), system.state_vector(), opened_at_s=0.0)
 
     for at_s, setter, value in CHANGES:
         definition.advance_to(at_s)
@@ -180,7 +184,7 @@ def _run_definition(length_s: float = RUN_LENGTH_S, probe: Random | None = None)
 def _query(definition: RunDefinition, probe: Random) -> None:
     """Ask the run definition for states it is under no obligation to remember."""
 
-    reach_s = definition.duration_s
+    reach_s = definition.reached_s
 
     for _ in range(20):
         definition.state_at(probe.uniform(0.0, reach_s))
@@ -206,8 +210,8 @@ def _settings_at(definition: RunDefinition, elapsed_s: float) -> UptakeEquationS
     """The settings the run was under at `elapsed_s`."""
 
     return max(
-        (segment for segment in definition.segments if segment.opening.elapsed_s <= elapsed_s),
-        key=lambda segment: segment.opening.elapsed_s,
+        (segment for segment in definition.segments if segment.opening.instant_s <= elapsed_s),
+        key=lambda segment: segment.opening.instant_s,
     ).settings
 
 
@@ -256,19 +260,33 @@ def test_a_fork_opening_from_a_keyframe_reproduces_its_parent() -> None:
     """`ROADMAP.md` item 12, held element-wise rather than to a tolerance.
 
     The child opens from the parent's own stored keyframe under the parent's
-    own settings and is advanced alone; every instant the two share must agree
-    entry for entry. The cumulative accumulators come with it - a propagator
-    maps each of them to itself with coefficient one - so the child continues
-    the parent's totals rather than restarting them.
+    own settings, at the instant that keyframe stands at, and is advanced
+    alone; every instant the two share must agree entry for entry. The
+    cumulative accumulators come with it - a propagator maps each of them to
+    itself with coefficient one - so the child continues the parent's totals
+    rather than restarting them.
+
+    **Both runs are asked for the same instant, in the same float.** The child
+    opens on the case's own axis rather than at a zero of its own (`PL-ZMRT`),
+    so there is no offset for this test to apply and none for a caller to get
+    wrong. `opening.instant_s + 1e-6` is in the probe list because it is the
+    instant that arrangement could not reach without a caller-side
+    subtraction: with a fork at 900 s, `(900.0 + 1e-6) - 900.0` is
+    9.999999974752427e-07 rather than 1e-6, so a child asked for its own
+    `1e-6` propagated over a different interval from its parent and landed one
+    unit in the last place away. Opening at the fork makes that difference
+    unrepresentable rather than merely avoided, and this line is what says so.
     """
 
     parent = _run_definition()
     opening = parent.segments[-1].opening
-    child = RunDefinition(parent.segments[-1].settings, opening.state)
-    child.advance_to(RUN_LENGTH_S - opening.elapsed_s)
+    child = RunDefinition(
+        parent.segments[-1].settings, opening.state, opened_at_s=opening.instant_s
+    )
+    child.advance_to(RUN_LENGTH_S)
 
-    for elapsed_s in (opening.elapsed_s, 901.5, 1234.5678, RUN_LENGTH_S):
-        assert child.state_at(elapsed_s - opening.elapsed_s) == parent.state_at(elapsed_s)
+    for elapsed_s in (opening.instant_s, opening.instant_s + 1e-6, 901.5, 1234.5678, RUN_LENGTH_S):
+        assert child.state_at(elapsed_s) == parent.state_at(elapsed_s)
 
 
 def test_a_display_value_cannot_open_a_run_definition() -> None:
@@ -286,7 +304,7 @@ def test_a_display_value_cannot_open_a_run_definition() -> None:
     assert not isinstance(drawn, tuple)
 
     with pytest.raises(SimulationConfigurationError, match="came from the display path"):
-        RunDefinition(_settings_at(definition, 0.0), drawn)  # type: ignore[arg-type]
+        RunDefinition(_settings_at(definition, 0.0), drawn, opened_at_s=0.0)  # type: ignore[arg-type]
 
 
 def test_the_display_path_stays_within_its_measured_separation() -> None:
