@@ -149,3 +149,50 @@ urgency.
 
 **Left `needs-decision` rather than closed**, because closing it on today's
 surface would lose the question at exactly the milestone that raises it.
+
+## Revisited 2026-09-14: the sourcing half, tried again and settled
+
+**The decision below is unchanged and still the project owner's.** Nothing here
+touches it. What follows is the evidence half, which the 2026-09-13 pass left
+open, and it is now closed in the only way this environment allows: by
+establishing that it cannot be closed from here.
+
+**The mapping still cannot be reached, and that is now a policy fact rather
+than bad luck.** Nine independent domains were refused by this container's
+egress proxy across the two passes — `ti.com`, `sameskydevices.com`,
+`puiaudio.com`, `60601-1.com` and `jbth.com.br` on 2026-09-13, and
+`standards.har-el.com`, `digikey.com`, `mdcpp.com` and
+`johner-institute.com` on 2026-09-14, the third of which was a copy of the
+standard's own text. Two further PubMed searches returned nothing on the visual
+signal: the indexed literature on this standard is about its *audible* alarms
+almost exclusively. So this is not a query to retry, and a later session should
+not spend a pass on it. **The table has to come from the project owner**, who
+has institutional library access; the steps are in that session's reply.
+
+**Two things the attempt did establish, and both matter.**
+
+**1. The secondary sources actively disagree about the low-priority colour**,
+which is stronger than the previous pass's "not established". Three mutually
+inconsistent claims now sit on the record: cyan, blue, and "green or blue may
+be used". Three independent secondary sources contradicting each other is
+positive evidence that the value must not be written down from any of them —
+where one silent source would merely have left the question open, this says
+that a plausible-looking answer is available and is wrong at least twice over.
+
+**2. There is a 2020 amendment, and the link this brief carries is to the 2006
+edition.** `iso.org/standard/41986.html`, cited in the pass above, is
+IEC 60601-1-8:2006. Edworthy, Parker and Martin, *Applied Ergonomics*
+2021;99:103609, https://doi.org/10.1016/j.apergo.2021.103609 (retrieved from
+PubMed, PMID 34700191) describes "the auditory-icon-style recommended in the
+2020 version of the same standard", so the current text is
+IEC 60601-1-8:2006+AMD1:2012+AMD2:2020. A session that does reach the standard
+must reach that edition: citing the superseded one as current is the provenance
+failure `docs/MODEL.md` § "Source hierarchy" exists to prevent, and it would
+have been easy to make from this brief as it stood.
+
+**Still `needs-decision`, and the question is unchanged** — whether the Qt
+port's alert surfaces follow the monitor convention so a learner's trained
+colour-to-urgency mapping transfers, or deliberately diverge so nobody mistakes
+a teaching tool for a monitor. The answer does not depend on the table: it is a
+question about what the simulator is for. The table is needed only after the
+answer is "follow the convention", and only for the colours themselves.
