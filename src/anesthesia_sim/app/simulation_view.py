@@ -43,9 +43,9 @@ from anesthesia_sim.app.chart_time_base import (
     time_base_for_span,
 )
 from anesthesia_sim.app.control_timeline import (
+    AdjustmentGrouping,
     ControlAdjustment,
     format_adjustment,
-    group_adjustments,
 )
 from anesthesia_sim.app.controller import (
     DrawnWindow,
@@ -610,6 +610,12 @@ class SimulationView:
         # silently stops annotating asserts that nothing more happened.
         self._undrawn_control_marks = 0
         self._undrawn_wash_in_segments = 0
+        # The run's adjustments, regrouped only when the record behind them
+        # changes. Held per view rather than computed per frame because the
+        # grouping is a property of the run: see `AdjustmentGrouping`, which
+        # carries the measurements and why its key is the record's identity
+        # rather than its length.
+        self._adjustment_grouping = AdjustmentGrouping()
         # Whether the charts are currently answering a hover. Held so that
         # `_apply_trace_visibility` can put a trace back on the chart in the
         # mode the last frame set, rather than reading the run again and
@@ -2503,7 +2509,7 @@ class SimulationView:
         # the snapshot, which would let the words and the picture disagree.
         self._refresh_off_scale_notice(snapshot)
 
-        adjustments = group_adjustments(snapshot.control_timeline)
+        adjustments = self._adjustment_grouping.of(snapshot.control_timeline)
         self._redraw_control_marks(adjustments, chart_min_x, chart_max_x, snapshot)
         self._refresh_wash_in(snapshot, window, chart_min_x, chart_max_x)
         # Last, after every call above that can have appended a point: a
@@ -3188,7 +3194,11 @@ class SimulationView:
                         format_case_discard_warning(
                             current_agent,
                             snapshot.elapsed_s,
-                            len(group_adjustments(snapshot.control_timeline)),
+                            # Through the same grouping the panel beside the
+                            # chart is written from, so the count of what is
+                            # about to be lost and the list of it cannot come
+                            # from two readings of one record.
+                            len(self._adjustment_grouping.of(snapshot.control_timeline)),
                         ),
                         color=WARNING,
                         weight=ft.FontWeight.BOLD,

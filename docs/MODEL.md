@@ -5224,6 +5224,30 @@ adjustments than either can show. What is not shown is counted on the
 display. A chart that quietly stops annotating, or a list that quietly
 ends, is a statement that nothing else happened.
 
+**The record itself carries no ceiling, and that is a decision rather than
+an omission.** The two bounds above are on what is *shown*. Dropping the
+oldest entries would retire the beginning of a case — which is the part a
+learner returns to, since "where did I dial back?" is the question this
+record exists to answer — and it would bound nothing, because the run
+definition of "The run is that record, and every state is derived from it"
+above holds one stretch and one keyframe per accepted change and is not
+bounded either. Capping the display record alone would cost the
+reconstruction claim above and leave the larger structure growing.
+
+What makes that affordable is that the record grows with time spent
+*changing settings* rather than with the length of the run. Only the value
+standing when a step runs is recorded, so a drag contributes at most one
+entry per simulation step however fast the slider reports — and that rate
+is a property of the tick rather than of simulated time, so it is the same
+at every playback multiplier. Measured on 2026-09-14 under `PL-1PSX`: ten
+entries per real second of continuous dragging at 1×, 5×, 20×, 60× and
+300× alike, and one entry for a drag made while the run is paused. The
+grouping behind the display costs 0.9 ms per frame at a thousand entries
+and 8.8 ms at ten thousand, against a 200 ms frame, and is recomputed only
+when the record changes; reaching the hundred thousand entries at which it
+would cost half a frame takes some three hours of unbroken dragging, at
+which point the record is under 9 MB.
+
 ### F_A/F_I as a displayed ratio
 
 **What it is.** A second plot under the compartment chart, on the same time

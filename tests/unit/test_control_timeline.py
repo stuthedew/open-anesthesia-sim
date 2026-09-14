@@ -2,6 +2,7 @@
 
 from anesthesia_sim.app.control_timeline import (
     CONTROL_INPUT_LABELS,
+    AdjustmentGrouping,
     format_adjustment,
     format_control_value,
     group_adjustments,
@@ -191,3 +192,70 @@ def test_a_rendered_line_uses_only_glyphs_the_interface_can_draw() -> None:
 
     for adjustment in group_adjustments(timeline):
         assert set(format_adjustment(adjustment)) <= confirmed
+
+
+def test_an_unchanged_record_is_grouped_once_rather_than_once_per_frame() -> None:
+    """The whole of what the cache buys: a frame that recorded nothing.
+
+    Asserted on the identity of the returned tuple rather than on a call
+    count, because that is the property the view depends on - the same
+    adjustments reaching the panel, the chart marks and the discard warning
+    from one grouping of one record.
+    """
+
+    grouping = AdjustmentGrouping()
+    timeline = (
+        _change(10.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),
+        _change(20.0, ControlInput.CARDIAC_OUTPUT, 5.0, 3.0, adjustment=2),
+    )
+
+    first = grouping.of(timeline)
+
+    assert grouping.of(timeline) is first
+    assert grouping.of(timeline) is first
+    assert first == group_adjustments(timeline)
+
+
+def test_a_superseded_change_is_regrouped_though_the_record_did_not_grow() -> None:
+    """The reason the key is the record's identity and not its length.
+
+    `SimulationController._record_control_change` replaces the newest entry
+    when one control moves twice inside a single simulation step, because
+    the run was integrated only under the value standing when the step ran.
+    The record is then the same length and a different record. A cache
+    keyed on length would go on serving the superseded grouping, and the
+    panel beside the chart would state a value the run was never computed
+    under.
+    """
+
+    grouping = AdjustmentGrouping()
+    superseded = (_change(10.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),)
+    standing = (_change(10.0, ControlInput.FRESH_GAS_FLOW, 4.0, 3.0, adjustment=1),)
+
+    assert len(superseded) == len(standing)
+    assert grouping.of(superseded)[0].to_value == 2.0
+    assert grouping.of(standing)[0].to_value == 3.0
+
+
+def test_a_run_that_has_recorded_nothing_needs_no_grouping_at_all() -> None:
+    """The state a fresh view and a reset one are both in."""
+
+    grouping = AdjustmentGrouping()
+
+    assert grouping.of(()) == ()
+    assert grouping.of(()) == ()
+
+
+def test_a_grouping_does_not_answer_for_another_run() -> None:
+    """Clearing the record is what `reset()` and a change of agent do.
+
+    An empty timeline is a legitimate state to arrive back at, so the cache
+    has to serve it rather than treat it as nothing to do.
+    """
+
+    grouping = AdjustmentGrouping()
+    timeline = (_change(10.0, ControlInput.FRESH_GAS_FLOW, 4.0, 2.0, adjustment=1),)
+
+    assert len(grouping.of(timeline)) == 1
+    assert grouping.of(()) == ()
+    assert len(grouping.of(timeline)) == 1
