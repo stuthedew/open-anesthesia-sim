@@ -1,7 +1,7 @@
 ---
 id: PL-25KS
 title: Port the dashboard to PySide6: the readout row, the four parameter controls, the agent selector, the transport, the new-case dialog and the notice banner
-priority: P2
+priority: P1
 effort: L
 status: ready
 classes: feature, ux
@@ -62,3 +62,9 @@ its package map is held to disk in both directions by `tools/doc_check.py`, so
 every module this item adds or removes edits that map in the same commit or
 fails `make check`. The line count above is corrected from 3 619 to 4 321,
 `PL-B9PY` having grown the file since the brief was written.
+
+**Raised to `P1`, 2026-09-14.** `PL-2K1R` (the interpretation disclaimer,
+`P1` `safety`) now waits on this item, and the store's band rule is that
+nothing waits on a blocker below its own band - the same reason `PL-G59B` is
+`P1` for `PL-GS3R` and `PL-YVHK`. The port's two build items now sit at the
+band the safety work behind them already held.
