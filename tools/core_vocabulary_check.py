@@ -43,14 +43,22 @@ crosses. Keeping `tests/` out is not an oversight either. This file's own test
 suite has to be able to write a retired name into a fixture, and a rule that
 forbade that could not be tested at all.
 
-**Matching is on the whole identifier, never on a substring**, and the two
-names that would otherwise be caught are the reason. `require_concentration_fraction`
-in `core/validation.py` is the [0, 1] guard every renamed setter calls;
-`BreathingCircuit.circuit_volume_l` is the stutter `PL-9SH6` deliberately left
-alone. Neither is a retired accessor, both contain one's text, and `PL-6KNM`
-and `PL-KZS3` are where each is decided. A substring rule would fail today
-against two names nobody has agreed to change, which is the shape of a check
-that gets suppressed rather than obeyed.
+**Matching is on the whole identifier, never on a substring.** The rule was
+written against two live names a substring match would have failed the
+repository over: `require_concentration_fraction` in `core/validation.py`, the
+[0, 1] guard every renamed setter calls, and `BreathingCircuit.circuit_volume_l`,
+the stutter `PL-9SH6` deliberately left alone.
+
+**Neither is a counterexample any more, and that is recorded rather than acted
+on.** `PL-6KNM` renamed the guard to `require_fraction` — it checks a range and
+never knew which fraction it was guarding — and `circuit_volume_l` was cited for
+the stutter rather than for containing a retired name, which it does not.
+Measured 2026-09-14 across `core/`: **no live identifier contains a retired name
+as a substring**, so a substring rule would pass today and would have caught the
+guard on its own. Whether to tighten to one is `PL-JW9J`'s question, not a change
+to make in passing: a substring rule reports a name for the company it keeps,
+which is a different rule from this one and needs its own argument about false
+positives. `PL-KZS3` is where the stutter is decided.
 
 **Read with `ast`, never imported.** `core/parameters.py` imports Pydantic,
 which does not exist in a bare checkout. This file stays standard-library-only

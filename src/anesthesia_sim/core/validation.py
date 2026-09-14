@@ -33,8 +33,19 @@ def require_nonnegative_finite(name: str, value: float) -> None:
         raise SimulationConfigurationError(f"{name} must be nonnegative and finite")
 
 
-def require_concentration_fraction(name: str, value: float) -> None:
-    """Require a finite concentration fraction from zero through one."""
+def require_fraction(name: str, value: float) -> None:
+    """Require a finite dimensionless fraction from zero through one.
+
+    Named for the range it checks rather than for a quantity, which is what
+    `PL-6KNM` settled: every one of its callers passes a
+    `..._partial_pressure_fraction`, and the guard cannot tell which $`F`$ it
+    is guarding — nor does it need to, since a fraction of an atmosphere, a
+    perfusion fraction and a MAC-awake ratio all live in [0, 1]. Its two
+    siblings above name a property of the number for the same reason. Which
+    quantity a value *is* is the `NewType`s in `core/concentration.py`, and
+    they are separate on purpose: a type marks a boundary and checks nothing,
+    this checks a value and marks nothing.
+    """
 
     if not isfinite(value) or not 0.0 <= value <= 1.0:
         raise SimulationConfigurationError(f"{name} must be between 0 and 1")

@@ -46,6 +46,7 @@ from anesthesia_sim.app.formatting import (
     mac_multiple,
 )
 from anesthesia_sim.app_metadata import APP_BUILD, APP_BUILD_VERSION, APP_VERSION
+from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent
 from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
@@ -568,6 +569,58 @@ def test_the_mac_awake_band_arguments_are_keyword_only() -> None:
 
     with pytest.raises(TypeError):
         mac_awake_band_percent(0.34, 0.05, 2.0)  # type: ignore[call-arg]
+
+
+def test_a_concentration_fraction_reaching_the_mac_awake_band_is_refused_by_mypy_alone() -> None:
+    """The swap `MacMultiple` exists to refuse, and what it costs when it lands.
+
+    A fraction of an atmosphere and a ratio to MAC are both small
+    dimensionless numbers of the same magnitude, so neither reads as wrong in
+    place of the other. Sevoflurane's band is 0.34 +/- 0.05 MAC against a MAC
+    of 2.0%, which is 0.58-0.78% - the decrement a falling alveolar trace has
+    to cross for arousal. Passing a circuit fraction at the vaporizer's own 8%
+    maximum instead clears every runtime guard, because 0.08 - 0.05 is still
+    positive, and draws the same band at 0.06-0.26%: *below* the awakening
+    concentration, so a trace crosses it late or not at all, with nothing on
+    the screen saying so.
+
+    The directive below is therefore the whole of the safeguard, and the two
+    assertions are what a reader needs in order to believe that (`PL-BQ46`).
+    """
+
+    correct = mac_awake_band_percent(
+        fraction_of_mac=MacMultiple(0.34),
+        standard_deviation_fraction_of_mac=MacMultiple(0.05),
+        mac_percent=2.0,
+    )
+    swapped = mac_awake_band_percent(
+        fraction_of_mac=Fraction(0.08),  # type: ignore[arg-type]
+        standard_deviation_fraction_of_mac=MacMultiple(0.05),
+        mac_percent=2.0,
+    )
+
+    assert correct == pytest.approx((0.58, 0.78))
+    assert swapped == pytest.approx((0.06, 0.26))
+
+
+def test_a_mac_multiple_reaching_a_concentration_parameter_is_refused_too() -> None:
+    """The other direction, which reaches a readout rather than a reference.
+
+    `mac_multiple()` returns a ratio to MAC, and the two readouts beside each
+    other are the same compartment in the two units. Sevoflurane at 0.34 MAC
+    is an alveolar fraction of 0.0068; rendering the multiple as though it
+    were the fraction prints the percent of 0.34 next to "0.34" of MAC, so the
+    two readouts of one compartment disagree by the factor of 50 between them.
+    """
+
+    fraction = Fraction(0.0068)
+    multiple = mac_multiple(fraction, Percent(2.0))
+
+    assert format_percent(fraction) == f"{0.68:.{CONCENTRATION_DISPLAY_DECIMALS}f}%"
+    assert multiple == pytest.approx(0.34)
+    assert format_percent(multiple) == format_percent(  # type: ignore[arg-type]
+        Fraction(0.34)
+    )
 
 
 def test_format_mac_awake_reference_names_both_free_parameters() -> None:

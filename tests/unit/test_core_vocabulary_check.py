@@ -2,10 +2,12 @@
 
 Each of its three rules gets a fixture that violates it, because a check nobody
 has watched fail is a check that might only be reporting success. The near-miss
-cases matter as much: `require_concentration_fraction` is a live name in
-`core/validation.py` that contains a retired one, and a rule that matched
-substrings would fail the repository today against a name nobody has agreed to
-change - which is how a check gets suppressed instead of obeyed.
+cases matter as much: an identifier that merely *contains* a retired one is
+not a revival, and a rule that matched substrings would report it. `PL-6KNM`
+renamed the live instance this was written against - `core/validation.py`'s
+`require_concentration_fraction`, now `require_fraction` - so the fixture below
+carries the name rather than the tree, which is the right place for it: the
+rule outlives any one identifier that would have tripped it.
 
 The fourth direction is the one a check of this shape is uniquely prone to, and
 it is why `analyze` reports an empty tree and an unreadable table as errors: a
@@ -206,11 +208,13 @@ class TestRetiredNames:
         assert "in favour of inspired_partial_pressure_fraction" in format_report(report)
 
     def test_a_live_name_that_merely_contains_a_retired_one_passes(self, tmp_path: Path) -> None:
-        """`require_concentration_fraction` is the [0, 1] guard, not a retired accessor.
+        """An identifier containing a retired name is not a revival of it.
 
-        It is a real name in `core/validation.py`, so a substring rule would
-        fail the repository today over a rename nobody has agreed to - which is
-        `PL-6KNM`'s open question, not this check's to answer.
+        `require_concentration_fraction` was `core/validation.py`'s [0, 1]
+        guard until `PL-6KNM` renamed it to `require_fraction`, and it is kept
+        here as the fixture because the rule is about the shape of a match
+        rather than about that one name. `PL-JW9J` is where tightening to a
+        substring match is decided, now that `core/` holds no such identifier.
         """
         report = analyze(
             _root(
@@ -366,7 +370,7 @@ class TestTheRepository:
     def test_every_symbol_cell_is_read(self) -> None:
         """A table this stops parsing halfway through would pass on what it read."""
         report = analyze(REPO_ROOT)
-        assert report.cells == 24
+        assert report.cells == 25
         assert report.modules > 1
 
     def test_main_exits_zero(self, capsys: pytest.CaptureFixture[str]) -> None:

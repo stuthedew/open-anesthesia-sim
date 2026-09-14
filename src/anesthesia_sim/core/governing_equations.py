@@ -85,7 +85,7 @@ from dataclasses import dataclass
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.matrix_exponential import Matrix
 from anesthesia_sim.core.validation import (
-    require_concentration_fraction,
+    require_fraction,
     require_nonnegative_finite,
     require_positive_finite,
 )
@@ -224,7 +224,7 @@ class UptakeEquationSettings:
         require_positive_finite(
             "blood_gas_partition_coefficient", self.blood_gas_partition_coefficient
         )
-        require_concentration_fraction(
+        require_fraction(
             "delivered_partial_pressure_fraction", self.delivered_partial_pressure_fraction
         )
 
@@ -280,6 +280,14 @@ def build_system_matrix(settings: UptakeEquationSettings) -> Matrix:
     ventilation_l_s = settings.alveolar_ventilation_l_s
     cardiac_output_l_s = settings.cardiac_output_l_s
     blood_gas = settings.blood_gas_partition_coefficient
+    # Short locals here are the convention rather than an omission, and
+    # `delivered_fraction` is deliberately among them (`PL-BDNB`). Each matrix
+    # row below sits under a comment writing the equation in the
+    # specification's own symbols, so the reader has $`F_D`$ in view at the row
+    # rather than carrying this binding down the module; and the full
+    # `delivered_partial_pressure_fraction` would wrap the two rows that read
+    # it, which is the case `.claude/rules/core-domain.md` settles the other
+    # way — where a naming choice makes the model harder to see, the model wins.
     delivered_fraction = settings.delivered_partial_pressure_fraction
 
     pulmonary_blood_flow_l_s = cardiac_output_l_s * blood_gas

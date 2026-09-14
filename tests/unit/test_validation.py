@@ -12,7 +12,7 @@ import pytest
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.validation import (
-    require_concentration_fraction,
+    require_fraction,
     require_nonnegative_finite,
     require_positive_finite,
 )
@@ -33,9 +33,9 @@ def test_require_nonnegative_finite_rejects_within_the_hierarchy(value: float) -
 
 
 @pytest.mark.parametrize("value", [-0.001, 1.001, inf, -inf, nan])
-def test_require_concentration_fraction_rejects_within_the_hierarchy(value: float) -> None:
+def test_require_fraction_rejects_within_the_hierarchy(value: float) -> None:
     with pytest.raises(SimulationConfigurationError, match="fraction must be between 0 and 1"):
-        require_concentration_fraction("fraction", value)
+        require_fraction("fraction", value)
 
 
 @pytest.mark.parametrize(
@@ -43,8 +43,8 @@ def test_require_concentration_fraction_rejects_within_the_hierarchy(value: floa
     [
         (require_positive_finite, 0.5),
         (require_nonnegative_finite, 0.0),
-        (require_concentration_fraction, 0.0),
-        (require_concentration_fraction, 1.0),
+        (require_fraction, 0.0),
+        (require_fraction, 1.0),
     ],
 )
 def test_guards_accept_their_boundary_values(guard, value: float) -> None:

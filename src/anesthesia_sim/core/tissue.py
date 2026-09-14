@@ -9,7 +9,7 @@ from math import exp, inf
 from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.validation import (
-    require_concentration_fraction,
+    require_fraction,
     require_nonnegative_finite,
     require_positive_finite,
 )
@@ -156,7 +156,7 @@ class TissueGroup:
     def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
         """Set tissue state from a partial-pressure-equivalent fraction."""
 
-        require_concentration_fraction("partial_pressure_fraction", partial_pressure_fraction)
+        require_fraction("partial_pressure_fraction", partial_pressure_fraction)
         self.agent_amount_l = self.capacity_l * partial_pressure_fraction
 
     def advance(
@@ -181,9 +181,7 @@ class TissueGroup:
                 positive and finite. Both are checked before anything changes.
         """
 
-        require_concentration_fraction(
-            "arterial_partial_pressure_fraction", arterial_partial_pressure_fraction
-        )
+        require_fraction("arterial_partial_pressure_fraction", arterial_partial_pressure_fraction)
         require_positive_finite("simulation_step_s", simulation_step_s)
 
         if self.blood_flow_l_min == 0.0:

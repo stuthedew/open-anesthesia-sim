@@ -25,7 +25,7 @@ from anesthesia_sim.core.concentration import Fraction, percent_from_fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import require_supported_fresh_gas_flow
 from anesthesia_sim.core.validation import (
-    require_concentration_fraction,
+    require_fraction,
     require_nonnegative_finite,
     require_positive_finite,
 )
@@ -113,17 +113,17 @@ class BreathingCircuit:
     def __post_init__(self) -> None:
         require_positive_finite("circuit_volume_l", self.circuit_volume_l)
         require_supported_fresh_gas_flow(self.fresh_gas_flow_l_min)
-        require_concentration_fraction(
+        require_fraction(
             "max_delivered_partial_pressure_fraction", self.max_delivered_partial_pressure_fraction
         )
         require_positive_finite(
             "max_delivered_partial_pressure_fraction", self.max_delivered_partial_pressure_fraction
         )
-        require_concentration_fraction(
+        require_fraction(
             "delivered_partial_pressure_fraction", self.delivered_partial_pressure_fraction
         )
         self._require_deliverable(self.delivered_partial_pressure_fraction)
-        require_concentration_fraction(
+        require_fraction(
             "inspired_partial_pressure_fraction", self.inspired_partial_pressure_fraction
         )
 
@@ -208,9 +208,7 @@ class BreathingCircuit:
     ) -> None:
         """Set the vaporizer dial, rejecting anything it cannot deliver."""
 
-        require_concentration_fraction(
-            "delivered_partial_pressure_fraction", delivered_partial_pressure_fraction
-        )
+        require_fraction("delivered_partial_pressure_fraction", delivered_partial_pressure_fraction)
         self._require_deliverable(delivered_partial_pressure_fraction)
         self.delivered_partial_pressure_fraction = delivered_partial_pressure_fraction
 
@@ -230,9 +228,7 @@ class BreathingCircuit:
                 in [0, 1]. Nothing is written when it is refused.
         """
 
-        require_concentration_fraction(
-            "inspired_partial_pressure_fraction", inspired_partial_pressure_fraction
-        )
+        require_fraction("inspired_partial_pressure_fraction", inspired_partial_pressure_fraction)
         self.inspired_partial_pressure_fraction = inspired_partial_pressure_fraction
 
     def set_agent_amount(self, agent_amount_l: float) -> None:
@@ -277,11 +273,18 @@ class BreathingCircuit:
 
         delivered_agent_l = fresh_gas_flow_l_s * delivered_fraction * simulation_step_s
 
-        integrated_circuit_fraction_s = delivered_fraction * simulation_step_s + (
+        # $`\int F_I \mathrm{d}t`$ over the step, which is why the unit is
+        # seconds. Written out rather than shortened: `PL-9SH6` retired both
+        # a bare `_fraction` name for this quantity and the `circuit_` stutter
+        # on a `BreathingCircuit` member, and this local carried both
+        # (`PL-BDNB`). The short locals above it are deliberately left — each
+        # is bound one line below the accessor it reads, inside a closed form
+        # short enough that the full name is still in the reader's eye.
+        integrated_inspired_partial_pressure_fraction_s = delivered_fraction * simulation_step_s + (
             initial_fraction - delivered_fraction
         ) * self.time_constant_s * (1.0 - fraction_remaining)
 
-        exhausted_agent_l = fresh_gas_flow_l_s * integrated_circuit_fraction_s
+        exhausted_agent_l = fresh_gas_flow_l_s * integrated_inspired_partial_pressure_fraction_s
 
         self.inspired_partial_pressure_fraction = next_fraction
 

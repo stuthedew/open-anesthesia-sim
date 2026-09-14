@@ -18,7 +18,7 @@ from anesthesia_sim.core.concentration import Fraction
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.supported_ranges import require_supported_alveolar_ventilation
 from anesthesia_sim.core.validation import (
-    require_concentration_fraction,
+    require_fraction,
     require_nonnegative_finite,
     require_positive_finite,
 )
@@ -101,7 +101,7 @@ class AlveolarCompartment:
     def set_partial_pressure_fraction(self, partial_pressure_fraction: Fraction) -> None:
         """Set alveolar state from a partial-pressure-equivalent fraction."""
 
-        require_concentration_fraction("partial_pressure_fraction", partial_pressure_fraction)
+        require_fraction("partial_pressure_fraction", partial_pressure_fraction)
         self.agent_amount_l = self.gas_volume_l * partial_pressure_fraction
 
     def capture_state(self) -> AlveolarCompartmentState:

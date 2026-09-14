@@ -9,6 +9,7 @@ feature: planning-cadence
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-13
 closed: 2026-09-14
+pr: 560
 verify: uv run pytest subprojects/docket/tests/test_roadmap.py -q && grep -rq 'def test_a_gate_is_open_when_its_only_open_entries_are_the_milestone_s_own_scope' subprojects/docket/tests/
 ---
 
