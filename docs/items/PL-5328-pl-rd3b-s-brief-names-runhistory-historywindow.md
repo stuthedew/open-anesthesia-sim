@@ -106,8 +106,8 @@ it - but a shared file is a sequencing note rather than a refusal, which is
 `PL-VRMK`'s refuted approach, so the item stays `ready` and the note is in its
 brief instead.
 
-**Captured, not fixed:** `PL-27H0` - `docs/MODEL.md` § "What a recorded sample
-is" still specifies the per-step sample store and a display operation that
+**Captured, not fixed:** `PL-27H0` - `docs/MODEL.md` § "What a drawn window is" (headed *What a recorded sample
+is* until `PL-27H0` renamed it) still specified the per-step sample store and a display operation that
 selects among recorded samples, both of which `PL-2FM6` deleted. Outside this
 item's `touches`, and an edit to the authoritative model specification wants
 its own doc sweep.
