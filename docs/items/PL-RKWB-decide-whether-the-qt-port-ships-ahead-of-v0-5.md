@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning
 feature: qt-port
+milestone: v0.4.25
 touches: ROADMAP.md, docs/items, docs/WORKING_NOTES.md
 added: 2026-09-14
 closed: 2026-09-14

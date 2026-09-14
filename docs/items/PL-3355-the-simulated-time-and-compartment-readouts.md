@@ -12,7 +12,7 @@ added: 2026-09-04
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_no_metric_value_wraps_away_from_its_unit' tests/unit/test_simulation_view.py
 ---
 
-> **This fix rides the Qt port, not Flet.** `ROADMAP.md` § "v0.4.25 -
+> **This fix rides the Qt port, not Flet.** `ROADMAP.md` § "v0.4.26 -
 > the interface moves to Qt" names this item under "Fixes this port carries":
 > the defect lives in code that milestone rewrites from scratch, so fixing it
 > on Flet means writing the same lines twice. Project owner, 2026-09-10.

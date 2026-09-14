@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: release-roadmap-seam
+milestone: v0.4.25
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-14
 closed: 2026-09-14

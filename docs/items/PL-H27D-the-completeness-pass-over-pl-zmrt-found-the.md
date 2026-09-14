@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: scenario-branching
+milestone: v0.4.25
 touches: src/anesthesia_sim/core/run_definition.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/app/chart_time_base.py, tests/unit, tests/integration, docs/items
 added: 2026-09-14
 closed: 2026-09-14

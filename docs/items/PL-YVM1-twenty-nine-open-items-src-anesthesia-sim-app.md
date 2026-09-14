@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: release-roadmap-seam
+milestone: v0.4.25
 touches: docs/items/, docs/MODEL.md, docs/WORKING_NOTES.md, src/anesthesia_sim/app/theme.py
 added: 2026-09-14
 closed: 2026-09-14

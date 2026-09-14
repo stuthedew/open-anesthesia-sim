@@ -3,11 +3,12 @@ id: PL-G7RD
 title: Cut v0.4.25 from the ten finished items, renumbering the Qt port's section to v0.4.26 as ROADMAP.md's own risk paragraph provides for
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning, docs
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items/
 added: 2026-09-14
+closed: 2026-09-14
 verify: python3 tools/doc_check.py check && grep -q '^version = "0.4.25"' pyproject.toml && test -f docs/releases/v0.4.25.md && ! grep -q 'v0.4.25 - the interface moves to Qt' ROADMAP.md
 ---
 
@@ -52,3 +53,22 @@ with a Flet count it does not check cites `PL-9KDK` instead.
 "Current baseline" section stands on it, no line of `ROADMAP.md` reads
 "v0.4.25 - the interface moves to Qt", `make check` is green, and `v0.4.25` is
 tagged on the merge commit on `origin/main`.
+
+## Cut 2026-09-14
+
+`make release VERSION=0.4.25` stamped twelve items - the ten the dry run
+listed and the two closures already on this branch, `PL-YVM1` and `PL-T7PY`,
+so the release carries its own cleanup - and relocked `uv.lock`. The port's
+section moved to `v0.4.26` in the same commit, with its running prose named
+by name under `PL-YVM1`'s rule and its `§` citations in eleven item files
+moved with the heading, which `tools/doc_check.py` proved. The three
+corrections named above landed with it, and Required-scope item 4 now states
+what `PL-JRS3` measured rather than the premise it refuted.
+
+**Docs swept:** `ROADMAP.md` (the row, the baseline, the port section, the
+v0.5.0 row, item 34), `docs/releases/v0.4.25.md` (generated), `docs/MODEL.md`
+and `docs/ARCHITECTURE.md` (checked: neither names a release version or the
+port by number), `README.md` (checked: no version claim to move).
+
+The tag is the project owner's, after the merge, and is the last line of
+"Done when".
