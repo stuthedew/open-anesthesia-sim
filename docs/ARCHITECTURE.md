@@ -166,7 +166,7 @@ state at that instant — per change. Because the equations are linear and
 time-invariant while the settings hold, the propagator is exact over any
 horizon and not only over a step, so every state the run passed through is
 one propagation from the keyframe bracketing it and none of them has to have
-been recorded. `evaluate_window(start_s, stop_s, columns)` is that read, and
+been recorded. `drawn_window(start_s, stop_s, columns)` is that read, and
 `run_segments` hands the record itself out as frozen segments — readable
 without being advanceable, so nothing above the controller can move the
 run definition's reach past where the run actually got to and have a prediction
@@ -176,7 +176,7 @@ and every state is derived from it" carries the measurements, and § "The
 canonical evaluation rule" states which of the two evaluation paths a stored,
 exported, replayed or branched value may be taken from.
 
-**That boundary is a type rather than a convention.** `evaluate_window` hands
+**That boundary is a type rather than a convention.** `drawn_window` hands
 back `DisplayState` values, which are not state vectors, so a drawn column
 cannot become a keyframe, an exported figure or a branch's opening state by
 being the same nine numbers in the same order; `RunDefinition` refuses one as an
