@@ -7,9 +7,10 @@ status: done
 classes: refactor
 feature: scenario-branching
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/main.py, tests/unit/test_simulation_view.py, tests/integration/test_chart_patching.py, docs/ARCHITECTURE.md, docs/WORKING_NOTES.md
-verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_two_run_views_drive_two_controllers' tests/unit/test_simulation_view.py
 added: 2026-09-02
 closed: 2026-09-14
+pr: 567
+verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_two_run_views_drive_two_controllers' tests/unit/test_simulation_view.py
 ---
 
 > **This ships in v0.5.0, on Flet, and is rewritten by the Qt port after it.**

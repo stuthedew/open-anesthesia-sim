@@ -1,14 +1,15 @@
 ---
 id: PL-5328
 title: PL-RD3B's brief names RunHistory, HistoryWindow and SimulationHistorySample, which PL-2FM6 deleted, and the test file its Done when rests on no longer exists
-status: done
 priority: P2
 effort: S
+status: done
 classes: defect, docs
 feature: queue-hygiene
 touches: docs/items, ROADMAP.md
 added: 2026-09-14
 closed: 2026-09-14
+pr: 566
 verify: python3 tools/doc_check.py check && grep -qF 'Re-briefed 2026-09-14 under' docs/items/PL-RD3B-app-controller-py-holds-the-run-s-trace.md
 ---
 
