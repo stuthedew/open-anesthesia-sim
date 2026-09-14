@@ -427,14 +427,14 @@ Outside the packaged application, and not imported by it:
 
 ```text
 tools/
-├── agent_identity_check.py  # refuses a control that carries the agent colour and can be rendered disabled, because Flet/Material then paints its label in a disabled-content grey that is declared in no source file and so is unreachable by `contrast_check.py`; a control may be `disabled` only where it is also `visible = not <the same expression>`, and one given an agent colour where it is constructed must be written by the single writer `RunView._apply_agent_color_scheme`
+├── agent_identity_check.py  # refuses a control that carries the agent colour and can be rendered disabled, because Flet/Material then paints its label in a disabled-content grey that is declared in no source file and so is unreachable by `contrast_check.py`; a control may be `disabled` only where it is also `visible = not <the same expression>`, and one given an agent colour where it is constructed must be written by the single writer `RunView._apply_agent_color_scheme`; reads every module under `app/` and names none by path, and refuses a tree in which no `disabled` write can be read at all rather than passing over it
 ├── branch_id_check.py    # refuses a branch ahead of the default base that carries no item id in its name and leads no commit subject with one, because every in-flight guard matches an id and work carrying none is invisible to all of them; scoped to the `claude/*` namespace, since a contributor has no queue to be visible in
 ├── dead_ends.py          # emits `docs/dead-ends.md`'s entry lines into session context at start, and holds that emitted half - never the file's preamble, which is instructions for adding an entry rather than for reading one - to 30 entries and 4,000 bytes, because a `SessionStart` hook's output is resent on every turn and an unbounded always-loaded store measurably degrades an agent rather than merely costing tokens; refuses an entry citing an id that resolves to nothing, since `bin/docket show <id>` is the entry's whole retrieval path
 ├── contrast_check.py     # computes every declared color requirement's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum, taking the better channel where an element's edge can be carried by either its fill or its border
 ├── core_vocabulary_check.py  # holds `core/`'s identifiers to the vocabulary `docs/MODEL.md` establishes, in the three ways that are decidable: every `ClassName.accessor` in the Symbols table's Code column resolves to a real attribute, property or field - an em dash being accepted only where the cell says what the code reads instead; none of the accessor names `PL-9SH6` retired comes back, matched whole rather than as substrings, so that an identifier merely containing a retired name is not accused of reviving it - a rule with no live counterexample in `core/` since `PL-6KNM` renamed `require_concentration_fraction` to `require_fraction`, and `PL-JW9J` is where tightening it is decided; and every `*partition_coefficient` identifier names both of its phases in the declared outward order, gas then blood then tissue, so a coefficient cannot be written as its own reciprocal in a literature that calls one quantity tissue-gas, tissue-blood and blood tissue in a single chapter. It runs under `uv run python`, not at the 3.11 floor, because it parses `core/` with `ast`; whether a name is the one a reader who knows the domain would guess stays a judgment and is deliberately not scripted
 ├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, the data files' declared source tiers, citations - in the documentation, in every `docs/items/` brief and in every source docstring, since those last two are where this project writes most of them - markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline, and the current gate's membership against the queue - unconditionally for the queue's `safety`- and `science`-classed items, and as a recorded disposition, placed or deferred, for every other open debt item; that no milestone names one id under both its `Required scope` and its `Explicitly out of scope`, advising where a scope bullet carries exclusion language; that every test `MODEL.md` names resolves to one that exists; reports resident instruction size
 ├── glyph_check.py        # refuses a non-ASCII character that nobody has confirmed the client can draw, from any string that can reach a reader - every string literal outside a docstring under `app/` and `core/`, and every string in the `data/` JSON - because `→` (U+2192) has no glyph in the Flutter client, drew as a replacement box in the control-change list, and no test in this repository could see it: every string assertion here compares text the same font-less Python process produced; the allowlist is per character rather than per Unicode block, and each entry records what was rendered and looked at
-├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`, and `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`, so the payload/dataclass boundary and the never-wall-clock rule are measured rather than asserted
+├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`; `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`; `flet` and `flet_charts` anywhere but the three interface modules that import them today; and `PySide6`, `pyqtgraph` or `numpy` in any module under `core/` - so the payload/dataclass boundary, the never-wall-clock rule and the toolkit-independence rule are measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 ├── item_reads.py         # reports, from the local untracked `.docket-reads.log` that `.claude/hooks/item_read_log.py` writes, how many distinct items sessions actually open, what share of those are closed, and how many citation edges are traversed within a session - the read-side measurements every argument about the store's shape had been assuming; states the sample size first and chooses between none of the readings a low count admits
 ├── main_ci_status.py     # reports the default branch's last quality verdict, and nothing at all when it was a success, because the whole-store `verify:` replay runs only on push to `main` and its failures therefore land on a run no pull request shows; the session-start hook calls it, it gates nothing, and it is the one tool here that reads the network
@@ -514,11 +514,14 @@ already leads needs no item of its own. A release commit is exempt, exactly:
 
 `tools/contrast_check.py` holds the interface to the accessibility target
 `docs/MODEL.md` states — WCAG 2.2 Level AA. It reads the color constants with `ast`
-rather than importing them, because `app/simulation_view.py` imports Flet and
-these tools run under a bare `python3`. Since `PL-2CS8` every color is declared
+rather than importing them, because the view imports Flet and
+these tools run under a bare `python3`, and it reads them from every module
+under `app/` — the theme first, then the rest in path order — rather than from
+two named paths (`PL-BXB2`). Since `PL-2CS8` every color is declared
 in `app/theme.py`, and `check_colors_live_in_the_theme` fails the build on one
-declared anywhere else; it still parses `app/simulation_view.py` as well, so a
-color put back there is measured rather than lost, which is the failure that
+declared anywhere else, as a named constant or as a hex literal written inline
+in a call; every module is still parsed for colors as well, so a
+color put back outside the theme is measured rather than lost, which is the failure that
 item was filed for. Its `REQUIREMENTS` table is the specification: each entry names
 the colors that appear on screen together, the success criterion, the minimum,
 and the reason, which cites the code they are drawn in by symbol. Most entries
@@ -532,7 +535,7 @@ channels an element really has, and whether
 a non-color channel is genuinely redundant, are judgments, and
 `.claude/rules/ui-color.md` carries them. The one thing it does decide about
 the prose is the half a script can: a description may cite no line number, and
-every symbol it names must exist in the two modules read above. Those citations
+every symbol it names must exist in some module under `app/`. Those citations
 were line numbers until `PL-GJDW`, and all fourteen had rotted into unrelated
 code, which made the tool's own coverage unauditable while looking audited. Requirements that fall short
 today are listed against the item that closes each, and a listed shortfall that
@@ -555,7 +558,7 @@ limits on how far a simulated ratio may be read.
 `tools/agent_identity_check.py` closes the one gap that table structurally
 cannot cover: a colour the project never declares. Flet/Material paints a
 disabled control's label in the theme's disabled-content grey, which appears in
-neither module `contrast_check.py` reads, so a requirement went on measuring
+no module `contrast_check.py` reads, so a requirement went on measuring
 the enabled pair and reporting a pass while the agent's name sat grey on its
 own ISO 5360 fill for the whole of every run (`PL-61WW`). The rule it enforces
 is the project owner's, 2026-09-08: no control carrying agent identity may be
@@ -567,7 +570,16 @@ then draws nothing. The identity set is not a second list to keep in step but
 whatever `RunView._apply_agent_color_scheme` writes, that method already
 being the single writer of agent colour; a control given an agent colour where
 it is constructed and never written there is the check's other error, and is
-what keeps that coverage claim true rather than asserted. Like the two tools
+what keeps that coverage claim true rather than asserted. It reads every
+module under `app/` and names none by path (`PL-V53R`): the writer is found in
+whichever module holds it, exactly once — none is an error, two is a second
+writer of agent colour — rule 1 reads the pairing inside the writer's own
+class, since `self.X` names that class's attribute, and rule 2 reads every
+class in every module, since the writer can only write its own. A tree in
+which no `disabled` write can be read at all is an error rather than a pass
+(`PL-0PJG`), and the success line states how many such writes were read,
+across how many modules and how many on identity controls, so the sentence
+cannot be printed from nothing. Like the two tools
 above it decides nothing else — whether a control's identity is legible, and
 whether a pairing is the right one for it, stay judgments.
 
@@ -584,30 +596,39 @@ result.
 a declared one is loud: renaming `FAT_COLOR` failed with the constant named,
 and moving `SimulationView` to its own module — which `PL-B9PY` records the
 port doing from the start — failed with 68 unresolved citations, from the
-symbol rule `PL-J7C5` added for an unrelated reason. Its one hole is
-**additive**, and the port is what opens it: a colour declared in a module that
-is neither of the two read here is measured by nothing and missed by nothing,
-and a new chart-panel module holding a selection colour at 1.07:1 on the panel
-passed with `0 errors`. Nothing exploits it today — no hex constant sits outside those
-two files.
+symbol rule `PL-J7C5` added for an unrelated reason. Its one hole was
+**additive**, and `PL-BXB2` closed it before the port could open it: a colour
+declared in a module that was neither of the two then read was measured by
+nothing and missed by nothing, and a new chart-panel module holding a selection
+colour at 1.07:1 on the panel passed with `0 errors`. The tool now reads every
+module under `app/`, so that colour is measured and refused, an inline hex
+literal outside the theme is refused with it, the moved-class probe resolves
+its citations instead of failing, and the report's first line says how many
+modules it read.
 
-`agent_identity_check.py` does not survive, and its failure is worse than
+`agent_identity_check.py` did not survive, and its failure was worse than
 silence. Rule 1 reads `self.X.disabled = EXPR` paired with
 `self.X.visible = not EXPR`; PySide6 spells both as calls, so `property_writes`
-returns nothing and the pairing loop runs zero times. On a tree where all six
+returned nothing and the pairing loop ran zero times. On a tree where all six
 identity controls are driven by `setEnabled()` with no paired hide it printed
 "6 control(s) carry the agent colour, none of them rendered disabled" and
 exited 0 — an affirmative claim about a tree it had not measured, which a
-reader cannot tell from the same sentence earned. Whether it goes quiet turns
-on a choice the port makes incidentally: porting the colour writes as well
-trips rule 2 and moving the class trips the empty-set guard, so both of those
-are loud, but rule 2 then misdiagnoses, reporting that the writer "never
-writes" controls it writes through `setStyleSheet`.
+reader could not tell from the same sentence earned. `PL-0PJG` closed that
+door ahead of the port: a tree in which no `disabled` write is read in any
+class of any module is an error naming the spelling the check does not read,
+so that probe fails on the first port commit rather than passing through it,
+and the success line carries the count it rests on. Whether the older tool
+went quiet turned on a choice the port makes incidentally: porting the colour
+writes as well trips rule 2 and moving the class trips the empty-set guard, so
+both of those are loud, but rule 2 then misdiagnoses, reporting that the
+writer "never writes" controls it writes through `setStyleSheet`.
 
 So the port's cost side gains one entry rather than two, and it is specific:
-rule 1 of `agent_identity_check.py` is inside the port's scope, and
-`contrast_check.py`'s two read paths widen to whatever modules the decomposed
-view declares colours in.
+rule 1 of `agent_identity_check.py` is inside the port's scope — teaching it
+the setter spelling, which the empty-measurement error now demands of the
+first commit that changes it. Both tools' widening to every module under
+`app/` landed ahead of the port (`PL-BXB2`, `PL-V53R`), so the decomposition
+itself costs neither of them anything.
 
 `tools/glyph_check.py` covers the half of presentation correctness that no
 string assertion here can reach. Every such assertion compares text the same
@@ -631,21 +652,27 @@ meant to record what was rendered. Like the tools above it decides nothing
 else: whether an unlisted character *would* render needs a real client, so it
 refuses and never approves.
 
-`tools/import_boundary_check.py` measures two claims the source makes about
+`tools/import_boundary_check.py` measures three claims the source makes about
 itself. `_StrictPayload`'s docstring says that the `_...Payload`/public-
-dataclass pairs exist so the rest of `core/` never imports Pydantic, and
+dataclass pairs exist so the rest of `core/` never imports Pydantic;
 `docs/MODEL.md` "The reproducibility guarantee" says that a run is a function of
 its inputs and of the number of steps taken and of nothing else — so the run
-loop reads no clock. Nothing checked either, so a leak into a compartment would
-have left both paragraphs reading as verified while being false — worse than the
-coupling itself. Its `BOUNDARIES` table is the specification, and the tool
+loop reads no clock; and `CLAUDE.md`'s first architecture rule keeps simulation
+code independent of the UI toolkit, which `ROADMAP.md` § "v0.4.26 - the
+interface moves to Qt" turns into a figure — exactly three modules import Flet
+— and reasons from. Nothing checked any of them, so a leak into a compartment
+would have left the paragraphs reading as verified while being false — worse than the
+coupling itself; the Flet count was true and unenforced until `PL-9KDK`, and
+`PySide6`, `pyqtgraph` and `numpy` are held out of `core/` from before the
+first import of any of them exists, so the port's first commit is measured
+rather than the rule written after it. Its `BOUNDARIES` table is the specification, and the tool
 decides nothing beyond it: which packages ought to be confined, and where the
 exception belongs, are judgments written there with the reason beside them.
 Three further states are errors, each closing a way the check could pass while
 meaning nothing — an allowance naming a file that no longer exists, an allowance
 no longer used, and a declared tree matching no source files at all.
 
-The two boundaries cover different trees, and the asymmetry is deliberate. The
+The boundaries cover different trees, and the asymmetry is deliberate. The
 Pydantic boundary covers `app/` as well as `core/`, so the rule reads *exactly
 one module in this package imports Pydantic*. The `time`, `datetime`,
 `random`, `secrets` and `uuid` boundaries stop at `core/` and permit no module
@@ -653,7 +680,15 @@ at all, because the
 guarantee they defend explicitly allows the interface its wall clock — what it
 forbids is a tick's real duration reaching the run. A test pins that asymmetry
 end-to-end, so widening the tree to the whole package would fail on an import
-the design permits rather than passing quietly (`PL-J833`).
+the design permits rather than passing quietly (`PL-J833`). The toolkit
+boundaries follow the clock's shape — `app/` is where a widget belongs — except
+Flet's two root packages, `flet` and `flet_charts`, which cover the whole
+package and between them name the three modules, because the count is what the
+roadmap reasons from; declaring one boundary for `flet` alone counted two,
+since `app/chart_series.py` imports only `flet_charts`. Those allowances are
+also the port's checklist through the tool's own unused-entry error: each
+module the port frees of either package drops its entry in the same commit,
+and the last entry takes the boundary with it.
 
 `tools/main_ci_status.py` is the one tool here that gates nothing, and the only
 one that reads the network. `.github/workflows/quality.yml` runs the whole-store
@@ -813,7 +848,7 @@ being absent from the CI floor section.
 
 `contrast_check.py` is why the group is worth naming rather than left to each
 tool's own docstring. It ran bare until `PL-L17Q`, green only because the two
-files it reads happened to carry no 3.12+ syntax, so one PEP 695 generic added
+files it then read happened to carry no 3.12+ syntax, so one PEP 695 generic added
 to either would have failed the floor section on a tool nobody had touched. The
 rule the six are an instance of is stated in
 `tests/unit/test_tools_portability.py`'s module docstring, and a tool joining

@@ -160,8 +160,8 @@ check: sync
 # whether that file imports the simulator, and `tests/` targets 3.14 like the
 # rest of the tree.
 #
-# `agent_identity_check.py` is here for the narrowest version of the same
-# reason: `app/simulation_view.py` is its only input. It refuses a control
+# `agent_identity_check.py` is here for the same reason: it reads every
+# module under `app/` with `ast` (`PL-V53R`). It refuses a control
 # that carries the agent colour and can be rendered disabled, which is the
 # colour Material substitutes and `contrast_check.py` above cannot reach
 # because it is declared in no source file (`PL-97VB`).
