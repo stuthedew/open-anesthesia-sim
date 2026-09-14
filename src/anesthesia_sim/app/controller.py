@@ -1097,7 +1097,7 @@ class SimulationController:
         or defaulted, and `DrawnWindow.times_s` says exactly which instants
         came back, so a caller can see where the run ends rather than being
         told a value for an instant it never reached. Asking the run definition itself
-        for those instants is refused, and rightly - see `evaluate_window`.
+        for those instants is refused, and rightly - see `evaluate_anchored`.
 
         **The column spacing comes from the axis, not from the clipped
         range**, which is what keeps the grid anchored: the span is a property
