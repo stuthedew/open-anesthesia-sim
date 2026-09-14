@@ -3,10 +3,11 @@ id: PL-J2TD
 title: Open a live run at a canonical keyframe state with its clock re-based, which is what a fork resumes into
 priority: P2
 effort: M
-status: ready
+status: done
+closed: 2026-09-14
 classes: feature, refactor
 feature: scenario-branching
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core, tests/unit, tests/integration
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core, tests/unit, tests/integration, docs/MODEL.md
 added: 2026-09-06
 verify: uv run pytest tests/integration/test_controller.py && grep -q 'def test_a_fork_opens_at_a_keyframe_and_rebases_its_clock' tests/integration/test_controller.py
 ---
@@ -256,3 +257,44 @@ error - handing a zero-based child a case instant once the branch is older than
 the fork instant - is a legal, in-range, exact-but-wrong answer that no bounds
 check can refuse, because both frames are legal non-negative floats inside the
 run.
+
+---
+
+## Closed 2026-09-14
+
+**Done when, against what shipped.** A run opens at a canonical keyframe state
+of another run (`SimulationController.resumed_at`); its definition is re-based
+by subtracting the fork instant, in `advance` and `drawn_window`; it advances
+by the ordinary `advance()`, with no second way to move a run forward
+introduced; an instant the parent holds no keyframe for is refused, naming the
+keyframes it does hold; and
+`tests/integration/test_controller.py::test_a_fork_opens_at_a_keyframe_and_rebases_its_clock`
+carries the deliverable. The `verify:` command was run and exits 0.
+
+**One judgment taken inside the approach rather than put to the owner, and
+why.** The branch's *run clock* continues the case's step count. The 24 h
+supported run length is enforced on that count alone, so a branch restarting it
+is handed a fresh envelope - a fork at 23 h advanced to 47 h of case time with
+every guard passing, in the regime `core/supported_ranges.py` argues the
+omitted metabolism dominates. That is a wrong clinical claim rather than a
+mechanism preference, which `CLAUDE.md`'s safety-critical standard puts outside
+what a session weighs. It is also compatible with the described mechanism
+rather than a substitution for it: `docs/MODEL.md`'s re-basing bullet
+constrains the *definition's* clock, and the definition is re-based exactly as
+written. § "What this requires of a branch" and § "Supported run length" now
+say so, which they did not before.
+
+**Filed rather than built:** `PL-SM5V` (settings cannot be recovered from a
+`RunSegment`), `PL-BMY5` (a `SimulationState` constructs past the envelope),
+`PL-2R2C` (a branch's drawn columns do not align with the trunk's),
+`PL-ZMRT` (whether a branch's definition should open at the fork instant,
+leaving one time frame - the owner's, and the evidence for it arrives with
+`PL-B9PY`).
+
+**Docs swept:** `docs/MODEL.md` (edited - the two sections above),
+`ROADMAP.md` (checked: the Required-scope clause for this item describes what
+shipped and needs no change), `docs/ARCHITECTURE.md` (checked: it describes
+`SimulationController`'s run controls and snapshots, all still true; what a
+branch *is* and what it shares with its parent is `PL-TFX5`'s to write there),
+`README.md` (checked: no branch or fork claim). `make check` is green,
+including the 100% branch-coverage gate on `core/`.
