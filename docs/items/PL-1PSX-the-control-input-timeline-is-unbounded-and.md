@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: perf
 feature: teachable-case
+milestone: v0.4.24
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/control_timeline.py, tests/unit/test_simulation_view.py, tests/unit/test_control_timeline.py, docs/MODEL.md
 added: 2026-09-04
 closed: 2026-09-14
+pr: 563
 verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_control_timeline_is_not_regrouped_when_it_has_not_grown' tests/unit/test_simulation_view.py
 ---
 

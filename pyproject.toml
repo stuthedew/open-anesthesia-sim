@@ -1,6 +1,6 @@
 [project]
 name = "anesthesia-sim"
-version = "0.4.23"
+version = "0.4.24"
 # "volatile" here where `README.md` says "inhaled", deliberately rather than by
 # drift: a package Summary describes the artifact, and this release models
 # sevoflurane, isoflurane and desflurane only. README "What it does not

@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: refactor
 feature: core-domain-language
+milestone: v0.4.24
 touches: src/anesthesia_sim/core
 added: 2026-09-13
 closed: 2026-09-14
+pr: 561
 verify: uv run pytest tests/unit/test_circuit.py && grep -q 'integrated_inspired_partial_pressure_fraction_s' src/anesthesia_sim/core/circuit.py
 ---
 
