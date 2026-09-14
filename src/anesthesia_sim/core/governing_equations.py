@@ -81,6 +81,7 @@ equation itself. `uptake_system.py` forms them there.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.matrix_exponential import Matrix
@@ -140,6 +141,63 @@ one call away from the arithmetic it protects, rather than in the class that
 usually supplies it. The absolute floor is what lets a zero cardiac output
 pass, which `docs/MODEL.md` § "Supported input ranges" requires.
 """
+
+
+def require_canonical_state(state: object) -> None:
+    """Refuse a state vector the equations could not be read against.
+
+    The entry guard every sink that opens from a state a run passed through
+    shares - a `RunDefinition`, and the live system a branch resumes into -
+    so that the two cannot come to disagree about what a state is. It lives
+    here because each condition below is a statement about the state vector
+    this module defines rather than about either caller.
+
+    **The first refusal is structural, not by type name.** A drawn value
+    carries the same nine numbers in the same order as a canonical one, so
+    nothing about its contents distinguishes them; what does is that the
+    display path wraps its answers in something that is not a tuple.
+    `docs/MODEL.md` § "The canonical evaluation rule" argues for exactly this
+    test - only a value that is structurally not a state is refused by a sink
+    that thought to check nothing - and a structural test holds for wrappers
+    this module has never heard of. `core/run_definition.py` names
+    `DisplayState` before delegating here, because it is the module that can;
+    the message below is what a sink outside that module can still say.
+
+    `state` is typed as `object` rather than as the tuple, deliberately. The
+    values this refuses are exactly the ones a caller believed were states,
+    so a signature that could only be given a state would put the check
+    somewhere it can never fire.
+
+    Raises:
+        SimulationConfigurationError: `state` is not a tuple, is not
+            `STATE_SIZE` long, holds a non-finite value, or does not carry
+            exactly one in `UNIT_STATE`. The last is what makes every forcing
+            term in `build_system_matrix` mean what it says: a state carrying
+            anything else there would scale the whole of the delivery term
+            without changing any setting a reader can see.
+    """
+
+    if not isinstance(state, tuple):
+        raise SimulationConfigurationError(
+            f"a {type(state).__name__} is not a state vector; a state that is stored, "
+            "exported, replayed or forked from is taken from RunDefinition.state_at, "
+            "whose answers compose their arithmetic in the canonical order"
+        )
+
+    if len(state) != STATE_SIZE:
+        raise SimulationConfigurationError(
+            f"a state has {len(state)} entries but the equations carry {STATE_SIZE}"
+        )
+
+    for index, value in enumerate(state):
+        if not isfinite(value):
+            raise SimulationConfigurationError(f"state[{index}] is {value}, which is not finite")
+
+    if state[UNIT_STATE] != 1.0:
+        raise SimulationConfigurationError(
+            f"state[{UNIT_STATE}] is the constant one the forcing terms are read against, "
+            f"not {state[UNIT_STATE]}"
+        )
 
 
 @dataclass(frozen=True, slots=True)

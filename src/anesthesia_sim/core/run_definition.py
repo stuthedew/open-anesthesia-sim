@@ -64,10 +64,10 @@ from math import inf, isfinite
 
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.governing_equations import (
-    STATE_SIZE,
     UNIT_STATE,
     UptakeEquationSettings,
     build_system_matrix,
+    require_canonical_state,
 )
 from anesthesia_sim.core.matrix_exponential import Matrix, matrix_exponential, propagate
 
@@ -708,9 +708,13 @@ def _require_state(state: tuple[float, ...] | DisplayState) -> None:
     """Refuse a state vector the equations could not be read against.
 
     The display value is refused first and by name. It would otherwise fail on
-    the length check with a message about the equations, which is true and
-    tells the reader nothing about what they did wrong - and the error a
-    safety-critical path raises is part of what makes it auditable.
+    `require_canonical_state`'s structural test with a message naming its type,
+    which is true and tells the reader nothing about *why* a wrapper exists -
+    and the error a safety-critical path raises is part of what makes it
+    auditable. Everything after that refusal is a statement about the state
+    vector rather than about this module, so it is
+    `governing_equations.require_canonical_state`'s, and the live system a
+    branch resumes into applies the identical guard by calling it too.
 
     Raises:
         SimulationConfigurationError: `state` came from the display path, or is
@@ -726,17 +730,4 @@ def _require_state(state: tuple[float, ...] | DisplayState) -> None:
             "state_at"
         )
 
-    if len(state) != STATE_SIZE:
-        raise SimulationConfigurationError(
-            f"a state has {len(state)} entries but the equations carry {STATE_SIZE}"
-        )
-
-    for index, value in enumerate(state):
-        if not isfinite(value):
-            raise SimulationConfigurationError(f"state[{index}] is {value}, which is not finite")
-
-    if state[UNIT_STATE] != 1.0:
-        raise SimulationConfigurationError(
-            f"state[{UNIT_STATE}] is the constant one the forcing terms are read against, "
-            f"not {state[UNIT_STATE]}"
-        )
+    require_canonical_state(state)

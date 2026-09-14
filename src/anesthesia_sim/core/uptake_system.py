@@ -40,6 +40,7 @@ from anesthesia_sim.core.governing_equations import (
     TissueGroupEquationSettings,
     UptakeEquationSettings,
     build_system_matrix,
+    require_canonical_state,
 )
 from anesthesia_sim.core.matrix_exponential import Matrix, matrix_exponential, propagate
 from anesthesia_sim.core.parameters import (
@@ -48,7 +49,7 @@ from anesthesia_sim.core.parameters import (
     load_reference_circle_system_parameters,
 )
 from anesthesia_sim.core.patient import PatientCompartments, PatientCompartmentsState
-from anesthesia_sim.core.validation import require_positive_finite
+from anesthesia_sim.core.validation import require_nonnegative_finite, require_positive_finite
 
 SECONDS_PER_MINUTE = 60.0
 
@@ -612,6 +613,80 @@ class AgentUptakeSystem:
 
         return tuple(state)
 
+    def resume_at(self, state: tuple[float, ...], initial_agent_l: float) -> None:
+        """Stand this system at `state`, on an accounting period anchored at `initial_agent_l`.
+
+        The write counterpart of `state_vector()`, and how a branch's system
+        comes to stand where its parent stood. `state` is a canonical state -
+        `RunDefinition.state_at`'s answer, or the `Keyframe` it was composed
+        from - so a branch opens from the trajectory the parent actually
+        passed through rather than from a re-derivation of it. Nothing here
+        advances anything: the system is positioned, and it is stepped after
+        that by the ordinary `advance()`, which is the only path that moves a
+        run forward.
+
+        **The two cumulative totals are the case's, and they are carried
+        rather than derived.** `state_vector()` reports each step's own
+        delivered and exhausted agent, because the propagator integrates them
+        over the interval it is given; a keyframe's are cumulative from the
+        start of the run it belongs to. Writing those in continues the
+        parent's mass-balance readout across the fork instead of restarting it
+        at zero, which a learner comparing two managements of one case needs,
+        since the agent the patient has received is the case's and not the
+        branch's.
+
+        `initial_agent_l` is the anchor of that same accounting period - what
+        the *parent's* period started from - for the reason `reset()` gives
+        about not resting a check on an invariant it does not establish. The
+        alternative, deriving the anchor as the value that would make
+        `docs/MODEL.md`'s mass-balance identity close exactly, is what this
+        deliberately does not do: the canonical path's own conservation
+        residual has no reason to fall on the positive side, and measured on a
+        900 s sevoflurane run with two setting changes it puts the derived
+        anchor at -6.9e-14 L, a negative initial amount `AgentSimulationValidator`
+        rightly refuses. Carried rather than derived, that residual stays where
+        it belongs - inside the check, at 6.9e-14 L against the 1e-12 L
+        absolute tolerance - instead of being absorbed into the anchor where
+        nothing would report it.
+
+        The system is left untouched if any guard fires, by the route
+        `advance()` uses and for the same reason: `_write_state_vector` writes
+        one compartment at a time, so a fraction the model cannot represent is
+        refused after earlier compartments have already been written.
+
+        The cached propagator is neither rebuilt nor cleared, because
+        `_propagator_cache_key()` reads only the settings the system matrix is
+        assembled from and this writes none of them.
+
+        Raises:
+            SimulationConfigurationError: `state` did not come from the
+                canonical path, is not `STATE_SIZE` long, holds a non-finite
+                value, or does not carry exactly one in `UNIT_STATE`;
+                `initial_agent_l` or either cumulative total is negative or not
+                finite; or a fraction is outside what the compartment holding
+                it represents.
+        """
+
+        require_canonical_state(state)
+        require_nonnegative_finite("initial_agent_l", initial_agent_l)
+        require_nonnegative_finite("delivered_agent_l", state[DELIVERED_AGENT_L])
+        require_nonnegative_finite("exhausted_agent_l", state[EXHAUSTED_AGENT_L])
+
+        state_before = self.capture_state()
+        resumed = False
+
+        try:
+            self._write_state_vector(state)
+            self.agent_simulation_validator.reset(initial_agent_l=initial_agent_l)
+            self.agent_simulation_validator.record_external_agent_transfer(
+                delivered_agent_l=state[DELIVERED_AGENT_L],
+                exhausted_agent_l=state[EXHAUSTED_AGENT_L],
+            )
+            resumed = True
+        finally:
+            if not resumed:
+                self.restore_state(state_before)
+
     def _write_state_vector(self, state: tuple[float, ...]) -> None:
         """Write an advanced trajectory back into the compartments.
 
@@ -628,6 +703,16 @@ class AgentUptakeSystem:
         concentrations and three of them not, and the positions are what
         separate them. `core/concentration.py` says what the type does and
         does not guarantee.
+
+        **It checks the vector's shape not at all**, which is safe for its two
+        callers and for no third. `_advance_step` hands it what `propagate`
+        returned from this system's own state, and `resume_at` hands it a
+        state `require_canonical_state` has already refused on length,
+        finiteness and the constant. A caller reaching here with anything else
+        gets an `IndexError` from a short vector, a silent truncation from a
+        long one, and no complaint at all about a wrong `UNIT_STATE` - none of
+        which is how the rest of `core/` refuses a value. So `resume_at` is
+        the entry point for a state this system did not itself produce.
         """
 
         self.circuit.set_inspired_partial_pressure_fraction(Fraction(state[INSPIRED_FRACTION]))
