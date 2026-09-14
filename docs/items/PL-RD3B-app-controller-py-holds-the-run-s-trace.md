@@ -11,8 +11,8 @@ added: 2026-09-04
 verify: uv run pytest -q tests/unit/test_simulation_view.py tests/integration/test_chart_patching.py && ! grep -q 'app.controller import' src/anesthesia_sim/app/chart_series.py
 ---
 
-**Problem.** `app/controller.py` is 1 064 lines, of which the controller is the
-last 564. The module docstring says what the file is for - "the boundary
+**Problem.** `app/controller.py` is 1 411 lines, of which the controller proper
+is the last 1 052. The module docstring says what the file is for - "the boundary
 between the UI and the scientific core. Owns run/pause/reset state, applies
 user-facing settings to the core, and exposes read-only `SimulationSnapshot`s
 for the view to render" - and 325 of those lines are neither that nor used by
@@ -26,8 +26,9 @@ and `PL-2FM6` has since deleted all three along with the columnar store and its
 dyadic aggregate ladder. The three queue items it cited as reasons - `PL-011`,
 `PL-WRKL` and `PL-RRWV` - are all `dropped`. What survived is the argument: the
 seam is a fact about the imports rather than one this item invents, and the
-file is now *larger* than the 930 lines the original complained about. What
-follows is measured on `9744d39` rather than inherited.
+file keeps growing - 930 lines when the item was filed, 1 064 at the re-brief,
+and 1 411 once `PL-B9PY` (`#567`) and `PL-J2TD` (`#568`) landed. What follows
+is measured on `f692f51`.
 
 **Why it matters.** The seam is already there. Measured against the tree, no
 consumer of the drawn-run half needs the controller and no consumer of the
@@ -68,7 +69,8 @@ carries the ordinary risk of touching every importer. It is maintainability
 work, not a defect, and nothing is wrong today.
 
 **Where.** Out of `src/anesthesia_sim/app/controller.py`, the drawn-run half -
-lines 126 to 359 on `9744d39`:
+lines 126 to 359 on `f692f51`, unmoved by either of the two milestone items
+that landed after the re-brief:
 
 | Symbol | Line | What it is |
 | --- | --- | --- |
@@ -90,13 +92,14 @@ a later session reintroduces it.
 **The control-input half may ride along**, at the implementing session's
 discretion: `ControlInput` (35), `CONTROL_INPUT_UNITS` (89) and `ControlChange`
 (98) are lines 35 to 125, the same argument and the same clean consumer in
-`app/control_timeline.py`. Taking both leaves `app/controller.py` at about 739
-lines; taking the drawn-run half alone leaves about 830. Two passes over one
+`app/control_timeline.py`. Taking both leaves `app/controller.py` at about 1 086
+lines; taking the drawn-run half alone leaves about 1 177. Two passes over one
 set of importers costs more than one, so prefer both - but either is a complete
 answer to this item.
 
-What stays: `SimulationSnapshot` (360) and `SimulationController` (501), which
-are the boundary the docstring describes.
+What stays: `SimulationSnapshot` (360), `ResumePoint` (502, added by
+`PL-J2TD`) and `SimulationController` (542), which are the boundary the
+docstring describes. `SimulationController` alone is now 870 lines.
 
 Importers to update: `app/chart_series.py`, `app/simulation_view.py`,
 `tests/unit/test_simulation_view.py`, `tests/integration/test_chart_patching.py`,
@@ -107,12 +110,14 @@ so `make doc-check` fails until it does. `docs/MODEL.md` § "What a recorded
 sample is" cites `app/controller.py`'s `RecordedQuantity` by module and needs
 re-pointing; that section has a second, separate problem, which is `PL-27H0`.
 
-**Sequencing.** `PL-B9PY` (decompose `SimulationView` so two runs render) is in
-flight on `claude/simulationview-dual-run-joroj5` and is rewriting the one
-importer that takes the whole module. Land it first and write this against the
-decomposed view: the shared file is a sequencing note rather than a refusal
-(`PL-VRMK`), so this item stays `ready` and is not blocked, but the smaller
-change goes first and this one expects to resolve against that branch.
+**Sequencing: satisfied 2026-09-14.** `PL-B9PY` (decompose `SimulationView` so
+two runs render) was in flight when this was re-briefed and has since merged as
+`#567`, so there is nothing left to wait for and no branch to resolve against.
+Measured after it landed, the importer list above is **unchanged** - the
+decomposition stayed inside `app/simulation_view.py` and added no module to
+`app/` - so this item's scope is exactly what it was. The note is kept because
+it records why the item was left `ready` rather than blocked: a shared file is a
+sequencing note rather than a refusal (`PL-VRMK`).
 
 **Done when.** The drawn-run vocabulary is its own module, `app/chart_series.py`
 imports it without importing `app/controller.py` at all, `app/controller.py` is
