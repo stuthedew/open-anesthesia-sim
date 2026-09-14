@@ -64,6 +64,7 @@ from .vcs import (
     churn,
     closed_by,
     closures_on_base,
+    cut_window,
     cuts_in_flight,
     default_base,
     fetch_remote,
@@ -339,6 +340,14 @@ def cmd_check(args: argparse.Namespace) -> int:
         # interrupted one made them disagree silently (`PL-1MKQ`). One
         # directory read of about 36 small files.
         notes=notes_by_version(root),
+        # The seam between those two halves. The notes are written at the cut
+        # and the tag goes on the merge, so anything landing in between is
+        # inside the tag's span and named in no notes - measured at 12 closing
+        # pull requests across 11 of 47 tagged spans (`PL-028F`). Answerable
+        # only while the cut is unmerged, which is where this runs: on the
+        # release branch and on its pull request, where re-running the cut
+        # still absorbs the newcomers.
+        window=cut_window(root),
     )
     print(render.format_check(report))
     return 1 if report.errors else 0

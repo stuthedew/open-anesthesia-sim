@@ -32,7 +32,7 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from .model import CLOSED_STATUSES, parse_item
-from .release import version_in
+from .release import NOTES_DIR, version_in
 from .store import ID_PATTERN
 
 # The default branch, in the order it is looked for: a branch whose tip that
@@ -1939,6 +1939,84 @@ class CutsInFlight:
     branches: tuple[BranchCut, ...] = ()
     unreadable: tuple[str, ...] = ()
     base: str = ""
+
+
+@dataclass(frozen=True)
+class CutWindow:
+    """What the default branch took while this checkout's release cut sat unmerged.
+
+    **The seam this exists to make visible.** `bin/docket release` stamps the
+    finished work with `milestone: vX.Y.Z` and renders the notes from it; the
+    tag then goes on the *merge* commit, per `ROADMAP.md` § "Tags". Anything
+    that merges between those two moments is inside the tag's span and named in
+    no release notes at all until the next release claims it, so two documents
+    answer "what shipped in vX.Y.Z" differently and neither is wrong on its own
+    terms (`PL-028F`).
+
+    **It is not rare, and it is invisible afterwards.** Measured 2026-09-14
+    across 47 tagged spans: 12 closing pull requests merged inside a tag's span
+    while its own notes named them nowhere, in 11 distinct spans - close to one
+    release in four. The window itself leaves no trace: a squash merge gives
+    the release commit the same author and commit date, so nothing in `main`'s
+    history records how long the branch was open. That is why the report is
+    made here, while the cut is still unmerged and re-running it would absorb
+    the newcomers, rather than reconciled later from a history that cannot say.
+
+    `landed` is **subject-derived**, and the advisory that prints it says so.
+    `_landed_since` reads leading ids off the base's new subjects, which names
+    a commit's own item and not necessarily a *closure*. That is the right
+    accuracy for something a person is asked to look at and would be the wrong
+    accuracy for anything acting on its own - `PL-8M8H` is the case where the
+    same read had to be refused for exactly that reason.
+    """
+
+    #: The version this checkout is cutting, without its `v`; empty when none.
+    version: str = ""
+    #: The ids leading subjects the base gained since the cut was written.
+    landed: tuple[str, ...] = ()
+    declined: str = ""
+
+
+def cut_window(
+    root: Path, *, notes_dir: str = NOTES_DIR, runner: Runner | None = None
+) -> CutWindow:
+    """Whether this checkout carries an unmerged cut, and what landed since.
+
+    Reads only the checkout's own `HEAD`, unlike `cuts_in_flight` which walks
+    every ref: the question here is what *this* session is about to merge and
+    tag, which is the one release it can still do anything about.
+
+    Args:
+        root: Repository root.
+        notes_dir: Where a cut writes its notes file.
+        runner: The git runner; the module default when omitted.
+
+    Returns:
+        An empty window where this checkout is not cutting anything, which is
+        every session but one. `declined` where git would not answer, because a
+        silent empty answer here would read as "nothing landed in the window".
+    """
+    run = runner or _run_git
+    base = default_base(root, runner=run)
+    if not run(["rev-parse", "--verify", "--quiet", base], root).strip():
+        return CutWindow(declined=f"this checkout has no {base} to compare against")
+    prefix = notes_dir.strip("/") + "/"
+    added = [
+        line.strip()
+        for line in run(
+            ["diff", "--name-only", "--diff-filter=A", f"{base}...HEAD", "--", notes_dir], root
+        ).splitlines()
+        if line.strip().startswith(prefix)
+    ]
+    if not added:
+        return CutWindow()
+    versions = sorted({name[len(prefix) :].removesuffix(".md").lstrip("v") for name in added})
+    fork = run(["merge-base", "HEAD", base], root).strip()
+    if not fork:
+        return CutWindow(
+            version=versions[-1], declined=f"this clone shares no readable history with {base}"
+        )
+    return CutWindow(version=versions[-1], landed=_landed_since(fork, base, root, run))
 
 
 def cuts_in_flight(

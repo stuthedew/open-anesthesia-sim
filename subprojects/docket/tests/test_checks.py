@@ -18,6 +18,7 @@ from docket.roadmap import MilestoneStates, milestone_states
 from docket.vcs import (
     BaseRecord,
     ClosureReport,
+    CutWindow,
     LostItem,
     LostReport,
     PullRequestHistory,
@@ -2413,3 +2414,73 @@ def test_a_store_with_nothing_untriaged_still_names_the_zero() -> None:
     report = Report(items=[_item("PL-AAAA", priority="P1")])
 
     assert "1 open (0 P0, 1 P1, 0 P2, 0 P3, 0 untriaged)" in format_check(report)
+
+
+# --- the seam between a release's notes and its tag --------------------------
+#
+# `PL-028F`. `bin/docket release` writes the notes at the cut and the tag goes
+# on the merge, so anything landing in between is inside the tag's span and
+# named in no notes until the next release claims it. Measured 2026-09-14: 12
+# closing pull requests across 11 of 47 tagged spans, close to one release in
+# four, and the window leaves no trace afterwards - a squash gives the release
+# commit one date, so `main`'s history cannot say how long the branch was open.
+
+
+def _window_advisories(window: CutWindow | None, **kwargs: object) -> list[str]:
+    report = analyze([_item(), _item("PL-2222")], TODAY, window=window, **kwargs)  # type: ignore[arg-type]
+    return [line for line in report.advisories if "inside the tag's span" in line]
+
+
+def test_the_cut_window_names_what_landed_since_the_cut() -> None:
+    """The advisory, and both dispositions it offers, on the shape that produced it.
+
+    `PL-D9WD` merged as `#311` at 17:00 on 2026-09-04 and v0.3.8's release
+    merge landed at 17:15, so `git describe --contains` answers `v0.3.8~1`
+    while `docs/releases/v0.3.8.md` names it nowhere and `v0.3.9.md` does.
+    """
+    advisories = _window_advisories(
+        CutWindow(version="0.3.8", landed=("PL-D9WD",)), notes={"0.3.8": frozenset({"PL-K7QX"})}
+    )
+
+    assert len(advisories) == 1
+    assert "PL-D9WD" in advisories[0]
+    assert "make release VERSION=0.3.8" in advisories[0]
+    assert "let it go to the next release" in advisories[0]
+    assert "Read from commit subjects" in advisories[0]
+
+
+def test_an_id_the_cut_already_names_is_not_a_stranger() -> None:
+    """The branch's own work reaches the base through the merge, which is not the seam."""
+    assert (
+        _window_advisories(
+            CutWindow(version="0.3.8", landed=("PL-D9WD",)), notes={"0.3.8": frozenset({"PL-D9WD"})}
+        )
+        == []
+    )
+
+
+def test_an_id_this_cut_stamped_is_not_a_stranger() -> None:
+    """Stamped but not yet in the notes is an interrupted cut, which `PL-1MKQ` reports."""
+    report = analyze(
+        [_item("PL-2222", status="done", closed=TODAY, milestone="v0.3.8")],
+        TODAY,
+        window=CutWindow(version="0.3.8", landed=("PL-2222",)),
+    )
+
+    assert [line for line in report.advisories if "inside the tag's span" in line] == []
+
+
+def test_a_checkout_cutting_nothing_says_nothing() -> None:
+    """One session in a release carries a cut, so every other run pays nothing."""
+    assert _window_advisories(CutWindow()) == []
+    assert _window_advisories(None) == []
+
+
+def test_a_window_git_would_not_answer_is_declined_rather_than_read_as_empty() -> None:
+    """Silence would read as "nothing landed", which is the one wrong answer here."""
+    advisories = _window_advisories(
+        CutWindow(version="0.3.8", declined="this clone shares no readable history")
+    )
+
+    assert len(advisories) == 1
+    assert "could not be compared" in advisories[0]

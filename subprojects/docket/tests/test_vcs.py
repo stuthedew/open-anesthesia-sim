@@ -29,6 +29,7 @@ from docket.vcs import (
     branches_in_flight,
     closed_by,
     closures_on_base,
+    cut_window,
     cuts_in_flight,
     default_base,
     files_in_flight,
@@ -3846,3 +3847,59 @@ def test_the_landed_branch_line_refuses_the_merge_it_replaces() -> None:
     assert "its pull request merged" in printed
     assert f"git checkout -B claude/pl-k7qx-live {BASE}" in printed
     assert f"git diff {BASE}...HEAD" in printed
+
+
+# --- the release cut's own window -------------------------------------------
+
+
+def _cut_window_runner(
+    *, added: tuple[str, ...] = (), landed: tuple[str, ...] = (), fork: str = "abc123"
+):
+    """A git whose `HEAD` introduces `added` notes files and whose base gained `landed`."""
+
+    def run(args: list[str], root: Path) -> str:
+        if args[:2] == ["rev-parse", "--verify"]:
+            return f"{BASE}\n" if args[-1] == BASE else ""
+        if args[0] == "rev-parse":
+            return f"{BASE}\n" if args[-1] == BASE else ""
+        if args[:2] == ["diff", "--name-only"]:
+            return "\n".join(added)
+        if args[0] == "merge-base":
+            return f"{fork}\n" if fork else ""
+        if args[0] == "log":
+            return "\n".join(f"{identifier} Something that landed" for identifier in landed)
+        return ""
+
+    return run
+
+
+def test_a_checkout_carrying_a_cut_names_the_version_and_what_landed_since() -> None:
+    """The seam `PL-028F` describes: notes written at the cut, tag on the merge."""
+    window = cut_window(
+        ROOT,
+        runner=_cut_window_runner(
+            added=("docs/releases/v0.3.8.md",), landed=("PL-D9WD", "PL-66FP")
+        ),
+    )
+
+    assert window.version == "0.3.8"
+    assert window.landed == ("PL-D9WD", "PL-66FP")
+    assert window.declined == ""
+
+
+def test_a_checkout_cutting_nothing_carries_no_window() -> None:
+    """One session in a release cuts; every other one pays a single `git diff`."""
+    window = cut_window(ROOT, runner=_cut_window_runner(landed=("PL-D9WD",)))
+
+    assert (window.version, window.landed, window.declined) == ("", (), "")
+
+
+def test_a_cut_whose_fork_point_is_unreadable_declines_rather_than_reading_as_empty() -> None:
+    """Empty would mean "nothing landed in the window", which is the wrong answer."""
+    window = cut_window(
+        ROOT, runner=_cut_window_runner(added=("docs/releases/v0.3.8.md",), fork="")
+    )
+
+    assert window.version == "0.3.8"
+    assert window.landed == ()
+    assert "no readable history" in window.declined
