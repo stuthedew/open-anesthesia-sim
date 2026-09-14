@@ -18,6 +18,7 @@ stub. They are local `file://` remotes, so nothing here touches a network.
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -59,18 +60,30 @@ def _shallow_clone_of_a_moved_remote(tmp_path: Path) -> Path:
 
 
 def _install_docket(root: Path) -> None:
-    """The store the hook requires, and a `bin/docket` that is the real one.
+    """The store the hook needs, the real `bin/docket`, and the `python3` it will exec.
 
     A shim rather than a copy: `bin/docket` resolves the package from its own
     location, so execing this repository's copy is what makes the command under
     test the command that ships. The store is left empty - `digest` then prints
     nothing, and these tests are about the branch line.
+
+    The interpreter is the one running this suite, linked in beside the shim as
+    `python3` and put first on the hook's `PATH` by `_hook_env`. `bin/docket`
+    execs bare `python3`, and the system directories alone hand it whatever the
+    machine ships: on macOS that is Apple's 3.9, below the 3.11 floor
+    `subprojects/docket/pyproject.toml` declares, so `bin/docket` died on
+    `datetime.UTC`, the hook swallowed that exactly as its contract says, and
+    eight tests here read `''` on the project owner's Mac while CI's Ubuntu,
+    shipping a 3.12, passed them (`PL-Y6W9`). `sys.executable` is the one
+    interpreter every checkout running these tests is known to have, and it
+    meets the floor because the project's own `requires-python` does.
     """
     (root / "docs" / "items").mkdir(parents=True)
     shim = root / "bin" / "docket"
     shim.parent.mkdir()
     shim.write_text(f'#!/bin/sh\nexec "{REPO / "bin" / "docket"}" "$@"\n', encoding="utf-8")
     shim.chmod(0o755)
+    (root / "bin" / "python3").symlink_to(sys.executable)
 
 
 def _break_the_remote(root: Path) -> None:
@@ -94,6 +107,20 @@ def _is_shallow(root: Path) -> bool:
     return result.stdout.strip() == "true"
 
 
+def _hook_env(root: Path) -> dict[str, str]:
+    """The environment the hook runs under, fixed so nothing leaks in from pytest's.
+
+    `PATH` leads with the checkout's `bin/`, so the `python3` `_install_docket`
+    linked there is the one `bin/docket` execs; the system directories follow,
+    for git, sed and the rest of what the hook calls by name.
+    """
+    return {
+        "CLAUDE_PROJECT_DIR": str(root),
+        "PATH": f"{root / 'bin'}:/usr/bin:/bin:/usr/local/bin",
+        "HOME": str(root),
+    }
+
+
 def _run_hook(root: Path) -> str:
     """The hook as a session start runs it: from the project directory.
 
@@ -104,11 +131,7 @@ def _run_hook(root: Path) -> str:
     result = subprocess.run(
         ["bash", str(HOOK)],
         cwd=root,
-        env={
-            "CLAUDE_PROJECT_DIR": str(root),
-            "PATH": "/usr/bin:/bin:/usr/local/bin",
-            "HOME": str(root),
-        },
+        env=_hook_env(root),
         capture_output=True,
         text=True,
         check=False,
@@ -215,3 +238,26 @@ def test_a_repository_with_no_remote_branch_says_nothing(tmp_path: Path) -> None
     _git("commit", "-qm", "only", cwd=root)
 
     assert "Branch:" not in _run_hook(root)
+
+
+def test_the_hook_runs_under_the_interpreter_running_this_suite(tmp_path: Path) -> None:
+    """`bin/docket` execs bare `python3`, and the fixture decides which one that is.
+
+    Held as an identity rather than as a floor: a floor passes on any machine
+    whose own `python3` happens to be new enough, which CI's is, and fails only
+    where the project owner is standing. The identity fails on every machine
+    whose `python3` is not this suite's - which is every machine - so the
+    fixture cannot quietly go back to the system directories (`PL-Y6W9`).
+    """
+    root = tmp_path / "solo"
+    _install_docket(root)
+
+    found = subprocess.run(
+        ["bash", "-c", "python3 -c 'import sys; print(sys.version)'"],
+        env=_hook_env(root),
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+
+    assert found == sys.version, f"the hook gets {found}, not this suite's {sys.version}"
