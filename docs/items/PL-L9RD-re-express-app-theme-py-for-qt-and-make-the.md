@@ -47,3 +47,14 @@ dash patterns intact, the interface pass's visual decisions recorded once,
 `tools/agent_identity_check.py` both passing against the new file - which is
 `PL-JRS3`'s subject, since after a port they would otherwise pass on a tree they
 no longer describe.
+
+**Rider, 2026-09-14 (pre-port survey).** `tools/glyph_check.py`'s six
+`CONFIRMED` entries (U+00A0, U+00B1, U+00B7, U+00D7, U+2013, U+2014) record
+evidence against the Flutter client - "rendered in the wash-in tolerance
+readout (PL-8XPQ, 2026-09-04)" and the like - and U+00A0's rests on a Flutter
+layout fact ("a blank string collapses to zero height"). The module says it
+has no rot guard, deliberately. Once the Qt dashboard renders, display all
+six, look at them, and rewrite each evidence string to name the Qt build and
+the date; re-check U+00A0's premise specifically, since Qt lays out a blank
+label differently. The check passes throughout the port either way, which is
+why this is written down rather than left to be noticed.

@@ -42,3 +42,11 @@ a boundary so the absence is held rather than merely current.
 
 **Do not run this early.** The spike is the working reference every other item
 in this milestone reads from, so it goes last.
+
+**Rider, 2026-09-14 (pre-port survey).** Deleting
+`tests/integration/test_chart_patching.py` (which imports
+`flet.messaging.protocol`, `flet.controls.object_patch` and
+`flet.pubsub.pubsub_hub`) orphans two `[[tool.mypy.overrides]]` in
+`pyproject.toml`: `flet_charts`, and `msgpack`, whose comment names that file
+as its only importer. mypy will not report them - `strict` does not enable
+`warn_unused_configs`. Delete both in the same commit.

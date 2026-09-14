@@ -50,3 +50,15 @@ assert over it, `PL-2QMK` is closed, and the assertions are chosen for
 durability rather than pixel-exactness - "the alveolar trace is drawn", "the
 MAC-awake band sits between these two axis values", "no trace leaves the plot" -
 since a pixel snapshot is brittle across Qt versions and font stacks.
+
+**Rider, 2026-09-14 (pre-port survey).** Two things nothing sets, both measured
+in this container. (1) `QT_QPA_PLATFORM`: unset, Qt defaults to `xcb` and
+`QApplication([])` aborts with `Could not load the Qt platform plugin "xcb"`,
+listing `offscreen` among the available plugins. The carrier is a new
+`tests/conftest.py` with `os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")`
+before any PySide6 import - not a prefix on the pytest line in `Makefile` or
+`.github/workflows/quality.yml`, which `tools/doc_check.py`'s
+`check_coverage_gate` holds to string equality. Add `tests/conftest.py` to this
+item's `touches:`. (2) `libegl1`: `PL-VHLZ` carries the CI step and the
+environment line; this item's first rendering test cannot pass in CI until
+that lands, because `import PySide6.QtGui` dies before collection.
