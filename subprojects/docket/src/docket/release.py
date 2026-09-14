@@ -460,11 +460,16 @@ class ReleaseOffer:
     cut (`PLANNED`), or the plan has already given the number to something it
     has not finished (`RESERVED`, and there is nothing to offer).
 
-    Two things ahead of the current version can hold a number, and the
-    reservation reads both: the step the project stands on, and the milestone
-    the beat is about. They are the same row in the simple arrangement and
-    different objects in the live one, where the step is a patch track beneath
-    a milestone that has not been implemented.
+    Two objects `wave` binds can hold that number, and the reservation reads
+    both: the step the project stands on, and the milestone the beat is about.
+    They are the same row in the simple arrangement and different objects in
+    the live one, where the step is a patch track beneath a milestone that has
+    not been implemented.
+
+    Both are objects rather than a reading of the roadmap, so a version the
+    plan names ahead of the current one and binds to neither is not seen here -
+    an unscoped milestone, which has a timeline row and no section yet, is the
+    reachable case and is `PL-VFD8` rather than a claim this makes.
     """
 
     kind: str
@@ -484,7 +489,7 @@ def release_offer(ready: Readiness, plan: Wave | None) -> ReleaseOffer:
     than guesses, and a project with no roadmap is a legitimate state - and
     the offer then stands, because there is no plan for it to contradict.
     """
-    from .roadmap import RELEASE
+    from .roadmap import IMPLEMENT, RELEASE
 
     suggested = ready.suggested_version.lstrip("v")
     if plan is None:
@@ -532,7 +537,19 @@ def release_offer(ready: Readiness, plan: Wave | None) -> ReleaseOffer:
     reserved: list[tuple[tuple[int, int, int], str]] = []
     if plan.step is not None and plan.step.version is not None:
         reserved.append((plan.step.version, plan.step.name))
-    if plan.milestone is not None:
+    # The milestone carrier answers only where the plan holds something saying
+    # that milestone is unfinished, because `RESERVED` is printed as exactly
+    # that claim. On `clear` the gate is open and on `scope` or `freeze` the
+    # section has not been scoped at all, so the beat is the evidence. On
+    # `implement` it is not: that beat is also `wave`'s fall-through when
+    # `_release_due` matches no arrangement, and one of the shapes it falls
+    # through on is *finished* - a gate-only milestone whose frozen list has
+    # cleared, reached from a step that is not its own row, which the second
+    # arrangement misses because it compares positions (`PL-J45M`). `own_scope`
+    # is what counts a milestone's own content, so its absence there is
+    # precisely the case with nothing behind the word "unfinished".
+    supported = plan.beat != IMPLEMENT or plan.own_scope is not None
+    if plan.milestone is not None and supported:
         reserved.append((plan.milestone.version, plan.milestone.name))
     for version, name in reserved:
         if "{}.{}.{}".format(*version) == suggested:

@@ -1060,6 +1060,14 @@ reservation is dead there while looking alive, and the digest printed `Offer
 0.5.0 before taking new work` directly above `Beat: implement v0.5.0 — the case
 you can branch ... 8 still open` (`PL-6T4L`).
 
+Both carriers are objects `wave` binds, which is also the limit of what the
+reservation can see: a milestone with a timeline row and no section yet binds
+neither, and its number is still offered (`PL-VFD8`). And the milestone carrier
+answers only where something counts that milestone's content, because
+withholding an offer prints the words "which is unfinished" — a claim the
+`implement` beat alone does not support, since `wave` falls through to it for a
+gate-only milestone that has in fact finished (`PL-J45M`).
+
 **What a release deliberately does not write is the roadmap.** A project that
 keeps a version table in a hand-maintained plan will find it left behind by
 every release — twice here, the second time one release after the first was

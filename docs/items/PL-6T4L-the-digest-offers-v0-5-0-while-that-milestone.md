@@ -97,12 +97,17 @@ and beat line can no longer disagree on it.
 **Not the same as `PL-1BS2`**, which is the digest's readiness line missing the
 *interrupted-cut* resume. This is the reserved-version guard.
 
-**Fixed 2026-09-14.** The guard now reads two carriers rather than one:
+**Fixed 2026-09-14.** Every `release.py` line number above is to the tree this
+was found on; the guard now sits at 537-556 and the comment it quotes at
+499-512. The guard now reads two carriers rather than one:
 `plan.step` as before, and `plan.milestone` - the field `Wave` documents as
-"the milestone the beat is about". No new state, and nothing cuttable is
-suppressed: a `release` beat returns from the branch above it, because `wave`
-sets `release_version` whenever it sets that beat, and every other beat is one
-whose own wording says its target is unfinished. Measured against the live
+"the milestone the beat is about". No new state. A `release` beat returns from
+the branch above it, because `wave` sets `release_version` whenever it sets that
+beat; and the milestone carrier answers only where the plan counts something -
+`implement` is also `wave`'s fall-through when `_release_due` matches no
+arrangement, and one shape it falls through on is a *finished* gate-only
+milestone, where withholding the offer would print "which is unfinished"
+against work that is done (`PL-J45M`, filed). Measured against the live
 roadmap immediately after: `ReleaseOffer(kind='reserved', version='0.5.0',
 milestone='the case you can branch')`, so the digest now reads `No release to
 offer: the roadmap gives 0.5.0 to "the case you can branch", which is
