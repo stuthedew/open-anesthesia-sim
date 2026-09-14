@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: feature, ux
 feature: qt-port
-touches: src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/wash_in.py, src/anesthesia_sim/app/simulation_view.py, tests/integration
+touches: src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, tests/integration
 added: 2026-09-10
 verify: uv run python tools/import_boundary_check.py && grep -rq 'pyqtgraph' src/anesthesia_sim/app/
 ---
@@ -70,3 +70,14 @@ nothing behind this item can start before it does, so the band it ranks in has
 to be the band of the most urgent thing it gates. This is the safety debt of
 the chart arriving at the item that unblocks it, rather than a re-banding of
 the port's own risk.
+
+**Rider, 2026-09-14 (pre-port survey).** Two sequencing facts no field carries.
+`src/anesthesia_sim/app/wash_in.py` was in this item's `touches` and is
+removed: § "Explicitly out of scope" names it among the modules that survive
+untouched, and the wash-in *plot* is drawn by `chart_series.py` and
+`simulation_view.py`, which are already listed. And PySide6, pyqtgraph and
+numpy are neither installed nor declared (`ModuleNotFoundError: No module
+named 'PySide6'` on a bare checkout), so this item cannot import pyqtgraph
+until `PL-3SQT`'s *additive* half lands - the dependencies in, Flet left in
+place for `PL-7SVX`. Start there, in this item's own first commit if `PL-3SQT`
+has not been started.

@@ -73,3 +73,17 @@ the msgpack override's comment already describes and `tools/ignore_check.py`
 polices. The `flet_charts` and `msgpack` overrides go dead when `PL-7SVX`
 deletes their importers; `warn_unused_configs = true` under `[tool.mypy]`
 would make the next dead override loud, since `strict` does not enable it.
+
+**Two more, same survey.** mypy `--strict` rejects pyqtgraph a second time
+even with the `ignore_missing_imports` override: `disallow_subclassing_any`
+refuses the two `pyqtgraph` subclasses the spike is built on, since their
+bases have become `Any`. Each such class needs `# type: ignore[misc]` with
+the reason, or a minimal local stub - decide which here, once, before
+`PL-G59B` writes the first one. And licensing: PySide6-Essentials and
+shiboken6 are LGPLv3 (GPL-only for some modules) and ship no licence text in
+the wheel; this repository is Apache-2.0 with no `NOTICE`. Nothing is
+violated today - the obligations (dynamic linking, a recipient's ability to
+relink, conveying the LGPL text) attach when a binary is *conveyed*, and this
+project ships none, `uv` installing from PyPI per user. Record that reading
+in `docs/ARCHITECTURE.md` when the dependency lands, so the day a bundled
+build is proposed the obligation is already written down.

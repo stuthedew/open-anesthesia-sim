@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: feature, ux
 feature: qt-port
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/main.py, tests/unit, tests/integration
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/main.py, tests/unit, tests/integration, docs/ARCHITECTURE.md
 added: 2026-09-10
 verify: uv run python tools/import_boundary_check.py && grep -rq 'PySide6' src/anesthesia_sim/app/
 ---
@@ -14,7 +14,7 @@ verify: uv run python tools/import_boundary_check.py && grep -rq 'PySide6' src/a
 **Problem.** Port the dashboard to PySide6: the readout row, the four parameter controls, the agent selector, the transport, the new-case dialog and the notice banner
 
 **The Qt port's Required scope, item 2** - the bulk of it.
-`app/simulation_view.py` is 3 619 lines and this is most of what replaces it.
+`app/simulation_view.py` is 4 321 lines and this is most of what replaces it.
 
 **The hedges are requirements, not labels.** "end-tidal-equivalent" and
 "inspired" are `PL-NV9W` and `PL-8M05`; "common gas outlet" is `PL-71CF`.
@@ -36,7 +36,7 @@ the start: read `PL-B9PY` for the seam it establishes rather than reproducing
 one class holding one run's widgets and then splitting it again.
 
 **Why it matters.** It is the bulk of the milestone and the point at which the
-interface stops being two toolkits. `app/simulation_view.py` is 3 619 lines and
+interface stops being two toolkits. `app/simulation_view.py` is 4 321 lines and
 this replaces most of it; until it lands, `PL-7SVX` cannot run and the port is
 not a port.
 
@@ -55,3 +55,10 @@ widgets; the view is built decomposed along the seam `PL-B9PY` establishes
 rather than as one class to be split later; and the integer-slider property the
 spike demonstrates is kept, so the value applied to the model is exactly the
 value printed beside it.
+
+**Rider, 2026-09-14 (pre-port survey).** `touches` gains `docs/ARCHITECTURE.md`:
+the definition of done says it must "describe the interface that exists", and
+its package map is held to disk in both directions by `tools/doc_check.py`, so
+every module this item adds or removes edits that map in the same commit or
+fails `make check`. The line count above is corrected from 3 619 to 4 321,
+`PL-B9PY` having grown the file since the brief was written.

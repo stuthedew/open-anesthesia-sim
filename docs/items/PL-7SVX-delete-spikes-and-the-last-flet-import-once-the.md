@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: refactor, infra
 feature: qt-port
-touches: spikes, tools/import_boundary_check.py, src/anesthesia_sim/app
+touches: spikes, tools/import_boundary_check.py, src/anesthesia_sim/app, docs/ARCHITECTURE.md
 added: 2026-09-10
 verify: uv run python tools/import_boundary_check.py && ! grep -rq 'import flet' src/anesthesia_sim/
 ---
