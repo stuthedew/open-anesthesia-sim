@@ -3,11 +3,12 @@ id: PL-0PJG
 title: agent_identity_check prints 'none of them rendered disabled' from an empty measurement set, so the affirmative sentence cannot be told apart from the same sentence earned
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, safety, infra
 feature: qt-port
 touches: tools/agent_identity_check.py, tests/unit/test_agent_identity_check.py, docs/ARCHITECTURE.md
 added: 2026-09-14
+closed: 2026-09-14
 verify: uv run pytest tests/unit/test_agent_identity_check.py && grep -q 'def test_an_identity_set_with_no_disabled_write_read_anywhere_is_an_error' tests/unit/test_agent_identity_check.py
 ---
 
@@ -43,3 +44,16 @@ sentence cannot be printed from nothing. A regression test reproduces probe B
 and asserts the error. A tree that genuinely disables nothing anywhere trips
 the same error, deliberately: the check cannot tell that tree from one it
 cannot read, and saying so is the honest answer.
+
+**What landed, 2026-09-14.** `analyze` counts every `self.X.disabled = ...`
+assignment in every class of every module under `app/`. An identity set that
+is non-empty while that count is zero is an error naming what was read and
+what was not (`UNREAD_SPELLING`, PySide6's `setEnabled()`), so `PL-JRS3`'s
+probe B - every identity control driven by the setter, no paired hide - now
+fails with one problem instead of exiting 0, and a regression test holds it
+there. The success line carries the measurement: on the shipped tree,
+"3 disabled-state write(s) read across 11 module(s) under
+src/anesthesia_sim/app/, 1 of them on identity controls and each paired with
+its hide". The one fixture that had no `disabled` write anywhere - the
+never-disabled identity control - keeps a `disabled` write on a control that is
+not agent-coloured, with the reason in its docstring.

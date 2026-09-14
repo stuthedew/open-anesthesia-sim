@@ -413,7 +413,7 @@ Outside the packaged application, and not imported by it:
 
 ```text
 tools/
-├── agent_identity_check.py  # refuses a control that carries the agent colour and can be rendered disabled, because Flet/Material then paints its label in a disabled-content grey that is declared in no source file and so is unreachable by `contrast_check.py`; a control may be `disabled` only where it is also `visible = not <the same expression>`, and one given an agent colour where it is constructed must be written by the single writer `RunView._apply_agent_color_scheme`
+├── agent_identity_check.py  # refuses a control that carries the agent colour and can be rendered disabled, because Flet/Material then paints its label in a disabled-content grey that is declared in no source file and so is unreachable by `contrast_check.py`; a control may be `disabled` only where it is also `visible = not <the same expression>`, and one given an agent colour where it is constructed must be written by the single writer `RunView._apply_agent_color_scheme`; reads every module under `app/` and names none by path, and refuses a tree in which no `disabled` write can be read at all rather than passing over it
 ├── branch_id_check.py    # refuses a branch ahead of the default base that carries no item id in its name and leads no commit subject with one, because every in-flight guard matches an id and work carrying none is invisible to all of them; scoped to the `claude/*` namespace, since a contributor has no queue to be visible in
 ├── dead_ends.py          # emits `docs/dead-ends.md`'s entry lines into session context at start, and holds that emitted half - never the file's preamble, which is instructions for adding an entry rather than for reading one - to 30 entries and 4,000 bytes, because a `SessionStart` hook's output is resent on every turn and an unbounded always-loaded store measurably degrades an agent rather than merely costing tokens; refuses an entry citing an id that resolves to nothing, since `bin/docket show <id>` is the entry's whole retrieval path
 ├── contrast_check.py     # computes every declared color requirement's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum, taking the better channel where an element's edge can be carried by either its fill or its border
@@ -544,7 +544,7 @@ limits on how far a simulated ratio may be read.
 `tools/agent_identity_check.py` closes the one gap that table structurally
 cannot cover: a colour the project never declares. Flet/Material paints a
 disabled control's label in the theme's disabled-content grey, which appears in
-neither module `contrast_check.py` reads, so a requirement went on measuring
+no module `contrast_check.py` reads, so a requirement went on measuring
 the enabled pair and reporting a pass while the agent's name sat grey on its
 own ISO 5360 fill for the whole of every run (`PL-61WW`). The rule it enforces
 is the project owner's, 2026-09-08: no control carrying agent identity may be
@@ -556,7 +556,16 @@ then draws nothing. The identity set is not a second list to keep in step but
 whatever `RunView._apply_agent_color_scheme` writes, that method already
 being the single writer of agent colour; a control given an agent colour where
 it is constructed and never written there is the check's other error, and is
-what keeps that coverage claim true rather than asserted. Like the two tools
+what keeps that coverage claim true rather than asserted. It reads every
+module under `app/` and names none by path (`PL-V53R`): the writer is found in
+whichever module holds it, exactly once — none is an error, two is a second
+writer of agent colour — rule 1 reads the pairing inside the writer's own
+class, since `self.X` names that class's attribute, and rule 2 reads every
+class in every module, since the writer can only write its own. A tree in
+which no `disabled` write can be read at all is an error rather than a pass
+(`PL-0PJG`), and the success line states how many such writes were read,
+across how many modules and how many on identity controls, so the sentence
+cannot be printed from nothing. Like the two tools
 above it decides nothing else — whether a control's identity is legible, and
 whether a pairing is the right one for it, stay judgments.
 
@@ -583,23 +592,29 @@ literal outside the theme is refused with it, the moved-class probe resolves
 its citations instead of failing, and the report's first line says how many
 modules it read.
 
-`agent_identity_check.py` does not survive, and its failure is worse than
+`agent_identity_check.py` did not survive, and its failure was worse than
 silence. Rule 1 reads `self.X.disabled = EXPR` paired with
 `self.X.visible = not EXPR`; PySide6 spells both as calls, so `property_writes`
-returns nothing and the pairing loop runs zero times. On a tree where all six
+returned nothing and the pairing loop ran zero times. On a tree where all six
 identity controls are driven by `setEnabled()` with no paired hide it printed
 "6 control(s) carry the agent colour, none of them rendered disabled" and
 exited 0 — an affirmative claim about a tree it had not measured, which a
-reader cannot tell from the same sentence earned. Whether it goes quiet turns
-on a choice the port makes incidentally: porting the colour writes as well
-trips rule 2 and moving the class trips the empty-set guard, so both of those
-are loud, but rule 2 then misdiagnoses, reporting that the writer "never
-writes" controls it writes through `setStyleSheet`.
+reader could not tell from the same sentence earned. `PL-0PJG` closed that
+door ahead of the port: a tree in which no `disabled` write is read in any
+class of any module is an error naming the spelling the check does not read,
+so that probe fails on the first port commit rather than passing through it,
+and the success line carries the count it rests on. Whether the older tool
+went quiet turned on a choice the port makes incidentally: porting the colour
+writes as well trips rule 2 and moving the class trips the empty-set guard, so
+both of those are loud, but rule 2 then misdiagnoses, reporting that the
+writer "never writes" controls it writes through `setStyleSheet`.
 
 So the port's cost side gains one entry rather than two, and it is specific:
-rule 1 of `agent_identity_check.py` is inside the port's scope.
-`contrast_check.py`'s widening to every module under `app/` landed ahead of the
-port (`PL-BXB2`).
+rule 1 of `agent_identity_check.py` is inside the port's scope — teaching it
+the setter spelling, which the empty-measurement error now demands of the
+first commit that changes it. Both tools' widening to every module under
+`app/` landed ahead of the port (`PL-BXB2`, `PL-V53R`), so the decomposition
+itself costs neither of them anything.
 
 `tools/glyph_check.py` covers the half of presentation correctness that no
 string assertion here can reach. Every such assertion compares text the same

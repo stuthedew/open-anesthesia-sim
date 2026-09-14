@@ -1603,14 +1603,17 @@ Four grounds survive:
    spacing rhythm, density, layout.
 4. **The two checks that read the theme.** `tools/contrast_check.py` and
    `tools/agent_identity_check.py` both read `theme.py` and
-   `simulation_view.py` by path. `PL-JRS3` measured what a port does to them
-   (2026-09-14) rather than reasoning it: `contrast_check` reads values and
-   fails loudly when a module it names moves or a colour it knows disappears,
-   but a colour declared in any *other* module is measured by nothing
-   (`PL-BXB2`); `agent_identity_check` keys on one method name in one file and
-   *passes* on a tree it no longer describes the moment that class moves
+   `simulation_view.py` by path until 2026-09-14. `PL-JRS3` measured what a
+   port does to them (2026-09-14) rather than reasoning it: `contrast_check`
+   read values and failed loudly when a module it named moved or a colour it
+   knew disappeared, but a colour declared in any *other* module was measured
+   by nothing (`PL-BXB2`); `agent_identity_check` keyed on one method name in
+   one file, so a class moving out of it was outside both rules, and it
+   printed "none of them rendered disabled" from an empty measurement set
    (`PL-V53R`, `PL-0PJG`). The Qt view is built decomposed from the start, so
-   both re-pointings land before the first port commit rather than with it.
+   both re-pointings landed before the first port commit rather than with it,
+   done 2026-09-14: each reads every module under `app/` and names none by
+   path, and an empty measurement set is an error.
    `PL-NGF7` is the other, and the port *dissolves* it rather than fixing
    it - see § "Items this port moots or transforms" below, and Gate 1's
    own disposition of it.

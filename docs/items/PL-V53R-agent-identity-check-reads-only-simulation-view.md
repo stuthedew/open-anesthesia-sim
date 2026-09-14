@@ -3,11 +3,12 @@ id: PL-V53R
 title: agent_identity_check reads only simulation_view.py and keys on _apply_agent_color_scheme by name, so moving one class out of that module silences it rather than failing
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, safety, infra
 feature: qt-port
 touches: tools/agent_identity_check.py, tests/unit/test_agent_identity_check.py, docs/ARCHITECTURE.md, Makefile
 added: 2026-09-14
+closed: 2026-09-14
 verify: uv run pytest tests/unit/test_agent_identity_check.py && grep -q 'def test_the_writer_is_found_in_whichever_app_module_holds_it' tests/unit/test_agent_identity_check.py
 ---
 
@@ -62,3 +63,17 @@ control in another class is not mistaken for the identity control; rule 2
 reads every class in every module, so a control built from an agent colour
 anywhere in the interface must be one the writer writes. The reading side of
 `PL-0PJG` lands in the same change.
+
+**What landed, 2026-09-14.** `read_modules` parses every `.py` under
+`src/anesthesia_sim/app/`, and `find_writers` looks for `_apply_agent_color_scheme`
+as a method of any class in any of them: none is the existing empty-set error,
+two is a second-writer error naming both, and the success line names the one
+found as `module:Class.method`. Rule 1 reads the `disabled`/`visible` pairing
+inside the writer's own class, because `self.X` names that class's attribute
+and a same-named attribute elsewhere is a different control; rule 2 reads
+every class in every module, because the writer can only write its own class's
+attributes. On the shipped tree the class scoping surfaced nothing new - the
+run reports 6 identity controls, 3 disabled-state writes read across 11
+modules, 1 of them on an identity control - and the four new tests cover the
+writer in another module, rule 2 reaching another module, a second writer, and
+a same-named control in another class staying quiet.
