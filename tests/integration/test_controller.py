@@ -20,6 +20,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationExecutionError,
     SimulationNumericalError,
 )
+from anesthesia_sim.core.governing_equations import DELIVERED_AGENT_L, EXHAUSTED_AGENT_L
 from anesthesia_sim.core.parameters import load_reference_adult_parameters
 from anesthesia_sim.core.run_definition import RunSegment
 from anesthesia_sim.core.tissue import TissueGroup
@@ -1416,3 +1417,455 @@ def test_a_control_change_is_drawn_at_every_time_base_the_reader_can_select() ->
             f"the dial change at {change_s} s is not drawn at the {time_base.span_s} s time base"
         )
         assert window.times_s[-1] == pytest.approx(min(time_base.span_s, elapsed_s))
+
+
+# `PL-J2TD`: a fork resumes into a live run. The tests below hold the seam
+# between a canonical keyframe state and a running system - what a branch opens
+# at, what its clock reads, and what it refuses - end to end through the
+# controller, because the two records a branch has to keep agreeing are only
+# both present here.
+
+COMPARTMENT_SNAPSHOT_FIELDS = (
+    "inspired_partial_pressure_fraction",
+    "alveolar_partial_pressure_fraction",
+    "mixed_venous_partial_pressure_fraction",
+    "vessel_rich_partial_pressure_fraction",
+    "muscle_partial_pressure_fraction",
+    "fat_partial_pressure_fraction",
+)
+"""The six compartment fractions a snapshot carries, named as the snapshot names them.
+
+Written out rather than derived from `COMPARTMENT_QUANTITIES`, because that
+tuple is keyed by the quantity the *chart* draws and one of its names differs
+from the snapshot's: the circuit's drawn quantity is `circuit` while the field
+is `inspired_partial_pressure_fraction`, since the state is named for the
+clinical quantity and the container is still the circuit.
+"""
+
+BRANCH_AGREEMENT = 1e-14
+"""How far a branch's live state may sit from its parent's, in fractions of 1 atm.
+
+The two reach the same instant by different routes: the parent steps the whole
+way from induction, while the branch is stood at a keyframe the canonical path
+computed and steps only from there. `docs/MODEL.md` § "Closed-form agreement
+test" is what governs that comparison, and stating the bound in fractions of
+one atmosphere rather than relatively is its reasoning - a relative bound would
+tighten without limit on the near-zero fat fraction of a 120 s run and say
+nothing about a displayed digit.
+
+Measured 2026-09-14 on the run below: the worst disagreement across all six
+compartments is 2.7e-16, about one unit in the last place, and the two
+cumulative accumulators agree to 1.6e-15 L. Pinned two orders above that so an
+ordinary floating-point wobble does not fail the suite, and ten orders below
+the 1e-4 that a two-decimal percent readout can show so a real divergence
+still does.
+"""
+
+
+def _trunk_with_two_changes() -> SimulationController:
+    """A 120 s sevoflurane run carrying two setting changes, so it holds three keyframes."""
+
+    controller = SimulationController()
+    _run_with_two_changes(controller)
+    controller.pause()
+
+    return controller
+
+
+def test_a_fork_opens_at_a_keyframe_and_rebases_its_clock() -> None:
+    """The item's own deliverable, in one test.
+
+    A branch opens at a canonical keyframe state of another run; its clock
+    continues the case's, because a branch is one patient's case under a second
+    management; and its *definition* is re-based by subtraction, which is what
+    `docs/MODEL.md` § "The canonical evaluation rule" gates. Both halves are
+    asserted because either alone passes for the wrong reason: a branch whose
+    clock restarted would still open at the right state, and a branch whose
+    definition was not re-based would still read the right time.
+    """
+
+    trunk = _trunk_with_two_changes()
+    fork_s = trunk.run_segments[-1].opening.elapsed_s
+
+    branch = trunk.resumed_at(fork_s)
+
+    # The clock is the case's: the branch stands at the fork instant, not at zero.
+    assert branch.snapshot().elapsed_s == fork_s
+    assert branch.origin_s == fork_s
+
+    # The definition is re-based by subtraction: it opened at its own zero.
+    assert branch.run_segments[0].opening.elapsed_s == 0.0
+    assert branch.run_segments[0].opening.state == trunk.run_segments[-1].opening.state
+
+    # And the state that arrived is the parent's keyframe, element for element.
+    for entry in COMPARTMENT_STATE_INDEX.values():
+        assert (
+            branch.run_segments[0].opening.state[entry]
+            == (trunk.run_segments[-1].opening.state[entry])
+        )
+
+    # It is a live run: it advances by the path every run takes.
+    branch.start()
+    _advance_for(branch, duration_s=10.0)
+
+    assert branch.snapshot().elapsed_s == fork_s + 10.0
+    assert branch.run_segments[0].opening.elapsed_s == 0.0
+
+
+def test_a_branch_continues_the_case_s_step_count_so_the_envelope_is_the_case_s() -> None:
+    """The 24 h supported run length is the patient's, not each branch's.
+
+    `require_supported_run_length` reads a step count, so a branch restarting
+    that count would be handed a fresh envelope - a fork taken late could then
+    be advanced well past the span `docs/MODEL.md` § "Supported run length"
+    declares, in the regime `core/supported_ranges.py` argues the omitted
+    metabolism dominates, with every guard passing. Continuing the parent's
+    count is what makes the envelope the case's, and it needs no second guard.
+    """
+
+    trunk = _trunk_with_two_changes()
+    fork_s = trunk.run_segments[-1].opening.elapsed_s
+
+    branch = trunk.resumed_at(fork_s)
+
+    assert branch._state.step_count == round(fork_s / MAXIMUM_SIMULATION_STEP_S)
+    assert branch._state.simulation_step_s == MAXIMUM_SIMULATION_STEP_S
+    assert branch.snapshot().elapsed_s == fork_s
+
+
+def test_a_branch_reproduces_its_parent_at_every_instant_they_share() -> None:
+    """`ROADMAP.md` item 12, element-wise rather than within a tolerance.
+
+    The parent is advanced past the fork and the branch the same way, and
+    every instant they share must agree entry for entry on the canonical path.
+    The instants probed are the case's own - a whole number of steps times the
+    step, which is the only way simulated time is ever formed here - and the
+    branch is asked for each one *minus the fork instant*, which is the
+    subtraction `docs/MODEL.md` § "The canonical evaluation rule" requires and
+    the one `SimulationController.advance` performs.
+    """
+
+    trunk = _trunk_with_two_changes()
+    fork_s = trunk.run_segments[-1].opening.elapsed_s
+    branch = trunk.resumed_at(fork_s)
+
+    trunk.start()
+    _advance_for(trunk, duration_s=20.0)
+    trunk.pause()
+
+    branch.start()
+    _advance_for(branch, duration_s=20.0)
+    branch.pause()
+
+    trunk_definition = trunk._run_definition
+    branch_definition = branch._run_definition
+    fork_steps = round(fork_s / MAXIMUM_SIMULATION_STEP_S)
+
+    for steps_past_fork in range(0, 201):
+        case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
+
+        assert branch_definition.state_at(case_s - fork_s) == trunk_definition.state_at(case_s), (
+            f"the branch and its parent differ at {case_s} s"
+        )
+
+
+def test_naming_a_branch_s_own_offset_is_not_subtracting_the_fork_instant() -> None:
+    """Why the subtraction is the rule, measured at this seam rather than quoted.
+
+    `docs/MODEL.md` § "The canonical evaluation rule" says the child's clock is
+    re-based "by subtracting the fork instant, rather than by the caller naming
+    an offset", because that subtraction does not round-trip: with a fork at
+    900 s, `(900.0 + 1e-6) - 900.0` is 9.999999974752427e-07 and not 1e-6.
+
+    This is what the rule buys, on the run below: over the 601 case instants
+    the branch and its parent share, asking the branch for its own
+    `steps * step` gives a different answer from the parent at **354 of them**,
+    while subtracting the fork instant gives the same answer at every one. Both
+    routes are exact solutions of the same equations; they are not the same
+    sequence of floating-point operations, and `PL-Z3W6` requires the second
+    kind of sameness.
+
+    It fails honestly if the two ever coincide, which would mean the rule had
+    stopped costing anything and this test had stopped saying anything.
+    """
+
+    trunk = _trunk_with_two_changes()
+    fork_s = trunk.run_segments[-1].opening.elapsed_s
+    branch = trunk.resumed_at(fork_s)
+
+    trunk.start()
+    _advance_for(trunk, duration_s=60.0)
+    trunk.pause()
+
+    branch.start()
+    _advance_for(branch, duration_s=60.0)
+    branch.pause()
+
+    trunk_definition = trunk._run_definition
+    branch_definition = branch._run_definition
+    fork_steps = round(fork_s / MAXIMUM_SIMULATION_STEP_S)
+    named_differs = 0
+    subtracted_differs = 0
+
+    for steps_past_fork in range(0, 601):
+        case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
+        parent_state = trunk_definition.state_at(case_s)
+
+        named_differs += (
+            branch_definition.state_at(steps_past_fork * MAXIMUM_SIMULATION_STEP_S) != parent_state
+        )
+        subtracted_differs += branch_definition.state_at(case_s - fork_s) != parent_state
+
+    assert subtracted_differs == 0, "the subtraction is what the rule requires and it must be exact"
+    assert named_differs > 0, (
+        "naming an offset now agrees with subtracting everywhere, so the rule this "
+        "test exists to justify has stopped costing anything"
+    )
+
+
+def test_a_branch_steps_to_where_its_parent_stepped() -> None:
+    """The live path agrees too, which is the half a canonical comparison cannot see.
+
+    The parent stepped from induction to 120 s; the branch was stood at the
+    60 s keyframe and stepped from there. At the same case instant the two must
+    describe one patient - which is the whole claim a comparison of two
+    managements rests on, because everything before the fork has to be the same
+    history rather than a reproduction of it.
+    """
+
+    trunk = _trunk_with_two_changes()
+    at_end = trunk.snapshot()
+    fork_s = trunk.run_segments[-1].opening.elapsed_s
+
+    branch = trunk.resumed_at(fork_s)
+    branch.start()
+    _advance_for(branch, duration_s=at_end.elapsed_s - fork_s)
+
+    resumed = branch.snapshot()
+
+    assert resumed.elapsed_s == at_end.elapsed_s, "the two must be compared at one case instant"
+
+    for field in COMPARTMENT_SNAPSHOT_FIELDS:
+        assert abs(getattr(at_end, field) - getattr(resumed, field)) < BRANCH_AGREEMENT, (
+            f"{field} diverged across the fork"
+        )
+
+    assert abs(at_end.delivered_agent_l - resumed.delivered_agent_l) < BRANCH_AGREEMENT
+    assert abs(at_end.exhausted_agent_l - resumed.exhausted_agent_l) < BRANCH_AGREEMENT
+
+
+def test_a_branch_s_drawn_window_is_on_the_case_s_axis() -> None:
+    """The chart reads one time axis whichever run fills it.
+
+    `drawn_window` takes the axis the caller has set and returns the instants
+    it drew, and both are the case's time on a branch as on a trunk - the
+    definition's own frame stays inside the controller. A window that came back
+    in the branch's frame would draw a correct trace at the wrong place on a
+    labelled axis, which `CLAUDE.md`'s safety-critical standard counts as a
+    presentation failure rather than a lesser kind.
+    """
+
+    trunk = _trunk_with_two_changes()
+    fork_s = trunk.run_segments[-1].opening.elapsed_s
+    branch = trunk.resumed_at(fork_s)
+    branch.start()
+    _advance_for(branch, duration_s=10.0)
+
+    window = branch.drawn_window(0.0, fork_s + 10.0, 150)
+
+    assert window.times_s[0] == fork_s, "a branch draws nothing before the fork"
+    assert window.times_s[-1] == fork_s + 10.0
+    assert all(time_s >= fork_s for time_s in window.times_s)
+
+
+def test_a_trunk_s_drawn_window_is_unchanged_by_the_translation() -> None:
+    """The origin is zero on a trunk, so every translation is the identity there."""
+
+    trunk = _trunk_with_two_changes()
+    snapshot = trunk.snapshot()
+
+    window = trunk.drawn_window(0.0, snapshot.elapsed_s, 150)
+
+    assert trunk.origin_s == 0.0
+    assert window.times_s[0] == 0.0
+    assert window.times_s[-1] == snapshot.elapsed_s
+
+
+def test_a_branch_carries_the_case_s_delivered_and_exhausted_totals() -> None:
+    """The litres a branch reports are the patient's, not the branch's own.
+
+    A branch restarting them at zero would report a mass-balance readout that
+    is correct about the branch and wrong about the patient, at the instant a
+    learner is most likely to compare two managements by how much agent each
+    used.
+    """
+
+    trunk = _trunk_with_two_changes()
+    fork_s = trunk.run_segments[-1].opening.elapsed_s
+    branch = trunk.resumed_at(fork_s)
+
+    at_fork = branch.snapshot()
+
+    assert at_fork.delivered_agent_l > 0.0
+    assert at_fork.agent_accounting_passes_validation
+    assert at_fork.delivered_agent_l == trunk.run_segments[-1].opening.state[DELIVERED_AGENT_L]
+    assert at_fork.exhausted_agent_l == trunk.run_segments[-1].opening.state[EXHAUSTED_AGENT_L]
+
+
+def test_a_branch_opens_with_its_own_empty_control_timeline() -> None:
+    """A branch records the acts its own learner makes, not its parent's.
+
+    The pre-branch history belongs to the trunk and is not reproduced here;
+    what a branch carries forward is the *state* that history produced.
+    """
+
+    trunk = _trunk_with_two_changes()
+    branch = trunk.resumed_at(trunk.run_segments[-1].opening.elapsed_s)
+
+    assert branch.snapshot().control_timeline == ()
+    assert trunk.snapshot().control_timeline != ()
+
+
+def test_a_branch_inherits_its_parent_s_settings_at_the_fork() -> None:
+    """Replayed from the recorded timeline, then checked against the segment.
+
+    The check is the point: a branch that assembled a system matrix its parent
+    never used would diverge from its first step, inside the tolerance that
+    holds the two records together and reported by nothing.
+    """
+
+    trunk = _trunk_with_two_changes()
+
+    for segment in trunk.run_segments:
+        branch = trunk.resumed_at(segment.opening.elapsed_s)
+
+        assert branch._state.uptake_system.equation_settings() == segment.settings
+
+
+def test_a_branch_can_open_at_any_keyframe_the_run_holds() -> None:
+    """Every recorded setting change is a branch point, and so is the run's start."""
+
+    trunk = _trunk_with_two_changes()
+
+    for segment in trunk.run_segments:
+        branch = trunk.resumed_at(segment.opening.elapsed_s)
+
+        assert branch.origin_s == segment.opening.elapsed_s
+        assert branch.run_segments[0].opening.state == segment.opening.state
+
+
+def test_an_instant_between_keyframes_is_refused_rather_than_approximated() -> None:
+    """`docs/MODEL.md` § "The canonical evaluation rule", enforced at the seam.
+
+    Opening between two keyframes would replace one propagation over an
+    interval with two over its halves - a different rounding of the same exact
+    solution - and `PL-Z3W6` requires element-wise reproduction rather than
+    agreement within a tolerance. The refusal names the keyframes the run does
+    hold, so a caller can pick one.
+    """
+
+    trunk = _trunk_with_two_changes()
+    between_s = trunk.run_segments[-1].opening.elapsed_s + 5.0
+
+    with pytest.raises(SimulationConfigurationError, match="holds no keyframe"):
+        trunk.resumed_at(between_s)
+
+
+def test_an_instant_the_run_never_reached_is_refused() -> None:
+    """A branch of a run that has not happened would be a prediction drawn as a run."""
+
+    trunk = _trunk_with_two_changes()
+
+    with pytest.raises(SimulationConfigurationError, match="holds no keyframe"):
+        trunk.resumed_at(trunk.snapshot().elapsed_s + 600.0)
+
+
+def test_a_non_finite_fork_instant_is_refused() -> None:
+    """Named separately from the keyframe refusal, which would be the wrong reason."""
+
+    trunk = _trunk_with_two_changes()
+
+    with pytest.raises(SimulationConfigurationError, match="finite instant"):
+        trunk.resumed_at(float("inf"))
+
+
+def test_a_branch_of_a_branch_is_refused_rather_than_silently_flattened() -> None:
+    """`PL-TFX5`'s shape: one trunk with N branches, and sub-forks deliberately out.
+
+    They multiply without bound and buy little over re-branching from the
+    trunk. Refusing also keeps one frame per run: a branch's keyframes are its
+    definition's own, so an instant handed to this on a branch would mean
+    something different from the same number handed to the trunk.
+    """
+
+    trunk = _trunk_with_two_changes()
+    branch = trunk.resumed_at(trunk.run_segments[-1].opening.elapsed_s)
+
+    with pytest.raises(SimulationConfigurationError, match="branch of a branch"):
+        branch.resumed_at(branch.snapshot().elapsed_s)
+
+
+def test_forking_leaves_the_trunk_untouched() -> None:
+    """The trunk survives the fork, which is what separates branching from truncating."""
+
+    trunk = _trunk_with_two_changes()
+    before = trunk.snapshot()
+    segments_before = trunk.run_segments
+
+    trunk.resumed_at(trunk.run_segments[-1].opening.elapsed_s)
+
+    assert trunk.snapshot() == before
+    assert trunk.run_segments == segments_before
+
+
+def test_a_branch_starts_paused() -> None:
+    """Opening a branch is not starting it: the learner decides when it runs."""
+
+    trunk = _trunk_with_two_changes()
+    trunk.start()
+    branch = trunk.resumed_at(trunk.run_segments[-1].opening.elapsed_s)
+
+    assert branch.is_running is False
+
+
+def test_resetting_a_branch_returns_it_to_its_fork_rather_than_to_zero() -> None:
+    """A branch's beginning is the fork; the case's induction is not a state it holds.
+
+    Clearing to an empty system would stand the patient at no agent at a case
+    time the model says they are loaded - a plausible state that never
+    happened.
+    """
+
+    trunk = _trunk_with_two_changes()
+    fork_s = trunk.run_segments[-1].opening.elapsed_s
+    branch = trunk.resumed_at(fork_s)
+    at_fork = branch.snapshot()
+
+    branch.start()
+    _advance_for(branch, duration_s=10.0)
+    branch.set_fresh_gas_flow(1.0)
+    branch.reset()
+
+    after = branch.snapshot()
+
+    assert after.elapsed_s == fork_s
+    assert after.control_timeline == ()
+    assert branch.run_segments[0].opening.state == trunk.run_segments[-1].opening.state
+
+    for field in COMPARTMENT_SNAPSHOT_FIELDS:
+        assert getattr(after, field) == getattr(at_fork, field)
+
+
+def test_a_branch_is_the_agent_and_patient_its_parent_was() -> None:
+    """`PL-TFX5`: a branch that could change either would be a second case."""
+
+    trunk = SimulationController(agent_id="desflurane", cardiac_output_l_min=3.8)
+    _run_with_two_changes(trunk)
+    trunk.pause()
+
+    branch = trunk.resumed_at(trunk.run_segments[-1].opening.elapsed_s)
+    at_fork = branch.snapshot()
+
+    assert at_fork.agent_id == "desflurane"
+    assert at_fork.cardiac_output_l_min == trunk.snapshot().cardiac_output_l_min
+    assert at_fork.circuit_volume_l == trunk.snapshot().circuit_volume_l

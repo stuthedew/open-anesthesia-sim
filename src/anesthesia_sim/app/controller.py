@@ -498,6 +498,47 @@ class SimulationSnapshot:
         return self.elapsed_s > 0.0 or bool(self.control_timeline)
 
 
+@dataclass(frozen=True, slots=True)
+class ResumePoint:
+    """Everything a branch needs in order to have opened where it did.
+
+    Four things that only mean anything together, so they travel together
+    rather than as four attributes a later edit could set one of - the
+    argument `RunSegment` already makes about its own two halves. A branch
+    rebuilt from three of these and a stale fourth would open at a state its
+    settings never produced, or on an accounting period that never happened.
+
+    It is also what `SimulationController.reset()` reads. Reset returns a run
+    to its own beginning, and a branch's beginning is the fork rather than the
+    case's induction, which the branch does not hold and cannot recover.
+
+    Attributes:
+        segment: The parent stretch this branch opened inside, carrying both
+            the settings in force and the keyframe they start from. The
+            keyframe's `elapsed_s` is the fork instant in the case's own time.
+        step_count: How many steps the case had completed at that instant, so
+            the branch's clock continues the case's rather than restarting.
+            `docs/MODEL.md` § "Supported run length" is measured against this.
+        simulation_step_s: The step the case has been taken at, or `None` for
+            a fork from a run that has not stepped. A branch keeps its
+            parent's cadence; `SimulationState` refuses a different one.
+        accounting_anchor_l: The agent the *case's* accounting period started
+            from, carried rather than re-derived. `AgentUptakeSystem.resume_at`
+            says why deriving it is unsafe.
+    """
+
+    segment: RunSegment
+    step_count: int
+    simulation_step_s: float | None
+    accounting_anchor_l: float
+
+    @property
+    def elapsed_s(self) -> float:
+        """The fork instant, in the case's own time."""
+
+        return self.segment.opening.elapsed_s
+
+
 class SimulationController:
     """Own run controls and read-only history for one app session."""
 
@@ -586,6 +627,10 @@ class SimulationController:
         self._run_definition = RunDefinition(
             uptake_system.equation_settings(), uptake_system.state_vector()
         )
+        # A run built here is a trunk: it opened at the case's own zero, so
+        # its clock and its definition's are one quantity and every
+        # translation below is against 0.0. `resumed_at()` is what sets this.
+        self._opened_from: ResumePoint | None = None
         self._clear_control_timeline()
 
         # Every compartment above is newly constructed, so no state survives
@@ -762,9 +807,277 @@ class SimulationController:
         whose reach moved independently of the run would answer for instants
         the run never reached. Save, replay and forking read this;
         `ROADMAP.md` items 9 to 12 are what they are.
+
+        **These instants are the run definition's, so on a branch they are
+        measured from the fork rather than from the case's induction.** Add
+        `origin_s` to place one on the case's own axis - it is zero on a trunk,
+        so the two frames coincide there. Everything else this class exposes -
+        `snapshot().elapsed_s`, the control timeline's stamps, `drawn_window`'s
+        instants - is already in the case's time, and this is the one reader
+        that is not, because a `Keyframe`'s instant belongs to the definition
+        that computed it and restating it in another frame would hand out a
+        keyframe no definition holds.
         """
 
         return self._run_definition.segments
+
+    @property
+    def origin_s(self) -> float:
+        """The case instant this run opened at: zero for a trunk, the fork for a branch.
+
+        What separates the two frames this class touches. `snapshot().elapsed_s`,
+        every control-change stamp and `drawn_window`'s instants are the
+        *case's* time, because a branch is one patient's case continuing and
+        uptake is a function of time since induction; the run definition's
+        instants are its own, because a definition opens at its own zero. This
+        is the difference between them, and it is what `advance` and
+        `drawn_window` subtract.
+        """
+
+        return 0.0 if self._opened_from is None else self._opened_from.elapsed_s
+
+    @property
+    def opened_from(self) -> ResumePoint | None:
+        """Where this run was opened from, or `None` for a trunk.
+
+        A branch's whole provenance in one object, so that what a displayed
+        value is a value *of* stays traceable to the run it continues, which
+        `CLAUDE.md`'s safety-critical standard asks of any clinically
+        meaningful output.
+        """
+
+        return self._opened_from
+
+    def resumed_at(self, elapsed_s: float) -> SimulationController:
+        """Open a second live run at this run's canonical state at `elapsed_s`.
+
+        The seam `PL-J2TD` exists for: a branch has to become something a
+        learner can *manage* rather than a second curve, and managing it means
+        advancing it. What comes back is an ordinary paused
+        `SimulationController` that advances by the path every run takes -
+        `advance()` is not overridden and no second way to move a run forward
+        is introduced - standing at the state this run passed through at
+        `elapsed_s`.
+
+        **It opens at a keyframe or not at all.** `elapsed_s` must be an
+        instant this run holds a keyframe for, which is its start and every
+        recorded setting change. Restarting from the canonical state at any
+        other instant replaces one propagation over an interval with two over
+        its halves - a different rounding of the same exact solution, measured
+        at up to 5.3e-13 in an accumulator - and `PL-Z3W6` requires a branch to
+        reproduce its parent element-wise rather than within a tolerance. So an
+        instant between two keyframes is refused rather than approximated.
+
+        **The branch's clock continues the case's**, because a branch is one
+        patient's case under a second management rather than a second patient.
+        Three things follow, and each is a correctness property rather than a
+        convenience. The 24 h supported run length is enforced on the step
+        count, so a branch that restarted it would be handed a fresh envelope -
+        a fork at 23 h could be advanced to 47 h of case time with every guard
+        passing, in exactly the regime `core/supported_ranges.py` argues the
+        omitted metabolism dominates. The clock, every control-change stamp and
+        the chart's axis all read `snapshot().elapsed_s`, which
+        `format_elapsed` says they "state one quantity one way", so a branch
+        counting from zero would place the patient at the wrong point on the
+        uptake curve on all three at once. And elapsed time stays one
+        multiplication - `(k + n)` steps times the step - rather than the fork
+        instant plus the branch's own, which `docs/MODEL.md` § "Simulated time
+        is a count of steps, not a running total" is the rule against.
+
+        The *definition* is the thing re-based, by subtracting the fork instant
+        in `advance` and `drawn_window` rather than by any caller naming an
+        offset, which is what § "The canonical evaluation rule" gates.
+
+        **The settings are replayed from the control timeline, and then
+        checked.** A branch is built through the ordinary constructor so that
+        the circuit volume is applied before any state is - `set_circuit_volume`
+        conserves agent by rewriting the inspired fraction, so a volume set
+        afterwards would move the branch off its parent's keyframe silently -
+        and the four live controls come from the recorded changes, which hold
+        the values the compartments actually took in the units they hold them
+        in. They are not recovered from the segment: that carries litres per
+        second, and multiplying back by sixty does not round-trip for 7 of the
+        101 cardiac outputs on a 0.1 L/min grid across the supported range
+        (`PL-SM5V`). The replay is then checked against the segment's own
+        settings rather than trusted, because a branch assembling a system
+        matrix its parent never used would diverge from its first step inside
+        the tolerance that holds the two records together.
+
+        Args:
+            elapsed_s: The case instant to open at, in seconds. Must be one
+                this run holds a keyframe for.
+
+        Returns:
+            A paused `SimulationController` standing at that state, carrying
+            this run's agent, patient and circuit, with an empty control
+            timeline of its own.
+
+        Raises:
+            SimulationConfigurationError: `elapsed_s` is not finite or is not
+                an instant this run holds a keyframe for; this run is itself a
+                branch, since a branch of a branch is refused rather than
+                silently flattened (`PL-TFX5`); the fork instant is not a whole
+                number of this run's steps; or the replayed settings do not
+                reproduce the segment's.
+        """
+
+        resume_point = self._resume_point_at(elapsed_s)
+        circuit = self._state.uptake_system.circuit
+        alveoli = self._state.uptake_system.alveoli
+        patient = self._state.uptake_system.patient
+
+        branch = SimulationController(
+            agent_id=self._agent_id,
+            circuit_volume_l=circuit.circuit_volume_l,
+            fresh_gas_flow_l_min=self._setting_at(
+                ControlInput.FRESH_GAS_FLOW, elapsed_s, circuit.fresh_gas_flow_l_min
+            ),
+            delivered_partial_pressure_fraction=Fraction(
+                self._setting_at(
+                    ControlInput.DELIVERED, elapsed_s, circuit.delivered_partial_pressure_fraction
+                )
+            ),
+            alveolar_ventilation_l_min=self._setting_at(
+                ControlInput.ALVEOLAR_VENTILATION, elapsed_s, alveoli.alveolar_ventilation_l_min
+            ),
+            cardiac_output_l_min=self._setting_at(
+                ControlInput.CARDIAC_OUTPUT, elapsed_s, patient.cardiac_output_l_min
+            ),
+        )
+
+        replayed = branch._state.uptake_system.equation_settings()
+
+        if replayed != resume_point.segment.settings:
+            raise SimulationConfigurationError(
+                f"the settings replayed for a branch at {resume_point.elapsed_s} s are not the "
+                "ones this run was computed under there, so the branch would solve equations "
+                "its parent never did; the recorded timeline does not reproduce its own "
+                "segments"
+            )
+
+        branch._open_at(resume_point)
+
+        return branch
+
+    def _open_at(self, resume_point: ResumePoint) -> None:
+        """Stand this run at `resume_point`'s state, on its clock and its accounting.
+
+        Split out because `reset()` needs exactly this too: returning a branch
+        to its own beginning is returning it to the fork, which the case's
+        induction cannot supply because the branch does not hold it.
+
+        It writes state and never settings, which is why `reset()` can use it:
+        reset preserves settings by contract, so a branch reset after its
+        learner has dialled something new stands at the fork state under the
+        new settings - the same thing a reset trunk does with its own initial
+        state. `resumed_at` is where the replayed settings are checked against
+        the segment, because that check is about the *replay* and there is no
+        replay here.
+        """
+
+        segment = resume_point.segment
+        system = self._state.uptake_system
+
+        # The state comes from the parent's keyframe and never from the seeded
+        # system read back: a compartment stores an amount and derives its
+        # fraction from its own capacity, so the round trip is not the identity
+        # - 11.7% of alveolar fractions over the range a case occupies come
+        # back one unit in the last place away - and the element-wise
+        # reproduction `ROADMAP.md` item 12 requires would fail on exactly
+        # those entries.
+        system.resume_at(segment.opening.state, initial_agent_l=resume_point.accounting_anchor_l)
+
+        self._state = SimulationState(
+            uptake_system=system,
+            step_count=resume_point.step_count,
+            simulation_step_s=resume_point.simulation_step_s,
+        )
+        # The definition opens under the settings the system actually holds,
+        # which on `resumed_at` are the segment's - checked there before
+        # anything was written - and on `reset` are whatever the learner has
+        # dialled since, because reset preserves settings and restores state.
+        self._run_definition = RunDefinition(system.equation_settings(), segment.opening.state)
+        self._opened_from = resume_point
+        self._clear_control_timeline()
+
+    def _resume_point_at(self, elapsed_s: float) -> ResumePoint:
+        """Everything a branch opening at `elapsed_s` needs, or a refusal saying why.
+
+        Raises:
+            SimulationConfigurationError: this run is a branch; `elapsed_s` is
+                not finite or is not one of this run's keyframes; or the
+                instant is not a whole number of this run's steps.
+        """
+
+        if self._opened_from is not None:
+            raise SimulationConfigurationError(
+                f"this run is itself a branch opened at {self._opened_from.elapsed_s} s, and a "
+                "branch of a branch is refused rather than silently flattened; branch from "
+                "the trunk instead"
+            )
+
+        if not isfinite(elapsed_s):
+            raise SimulationConfigurationError(
+                f"a run is opened at a finite instant, not {elapsed_s}"
+            )
+
+        openings = [segment.opening.elapsed_s for segment in self._run_definition.segments]
+
+        for segment in self._run_definition.segments:
+            if segment.opening.elapsed_s == elapsed_s:
+                break
+        else:
+            raise SimulationConfigurationError(
+                f"this run holds no keyframe at {elapsed_s} s, so opening there would restart "
+                f"from two propagations where the run took one and would not reproduce it "
+                f"element-wise; it holds keyframes at {openings} s"
+            )
+
+        simulation_step_s = self._state.simulation_step_s
+
+        if simulation_step_s is None:
+            step_count = 0
+        else:
+            step_count = round(elapsed_s / simulation_step_s)
+
+            if step_count * simulation_step_s != elapsed_s:
+                raise SimulationConfigurationError(
+                    f"{elapsed_s} s is not a whole number of this run's {simulation_step_s} s "
+                    "steps, so a branch could not continue the case's step count exactly"
+                )
+
+        return ResumePoint(
+            segment=segment,
+            step_count=step_count,
+            simulation_step_s=simulation_step_s,
+            accounting_anchor_l=(
+                self._state.uptake_system.agent_simulation_validator.initial_agent_l
+            ),
+        )
+
+    def _setting_at(self, control: ControlInput, elapsed_s: float, current: float) -> float:
+        """What `control` was set to at `elapsed_s`, from this run's recorded changes.
+
+        In the units the compartments hold and the timeline records, which is
+        what makes the replay exact - `ControlChange` stores the value the core
+        accepted rather than the one a caller asked for.
+
+        Three cases, and the second is the one a reader would miss: a control
+        changed only *after* the instant asked for was, until then, at the
+        value that change displaced, so the first such entry's
+        `previous_value` is the answer. A control never changed at all has
+        stood at its current value for the whole run.
+        """
+
+        for change in reversed(self._control_timeline):
+            if change.control is control and change.elapsed_s <= elapsed_s:
+                return change.new_value
+
+        for change in self._control_timeline:
+            if change.control is control:
+                return change.previous_value
+
+        return current
 
     def drawn_window(self, start_s: float, stop_s: float, columns: int) -> DrawnWindow:
         """The states to plot across an axis, evaluated from the run definition.
@@ -828,8 +1141,15 @@ class SimulationController:
             )
 
         spacing_s = (stop_s - start_s) / (columns - 1)
-        first_s = max(0.0, start_s)
-        last_s = min(stop_s, self._run_definition.duration_s)
+        # Into the definition's frame, and back out again below. On a trunk
+        # the origin is 0.0 and both are the identity on every finite instant,
+        # so nothing about a trunk's window moves. On a branch this is the
+        # subtraction `docs/MODEL.md` § "The canonical evaluation rule"
+        # requires: the definition is asked in its own time, and no caller
+        # names an offset.
+        origin_s = self.origin_s
+        first_s = max(0.0, start_s - origin_s)
+        last_s = min(stop_s - origin_s, self._run_definition.duration_s)
 
         if last_s < first_s:
             # The axis lies entirely ahead of the run - an ordinary state at
@@ -845,7 +1165,9 @@ class SimulationController:
         )
 
         return DrawnWindow(
-            substance_id=self._agent_id, times_s=window.times_s, states=window.states
+            substance_id=self._agent_id,
+            times_s=tuple(time_s + origin_s for time_s in window.times_s),
+            states=window.states,
         )
 
     def start(self) -> None:
@@ -887,6 +1209,15 @@ class SimulationController:
         compartment goes back to its initial state and the step count goes
         back to zero, so nothing carries over from the run that could not
         continue.
+
+        **A branch goes back to its fork rather than to zero**, because that
+        is where a branch began. The case's induction is not a state a branch
+        holds, so clearing to an empty system would stand the patient at no
+        agent at a case time the model says they are loaded - a plausible
+        state that never happened, which is the outcome `CLAUDE.md`'s
+        safety-critical standard puts an obvious failure ahead of. Its clock
+        goes back to the fork instant with it, so the case's supported run
+        length is spent from where the branch actually starts.
         """
 
         self.pause()
@@ -894,6 +1225,16 @@ class SimulationController:
         self._supported_limit_reason = None
         self._state.reset()
         uptake_system = self._state.uptake_system
+
+        if self._opened_from is not None:
+            # A branch's beginning is the fork. The case's induction is not
+            # available to return to - the branch never held it - so resetting
+            # to a cleared system would put the patient at zero agent at a case
+            # time the model says they are loaded, which is a plausible state
+            # that never happened rather than the start of anything.
+            self._open_at(self._opened_from)
+            return
+
         self._run_definition = RunDefinition(
             uptake_system.equation_settings(), uptake_system.state_vector()
         )
@@ -1061,4 +1402,10 @@ class SimulationController:
             return
 
         self._state.advance(simulation_step_s)
-        self._run_definition.advance_to(self._state.elapsed_s)
+        # The clock is the case's and the definition's is its own, so the reach
+        # is re-based here by subtracting the fork instant - never by a caller
+        # naming how far the branch has come, which `docs/MODEL.md`
+        # § "The canonical evaluation rule" measures as landing one unit in the
+        # last place away. `origin_s` is 0.0 on a trunk, where the subtraction
+        # is the identity.
+        self._run_definition.advance_to(self._state.elapsed_s - self.origin_s)

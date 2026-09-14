@@ -3829,6 +3829,35 @@ Neither is a defect in the rule. They are the two places a plausible branch
 implementation would lose the guarantee silently, so they are gated where the
 rule is.
 
+**The clock re-based is the run definition's, and it is the only one.** A
+branch's *simulated time* — what the clock displays, what stamps every recorded
+control change, what rules the chart's axis, and what the supported run length
+is measured against — continues the case's rather than restarting at the fork.
+The two are separate quantities and only the first is re-based:
+`SimulationController.resumed_at()` opens the branch's definition at its own
+zero, and `advance()` and `drawn_window()` subtract the fork instant from the
+case's time before the definition is asked anything. No caller ever names an
+offset, which is what the bullet above requires.
+
+Continuing the case's time is not a presentation preference. Uptake and
+distribution is a function of time since induction, so a branch counting from
+zero would place the patient at the wrong point on the uptake curve on the
+clock, the control marks and the axis at once — the correct value under the
+wrong patient context, which `CLAUDE.md`'s safety-critical standard counts as a
+failure in its own right. It also keeps simulated time one multiplication under
+"Simulated time is a count of steps, not a running total": a branch's instants
+are the case's step count times the step, not the fork instant plus a second
+total.
+
+**What the subtraction is worth, measured 2026-09-14.** On a 120 s sevoflurane
+run forked at its 60 s keyframe and advanced 60 s further, over the 601 case
+instants the two share: asking the branch for its own `steps × step` gives a
+different answer from the parent at **354 of them**, while subtracting the fork
+instant gives the same answer at every one. Both are exact solutions of the
+same equations; only the second is the same sequence of floating-point
+operations, which is the kind of sameness `ROADMAP.md` item 12 asks for.
+`tests/integration/test_controller.py` holds both halves.
+
 ### Supported input ranges
 
 Each control is supported over a closed interval, endpoints included, and a
@@ -3943,6 +3972,15 @@ which raises `SimulationDomainLimitError` before anything advances.
 | Quantity | Limit | Declared and refused by |
 | --- | --- | --- |
 | Elapsed simulated time | 0 to 24 h (86 400 s) | `core/supported_ranges.py`, enforced on `SimulationState` |
+
+**It is the case's 24 hours and not each run's, which matters once a case can
+be branched.** The limit is what this model's omissions are argued against
+below, and those are properties of how long the *patient* has been anesthetized
+— so a branch spends the same envelope its parent was spending, from where it
+was taken. A fork at 23 h leaves one hour, not another twenty-four. Nothing
+enforces this separately: the guard reads a step count, and a branch continues
+its parent's, so the arithmetic that bounds a trunk bounds every branch of it
+(`PL-J2TD`).
 
 **It is the same kind of statement as the four ranges above, and it is
 reached rather than set.** A flow is a setting, refused when a caller offers
