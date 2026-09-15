@@ -1,8 +1,15 @@
 ---
 id: PL-Y1W6
 title: main is red: PL-S5YM's bare -k covered selector now matches a braced-citation test #593 added, so docket check --verify errors on every tree containing #593
-status: untriaged
+priority: P2
+effort: S
+status: dropped
+classes: defect, infra
+feature: queue-hygiene
+touches: docs/items/PL-S5YM-doc-check-s-covered-directory-branch-now-has-no.md
 added: 2026-09-15
+closed: 2026-09-15
+reason: Duplicate of PL-B5VM, which landed the same repair in #598 while this branch was open. Both sessions diagnosed the identical chain independently - #593 added a test whose name contains "covered", the bare `-k covered` selector matched it on the substring, and the whole-store replay read a passing command as work landed without its item closed. PL-B5VM is the one kept: it merged first and its brief carries the same reasoning. The two findings this branch made that PL-B5VM did not are preserved elsewhere rather than lost with the drop - PL-S5YM's false "None is exercised" claim is corrected on this branch, and PL-Z9K5 carries the docket record exemption gap. A third duplicate, PL-7VSK, is on an unlanded branch.
 ---
 
 **Problem.** main is red: PL-S5YM's bare -k covered selector now matches a braced-citation test #593 added, so docket check --verify errors on every tree containing #593
@@ -77,3 +84,18 @@ its brief overstates the gap. Correct the brief in the same pass, and let the
 green pull request past its commission and discard its passing run, and this
 session's harness binds it to that one branch. So it is filed rather than
 fixed.
+
+**Dropped 2026-09-15, and why the brief is kept rather than deleted.** `#598`
+landed `PL-B5VM`'s repair of the same defect roughly forty minutes after this
+branch was pushed, and `PL-7VSK` is a third independent capture of it on an
+unlanded branch. Three sessions reached the same diagnosis inside an hour,
+which is what an unowned red `main` produces: the session-start digest names it
+in every session, no `PL-` id claims it, so every in-flight guard reads it as
+nobody's. `PL-66FP` is the same shape one level up - two sessions cutting one
+release - and its lesson held here too: the duplicate was found at the merge,
+not before it.
+
+What this brief holds that `PL-B5VM`'s does not is the reproduction in a
+detached worktree at `origin/main` (`234 deselected / 1 selected`, exit 0
+against exit 5 without `#593`) and the observation that `#594`, `#595` and
+`#596` were green only because each forked before `#593`. Kept for that.

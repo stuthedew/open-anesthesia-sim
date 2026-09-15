@@ -15,9 +15,13 @@ verify: grep -q 'covered_dirs' tests/unit/test_doc_check.py && ! grep -q 'no tre
 drawn in a `docs/ARCHITECTURE.md` package-map tree with no children beneath it:
 the entry stands for its whole subtree, so files under it are covered without
 being listed. Three code paths implement it (`TreeMap.covered_dirs`,
-`TreeMap.entries`, and the parent walk in the disk-vs-map comparison). None is
-exercised by `tests/unit/test_doc_check.py`, and as of PL-STNV none is
-exercised by the trees either — `tools/review-verification/` was the only bare
+`TreeMap.entries`, and the parent walk in the disk-vs-map comparison).
+`tests/unit/test_doc_check.py` exercises them in **one direction only**:
+`test_childless_directory_covers_its_whole_subtree` (line 208, there since
+`PL-032`) asserts that a file *beneath* a childless directory needs no line,
+against a fixture whose tree draws `harness/` bare with `run.py` under it.
+Nothing asserts the other direction - that a file *outside* one still fails.
+As of PL-STNV none is exercised by the trees either — `tools/review-verification/` was the only bare
 directory any tree drew, and it is gone.
 
 **Why it matters.** `tools/doc_check.py` gates every documentation change in
@@ -66,3 +70,16 @@ would be rebuilt the next time a subtree needs it.
 **Done when.** `tests/unit/test_doc_check.py` covers the covered-directory
 branch in both directions, and `docs/ARCHITECTURE.md`'s claim about it names
 the test rather than noting that no tree uses it.
+
+**Corrected 2026-09-15 (`PL-Y1W6`, after `PL-B5VM`).** Two findings about this
+item's own text, neither of them its work. `PL-B5VM` fixed the second in `#598`
+before this landed; the first is what this carries:
+
+- The **Problem.** paragraph said "None is exercised by
+  `tests/unit/test_doc_check.py`". That was false when written -
+  `test_childless_directory_covers_its_whole_subtree` predates this item by
+  months. Half of what this item asks for already exists, so the outstanding
+  work is the negative direction and the `docs/ARCHITECTURE.md` prose, not a
+  test from nothing.
+- The `verify:` command was a bare `-k`, and `PL-B5VM` replaced it in `#598`.
+  That half is landed; only the correction above arrives here.
