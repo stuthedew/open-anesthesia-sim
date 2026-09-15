@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: feature, ux
 feature: qt-port
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/main.py, tests/unit, tests/integration, docs/ARCHITECTURE.md
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/theme.py, tests/unit, tests/integration, tools/agent_identity_check.py, tools/contrast_check.py, tools/import_boundary_check.py, tools/glyph_check.py, pyproject.toml, docs/ARCHITECTURE.md, docs/MODEL.md, README.md, .claude/rules/ui-color.md
 added: 2026-09-10
 verify: uv run python tools/import_boundary_check.py && grep -q 'PySide6' src/anesthesia_sim/app/main.py
 ---
@@ -91,3 +91,42 @@ started passing when `PL-G59B` put `app/qt_chart.py` in the tree, so
 `docket check --verify` refused it. It now names `app/main.py`, which this
 item alone rewrites to build the Qt application, and which imports Flet
 today; run and seen to fail (exit 1).
+
+**Started 2026-09-15, and the shape it takes.** Four decisions the design had
+to make, recorded before the first commit so the reasoning outlives the branch:
+
+1. **The Flet dashboard leaves with this item, not with `PL-7SVX`.**
+   `tools/agent_identity_check.py` admits exactly one `_apply_agent_color_scheme`
+   writer across the whole of `app/`, and its identity set is whatever that
+   writer writes - so a Qt dashboard and the Flet one cannot both be measured
+   in one tree, and a tool weakened to one writer per class would stop meaning
+   what it means. `app/simulation_view.py` (Flet), `app/chart_series.py`,
+   `tests/unit/test_simulation_view.py` and
+   `tests/integration/test_chart_patching.py` go here; `spikes/`, the Flet
+   dependencies and `PL-C92D`'s table stay with `PL-7SVX` and `PL-3SQT`. The
+   `flet`/`flet_charts` boundaries become `allowed=()` in the same change,
+   which is `PL-7SVX`'s "held rather than merely current" half arriving early.
+2. **The split follows the chart port**: `app/dashboard_frame.py` states every
+   string and every per-tick claim with no toolkit loaded; `app/qt_widgets.py`,
+   `app/run_view.py` and `app/simulation_view.py` move widgets to match it and
+   decide nothing. The tests port by claim, not by mechanism, under their own
+   names, into `tests/unit/test_dashboard_frame.py` and
+   `tests/integration/test_simulation_view.py`.
+3. **`PL-TG60` is re-argued on a measurement, not on the residual.** Perturbing
+   one stored coefficient by one published SD (the method § "Displayed
+   precision" uses for the readouts) moves the exhaust total by 0.016-0.042 L
+   at 3600 s and 0.18-0.23 L at the 24 h limit, blood:gas dominant. One count
+   of 0.1 L therefore sits between a quarter of an SD and six SDs across the
+   whole supported span; 0.01 L falls to a fiftieth of an SD by 24 h. The panel
+   prints one decimal through `formatting.format_agent_volume`, with the unit
+   stated as the specification states it ("Litres of equivalent pure agent
+   gas"), and the residual lines keep `:.3e`.
+4. **Riders that close here because the Flet chart leaves or because the text
+   is written once**: `PL-2K1R` (the interpretation line, wording open to the
+   owner), `PL-3355`, `PL-TG60`, `PL-005`, `PL-YVHK` item 5, `PL-YCWZ` with
+   `PL-2QMK`, and `PL-Q4VH` with `PL-THXF`, whose defects the Qt chart already
+   fixed by construction and which waited only for the Flet chart to go.
+
+`touches` widened accordingly on the same day; `tools/agent_identity_check.py`
+is in it because its own docstring records that rule 1's Qt spelling is "the
+half to port first", and no other open item declares the file.
