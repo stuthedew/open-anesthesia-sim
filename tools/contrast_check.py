@@ -376,8 +376,11 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "1.4.3",
         "the run-status word while paused, beside the transport controls "
         "(`_status_text`, whose colour `refresh` writes for every run "
-        "state). Also the border of the playback-rate dropdown drawn beside "
-        "them (`_playback_rate_dropdown`), which is a user-interface component "
+        "state), the 'Playback' caption beside the rate selector in that row "
+        "(`build_transport_row`), and the interpretation line beside the "
+        "readout heading (`_interpretation_text`, PL-2K1R). Also the border of "
+        "the playback-rate dropdown drawn beside them "
+        "(`_playback_rate_dropdown`), which is a user-interface component "
         "and so needs only SC 1.4.11's 3:1 - met with room to spare by the text "
         "minimum this pair already carries (PL-SN2C)",
     ),

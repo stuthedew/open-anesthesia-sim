@@ -64,6 +64,7 @@ from anesthesia_sim.app.controller import RecordedQuantity
 from anesthesia_sim.app.dashboard_frame import (
     CONTROL_MARK_LEGEND_LABEL,
     EQUILIBRIUM_LEGEND_LABEL,
+    TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE,
     WASH_IN_TRACE_LEGEND_LABEL,
 )
 from anesthesia_sim.app.formatting import format_chart_time_label
@@ -589,6 +590,11 @@ class ConcentrationChart(QWidget):
 
         return _axis_ticks(self._plot.getPlotItem().getAxis(name))
 
+    def axis_titles(self) -> tuple[str, ...]:
+        """The titles the chart's axes carry, so a whole-interface walk reaches them."""
+
+        return _axis_titles(self._plot)
+
     def painted(self) -> QImage:
         """The chart as painted, so a test can hold what is on screen."""
 
@@ -839,6 +845,11 @@ class WashInChart(QWidget):
 
         return _axis_ticks(self._plot.getPlotItem().getAxis(name))
 
+    def axis_titles(self) -> tuple[str, ...]:
+        """The titles the plot's axes carry, so a whole-interface walk reaches them."""
+
+        return _axis_titles(self._plot)
+
     def painted(self) -> QImage:
         """The plot as painted, so a test can hold what is on screen."""
 
@@ -907,6 +918,14 @@ class WashInChart(QWidget):
         """What the hover box currently shows, or `None` while it is hidden."""
 
         return self._hover.shown_text()
+
+
+def _axis_titles(plot: Any) -> tuple[str, ...]:
+    """The non-empty axis titles of a plot, in left, bottom, right order."""
+
+    item = plot.getPlotItem()
+    titles = (str(item.getAxis(name).labelText) for name in ("left", "bottom", "right"))
+    return tuple(title for title in titles if title)
 
 
 def _axis_ticks(axis: Any) -> tuple[tuple[float, str], ...]:
@@ -1112,6 +1131,7 @@ class TraceLegend(QWidget):
                 max(LEGEND_SWATCH_HEIGHT, ceil(style.stroke_width)),
             )
             box = QCheckBox(f"{style.label} ({style.line_style})")
+            box.setAccessibleName(TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=style.label))
             box.setChecked(True)
             box.setStyleSheet(f"color: {INK};")
             box.toggled.connect(

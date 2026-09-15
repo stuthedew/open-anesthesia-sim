@@ -17,7 +17,7 @@ from collections import Counter
 from collections.abc import Iterator
 
 import pytest
-from PySide6.QtWidgets import QApplication, QLabel, QWidget
+from PySide6.QtWidgets import QApplication, QCheckBox, QLabel, QWidget
 
 from anesthesia_sim.app.chart_frame import (
     CHART_COLUMN_BUDGET_PER_SERIES,
@@ -654,3 +654,25 @@ def test_the_wash_in_legend_names_its_three_marks_in_the_plot_s_own_pens(
         [length / CONTROL_MARK_STROKE_WIDTH for length in CONTROL_MARK_DASH_PATTERN]
     )
     assert mark.vertical
+
+
+def test_every_compartment_box_carries_the_name_assistive_technology_announces(
+    application: QApplication,
+) -> None:
+    """The Flet legend's semantics label survives the port as the box's accessible name.
+
+    The words beside a box describe the line ("Circuit (solid)"); what a
+    screen reader should announce is the act the box performs, which is the
+    string the Flet build carried and the port must not lose (`PL-25KS`).
+    """
+
+    from anesthesia_sim.app.dashboard_frame import TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE
+
+    legend = TraceLegend()
+    boxes = legend.findChildren(QCheckBox)
+    names = {box.accessibleName() for box in boxes}
+
+    assert names == {
+        TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=style.label)
+        for style in COMPARTMENT_TRACES
+    }

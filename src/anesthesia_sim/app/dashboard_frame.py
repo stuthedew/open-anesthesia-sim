@@ -272,6 +272,11 @@ WASH_IN_MODELLED_TEXT: Final = "Modelled, not measured"
 WASH_IN_TRACE_LEGEND_LABEL: Final = "F_A/F_I (solid)"
 EQUILIBRIUM_LEGEND_LABEL: Final = "Equilibrium, F_A = F_I (wide dash)"
 CONTROL_MARK_LEGEND_LABEL: Final = "Control change (vertical, fine dash)"
+#: What assistive technology announces for a compartment's legend box: the
+#: act it performs rather than the pattern words beside it, which describe
+#: the line and not the control. Carried over from the Flet legend's
+#: semantics label so the port loses nothing a screen reader had.
+TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE: Final = "Draw the {label} compartment on the chart"
 # What the wash-in plot is showing at this instant. A trace that stops has
 # to say which of its two boundaries it stopped at: "nothing has reached the
 # circuit yet" and "the patient is giving agent back" are opposite

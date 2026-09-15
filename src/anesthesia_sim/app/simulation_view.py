@@ -501,15 +501,20 @@ class SimulationView(QWidget):
     def interface_strings(self) -> tuple[str, ...]:
         """Every string a reader can see on the dashboard, hidden widgets included.
 
-        Every label, every button, every entry of every combo, and every
-        window title - so a whole-interface test holds one definition of
-        "on screen" rather than each walking the tree its own way.
+        Every label, every button and the name assistive technology
+        announces for it, every entry of every combo, every window title, and
+        the titles on both plots' axes - so a whole-interface test holds one
+        definition of "on screen" rather than each walking the tree its own
+        way. The hover readout is not standing text and is held by the chart's
+        own tests.
         """
 
         return tuple(self._interface_strings())
 
     def _interface_strings(self) -> Iterator[str]:
         yield self.window().windowTitle()
+        yield from self._concentration_chart.axis_titles()
+        yield from self._wash_in_chart.axis_titles()
 
         for widget in (self, *self.findChildren(QWidget)):
             if isinstance(widget, QDialog):
@@ -517,5 +522,8 @@ class SimulationView(QWidget):
 
             if isinstance(widget, QLabel | QAbstractButton):
                 yield widget.text()
+
+            if isinstance(widget, QAbstractButton) and widget.accessibleName():
+                yield widget.accessibleName()
             elif isinstance(widget, QComboBox):
                 yield from (widget.itemText(index) for index in range(widget.count()))

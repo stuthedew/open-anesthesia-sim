@@ -2622,3 +2622,27 @@ def test_a_frame_that_cannot_be_drawn_halts_every_run(application: QApplication)
     assert second.snapshot().failure_reason == "ValueError: the frame could not be built"
     assert first.is_running is False
     assert second.is_running is False
+
+
+def test_the_interface_walk_reaches_the_axis_titles_and_the_accessible_names(
+    application: QApplication,
+) -> None:
+    """The whole-interface walk covers what the Flet walk covered: axis titles too.
+
+    The hedge and the wake-time walks guarantee only what the walk reaches,
+    and the plots' axis titles and the legend boxes' accessible names are
+    standing text a reader or a screen reader meets; both are on the walk
+    (`PL-25KS`).
+    """
+
+    from anesthesia_sim.app.chart_frame import COMPARTMENT_TRACES
+    from anesthesia_sim.app.dashboard_frame import TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE
+
+    view = _shown_view(application, SimulationController())
+    strings = set(view.interface_strings())
+
+    assert {"% of 1 atm", "simulated time", "×MAC", "F_A/F_I"} <= strings
+    assert {
+        TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=style.label)
+        for style in COMPARTMENT_TRACES
+    } <= strings
