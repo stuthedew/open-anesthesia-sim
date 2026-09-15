@@ -9,6 +9,7 @@ feature: model-spec-accuracy
 touches: src/anesthesia_sim/data/patients/reference_adult.json, src/anesthesia_sim/data/machines/reference_circle_system.json, docs/MODEL.md, docs/references/README.md, .claude/rules/citing-sources.md
 added: 2026-09-15
 closed: 2026-09-15
+pr: 602
 verify: python3 tools/doc_check.py check && uv run pytest tests/unit/test_parameters.py -q && python3 -c "import json; d=json.load(open('src/anesthesia_sim/data/patients/reference_adult.json')); s=d['sources']; assert any('Appendix C' in x['citation'] for x in s); assert any('VEN=1.0' in x['note'] for x in s); assert d['venous_pool_volume_l']==1.222; assert not any('Laboratory Manual' in x['citation'] for x in s)"
 ---
 
