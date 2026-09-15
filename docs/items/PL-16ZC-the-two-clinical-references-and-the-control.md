@@ -3,36 +3,45 @@ id: PL-16ZC
 title: The two clinical references and the control marks have no show/hide control, though the chart's traces now do
 priority: P3
 effort: M
-status: ready
+status: done
 classes: ux
 feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py
 added: 2026-09-04
-verify: uv run pytest tests/integration/test_qt_chart.py && grep -q 'def test_the_references_and_the_control_marks_can_be_hidden_and_shown' tests/integration/test_qt_chart.py
+closed: 2026-09-15
+verify: python3 tools/doc_check.py check && grep -qF 'Decided 2026-09-15: not hideable' docs/items/PL-16ZC-the-two-clinical-references-and-the-control.md
 ---
 
-> **Not carried by the Qt port** (project owner, 2026-09-10). The port admits
-> queued *fixes* in the surface it rewrites, and this is a control that does not
-> exist today - new capability by that rule, however small. It stays a queue
-> item on its own merits.
+> **Decided 2026-09-15: not hideable, and the question moves to the layout
+> system** (project owner, delegating the call). `docs/MODEL.md` § "Minimum
+> displayed outputs" already required it - "The chart entries in this list -
+> the MAC-awake band, the 1 MAC line, the control marks, and $`F_A/F_I`$ - are
+> requirements on the chart itself and are not selectable" - written by
+> `PL-CG7J` (#315), the same change that gave the six compartment traces their
+> checkboxes, and completed by `PL-RCTQ` (#352) the next day. Hiding a trace is
+> safe because that same section separately requires all six compartment values
+> in the numeric readouts, which never leave the display; the two references
+> have no readout equivalent, so the chart is the only place they exist.
+> Nothing is built here and the specification is unchanged.
 >
-> **And therefore sequenced past v0.5.0, not clearable before it begins**
-> (project owner, 2026-09-14, on `PL-NR2K`). The same rule that keeps this out
-> of the port makes building it on Flet first the one piece of open Gate 1 work
-> the port throws away whole: the legend table it extends lives in
-> `app/simulation_view.py`, which the port's Required scope item 2 rewrites from
-> scratch. `blocked-by: PL-G59B` rather than the port's version, because that field means
-> *ships with this milestone* through `MilestoneStates.ships_with` and this
-> deliberately does not - `PL-G59B` is the chart port, which builds the legend
-> and the two references this control would toggle. `ROADMAP.md` Gate 1
-> § "Sequenced past v0.5.0" carries the disposition, which is where the
-> snapshot rule requires a frozen entry's deferral to be written.
+> **The owner's steer is why this closes rather than being built** (project
+> owner, 2026-09-15): "I don't see anything about the UI that is close to its
+> final form ... not make decisions that fit a rigid (temporary) layout." What
+> a reader may take off the display is a property of planned-milestone item
+> 34's workspace system rather than a per-element checkbox on one chart, so
+> building the control now would bake a choice into a layout item 34 replaces.
+> The reason is recorded so the finding is not re-raised against the same
+> reasoning.
 >
-> **The decision half is not deferred with it, and can close this item for
-> nothing.** "Whether the references and the control marks are hideable at all"
-> is a question about what the chart is for, not about a toolkit, and the
-> Done-when below already admits an answer that writes no code: if they are not
-> hideable, this records the reason and closes. Only the build waits.
+> **The deferral this item carried is discharged, not deleted.** It read
+> "sequenced past v0.5.0, not clearable before it begins" (project owner,
+> 2026-09-14, on `PL-NR2K`), on the ground that building the control on Flet
+> first was the one piece of open Gate 1 work the port throws away whole. Its
+> `blocked-by: PL-G59B` was chosen over the port's version precisely so it
+> would expire when the chart port landed, which it has - the item promoted to
+> `ready` while its prose still said otherwise, which is what `PL-7G5M`
+> captured. `ROADMAP.md` Gate 1 § "Sequenced past v0.5.0" is a frozen snapshot
+> and stays as written.
 
 **Problem.** `PL-CG7J` gave each of the six compartment traces a checkbox in
 the legend. The two clinical references — the MAC-awake band and the 1 MAC

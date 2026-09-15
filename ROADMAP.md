@@ -4362,6 +4362,30 @@ once someone is ready to scope it.
     inconvenience. See the Blender Manual, "Interface → Window System →
     Areas" and "→ Workspaces".
 
+    *Tiling by default, and break-out into a separate window rather than
+    floating panels* (project owner, 2026-09-15). The no-overlap invariant
+    above is the default and is not negotiable inside a window. What is added
+    is that an area may be **broken out into its own top-level window**, itself
+    a full window with its own areas: the Blender Manual's § "Areas" documents
+    this as *View > Duplicate Area into New Window*, or Shift-LMB on an area's
+    splitter widget, and describes the result as a fully functional window
+    belonging to the same running instance, useful across multiple monitors.
+    That is the reading of "floating" recorded here, and it keeps the safety
+    argument above intact: every window stays tiled, so nothing inside one
+    covers anything else in it.
+
+    *What that refuses, and the distinction is the safety one.* Floating panels
+    overlapping the tiled areas **within** a window are a different mechanism
+    and are not admitted. A panel drawn over the dashboard can cover a value
+    the display is required to show while the application still believes it is
+    showing it, which is the silent failure the tiling argument was made
+    against; a separate top-level window the learner placed and can move is not
+    that, and the occlusion it allows is the window manager's and the learner's
+    own. `PL-WLWY` carries the constraint break-out raises and does not settle:
+    which windows owe `docs/MODEL.md` § "Minimum displayed outputs" its
+    minimum, given that a broken-out window can be dragged over the one
+    carrying it.
+
     *The license constraint, which is not a formality.* Blender's source is
     GPL-2.0-or-later and its binaries ship under GPL-3.0-or-later; this project
     is Apache-2.0 (`LICENSE`, `pyproject.toml`). So the behaviour may be studied
@@ -4384,6 +4408,26 @@ once someone is ready to scope it.
     dashboard surface becomes an independent widget inside nested `QSplitter`s
     with the handles inert, and this item is what turns them live — § "v0.4.26
     - the interface moves to Qt" → "Required scope" item 2 carries it.
+
+    *The widget catalogue is separate work, and the layout comes first*
+    (project owner, 2026-09-15): "the layout part with the adding, resizing,
+    removing windows etc. and then telling the program what should be in that
+    window ... is the functionality I want to end up with. Then separately want
+    to work on widgets." Item 36 is that catalogue. The ordering is also the
+    sound one rather than only the owner's preference - a view's contract is
+    whatever the area system requires of its contents, so views built first are
+    built against today's fixed layout and rewritten. One refinement: a
+    container abstraction exercised by a single view is not exercised, so this
+    item validates against **two** views that already exist rather than against
+    any new one, which § "v0.4.26 - the interface moves to Qt" supplies for
+    free in making each dashboard surface an independent widget.
+
+    *What a preset differs in, by example* (project owner, 2026-09-15): an
+    induction workspace with the concentration graph zoomed in, and a
+    big-picture workspace to switch to during maintenance, alongside workspaces
+    the learner creates for themselves. The default shape is a central graph of
+    the compartments with the other views arranged around it, itself open to
+    being rearranged.
 
 35. Add an optional model of anaesthesia's own effect on cardiac output and
     regional perfusion, which the model holds fixed today. An option the user
@@ -4422,7 +4466,34 @@ once someone is ready to scope it.
     same foundation.
 
 
-None of items 1-35 mix scientific-core and UI/tooling concerns within a
+36. Build the catalogue of views item 34's areas can hold, as work separate
+    from the layout mechanism and after it. Item 34 decides what an area is,
+    how it is split, joined and broken out, and how a workspace is saved; this
+    decides what a learner can put in one. The candidates named so far are the
+    compartment schematic (item 27), the concentration chart and the F_A/F_I
+    plot as views a workspace places rather than fixed sections of one screen,
+    the control-input timeline, the numeric readouts, and item 37's interaction
+    display. Requested by the project owner, 2026-09-15, as its own track
+    (`PL-4D1M`). Each view added here owes what any displayed clinical value
+    owes under `CLAUDE.md`'s clinical-output standard, and a catalogue is where
+    that is settled once per view instead of being rediscovered per layout.
+
+37. Add an opioid/hypnotic interaction display - iso-effect contours over a
+    pair of effect-site concentrations, for a named endpoint such as tolerance
+    of laryngoscopy - after items 13 and 15. It is not those two items plus a
+    plot: a response-surface interaction model is its own model class whose
+    measured quantity is the synergy itself, so it is not derivable from two
+    single-drug models and owes its own versioned parameter file, provenance
+    record and source-hierarchy decision exactly as each agent file does.
+    `CLAUDE.md`'s safety-critical standard already names interaction surfaces
+    among its own examples, which is what sets the bar for the display: the
+    endpoint named on screen, because tolerance of laryngoscopy, of intubation
+    and of skin incision are different surfaces; the plotted point marked as a
+    predicted pair rather than as a measurement; and the contours' population
+    uncertainty visible rather than implied away by clean curves. Requested by
+    the project owner, 2026-09-15 (`PL-JFXG`).
+
+None of items 1-37 mix scientific-core and UI/tooling concerns within a
 single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
 on 9, 13 on 12), that dependency is noted inline rather than bundled into
 one item.

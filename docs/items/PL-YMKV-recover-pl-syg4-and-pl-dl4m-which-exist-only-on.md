@@ -9,6 +9,7 @@ feature: queue-hygiene
 touches: docs/items
 added: 2026-09-15
 closed: 2026-09-15
+pr: 594
 verify: test -e docs/items/PL-SYG4-the-digest-s-reserved-verdict-suppresses-the.md && test -e docs/items/PL-DL4M-docs-working-notes-md-still-heads-two-resolved.md
 ---
 

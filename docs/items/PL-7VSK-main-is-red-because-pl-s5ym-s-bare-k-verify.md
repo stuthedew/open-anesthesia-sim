@@ -1,14 +1,14 @@
 ---
 id: PL-7VSK
 title: main is red because PL-S5YM's bare -k verify command started passing on an unrelated test #593 added, and docket check --verify runs only in CI so make check cannot see it
-status: done
+status: dropped
+reason: PL-B5VM reached the same diagnosis and the same repair and merged first, as #598
 priority: P2
 effort: S
 classes: defect
 touches: docs/items
 added: 2026-09-15
 closed: 2026-09-15
-verify: ! bin/docket check --verify 2>&1 | grep -q 'already passes'
 ---
 
 **Problem.** main is red because PL-S5YM's bare -k verify command started passing on an unrelated test #593 added, and docket check --verify runs only in CI so make check cannot see it
@@ -66,4 +66,29 @@ real cost on a gate run before every commit, and whether to pay it is a
 judgement about how the project is worked rather than a defect to fix under a
 red `main`. Captured separately as `PL-MR6S` so the question reaches the owner
 as a decision rather than riding in on a hotfix.
+
+**Dropped 2026-09-15: `PL-B5VM` got there first.** Three sessions reached this
+red `main` independently - `PL-99YZ`, already on `main`, is the item recording
+that. `PL-B5VM` merged as `#598` while this branch was open, carrying the same
+diagnosis (a bare `pytest -k covered` flipped to passing by an unrelated test
+`#593` added) and the same repair, so the merge of `origin/main` into this
+branch conflicted on exactly the one file both had rewritten.
+
+**Resolved to `PL-B5VM`'s version, and it is the better command.** Where this
+item's replacement named one test the work must create, theirs holds both
+halves of `PL-S5YM`'s own `Done when.` without dictating any name:
+
+```
+grep -q 'covered_dirs' tests/unit/test_doc_check.py
+  && ! grep -q 'no tree draws one today' docs/ARCHITECTURE.md
+  && uv run pytest tests/unit/test_doc_check.py
+```
+
+The second clause is the part this item missed - `docs/ARCHITECTURE.md` still
+claims no tree draws a bare directory, and that claim has to go with the work.
+
+`PL-B5VM` also captured the general case as `PL-Q8RQ`: four open items rest on
+a bare `-k`, and whether a command can discriminate at all is decidable enough
+for `docket check` to refuse it. That is the durable fix and this item never
+reached it.
 

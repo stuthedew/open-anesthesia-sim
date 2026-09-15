@@ -9,6 +9,7 @@ feature: teachable-case
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_series.py, src/anesthesia_sim/app/control_record.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/control_timeline.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_chart.py, tests/unit, tests/integration, docs/ARCHITECTURE.md, docs/MODEL.md
 added: 2026-09-04
 closed: 2026-09-15
+pr: 596
 verify: uv run pytest -q tests/unit/test_chart_frame.py tests/integration/test_controller.py && grep -q 'from anesthesia_sim.app.run_series import' src/anesthesia_sim/app/chart_frame.py && ! grep -q 'class DrawnWindow' src/anesthesia_sim/app/controller.py
 ---
 

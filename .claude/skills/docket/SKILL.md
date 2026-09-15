@@ -1210,7 +1210,34 @@ in the tree reports it; `git ls-remote --tags origin` is what answers.
    the remaining entries are all simulator work, and listing them at the end of
    a process session is product work arriving in a discussion that was not
    about it.
-5. Re-run `make check`.
+5. **Audit the branch: `bin/docket verify --self <id>`**, naming every id the
+   closing commit leads with, since the diff is selected per id from the
+   commits that name it. It runs the item's own `verify:` command and `make
+   check`, so it *is* the close-out's proof rather than a step beside one -
+   re-run it until it says `ACCEPT`. A `REJECT` that stopped early ran
+   neither.
+
+   **`--self` is not optional, and the bare command asks the wrong question.**
+   Without it, `verify` asks whether a *delegated* worker exceeded its
+   commission, and four of its guards then fire by construction on the path
+   this procedure prescribes: the capture and leading-id rules put other items'
+   files in the diff; an item whose declared work is a `.claude` file trips
+   `gate_paths`; an item non-delegable *because* it touches `protected_paths`
+   is one a session works itself; and step 1 edits the front matter the guard
+   watches. So a correct close-out gets `REJECT`, which trains a reader to skim
+   the block where a real protected-path failure is printed (`PL-69JZ`,
+   `PL-7XTS`).
+
+   It relaxes those four and nothing else. They still run and still name every
+   path, printed as `NOTE` with the reason they are not refusing - read them,
+   because a path you did not expect is the finding. The four integrity checks
+   stay absolute: no suppression added, no assertion removed, the item's own
+   command passes, `make check` passes. A session may re-scope its own
+   commission; it may not weaken what measures it, and it may not skip the
+   test.
+
+   Run the bare `bin/docket verify <id>` only when reviewing a branch somebody
+   else was commissioned to write.
 
 ## Always
 
