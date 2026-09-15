@@ -55,9 +55,26 @@ wheels/
 .DS_Store
 ._*
 
-# Editor-specific workspace state
+# Editor state, and the two halves are not the same. `.idea/` is entirely
+# local. `.vscode/` is not: `settings.json` is tracked project configuration -
+# the interpreter path, pytest, and ruff as the format-on-save formatter - so
+# the directory's *contents* are excluded and the shared files re-admitted by
+# name. Form taken from `github/gitignore`'s
+# `Global/VisualStudioCode.gitignore`, minus its `!*.code-workspace`, which
+# negates an exclude this file does not have and so would read as if workspace
+# files were ignored somewhere (`PL-RFGY`).
+#
+# `.vscode/*` rather than `.vscode/`, and the difference is the whole bug this
+# replaced: git does not descend into an excluded *directory*, so every
+# negation under a bare `.vscode/` is dead and `extensions.json` stayed
+# unaddable while `settings.json` sat tracked beside it.
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
 
 # Claude Code personal overrides (project settings are committed)
 .claude/settings.local.json
