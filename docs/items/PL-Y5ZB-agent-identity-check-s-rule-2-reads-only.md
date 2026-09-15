@@ -1,8 +1,14 @@
 ---
 id: PL-Y5ZB
 title: agent_identity_check's rule 2 reads only construction (self.X = <agent colour>), so a method other than _apply_agent_color_scheme writing self.X.color = AGENT_COLOR_SCHEMES[...] is a second writer of agent colour that neither rule sees
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: defect, infra
+feature: qt-port
+touches: tools/agent_identity_check.py, tests/unit/test_agent_identity_check.py
 added: 2026-09-14
+verify: uv run python tools/agent_identity_check.py && grep -q 'def test_a_property_write_in_another_method_is_a_second_writer' tests/unit/test_agent_identity_check.py
 ---
 
 **Problem.** agent_identity_check's rule 2 reads only construction (self.X = <agent colour>), so a method other than _apply_agent_color_scheme writing self.X.color = AGENT_COLOR_SCHEMES[...] is a second writer of agent colour that neither rule sees
@@ -30,3 +36,18 @@ a helper could open it without anything going red.
 reaching a colour table, outside the writer's method, is reported as a second
 writer, with a test that plants one in another method and one in another
 module.
+
+**Triaged 2026-09-15 at P3, deliberately, despite the subject.** The check
+guards a presentation-safety property - that agent colour has exactly one writer,
+so the identity set is definitional rather than hand-kept - but the item is not
+itself a safety defect: the tool's own docstring already states this limitation,
+and the brief above records that no control takes the uncovered route today. So
+it is a gap in a guard rather than an open hole, and it is seated below the port
+items that are live defects in what a reader sees.
+
+What keeps it from being dropped is that the gap is in the one direction the
+design cannot tolerate. The single-writer rule holds only while every route to a
+colour is visible, and a session porting the colour writes to `setStyleSheet` or
+to a helper would open the second writer without anything going red - the exact
+thing the check exists to prevent, arriving through the one door it does not
+watch.

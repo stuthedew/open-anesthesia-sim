@@ -37,7 +37,57 @@ sync:
 
 check: sync
 	uv run ruff format --check .
-	uv run ruff check .
+# `--no-cache` on `ruff check` alone, and deliberately not on the `ruff format`
+# line above. Two halves of ruff meet here and neither is wrong on its own:
+#
+#   - isort's `match_sources` resolves a first-party import by probing the
+#     **full dotted path** under the `src` roots - `a.b.c` is first-party only
+#     if `[SRC]/a/b/c` is a directory or `[SRC]/a/b/c.py` or `.pyi` exists - so
+#     one file's verdict depends on whether a *different* file exists.
+#   - ruff's `FileCacheKey` is the linted file's **mtime and permission bits,
+#     and nothing else**. It does not hash the file's contents, and it
+#     references no other path.
+#
+# So deleting a module invalidates nothing, and every file importing it replays
+# a clean verdict it can no longer earn: `make check` passes on a tree CI's
+# fresh checkout fails. Upstream has the same root cause open for `INP001`,
+# which depends on `__init__.py` the same way - astral-sh/ruff#5449, "we don't
+# invalidate the cache when an `__init__.py` is added or removed". Nothing in
+# ruff's documentation describes what invalidates a cache entry.
+#
+# Measured 2026-09-15 on ruff 0.16.4, replaying `PL-25KS`'s port: with
+# `src/anesthesia_sim/app/chart_series.py` deleted and the spike files still
+# importing it, a warm cache reported "All checks passed!" while the same tree
+# with `.ruff_cache` removed reported exactly the two `I001`s CI had reported.
+# The `__pycache__` `PL-QSJM` first blamed was ruled out in the same session -
+# present or absent, the answer was identical - so the cache is the whole
+# mechanism and the bytecode was never part of it.
+#
+# Only deletion is unsafe, which is why the flag is not a passing preference:
+# adding a module is picked up correctly, so the cache fails in the one
+# direction that turns the gate green on a tree CI rejects.
+#
+# `known-first-party = ["anesthesia_sim"]` was considered and refused. It would
+# work - isort consults `known_modules` before it probes the filesystem, so the
+# package's own imports would stop depending on what exists - but it treats the
+# instance rather than the fault. The fault is that the cache does not track
+# the filesystem facts a verdict rests on, so the next rule that reads another
+# file reintroduces the divergence, and it would also silence the sorter on an
+# import of a module that is genuinely gone. `--no-cache` covers every rule.
+#
+# The formatter keeps its cache deliberately. Its output depends only on the
+# file in front of it, so a stale entry there needs that file to have changed,
+# which is precisely what invalidates the entry. Costed 2026-09-15 over 150
+# files: `ruff check` 14 ms warm against 41 ms cache-free, so this line buys
+# CI's answer for 27 ms.
+#
+# `tools/doc_check.py`'s `check_ruff_cache` holds every `ruff check` line in
+# this file to the flag, so one added later cannot arrive without it.
+# Deliberately not an exported `RUFF_NO_CACHE` beside `PYTHONDONTWRITEBYTECODE`
+# above: that variable takes `true`/`false` and rejects `1` outright, so the
+# obvious copy of its neighbour's `:= 1` would fail every ruff invocation at
+# argument parsing. `PL-QSJM`.
+	uv run ruff check --no-cache .
 # No paths: `[tool.mypy] files` in pyproject.toml names what the gate covers,
 # and says why `tests/` is not in it.
 	uv run mypy
@@ -193,7 +243,12 @@ check: sync
 
 fix:
 	uv run ruff format .
-	uv run ruff check --fix .
+# `--no-cache` for the reason the `check` target's line above gives, and it
+# matters more here rather than less: a stale clean verdict makes `--fix` a
+# no-op, so this target reports nothing to fix, `make check` then agrees, and
+# the import ruff would have rewritten reaches CI unsorted. The fixing half of
+# a gate has to read the same tree the gate does. `PL-QSJM`.
+	uv run ruff check --no-cache --fix .
 # The mutating half of `bin/docket check`'s missing-`pr` advisory. `check`
 # reports which landed closures owe a pull request number and which number the
 # base names for each; this writes them, so the field rides the commit the

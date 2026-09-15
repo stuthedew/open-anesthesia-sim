@@ -1,8 +1,13 @@
 ---
 id: PL-J4ZJ
 title: Eight hook tests pin PATH to the system directories, so on a Mac whose /usr/bin/python3 is 3.9.6 they fail before the hook can answer and make check is red locally
-status: untriaged
+priority: P3
+effort: S
+status: dropped
+classes: test, infra
 added: 2026-09-14
+closed: 2026-09-15
+reason: duplicate of PL-Y6W9, which shipped the fix in #584 - the same eight hook tests, the same two files, the same mechanism (bin/docket under macOS's 3.9.6 dying on datetime.UTC while both hooks swallow it). Confirmed 2026-09-15: both files now symlink bin/python3 to sys.executable and lead PATH with the checkout's bin/, and the thirteen tests pass. This is the third capture of one defect; PL-0QLX was the second and was dropped the same way
 ---
 
 **Problem.** Eight hook tests pin PATH to the system directories, so on a Mac whose /usr/bin/python3 is 3.9.6 they fail before the hook can answer and make check is red locally
@@ -42,3 +47,33 @@ same assertion should hold on macOS and in CI.
 tests/unit/test_docket_branch_guard.py` passes on a Mac whose
 `/usr/bin/python3` is 3.9.6 with no `/usr/local/bin/python3`, and CI still
 passes.
+
+**Triaged 2026-09-15 into the top band**, above the other Mac-interpreter items,
+on `CLAUDE.md`'s compounding-friction test rather than on size. This is the
+"being routed around" case stated outright: `make check` is what every close-out
+runs before every commit, it is red on the owner's own machine on every branch
+for a reason no branch caused, and a suite that is red for an environmental
+reason teaches a session to read past red - which spends the signal for every
+genuine failure after it. `PL-LKGW` is the adjacent interpreter-floor item and
+is the nicer error message rather than the red suite, so it sits below this one.
+
+Both files pin `PATH` the same way - `tests/unit/test_docket_digest_hook.py:119`
+and `tests/unit/test_docket_branch_guard.py:72` lead with the checkout's `bin/`
+and then `/usr/bin:/bin:/usr/local/bin`, and `:154` pins the bare form - so the
+fix belongs in both and the `touches` above names both.
+
+**Dropped 2026-09-15 at triage, as a duplicate of `PL-Y6W9`.** Verified rather
+than assumed: `tests/unit/test_docket_digest_hook.py:86` and
+`tests/unit/test_docket_branch_guard.py:64` both now do
+`(root / "bin" / "python3").symlink_to(sys.executable)` with `PATH` leading on
+the checkout's `bin/`, which is exactly the first of the two fixes `PL-Y6W9`'s
+brief proposed, and `uv run pytest` over both files passes thirteen tests here.
+The digest hook's docstring at `:77` states the reasoning and cites `PL-Y6W9`.
+
+**This is the third capture of one defect**, which is the part worth recording.
+`PL-0QLX` was the second and was dropped for the same reason on 2026-09-14
+(#586); this one was captured the same day from the same `make check` run on the
+owner's Mac. All three describe the eight tests red under Apple's 3.9.6. Nothing
+here is lost by the drop: `PL-LKGW` carries the separate, still-open half - that
+`bin/docket` meets a below-floor interpreter with a traceback about `render.py`
+rather than a sentence naming the floor - and it is the item to work.
