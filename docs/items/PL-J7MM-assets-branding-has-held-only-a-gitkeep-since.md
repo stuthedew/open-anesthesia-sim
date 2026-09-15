@@ -8,6 +8,7 @@ classes: infra
 touches: assets
 added: 2026-09-15
 closed: 2026-09-15
+pr: 589
 verify: python3 tools/doc_check.py check && ! test -e assets/branding
 ---
 

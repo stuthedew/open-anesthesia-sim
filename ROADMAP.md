@@ -2667,7 +2667,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 140 entries
+### Declined to Gate 2 on the refilling-queue ground — 141 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3081,6 +3081,25 @@ pointer's previous position and never re-answers a resting pointer while paused
 gate on the timeline rather than behind it. `PL-QRD1` is `blocked` on
 `PL-8PSW`, which decides whether a two-run dashboard needs a selector lock at
 all, and no shipped entry point reaches the defect today.
+
+**`PL-MXSL` arrived the same day, out of the work that closed `PL-CNJ1`**, and
+both grounds apply to it at once. It was captured on 2026-09-15, nine days
+after the freeze, so "The gate is a snapshot" already places it in the next
+gate; and it sits wholly in the workflow lane, a gap in `tools/doc_check.py`
+that no reader of the simulator can reach. It is debt twice over - classed
+`defect` and held at `needs-decision` - which is why it is written down here
+rather than left to look absent.
+
+It is the one to watch among the three most recent, and it is deferred with
+that said: `doc_check` resolves a cited path against the working tree, so a
+citation of anything `.gitignore` covers passes locally and fails in CI on
+identical content, which is a check disagreeing with itself rather than a
+missing feature. It is declined anyway because the measurement recorded in its
+brief bounds the harm precisely - `.gitignore` covers none of the 205 path
+citations the checker examines, and the single instance is one line of
+`docs/worker.md` already written around it. The decision it holds open is
+whether documentation may name a generated path at all, which is the project
+owner's to take.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
