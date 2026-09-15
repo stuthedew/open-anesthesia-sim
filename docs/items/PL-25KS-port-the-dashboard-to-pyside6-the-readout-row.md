@@ -6,7 +6,7 @@ effort: L
 status: ready
 classes: feature, ux
 feature: qt-port
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/theme.py, tests/unit, tests/integration, tools/agent_identity_check.py, tools/contrast_check.py, tools/import_boundary_check.py, tools/glyph_check.py, pyproject.toml, docs/ARCHITECTURE.md, docs/MODEL.md, README.md, .claude/rules/ui-color.md
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/theme.py, tests/unit, tests/integration, tests/reference/test_coupled_dynamics.py, tools/agent_identity_check.py, tools/contrast_check.py, tools/import_boundary_check.py, tools/glyph_check.py, pyproject.toml, docs/ARCHITECTURE.md, docs/MODEL.md, README.md, .claude/rules/ui-color.md
 added: 2026-09-10
 verify: uv run python tools/import_boundary_check.py && grep -q 'PySide6' src/anesthesia_sim/app/main.py
 ---
