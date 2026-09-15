@@ -40,7 +40,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Final
 
-from anesthesia_sim.app.chart_series import CHART_COLUMN_BUDGET_PER_SERIES
+from anesthesia_sim.app.chart_frame import CHART_COLUMN_BUDGET_PER_SERIES
 from anesthesia_sim.app.controller import (
     DrawnWindow,
     RecordedQuantity,

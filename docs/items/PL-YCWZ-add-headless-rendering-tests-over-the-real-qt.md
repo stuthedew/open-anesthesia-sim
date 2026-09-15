@@ -3,11 +3,12 @@ id: PL-YCWZ
 title: Add headless rendering tests over the real Qt interface, which is what PL-2QMK has been waiting for
 priority: P2
 effort: M
-status: ready
+status: done
 classes: test, infra
 feature: qt-port
-touches: tests/integration, src/anesthesia_sim/app/simulation_view.py
+touches: tests/integration, tests/conftest.py, src/anesthesia_sim/app/simulation_view.py, docs/ARCHITECTURE.md, docs/worker.md
 added: 2026-09-10
+closed: 2026-09-15
 verify: uv run python tools/import_boundary_check.py && test -f tests/integration/test_qt_rendering.py
 ---
 
@@ -72,3 +73,14 @@ is the first assertion of the durable kind this brief asks for, and it caught
 a real defect (pyqtgraph's grid painting over the 1 MAC line). What is left
 is the dashboard-level rendering: the real interface at a fixed size, once
 `PL-25KS` has one.
+
+**Closed 2026-09-15, with `PL-25KS`.** `tests/integration/test_qt_rendering.py`
+renders the real dashboard headless at 1600x1000 over a real run advanced
+past a control change, and asserts what is durable rather than pixel-exact:
+the grab is the requested size and not blank, a screenshot can be written,
+the agent badge is painted in the agent's own fill, the 1 MAC line is
+painted along the row the axis places it on, the alveolar trace lies inside
+the plot, no readout value is clipped by its panel, the readout row and the
+sidebar lie inside the page, and the hover reports the drawn state through
+the formatters. `docs/worker.md` says how a session writes the screenshot.
+`PL-2QMK` closes on it.

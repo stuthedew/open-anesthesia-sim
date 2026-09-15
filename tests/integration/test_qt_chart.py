@@ -17,7 +17,8 @@ from collections import Counter
 from collections.abc import Iterator
 
 import pytest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QPalette
+from PySide6.QtWidgets import QApplication, QCheckBox, QLabel, QWidget
 
 from anesthesia_sim.app.chart_frame import (
     CHART_COLUMN_BUDGET_PER_SERIES,
@@ -45,8 +46,34 @@ from anesthesia_sim.app.formatting import (
     mac_awake_band_percent,
     mac_axis_ticks,
 )
-from anesthesia_sim.app.qt_chart import ConcentrationChart, TraceLegend, WashInChart, trace_pen
-from anesthesia_sim.app.theme import GRIDLINE, MUTED, PANEL
+from anesthesia_sim.app.qt_chart import (
+    CONTROL_MARK_LEGEND_LABEL,
+    EQUILIBRIUM_LEGEND_LABEL,
+    MAC_AWAKE_BAND_LEGEND_LABEL,
+    WASH_IN_TRACE_LEGEND_LABEL,
+    ConcentrationChart,
+    TraceLegend,
+    WashInChart,
+    WashInLegend,
+    trace_pen,
+)
+from anesthesia_sim.app.qt_widgets import FlowLayout
+from anesthesia_sim.app.theme import (
+    CONTROL_MARK_COLOR,
+    CONTROL_MARK_DASH_PATTERN,
+    CONTROL_MARK_STROKE_WIDTH,
+    EQUILIBRIUM_LINE_COLOR,
+    EQUILIBRIUM_LINE_DASH_PATTERN,
+    EQUILIBRIUM_LINE_STROKE_WIDTH,
+    GRIDLINE,
+    MAC_AWAKE_BAND_COLOR,
+    MAC_AWAKE_BAND_EDGE_STROKE_WIDTH,
+    MAC_AWAKE_BAND_FILL_OPACITY,
+    MUTED,
+    PANEL,
+    WASH_IN_COLOR,
+    WASH_IN_STROKE_WIDTH,
+)
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO
 
 _STEP_S = 0.1
@@ -478,6 +505,56 @@ def test_the_legend_swatch_carries_the_trace_s_own_dash_pattern(application: QAp
             )
 
 
+def test_the_band_legend_swatch_is_ruled_on_both_edges_like_the_chart_mark(
+    application: QApplication,
+) -> None:
+    """A legend teaching one mark for a chart drawing another misreads it.
+
+    The swatch is how a reader learns which mark means what, so a swatch
+    ruled on its upper edge only would carry the same line-not-band reading
+    `PL-90Y6` removed from the chart, and would carry it into every glance at
+    the plot afterwards. Held twice: on the pen and brush the swatch says it
+    paints with, and on the pixels it painted - the top and bottom rows in
+    the edge colour, and the rows between in the fill at its opacity over
+    the widget's own ground.
+    """
+
+    legend = TraceLegend()
+    legend.show()
+    application.processEvents()
+    mark = legend.band_mark
+
+    assert mark.label == MAC_AWAKE_BAND_LEGEND_LABEL
+    assert mark.edge_pen.color().name() == MAC_AWAKE_BAND_COLOR.lower()
+    assert mark.edge_pen.widthF() == MAC_AWAKE_BAND_EDGE_STROKE_WIDTH
+    assert mark.edge_pen.dashPattern() == []
+    assert mark.fill.color().name() == MAC_AWAKE_BAND_COLOR.lower()
+    # QColor holds an alpha at sixteen bits, so the opacity comes back at that grain.
+    assert mark.fill.color().alphaF() == pytest.approx(MAC_AWAKE_BAND_FILL_OPACITY, abs=1 / 65535)
+
+    swatch = legend.band_swatch
+    image = swatch.grab().toImage()
+    x = image.width() // 2
+    top = image.pixelColor(x, 0)
+    bottom = image.pixelColor(x, image.height() - 1)
+    middle = image.pixelColor(x, image.height() // 2)
+    ground = swatch.palette().color(QPalette.ColorRole.Window)
+    edge = mark.edge_pen.color()
+
+    assert top.name() == edge.name()
+    assert bottom.name() == edge.name()
+
+    for channel in ("red", "green", "blue"):
+        blended = (
+            getattr(ground, channel)() * (1.0 - MAC_AWAKE_BAND_FILL_OPACITY)
+            + getattr(edge, channel)() * MAC_AWAKE_BAND_FILL_OPACITY
+        )
+
+        assert getattr(middle, channel)() == pytest.approx(blended, abs=1.0)
+
+    legend.close()
+
+
 def test_the_legend_is_the_visibility_control(application: QApplication) -> None:
     legend = TraceLegend()
     changes: list[tuple[RecordedQuantity, ...]] = []
@@ -489,3 +566,168 @@ def test_the_legend_is_the_visibility_control(application: QApplication) -> None
 
     assert legend.shown == (RecordedQuantity.MUSCLE,)
     assert changes and changes[-1] == (RecordedQuantity.MUSCLE,)
+
+
+def _legend_rows(legend: QWidget) -> list[FlowLayout]:
+    """The legend's rows, top to bottom, each a wrapping row."""
+
+    layout = legend.layout()
+    assert layout is not None
+    rows = []
+
+    for index in range(layout.count()):
+        item = layout.itemAt(index)
+        assert item is not None
+        row = item.layout()
+        assert isinstance(row, FlowLayout), "a legend row that cannot wrap"
+        rows.append(row)
+
+    return rows
+
+
+def _entries_inside(legend: QWidget, rows: list[FlowLayout]) -> None:
+    for row in rows:
+        for index in range(row.count()):
+            item = row.itemAt(index)
+            assert item is not None
+            geometry = item.geometry()
+
+            assert geometry.x() >= 0
+            assert geometry.right() < legend.width(), "a legend entry laid beyond the legend"
+
+
+def test_the_legend_rows_wrap_under_a_narrow_chart_and_stand_on_one_line_under_a_wide_one(
+    application: QApplication,
+) -> None:
+    """The six compartment entries reflow rather than holding the chart column to their sum.
+
+    The Flet legend rows wrapped; on one unbreakable line the compartments
+    row alone held the chart column to 1220 px and pushed the sidebar off a
+    1400 px window. The caption stays first and the entries follow it.
+    """
+
+    legend = TraceLegend()
+    compartments, references, record = _legend_rows(legend)
+    one_line = compartments.minimumSize().height()
+
+    assert compartments.heightForWidth(1400) == one_line
+    assert compartments.heightForWidth(500) > one_line
+    assert legend.minimumSizeHint().width() == max(
+        row.minimumSize().width() for row in _legend_rows(legend)
+    )
+
+    narrow = 500
+    legend.resize(narrow, legend.heightForWidth(narrow))
+    legend.show()
+    application.processEvents()
+
+    assert legend.width() == narrow
+    _entries_inside(legend, [compartments, references, record])
+    caption = compartments.itemAt(0)
+    assert caption is not None
+    caption_label = caption.widget()
+    assert isinstance(caption_label, QLabel)
+    assert caption_label.text() == "Compartments:"
+    entry_lines = {
+        compartments.itemAt(index).geometry().y()  # type: ignore[union-attr]
+        for index in range(1, compartments.count())
+    }
+    assert caption_label.geometry().y() == min(entry_lines)
+    assert len(entry_lines) > 1, "the compartments row did not wrap at 500 px"
+
+    wide = 1400
+    legend.resize(wide, legend.heightForWidth(wide))
+    application.processEvents()
+
+    assert {
+        compartments.itemAt(index).geometry().y()  # type: ignore[union-attr]
+        for index in range(compartments.count())
+    } == {caption_label.geometry().y()}
+    _entries_inside(legend, [compartments, references, record])
+    legend.close()
+
+
+def test_the_wash_in_legend_row_wraps_too(application: QApplication) -> None:
+    legend = WashInLegend()
+    (row,) = _legend_rows(legend)
+    one_line = row.minimumSize().height()
+
+    assert row.heightForWidth(1400) == one_line
+    assert row.heightForWidth(300) > one_line
+
+    legend.resize(300, legend.heightForWidth(300))
+    legend.show()
+    application.processEvents()
+    _entries_inside(legend, [row])
+    legend.close()
+
+
+def test_the_wash_in_legend_names_its_three_marks_in_the_plot_s_own_pens(
+    application: QApplication,
+) -> None:
+    """The wash-in row says what the wash-in plot draws, in the pens it draws it with.
+
+    The trace at its own stroke width and solid, the equilibrium line in its
+    wide dash, the control mark upright in its fine dash: each swatch is the
+    plot's pen, so the legend cannot describe a line the plot does not draw
+    (`PL-THXF`), and the words carry the line style too.
+    """
+
+    legend = WashInLegend()
+    legend.show()
+    application.processEvents()
+    trace, equilibrium, mark = legend.marks
+
+    assert not legend.grab().toImage().isNull()
+
+    assert [entry.label for entry in legend.marks] == [
+        WASH_IN_TRACE_LEGEND_LABEL,
+        EQUILIBRIUM_LEGEND_LABEL,
+        CONTROL_MARK_LEGEND_LABEL,
+    ]
+    assert {label.text() for label in legend.findChildren(QLabel)} == {
+        WASH_IN_TRACE_LEGEND_LABEL,
+        EQUILIBRIUM_LEGEND_LABEL,
+        CONTROL_MARK_LEGEND_LABEL,
+    }
+
+    assert trace.pen.color().name() == WASH_IN_COLOR.lower()
+    assert trace.pen.widthF() == WASH_IN_STROKE_WIDTH
+    assert trace.pen.dashPattern() == []
+    assert not trace.vertical
+
+    assert equilibrium.pen.color().name() == EQUILIBRIUM_LINE_COLOR.lower()
+    assert equilibrium.pen.widthF() == EQUILIBRIUM_LINE_STROKE_WIDTH
+    assert equilibrium.pen.dashPattern() == pytest.approx(
+        [length / EQUILIBRIUM_LINE_STROKE_WIDTH for length in EQUILIBRIUM_LINE_DASH_PATTERN]
+    )
+    assert not equilibrium.vertical
+
+    assert mark.pen.color().name() == CONTROL_MARK_COLOR.lower()
+    assert mark.pen.widthF() == CONTROL_MARK_STROKE_WIDTH
+    assert mark.pen.dashPattern() == pytest.approx(
+        [length / CONTROL_MARK_STROKE_WIDTH for length in CONTROL_MARK_DASH_PATTERN]
+    )
+    assert mark.vertical
+
+
+def test_every_compartment_box_carries_the_name_assistive_technology_announces(
+    application: QApplication,
+) -> None:
+    """The Flet legend's semantics label survives the port as the box's accessible name.
+
+    The words beside a box describe the line ("Circuit (solid)"); what a
+    screen reader should announce is the act the box performs, which is the
+    string the Flet build carried and the port must not lose (`PL-25KS`).
+    """
+
+    from anesthesia_sim.app.dashboard_frame import TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE
+
+    legend = TraceLegend()
+    boxes = legend.findChildren(QCheckBox)
+    names = {box.accessibleName() for box in boxes}
+
+    assert names == {
+        TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=style.label)
+        for style in COMPARTMENT_TRACES
+    }

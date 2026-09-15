@@ -3,12 +3,12 @@ id: PL-2QMK
 title: No session in the web container can visually confirm a chart change, because Flet's web renderer fetches its Flutter assets from a host the egress proxy denies
 priority: P2
 effort: M
-status: blocked
-blocked-by: PL-YCWZ
+status: done
 classes: infra, session-cost, ux
-touches: docs/worker.md
+touches: tests/integration/test_qt_rendering.py, docs/worker.md
 added: 2026-09-05
-verify: python3 tools/doc_check.py check && grep -q 'gstatic' docs/worker.md
+closed: 2026-09-15
+verify: uv run pytest tests/integration/test_qt_rendering.py && grep -q 'def test_a_screenshot_of_the_running_interface_can_be_written' tests/integration/test_qt_rendering.py
 ---
 **Problem.** `docs/worker.md` and the `run` skill both assume a session can
 start the application and look at it. In the Claude-Code-on-the-web container
@@ -74,3 +74,10 @@ cannot and say what to do instead.
 closes on it") and `PL-YCWZ`'s own brief say that item is what closes this
 one; the field now says so too, so `bin/docket next` stops offering this as
 startable work.
+
+**Closed 2026-09-15, with `PL-YCWZ` on `PL-25KS`.** A session in this
+container can produce a screenshot of the running application:
+`test_a_screenshot_of_the_running_interface_can_be_written` does it under
+the offscreen platform, and `docs/worker.md` gives the one-line command. The
+`verify:` above replaces one that grepped `docs/worker.md` for the Flet
+route's `gstatic` host, which the Qt route never touches.

@@ -73,7 +73,12 @@ While a case runs, the interface shows:
   dimensionless axis of its own, drawn against the *modeled* inspired
   concentration rather than the vaporizer dial;
 - the running agent's population MAC-awake as a labelled band, and its nominal
-  1 MAC as a line.
+  1 MAC as a line;
+- on hovering a drawn point of a compartment trace, which run, compartment
+  and instant that point is and its value in both units, at the readouts' own
+  resolution; on hovering a drawn point of the wash-in curve, the run, the
+  instant and the ratio — nothing is reported between drawn points, and the
+  references and control marks report nothing.
 
 Because muscle and fat cannot be watched in real time, a run can be played at
 **1×, 5×, 20×, 60× or 300× real time**. The rate is a mode, so it is displayed
@@ -136,8 +141,8 @@ Building from source needs two things:
   `pyproject.toml` is a floor, so an older build stops with a clear message
   rather than quietly resolving the interpreter pin against a list that
   predates it.
-- **On Linux, `libegl1`** (`apt install libegl1`), which the Qt chart the
-  interface is moving to needs and the PySide6 wheels do not carry. Nothing
+- **On Linux, `libegl1`** (`apt install libegl1`), which the Qt interface
+  needs and the PySide6 wheels do not carry. Nothing
   else: the other libraries Qt expects are on an ordinary desktop already, and
   macOS and Windows need nothing extra.
 

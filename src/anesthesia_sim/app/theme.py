@@ -1,4 +1,4 @@
-"""Shared color and spacing constants for the Flet UI."""
+"""Shared color and spacing constants for the interface."""
 
 from dataclasses import dataclass
 from typing import Final
@@ -17,7 +17,7 @@ PRIMARY = "#176B87"
 # of that same split. A chart trace has to clear 3:1 against the panel under
 # simulated dichromacy as well as under normal vision, and has five sibling
 # traces to stay separable from; a slider track has neither constraint. The
-# trace now carries its own value in `simulation_view.py`, so this one is
+# trace now carries its own value, `ALVEOLAR_COLOR` below, so this one is
 # bounded by nothing but the panel behind it - which is what PL-W8DQ needs to
 # know before it darkens it, and why that item deferred to this one.
 ACCENT = "#18A999"
@@ -43,7 +43,7 @@ MUTED = "#59728A"
 #
 # IEC 60601-1-8 governs *visual alarm signals* - indicators that encode
 # priority by colour together with a flash rate - and this interface has none.
-# Every use of WARNING is `ft.Text`, bold and coloured: the run-status word,
+# Every use of WARNING is text, bold and coloured: the run-status word,
 # the transient notice line, the agent-accounting status word, the permanent
 # educational disclaimer, and the case-discard dialog. No indicator lamp, no
 # filled banner, no flashing element, no priority tier.
@@ -65,7 +65,7 @@ MUTED = "#59728A"
 # urgency, which is why footnote b obligates them and nothing obligates this.
 #
 # The interface already runs this as a signal economy one level down, at
-# `simulation_view.py`'s supported-run-length boundary: that boundary is
+# `dashboard_frame.py`'s supported-run-length status word: that boundary is
 # MUTED, not WARNING, because colouring a correct model's declared boundary as
 # a fault teaches a reader to distrust a number that is sound, and would spend
 # the one signal this interface has for a real one.
@@ -119,7 +119,7 @@ class AgentColorScheme:
 # for the whole of every run - Flet/Material paints a disabled control's label
 # in the theme's disabled-content grey, which is a colour this file does not
 # declare and `tools/contrast_check.py` therefore cannot measure, over a fill
-# that stayed saturated (PL-61WW). The fix is in `app/simulation_view.py` and
+# that stayed saturated (PL-61WW). The fix is in `app/run_view.py` and
 # is structural rather than a colour: nothing carrying agent identity is
 # disabled, so the pair measured here is the pair rendered. A new use of these
 # colours owes the same question - is anything between this constant and the
@@ -162,12 +162,12 @@ AGENT_COLOR_SCHEMES: Final[dict[str, AgentColorScheme]] = {
 # also shortens `tools/contrast_check.py`, which read two files only because
 # the six trace colours lived in the view.
 #
-# **This module stays free of Flet**, which is why two display constants did
-# not come with them: `METRIC_GRID_COLUMNS` is typed on
-# `ft.ResponsiveRowBreakpoint` and `AGENT_RENDER_STYLES` builds `ft.Border` and
-# `ft.TextStyle` objects. `tools/contrast_check.py` and
+# **This module stays free of any toolkit.** `tools/contrast_check.py` and
 # `tools/agent_identity_check.py` read this file with `ast` in a bare checkout
-# precisely because it imports nothing they would need installed.
+# precisely because it imports nothing they would need installed, so a display
+# constant that needs a toolkit type belongs in the module that draws it - the
+# Flet build's `METRIC_GRID_COLUMNS` and `AGENT_RENDER_STYLES` stayed out for
+# that reason.
 #
 # **Order is load-bearing.** `contrast_check.read_palette` resolves a bare name
 # against the palette built so far, in file order, so an alias must sit below
@@ -216,25 +216,6 @@ METRIC_SECONDARY_VALUE_SIZE = 13
 # values already shipping.
 APP_TITLE_SIZE = 26
 METRIC_VALUE_SIZE = 22
-
-# Width held open for the simulated-time readout, which is the one metric
-# whose string changes *length* while it updates. On the compound form
-# `PL-Q4M4` and `PL-CZFY` put it on, the clock steps `59.9s` -> `1m` ->
-# `1m0.1s` and `1h23m` -> `1h23m0.1s`, so an unreserved readout would shift
-# its own panel every time a component appeared or fell away - and this is a
-# value that redraws every render tick. `_build_trace_legend_item` records
-# the same rule for the legend rows: a control a reader is looking at must
-# not move under them.
-#
-# Derived rather than measured: the widest string the run length can reach is
-# `23h59m59.9s`, eleven characters, and `tests/unit/test_formatting.py`
-# asserts that so the premise fails loudly if the form or the envelope
-# changes. At METRIC_VALUE_SIZE bold that is about 150 logical pixels in a
-# proportional UI face. Nothing renders the interface in a check yet
-# (`PL-7J96`), so this has not been confirmed by eye; it is set wide enough
-# that being a little generous costs panel whitespace rather than a clipped
-# clock.
-ELAPSED_VALUE_WIDTH = 150
 ACCOUNTING_STATUS_SIZE = 20
 
 # The six compartment traces. Two things decide these values, and only one of

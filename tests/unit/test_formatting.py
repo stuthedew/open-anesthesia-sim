@@ -17,7 +17,10 @@ from typing import Any
 import pytest
 
 from anesthesia_sim.app import formatting as formatting_module
+from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.formatting import (
+    AGENT_VOLUME_DISPLAY_DECIMALS,
+    AGENT_VOLUME_DISPLAY_RESOLUTION_L,
     CHART_AXIS_TOP_MAC,
     CHART_GRID_INTERVAL_MAC,
     CONCENTRATION_DISPLAY_DECIMALS,
@@ -29,6 +32,8 @@ from anesthesia_sim.app.formatting import (
     MAX_MAC_AXIS_INTERVALS,
     chart_axis_top_percent,
     chart_grid_interval_percent,
+    format_agent_residual,
+    format_agent_volume,
     format_case_discard_warning,
     format_chart_time_label,
     format_delivered_label,
@@ -1049,14 +1054,15 @@ def test_the_clock_still_resolves_the_step_the_simulation_advances_by() -> None:
 
 
 def test_the_widest_reachable_clock_string_is_what_the_reserved_width_assumes() -> None:
-    """`theme.ELAPSED_VALUE_WIDTH` is derived from this, not measured.
+    """The clock's reserved width is measured from this string, in the rendering font.
 
     The compound form changes length as components appear and fall away, so
     the readout reserves a width rather than letting its panel move every
-    render tick. That reservation was sized from the widest string the
-    supported run length can reach; nothing renders the interface in a check
-    yet (`PL-7J96`), so this test is what holds the premise honest if either
-    the form or the envelope changes.
+    render tick. `dashboard_frame.WIDEST_READOUT_VALUE` is this string, and
+    `qt_widgets.MetricPanel` measures it in the font it draws with (`PL-3355`);
+    the fixed pixel guess the Flet build carried as `theme.ELAPSED_VALUE_WIDTH`
+    was retired with that port (`PL-25KS`). This test is what holds the
+    premise honest if either the form or the envelope changes.
     """
 
     widest = max(
@@ -1082,3 +1088,113 @@ def test_the_clock_refuses_a_time_that_cannot_have_elapsed(bad_elapsed_s: float)
 
     with pytest.raises(ValueError, match="finite and non-negative"):
         format_elapsed(bad_elapsed_s)
+
+
+def test_agent_amounts_precision() -> None:
+    """Pin the `PL-TG60` decision: one decimal of a litre, and the below-resolution form.
+
+    The Flet panel printed six decimals of an exhaust total whose parameter
+    uncertainty is 0.016-0.23 L across the supported span; one count of
+    0.1 L sits inside the band `docs/MODEL.md` § "Displayed precision"
+    derives for the concentration readouts, and 0.01 L does not. A positive
+    amount that rounds to zero reads as below the resolution rather than as
+    an empty circuit.
+    """
+
+    assert AGENT_VOLUME_DISPLAY_DECIMALS == 1
+    assert format_agent_volume(3.991974) == "4.0 L"
+    assert format_agent_volume(0.012345) == "<0.1 L"
+    assert format_agent_volume(0.0) == "0.0 L"
+
+
+def test_format_agent_volume_rounds_rather_than_truncates() -> None:
+    """The last displayed digit is the nearest one, as for every other readout."""
+
+    assert format_agent_volume(3.96) == "4.0 L"
+    assert format_agent_volume(3.94) == "3.9 L"
+
+
+def test_format_agent_volume_marks_a_value_below_the_resolution() -> None:
+    """In the first minute of a run the exhaust is real and under a tenth of a litre."""
+
+    assert format_agent_volume(1e-8) == "<0.1 L"
+    assert format_agent_volume(0.04) == "<0.1 L"
+    # Either side of the rounding threshold, at half the resolution.
+    assert format_agent_volume(0.049) == "<0.1 L"
+    assert format_agent_volume(0.051) == "0.1 L"
+
+
+def test_format_agent_volume_states_the_below_resolution_form_from_the_constant() -> None:
+    """The marker says the resolution the panel actually uses, never a literal."""
+
+    expected = f"<{AGENT_VOLUME_DISPLAY_RESOLUTION_L:.{AGENT_VOLUME_DISPLAY_DECIMALS}f} L"
+
+    assert format_agent_volume(1e-9) == expected
+
+
+def test_format_agent_volume_leaves_an_impossible_negative_visible() -> None:
+    """A negative amount cannot occur, and must not be disguised if it does.
+
+    The below-resolution form would render it as an ordinary small positive
+    reading; `CLAUDE.md` requires the obvious failure instead, as
+    `format_percent` does for a negative fraction.
+    """
+
+    assert format_agent_volume(-1e-8) == "-0.0 L"
+    assert format_agent_volume(-2.0) == "-2.0 L"
+
+
+def test_format_agent_residual_keeps_the_order_of_magnitude() -> None:
+    """The two residual lines exist for their exponent, so they keep the exponent form."""
+
+    assert format_agent_residual(1.5e-13) == "1.500e-13 L"
+    assert format_agent_residual(-3.289e-15) == "-3.289e-15 L"
+    assert format_agent_residual(0.0) == "0.000e+00 L"
+
+
+def test_the_model_keeps_precision_the_display_throws_away() -> None:
+    """The 0.01% resolution is a property of the display alone.
+
+    `docs/MODEL.md` § "Displayed precision" argues at length for two decimal
+    places, and a reader could reasonably take that for a statement about the
+    model. It is not: every compartment state and every integration step
+    carries full binary64 throughout, and the rounding happens once, in the
+    formatter. Two runs whose only difference is four orders of magnitude
+    below the display resolution must therefore reach different states; if
+    anything in the pipeline quantized to what the display shows, the two
+    would be identical here and this fails.
+    """
+
+    step_s = 0.1
+    below_resolution = 1e-8  # a fraction, i.e. 1e-6 percentage points
+
+    def run_at(delivered_partial_pressure_fraction: float) -> tuple[float, str]:
+        controller = SimulationController()
+        controller.set_delivered_partial_pressure_fraction(
+            Fraction(delivered_partial_pressure_fraction)
+        )
+        controller.start()
+
+        for _ in range(round(120.0 / step_s)):
+            controller.advance(step_s)
+
+        snapshot = controller.snapshot()
+
+        return snapshot.alveolar_partial_pressure_fraction, format_percent(
+            snapshot.alveolar_partial_pressure_fraction
+        )
+
+    baseline_fraction, baseline_displayed = run_at(0.02)
+    perturbed_fraction, perturbed_displayed = run_at(0.02 + below_resolution)
+
+    assert baseline_fraction != perturbed_fraction, (
+        "a change four orders of magnitude below the display resolution left "
+        "the alveolar state bit-identical; something in the model or the "
+        "snapshot is rounding to what the display shows"
+    )
+    assert 0.0 < abs(perturbed_fraction - baseline_fraction) < 1e-6
+    assert baseline_displayed == perturbed_displayed, (
+        "the two runs should be indistinguishable on the display and distinct "
+        "in the model; if they differ on the display this test is no longer "
+        "measuring what it claims"
+    )

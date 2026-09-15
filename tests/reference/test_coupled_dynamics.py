@@ -744,7 +744,7 @@ MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = (
 # input domain this gate measures over, and the view module whose displayed
 # resolution and shipped step every figure here is quoted at.
 #
-# `supported_ranges` and `simulation_view` are on this list for two
+# `supported_ranges` and `dashboard_frame` are on this list for two
 # assertions — that the limits restated above are still the model's, and that
 # the resolution and step they are quoted at are still the interface's — and
 # the rule the list enforces is unaffected by either: what must never be
@@ -762,8 +762,8 @@ ALLOWED_PACKAGE_IMPORTS = frozenset(
         "load_reference_adult_parameters",
         "load_reference_circle_system_parameters",
         "AgentUptakeSystem",
+        "dashboard_frame",
         "formatting",
-        "simulation_view",
         "supported_ranges",
     }
 )
@@ -1431,21 +1431,23 @@ def test_displayed_resolution_and_shipped_step_match_the_interface() -> None:
     percent where the core's own guard is a fraction.
 
     The resolution is read from `app/formatting.py`, which declares it, and
-    not from `app/simulation_view.py`, which imports it for a slider's drag
-    label. Asserting against the importer would let this pass on an
-    accidental re-export after the declaration moved again (PL-WB0X).
+    not from `app/dashboard_frame.py`, which reads it for the delivered
+    dial's slider position. Asserting against the importer would let this
+    pass on an accidental re-export after the declaration moved again
+    (PL-WB0X). The floor and the step are `app/dashboard_frame.py`'s own,
+    since `PL-25KS` moved every claim the dashboard makes there.
     """
 
-    from anesthesia_sim.app import formatting, simulation_view
+    from anesthesia_sim.app import dashboard_frame, formatting
 
     assert (
         MIN_DELIVERED_CONCENTRATION_PERCENT,
         CONCENTRATION_DISPLAY_DECIMALS,
         SHIPPED_STEP_S,
     ) == (
-        simulation_view.MIN_DELIVERED_CONCENTRATION_PERCENT,
+        dashboard_frame.MIN_DELIVERED_CONCENTRATION_PERCENT,
         formatting.CONCENTRATION_DISPLAY_DECIMALS,
-        simulation_view.SIMULATION_STEP_S,
+        dashboard_frame.SIMULATION_STEP_S,
     ), (
         "the interface's displayed resolution or simulation step has changed; "
         "re-run the trajectory sweeps and re-derive the measured figures in "

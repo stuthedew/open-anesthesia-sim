@@ -72,7 +72,7 @@ class ControlInput(StrEnum):
 # onto every entry that records one. Two properties are wanted at the same
 # time and neither alone is enough: a single table is auditable at a glance
 # and cannot drift between the recorder and the reader (the reason
-# `chart_series.PlottedSeries` is one table rather than six call sites),
+# `chart_frame.COMPARTMENT_TRACES` is one table rather than six call sites),
 # while a unit carried *on* the entry makes each recorded change
 # self-describing, so a displayed line reads its unit from the change that
 # produced it rather than from a lookup a later edit could desynchronise.
@@ -209,8 +209,8 @@ class RecordedSeries:
     is a presentation-correctness property rather than a lookup convenience:
     a trace drawn from another substance's values misstates the run exactly
     as one drawn from another compartment's does, and a pair that travels
-    together cannot be half-rebound. `app/chart_series.py`'s `PlottedSeries`
-    carries it for that reason.
+    together cannot be half-rebound. `app/chart_frame.py`'s `_run_frame`
+    builds one per drawn trace for that reason.
     """
 
     substance_id: str
@@ -417,9 +417,9 @@ class SimulationSnapshot:
     # vocabularies - the chart named the substance it drew and the numbers
     # beside it did not. That is fixed by saying so: these travel with
     # `agent_id` and `agent_display_name` above, for the same reason
-    # `agent_mac_percent` does, and `simulation_view` labels the readout row
-    # with the substance rather than leaving a reader to carry it over from
-    # the agent selector.
+    # `agent_mac_percent` does, and `dashboard_frame.substance_heading`
+    # labels the readout row with the substance, placed there by `run_view`,
+    # rather than leaving a reader to carry it over from the agent selector.
     #
     # When the model holds N simultaneously present substances - `ROADMAP.md`
     # Phase 1, ahead of planned item 6 - a mapping is the right shape and this

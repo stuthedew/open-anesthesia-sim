@@ -2,20 +2,22 @@
 """Refuse a control that carries agent identity and can be rendered disabled.
 
 `PL-61WW` is what this exists for. The agent selector was disabled for the
-whole of a run, and Flet/Material paints a disabled control's label in the
-theme's disabled-content grey - overriding the `color=` and `text_style=` the
-agent scheme sets, while `bgcolor=` keeps the saturated ISO 5360 fill. The
-agent's name was hardest to read at exactly the moment every number beside it
-was agent-specific, which `CLAUDE.md`'s presentation clause makes a safety
-failure rather than a styling one.
+whole of a run, and the toolkit of the day (Flet/Material) painted a disabled
+control's label in the theme's disabled-content grey - overriding the
+`color=` and `text_style=` the agent scheme set, while `bgcolor=` kept the
+saturated ISO 5360 fill. The agent's name was hardest to read at exactly the
+moment every number beside it was agent-specific, which `CLAUDE.md`'s
+presentation clause makes a safety failure rather than a styling one.
 
 **Nothing went red.** `tools/contrast_check.py` reads colour constants out of
 every module under `app/` with `ast`, and the disabled grey is declared in none
-of them - it is Material's, not this project's. A colour that
+of them - it is the toolkit's, not this project's. A colour that
 appears in no source file is not merely undeclared but unreachable, so the
 requirement went on measuring the enabled pair and reporting a pass for a pair
 that had stopped being rendered. That is the general shape rather than one
-control's bug, and `PL-61WW` fixed the one control.
+control's bug, and `PL-61WW` fixed the one control. Qt has the same shape: a
+widget's disabled palette role is the style's, and a stylesheet colour set for
+the enabled state says nothing about what `:disabled` draws.
 
 **The rule, decided by the project owner (2026-09-08): never disabled.** No
 control carrying agent identity may be *rendered* in a disabled state, so
@@ -24,39 +26,77 @@ user interface component" is never claimed here - the exemption settles a
 conformance claim and not whether a reader can identify the running agent.
 https://www.w3.org/TR/WCAG22/#contrast-minimum
 
-Rendered is the load-bearing word. `_agent_dropdown` is still assigned
-`disabled = snapshot.is_running`, and is also assigned
-`visible = not snapshot.is_running`, so it draws nothing while disabled - the
-`disabled` line is there because a control off screen must not be operable
-either. A check reading `disabled` alone would fail that tree and teach the
-next session to delete a defensive line to appease it. So the shape enforced
-is the pairing:
+Rendered is the load-bearing word. `_agent_dropdown` is still written
+disabled while a run is going, and is also written hidden under the same
+condition, so it draws nothing while disabled - the disabled write is there
+because a control off screen must not be operable either. A check reading the
+disabled write alone would fail that tree and teach the next session to delete
+a defensive line to appease it. So the shape enforced is the pairing, in
+whichever spelling the toolkit uses:
 
     self._agent_dropdown.disabled = snapshot.is_running
     self._agent_dropdown.visible = not snapshot.is_running
 
-the same expression, negated. A control assigned `disabled` with no such
-`visible` beside it can be seen while the theme is recolouring it, and that is
-the failure.
+    self._agent_dropdown.setDisabled(snapshot.is_running)
+    self._agent_dropdown.setHidden(snapshot.is_running)
+
+    self._agent_dropdown.setEnabled(not snapshot.is_running)
+    self._agent_dropdown.setVisible(not snapshot.is_running)
+
+the same expression on both lines. A control written disabled with no such
+hide beside it can be seen while the theme is recolouring it, and that is the
+failure.
+
+**Two spellings, one comparison.** The Flet build wrote `disabled` and
+`visible` as attribute assignments; PySide6 spells the same state as the
+setter calls `setDisabled`/`setEnabled` and `setHidden`/`setVisible`
+(`PL-25KS`, which taught this check the second spelling as part of the port -
+`PL-JRS3` had measured that until then a Qt tree passed through unread, below).
+Both are read, and each write is reduced to the *condition* it states before
+anything is compared: `disabled = E`, `setDisabled(E)` and `setEnabled(not E)`
+all disable the control under `E`; `visible = not E`, `setHidden(E)` and
+`setVisible(not E)` all hide it under `E`. The pairing holds when the two
+conditions are structurally identical - `ast.dump` of one against the other -
+and nothing infers that two differently written conditions mean the same
+thing. Peeling one `not` is the whole of the normalisation, and it is there
+so that `setEnabled(not E)` and `setDisabled(E)` are the same statement to
+this check, as they are to the toolkit.
 
 **The two rules, and why the second one is not scope creep.**
 
-1. The identity set is every `self.X` that `_apply_agent_color_scheme` writes.
-   That method is already this project's single writer of agent colour and
-   says so in its own docstring, so the set needs no second list kept in step
-   by hand. Rule 1 holds each member to the pairing above, reading the
-   `disabled` and `visible` writes inside the *class that holds the writer*:
-   `self.X` names an attribute of that class, so a same-named attribute in
-   another class is a different control and not the identity one.
-2. A control given an agent colour where it is *constructed* must be in that
-   set. This is what makes rule 1's coverage claim true rather than asserted -
-   a control coloured in `__init__` and never re-written by
+1. The identity set is every `self.X` that `_apply_agent_color_scheme` writes,
+   whether as a property assignment (`self.X.color = ...`) or as a call
+   statement on the control (`self.X.setStyleSheet(...)`). That method is
+   already this project's single writer of agent colour and says so in its own
+   docstring, so the set needs no second list kept in step by hand. Rule 1
+   holds each member to the pairing above, reading the disabled and hiding
+   writes inside the *class that holds the writer*: `self.X` names an
+   attribute of that class, so a same-named attribute in another class is a
+   different control and not the identity one.
+2. A control given an agent colour anywhere *outside* the writer must be in
+   that set. This is what makes rule 1's coverage claim true rather than
+   asserted - a control coloured once and never re-written by
    `_apply_agent_color_scheme` is outside rule 1 entirely. It is also a bug in
-   its own right: a control that keeps the colour it was built with shows the
+   its own right: a control that keeps the colour it was first given shows the
    previous agent's identity over the current agent's numbers, which is the
-   correct number under the wrong label. Rule 2 reads every class in every
-   module, because the writer can only write its own class's attributes, so an
-   agent-coloured control anywhere else is by construction outside the set.
+   correct number under the wrong label. Two spellings here too. The Flet build
+   coloured a control where it was *constructed* - `self.X = Dropdown(
+   color=colors.foreground)` - and the Qt build colours one by a *call
+   statement* after construction - `self.X.setStyleSheet(...)`,
+   `self.X.setItemData(index, QColor(scheme.fill), ...)`. Rule 2 reads both: a
+   `self.X = ...` assignment whose value reaches a colour table, and a
+   `self.X.method(...)` statement any of whose arguments does, in every method
+   of every class except the writer, whose body *is* the identity set and is
+   read once by `identity_controls`. Reaching a table means naming one of
+   `COLOR_TABLES` outright or a local bound from a subscript of one, and a
+   local handed whole to a helper - `setStyleSheet(_text_stylesheet(scheme))`
+   - counts, since what the helper returns is the colour the local carries.
+   Every class in every module is read, because the writer can only write its
+   own class's attributes, so an agent-coloured control anywhere else is by
+   construction outside the set. Until `PL-25KS`'s port review, rule 2 read
+   assignments alone, so on a Qt tree it measured nothing while this docstring
+   said it made rule 1's claim true; the success line now states how many
+   colourings it read in each spelling, so an empty measurement is visible.
 
 **Every module under `app/` is read, and none is named by path (PL-V53R).**
 Until then the tool parsed `app/simulation_view.py` alone, and `PL-B9PY` kept
@@ -80,38 +120,33 @@ draws the same line, for the same reason: a tool that guesses at the judgment
 half is worse than no tool, because its output looks authoritative and is not.
 
 **Known limitation, stated rather than papered over.** A control coloured by
-neither route - no agent colour where it is constructed and no write in
-`_apply_agent_color_scheme` - is invisible to both rules. None exists today,
-and rule 2 is what keeps the first route from opening one quietly. The check
-also refuses a tree where the writer method is missing or writes nothing,
-because a coverage set that can silently go empty is worse than no check.
+a route that names no colour table - a hex literal, which
+`tools/contrast_check.py` refuses outside `app/theme.py`, or a scheme fetched
+in one method and stored on `self` for another to read - is invisible to both
+rules; nothing here resolves a name across scopes, deliberately. None exists
+today. The check also refuses a tree where the writer method is missing or
+writes nothing, because a coverage set that can silently go empty is worse
+than no check. A call whose value is *used* - `x = self.X.palette()` - is a
+read and is not counted as a write, by either rule; only a call standing as
+its own statement is.
 
-**The measurement set has the same guard, since PL-0PJG.** Rule 1 reads two
-*attribute assignments* - `self.X.disabled = EXPR` paired with
-`self.X.visible = not EXPR` - and PySide6 spells both as calls, `setEnabled`
-and `setVisible`. `PL-JRS3` measured what that did on 2026-09-14 by rewriting
-`app/simulation_view.py` on the AST into those setters: `property_writes`
-returned nothing, the pairing loop ran zero times, and this tool printed
-`6 control(s) carry the agent colour, none of them rendered disabled` and
-exited 0 - on a tree where all six are driven by `setEnabled()` with no paired
-hide. That was worse than a silent pass, because the sentence is an
-affirmative claim about a tree the check did not measure, and a reader had no
-way to tell it from the same sentence earned. So a tree whose identity set is
-non-empty but in which no `self.X.disabled = ...` assignment is read in any
-class in any module is now an error naming the spelling this reads and the one
-it does not, and the success line states the measurement it rests on - how
-many disabled-state writes were read, across how many modules, how many of
-them on identity controls. A tree that genuinely disables nothing anywhere
-trips the same error, deliberately: this check cannot tell that tree from one
-it cannot read, and saying so is the honest answer; the interface disables its
-transport while a run is going, so it is not a tree this project has.
-
-The port still owes rule 1 the setter spelling - the error above is what
-makes it owe it loudly on the first commit rather than pass through. Porting
-the colour writes to `setStyleSheet` trips rule 2 with a message that
-*misdiagnoses*, reporting that the writer "never writes" controls it writes
-through `setStyleSheet`; so rule 1 is part of the port's scope rather than
-collateral, and it is the half to port first.
+**The measurement set has the same guard, since PL-0PJG.** `PL-JRS3` measured
+on 2026-09-14 what an unread spelling did, by rewriting `app/simulation_view.py`
+on the AST into Qt's setters while this check read attributes only: the
+pairing loop ran zero times and the tool printed `6 control(s) carry the agent
+colour, none of them rendered disabled` and exited 0 - on a tree where all six
+were driven by `setEnabled()` with no paired hide. That was worse than a silent
+pass, because the sentence is an affirmative claim about a tree the check did
+not measure, and a reader had no way to tell it from the same sentence earned.
+So a tree whose identity set is non-empty but in which no disabled-state write
+is read, in either spelling, in any class in any module is an error, and the
+success line states the measurement it rests on - how many disabled-state
+writes were read, across how many modules, how many of them on identity
+controls. A tree that genuinely disables nothing anywhere trips the same
+error, deliberately: this check cannot tell that tree from one written in a
+spelling it has not been taught, and saying so is the honest answer; the
+interface disables its transport while a run is going, so it is not a tree
+this project has.
 
 Standard library only, like every tool here, so it runs in a bare checkout.
 """
@@ -121,7 +156,7 @@ from __future__ import annotations
 import argparse
 import ast
 import sys
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -137,17 +172,22 @@ IDENTITY_WRITER = "_apply_agent_color_scheme"
 
 #: The module-level tables an agent colour comes out of. A local name bound
 #: from a subscript of either carries an agent colour into whatever it is
-#: assigned to, which is how rule 2 finds a control coloured at construction.
+#: assigned to or passed to, which is how rule 2 finds a control coloured
+#: outside the writer in either spelling.
 COLOR_TABLES = ("AGENT_COLOR_SCHEMES", "AGENT_RENDER_STYLES")
 
-#: The attribute whose assignment makes a control's own colour Material's to
-#: choose, and the one whose assignment can take it off screen instead.
+#: The attribute spelling: the property whose assignment makes a control's own
+#: colour the theme's to choose, and the one whose assignment can take it off
+#: screen instead.
 DISABLED = "disabled"
 VISIBLE = "visible"
 
-#: How the toolkit the interface is moving to spells the same write. Named so
-#: that the empty-measurement error can say what it did not read (PL-0PJG).
-UNREAD_SPELLING = "setEnabled()"
+#: The setter spelling of the same two states. `setEnabled` and `setVisible`
+#: state the condition the other way round, which `_condition` undoes.
+SET_DISABLED = "setDisabled"
+SET_ENABLED = "setEnabled"
+SET_HIDDEN = "setHidden"
+SET_VISIBLE = "setVisible"
 
 
 @dataclass(frozen=True)
@@ -173,6 +213,25 @@ class Writer:
 
 
 @dataclass(frozen=True)
+class DisabledWrite:
+    """One write of a control's disabled state, in either spelling.
+
+    Reduced to the condition it disables the control under, so that the
+    pairing can be judged without caring which spelling stated it - and
+    carrying the spelling anyway, so the error can name the exact hiding
+    line that would pair with it.
+    """
+
+    control: str
+    #: The expression under which the control is disabled.
+    condition: ast.expr
+    #: The write as it stands in source, e.g. `disabled = snapshot.is_running`.
+    written: str
+    #: The hiding write in the same spelling, e.g. `visible = not snapshot.is_running`.
+    paired_hide: str
+
+
+@dataclass(frozen=True)
 class Report:
     """Everything one run decided, and what it measured to decide it."""
 
@@ -183,10 +242,14 @@ class Report:
     writer: str
     #: Modules read under `APP`.
     modules: int
-    #: `self.X.disabled = ...` assignments read, in every class of every module.
+    #: Disabled-state writes read, in either spelling, in every class of every module.
     disabled_writes: int
     #: Of those, the ones on identity controls - the writes rule 1 judged.
     identity_disabled_writes: int
+    #: Agent colourings read outside the writer - what rule 2 judged - as
+    #: `self.X = ...` assignments and as call statements on `self.X`.
+    constructed_colorings: int = 0
+    call_colorings: int = 0
 
 
 def read_modules(root: Path) -> tuple[Module, ...]:
@@ -212,10 +275,35 @@ def self_attribute(node: ast.expr) -> str | None:
 
 
 def written_control(target: ast.expr) -> str | None:
-    """The control an assignment target writes a property of: `self.X.prop`."""
+    """The control an attribute expression reaches into: the `X` of `self.X.prop`.
+
+    The same shape serves a call's callee, `self.X.method`, which is why the
+    identity set and both spellings of rule 1 read through this one function.
+    """
     if isinstance(target, ast.Attribute):
         return self_attribute(target.value)
     return None
+
+
+def control_calls(scope: ast.AST) -> Iterator[tuple[str, str, ast.Call]]:
+    """Every call statement on a control within one scope: `self.X.method(...)`.
+
+    A call standing as its own statement, because that is a write; a call
+    whose value is consumed - `x = self.X.palette()` - is a read and would
+    put a control into a set it does not belong to.
+
+    Yields:
+        The control, the method name and the call, in walk order.
+    """
+    for node in ast.walk(scope):
+        if not isinstance(node, ast.Expr) or not isinstance(node.value, ast.Call):
+            continue
+        callee = node.value.func
+        if not isinstance(callee, ast.Attribute):
+            continue
+        control = written_control(callee)
+        if control is not None:
+            yield control, callee.attr, node.value
 
 
 def classes(tree: ast.Module) -> tuple[ast.ClassDef, ...]:
@@ -246,9 +334,13 @@ def identity_controls(method: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[s
     """Every control the single writer of agent colour writes, in source order.
 
     Definitionally the identity set: a control not written there does not
-    follow the agent, and one written there does. Ordered by line so the
-    report reads the way the method is written - `ast.walk` is breadth-first,
-    which coincides with source order only while a body stays flat.
+    follow the agent, and one written there does. A write is a property
+    assignment on the control (`self.X.color = ...`, the attribute spelling)
+    or a call statement on it (`self.X.setStyleSheet(...)`, the setter
+    spelling); both count, so the set is the same whichever toolkit the
+    writer is written for. Ordered by line so the report reads the way the
+    method is written - `ast.walk` is breadth-first, which coincides with
+    source order only while a body stays flat.
     """
     found: dict[str, int] = {}
     for statement in ast.walk(method):
@@ -258,41 +350,64 @@ def identity_controls(method: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[s
             control = written_control(target)
             if control is not None:
                 found.setdefault(control, statement.lineno)
+    for control, _, call in control_calls(method):
+        found.setdefault(control, call.lineno)
     return tuple(sorted(found, key=found.__getitem__))
 
 
 def _carries_agent_color(value: ast.expr, tracked: set[str]) -> bool:
     """Whether an expression reaches an agent colour, directly or through a local.
 
-    Two ways, and both have to be read because the view uses both in one
-    call: `AGENT_COLOR_SCHEMES[agent_id].fill` written inline, and
-    `initial_agent_colors.foreground` where the local was bound from a
-    subscript of the same table a few lines earlier.
+    Three ways, and all have to be read because the view uses all of them:
+    `AGENT_COLOR_SCHEMES[agent_id].fill` written inline,
+    `scheme.foreground` where the local was bound from a subscript of the
+    same table a few lines earlier, and `scheme` handed whole to a helper
+    that builds the stylesheet - `_text_stylesheet(scheme)` - which the Qt
+    build does on every identity control (`PL-25KS`).
     """
     for node in ast.walk(value):
-        if isinstance(node, ast.Name) and node.id in COLOR_TABLES:
+        if isinstance(node, ast.Name) and (node.id in COLOR_TABLES or node.id in tracked):
             return True
-        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
-            if node.value.id in tracked:
-                return True
     return False
 
 
-def constructed_with_agent_color(owner: ast.ClassDef) -> tuple[str, ...]:
-    """Every `self.X` one class builds from an agent colour, in source order.
+@dataclass(frozen=True)
+class AgentColoring:
+    """One write of an agent colour to a control outside the writer, in either spelling."""
+
+    control: str
+    #: The method the write was read in.
+    method: str
+    lineno: int
+    #: The shape of the write, e.g. `self._swatch = ...` or `self._swatch.setStyleSheet(...)`.
+    written: str
+    #: True for the assignment spelling, False for the call-statement spelling.
+    constructed: bool
+
+
+def agent_colorings(
+    owner: ast.ClassDef, *, excluding: ast.AST | None = None
+) -> tuple[AgentColoring, ...]:
+    """Every agent colouring of a `self.X` one class performs, in source order.
+
+    Both spellings: `self.X = ...` where the value reaches an agent colour,
+    and a call statement `self.X.method(...)` where any argument does.
+    `excluding` is the writer, whose body is the identity set and is read by
+    `identity_controls` instead - read here as well, it would only be
+    compared against itself.
 
     Two passes per function, not one, because the locals that carry a colour
     are bound in the same scope that uses them and `ast.walk` does not promise
     to reach the binding first. Collecting them all before reading any
-    assignment removes the ordering question rather than relying on a body
+    statement removes the ordering question rather than relying on a body
     staying flat.
 
     Nothing here resolves a name across scopes, deliberately: the pass answers
-    "does this assignment reach an agent colour", not "what is this name".
+    "does this statement reach an agent colour", not "what is this name".
     """
-    found: dict[str, int] = {}
+    found: dict[tuple[int, str], AgentColoring] = {}
     for node in ast.walk(owner):
-        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) or node is excluding:
             continue
         assignments = [
             statement for statement in ast.walk(node) if isinstance(statement, ast.Assign)
@@ -307,11 +422,25 @@ def constructed_with_agent_color(owner: ast.ClassDef) -> tuple[str, ...]:
         for statement in assignments:
             for target in statement.targets:
                 control = self_attribute(target)
-                if control is None:
+                if control is None or not _carries_agent_color(statement.value, tracked):
                     continue
-                if _carries_agent_color(statement.value, tracked):
-                    found.setdefault(control, statement.lineno)
-    return tuple(sorted(found, key=found.__getitem__))
+                found.setdefault(
+                    (statement.lineno, control),
+                    AgentColoring(
+                        control, node.name, statement.lineno, f"self.{control} = ...", True
+                    ),
+                )
+        for control, method, call in control_calls(node):
+            arguments = [*call.args, *(keyword.value for keyword in call.keywords)]
+            if not any(_carries_agent_color(argument, tracked) for argument in arguments):
+                continue
+            found.setdefault(
+                (call.lineno, control),
+                AgentColoring(
+                    control, node.name, call.lineno, f"self.{control}.{method}(...)", False
+                ),
+            )
+    return tuple(found[key] for key in sorted(found))
 
 
 def _from_color_table(value: ast.expr) -> bool:
@@ -338,20 +467,102 @@ def property_writes(scope: ast.AST, prop: str) -> dict[str, list[ast.expr]]:
     return writes
 
 
-def is_negation_of(candidate: ast.expr, expression: ast.expr) -> bool:
-    """Whether `candidate` is exactly `not expression`.
+def setter_writes(scope: ast.AST, method: str) -> dict[str, list[ast.expr]]:
+    """Every single argument passed to `self.<control>.<method>(...)` within one scope.
 
-    Structural rather than semantic: `ast.dump` compares the two operand
-    trees and nothing infers that two differently written conditions mean the
-    same thing. That is the point. The check enforces one canonical shape and
-    says so when it fails, which keeps the judgment - is this control legible
-    while disabled? - with the reader instead of in here.
+    Positional or keyword: `setEnabled(enabled=E)` states the condition
+    `setEnabled(E)` does, and until `PL-25KS`'s port review the keyword form
+    was skipped, which is a disabled write read as nothing. The keyword's
+    name is not kept, so a finding names the hiding line positionally. A call
+    with any other arity, or one unpacking `*args` or `**kwargs`, is not the
+    state write this reads and is skipped rather than guessed at.
     """
-    return (
-        isinstance(candidate, ast.UnaryOp)
-        and isinstance(candidate.op, ast.Not)
-        and ast.dump(candidate.operand) == ast.dump(expression)
-    )
+    writes: dict[str, list[ast.expr]] = {}
+    for control, name, call in control_calls(scope):
+        if name != method or len(call.args) + len(call.keywords) != 1:
+            continue
+        if call.keywords and call.keywords[0].arg is None:
+            continue
+        value = call.args[0] if call.args else call.keywords[0].value
+        if isinstance(value, ast.Starred):
+            continue
+        writes.setdefault(control, []).append(value)
+    return writes
+
+
+def negated(expression: ast.expr) -> ast.expr:
+    """`not expression`, with one `not` peeled rather than stacked.
+
+    The one step of normalisation this check performs: `setEnabled(not E)`
+    and `setDisabled(E)` state the same condition, and comparing them means
+    turning one into the other. Nothing else about an expression is
+    rewritten, so `visible = snapshot.is_paused` still does not satisfy
+    `disabled = snapshot.is_running` - proving those equivalent would be the
+    judgment half.
+    """
+    if isinstance(expression, ast.UnaryOp) and isinstance(expression.op, ast.Not):
+        return expression.operand
+    return ast.UnaryOp(op=ast.Not(), operand=expression)
+
+
+def disabled_writes(scope: ast.AST) -> list[DisabledWrite]:
+    """Every write of a control's disabled state within one scope, in either spelling."""
+    found: list[DisabledWrite] = []
+    for control, values in property_writes(scope, DISABLED).items():
+        for value in values:
+            written = ast.unparse(value)
+            found.append(
+                DisabledWrite(
+                    control,
+                    value,
+                    f"{DISABLED} = {written}",
+                    f"{VISIBLE} = {ast.unparse(negated(value))}",
+                )
+            )
+    for control, values in setter_writes(scope, SET_DISABLED).items():
+        for value in values:
+            written = ast.unparse(value)
+            found.append(
+                DisabledWrite(
+                    control, value, f"{SET_DISABLED}({written})", f"{SET_HIDDEN}({written})"
+                )
+            )
+    for control, values in setter_writes(scope, SET_ENABLED).items():
+        for value in values:
+            written = ast.unparse(value)
+            found.append(
+                DisabledWrite(
+                    control,
+                    negated(value),
+                    f"{SET_ENABLED}({written})",
+                    f"{SET_VISIBLE}({written})",
+                )
+            )
+    return found
+
+
+def hidden_conditions(scope: ast.AST) -> dict[str, list[ast.expr]]:
+    """The condition under which each control is hidden, per hiding write, in either spelling."""
+    conditions: dict[str, list[ast.expr]] = {}
+    for control, values in property_writes(scope, VISIBLE).items():
+        conditions.setdefault(control, []).extend(negated(value) for value in values)
+    for control, values in setter_writes(scope, SET_VISIBLE).items():
+        conditions.setdefault(control, []).extend(negated(value) for value in values)
+    for control, values in setter_writes(scope, SET_HIDDEN).items():
+        conditions.setdefault(control, []).extend(values)
+    return conditions
+
+
+def is_same_condition(candidate: ast.expr, condition: ast.expr) -> bool:
+    """Whether two conditions are the same expression, structurally.
+
+    `ast.dump` compares the two trees and nothing infers that two differently
+    written conditions mean the same thing. That is the point. The check
+    enforces one canonical shape and says so when it fails, which keeps the
+    judgment - is this control legible while disabled? - with the reader
+    instead of in here.
+    """
+    return ast.dump(candidate) == ast.dump(condition)
 
 
 def analyze(root: Path) -> Report:
@@ -410,9 +621,9 @@ def analyze(root: Path) -> Report:
     if not controls:
         return Report(
             (
-                f"`{writer.location}` writes no `self.<control>` property, so the set this "
-                f"check measures is empty. A coverage set that can silently go empty is "
-                f"worse than no check",
+                f"`{writer.location}` writes no `self.<control>` property and calls no "
+                f"`self.<control>` method, so the set this check measures is empty. A "
+                f"coverage set that can silently go empty is worse than no check",
             ),
             (),
             writer.location,
@@ -425,62 +636,80 @@ def analyze(root: Path) -> Report:
 
     # Rule 1, inside the writer's own class: `self.X` names that class's
     # attribute, and a same-named attribute elsewhere is a different control.
-    disabled_writes = property_writes(writer.owner, DISABLED)
-    visible_writes = property_writes(writer.owner, VISIBLE)
-    for control in controls:
-        for expression in disabled_writes.get(control, []):
-            written = ast.unparse(expression)
-            if any(
-                is_negation_of(candidate, expression)
-                for candidate in visible_writes.get(control, [])
-            ):
-                continue
-            found.append(
-                f"`{writer.owner.name}.{control}` is assigned `{DISABLED} = {written}` and "
-                f"carries the agent colour, but nothing assigns it "
-                f"`{VISIBLE} = not {written}`. Disabled and on screen, its label is "
-                f"the theme's disabled-content grey over the agent's own fill, which "
-                f"is undeclared, unmeasurable by tools/contrast_check.py, and what "
-                f"PL-61WW was. Either pair it with that exact line, or carry the "
-                f"identity in a control that is never disabled"
-            )
+    owner_writes = disabled_writes(writer.owner)
+    hidden = hidden_conditions(writer.owner)
+    identity_read = 0
+    for write in owner_writes:
+        if write.control not in controls:
+            continue
+        identity_read += 1
+        if any(
+            is_same_condition(candidate, write.condition)
+            for candidate in hidden.get(write.control, [])
+        ):
+            continue
+        found.append(
+            f"`{writer.owner.name}.{write.control}` is written `{write.written}` and "
+            f"carries the agent colour, but nothing writes it `{write.paired_hide}`. "
+            f"Disabled and on screen, its label is the theme's disabled-content grey "
+            f"over the agent's own fill, which is undeclared, unmeasurable by "
+            f"tools/contrast_check.py, and what PL-61WW was. Either pair it with that "
+            f"exact line, or carry the identity in a control that is never disabled"
+        )
 
     # The measurement set (PL-0PJG): what rule 1 could have read at all. Every
     # class in every module, because the guard is about the *spelling* being
-    # readable, and any control's `disabled` write proves that.
-    read = sum(
-        len(values)
-        for module in modules
-        for values in property_writes(module.tree, DISABLED).values()
-    )
-    identity_read = sum(len(disabled_writes.get(control, [])) for control in controls)
+    # readable, and any control's disabled-state write proves that.
+    read = sum(len(disabled_writes(module.tree)) for module in modules)
     if read == 0:
         found.append(
-            f"no `self.<control>.{DISABLED} = ...` assignment was read in any class of the "
-            f"{len(modules)} module(s) under {APP.as_posix()}/, so rule 1 measured nothing "
-            f"and 'none of them rendered disabled' cannot be earned. Either nothing in the "
-            f"interface is ever disabled, or disabling is spelled in a way this check does "
-            f"not read - PySide6's `{UNREAD_SPELLING}` - and the pairing rule has to be "
-            f"taught that spelling before it can pass (PL-0PJG)"
+            f"no disabled-state write - `self.<control>.{DISABLED} = ...`, "
+            f"`.{SET_DISABLED}(...)` or `.{SET_ENABLED}(...)` - was read in any class of "
+            f"the {len(modules)} module(s) under {APP.as_posix()}/, so rule 1 measured "
+            f"nothing and 'none of them rendered disabled' cannot be earned. Either "
+            f"nothing in the interface is ever disabled, or disabling is spelled in a way "
+            f"this check does not read, and the pairing rule has to be taught that "
+            f"spelling before it can pass (PL-0PJG)"
         )
 
-    # Rule 2, every class in every module: the writer can only write its own
-    # class's attributes, so an agent-coloured control anywhere else is
-    # outside the set by construction.
+    # Rule 2, every class in every module, every method but the writer: the
+    # writer can only write its own class's attributes, so an agent-coloured
+    # control anywhere else is outside the set by construction. One finding
+    # per control, at its first colouring; every colouring is counted.
+    constructed = 0
+    called = 0
     for module in modules:
         for owner in classes(module.tree):
-            for control in constructed_with_agent_color(owner):
-                if owner is writer.owner and control in controls:
+            reported: set[str] = set()
+            for coloring in agent_colorings(owner, excluding=writer.method):
+                if coloring.constructed:
+                    constructed += 1
+                else:
+                    called += 1
+                if owner is writer.owner and coloring.control in controls:
                     continue
+                if coloring.control in reported:
+                    continue
+                reported.add(coloring.control)
                 found.append(
-                    f"`{module.path}:{owner.name}.{control}` is built from an agent colour "
-                    f"but `{writer.location}` never writes it, so it keeps the colour it "
-                    f"was constructed with and this check cannot see it disabled. A control "
-                    f"that does not follow the agent shows the previous agent's identity "
-                    f"over the current agent's numbers"
+                    f"`{module.path}:{owner.name}.{coloring.control}` is given an agent "
+                    f"colour in `{owner.name}.{coloring.method}` (`{coloring.written}`, "
+                    f"line {coloring.lineno}) but `{writer.location}` never writes it, so "
+                    f"it keeps the colour it was given there and this check cannot see it "
+                    f"disabled. A control that does not follow the agent shows the previous "
+                    f"agent's identity over the current agent's numbers"
                 )
 
-    return Report(tuple(found), controls, writer.location, len(modules), read, identity_read)
+    return Report(
+        tuple(found),
+        controls,
+        writer.location,
+        len(modules),
+        read,
+        identity_read,
+        constructed,
+        called,
+    )
 
 
 def problems(root: Path) -> list[str]:
@@ -500,7 +729,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"written by {report.writer}; {report.disabled_writes} disabled-state write(s) "
             f"read across {report.modules} module(s) under {APP.as_posix()}/, "
             f"{report.identity_disabled_writes} of them on identity controls and each "
-            f"paired with its hide; none rendered disabled"
+            f"paired with its hide; none rendered disabled. Rule 2 read "
+            f"{report.constructed_colorings} construction-time and "
+            f"{report.call_colorings} call-time agent colouring(s) outside the writer, "
+            f"every one on an identity control"
         )
         return 0
 

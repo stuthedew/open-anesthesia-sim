@@ -3,11 +3,13 @@ id: PL-JFYT
 title: Flet compares a chart series by value, so 'series in chart.data_series' and list.index answer for the first of an equal pair - invisible while one run drew each compartment once
 priority: P2
 effort: S
-status: needs-decision
+status: dropped
 classes: test, defect
 feature: teachable-case
 touches: src/anesthesia_sim/app/chart_series.py, tests/unit/test_simulation_view.py
 added: 2026-09-14
+closed: 2026-09-15
+reason: The Flet chart, whose series compared by value, left with PL-25KS on 2026-09-15; the Qt tests compare pyqtgraph items by identity and no port test reads a series by value
 ---
 
 
@@ -83,3 +85,10 @@ is currently wrong. What makes it worth doing before `PL-8PSW` - overlay two
 branches on one time axis - is that `PL-8PSW` is what makes two equal series
 routine, and every assertion written between now and then is written against a
 property that is about to stop holding.
+
+**Dropped 2026-09-15, with `PL-25KS`.** The defect was Flet's: `fch.LineChartData`
+compared by value, so a test's `list.index` over two equal series answered for
+the first. The dashboard and its chart are on pyqtgraph now, the Flet series
+module and its tests are deleted, and the port's tests read items by identity
+(`ConcentrationChart.drawn_points(run, quantity)` addresses a run's own curve).
+Nothing remains for this item to guard.

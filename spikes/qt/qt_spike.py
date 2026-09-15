@@ -71,7 +71,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from anesthesia_sim.app.chart_series import CHART_COLUMN_BUDGET_PER_SERIES
+from anesthesia_sim.app.chart_frame import CHART_COLUMN_BUDGET_PER_SERIES
 from anesthesia_sim.app.chart_time_base import (
     FIT_RUN_KEY,
     SELECTABLE_TIME_BASES,

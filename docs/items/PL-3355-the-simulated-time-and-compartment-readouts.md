@@ -3,13 +3,13 @@ id: PL-3355
 title: The 'Simulated time' and compartment readouts wrap their value onto a second line at some window widths
 priority: P2
 effort: S
-status: blocked
-blocked-by: PL-25KS
+status: done
 classes: defect, ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
+touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_qt_widgets.py, docs/MODEL.md
 added: 2026-09-04
-verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_no_metric_value_wraps_away_from_its_unit' tests/unit/test_simulation_view.py
+closed: 2026-09-15
+verify: uv run pytest tests/integration/test_qt_widgets.py && grep -q 'def test_no_metric_value_wraps_away_from_its_unit' tests/integration/test_qt_widgets.py
 ---
 
 > **This fix rides the Qt port, not Flet.** `ROADMAP.md` § "v0.4.26 -
@@ -56,3 +56,15 @@ for a milestone to be *scoped*, and `docket check` promotes it back to `ready`
 the moment that section carries its four subsections - which the port's already
 does, so the version form raised "ready to promote" on every run. The port item
 is the edge that is actually true.
+
+**Closed 2026-09-15, with `PL-25KS`.** `qt_widgets.MetricPanel` draws each
+of its four lines without word wrap and reserves its width from the
+font-metric advance of the widest string its column can show
+(`dashboard_frame.WIDEST_READOUT_VALUE` and `WIDEST_READOUT_SECONDARY`, the
+formatters' own extremes), so no layout width can put a value on one line
+and its unit on the next; `ReadoutRow` steps its column count down where
+seven of those reservations stop fitting rather than squeezing a panel.
+`test_no_metric_value_wraps_away_from_its_unit` narrows the container below
+the value's advance and reads the label back on one line. The measurement
+is against the widest *value*, as the brief asked, rather than against a
+frame somebody rendered.

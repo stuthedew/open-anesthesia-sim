@@ -3,12 +3,12 @@ id: PL-8PSW
 title: Overlay two branches on one time axis, with every curve attributable to its run and its settings
 priority: P2
 effort: L
-status: blocked
-blocked-by: PL-TFX5, PL-B9PY, PL-G59B
+status: ready
 classes: feature, ux
 feature: scenario-branching
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/theme.py, tests/unit
 added: 2026-09-06
+verify: uv run pytest tests/integration/test_qt_chart.py && grep -q 'def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text' tests/integration/test_qt_chart.py
 ---
 
 **Problem.** The chart draws one run. Two branches have to be readable together

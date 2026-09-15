@@ -3,12 +3,13 @@ id: PL-GMM7
 title: Assert the educational disclaimer's text, not just that its line executes
 priority: P2
 effort: S
-status: ready
+status: done
 classes: test
 feature: dev-tooling
-touches: tests/unit/test_simulation_view.py
+touches: tests/unit/test_dashboard_frame.py, tests/integration/test_simulation_view.py
 added: 2026-08-30
-verify: uv run pytest tests/unit/test_simulation_view.py -k disclaimer
+closed: 2026-09-15
+verify: uv run pytest tests/unit/test_dashboard_frame.py && grep -q 'def test_the_educational_disclaimer_says_what_the_tool_is_not' tests/unit/test_dashboard_frame.py
 ---
 
 **Problem.** The educational disclaimer at `app/simulation_view.py:393-401` —
@@ -48,3 +49,12 @@ string is correct today; what is missing is the guard against regression.
 **Done when.** A test asserts the disclaimer's exact text is present in the
 rendered view, and it fails if the control is removed, moved out of the
 rendered tree, or reworded.
+
+**Closed 2026-09-15, with `PL-25KS`.** The words are pinned verbatim by
+`test_the_educational_disclaimer_says_what_the_tool_is_not`
+(`tests/unit/test_dashboard_frame.py`, on `USE_DISCLAIMER_TEXT`, the one
+place the string is written now), and
+`test_the_dashboard_carries_the_educational_disclaimer`
+(`tests/integration/test_simulation_view.py`) holds that the dashboard places
+them, read back off the shown interface. Coverage still cannot see either
+claim; the two tests can.

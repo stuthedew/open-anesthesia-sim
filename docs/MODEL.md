@@ -95,7 +95,7 @@ does not segment the interface layer into a lower class. The reasoning:
   model version is still a safety failure — and the interface is where the
   halted-versus-paused distinction, the displayed-precision rule, the ISO 5360
   agent colours, and the extreme-preserving decimation live.
-- The boundary does not sit still. `app/chart_series.py` looks like chrome and
+- The boundary does not sit still. `app/chart_frame.py` looks like chrome and
   decides what a trace asserts about a run; `app/theme.py` looks like styling and
   carries agent identification. Drawing a class boundary through that would put
   the line in a different place from the one this project already maintains.
@@ -177,36 +177,37 @@ stays a reviewer's question.
 | believing a setting above the vaporizer maximum was simulated | such a setting is **rejected, not clamped**, so no run proceeds on a value the user did not choose; the boundary itself is accepted | `test_rejects_delivered_concentration_above_the_vaporizer_maximum`, `test_explicit_delivered_concentration_above_the_agent_max_is_rejected`, `test_accepts_delivered_concentration_exactly_at_the_vaporizer_maximum` |
 | reading a displayed value as resolved to its last digit | displayed precision is a recorded choice within a justified band, and the model retains precision the display discards rather than rounding its own state | `test_the_model_keeps_precision_the_display_throws_away`, `test_concentration_decimals_are_a_choice_within_a_recorded_band` |
 | reading a control mark on the timeline as a measurement | the timeline labels its marks "Settings only — not a measurement." | `test_the_interface_says_a_control_mark_is_an_input_not_a_measurement` |
-| reading a modelled compartment value as a measured one | **partially mitigated; see below** | none for the readouts and chart |
+| reading a modelled compartment value as a measured one | the readout section states beside its values that they are model outputs and not measurements (`INTERPRETATION_DISCLAIMER_TEXT`, `PL-2K1R`), and the chart's hover names every value it reports as modelled (§ "The chart's hover readout: what the tooltip may show") | `test_the_interface_says_the_readouts_are_model_outputs_not_measurements`, `test_the_readouts_say_they_are_model_outputs_beside_the_values`, `test_the_hover_reports_the_drawn_state_through_the_formatters` |
 
-### The row that is only partly mitigated
+### The row that was only partly mitigated until the Qt port
 
-The last row is the one worth reading closely, because its mitigation is
-incomplete and this section exists to say so rather than to imply otherwise.
+The last row is the one worth reading closely, because its mitigation was
+incomplete from 2026-09-13 until the dashboard moved to Qt, and this section
+said so rather than implying otherwise.
 
-Three statements exist and they do not cover the same surface. `README.md`
+Three statements existed and they did not cover the same surface. `README.md`
 states that "Every value on screen is a model output, never a measurement" — but
 a learner running the application never opens it. The control-input timeline
 carries "Settings only — not a measurement.", which is exact and covers the
 marks only. And the interface's own standing notice is an **educational-use**
 disclaimer, which tells a reader what the tool is *for* rather than how to read
-a number on it.
+a number on it. Nothing told a reader that the compartment readouts and the
+chart traces are modelled predictions rather than measurements — precisely the
+distinction this project's value depends on, since the compartments it exists
+to display are the ones no monitor shows, so there is no measured counterpart a
+reader could check them against, and the polish of the display argues the
+other way.
 
-Nothing in the interface tells a reader that the compartment readouts and the
-chart traces are modelled predictions rather than measurements. That is
-precisely the distinction this project's value depends on: the compartments it
-exists to display — vessel-rich, muscle, fat, mixed venous — are the ones no
-monitor shows, so there is no measured counterpart a reader could mistake them
-against, and the polish of the display argues the other way.
-
-The project owner has agreed the interface should carry an interpretation
-statement distinct from the use disclaimer (2026-09-13). The wording and its
-placement are an interface change rather than a specification one, so they are
-tracked as queue item `PL-2K1R`; the pattern to follow is the timeline's
-existing phrasing, which is short, sits beside the thing it qualifies, and says
-what the value *is* rather than what the user must not do. This row is updated
-to name that test once it lands.
-
+The project owner agreed the interface should carry an interpretation
+statement distinct from the use disclaimer (2026-09-13), and it landed with the
+dashboard port (`PL-2K1R`, on `PL-25KS`). The wording follows the timeline's
+pattern — short, beside the thing it qualifies, saying what the value *is*
+rather than what the user must not do: **"Model outputs — not measurements."**
+It stands once, on the readout section's heading row beside "Modelled
+concentrations: {agent}", rather than being repeated on the chart, because a
+disclaimer that is repeated is one that stops being read and the chart's own
+hover already names every value it reports as modelled. The wording is the
+port's choice and the owner may revise it; the requirement is the row above.
 ## Purpose
 
 The milestone must demonstrate:
@@ -1109,8 +1110,8 @@ statement:
 
 ```text
 MAXIMUM_SIMULATION_STEP_S  = 0.1   # core/uptake_system.py
-SIMULATION_STEP_S          = 0.1   # app/simulation_view.py
-SIMULATION_TICK_INTERVAL_S = 0.1   # app/simulation_view.py
+SIMULATION_STEP_S          = 0.1   # app/dashboard_frame.py
+SIMULATION_TICK_INTERVAL_S = 0.1   # app/dashboard_frame.py
 ```
 
 `MAXIMUM_SIMULATION_STEP_S` is the model's supported domain, closed at its
@@ -1455,7 +1456,7 @@ The implementation must not depend on:
 
 - wall-clock elapsed time;
 - interface frame rate;
-- Flet;
+- the interface toolkit;
 - filesystem state;
 - display size; or
 - event-loop scheduling.
@@ -4356,7 +4357,7 @@ agent free.
 
 ## Interface boundary
 
-The Flet interface may:
+The interface may:
 
 - display values;
 - convert fractions to percent;
@@ -4546,9 +4547,9 @@ Series Data Aggregation, *Proceedings of the VLDB Endowment* 2014;7(10):797-808)
 Their selection itself is not used. Nothing is selected from a store, the run
 is evaluated at the column instants, and a control event is a column whatever
 the pixel width, which is what a selection of recorded extremes could not
-guarantee (`PL-4RBD`). The Flet chart, which cannot afford a column per pixel
-(`PL-YSZN`), keeps the 150-column budget through `app/chart_series.py` until
-`PL-25KS` ports the dashboard.
+guarantee (`PL-4RBD`). The Flet chart, which could not afford a column per
+pixel (`PL-YSZN`), kept a fixed 150-column budget through its own series
+module until `PL-25KS` ported the dashboard and that module left with it.
 
 The drawn columns are display-path values, taken under "The canonical
 evaluation rule" below: they may be drawn and nothing else, and the program
@@ -4669,7 +4670,7 @@ not do is imply anything about the model: it is a statement about how fast
 the interface is playing recorded steps, never about the patient, and it is
 not a second reading of the clock it sits beside.
 
-The Flet interface must not:
+The interface must not:
 
 - calculate uptake;
 - calculate partitioning;
@@ -4785,7 +4786,9 @@ the two values under one compartment label is what keeps that from doubling the
 block's height: it grows in width instead, which preserves the one-row
 comparative reading this document requires the resolution to be uniform for —
 a reader seeing the circuit lead the alveoli lead the tissues. What that costs
-is width at narrow windows, which `PL-3355` tracks.
+is width at narrow windows, which `PL-3355` bounds: a readout panel reserves
+the width of the widest value it can show, so a value is never wrapped away
+from its unit at any width the row is laid out at.
 
 **No difference readout is required, and none may be added without a stated
 sign convention.** The arithmetic difference of two alveolar fractions is not a
@@ -5059,7 +5062,7 @@ either picks a width from a fixed ladder or leaves the default, which fits the
 whole run so far. The horizontal axis is simulated time under both, and the
 time base decides only how much of it is on the plot and how finely that span
 is ruled. `app/chart_time_base.py` is where this section terminates: it is
-arithmetic over durations that reads no simulation state and imports no Flet,
+arithmetic over durations that reads no simulation state and imports no toolkit,
 so the widths and the rule this section reasons about can be read, cited and
 tested without loading the interface. The section above governs the vertical
 axis; this one governs the horizontal.
@@ -5478,7 +5481,7 @@ meets the equilibrium reference and terminates on it, carrying a point marker
 that says the series ended rather than ran out of view. The stretches are
 classified over the columns each frame draws rather than maintained as the
 run goes, so a boundary can fall only on an instant the chart actually plots
-(`app/chart_series.py`, PL-2FM6).
+(`app/chart_frame.py`, PL-2FM6).
 
 That extension is bounded by a stated ceiling rather than by a property of the
 model. A run stepped at 0.1 s crosses equilibrium by a hair — measured across
@@ -5957,7 +5960,7 @@ taken from; "Independent-solution test" above records the withdrawal in full.
 
 The comparison the interface actually invites is therefore no longer at risk
 from the solver, and that is a measurement rather than an assurance. The six
-readouts are placed in one row — at 1200 CSS pixels and wider; § "The row has a
+readouts are placed in one row — where seven panels fit it; § "The row has a
 width condition, and both arguments above rest on it" below states what happens
 under that — to be read *ordinally*: the circuit leads the
 alveoli lead the tissues. An ordinal reading is corrupted only if the
@@ -5989,8 +5992,8 @@ measurement: twice the tolerance, which is $`1.0\times10^{-7}`$ counts against
 the 3.0 counts the split's bound allowed.
 
 **Why the resolution is uniform rather than per-compartment.** The six
-readouts sit together — in one row at 1200 CSS pixels and wider, in a grid
-below that — and are read comparatively; the reason for showing them together
+readouts sit together — in one row where seven panels fit the window, in a
+grid below that — and are read comparatively; the reason for showing them together
 is that a reader can see the circuit lead the alveoli lead the
 tissues. Different decimal counts across those tiles would put different
 magnitudes at the same glyph position, so a value scanned rather than read
@@ -6011,16 +6014,30 @@ largest and conservative in the ones where it is not.
 **The row has a width condition, and both arguments above rest on it.** The
 interface is responsive, and until now this section stated the one-row
 arrangement without qualification, which a reader is entitled to take as a
-commitment. `METRIC_GRID_COLUMNS` in `src/anesthesia_sim/app/simulation_view.py`
-sets the grid's column count per breakpoint and every panel spans exactly one
+commitment. `readout_columns` in `src/anesthesia_sim/app/dashboard_frame.py`
+sets the row's column count from its width and every panel spans exactly one
 column — `test_every_readout_reserves_a_qualifier_line_and_an_equal_column`
-holds both — so the seven panels seat **side by side at 1200 CSS pixels and
-wider, four per line from 992 to 1199, two from 768 to 991, and one below 768**.
+holds both — so the seven panels seat **side by side wherever seven panels'
+reserved widths fit the row, four per line where seven do not, two where
+four do not, and one below that** (`READOUT_ROW_LADDER`). The reservation is
+the widest value each column can show, measured in the rendering font
+(`PL-3355`) - the clock's column its widest elapsed form, each compartment's
+its widest percent and MAC multiple, so the clock's width costs no other
+column - and the widths at which the row steps down belong to the font and
+the display scale rather than to this document: on the offscreen font the
+test suite renders with, the row is seven across from 1068 logical pixels,
+four from 632 and two from 336, and
+`test_the_readout_row_reflows_where_its_panels_stop_fitting` reads those
+widths from the row rather than asserting them. Those figures are an example
+of the rule, not a specification of it. The Flet build recorded 1200, 992
+and 768 as a rendered measurement at Flet's sizes (`PL-8M05`); the port
+derives the same ladder from what it draws with, so no pixel figure is
+asserted that a font or a HiDPI scale would falsify.
 
 The two arguments are not affected equally, and neither is withdrawn.
 
-- **The ordinal reading is the one that weakens.** Below 1200 CSS pixels the
-  six readouts are on two or more lines, and the comparison the row invites
+- **The ordinal reading is the one that weakens.** Below the seven-across
+  width the six readouts are on two or more lines, and the comparison the row invites
   stops being a single glance and becomes a scan across them. The *measurement*
   behind the claim is untouched — it compares displayed values, not their
   positions, and the 1 485 000 pair comparisons say nothing about layout — so
@@ -6029,17 +6046,21 @@ The two arguments are not affected equally, and neither is withdrawn.
 - **The uniform resolution holds at every width**, and the reflow does not
   weaken its argument. That argument is that differing decimal counts would put
   different magnitudes at the same glyph position; the grid aligns value glyphs
-  within a column at every breakpoint, so a reader scanning two panels reads
+  within a column at every rung, so a reader scanning two panels reads
   them against a common position whether they are side by side or stacked. It
   never rested on the six being in a single line.
 
-**In practice the row is at the widest breakpoint today**, because
-`src/anesthesia_sim/app/main.py` opens the window full screen, and the
-conditional arrangement is reachable only by a reader who resizes it. That is a
-property of the current startup behaviour rather than of the specification, and
-it is due to change: `PL-005` replaces the full-screen startup window with a
-sized, centered one and ships with the Qt port, at which point the widths above
-become the ordinary case rather than the resized one.
+**In practice the row opens at whichever rung the screen affords.**
+`src/anesthesia_sim/app/main.py` opens the window at `WINDOW_SCREEN_FRACTION`
+of the screen's available area and centred (`PL-005`, with the Qt port), so on
+a display whose available width, at that fraction and less the page's own
+padding, falls short of the seven-across width — an available width of
+roughly 1375 logical pixels on the offscreen font above, and a different
+figure on any other — the
+interface starts below the widest rung and the conditional arrangement is the
+ordinary case rather than the resized one. Until that port the window opened
+full screen and the widest breakpoint was the only one a reader met without
+resizing.
 
 **Why not a significant-figures rule.** A significant-figures rule gives the
 smallest values the most decimal places, and the small values are exactly
@@ -6118,15 +6139,42 @@ off, so a tenth on every label would be width spent on a digit that is always
 zero at every width the ladder offers. "The chart's time base" carries the
 form and why it is not the clock's. Fresh gas flow, alveolar
 ventilation, and cardiac output are displayed to 0.1 L/min, matching the
-resolution of the flow controls that set them. A slider's drag label must
-carry the same number of decimals as the readout beside it: the two show one
-quantity, and a label that rounds where the readout does not leaves a reader
-unable to tell which value is the setting in force. The agent-accounting panel
-displays amounts to 10⁻⁶ L and its residual in scientific notation, and that
-is deliberately finer than any clinical reading: the panel is a numerical
-diagnostic whose job is to make a residual of order 10⁻¹⁵ L visible, not a
-value a reader interprets clinically. Precision in this interface is set by
-what each number is for, and the rule above governs the clinical readouts.
+resolution of the flow controls that set them. A slider and the readout beside
+it show one quantity, so the Qt sliders are integer-valued with steps at the
+display resolution — 0.1 L/min for the three flows, 0.01 percentage points for
+the delivered dial — and the value applied to the model is exactly the value
+printed beside the control (`PL-25KS`); a control that could apply a value its
+own label rounds away would leave a reader unable to tell which value is the
+setting in force.
+
+**The agent-accounting panel's three amounts are displayed to 0.1 L, and its
+two residual lines in scientific notation, because they answer different
+questions** (`PL-TG60`, 2026-09-15). The residual lines are a numerical
+diagnostic whose job is to make a residual of order 10⁻¹² L visible against
+amounts of order 1 to 100 L, which no fixed decimal count can do. The amounts
+are read against each other — delivered against exhausted plus stored — and
+against a reader's sense of scale, so they take one uniform resolution on the
+same argument as the readouts above. Perturbing one stored coefficient by one
+published SD, as the readouts' derivation does, moves the exhaust total by
+0.016 to 0.042 L at 3600 s and by 0.18 to 0.23 L at the 24 h supported limit
+(sevoflurane 0.024 and 0.19 L, isoflurane 0.016 and 0.18 L, desflurane 0.042
+and 0.23 L; blood:gas dominant throughout; measured at 1 MAC with the
+reference adult's flows). One count of 0.1 L therefore sits between a quarter
+of an SD and six SDs across the whole supported span, inside the band the
+readouts' derivation admits, while a count of 0.01 L falls to a fiftieth of an
+SD by 24 h. The six decimals printed until `PL-TG60` asserted a millilitre of
+a quantity the parameters place to within a decilitre, and the justification
+this section carried for them — that the amounts made the residual visible —
+did not hold, since a residual twelve orders below the last printed digit is
+visible only on the lines that print it in scientific notation. Delivered
+agent carries no parameter uncertainty, being the dial times the flow times
+the time, and takes the same resolution so the three amounts read at one
+scale. The unit is stated on the panel as this document states it, litres of
+equivalent pure agent gas, because a bare "L" beside an anaesthetic agent
+invites the liquid reading. `AGENT_VOLUME_DISPLAY_DECIMALS` holds the count,
+`format_agent_volume` the form, and `test_agent_amounts_precision` pins both.
+Precision in this interface is set by what each number is for, and the rule
+above governs the clinical readouts.
 
 The chart plots the same percentages on a shared linear axis running from 0 to
 3 ×MAC of the running agent, and carries a second axis on the right reading
@@ -6147,12 +6195,12 @@ base" carries how a width is chosen and how it is ruled.
 `app/formatting.py` is where this section terminates: it holds the
 resolution as a single constant, derives the formatter, the below-resolution
 marker, the MAC decimal count and the MAC axis placement from it, and imports
-no Flet, so the functions this section reasons about can be read, cited and
+no toolkit, so the functions this section reasons about can be read, cited and
 tested without loading the interface. `tests/unit/test_formatting.py` pins the constant and every
-string the formatter produces; `tests/unit/test_simulation_view.py` holds
+string the formatter produces; `tests/unit/test_dashboard_frame.py` holds
 the end-to-end path — real controller, real step, the string on the panel.
-`app/simulation_view.py` imports the constant for the delivered-agent
-slider's drag label, which is why that label and the readout beside it
+`app/dashboard_frame.py` reads the constant for the delivered dial's slider
+position, which is why the value the slider applies and the readout beside it
 cannot drift apart.
 
 `tests/reference/test_coupled_dynamics.py` restates the same constant and

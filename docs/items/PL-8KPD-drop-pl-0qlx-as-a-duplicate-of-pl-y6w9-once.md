@@ -9,6 +9,7 @@ feature: queue-hygiene
 touches: docs/items/
 added: 2026-09-14
 closed: 2026-09-14
+pr: 586
 verify: grep -q '^status: dropped' docs/items/PL-0QLX-*.md && grep -q '^reason: duplicate of PL-Y6W9' docs/items/PL-0QLX-*.md
 ---
 

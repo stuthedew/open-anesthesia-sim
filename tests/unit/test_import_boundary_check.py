@@ -32,8 +32,8 @@ def _boundary(*allowed: str, package: str = "pydantic") -> Boundary:
     return Boundary(package=package, tree="src/pkg", allowed=allowed, why="a test fixture")
 
 
-def _flet_modules(app: Path) -> Path:
-    """The three interface modules the real `flet` allowance names, each importing it.
+def _allowed_modules(package: Path) -> Path:
+    """The two modules the real allowances name, each making its import, plus `app/`.
 
     Every test that runs `main` against the real `BOUNDARIES` needs them,
     because an allowance naming a module that is absent, or one that no longer
@@ -41,12 +41,12 @@ def _flet_modules(app: Path) -> Path:
     allowance from rotting, and what a fixture has to satisfy to be about
     anything else.
     """
+    core = package / "core"
+    core.mkdir(parents=True, exist_ok=True)
+    (core / "parameters.py").write_text("from pydantic import BaseModel\n", encoding="utf-8")
+    (package / "app_metadata.py").write_text("import subprocess\n", encoding="utf-8")
+    app = package / "app"
     app.mkdir(parents=True, exist_ok=True)
-    (app / "main.py").write_text("import flet as ft\n", encoding="utf-8")
-    (app / "simulation_view.py").write_text(
-        "import flet as ft\nimport flet_charts as fch\n", encoding="utf-8"
-    )
-    (app / "chart_series.py").write_text("import flet_charts as fch\n", encoding="utf-8")
     return app
 
 
@@ -150,36 +150,23 @@ class TestAnalyze:
         by_package = {boundary.package: boundary for boundary in BOUNDARIES}
         assert by_package["pydantic"].allowed == ("src/anesthesia_sim/core/parameters.py",)
         assert by_package["subprocess"].allowed == ("src/anesthesia_sim/app_metadata.py",)
-        assert by_package["flet"].allowed == (
-            "src/anesthesia_sim/app/main.py",
-            "src/anesthesia_sim/app/simulation_view.py",
-        )
-        assert by_package["flet_charts"].allowed == (
-            "src/anesthesia_sim/app/chart_series.py",
-            "src/anesthesia_sim/app/simulation_view.py",
-        )
+        assert by_package["flet"].allowed == ()
+        assert by_package["flet_charts"].allowed == ()
         assert all(boundary.why.strip() for boundary in BOUNDARIES)
 
     @pytest.mark.parametrize("package", ["flet", "flet_charts"])
-    def test_the_flet_boundaries_cover_the_whole_package(self, package: str) -> None:
-        """The count `ROADMAP.md` reasons from is three modules in the package, not in `app/`.
+    def test_the_flet_boundaries_permit_no_module_in_the_whole_package(self, package: str) -> None:
+        """Nothing under `src/` may import Flet once the port is complete (`PL-7SVX`).
 
-        A boundary stopping at `core/` would hold the architecture rule and
-        lose the figure: a fourth interface module importing Flet would widen
-        what the port has to rewrite without anything saying so (`PL-9KDK`).
-        Two boundaries because Flet is two distributions, and between them
-        they name exactly the three modules the roadmap counts.
+        The whole package rather than `core/`, and no module at all rather
+        than a list: the interface left Flet with `PL-25KS`, so an import
+        anywhere is the toolkit coming back rather than a widget in the
+        wrong place. Two boundaries because Flet is two distributions, and
+        the Flet chart module imported one without the other (`PL-9KDK`).
         """
         (boundary,) = [entry for entry in BOUNDARIES if entry.package == package]
         assert boundary.tree == "src/anesthesia_sim"
-
-    def test_the_two_flet_boundaries_name_the_three_modules_the_roadmap_counts(self) -> None:
-        by_package = {boundary.package: boundary for boundary in BOUNDARIES}
-        assert set(by_package["flet"].allowed) | set(by_package["flet_charts"].allowed) == {
-            "src/anesthesia_sim/app/chart_series.py",
-            "src/anesthesia_sim/app/main.py",
-            "src/anesthesia_sim/app/simulation_view.py",
-        }
+        assert boundary.allowed == ()
 
     @pytest.mark.parametrize(
         "package",
@@ -337,20 +324,14 @@ class TestMain:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """Against the real `BOUNDARIES`, which `main` does not let a caller replace."""
-        core = tmp_path / "src" / "anesthesia_sim" / "core"
-        core.mkdir(parents=True)
-        (core / "parameters.py").write_text("from pydantic import BaseModel\n", encoding="utf-8")
-        (core / "tissue.py").write_text("import time\n", encoding="utf-8")
         package = tmp_path / "src" / "anesthesia_sim"
-        (package / "app_metadata.py").write_text("import subprocess\n", encoding="utf-8")
-        app = _flet_modules(package / "app")
-        (app / "main.py").write_text(
-            "import flet as ft\nfrom pydantic import BaseModel\n", encoding="utf-8"
-        )
+        app = _allowed_modules(package)
+        (package / "core" / "tissue.py").write_text("import time\n", encoding="utf-8")
+        (app / "main.py").write_text("from pydantic import BaseModel\n", encoding="utf-8")
         assert main(["--root", str(tmp_path)]) == 1
         out = capsys.readouterr().out
         assert "src/anesthesia_sim/core/tissue.py:1" in out
-        assert "src/anesthesia_sim/app/main.py:2" in out
+        assert "src/anesthesia_sim/app/main.py:1" in out
         # Exactly the two planted violations, so the fixture is not passing
         # on some stale-allowance error the real table raises about itself.
         assert "2 errors" in out
@@ -365,59 +346,38 @@ class TestMain:
         boundary was declared in: it has to fail the first commit that lets
         one in, not describe what the port already did (`PL-9KDK`).
         """
-        core = tmp_path / "src" / "anesthesia_sim" / "core"
-        core.mkdir(parents=True)
-        (core / "parameters.py").write_text("from pydantic import BaseModel\n", encoding="utf-8")
-        (core / "tissue.py").write_text(
+        package = tmp_path / "src" / "anesthesia_sim"
+        _allowed_modules(package)
+        (package / "core" / "tissue.py").write_text(
             "import numpy as np\nfrom PySide6.QtCore import QObject\nimport pyqtgraph\n",
             encoding="utf-8",
         )
-        package = tmp_path / "src" / "anesthesia_sim"
-        (package / "app_metadata.py").write_text("import subprocess\n", encoding="utf-8")
-        _flet_modules(package / "app")
         assert main(["--root", str(tmp_path)]) == 1
         out = capsys.readouterr().out
         assert "src/anesthesia_sim/core/tissue.py:1: import numpy" in out
         assert "src/anesthesia_sim/core/tissue.py:2: from PySide6.QtCore import ..." in out
         assert "src/anesthesia_sim/core/tissue.py:3: import pyqtgraph" in out
 
-    def test_a_fourth_module_importing_flet_is_a_violation(
+    def test_any_module_importing_flet_is_a_violation(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """The figure the roadmap reasons from, held exactly rather than approximately."""
-        core = tmp_path / "src" / "anesthesia_sim" / "core"
-        core.mkdir(parents=True)
-        (core / "parameters.py").write_text("from pydantic import BaseModel\n", encoding="utf-8")
+        """Either Flet package, in any module under `src/`, is the toolkit coming back (`PL-7SVX`).
+
+        The entry point and a chart module, because those are the two places
+        Flet last lived (`PL-25KS`), and an allowance that quietly returned
+        for one of them is what this pins against.
+        """
         package = tmp_path / "src" / "anesthesia_sim"
-        (package / "app_metadata.py").write_text("import subprocess\n", encoding="utf-8")
-        app = _flet_modules(package / "app")
-        (app / "chart_panel.py").write_text("import flet as ft\n", encoding="utf-8")
+        app = _allowed_modules(package)
+        (app / "main.py").write_text("import flet as ft\n", encoding="utf-8")
+        (app / "chart_panel.py").write_text("import flet_charts as fch\n", encoding="utf-8")
         assert main(["--root", str(tmp_path)]) == 1
         out = capsys.readouterr().out
-        assert "src/anesthesia_sim/app/chart_panel.py:1: import flet" in out
-        assert "flet is allowed only in" in out
-
-    def test_a_module_the_port_frees_of_flet_must_drop_its_allowance(
-        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        """The allowance is the port's checklist, through the tool's own unused-entry error.
-
-        `chart_series.py` still present but importing pyqtgraph in place of
-        `flet_charts` is what one port commit leaves behind; the entry naming
-        it has to go in that same commit, and the last entry takes the
-        boundary with it.
-        """
-        core = tmp_path / "src" / "anesthesia_sim" / "core"
-        core.mkdir(parents=True)
-        (core / "parameters.py").write_text("from pydantic import BaseModel\n", encoding="utf-8")
-        package = tmp_path / "src" / "anesthesia_sim"
-        (package / "app_metadata.py").write_text("import subprocess\n", encoding="utf-8")
-        app = _flet_modules(package / "app")
-        (app / "chart_series.py").write_text("import pyqtgraph\n", encoding="utf-8")
-        assert main(["--root", str(tmp_path)]) == 1
-        assert "src/anesthesia_sim/app/chart_series.py no longer imports flet_charts" in (
-            capsys.readouterr().out
-        )
+        assert "src/anesthesia_sim/app/main.py:1: import flet" in out
+        assert "src/anesthesia_sim/app/chart_panel.py:1: import flet_charts" in out
+        assert "flet is permitted in no module under src/anesthesia_sim/" in out
+        assert "flet_charts is permitted in no module under src/anesthesia_sim/" in out
+        assert "2 errors" in out
 
     def test_the_interface_may_read_the_clock_the_compartments_may_not(
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -429,15 +389,8 @@ class TestMain:
         run - so a boundary that failed here would be enforcing a rule the
         design does not hold.
         """
-        core = tmp_path / "src" / "anesthesia_sim" / "core"
-        core.mkdir(parents=True)
-        (core / "parameters.py").write_text("from pydantic import BaseModel\n", encoding="utf-8")
         package = tmp_path / "src" / "anesthesia_sim"
-        # The one module allowed to ask the environment which build is running.
-        # Present because an allowance naming a module that is not there is
-        # itself an error, which is what keeps a stale allowance from rotting.
-        (package / "app_metadata.py").write_text("import subprocess\n", encoding="utf-8")
-        app = _flet_modules(package / "app")
+        app = _allowed_modules(package)
         (app / "playback.py").write_text(
             "import time\n"
             "from datetime import datetime\n"

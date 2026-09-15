@@ -39,13 +39,14 @@ own, so `tools/contrast_check.py`'s palette stays the one that is drawn.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from math import ceil
 from typing import Any, Final
 
 import pyqtgraph as pg
-from PySide6.QtCore import QPointF, Qt, Signal
-from PySide6.QtGui import QColor, QImage, QPainter, QPaintEvent, QPen
-from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtCore import QPointF, QSize, Qt, Signal
+from PySide6.QtGui import QBrush, QColor, QImage, QPainter, QPaintEvent, QPen
+from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.chart_frame import (
     COMPARTMENT_TRACES,
@@ -60,7 +61,15 @@ from anesthesia_sim.app.chart_frame import (
     wash_in_axis_ticks,
 )
 from anesthesia_sim.app.controller import RecordedQuantity
+from anesthesia_sim.app.dashboard_frame import (
+    CONTROL_MARK_LEGEND_LABEL,
+    EQUILIBRIUM_LEGEND_LABEL,
+    MAC_AWAKE_BAND_LEGEND_LABEL,
+    TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE,
+    WASH_IN_TRACE_LEGEND_LABEL,
+)
 from anesthesia_sim.app.formatting import format_chart_time_label
+from anesthesia_sim.app.qt_widgets import FlowLayout
 from anesthesia_sim.app.theme import (
     BAND_SWATCH_HEIGHT,
     BAND_SWATCH_WIDTH,
@@ -92,10 +101,17 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO
 
 __all__ = [
+    "CONTROL_MARK_LEGEND_LABEL",
+    "EQUILIBRIUM_LEGEND_LABEL",
     "HOVER_RADIUS_PIXELS",
+    "MAC_AWAKE_BAND_LEGEND_LABEL",
+    "WASH_IN_TRACE_LEGEND_LABEL",
+    "BandMark",
     "ConcentrationChart",
+    "LegendMark",
     "TraceLegend",
     "WashInChart",
+    "WashInLegend",
     "dashed_pen",
     "trace_pen",
 ]
@@ -106,6 +122,7 @@ __all__ = [
 # pointer parked in clear space between two traces reports neither rather
 # than whichever is nearer.
 HOVER_RADIUS_PIXELS: Final = 12.0
+
 
 # The dot on the wash-in stretch's last point when it stopped by crossing
 # equilibrium. A line that simply stops is indistinguishable from a line the
@@ -176,6 +193,22 @@ def dashed_pen(color: str, stroke_width: float, dash_pattern: Sequence[int] | No
         pen.setDashPattern([length / stroke_width for length in dash_pattern])
 
     return pen
+
+
+def _wash_in_pen() -> QPen:
+    """The pen the F_A/F_I trace is drawn with, on the plot and in its legend.
+
+    One constructor for both, as `trace_pen` is for the compartments, so the
+    legend swatch cannot describe a line the plot is not drawing.
+    """
+
+    return dashed_pen(WASH_IN_COLOR, WASH_IN_STROKE_WIDTH, None)
+
+
+def _control_mark_pen() -> QPen:
+    """The pen every control mark is drawn with, on both plots and in both legends."""
+
+    return dashed_pen(CONTROL_MARK_COLOR, CONTROL_MARK_STROKE_WIDTH, CONTROL_MARK_DASH_PATTERN)
 
 
 def _plot(background: str) -> Any:
@@ -343,7 +376,7 @@ def _control_mark_pool(item: Any) -> list[Any]:
     to be readable against every trace.
     """
 
-    pen = dashed_pen(CONTROL_MARK_COLOR, CONTROL_MARK_STROKE_WIDTH, CONTROL_MARK_DASH_PATTERN)
+    pen = _control_mark_pen()
     marks = []
 
     for _ in range(MAX_CHART_CONTROL_MARKS):
@@ -396,6 +429,7 @@ class ConcentrationChart(QWidget):
         super().__init__(parent)
         self._plot = _plot(PANEL)
         self._plot.setMinimumHeight(CHART_HEIGHT)
+        self._plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._plot)
@@ -494,6 +528,11 @@ class ConcentrationChart(QWidget):
 
         return self._frame
 
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        """As wide as the plot asks and `theme.CHART_HEIGHT` tall; it grows into spare height."""
+
+        return _preferred_size(self._plot, CHART_HEIGHT)
+
     def plot_width_px(self) -> float:
         """The width of the plot area in logical pixels, for `assemble_chart_frame`.
 
@@ -554,6 +593,11 @@ class ConcentrationChart(QWidget):
         """The ticks one axis is labelled at, as (position, label)."""
 
         return _axis_ticks(self._plot.getPlotItem().getAxis(name))
+
+    def axis_titles(self) -> tuple[str, ...]:
+        """The titles the chart's axes carry, so a whole-interface walk reaches them."""
+
+        return _axis_titles(self._plot)
 
     def painted(self) -> QImage:
         """The chart as painted, so a test can hold what is on screen."""
@@ -635,7 +679,7 @@ class _WashInRunItems:
     """One run's items on the wash-in plot: its stretches, their ends, its marks."""
 
     def __init__(self, item: Any) -> None:
-        pen = pg.mkPen(WASH_IN_COLOR, width=WASH_IN_STROKE_WIDTH)
+        pen = _wash_in_pen()
         self.stretches = []
 
         for _ in range(MAX_CHART_WASH_IN_SEGMENTS):
@@ -676,6 +720,7 @@ class WashInChart(QWidget):
         super().__init__(parent)
         self._plot = _plot(PANEL)
         self._plot.setMinimumHeight(WASH_IN_CHART_HEIGHT)
+        self._plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._plot)
@@ -754,6 +799,11 @@ class WashInChart(QWidget):
 
         return self._frame
 
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        """As wide as the plot asks, and `theme.WASH_IN_CHART_HEIGHT` tall."""
+
+        return _preferred_size(self._plot, WASH_IN_CHART_HEIGHT)
+
     def plot_width_px(self) -> float:
         """The width of the plot area in logical pixels, for `assemble_chart_frame`.
 
@@ -798,6 +848,11 @@ class WashInChart(QWidget):
         """The ticks one axis is labelled at, as (position, label)."""
 
         return _axis_ticks(self._plot.getPlotItem().getAxis(name))
+
+    def axis_titles(self) -> tuple[str, ...]:
+        """The titles the plot's axes carry, so a whole-interface walk reaches them."""
+
+        return _axis_titles(self._plot)
 
     def painted(self) -> QImage:
         """The plot as painted, so a test can hold what is on screen."""
@@ -869,6 +924,14 @@ class WashInChart(QWidget):
         return self._hover.shown_text()
 
 
+def _axis_titles(plot: Any) -> tuple[str, ...]:
+    """The non-empty axis titles of a plot, in left, bottom, right order."""
+
+    item = plot.getPlotItem()
+    titles = (str(item.getAxis(name).labelText) for name in ("left", "bottom", "right"))
+    return tuple(title for title in titles if title)
+
+
 def _axis_ticks(axis: Any) -> tuple[tuple[float, str], ...]:
     """The major ticks an axis was given, as (position, label)."""
 
@@ -884,6 +947,20 @@ def _render(widget: QWidget) -> QImage:
     """The widget as it is painted, for a rendering check."""
 
     return widget.grab().toImage()
+
+
+def _preferred_size(plot: Any, height_px: int) -> QSize:
+    """The size a chart asks its layout for: the plot's own width, the theme's height.
+
+    The height is the theme's rather than the toolkit's: a graphics view
+    asks for 480 px of its own accord, which is no chart's height and made
+    the page a quarter of a screen taller than the one it replaced. The
+    plot still grows past this - it expands in both directions - so a
+    taller window lengthens the traces; the minimum is the same theme
+    height, set on the plot.
+    """
+
+    return QSize(plot.sizeHint().width(), height_px)
 
 
 def _plot_width_px(plot: Any) -> float:
@@ -968,16 +1045,32 @@ class _BandSwatch(QWidget):
 
     def __init__(self) -> None:
         super().__init__()
+        fill = QColor(MAC_AWAKE_BAND_COLOR)
+        fill.setAlphaF(MAC_AWAKE_BAND_FILL_OPACITY)
+        self._fill = QBrush(fill)
+        self._edge_pen: QPen = pg.mkPen(
+            MAC_AWAKE_BAND_COLOR, width=MAC_AWAKE_BAND_EDGE_STROKE_WIDTH
+        )
         self.setFixedSize(BAND_SWATCH_WIDTH, BAND_SWATCH_HEIGHT)
+
+    @property
+    def edge_pen(self) -> QPen:
+        """The pen both edges are ruled with."""
+
+        return self._edge_pen
+
+    @property
+    def fill_brush(self) -> QBrush:
+        """The brush the band between the edges is filled with."""
+
+        return self._fill
 
     def paintEvent(self, event: QPaintEvent) -> None:  # Qt spells this in camelCase.
         del event
 
-        fill = QColor(MAC_AWAKE_BAND_COLOR)
-        fill.setAlphaF(MAC_AWAKE_BAND_FILL_OPACITY)
         painter = QPainter(self)
-        painter.fillRect(self.rect(), fill)
-        painter.setPen(pg.mkPen(MAC_AWAKE_BAND_COLOR, width=MAC_AWAKE_BAND_EDGE_STROKE_WIDTH))
+        painter.fillRect(self.rect(), self._fill)
+        painter.setPen(self._edge_pen)
         width = float(self.width())
         inset = MAC_AWAKE_BAND_EDGE_STROKE_WIDTH / 2.0
         painter.drawLine(QPointF(0.0, inset), QPointF(width, inset))
@@ -985,25 +1078,40 @@ class _BandSwatch(QWidget):
         painter.end()
 
 
-def _legend_row(caption: str, entries: Sequence[tuple[QWidget, QWidget]]) -> QHBoxLayout:
-    """One legend row: a caption, then swatch-and-label pairs."""
+def _legend_row(caption: str | None, entries: Sequence[tuple[QWidget, QWidget]]) -> FlowLayout:
+    """One legend row: a caption, where the row has one, then swatch-and-label pairs.
 
-    row = QHBoxLayout()
-    row.setSpacing(16)
-    caption_label = QLabel(caption)
-    caption_label.setStyleSheet(f"color: {MUTED};")
-    row.addWidget(caption_label)
+    A wrapping row, as the Flet build's legend rows were, so the entries
+    reflow under a narrow chart rather than holding the chart column to
+    their summed width: the caption is laid first and the entries follow it,
+    each an unbreakable swatch-and-label pair, and a pair that would overrun
+    the right edge starts the next line.
+    """
+
+    row = FlowLayout(horizontal_spacing=16, vertical_spacing=6)
+
+    if caption is not None:
+        caption_label = QLabel(caption)
+        caption_label.setStyleSheet(f"color: {MUTED};")
+        row.addWidget(caption_label)
 
     for swatch, label in entries:
-        entry = QHBoxLayout()
-        entry.setSpacing(6)
-        entry.addWidget(swatch, alignment=Qt.AlignmentFlag.AlignVCenter)
-        entry.addWidget(label, alignment=Qt.AlignmentFlag.AlignVCenter)
-        row.addLayout(entry)
-
-    row.addStretch(1)
+        row.addWidget(_legend_entry(swatch, label))
 
     return row
+
+
+def _legend_entry(swatch: QWidget, label: QWidget) -> QWidget:
+    """A swatch beside its words, as one item a legend row wraps whole."""
+
+    entry = QWidget()
+    pair = QHBoxLayout(entry)
+    pair.setContentsMargins(0, 0, 0, 0)
+    pair.setSpacing(6)
+    pair.addWidget(swatch, alignment=Qt.AlignmentFlag.AlignVCenter)
+    pair.addWidget(label, alignment=Qt.AlignmentFlag.AlignVCenter)
+
+    return entry
 
 
 class TraceLegend(QWidget):
@@ -1034,6 +1142,7 @@ class TraceLegend(QWidget):
         super().__init__(parent)
         self._boxes: dict[RecordedQuantity, QCheckBox] = {}
         self._swatches: dict[RecordedQuantity, _LineSwatch] = {}
+        self._band_swatch = _BandSwatch()
         compartments: list[tuple[QWidget, QWidget]] = []
 
         for style in COMPARTMENT_TRACES:
@@ -1043,6 +1152,7 @@ class TraceLegend(QWidget):
                 max(LEGEND_SWATCH_HEIGHT, ceil(style.stroke_width)),
             )
             box = QCheckBox(f"{style.label} ({style.line_style})")
+            box.setAccessibleName(TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=style.label))
             box.setChecked(True)
             box.setStyleSheet(f"color: {INK};")
             box.toggled.connect(
@@ -1068,12 +1178,7 @@ class TraceLegend(QWidget):
             _legend_row(
                 "Clinical references:",
                 [
-                    (
-                        _BandSwatch(),
-                        _legend_label(
-                            "MAC-awake (population, ±1 SD; read against vessel-rich trace)"
-                        ),
-                    ),
+                    (self._band_swatch, _legend_label(MAC_AWAKE_BAND_LEGEND_LABEL)),
                     (
                         _LineSwatch(
                             dashed_pen(
@@ -1093,26 +1198,7 @@ class TraceLegend(QWidget):
         # above it: a compartment trace is a modelled quantity and a clinical
         # reference is a published constant; this is a record of something
         # the *user* did.
-        layout.addLayout(
-            _legend_row(
-                "Run record:",
-                [
-                    (
-                        _LineSwatch(
-                            dashed_pen(
-                                CONTROL_MARK_COLOR,
-                                CONTROL_MARK_STROKE_WIDTH,
-                                CONTROL_MARK_DASH_PATTERN,
-                            ),
-                            CONTROL_MARK_SWATCH_WIDTH,
-                            CONTROL_MARK_SWATCH_HEIGHT,
-                            vertical=True,
-                        ),
-                        _legend_label("Control change (vertical, fine dash)"),
-                    )
-                ],
-            )
-        )
+        layout.addLayout(_legend_row("Run record:", [_control_mark_entry()]))
 
     @property
     def shown(self) -> tuple[RecordedQuantity, ...]:
@@ -1135,10 +1221,114 @@ class TraceLegend(QWidget):
 
         return self._swatches[quantity]._pen
 
+    @property
+    def band_mark(self) -> BandMark:
+        """The MAC-awake band's entry: its words, its edge pen and its fill."""
+
+        return BandMark(
+            MAC_AWAKE_BAND_LEGEND_LABEL, self._band_swatch.edge_pen, self._band_swatch.fill_brush
+        )
+
+    @property
+    def band_swatch(self) -> QWidget:
+        """The widget the band's mark is painted on, for a rendering check to grab."""
+
+        return self._band_swatch
+
     def _on_toggled(self, quantity: RecordedQuantity, checked: bool) -> None:
         self._swatches[quantity].set_filled(checked)
         self._boxes[quantity].setStyleSheet(f"color: {INK if checked else MUTED};")
         self.visibility_changed.emit()
+
+
+def _control_mark_entry() -> tuple[_LineSwatch, QLabel]:
+    """The control mark's legend entry, the same on both legends: upright, in its own pen."""
+
+    return (
+        _LineSwatch(
+            _control_mark_pen(),
+            CONTROL_MARK_SWATCH_WIDTH,
+            CONTROL_MARK_SWATCH_HEIGHT,
+            vertical=True,
+        ),
+        _legend_label(CONTROL_MARK_LEGEND_LABEL),
+    )
+
+
+@dataclass(frozen=True)
+class LegendMark:
+    """One legend entry as it is drawn: its words, its pen, and which way its line runs.
+
+    What a test reads back from a legend, so that the words and the mark can
+    be held against the plot's own pens without reaching into a widget.
+    """
+
+    label: str
+    pen: QPen
+    vertical: bool
+
+
+@dataclass(frozen=True)
+class BandMark:
+    """The MAC-awake band's legend entry as it is drawn: its words, its edges and its fill.
+
+    Ruled on both edges and filled between, as the band on the chart is
+    (`PL-90Y6`); what a test reads back to hold the swatch to the chart's
+    own mark.
+    """
+
+    label: str
+    edge_pen: QPen
+    fill: QBrush
+
+
+class WashInLegend(QWidget):
+    """The wash-in plot's legend row: the ratio trace, its asymptote, the control mark.
+
+    One row rather than three, and no caption, because the wash-in plot has
+    one trace and one reference and the row reads without them; it sits
+    under the plot's heading and its two label lines, which say what the
+    ratio is and is not (`PL-F9TQ`). Each swatch is painted with the pen the
+    plot draws that mark with - the trace at its own stroke width, the
+    equilibrium line in its wide dash, the control mark upright and finely
+    dashed - so the swatch and the words describe the mark in two channels
+    (`PL-THXF`). The per-run state sentence that follows this row on screen is
+    the dashboard's to place, since it is written per tick from the frame.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        trace_swatch = _LineSwatch(
+            _wash_in_pen(),
+            LEGEND_SWATCH_WIDTH,
+            max(LEGEND_SWATCH_HEIGHT, ceil(WASH_IN_STROKE_WIDTH)),
+        )
+        equilibrium_swatch = _LineSwatch(
+            dashed_pen(
+                EQUILIBRIUM_LINE_COLOR, EQUILIBRIUM_LINE_STROKE_WIDTH, EQUILIBRIUM_LINE_DASH_PATTERN
+            ),
+            LEGEND_SWATCH_WIDTH,
+            LEGEND_SWATCH_HEIGHT,
+        )
+        mark_swatch, mark_label = _control_mark_entry()
+        entries: list[tuple[_LineSwatch, QLabel]] = [
+            (trace_swatch, _legend_label(WASH_IN_TRACE_LEGEND_LABEL)),
+            (equilibrium_swatch, _legend_label(EQUILIBRIUM_LEGEND_LABEL)),
+            (mark_swatch, mark_label),
+        ]
+        self._marks = tuple(
+            LegendMark(label.text(), swatch._pen, swatch._vertical) for swatch, label in entries
+        )
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addLayout(_legend_row(None, entries))
+
+    @property
+    def marks(self) -> tuple[LegendMark, ...]:
+        """The three entries in row order, each with the pen its swatch is painted with."""
+
+        return self._marks
 
 
 def _legend_label(text: str) -> QLabel:

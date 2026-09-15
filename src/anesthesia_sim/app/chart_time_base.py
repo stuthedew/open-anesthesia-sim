@@ -1,9 +1,9 @@
 """How wide the chart's visible window is, and how that window is ruled.
 
-Pure arithmetic over durations, independent of Flet and of the scientific
-core. Nothing here reads simulation state, builds a control, or formats a
-string: given a run length and a choice, it answers with a width, a pair of
-axis bounds and a list of tick positions, and `app/simulation_view.py` draws
+Pure arithmetic over durations, independent of any toolkit and of the
+scientific core. Nothing here reads simulation state, builds a control, or
+formats a string: given a run length and a choice, it answers with a width, a
+pair of axis bounds and a list of tick positions, and `app/qt_chart.py` draws
 them.
 
 **It is a view control and reaches no model state.** Choosing a time base
