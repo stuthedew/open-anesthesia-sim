@@ -93,3 +93,18 @@ across this repository's history is zero.
 `out/dashboard.png` (161 KB) and the documented `worker.md` command wrote it
 again (178 KB), each from the repository root, with `git status` showing only
 this item's own edits afterwards.
+
+*`out` and never `out/` in prose, which is not a style choice.*
+`tools/doc_check.py:2213` reads any code span ending in `/` as a claim that the
+directory exists, and `out/` deliberately does not in a fresh checkout. The
+first push here turned CI red on exactly that - `docs/worker.md:50: cites
+`out/`, which does not exist` - while `make check` had passed locally, because
+testing the screenshot had created the directory minutes earlier. The prose was
+wrong and the check was right, so the fix is the wording; the gap that makes the
+correct wording undiscoverable is `PL-MXSL`. Note the two neighbouring escapes
+are accidents rather than design: `out/dashboard.png` passes only because `.png`
+is not in `PATH_SUFFIXES`, and `out` passes only because it has no suffix.
+
+*Re-run with the directory absent.* `make check` was re-run after `rm -rf out`,
+so the local result matches a clean checkout rather than the tree this session
+had been testing in.
