@@ -1,9 +1,14 @@
 ---
 id: PL-RFGY
 title: .gitignore ignores .vscode/ while .vscode/settings.json is tracked, so extensions.json and launch.json cannot be added without git add -f
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: defect
 touches: .gitignore, .vscode/extensions.json
 added: 2026-09-15
+closed: 2026-09-15
+verify: python3 tools/doc_check.py check && ! git check-ignore -q --no-index .vscode/extensions.json && git check-ignore -q --no-index .vscode/ipch/x
 ---
 
 **Problem.** .gitignore ignores .vscode/ while .vscode/settings.json is tracked, so extensions.json and launch.json cannot be added without git add -f

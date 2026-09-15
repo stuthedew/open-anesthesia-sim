@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, tests/unit/test_dashboard_frame.py, tests/integration/test_simulation_view.py, docs/MODEL.md
 added: 2026-09-13
 closed: 2026-09-15
+pr: 588
 verify: uv run pytest tests/unit/test_dashboard_frame.py && grep -q 'def test_the_interface_says_the_readouts_are_model_outputs_not_measurements' tests/unit/test_dashboard_frame.py
 ---
 

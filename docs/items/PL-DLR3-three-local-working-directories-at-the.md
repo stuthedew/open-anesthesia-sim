@@ -1,9 +1,14 @@
 ---
 id: PL-DLR3
 title: Three local working directories at the repository root - oas-mirror, output and outputs - are neither tracked nor ignored, so every session and the owner read them as untracked in git status and a git add -A would sweep them in
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: infra
 touches: .gitignore
 added: 2026-09-15
+closed: 2026-09-15
+verify: python3 tools/doc_check.py check && git check-ignore -q --no-index oas-mirror/x && git check-ignore -q --no-index output/x && git check-ignore -q --no-index outputs/x && ! git check-ignore -q --no-index src/anesthesia_sim/output/x
 ---
 
 **Problem.** Three local working directories at the repository root - oas-mirror, output and outputs - are neither tracked nor ignored, so every session and the owner read them as untracked in git status and a git add -A would sweep them in
