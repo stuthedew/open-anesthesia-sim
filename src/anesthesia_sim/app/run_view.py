@@ -30,7 +30,11 @@ means the core rejected the value and changed nothing, so the run goes on
 under a "Setting refused" banner. Any other exception stops the run:
 `SimulationDomainLimitError` as the supported run length, everything else as
 a failure, per `dashboard_frame.halt_disposition` (`PL-V6M0`, `PL-Y5WR`,
-`PL-YK2V`).
+`PL-YK2V`). A halted run says so from its own snapshot, through
+`present_halt`, before any frame is attempted: the frame is the shared
+render path, and when that is what raised, a halt reported only through it
+would leave every status word reading "Paused" over a failed controller
+(`PL-25KS`).
 
 **Timers move the run and nothing else** (decision D7). One `QTimer` per
 run drives `step_tick`, which advances the controller by the playback
@@ -78,6 +82,7 @@ from anesthesia_sim.app.dashboard_frame import (
     Emphasis,
     HaltDisposition,
     StatusWord,
+    Transport,
     accounting,
     delivered_fraction,
     halt_disposition,
@@ -281,7 +286,7 @@ class RunView(QWidget):
 
         self._status_text = styled_label("", color=MUTED, bold=True)
         _emphasised(self._status_text, status_word(snapshot))
-        self._notice_text = NoticeLabel()
+        self._notice_text = NoticeLabel(self)
 
         self._subtitle_text = styled_label(format_subtitle(snapshot.agent_display_name), color=INK)
         self._subtitle_text.setFont(_bold(self._subtitle_text.font()))
@@ -296,7 +301,10 @@ class RunView(QWidget):
         )
         badge.addWidget(self._subtitle_text)
 
-        self._agent_dropdown = QComboBox()
+        # Every widget whose visibility is written here is built with this
+        # view as its parent: shown parentless, even for the instant before
+        # a layout adopts it, a widget is a top-level window of its own.
+        self._agent_dropdown = QComboBox(self)
         self._agent_dropdown.setFixedWidth(AGENT_SELECTOR_WIDTH)
 
         for index, (agent_id, display_name) in enumerate(AVAILABLE_AGENTS):
@@ -320,7 +328,7 @@ class RunView(QWidget):
         self._running_agent_lock_text = styled_label(
             RUNNING_AGENT_LOCK_TEXT, color=INK, size_px=METRIC_QUALIFIER_SIZE
         )
-        self._running_agent_display = QFrame()
+        self._running_agent_display = QFrame(self)
         self._running_agent_display.setObjectName(_RUNNING_AGENT_DISPLAY_NAME)
         self._running_agent_display.setFixedWidth(AGENT_SELECTOR_WIDTH)
         chip = QVBoxLayout(self._running_agent_display)
@@ -334,17 +342,10 @@ class RunView(QWidget):
         chip.addWidget(self._running_agent_text)
         chip.addWidget(self._running_agent_lock_text)
 
-        lock = transport(snapshot)
-        self._agent_dropdown.setDisabled(lock.selector_locked)
-        self._agent_dropdown.setHidden(lock.selector_locked)
-        self._running_agent_display.setVisible(lock.selector_locked)
-
         self._start_button = QPushButton(START_LABEL)
         self._pause_button = QPushButton(PAUSE_LABEL)
         self._reset_button = QPushButton(RESET_LABEL)
-        self._start_button.setEnabled(lock.start_enabled)
-        self._pause_button.setEnabled(lock.pause_enabled)
-        self._reset_button.setEnabled(lock.reset_enabled)
+        self._write_transport(transport(snapshot))
         self._start_button.clicked.connect(self._handle_start)
         self._pause_button.clicked.connect(self._handle_pause)
         self._reset_button.clicked.connect(self._handle_reset)
@@ -409,6 +410,7 @@ class RunView(QWidget):
         self._control_timeline_overflow_text = styled_label(
             "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
         )
+        self._control_timeline_overflow_text.setParent(self)
         self._control_timeline_overflow_text.setHidden(True)
 
         # This run's rather than the chart's: whether a trace is clipped is
@@ -417,6 +419,7 @@ class RunView(QWidget):
         self._off_scale_text = styled_label(
             "", color=WARNING, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
         )
+        self._off_scale_text.setParent(self)
         self._off_scale_text.setHidden(True)
         self._wash_in_state_text = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE)
 
@@ -495,9 +498,7 @@ class RunView(QWidget):
         lock = transport(snapshot)
 
         self._apply_agent_color_scheme(snapshot.agent_id)
-        self._agent_dropdown.setDisabled(lock.selector_locked)
-        self._agent_dropdown.setHidden(lock.selector_locked)
-        self._running_agent_display.setVisible(lock.selector_locked)
+        self._write_transport(lock)
 
         with QSignalBlocker(self._agent_dropdown):
             self._agent_dropdown.setCurrentIndex(self._agent_dropdown.findData(snapshot.agent_id))
@@ -510,10 +511,6 @@ class RunView(QWidget):
 
         for slider, setting in zip(self._sliders(), setting_readouts(snapshot), strict=True):
             slider.set_setting(setting)
-
-        self._start_button.setEnabled(lock.start_enabled)
-        self._pause_button.setEnabled(lock.pause_enabled)
-        self._reset_button.setEnabled(lock.reset_enabled)
 
         panel = accounting(snapshot)
         _emphasised(self._agent_accounting_status_text, panel.status)
@@ -546,6 +543,43 @@ class RunView(QWidget):
 
         if self._frame is not None:
             self.refresh(self.snapshot(), self._frame, self._run_index)
+
+    def present_halt(self) -> None:
+        """Say this run has stopped, from its snapshot alone, with no frame drawn.
+
+        The status word, the transport and the notice banner are the three
+        widgets that state whether the run is going and why it is not, and
+        none of them needs a chart frame to be written. So they are written
+        here, before any frame is attempted, because the frame is what may
+        be failing: a halt for a raise out of the shared render path
+        presented only through that path would leave every status word
+        reading "Paused" over a failed controller, and no banner naming the
+        exception (`PL-25KS`). `refresh` rewrites the same three on the next
+        frame that can be drawn.
+        """
+
+        snapshot = self.snapshot()
+        _emphasised(self._status_text, status_word(snapshot))
+        self._write_transport(transport(snapshot))
+        self._notice_text.set_notice(notice(snapshot, self._rejected_setting_notice))
+
+    def _write_transport(self, lock: Transport) -> None:
+        """Write the transport's enablement and which of the selector and the chip is shown.
+
+        The selector is written `setDisabled` beside `setHidden` with the
+        same operand, which is what `tools/agent_identity_check.py` holds
+        the identity set to: it draws nothing while it cannot be used.
+
+        Args:
+            lock: `dashboard_frame.transport`'s result for this snapshot.
+        """
+
+        self._agent_dropdown.setDisabled(lock.selector_locked)
+        self._agent_dropdown.setHidden(lock.selector_locked)
+        self._running_agent_display.setVisible(lock.selector_locked)
+        self._start_button.setEnabled(lock.start_enabled)
+        self._pause_button.setEnabled(lock.pause_enabled)
+        self._reset_button.setEnabled(lock.reset_enabled)
 
     def _apply_agent_color_scheme(self, agent_id: str) -> None:
         """Write the agent's ISO 5360 pair to the six controls that carry it, and to nothing else.
@@ -694,7 +728,10 @@ class RunView(QWidget):
         The same agent is no change. A run that has recorded nothing has
         nothing to lose and switches at once. Otherwise the selector is
         reverted to the running agent and the reader is asked, because the
-        switch discards the case (`PL-R3KB`).
+        switch discards the case (`PL-R3KB`). While that question is open a
+        further selection is reverted and not answered: the open dialog
+        names one agent, and its answer must start that agent and no other
+        (`PL-25KS`).
         """
 
         agent_id = self._agent_dropdown.itemData(index)
@@ -703,6 +740,14 @@ class RunView(QWidget):
             return
 
         snapshot = self.snapshot()
+
+        if self._pending_agent_id is not None:
+            with QSignalBlocker(self._agent_dropdown):
+                self._agent_dropdown.setCurrentIndex(
+                    self._agent_dropdown.findData(snapshot.agent_id)
+                )
+
+            return
 
         if agent_id == snapshot.agent_id:
             return
@@ -740,6 +785,10 @@ class RunView(QWidget):
         )
         dialog = NewCaseDialog(question, self)
         dialog.finished.connect(self._handle_new_case_finished)
+        # Deleted once answered, or every question asked stays a child of
+        # this view: its title on `interface_strings` and its widgets in
+        # every walk of the tree (`PL-25KS`).
+        dialog.finished.connect(dialog.deleteLater)
         self._new_case_dialog = dialog
         dialog.open()
 
@@ -778,8 +827,8 @@ class RunView(QWidget):
     def halt(self, error: BaseException) -> None:
         """Stop the run for a raise, recording it as the disposition the raise earns.
 
-        Draws nothing; `_halt_run` and `SimulationView._halt_every_run`
-        present after halting.
+        Draws nothing and writes nothing; `_halt_run` and
+        `SimulationView._halt_every_run` call `present_halt` after halting.
 
         Args:
             error: What was raised.
@@ -793,18 +842,21 @@ class RunView(QWidget):
             self.controller.fail(reason)
 
     def _halt_run(self, error: BaseException) -> None:
-        """Halt the run, then ask for the frame that says so.
+        """Halt the run, say so from its own snapshot, then ask for the frame.
 
         The halt comes first, so a presentation that fails cannot unwind it:
         `SimulationView.present` answers a frame it cannot draw by halting
         every run, and a controller keeps the first reason it was given, so
-        this run still reports the raise that stopped it.
+        this run still reports the raise that stopped it. Its own status
+        word and banner are written before the frame is asked for, so a run
+        whose frame cannot be drawn still says it stopped.
 
         Args:
             error: What was raised.
         """
 
         self.halt(error)
+        self.present_halt()
         self.presentation_requested.emit(False)
 
     # -------------------------------------------------------------- timing

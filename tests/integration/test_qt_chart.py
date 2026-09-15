@@ -17,6 +17,7 @@ from collections import Counter
 from collections.abc import Iterator
 
 import pytest
+from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import QApplication, QCheckBox, QLabel, QWidget
 
 from anesthesia_sim.app.chart_frame import (
@@ -48,6 +49,7 @@ from anesthesia_sim.app.formatting import (
 from anesthesia_sim.app.qt_chart import (
     CONTROL_MARK_LEGEND_LABEL,
     EQUILIBRIUM_LEGEND_LABEL,
+    MAC_AWAKE_BAND_LEGEND_LABEL,
     WASH_IN_TRACE_LEGEND_LABEL,
     ConcentrationChart,
     TraceLegend,
@@ -64,6 +66,9 @@ from anesthesia_sim.app.theme import (
     EQUILIBRIUM_LINE_DASH_PATTERN,
     EQUILIBRIUM_LINE_STROKE_WIDTH,
     GRIDLINE,
+    MAC_AWAKE_BAND_COLOR,
+    MAC_AWAKE_BAND_EDGE_STROKE_WIDTH,
+    MAC_AWAKE_BAND_FILL_OPACITY,
     MUTED,
     PANEL,
     WASH_IN_COLOR,
@@ -498,6 +503,56 @@ def test_the_legend_swatch_carries_the_trace_s_own_dash_pattern(application: QAp
             assert pen.dashPattern() == pytest.approx(
                 [length / style.stroke_width for length in style.dash_pattern]
             )
+
+
+def test_the_band_legend_swatch_is_ruled_on_both_edges_like_the_chart_mark(
+    application: QApplication,
+) -> None:
+    """A legend teaching one mark for a chart drawing another misreads it.
+
+    The swatch is how a reader learns which mark means what, so a swatch
+    ruled on its upper edge only would carry the same line-not-band reading
+    `PL-90Y6` removed from the chart, and would carry it into every glance at
+    the plot afterwards. Held twice: on the pen and brush the swatch says it
+    paints with, and on the pixels it painted - the top and bottom rows in
+    the edge colour, and the rows between in the fill at its opacity over
+    the widget's own ground.
+    """
+
+    legend = TraceLegend()
+    legend.show()
+    application.processEvents()
+    mark = legend.band_mark
+
+    assert mark.label == MAC_AWAKE_BAND_LEGEND_LABEL
+    assert mark.edge_pen.color().name() == MAC_AWAKE_BAND_COLOR.lower()
+    assert mark.edge_pen.widthF() == MAC_AWAKE_BAND_EDGE_STROKE_WIDTH
+    assert mark.edge_pen.dashPattern() == []
+    assert mark.fill.color().name() == MAC_AWAKE_BAND_COLOR.lower()
+    # QColor holds an alpha at sixteen bits, so the opacity comes back at that grain.
+    assert mark.fill.color().alphaF() == pytest.approx(MAC_AWAKE_BAND_FILL_OPACITY, abs=1 / 65535)
+
+    swatch = legend.band_swatch
+    image = swatch.grab().toImage()
+    x = image.width() // 2
+    top = image.pixelColor(x, 0)
+    bottom = image.pixelColor(x, image.height() - 1)
+    middle = image.pixelColor(x, image.height() // 2)
+    ground = swatch.palette().color(QPalette.ColorRole.Window)
+    edge = mark.edge_pen.color()
+
+    assert top.name() == edge.name()
+    assert bottom.name() == edge.name()
+
+    for channel in ("red", "green", "blue"):
+        blended = (
+            getattr(ground, channel)() * (1.0 - MAC_AWAKE_BAND_FILL_OPACITY)
+            + getattr(edge, channel)() * MAC_AWAKE_BAND_FILL_OPACITY
+        )
+
+        assert getattr(middle, channel)() == pytest.approx(blended, abs=1.0)
+
+    legend.close()
 
 
 def test_the_legend_is_the_visibility_control(application: QApplication) -> None:

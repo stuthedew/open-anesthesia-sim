@@ -269,18 +269,25 @@ different treatment:
   is a local omission; `docs/MODEL.md`, "Step atomicity", is the contract.
 
 Both timer slots are guarded — `RunView.step_tick` steps the run and
-`SimulationView.render_tick` presents it — and both halt the run through
-`SimulationController.fail()` on any exception, because a `TypeError` from a
-refactor is exactly as silent inside a Qt slot as a modelling failure is.
-`fail()` is a third run
-state, carried on the snapshot as `failure_reason` and rendered as
-"Stopped — simulation error" with a banner over the values: a halted run
-must never present as a pause, because a pause is a run that continues when
-asked and a halt is one that cannot. It cannot be resumed, only cleared by
-`reset()` or by starting a fresh run with `set_agent()`. Neither timer stops
-on failure — both are started once, when the window opens, and a halted run
-leaves them firing and finding nothing to do — so a run reset and started
-again is stepped without anything having to be restarted.
+`SimulationView.render_tick` presents it — and both halt the run on any
+exception, because a `TypeError` from a refactor is exactly as silent inside a
+Qt slot as a modelling failure is. Which halt is `dashboard_frame.halt_disposition`'s
+call, and `RunView.halt` routes by it: through `SimulationController.fail()`
+for a failure, through `halt_at_supported_limit()` for the supported run
+length, which `step_tick` meets as a `SimulationDomainLimitError` the core
+raises before taking the step past it. `fail()` is a third run state, carried
+on the snapshot as `failure_reason` and rendered as "Stopped — simulation
+error" with a banner over the values: a halted run must never present as a
+pause, because a pause is a run that continues when asked and a halt is one
+that cannot. The supported-limit halt is a fourth, distinct from the failure —
+`supported_limit_reason` on the snapshot, "Stopped — supported run length reached"
+in place of the failure word — because there nothing went wrong: the run
+stands on a completed step at a time the model claims to represent, and the
+next step would be refused identically. Neither can be resumed, only cleared
+by `reset()` or by starting a fresh run with `set_agent()`. Neither timer
+stops on either halt — both are started once, when the window opens, and a
+halted run leaves them firing and finding nothing to do — so a run reset and
+started again is stepped without anything having to be restarted.
 
 Drawing that full record every frame is what made the render payload grow
 with run length. The run no longer keeps a record to draw: `core/run_definition.py`
@@ -432,7 +439,7 @@ Outside the packaged application, and not imported by it:
 
 ```text
 tools/
-├── agent_identity_check.py  # refuses a control that carries the agent colour and can be rendered disabled, because a toolkit then paints its label in its own disabled-content grey, which is declared in no source file and so is unreachable by `contrast_check.py`; a control may be disabled only where the same expression also hides it - `disabled = E` with `visible = not E`, or `setDisabled(E)` with `setHidden(E)` in the Qt spelling since PL-25KS - and one given an agent colour where it is constructed must be written by the single writer `RunView._apply_agent_color_scheme`; reads every module under `app/` and names none by path, and refuses a tree in which no `disabled` write can be read at all rather than passing over it
+├── agent_identity_check.py  # refuses a control that carries the agent colour and can be rendered disabled, because a toolkit then paints its label in its own disabled-content grey, which is declared in no source file and so is unreachable by `contrast_check.py`; a control may be disabled only where the same expression also hides it - `disabled = E` with `visible = not E`, or `setDisabled(E)` with `setHidden(E)` in the Qt spelling since PL-25KS - and one given an agent colour anywhere outside the single writer `RunView._apply_agent_color_scheme` - where it is constructed, or by a `setStyleSheet` or `setItemData` call after - must be written by it; reads every module under `app/` and names none by path, and refuses a tree in which no `disabled` write can be read at all rather than passing over it
 ├── branch_id_check.py    # refuses a branch ahead of the default base that carries no item id in its name and leads no commit subject with one, because every in-flight guard matches an id and work carrying none is invisible to all of them; scoped to the `claude/*` namespace, since a contributor has no queue to be visible in
 ├── dead_ends.py          # emits `docs/dead-ends.md`'s entry lines into session context at start, and holds that emitted half - never the file's preamble, which is instructions for adding an entry rather than for reading one - to 30 entries and 4,000 bytes, because a `SessionStart` hook's output is resent on every turn and an unbounded always-loaded store measurably degrades an agent rather than merely costing tokens; refuses an entry citing an id that resolves to nothing, since `bin/docket show <id>` is the entry's whole retrieval path
 ├── contrast_check.py     # computes every declared color requirement's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum, taking the better channel where an element's edge can be carried by either its fill or its border
@@ -576,17 +583,21 @@ in the Qt spelling the check reads since `PL-25KS`, `setDisabled(E)` where it
 is also `setHidden(E)` — since it then draws nothing. The identity set is not
 a second list to keep in step but
 whatever `RunView._apply_agent_color_scheme` writes, that method already
-being the single writer of agent colour; a control given an agent colour where
-it is constructed and never written there is the check's other error, and is
-what keeps that coverage claim true rather than asserted. It reads every
+being the single writer of agent colour; a control given an agent colour
+anywhere outside that method — where it is constructed, in the Flet spelling,
+or by a `setStyleSheet` or `setItemData` call after it, in Qt's — and never
+written there is the check's other error, and is what keeps that coverage
+claim true rather than asserted. It reads every
 module under `app/` and names none by path (`PL-V53R`): the writer is found in
 whichever module holds it, exactly once — none is an error, two is a second
 writer of agent colour — rule 1 reads the pairing inside the writer's own
 class, since `self.X` names that class's attribute, and rule 2 reads every
-class in every module, since the writer can only write its own. A tree in
+method of every class in every module except the writer, since the writer can
+only write its own and its body is the set itself. A tree in
 which no `disabled` write can be read at all is an error rather than a pass
 (`PL-0PJG`), and the success line states how many such writes were read,
-across how many modules and how many on identity controls, so the sentence
+across how many modules and how many on identity controls, and how many
+colourings rule 2 read in each spelling, so the sentence
 cannot be printed from nothing. Like the two tools
 above it decides nothing else — whether a control's identity is legible, and
 whether a pairing is the right one for it, stay judgments.

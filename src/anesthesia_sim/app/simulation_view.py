@@ -33,6 +33,7 @@ from collections.abc import Iterator, Sequence
 from typing import Final
 
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QResizeEvent
 from PySide6.QtWidgets import (
     QAbstractButton,
     QComboBox,
@@ -366,6 +367,10 @@ class SimulationView(QWidget):
         not be drawn for a Start or a Reset would leave every run running
         behind a display that had stopped.
 
+        A frame drawn now discharges one owed, so drawing at once clears the
+        pending flag first: the resize `show()` delivers owes a frame, and
+        the first presentation that follows it is that frame.
+
         Args:
             coalesce: True to mark a frame owed and let the render tick draw
                 it, as a dragged slider does; False to draw at once, as every
@@ -375,6 +380,8 @@ class SimulationView(QWidget):
         if coalesce:
             self._render_pending = True
             return
+
+        self._render_pending = False
 
         try:
             self._refresh_view()
@@ -462,16 +469,36 @@ class SimulationView(QWidget):
 
         self.present(False)
 
+    def resizeEvent(self, event: QResizeEvent) -> None:  # Qt spells this in camelCase.
+        """Owe the render tick one frame from the new width.
+
+        A frame is assembled for the plot width it is drawn on, one column
+        per pixel, so the frame on screen is only right for the width it
+        was drawn at: after a resize while paused, with nothing running and
+        nothing owed, the columns drawn for the old width would stand on
+        the new one at a chord wider than a pixel (`PL-GS3R`, `PL-25KS`).
+        """
+
+        super().resizeEvent(event)
+        self._render_pending = True
+
     def _halt_every_run(self, error: BaseException) -> None:
-        """Stop every run for a raise out of the shared render path, and draw that once.
+        """Stop every run for a raise out of the shared render path, say so, then try to draw.
 
         A raise the render loop meets is attributable to no run, so every
-        run stops. A presentation that fails afterwards cannot unwind the
-        halt.
+        run stops. Each run states its halt from its own snapshot before the
+        frame is attempted, because the frame is what just failed and may
+        fail again for the same cause - two runs that have come to be on
+        different agents, say - and a halt presented only through it would
+        never be seen (`PL-25KS`). A presentation that fails afterwards
+        cannot unwind the halt.
         """
 
         for run in self._runs:
             run.halt(error)
+
+        for run in self._runs:
+            run.present_halt()
 
         try:
             self._refresh_view()

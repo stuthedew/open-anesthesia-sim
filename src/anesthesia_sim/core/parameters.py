@@ -701,8 +701,8 @@ def _load_packaged_json(package: str, filename: str) -> object:
     The wrapping is load-bearing rather than tidy. This module's docstring
     states that every raise it makes to a caller is a
     `SimulationConfigurationError`, and callers are written against that:
-    `app/simulation_view.py` catches the project hierarchy and reports a
-    refused setting. Unwrapped, `resource.open()` raises `OSError` and
+    `app/run_view.py`'s `_apply_setting` catches the project hierarchy and
+    reports a refused setting. Unwrapped, `resource.open()` raises `OSError` and
     `json.load()` raises `UnicodeDecodeError` or `JSONDecodeError` - none of
     them an `AnesthesiaSimulationError` - so a missing, unreadable or
     truncated data file escaped as though it were a programming error and the

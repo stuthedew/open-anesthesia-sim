@@ -18,15 +18,19 @@ declared pair. What follows is only the half it cannot decide.
 
 **`tools/agent_identity_check.py` decides one thing the ratios cannot reach: no
 control carrying agent identity may be *rendered* disabled** (project owner,
-2026-09-08). Flet/Material substitutes its own disabled-content grey for the
-colour you set, and that grey is declared in no source file, so the requirement
-above keeps measuring a pair that has stopped being drawn — which is what
-`PL-61WW` was. A control may be `disabled` where it is also
-`visible = not <the same expression>`, since it then draws nothing; otherwise
-carry the identity in a control with no disabled state, as
-`_running_agent_display` does. A control given an agent colour where it is
-constructed must also be written by `_apply_agent_color_scheme`, which is what
-keeps the checked set complete.
+2026-09-08). A toolkit paints a disabled control's text from a palette role the
+theme never declares — Flet/Material's disabled-content grey, and in Qt the
+`QPalette` disabled role, which greys text over whatever a stylesheet set for
+the enabled state — so the requirement above keeps measuring a pair that has
+stopped being drawn, which is what `PL-61WW` was. A control may be disabled
+where the same expression also hides it, since it then draws nothing:
+`disabled = E` with `visible = not E`, `setDisabled(E)` with `setHidden(E)`, or
+`setEnabled(not E)` with `setVisible(not E)`, the operand structurally
+identical on both lines. Otherwise carry the identity in a control with no
+disabled state, as `_running_agent_display` does. A control given an agent
+colour anywhere outside `_apply_agent_color_scheme` — where it is constructed,
+or by a later `setStyleSheet` or `setItemData` — must also be written by that
+method, which is what keeps the checked set complete.
 
 ## The four judgments the tool leaves to you
 
@@ -41,8 +45,8 @@ keeps the checked set complete.
    reason is the entry, and the entry is how a later reviewer finds what it
    defends; a line number stops leading there on the next edit to `app/` and
    says nothing when it stops. Write the method or attribute the color is set
-   on — `` `_status_text` ``, `` `_build_metric_panel` `` — bare, so `` `mount` ``
-   rather than `` `mount()` ``. The tool refuses a line number and resolves
+   on — `` `_status_text` ``, `` `MetricPanel` `` — bare, so `` `refresh` ``
+   rather than `` `refresh()` ``. The tool refuses a line number and resolves
    every symbol you name against every module under `app/`,
    so a rename fails `make check` instead of rotting quietly (`PL-GJDW`).
 

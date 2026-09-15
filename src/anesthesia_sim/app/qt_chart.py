@@ -45,7 +45,7 @@ from typing import Any, Final
 
 import pyqtgraph as pg
 from PySide6.QtCore import QPointF, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QImage, QPainter, QPaintEvent, QPen
+from PySide6.QtGui import QBrush, QColor, QImage, QPainter, QPaintEvent, QPen
 from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.chart_frame import (
@@ -64,6 +64,7 @@ from anesthesia_sim.app.controller import RecordedQuantity
 from anesthesia_sim.app.dashboard_frame import (
     CONTROL_MARK_LEGEND_LABEL,
     EQUILIBRIUM_LEGEND_LABEL,
+    MAC_AWAKE_BAND_LEGEND_LABEL,
     TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE,
     WASH_IN_TRACE_LEGEND_LABEL,
 )
@@ -103,7 +104,9 @@ __all__ = [
     "CONTROL_MARK_LEGEND_LABEL",
     "EQUILIBRIUM_LEGEND_LABEL",
     "HOVER_RADIUS_PIXELS",
+    "MAC_AWAKE_BAND_LEGEND_LABEL",
     "WASH_IN_TRACE_LEGEND_LABEL",
+    "BandMark",
     "ConcentrationChart",
     "LegendMark",
     "TraceLegend",
@@ -119,6 +122,7 @@ __all__ = [
 # pointer parked in clear space between two traces reports neither rather
 # than whichever is nearer.
 HOVER_RADIUS_PIXELS: Final = 12.0
+
 
 # The dot on the wash-in stretch's last point when it stopped by crossing
 # equilibrium. A line that simply stops is indistinguishable from a line the
@@ -1041,16 +1045,32 @@ class _BandSwatch(QWidget):
 
     def __init__(self) -> None:
         super().__init__()
+        fill = QColor(MAC_AWAKE_BAND_COLOR)
+        fill.setAlphaF(MAC_AWAKE_BAND_FILL_OPACITY)
+        self._fill = QBrush(fill)
+        self._edge_pen: QPen = pg.mkPen(
+            MAC_AWAKE_BAND_COLOR, width=MAC_AWAKE_BAND_EDGE_STROKE_WIDTH
+        )
         self.setFixedSize(BAND_SWATCH_WIDTH, BAND_SWATCH_HEIGHT)
+
+    @property
+    def edge_pen(self) -> QPen:
+        """The pen both edges are ruled with."""
+
+        return self._edge_pen
+
+    @property
+    def fill_brush(self) -> QBrush:
+        """The brush the band between the edges is filled with."""
+
+        return self._fill
 
     def paintEvent(self, event: QPaintEvent) -> None:  # Qt spells this in camelCase.
         del event
 
-        fill = QColor(MAC_AWAKE_BAND_COLOR)
-        fill.setAlphaF(MAC_AWAKE_BAND_FILL_OPACITY)
         painter = QPainter(self)
-        painter.fillRect(self.rect(), fill)
-        painter.setPen(pg.mkPen(MAC_AWAKE_BAND_COLOR, width=MAC_AWAKE_BAND_EDGE_STROKE_WIDTH))
+        painter.fillRect(self.rect(), self._fill)
+        painter.setPen(self._edge_pen)
         width = float(self.width())
         inset = MAC_AWAKE_BAND_EDGE_STROKE_WIDTH / 2.0
         painter.drawLine(QPointF(0.0, inset), QPointF(width, inset))
@@ -1122,6 +1142,7 @@ class TraceLegend(QWidget):
         super().__init__(parent)
         self._boxes: dict[RecordedQuantity, QCheckBox] = {}
         self._swatches: dict[RecordedQuantity, _LineSwatch] = {}
+        self._band_swatch = _BandSwatch()
         compartments: list[tuple[QWidget, QWidget]] = []
 
         for style in COMPARTMENT_TRACES:
@@ -1157,12 +1178,7 @@ class TraceLegend(QWidget):
             _legend_row(
                 "Clinical references:",
                 [
-                    (
-                        _BandSwatch(),
-                        _legend_label(
-                            "MAC-awake (population, ±1 SD; read against vessel-rich trace)"
-                        ),
-                    ),
+                    (self._band_swatch, _legend_label(MAC_AWAKE_BAND_LEGEND_LABEL)),
                     (
                         _LineSwatch(
                             dashed_pen(
@@ -1205,6 +1221,20 @@ class TraceLegend(QWidget):
 
         return self._swatches[quantity]._pen
 
+    @property
+    def band_mark(self) -> BandMark:
+        """The MAC-awake band's entry: its words, its edge pen and its fill."""
+
+        return BandMark(
+            MAC_AWAKE_BAND_LEGEND_LABEL, self._band_swatch.edge_pen, self._band_swatch.fill_brush
+        )
+
+    @property
+    def band_swatch(self) -> QWidget:
+        """The widget the band's mark is painted on, for a rendering check to grab."""
+
+        return self._band_swatch
+
     def _on_toggled(self, quantity: RecordedQuantity, checked: bool) -> None:
         self._swatches[quantity].set_filled(checked)
         self._boxes[quantity].setStyleSheet(f"color: {INK if checked else MUTED};")
@@ -1236,6 +1266,20 @@ class LegendMark:
     label: str
     pen: QPen
     vertical: bool
+
+
+@dataclass(frozen=True)
+class BandMark:
+    """The MAC-awake band's legend entry as it is drawn: its words, its edges and its fill.
+
+    Ruled on both edges and filled between, as the band on the chart is
+    (`PL-90Y6`); what a test reads back to hold the swatch to the chart's
+    own mark.
+    """
+
+    label: str
+    edge_pen: QPen
+    fill: QBrush
 
 
 class WashInLegend(QWidget):

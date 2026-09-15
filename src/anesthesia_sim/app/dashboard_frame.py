@@ -273,6 +273,9 @@ WASH_IN_MODELLED_TEXT: Final = "Modelled, not measured"
 WASH_IN_TRACE_LEGEND_LABEL: Final = "F_A/F_I (solid)"
 EQUILIBRIUM_LEGEND_LABEL: Final = "Equilibrium, F_A = F_I (wide dash)"
 CONTROL_MARK_LEGEND_LABEL: Final = "Control change (vertical, fine dash)"
+#: The MAC-awake band's legend words: a population value with its spread,
+#: and the trace it is read against (`PL-90Y6`).
+MAC_AWAKE_BAND_LEGEND_LABEL: Final = "MAC-awake (population, ±1 SD; read against vessel-rich trace)"
 #: What assistive technology announces for a compartment's legend box: the
 #: act it performs rather than the pattern words beside it, which describe
 #: the line and not the control. Carried over from the Flet legend's

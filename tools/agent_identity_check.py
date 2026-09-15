@@ -73,15 +73,30 @@ this check, as they are to the toolkit.
    writes inside the *class that holds the writer*: `self.X` names an
    attribute of that class, so a same-named attribute in another class is a
    different control and not the identity one.
-2. A control given an agent colour where it is *constructed* must be in that
-   set. This is what makes rule 1's coverage claim true rather than asserted -
-   a control coloured in `__init__` and never re-written by
+2. A control given an agent colour anywhere *outside* the writer must be in
+   that set. This is what makes rule 1's coverage claim true rather than
+   asserted - a control coloured once and never re-written by
    `_apply_agent_color_scheme` is outside rule 1 entirely. It is also a bug in
-   its own right: a control that keeps the colour it was built with shows the
+   its own right: a control that keeps the colour it was first given shows the
    previous agent's identity over the current agent's numbers, which is the
-   correct number under the wrong label. Rule 2 reads every class in every
-   module, because the writer can only write its own class's attributes, so an
-   agent-coloured control anywhere else is by construction outside the set.
+   correct number under the wrong label. Two spellings here too. The Flet build
+   coloured a control where it was *constructed* - `self.X = Dropdown(
+   color=colors.foreground)` - and the Qt build colours one by a *call
+   statement* after construction - `self.X.setStyleSheet(...)`,
+   `self.X.setItemData(index, QColor(scheme.fill), ...)`. Rule 2 reads both: a
+   `self.X = ...` assignment whose value reaches a colour table, and a
+   `self.X.method(...)` statement any of whose arguments does, in every method
+   of every class except the writer, whose body *is* the identity set and is
+   read once by `identity_controls`. Reaching a table means naming one of
+   `COLOR_TABLES` outright or a local bound from a subscript of one, and a
+   local handed whole to a helper - `setStyleSheet(_text_stylesheet(scheme))`
+   - counts, since what the helper returns is the colour the local carries.
+   Every class in every module is read, because the writer can only write its
+   own class's attributes, so an agent-coloured control anywhere else is by
+   construction outside the set. Until `PL-25KS`'s port review, rule 2 read
+   assignments alone, so on a Qt tree it measured nothing while this docstring
+   said it made rule 1's claim true; the success line now states how many
+   colourings it read in each spelling, so an empty measurement is visible.
 
 **Every module under `app/` is read, and none is named by path (PL-V53R).**
 Until then the tool parsed `app/simulation_view.py` alone, and `PL-B9PY` kept
@@ -105,13 +120,15 @@ draws the same line, for the same reason: a tool that guesses at the judgment
 half is worse than no tool, because its output looks authoritative and is not.
 
 **Known limitation, stated rather than papered over.** A control coloured by
-neither route - no agent colour where it is constructed and no write in
-`_apply_agent_color_scheme` - is invisible to both rules. None exists today,
-and rule 2 is what keeps the first route from opening one quietly. The check
-also refuses a tree where the writer method is missing or writes nothing,
-because a coverage set that can silently go empty is worse than no check. A
-call whose value is *used* - `x = self.X.palette()` - is a read and is not
-counted as a write; only a call standing as its own statement is.
+a route that names no colour table - a hex literal, which
+`tools/contrast_check.py` refuses outside `app/theme.py`, or a scheme fetched
+in one method and stored on `self` for another to read - is invisible to both
+rules; nothing here resolves a name across scopes, deliberately. None exists
+today. The check also refuses a tree where the writer method is missing or
+writes nothing, because a coverage set that can silently go empty is worse
+than no check. A call whose value is *used* - `x = self.X.palette()` - is a
+read and is not counted as a write, by either rule; only a call standing as
+its own statement is.
 
 **The measurement set has the same guard, since PL-0PJG.** `PL-JRS3` measured
 on 2026-09-14 what an unread spelling did, by rewriting `app/simulation_view.py`
@@ -155,7 +172,8 @@ IDENTITY_WRITER = "_apply_agent_color_scheme"
 
 #: The module-level tables an agent colour comes out of. A local name bound
 #: from a subscript of either carries an agent colour into whatever it is
-#: assigned to, which is how rule 2 finds a control coloured at construction.
+#: assigned to or passed to, which is how rule 2 finds a control coloured
+#: outside the writer in either spelling.
 COLOR_TABLES = ("AGENT_COLOR_SCHEMES", "AGENT_RENDER_STYLES")
 
 #: The attribute spelling: the property whose assignment makes a control's own
@@ -228,6 +246,10 @@ class Report:
     disabled_writes: int
     #: Of those, the ones on identity controls - the writes rule 1 judged.
     identity_disabled_writes: int
+    #: Agent colourings read outside the writer - what rule 2 judged - as
+    #: `self.X = ...` assignments and as call statements on `self.X`.
+    constructed_colorings: int = 0
+    call_colorings: int = 0
 
 
 def read_modules(root: Path) -> tuple[Module, ...]:
@@ -336,35 +358,56 @@ def identity_controls(method: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[s
 def _carries_agent_color(value: ast.expr, tracked: set[str]) -> bool:
     """Whether an expression reaches an agent colour, directly or through a local.
 
-    Two ways, and both have to be read because the view uses both in one
-    call: `AGENT_COLOR_SCHEMES[agent_id].fill` written inline, and
-    `initial_agent_colors.foreground` where the local was bound from a
-    subscript of the same table a few lines earlier.
+    Three ways, and all have to be read because the view uses all of them:
+    `AGENT_COLOR_SCHEMES[agent_id].fill` written inline,
+    `scheme.foreground` where the local was bound from a subscript of the
+    same table a few lines earlier, and `scheme` handed whole to a helper
+    that builds the stylesheet - `_text_stylesheet(scheme)` - which the Qt
+    build does on every identity control (`PL-25KS`).
     """
     for node in ast.walk(value):
-        if isinstance(node, ast.Name) and node.id in COLOR_TABLES:
+        if isinstance(node, ast.Name) and (node.id in COLOR_TABLES or node.id in tracked):
             return True
-        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
-            if node.value.id in tracked:
-                return True
     return False
 
 
-def constructed_with_agent_color(owner: ast.ClassDef) -> tuple[str, ...]:
-    """Every `self.X` one class builds from an agent colour, in source order.
+@dataclass(frozen=True)
+class AgentColoring:
+    """One write of an agent colour to a control outside the writer, in either spelling."""
+
+    control: str
+    #: The method the write was read in.
+    method: str
+    lineno: int
+    #: The shape of the write, e.g. `self._swatch = ...` or `self._swatch.setStyleSheet(...)`.
+    written: str
+    #: True for the assignment spelling, False for the call-statement spelling.
+    constructed: bool
+
+
+def agent_colorings(
+    owner: ast.ClassDef, *, excluding: ast.AST | None = None
+) -> tuple[AgentColoring, ...]:
+    """Every agent colouring of a `self.X` one class performs, in source order.
+
+    Both spellings: `self.X = ...` where the value reaches an agent colour,
+    and a call statement `self.X.method(...)` where any argument does.
+    `excluding` is the writer, whose body is the identity set and is read by
+    `identity_controls` instead - read here as well, it would only be
+    compared against itself.
 
     Two passes per function, not one, because the locals that carry a colour
     are bound in the same scope that uses them and `ast.walk` does not promise
     to reach the binding first. Collecting them all before reading any
-    assignment removes the ordering question rather than relying on a body
+    statement removes the ordering question rather than relying on a body
     staying flat.
 
     Nothing here resolves a name across scopes, deliberately: the pass answers
-    "does this assignment reach an agent colour", not "what is this name".
+    "does this statement reach an agent colour", not "what is this name".
     """
-    found: dict[str, int] = {}
+    found: dict[tuple[int, str], AgentColoring] = {}
     for node in ast.walk(owner):
-        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+        if not isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef) or node is excluding:
             continue
         assignments = [
             statement for statement in ast.walk(node) if isinstance(statement, ast.Assign)
@@ -379,11 +422,25 @@ def constructed_with_agent_color(owner: ast.ClassDef) -> tuple[str, ...]:
         for statement in assignments:
             for target in statement.targets:
                 control = self_attribute(target)
-                if control is None:
+                if control is None or not _carries_agent_color(statement.value, tracked):
                     continue
-                if _carries_agent_color(statement.value, tracked):
-                    found.setdefault(control, statement.lineno)
-    return tuple(sorted(found, key=found.__getitem__))
+                found.setdefault(
+                    (statement.lineno, control),
+                    AgentColoring(
+                        control, node.name, statement.lineno, f"self.{control} = ...", True
+                    ),
+                )
+        for control, method, call in control_calls(node):
+            arguments = [*call.args, *(keyword.value for keyword in call.keywords)]
+            if not any(_carries_agent_color(argument, tracked) for argument in arguments):
+                continue
+            found.setdefault(
+                (call.lineno, control),
+                AgentColoring(
+                    control, node.name, call.lineno, f"self.{control}.{method}(...)", False
+                ),
+            )
+    return tuple(found[key] for key in sorted(found))
 
 
 def _from_color_table(value: ast.expr) -> bool:
@@ -413,13 +470,23 @@ def property_writes(scope: ast.AST, prop: str) -> dict[str, list[ast.expr]]:
 def setter_writes(scope: ast.AST, method: str) -> dict[str, list[ast.expr]]:
     """Every single argument passed to `self.<control>.<method>(...)` within one scope.
 
-    A call with any other arity, or a keyword, is not the state write this
-    reads and is skipped rather than guessed at.
+    Positional or keyword: `setEnabled(enabled=E)` states the condition
+    `setEnabled(E)` does, and until `PL-25KS`'s port review the keyword form
+    was skipped, which is a disabled write read as nothing. The keyword's
+    name is not kept, so a finding names the hiding line positionally. A call
+    with any other arity, or one unpacking `*args` or `**kwargs`, is not the
+    state write this reads and is skipped rather than guessed at.
     """
     writes: dict[str, list[ast.expr]] = {}
     for control, name, call in control_calls(scope):
-        if name == method and len(call.args) == 1 and not call.keywords:
-            writes.setdefault(control, []).append(call.args[0])
+        if name != method or len(call.args) + len(call.keywords) != 1:
+            continue
+        if call.keywords and call.keywords[0].arg is None:
+            continue
+        value = call.args[0] if call.args else call.keywords[0].value
+        if isinstance(value, ast.Starred):
+            continue
+        writes.setdefault(control, []).append(value)
     return writes
 
 
@@ -605,23 +672,44 @@ def analyze(root: Path) -> Report:
             f"spelling before it can pass (PL-0PJG)"
         )
 
-    # Rule 2, every class in every module: the writer can only write its own
-    # class's attributes, so an agent-coloured control anywhere else is
-    # outside the set by construction.
+    # Rule 2, every class in every module, every method but the writer: the
+    # writer can only write its own class's attributes, so an agent-coloured
+    # control anywhere else is outside the set by construction. One finding
+    # per control, at its first colouring; every colouring is counted.
+    constructed = 0
+    called = 0
     for module in modules:
         for owner in classes(module.tree):
-            for control in constructed_with_agent_color(owner):
-                if owner is writer.owner and control in controls:
+            reported: set[str] = set()
+            for coloring in agent_colorings(owner, excluding=writer.method):
+                if coloring.constructed:
+                    constructed += 1
+                else:
+                    called += 1
+                if owner is writer.owner and coloring.control in controls:
                     continue
+                if coloring.control in reported:
+                    continue
+                reported.add(coloring.control)
                 found.append(
-                    f"`{module.path}:{owner.name}.{control}` is built from an agent colour "
-                    f"but `{writer.location}` never writes it, so it keeps the colour it "
-                    f"was constructed with and this check cannot see it disabled. A control "
-                    f"that does not follow the agent shows the previous agent's identity "
-                    f"over the current agent's numbers"
+                    f"`{module.path}:{owner.name}.{coloring.control}` is given an agent "
+                    f"colour in `{owner.name}.{coloring.method}` (`{coloring.written}`, "
+                    f"line {coloring.lineno}) but `{writer.location}` never writes it, so "
+                    f"it keeps the colour it was given there and this check cannot see it "
+                    f"disabled. A control that does not follow the agent shows the previous "
+                    f"agent's identity over the current agent's numbers"
                 )
 
-    return Report(tuple(found), controls, writer.location, len(modules), read, identity_read)
+    return Report(
+        tuple(found),
+        controls,
+        writer.location,
+        len(modules),
+        read,
+        identity_read,
+        constructed,
+        called,
+    )
 
 
 def problems(root: Path) -> list[str]:
@@ -641,7 +729,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"written by {report.writer}; {report.disabled_writes} disabled-state write(s) "
             f"read across {report.modules} module(s) under {APP.as_posix()}/, "
             f"{report.identity_disabled_writes} of them on identity controls and each "
-            f"paired with its hide; none rendered disabled"
+            f"paired with its hide; none rendered disabled. Rule 2 read "
+            f"{report.constructed_colorings} construction-time and "
+            f"{report.call_colorings} call-time agent colouring(s) outside the writer, "
+            f"every one on an identity control"
         )
         return 0
 

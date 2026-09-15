@@ -220,10 +220,11 @@ class TraceStyle:
     Everything that has to agree about a single compartment, held in one
     record. Before `PL-G59B` the same trace was described in three places -
     the colour and dash pattern where the series was built, the compartment
-    it draws in the `PlottedSeries` table, and the name and line-style words
-    in a legend row six hundred lines away - and keeping them in agreement
-    was left to whoever remembered. A legend that names a line the chart is
-    not drawing misstates the run as surely as a wrong number does.
+    it draws in the Flet chart's series table (deleted with that chart in
+    `PL-25KS`), and the name and line-style words in a legend row six hundred
+    lines away - and keeping them in agreement was left to whoever
+    remembered. A legend that names a line the chart is not drawing misstates
+    the run as surely as a wrong number does.
 
     Attributes:
         quantity: The one recorded quantity this trace draws.

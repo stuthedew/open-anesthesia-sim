@@ -33,6 +33,7 @@ from PySide6.QtWidgets import (
     QAbstractButton,
     QApplication,
     QComboBox,
+    QDialog,
     QLabel,
     QLayout,
     QScrollArea,
@@ -189,7 +190,9 @@ def _advance_to(controller: SimulationController, elapsed_s: float) -> None:
         controller.advance(SIMULATION_STEP_S)
 
 
-def _shown_view(application: QApplication, *controllers: SimulationController) -> SimulationView:
+def _shown_view(
+    application: QApplication, *controllers: SimulationController, width_px: int = _WINDOW_WIDTH_PX
+) -> SimulationView:
     """A dashboard over these runs, shown at the fixed size and presented once.
 
     The order is the one `main.py` follows: show, let the layout settle, then
@@ -199,12 +202,32 @@ def _shown_view(application: QApplication, *controllers: SimulationController) -
     _delete_shown_views(application)
     view = SimulationView(controllers)
     _SHOWN_VIEWS.append(view)
-    view.resize(_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX)
+    view.resize(width_px, _WINDOW_HEIGHT_PX)
     view.show()
     application.processEvents()
     view.present(False)
 
     return view
+
+
+def _settle(application: QApplication) -> None:
+    """Deliver the deferred deletions and events an action has posted."""
+
+    application.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    application.processEvents()
+
+
+def _widest_chord_px(view: SimulationView) -> int:
+    """The widest gap, in plot pixels, between two consecutive drawn alveolar instants."""
+
+    chart = view._concentration_chart
+    times, percents = chart.drawn_points(0, RecordedQuantity.ALVEOLAR)
+    xs = [
+        chart.plot_pixel(time_s, percent)[0]
+        for time_s, percent in zip(times, percents, strict=True)
+    ]
+
+    return max(right - left for left, right in zip(xs, xs[1:], strict=False))
 
 
 def _page_of(view: SimulationView) -> QWidget:
@@ -1321,6 +1344,106 @@ def test_a_frame_that_cannot_be_drawn_on_a_discrete_action_halts_every_run(
         assert "RuntimeError" in notice
 
 
+def test_a_halt_whose_frame_cannot_be_drawn_is_still_shown_on_every_run(
+    application: QApplication,
+) -> None:
+    """The frame is the shared render path, and a halt for its raise cannot wait for it.
+
+    Every controller is failed; what a reader has to see is the status word
+    and the banner saying so, which need no frame. With one run's refresh
+    raising on every attempt, the halt's own presentation raises too and is
+    swallowed - and before `present_halt`, both status words went on
+    reading the state before the raise with no banner under either.
+    """
+
+    first = SimulationController()
+    second = SimulationController()
+    first.start()
+    second.start()
+    view = _shown_view(application, first, second)
+
+    def failing_refresh(snapshot: object, frame: object, run_index: int) -> None:
+        raise RuntimeError("this run's widgets could not be written")
+
+    view.runs[0].refresh = failing_refresh  # type: ignore[method-assign]
+
+    view.render_tick()
+
+    for controller in (first, second):
+        assert controller.is_running is False
+        assert controller.has_failed is True
+
+    for run in view.runs:
+        assert run._status_text.text() == "Stopped — simulation error"
+        notice = run._notice_text.notice()
+        assert notice is not None
+        assert "RuntimeError: this run's widgets could not be written" in notice
+        assert run._pause_button.isEnabled() is False
+        assert run._start_button.isEnabled() is False
+
+
+def test_two_runs_that_come_to_be_on_different_agents_halt_visibly(
+    application: QApplication,
+) -> None:
+    """The same failure through a real refusal rather than a patched one.
+
+    `assemble_chart_frame` refuses two runs on two agents on every attempt,
+    so the halt it causes can never be drawn as a frame; each run still says
+    it stopped, and why, from its own snapshot.
+    """
+
+    first = SimulationController()
+    second = SimulationController()
+    view = _shown_view(application, first, second)
+    second.set_agent("desflurane")
+    first.start()
+
+    view.render_tick()
+
+    for controller in (first, second):
+        assert controller.is_running is False
+        assert controller.has_failed is True
+        reason = controller.snapshot().failure_reason
+        assert reason is not None
+        assert reason.startswith("ValueError")
+
+    for run in view.runs:
+        assert run._status_text.text() == "Stopped — simulation error"
+        notice = run._notice_text.notice()
+        assert notice is not None
+        assert "ValueError" in notice
+
+
+def test_a_resize_while_paused_redraws_the_frame_for_the_new_width(
+    application: QApplication,
+) -> None:
+    """`PL-GS3R`: no chord wider than a pixel, at the width the plot has now.
+
+    A frame is assembled for the width it is drawn on, so the one on screen
+    is right for that width only. Paused, with nothing owed, nothing would
+    redraw after a resize, and the columns drawn for the narrow plot would
+    stand on the wide one at twice the chord.
+    """
+
+    controller = _paused_run_with_history()
+    view = _shown_view(application, controller, width_px=800)
+    presented = view.presented_frames
+
+    view.resize(1600, _WINDOW_HEIGHT_PX)
+    application.processEvents()
+
+    assert _widest_chord_px(view) > 1, "the resize did not widen the plot under the old frame"
+
+    view.render_tick()
+
+    assert view.presented_frames == presented + 1
+    assert _widest_chord_px(view) <= 1
+
+    view.render_tick()
+
+    assert view.presented_frames == presented + 1, "the tick kept drawing with nothing owed"
+
+
 # ---------------------------------------------------------- the playback
 
 
@@ -1583,6 +1706,28 @@ def test_the_running_agent_display_is_already_correct_before_it_is_shown(
     assert scheme.foreground in run._running_agent_text.styleSheet()
 
 
+def test_building_a_run_view_opens_no_window_of_its_own(application: QApplication) -> None:
+    """A widget shown before a layout adopts it is a top-level window.
+
+    The selector and the chip have their visibility written as the view is
+    built, before any layout places them, so each is built with the view as
+    its parent; a parentless one shown there opened a window of its own
+    beside the dashboard (`PL-25KS`).
+    """
+
+    host = QWidget()
+    windows_before = len(application.topLevelWindows())
+
+    run = RunView(SimulationController(), host)
+    application.processEvents()
+
+    assert len(application.topLevelWindows()) == windows_before
+    assert run.parent() is host
+
+    host.deleteLater()
+    _settle(application)
+
+
 def test_the_delivered_label_on_screen_names_the_current_agent(application: QApplication) -> None:
     """Regression for a label hardcoded to "Delivered sevoflurane"."""
 
@@ -1741,6 +1886,63 @@ def test_dismissing_the_confirmation_keeps_the_current_case(application: QApplic
     assert controller.snapshot().elapsed_s == before.elapsed_s
     assert run._agent_dropdown.currentData() == before.agent_id
     assert run._new_case_dialog is None
+
+
+@pytest.mark.parametrize("answer", ["keep", "discard"])
+def test_an_answered_confirmation_is_gone_from_the_view_and_its_strings(
+    application: QApplication, answer: str
+) -> None:
+    """A question that has been answered is not part of the interface.
+
+    Deleted once its `finished` has been read, or every confirmation ever
+    asked stays a child of the run: its title on `interface_strings` and its
+    widgets in every walk of the tree (`PL-25KS`).
+    """
+
+    controller = _paused_run_with_history()
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+
+    _select_agent(run, "desflurane")
+    dialog = run._new_case_dialog
+    assert dialog is not None
+    title = dialog.windowTitle()
+    assert title in view.interface_strings()
+
+    (dialog.keep_button if answer == "keep" else dialog.discard_button).click()
+    _settle(application)
+
+    assert run.findChildren(QDialog) == []
+    assert title not in view.interface_strings()
+    assert controller.snapshot().agent_id == ("sevoflurane" if answer == "keep" else "desflurane")
+
+
+def test_a_selection_while_a_confirmation_is_open_does_not_retarget_its_answer(
+    application: QApplication,
+) -> None:
+    """The open dialog names one agent, and its answer starts that agent and no other.
+
+    A second selection while the question stands is reverted and not
+    answered; before the guard it opened a second dialog and moved the
+    pending agent, so the first dialog's discard started the second agent.
+    """
+
+    controller = _paused_run_with_history()
+    run = _shown_view(application, controller).runs[0]
+
+    _select_agent(run, "desflurane")
+    first = run._new_case_dialog
+    assert first is not None
+
+    _select_agent(run, "isoflurane")
+
+    assert run._new_case_dialog is first
+    assert run.findChildren(QDialog) == [first]
+    assert run._agent_dropdown.currentData() == "sevoflurane"
+
+    first.discard_button.click()
+
+    assert controller.snapshot().agent_id == "desflurane"
 
 
 def test_reselecting_the_running_agent_discards_nothing_and_asks_nothing(
@@ -2646,3 +2848,19 @@ def test_the_interface_walk_reaches_the_axis_titles_and_the_accessible_names(
         TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=style.label)
         for style in COMPARTMENT_TRACES
     } <= strings
+
+
+def test_the_dashboard_carries_the_educational_disclaimer(application: QApplication) -> None:
+    """`PL-GMM7`: the educational disclaimer is on the dashboard, verbatim.
+
+    `test_the_educational_disclaimer_says_what_the_tool_is_not` pins the
+    words; this holds that the dashboard places them where a reader meets
+    them, at the foot of the page, so the string the project's regulatory
+    posture rests on cannot silently leave the screen.
+    """
+
+    from anesthesia_sim.app.dashboard_frame import USE_DISCLAIMER_TEXT
+
+    view = _shown_view(application, SimulationController())
+
+    assert USE_DISCLAIMER_TEXT in view.interface_strings()

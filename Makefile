@@ -152,8 +152,8 @@ check: sync
 # `app/theme.py` and `app/simulation_view.py` happened to carry no 3.12+ syntax
 # - one PEP 695 generic added to either turned the CI floor section red for a
 # reason having nothing to do with the change. It still reads those constants
-# with `ast` rather than importing them, because `app/simulation_view.py`
-# imports Flet.
+# with `ast` rather than importing them, because the interface imports PySide6
+# and a hook or a bare checkout has no toolkit to load.
 #
 # `workflow_paths_check.py` joined them under `PL-JBZK` for the same reason
 # about its input: it reads every file under `tests/` with `ast` to decide

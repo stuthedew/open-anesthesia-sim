@@ -7,7 +7,7 @@ physiological calculation - the one unit conversion is the
 fraction-to-percent the delivered dial is displayed in, and it is delegated
 to `formatting.py` rather than spelled out again.
 
-It is separate from the view for the reason `chart_series.py` and
+It is separate from the view for the reason `chart_frame.py` and
 `formatting.py` are: what the timeline *means* is a
 presentation-correctness concern rather than a layout one. The record the
 controller keeps is faithful to the run - one entry per setting the model

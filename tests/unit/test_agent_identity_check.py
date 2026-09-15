@@ -397,6 +397,8 @@ def test_the_success_line_states_what_it_measured(
     assert "1 control(s) carry the agent colour" in out
     assert "2 disabled-state write(s) read across 2 module(s)" in out
     assert "1 of them on identity controls" in out
+    # The dropdown built from `colors` in `__init__`; nothing coloured by a call.
+    assert "1 construction-time and 0 call-time agent colouring(s)" in out
 
 
 # --- the setter spelling (PL-25KS) -------------------------------------------
@@ -517,6 +519,162 @@ def test_the_success_line_counts_setter_spelled_writes(
     # attribute write in the other module; the chip's setVisible is a hide.
     assert "3 disabled-state write(s) read across 2 module(s)" in out
     assert "1 of them on identity controls" in out
+    # The Qt fixture colours nothing outside the writer, and the line says so
+    # rather than leaving an empty rule-2 measurement indistinguishable from
+    # one earned.
+    assert "0 construction-time and 0 call-time agent colouring(s)" in out
+
+
+# --- rule 2 in the setter spelling (PL-25KS port review) ----------------------
+
+
+def test_a_control_coloured_by_a_call_outside_the_writer_must_follow_the_agent(
+    tmp_path: Path,
+) -> None:
+    """Rule 2's Qt half: a `setStyleSheet` in `__init__` on a control the writer never writes.
+
+    The port review found rule 2 reading `self.X = ...` alone, so on a tree
+    that colours by call statement it measured nothing while its docstring
+    said it kept rule 1's coverage claim true. This is the stale-badge bug
+    in the spelling the PySide6 build would reintroduce it in.
+    """
+
+    source = PAIRED_QT_SOURCE.replace(
+        '        self._start_button = QPushButton("Start")\n',
+        '        self._start_button = QPushButton("Start")\n'
+        '        scheme = AGENT_COLOR_SCHEMES["demoflurane"]\n'
+        "        self._swatch = QLabel()\n"
+        '        self._swatch.setStyleSheet(f"background-color: {scheme.fill};")\n',
+    )
+
+    found = agent_identity_check.problems(_module(tmp_path, "run_view.py", source))
+
+    assert len(found) == 1
+    assert "run_view.py:RunView._swatch" in found[0]
+    assert "self._swatch.setStyleSheet(...)" in found[0]
+    assert "RunView.__init__" in found[0]
+    assert agent_identity_check.IDENTITY_WRITER in found[0]
+
+
+def test_a_call_colouring_of_an_identity_control_outside_the_writer_is_quiet(
+    tmp_path: Path,
+) -> None:
+    """The same call on a control the writer does write is inside the set, and is counted."""
+
+    source = PAIRED_QT_SOURCE.replace(
+        '        self._start_button = QPushButton("Start")\n',
+        '        self._start_button = QPushButton("Start")\n'
+        '        scheme = AGENT_COLOR_SCHEMES["demoflurane"]\n'
+        '        self._agent_dropdown.setStyleSheet(f"color: {scheme.foreground};")\n',
+    )
+
+    report = agent_identity_check.analyze(_module(tmp_path, "run_view.py", source))
+
+    assert report.problems == ()
+    assert report.constructed_colorings == 0
+    assert report.call_colorings == 1
+
+
+def test_a_scheme_local_handed_whole_to_a_helper_is_read(tmp_path: Path) -> None:
+    """`setStyleSheet(_text_stylesheet(scheme))`: the colour travels inside the local.
+
+    The shipped writer colours every control this way, so a rule 2 that read
+    only `scheme.fill` - the attribute access - would see a helper call as
+    colourless and let the Qt build's own idiom past it.
+    """
+
+    source = PAIRED_QT_SOURCE.replace(
+        '        self._start_button = QPushButton("Start")\n',
+        '        self._start_button = QPushButton("Start")\n'
+        '        scheme = AGENT_COLOR_SCHEMES["demoflurane"]\n'
+        "        self._swatch = QLabel()\n"
+        "        self._swatch.setStyleSheet(_text_stylesheet(scheme))\n",
+    )
+
+    found = agent_identity_check.problems(_module(tmp_path, "run_view.py", source))
+
+    assert len(found) == 1
+    assert "_swatch" in found[0]
+
+
+def test_a_per_item_colouring_through_set_item_data_is_read(tmp_path: Path) -> None:
+    """The selector's items take the table inline as a keyword-free positional `QColor`."""
+
+    source = PAIRED_QT_SOURCE.replace(
+        '        self._start_button = QPushButton("Start")\n',
+        '        self._start_button = QPushButton("Start")\n'
+        "        self._other_selector = QComboBox()\n"
+        "        self._other_selector.setItemData(\n"
+        '            0, QColor(AGENT_COLOR_SCHEMES["demoflurane"].fill), BACKGROUND_ROLE\n'
+        "        )\n",
+    )
+
+    found = agent_identity_check.problems(_module(tmp_path, "run_view.py", source))
+
+    assert len(found) == 1
+    assert "_other_selector" in found[0]
+    assert "setItemData" in found[0]
+
+
+def test_the_writers_own_calls_are_the_identity_set_and_not_a_rule_two_finding(
+    tmp_path: Path,
+) -> None:
+    """Rule 2 skips the writer: its body defines the set it would otherwise be judged against."""
+
+    report = agent_identity_check.analyze(_module(tmp_path, "run_view.py", PAIRED_QT_SOURCE))
+
+    assert report.problems == ()
+    assert report.call_colorings == 0
+    assert set(report.controls) == {"_agent_dropdown", "_running_agent_display"}
+
+
+def test_a_keyword_argument_setter_is_read_by_rule_one(tmp_path: Path) -> None:
+    """`setEnabled(enabled=not E)` is a disabled write, and one with no hide is the finding.
+
+    The port review found the keyword form skipped, which is a disabled
+    write read as nothing - the `PL-JRS3` failure on a narrower door.
+    """
+
+    source = PAIRED_QT_SOURCE.replace(
+        "        self._agent_dropdown.setDisabled(snapshot.is_running)\n"
+        "        self._agent_dropdown.setHidden(snapshot.is_running)\n",
+        "        self._agent_dropdown.setEnabled(enabled=not snapshot.is_running)\n",
+    )
+
+    found = agent_identity_check.problems(_module(tmp_path, "run_view.py", source))
+
+    assert len(found) == 1
+    assert "_agent_dropdown" in found[0]
+    assert "setVisible(not snapshot.is_running)" in found[0]
+
+
+def test_a_keyword_argument_hide_pairs_with_its_disabled_write(tmp_path: Path) -> None:
+    """The hiding side reads a keyword too, so a pairing spelled that way is quiet."""
+
+    source = PAIRED_QT_SOURCE.replace(
+        "        self._agent_dropdown.setHidden(snapshot.is_running)\n",
+        "        self._agent_dropdown.setHidden(hidden=snapshot.is_running)\n",
+    )
+
+    assert agent_identity_check.problems(_module(tmp_path, "run_view.py", source)) == []
+
+
+def test_an_unpacked_argument_is_not_guessed_at(tmp_path: Path) -> None:
+    """`setEnabled(**flags)` states no condition this check can read, so it is skipped.
+
+    Skipped rather than read as a write with no hide: a finding naming a
+    condition the source never wrote would be the check inventing evidence.
+    The fixture keeps the transport's plain `setEnabled` so the measurement
+    set stays non-empty and the answer is about the unpacking alone.
+    """
+
+    source = PAIRED_QT_SOURCE.replace(
+        "        self._agent_dropdown.setDisabled(snapshot.is_running)\n"
+        "        self._agent_dropdown.setHidden(snapshot.is_running)\n",
+        "        self._agent_dropdown.setDisabled(**flags)\n",
+    )
+
+    assert agent_identity_check.problems(_module(tmp_path, "run_view.py", source)) == []
 
 
 # --- the shipped tree --------------------------------------------------------
@@ -541,6 +699,20 @@ def test_the_shipped_view_carries_every_identity_control_it_declares() -> None:
         "_agent_dropdown",
     }
     assert report.writer.endswith(":RunView._apply_agent_color_scheme")
+
+
+def test_the_shipped_view_gives_rule_two_something_to_read() -> None:
+    """The selector's per-item colours are set by call in `__init__`, and rule 2 reads them.
+
+    A zero here would mean the shipped tree colours by a spelling rule 2 does
+    not read, which is the empty measurement the port review found and is
+    not a state to pass through quietly.
+    """
+
+    report = agent_identity_check.analyze(REPO_ROOT)
+
+    assert report.problems == ()
+    assert report.call_colorings > 0
 
 
 def test_the_shipped_view_renders_no_identity_control_disabled() -> None:
