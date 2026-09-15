@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, README.md, tests/integration
 added: 2026-09-14
 closed: 2026-09-15
+pr: 588
 verify: uv run pytest tests/integration/test_simulation_view.py && grep -rqF 'def test_the_hover_readout_states_the_agent_compartment_and_both_units' tests/ && grep -q 'on hovering a drawn point' README.md
 ---
 

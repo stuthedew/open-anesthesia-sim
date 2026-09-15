@@ -8,8 +8,10 @@ classes: infra, session-cost, ux
 touches: tests/integration/test_qt_rendering.py, docs/worker.md
 added: 2026-09-05
 closed: 2026-09-15
+pr: 588
 verify: uv run pytest tests/integration/test_qt_rendering.py && grep -q 'def test_a_screenshot_of_the_running_interface_can_be_written' tests/integration/test_qt_rendering.py
 ---
+
 **Problem.** `docs/worker.md` and the `run` skill both assume a session can
 start the application and look at it. In the Claude-Code-on-the-web container
 it cannot. Measured 2026-09-05 while closing `PL-90Y6` (the MAC-awake band
