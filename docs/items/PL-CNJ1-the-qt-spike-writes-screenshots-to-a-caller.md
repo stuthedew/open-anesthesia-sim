@@ -8,6 +8,7 @@ classes: defect, docs
 touches: .gitignore, docs/worker.md, spikes/qt/qt_spike.py
 added: 2026-09-15
 closed: 2026-09-15
+pr: 589
 verify: python3 tools/doc_check.py check && git check-ignore -q --no-index out/dashboard.png && grep -q 'out/dashboard.png' docs/worker.md
 ---
 
