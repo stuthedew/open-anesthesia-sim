@@ -8,7 +8,7 @@ classes: test, infra
 feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/ARCHITECTURE.md
 added: 2026-08-30
-verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_file_outside_a_childless_directory_still_needs_a_line' tests/unit/test_doc_check.py
+verify: grep -q 'covered_dirs' tests/unit/test_doc_check.py && ! grep -q 'no tree draws one today' docs/ARCHITECTURE.md && uv run pytest tests/unit/test_doc_check.py
 ---
 
 **Problem.** `TreeMap.covered_dirs` in `tools/doc_check.py` handles a directory
@@ -35,6 +35,24 @@ exists while nothing demonstrates that it does.
 Low urgency — no clinical value is reached by any of it, and `make check` is
 green either way.
 
+**Its `verify:` was rewritten 2026-09-15, having turned `main` red (`PL-B5VM`).**
+The command was `uv run pytest tests/unit/test_doc_check.py -k covered`. That
+was honest when this item was captured — `-k covered` then matched no test, so
+pytest exited 5 and the command failed, which is what an open item's command
+must do. It did not stay honest: #593 (`PL-MXSL`, `PL-F933`, commit `7ba6108e`)
+added `test_a_braced_citation_is_exempt_only_when_every_expansion_is_covered`,
+a test about citations a `.gitignore` covers and nothing whatever to do with
+`TreeMap.covered_dirs`. `-k` matched it on the substring, the command began
+passing, and the whole-store `docket check --verify` on `main` reported this
+item as work that had landed without being closed. None of its work had been
+done — `covered_dirs` still appears nowhere in `tests/unit/test_doc_check.py`.
+
+The replacement keys on both halves of "Done when" above rather than on a test
+name: the test file must name `covered_dirs`, which only this item's work puts
+there, and `docs/ARCHITECTURE.md` must no longer carry the "no tree draws one
+today" clause this item is meant to replace. Confirmed failing on the tree as
+found.
+
 **Where.** `tools/doc_check.py:196-212` (`TreeMap`), `:312` (construction),
 `:356` (the parent walk); `tests/unit/test_doc_check.py`;
 `docs/ARCHITECTURE.md`'s "Developer tooling (`tools/`)" section, which
@@ -53,8 +71,9 @@ would be rebuilt the next time a subtree needs it.
 branch in both directions, and `docs/ARCHITECTURE.md`'s claim about it names
 the test rather than noting that no tree uses it.
 
-**Corrected 2026-09-15 (`PL-Y1W6`).** Two repairs, neither of them this item's
-own work:
+**Corrected 2026-09-15 (`PL-Y1W6`, after `PL-B5VM`).** Two findings about this
+item's own text, neither of them its work. `PL-B5VM` fixed the second in `#598`
+before this landed; the first is what this carries:
 
 - The **Problem.** paragraph said "None is exercised by
   `tests/unit/test_doc_check.py`". That was false when written -
@@ -62,11 +81,5 @@ own work:
   months. Half of what this item asks for already exists, so the outstanding
   work is the negative direction and the `docs/ARCHITECTURE.md` prose, not a
   test from nothing.
-- The `verify:` command was `uv run pytest tests/unit/test_doc_check.py -k
-  covered`, a bare `-k`. `#593` added
-  `test_a_braced_citation_is_exempt_only_when_every_expansion_is_covered`;
-  `-k` matches substrings, so the selector began matching a braced-citation
-  test with nothing to do with this item, selected it, passed, and turned
-  `main` red on `docket check --verify`. Replaced with the paired shape the
-  `docket` skill prescribes - the file's whole suite, which proves it healthy,
-  and a `grep` naming the exact test this item owes.
+- The `verify:` command was a bare `-k`, and `PL-B5VM` replaced it in `#598`.
+  That half is landed; only the correction above arrives here.
