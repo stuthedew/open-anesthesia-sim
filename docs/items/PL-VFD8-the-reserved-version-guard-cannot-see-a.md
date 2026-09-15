@@ -93,3 +93,43 @@ section moved to `v0.4.26`, `wave` binds `step = v0.4.x` and
 `milestone = v0.5.0`, so a simulated `release_offer` on a `0.4.26` bump returns
 `stands` and a patch cut mid-port is offered the port's own number. Its
 `Done when` is this item's verbatim. Close both together.
+
+**It stopped being hypothetical on 2026-09-15, and by a fourth door.** Observed
+on `origin/main` at `17403970`, `bin/docket digest`:
+
+```
+Releasable: 42 finished item(s) since 0.4.25. Offer 0.5.0 before taking new work.
+Plan: 0.4.25, between numbered steps (v0.4.x - the code is the model). Beat:
+implement v0.4.26 - the interface moves to Qt - the timeline puts it before
+v0.5.0 - the case you can branch, whose gate is clear, 19 of 26 Required scope
+ids closed and 7 still open.
+```
+
+Two adjacent lines contradicting each other in every session's first read: cut
+0.5.0, and the milestone holding 0.5.0 has not been reached.
+
+**This arrangement is outside what the docstring claims is reachable**, which
+is worth more than the instance. `ReleaseOffer`'s docstring says the case
+neither carrier sees is "an unscoped milestone, which has a timeline row and no
+section yet". **v0.5.0 is fully scoped** - goal, Required scope, definition of
+done, frozen gate. What put it out of reach was `PL-RKWB` moving the Qt port
+*between* the step the project stands on and that milestone on 2026-09-14: both
+carriers reach one row, and nothing reaches two. So the blind spot is a
+*distance* rather than a *state*, and the docstring's statement of its own
+limits is too narrow. Correct that with the fix.
+
+**What made it visible rather than what caused it.** Gate 1's last clearable
+entry closed in `#597`, moving the beat from `clear` to `implement`; the
+suppression had been firing through the `clear` path. Nothing about `#597`
+touched this code.
+
+**Four doors now, and that is the argument against a fifth carrier.**
+`PL-KD98` moved the release beat off `step`; `PL-6T4L` added the
+`plan.milestone` carrier; `PL-J45M` added the `own_scope` guard; `PL-188T` is
+the patch-cut-mid-port door; this is the scoped-milestone-two-rows-ahead door.
+Each previous fix added a carrier for whichever arrangement had just bitten. A
+fix should say why enumeration terminates, or stop enumerating - ask the
+roadmap which unshipped sections and rows reserve a version and check the
+suggestion against all of them, which terminates by construction. `PL-WK0N`
+was filed for this instance before `PL-VFD8` was found and is dropped into
+this item.

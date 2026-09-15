@@ -1,8 +1,16 @@
 ---
 id: PL-WK0N
 title: The digest now says 'Offer 0.5.0 before taking new work' while the roadmap still gives 0.5.0 to the unfinished 'case you can branch', because the Qt port moved between the current step and that milestone and neither of release.py's two reserving carriers reaches a row two positions ahead
-status: untriaged
+priority: P2
+status: dropped
 added: 2026-09-15
+closed: 2026-09-15
+reason: Duplicate of PL-VFD8, the reserved-version guard's blind spot, which was
+  filed 2026-09-14 and already names PL-188T as the same defect by a third door.
+  This is the fourth. Its evidence - the live digest line on origin/main at
+  17403970, and that the arrangement is a scoped milestone two rows ahead rather
+  than the unscoped one ReleaseOffer's docstring claims is the only reachable
+  case - is moved into PL-VFD8 rather than lost.
 ---
 
 **Problem.** The digest now says 'Offer 0.5.0 before taking new work' while the roadmap still gives 0.5.0 to the unfinished 'case you can branch', because the Qt port moved between the current step and that milestone and neither of release.py's two reserving carriers reaches a row two positions ahead
