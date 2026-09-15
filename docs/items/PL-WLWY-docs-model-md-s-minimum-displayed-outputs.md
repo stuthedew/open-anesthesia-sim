@@ -105,3 +105,21 @@ requires of a customizable, multi-window layout - which values no workspace may
 remove, by what mechanism that is guaranteed, and what a second window owes -
 and `ROADMAP.md` item 34 names the constraint rather than leaving it to be
 discovered during scoping.
+
+**Extended 2026-09-15 to cover an in-window floating panel** (`PL-T86Q`). Item
+34 no longer forecloses floating: tiled-first is sequencing, and the option to
+take an area out into a floating window is wanted later. It points here for the
+constraint floating is subject to, so this item owes an answer covering both
+shapes rather than windows alone:
+
+- a **second top-level window** dragged over the one carrying the minimum
+  display, which the three readings above are about; and
+- a **floating panel inside a window**, overlapping the tiled areas beneath it,
+  which none of them reaches.
+
+They are one question stated at the right level: *nothing may cover a value the
+display is required to show while the application still believes it is showing
+it.* Answer it as a property of the display - which values, guaranteed by what
+mechanism, surviving any layout the learner chose - rather than as a rule about
+window types, and both shapes fall out of it. A per-mechanism answer is what
+produced the overreach `PL-T86Q` had to correct.
