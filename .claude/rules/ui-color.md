@@ -43,12 +43,12 @@ keeps the checked set complete.
    says nothing when it stops. Write the method or attribute the color is set
    on — `` `_status_text` ``, `` `_build_metric_panel` `` — bare, so `` `mount` ``
    rather than `` `mount()` ``. The tool refuses a line number and resolves
-   every symbol you name against `app/theme.py` and `app/simulation_view.py`,
+   every symbol you name against every module under `app/`,
    so a rename fails `make check` instead of rotting quietly (`PL-GJDW`).
 
    **The color itself goes in `app/theme.py`, and nowhere else** (`PL-2CS8`).
    `check_colors_live_in_the_theme` fails the build on a color constant
-   declared in `app/simulation_view.py`, so this is enforced rather than
+   declared in any other module under `app/`, so this is enforced rather than
    remembered. The symbol you *cite* may still be a method in the view - that
    is where a color is drawn, and citing it is the point.
 

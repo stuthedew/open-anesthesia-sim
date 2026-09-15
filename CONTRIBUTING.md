@@ -73,7 +73,7 @@ four that come up most often:
 2. **Add or update a test with every behavior change.** This is separate from
    the coverage gate and is not waived by it.
 3. **Keep simulation code independent of the interface.** Nothing in
-   `src/anesthesia_sim/core/` may import Flet, and no simulation arithmetic
+   `src/anesthesia_sim/core/` may import the interface toolkit, and no simulation arithmetic
    belongs in a UI callback.
 4. **Keep results deterministic.** Identical inputs and model version produce
    identical outputs; simulation time is explicit state, never wall-clock time.

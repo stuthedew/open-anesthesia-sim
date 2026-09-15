@@ -65,7 +65,7 @@ MUTED = "#59728A"
 # urgency, which is why footnote b obligates them and nothing obligates this.
 #
 # The interface already runs this as a signal economy one level down, at
-# `simulation_view.py`'s supported-run-length boundary: that boundary is
+# `dashboard_frame.py`'s supported-run-length status word: that boundary is
 # MUTED, not WARNING, because colouring a correct model's declared boundary as
 # a fault teaches a reader to distrust a number that is sound, and would spend
 # the one signal this interface has for a real one.
@@ -119,7 +119,7 @@ class AgentColorScheme:
 # for the whole of every run - Flet/Material paints a disabled control's label
 # in the theme's disabled-content grey, which is a colour this file does not
 # declare and `tools/contrast_check.py` therefore cannot measure, over a fill
-# that stayed saturated (PL-61WW). The fix is in `app/simulation_view.py` and
+# that stayed saturated (PL-61WW). The fix is in `app/run_view.py` and
 # is structural rather than a colour: nothing carrying agent identity is
 # disabled, so the pair measured here is the pair rendered. A new use of these
 # colours owes the same question - is anything between this constant and the

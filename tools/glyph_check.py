@@ -101,10 +101,10 @@ DATA_TREE = Path("src/anesthesia_sim/data")
 CONFIRMED: dict[int, str] = {
     0x00A0: (
         "NO-BREAK SPACE - EMPTY_METRIC_QUALIFIER and EMPTY_METRIC_SECONDARY_VALUE in "
-        "app/simulation_view.py, which draw a full line of the qualifier's size where a "
-        "blank string collapses to zero height in Flutter. Its rendered height is what "
-        "keeps every reading in the readout row on one baseline, so it has shipped "
-        "rendered and observed."
+        "app/dashboard_frame.py, which drew a full line of the qualifier's size where a "
+        "blank string collapsed to zero height in Flutter. Its rendered height is what "
+        "kept every reading in the readout row on one baseline, so it shipped rendered "
+        "and observed on the Flet build; PL-L9RD's rider re-confirms the six under Qt."
     ),
     0x00B1: "PLUS-MINUS SIGN - rendered in the wash-in tolerance readout (PL-8XPQ, 2026-09-04).",
     0x00B7: "MIDDLE DOT - rendered in the control-change list (PL-8XPQ, 2026-09-04).",
