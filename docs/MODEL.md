@@ -1714,6 +1714,18 @@ at all** — its `Blood` row reads 5.00 L. `PL-3YZW` carries that gap and
 chain ends in a measurement or in another compilation. It ends in neither, and
 the reading is the next four paragraphs.
 
+**A second Workbook page, read 2026-09-15, carries three of those four.** The
+whole Workbook reached the private corpus that day, and Appendix C, "Gas Man
+System Defaults", pages 171–72, prints the program's `GASMAN.INI` verbatim. Its
+`[Volumes]` block gives `CKT=8.0`, `ALV=2.5`, `VRG=6.0`, `MUS=33.0`, `FAT=14.5`
+and `VEN=1.0`; `[Ratio]` gives `76`, `18`, `6`; `[Defaults]` gives `VA=4` and
+`CO=5`. So alveolar ventilation is stated as a number rather than described,
+cardiac output no longer rests on a column sum, and the venous pool's 1.0 L is
+in the document after all — only `weight_kg` is in neither appendix. **Nothing
+is promoted by any of it.** These are one program's defaults written down twice,
+tier 3 both times, and the venous pool has since moved off Gas Man entirely.
+What it corrects is the record of which page the numbers were read from, below.
+
 **Lowe and Ernst has now been read at the source, and the chain does not end
 there.** On 2026-09-08 the project owner supplied pages 55–60 and 82–84 as an
 interlibrary-loan scan — the pages having been narrowed to 57 and 83 by two
@@ -2036,26 +2048,37 @@ agreement is a property of the time constant rather than of the volume, and it
 was not evidence of a shared lineage — nothing documents Gas Man as having taken
 anything from this paper.
 
-**Where 1.0 L actually came from is now answerable, and the answer is: from
-here.** The value entered the repository on 2026-08-22 in `875ba08`, "Build
-v0.1.0 sevo patient simulation", the tenth commit — written into the data file
-alongside the rest of the reference patient and carrying the citation "Gas Man
-Workbook and Laboratory Manual. Default Options: Patient Defaults", whose note
-read "The default 70 kg patient uses alveolar volume 2.5 L, venous volume 1.0 L,
-alveolar ventilation 4 L/min, cardiac output 5 L/min, tissue volumes
-6/33/14.5 L, and flow percentages 76/18/6". `PL-XTMB` later read that section at
-the source: it is Appendix E, page 183, and it describes the interface controls
-without carrying a number. The table that does carry numbers, Appendix B page
-168, has a `Blood` row of 5.00 L and nothing at 1.0.
+**Where 1.0 L came from is answerable, and the answer changed on 2026-09-15.**
+The value entered the repository on 2026-08-22 in `875ba08`, "Build v0.1.0 sevo
+patient simulation", the tenth commit — written into the data file alongside the
+rest of the reference patient and carrying the citation "Gas Man Workbook and
+Laboratory Manual. Default Options: Patient Defaults", whose note read "The
+default 70 kg patient uses alveolar volume 2.5 L, venous volume 1.0 L, alveolar
+ventilation 4 L/min, cardiac output 5 L/min, tissue volumes 6/33/14.5 L, and
+flow percentages 76/18/6". `PL-XTMB` read that section at the source: it is
+Appendix E, page 183, and it describes the interface controls without carrying a
+number. The table that does carry numbers, Appendix B page 168, has a `Blood`
+row of 5.00 L and nothing at 1.0. On that evidence this section said, until
+2026-09-15, that none of the four sources ever cited for the value contained it.
 
-**So the citation belonged to its neighbours.** Every other value in that
-sentence is in the Appendix B table or is an interface default; 1.0 L is the one
-that is in neither, and it inherited the reference the others had earned. All
-four sources ever cited for it have since been read — the Workbook at the source
-(`PL-XTMB`), Meybohm et al. at full text, Lowe and Ernst at one remove
-(`PL-7HDS`), and Davis and Mapleson at the source — and **none of them contains
-it**. It is this project's own modelling choice, and the only round number in
-the file with no counterpart anywhere.
+**It is in the Workbook, one appendix further on.** Appendix C's `GASMAN.INI`
+listing, page 172, reads `[Volumes] … VEN=1.0`, and the v0.1.0 note's sentence
+is that listing's three blocks item for item — the volumes, the flow fractions
+as the *percentages* `76`/`18`/`6` the INI writes rather than the table's
+0.76/0.18/0.06, and `VA=4` with `CO=5` from `[Defaults]`. So the original
+citation was **mis-sectioned rather than borrowed**: it named Appendix E, the
+numbers were read off Appendix C, and every value in that sentence including
+1.0 L is on that page. `PL-XTMB` and `PL-3YZW` quote Appendix B and Appendix E
+and never Appendix C; whether that page was among those supplied on 2026-09-06
+and went unread is not recorded.
+
+**None of which promotes the value or argues for restoring it.** `VEN=1.0` is a
+program default, tier 3, and Davis and Mapleson's 1222 ml — tier 2, and the same
+object this model has — was adopted on 2026-09-07 and stands. What changes is
+that the stored venous pool is a considered replacement for Gas Man's own
+default rather than the correction of an orphan, and that the one round number
+in this file with no counterpart anywhere is now `weight_kg`, which no equation
+reads.
 
 **So, three rules for a `sources` entry.**
 

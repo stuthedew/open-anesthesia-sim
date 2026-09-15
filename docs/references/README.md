@@ -181,11 +181,15 @@ PubMed does not index software manuals, so there is nothing to check the
 citation against. Every field above is read off the title page and the
 preface's sign-off, 2026-09-15, which is all this entry asserts.
 
-**The title cited across this repository is not the one on the title page.**
-Every `sources` entry under `src/anesthesia_sim/data/` naming this document
-calls it "Gas Man(R) Workbook and Laboratory Manual"; that string occurs zero
-times in its 209 pages, and the title page reads as quoted above. Correcting it
-across the data files is a change of its own and is not made by this entry.
+**The title this repository cited until 2026-09-15 is not the one on the title
+page.** Every `sources` entry under `src/anesthesia_sim/data/` naming this
+document called it "Gas Man(R) Workbook and Laboratory Manual", which `PL-XTMB`
+took from the cover and from the original PDF's `/Title` and `/Author` fields.
+That string occurs zero times in the document's 209 pages of text, and the
+title page reads as quoted above. The corpus's section PDFs were rewritten by
+`pypdf` and carry no `/Title`, so the two cannot be reconciled from anything
+this project holds; a citation follows the title page, and `PL-9GP1` changed
+the data files to match.
 
 **Why this one is load-bearing.** Gas Man is this project's reference
 implementation, and the `sources` notes trace the reference patient's eleven
@@ -195,7 +199,8 @@ the project owner"
 (`src/anesthesia_sim/data/patients/reference_adult.json`, 2026-09-06) — a
 route neither of the two in `.claude/rules/citing-sources.md`, recorded as a
 gap by `PL-XJ5P`. The whole document is now readable, which closes that gap.
-Three things found on reading it, none of which changes a stored value:
+Three things found on reading it (`PL-9GP1`), none of which changes a stored
+value:
 
 - **Appendix B, "The Gas Man Approach", Model Parameters table, p. 168** — the
   table `src/anesthesia_sim/data/patients/reference_adult.json` already
@@ -212,8 +217,9 @@ Three things found on reading it, none of which changes a stored value:
   ventilation. Both are scoped to Appendix B's table and are true of it;
   Appendix C is a different page and does carry the numbers. That makes neither
   value a measurement — they are the same program's defaults, tier 3 — but it
-  is where they are written down, and bringing it into those notes is a change
-  of its own.
+  is where they are written down. `PL-9GP1` brought it into those notes and
+  into `docs/MODEL.md`, which had recorded the venous pool's 1.0 L as a value
+  no source contained; no stored value changed.
 - **Appendix B's second table is mis-captioned.** Under "Tissue/Gas partition
   coefficients (calculated)" it lists Blood/Gas, Brain/Blood, Muscle/Blood and
   Fat/Blood rows, which are tissue/**blood** ratios. Every column reproduces as
