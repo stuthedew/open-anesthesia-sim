@@ -97,6 +97,19 @@ Four limits decide what a citation may claim:
   citations verified against PubMed; read that before opening a PDF. Verified
   end to end from this environment on 2026-09-13.
 
+  **Two of its holdings are whole textbooks**, added 2026-09-15 and split into
+  section PDFs in a folder each: *Modern Anesthetics* (Schüttler & Schwilden
+  2008, 22 chapters, each with its own DOI and PMID) and the *Workbook for Gas
+  Man*, this project's reference implementation described by its own author.
+  Together they cover inhalational and intravenous agents, uptake and
+  distribution, depth of anesthesia and the parameter set the simulator runs
+  on, so a science question with no obvious paper behind it starts there rather
+  than from memory or from a search. Each folder carries its own catalogue
+  indexing chapters, page ranges and identifiers; read it before opening a
+  section, and mind that a printed page number is not a PDF page number in
+  either book. Both remain tier 3 — a textbook chapter is a route to a
+  measurement, not the measurement.
+
   **A miss is an answer too, because the corpus is not the literature.** It
   holds what the project owner has supplied, and nothing else. Where a terminal
   source is not among its holdings the route really has ended: record the gap in

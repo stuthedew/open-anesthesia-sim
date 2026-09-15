@@ -73,6 +73,14 @@ is that argument applied to literature. The obligation and its home are settled
 here. What a note contains, and the first worked example, are `PL-Z3V5`'s and
 are deliberately not fixed here.
 
+**Two of its holdings are whole books**, added 2026-09-15 and split into
+section PDFs so none exceeds 100 pages: this volume and the Gas Man Workbook,
+both with entries below. Each lives in a folder of its own carrying a catalogue
+of its chapters, page ranges and identifiers, and that catalogue is what to read
+before opening a section — it will usually name the one file worth opening. A
+science question with no obvious paper behind it starts there rather than from
+memory.
+
 How a session attaches and reads the corpus — `add_repo`, the shallow clone,
 `poppler-utils` and `pdftotext -layout` — is in
 `.claude/rules/citing-sources.md`, which loads on this directory, so it is not
@@ -155,11 +163,89 @@ residual, 0.0028 pp at worst over the supported envelope.
 Read in full text on 2026-09-14 for the sections named above. §4.3's error
 taxonomy and §5's query rewriting were not read for this entry.
 
+### Philip — *Workbook for Gas Man*
+
+**Not held here. Held in the private corpus**,
+`stuthedew/open-anesthesia-sim-references`, which "Where owner-supplied full
+texts live now" above says how to attach. Supplied by the project owner
+2026-09-15, split into five section PDFs. It is the manual distributed with the
+Gas Man program and carries no licence permitting redistribution, so it may not
+sit in this directory.
+
+> Philip JH. *Workbook for Gas Man®: a simulation and teaching tool*.
+> Chestnut Hill, MA: Med Man Simulations, Inc.; title page dated 2012-05-16,
+> preface dated October 2010. 199 pages.
+
+**No DOI, ISBN or PubMed record**, deliberately: the document prints none, and
+PubMed does not index software manuals, so there is nothing to check the
+citation against. Every field above is read off the title page and the
+preface's sign-off, 2026-09-15, which is all this entry asserts.
+
+**The title cited across this repository is not the one on the title page.**
+Every `sources` entry under `src/anesthesia_sim/data/` naming this document
+calls it "Gas Man(R) Workbook and Laboratory Manual"; that string occurs zero
+times in its 209 pages, and the title page reads as quoted above. Correcting it
+across the data files is a change of its own and is not made by this entry.
+
+**Why this one is load-bearing.** Gas Man is this project's reference
+implementation, and the `sources` notes trace the reference patient's eleven
+parameters and all twelve stored partition coefficients to it. Until now the
+project had read only "a copy of the front matter and appendices supplied by
+the project owner"
+(`src/anesthesia_sim/data/patients/reference_adult.json`, 2026-09-06) — a
+route neither of the two in `.claude/rules/citing-sources.md`, recorded as a
+gap by `PL-XJ5P`. The whole document is now readable, which closes that gap.
+Three things found on reading it, none of which changes a stored value:
+
+- **Appendix B, "The Gas Man Approach", Model Parameters table, p. 168** — the
+  table `src/anesthesia_sim/data/patients/reference_adult.json` already
+  cites — reads exactly as that file records it.
+- **Appendix C, "Gas Man System Defaults", pp. 171–72** is a verbatim listing
+  of `GASMAN.INI`, and a second statement of the same parameter set: `Lambda`
+  (blood/gas) and `VRG`, `MUS`, `FAT` (tissue/gas) per agent, matching all
+  twelve stored coefficients, for nine agents. **It carries three values
+  Appendix B's table does not**: `[Volumes] VEN=1.0`, and `[Defaults] VA=4` and
+  `CO=5`. Two provenance notes in
+  `src/anesthesia_sim/data/patients/reference_adult.json` were written without
+  this page — one saying the venous pool value carried until 2026-09-07 appears
+  nowhere, the other that the workbook states no numeric default for alveolar
+  ventilation. Both are scoped to Appendix B's table and are true of it;
+  Appendix C is a different page and does carry the numbers. That makes neither
+  value a measurement — they are the same program's defaults, tier 3 — but it
+  is where they are written down, and bringing it into those notes is a change
+  of its own.
+- **Appendix B's second table is mis-captioned.** Under "Tissue/Gas partition
+  coefficients (calculated)" it lists Blood/Gas, Brain/Blood, Muscle/Blood and
+  Fat/Blood rows, which are tissue/**blood** ratios. Every column reproduces as
+  the first table's tissue/gas divided by that agent's blood/gas **except
+  isoflurane's**, which is divided by 1.90 — enflurane's blood/gas, not
+  isoflurane's 1.30. Appendix C's listing agrees with the first table, and so
+  does this repository. Take a Gas Man tissue/gas coefficient from the first
+  table or from Appendix C, and no isoflurane tissue/blood ratio from the
+  second.
+
+Its bibliography's reference 45 is "Yasuda, N, Targ, AG and Eger, EI II.
+Solubility of I-653, Sevoflurane, Isoflurane and Halothane in human tissues.
+Anesthesiology. Vol. A615 (Abstract), 69" — the 1988 abstract, not the 1989
+*Anesth Analg* paper of the same title. Its reference 23 is Lowe and Ernst
+1981, printed with the initial "HF" there and "HJ" at references 22 and 24, so
+that bibliography is internally inconsistent.
+
+Route and depth: the corpus's section PDFs, read with `pdftotext -layout` on
+2026-09-15 — the front matter, the table of contents, Appendices A–E and the
+bibliography in full, and every section's boundary pages. Chapters 1–19 were
+not read beyond those.
+
 ### Schüttler & Schwilden 2008 — *Modern Anesthetics*
 
-**Not held here.** Removed 2026-09-06 as publisher-copyright material this
-public repository may not redistribute; see "Redistribution" above. Reach it
-through the DOI.
+**Not held here. Held in the private corpus**,
+`stuthedew/open-anesthesia-sim-references`, which "Where owner-supplied full
+texts live now" above says how to attach. Removed from this public repository
+2026-09-06 as publisher-copyright material it may not redistribute; see
+"Redistribution" above. Supplied again by the project owner 2026-09-15, split
+into eight section PDFs, and placed in the corpus by their decision, with every
+other owner-supplied full text. Reachable from outside this project through the
+DOI.
 
 > Schüttler J, Schwilden H, editors. *Modern Anesthetics*. Handbook of
 > Experimental Pharmacology, vol. 182. Berlin, Heidelberg: Springer; 2008.
@@ -175,6 +261,40 @@ Those are already on the map rather than being new scope — `ROADMAP.md`'s
 "Planned milestones" items 13 (IV pharmacokinetic and effect-site models) and
 14 (a modular hypnosis/eBIS effect model). This is a starting point for
 sourcing when either is promoted into a scoped milestone, and not a source that
-has been read and checked yet. A chapter in an edited volume is cited as that
-chapter with its own authors, never as the volume.
+has been read and checked yet.
 
+**A chapter in an edited volume is cited as that chapter with its own authors,
+never as the volume**, and every field needed to do so is now recorded.
+PubMed indexes all 22 chapters as *Handb Exp Pharmacol.* 2008;(182):pages —
+the volume number sits in the issue field, so a search restricted to volume 182
+returns nothing — each with its own DOI, `10.1007/978-3-540-74806-9_N` for
+chapter *N*, and a PMID; they run consecutively from 18175084 for chapter 1 to
+18175105 for chapter 22. Verified against PubMed 2026-09-15. The corpus folder
+holds the whole table; four chapters are the ones this project would reach for
+first:
+
+- **Hendrickx JFA, De Wolf A. Special aspects of pharmacokinetics of inhalation
+  anesthesia.** pp. 159–86. PMID
+  [18175091](https://pubmed.ncbi.nlm.nih.gov/18175091/). The circle system, why
+  inhaled and intravenous kinetics are modelled differently, the F_A/F_I curve,
+  the general anesthetic equation, and the delivered-to-inspired discrepancy
+  under low fresh gas flow. **Same two authors as the De Wolf et al. 2012 *BMC
+  Anesthesiology* Gas Man simulation** that every file under
+  `src/anesthesia_sim/data/agents/` cites at tier 3 for its coefficients — a
+  different work, four years earlier, and easy to conflate with it.
+- **Bischoff P, Schneider G, Kochs E. Anesthetics drug pharmacodynamics.**
+  pp. 379–408. PMID [18175101](https://pubmed.ncbi.nlm.nih.gov/18175101/).
+- **Shafer SL, Stanski DR. Defining depth of anesthesia.** pp. 409–23. PMID
+  [18175102](https://pubmed.ncbi.nlm.nih.gov/18175102/). Depth as the
+  probability of non-response calibrated against stimulus strength.
+- **Meyer J-U, Kullik G, Wruck N, Kück K, Manigel J. Advanced technologies and
+  devices for inhalational anesthetic drug dosing.** pp. 451–70. PMID
+  [18175104](https://pubmed.ncbi.nlm.nih.gov/18175104/). Vaporizers,
+  desflurane's differential-pressure delivery, gas sensing, and closed-circuit
+  feedback control.
+
+Route and depth, as `.claude/rules/citing-sources.md` requires: the corpus's
+section PDFs, read with `pdftotext -layout` on 2026-09-15 for the front matter,
+the full table of contents and every section's boundary pages, plus PubMed
+metadata and abstracts for all 22 chapters. **No chapter has been read at full
+text**, so nothing here may yet be cited for a value.
