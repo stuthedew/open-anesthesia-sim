@@ -41,6 +41,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -71,7 +72,7 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.formatting import format_time_base
 from anesthesia_sim.app.qt_chart import ConcentrationChart, TraceLegend, WashInChart, WashInLegend
-from anesthesia_sim.app.qt_widgets import inert_splitter, styled_label
+from anesthesia_sim.app.qt_widgets import inert_splitter, selector_stylesheet, styled_label
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.theme import (
     APP_TITLE_SIZE,
@@ -98,6 +99,13 @@ _MILLISECONDS_PER_SECOND: Final = 1000
 #: the proportion the Flet build's 9:3 grid columns gave the same two panels.
 _CHART_COLUMN_STRETCH: Final = 3
 _SIDEBAR_STRETCH: Final = 1
+
+#: Spare height goes to the plots. The readout and setting sections are held
+#: to their own height by a vertical policy that can shrink but not grow, so
+#: a taller window lengthens the traces rather than opening blank space above
+#: and below a row of readouts. A splitter stretch factor would not do it: Qt
+#: multiplies a section's opening size by the factor, and only above one.
+_FIXED_SECTION_POLICY: Final = QSizePolicy.Policy.Maximum
 
 #: Object names the page and the chart panel are styled through.
 _PAGE_NAME: Final = "dashboardPage"
@@ -179,6 +187,7 @@ class SimulationView(QWidget):
         self._wash_in_legend = WashInLegend()
         self._time_base_dropdown = QComboBox()
         self._time_base_dropdown.setFixedWidth(TIME_BASE_SELECTOR_WIDTH)
+        self._time_base_dropdown.setStyleSheet(selector_stylesheet())
         self._time_base_dropdown.addItem(FIT_RUN_LABEL, userData=FIT_RUN_KEY)
 
         for time_base in SELECTABLE_TIME_BASES:
@@ -222,7 +231,8 @@ class SimulationView(QWidget):
         The notice banners sit under the transport rows and above every
         displayed value, so a halted run is read before the values it
         explains. The three sections below them - readouts, settings, and
-        the charts beside the sidebar - are splitter sections.
+        the charts beside the sidebar - are splitter sections, and only the
+        last of them takes spare height.
         """
 
         page = QWidget()
@@ -270,6 +280,10 @@ class SimulationView(QWidget):
 
         sections: list[QWidget] = [run.build_readout_section() for run in self._runs]
         sections.extend(run.build_parameter_controls() for run in self._runs)
+
+        for section in sections:
+            section.setSizePolicy(section.sizePolicy().horizontalPolicy(), _FIXED_SECTION_POLICY)
+
         sections.append(charts_and_sidebar)
         column.addWidget(inert_splitter(Qt.Orientation.Vertical, sections), 1)
         column.addWidget(styled_label(USE_DISCLAIMER_TEXT, color=WARNING, bold=True, wrap=True))
@@ -344,7 +358,13 @@ class SimulationView(QWidget):
     # ---------------------------------------------------------- presenting
 
     def present(self, coalesce: bool) -> None:
-        """Draw a frame now, or leave it to the render tick.
+        """Draw a frame now, or leave it to the render tick; halt every run if drawing fails.
+
+        Guarded as `render_tick` is, because the discrete actions reach
+        here through a signal, and a raise inside a slot is printed by the
+        toolkit and otherwise lost: without the guard a frame that could
+        not be drawn for a Start or a Reset would leave every run running
+        behind a display that had stopped.
 
         Args:
             coalesce: True to mark a frame owed and let the render tick draw
@@ -356,7 +376,10 @@ class SimulationView(QWidget):
             self._render_pending = True
             return
 
-        self._refresh_view()
+        try:
+            self._refresh_view()
+        except Exception as error:
+            self._halt_every_run(error)
 
     def render_tick(self) -> None:
         """Draw a frame if a run is running or one is owed; halt every run if drawing fails.
@@ -466,6 +489,8 @@ class SimulationView(QWidget):
         self._render_timer.start()
 
     def stop_timers(self) -> None:
+        """Stop every run's step timer and the render timer, as a test's teardown does."""
+
         for run in self._runs:
             run.stop_timers()
 

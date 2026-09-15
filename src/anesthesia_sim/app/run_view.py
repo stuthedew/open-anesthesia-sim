@@ -106,6 +106,7 @@ from anesthesia_sim.app.qt_widgets import (
     NoticeLabel,
     ParameterSlider,
     ReadoutRow,
+    selector_stylesheet,
     styled_label,
 )
 from anesthesia_sim.app.theme import (
@@ -257,12 +258,6 @@ class RunView(QWidget):
         """
 
         super().__init__(parent)
-        # The dashboard that owns this run, held so that it lives as long as
-        # any reference to the run does. Qt's parent owns the child, and the
-        # Python side of that relationship runs one way: a run reached on its
-        # own - by a test, or by the dialog it opened - would otherwise find
-        # its dashboard collected and its own widgets deleted with it.
-        self._dashboard = parent
         self.controller = controller
         snapshot = controller.snapshot()
 
@@ -339,12 +334,18 @@ class RunView(QWidget):
         chip.setSpacing(0)
         chip.addWidget(self._running_agent_text)
         chip.addWidget(self._running_agent_lock_text)
-        self._running_agent_display.setVisible(False)
+
+        lock = transport(snapshot)
+        self._agent_dropdown.setDisabled(lock.selector_locked)
+        self._agent_dropdown.setHidden(lock.selector_locked)
+        self._running_agent_display.setVisible(lock.selector_locked)
 
         self._start_button = QPushButton(START_LABEL)
         self._pause_button = QPushButton(PAUSE_LABEL)
-        self._pause_button.setEnabled(False)
         self._reset_button = QPushButton(RESET_LABEL)
+        self._start_button.setEnabled(lock.start_enabled)
+        self._pause_button.setEnabled(lock.pause_enabled)
+        self._reset_button.setEnabled(lock.reset_enabled)
         self._start_button.clicked.connect(self._handle_start)
         self._pause_button.clicked.connect(self._handle_pause)
         self._reset_button.clicked.connect(self._handle_reset)
@@ -354,6 +355,7 @@ class RunView(QWidget):
         # disabled, and Reset leaves it alone like every other setting.
         self._playback_rate_dropdown = QComboBox()
         self._playback_rate_dropdown.setFixedWidth(PLAYBACK_RATE_SELECTOR_WIDTH)
+        self._playback_rate_dropdown.setStyleSheet(selector_stylesheet())
 
         for rate in SUPPORTED_PLAYBACK_RATES:
             self._playback_rate_dropdown.addItem(
@@ -794,23 +796,19 @@ class RunView(QWidget):
             self.controller.fail(reason)
 
     def _halt_run(self, error: BaseException) -> None:
-        """Halt the run and draw the frame that says so, once.
+        """Halt the run, then ask for the frame that says so.
 
-        A presentation that fails cannot unwind the halt: a frozen display
-        over a stopped run is uninformative, but the run is stopped either
-        way, and a raise out of here would be lost inside the timer slot or
-        signal dispatch that called it.
+        The halt comes first, so a presentation that fails cannot unwind it:
+        `SimulationView.present` answers a frame it cannot draw by halting
+        every run, and a controller keeps the first reason it was given, so
+        this run still reports the raise that stopped it.
 
         Args:
             error: What was raised.
         """
 
         self.halt(error)
-
-        try:
-            self.presentation_requested.emit(False)
-        except Exception:
-            pass
+        self.presentation_requested.emit(False)
 
     # -------------------------------------------------------------- timing
 
@@ -845,6 +843,8 @@ class RunView(QWidget):
         self._step_timer.start()
 
     def stop_timers(self) -> None:
+        """Stop the tick timer; the dashboard's `stop_timers` calls this for every run."""
+
         self._step_timer.stop()
 
     # -------------------------------------------------------------- layout

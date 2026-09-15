@@ -953,9 +953,12 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   them (e.g. controller driving a full `AgentUptakeSystem`), the Qt chart
   drawn headless against a real run (`test_qt_chart.py`), which reads the
   plotted items and the painted pixels back, the dashboard's leaf widgets
-  (`test_qt_widgets.py`), and the whole dashboard driven against real
+  (`test_qt_widgets.py`), the whole dashboard driven against real
   controllers (`test_simulation_view.py`), which reads every widget's text,
-  enablement and visibility back. `tests/conftest.py` selects Qt's
+  enablement and visibility back, and the whole dashboard rendered headless
+  at one fixed size (`test_qt_rendering.py`), which reads the painted pixels
+  and the laid-out geometry back and writes the screenshot `docs/worker.md`
+  shows a session how to take (`PL-YCWZ`). `tests/conftest.py` selects Qt's
   `offscreen` platform plugin before any `PySide6` import, so the suite renders
   on a runner with no display; on Linux that plugin needs `libegl1` from the
   OS, which `.github/workflows/quality.yml` installs and the PySide6 wheels

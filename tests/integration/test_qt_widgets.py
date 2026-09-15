@@ -16,7 +16,7 @@ import pytest
 from PySide6.QtCore import QRect, QSize, Qt
 from PySide6.QtGui import QFontMetrics
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QDialog, QGridLayout, QLabel, QWidget
+from PySide6.QtWidgets import QApplication, QDialog, QGridLayout, QLabel, QScrollArea, QWidget
 
 from anesthesia_sim.app.controller import ControlInput, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
@@ -38,6 +38,7 @@ from anesthesia_sim.app.formatting import format_flow, format_percent
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES
 from anesthesia_sim.app.qt_widgets import (
     WINDOW_SCREEN_FRACTION,
+    FlowLayout,
     MetricPanel,
     NewCaseDialog,
     NoticeLabel,
@@ -267,6 +268,96 @@ def test_the_readout_row_reflows_where_its_panels_stop_fitting(application: QApp
             assert geometry.x() + geometry.width() <= row.width(), (
                 f"a panel laid outside the row at {width} px, {columns} across"
             )
+
+
+def test_a_narrowed_readout_row_reflows_rather_than_widening_its_scroll_area(
+    application: QApplication,
+) -> None:
+    """The row's minimum is one column's, so a container can narrow it and it steps down.
+
+    A row reporting its seven-column minimum could never be narrowed by a
+    scroll area, which widens its page to the widest minimum and scrolls;
+    the readout row would then never reflow and the page would overhang
+    every window narrower than seven panels. Every panel keeps its own
+    reservation, so no value wraps at the narrower count (`PL-3355`).
+    """
+
+    row = _row(application, 2000)
+    scroll = QScrollArea()
+    scroll.setWidgetResizable(True)
+    scroll.setWidget(row)
+    scroll.resize(900, 400)
+    scroll.show()
+    application.processEvents()
+    spacing = _grid(row).horizontalSpacing()
+
+    assert row.minimumSizeHint().width() == row.panel_minimum_width_px
+    assert row.minimumSize().width() == row.panel_minimum_width_px
+    assert row.width() == scroll.viewport().width()
+    assert scroll.horizontalScrollBar().maximum() == 0
+    assert not scroll.horizontalScrollBar().isVisible()
+    assert row.columns() == readout_columns(row.width(), row.panel_minimum_width_px, spacing)
+    assert 1 < row.columns() < len(row.panels)
+    assert row.columns() == 4
+
+    for panel in row.panels:
+        geometry = panel.geometry()
+
+        assert geometry.width() >= panel.minimum_value_width_px
+        assert geometry.x() + geometry.width() <= row.width()
+
+    scroll.close()
+
+
+def test_a_flow_layout_wraps_at_its_width_and_lays_nothing_outside_it(
+    application: QApplication,
+) -> None:
+    """The shape of Qt's Flow Layout example: left to right, then the next line."""
+
+    host = QWidget()
+    flow = FlowLayout(horizontal_spacing=16, vertical_spacing=6, parent=host)
+    labels = [QLabel(f"entry {index} " * 3) for index in range(6)]
+
+    for label in labels:
+        flow.addWidget(label)
+
+    widest = max(label.sizeHint().width() for label in labels)
+    one_line = max(label.sizeHint().height() for label in labels)
+    two_per_line = 2 * widest + 16 + 4
+
+    assert flow.count() == len(labels)
+    assert flow.minimumSize().width() == widest
+    assert flow.minimumSize().height() == one_line
+    assert flow.sizeHint() == flow.minimumSize()
+    assert flow.hasHeightForWidth()
+    assert flow.expandingDirections() == Qt.Orientation(0)
+    assert flow.heightForWidth(10_000) == one_line
+    assert flow.heightForWidth(two_per_line) == 3 * one_line + 2 * 6
+
+    host.resize(two_per_line, flow.heightForWidth(two_per_line))
+    host.show()
+    application.processEvents()
+    lines = sorted({label.geometry().y() for label in labels})
+
+    assert len(lines) == 3
+    assert [label.geometry().y() for label in labels] == [
+        lines[0],
+        lines[0],
+        lines[1],
+        lines[1],
+        lines[2],
+        lines[2],
+    ]
+
+    for label in labels:
+        assert label.geometry().x() >= 0
+        assert label.geometry().right() < two_per_line
+
+    assert flow.takeAt(0) is not None
+    assert flow.count() == len(labels) - 1
+    assert flow.itemAt(len(labels)) is None
+    assert flow.takeAt(len(labels)) is None
+    host.close()
 
 
 def test_a_readout_row_refuses_the_wrong_number_of_readouts(application: QApplication) -> None:

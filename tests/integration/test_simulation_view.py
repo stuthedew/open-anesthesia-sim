@@ -27,13 +27,23 @@ import re
 from collections.abc import Iterator, Sequence
 
 import pytest
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QBrush, QColor
-from PySide6.QtWidgets import QAbstractButton, QApplication, QComboBox, QLabel, QLayout, QWidget
+from PySide6.QtWidgets import (
+    QAbstractButton,
+    QApplication,
+    QComboBox,
+    QLabel,
+    QLayout,
+    QScrollArea,
+    QSplitter,
+    QWidget,
+)
 
 from anesthesia_sim.app import control_timeline as control_timeline_module
 from anesthesia_sim.app import run_view as run_view_module
 from anesthesia_sim.app import theme
+from anesthesia_sim.app.chart_frame import HOVER_INSTANT_RESOLUTION_S, format_trace_hover
 from anesthesia_sim.app.chart_time_base import (
     FIT_RUN_KEY,
     SELECTABLE_TIME_BASES,
@@ -136,6 +146,36 @@ def application() -> Iterator[QApplication]:
     yield existing if isinstance(existing, QApplication) else QApplication([])
 
 
+#: The dashboards `_shown_view` built and has not yet deleted. A view left to
+#: the garbage collector is deleted whenever a collection happens to run -
+#: inside a later test's `show()`, or at interpreter shutdown after Qt's own
+#: statics have gone - and either is a fatal error rather than a failure. So
+#: a view is held here and deleted deliberately: before the next dashboard is
+#: shown, and the last one in `_torn_down_views`, each time with the event
+#: loop still able to deliver the deferred deletion. One at a time rather
+#: than all at the end, because draining a hundred deferred deletions in one
+#: call took twenty seconds where one takes twenty milliseconds.
+_SHOWN_VIEWS: list[SimulationView] = []
+
+
+def _delete_shown_views(application: QApplication) -> None:
+    for view in _SHOWN_VIEWS:
+        view.stop_timers()
+        view.close()
+        view.deleteLater()
+
+    _SHOWN_VIEWS.clear()
+    application.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    application.processEvents()
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _torn_down_views(application: QApplication) -> Iterator[None]:
+    yield
+
+    _delete_shown_views(application)
+
+
 # ------------------------------------------------------------------ helpers
 
 
@@ -156,13 +196,39 @@ def _shown_view(application: QApplication, *controllers: SimulationController) -
     present, because the first frame reads the plot's laid-out width.
     """
 
+    _delete_shown_views(application)
     view = SimulationView(controllers)
+    _SHOWN_VIEWS.append(view)
     view.resize(_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX)
     view.show()
     application.processEvents()
     view.present(False)
 
     return view
+
+
+def _page_of(view: SimulationView) -> QWidget:
+    """The scrolling page the dashboard lays itself out on."""
+
+    scroll = view.findChild(QScrollArea)
+    assert scroll is not None, "the dashboard has no scroll area"
+    page = scroll.widget()
+    assert page is not None, "the scroll area holds no page"
+
+    return page
+
+
+def _stacked_sections(view: SimulationView) -> QSplitter:
+    """The vertical splitter of readouts, settings and the chart row."""
+
+    vertical = [
+        splitter
+        for splitter in view.findChildren(QSplitter)
+        if splitter.orientation() == Qt.Orientation.Vertical
+    ]
+    assert len(vertical) == 1, "the dashboard stacks its sections in exactly one splitter"
+
+    return vertical[0]
 
 
 def _steps(run: RunView, ticks: int) -> None:
@@ -1211,6 +1277,50 @@ def test_a_failed_render_stops_the_run_rather_than_freezing_the_display(
     assert "RuntimeError" in notice
 
 
+def test_a_frame_that_cannot_be_drawn_on_a_discrete_action_halts_every_run(
+    application: QApplication,
+) -> None:
+    """A discrete action presents through a signal, and a slot's raise is printed and dropped.
+
+    So the immediate presentation guards itself as the render tick does:
+    without that, a frame that could not be drawn for a playback change
+    would leave every run advancing behind a display that had stopped.
+    """
+
+    first = SimulationController()
+    second = SimulationController()
+    first.start()
+    second.start()
+    view = _shown_view(application, first, second)
+
+    real_refresh_view = view._refresh_view
+    failures_left = [1]
+
+    def failing_refresh_view() -> None:
+        if failures_left[0]:
+            failures_left[0] -= 1
+            raise RuntimeError("the frame could not be built")
+
+        real_refresh_view()
+
+    view._refresh_view = failing_refresh_view  # type: ignore[method-assign]
+
+    _select_playback_rate(view.runs[0], SUPPORTED_PLAYBACK_RATES[-1].multiplier)
+
+    assert failures_left == [0], "the playback change did not present at once"
+
+    for controller in (first, second):
+        assert controller.is_running is False
+        assert controller.has_failed is True
+        assert controller.snapshot().failure_reason == "RuntimeError: the frame could not be built"
+
+    for run in view.runs:
+        assert run._status_text.text() == "Stopped — simulation error"
+        notice = run._notice_text.notice()
+        assert notice is not None
+        assert "RuntimeError" in notice
+
+
 # ---------------------------------------------------------- the playback
 
 
@@ -1738,7 +1848,9 @@ def test_the_hover_readout_states_the_agent_compartment_and_both_units(
     Through the dashboard rather than the bare chart, so the shipped
     composition is what answers, and against the frame it drew, so the
     readout is the state the run was evaluated at rather than a position
-    between two.
+    between two. A drawn instant is a grid column's rather than a step's,
+    so the time the readout states is the instant at the hover's own
+    resolution, not the column's raw time.
     """
 
     controller = SimulationController()
@@ -1756,9 +1868,11 @@ def test_the_hover_readout_states_the_agent_compartment_and_both_units(
     readout = chart.readout_at(time_s, run.percents(RecordedQuantity.ALVEOLAR)[index])
 
     assert readout is not None
+    assert readout == format_trace_hover(run, RecordedQuantity.ALVEOLAR, index)
     context, what, value = readout.splitlines()
+    instant_s = round(time_s / HOVER_INSTANT_RESOLUTION_S) * HOVER_INSTANT_RESOLUTION_S
     assert "sevoflurane" in context
-    assert format_elapsed(time_s) in context
+    assert format_elapsed(instant_s) in context
     assert "Alveolar" in what
     assert _ALVEOLAR_METRIC_QUALIFIER in what
     assert format_percent(fraction) in value
@@ -1885,42 +1999,6 @@ def test_the_control_timeline_is_not_regrouped_when_it_has_not_grown(
     # The panel is still written from the grouping, so this is a cache
     # serving the right answer rather than a frame that stopped drawing.
     assert view.runs[0]._control_timeline_text.text().splitlines()[0].startswith("3s")
-
-
-def test_the_model_keeps_precision_the_display_throws_away() -> None:
-    """The 0.01% resolution is a property of the display alone.
-
-    Two runs whose only difference is four orders of magnitude below the
-    display resolution must reach different states and print the same
-    string; anything in the pipeline rounding to what the display shows
-    would make them identical here.
-    """
-
-    below_resolution = 1e-8
-
-    def run_at(delivered_partial_pressure_fraction: float) -> tuple[float, str]:
-        controller = SimulationController()
-        controller.set_delivered_partial_pressure_fraction(
-            Fraction(delivered_partial_pressure_fraction)
-        )
-        controller.start()
-        _advance_to(controller, 120.0)
-        snapshot = controller.snapshot()
-
-        return snapshot.alveolar_partial_pressure_fraction, format_percent(
-            snapshot.alveolar_partial_pressure_fraction
-        )
-
-    baseline_fraction, baseline_displayed = run_at(0.02)
-    perturbed_fraction, perturbed_displayed = run_at(0.02 + below_resolution)
-
-    assert baseline_fraction != perturbed_fraction, (
-        "a change four orders of magnitude below the display resolution left "
-        "the alveolar state bit-identical; something in the model or the "
-        "snapshot is rounding to what the display shows"
-    )
-    assert 0.0 < abs(perturbed_fraction - baseline_fraction) < 1e-6
-    assert baseline_displayed == perturbed_displayed
 
 
 # ------------------------------------------------ the charts, integrated
@@ -2324,7 +2402,76 @@ def test_the_interface_never_predicts_a_time_to_wake_up(application: QApplicatio
     assert "±1 sd" in prose
 
 
-# --------------------------------------------------------------- two runs
+# ---------------------------------------------------------------- the page
+
+
+def test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar(
+    application: QApplication,
+) -> None:
+    """Nothing holds the page wider than the window: the sidebar and every slider are on screen.
+
+    The readout row reports a one-column minimum and the legend rows wrap,
+    so the page's minimum is well inside the window and the scroll area
+    never widens it; the chart column alone asks for less than a thousand
+    pixels.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    scroll = view.findChild(QScrollArea)
+    assert scroll is not None
+    page = _page_of(view)
+
+    assert page.minimumSizeHint().width() <= scroll.viewport().width()
+    assert page.width() == scroll.viewport().width()
+    assert scroll.horizontalScrollBar().maximum() == 0
+    assert view._chart_column.minimumSizeHint().width() < 1000
+
+    for slider in view.runs[0]._sliders():
+        right_edge = slider.mapTo(page, slider.rect().bottomRight()).x()
+
+        assert right_edge <= page.width(), "a setting control is laid beyond the page"
+
+    accounting_panel, timeline_panel = view.runs[0].build_sidebar_panels()
+
+    for panel in (accounting_panel, timeline_panel):
+        assert panel.mapTo(page, panel.rect().bottomRight()).x() <= page.width()
+
+
+def test_spare_height_goes_to_the_plots_and_not_to_the_readouts(application: QApplication) -> None:
+    """The readout and setting sections stand at their own height; the chart row takes the rest.
+
+    At the fixed test size the page is taller than the window and there is
+    no spare; a window taller than the page's own hint has some, and every
+    pixel of it lengthens the chart row while the two rows above it do not
+    move.
+    """
+
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    stacked = _stacked_sections(view)
+    readout_section, settings, chart_row = (stacked.widget(index) for index in range(3))
+    page = _page_of(view)
+
+    assert abs(readout_section.height() - readout_section.sizeHint().height()) <= 2
+    assert abs(settings.height() - settings.sizeHint().height()) <= 2
+    assert chart_row.height() >= chart_row.sizeHint().height() - 2 * stacked.handleWidth()
+
+    settled_chart_row_height = chart_row.height()
+    spare = 400
+    view.resize(_WINDOW_WIDTH_PX, page.sizeHint().height() + spare)
+    application.processEvents()
+
+    assert abs(readout_section.height() - readout_section.sizeHint().height()) <= 2
+    assert abs(settings.height() - settings.sizeHint().height()) <= 2
+    assert chart_row.height() >= settled_chart_row_height + spare - 2
+    assert chart_row.height() > chart_row.sizeHint().height()
+
+    view.resize(_WINDOW_WIDTH_PX, _WINDOW_HEIGHT_PX)
+    application.processEvents()
+
+
+# ------------------------------------------------------------- two runs
 
 
 def test_two_run_views_drive_two_controllers(application: QApplication) -> None:

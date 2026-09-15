@@ -17,7 +17,7 @@ from collections import Counter
 from collections.abc import Iterator
 
 import pytest
-from PySide6.QtWidgets import QApplication, QLabel
+from PySide6.QtWidgets import QApplication, QLabel, QWidget
 
 from anesthesia_sim.app.chart_frame import (
     CHART_COLUMN_BUDGET_PER_SERIES,
@@ -55,6 +55,7 @@ from anesthesia_sim.app.qt_chart import (
     WashInLegend,
     trace_pen,
 )
+from anesthesia_sim.app.qt_widgets import FlowLayout
 from anesthesia_sim.app.theme import (
     CONTROL_MARK_COLOR,
     CONTROL_MARK_DASH_PATTERN,
@@ -510,6 +511,100 @@ def test_the_legend_is_the_visibility_control(application: QApplication) -> None
 
     assert legend.shown == (RecordedQuantity.MUSCLE,)
     assert changes and changes[-1] == (RecordedQuantity.MUSCLE,)
+
+
+def _legend_rows(legend: QWidget) -> list[FlowLayout]:
+    """The legend's rows, top to bottom, each a wrapping row."""
+
+    layout = legend.layout()
+    assert layout is not None
+    rows = []
+
+    for index in range(layout.count()):
+        item = layout.itemAt(index)
+        assert item is not None
+        row = item.layout()
+        assert isinstance(row, FlowLayout), "a legend row that cannot wrap"
+        rows.append(row)
+
+    return rows
+
+
+def _entries_inside(legend: QWidget, rows: list[FlowLayout]) -> None:
+    for row in rows:
+        for index in range(row.count()):
+            item = row.itemAt(index)
+            assert item is not None
+            geometry = item.geometry()
+
+            assert geometry.x() >= 0
+            assert geometry.right() < legend.width(), "a legend entry laid beyond the legend"
+
+
+def test_the_legend_rows_wrap_under_a_narrow_chart_and_stand_on_one_line_under_a_wide_one(
+    application: QApplication,
+) -> None:
+    """The six compartment entries reflow rather than holding the chart column to their sum.
+
+    The Flet legend rows wrapped; on one unbreakable line the compartments
+    row alone held the chart column to 1220 px and pushed the sidebar off a
+    1400 px window. The caption stays first and the entries follow it.
+    """
+
+    legend = TraceLegend()
+    compartments, references, record = _legend_rows(legend)
+    one_line = compartments.minimumSize().height()
+
+    assert compartments.heightForWidth(1400) == one_line
+    assert compartments.heightForWidth(500) > one_line
+    assert legend.minimumSizeHint().width() == max(
+        row.minimumSize().width() for row in _legend_rows(legend)
+    )
+
+    narrow = 500
+    legend.resize(narrow, legend.heightForWidth(narrow))
+    legend.show()
+    application.processEvents()
+
+    assert legend.width() == narrow
+    _entries_inside(legend, [compartments, references, record])
+    caption = compartments.itemAt(0)
+    assert caption is not None
+    caption_label = caption.widget()
+    assert isinstance(caption_label, QLabel)
+    assert caption_label.text() == "Compartments:"
+    entry_lines = {
+        compartments.itemAt(index).geometry().y()  # type: ignore[union-attr]
+        for index in range(1, compartments.count())
+    }
+    assert caption_label.geometry().y() == min(entry_lines)
+    assert len(entry_lines) > 1, "the compartments row did not wrap at 500 px"
+
+    wide = 1400
+    legend.resize(wide, legend.heightForWidth(wide))
+    application.processEvents()
+
+    assert {
+        compartments.itemAt(index).geometry().y()  # type: ignore[union-attr]
+        for index in range(compartments.count())
+    } == {caption_label.geometry().y()}
+    _entries_inside(legend, [compartments, references, record])
+    legend.close()
+
+
+def test_the_wash_in_legend_row_wraps_too(application: QApplication) -> None:
+    legend = WashInLegend()
+    (row,) = _legend_rows(legend)
+    one_line = row.minimumSize().height()
+
+    assert row.heightForWidth(1400) == one_line
+    assert row.heightForWidth(300) > one_line
+
+    legend.resize(300, legend.heightForWidth(300))
+    legend.show()
+    application.processEvents()
+    _entries_inside(legend, [row])
+    legend.close()
 
 
 def test_the_wash_in_legend_names_its_three_marks_in_the_plot_s_own_pens(

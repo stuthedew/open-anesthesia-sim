@@ -24,6 +24,12 @@ sliders are integer `QSlider`s whose one step is the control's display
 resolution, decoded through `dashboard_frame.slider_value`, so the number
 applied to the model is exactly the number beside the thumb.
 
+**A row that has to wrap wraps here.** Qt ships no wrapping row, and the
+legend rows the Flet build wrapped (`ft.Row(wrap=True)`) held the chart
+column to 1220 px on one unbreakable line of six checkboxes, pushing the
+sidebar off a 1400 px window. `FlowLayout` is the shape of Qt's documented
+Flow Layout example, and `qt_chart` lays every legend row in one.
+
 **Every colour is `app/theme.py`'s**, reaching a stylesheet as an f-string
 over the theme name (decision D10), so `tools/contrast_check.py`'s palette
 is the palette drawn. The few bare pixel spacings inside stylesheets are the
@@ -36,7 +42,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Final
 
-from PySide6.QtCore import QRect, QSignalBlocker, QSize, Qt, Signal
+from PySide6.QtCore import QPoint, QRect, QSignalBlocker, QSize, Qt, Signal
 from PySide6.QtGui import QFont, QFontMetrics, QResizeEvent
 from PySide6.QtWidgets import (
     QDialog,
@@ -45,6 +51,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLayout,
+    QLayoutItem,
     QPushButton,
     QSlider,
     QSplitter,
@@ -160,6 +167,126 @@ def _slider_stylesheet() -> str:
     )
 
 
+def selector_stylesheet() -> str:
+    """A combo box a reader reads rather than merely operates: PANEL fill, MUTED edge, INK text.
+
+    The playback-rate and time-base selectors name the rate the clock is
+    advancing at and how much of the run is on screen, which
+    `docs/MODEL.md` requires displayed (`PL-SN2C`), so their surface is set
+    here rather than left to the platform style: `tools/contrast_check.py`
+    measures INK on PANEL for the text and MUTED against each selector's own
+    surroundings for the border, and both claims hold only because the
+    colours are these.
+    """
+
+    return (
+        f"QComboBox {{ background-color: {PANEL}; color: {INK}; border: 1px solid {MUTED}; "
+        f"border-radius: {PANEL_RADIUS}px; padding: 4px 8px; }}"
+    )
+
+
+class FlowLayout(QLayout):
+    """A row of items that wraps onto further lines when the width runs out.
+
+    The shape of Qt's documented Flow Layout example: items are laid left to
+    right in the order added, each line as tall as its tallest item, and an
+    item that would overrun the right edge starts the next line. The layout
+    reports its height for a width, so the column above it grows the row as
+    it narrows; it expands in neither direction; and its minimum is its
+    widest single item, so nothing is ever laid outside it. The legend rows
+    use it so that six compartment entries on one line cannot hold the whole
+    chart column to their summed width (`PL-25KS`).
+    """
+
+    def __init__(
+        self, *, horizontal_spacing: int, vertical_spacing: int, parent: QWidget | None = None
+    ) -> None:
+        """Build an empty row.
+
+        Args:
+            horizontal_spacing: The gap between neighbours on one line.
+            vertical_spacing: The gap between lines.
+            parent: The widget this layout manages, if it is the top layout.
+        """
+
+        super().__init__(parent)
+        self._items: list[QLayoutItem] = []
+        self._horizontal_spacing = horizontal_spacing
+        self._vertical_spacing = vertical_spacing
+        self.setContentsMargins(0, 0, 0, 0)
+
+    def addItem(self, item: QLayoutItem) -> None:  # Qt spells this in camelCase.
+        self._items.append(item)
+
+    def count(self) -> int:
+        return len(self._items)
+
+    def itemAt(self, index: int) -> QLayoutItem | None:  # Qt spells this in camelCase.
+        if 0 <= index < len(self._items):
+            return self._items[index]
+
+        return None
+
+    def takeAt(self, index: int) -> QLayoutItem | None:  # Qt spells this in camelCase.
+        if 0 <= index < len(self._items):
+            return self._items.pop(index)
+
+        return None
+
+    def expandingDirections(self) -> Qt.Orientation:  # Qt spells this in camelCase.
+        return Qt.Orientation(0)
+
+    def hasHeightForWidth(self) -> bool:  # Qt spells this in camelCase.
+        return True
+
+    def heightForWidth(self, width: int) -> int:  # Qt spells this in camelCase.
+        return self._lay_out(QRect(0, 0, width, 0), apply=False)
+
+    def setGeometry(self, rect: QRect) -> None:  # Qt spells this in camelCase.
+        super().setGeometry(rect)
+        self._lay_out(rect, apply=True)
+
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        return self.minimumSize()
+
+    def minimumSize(self) -> QSize:  # Qt spells this in camelCase.
+        size = QSize()
+
+        for item in self._items:
+            size = size.expandedTo(item.minimumSize())
+
+        margins = self.contentsMargins()
+
+        return size + QSize(margins.left() + margins.right(), margins.top() + margins.bottom())
+
+    def _lay_out(self, rect: QRect, *, apply: bool) -> int:
+        """Place the items inside `rect`, or only measure, and return the height used."""
+
+        margins = self.contentsMargins()
+        inner = rect.adjusted(margins.left(), margins.top(), -margins.right(), -margins.bottom())
+        x = inner.x()
+        y = inner.y()
+        line_height = 0
+
+        for item in self._items:
+            size = item.sizeHint()
+            next_x = x + size.width() + self._horizontal_spacing
+
+            if next_x - self._horizontal_spacing > inner.right() and line_height > 0:
+                x = inner.x()
+                y = y + line_height + self._vertical_spacing
+                next_x = x + size.width() + self._horizontal_spacing
+                line_height = 0
+
+            if apply:
+                item.setGeometry(QRect(QPoint(x, y), size))
+
+            x = next_x
+            line_height = max(line_height, size.height())
+
+        return y + line_height - rect.y() + margins.bottom()
+
+
 class MetricPanel(QFrame):
     """One readout: its name, its gloss, its value and its second unit.
 
@@ -272,10 +399,12 @@ class ReadoutRow(QWidget):
     every column given equal stretch and the same minimum, so no panel is
     given more of the row than its neighbours and none is laid outside the
     row. The widths at which the count steps down are therefore the
-    rendering font's rather than a recorded pixel ladder. The layout
-    imposes no minimum on the row itself, because a row held at its
-    seven-column minimum could never receive the narrower resize that tells
-    it to reflow.
+    rendering font's rather than a recorded pixel ladder. The row's own
+    minimum is one column's - a panel's reservation - rather than the
+    grid's, because a row held at its seven-column minimum by a scroll area
+    or a splitter could never receive the narrower resize that tells it to
+    reflow; each panel keeps its own reservation, so no value wraps at any
+    count (`PL-3355`).
 
     Attributes:
         panels: One `MetricPanel` per readout, in row order.
@@ -310,6 +439,7 @@ class ReadoutRow(QWidget):
         self._grid = QGridLayout(self)
         self._grid.setContentsMargins(0, 0, 0, 0)
         self._grid.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
+        self.setMinimumWidth(self.panel_minimum_width_px)
         self._columns = 0
         self._lay_out(self._columns_for(self.width()))
 
@@ -338,6 +468,11 @@ class ReadoutRow(QWidget):
 
         for panel, readout in zip(self.panels, readouts, strict=True):
             panel.set_readout(readout)
+
+    def minimumSizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        """One column wide, and as tall as the grid is at its current count."""
+
+        return QSize(self.panel_minimum_width_px, super().minimumSizeHint().height())
 
     def resizeEvent(self, event: QResizeEvent) -> None:  # Qt spells this in camelCase.
         super().resizeEvent(event)

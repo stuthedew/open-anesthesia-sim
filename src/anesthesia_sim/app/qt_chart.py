@@ -44,9 +44,9 @@ from math import ceil
 from typing import Any, Final
 
 import pyqtgraph as pg
-from PySide6.QtCore import QPointF, Qt, Signal
+from PySide6.QtCore import QPointF, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QImage, QPainter, QPaintEvent, QPen
-from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.chart_frame import (
     COMPARTMENT_TRACES,
@@ -67,6 +67,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WASH_IN_TRACE_LEGEND_LABEL,
 )
 from anesthesia_sim.app.formatting import format_chart_time_label
+from anesthesia_sim.app.qt_widgets import FlowLayout
 from anesthesia_sim.app.theme import (
     BAND_SWATCH_HEIGHT,
     BAND_SWATCH_WIDTH,
@@ -423,6 +424,7 @@ class ConcentrationChart(QWidget):
         super().__init__(parent)
         self._plot = _plot(PANEL)
         self._plot.setMinimumHeight(CHART_HEIGHT)
+        self._plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._plot)
@@ -520,6 +522,11 @@ class ConcentrationChart(QWidget):
         """The frame last drawn, or `None` before the first."""
 
         return self._frame
+
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        """As wide as the plot asks and `theme.CHART_HEIGHT` tall; it grows into spare height."""
+
+        return _preferred_size(self._plot, CHART_HEIGHT)
 
     def plot_width_px(self) -> float:
         """The width of the plot area in logical pixels, for `assemble_chart_frame`.
@@ -703,6 +710,7 @@ class WashInChart(QWidget):
         super().__init__(parent)
         self._plot = _plot(PANEL)
         self._plot.setMinimumHeight(WASH_IN_CHART_HEIGHT)
+        self._plot.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._plot)
@@ -780,6 +788,11 @@ class WashInChart(QWidget):
         """The frame last drawn, or `None` before the first."""
 
         return self._frame
+
+    def sizeHint(self) -> QSize:  # Qt spells this in camelCase.
+        """As wide as the plot asks, and `theme.WASH_IN_CHART_HEIGHT` tall."""
+
+        return _preferred_size(self._plot, WASH_IN_CHART_HEIGHT)
 
     def plot_width_px(self) -> float:
         """The width of the plot area in logical pixels, for `assemble_chart_frame`.
@@ -913,6 +926,20 @@ def _render(widget: QWidget) -> QImage:
     return widget.grab().toImage()
 
 
+def _preferred_size(plot: Any, height_px: int) -> QSize:
+    """The size a chart asks its layout for: the plot's own width, the theme's height.
+
+    The height is the theme's rather than the toolkit's: a graphics view
+    asks for 480 px of its own accord, which is no chart's height and made
+    the page a quarter of a screen taller than the one it replaced. The
+    plot still grows past this - it expands in both directions - so a
+    taller window lengthens the traces; the minimum is the same theme
+    height, set on the plot.
+    """
+
+    return QSize(plot.sizeHint().width(), height_px)
+
+
 def _plot_width_px(plot: Any) -> float:
     """The width of `plot`'s plot area in logical pixels, for `chart_columns`.
 
@@ -1012,11 +1039,17 @@ class _BandSwatch(QWidget):
         painter.end()
 
 
-def _legend_row(caption: str | None, entries: Sequence[tuple[QWidget, QWidget]]) -> QHBoxLayout:
-    """One legend row: a caption, where the row has one, then swatch-and-label pairs."""
+def _legend_row(caption: str | None, entries: Sequence[tuple[QWidget, QWidget]]) -> FlowLayout:
+    """One legend row: a caption, where the row has one, then swatch-and-label pairs.
 
-    row = QHBoxLayout()
-    row.setSpacing(16)
+    A wrapping row, as the Flet build's legend rows were, so the entries
+    reflow under a narrow chart rather than holding the chart column to
+    their summed width: the caption is laid first and the entries follow it,
+    each an unbreakable swatch-and-label pair, and a pair that would overrun
+    the right edge starts the next line.
+    """
+
+    row = FlowLayout(horizontal_spacing=16, vertical_spacing=6)
 
     if caption is not None:
         caption_label = QLabel(caption)
@@ -1024,15 +1057,22 @@ def _legend_row(caption: str | None, entries: Sequence[tuple[QWidget, QWidget]])
         row.addWidget(caption_label)
 
     for swatch, label in entries:
-        entry = QHBoxLayout()
-        entry.setSpacing(6)
-        entry.addWidget(swatch, alignment=Qt.AlignmentFlag.AlignVCenter)
-        entry.addWidget(label, alignment=Qt.AlignmentFlag.AlignVCenter)
-        row.addLayout(entry)
-
-    row.addStretch(1)
+        row.addWidget(_legend_entry(swatch, label))
 
     return row
+
+
+def _legend_entry(swatch: QWidget, label: QWidget) -> QWidget:
+    """A swatch beside its words, as one item a legend row wraps whole."""
+
+    entry = QWidget()
+    pair = QHBoxLayout(entry)
+    pair.setContentsMargins(0, 0, 0, 0)
+    pair.setSpacing(6)
+    pair.addWidget(swatch, alignment=Qt.AlignmentFlag.AlignVCenter)
+    pair.addWidget(label, alignment=Qt.AlignmentFlag.AlignVCenter)
+
+    return entry
 
 
 class TraceLegend(QWidget):
