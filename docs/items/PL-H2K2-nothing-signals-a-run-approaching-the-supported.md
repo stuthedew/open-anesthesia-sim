@@ -6,9 +6,9 @@ effort: M
 status: ready
 classes: ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/controller.py, tests/unit/test_simulation_view.py, tests/integration/test_controller.py
+touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/controller.py, tests/unit/test_dashboard_frame.py, tests/integration/test_simulation_view.py, tests/integration/test_controller.py
 added: 2026-09-07
-verify: uv run pytest -q tests/unit/test_simulation_view.py tests/integration/test_controller.py && grep -q 'def test_the_interface_says_the_run_is_approaching_its_supported_length' tests/unit/test_simulation_view.py
+verify: uv run pytest -q tests/unit/test_dashboard_frame.py tests/integration/test_controller.py && grep -q 'def test_the_interface_says_the_run_is_approaching_its_supported_length' tests/unit/test_dashboard_frame.py
 ---
 
 **Problem.** Nothing signals a run approaching the supported run length; it
@@ -55,3 +55,10 @@ cannot be missed and cannot fire at the wrong moment, whereas a threshold
 warning introduces a state the reader has to notice and a number somebody has to
 justify. That is a preference for the implementing session, not a decision this
 item is waiting on.
+
+**Re-pointed 2026-09-15, with `PL-25KS`.** The dashboard is on PySide6: what
+it says is decided in `app/dashboard_frame.py` (the status word and the notice
+banner are `status_word` and `notice` there) and drawn by `app/run_view.py`,
+so the warning this item asks for is a claim the frame module states and a
+label the run view places. `touches` and `verify:` name those modules and
+their tests; the old command ran a Flet test file the port deleted.

@@ -6,9 +6,9 @@ effort: S
 status: ready
 classes: test
 feature: dev-tooling
-touches: tests/unit/test_simulation_view.py
+touches: tests/unit/test_dashboard_frame.py, tests/integration/test_simulation_view.py
 added: 2026-08-30
-verify: uv run pytest tests/unit/test_simulation_view.py -k disclaimer
+verify: uv run pytest tests/unit/test_dashboard_frame.py && grep -q 'def test_the_educational_disclaimer_says_what_the_tool_is_not' tests/unit/test_dashboard_frame.py
 ---
 
 **Problem.** The educational disclaimer at `app/simulation_view.py:393-401` —

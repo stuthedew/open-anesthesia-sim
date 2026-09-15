@@ -63,6 +63,7 @@ from anesthesia_sim.app.dashboard_frame import (
     RENDER_INTERVAL_S,
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
+    USE_DISCLAIMER_TEXT,
     WIDEST_COMPARTMENT_SECONDARY,
     WIDEST_COMPARTMENT_VALUE,
     WIDEST_READOUT_SECONDARY,
@@ -1642,3 +1643,18 @@ def test_the_interface_says_the_readouts_are_model_outputs_not_measurements() ->
     """
 
     assert INTERPRETATION_DISCLAIMER_TEXT == "Model outputs — not measurements."
+
+
+def test_the_educational_disclaimer_says_what_the_tool_is_not() -> None:
+    """`PL-GMM7`: the one string that carries the project's regulatory posture, verbatim.
+
+    Coverage cannot hold it - the line executes whenever the dashboard is
+    built - so the words are pinned here, and
+    `test_the_dashboard_carries_the_educational_disclaimer` holds that the
+    dashboard places them.
+    """
+
+    assert USE_DISCLAIMER_TEXT == (
+        "Educational simulation only. This idealized model is not a clinical prediction, "
+        "monitoring, or dosing tool."
+    )

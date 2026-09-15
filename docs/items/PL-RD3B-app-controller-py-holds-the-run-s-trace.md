@@ -6,9 +6,9 @@ effort: M
 status: ready
 classes: refactor
 feature: teachable-case
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_series.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py, tests/integration/test_chart_patching.py, tests/integration/test_controller.py, docs/ARCHITECTURE.md, docs/MODEL.md
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_series.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, tests/unit, tests/integration/test_controller.py, docs/ARCHITECTURE.md, docs/MODEL.md
 added: 2026-09-04
-verify: uv run pytest -q tests/unit/test_simulation_view.py tests/integration/test_chart_patching.py && ! grep -q 'app.controller import' src/anesthesia_sim/app/chart_series.py
+verify: uv run pytest -q tests/unit/test_chart_frame.py tests/integration/test_controller.py && ! grep -q 'app.controller import' src/anesthesia_sim/app/chart_frame.py
 ---
 
 **Problem.** `app/controller.py` is 1 411 lines, of which the controller proper
@@ -137,3 +137,13 @@ field encodes the roadmap's own freeze so `bin/docket next` stops offering it
 as the product lane's pick.
 
 **Promoted to `ready`, 2026-09-14**, `PL-G59B` having closed. The Qt chart reads `controller.drawn_window` through `app/chart_frame.py`, so the split this item makes now has two readers to keep working: `chart_frame.py` for the Qt chart and `chart_series.py` for the Flet one until `PL-7SVX`.
+
+**Re-pointed 2026-09-15, with `PL-25KS`.** The consumers of the vocabulary
+this item moves out of `app/controller.py` changed with the port: the Flet
+chart-series module is gone, and `RecordedQuantity`, `RecordedSeries` and
+`DrawnWindow` are now read by `app/chart_frame.py` (the frame the charts draw
+from) and `app/dashboard_frame.py`, with `app/qt_chart.py`, `app/run_view.py`
+and `app/simulation_view.py` importing the names through them. The `verify:`
+above asks the same thing of `chart_frame.py` that the old one asked of the
+deleted module - that it stops importing from `app.controller` once the
+vocabulary has a module of its own - and fails today for that reason.
