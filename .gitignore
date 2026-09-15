@@ -34,6 +34,18 @@ dist/
 .eggs/
 wheels/
 
+# Generated output, and the one place it goes. A session that renders the
+# interface writes a PNG somewhere, and before this there was no somewhere:
+# `docs/worker.md` told every worker to grab `dashboard.png` into the working
+# directory, which is the repository root, untracked and unignored. One
+# directory rather than a pattern like `*.png`, which would swallow a real
+# asset the day this project carries one (`PL-CNJ1`).
+#
+# `docs/worker.md` (the screenshot a session takes to look at the interface)
+# is what names it for a reader; this is what keeps it out of a commit.
+# Nothing tracked lives here, so it is safe to delete at any time.
+/out/
+
 # Flet runtime and local application state
 /.flet/
 /storage/

@@ -1,9 +1,14 @@
 ---
 id: PL-CNJ1
 title: The Qt spike writes screenshots to a caller-supplied path with no default directory and no ignore rule, so a --screenshot run in the repo root leaves a PNG a git add -A would commit
-status: untriaged
-touches: .gitignore, spikes/qt/qt_spike.py
+priority: P3
+effort: S
+status: done
+classes: defect, docs
+touches: .gitignore, docs/worker.md, spikes/qt/qt_spike.py
 added: 2026-09-15
+closed: 2026-09-15
+verify: python3 tools/doc_check.py check && git check-ignore -q --no-index out/dashboard.png && grep -q 'out/dashboard.png' docs/worker.md
 ---
 
 **Problem.** The Qt spike writes screenshots to a caller-supplied path with no default directory and no ignore rule, so a --screenshot run in the repo root leaves a PNG a git add -A would commit
@@ -49,3 +54,42 @@ only by accident (`PL-J7MM`).
 **Done when.** A screenshot run from the repository root leaves `git status`
 clean, and the directory it writes into is named in one place that `PL-7J96`
 and `PL-YCWZ` can both read.
+
+**Worked.** The brief had the finding right and its location wrong, so the
+diff reaches a file the brief never named.
+
+*`docs/worker.md` is the recurring case, and the spike is not.* The brief
+named `spikes/qt/qt_spike.py:1106` as the only writer. It is the only writer in
+*code*, but `docs/worker.md` § "Seeing the interface" hands every worker
+session a command ending `print(view.grab().save('dashboard.png'))` and then
+says it "writes `dashboard.png` in the working directory" - which is the
+repository root. That is an instruction to dirty the tree, issued to every
+session that wants to look at the interface, in a file that outlives `PL-7SVX`
+by design. It is repointed at `out/dashboard.png`, and the command gains a
+`mkdir -p out &&` prefix so it works on a clean checkout. `touches` was widened
+to declare the file before the edit.
+
+*The spike default is a CLI change, not just a constant.* `--screenshot` was a
+required-value flag; it is now `nargs="?"` with `const=DEFAULT_SCREENSHOT_PATH`,
+so a bare `--screenshot` writes `out/dashboard.png` while `--screenshot PATH`
+behaves exactly as before. `save_screenshot` also creates the parent directory,
+so a caller-supplied path into a directory that does not exist now works rather
+than failing at `save`. That needed `from pathlib import Path`, which the module
+did not import.
+
+*No `docs/ARCHITECTURE.md` entry, deliberately.* The brief asked for the
+directory to be "named in one place that `PL-7J96` and `PL-YCWZ` can both
+read". `docs/worker.md` is that place - it is where a session goes to render
+the interface - and `PL-YCWZ` has since closed with its test writing to
+pytest's `tmp_path`, so it needs nothing. A third statement of the same
+convention is the two-documents-one-rule hazard `CLAUDE.md` warns about.
+
+*No `*.png` pattern and no check.* The pattern is rejected in the brief above.
+A check refusing tracked images outside `assets/` was considered and not built:
+it is worth building only if such a file would otherwise recur, and the count
+across this repository's history is zero.
+
+*Both entry points were run, not reasoned about.* The spike wrote
+`out/dashboard.png` (161 KB) and the documented `worker.md` command wrote it
+again (178 KB), each from the repository root, with `git status` showing only
+this item's own edits afterwards.

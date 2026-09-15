@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 from time import perf_counter
 
 import pyqtgraph as pg
@@ -1062,6 +1063,13 @@ def run_self_check(seconds: float, rate_multiplier: int, columns: int) -> int:
     return 1 if failures else 0
 
 
+#: Where a bare `--screenshot` writes. `out/` is the repository's one generated
+#: directory and `.gitignore` covers it, so the default invocation cannot leave
+#: a PNG in a commit; `docs/worker.md` names the same directory for the grab a
+#: session takes by hand (`PL-CNJ1`). A caller passing a path still gets it.
+DEFAULT_SCREENSHOT_PATH = "out/dashboard.png"
+
+
 def save_screenshot(path: str) -> int:
     """Draw one frame of a short run and write the window to a PNG.
 
@@ -1103,6 +1111,7 @@ def save_screenshot(path: str) -> int:
             window.render_tick()
 
     QApplication.processEvents()
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
     written = window.grab().save(path)
     print(f"{'wrote' if written else 'failed to write'} {path}")
 
@@ -1133,7 +1142,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--screenshot",
         metavar="PATH",
-        help="render one frame of a short run offscreen and write it to a PNG",
+        nargs="?",
+        const=DEFAULT_SCREENSHOT_PATH,
+        help=(
+            "render one frame of a short run offscreen and write it to a PNG; "
+            f"bare, it writes {DEFAULT_SCREENSHOT_PATH}, which .gitignore covers"
+        ),
     )
     parser.add_argument(
         "--opengl",

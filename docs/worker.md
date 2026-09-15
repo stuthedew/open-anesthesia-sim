@@ -34,18 +34,24 @@ Qt's `offscreen` platform the interface is built, shown, presented once and
 grabbed to a PNG, which the `Read` tool then opens as an image:
 
 ```bash
-QT_QPA_PLATFORM=offscreen uv run python -c "from PySide6.QtWidgets import QApplication; from anesthesia_sim.app.controller import SimulationController; from anesthesia_sim.app.simulation_view import SimulationView; app = QApplication([]); view = SimulationView((SimulationController(),)); view.resize(1600, 1000); view.show(); app.processEvents(); view.present(False); print(view.grab().save('dashboard.png'))"
+mkdir -p out && QT_QPA_PLATFORM=offscreen uv run python -c "from PySide6.QtWidgets import QApplication; from anesthesia_sim.app.controller import SimulationController; from anesthesia_sim.app.simulation_view import SimulationView; app = QApplication([]); view = SimulationView((SimulationController(),)); view.resize(1600, 1000); view.show(); app.processEvents(); view.present(False); print(view.grab().save('out/dashboard.png'))"
 ```
 
-It prints `True` and writes `dashboard.png` in the working directory, at
-1600x1000 with the page scrolled to its top. To see a run rather than the
-starting state, call `view.runs[0].controller.start()` and step it before
-the grab. `tests/integration/test_qt_rendering.py` is the durable form of
-the same grab: it renders the real dashboard at that size and asserts over
-the pixels and the laid-out geometry, so a presentation change is reviewed
-by a test rather than by an eye alone. The Flet build could not be seen
+It prints `True` and writes `out/dashboard.png`, at 1600x1000 with the page
+scrolled to its top. To see a run rather than the starting state, call
+`view.runs[0].controller.start()` and step it before the grab.
+`tests/integration/test_qt_rendering.py` is the durable form of the same grab:
+it renders the real dashboard at that size and asserts over the pixels and the
+laid-out geometry, so a presentation change is reviewed by a test rather than
+by an eye alone. The Flet build could not be seen
 this way, because its web renderer fetched Flutter assets from
 `www.gstatic.com`, which the egress proxy refuses (`PL-2QMK`).
+
+`out/` is the one directory generated files go in, and `.gitignore` covers it,
+so a grab cannot reach a commit - which it could while this command wrote into
+the repository root, an instruction to dirty the tree issued to every session
+that wanted to look at the interface (`PL-CNJ1`). Nothing tracked lives there,
+so delete it whenever. Anything else that writes an image belongs there too.
 
 ## What you may work
 
