@@ -39,6 +39,27 @@ wheels/
 /storage/
 /uploads/
 
+# Local working directories at the repository root, which exist in the project
+# owner's checkout and in no commit: `git log --all -- oas-mirror output
+# outputs` is empty for all three. Nothing ignored them either, so each sat in
+# `git status` as untracked - the moment `PL-1YDK` describes as the one where a
+# stray file gets swept into someone else's diff. `PL-DLR3` carries the finding.
+#
+# Anchored with a leading `/`, like the runtime directories above: `output` and
+# `outputs` are ordinary enough words that an unanchored rule would also hide a
+# real `output/` inside a package.
+#
+# `/oas-mirror/` is a clone rather than scratch, and ignoring it does more than
+# tidy the listing. `git add` on a directory that contains its own `.git`
+# records a gitlink - mode 160000, pointing at a commit this repository has no
+# `.gitmodules` entry for - so a clone of this repository gets a reference it
+# cannot resolve rather than the files. Git prints a warning, which is easy to
+# miss inside a `git add -A`. `PL-548V` covers the rule that tells sessions to
+# make such a clone without naming a destination.
+/oas-mirror/
+/output/
+/outputs/
+
 # Local environment variables and secrets
 .env
 .env.*
