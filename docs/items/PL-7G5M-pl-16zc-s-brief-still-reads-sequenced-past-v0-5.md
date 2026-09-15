@@ -1,8 +1,15 @@
 ---
 id: PL-7G5M
 title: PL-16ZC's brief still reads 'sequenced past v0.5.0, not clearable before it begins' after PL-G59B closed and promoted it to ready, so the one entry wave says Gate 1 can clear tells the session that opens it not to build it
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: docs
+feature: teachable-case
+touches: docs/items/
 added: 2026-09-15
+closed: 2026-09-15
+verify: python3 tools/doc_check.py check && grep -qF 'The deferral this item carried is discharged' docs/items/PL-16ZC-the-two-clinical-references-and-the-control.md
 ---
 
 **Problem.** PL-16ZC's brief still reads 'sequenced past v0.5.0, not clearable before it begins' after PL-G59B closed and promoted it to ready, so the one entry wave says Gate 1 can clear tells the session that opens it not to build it
@@ -43,3 +50,11 @@ block is amended rather than deleted - it is the record of why the item waited -
 and the decision half it names ("whether the references and the control marks
 are hideable at all", which can close the item writing no code) survives
 unchanged, because nothing about it depended on the toolkit.
+
+**Closed 2026-09-15 with `PL-16ZC` itself.** The amended block records the
+deferral as discharged rather than deleting it, names `PL-G59B` as the blocker
+whose closing discharged it, and leaves `ROADMAP.md` Gate 1 § "Sequenced past
+v0.5.0" untouched as that section requires. `PL-16ZC` closed in the same commit
+on the project owner's delegated call, so the contradiction this item names is
+gone in both directions: the prose no longer says stop, and the fields no longer
+say go.
