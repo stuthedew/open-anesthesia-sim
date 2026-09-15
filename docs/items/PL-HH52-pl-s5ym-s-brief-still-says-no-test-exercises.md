@@ -36,3 +36,18 @@ be made here. Check before starting.
 `test_childless_directory_covers_its_whole_subtree` as already covering the
 positive direction, and scopes the item to the negative direction and the
 `docs/ARCHITECTURE.md` clause its **Done when.** already names.
+
+**Update, same hour: `#599` is now doing exactly this.** That pull request was
+repurposed at 23:05 — retitled "PL-Y1W6: drop as a duplicate of PL-B5VM, and
+correct PL-S5YM's brief", with `origin/main` merged in, `PL-Y1W6` dropped as a
+duplicate of `PL-B5VM`, and the brief correction kept as the one thing `#598`
+did not find. Its commit message also reports a second false line this item did
+not name: `PL-B5VM`'s own brief says "`covered_dirs` appears nowhere in
+`tests/unit/test_doc_check.py`", which is true of the symbol and not of the
+behaviour.
+
+So **this item is insurance, not work**: it closes the moment `#599` merges,
+and is only startable if `#599` is closed unmerged. Check that first. It is
+kept rather than dropped because the correction would otherwise exist on one
+unlanded branch alone, which is how `PL-99YZ` describes this whole episode
+going wrong.
