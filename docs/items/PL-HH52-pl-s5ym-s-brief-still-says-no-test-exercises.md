@@ -1,8 +1,20 @@
 ---
 id: PL-HH52
 title: PL-S5YM's brief still says no test exercises the covered-directory branch, but test_childless_directory_covers_its_whole_subtree has asserted the positive direction since PL-032, and #598's merge rewrote the item without correcting it
-status: untriaged
+priority: P3
+effort: S
+status: dropped
+classes: docs
+touches: docs/items/
 added: 2026-09-15
+closed: 2026-09-15
+not-delegable: The outcome was produced by #599 on `origin/main`, not by this
+  branch, so no command run against this tree distinguishes a branch that did the
+  work from one that did not. `git show origin/main:docs/items/PL-S5YM-...md` is
+  what was checked.
+reason: Superseded by PL-Y1W6 (#599), merged as f3c83ebf. This item was filed as
+  insurance in case that branch was closed unmerged; it was merged instead, and
+  the correction it carries is the one this item asked for.
 ---
 
 **Problem.** PL-S5YM's brief still says no test exercises the covered-directory branch, but test_childless_directory_covers_its_whole_subtree has asserted the positive direction since PL-032, and #598's merge rewrote the item without correcting it
@@ -51,3 +63,16 @@ and is only startable if `#599` is closed unmerged. Check that first. It is
 kept rather than dropped because the correction would otherwise exist on one
 unlanded branch alone, which is how `PL-99YZ` describes this whole episode
 going wrong.
+
+**Closed 2026-09-15, having done nothing, which is the right outcome.** `#599`
+merged as `f3c83ebf` and `PL-S5YM`'s brief on `origin/main` now reads:
+
+```
+`test_childless_directory_covers_its_whole_subtree` (line 208, there since
+`PL-032`) asserts that a file *beneath* a childless directory needs no line,
+```
+
+with its own note recording what the **Problem.** paragraph used to claim.
+`dropped` rather than `done` because this branch produced none of it - the
+project's convention for a finding another branch resolved first, and the same
+one `#600` took for `PL-7VSK` and `PL-MR6S` in the same hour.
