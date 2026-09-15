@@ -32,7 +32,7 @@ a step the run took in between.
 dash pattern, its legend words and the gloss its hover carries. Plotting one
 compartment's values on another's line misstates the run exactly as a wrong
 number does, so the pairing is one record per trace rather than parallel
-lists, and the Flet dashboard builds its own trace table from this one
+lists, and `app/qt_chart.py` draws its curves and its legend from this one
 rather than keeping a second copy (`PL-2CS8`).
 
 **The window is a viewport and the run fills it.** The axis a frame draws
@@ -135,9 +135,8 @@ __all__ = [
 # wash-in and drew the alveolar trace up to 0.53 pp (sevoflurane 2% to 4%)
 # and 3.8 pp (a desflurane overpressure induction) below the run. The floor
 # stays at the number the fixed budget was because nothing narrower has been
-# measured, and because the Flet chart, which cannot afford more (`PL-YSZN`,
-# `PL-YDKJ`), still draws at exactly this count through `app/chart_series.py`
-# until `PL-25KS` ports the dashboard.
+# measured: it is the count the Flet chart, which could afford no more
+# (`PL-YSZN`, `PL-YDKJ`), drew at until `PL-25KS` retired it.
 CHART_COLUMN_BUDGET_PER_SERIES: Final = 150
 
 # How many control marks the chart can stand at once. A fixed pool rather than

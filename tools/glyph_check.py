@@ -37,9 +37,9 @@ three.
 
 **Three trees, because a displayed string comes from all three.** `app/` is
 where `PL-8XPQ` expected the check to look, and it is not the whole set.
-`core/` raises the text the view prints verbatim - `simulation_view.py`'s
-`_apply_setting` renders `f"Setting refused — {error}"` from a
-`SimulationConfigurationError`, and `_halt_run` passes `str(error)` into the
+`core/` raises the text the view prints verbatim - `app/run_view.py`'s
+`_apply_setting` reports a refused `SimulationConfigurationError` as
+`Setting refused — {error}`, and its `_halt_run` passes `str(error)` into the
 halted-run banner - so a validation message is a displayed string with one more
 step in front of it. `data/` holds `display_name`, which reaches the readouts
 through `AgentParameters`, and is the one place an edit lands without touching

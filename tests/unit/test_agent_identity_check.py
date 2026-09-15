@@ -12,8 +12,10 @@ at the end, by the same entry point `make check` runs - which is what keeps
 the miniature from drifting into a shape the tool handles and the shipped code
 does not.
 
-Nothing here imports Flet or constructs a control. The tool reads source with
-`ast` and never runs it, so a fixture is a string.
+Nothing here imports a toolkit or constructs a control. The tool reads source
+with `ast` and never runs it, so a fixture is a string - one in the attribute
+spelling the Flet build used and one in the setter spelling PySide6 uses, since
+the tool reads both (`PL-25KS`).
 """
 
 from __future__ import annotations
@@ -45,6 +47,33 @@ class SimulationView:
     def _apply_agent_color_scheme(self, agent_id):
         scheme = AGENT_COLOR_SCHEMES[agent_id]
         self._agent_dropdown.color = scheme.foreground
+'''
+
+#: The same view in the setter spelling: the shape the PySide6 build is in.
+#: `setDisabled(E)` beside `setHidden(E)` on the identity control, a hide on the
+#: chip that replaces it, a plain `setEnabled` on the transport, and a writer
+#: that colours through `setStyleSheet` calls rather than property assignments.
+PAIRED_QT_SOURCE = '''"""Miniature view, Qt spelling."""
+
+AGENT_COLOR_SCHEMES = {"demoflurane": AgentColorScheme(fill="#111111", foreground="#FFFFFF")}
+
+
+class RunView:
+    def __init__(self):
+        self._agent_dropdown = QComboBox()
+        self._running_agent_display = QFrame()
+        self._start_button = QPushButton("Start")
+
+    def refresh(self, snapshot):
+        self._agent_dropdown.setDisabled(snapshot.is_running)
+        self._agent_dropdown.setHidden(snapshot.is_running)
+        self._running_agent_display.setVisible(snapshot.is_running)
+        self._start_button.setEnabled(not snapshot.is_running)
+
+    def _apply_agent_color_scheme(self, agent_id):
+        scheme = AGENT_COLOR_SCHEMES[agent_id]
+        self._agent_dropdown.setStyleSheet(f"color: {scheme.foreground};")
+        self._running_agent_display.setStyleSheet(f"background-color: {scheme.fill};")
 '''
 
 #: A second module holding a class with no agent colour in it: the shape of a
@@ -308,13 +337,37 @@ def test_a_same_named_control_in_another_class_is_not_the_identity_control(tmp_p
 
 
 def test_an_identity_set_with_no_disabled_write_read_anywhere_is_an_error(tmp_path: Path) -> None:
+    """A tree that disables nothing, in either spelling, is an empty measurement.
+
+    The affirmative sentence "none of them rendered disabled" cannot be told
+    from the same sentence earned when the pairing loop ran zero times, so
+    the empty set is the error rather than a pass (`PL-0PJG`). This check
+    cannot tell a tree that genuinely disables nothing from one written in a
+    spelling it has not been taught, and says so.
+    """
+
+    source = PAIRED_SOURCE.replace(
+        "        self._agent_dropdown.disabled = snapshot.is_running\n"
+        "        self._agent_dropdown.visible = not snapshot.is_running\n",
+        "        self._agent_dropdown.value = snapshot.agent_id\n",
+    )
+
+    found = agent_identity_check.problems(_view(tmp_path, source))
+
+    assert len(found) == 1
+    assert "measured nothing" in found[0]
+    assert "setEnabled" in found[0]
+
+
+def test_a_setter_spelled_disabled_write_is_read_rather_than_measured_as_nothing(
+    tmp_path: Path,
+) -> None:
     """`PL-JRS3`'s probe B, which printed "none of them rendered disabled" and exited 0.
 
-    Every identity control driven by `setEnabled()` with no paired hide, so
-    rule 1's attribute reads find nothing and the pairing loop runs zero
-    times. The affirmative sentence was printed from an empty measurement set
-    and could not be told from the same sentence earned; now the empty set is
-    the error, and it names the spelling it did not read.
+    Every identity control driven by `setEnabled()` with no paired hide. Until
+    `PL-25KS` taught rule 1 the setter spelling that tree was an empty
+    measurement; now the write is read and the missing hide is the finding,
+    named in the same spelling.
     """
 
     source = PAIRED_SOURCE.replace(
@@ -326,8 +379,9 @@ def test_an_identity_set_with_no_disabled_write_read_anywhere_is_an_error(tmp_pa
     found = agent_identity_check.problems(_view(tmp_path, source))
 
     assert len(found) == 1
-    assert "measured nothing" in found[0]
-    assert agent_identity_check.UNREAD_SPELLING in found[0]
+    assert "measured nothing" not in found[0]
+    assert "_agent_dropdown" in found[0]
+    assert "setVisible(not snapshot.is_running)" in found[0]
 
 
 def test_the_success_line_states_what_it_measured(
@@ -342,6 +396,126 @@ def test_the_success_line_states_what_it_measured(
     out = capsys.readouterr().out
     assert "1 control(s) carry the agent colour" in out
     assert "2 disabled-state write(s) read across 2 module(s)" in out
+    assert "1 of them on identity controls" in out
+
+
+# --- the setter spelling (PL-25KS) -------------------------------------------
+
+
+def test_the_paired_qt_shape_is_quiet(tmp_path: Path) -> None:
+    """`setDisabled(E)` beside `setHidden(E)` is the correct form in the setter spelling."""
+
+    assert agent_identity_check.problems(_module(tmp_path, "run_view.py", PAIRED_QT_SOURCE)) == []
+
+
+def test_an_unpaired_qt_disabled_write_is_reported_in_its_own_spelling(tmp_path: Path) -> None:
+    """The `PL-61WW` regression as a PySide6 build would reintroduce it.
+
+    The finding names the hiding line in the spelling the write used, so the
+    fix is a line to add rather than a spelling to translate.
+    """
+
+    source = PAIRED_QT_SOURCE.replace(
+        "        self._agent_dropdown.setHidden(snapshot.is_running)\n", ""
+    )
+
+    found = agent_identity_check.problems(_module(tmp_path, "run_view.py", source))
+
+    assert len(found) == 1
+    assert "_agent_dropdown" in found[0]
+    assert "setDisabled(snapshot.is_running)" in found[0]
+    assert "setHidden(snapshot.is_running)" in found[0]
+
+
+def test_a_writer_colouring_through_set_style_sheet_yields_its_controls(tmp_path: Path) -> None:
+    """The identity set counts a call statement on a control as a write.
+
+    A Qt writer assigns no property - it colours through `setStyleSheet` -
+    and a reader of assignments alone saw an empty set, which is the
+    "coverage set that can silently go empty" failure.
+    """
+
+    report = agent_identity_check.analyze(_module(tmp_path, "run_view.py", PAIRED_QT_SOURCE))
+
+    assert report.problems == ()
+    assert report.controls == ("_agent_dropdown", "_running_agent_display")
+    assert report.writer == "src/anesthesia_sim/app/run_view.py:RunView._apply_agent_color_scheme"
+
+
+def test_set_enabled_pairs_with_set_visible(tmp_path: Path) -> None:
+    """`setEnabled(not E)` beside `setVisible(not E)`: the other Qt spelling of the pair."""
+
+    source = PAIRED_QT_SOURCE.replace(
+        "        self._agent_dropdown.setDisabled(snapshot.is_running)\n"
+        "        self._agent_dropdown.setHidden(snapshot.is_running)\n",
+        "        self._agent_dropdown.setEnabled(not snapshot.is_running)\n"
+        "        self._agent_dropdown.setVisible(not snapshot.is_running)\n",
+    )
+
+    assert agent_identity_check.problems(_module(tmp_path, "run_view.py", source)) == []
+
+
+def test_the_two_setter_spellings_of_one_condition_pair_with_each_other(tmp_path: Path) -> None:
+    """`setEnabled(not E)` and `setHidden(E)` state one condition, and are read as one.
+
+    The normalisation peels exactly one `not`, which is what makes the two
+    setters comparable at all; nothing further is inferred.
+    """
+
+    source = PAIRED_QT_SOURCE.replace(
+        "        self._agent_dropdown.setDisabled(snapshot.is_running)\n",
+        "        self._agent_dropdown.setEnabled(not snapshot.is_running)\n",
+    )
+
+    assert agent_identity_check.problems(_module(tmp_path, "run_view.py", source)) == []
+
+
+def test_a_mismatched_qt_operand_still_fails(tmp_path: Path) -> None:
+    """The comparison stays structural in the setter spelling.
+
+    `setHidden(snapshot.is_paused)` may well be correct, and nothing here can
+    know it is: one canonical shape, and a failure that names it.
+    """
+
+    source = PAIRED_QT_SOURCE.replace(
+        "        self._agent_dropdown.setHidden(snapshot.is_running)\n",
+        "        self._agent_dropdown.setHidden(snapshot.is_paused)\n",
+    )
+
+    found = agent_identity_check.problems(_module(tmp_path, "run_view.py", source))
+
+    assert len(found) == 1
+    assert "setHidden(snapshot.is_running)" in found[0]
+
+
+def test_a_call_whose_value_is_used_is_a_read_and_not_an_identity_write(tmp_path: Path) -> None:
+    """`x = self.X.palette()` inside the writer reads X; it does not colour it."""
+
+    source = PAIRED_QT_SOURCE.replace(
+        "        scheme = AGENT_COLOR_SCHEMES[agent_id]\n",
+        "        scheme = AGENT_COLOR_SCHEMES[agent_id]\n"
+        "        palette = self._start_button.palette()\n",
+    )
+
+    report = agent_identity_check.analyze(_module(tmp_path, "run_view.py", source))
+
+    assert "_start_button" not in report.controls
+
+
+def test_the_success_line_counts_setter_spelled_writes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The measurement the sentence rests on includes both spellings."""
+
+    root = _module(tmp_path, "run_view.py", PAIRED_QT_SOURCE)
+    _module(root, "simulation_view.py", PLAIN_PANEL_SOURCE)
+
+    assert agent_identity_check.main(["--root", str(root)]) == 0
+    out = capsys.readouterr().out
+    assert "2 control(s) carry the agent colour" in out
+    # The dropdown's setDisabled, the transport's setEnabled, and the panel's
+    # attribute write in the other module; the chip's setVisible is a hide.
+    assert "3 disabled-state write(s) read across 2 module(s)" in out
     assert "1 of them on identity controls" in out
 
 

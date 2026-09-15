@@ -17,7 +17,7 @@ from collections import Counter
 from collections.abc import Iterator
 
 import pytest
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QLabel
 
 from anesthesia_sim.app.chart_frame import (
     CHART_COLUMN_BUDGET_PER_SERIES,
@@ -45,8 +45,29 @@ from anesthesia_sim.app.formatting import (
     mac_awake_band_percent,
     mac_axis_ticks,
 )
-from anesthesia_sim.app.qt_chart import ConcentrationChart, TraceLegend, WashInChart, trace_pen
-from anesthesia_sim.app.theme import GRIDLINE, MUTED, PANEL
+from anesthesia_sim.app.qt_chart import (
+    CONTROL_MARK_LEGEND_LABEL,
+    EQUILIBRIUM_LEGEND_LABEL,
+    WASH_IN_TRACE_LEGEND_LABEL,
+    ConcentrationChart,
+    TraceLegend,
+    WashInChart,
+    WashInLegend,
+    trace_pen,
+)
+from anesthesia_sim.app.theme import (
+    CONTROL_MARK_COLOR,
+    CONTROL_MARK_DASH_PATTERN,
+    CONTROL_MARK_STROKE_WIDTH,
+    EQUILIBRIUM_LINE_COLOR,
+    EQUILIBRIUM_LINE_DASH_PATTERN,
+    EQUILIBRIUM_LINE_STROKE_WIDTH,
+    GRIDLINE,
+    MUTED,
+    PANEL,
+    WASH_IN_COLOR,
+    WASH_IN_STROKE_WIDTH,
+)
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO
 
 _STEP_S = 0.1
@@ -489,3 +510,52 @@ def test_the_legend_is_the_visibility_control(application: QApplication) -> None
 
     assert legend.shown == (RecordedQuantity.MUSCLE,)
     assert changes and changes[-1] == (RecordedQuantity.MUSCLE,)
+
+
+def test_the_wash_in_legend_names_its_three_marks_in_the_plot_s_own_pens(
+    application: QApplication,
+) -> None:
+    """The wash-in row says what the wash-in plot draws, in the pens it draws it with.
+
+    The trace at its own stroke width and solid, the equilibrium line in its
+    wide dash, the control mark upright in its fine dash: each swatch is the
+    plot's pen, so the legend cannot describe a line the plot does not draw
+    (`PL-THXF`), and the words carry the line style too.
+    """
+
+    legend = WashInLegend()
+    legend.show()
+    application.processEvents()
+    trace, equilibrium, mark = legend.marks
+
+    assert not legend.grab().toImage().isNull()
+
+    assert [entry.label for entry in legend.marks] == [
+        WASH_IN_TRACE_LEGEND_LABEL,
+        EQUILIBRIUM_LEGEND_LABEL,
+        CONTROL_MARK_LEGEND_LABEL,
+    ]
+    assert {label.text() for label in legend.findChildren(QLabel)} == {
+        WASH_IN_TRACE_LEGEND_LABEL,
+        EQUILIBRIUM_LEGEND_LABEL,
+        CONTROL_MARK_LEGEND_LABEL,
+    }
+
+    assert trace.pen.color().name() == WASH_IN_COLOR.lower()
+    assert trace.pen.widthF() == WASH_IN_STROKE_WIDTH
+    assert trace.pen.dashPattern() == []
+    assert not trace.vertical
+
+    assert equilibrium.pen.color().name() == EQUILIBRIUM_LINE_COLOR.lower()
+    assert equilibrium.pen.widthF() == EQUILIBRIUM_LINE_STROKE_WIDTH
+    assert equilibrium.pen.dashPattern() == pytest.approx(
+        [length / EQUILIBRIUM_LINE_STROKE_WIDTH for length in EQUILIBRIUM_LINE_DASH_PATTERN]
+    )
+    assert not equilibrium.vertical
+
+    assert mark.pen.color().name() == CONTROL_MARK_COLOR.lower()
+    assert mark.pen.widthF() == CONTROL_MARK_STROKE_WIDTH
+    assert mark.pen.dashPattern() == pytest.approx(
+        [length / CONTROL_MARK_STROKE_WIDTH for length in CONTROL_MARK_DASH_PATTERN]
+    )
+    assert mark.vertical

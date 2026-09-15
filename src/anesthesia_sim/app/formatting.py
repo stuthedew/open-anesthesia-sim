@@ -46,6 +46,9 @@ from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent, pe
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
 __all__ = [
+    "AGENT_RESIDUAL_DISPLAY_DECIMALS",
+    "AGENT_VOLUME_DISPLAY_DECIMALS",
+    "AGENT_VOLUME_DISPLAY_RESOLUTION_L",
     "CHART_AXIS_TOP_MAC",
     "CHART_GRID_INTERVAL_MAC",
     "CONCENTRATION_DISPLAY_DECIMALS",
@@ -59,6 +62,8 @@ __all__ = [
     "WASH_IN_DISPLAY_DECIMALS",
     "chart_axis_top_percent",
     "chart_grid_interval_percent",
+    "format_agent_residual",
+    "format_agent_volume",
     "format_case_discard_warning",
     "format_chart_time_label",
     "format_delivered_label",
@@ -111,6 +116,36 @@ CONCENTRATION_DISPLAY_RESOLUTION_PERCENT: Final = 10.0**-CONCENTRATION_DISPLAY_D
 # screen matches what the same setting looks like on a machine. Changing it
 # re-derives nothing.
 FLOW_DISPLAY_DECIMALS: Final = 1
+
+# Decimals shown on the three agent amounts of the accounting panel -
+# delivered, exhausted and stored - in litres of equivalent pure agent gas.
+#
+# **Derived from the same band as the concentration readouts** (`PL-TG60`,
+# `docs/MODEL.md` § "Displayed precision"). The exhaust total is the exact
+# propagator's own state (`PL-GS5X`), so its numerical residual - 1e-12 to
+# 1e-11 L over an hour - bounds nothing a reader can see; what does bound it
+# is the parameters. One published standard deviation of a partition
+# coefficient, blood:gas dominant, moves the exhaust total by 0.016-0.042 L at
+# 3600 s and by 0.18-0.23 L at the 24 h supported limit (sevoflurane 0.024 and
+# 0.19 L, isoflurane 0.016 and 0.18 L, desflurane 0.042 and 0.23 L). One count
+# of 0.1 L therefore sits between a quarter of an SD and six SDs across the
+# whole supported span - the band the concentration readouts' two decimals
+# were chosen inside - while 0.01 L falls to a fiftieth of an SD by 24 h, a
+# digit the parameters do not support. Delivered agent has no parameter
+# uncertainty (dial x flow x time) and takes the same resolution so the three
+# amounts can be read against each other at one scale. The six decimals the
+# Flet panel printed asserted a resolution nine orders finer than this.
+AGENT_VOLUME_DISPLAY_DECIMALS: Final = 1
+#: Smallest difference in litres of agent gas the accounting panel resolves.
+AGENT_VOLUME_DISPLAY_RESOLUTION_L: Final = 10.0**-AGENT_VOLUME_DISPLAY_DECIMALS
+
+# Significant digits after the point in the accounting panel's two residual
+# lines - the unaccounted amount and the absolute error. Exponent form rather
+# than the fixed form above, because an order of magnitude is what those two
+# are for: at 1e-12 L a fixed one-decimal line would read `0.0 L` and say
+# nothing, where `1.500e-13 L` says how far below the displayed resolution
+# the conservation check sits (`PL-TG60`).
+AGENT_RESIDUAL_DISPLAY_DECIMALS: Final = 3
 
 # Decimals shown on a MAC multiple, and the resolution that follows. This is
 # *derived*, not chosen: a MAC multiple is a percent divided by the agent's
@@ -975,3 +1010,52 @@ def format_delivered_label(agent_display_name: str) -> str:
     """Build the delivered-concentration panel label naming the agent."""
 
     return f"Delivered {agent_display_name.lower()}"
+
+
+def format_agent_volume(litres: float) -> str:
+    """Render an agent amount of the accounting panel, in litres of agent gas.
+
+    At `AGENT_VOLUME_DISPLAY_RESOLUTION_L`, the resolution
+    `AGENT_VOLUME_DISPLAY_DECIMALS` records the derivation of (`PL-TG60`).
+    The same three rules `format_percent` follows, for the same reasons:
+    round rather than truncate; mark a positive value that rounds to zero as
+    below the resolution rather than showing it as `0.0 L`, because in the
+    first minute of a run the exhaust and the stored amounts are real and
+    small, and `0.0 L` there would assert that nothing has left the circuit
+    when the model says it has; and leave an impossible negative visible as
+    the anomaly it is rather than absorb it into a plausible reading. Exactly
+    zero reads as zero, which is what it is before a run starts.
+
+    Args:
+        litres: The amount, in litres of equivalent pure agent gas.
+
+    Returns:
+        The amount at the displayed resolution with its unit, or the
+        below-resolution form for a positive value that rounds to zero.
+    """
+
+    rendered = f"{litres:.{AGENT_VOLUME_DISPLAY_DECIMALS}f}"
+
+    if litres > 0.0 and float(rendered) == 0.0:
+        resolution = AGENT_VOLUME_DISPLAY_RESOLUTION_L
+
+        return f"<{resolution:.{AGENT_VOLUME_DISPLAY_DECIMALS}f} L"
+
+    return f"{rendered} L"
+
+
+def format_agent_residual(litres: float) -> str:
+    """Render a residual of the accounting panel in exponent form, with its unit.
+
+    For the unaccounted amount and the absolute error, whose purpose is
+    their order of magnitude; `AGENT_RESIDUAL_DISPLAY_DECIMALS` records why
+    these two lines do not share `format_agent_volume`'s fixed form.
+
+    Args:
+        litres: The residual, in litres of equivalent pure agent gas.
+
+    Returns:
+        The residual in exponent form with its unit.
+    """
+
+    return f"{litres:.{AGENT_RESIDUAL_DISPLAY_DECIMALS}e} L"

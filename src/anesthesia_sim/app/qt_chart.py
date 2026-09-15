@@ -39,6 +39,7 @@ own, so `tools/contrast_check.py`'s palette stays the one that is drawn.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from math import ceil
 from typing import Any, Final
 
@@ -60,6 +61,11 @@ from anesthesia_sim.app.chart_frame import (
     wash_in_axis_ticks,
 )
 from anesthesia_sim.app.controller import RecordedQuantity
+from anesthesia_sim.app.dashboard_frame import (
+    CONTROL_MARK_LEGEND_LABEL,
+    EQUILIBRIUM_LEGEND_LABEL,
+    WASH_IN_TRACE_LEGEND_LABEL,
+)
 from anesthesia_sim.app.formatting import format_chart_time_label
 from anesthesia_sim.app.theme import (
     BAND_SWATCH_HEIGHT,
@@ -92,10 +98,15 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO
 
 __all__ = [
+    "CONTROL_MARK_LEGEND_LABEL",
+    "EQUILIBRIUM_LEGEND_LABEL",
     "HOVER_RADIUS_PIXELS",
+    "WASH_IN_TRACE_LEGEND_LABEL",
     "ConcentrationChart",
+    "LegendMark",
     "TraceLegend",
     "WashInChart",
+    "WashInLegend",
     "dashed_pen",
     "trace_pen",
 ]
@@ -176,6 +187,22 @@ def dashed_pen(color: str, stroke_width: float, dash_pattern: Sequence[int] | No
         pen.setDashPattern([length / stroke_width for length in dash_pattern])
 
     return pen
+
+
+def _wash_in_pen() -> QPen:
+    """The pen the F_A/F_I trace is drawn with, on the plot and in its legend.
+
+    One constructor for both, as `trace_pen` is for the compartments, so the
+    legend swatch cannot describe a line the plot is not drawing.
+    """
+
+    return dashed_pen(WASH_IN_COLOR, WASH_IN_STROKE_WIDTH, None)
+
+
+def _control_mark_pen() -> QPen:
+    """The pen every control mark is drawn with, on both plots and in both legends."""
+
+    return dashed_pen(CONTROL_MARK_COLOR, CONTROL_MARK_STROKE_WIDTH, CONTROL_MARK_DASH_PATTERN)
 
 
 def _plot(background: str) -> Any:
@@ -343,7 +370,7 @@ def _control_mark_pool(item: Any) -> list[Any]:
     to be readable against every trace.
     """
 
-    pen = dashed_pen(CONTROL_MARK_COLOR, CONTROL_MARK_STROKE_WIDTH, CONTROL_MARK_DASH_PATTERN)
+    pen = _control_mark_pen()
     marks = []
 
     for _ in range(MAX_CHART_CONTROL_MARKS):
@@ -635,7 +662,7 @@ class _WashInRunItems:
     """One run's items on the wash-in plot: its stretches, their ends, its marks."""
 
     def __init__(self, item: Any) -> None:
-        pen = pg.mkPen(WASH_IN_COLOR, width=WASH_IN_STROKE_WIDTH)
+        pen = _wash_in_pen()
         self.stretches = []
 
         for _ in range(MAX_CHART_WASH_IN_SEGMENTS):
@@ -985,14 +1012,16 @@ class _BandSwatch(QWidget):
         painter.end()
 
 
-def _legend_row(caption: str, entries: Sequence[tuple[QWidget, QWidget]]) -> QHBoxLayout:
-    """One legend row: a caption, then swatch-and-label pairs."""
+def _legend_row(caption: str | None, entries: Sequence[tuple[QWidget, QWidget]]) -> QHBoxLayout:
+    """One legend row: a caption, where the row has one, then swatch-and-label pairs."""
 
     row = QHBoxLayout()
     row.setSpacing(16)
-    caption_label = QLabel(caption)
-    caption_label.setStyleSheet(f"color: {MUTED};")
-    row.addWidget(caption_label)
+
+    if caption is not None:
+        caption_label = QLabel(caption)
+        caption_label.setStyleSheet(f"color: {MUTED};")
+        row.addWidget(caption_label)
 
     for swatch, label in entries:
         entry = QHBoxLayout()
@@ -1093,26 +1122,7 @@ class TraceLegend(QWidget):
         # above it: a compartment trace is a modelled quantity and a clinical
         # reference is a published constant; this is a record of something
         # the *user* did.
-        layout.addLayout(
-            _legend_row(
-                "Run record:",
-                [
-                    (
-                        _LineSwatch(
-                            dashed_pen(
-                                CONTROL_MARK_COLOR,
-                                CONTROL_MARK_STROKE_WIDTH,
-                                CONTROL_MARK_DASH_PATTERN,
-                            ),
-                            CONTROL_MARK_SWATCH_WIDTH,
-                            CONTROL_MARK_SWATCH_HEIGHT,
-                            vertical=True,
-                        ),
-                        _legend_label("Control change (vertical, fine dash)"),
-                    )
-                ],
-            )
-        )
+        layout.addLayout(_legend_row("Run record:", [_control_mark_entry()]))
 
     @property
     def shown(self) -> tuple[RecordedQuantity, ...]:
@@ -1139,6 +1149,82 @@ class TraceLegend(QWidget):
         self._swatches[quantity].set_filled(checked)
         self._boxes[quantity].setStyleSheet(f"color: {INK if checked else MUTED};")
         self.visibility_changed.emit()
+
+
+def _control_mark_entry() -> tuple[_LineSwatch, QLabel]:
+    """The control mark's legend entry, the same on both legends: upright, in its own pen."""
+
+    return (
+        _LineSwatch(
+            _control_mark_pen(),
+            CONTROL_MARK_SWATCH_WIDTH,
+            CONTROL_MARK_SWATCH_HEIGHT,
+            vertical=True,
+        ),
+        _legend_label(CONTROL_MARK_LEGEND_LABEL),
+    )
+
+
+@dataclass(frozen=True)
+class LegendMark:
+    """One legend entry as it is drawn: its words, its pen, and which way its line runs.
+
+    What a test reads back from a legend, so that the words and the mark can
+    be held against the plot's own pens without reaching into a widget.
+    """
+
+    label: str
+    pen: QPen
+    vertical: bool
+
+
+class WashInLegend(QWidget):
+    """The wash-in plot's legend row: the ratio trace, its asymptote, the control mark.
+
+    One row rather than three, and no caption, because the wash-in plot has
+    one trace and one reference and the row reads without them; it sits
+    under the plot's heading and its two label lines, which say what the
+    ratio is and is not (`PL-F9TQ`). Each swatch is painted with the pen the
+    plot draws that mark with - the trace at its own stroke width, the
+    equilibrium line in its wide dash, the control mark upright and finely
+    dashed - so the swatch and the words describe the mark in two channels
+    (`PL-THXF`). The per-run state sentence that follows this row on screen is
+    the dashboard's to place, since it is written per tick from the frame.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        trace_swatch = _LineSwatch(
+            _wash_in_pen(),
+            LEGEND_SWATCH_WIDTH,
+            max(LEGEND_SWATCH_HEIGHT, ceil(WASH_IN_STROKE_WIDTH)),
+        )
+        equilibrium_swatch = _LineSwatch(
+            dashed_pen(
+                EQUILIBRIUM_LINE_COLOR, EQUILIBRIUM_LINE_STROKE_WIDTH, EQUILIBRIUM_LINE_DASH_PATTERN
+            ),
+            LEGEND_SWATCH_WIDTH,
+            LEGEND_SWATCH_HEIGHT,
+        )
+        mark_swatch, mark_label = _control_mark_entry()
+        entries: list[tuple[_LineSwatch, QLabel]] = [
+            (trace_swatch, _legend_label(WASH_IN_TRACE_LEGEND_LABEL)),
+            (equilibrium_swatch, _legend_label(EQUILIBRIUM_LEGEND_LABEL)),
+            (mark_swatch, mark_label),
+        ]
+        self._marks = tuple(
+            LegendMark(label.text(), swatch._pen, swatch._vertical) for swatch, label in entries
+        )
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addLayout(_legend_row(None, entries))
+
+    @property
+    def marks(self) -> tuple[LegendMark, ...]:
+        """The three entries in row order, each with the pen its swatch is painted with."""
+
+        return self._marks
 
 
 def _legend_label(text: str) -> QLabel:

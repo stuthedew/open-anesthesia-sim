@@ -1,4 +1,4 @@
-"""Shared color and spacing constants for the Flet UI."""
+"""Shared color and spacing constants for the interface."""
 
 from dataclasses import dataclass
 from typing import Final
@@ -17,7 +17,7 @@ PRIMARY = "#176B87"
 # of that same split. A chart trace has to clear 3:1 against the panel under
 # simulated dichromacy as well as under normal vision, and has five sibling
 # traces to stay separable from; a slider track has neither constraint. The
-# trace now carries its own value in `simulation_view.py`, so this one is
+# trace now carries its own value, `ALVEOLAR_COLOR` below, so this one is
 # bounded by nothing but the panel behind it - which is what PL-W8DQ needs to
 # know before it darkens it, and why that item deferred to this one.
 ACCENT = "#18A999"
@@ -43,7 +43,7 @@ MUTED = "#59728A"
 #
 # IEC 60601-1-8 governs *visual alarm signals* - indicators that encode
 # priority by colour together with a flash rate - and this interface has none.
-# Every use of WARNING is `ft.Text`, bold and coloured: the run-status word,
+# Every use of WARNING is text, bold and coloured: the run-status word,
 # the transient notice line, the agent-accounting status word, the permanent
 # educational disclaimer, and the case-discard dialog. No indicator lamp, no
 # filled banner, no flashing element, no priority tier.
@@ -162,12 +162,12 @@ AGENT_COLOR_SCHEMES: Final[dict[str, AgentColorScheme]] = {
 # also shortens `tools/contrast_check.py`, which read two files only because
 # the six trace colours lived in the view.
 #
-# **This module stays free of Flet**, which is why two display constants did
-# not come with them: `METRIC_GRID_COLUMNS` is typed on
-# `ft.ResponsiveRowBreakpoint` and `AGENT_RENDER_STYLES` builds `ft.Border` and
-# `ft.TextStyle` objects. `tools/contrast_check.py` and
+# **This module stays free of any toolkit.** `tools/contrast_check.py` and
 # `tools/agent_identity_check.py` read this file with `ast` in a bare checkout
-# precisely because it imports nothing they would need installed.
+# precisely because it imports nothing they would need installed, so a display
+# constant that needs a toolkit type belongs in the module that draws it - the
+# Flet build's `METRIC_GRID_COLUMNS` and `AGENT_RENDER_STYLES` stayed out for
+# that reason.
 #
 # **Order is load-bearing.** `contrast_check.read_palette` resolves a bare name
 # against the palette built so far, in file order, so an alias must sit below

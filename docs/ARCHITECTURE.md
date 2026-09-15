@@ -66,6 +66,7 @@ src/anesthesia_sim/
 │   ├── simulation_view.py          # renders snapshots as the dashboard; no domain logic. Two classes since PL-B9PY: `RunView` is one run - its controller, readouts, settings, transport and the lines it draws - and `SimulationView` is what two runs share, the charts, their axes, the window, the time base and the compartment selection
 │   ├── formatting.py               # modeled value -> displayed string; Flet-independent
 │   ├── playback.py                 # playback rate -> whole simulation steps per tick; Flet-independent
+│   ├── dashboard_frame.py          # what the dashboard claims about one run at one instant, as plain values: the status word, the notice and its precedence, the readouts and their glosses, the setting controls, the transport enablement, the accounting panel, the control-change list, the captions and the new-case question; toolkit-independent
 │   ├── chart_frame.py              # what one frame of both plots draws, as plain values: the trace table, the window, the axes' ticks, the references, the marks, the wash-in stretches and the hover text; toolkit-independent
 │   ├── chart_series.py             # builds and redraws the Flet chart's traces, references and control marks; leaves with PL-7SVX
 │   ├── qt_chart.py                 # the concentration chart, the wash-in plot and the legend on pyqtgraph, moved per frame to match a chart_frame.ChartFrame; declares no colour and formats no value
