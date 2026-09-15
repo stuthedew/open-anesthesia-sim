@@ -2667,7 +2667,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 140 entries
+### Declined to Gate 2 on the refilling-queue ground — 141 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3081,6 +3081,20 @@ pointer's previous position and never re-answers a resting pointer while paused
 gate on the timeline rather than behind it. `PL-QRD1` is `blocked` on
 `PL-8PSW`, which decides whether a two-run dashboard needs a selector lock at
 all, and no shipped entry point reaches the defect today.
+
+**One more from 2026-09-15, on the same ground and worth naming rather than
+listing** — `PL-SMN4` (a push run on `main` can be cancelled by a later merge,
+so a commit lands with no whole-store verify at all). Captured nine days after
+this gate was frozen, so the snapshot rule already places it in the next gate.
+It is written down here because it is `defect`-classed and therefore debt, and
+because a reader finding it open would otherwise have to work out why a
+`P2` CI defect is absent from a gate this large.
+
+Deferred rather than admitted on the arithmetic this section rests on, not on
+its merits: it is a false guarantee in a workflow comment plus a narrow
+coverage hole that `main`'s next successful run closes, and admitting it would
+grow a gate that is not draining. It is the workflow lane, held to
+`.claude/rules/apparatus-standard.md`, and reaches no reader of the simulator.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
