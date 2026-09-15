@@ -4,12 +4,13 @@ title: doc_check resolves a path citation against the working tree, so a citatio
 priority: P2
 effort: S
 status: done
-closed: 2026-09-15
-verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_the_verdict_is_the_same_whether_the_ignored_directory_is_there_or_not' tests/unit/test_doc_check.py
 classes: defect, infra
 feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, subprojects/docket/README.md
 added: 2026-09-13
+closed: 2026-09-15
+pr: 593
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_the_verdict_is_the_same_whether_the_ignored_directory_is_there_or_not' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check resolves a path citation against the working tree, so a citation to a gitignored path passes locally and reddens CI
