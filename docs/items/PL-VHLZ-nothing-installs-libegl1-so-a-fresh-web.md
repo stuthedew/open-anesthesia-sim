@@ -9,6 +9,7 @@ feature: qt-port
 touches: docs/ARCHITECTURE.md
 added: 2026-09-14
 closed: 2026-09-15
+pr: 590
 verify: grep -q 'libegl1' .github/workflows/quality.yml && grep -q 'libegl1' docs/ARCHITECTURE.md && uv run pytest tests/integration/test_qt_rendering.py
 ---
 
