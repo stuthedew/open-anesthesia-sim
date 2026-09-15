@@ -3,12 +3,13 @@ id: PL-RD3B
 title: app/controller.py holds the run's trace vocabulary and drawn window as well as the UI-to-core boundary, and they are separable
 priority: P2
 effort: M
-status: ready
+status: done
 classes: refactor
 feature: teachable-case
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_series.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, tests/unit, tests/integration/test_controller.py, docs/ARCHITECTURE.md, docs/MODEL.md
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_series.py, src/anesthesia_sim/app/control_record.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/control_timeline.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_chart.py, tests/unit, tests/integration, docs/ARCHITECTURE.md, docs/MODEL.md
 added: 2026-09-04
-verify: uv run pytest -q tests/unit/test_chart_frame.py tests/integration/test_controller.py && ! grep -q 'app.controller import' src/anesthesia_sim/app/chart_frame.py
+closed: 2026-09-15
+verify: uv run pytest -q tests/unit/test_chart_frame.py tests/integration/test_controller.py && grep -q 'from anesthesia_sim.app.run_series import' src/anesthesia_sim/app/chart_frame.py && ! grep -q 'class DrawnWindow' src/anesthesia_sim/app/controller.py
 ---
 
 **Problem.** `app/controller.py` is 1 411 lines, of which the controller proper
@@ -147,3 +148,48 @@ and `app/simulation_view.py` importing the names through them. The `verify:`
 above asks the same thing of `chart_frame.py` that the old one asked of the
 deleted module - that it stops importing from `app.controller` once the
 vocabulary has a module of its own - and fails today for that reason.
+
+**Done 2026-09-15.** Both halves moved, which is what the brief preferred.
+`app/run_series.py` takes `RecordedQuantity`, `COMPARTMENT_QUANTITIES`,
+`COMPARTMENT_STATE_INDEX`, `RecordedSeries` and `DrawnWindow`;
+`app/control_record.py` takes `ControlInput`, `CONTROL_INPUT_UNITS` and
+`ControlChange`. `app/controller.py` goes 1 591 lines to 1 268, and drops
+`app/wash_in.py`, `core/governing_equations` and `DisplayState` from its
+imports along with them - it had kept all three only for the moved code, which
+is the seam being real rather than asserted. Every body moved verbatim; the
+only edits to moved text are two cross-references that had to gain a module
+name. No behavior changed, and no test changed but its imports.
+
+**Two modules rather than one, and the control half did not join
+`app/control_timeline.py`.** Folding it there was the tempting option - the
+module already exists, and its `CONTROL_INPUT_LABELS` comment already describes
+itself as "a second table beside `controller.CONTROL_INPUT_UNITS`". It was
+refused on direction: `app/controller.py` *writes* a `ControlChange` and
+`app/control_timeline.py` *reads* it to format a line for display, so putting
+the definitions in the reader would make the UI-to-core boundary import a
+string formatter to declare its own record. That is the same backwards edge
+this item exists to remove, relocated rather than cleared. A leaf both import
+is the only placement leaving the direction one-way, which is why the control
+half got a module instead of a home.
+
+**The `verify:` command was wrong and is corrected, not merely re-run.** The
+2026-09-15 re-pointing gave it `! grep -q 'app.controller import'
+src/anesthesia_sim/app/chart_frame.py`, carried over from the deleted
+`app/chart_series.py`, which imported `DrawnWindow` and `RecordedSeries` and
+nothing else. `app/chart_frame.py` is not that module: its `RunInput` holds
+`controller: SimulationController` and `snapshot: SimulationSnapshot`, and
+`assemble_chart_frame` calls `run.controller.drawn_window(...)`. So the old
+command could pass only if `SimulationController` and `SimulationSnapshot` left
+`app/controller.py` too - which contradicts this brief's own "What stays" list.
+It was unsatisfiable rather than demanding, and no amount of doing the work
+would have cleared it. The replacement asserts what the item actually means:
+the frame reads the vocabulary from `app/run_series.py`, and `app/controller.py`
+no longer defines it. Run before the work, both greps failed and the 131 tests
+passed; after, all three clauses pass.
+
+**What `app/chart_frame.py` still imports from the controller**, therefore, is
+`SimulationController` and `SimulationSnapshot` - deliberately, and not a
+residue of the split. A callable or a `Protocol` would remove the name at the
+cost of replacing an explicit dependency with an anonymous one, which is the
+trade `CLAUDE.md`'s safety-critical standard settles against cleverness.
+

@@ -31,9 +31,10 @@ from PySide6.QtGui import QFontMetrics, QImage
 from PySide6.QtWidgets import QApplication, QLabel, QScrollArea, QWidget
 
 from anesthesia_sim.app.chart_frame import ChartFrame, format_trace_hover
-from anesthesia_sim.app.controller import RecordedQuantity, SimulationController
+from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import SIMULATION_STEP_S
 from anesthesia_sim.app.qt_widgets import MetricPanel
+from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import AGENT_COLOR_SCHEMES, ONE_MAC_LINE_COLOR
 

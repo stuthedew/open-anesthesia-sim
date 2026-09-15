@@ -31,8 +31,9 @@ from typing import Final
 
 from anesthesia_sim.app.chart_frame import ChartFrame, trace_style
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
+from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment, format_adjustment
-from anesthesia_sim.app.controller import ControlInput, RecordedQuantity, SimulationSnapshot
+from anesthesia_sim.app.controller import SimulationSnapshot
 from anesthesia_sim.app.formatting import (
     CONCENTRATION_DISPLAY_DECIMALS,
     CONCENTRATION_DISPLAY_RESOLUTION_PERCENT,
@@ -53,6 +54,7 @@ from anesthesia_sim.app.formatting import (
     format_wash_in_ratio,
 )
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES, PlaybackRate
+from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.wash_in import WashInDomain, read_wash_in
 from anesthesia_sim.core.concentration import (
     Fraction,

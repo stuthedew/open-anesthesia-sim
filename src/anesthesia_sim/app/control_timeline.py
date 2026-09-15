@@ -1,6 +1,6 @@
 """Turn the recorded control-input timeline into what a reader sees.
 
-The shaping layer between the controller's `ControlChange` record and the
+The shaping layer between `control_record.py`'s `ControlChange` and the
 two places it is displayed: the marks on the chart and the list beside it.
 Nothing here reads simulation state, holds a setting, or performs a
 physiological calculation - the one unit conversion is the
@@ -34,7 +34,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Final
 
-from anesthesia_sim.app.controller import ControlChange, ControlInput
+from anesthesia_sim.app.control_record import ControlChange, ControlInput
 from anesthesia_sim.app.formatting import format_elapsed, format_flow, format_percent
 from anesthesia_sim.core.concentration import Fraction
 
@@ -48,7 +48,7 @@ __all__ = [
 ]
 
 # What each control is called on screen. A second table beside
-# `controller.CONTROL_INPUT_UNITS` rather than a field on it, because the
+# `control_record.CONTROL_INPUT_UNITS` rather than a field on it, because the
 # two answer to different masters: the unit is the model's and may not
 # change without changing what is stored, while the label is the
 # interface's and may be reworded freely. Keeping them apart is what stops

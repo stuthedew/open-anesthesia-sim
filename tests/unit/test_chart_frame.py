@@ -33,19 +33,16 @@ from anesthesia_sim.app.chart_frame import (
     wash_in_stretches,
 )
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER, time_base_for_span
+from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment
-from anesthesia_sim.app.controller import (
-    COMPARTMENT_QUANTITIES,
-    ControlInput,
-    RecordedQuantity,
-    SimulationController,
-)
+from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.formatting import (
     chart_axis_top_percent,
     chart_grid_interval_percent,
     format_mac_multiple,
     format_percent,
 )
+from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.theme import ONE_MAC_LINE_DASH_PATTERN
 from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S

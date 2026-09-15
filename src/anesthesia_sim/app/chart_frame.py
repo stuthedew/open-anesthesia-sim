@@ -59,14 +59,7 @@ from anesthesia_sim.app.chart_time_base import (
     tick_times,
 )
 from anesthesia_sim.app.control_timeline import ControlAdjustment
-from anesthesia_sim.app.controller import (
-    COMPARTMENT_QUANTITIES,
-    DrawnWindow,
-    RecordedQuantity,
-    RecordedSeries,
-    SimulationController,
-    SimulationSnapshot,
-)
+from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
 from anesthesia_sim.app.formatting import (
     chart_axis_top_percent,
     chart_grid_interval_percent,
@@ -76,6 +69,12 @@ from anesthesia_sim.app.formatting import (
     format_wash_in_ratio,
     mac_awake_band_percent,
     mac_axis_ticks,
+)
+from anesthesia_sim.app.run_series import (
+    COMPARTMENT_QUANTITIES,
+    DrawnWindow,
+    RecordedQuantity,
+    RecordedSeries,
 )
 from anesthesia_sim.app.theme import (
     ALVEOLAR_COLOR,
