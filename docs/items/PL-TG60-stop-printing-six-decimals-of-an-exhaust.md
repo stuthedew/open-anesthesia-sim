@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_formatting.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md
 added: 2026-08-30
 closed: 2026-09-15
+pr: 588
 verify: uv run pytest tests/unit/test_formatting.py && grep -q 'def test_agent_amounts_precision' tests/unit/test_formatting.py
 ---
 

@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: tests/unit/test_dashboard_frame.py, tests/integration/test_simulation_view.py
 added: 2026-08-30
 closed: 2026-09-15
+pr: 588
 verify: uv run pytest tests/unit/test_dashboard_frame.py && grep -q 'def test_the_educational_disclaimer_says_what_the_tool_is_not' tests/unit/test_dashboard_frame.py
 ---
 

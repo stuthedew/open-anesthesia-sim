@@ -9,6 +9,7 @@ feature: qt-port
 touches: tests/integration, tests/conftest.py, src/anesthesia_sim/app/simulation_view.py, docs/ARCHITECTURE.md, docs/worker.md
 added: 2026-09-10
 closed: 2026-09-15
+pr: 588
 verify: uv run python tools/import_boundary_check.py && test -f tests/integration/test_qt_rendering.py
 ---
 

@@ -9,6 +9,7 @@ feature: vaporizer-controls
 touches: src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_qt_widgets.py, tests/unit/test_bootstrap.py, docs/MODEL.md
 added: 2026-08-23
 closed: 2026-09-15
+pr: 588
 verify: uv run pytest tests/integration/test_qt_widgets.py tests/unit/test_bootstrap.py && grep -q 'def test_the_startup_window_is_sized_from_the_screen_and_centred' tests/integration/test_qt_widgets.py
 ---
 

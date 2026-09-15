@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_qt_widgets.py, docs/MODEL.md
 added: 2026-09-04
 closed: 2026-09-15
+pr: 588
 verify: uv run pytest tests/integration/test_qt_widgets.py && grep -q 'def test_no_metric_value_wraps_away_from_its_unit' tests/integration/test_qt_widgets.py
 ---
 
