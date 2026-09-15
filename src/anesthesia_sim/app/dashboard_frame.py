@@ -297,17 +297,15 @@ USE_DISCLAIMER_TEXT: Final = (
 )
 INTERPRETATION_DISCLAIMER_TEXT: Final = "Model outputs — not measurements."
 
-# How many readout panels stand side by side, by window width: the smallest
-# width at which each column count applies, widest step first. The steps were
-# set by the widest label a panel has to hold on one line, measured by
-# rendering the running app at each step (`PL-8M05`); the row reflows
-# instead of squeezing a label, and the widest step seats all seven.
-READOUT_ROW_BREAKPOINTS: Final[tuple[tuple[float, int], ...]] = (
-    (1200.0, 7),
-    (992.0, 4),
-    (768.0, 2),
-    (0.0, 1),
-)
+# The column counts the readout row may take, widest first: the row reflows
+# to the largest of these whose panels fit its width instead of squeezing a
+# label (`PL-8M05`), and the widest seats all seven. The rungs are the
+# ladder; the widths at which the row steps down are not recorded here,
+# because they are a property of the rendering font. `PL-8M05` recorded the
+# Flet build's breakpoints as a rendered measurement at Flet's sizes; the
+# port derives the same ladder from the font it actually renders with, so no
+# pixel figure is asserted that a font or a HiDPI scale would falsify.
+READOUT_ROW_LADDER: Final[tuple[int, ...]] = (7, 4, 2, 1)
 
 
 class Emphasis(StrEnum):
@@ -1177,20 +1175,29 @@ def new_case_question(
     )
 
 
-def readout_columns(width_px: float) -> int:
+def readout_columns(width_px: float, panel_width_px: float, spacing_px: float) -> int:
     """How many readout panels stand side by side at this width.
 
-    A width takes the widest step at or below it, per `READOUT_ROW_BREAKPOINTS`.
+    The largest rung of `READOUT_ROW_LADDER` whose panels fit: `count`
+    panels of `panel_width_px` with `count - 1` gaps of `spacing_px`
+    between them take no more than `width_px`. One column is the floor,
+    however narrow the row, because a row must hold its panels somewhere.
+    The panel width is the widget's measured reservation - the widest value
+    each column can show, in the rendering font (`PL-3355`) - so the row
+    steps down exactly where a panel would otherwise be clipped, at
+    whatever width that is on the reader's display (`PL-8M05`).
 
     Args:
         width_px: The readout row's width, in logical pixels.
+        panel_width_px: The width every column is held to, in logical pixels.
+        spacing_px: The gap between neighbouring columns, in logical pixels.
 
     Returns:
         The column count: 7, 4, 2 or 1.
     """
 
-    for minimum_width_px, columns in READOUT_ROW_BREAKPOINTS:
-        if width_px >= minimum_width_px:
+    for columns in READOUT_ROW_LADDER:
+        if columns * panel_width_px + (columns - 1) * spacing_px <= width_px:
             return columns
 
-    return READOUT_ROW_BREAKPOINTS[-1][1]
+    return READOUT_ROW_LADDER[-1]

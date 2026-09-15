@@ -21,7 +21,7 @@ from PySide6.QtWidgets import QApplication, QDialog, QGridLayout, QLabel, QWidge
 from anesthesia_sim.app.controller import ControlInput, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     EMPTY_METRIC_QUALIFIER,
-    READOUT_ROW_BREAKPOINTS,
+    READOUT_ROW_LADDER,
     WIDEST_READOUT_SECONDARY,
     WIDEST_READOUT_VALUE,
     Readout,
@@ -108,6 +108,17 @@ def _cells(row: ReadoutRow) -> list[tuple[int, int]]:
     return [found[0] for found in cells]
 
 
+def _width_for(row: ReadoutRow, columns: int) -> int:
+    """The narrowest row that seats `columns` panels at the row's own reservation and spacing."""
+
+    return columns * row.panel_minimum_width_px + (columns - 1) * _grid(row).horizontalSpacing()
+
+
+def _resize(application: QApplication, row: ReadoutRow, width: int) -> None:
+    row.resize(width, 400)
+    application.processEvents()
+
+
 def _one_line_height(like: QLabel) -> int:
     """The height of a one-line label in `like`'s font, from a label that cannot wrap."""
 
@@ -159,12 +170,12 @@ def test_every_readout_reserves_a_qualifier_line_and_an_equal_column(
     """The row is read across, so no panel may be shaped unlike its neighbours (`PL-8M05`).
 
     Every panel draws all four lines - a spacer where it has no gloss or
-    no second unit - at the sizes that rank them, and the widest step of
+    no second unit - at the sizes that rank them, and the widest rung of
     the ladder seats every readout side by side in equal columns, so an
     eighth panel cannot silently split the row.
     """
 
-    row = _row(application, 1400)
+    row = _row(application, 2000)
 
     assert len(row.panels) == len(
         readouts(SimulationController().snapshot(), SUPPORTED_PLAYBACK_RATES[0])
@@ -180,7 +191,7 @@ def test_every_readout_reserves_a_qualifier_line_and_an_equal_column(
         assert panel.qualifier_label.font().pixelSize() < panel.name_label.font().pixelSize()
         assert panel.secondary_label.font().pixelSize() < panel.value_label.font().pixelSize()
 
-    assert row.columns() == READOUT_ROW_BREAKPOINTS[0][1] == len(row.panels)
+    assert row.columns() == READOUT_ROW_LADDER[0] == len(row.panels)
     assert [cell[0] for cell in _cells(row)] == [0] * len(row.panels)
     grid = _grid(row)
     assert {grid.columnStretch(column) for column in range(row.columns())} == {1}
@@ -212,17 +223,50 @@ def test_the_clock_reserves_its_width_so_the_panel_cannot_move(application: QApp
     )
 
 
-@pytest.mark.parametrize("width", [1400, 1200, 1199, 992, 991, 768, 767, 300])
-def test_the_readout_row_reflows_at_the_recorded_breakpoints(
-    application: QApplication, width: int
-) -> None:
-    row = _row(application, width)
-    columns = readout_columns(width)
+def test_the_readout_row_reflows_where_its_panels_stop_fitting(application: QApplication) -> None:
+    """The row steps down the ladder at the width its own reservation sets (`PL-8M05`).
 
-    assert row.width() == width
-    assert row.columns() == columns
-    assert max(cell[1] for cell in _cells(row)) == columns - 1
-    assert _cells(row) == [(index // columns, index % columns) for index in range(len(row.panels))]
+    At the narrowest width that seats seven panels of the measured
+    reservation with the grid's spacing between them, the row is seven
+    across; one pixel narrower it is four; and at every step no panel is
+    laid outside the row. The widths are read from the row rather than
+    written here, so the test holds on any font and at any display scale.
+    """
+
+    row = _row(application, 2000)
+    seven, four, two = (_width_for(row, columns) for columns in (7, 4, 2))
+    spacing = _grid(row).horizontalSpacing()
+
+    assert spacing >= 0
+    assert row.panel_minimum_width_px > 0
+    assert (seven - 1 - four) > 0, "the four-across rung does not fit inside the seven-across width"
+
+    for width, columns in (
+        (seven, 7),
+        (seven - 1, 4),
+        (four, 4),
+        (four - 1, 2),
+        (two, 2),
+        (two - 1, 1),
+        (row.panel_minimum_width_px, 1),
+    ):
+        _resize(application, row, width)
+
+        assert row.width() == width
+        assert row.columns() == columns
+        assert columns == readout_columns(width, row.panel_minimum_width_px, spacing)
+        assert max(cell[1] for cell in _cells(row)) == columns - 1
+        assert _cells(row) == [
+            (index // columns, index % columns) for index in range(len(row.panels))
+        ]
+
+        for panel in row.panels:
+            geometry = panel.geometry()
+
+            assert geometry.width() >= row.panel_minimum_width_px
+            assert geometry.x() + geometry.width() <= row.width(), (
+                f"a panel laid outside the row at {width} px, {columns} across"
+            )
 
 
 def test_a_readout_row_refuses_the_wrong_number_of_readouts(application: QApplication) -> None:
@@ -339,8 +383,8 @@ def test_the_delivered_dial_shows_its_mac_line_and_the_flow_controls_do_not(
             assert setting.secondary == ""
             assert control.secondary_label.isHidden()
 
-        gloss = setting.qualifier if setting.qualifier else EMPTY_METRIC_QUALIFIER
-        assert control.qualifier_label.text() == gloss
+        assert control.qualifier_label.text() == setting.qualifier
+        assert control.qualifier_label.isHidden() == (setting.qualifier == "")
         assert control.qualifier_label.font().italic()
         assert control.name_label.font().bold()
 

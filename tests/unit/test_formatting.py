@@ -1054,14 +1054,15 @@ def test_the_clock_still_resolves_the_step_the_simulation_advances_by() -> None:
 
 
 def test_the_widest_reachable_clock_string_is_what_the_reserved_width_assumes() -> None:
-    """`theme.ELAPSED_VALUE_WIDTH` is derived from this, not measured.
+    """The clock's reserved width is measured from this string, in the rendering font.
 
     The compound form changes length as components appear and fall away, so
     the readout reserves a width rather than letting its panel move every
-    render tick. That reservation was sized from the widest string the
-    supported run length can reach; nothing renders the interface in a check
-    yet (`PL-7J96`), so this test is what holds the premise honest if either
-    the form or the envelope changes.
+    render tick. `dashboard_frame.WIDEST_READOUT_VALUE` is this string, and
+    `qt_widgets.MetricPanel` measures it in the font it draws with (`PL-3355`);
+    the fixed pixel guess the Flet build carried as `theme.ELAPSED_VALUE_WIDTH`
+    was retired with that port (`PL-25KS`). This test is what holds the
+    premise honest if either the form or the envelope changes.
     """
 
     widest = max(

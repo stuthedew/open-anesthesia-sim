@@ -35,8 +35,8 @@ published reference values in `tests/unit/test_contrast_check.py`: black on
 white is exactly 21:1, `#767676` on white is 4.54:1 (the darkest grey that
 fails nothing at AA), and `#949494` on white is 3.03:1.
 
-**Colors are read, not imported, from every module under `app/`.** The view
-imports Flet, so a standard-library-only tool cannot import it. The constants
+**Colors are read, not imported, from every module under `app/`.** The
+interface imports PySide6, so a standard-library-only tool cannot import it. The constants
 are extracted with `ast` from every `.py` under `APP` - the theme first, so an
 alias of a theme name resolves, then the rest in path order - which also means
 this runs in a bare checkout with no virtualenv, the promise every tool here
@@ -254,8 +254,8 @@ class EitherRequirement:
     perceiving *any* of them is enough to locate it. The header agent badge
     is the case this exists for: a rectangle filled in the agent's
     identification color and outlined 1px in the agent's own text color
-    (`AGENT_RENDER_STYLES` builds the border, `_agent_header_badge` is the
-    container it is set on), so a reader finds its shape by the fill or by
+    (`_apply_agent_color_scheme` writes the border, `_agent_header_badge` is
+    the container it is set on), so a reader finds its shape by the fill or by
     the outline, and it is perceivable if either clears the minimum.
 
     **Measuring such an element one channel at a time is wrong in both
@@ -309,54 +309,59 @@ AnyRequirement = Requirement | EitherRequirement
 #:
 #: **The surface is read from the widget tree, never assumed.** The first
 #: version of this table put the run-status text on `PANEL`; it is not there.
-#: `mount()` builds a top-level `Column` with no background of its own, so the
-#: run-status word, the halted-run notice and the disclaimer all sit on
-#: `BACKGROUND` (`app/main.py` sets `page.bgcolor`), while the metric labels,
-#: the axis description and the accounting lines sit inside containers that do
-#: set `bgcolor=PANEL`. `BACKGROUND` is the darker surface, so it is the
-#: binding one wherever a color appears on both - which is what made `MUTED`
-#: a worse failure than the panel measurement showed (PL-X0RG).
+#: `SimulationView` paints its page `BACKGROUND` and places the transport row,
+#: the notice banner and the disclaimer directly on it, so the run-status
+#: word, the halted-run notice and the disclaimer all sit on `BACKGROUND`,
+#: while the readouts, the setting controls, the sidebar panels and the
+#: new-case confirmation set their own `PANEL` surface (`MetricPanel`,
+#: `ParameterSlider`, `RunView`, `NewCaseDialog`). `BACKGROUND` is the darker
+#: surface, so it is the binding one wherever a color appears on both - which
+#: is what made `MUTED` a worse failure than the panel measurement showed
+#: (PL-X0RG).
 #:
 #: `MUTED` is judged at the normal-text minimum rather than the large-text one
 #: even where it is bold: WCAG's large-text exception starts at 18pt, or 14pt
-#: bold (18.66px), and Flet's default text size is 14px. The one genuinely
-#: large string, the 26px application title in `INK`, clears the stricter bar
-#: anyway, so the exception is not claimed anywhere in this interface.
+#: bold (18.66px), and no size `app/theme.py` gives MUTED text reaches it. The
+#: one genuinely large string, the 26px application title in `INK`, clears the
+#: stricter bar anyway, so the exception is not claimed anywhere in this
+#: interface.
 REQUIREMENTS: tuple[AnyRequirement, ...] = (
     Requirement(
         "INK",
         "BACKGROUND",
         AA_TEXT,
         "1.4.3",
-        "the application title in the page header, which `mount` builds inline",
+        "the application title in the page header, which `SimulationView` places "
+        "on the page surface",
     ),
     Requirement(
         "INK",
         "PANEL",
         AA_TEXT,
         "1.4.3",
-        "every numeric readout and its unit (`_build_metric_value` for the "
-        "compartment grid, `_build_parameter_panel` for the four settings "
-        "beside their sliders), each panel heading (`_build_parameter_panel`, "
-        "`_build_chart_panel`, `_build_wash_in_section`, "
-        "`_build_control_timeline_panel`, `_build_agent_accounting_panel`), and "
-        "every legend label beside a swatch (`_build_legend_item`, "
-        "`_build_control_mark_legend_item`, `_build_band_legend_item`). Also "
-        "the six compartment checkboxes that show and hide the chart's traces "
-        "(`_build_compartment_trace`), in both roles the pair has: the box "
-        "itself is INK filled with a PANEL tick, and its label is INK text "
-        "while that trace is drawn - `_apply_trace_visibility` is the one "
-        "writer of that. The box is a user-interface component, so SC 1.4.11's "
-        "3:1 would suffice for it - the text minimum is met anyway, and is what "
-        "the label needs. Deliberately not one of the six trace colours nor "
-        "ACCENT: the legend row has already spent its colour budget on six "
-        "compartments (.claude/rules/ui-color.md, judgment 3), so the "
-        "control is drawn as furniture rather than competing with the "
-        "swatch beside it (PL-CG7J). Also the title and the opening "
-        "statement of the new-case confirmation (`_build_new_case_dialog`), "
-        "whose surface is set to PANEL explicitly rather than left to the "
-        "Flet theme, so that these three text colours stand on a background "
-        "this table measures them against (PL-R3KB). Also both dropdowns whose "
+        "every numeric readout and its unit (`MetricPanel` for the compartment "
+        "grid, `ParameterSlider` for the four settings beside their sliders), "
+        "each panel heading (`ParameterSlider` for a setting's name, `RunView` "
+        "for the accounting and control-change panels it builds for its run, "
+        "`SimulationView` for the chart's and the wash-in section's), and every "
+        "legend label beside a swatch (`TraceLegend` for the concentration "
+        "chart's three rows, `WashInLegend` for the wash-in plot's). Also the "
+        "six compartment checkboxes that show and hide the chart's traces "
+        "(`TraceLegend`), whose label is INK text while that trace is drawn and "
+        "MUTED while it is hidden - `_on_toggled` is the one writer of that. "
+        "The box is a user-interface component, so SC 1.4.11's 3:1 would "
+        "suffice for it - the text minimum is met anyway, and is what the label "
+        "needs. Deliberately not one of the six trace colours nor ACCENT: the "
+        "legend row has already spent its colour budget on six compartments "
+        "(.claude/rules/ui-color.md, judgment 3), so the control is drawn as "
+        "furniture rather than competing with the swatch beside it (PL-CG7J). "
+        "Also the title and the opening statement of the new-case confirmation "
+        "(`NewCaseDialog`), whose surface is set to PANEL explicitly rather "
+        "than left to the platform style, so that these three text colours "
+        "stand on a background this table measures them against (PL-R3KB), and "
+        "its outlined discard button - INK text inside a 1px INK border on "
+        "PANEL, the border being a user-interface component that needs only SC "
+        "1.4.11's 3:1 (PL-25KS). Also both dropdowns whose "
         "fill is set to PANEL explicitly for that same reason: the playback "
         "rate beside the transport controls (`_playback_rate_dropdown`), which "
         "names the rate the clock is advancing at, which docs/MODEL.md requires "
@@ -370,7 +375,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         AA_TEXT,
         "1.4.3",
         "the run-status word while paused, beside the transport controls "
-        "(`_status_text`, whose colour `_refresh_view` writes for every run "
+        "(`_status_text`, whose colour `refresh` writes for every run "
         "state). Also the border of the playback-rate dropdown drawn beside "
         "them (`_playback_rate_dropdown`), which is a user-interface component "
         "and so needs only SC 1.4.11's 3:1 - met with room to spare by the text "
@@ -382,27 +387,27 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         AA_TEXT,
         "1.4.3",
         "the compartment name and the smaller clinical gloss under it on each "
-        "readout (`_build_metric_panel`), the MAC multiple under the value "
-        "(`_build_metric_secondary_value`), the chart's axis description "
-        "(`_time_axis_caption`; the wash-in chart's own went with the prose "
-        "`PL-F9TQ` removed, having restated that chart's axis titles), the "
-        "sub-headings "
-        "and status lines the chart and its neighbours hold "
-        "(`_build_chart_panel`, `_build_wash_in_section`, "
-        "`_build_control_timeline_panel`), and the agent-accounting detail "
-        "lines (`_agent_accounting_detail_text`, `_agent_amounts_text`). The "
+        "readout, and the MAC multiple under the value (`MetricPanel`), the "
+        "chart's axis description (`_time_axis_caption`; the wash-in chart's "
+        "own went with the prose `PL-F9TQ` removed, having restated that "
+        "chart's axis titles), the sub-headings and status lines the chart and "
+        "its neighbours hold (`SimulationView` for the chart column's, "
+        "`RunView` for the control-change panel's), the legend rows' captions "
+        "and the label of a compartment whose trace is hidden (`TraceLegend`), "
+        "and the agent-accounting detail lines (`_agent_accounting_detail_text`, "
+        "`_agent_amounts_text`). The "
         "gloss is judged at the same 4.5:1 as the name above it: at 12px it "
         "is normal text by WCAG's definition, nowhere near the 18.66px the "
         "large-text exception starts at, and it is the same MUTED colour on "
         "the same PANEL surface, so it adds no pair to this table (PL-8M05). "
         "Also the line of the new-case confirmation saying what carries over "
-        "into the new case (`_build_new_case_dialog`, PL-R3KB), the "
+        "into the new case (`NewCaseDialog`, PL-R3KB), the "
         "playback rate drawn under the simulated-time readout "
         "(`_playback_rate_text`), which shares the surface and the size of the "
         "MAC multiples beside it (PL-SN2C), and the border of the chart's "
         "time-base dropdown (`_time_base_dropdown`), a user-interface component "
         "needing only SC 1.4.11's 3:1. Also the gloss under a setting's name "
-        "in the controls row (`_build_parameter_panel`, PL-71CF), which is the "
+        "in the controls row (`ParameterSlider`, PL-71CF), which is the "
         "readout gloss one panel row up: the same colour on the same surface "
         "at the same size, so it too adds no pair.",
     ),
@@ -411,7 +416,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "BACKGROUND",
         AA_TEXT,
         "1.4.3",
-        "the run-status word while running (`_status_text`, set by `_refresh_view`)",
+        "the run-status word while running (`_status_text`, set by `refresh`)",
     ),
     Requirement(
         "ACCENT_TEXT",
@@ -419,8 +424,8 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         AA_TEXT,
         "1.4.3",
         "the agent-accounting status word when conservation holds "
-        "(`_agent_accounting_status_text`, inside `_build_agent_accounting_panel`, "
-        "written by `_refresh_view`). Rendered at 20px bold, which is large text, "
+        "(`_agent_accounting_status_text`, in the accounting panel `RunView` "
+        "builds, written by `refresh`). Rendered at 20px bold, which is large text, "
         "so SC 1.4.3's 3:1 would suffice - the stricter bar is applied "
         "deliberately",
     ),
@@ -429,21 +434,22 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "PANEL",
         AA_NON_TEXT,
         "1.4.11",
-        "the active track and thumb of all four parameter sliders, which is how "
-        "each control shows its current value (`_fresh_gas_flow_slider`, "
+        "the active track of all four parameter sliders, which is how each "
+        "control shows its current value (`_fresh_gas_flow_slider`, "
         "`_delivered_concentration_slider`, `_alveolar_ventilation_slider`, "
-        "`_cardiac_output_slider`, each drawn on the PANEL surface "
-        "`_build_parameter_panel` sets)",
+        "`_cardiac_output_slider`, each a `ParameterSlider` whose stylesheet "
+        "paints the filled track in ACCENT on the PANEL surface the control "
+        "sets)",
     ),
     Requirement(
         "WARNING",
         "BACKGROUND",
         AA_TEXT,
         "1.4.3",
-        "the halted-run notice (`_notice_text`, written by `_refresh_notice`), "
-        "the run-status word while stopped (`_status_text`), and the "
-        "educational-use disclaimer, which `mount` builds inline at the foot of "
-        "the page",
+        "the halted-run notice (`_notice_text`, a `NoticeLabel` written by "
+        "`refresh`), the run-status word while stopped (`_status_text`), and "
+        "the educational-use disclaimer, which `SimulationView` places at the "
+        "foot of the page",
     ),
     Requirement(
         "WARNING",
@@ -451,11 +457,23 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         AA_TEXT,
         "1.4.3",
         "the agent-accounting status word when validation fails "
-        "(`_agent_accounting_status_text`, in `_build_agent_accounting_panel`), "
-        "the notice naming a compartment "
-        "trace that is above the top of the chart (`_off_scale_text`), and the "
-        "line of the new-case confirmation stating what a switch would discard "
-        "(`_build_new_case_dialog`, PL-R3KB)",
+        "(`_agent_accounting_status_text`, in the accounting panel `RunView` "
+        "builds), the notice naming a compartment trace that is above the top "
+        "of the chart (`_off_scale_text`), and the line of the new-case "
+        "confirmation stating what a switch would discard (`NewCaseDialog`, "
+        "PL-R3KB)",
+    ),
+    Requirement(
+        "PANEL",
+        "PRIMARY",
+        AA_TEXT,
+        "1.4.3",
+        "the label of the new-case confirmation's keep button, PANEL text on a "
+        "PRIMARY fill (`NewCaseDialog`): the one filled button in the "
+        "interface, filled so that the safe action reads as the default and "
+        "filled-versus-outlined is a second channel beside its trailing "
+        "position. The text is at the application default size, so the "
+        "normal-text minimum applies; 6.02:1 when declared (PL-25KS)",
     ),
     Requirement(
         "sevoflurane.foreground",
@@ -470,7 +488,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "`_running_agent_text` and `_running_agent_lock_text`). All three are "
         "written by `_apply_agent_color_scheme`. The chip is why this entry "
         "still describes what is on screen during a run: the selector used to "
-        "be merely disabled while running, and Flet/Material paints a disabled "
+        "be merely disabled while running, and Flet/Material painted a disabled "
         "label in the theme's disabled-content grey - a colour app/theme.py "
         "never declares, so this tool could not reach it and reported a "
         "passing ratio for a pair that had stopped being rendered. Nothing "
@@ -490,7 +508,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "`_running_agent_text` and `_running_agent_lock_text`). All three are "
         "written by `_apply_agent_color_scheme`. The chip is why this entry "
         "still describes what is on screen during a run: the selector used to "
-        "be merely disabled while running, and Flet/Material paints a disabled "
+        "be merely disabled while running, and Flet/Material painted a disabled "
         "label in the theme's disabled-content grey - a colour app/theme.py "
         "never declares, so this tool could not reach it and reported a "
         "passing ratio for a pair that had stopped being rendered. Nothing "
@@ -510,7 +528,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "`_running_agent_text` and `_running_agent_lock_text`). All three are "
         "written by `_apply_agent_color_scheme`. The chip is why this entry "
         "still describes what is on screen during a run: the selector used to "
-        "be merely disabled while running, and Flet/Material paints a disabled "
+        "be merely disabled while running, and Flet/Material painted a disabled "
         "label in the theme's disabled-content grey - a colour app/theme.py "
         "never declares, so this tool could not reach it and reported a "
         "passing ratio for a pair that had stopped being rendered. Nothing "
@@ -523,9 +541,10 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         AA_NON_TEXT,
         "1.4.11",
         "the identification swatch in the header, read as a shape - by its "
-        "fill or by its border, whichever carries the edge. `AGENT_RENDER_STYLES` "
-        "outlines the badge 1px in the agent's own text colour and "
-        "`_agent_header_badge` is the container both are set on, so either "
+        "fill or by its border, whichever carries the edge. "
+        "`_apply_agent_color_scheme` outlines the badge 1px in the agent's own "
+        "text colour and `_agent_header_badge` is the container both are set "
+        "on, so either "
         "channel locating the badge satisfies SC 1.4.11. This one is carried "
         "by its border: ISO 5360 yellow is far too light to hold an edge "
         "against the page, which is why the badge is outlined at all",
@@ -600,7 +619,7 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
 #: and clearing it, so one entry remains and it is the slider track's.
 KNOWN_SHORTFALLS: dict[tuple[str, str], str] = {("ACCENT", "PANEL"): "PL-W8DQ"}
 
-#: The six chart traces, in the order `SimulationView._plotted_series` lists them.
+#: The six chart traces, in the order `chart_frame.COMPARTMENT_TRACES` lists them.
 TRACES: tuple[str, ...] = (
     "CIRCUIT_COLOR",
     "ALVEOLAR_COLOR",
@@ -824,8 +843,8 @@ def read_palette(root: Path) -> dict[str, str]:
     the file it was in reported as checked. Enforce the convention, and keep
     measuring what the convention is meant to prevent.
 
-    Read with `ast` rather than imported: the view imports Flet, which a
-    standard-library-only tool running in a bare checkout does not have.
+    Read with `ast` rather than imported: the interface imports PySide6, which
+    a standard-library-only tool running in a bare checkout does not have.
 
     Args:
         root: Repository root.
@@ -865,7 +884,7 @@ def read_symbols(root: Path) -> frozenset[str]:
     Four kinds, because those are the four a description has cause to cite:
     module-level constants, classes, functions and methods, and the `self.X`
     attributes the view builds its controls into. Read with `ast` for the same
-    reason the palette is - the view imports Flet.
+    reason the palette is - the interface imports PySide6.
 
     Deliberately a flat set rather than a scope-aware resolution. It answers
     "does this name exist here", which is the whole of what a citation check

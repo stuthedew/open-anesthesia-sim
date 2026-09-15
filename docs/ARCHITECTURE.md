@@ -15,10 +15,10 @@ direction (never edit around this — see `CLAUDE.md`):
 data/  --loaded by-->  core/  --read by-->  app/
 ```
 
-- **`core/`** is the scientific simulation. It has no dependency on Flet, no
-  wall-clock time, and no I/O beyond reading the packaged JSON files in
+- **`core/`** is the scientific simulation. It has no dependency on the UI
+  toolkit, no wall-clock time, and no I/O beyond reading the packaged JSON files in
   `data/`. Every quantity it produces is deterministic for identical inputs.
-- **`app/`** is the Flet user interface. It never performs a physiological or
+- **`app/`** is the PySide6 user interface. It never performs a physiological or
   unit calculation itself — it only reads immutable snapshots from `core/`
   (through a thin controller) and renders them, and forwards user input back
   as setter calls.
@@ -35,7 +35,7 @@ data/  --loaded by-->  core/  --read by-->  app/
   entered a data file.
 
 This mirrors the repository rules in `CLAUDE.md`: simulation code stays
-independent of Flet, no simulation calculations belong in UI callbacks, and
+independent of the toolkit, no simulation calculations belong in UI callbacks, and
 model parameters live in validated, versioned data files rather than as
 executable code.
 
@@ -44,7 +44,7 @@ executable code.
 ```text
 src/anesthesia_sim/
 ├── app_metadata.py      # app name, bundle id, and the version the header shows: the installed distribution's version, plus the commit where the running code is not a clean checkout of the released tag, because between two releases every build otherwise displays the same string and a fix confirmed by eye cannot be told from the code it replaced
-├── core/                # scientific simulation — no Flet dependency
+├── core/                # scientific simulation — no toolkit dependency
 │   ├── validation.py              # shared input-validation guards (raise SimulationConfigurationError)
 │   ├── concentration.py           # fraction vs percent: the two forms, and the only crossing
 │   ├── supported_ranges.py        # the declared domain; refuses a setting, or a run, outside it
@@ -61,20 +61,21 @@ src/anesthesia_sim/
 │   ├── run_definition.py               # a run as its settings over time; any state in closed form
 │   ├── agent_simulation_validation.py  # mass-balance / agent-accounting tracker
 │   └── simulation.py              # SimulationState: explicit elapsed time (bounded) + AgentUptakeSystem
-├── app/                  # user interface - Flet, with the chart already on pyqtgraph while the port lands (ROADMAP.md § "v0.4.26 - the interface moves to Qt")
+├── app/                  # user interface - PySide6 and pyqtgraph since PL-25KS (ROADMAP.md § "v0.4.26 - the interface moves to Qt")
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots; ResumePoint and BranchedCase: where a branch opened, and the trunk it belongs to
-│   ├── simulation_view.py          # renders snapshots as the dashboard; no domain logic. Two classes since PL-B9PY: `RunView` is one run - its controller, readouts, settings, transport and the lines it draws - and `SimulationView` is what two runs share, the charts, their axes, the window, the time base and the compartment selection
-│   ├── formatting.py               # modeled value -> displayed string; Flet-independent
-│   ├── playback.py                 # playback rate -> whole simulation steps per tick; Flet-independent
+│   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the charts, the legend, the time base, the captions, the wash-in section, the render tick, the splitter layout; no domain logic
+│   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
+│   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, inert_splitter, initial_window_geometry
+│   ├── formatting.py               # modeled value -> displayed string; toolkit-independent
+│   ├── playback.py                 # playback rate -> whole simulation steps per tick; toolkit-independent
 │   ├── dashboard_frame.py          # what the dashboard claims about one run at one instant, as plain values: the status word, the notice and its precedence, the readouts and their glosses, the setting controls, the transport enablement, the accounting panel, the control-change list, the captions and the new-case question; toolkit-independent
 │   ├── chart_frame.py              # what one frame of both plots draws, as plain values: the trace table, the window, the axes' ticks, the references, the marks, the wash-in stretches and the hover text; toolkit-independent
-│   ├── chart_series.py             # builds and redraws the Flet chart's traces, references and control marks; leaves with PL-7SVX
 │   ├── qt_chart.py                 # the concentration chart, the wash-in plot and the legend on pyqtgraph, moved per frame to match a chart_frame.ChartFrame; declares no colour and formats no value
-│   ├── chart_time_base.py          # how wide the chart's window is and how it is ruled; Flet-independent
-│   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; Flet-independent
-│   ├── wash_in.py                  # F_A/F_I and the domain it holds on; Flet-independent
-│   ├── theme.py                    # every display token: palette, cited ISO 5360 agent colors, type sizes, spacing, dash patterns; Flet-independent
-│   └── main.py                     # entry point; builds the Flet page
+│   ├── chart_time_base.py          # how wide the chart's window is and how it is ruled; toolkit-independent
+│   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; toolkit-independent
+│   ├── wash_in.py                  # F_A/F_I and the domain it holds on; toolkit-independent
+│   ├── theme.py                    # every display token: palette, cited ISO 5360 agent colors, type sizes, spacing, dash patterns; toolkit-independent
+│   └── main.py                     # PySide6 entry point; sized, centred window per PL-005
 └── data/                 # versioned, cited parameter files
     ├── agents/{sevoflurane,isoflurane,desflurane}.json
     ├── machines/reference_circle_system.json
@@ -196,21 +197,24 @@ other; that change deleted the history, because the run definition is the run
 and the samples were a second copy of it. What the chart draws now is what
 `drawn_window` evaluates, and nothing exists behind those states to disagree
 with them.
-`app/simulation_view.py` reads only those two — it builds the
-controls, drives the chart, and wires slider/button callbacks through
-`_apply_setting` to controller setters. It performs no physiological or
-unit calculation of its own. The transformations it does apply are each
-their own module, because each is a presentation-*correctness* question
-rather than a layout one and each must be readable and testable without a
-Flet interface: `app/formatting.py` turns a fraction into the strings a
-reader sees — a percent and a multiple of the running agent's 1 MAC — at the
-resolutions `docs/MODEL.md` § "Displayed precision" derives,
-`app/chart_frame.py` settles what one frame of the chart claims - which
-compartment a curve carries, which instants are drawn, where the references
-stand, what a hover says - as plain values with no toolkit loaded, and
-`app/qt_chart.py` moves pyqtgraph items to match it while `app/chart_series.py`
-still does the same for the Flet chart, `app/control_timeline.py` turns the recorded control changes into
-the adjustments a reader sees, `app/playback.py` turns the playback rate a
+`app/run_view.py` and `app/simulation_view.py` read only those two — a
+`RunView` builds one run's controls and wires slider/button callbacks through
+`_apply_setting` to controller setters, and the `SimulationView` drives the
+charts every run shares. Neither performs a physiological or unit calculation
+of its own. The transformations they do apply are each their own module,
+because each is a presentation-*correctness* question rather than a layout
+one and each must be readable and testable with no toolkit loaded:
+`app/formatting.py` turns a fraction into the strings a reader sees — a
+percent and a multiple of the running agent's 1 MAC — at the resolutions
+`docs/MODEL.md` § "Displayed precision" derives, `app/chart_frame.py` settles
+what one frame of the chart claims - which compartment a curve carries, which
+instants are drawn, where the references stand, what a hover says - as plain
+values, and `app/qt_chart.py` moves pyqtgraph items to match it;
+`app/dashboard_frame.py` does the same for everything beside the plots - the
+status word, the notice and its precedence, the readouts, the setting
+controls, the captions - and `app/qt_widgets.py` moves the leaf widgets to
+match it, deciding nothing; `app/control_timeline.py` turns the recorded
+control changes into the adjustments a reader sees, `app/playback.py` turns the playback rate a
 reader selects into the number of whole simulation steps a tick takes, and
 `app/wash_in.py` divides the alveolar fraction by the inspired one. The last
 three are correctness questions for reasons worth stating. The control record is faithful to the run and a drag
@@ -232,9 +236,9 @@ it divides. The agent's MAC-awake travels the same way and for the same
 reason, as `SimulationSnapshot.agent_mac_awake` beside that divisor, because
 the chart's MAC-awake band is the one multiplied by the other and pairing
 two agents' values would place a correct number at the wrong height. A
-reference is built and moved by `app/chart_series.py` but is deliberately
-not a member of the view's trace-to-compartment table: it reads no state
-of the run.
+reference is placed by `app/chart_frame.py` and drawn by `app/qt_chart.py`
+but is deliberately not a member of `chart_frame.COMPARTMENT_TRACES`, the
+trace-to-compartment table: it reads no state of the run.
 A control mark is a third kind of series on the same terms and for a
 stronger version of the reason — it draws no value at all, only a simulated
 time — and it is likewise outside that table.
@@ -264,16 +268,19 @@ different treatment:
   `restore_state()`), so a dynamic field added without a matching capture
   is a local omission; `docs/MODEL.md`, "Step atomicity", is the contract.
 
-Both view loops are guarded, and both call `SimulationController.fail()`
-on any exception — a `TypeError` from a refactor kills an asyncio task
-exactly as silently as a modelling failure does. `fail()` is a third run
+Both timer slots are guarded — `RunView.step_tick` steps the run and
+`SimulationView.render_tick` presents it — and both halt the run through
+`SimulationController.fail()` on any exception, because a `TypeError` from a
+refactor is exactly as silent inside a Qt slot as a modelling failure is.
+`fail()` is a third run
 state, carried on the snapshot as `failure_reason` and rendered as
 "Stopped — simulation error" with a banner over the values: a halted run
 must never present as a pause, because a pause is a run that continues when
 asked and a halt is one that cannot. It cannot be resumed, only cleared by
-`reset()` or by starting a fresh run with `set_agent()`. Neither loop returns on
-failure — they are started once, at mount, so a loop that exited could
-never be restarted.
+`reset()` or by starting a fresh run with `set_agent()`. Neither timer stops
+on failure — both are started once, when the window opens, and a halted run
+leaves them firing and finding nothing to do — so a run reset and started
+again is stepped without anything having to be restarted.
 
 Drawing that full record every frame is what made the render payload grow
 with run length. The run no longer keeps a record to draw: `core/run_definition.py`
@@ -283,26 +290,22 @@ controller for the states at the instants it is about to plot
 instants those are is a presentation-correctness concern — a chart that
 stepped over a control change would show a curve the simulation never
 produced — so the rules that place them are stated in `docs/MODEL.md` § "What
-the chart draws" and tested on their own. Bounding how many points are drawn
-is only half of it: the client is
-patched per point, so what a frame costs is how many drawn points *changed*
-which instant they show. The evaluated instants are therefore anchored to an
-absolute grid measured from the case's zero rather than to position within
-the window, so a window following the run keeps every column it had and
-gains at most one (`RunDefinition.evaluate_anchored`; PL-Q197 established
-the rule over recorded samples and PL-2FM6 carried it over to evaluated
-columns). `app/chart_frame.py` is the layer above it — it holds the
-column-per-pixel rule and its floor (`chart_columns`) and reads the window
-once per run for every trace, and `app/chart_series.py`, for the Flet chart,
-converts each drawn value into its own axis's unit,
-and moves the points a trace already holds — and it is separate for the same
-reason: which quantity a line carries is a correctness claim, and the view
-passes it in as one `PlottedSeries` table declared beside the traces
-themselves. The unit conversion belongs to the caller that knows the axis:
-the six compartment traces are drawn in percent and the wash-in ratio in its
-own dimensionless unit, through one shared point-writing primitive. Stepping and drawing also run as separate loops on separate intervals,
-so simulation time stays a function of steps taken rather than of how long a
-frame took.
+the chart draws" and tested on their own. The evaluated instants are anchored
+to an absolute grid measured from the case's zero rather than to position
+within the window, so a window following the run keeps every column it had
+and gains at most one (`RunDefinition.evaluate_anchored`; PL-Q197 established
+the rule over recorded samples, when the Flet client was patched per point
+and every shifted column was a changed point, and PL-2FM6 carried it over to
+evaluated columns). `app/chart_frame.py` is the layer above it — it holds the
+column-per-pixel rule and its floor (`chart_columns`), reads the window once
+per run for every trace, and converts each drawn value into its own axis's
+unit — and it is separate for the same reason: which quantity a line carries
+is a correctness claim, declared once in `chart_frame.COMPARTMENT_TRACES`
+beside the traces themselves. The unit conversion belongs to the layer that
+knows the axis: the six compartment traces are drawn in percent and the
+wash-in ratio in its own dimensionless unit. Stepping and drawing also run on
+separate timers on separate intervals, so simulation time stays a function of
+steps taken rather than of how long a frame took.
 
 ## What a branch is, and what it shares with its parent
 
@@ -429,14 +432,14 @@ Outside the packaged application, and not imported by it:
 
 ```text
 tools/
-├── agent_identity_check.py  # refuses a control that carries the agent colour and can be rendered disabled, because Flet/Material then paints its label in a disabled-content grey that is declared in no source file and so is unreachable by `contrast_check.py`; a control may be `disabled` only where it is also `visible = not <the same expression>`, and one given an agent colour where it is constructed must be written by the single writer `RunView._apply_agent_color_scheme`; reads every module under `app/` and names none by path, and refuses a tree in which no `disabled` write can be read at all rather than passing over it
+├── agent_identity_check.py  # refuses a control that carries the agent colour and can be rendered disabled, because a toolkit then paints its label in its own disabled-content grey, which is declared in no source file and so is unreachable by `contrast_check.py`; a control may be disabled only where the same expression also hides it - `disabled = E` with `visible = not E`, or `setDisabled(E)` with `setHidden(E)` in the Qt spelling since PL-25KS - and one given an agent colour where it is constructed must be written by the single writer `RunView._apply_agent_color_scheme`; reads every module under `app/` and names none by path, and refuses a tree in which no `disabled` write can be read at all rather than passing over it
 ├── branch_id_check.py    # refuses a branch ahead of the default base that carries no item id in its name and leads no commit subject with one, because every in-flight guard matches an id and work carrying none is invisible to all of them; scoped to the `claude/*` namespace, since a contributor has no queue to be visible in
 ├── dead_ends.py          # emits `docs/dead-ends.md`'s entry lines into session context at start, and holds that emitted half - never the file's preamble, which is instructions for adding an entry rather than for reading one - to 30 entries and 4,000 bytes, because a `SessionStart` hook's output is resent on every turn and an unbounded always-loaded store measurably degrades an agent rather than merely costing tokens; refuses an entry citing an id that resolves to nothing, since `bin/docket show <id>` is the entry's whole retrieval path
 ├── contrast_check.py     # computes every declared color requirement's WCAG 2.2 contrast ratio from the constants in `app/`, and holds each to its declared minimum, taking the better channel where an element's edge can be carried by either its fill or its border
 ├── core_vocabulary_check.py  # holds `core/`'s identifiers to the vocabulary `docs/MODEL.md` establishes, in the three ways that are decidable: every `ClassName.accessor` in the Symbols table's Code column resolves to a real attribute, property or field - an em dash being accepted only where the cell says what the code reads instead; none of the accessor names `PL-9SH6` retired comes back, matched whole rather than as substrings, so that an identifier merely containing a retired name is not accused of reviving it - a rule with no live counterexample in `core/` since `PL-6KNM` renamed `require_concentration_fraction` to `require_fraction`, and `PL-JW9J` is where tightening it is decided; and every `*partition_coefficient` identifier names both of its phases in the declared outward order, gas then blood then tissue, so a coefficient cannot be written as its own reciprocal in a literature that calls one quantity tissue-gas, tissue-blood and blood tissue in a single chapter. It runs under `uv run python`, not at the 3.11 floor, because it parses `core/` with `ast`; whether a name is the one a reader who knows the domain would guess stays a judgment and is deliberately not scripted
 ├── doc_check.py          # validates this map, MODEL.md's provenance table and its marked prose values, the data files' declared source tiers, citations - in the documentation, in every `docs/items/` brief and in every source docstring, since those last two are where this project writes most of them - markdown math syntax, ROADMAP.md's release train, frozen-list counts and current baseline, and the current gate's membership against the queue - unconditionally for the queue's `safety`- and `science`-classed items, and as a recorded disposition, placed or deferred, for every other open debt item; that no milestone names one id under both its `Required scope` and its `Explicitly out of scope`, advising where a scope bullet carries exclusion language; that every test `MODEL.md` names resolves to one that exists; reports resident instruction size
 ├── glyph_check.py        # refuses a non-ASCII character that nobody has confirmed the client can draw, from any string that can reach a reader - every string literal outside a docstring under `app/` and `core/`, and every string in the `data/` JSON - because `→` (U+2192) has no glyph in the Flutter client, drew as a replacement box in the control-change list, and no test in this repository could see it: every string assertion here compares text the same font-less Python process produced; the allowlist is per character rather than per Unicode block, and each entry records what was rendered and looked at
-├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`; `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`; `flet` and `flet_charts` anywhere but the three interface modules that import them today; and `PySide6`, `pyqtgraph` or `numpy` in any module under `core/` - so the payload/dataclass boundary, the never-wall-clock rule and the toolkit-independence rule are measured rather than asserted
+├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`; `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`; `flet` and `flet_charts` anywhere under `src/anesthesia_sim/`, the port being complete; and `PySide6`, `pyqtgraph` or `numpy` in any module under `core/` - so the payload/dataclass boundary, the never-wall-clock rule and the toolkit-independence rule are measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 ├── item_reads.py         # reports, from the local untracked `.docket-reads.log` that `.claude/hooks/item_read_log.py` writes, how many distinct items sessions actually open, what share of those are closed, and how many citation edges are traversed within a session - the read-side measurements every argument about the store's shape had been assuming; states the sample size first and chooses between none of the readings a low count admits
 ├── main_ci_status.py     # reports the default branch's last quality verdict, and nothing at all when it was a success, because the whole-store `verify:` replay runs only on push to `main` and its failures therefore land on a run no pull request shows; the session-start hook calls it, it gates nothing, and it is the one tool here that reads the network
@@ -516,7 +519,7 @@ already leads needs no item of its own. A release commit is exempt, exactly:
 
 `tools/contrast_check.py` holds the interface to the accessibility target
 `docs/MODEL.md` states — WCAG 2.2 Level AA. It reads the color constants with `ast`
-rather than importing them, because the view imports Flet and
+rather than importing them, because the interface imports PySide6 and
 these tools run under a bare `python3`, and it reads them from every module
 under `app/` — the theme first, then the rest in path order — rather than from
 two named paths (`PL-BXB2`). Since `PL-2CS8` every color is declared
@@ -558,17 +561,20 @@ be separated by color at all and that the line style is doing the work;
 limits on how far a simulated ratio may be read.
 
 `tools/agent_identity_check.py` closes the one gap that table structurally
-cannot cover: a colour the project never declares. Flet/Material paints a
-disabled control's label in the theme's disabled-content grey, which appears in
-no module `contrast_check.py` reads, so a requirement went on measuring
+cannot cover: a colour the project never declares. Flet/Material painted a
+disabled control's label in the theme's disabled-content grey, and a Qt style
+does the same from its palette's disabled role; neither appears in any module
+`contrast_check.py` reads, so a requirement went on measuring
 the enabled pair and reporting a pass while the agent's name sat grey on its
 own ISO 5360 fill for the whole of every run (`PL-61WW`). The rule it enforces
 is the project owner's, 2026-09-08: no control carrying agent identity may be
 *rendered* disabled, so SC 1.4.3's exemption for an inactive component — which
 settles a conformance claim, not whether a reader can identify the running
 agent — is never claimed here. Rendered is the load-bearing word: a control may
-be `disabled` where it is also `visible = not <the same expression>`, since it
-then draws nothing. The identity set is not a second list to keep in step but
+be `disabled` where it is also `visible = not <the same expression>` — or,
+in the Qt spelling the check reads since `PL-25KS`, `setDisabled(E)` where it
+is also `setHidden(E)` — since it then draws nothing. The identity set is not
+a second list to keep in step but
 whatever `RunView._apply_agent_color_scheme` writes, that method already
 being the single writer of agent colour; a control given an agent colour where
 it is constructed and never written there is the check's other error, and is
@@ -630,7 +636,10 @@ rule 1 of `agent_identity_check.py` is inside the port's scope — teaching it
 the setter spelling, which the empty-measurement error now demands of the
 first commit that changes it. Both tools' widening to every module under
 `app/` landed ahead of the port (`PL-BXB2`, `PL-V53R`), so the decomposition
-itself costs neither of them anything.
+itself costs neither of them anything. `PL-25KS` paid that one entry: rule 1
+reads `setDisabled`/`setEnabled` paired with `setHidden`/`setVisible` as well
+as the property spelling, and the identity set counts every method the single
+writer calls on a control, `setStyleSheet` included.
 
 `tools/glyph_check.py` covers the half of presentation correctness that no
 string assertion here can reach. Every such assertion compares text the same
@@ -661,8 +670,9 @@ dataclass pairs exist so the rest of `core/` never imports Pydantic;
 its inputs and of the number of steps taken and of nothing else — so the run
 loop reads no clock; and `CLAUDE.md`'s first architecture rule keeps simulation
 code independent of the UI toolkit, which `ROADMAP.md` § "v0.4.26 - the
-interface moves to Qt" turns into a figure — exactly three modules import Flet
-— and reasons from. Nothing checked any of them, so a leak into a compartment
+interface moves to Qt" turned into a figure — exactly three modules imported
+Flet — and reasoned from while the port ran. Nothing checked any of them, so a
+leak into a compartment
 would have left the paragraphs reading as verified while being false — worse than the
 coupling itself; the Flet count was true and unenforced until `PL-9KDK`, and
 `PySide6`, `pyqtgraph` and `numpy` are held out of `core/` from before the
@@ -685,12 +695,13 @@ end-to-end, so widening the tree to the whole package would fail on an import
 the design permits rather than passing quietly (`PL-J833`). The toolkit
 boundaries follow the clock's shape — `app/` is where a widget belongs — except
 Flet's two root packages, `flet` and `flet_charts`, which cover the whole
-package and between them name the three modules, because the count is what the
-roadmap reasons from; declaring one boundary for `flet` alone counted two,
-since `app/chart_series.py` imports only `flet_charts`. Those allowances are
-also the port's checklist through the tool's own unused-entry error: each
-module the port frees of either package drops its entry in the same commit,
-and the last entry takes the boundary with it.
+package and permit no module at all: the port is complete (`PL-25KS`) and
+nothing under `src/` may import Flet again (`PL-7SVX`). While the port ran
+they named the three modules the roadmap counted — two boundaries because the
+Flet chart module imported `flet_charts` without `flet`, so one boundary on
+`flet` alone counted two — and were its checklist through the tool's own
+unused-entry error: each module the port freed of either package dropped its
+entry in the same commit, and the last took the allowances with it.
 
 `tools/main_ci_status.py` is the one tool here that gates nothing, and the only
 one that reads the network. `.github/workflows/quality.yml` runs the whole-store
@@ -839,9 +850,11 @@ The other six are one reason repeated. `import_boundary_check.py`,
 `contrast_check.py`, `agent_identity_check.py`, `workflow_paths_check.py`,
 `core_vocabulary_check.py` and `glyph_check.py` each parse repository source
 with `ast`, and that
-source targets 3.14: `app/chart_series.py` declares `type PlottedSeries = ...`,
-a PEP 695 statement added in 3.12 and so a `SyntaxError` to the 3.11 parser,
-and `ast.parse`'s `feature_version` only narrows the syntax it accepts rather
+source targets 3.14: `app_metadata.py` writes `except OSError,
+subprocess.SubprocessError:` without parentheses, a PEP 758 form added in 3.14
+and so a `SyntaxError` to the 3.11 parser (as the Flet chart module's
+`type PlottedSeries = ...`, PEP 695, was before `PL-25KS` deleted it), and
+`ast.parse`'s `feature_version` only narrows the syntax it accepts rather
 than extending it. A tool that parses repository source can only run under an
 interpreter that understands that source. All of them still meet the promise
 above — standard library only, parseable at the floor — which is what the
@@ -934,11 +947,15 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
 
 - **`tests/unit/`** — one module's behavior in isolation (a compartment, a
   validator, a parameter loader, the controller, the displayed-value
-  formatters, the view).
+  formatters, and what the dashboard claims per tick with no toolkit loaded,
+  in `test_dashboard_frame.py`).
 - **`tests/integration/`** — components wired together as the app assembles
-  them (e.g. controller driving a full `AgentUptakeSystem`), and the Qt chart
+  them (e.g. controller driving a full `AgentUptakeSystem`), the Qt chart
   drawn headless against a real run (`test_qt_chart.py`), which reads the
-  plotted items and the painted pixels back. `tests/conftest.py` selects Qt's
+  plotted items and the painted pixels back, the dashboard's leaf widgets
+  (`test_qt_widgets.py`), and the whole dashboard driven against real
+  controllers (`test_simulation_view.py`), which reads every widget's text,
+  enablement and visibility back. `tests/conftest.py` selects Qt's
   `offscreen` platform plugin before any `PySide6` import, so the suite renders
   on a runner with no display; on Linux that plugin needs `libegl1` from the
   OS, which `.github/workflows/quality.yml` installs and the PySide6 wheels
@@ -962,7 +979,10 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   unit construction, the default is pinned to the file by a test, as
   `test_the_bare_circuit_defaults_match_the_shipped_machine_file` pins
   `BreathingCircuit`'s.
-- A new display panel or control → `app/simulation_view.py`, and the first
+- A new display panel or control → what it *claims*, as a plain value with a
+  test in `tests/unit/test_dashboard_frame.py`, in `app/dashboard_frame.py`;
+  the widget that draws it, deciding nothing, in `app/qt_widgets.py`; and its
+  place in `app/run_view.py` or `app/simulation_view.py`, where the first
   question is *whose* it is. A panel stating a particular run's numbers -
   readouts, settings, transport, the record of what was changed during it -
   belongs to `RunView`, which is instantiated once per run, and the dashboard
@@ -991,15 +1011,13 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   `app/chart_frame.py` and how pyqtgraph paints it in `app/qt_chart.py`, with
   a new *compartment* trace declared in `chart_frame.COMPARTMENT_TRACES`,
   which is where the quantity it draws, how it is drawn, the legend words that
-  name it and the gloss its hover carries are written as one record; the Flet
-  dashboard's `_traces` table is built from that one and leaves with
-  `PL-7SVX`. The table is the chart's rather than any one run's: each run builds
-  its own line from it (`_CompartmentTrace.build_line`), because a line holds
-  points and the points are a run's. `RunView._plotted_series` pairs that
-  table with the substance the frame is drawing — the agent its own snapshot
-  names, since the run is recorded under that identifier — and
-  `RunView._visible_plotted_series` is the subset a frame draws; neither is
-  edited directly. A series that draws no state of the run — a
+  name it and the gloss its hover carries are written as one record. The
+  table is the chart's rather than any one run's: `assemble_chart_frame`
+  reads it once per run, for the substance that run's snapshot names — the
+  run is recorded under that identifier — and `ChartFrame.visible` is the
+  subset the legend leaves drawn, so `app/qt_chart.py` holds one curve per
+  run per trace and moves it to match; nothing is edited directly. A series
+  that draws no state of the run — a
   clinical reference, a control mark — stays out of that table by
   construction, and owes the labelling requirement `docs/MODEL.md`
   § "Interface boundary" puts in place of the drawn-point rule instead. So

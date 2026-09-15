@@ -15,9 +15,9 @@ gets at a width, where the window opens.
 panel's four lines is a `QLabel` without word wrap, and the panel reserves
 its width once, from the font-metric advance of the widest string its
 column can show, so no window width can put "0.13" on one line and "%" on
-the next. The reservation is measured rather than declared: it supersedes
-`theme.ELAPSED_VALUE_WIDTH`, which was the Flet build's fixed guess at the
-clock's width and is no longer read.
+the next. The reservation is measured rather than declared; the Flet
+build's fixed guess at the clock's width, `theme.ELAPSED_VALUE_WIDTH`, was
+retired with the port (`PL-25KS`).
 
 **A slider position is a printed value** (`PL-25KS`, decision D4). The four
 sliders are integer `QSlider`s whose one step is the control's display
@@ -53,7 +53,6 @@ from PySide6.QtWidgets import (
 )
 
 from anesthesia_sim.app.dashboard_frame import (
-    EMPTY_METRIC_QUALIFIER,
     NewCaseQuestion,
     Readout,
     SettingReadout,
@@ -178,8 +177,7 @@ class MetricPanel(QFrame):
     less than the reservation clips the panel's edge rather than moving a
     unit onto its own line; and the clock, the one value whose string
     changes length every tick, cannot shift its panel as components appear
-    and fall away. `theme.ELAPSED_VALUE_WIDTH` was the Flet build's fixed
-    guess at the same reservation and is superseded by this measurement.
+    and fall away.
 
     Attributes:
         name_label: The modeled quantity, in the model's own terms.
@@ -268,12 +266,16 @@ class ReadoutRow(QWidget):
     """The readout panels in a grid whose column count follows the row's width.
 
     The row reflows rather than squeezing a panel (`PL-8M05`): at each
-    resize `dashboard_frame.readout_columns` says how many panels stand
-    side by side, and the grid is re-laid to that count with every column
-    given equal stretch and the same minimum, so no panel is given more of
-    the row than its neighbours. The layout imposes no minimum on the row
-    itself, because a row held at its seven-column minimum could never
-    receive the narrower resize that tells it to reflow.
+    resize `dashboard_frame.readout_columns` says how many panels of the
+    row's own measured reservation, with the grid's own spacing between
+    them, fit the new width, and the grid is re-laid to that count with
+    every column given equal stretch and the same minimum, so no panel is
+    given more of the row than its neighbours and none is laid outside the
+    row. The widths at which the count steps down are therefore the
+    rendering font's rather than a recorded pixel ladder. The layout
+    imposes no minimum on the row itself, because a row held at its
+    seven-column minimum could never receive the narrower resize that tells
+    it to reflow.
 
     Attributes:
         panels: One `MetricPanel` per readout, in row order.
@@ -309,7 +311,7 @@ class ReadoutRow(QWidget):
         self._grid.setContentsMargins(0, 0, 0, 0)
         self._grid.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
         self._columns = 0
-        self._lay_out(readout_columns(self.width()))
+        self._lay_out(self._columns_for(self.width()))
 
     def columns(self) -> int:
         """How many panels stand side by side at the row's current width."""
@@ -339,10 +341,17 @@ class ReadoutRow(QWidget):
 
     def resizeEvent(self, event: QResizeEvent) -> None:  # Qt spells this in camelCase.
         super().resizeEvent(event)
-        columns = readout_columns(event.size().width())
+        columns = self._columns_for(event.size().width())
 
         if columns != self._columns:
             self._lay_out(columns)
+
+    def _columns_for(self, width_px: int) -> int:
+        """The rung of the ladder whose panels fit `width_px` at this row's reservation."""
+
+        return readout_columns(
+            width_px, self.panel_minimum_width_px, self._grid.horizontalSpacing()
+        )
 
     def _lay_out(self, columns: int) -> None:
         """Seat the panels `columns` across, every column equal."""
@@ -379,8 +388,11 @@ class ParameterSlider(QWidget):
     Attributes:
         slider: The integer slider.
         name_label: The setting's name.
-        qualifier_label: The gloss under the name, or `EMPTY_METRIC_QUALIFIER`
-            where the setting has none, so the four sliders sit level.
+        qualifier_label: The gloss under the name, hidden where the setting
+            has none: no spacer holds the line open, because the four
+            controls are of unequal height by design (`SettingReadout`),
+            the delivered dial alone carrying a second line for its MAC
+            multiple.
         value_label: The setting as the snapshot prints it.
         secondary_label: The setting in its second unit, shown only where
             the setting has one - the delivered dial's MAC line.
@@ -408,7 +420,7 @@ class ParameterSlider(QWidget):
         self._decimals = setting.decimals
         self.name_label = styled_label(setting.name, color=INK, bold=True)
         self.qualifier_label = styled_label(
-            EMPTY_METRIC_QUALIFIER, color=MUTED, size_px=PARAMETER_QUALIFIER_SIZE, italic=True
+            setting.qualifier, color=MUTED, size_px=PARAMETER_QUALIFIER_SIZE, italic=True
         )
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setSingleStep(1)
@@ -446,9 +458,8 @@ class ParameterSlider(QWidget):
 
         self._decimals = setting.decimals
         self.name_label.setText(setting.name)
-        self.qualifier_label.setText(
-            setting.qualifier if setting.qualifier else EMPTY_METRIC_QUALIFIER
-        )
+        self.qualifier_label.setText(setting.qualifier)
+        self.qualifier_label.setHidden(not setting.qualifier)
 
         with QSignalBlocker(self.slider):
             self.slider.setRange(

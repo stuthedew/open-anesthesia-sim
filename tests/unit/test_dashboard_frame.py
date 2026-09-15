@@ -58,7 +58,7 @@ from anesthesia_sim.app.dashboard_frame import (
     NEW_CASE_IS_NOT_A_VIEW_TEXT,
     NO_CONTROL_CHANGES_TEXT,
     READOUT_PANELS,
-    READOUT_ROW_BREAKPOINTS,
+    READOUT_ROW_LADDER,
     RENDER_INTERVAL_S,
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
@@ -906,7 +906,7 @@ def test_every_readout_holds_its_gloss_and_second_unit_lines_open() -> None:
 
     assert panels[3].qualifier == EMPTY_METRIC_QUALIFIER
     assert EMPTY_METRIC_QUALIFIER == EMPTY_METRIC_SECONDARY_VALUE == " "
-    assert max(columns for _, columns in READOUT_ROW_BREAKPOINTS) == len(panels)
+    assert max(READOUT_ROW_LADDER) == len(panels)
 
 
 def test_the_widest_readout_strings_are_the_formatters_own_extremes() -> None:
@@ -1568,18 +1568,23 @@ def test_the_confirmations_trailing_action_is_the_one_that_keeps_the_case() -> N
 # --- layout and the interpretation line -----------------------------------------
 
 
-def test_readout_columns_follow_the_recorded_breakpoints() -> None:
-    """Seven across at 1200 px and wider, four at 992, two at 768, one below (`PL-8M05`)."""
+def test_readout_columns_are_the_widest_rung_whose_panels_fit() -> None:
+    """Seven across where seven panels fit, else four, two, one (`PL-8M05`).
 
-    assert [readout_columns(width) for width in (0.0, 767.9, 768.0, 991.9, 992.0, 1199.9)] == [
-        1,
-        1,
-        2,
-        2,
-        4,
-        4,
-    ]
-    assert readout_columns(1200.0) == readout_columns(1_700.0) == 7
+    The rungs are fixed and the widths are not: a panel 100 px wide with
+    10 px between neighbours needs 760 px for seven, 430 for four and 210
+    for two, and the count steps down one pixel below each. One column is
+    the floor, even for a row narrower than a single panel.
+    """
+
+    assert READOUT_ROW_LADDER == (7, 4, 2, 1)
+    assert [
+        readout_columns(width, 100.0, 10.0)
+        for width in (0.0, 99.0, 100.0, 209.0, 210.0, 429.0, 430.0, 759.0, 760.0, 1_700.0)
+    ] == [1, 1, 1, 1, 2, 2, 4, 4, 7, 7]
+    assert readout_columns(700.0, 100.0, 0.0) == 7
+    assert readout_columns(699.0, 100.0, 0.0) == 4
+    assert readout_columns(-1.0, 100.0, 10.0) == 1
 
 
 def test_the_interface_says_the_readouts_are_model_outputs_not_measurements() -> None:
