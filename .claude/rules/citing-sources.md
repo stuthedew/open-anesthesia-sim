@@ -108,11 +108,11 @@ Four limits decide what a citation may claim:
   a route to a measurement, not the measurement.
 
   **Answer "is it in there, and where" without opening a PDF.** The corpus root
-  carries `INDEX.md`, which states what the corpus does and does not cover and
-  routes a topic to a book, chapter and printed page, and a `text/` tree holding
-  every text-layer holding extracted once and marked with the page number
-  printed on each page — so `grep -rn -i "<phrase>" text/` costs nothing and
-  returns something citable. Render a page only for a figure, a flattened table,
+  carries an index file, INDEX.md, which states what the corpus does and does
+  not cover and routes a topic to a book, chapter and printed page; beside it a
+  text directory holds every text-layer holding extracted once and marked with
+  the page number printed on each page — so `grep -rn -i "<phrase>" text/` in
+  the clone costs nothing and returns something citable. Render a page only for a figure, a flattened table,
   or an exact quotation. Two cautions carried there: a printed page number is
   not a PDF page number in either book, and three of the papers are scans with
   no text layer, so a grep that finds nothing has not searched them.
