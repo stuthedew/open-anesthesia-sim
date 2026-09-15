@@ -2706,6 +2706,64 @@ def check_coverage_gate(root: Path, report: Report) -> None:
         )
 
 
+#: A `ruff check` invocation, however it is prefixed. Token-anchored rather than
+#: a substring test so that `ruff format --check` - which is a different command
+#: with a sound cache - is not swept in by the word `check`.
+RUFF_CHECK_RE = re.compile(r"\bruff\s+check\b")
+RUFF_NO_CACHE_FLAG = "--no-cache"
+
+
+def check_ruff_cache(root: Path, report: Report) -> None:
+    """Hold every `ruff check` the Makefile runs to a cache-free invocation.
+
+    `ruff check`'s import sorter decides first-party by probing the full dotted
+    path under the `src` roots, so its verdict on one file depends on whether a
+    *different* file exists - while ruff's cache keys a stored result to the
+    linted file's mtime and permission bits and nothing else. Nothing
+    invalidates the entry when the module it depended on is deleted, so every
+    file importing that module keeps a stale clean verdict and the local gate
+    passes on a tree CI's fresh checkout fails. Measured on ruff 0.16.4,
+    2026-09-15: the delete direction goes stale, the add direction does not,
+    which puts the whole of the failure in the direction that turns the gate
+    green (`PL-QSJM`). Upstream carries the same root cause open for `INP001`,
+    which depends on `__init__.py` the same way (astral-sh/ruff#5449).
+
+    The exposure is the tree outside the package, which is what makes it easy
+    to miss rather than rare: isort's `detect-same-package` branch settles an
+    `anesthesia_sim.*` import first-party for any file under
+    `src/anesthesia_sim/` before the filesystem probe is reached, so `tests/`,
+    `tools/` and `spikes/` are where a deleted module actually shows up - the
+    four files the port left stale were all of them.
+
+    An exact rule about one flag on one line, so a hard failure rather than an
+    advisory - there is no context in which a cached `ruff check` is the
+    intended thing here, and `CLAUDE.md` reserves advisories for signals
+    needing judgment.
+
+    **The Makefile only, deliberately**, which is where this differs from
+    `check_coverage_gate` directly above. That check holds the two files
+    together because both run the gate; this one must not, because CI has no
+    cache to go stale - a fresh checkout restores uv's cache and never
+    `.ruff_cache` - so requiring the flag there would be requiring a no-op, and
+    a rule that fires where nothing can go wrong is the defect `CLAUDE.md` asks
+    checks to be retired for. CI's line is the reference answer this one exists
+    to make the Makefile match.
+
+    Silent where the Makefile runs no `ruff check` at all: the rule is about how
+    an invocation is spelled, not about whether a checkout ought to have one.
+    """
+    makefile = root / "Makefile"
+    if not makefile.is_file():
+        return
+    for command, line in _recipe_commands(makefile.read_text(encoding="utf-8")):
+        if RUFF_CHECK_RE.search(command) and RUFF_NO_CACHE_FLAG not in command:
+            report.errors.append(
+                f"Makefile:{line} runs `{command}` without `{RUFF_NO_CACHE_FLAG}`, so a "
+                "module deleted since the last run leaves a stale clean result on every "
+                "file that imports it and the local gate passes where CI fails"
+            )
+
+
 def _without_code(text: str) -> list[str]:
     """Every line with its code blanked, so only prose reaches the math rules.
 
@@ -3104,6 +3162,7 @@ def analyze(root: Path) -> Report:
     check_make_targets(root, documents, report)
     check_workflow_paths(root, report)
     check_coverage_gate(root, report)
+    check_ruff_cache(root, report)
     check_math_delimiters(root, report)
     check_resident_instructions(root, report)
     check_on_demand_instructions(root, report)

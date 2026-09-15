@@ -1710,6 +1710,111 @@ def test_a_bare_pytest_step_elsewhere_is_not_compared(tmp_path: Path) -> None:
     assert _errors(root) == []
 
 
+# --- the ruff cache, which the local gate must not read ----------------------
+#
+# isort resolves a first-party import by probing the full dotted path under the
+# `src` roots, so one file's verdict depends on whether another file exists,
+# while ruff's cache keys a result to the linted file's mtime and permission
+# bits alone. Deleting a module invalidates nothing, so `make check` replays a
+# clean verdict on a tree CI's fresh checkout fails (`PL-QSJM`).
+
+
+def _ruffed(root: Path, *, check: str | None, fix: str | None = None) -> Path:
+    """A repository whose Makefile runs `ruff check` the given way."""
+    recipe = f"\t{check}\n" if check else "\ttrue\n"
+    body = f".PHONY: check fix\ncheck:\n{recipe}"
+    if fix:
+        body += f"fix:\n\t{fix}\n"
+    (root / "Makefile").write_text(body, encoding="utf-8")
+    return root
+
+
+def test_a_cache_free_ruff_check_is_quiet(tmp_path: Path) -> None:
+    root = _ruffed(_repo(tmp_path), check="uv run ruff check --no-cache .")
+
+    assert _errors(root) == []
+
+
+def test_a_cached_ruff_check_is_an_error(tmp_path: Path) -> None:
+    # The failure this exists for: the gate keeps a stale clean verdict on every
+    # file importing a module that has since been deleted, and passes where CI
+    # fails.
+    root = _ruffed(_repo(tmp_path), check="uv run ruff check .")
+
+    errors = _errors(root)
+
+    assert any("without `--no-cache`" in m for m in errors)
+
+
+def test_the_error_names_the_line_and_the_command(tmp_path: Path) -> None:
+    # A reader has to be able to go straight to it; naming the rule alone would
+    # make them search a file whose recipes are mostly comment.
+    root = _ruffed(_repo(tmp_path), check="uv run ruff check .")
+
+    joined = " ".join(_errors(root))
+
+    assert "Makefile:3" in joined
+    assert "uv run ruff check ." in joined
+
+
+def test_the_fixing_half_is_held_to_it_too(tmp_path: Path) -> None:
+    """`make fix` is the invocation where a stale verdict does the most damage.
+
+    A cached clean result makes `--fix` a no-op, so the target reports nothing
+    to fix, `make check` agrees, and the import ruff would have rewritten
+    reaches CI unsorted.
+    """
+    root = _ruffed(
+        _repo(tmp_path), check="uv run ruff check --no-cache .", fix="uv run ruff check --fix ."
+    )
+
+    assert any("without `--no-cache`" in m for m in _errors(root))
+
+
+def test_ruff_format_check_is_not_swept_in(tmp_path: Path) -> None:
+    # `ruff format --check` carries the word but is a different command, and its
+    # cache is sound: its output depends only on the file in front of it, so a
+    # stale entry needs that file to have changed - which invalidates the entry.
+    root = _ruffed(_repo(tmp_path), check="uv run ruff format --check .")
+
+    assert _errors(root) == []
+
+
+def test_a_makefile_that_runs_no_ruff_check_is_left_alone(tmp_path: Path) -> None:
+    # The rule is about how an invocation is spelled, not about whether a
+    # checkout ought to have one.
+    assert _errors(_ruffed(_repo(tmp_path), check=None)) == []
+
+
+def test_ci_is_not_held_to_the_flag(tmp_path: Path) -> None:
+    """CI has no cache to go stale, so requiring the flag there requires a no-op.
+
+    This is where the rule departs from `check_coverage_gate` above, which holds
+    the Makefile and CI to the same command precisely because both run the gate.
+    A fresh checkout restores uv's cache and never `.ruff_cache`, so CI's plain
+    `ruff check` is the reference answer this rule exists to make the Makefile
+    match - not a second site to correct.
+    """
+    root = _with_workflow(
+        _ruffed(_repo(tmp_path), check="uv run ruff check --no-cache ."),
+        "name: quality\n\non: [push, pull_request]\n\njobs:\n  checks:\n"
+        "    runs-on: ubuntu-latest\n    steps:\n"
+        "      - uses: actions/checkout@v7.0.1\n"
+        "      - run: uv run ruff check .\n",
+    )
+
+    assert _errors(root) == []
+
+
+def test_this_repository_runs_every_ruff_check_cache_free() -> None:
+    # The rule against the real Makefile rather than a fixture: this is the one
+    # that would catch the flag being dropped in a tidy-up.
+    report = doc_check.Report()
+    doc_check.check_ruff_cache(Path(__file__).resolve().parents[2], report)
+
+    assert report.errors == []
+
+
 # --- resident instructions --------------------------------------------------
 
 
