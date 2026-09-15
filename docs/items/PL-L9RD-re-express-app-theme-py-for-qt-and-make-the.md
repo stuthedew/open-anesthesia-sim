@@ -58,3 +58,12 @@ six, look at them, and rewrite each evidence string to name the Qt build and
 the date; re-check U+00A0's premise specifically, since Qt lays out a blank
 label differently. The check passes throughout the port either way, which is
 why this is written down rather than left to be noticed.
+
+**Rider, 2026-09-15 (from PL-25KS's close).** The readout row's reflow rule
+(`docs/MODEL.md` § the readout row, `dashboard_frame.readout_columns`) is
+font-measured now: seven columns want about 1 068 px on the offscreen font,
+which the 0.8-fraction startup window supplies from a screen of about 1 375 px
+and a 1 366 px laptop misses by nine pixels, so that laptop opens on four
+columns. The font, the panel padding and `WINDOW_SCREEN_FRACTION` are this
+item's levers; whether seven-across on a 1 366 screen is wanted is its
+decision, and the row is correct at four either way.
