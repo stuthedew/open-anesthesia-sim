@@ -69,13 +69,12 @@ from anesthesia_sim.app.dashboard_frame import (
     PAUSE_LABEL,
     PLAYBACK_LABEL,
     READOUT_PANELS,
+    READOUT_RESERVATIONS,
     RESET_LABEL,
     RUNNING_AGENT_LOCK_TEXT,
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
     START_LABEL,
-    WIDEST_READOUT_SECONDARY,
-    WIDEST_READOUT_VALUE,
     Emphasis,
     HaltDisposition,
     StatusWord,
@@ -374,9 +373,7 @@ class RunView(QWidget):
             INTERPRETATION_DISCLAIMER_TEXT, color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True
         )
         self._readout_row = ReadoutRow(
-            readouts(snapshot, self._playback_rate),
-            widest_value=WIDEST_READOUT_VALUE,
-            widest_secondary=WIDEST_READOUT_SECONDARY,
+            readouts(snapshot, self._playback_rate), reservations=READOUT_RESERVATIONS
         )
 
         (

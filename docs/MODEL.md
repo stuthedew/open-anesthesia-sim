@@ -6021,10 +6021,12 @@ holds both — so the seven panels seat **side by side wherever seven panels'
 reserved widths fit the row, four per line where seven do not, two where
 four do not, and one below that** (`READOUT_ROW_LADDER`). The reservation is
 the widest value each column can show, measured in the rendering font
-(`PL-3355`), so the widths at which the row steps down belong to the font and
+(`PL-3355`) - the clock's column its widest elapsed form, each compartment's
+its widest percent and MAC multiple, so the clock's width costs no other
+column - and the widths at which the row steps down belong to the font and
 the display scale rather than to this document: on the offscreen font the
-test suite renders with, the row is seven across from 1401 logical pixels,
-four from 798 and two from 396, and
+test suite renders with, the row is seven across from 1068 logical pixels,
+four from 632 and two from 336, and
 `test_the_readout_row_reflows_where_its_panels_stop_fitting` reads those
 widths from the row rather than asserting them. Those figures are an example
 of the rule, not a specification of it. The Flet build recorded 1200, 992
@@ -6052,8 +6054,9 @@ The two arguments are not affected equally, and neither is withdrawn.
 `src/anesthesia_sim/app/main.py` opens the window at `WINDOW_SCREEN_FRACTION`
 of the screen's available area and centred (`PL-005`, with the Qt port), so on
 a display whose available width, at that fraction and less the page's own
-padding, falls short of the seven-across width — roughly 1750 logical pixels
-on the offscreen font above, and a different figure on any other — the
+padding, falls short of the seven-across width — an available width of
+roughly 1375 logical pixels on the offscreen font above, and a different
+figure on any other — the
 interface starts below the widest rung and the conditional arrangement is the
 ordinary case rather than the resized one. Until that port the window opened
 full screen and the widest breakpoint was the only one a reader met without

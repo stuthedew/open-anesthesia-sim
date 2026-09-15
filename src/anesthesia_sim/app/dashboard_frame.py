@@ -61,6 +61,7 @@ from anesthesia_sim.core.concentration import (
     percent_from_fraction,
 )
 from anesthesia_sim.core.exceptions import SimulationConfigurationError, SimulationDomainLimitError
+from anesthesia_sim.core.parameters import AGENT_DATA_FILENAMES, load_agent_parameters
 from anesthesia_sim.core.supported_ranges import (
     MAXIMUM_ALVEOLAR_VENTILATION_L_MIN,
     MAXIMUM_CARDIAC_OUTPUT_L_MIN,
@@ -503,6 +504,29 @@ WIDEST_READOUT_VALUE: Final = max(
 )
 WIDEST_READOUT_SECONDARY: Final = max(
     (format_playback_rate(rate.multiplier) for rate in SUPPORTED_PLAYBACK_RATES), key=len
+)
+#: The widest strings a compartment column can show: the percent at a whole
+#: atmosphere, and that fraction as a multiple of the smallest 1 MAC any
+#: shipped agent has, since the smallest divisor prints the most digits.
+WIDEST_COMPARTMENT_VALUE: Final = format_percent(Fraction(1.0))
+WIDEST_COMPARTMENT_SECONDARY: Final = max(
+    (
+        format_mac_multiple(Fraction(1.0), load_agent_parameters(agent_id).mac_percent)
+        for agent_id in AGENT_DATA_FILENAMES
+    ),
+    key=len,
+)
+#: What each readout column reserves its width for, in `READOUT_PANELS`
+#: order: the clock its widest elapsed form and its playback line, every
+#: compartment the two strings above. Each column reserves its own widest
+#: value rather than the clock's, which is what lets seven stand across a
+#: laptop-wide row while no value can wrap from its unit (`PL-3355`,
+#: `PL-8M05`).
+READOUT_RESERVATIONS: Final[tuple[tuple[str, str], ...]] = tuple(
+    (WIDEST_READOUT_VALUE, WIDEST_READOUT_SECONDARY)
+    if panel.quantity is None
+    else (WIDEST_COMPARTMENT_VALUE, WIDEST_COMPARTMENT_SECONDARY)
+    for panel in READOUT_PANELS
 )
 
 
@@ -1180,21 +1204,47 @@ def new_case_question(
     )
 
 
-def readout_columns(width_px: float, panel_width_px: float, spacing_px: float) -> int:
+def readout_row_width(columns: int, panel_widths_px: Sequence[float], spacing_px: float) -> float:
+    """The narrowest row that seats the panels `columns` across.
+
+    Panels fill the grid row by row, so column `j` holds every panel whose
+    index is `j` modulo `columns` and is as wide as the widest of them; the
+    row is those column widths plus `columns - 1` gaps of `spacing_px`.
+
+    Args:
+        columns: How many panels stand side by side; at least one.
+        panel_widths_px: Each panel's own reservation, in row order.
+        spacing_px: The gap between neighbouring columns, in logical pixels.
+
+    Raises:
+        ValueError: If `columns` is below one, since no row seats its
+            panels in no columns.
+    """
+
+    if columns < 1:
+        raise ValueError(f"a readout row seats its panels in at least one column, not {columns}")
+
+    occupied = min(columns, len(panel_widths_px))
+    column_widths = (max(panel_widths_px[first::columns]) for first in range(occupied))
+    return sum(column_widths) + (columns - 1) * spacing_px
+
+
+def readout_columns(width_px: float, panel_widths_px: Sequence[float], spacing_px: float) -> int:
     """How many readout panels stand side by side at this width.
 
-    The largest rung of `READOUT_ROW_LADDER` whose panels fit: `count`
-    panels of `panel_width_px` with `count - 1` gaps of `spacing_px`
-    between them take no more than `width_px`. One column is the floor,
-    however narrow the row, because a row must hold its panels somewhere.
-    The panel width is the widget's measured reservation - the widest value
-    each column can show, in the rendering font (`PL-3355`) - so the row
-    steps down exactly where a panel would otherwise be clipped, at
-    whatever width that is on the reader's display (`PL-8M05`).
+    The largest rung of `READOUT_ROW_LADDER` whose panels fit: the row
+    `readout_row_width` gives for that count takes no more than `width_px`.
+    One column is the floor, however narrow the row, because a row must
+    hold its panels somewhere. Each panel's width is the widget's measured
+    reservation - the widest value its column can show, in the rendering
+    font (`PL-3355`) - so the row steps down exactly where a panel would
+    otherwise be clipped, at whatever width that is on the reader's display
+    (`PL-8M05`).
 
     Args:
         width_px: The readout row's width, in logical pixels.
-        panel_width_px: The width every column is held to, in logical pixels.
+        panel_widths_px: Each panel's reservation, in row order, in logical
+            pixels.
         spacing_px: The gap between neighbouring columns, in logical pixels.
 
     Returns:
@@ -1202,7 +1252,7 @@ def readout_columns(width_px: float, panel_width_px: float, spacing_px: float) -
     """
 
     for columns in READOUT_ROW_LADDER:
-        if columns * panel_width_px + (columns - 1) * spacing_px <= width_px:
+        if readout_row_width(columns, panel_widths_px, spacing_px) <= width_px:
             return columns
 
     return READOUT_ROW_LADDER[-1]

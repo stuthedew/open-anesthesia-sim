@@ -40,6 +40,7 @@ them.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from math import ceil
 from typing import Final
 
 from PySide6.QtCore import QPoint, QRect, QSignalBlocker, QSize, Qt, Signal
@@ -64,6 +65,7 @@ from anesthesia_sim.app.dashboard_frame import (
     Readout,
     SettingReadout,
     readout_columns,
+    readout_row_width,
     slider_position,
     slider_value,
 )
@@ -398,44 +400,59 @@ class ReadoutRow(QWidget):
     them, fit the new width, and the grid is re-laid to that count with
     every column given equal stretch and the same minimum, so no panel is
     given more of the row than its neighbours and none is laid outside the
+    row. Each column is held to the widest reservation of the panels it
+    holds, so the clock's wide elapsed form does not cost the six
+    compartment columns its width and seven stand across a laptop-wide
     row. The widths at which the count steps down are therefore the
     rendering font's rather than a recorded pixel ladder. The row's own
-    minimum is one column's - a panel's reservation - rather than the
-    grid's, because a row held at its seven-column minimum by a scroll area
-    or a splitter could never receive the narrower resize that tells it to
-    reflow; each panel keeps its own reservation, so no value wraps at any
-    count (`PL-3355`).
+    minimum is one column's - the widest panel's reservation - rather than
+    the grid's, because a row held at its seven-column minimum by a scroll
+    area or a splitter could never receive the narrower resize that tells
+    it to reflow; each panel keeps its own reservation, so no value wraps
+    at any count (`PL-3355`).
 
     Attributes:
         panels: One `MetricPanel` per readout, in row order.
-        panel_minimum_width_px: The minimum every column is held to - the
-            widest of the panels' own reservations - so a column count's
-            fit at a width can be checked against it.
+        panel_minimum_widths_px: Each panel's own reservation, in row
+            order, so a column count's fit at a width can be checked
+            against them.
+        panel_minimum_width_px: The widest of those, which is the row's own
+            minimum width.
     """
 
     def __init__(
         self,
         readouts: Sequence[Readout],
         *,
-        widest_value: str,
-        widest_secondary: str,
+        reservations: Sequence[tuple[str, str]],
         parent: QWidget | None = None,
     ) -> None:
         """Build one panel per readout and lay them out for the current width.
 
         Args:
             readouts: The panels' lines as drawn this tick, in row order.
-            widest_value: `dashboard_frame.WIDEST_READOUT_VALUE`.
-            widest_secondary: `dashboard_frame.WIDEST_READOUT_SECONDARY`.
+            reservations: Per panel, the widest value and the widest second
+                line its column can show - `dashboard_frame.READOUT_RESERVATIONS`.
             parent: The Qt parent.
+
+        Raises:
+            ValueError: If there is not one reservation per readout, since a
+                panel with no reservation could wrap its value.
         """
 
         super().__init__(parent)
+
+        if len(reservations) != len(readouts):
+            raise ValueError(
+                f"{len(readouts)} readouts were given {len(reservations)} width reservations"
+            )
+
         self.panels = tuple(
-            MetricPanel(readout, widest_value=widest_value, widest_secondary=widest_secondary)
-            for readout in readouts
+            MetricPanel(readout, widest_value=value, widest_secondary=secondary)
+            for readout, (value, secondary) in zip(readouts, reservations, strict=True)
         )
-        self.panel_minimum_width_px = max(panel.minimum_value_width_px for panel in self.panels)
+        self.panel_minimum_widths_px = tuple(panel.minimum_value_width_px for panel in self.panels)
+        self.panel_minimum_width_px = max(self.panel_minimum_widths_px)
         self._grid = QGridLayout(self)
         self._grid.setContentsMargins(0, 0, 0, 0)
         self._grid.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
@@ -481,15 +498,27 @@ class ReadoutRow(QWidget):
         if columns != self._columns:
             self._lay_out(columns)
 
+    def width_for(self, columns: int) -> int:
+        """The narrowest row that seats the panels `columns` across, at their reservations."""
+
+        return ceil(
+            readout_row_width(columns, self.panel_minimum_widths_px, self._grid.horizontalSpacing())
+        )
+
     def _columns_for(self, width_px: int) -> int:
-        """The rung of the ladder whose panels fit `width_px` at this row's reservation."""
+        """The rung of the ladder whose panels fit `width_px` at their reservations."""
 
         return readout_columns(
-            width_px, self.panel_minimum_width_px, self._grid.horizontalSpacing()
+            width_px, self.panel_minimum_widths_px, self._grid.horizontalSpacing()
         )
 
     def _lay_out(self, columns: int) -> None:
-        """Seat the panels `columns` across, every column equal."""
+        """Seat the panels `columns` across, every column with equal stretch.
+
+        A column's minimum is the widest reservation among the panels it
+        holds; the stretch is equal, so any width beyond the minimums is
+        shared equally and the columns are equal wherever there is room.
+        """
 
         while self._grid.takeAt(0) is not None:
             pass
@@ -500,7 +529,9 @@ class ReadoutRow(QWidget):
         for column in range(max(columns, self._columns)):
             in_use = column < columns
             self._grid.setColumnStretch(column, 1 if in_use else 0)
-            self._grid.setColumnMinimumWidth(column, self.panel_minimum_width_px if in_use else 0)
+            self._grid.setColumnMinimumWidth(
+                column, max(self.panel_minimum_widths_px[column::columns]) if in_use else 0
+            )
 
         self._columns = columns
 

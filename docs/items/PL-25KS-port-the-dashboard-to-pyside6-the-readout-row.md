@@ -153,12 +153,14 @@ Flet dashboard, its chart-series module and their two test files are gone,
 and `flet` and `flet_charts` are permitted in no module under `src/`.
 
 **Two facts a later session should know.** The readout row seats seven
-panels across only where seven of the widest value's reserved widths fit -
-about 1 400 logical pixels on this container's font - and four below that;
-the pixel breakpoints `PL-8M05` measured on Flet are replaced by that rule,
-and the reservation (the 22 px value size, the panel padding, the clock's
-widest string) is `PL-L9RD`'s lever if seven across at a laptop width is
-wanted. And `PySide6.QtCore.Signal.emit` swallows a slot's exception, so
+panels across only where the seven columns' own reserved widths fit - each
+column the widest value it can show, so the clock's wide elapsed form costs
+no other column - which is 1 068 logical pixels of row on this container's
+font, a window of about 1 100, and a screen of about 1 375 at the startup
+fraction; four below that. The pixel breakpoints `PL-8M05` measured on Flet
+are replaced by that rule, and the reservation (the 22 px value size, the
+panel padding, the glosses' italic width) is `PL-L9RD`'s lever if seven
+across on a 1 366 px laptop is wanted - it is nine pixels short today. And `PySide6.QtCore.Signal.emit` swallows a slot's exception, so
 every presentation path guards `_refresh_view` itself rather than relying
 on a raise reaching the caller.
 

@@ -21,6 +21,7 @@ from PySide6.QtWidgets import QApplication, QDialog, QGridLayout, QLabel, QScrol
 from anesthesia_sim.app.controller import ControlInput, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     EMPTY_METRIC_QUALIFIER,
+    READOUT_RESERVATIONS,
     READOUT_ROW_LADDER,
     WIDEST_READOUT_SECONDARY,
     WIDEST_READOUT_VALUE,
@@ -71,9 +72,7 @@ def _panel(readout: Readout) -> MetricPanel:
 def _row(application: QApplication, width: int) -> ReadoutRow:
     snapshot = SimulationController().snapshot()
     row = ReadoutRow(
-        readouts(snapshot, SUPPORTED_PLAYBACK_RATES[0]),
-        widest_value=WIDEST_READOUT_VALUE,
-        widest_secondary=WIDEST_READOUT_SECONDARY,
+        readouts(snapshot, SUPPORTED_PLAYBACK_RATES[0]), reservations=READOUT_RESERVATIONS
     )
     row.resize(width, 400)
     row.show()
@@ -110,9 +109,9 @@ def _cells(row: ReadoutRow) -> list[tuple[int, int]]:
 
 
 def _width_for(row: ReadoutRow, columns: int) -> int:
-    """The narrowest row that seats `columns` panels at the row's own reservation and spacing."""
+    """The narrowest row that seats `columns` panels at their own reservations and spacing."""
 
-    return columns * row.panel_minimum_width_px + (columns - 1) * _grid(row).horizontalSpacing()
+    return row.width_for(columns)
 
 
 def _resize(application: QApplication, row: ReadoutRow, width: int) -> None:
@@ -196,9 +195,12 @@ def test_every_readout_reserves_a_qualifier_line_and_an_equal_column(
     assert [cell[0] for cell in _cells(row)] == [0] * len(row.panels)
     grid = _grid(row)
     assert {grid.columnStretch(column) for column in range(row.columns())} == {1}
-    assert {grid.columnMinimumWidth(column) for column in range(row.columns())} == {
-        row.panel_minimum_width_px
-    }
+    assert [grid.columnMinimumWidth(column) for column in range(row.columns())] == list(
+        row.panel_minimum_widths_px
+    )
+    assert row.panel_minimum_widths_px[0] == max(row.panel_minimum_widths_px), (
+        "the clock's column carries the widest reservation"
+    )
 
 
 def test_the_clock_reserves_its_width_so_the_panel_cannot_move(application: QApplication) -> None:
@@ -249,22 +251,22 @@ def test_the_readout_row_reflows_where_its_panels_stop_fitting(application: QApp
         (four - 1, 2),
         (two, 2),
         (two - 1, 1),
-        (row.panel_minimum_width_px, 1),
+        (row.width_for(1), 1),
     ):
         _resize(application, row, width)
 
         assert row.width() == width
         assert row.columns() == columns
-        assert columns == readout_columns(width, row.panel_minimum_width_px, spacing)
+        assert columns == readout_columns(width, row.panel_minimum_widths_px, spacing)
         assert max(cell[1] for cell in _cells(row)) == columns - 1
         assert _cells(row) == [
             (index // columns, index % columns) for index in range(len(row.panels))
         ]
 
-        for panel in row.panels:
+        for panel, reservation in zip(row.panels, row.panel_minimum_widths_px, strict=True):
             geometry = panel.geometry()
 
-            assert geometry.width() >= row.panel_minimum_width_px
+            assert geometry.width() >= reservation
             assert geometry.x() + geometry.width() <= row.width(), (
                 f"a panel laid outside the row at {width} px, {columns} across"
             )
@@ -296,7 +298,7 @@ def test_a_narrowed_readout_row_reflows_rather_than_widening_its_scroll_area(
     assert row.width() == scroll.viewport().width()
     assert scroll.horizontalScrollBar().maximum() == 0
     assert not scroll.horizontalScrollBar().isVisible()
-    assert row.columns() == readout_columns(row.width(), row.panel_minimum_width_px, spacing)
+    assert row.columns() == readout_columns(row.width(), row.panel_minimum_widths_px, spacing)
     assert 1 < row.columns() < len(row.panels)
     assert row.columns() == 4
 

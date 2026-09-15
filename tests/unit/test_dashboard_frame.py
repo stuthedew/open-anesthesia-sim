@@ -58,10 +58,13 @@ from anesthesia_sim.app.dashboard_frame import (
     NEW_CASE_IS_NOT_A_VIEW_TEXT,
     NO_CONTROL_CHANGES_TEXT,
     READOUT_PANELS,
+    READOUT_RESERVATIONS,
     READOUT_ROW_LADDER,
     RENDER_INTERVAL_S,
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
+    WIDEST_COMPARTMENT_SECONDARY,
+    WIDEST_COMPARTMENT_VALUE,
     WIDEST_READOUT_SECONDARY,
     WIDEST_READOUT_VALUE,
     Emphasis,
@@ -76,6 +79,7 @@ from anesthesia_sim.app.dashboard_frame import (
     notice,
     off_scale_notice,
     readout_columns,
+    readout_row_width,
     readouts,
     refused_setting_notice,
     setting_readouts,
@@ -92,6 +96,7 @@ from anesthesia_sim.app.formatting import (
     CHART_AXIS_TOP_MAC,
     CONCENTRATION_DISPLAY_DECIMALS,
     FLOW_DISPLAY_DECIMALS,
+    MAC_UNIT_SUFFIX,
     format_case_discard_warning,
     format_chart_time_label,
     format_elapsed,
@@ -1577,14 +1582,55 @@ def test_readout_columns_are_the_widest_rung_whose_panels_fit() -> None:
     the floor, even for a row narrower than a single panel.
     """
 
+    equal = (100.0,) * 7
+
     assert READOUT_ROW_LADDER == (7, 4, 2, 1)
     assert [
-        readout_columns(width, 100.0, 10.0)
+        readout_columns(width, equal, 10.0)
         for width in (0.0, 99.0, 100.0, 209.0, 210.0, 429.0, 430.0, 759.0, 760.0, 1_700.0)
     ] == [1, 1, 1, 1, 2, 2, 4, 4, 7, 7]
-    assert readout_columns(700.0, 100.0, 0.0) == 7
-    assert readout_columns(699.0, 100.0, 0.0) == 4
-    assert readout_columns(-1.0, 100.0, 10.0) == 1
+    assert readout_columns(700.0, equal, 0.0) == 7
+    assert readout_columns(699.0, equal, 0.0) == 4
+    assert readout_columns(-1.0, equal, 10.0) == 1
+
+
+def test_each_column_is_held_to_the_widest_panel_it_holds_and_not_to_the_clocks() -> None:
+    """The clock's wide reservation costs its own column and no other (`PL-3355`).
+
+    A clock 195 px wide beside six compartments of 135 px, with 6 px between
+    columns: seven across needs 195 + 6 x 135 + 6 x 6 = 1041 px, not
+    7 x 195 + 36 = 1401; four across puts the clock and the fifth panel in
+    one column, so the row needs 195 + 3 x 135 + 18 = 618 px; two across
+    needs 195 + 135 + 6 = 336; one needs the clock's 195.
+    """
+
+    widths = (195.0, 135.0, 135.0, 135.0, 135.0, 135.0, 135.0)
+
+    assert readout_row_width(7, widths, 6.0) == 1041.0
+    assert readout_row_width(4, widths, 6.0) == 618.0
+    assert readout_row_width(2, widths, 6.0) == 336.0
+    assert readout_row_width(1, widths, 6.0) == 195.0
+    assert [readout_columns(width, widths, 6.0) for width in (1041.0, 1040.0, 618.0, 617.0)] == [
+        7,
+        4,
+        4,
+        2,
+    ]
+
+    with pytest.raises(ValueError, match="at least one column"):
+        readout_row_width(0, widths, 6.0)
+
+
+def test_the_reservations_give_the_clock_its_elapsed_form_and_the_compartments_theirs() -> None:
+    """One reservation per panel, the clock's the widest elapsed form (`PL-3355`)."""
+
+    assert len(READOUT_RESERVATIONS) == len(READOUT_PANELS)
+    assert READOUT_RESERVATIONS[0] == (WIDEST_READOUT_VALUE, WIDEST_READOUT_SECONDARY)
+    assert set(READOUT_RESERVATIONS[1:]) == {
+        (WIDEST_COMPARTMENT_VALUE, WIDEST_COMPARTMENT_SECONDARY)
+    }
+    assert WIDEST_COMPARTMENT_VALUE == format_percent(Fraction(1.0))
+    assert WIDEST_COMPARTMENT_SECONDARY.endswith(MAC_UNIT_SUFFIX)
 
 
 def test_the_interface_says_the_readouts_are_model_outputs_not_measurements() -> None:
