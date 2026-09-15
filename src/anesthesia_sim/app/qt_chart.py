@@ -60,7 +60,6 @@ from anesthesia_sim.app.chart_frame import (
     nearest_wash_in_point,
     wash_in_axis_ticks,
 )
-from anesthesia_sim.app.controller import RecordedQuantity
 from anesthesia_sim.app.dashboard_frame import (
     CONTROL_MARK_LEGEND_LABEL,
     EQUILIBRIUM_LEGEND_LABEL,
@@ -70,6 +69,7 @@ from anesthesia_sim.app.dashboard_frame import (
 )
 from anesthesia_sim.app.formatting import format_chart_time_label
 from anesthesia_sim.app.qt_widgets import FlowLayout
+from anesthesia_sim.app.run_series import RecordedQuantity
 from anesthesia_sim.app.theme import (
     BAND_SWATCH_HEIGHT,
     BAND_SWATCH_WIDTH,

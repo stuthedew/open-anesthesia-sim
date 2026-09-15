@@ -1,5 +1,6 @@
 """What the recorded control-input timeline becomes on screen."""
 
+from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
 from anesthesia_sim.app.control_timeline import (
     CONTROL_INPUT_LABELS,
     AdjustmentGrouping,
@@ -7,7 +8,6 @@ from anesthesia_sim.app.control_timeline import (
     format_control_value,
     group_adjustments,
 )
-from anesthesia_sim.app.controller import CONTROL_INPUT_UNITS, ControlChange, ControlInput
 
 
 def _change(

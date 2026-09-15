@@ -4385,7 +4385,7 @@ The interface may:
 - display mass-balance status.
 
 **What a drawn window is.** What a chart draws from is a `DrawnWindow`
-(`app/controller.py`): the states at the instants one frame plots, evaluated
+(`app/run_series.py`): the states at the instants one frame plots, evaluated
 from the run's definition by `SimulationController.drawn_window`, with nothing
 stored behind them. Each state is bound to the substance the run is of and
 carries that substance's six compartment values, as fractions of one
@@ -6475,7 +6475,7 @@ percent by another.
 
 **The delivered-concentration control is where that assumption does the most
 work.** It is a vaporizer dial rather than a modeled gas state
-(`app/controller.py`'s `ControlInput.DELIVERED`, whose recorded changes carry
+(`app/control_record.py`'s `ControlInput.DELIVERED`, whose recorded changes carry
 the unit *fraction of 1 atm*), and a dial position means a partial pressure
 — the quantity that produces the anesthetic effect — only once the ambient
 pressure is known. At 760 mmHg it means the *same* partial pressure whichever

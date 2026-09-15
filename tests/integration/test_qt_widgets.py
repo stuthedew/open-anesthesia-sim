@@ -18,7 +18,8 @@ from PySide6.QtGui import QFontMetrics
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QDialog, QGridLayout, QLabel, QScrollArea, QWidget
 
-from anesthesia_sim.app.controller import ControlInput, SimulationController
+from anesthesia_sim.app.control_record import ControlInput
+from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     EMPTY_METRIC_QUALIFIER,
     READOUT_RESERVATIONS,

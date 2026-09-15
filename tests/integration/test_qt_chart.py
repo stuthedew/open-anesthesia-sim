@@ -33,13 +33,9 @@ from anesthesia_sim.app.chart_frame import (
     format_trace_hover,
 )
 from anesthesia_sim.app.chart_time_base import time_base_for_span
+from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import AdjustmentGrouping, ControlAdjustment
-from anesthesia_sim.app.controller import (
-    COMPARTMENT_QUANTITIES,
-    ControlInput,
-    RecordedQuantity,
-    SimulationController,
-)
+from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.formatting import (
     chart_grid_interval_percent,
     format_chart_time_label,
@@ -58,6 +54,7 @@ from anesthesia_sim.app.qt_chart import (
     trace_pen,
 )
 from anesthesia_sim.app.qt_widgets import FlowLayout
+from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.theme import (
     CONTROL_MARK_COLOR,
     CONTROL_MARK_DASH_PATTERN,

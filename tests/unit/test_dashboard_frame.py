@@ -33,18 +33,9 @@ from anesthesia_sim.app.chart_frame import (
     assemble_chart_frame,
 )
 from anesthesia_sim.app.chart_time_base import ChartTimeBase, time_base_for_span
+from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustments
-from anesthesia_sim.app.controller import (
-    COMPARTMENT_QUANTITIES,
-    COMPARTMENT_STATE_INDEX,
-    CONTROL_INPUT_UNITS,
-    ControlChange,
-    ControlInput,
-    DrawnWindow,
-    RecordedQuantity,
-    SimulationController,
-    SimulationSnapshot,
-)
+from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_UNIT_CAPTION,
     CONTROL_MARK_LEGEND_LABEL,
@@ -113,6 +104,12 @@ from anesthesia_sim.app.playback import (
     DEFAULT_PLAYBACK_RATE,
     SUPPORTED_PLAYBACK_RATES,
     PlaybackRate,
+)
+from anesthesia_sim.app.run_series import (
+    COMPARTMENT_QUANTITIES,
+    COMPARTMENT_STATE_INDEX,
+    DrawnWindow,
+    RecordedQuantity,
 )
 from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.exceptions import (

@@ -3,15 +3,13 @@ import dataclasses
 import pytest
 
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
-from anesthesia_sim.app.controller import (
+from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlInput
+from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.run_series import (
     COMPARTMENT_QUANTITIES,
     COMPARTMENT_STATE_INDEX,
-    CONTROL_INPUT_UNITS,
-    BranchedCase,
-    ControlInput,
     RecordedQuantity,
     RecordedSeries,
-    SimulationController,
 )
 from anesthesia_sim.app.wash_in import is_wash_in
 from anesthesia_sim.core import uptake_system

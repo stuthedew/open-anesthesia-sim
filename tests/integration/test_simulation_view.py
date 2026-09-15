@@ -50,13 +50,9 @@ from anesthesia_sim.app.chart_time_base import (
     SELECTABLE_TIME_BASES,
     time_base_for_span,
 )
+from anesthesia_sim.app.control_record import ControlChange
 from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustments
-from anesthesia_sim.app.controller import (
-    COMPARTMENT_QUANTITIES,
-    ControlChange,
-    RecordedQuantity,
-    SimulationController,
-)
+from anesthesia_sim.app.controller import SimulationController
 from anesthesia_sim.app.dashboard_frame import (
     INTERPRETATION_DISCLAIMER_TEXT,
     KEEP_CURRENT_CASE_TEMPLATE,
@@ -92,6 +88,7 @@ from anesthesia_sim.app.playback import (
     playback_rate_for,
 )
 from anesthesia_sim.app.qt_widgets import ParameterSlider
+from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app.theme import (
