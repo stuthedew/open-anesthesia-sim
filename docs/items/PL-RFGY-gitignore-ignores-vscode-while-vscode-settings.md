@@ -8,6 +8,7 @@ classes: defect
 touches: .gitignore, .vscode/extensions.json
 added: 2026-09-15
 closed: 2026-09-15
+pr: 589
 verify: python3 tools/doc_check.py check && ! git check-ignore -q --no-index .vscode/extensions.json && git check-ignore -q --no-index .vscode/ipch/x
 ---
 
