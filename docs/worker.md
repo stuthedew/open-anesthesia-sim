@@ -47,7 +47,7 @@ by an eye alone. The Flet build could not be seen
 this way, because its web renderer fetched Flutter assets from
 `www.gstatic.com`, which the egress proxy refuses (`PL-2QMK`).
 
-Generated files go in `out`, which `.gitignore` covers and the command above
+Generated files go in `out/`, which `.gitignore` covers and the command above
 creates, so a grab cannot reach a commit - which it could while this command
 wrote into the repository root, an instruction to dirty the tree issued to
 every session that wanted to look at the interface (`PL-CNJ1`). The directory

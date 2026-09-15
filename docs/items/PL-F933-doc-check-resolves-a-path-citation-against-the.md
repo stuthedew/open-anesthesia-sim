@@ -3,10 +3,12 @@ id: PL-F933
 title: doc_check resolves a path citation against the working tree, so a citation to a gitignored path passes locally and reddens CI
 priority: P2
 effort: S
-status: needs-decision
+status: done
+closed: 2026-09-15
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_the_verdict_is_the_same_whether_the_ignored_directory_is_there_or_not' tests/unit/test_doc_check.py
 classes: defect, infra
 feature: dev-tooling
-touches: tools/doc_check.py, tests/unit/test_doc_check.py
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, subprojects/docket/README.md
 added: 2026-09-13
 ---
 
@@ -60,3 +62,31 @@ consulting `.gitignore` and refusing a citation to an ignored path whether or
 not it happens to resolve, or by recording in the module that the divergence is
 deliberate, what its class is, and what a session meeting the CI failure should
 do. A test covers a citation to a path that exists only because it is ignored.
+
+**Answered 2026-09-15, on the other branch of its own Decision needed**, and
+closed with `PL-MXSL` (doc_check requiring a cited directory to exist), which
+found the same defect two days later from the opposite end: `docs/worker.md`
+could not name `out/`, the one directory the repository had just given
+generated output.
+
+The decision above offered refusing an ignored citation whether or not it
+resolves. The project owner took the other route on 2026-09-15: **exempt it**.
+`_covered_by_gitignore` asks `git check-ignore -q --no-index` about a citation
+that has already failed to resolve, so the verdict no longer depends on the
+working tree - which is this item's Done-when goal - while documentation keeps
+the ability to name the directories it is documenting, which refusing would
+have taken away. The concern recorded here about reading `.gitignore` being
+"more work than it looks - patterns, negations, and nested ignore files" is
+exactly why git answers the question rather than a parser.
+
+`test_the_verdict_is_the_same_whether_the_ignored_directory_is_there_or_not`
+is the test this item asked for: a citation to a path that exists only because
+it is ignored, asserted to give the same answer with the directory present and
+absent.
+
+**And the paragraph this item cost has been restored.** `PL-8PT6`'s
+`subprojects/docket/README.md` passage was reworded to name the environment and
+the lockfile in prose because neither could be cited; it names
+`subprojects/docket/.venv/` and `subprojects/docket/uv.lock` again, and the
+sentence explaining why it could not has been replaced rather than left
+stating a constraint that no longer holds.
