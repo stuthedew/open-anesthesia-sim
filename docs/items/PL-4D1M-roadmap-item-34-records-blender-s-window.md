@@ -1,8 +1,14 @@
 ---
 id: PL-4D1M
 title: ROADMAP item 34 records Blender's window management but not the widget catalogue it implies, the named task workspaces the owner described, or the ordering that puts the layout mechanism before any widget
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: planning, docs
+touches: ROADMAP.md
 added: 2026-09-15
+closed: 2026-09-15
+verify: python3 tools/doc_check.py check && grep -qF 'The widget catalogue is separate work, and the layout comes first' ROADMAP.md
 ---
 
 **Problem.** ROADMAP item 34 records Blender's window management but not the widget catalogue it implies, the named task workspaces the owner described, or the ordering that puts the layout mechanism before any widget
@@ -40,3 +46,24 @@ later starts from what the owner actually asked for rather than from the
 **Done when.** `ROADMAP.md` item 34 carries the four points above, and the
 widget catalogue is a planned-milestone line of its own naming the mechanism
 dependency rather than being folded into item 34's scope.
+
+**Closed 2026-09-15.** Item 34 now carries four paragraphs it did not have, and
+a fifth decision the owner gave in the same exchange:
+
+1. *Tiling by default, and break-out into a separate window rather than
+   floating panels* - an area may be broken out into its own top-level window,
+   itself tiled, which is what "floating" was taken to mean. Floating panels
+   overlapping the tiled areas within a window are recorded as refused, with
+   the covered-value reason, so the decision is not re-litigated from the word
+   alone.
+2. *The widget catalogue is separate work, and the layout comes first*, with
+   the owner's own wording quoted and the refinement that the container
+   abstraction is validated against two existing views rather than one.
+3. *What a preset differs in, by example* - the induction and big-picture
+   workspaces, and the central-graph default shape.
+4. Planned-milestone **item 36** is the catalogue, filed as its own line so
+   that scoping item 34 does not drag it along.
+
+`PL-JFXG` closed alongside as item 37. `PL-WLWY` stays open and is named from
+item 34: break-out sharpens its question rather than answering it, because a
+broken-out window can be dragged over the window carrying the minimum display.
