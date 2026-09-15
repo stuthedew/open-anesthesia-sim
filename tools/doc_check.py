@@ -2247,6 +2247,59 @@ def _resolves(root: Path, basenames: frozenset[str], token: str) -> bool:
     return "/" not in token and token in basenames
 
 
+#: What `git check-ignore` returns when at least one path it was given is
+#: ignored. Exit 1 says none were; anything else - 128 for a malformed path or
+#: a directory that is not a checkout - is git declining to answer rather than
+#: answering no.
+GIT_PATH_IS_IGNORED = 0
+
+
+def _covered_by_gitignore(root: Path, token: str) -> bool:
+    """Whether `.gitignore` covers `token`, so its absence is deliberate.
+
+    A generated directory is documentation's to name: `docs/worker.md` names
+    `out/` precisely *because* nothing tracks it. Requiring it to exist made
+    one tree give two verdicts - green wherever a session had just rendered a
+    screenshot into it, red in CI on identical content - so this is what stops
+    a citation's verdict depending on the working tree for every path git will
+    never carry. A path that is merely *uncommitted* is a different case and
+    still errors: CI's disagreement about that one resolves when it is
+    committed, where a path `.gitignore` covers can only ever be answered
+    wrongly in one of the two places (`PL-MXSL`).
+
+    Asked of git rather than read out of `.gitignore`, because this file's
+    negations are load-bearing - `.vscode/*` excludes the directory's contents
+    and `!.vscode/settings.json` re-admits the tracked project settings - and a
+    reader of the anchored directory rules alone would call that file exempt.
+
+    One call per token, never `git check-ignore --stdin`: the batch form aborts
+    on the first malformed path and then reports nothing about the rest.
+    Measured 2026-09-15 over this store's own citations, it died on `fatal: //:
+    '//' is outside repository` after 49 answers of 1,549 - `PL-0M7L`'s shape,
+    one token's failure swallowing every other citation's verdict.
+
+    Every way git can decline - no checkout, a path outside the repository, no
+    git on `PATH` - is read as *not* covered, so the citation is reported as it
+    would have been without this exemption. It is granted only on a positive
+    answer, and for a braced token only when every expansion has one.
+    """
+    for candidate in _expand_braces(token):
+        try:
+            result = subprocess.run(
+                ("git", "check-ignore", "-q", "--no-index", "--", candidate),
+                cwd=root,
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+        except GIT_UNAVAILABLE:
+            return False
+        if result.returncode != GIT_PATH_IS_IGNORED:
+            return False
+    return True
+
+
 #: The blockquote and list continuation markers that open a *wrapped* line.
 #: A quotation inside a `>` blockquote carries the marker of every line it
 #: wraps onto, so `§ "v0.5.1 -\n> the interface moves to Qt"` compared as
@@ -2320,10 +2373,17 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
     for path, text in documents.items():
         for match in CODE_SPAN_RE.finditer(text):
             token = match.group(1)
-            if _is_path_citation(token) and not _resolves(root, basenames, token):
-                report.errors.append(
-                    f"{path}:{_line_of(text, match.start())}: cites `{token}`, which does not exist"
-                )
+            if not _is_path_citation(token) or _resolves(root, basenames, token):
+                continue
+            # Asked only of a citation that has already failed to resolve, so a
+            # run with nothing wrong in it starts no subprocess at all and the
+            # cost falls on the findings rather than on the 1,279 citations
+            # around them.
+            if _covered_by_gitignore(root, token):
+                continue
+            report.errors.append(
+                f"{path}:{_line_of(text, match.start())}: cites `{token}`, which does not exist"
+            )
 
         for match in LINK_RE.finditer(text):
             target = match.group("target")
