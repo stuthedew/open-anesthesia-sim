@@ -1,7 +1,9 @@
 ---
 id: PL-MXSL
 title: doc_check requires a cited directory to exist with no exemption for one .gitignore covers, so documenting a generated directory fails CI while make check passes locally the moment anything has created it
-status: needs-decision
+status: done
+closed: 2026-09-15
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_cited_path_gitignore_covers_is_not_required_to_exist' tests/unit/test_doc_check.py
 priority: P2
 effort: S
 classes: defect, infra
@@ -133,6 +135,33 @@ Three dispositions, all costing about the same to build except the third:
 3. **Comment only**, as the threshold above suggests. The weakest of the three:
    the reader who is stuck is editing `docs/worker.md`, and a comment in
    `tools/doc_check.py` is not where they are.
+
+**Decision taken 2026-09-15** (project owner): disposition 1, exempt it.
+
+`_covered_by_gitignore` asks `git check-ignore -q --no-index` about a citation
+that has **already failed to resolve**, so a run with nothing wrong in it
+starts no subprocess at all and the cost falls on the findings rather than on
+the 1,279 citations around them. Git answers rather than a parser reading the
+anchored directory rules, because this `.gitignore`'s negations are
+load-bearing - `.vscode/*` excludes the directory's contents and
+`!.vscode/settings.json` re-admits the tracked project settings, which the
+narrower form would have called exempt. One call per token rather than
+`--stdin`, for the batch-abort reason measured above. Every way git can decline
+- no checkout, a path outside the repository, no git on `PATH` - is read as
+*not* covered, so the exemption is granted only on a positive answer and a
+braced token needs one for every expansion.
+
+`docs/worker.md:50` now reads `` `out/` ``, and the two verdicts agree: with
+the directory absent and with it present, `doc_check check` reports nothing.
+A directory that is neither ignored nor present still errors.
+
+**This also answers `PL-F933`** (doc_check resolving a path citation against
+the working tree), which is the same defect found two days earlier from the
+other end - a `.venv/` citation in `subprojects/docket/README.md` green locally
+and red in CI. It proposed the opposite mechanism, refusing an ignored citation
+whether or not it resolved; the goal both state is one answer in both places,
+and exempting reaches it while leaving documentation able to name the
+directories it is documenting. Closed together on this branch.
 
 **Done when.** `docs/worker.md` can name `out/` with its trailing slash and
 `make check` agrees with CI on a clean checkout, or the decision not to change

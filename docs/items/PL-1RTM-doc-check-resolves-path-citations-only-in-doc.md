@@ -28,3 +28,12 @@ shape to consider is passing the item files to `check_citations` only, the way
 and how many of them are already stale. A large stale count is a reason to
 scope the check to newly-written items rather than to fail the whole store at
 once.
+
+**And one document overclaims because of it.** `docs/ARCHITECTURE.md:447`
+describes `doc_check.py` as validating "citations - in the documentation, in
+every `docs/items/` brief and in every source docstring, since those last two
+are where this project writes most of them". That is true of the *quoted*
+citations `check_quoted_sources` reads and false of the path citations
+`check_citations` does not, and a reader has no way to tell the two apart from
+the sentence. Fix the code rather than the sentence where the answer is to
+widen the check; narrow the sentence only if the decision goes the other way.

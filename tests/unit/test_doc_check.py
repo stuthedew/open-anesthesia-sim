@@ -795,6 +795,123 @@ def test_link_anchor_must_name_a_heading(tmp_path: Path) -> None:
     assert not any("#known-limitations" in e for e in errors)
 
 
+# --- citations of a path .gitignore covers ----------------------------------
+
+
+def _ignoring(root: Path, rules: str) -> Path:
+    """`root` as a real checkout whose `.gitignore` holds `rules`.
+
+    Real git run from `PATH`, like `_git_init` below and for the same reason:
+    what is under test is how the checker reads git's answer, so a stub would
+    test the stub. No commit is made - `git check-ignore --no-index` reads the
+    rules alone, which is also what makes the exemption answerable in a bare
+    checkout.
+    """
+    (root / ".gitignore").write_text(rules, encoding="utf-8")
+    subprocess.run(("git", "init", "-q"), cwd=root, check=True, capture_output=True)
+    return root
+
+
+def test_a_cited_path_gitignore_covers_is_not_required_to_exist(tmp_path: Path) -> None:
+    """`docs/worker.md` names `out/` precisely because nothing tracks it.
+
+    The repository has a category the checker could not express before
+    `PL-MXSL`: a path that is *meant* to be absent, named in documentation on
+    purpose. Writing it without its trailing slash was the only way to comply,
+    which is a rule no reader of either file could discover.
+    """
+    readme = "# Demo\n\nGenerated files go in `out/`.\n"
+    root = _ignoring(_repo(tmp_path, readme=readme), "/out/\n")
+
+    assert not any("cites `out/`" in e for e in _errors(root))
+
+
+def test_the_verdict_is_the_same_whether_the_ignored_directory_is_there_or_not(
+    tmp_path: Path,
+) -> None:
+    """The defect was a verdict that depended on the working tree.
+
+    `make check` passed wherever a session had just rendered a screenshot into
+    `out/` and CI failed on identical content - one tree giving two answers,
+    rather than a missing feature. A path git will never carry is one the
+    working tree can only answer wrongly about in one of the two places.
+    """
+    readme = "# Demo\n\nGenerated files go in `out/`.\n"
+    root = _ignoring(_repo(tmp_path, readme=readme), "/out/\n")
+
+    absent = _errors(root)
+    (root / "out").mkdir()
+    (root / "out" / "dashboard.png").write_text("", encoding="utf-8")
+
+    assert _errors(root) == absent
+
+
+def test_a_path_that_is_neither_ignored_nor_present_still_errors(tmp_path: Path) -> None:
+    """The exemption is the whole of the hole it opens, and no wider."""
+    readme = "# Demo\n\nGenerated files go in `nosuch/`.\n"
+    root = _ignoring(_repo(tmp_path, readme=readme), "/out/\n")
+
+    assert any("cites `nosuch/`" in e for e in _errors(root))
+
+
+def test_a_file_an_ignore_rule_re_admits_is_not_exempt(tmp_path: Path) -> None:
+    """Why git answers this question and a reader of `.gitignore` does not.
+
+    `.vscode/*` excludes the directory's contents and `!.vscode/settings.json`
+    re-admits the tracked project settings, so that file is *not* covered and a
+    citation of it must still resolve. Parsing the anchored directory rules
+    alone - the narrower form the item weighed - would call it exempt and stop
+    checking a tracked file.
+    """
+    readme = "# Demo\n\nEditor settings live in `.vscode/settings.json`.\n"
+    root = _ignoring(_repo(tmp_path, readme=readme), ".vscode/*\n!.vscode/settings.json\n")
+
+    assert any("cites `.vscode/settings.json`" in e for e in _errors(root))
+
+
+def test_a_braced_citation_is_exempt_only_when_every_expansion_is_covered(tmp_path: Path) -> None:
+    """Half an exemption is none: `_resolves` takes any expansion, this takes all."""
+    readme = "# Demo\n\nOutput goes to `{out,build}/report.txt` and `{out,dist}/log.txt`.\n"
+    root = _ignoring(_repo(tmp_path, readme=readme), "/out/\n/dist/\n")
+
+    errors = _errors(root)
+
+    assert any("cites `{out,build}/report.txt`" in e for e in errors)
+    assert not any("cites `{out,dist}/log.txt`" in e for e in errors)
+
+
+def test_a_token_outside_the_repository_is_reported_rather_than_exempted(tmp_path: Path) -> None:
+    """Fails closed - and this is the token shape that rules out the batch form.
+
+    `git check-ignore` exits 128 on a path outside the repository, and
+    `--stdin` aborts the whole run on the first one: measured over this store's
+    own citations it died on `fatal: //: '//' is outside repository` after 49
+    answers of 1,549. Per token it costs one citation's exemption and nothing
+    else.
+    """
+    readme = "# Demo\n\nSee `../elsewhere/`.\n"
+    root = _ignoring(_repo(tmp_path, readme=readme), "/out/\n")
+
+    assert any("cites `../elsewhere/`" in e for e in _errors(root))
+
+
+def test_no_git_on_path_reports_the_citation_rather_than_exempting_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every way git can decline is read as *not* covered.
+
+    The exemption is granted only on a positive answer, so a checkout that
+    cannot run git is held to exactly the rule it was held to before.
+    """
+    readme = "# Demo\n\nGenerated files go in `out/`.\n"
+    root = _ignoring(_repo(tmp_path, readme=readme), "/out/\n")
+    assert not any("cites `out/`" in e for e in _errors(root))
+
+    monkeypatch.setenv("PATH", "")
+
+    assert any("cites `out/`" in e for e in _errors(root))
+
+
 # --- modes ------------------------------------------------------------------
 
 

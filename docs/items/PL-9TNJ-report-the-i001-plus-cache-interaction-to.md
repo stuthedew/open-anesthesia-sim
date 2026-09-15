@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: docs/items
 added: 2026-09-15
 closed: 2026-09-15
+pr: 591
 verify: grep -qE 'astral-sh/ruff/issues/5449#issuecomment-[0-9]+' docs/items/PL-9TNJ-*.md
 ---
 
