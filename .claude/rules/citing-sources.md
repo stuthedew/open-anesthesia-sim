@@ -97,6 +97,26 @@ Four limits decide what a citation may claim:
   citations verified against PubMed; read that before opening a PDF. Verified
   end to end from this environment on 2026-09-13.
 
+  **Two of its holdings are whole textbooks**, added 2026-09-15 and split into
+  section PDFs in a folder each: *Modern Anesthetics* (Schüttler & Schwilden
+  2008, 22 chapters, each with its own DOI and PMID) and the *Workbook for Gas
+  Man*, this project's reference implementation described by its own author.
+  Together they cover inhalational and intravenous agents, uptake and
+  distribution, depth of anesthesia and the parameter set the simulator runs
+  on, so a science question with no obvious paper behind it starts there rather
+  than from memory or from a search. Both remain tier 3 — a textbook chapter is
+  a route to a measurement, not the measurement.
+
+  **Answer "is it in there, and where" without opening a PDF.** The corpus root
+  carries an index file, INDEX.md, which states what the corpus does and does
+  not cover and routes a topic to a book, chapter and printed page; beside it a
+  text directory holds every text-layer holding extracted once and marked with
+  the page number printed on each page — so `grep -rn -i "<phrase>" text/` in
+  the clone costs nothing and returns something citable. Render a page only for a figure, a flattened table,
+  or an exact quotation. Two cautions carried there: a printed page number is
+  not a PDF page number in either book, and three of the papers are scans with
+  no text layer, so a grep that finds nothing has not searched them.
+
   **A miss is an answer too, because the corpus is not the literature.** It
   holds what the project owner has supplied, and nothing else. Where a terminal
   source is not among its holdings the route really has ended: record the gap in
