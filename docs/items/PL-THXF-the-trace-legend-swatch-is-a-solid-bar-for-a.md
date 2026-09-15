@@ -7,9 +7,10 @@ status: done
 classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_qt_chart.py
-verify: uv run pytest tests/integration/test_qt_chart.py && grep -q 'def test_the_legend_swatch_carries_the_trace_s_own_dash_pattern' tests/integration/test_qt_chart.py
 added: 2026-09-07
 closed: 2026-09-15
+pr: 588
+verify: uv run pytest tests/integration/test_qt_chart.py && grep -q 'def test_the_legend_swatch_carries_the_trace_s_own_dash_pattern' tests/integration/test_qt_chart.py
 ---
 
 > **This fix rides the Qt port, not Flet.** `ROADMAP.md` § "v0.4.26 -

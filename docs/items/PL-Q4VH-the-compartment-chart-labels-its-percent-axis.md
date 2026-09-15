@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_frame.py, tests/integration/test_qt_chart.py
 added: 2026-09-04
 closed: 2026-09-15
+pr: 588
 verify: uv run pytest tests/integration/test_qt_chart.py && grep -q 'def test_both_axes_are_labelled_where_they_are_ruled' tests/integration/test_qt_chart.py
 ---
 

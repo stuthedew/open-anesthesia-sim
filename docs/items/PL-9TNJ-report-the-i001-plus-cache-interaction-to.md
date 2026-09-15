@@ -3,11 +3,12 @@ id: PL-9TNJ
 title: "Report the I001-plus-cache interaction to astral-sh/ruff: #5449 has the same root cause open for INP001 only, and PL-QSJM established both halves"
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: dev-tooling
 touches: docs/items
 added: 2026-09-15
+closed: 2026-09-15
 verify: grep -qE 'astral-sh/ruff/issues/5449#issuecomment-[0-9]+' docs/items/PL-9TNJ-*.md
 ---
 
@@ -81,11 +82,12 @@ and it has no write access there — nor should it.
 > }
 > ```
 >
-> — the linted file's mtime and permission bits, and nothing else. Deleting a
+> — the linted file's mtime and permission bits, and nothing else, and `Cache::get`
+> compares only a hash of that. Deleting a
 > module therefore invalidates nothing, and every file importing it replays a
 > clean verdict it can no longer earn.
 >
-> **Reproduction**, on ruff 0.16.4:
+> **Reproduction**, identical on ruff 0.16.4 and 0.16.7:
 >
 > ```sh
 > cd "$(mktemp -d)"
@@ -126,6 +128,27 @@ and it has no write access there — nor should it.
 >
 > Happy to split this into its own issue if you would rather keep #5449 to
 > `INP001`.
+
+**Posted 2026-09-15** by the project owner:
+<https://github.com/astral-sh/ruff/issues/5449#issuecomment-5687726691>
+
+**Confirmed live on the latest release before posting.** The reproduction was
+re-run verbatim against **ruff 0.16.7**, the current release, as well as the
+0.16.4 this project pins, and behaves identically: run 2 replays a clean
+verdict on a tree whose module has been deleted, run 3 reports the `I001` with
+`--no-cache`. So the defect is live upstream rather than already fixed, which
+is what made the report worth making. Both source facts were read from ruff's
+own tree at both tags rather than taken from a summary: `FileCacheKey` holds
+`file_last_modified` and `file_permissions_mode` and nothing else, and
+`Cache::get` hashes exactly that and compares it, consulting neither file
+contents nor any other path.
+
+**Not independently confirmed from this container**, and recorded as such: the
+issue page's comment section returns a load error to the fetcher available
+here, and `api.github.com` answers 403 because `astral-sh/ruff` is outside this
+session's repository scope. The URL above is the permalink the project owner
+copied from the comment they posted. Attaching a third-party repository to the
+session to verify one comment was judged disproportionate.
 
 **Two possibly-related issues, surfaced but not verified** (a search turned
 them up; neither was read against its page, so check before citing either):
