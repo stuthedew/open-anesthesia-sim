@@ -4362,29 +4362,36 @@ once someone is ready to scope it.
     inconvenience. See the Blender Manual, "Interface → Window System →
     Areas" and "→ Workspaces".
 
-    *Tiling by default, and break-out into a separate window rather than
-    floating panels* (project owner, 2026-09-15). The no-overlap invariant
-    above is the default and is not negotiable inside a window. What is added
-    is that an area may be **broken out into its own top-level window**, itself
-    a full window with its own areas: the Blender Manual's § "Areas" documents
-    this as *View > Duplicate Area into New Window*, or Shift-LMB on an area's
-    splitter widget, and describes the result as a fully functional window
-    belonging to the same running instance, useful across multiple monitors.
-    That is the reading of "floating" recorded here, and it keeps the safety
-    argument above intact: every window stays tiled, so nothing inside one
-    covers anything else in it.
+    *Tiled first, with break-out into a separate window* (project owner,
+    2026-09-15). What this milestone builds is the no-overlap invariant above,
+    plus break-out: an area may be taken into **its own top-level window**,
+    itself a full window with its own areas. The Blender Manual's § "Areas"
+    documents that as *View > Duplicate Area into New Window*, or Shift-LMB on
+    an area's splitter widget, and describes the result as a fully functional
+    window belonging to the same running instance, useful across multiple
+    monitors. Every window is then tiled, so nothing inside one covers anything
+    else in it.
 
-    *What that refuses, and the distinction is the safety one.* Floating panels
-    overlapping the tiled areas **within** a window are a different mechanism
-    and are not admitted. A panel drawn over the dashboard can cover a value
-    the display is required to show while the application still believes it is
-    showing it, which is the silent failure the tiling argument was made
-    against; a separate top-level window the learner placed and can move is not
-    that, and the occlusion it allows is the window manager's and the learner's
-    own. `PL-WLWY` carries the constraint break-out raises and does not settle:
-    which windows owe `docs/MODEL.md` § "Minimum displayed outputs" its
-    minimum, given that a broken-out window can be dragged over the one
-    carrying it.
+    *What is refused is silent occlusion, not floating* (project owner,
+    2026-09-15, correcting this paragraph's first form). **Floating is
+    deliberately not foreclosed**: the option to take a tiled area out into a
+    floating one is wanted, later, and what this milestone does is simply not
+    build it yet. The first version of this paragraph recorded floating panels
+    as "not admitted" - a permanent refusal, which was the writing session's
+    overreach rather than a decision anybody took. Tiled first is the
+    sequencing; never floating is not the rule.
+
+    The rule the safety argument actually supports is narrower, and it outlives
+    whichever mechanism arrives: **nothing may cover a value the display is
+    required to show while the application still believes it is showing it.** A
+    floating panel over the dashboard is one way to do that, and a broken-out
+    window dragged back over the main one is another - which is why the
+    constraint belongs to the display rather than to a window type, stated once
+    instead of re-argued per mechanism. `PL-WLWY` is where it is settled: which
+    windows and regions owe `docs/MODEL.md` § "Minimum displayed outputs" its
+    minimum, and by what mechanism that survives a layout the learner chose.
+    Floating arrives under whatever that answer turns out to be, rather than
+    being ruled out ahead of it.
 
     *The license constraint, which is not a formality.* Blender's source is
     GPL-2.0-or-later and its binaries ship under GPL-3.0-or-later; this project
