@@ -1,15 +1,16 @@
 ---
 id: PL-MXSL
 title: doc_check requires a cited directory to exist with no exemption for one .gitignore covers, so documenting a generated directory fails CI while make check passes locally the moment anything has created it
-status: done
-closed: 2026-09-15
-verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_cited_path_gitignore_covers_is_not_required_to_exist' tests/unit/test_doc_check.py
 priority: P2
 effort: S
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-15
+closed: 2026-09-15
+pr: 593
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_cited_path_gitignore_covers_is_not_required_to_exist' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check requires a cited directory to exist with no exemption for one .gitignore covers, so documenting a generated directory fails CI while make check passes locally the moment anything has created it
