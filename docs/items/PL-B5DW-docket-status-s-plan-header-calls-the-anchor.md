@@ -1,8 +1,14 @@
 ---
 id: PL-B5DW
 title: docket status's plan header calls the anchor 'the step the project is on' while wave reports the step as a different row
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect, infra
+feature: planning-cadence
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-14
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_the_plan_header_names_the_step_apart_from_the_anchor' subprojects/docket/tests/test_roadmap.py
 ---
 
 **Problem.** docket status's plan header calls the anchor 'the step the project is on' while wave reports the step as a different row
@@ -23,3 +29,12 @@ and pinning the new branch with a test, is a decision rather than a typo.
 **Done when** the header names the step apart from the anchor whenever
 `Scope.step_label` is set, and a test in `test_release.py` or `test_roadmap.py`
 pins it against a plan standing on a patch-track row.
+
+**Why it matters.** The two commands are read by the same session minutes apart
+- `status` at session start, `wave` when deciding what beat is due - and they
+disagree about which row the project is standing on while using the same words
+for it. A session that believes the anchor *is* the step will scope work to the
+wrong milestone, which is the one mistake the planning cadence exists to
+prevent; `PL-1J0P` already had to teach `next` the same distinction, so this is
+the third command asked the same question and the only one still answering it
+from the wrong field.

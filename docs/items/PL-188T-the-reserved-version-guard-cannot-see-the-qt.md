@@ -1,8 +1,14 @@
 ---
 id: PL-188T
 title: The reserved-version guard cannot see the Qt port's section once the port is numbered past the current patch, so a patch cut mid-port is offered the port's own number as free
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect, infra
+feature: release-roadmap-seam
+touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 added: 2026-09-14
+verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_a_version_named_ahead_of_the_current_one_is_reserved' subprojects/docket/tests/test_release.py
 ---
 
 **Problem.** The reserved-version guard cannot see the Qt port's section once the port is numbered past the current patch, so a patch cut mid-port is offered the port's own number as free
@@ -32,3 +38,16 @@ is the existing carrier reaching the port rather than the guard reading every
 version ahead, so the "Done when" above still stands: once the port ships and
 v0.5.0 is the milestone again, the guard sees exactly what it saw before, and
 `PL-VFD8`'s v0.6.0 is still offered.
+
+**Why it matters.** The guard exists so a release cut mid-milestone cannot be
+handed a number another section has already spoken for, and `ROADMAP.md`
+§ "the interface moves to Qt" records that collision as the port's one risk. A
+guard answering from two bindings rather than from the roadmap fails in the
+direction that looks like success: `release_offer` returns `stands`, which is
+the word a session acts on without checking. `PL-FWJF`'s carrier closes the
+window only while the port is the beat's work, so the exposure returns the
+moment v0.5.0 is the milestone again - deferred, not removed.
+
+**Triaged 2026-09-15.** Kept as its own item rather than folded into `PL-VFD8`:
+the evidence here is a third reproduction path that `PL-VFD8`'s brief does not
+carry. Close the two together, as the brief above provides.

@@ -1,8 +1,15 @@
 ---
 id: PL-VHLZ
 title: Nothing installs libegl1, so a fresh web container or CI runner dies on the first PySide6.QtGui import; quality.yml has no apt step and the environment setup script has no such line
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: infra, docs
+feature: qt-port
+touches: docs/ARCHITECTURE.md
 added: 2026-09-14
+closed: 2026-09-15
+verify: grep -q 'libegl1' .github/workflows/quality.yml && grep -q 'libegl1' docs/ARCHITECTURE.md && uv run pytest tests/integration/test_qt_rendering.py
 ---
 
 **Problem.** Nothing installs libegl1, so a fresh web container or CI runner dies on the first PySide6.QtGui import; quality.yml has no apt step and the environment setup script has no such line
@@ -82,3 +89,39 @@ PySide6.QtGui"` succeeded. What this item still owes is the third place, the
 OS-requirement line in `docs/ARCHITECTURE.md`, and the observation of the CI
 step passing on a runner that never had the library, which the chart port's
 own pull request supplies.
+
+**Two of the three places are done; confirmed 2026-09-15.**
+`.github/workflows/quality.yml` carries `sudo apt-get update && sudo apt-get
+install -y libegl1` as its own step, landed with the chart port as the brief
+above provides, and the environment half was recorded done by the owner on
+2026-09-14. What is left is the third place, and the `touches` above is narrowed
+to it: the durable OS-requirement line in `docs/ARCHITECTURE.md`, which is where
+"what the Qt build needs from the OS" belongs once `PL-7SVX` deletes
+`spikes/qt/README.md` and takes the only written copy with it.
+
+So this is now a documentation item rather than an infrastructure one, and it is
+seated at P3 on that basis. The risk it still carries is narrow but real: the
+knowledge that the offscreen platform plugin needs `libEGL` currently exists in
+a CI step and a spike README scheduled for deletion, and neither is where a
+person sets up a new machine looks.
+
+**Closed 2026-09-15 at triage: all three places are done.** The brief above had
+already recorded two of them; the third had landed without this item being
+closed, which is the shape the whole-store `docket check --verify` replay exists
+to catch.
+
+1. **CI** - `.github/workflows/quality.yml` carries
+   `sudo apt-get update && sudo apt-get install -y libegl1` as its own step,
+   landed with the chart port as the brief above provides.
+2. **The web environment** - recorded done by the owner, 2026-09-14, and
+   observed here: this container imports `PySide6.QtGui` with no `apt` step.
+3. **`docs/ARCHITECTURE.md`** - lines 974-976 now say that `tests/conftest.py`
+   selects Qt's `offscreen` plugin, that on Linux the plugin needs `libegl1`
+   from the OS, that `quality.yml` installs it and that the PySide6 wheels do
+   not carry it, citing this item. That is the durable home the brief asked for,
+   and it survives `PL-7SVX` deleting `spikes/qt/README.md`.
+
+**The proof the brief asked for.** `PL-YCWZ`'s rendering suite,
+`tests/integration/test_qt_rendering.py`, exists and passes - eight tests - and
+it runs in CI on a runner that never had the library, which is what the `apt`
+step in (1) is for. The `verify:` above checks all three at once.

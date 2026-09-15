@@ -2667,7 +2667,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 128 entries
+### Declined to Gate 2 on the refilling-queue ground — 140 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3049,6 +3049,38 @@ The full 9: `PL-0MLZ`, `PL-2MD9`, `PL-73ZN`, `PL-9KP5`, `PL-BMY5`, `PL-C4RS`, `P
 written for: apparatus, held to `.claude/rules/apparatus-standard.md`'s lower
 bar, none of which can reach a reader of the simulator.
 `PL-0HPV`, `PL-0PJG`, `PL-2M5T`, `PL-4PC5`, `PL-BXB2`, `PL-FT3M`, `PL-FWJF`, `PL-J45M`, `PL-JW9J`, `PL-MBTZ`, `PL-R0P3`, `PL-V53R`, `PL-VFD8`, `PL-WNQT`, `PL-YNYK`, `PL-Z85N`.
+
+**Twelve more from the 2026-09-15 triage pass over the twenty untriaged
+captures open that day.** All twelve were captured on 2026-09-14 or 2026-09-15,
+eight days or more after the 2026-09-06 freeze, so "The gate is a snapshot"
+already places them in the next gate; they are written down because each is
+debt - eleven classed `defect`, and `PL-9TNJ` by its `needs-decision` status -
+and a reader finding one open would otherwise have to work out why it is
+absent.
+
+**Nine sit wholly in the workflow lane**, where the thirty before them do, and
+are deferred on the same refilling-queue ground:
+`PL-188T`, `PL-3DXV`, `PL-9TNJ`, `PL-B5DW`, `PL-LKGW`, `PL-RWBV`, `PL-T86P`,
+`PL-VZYS`, `PL-Y5ZB`.
+
+`PL-RWBV` is the one to watch among them, and it is deferred with that said: it
+reports eight open items whose `touches` names a path that does not exist, and
+`touches` is read as a membership test by the lane split, the concurrency graph
+and the delegation guard alike - so a stale path fails open in all three at
+once. `PL-CNCF`'s is the expensive instance: it still names the pre-rename
+spelling of `core/run_definition.py`, and only the live path is in
+`protected_paths`, so the item reads as delegable when it is not. It is recommended as the first of these nine taken
+off the list.
+
+**Three are product-lane and are not waiting on this gate at all**, which is
+why they are recorded here rather than left to look deferred:
+`PL-J0F7` and `PL-TCR5` are live defects in what the Qt chart shows a reader -
+a hover box nobody has looked at rendered, and a hover readout that answers the
+pointer's previous position and never re-answers a resting pointer while paused
+- so both are seated `P2` and belong to the v0.4.26 port beat, ahead of this
+gate on the timeline rather than behind it. `PL-QRD1` is `blocked` on
+`PL-8PSW`, which decides whether a two-run dashboard needs a selector lock at
+all, and no shipped entry point reaches the defect today.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
