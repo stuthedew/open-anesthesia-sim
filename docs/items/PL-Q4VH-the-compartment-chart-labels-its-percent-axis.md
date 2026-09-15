@@ -3,13 +3,13 @@ id: PL-Q4VH
 title: The compartment chart labels its percent axis at a different interval from the gridlines it rules
 priority: P2
 effort: S
-status: blocked
-blocked-by: PL-7SVX
+status: done
 classes: defect, ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/simulation_view.py, tests/unit/test_simulation_view.py
+touches: src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_frame.py, tests/integration/test_qt_chart.py
 added: 2026-09-04
-verify: uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_the_percent_axis_labels_the_values_it_rules' tests/unit/test_simulation_view.py
+closed: 2026-09-15
+verify: uv run pytest tests/integration/test_qt_chart.py && grep -q 'def test_both_axes_are_labelled_where_they_are_ruled' tests/integration/test_qt_chart.py
 ---
 
 > **This fix rides the Qt port, not Flet.** `ROADMAP.md` § "v0.4.26 -
@@ -67,3 +67,9 @@ is the edge that is actually true.
 `tests/integration/test_qt_chart.py::test_both_axes_are_labelled_where_they_are_ruled` holds it there. The Flet chart
 still has the defect and is still the shipped chart, so this stays open until
 `PL-7SVX` deletes it, and closes then with nothing left to write.
+
+**Closed 2026-09-15, with `PL-25KS`.** Fixed by construction in the Qt chart
+(`PL-G59B`): the percent axis is labelled at exactly the ticks it is ruled
+on, held by `test_both_axes_are_labelled_where_they_are_ruled`. It waited
+only for the Flet chart carrying the defect to leave, which the dashboard
+port did; the `verify:` above names the test that holds it.

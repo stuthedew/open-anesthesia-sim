@@ -8,7 +8,7 @@ classes: refactor, infra
 feature: qt-port
 touches: spikes, tools/import_boundary_check.py, src/anesthesia_sim/app, docs/ARCHITECTURE.md
 added: 2026-09-10
-verify: uv run python tools/import_boundary_check.py && ! grep -rq 'import flet' src/anesthesia_sim/
+verify: uv run python tools/import_boundary_check.py && ! test -d spikes
 ---
 
 **Problem.** Delete spikes/ and the last Flet import once the port is complete
@@ -50,3 +50,13 @@ in this milestone reads from, so it goes last.
 `pyproject.toml`: `flet_charts`, and `msgpack`, whose comment names that file
 as its only importer. mypy will not report them - `strict` does not enable
 `warn_unused_configs`. Delete both in the same commit.
+
+**The Flet half landed with `PL-25KS`, 2026-09-15.** The last `import flet`
+left with the Flet dashboard, and `tools/import_boundary_check.py` already
+holds `flet` and `flet_charts` to no module under `src/anesthesia_sim/` - the
+"held rather than merely current" boundary this brief asks for. What this item
+still owes is `spikes/` (the working reference every other port item read
+from, so it goes last, after `PL-L9RD` and `PL-3SQT`) and `PL-C92D`'s table.
+The `verify:` above was re-pointed the same day, because its old form passed
+the moment the dashboard port merged and `docket check --verify` refuses a
+command that passes before the work.

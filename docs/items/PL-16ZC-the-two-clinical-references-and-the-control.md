@@ -3,12 +3,12 @@ id: PL-16ZC
 title: The two clinical references and the control marks have no show/hide control, though the chart's traces now do
 priority: P3
 effort: M
-status: blocked
-blocked-by: PL-G59B
+status: ready
 classes: ux
 feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py
 added: 2026-09-04
+verify: uv run pytest tests/integration/test_qt_chart.py && grep -q 'def test_the_references_and_the_control_marks_can_be_hidden_and_shown' tests/integration/test_qt_chart.py
 ---
 
 > **Not carried by the Qt port** (project owner, 2026-09-10). The port admits

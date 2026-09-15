@@ -679,7 +679,9 @@ notices and the lines it draws - and `SimulationView` holds what two runs
 share, the two charts, their axes, the window both are drawn in, the time base
 and the compartment selection. That is the seam the interface pass would
 restructure against, and it is the shape `PL-25KS` (port the dashboard to
-PySide6) is to be built to from the start rather than ported into. Of the
+PySide6) was built to from the start rather than ported into, on 2026-09-15:
+`RunView` in `app/run_view.py`, `SimulationView` in `app/simulation_view.py`,
+and what either claims in `app/dashboard_frame.py`. Of the
 three named above, `PL-2CS8` (consolidate the scattered display constants)
 closed in `v0.4.11`; `PL-NGF7` (`contrast_check.py` can see no disabled-state
 colour) is deferred to the Qt port, which dissolves it rather than fixing it, and

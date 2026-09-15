@@ -3,11 +3,12 @@ id: PL-25KS
 title: Port the dashboard to PySide6: the readout row, the four parameter controls, the agent selector, the transport, the new-case dialog and the notice banner
 priority: P1
 effort: L
-status: ready
+status: done
 classes: feature, ux
 feature: qt-port
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/theme.py, tests/unit, tests/integration, tests/reference/test_coupled_dynamics.py, tools/agent_identity_check.py, tools/contrast_check.py, tools/import_boundary_check.py, tools/glyph_check.py, pyproject.toml, docs/ARCHITECTURE.md, docs/MODEL.md, README.md, .claude/rules/ui-color.md
 added: 2026-09-10
+closed: 2026-09-15
 verify: uv run python tools/import_boundary_check.py && grep -q 'PySide6' src/anesthesia_sim/app/main.py
 ---
 
@@ -130,3 +131,44 @@ to make, recorded before the first commit so the reasoning outlives the branch:
 `touches` widened accordingly on the same day; `tools/agent_identity_check.py`
 is in it because its own docstring records that rule 1's Qt spelling is "the
 half to port first", and no other open item declares the file.
+
+**Closed 2026-09-15.** The dashboard renders under PySide6 from the same
+controller, in four modules rather than one: `app/dashboard_frame.py` states
+every string and every per-tick claim with no toolkit loaded (72 tests, no
+display); `app/qt_widgets.py` holds the leaf widgets that decide nothing -
+`MetricPanel` reserving the widest value's width, `ReadoutRow` reflowing
+where its measured panels stop fitting, the integer `ParameterSlider` whose
+one step is the display resolution, `NoticeLabel`, `NewCaseDialog` with the
+keep button as the default, `inert_splitter`, `initial_window_geometry` and
+a `FlowLayout` for the legend rows; `app/run_view.py` is `RunView`, one run's
+widgets, controller, handlers, refresh and halt, with
+`_apply_agent_color_scheme` the single writer of agent colour; and
+`app/simulation_view.py` is `SimulationView`, what runs share, inside nested
+inert splitters. `tests/integration/test_simulation_view.py` ports the Flet
+dashboard's widget-level claims under their own names against real
+controllers, headless (123 tests); `tests/integration/test_qt_widgets.py`
+holds the leaf widgets; `tests/integration/test_qt_rendering.py` renders the
+whole interface at a fixed size and reads pixels and geometry back. The
+Flet dashboard, its chart-series module and their two test files are gone,
+and `flet` and `flet_charts` are permitted in no module under `src/`.
+
+**Two facts a later session should know.** The readout row seats seven
+panels across only where seven of the widest value's reserved widths fit -
+about 1 400 logical pixels on this container's font - and four below that;
+the pixel breakpoints `PL-8M05` measured on Flet are replaced by that rule,
+and the reservation (the 22 px value size, the panel padding, the clock's
+widest string) is `PL-L9RD`'s lever if seven across at a laptop width is
+wanted. And `PySide6.QtCore.Signal.emit` swallows a slot's exception, so
+every presentation path guards `_refresh_view` itself rather than relying
+on a raise reaching the caller.
+
+**Docs checked:** `docs/ARCHITECTURE.md` (package map, data flow, the app
+prose, the loops, the tools section, the tests section, where new code
+belongs), `docs/MODEL.md` (the hazard table and its partly-mitigated row,
+the reproducibility list, the interface boundary headings, the drawn-columns
+paragraph, the readout row's width condition, the accounting precision, the
+displayed-precision terminus, the hover section), `README.md` (the hover
+line, the Linux `libegl1` line), `ROADMAP.md` (six citations of the deleted
+module), `docs/WORKING_NOTES.md` (the testing thread and the mockups thread),
+`docs/worker.md` (how a session writes the screenshot),
+`.claude/rules/ui-color.md` (what the checks read), `CONTRIBUTING.md`.

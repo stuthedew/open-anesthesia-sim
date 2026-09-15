@@ -744,7 +744,7 @@ MAX_INVERTED_GAP_IN_DISPLAY_COUNTS = (
 # input domain this gate measures over, and the view module whose displayed
 # resolution and shipped step every figure here is quoted at.
 #
-# `supported_ranges` and `simulation_view` are on this list for two
+# `supported_ranges` and `dashboard_frame` are on this list for two
 # assertions — that the limits restated above are still the model's, and that
 # the resolution and step they are quoted at are still the interface's — and
 # the rule the list enforces is unaffected by either: what must never be
@@ -762,8 +762,8 @@ ALLOWED_PACKAGE_IMPORTS = frozenset(
         "load_reference_adult_parameters",
         "load_reference_circle_system_parameters",
         "AgentUptakeSystem",
+        "dashboard_frame",
         "formatting",
-        "simulation_view",
         "supported_ranges",
     }
 )

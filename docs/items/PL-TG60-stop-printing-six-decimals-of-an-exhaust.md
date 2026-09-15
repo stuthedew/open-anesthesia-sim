@@ -3,13 +3,13 @@ id: PL-TG60
 title: Stop printing six decimals of an exhaust integral good to three
 priority: P3
 effort: S
-status: blocked
-blocked-by: PL-25KS
+status: done
 classes: defect, ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, tests/unit/test_simulation_view.py
+touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_formatting.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md
 added: 2026-08-30
-verify: uv run pytest tests/unit/test_simulation_view.py -k agent_amounts_precision
+closed: 2026-09-15
+verify: uv run pytest tests/unit/test_formatting.py && grep -q 'def test_agent_amounts_precision' tests/unit/test_formatting.py
 ---
 
 > **This fix rides the Qt port, not Flet.** `ROADMAP.md` § "v0.4.26 -
@@ -106,3 +106,20 @@ for a milestone to be *scoped*, and `docket check` promotes it back to `ready`
 the moment that section carries its four subsections - which the port's already
 does, so the version form raised "ready to promote" on every run. The port item
 is the edge that is actually true.
+
+**Closed 2026-09-15, with `PL-25KS`, on a measurement.** Perturbing one
+stored coefficient by one published SD, as § "Displayed precision" does for
+the readouts, moves the exhaust total by 0.016-0.042 L at 3600 s and by
+0.18-0.23 L at the 24 h supported limit (sevoflurane 0.024 and 0.19 L,
+isoflurane 0.016 and 0.18 L, desflurane 0.042 and 0.23 L; blood:gas
+dominant; 1 MAC, the reference adult's flows). One count of 0.1 L sits
+between a quarter of an SD and six SDs across the whole span, the band the
+readouts' own derivation admits; 0.01 L falls to a fiftieth of an SD by
+24 h. So the panel prints one decimal through
+`formatting.format_agent_volume` (`AGENT_VOLUME_DISPLAY_DECIMALS`, with the
+below-resolution form `<0.1 L`), keeps the residual lines in scientific
+notation, and states the unit as the specification states it, "Litres of
+equivalent pure agent gas". `docs/MODEL.md` § "Displayed precision" carries
+the derivation and withdraws the sentence that had justified six decimals
+(the residual is visible only on the lines that print it in scientific
+notation). `test_agent_amounts_precision` pins the form.

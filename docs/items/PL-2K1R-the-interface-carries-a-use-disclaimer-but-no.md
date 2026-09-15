@@ -3,12 +3,13 @@ id: PL-2K1R
 title: The interface carries a use disclaimer but no interpretation one, so nothing tells a reader the compartment readouts and chart traces are modelled rather than measured
 priority: P1
 effort: S
-status: blocked
-blocked-by: PL-25KS
+status: done
 classes: safety, ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app, docs/MODEL.md
+touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, tests/unit/test_dashboard_frame.py, tests/integration/test_simulation_view.py, docs/MODEL.md
 added: 2026-09-13
+closed: 2026-09-15
+verify: uv run pytest tests/unit/test_dashboard_frame.py && grep -q 'def test_the_interface_says_the_readouts_are_model_outputs_not_measurements' tests/unit/test_dashboard_frame.py
 ---
 
 **Problem.** The interface carries a use disclaimer but no interpretation one, so nothing tells a reader the compartment readouts and chart traces are modelled rather than measured
@@ -66,3 +67,16 @@ rule. It is named on `ROADMAP.md` § "v0.4.26 - the interface moves to Qt" →
 claim - "identical except for this list" - checkable with this on it. It is
 text the dashboard states, not a control a learner operates, so it is not new
 capability by the `PL-16ZC` line.
+
+**Closed 2026-09-15, with `PL-25KS`.** The interface states, on the readout
+section's heading row beside "Modelled concentrations: {agent}", the line
+`INTERPRETATION_DISCLAIMER_TEXT = "Model outputs — not measurements."` -
+the timeline's pattern, short and beside the values it qualifies, saying
+what they are. Once, not repeated on the chart, because the chart's hover
+already names every value it reports as modelled and a repeated disclaimer
+is one that stops being read. Held by
+`test_the_interface_says_the_readouts_are_model_outputs_not_measurements`
+(the string) and `test_the_readouts_say_they_are_model_outputs_beside_the_values`
+(its placement inside the readout section), and `docs/MODEL.md`'s hazard row
+now names both. The wording is the port's choice and the project owner may
+revise it; drawn MUTED italic at the qualifier size, as standing text.

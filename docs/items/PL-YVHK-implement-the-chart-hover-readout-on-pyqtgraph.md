@@ -3,13 +3,13 @@ id: PL-YVHK
 title: Implement the chart hover readout on pyqtgraph to the derivation docs/MODEL.md now carries, turn hoverable on so the affordance is not silently lost, and say in README.md that it exists
 priority: P1
 effort: S
-status: blocked
-blocked-by: PL-25KS
+status: done
 classes: safety, ux
 feature: presentation-safety
-touches: src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, README.md, tests/integration
+touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, README.md, tests/integration
 added: 2026-09-14
-verify: uv run pytest tests/unit/test_formatting.py && grep -rqF 'def test_the_hover_readout_states_the_agent_compartment_and_both_units' tests/
+closed: 2026-09-15
+verify: uv run pytest tests/integration/test_simulation_view.py && grep -rqF 'def test_the_hover_readout_states_the_agent_compartment_and_both_units' tests/ && grep -q 'on hovering a drawn point' README.md
 ---
 
 **Problem.** Implement the chart hover readout on pyqtgraph to the derivation docs/MODEL.md now carries, turn hoverable on so the affordance is not silently lost, and say in README.md that it exists
@@ -97,3 +97,10 @@ chart is the shipped chart, so it rides `PL-25KS`. The `verify:` above names
 a test in `test_formatting.py` that this build did not write, since the
 formatting is composed rather than a new formatter; the two tests named here
 are what prove it.
+
+**Closed 2026-09-15, with `PL-25KS`.** Item 5 landed: `README.md`'s "While a
+case runs" list says the hover exists and what it reports, now that the Qt
+chart is the shipped chart. `test_the_hover_readout_states_the_agent_compartment_and_both_units`
+reads the readout off the shipped chart inside the dashboard against a real
+run, and the `verify:` above names it; the old command named a test in
+`tests/unit/test_formatting.py` that no build wrote.
