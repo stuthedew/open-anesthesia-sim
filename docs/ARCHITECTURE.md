@@ -786,9 +786,15 @@ by tests. **It is silent unless there is something to act on** — a green `main
 no network, a non-GitHub remote and a malformed response all print nothing and
 exit 0, because a line that appears every session trains a reader to skim the
 region a real advisory occupies. And **a `cancelled` run is not a verdict**: the
-workflow cancels superseded runs, so the newest completed run on `main` is
-routinely one that judged nothing, and the tool reports the newest run that
-actually reached a conclusion. It is unauthenticated — the repository is public,
+tool reports the newest run that actually reached a conclusion. That skip was
+load-bearing until `PL-SMN4` — every push to `main` shared one concurrency
+group, so a merge arriving while an earlier one was still pending evicted it,
+and 31 of the 257 completed `main` push runs across the eleven days that block
+stood ended `cancelled` having started no job at all. `quality.yml` now gives
+each `main` push a group of its own, which ends the eviction; what reaches this
+tool as `cancelled` is a hand cancellation or a lost runner, and the commit
+behind one still has no whole-store verdict that anything reports
+(`PL-JTHW`). It is unauthenticated — the repository is public,
 so no token is read and none is needed, which keeps a credential off a
 session-start path. The GitHub read deliberately does not live in `docket`,
 whose rule is that a read must work from a bare offline tree.

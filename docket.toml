@@ -213,6 +213,7 @@ workflow_paths = [
   "tests/conftest.py",
   "tests/unit/test_agent_identity_check.py",
   "tests/unit/test_branch_id_check.py",
+  "tests/unit/test_ci_concurrency.py",
   "tests/unit/test_contrast_check.py",
   "tests/unit/test_core_vocabulary_check.py",
   "tests/unit/test_dead_ends.py",
