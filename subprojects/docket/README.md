@@ -37,6 +37,7 @@ docket verify PL-K7QX --self # ...auditing your own branch, not reviewing a dele
 docket branch                # where this branch stands against the default one
 docket flight                # which items a branch is already carrying
 docket stranded              # work that exists only on a branch
+docket digest --profile      # what the session-start digest asks git, and the ref set it walked
 docket record                # write every pull request number the base is owed
 docket check                 # validate the store; exits non-zero on errors
 docket check --verify        # ...and replay every open item's `verify:` command

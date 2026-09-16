@@ -23,8 +23,10 @@ what is on it that nowhere else has.
 
 from __future__ import annotations
 
+import locale
 import re
 import subprocess
+import time
 from collections import Counter
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -64,6 +66,326 @@ def _run_git(args: list[str], root: Path) -> str:
     except (OSError, subprocess.SubprocessError):
         return ""
     return result.stdout if result.returncode == 0 else ""
+
+
+#: The subcommands that cannot change anything, whatever arguments they are
+#: handed. `GitRunner`'s memo is sound for exactly these, and the set is closed
+#: on purpose: `fetch` rewrites the remote-tracking refs every other read in
+#: this module is answered from, and `tag` writes one unless it is given
+#: `--list`. A subcommand not named here is run every time *and* empties the
+#: memo, so one added later is slow rather than wrong.
+_READ_ONLY = frozenset(
+    {
+        "cat-file",
+        "diff",
+        "for-each-ref",
+        "log",
+        "ls-tree",
+        "merge-base",
+        "rev-list",
+        "rev-parse",
+        "show",
+    }
+)
+
+#: How `subprocess.run(text=True)` would have decoded git's output, so a blob
+#: served from the batch below is the same `str` `git show` would have given.
+_ENCODING = locale.getpreferredencoding(False)
+
+
+def _subcommand(argv: tuple[str, ...]) -> str:
+    """The git subcommand an argv names, ignoring the options in front of it."""
+    return next((token for token in argv if not token.startswith("-")), "")
+
+
+@dataclass(frozen=True)
+class SubcommandCost:
+    """What one git subcommand cost a command.
+
+    `asked` counts the questions the module put; `ran` counts the ones that
+    reached git. They differ by what the memo answered, which is the whole
+    measurement `PL-MMVF` turns on.
+    """
+
+    subcommand: str
+    asked: int
+    ran: int
+    distinct: int
+    seconds: float
+
+    @property
+    def saved(self) -> int:
+        """Calls the memo answered without asking git."""
+        return self.asked - self.ran
+
+
+@dataclass(frozen=True)
+class RefWalk:
+    """The input a profiled run was measured against.
+
+    **Recorded because a call count without it is attributable to nothing.**
+    Two machines were once compared at 220 calls against 1,107 and the ratio
+    explained by three different scaling laws in one sitting, because their ref
+    sets differed and had moved hours apart while other sessions pushed
+    branches (`PL-XD3C`). A count is a measurement only next to the input that
+    produced it, so this travels with every profile and a reader can diff two
+    machines' inputs before believing anything about their outputs.
+
+    `declined` carries what could not be read, rather than letting a partial
+    walk be reported as a complete one.
+    """
+
+    listed: int = 0
+    merged: int = 0
+    unmerged: int = 0
+    commits: int = 0
+    item_edits: int = 0
+    #: Per unmerged ref: its name, the commits it holds that the base does not,
+    #: and how many item files it touches. The per-ref detail rather than the
+    #: totals alone, because that is what makes two machines comparable by
+    #: subtraction instead of by ratio.
+    refs: tuple[tuple[str, int, int], ...] = ()
+    #: Unmerged refs whose fork point this checkout cannot resolve, so their
+    #: work went uncounted. Named rather than folded into a zero: on a
+    #: truncated clone that is the difference between "introduces nothing"
+    #: and "could not be read".
+    unread: tuple[str, ...] = ()
+    declined: str = ""
+
+
+@dataclass(frozen=True)
+class GitProfile:
+    """What one command asked git, and what the input was when it asked."""
+
+    asked: int
+    ran: int
+    processes: int
+    seconds: float
+    by_subcommand: tuple[SubcommandCost, ...]
+    walk: RefWalk
+
+    @property
+    def saved(self) -> int:
+        """Calls the memo answered without reaching git."""
+        return self.asked - self.ran
+
+
+class GitRunner:
+    """One command's access to git: countable, memoized, and blob-batched.
+
+    A `Runner` like `_run_git` - the same `(args, root) -> str` - so every
+    function in this module takes one without changing, and a test that injects
+    its own runner is untouched.
+
+    **Its lifetime is one command, and that is a correctness property rather
+    than a convenience.** `cli` holds it on the argparse namespace for exactly
+    the reason it holds `FlightReport` there (`PL-PMT7`): a memo that outlived
+    the command would answer from before a `fetch`, and `bin/docket branch`
+    fetches in-process. That hazard is closed twice over - the memo covers only
+    `_READ_ONLY` and is emptied by anything else, `fetch` included - so a
+    caller that never closes this still cannot be told a stale ref.
+
+    Three behaviours, each defeatable on its own so a caller can measure one:
+
+    - **Counting** (`PL-XD3C`), always on and costing one `perf_counter` a
+      call, because a profile nobody can take is how a question gets answered
+      by ratio instead.
+    - **The memo** (`PL-MMVF`). Every `merge-base` this module issues is asked
+      exactly three times - `_unlanded_refs` runs once for each of
+      `branches_in_flight`, `orphaned` and `cuts_in_flight` - so two of every
+      three are removed by remembering the answer.
+    - **The blob batch** (`PL-0J9K`). `git show <rev>:<path>` is one process
+      per blob and the module asks for one per item file edited on an unmerged
+      ref; `git cat-file --batch` answers all of them from one.
+    """
+
+    def __init__(self, *, memoize: bool = True, batch_blobs: bool = True) -> None:
+        self._memoize = memoize
+        self._batch_blobs = batch_blobs
+        self._memo: dict[tuple[tuple[str, ...], str], str] = {}
+        self._asked: Counter[str] = Counter()
+        self._ran: Counter[str] = Counter()
+        self._seconds: dict[str, float] = {}
+        self._distinct: dict[str, set[tuple[str, ...]]] = {}
+        self._processes = 0
+        self._batch: dict[str, subprocess.Popen[bytes]] = {}
+        self._unbatchable: set[str] = set()
+
+    def __call__(self, args: list[str], root: Path) -> str:
+        argv = tuple(args)
+        sub = _subcommand(argv)
+        self._asked[sub] += 1
+        self._distinct.setdefault(sub, set()).add(argv)
+        key = (argv, str(root))
+        memoizable = self._memoize and sub in _READ_ONLY
+        if memoizable:
+            remembered = self._memo.get(key)
+            if remembered is not None:
+                return remembered
+        elif sub not in _READ_ONLY:
+            # Anything this module cannot prove is a read may have changed what
+            # the memo holds - `fetch` certainly has - so the memo goes rather
+            # than being reasoned about per subcommand.
+            self._memo.clear()
+        started = time.perf_counter()
+        text = self._serve(argv, root)
+        self._seconds[sub] = self._seconds.get(sub, 0.0) + (time.perf_counter() - started)
+        self._ran[sub] += 1
+        if memoizable:
+            self._memo[key] = text
+        return text
+
+    def _serve(self, argv: tuple[str, ...], root: Path) -> str:
+        """The answer, from the blob batch where it can come from there."""
+        if self._batch_blobs and len(argv) == 2 and argv[0] == "show" and ":" in argv[1]:
+            served = self._blob(argv[1], root)
+            if served is not None:
+                return served
+        self._processes += 1
+        return _run_git(list(argv), root)
+
+    def _blob(self, spec: str, root: Path) -> str | None:
+        """One blob from the batch, or `None` for "ask `git show` instead".
+
+        `None` is the whole safety of this: every shape the batch cannot answer
+        exactly as `git show` would - a tree or a commit, which `git show`
+        formats and `cat-file` returns raw; a spec carrying the newline the
+        protocol delimits on; bytes that will not decode; a batch that died -
+        falls back to the process it replaced rather than being guessed at.
+
+        A *missing* path is not one of those. `git show` exits non-zero there
+        and `_run_git` turns that into the empty string, so the `missing` line
+        the batch prints returns the same empty string and every caller's
+        absent-blob path keeps working unchanged.
+        """
+        if "\n" in spec:
+            return None
+        stream = self._process(root)
+        if stream is None:
+            return None
+        try:
+            assert stream.stdin is not None and stream.stdout is not None
+            stream.stdin.write(spec.encode(_ENCODING) + b"\n")
+            stream.stdin.flush()
+            header = stream.stdout.readline()
+        except (OSError, ValueError, UnicodeEncodeError):
+            self._drop(root)
+            return None
+        if not header:
+            self._drop(root)
+            return None
+        fields = header.split()
+        if len(fields) >= 2 and fields[-1] == b"missing":
+            return ""
+        if len(fields) != 3:
+            self._drop(root)
+            return None
+        try:
+            size = int(fields[2])
+        except ValueError:
+            self._drop(root)
+            return None
+        try:
+            body: bytes = stream.stdout.read(size)
+            stream.stdout.read(1)  # the newline git writes after every object
+        except (OSError, ValueError):
+            self._drop(root)
+            return None
+        if fields[1] != b"blob" or body is None or len(body) != size:
+            return None
+        try:
+            decoded = body.decode(_ENCODING)
+        except UnicodeDecodeError:
+            return None
+        # What `subprocess.run(text=True)` would have done to the same bytes.
+        return decoded.replace("\r\n", "\n").replace("\r", "\n")
+
+    def _process(self, root: Path) -> subprocess.Popen[bytes] | None:
+        """The batch process for this root, started on first use."""
+        held = str(root)
+        running = self._batch.get(held)
+        if running is not None:
+            return running
+        if held in self._unbatchable:
+            return None
+        try:
+            started = subprocess.Popen(
+                ["git", "cat-file", "--batch"],
+                cwd=root,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+            )
+        except (OSError, ValueError):
+            self._unbatchable.add(held)
+            return None
+        self._processes += 1
+        self._batch[held] = started
+        return started
+
+    def _drop(self, root: Path) -> None:
+        """Forget a batch that answered in a shape this cannot read."""
+        held = str(root)
+        self._unbatchable.add(held)
+        dead = self._batch.pop(held, None)
+        if dead is not None:
+            _close(dead)
+
+    def close(self) -> None:
+        """End every batch process this runner started.
+
+        Idempotent, and called whether or not the command succeeded: the one
+        thing a `cat-file --batch` must not do is outlive the command that
+        opened it.
+        """
+        for dead in self._batch.values():
+            _close(dead)
+        self._batch.clear()
+
+    def __enter__(self) -> GitRunner:
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.close()
+
+    def profile(self, walk: RefWalk) -> GitProfile:
+        """What has been asked so far, against the input it was asked about."""
+        costs = tuple(
+            sorted(
+                (
+                    SubcommandCost(
+                        subcommand=sub,
+                        asked=asked,
+                        ran=self._ran.get(sub, 0),
+                        distinct=len(self._distinct.get(sub, ())),
+                        seconds=self._seconds.get(sub, 0.0),
+                    )
+                    for sub, asked in self._asked.items()
+                ),
+                key=lambda cost: (-cost.seconds, cost.subcommand),
+            )
+        )
+        return GitProfile(
+            asked=sum(self._asked.values()),
+            ran=sum(self._ran.values()),
+            processes=self._processes,
+            seconds=sum(self._seconds.values()),
+            by_subcommand=costs,
+            walk=walk,
+        )
+
+
+def _close(process: subprocess.Popen[bytes]) -> None:
+    """Shut one batch process down without letting its death raise."""
+    try:
+        if process.stdin is not None:
+            process.stdin.close()
+        process.wait(timeout=5)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        try:
+            process.kill()
+        except OSError:
+            pass
 
 
 BRANCH_ID_RE = re.compile(
@@ -3831,3 +4153,66 @@ def churn(root: Path, *, runner: Runner | None = None) -> Churn:
             continue
         by_day.setdefault(when, Counter())[_numstat_path(parts[2])] += lines
     return Churn({day: dict(counts) for day, counts in by_day.items()})
+
+
+def ref_walk(root: Path, items_dir: str, *, runner: Runner | None = None) -> RefWalk:
+    """The ref set a profiled command walked, and the work hanging off it.
+
+    Asked with a plain runner rather than the profiled one, and only when
+    `--profile` was given, so measuring never appears in what it measures.
+
+    The numbers are the ones that turned out to drive the counts, and they are
+    reported per ref as well as in total because that is what lets two machines
+    be compared by subtraction: `merge-base` is asked once per unmerged ref,
+    `show` once per item file a ref introduces, and `diff` scales with both.
+
+    **From each ref's fork point, never from the base's tip.** A two-dot diff
+    against the base counts everything the *base* changed since the ref left it,
+    which on this store is every item a triage pass has touched since: measured
+    2026-09-16 it reported 4,767 item edits across 16 refs that introduce 50. A
+    number that wrong is worse than none, because a profile is read as the
+    controlled input that settles an argument.
+
+    A ref whose merge-base this checkout cannot resolve is named in `unread`
+    rather than counted as zero, for the reason `_unlanded_refs` names it: a
+    truncated clone is the normal state of a container, and "introduces nothing"
+    and "could not be read" are opposite answers.
+    """
+    run = runner or _run_git
+    base = default_base(root, runner=run)
+    if not run(["rev-parse", "--verify", "--quiet", base], root).strip():
+        return RefWalk(declined="no default branch this checkout can read")
+    args = ["for-each-ref", "--format=%(refname:short)", "refs/heads", "refs/remotes"]
+    listing = [name.strip() for name in run(args, root).splitlines() if name.strip()]
+    merged = {
+        name.strip() for name in run([*args, f"--merged={base}"], root).splitlines() if name.strip()
+    }
+    prefix = items_dir.strip("/") + "/"
+    walked: list[tuple[str, int, int]] = []
+    unread: list[str] = []
+    for name in listing:
+        if name in merged:
+            continue
+        # The same fork point the walk itself compares against, so the profile
+        # describes the input the command actually had rather than a second
+        # reading of it that could disagree.
+        fork = run(["merge-base", base, name], root).strip()
+        if not fork:
+            unread.append(name)
+            continue
+        ahead = run(["rev-list", "--count", f"{fork}..{name}"], root).strip()
+        touched = [
+            line
+            for line in run(["diff", "--name-only", fork, name, "--", prefix], root).splitlines()
+            if line.strip()
+        ]
+        walked.append((name, int(ahead) if ahead.isdigit() else 0, len(touched)))
+    return RefWalk(
+        listed=len(listing),
+        merged=len(merged),
+        unmerged=len(walked) + len(unread),
+        commits=sum(ahead for _, ahead, _ in walked),
+        item_edits=sum(edits for _, _, edits in walked),
+        refs=tuple(walked),
+        unread=tuple(sorted(unread)),
+    )
