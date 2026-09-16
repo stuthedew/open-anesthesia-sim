@@ -81,6 +81,14 @@ def _git(*arguments: str) -> str | None:
             timeout=_GIT_TIMEOUT_S,
             check=False,
         )
+    # PEP 758 (3.14), and the one construct here a bare `python3` cannot
+    # read. `pyproject.toml` requires 3.14, but `tools/` and
+    # `.claude/hooks/` run at the 3.11 floor `tools/ruff.toml` pins, so
+    # `python3 -m compileall src/` reports `SyntaxError: multiple exception
+    # types must be parenthesized` on this line in code that is correct.
+    # Expected rather than a defect - use `uv run python`.
+    # `.claude/hooks/floor-interpreter-guard.sh` refuses the bare
+    # invocation; `PL-JQJQ` records why it kept being re-investigated.
     except OSError, subprocess.SubprocessError:
         return None
     if completed.returncode != 0:
