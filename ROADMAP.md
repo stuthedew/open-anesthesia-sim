@@ -310,7 +310,7 @@ adds no capability and exists to clear the ground they are built on:
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
 | — | **v0.5.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. | — |
 | 6 | **Gate 2** | **Frozen when v0.5.0 ships, not when the milestone below is scoped** (project owner, 2026-09-16). Row 7 was scoped two releases early, so the cadence's own trigger would have frozen this list before v0.5.0 had been implemented — leaving it holding none of v0.5.0's findings, which is the one thing a gate is defined to hold. § "The cadence" records the exception and the item that re-examines the trigger; v0.6.0's own section says where the frozen list goes when the moment comes. Ships inside v0.6.0. | — |
-| 7 | **v0.6.0 — the layout is the reader's** | Planned-milestone item 34's tiled half: the layout model, the Editor contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, on `PL-NMTF`) and it has its own section below. The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out is row 9, deliberately — see that section's "Explicitly out of scope" for why the split costs nothing structural. | 5 L, 11 M, 3 S |
+| 7 | **v0.6.0 — the layout is the reader's** | Planned-milestone item 34's tiled half: the layout model, the Editor contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, on `PL-NMTF`) and it has its own section below. The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out is row 9, deliberately — see that section's "Explicitly out of scope" for why the split costs nothing structural. | 4 L, 16 M, 3 S |
 | 8 | **Gate 3** | Frozen when v0.6.0 ships; ships inside v0.7.0. | — |
 | 9 | **v0.7.0 — the second screen** | Planned-milestone item 34's break-out half: an area taken into its own top-level window, itself a full window with its own areas. Not yet scoped. What it owes the display is already decided rather than left to its scoping — `docs/MODEL.md` § "Minimum displayed outputs" → "What this list requires once the layout is the reader's" carries the tier split (project owner, 2026-09-16, on `PL-W54S`), because it decides the shape v0.6.0 builds the unconditional region in. | — |
 | 10 | **Gate 4** | Frozen when v0.7.0 ships; ships inside v0.8.0. | — |
@@ -1584,7 +1584,11 @@ scoped. Gate 2 is meant to hold *v0.5.0's* findings, and v0.5.0 has not been
 implemented, so a gate frozen today would be empty by construction and would
 then refuse the findings it exists for. It freezes when v0.5.0 ships, and this
 port takes no gate of its own - as was already true when it sat after MVP - so
-its own findings go to Gate 2 alongside v0.5.0's.
+its own findings go to Gate 2 alongside v0.5.0's. **This is now the first of
+two instances rather than a one-off**: v0.6.0 was scoped on 2026-09-16 under the
+same reasoning, and § "The debt gate" -> "The cadence" is where both are
+recorded and where the exception has its condition written down, so the argument
+is not re-derived per milestone.
 
 **What the move does change is Gate 1, and in the direction `PL-D143`
 asked for.** Nine of the twelve entries that gate could not clear were waiting
@@ -1611,8 +1615,11 @@ Four grounds survive:
 - **`PL-2QMK`**, exercised rather than argued - the spike writes a PNG of the
   running interface in the very container where Flet's renderer cannot load.
   Most of `presentation-safety` waits on that.
-- **Headroom** for v0.6.0's schematic, which is a second large visual surface on
-  a toolkit charged per control present per frame.
+- **Headroom** for the schematic (planned-milestone item 27), which is a second
+  large visual surface on a toolkit charged per control present per frame.
+  (Written "v0.6.0's schematic" until 2026-09-16, when item 34 took that number
+  and the schematic moved to v0.8.0 - named by item number here, per the
+  `PL-YVM1` rule this port already adopted, so it cannot go stale again.)
 
 ### Required scope
 
@@ -1836,7 +1843,11 @@ and say why. `PL-B9PY` is not moved, for the reason in its entry above.
   untouched - `tools/import_boundary_check.py` enforces that boundary and the
   spike proved it by driving the real `SimulationController` with no adaptation
   whatever.
-- **v0.6.0's schematic**, which this makes affordable and does not begin.
+- **The schematic** (planned-milestone item 27, v0.8.0), which this makes
+  affordable and does not begin.
+- **The area system** (planned-milestone item 34, v0.6.0), which Required scope
+  item 2 reserves for - nested splitters with inert handles - and does not
+  build. Turning those handles live is that milestone's first step.
 - **Flet's web target**, which is given up rather than reimplemented. Nothing
   ships it today.
 
@@ -2877,7 +2888,10 @@ the narrower claim about the default branch's own ids, which `PL-W1LN`'s new tes
 makes with valid ids. So the coverage exists; it is the older assertion that is
 decorative.
 
-They enter Gate 2 when v0.6.0 is scoped, unless closed before it.
+They enter Gate 2 when it freezes at v0.5.0's ship, unless closed before it -
+which is the trigger § "The cadence" records, not the scoping of the milestone
+Gate 2 gates. (Written "when v0.6.0 is scoped" until 2026-09-16, when v0.6.0 was
+scoped without freezing it.)
 
 **Five more from the 2026-09-13 triage pass**, which folded in the captures the
 stale-name batch of Gate 1 and the v0.4.15 cut left behind. Same ground as the
@@ -3353,6 +3367,35 @@ two paragraphs up. `PL-NMTF` (no open item builds `ROADMAP.md` item 34's area
 system) is the head of it, and the rest are `blocked-by` it or waiting on the
 same scoping round.
 
+**That scoping round happened on 2026-09-16, and it converts the deferral into
+a placement.** `PL-NMTF` closed by scoping item 34 as § "v0.6.0 - the layout is
+the reader's" and a v0.7.0 row for break-out, so eight of the nine are now named
+in v0.6.0's `Required scope` and are milestone-scope debt cleared *by* that
+milestone rather than before it, per § "Debt inside the milestone's own scope".
+The ninth, `PL-J4NW`, closed in the same session. The entries below are left as
+the freeze wrote them, per § "The gate is a snapshot, not a moving target"; this
+paragraph is their disposition.
+
+**Eight more were filed by that scoping round itself, and are disposed of here
+rather than added to the list.** Five are v0.6.0 `Required scope` and are
+cleared by that milestone under § "Debt inside the milestone's own scope":
+`PL-K285` (an Area that cannot be given the size its Editor needs says so
+rather than collapsing it), `PL-904Y` (the whole-interface visibility predicate,
+which stops meaning "can the reader see it" once an Area can be closed),
+`PL-G5SX` (the headless tests that drive every layout operation against the
+required set), `PL-50PZ` (the Editor chooser and the registry flag that make the
+accounting tier reachable) and `PL-JSY5` (two `docs/MODEL.md` statements that
+assume one window's width and one permanent surface). `PL-Y04W` (build
+break-out) is v0.7.0's by the same rule one release further out. The last two
+are neither: `PL-KKRP` (re-examine the debt gate's own freeze trigger) is a
+decision about the cadence rather than debt against a milestone, and `PL-NDKC`
+(PySide6 segfaults on `QDataStream` over a temporary `QByteArray`) is a
+toolkit defect found while measuring, filed so the persistence work meets it
+already written down. Every one of them is `anticipated` on the same ground as
+the four above: the splitter handles are inert today, so none of these hazards
+exists until the milestone that creates them is built, and a gate that clears
+debt *before* a milestone cannot clear a hazard that milestone introduces.
+
 Four of the nine are `safety`-classed, which by the presence rule re-enters them
 here regardless of when they were found: `PL-7Z84` (a run has no identity a
 workspace can pin to), `PL-9LNF` (three `app/` surfaces own state a layout could
@@ -3363,7 +3406,9 @@ milestone further out: the splitter handles are inert today
 (`src/anesthesia_sim/app/qt_widgets.py:784`), so no reader can close, replace or
 cover a required value until item 34 makes them live, and a gate that exists to
 clear debt before a milestone begins cannot clear a hazard the milestone
-creates.
+creates. Each of the four is now named in v0.6.0's `Required scope`, which is
+the disposition the gate rule prefers to a deferral: the milestone that creates
+the hazard is the one that carries the guard.
 
 `PL-9PD6` (`docs/interface-provenance.md` contradicts itself about what
 `README.md` records), `PL-D584` (`PL-TH35`'s `blocked-by` names an item that has
@@ -3623,6 +3668,342 @@ v0.5.0 is complete only when:
   solution the matrix exponential computes. This milestone changes what the
   model can be *asked*, never what it answers.
 
+## v0.6.0 - the layout is the reader's
+
+Planned-milestone item 34's first half. Scoped 2026-09-16 (project owner, on
+`PL-NMTF`), two releases ahead of its turn, because the design was already
+settled and fourteen prerequisites were waiting on a build item that did not
+exist. Item 34 carries the design and the Blender provenance behind every
+decision below; `docs/interface-provenance.md` carries what was read, what this
+project adopts and what it deliberately does differently. This section is what
+gets built.
+
+**The vocabulary is Blender's and is used exactly** (`.claude/rules/ui-areas.md`):
+an **Area** is a rectangle that reserves screen space and holds one thing; an
+**Editor** is what occupies it; a **Workspace** is a set of Areas geared to a
+task, switched as a tab. Where `PL-C842` wrote `Pane` and `view_kind` while
+recommending the container, this section supersedes that naming and nothing
+else of it: the vocabulary rule is the more specific instruction and a model
+that says `Pane` while the roadmap says Area is the drift it exists to prevent.
+
+### Goal
+
+The dashboard is one arrangement and the learner cannot change it. Every
+surface is already an independent widget inside nested splitters whose handles
+are disabled - `inert_splitter` at `src/anesthesia_sim/app/qt_widgets.py:784`,
+the reservation v0.4.26 built and did not turn live - so the only way to see a
+chart larger is to make the whole window larger. Stated as they stand on
+2026-09-16, the day this milestone was scoped, three gaps:
+
+- **Nothing can be resized, split, joined or swapped.** The handles are inert
+  by deliberate reservation and there is no operation set behind them. Item
+  34's four requested properties - resizable areas, modular views, presets for
+  tasks, and presets the learner owns rather than a fixed shipped set - are
+  none of them available.
+- **There is no object above the widget tree.** No layout model, no Editor
+  registry, no Workspace, and no user-writable state of any kind: nothing under
+  `src/anesthesia_sim/` writes a file, so a layout cannot be named, saved, or
+  returned to next launch. A saved Workspace would be this application's first
+  user-written data, and its load path its first new failure surface since the
+  shipped parameter files.
+- **What the display is required to show sits inside the container that is
+  about to become live.** `src/anesthesia_sim/app/simulation_view.py:296-309`
+  puts the readout section - simulated time, the rate it is advancing at, the
+  six compartment concentrations and the delivered concentration - inside
+  `inert_splitter`, and the control-input record's panel sits in the sidebar
+  inside the nested horizontal splitter. Only run state, halt reason and agent
+  identity are outside it. So on the day the handles work, a learner can close
+  the values `docs/MODEL.md` says no Workspace may remove. The violation is
+  pre-loaded rather than absent, and `.claude/rules/ui-areas.md` rule 5 reads as
+  already satisfied to a session looking at today's code, because nothing is
+  closeable yet.
+
+The end state: a learner divides a window into non-overlapping Areas, each
+holding one Editor; switches between named task Workspaces as tabs; rearranges,
+duplicates and saves their own and returns to them next launch - while the
+values the display is required to show cannot be closed, cannot be collapsed to
+make room, and cannot leave the screen with the surface that drew them.
+
+### Debt gate: frozen when v0.5.0 ships, and nothing is recorded here yet
+
+This milestone was scoped out of turn, so beat 1 of the cadence does not freeze
+its list - see § "The debt gate" -> "The cadence", which records the exception
+and the condition on it. Gate 2 holds v0.5.0's findings, and v0.5.0 has not been
+implemented, so freezing here would produce a gate holding none of what it
+exists for. **The list is frozen on the day v0.5.0 ships and is recorded under
+this heading**, in the ordinary form, before implementation of this milestone
+begins. Until then this heading is deliberately empty of entries, which is what
+distinguishes "not yet frozen" from "frozen and empty".
+
+Debt inside this milestone's own scope is cleared by it rather than before it,
+per § "Debt inside the milestone's own scope": the test is whether Required
+scope names the id, and nine of the ids below are `defect`-, `safety`- or
+`refactor`-classed work that this milestone exists to do.
+
+### Required scope
+
+1. **The layout model** (queue item `PL-1FT6`). Pure Python, no Qt import: a
+   tree of splits and Areas with `split`, `join`, `resize`, `swap` and
+   `set_editor`, a `borders()` query returning the handles collinear and
+   adjacent to a given one, and versioned JSON serialization. The serialized
+   root holds a *set of windows* from version 1, which `PL-HJPY` is what
+   settles - what owns the set, how an Area is addressed across windows, and
+   where the border-chain query terminates - because a root that gains a window
+   set later is a schema migration against files a learner has already saved
+   their own Workspaces into.
+
+   *Where the tree cannot express a join it is refused rather than
+   approximated.* `PL-3J2P` chose the nested-splitter tree knowing it is
+   strictly less expressive than Blender's shared-vertex graph, on the ground
+   that the limit "shows up as a join being unavailable rather than as a wrong
+   value". That is a property the model has to have, not one it gets for free.
+
+2. **The adapter** (queue item `PL-W9P6`). One module, the only importer of
+   `QSplitter`, building and updating the widget tree from the model; this is
+   where v0.4.26's inert handles go live. The Qt side owns no layout state: no
+   view calls `saveState()`, reaches for a parent splitter, or stores its own
+   geometry.
+
+   *Measured rather than assumed*: `QSplitter.saveState()` returns 35 bytes for
+   a three-pane splitter - magic `0xff`, format version 1, the sizes, then
+   `childrenCollapsible`, `handleWidth`, `opaqueResize` and orientation. It
+   records no widget identity at all: the same three children in reverse order
+   save byte-identical state. `restoreState()` returns false only on a bad magic
+   number or a newer format version, so a three-pane state restores into a
+   two-pane splitter returning `True`, and a two-pane state into a three-pane
+   splitter returning `True` with the third pane at zero. Re-measured on
+   PySide6 6.11.2 / Qt 6.11.2 on 2026-09-16, which is the evidence behind
+   `PL-C842` and is stronger than the form that item recorded.
+
+3. **The Editor registry and the kind tag** (queue item `PL-R1WQ`). Where the
+   registry lives, how a tag is allocated so an ordinary class rename does not
+   trip the loud failure meant for a genuinely missing Editor, and how the
+   pure-Python model validates a tag without importing a Qt view.
+
+4. **Loud failure on an unknown Editor kind, per Area** (queue items `PL-R1WQ`
+   and `PL-SSQW`). The flagship divergence from Blender, and it is a *pane*-level
+   rule that the file-level version policy in entry 10 cannot reach: a saved
+   Workspace naming an Editor this build does not have fails **visibly, in that
+   Area**, substitutes nothing and drops nothing. Blender's own answer is to
+   install a 3D viewport silently, which `docs/interface-provenance.md`
+   § "Diverged" refuses on this project's preference for an obvious failure over
+   a plausible-looking wrong one.
+
+5. **The Editor contract** (queue item `PL-TH35`), written *with* the area
+   system and validated against two Editors that already exist, carrying the
+   four clauses the 2026-09-16 audit added: what an Editor's saved state is and
+   who writes it, what it owes when handed state it cannot read, what a split,
+   a swap and a stack round trip each preserve, and what the container does when
+   an Area cannot honour a size. Small by construction and re-checked against its
+   implementers, per § "Prune the contract" in the provenance record.
+
+6. **The import boundary with teeth** (queue item `PL-L8RN`). `QSplitter`
+   confined to the adapter and concrete Editor modules confined out of the
+   layout tree, which needs `tools/import_boundary_check.py` to decide a dotted
+   import target rather than a root package. Both entries land in the commit
+   that creates the adapter, because a boundary over a tree that does not exist
+   is an `empty` error by construction.
+
+7. **The unconditional region** (queue items `PL-NWTM` and `PL-W54S`). A named
+   region outside the layout container, holding every unconditional value, that
+   the model has no address for - so the adapter cannot place an Area there and
+   no serialized Workspace can name it. `PL-NWTM` also supplies the pure-Python,
+   UI-free declaration of what that set *is*, addressable by tier: the invariant
+   tier, and the tier instantiated per modelled substance, which is what keeps a
+   later intravenous run from being asked for a vaporizer dial it does not have.
+   `PL-W54S` is the per-window shape that declaration is built in, settled on
+   2026-09-16 and recorded in `docs/MODEL.md`: every top-level window carries the
+   invariant tier and the name of the run it shows; the per-substance tier lives
+   once, in a main window that cannot be closed while any other window is open.
+   v0.6.0 opens one window, and building the region in that shape now is what
+   stops v0.7.0 rebuilding it.
+
+8. **An Area that cannot honour a size says so** (queue item `PL-K285`). The
+   second of the three properties `docs/interface-provenance.md` records Blender
+   not supplying: Blender's answer is `RGN_FLAG_TOO_SMALL` and collapse to zero
+   extent, and "a required value is never hidden to make room" is the
+   divergence. Whether a declared minimum is a request or a constraint, and what
+   a split or a border drag does when it cannot be met, are this entry's.
+
+9. **State a layout could duplicate or relocate** (queue items `PL-VN6M` and
+   `PL-9LNF`). The compartment selection owned outside `TraceLegend`; `RunView`'s
+   nine `build_*` accessors, which hand out the instance's own widgets so a
+   second request silently reparents the first placement away; the chart time
+   base, owned by a dropdown built into one plot's panel while governing both;
+   and the chart's column budget, read as a maximum over two named siblings that
+   stop being siblings once each is an Editor in its own Area.
+
+10. **Run identity** (queue item `PL-7Z84`). A run carries an identity stable
+    across serialization and independent of drawing order, with
+    `run_label(run_index)` reduced to a rendering of it, and
+    `docs/MODEL.md`'s rule for when a view names its run restated in terms of
+    that identity rather than of how many runs are displayed.
+
+11. **The Workspace object** (queue item `PL-WV9K`). What a Workspace carries
+    **beyond its layout** - the pinned run by the identity above, each Editor's
+    own saved state, and what a Workspace switch does to a run in progress - and
+    how the set behaves: order, rename, duplicate, delete and save-as-mine, with
+    Blender's refusal to delete the last Workspace enforced by the type rather
+    than by a warning dialog. Shipped defaults are distinguished from the
+    learner's own, and "reset" is defined.
+
+    *An Editor's state survives leaving its Area and coming back.* The provenance
+    record adopts Blender's per-Area stack of previously-open Editors for the
+    property it buys - the outgoing Editor's state is kept rather than destroyed
+    - and this milestone ships `swap` and `set_editor`, which are the operations
+    that would destroy it. The minimum form is in scope: one retained entry per
+    Editor kind, which is how Blender bounds the stack by construction rather
+    than by a cap.
+
+12. **Persistence** (queue item `PL-SSQW`). Where the file lives per platform
+    and the override a headless run or a test uses; an atomic write, so an
+    interrupted save does not leave a truncated JSON the next launch has to
+    classify; what a first run with no file does; and the schema-version policy
+    answering **older**, **newer** and **invalid-at-the-supported-version** by
+    name, each saying whether the file is migrated, refused, or set aside and
+    replaced, and what the learner is told. `core/parameters.py`'s
+    single-version rule is correct for files that ship with the code and wrong
+    for a file the learner wrote, so the rule is decided rather than inherited.
+
+13. **The shipped default Workspaces** (queue item `PL-KXTL`). The central-graph
+    default with the other Editors arranged around it, an induction Workspace
+    with the concentration graph zoomed in, and a big-picture maintenance one -
+    as validated versioned JSON beside the other shipped parameter files, with
+    the provenance line `docs/interface-provenance.md` asks of anything derived
+    from Blender's own named task Workspaces.
+
+14. **The operations a reader performs** (queue item `PL-2KXB`). Border drag
+    moving the collinear chain the `borders()` query returns; corner drag to
+    split and to join; Area swap; and the Workspace tab strip with the lifecycle
+    from entry 11. The chain is the query that recovers the one behaviour the
+    tree gives up against Blender's graph, and `PL-3J2P` measured it as
+    differing exactly once across thirty-two shipped Blender Workspaces.
+
+15. **Every operation reachable without a drag** (queue item `PL-M352`), through
+    a menu and the keyboard. This is not planned-milestone item 20's general
+    accessibility pass arriving early; it is the narrower rule that this
+    milestone does not *introduce* an interaction a keyboard-only reader cannot
+    perform, which is cheap now and a retrofit later.
+
+16. **The Editor chooser, and the accounting tier's reachability** (queue item
+    `PL-50PZ`). `docs/MODEL.md` puts the agent accounting - cumulative delivered,
+    cumulative exhausted, total stored, and the mass-balance residual with its
+    absolute error - in a tier a Workspace may omit but that "must stay reachable
+    in every layout, and must not be removable from the application". That is the
+    one required class whose guarantee cannot be structural presence, so it
+    becomes an invariant of the registry and the chooser instead.
+
+17. **The visibility predicate** (queue item `PL-904Y`).
+    `SimulationView.interface_strings` is this project's single definition of
+    what is on screen and answers "is this string in this widget's subtree",
+    which is the same question as "can the reader see it" only while the
+    dashboard is one tree with nothing closeable. This milestone makes the two
+    come apart at Area close and join. One predicate spans every Area and every
+    top-level window the application owns, distinguishes present-in-the-tree from
+    visible-to-the-reader, and is what entry 18 asserts through.
+
+18. **Tests over the real interface** (queue item `PL-G5SX`), headless, driving
+    split, join, swap, resize, Workspace switch, save and reload, and asserting
+    after each that every unconditional value is on screen, that the accounting
+    tier is reachable, and that a required value did not leave with the surface
+    that drew it. Plus the assertion `PL-9LNF` says cannot be written today:
+    resize one Area while paused and the redrawn series is sampled for that
+    Area's new width.
+
+19. **The documents this milestone falsifies** (queue items `PL-ZBBP`, `PL-JSY5`
+    and `PL-RTG9`). `.claude/rules/ui-areas.md` is a standing prohibition on
+    exactly what this milestone builds, and its `paths:` frontmatter does not
+    reach a layout package living outside `app/`, so it is retired or re-scoped
+    rather than left loading. `docs/ARCHITECTURE.md` describes the layout that
+    exists. `docs/MODEL.md`'s readout-row rung and its always-on-screen
+    disclaimer line both assume one window's width and one permanent surface.
+    And `README.md` gains the Blender attribution line, which
+    `docs/interface-provenance.md` § "Attribution" has been holding until the
+    release in which the shipped interface actually is the area/workspace model.
+
+### Definition of done
+
+- A learner can split, join, resize, swap and close Areas; switch Workspaces by
+  tab; rearrange, duplicate, rename and delete them; save their own; and find
+  them on the next launch.
+- Every one of those operations is performable from the keyboard as well as by
+  drag.
+- The layout model is exercised with no `QApplication` at all, including a
+  fixture file one schema version ahead of the build and a file truncated
+  mid-write.
+- `tools/import_boundary_check.py` fails the build if any module but the adapter
+  imports `QSplitter`, or if the layout tree imports a concrete Editor module.
+- A Workspace naming an unknown Editor kind fails visibly in that Area and
+  substitutes nothing; a Workspace file of an unsupported version is handled per
+  the written policy rather than by whatever the load path found natural.
+- Every unconditional value is outside the layout container, and a test asserts
+  for each that no ancestor of its widget is that container, and that it is
+  still on screen after a split, a join, a close, a Workspace switch and a
+  reload.
+- The accounting tier can be brought on screen through the interface alone from
+  every shipped Workspace, and a Workspace naming none of those Editors still
+  leaves them reachable.
+- Two Editors that already exist implement the Editor contract, and a test
+  builds two of one run's surfaces and asserts both draw.
+- **No learner-visible regression against v0.5.0.** Compare mode ships before
+  this milestone and is then rearranged by it; everything a learner could do
+  with two runs on 2026-09-16 they can still do, checked against v0.5.0's own
+  definition of done.
+- `make check` is green, and the documents in Required scope entry 19 describe
+  the interface that exists.
+
+### Explicitly out of scope for v0.6.0
+
+- **Break-out into a top-level window** - planned-milestone item 34's second
+  half, and row 9 of the timeline, v0.7.0 (queue item `PL-Y04W`). Nothing in
+  this release creates a second window. The split costs nothing structural
+  because the two things break-out would otherwise force a rewrite of are both
+  built here: the serialized root carries a window set from version 1 (entry 1),
+  and the unconditional region is built in its per-window shape (entry 7). What
+  v0.7.0 adds is the window, its lifetime and the test that drives it.
+- **The Editor catalogue** - planned-milestone item 36, which stays after this
+  milestone for the reason item 34 records: an Editor's contract is whatever the
+  area system requires of its contents, so Editors built first are built against
+  today's fixed layout and rewritten. This milestone validates against two that
+  exist and builds no new one. The queue audit that re-runs once item 36 is
+  scoped is queue item `PL-L6QR`.
+- **Floating Areas or panels - not yet, rather than never.** The option to take
+  a tiled Area out into a floating one is wanted later; this milestone does not
+  build it. Item 34 records that writing floating panels as permanently refused
+  was a session's overreach and not a decision anybody took, so the exclusion is
+  stated with its condition: floating arrives under `docs/MODEL.md`'s occlusion
+  rule, which binds it without being re-argued for it.
+- **The visual pass** - planned-milestone item 33, palette, type scale, spacing
+  rhythm, density and the visual composition of each surface. Arrangement is
+  this milestone's and appearance is that one's.
+- **Blender's snap-merge operator and extend-drag**, which are the two
+  behaviours the splitter-tree measurement found it unable to express, and the
+  five-area pinwheel arrangement for the same reason.
+  `docs/interface-provenance.md` § "Refused" records the count, the
+  construction, and the condition under which the representation choice
+  reverses.
+- **Replace-by-dragging an Area into the middle of another.** The *operation* is
+  in scope as `set_editor` through the Area's own chooser (entries 1 and 16);
+  only the corner-drag affordance for it is deferred, to whichever release takes
+  up the rest of Blender's docking set.
+- **Schema migration code.** The policy for an older file is in Required scope
+  entry 12; there is no second schema version in existence to migrate from, and
+  writing the migrator before the schema it migrates to exists is writing it
+  twice.
+- **Remembering which screen a window was on.** Restoring a position against a
+  changed monitor set puts a window where the reader cannot see it, which is the
+  occlusion failure arriving through persistence.
+- **Anything under `core/`.** This milestone introduces the two things
+  § "Development rules for scientific milestones" requires simulation code to
+  stay independent of - filesystem state and display dimensions - so the
+  boundary matters more here than usual, not less.
+  `tools/import_boundary_check.py` enforces it, and Required scope entry 6 only
+  adds to it.
+- **Re-reading the Blender design rationale against the primary pages** (queue
+  item `PL-PV5Q`), which rests on search summaries because `blender.org` is
+  egress-blocked from this project's sessions. It is independent of this
+  milestone and waits for a session that can reach those pages.
+
 ## Development rules for scientific milestones
 
 - Define equations, units, assumptions, and reference cases before changing the
@@ -3775,7 +4156,9 @@ entry ships half-fixed while the thing that finishes it waits in the queue. So
 pair them - one branch, one review, closed together - and the issue is fully
 addressed before anything else starts.
 
-**When a milestone is scoped, the debt list is frozen at that moment.** A
+**When a milestone is scoped, the debt list is frozen at that moment** - except
+for a milestone scoped out of turn, whose gate freezes when the milestone before
+it ships, per the exception recorded under § "The cadence". A
 finding re-enters this gate — rather than waiting for the next one — when the
 problem it describes was already *present* at that moment, whatever id it is
 filed under or however long after the freeze it happened to be noticed. It
@@ -4653,9 +5036,27 @@ once someone is ready to scope it.
     this after MVP. The three artefacts from that round are explicitly not a
     starting point, per the note.
 
-    *Placement (project owner, 2026-09-08).* Between v0.5.0 and v0.6.0, as the
+    *Placement (project owner, 2026-09-08).* After v0.5.0, as the
     `v0.5.x — the interface pass` row of "The timeline". A patch track rather
-    than a numbered milestone, for the reason that row gives.
+    than a numbered milestone, for the reason that row gives. (Written "between
+    v0.5.0 and v0.6.0" until 2026-09-16, when v0.6.0 stopped meaning the
+    schematic and started meaning item 34's area system; the row has not moved
+    and the sentence now says what it sits after rather than what it sits
+    between, so it cannot go stale again on a renumbering.)
+
+    *Whether it still runs ahead of item 34 is open, and is the project owner's*
+    (raised 2026-09-16 while scoping item 34, undecided). The row sits before
+    v0.6.0 today, which puts the visual pass ahead of the area system. The
+    argument for moving it after v0.7.0 instead is that item 34 and break-out
+    introduce visual surface this pass would otherwise have to be redone for -
+    an area header, a workspace tab strip, a live splitter handle and a drag
+    affordance, none of which exists to be styled today, and the provenance
+    record's finding that "the editor declares its own header region" makes the
+    header the Editor's rather than the container's. The argument for leaving it
+    where it is: `PL-BNYF` already separated the two - arrangement is item 34's,
+    appearance is this row's - and the visual composition of each surface
+    survives that surface being rearranged. Nothing in either release is blocked
+    on the answer, which is why the row was left in place rather than moved.
 
     *Absorbed into the Qt port on 2026-09-10 and returned here on 2026-09-16*
     (project owner, on `PL-L9RD`). The port took this item on the argument that
@@ -4772,7 +5173,15 @@ once someone is ready to scope it.
     exactly what a broken-out window naming its run needs.
 
     *Tiled first, with break-out into a separate window* (project owner,
-    2026-09-15). What this milestone builds is the no-overlap invariant above,
+    2026-09-15). **Scoped across two releases on 2026-09-16**: § "v0.6.0 - the
+    layout is the reader's" builds the tiled no-overlap invariant, the Editor
+    contract, the registry, workspaces, persistence and the unconditional
+    region, and the v0.7.0 row - "the second screen" - adds break-out. The
+    split costs nothing structural because the two things break-out would
+    otherwise force a rewrite of are both built in v0.6.0: the serialized
+    layout root carries a set of windows from version 1, and the unconditional
+    region is built in the per-window shape the next paragraph settles. What
+    the two halves together build is the no-overlap invariant above,
     plus break-out: an area may be taken into **its own top-level window**,
     itself a full window with its own areas. The Blender Manual's § "Areas"
     documents that as *View > Duplicate Area into New Window*, or Shift-LMB on
@@ -4807,7 +5216,17 @@ once someone is ready to scope it.
     stay reachable rather than simultaneously visible, and **conditional**
     obligations that bind a surface only when that surface is shown - so removing a chart removes no required
     value, because the numbers never left. The unconditional set sits outside
-    the area system, which is the guarantee this milestone has to build; the
+    the area system, which is the guarantee v0.6.0 has to build - and
+    **what a second top-level window owes that set is settled too** (project
+    owner, 2026-09-16, answering `PL-W54S`): every top-level window carries the
+    *invariant* tier and the name of the run it shows, while the
+    *per-substance* tier lives once in a main window that cannot be closed
+    while any other is open. The two tiers are unconditional for different
+    reasons and those reasons travel differently, which is why they are
+    allocated to windows differently; `docs/MODEL.md` carries the argument, the
+    two readings it refused, and the limit on what occlusion any application can
+    observe. It is recorded before break-out is built because it decides the
+    shape v0.6.0 builds the region in. The
     occlusion rule is what any later floating mechanism arrives under, rather
     than being ruled out ahead of it. That division is recorded as **a stepping
     stone**, deliberately the rigid version while the layout apparatus is
@@ -4883,6 +5302,22 @@ once someone is ready to scope it.
     never stores its own geometry. `PL-LH18`'s path-scoped rule already requires
     views to be interchangeable rather than merely movable; this extends the same
     reasoning to the container.
+
+    *Given a version, and split, on 2026-09-16* (project owner, on `PL-NMTF`).
+    Item 34 goes **after v0.5.0** rather than before it, on three grounds. A
+    workspace pinning which run it shows has no content until more than one run
+    exists, and v0.5.0 is what introduces the second run - `run_label` names a
+    run `None` whenever it is shown alone today. Inserting it earlier would
+    renumber a milestone already scoped with a frozen gate, where placing it
+    after renumbers only rows § "Planned milestones" already calls provisional.
+    And nothing is live-broken: `PL-NWTM` and `PL-9LNF` are both `safety`-classed
+    and both *pre-loaded* rather than live, because the failures they name need
+    a working handle and the port's are inert. It then splits across two
+    releases on the project's own "keep each milestone narrow" rule - undivided
+    it was roughly twice the largest milestone this project has run - with the
+    cut taken at break-out because that is the one place the split costs nothing
+    structural. The schematic (item 27) moves to v0.8.0 and multi-substance
+    (items 6 and 7) to v0.9.0 as a consequence.
 
     *Placed, and the timing question is decided* (project owner, 2026-09-12,
     `PL-8VL1`). The Qt port rewrites every layout in the dashboard onto Qt, and

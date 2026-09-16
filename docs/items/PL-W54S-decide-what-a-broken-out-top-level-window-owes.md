@@ -6,7 +6,7 @@ effort: M
 status: blocked
 classes: safety, anticipated
 feature: interface-areas
-blocked-by: PL-NMTF
+blocked-by: PL-NWTM
 touches: docs/MODEL.md, ROADMAP.md
 added: 2026-09-16
 ---
@@ -31,7 +31,7 @@ added: 2026-09-16
 
 **Done when.** There is one way to ask what a reader can currently see that spans every area and every top-level window the application owns, that distinguishes present-in-the-tree from visible-to-the-reader, and that the required-output test can be written against; and `interface_strings` either becomes that or is narrowed to the one-widget question with its callers moved.
 
-*Basis (lens `state-ownership`).* `docs/MODEL.md` § "Minimum displayed outputs" → "What this list requires once the layout is the reader's": "The set is stated as a *test*, not as a list, and the test is: a value is unconditional when a reader could misread the run's other displayed numbers without it." And, in the same section: "No value this list requires may be covered while the application still believes it is showing it. That one sentence binds a panel drawn over the dashboard, a second top-level window dragged over the one carrying the unconditional region, and any later floating mechanism."
+*Basis (lens `state-ownership`).* `docs/MODEL.md` § "Minimum displayed outputs" → "What this list requires once the layout is the reader's": "The set is stated as a *test*, not as a list, and the test is: a value is unconditional when a reader could misread the run's other displayed numbers without it."
 
 **Problem.** `ROADMAP.md` planned-milestone item 34 puts break-out in scope: an area may be taken into its own top-level window, itself a full window with its own areas. `PL-WLWY` (the minimum display under a reader-owned layout) identified the contract that follows, wrote three candidate readings of it, and called choosing between them "this item's real work":
 
@@ -41,7 +41,7 @@ added: 2026-09-16
 
 It then closed on 2026-09-16 on the stepping-stone answer - the three-way split of the list, the occlusion rule, and the unconditional region sitting outside the area system - without choosing among the three. `docs/MODEL.md` names a second window exactly once, at line 4854, and only to say the occlusion rule reaches it: "That one sentence binds a panel drawn over the dashboard, a second top-level window dragged over the one carrying the unconditional region, and any later floating mechanism". So what a second window may be *dragged over* is settled and what it must itself *show* is not.
 
-**Why it matters.** `PL-WLWY`'s own framing is that "a required value absent from the display is the same failure as a covered one", and the unconditional set is guaranteed structurally rather than by validating a saved layout - `docs/MODEL.md`: "The unconditional region sits outside the area system, so no split, join, close or workspace switch reaches it". A second top-level window is the one construct in item 34 that is outside that region's window, so the structural guarantee stops at its frame and nothing replaces it. The question is also not confined to the display: reading 1 and reading 3 imply different containers - symmetric windows each instantiating the unconditional region, against a privileged main window the container must refuse to close. Deciding it after the model is written means rewriting the model, and deciding it after break-out ships means shipping a window that presents clinical values with no context.
+**Why it matters.** `PL-WLWY`'s own framing is that "a required value absent from the display is the same failure as a covered one", and the unconditional set is guaranteed structurally rather than by validating a saved layout - `docs/MODEL.md` put the unconditional region outside the area system, so that no split, join, close or workspace switch reached it (the sentence has since been rewritten per window, by the answer recorded below). A second top-level window is the one construct in item 34 that is outside that region's window, so the structural guarantee stops at its frame and nothing replaces it. The question is also not confined to the display: reading 1 and reading 3 imply different containers - symmetric windows each instantiating the unconditional region, against a privileged main window the container must refuse to close. Deciding it after the model is written means rewriting the model, and deciding it after break-out ships means shipping a window that presents clinical values with no context.
 
 **Done when.** `docs/MODEL.md` § "Minimum displayed outputs" → "What this list requires once the layout is the reader's" states which of the three readings holds and what a second top-level window owes - the unconditional region, a named run, or a stated subset - and `ROADMAP.md` item 34's break-out paragraph names that answer instead of leaving it to scoping. The answer is recorded as a stepping stone the same way the rest of that section is, so that it may be revisited without the occlusion rule moving with it.
 
@@ -58,3 +58,38 @@ It then closed on 2026-09-16 on the stepping-stone answer - the three-way split 
 ## Area-model audit (PL-BNYF)
 
 **Disposition: `missing-prereq`.** Filed 2026-09-16 by the area-model queue audit (`PL-BNYF`), which swept 49 open and untriaged items and seven gap lenses against `ROADMAP.md` item 34, `docs/interface-provenance.md` and `.claude/rules/ui-areas.md`. Each candidate was checked against the store before it was filed, so a gap an existing item already covers is not here.
+
+---
+
+## Answered 2026-09-16: the tier split, and what is left of this item
+
+**The decision is taken** (project owner, 2026-09-16, scoping item 34). Neither
+of the two live readings was adopted. The answer splits the obligation the way
+`docs/MODEL.md` had already split the list: **every top-level window carries
+the invariant tier** - simulated time, the rate it is advancing at, run state,
+why a run halted, and what is being administered - **plus the name of the run
+it shows**; the **per-substance tier lives once, in a main window that cannot
+be closed while any other top-level window is open**. The accounting tier is
+unchanged.
+
+The reasoning, the two refused readings, and the limit on what occlusion an
+application can observe are in `docs/MODEL.md` § "Minimum displayed outputs" ->
+"What this list requires once the layout is the reader's"; `ROADMAP.md` item 34
+names the answer. Reading 1 (every window carries the whole region) was refused
+because forcing the per-substance tier into a small break-out window either
+dominates it or is squeezed, which is the never-hidden divergence's own failure.
+Reading 3 (main window carries everything, break-out names only its run) was
+refused because it rests the guarantee on a window the reader may not be able to
+see, which is the property `PL-WLWY` used to rule out reading 2.
+
+**What is left of this item is v0.6.0's half**: building the unconditional
+region in that per-window shape, with the main window's identity and the
+per-substance tier's single home, so that v0.7.0 adds a window rather than
+rebuilding the region. The second window's own application of the rule - the
+window lifetime, and the test that drives break-out - is `PL-Y04W`. The
+whole-interface visibility predicate this item also carried was split out to
+`PL-904Y` on the same day, because it breaks at Area close and join rather than
+at break-out.
+
+*Scope.* `ROADMAP.md` § "v0.6.0 - the layout is the reader's" -> "Required
+scope" item 7, beside `PL-NWTM`.

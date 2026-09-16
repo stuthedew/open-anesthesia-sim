@@ -1098,6 +1098,13 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   branch's numbers over both, and a control shared between runs must not be
   duplicated into each. Both are properties of the value rather than of the
   container, and they bind an editor exactly as they bind a panel today.
+
+  *The supersession has a release, as of 2026-09-16*: v0.6.0, "the layout is the
+  reader's", which builds the Areas, the Editor contract, the Workspaces and the
+  persistence; v0.7.0 adds break-out into a second top-level window, and from
+  then the routing question gains a second half - *which window* a surface is
+  instantiated in - answered by `docs/MODEL.md` § "Minimum displayed outputs"
+  rather than by this bullet.
 - A new way of *rendering* a value a reader interprets — a unit, a decimal
   count, a marker for what the display cannot resolve → `app/formatting.py`,
   as a pure function with its own test, and with the reason recorded in

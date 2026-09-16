@@ -746,7 +746,11 @@ reader can never be wrong about what context a displayed value belongs to.
 
 **Split, join, swap and border-drag as the operation set**, with the layout
 stored as a **nested-splitter tree**. `PL-3J2P` carries that decision and the
-measurement behind it.
+measurement behind it. The serialized form is a root holding **one or more
+windows**, each a tree of its own, from version 1 — decided 2026-09-16 when item
+34 was scoped across two releases, because break-out arrives in the second and a
+root that gains a window set later is a schema migration against files a learner
+has already saved their own workspaces into.
 
 ### Diverged, and each divergence has a specific cause
 
@@ -766,7 +770,15 @@ outputs" divides the display into an unconditional set no workspace may remove
 and nothing may cover, and silently collapsing one of those is exactly the
 failure the division exists to prevent. The unconditional set sits outside the
 area system, and where a conditional surface genuinely cannot fit, the interface
-must say that rather than quietly shrink it away.
+must say that rather than quietly shrink it away. Restated per window on
+2026-09-16, when what a broken-out window owes the display was settled: each
+top-level window keeps its own unconditional region outside *its* area system,
+carrying the invariant tier and the run it shows, while the per-substance tier
+lives once in a main window that cannot be closed while another is open. The
+rule itself is `docs/MODEL.md`'s and is cited rather than restated here, so the
+safety floor stays stated in one place — as is the limit on it, which is that an
+application can observe its own windows and not what another application has
+drawn over them.
 
 **Isolation has to be built; it is not inherited.** Blender's editors receive a
 context through which they can reach the window, the screen and every other
@@ -827,5 +839,7 @@ words.
 model is a *planned* milestone and nothing in the shipped application
 implements it, so a README sentence saying the interface is modelled on
 Blender's would describe software that does not exist. The attribution lives
-here until the area system ships and then moves to `README.md` as well;
+here until the area system ships — v0.6.0, "the layout is the reader's", which
+is the release in which the shipped interface actually becomes this model — and
+then moves to `README.md` as well;
 `PL-RTG9` is the item that does it.

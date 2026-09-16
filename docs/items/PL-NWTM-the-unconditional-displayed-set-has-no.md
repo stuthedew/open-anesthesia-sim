@@ -6,7 +6,7 @@ effort: L
 status: blocked
 classes: safety, anticipated
 feature: interface-areas
-blocked-by: PL-NMTF
+blocked-by: PL-1FT6
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, docs/MODEL.md
 added: 2026-09-16
 ---

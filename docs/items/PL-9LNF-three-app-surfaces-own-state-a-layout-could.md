@@ -6,7 +6,7 @@ effort: L
 status: blocked
 classes: safety, anticipated, refactor
 feature: interface-areas
-blocked-by: PL-NMTF
+blocked-by: PL-W9P6
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py
 added: 2026-09-16
 ---

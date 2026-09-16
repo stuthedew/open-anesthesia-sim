@@ -6,7 +6,7 @@ effort: M
 status: blocked
 classes: planning
 feature: interface-areas
-blocked-by: PL-NMTF
+blocked-by: v0.8.0
 touches: docs/items
 added: 2026-09-16
 ---

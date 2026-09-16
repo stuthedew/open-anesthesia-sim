@@ -6,7 +6,7 @@ effort: M
 status: blocked
 classes: defect, infra
 feature: interface-areas
-blocked-by: PL-NMTF
+blocked-by: PL-W9P6
 touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py
 added: 2026-09-16
 ---

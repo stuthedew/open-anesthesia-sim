@@ -6,7 +6,7 @@ effort: M
 status: blocked
 classes: planning
 feature: interface-areas
-blocked-by: PL-NMTF
+blocked-by: PL-1FT6
 touches: docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-16
 ---
@@ -26,3 +26,29 @@ The questions the model cannot currently answer: what holds the set of windows; 
 ## Area-model audit (PL-BNYF)
 
 **Disposition: `missing-prereq`.** Filed 2026-09-16 by the area-model queue audit (`PL-BNYF`), which swept 49 open and untriaged items and seven gap lenses against `ROADMAP.md` item 34, `docs/interface-provenance.md` and `.claude/rules/ui-areas.md`. Each candidate was checked against the store before it was filed, so a gap an existing item already covers is not here.
+
+---
+
+## Narrowed 2026-09-16 to the representation
+
+Scoping item 34 split it across two releases, and this item goes wholly to the
+first. What it owes v0.6.0 is the **serialized shape**: what owns the set of
+windows, whether a Workspace owns several layouts or one layout spans windows,
+how an Area is addressed across windows so `swap` and `set_editor` mean
+something between them, and where the border-chain query terminates - which it
+must at a window boundary, because two windows' handles can be screen-collinear
+and belong to different trees. That lands in `PL-1FT6`'s model at version 1 even
+though v0.6.0 opens one window, which is this item's own argument: a root that
+gains a window set later is a migration against files a learner has already
+saved their Workspaces into.
+
+**What break-out *does* - the operation, the window's lifetime, what happens to
+the source Area and to a closed window's contents - is `PL-Y04W`** and is
+v0.7.0's. Two of the questions this item listed are answered already and are
+recorded rather than re-derived: what a second window owes the display is
+`PL-W54S`'s tier split, and the lifetime constraint is that the main window
+refuses to close while any other is open, which `PL-Y04W` carries with the
+measured Qt trap behind it.
+
+*Scope.* `ROADMAP.md` § "v0.6.0 - the layout is the reader's" -> "Required
+scope" item 1.

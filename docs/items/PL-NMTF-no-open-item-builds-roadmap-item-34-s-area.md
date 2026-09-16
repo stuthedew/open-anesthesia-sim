@@ -3,11 +3,13 @@ id: PL-NMTF
 title: No open item builds ROADMAP item 34's area system at all - PL-3J2P and PL-C842 decided the representation and the container, PL-FTP5 recorded the provenance, and every other interface-areas item is a prerequisite waiting on a build item that does not exist
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: planning
 feature: interface-areas
-touches: ROADMAP.md
+touches: ROADMAP.md, docs/MODEL.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, docs/WORKING_NOTES.md, docs/items, .claude/skills/docket/SKILL.md
 added: 2026-09-16
+closed: 2026-09-16
+verify: python3 tools/doc_check.py check && bin/docket check && grep -qF "## v0.6.0 - the layout is the reader's" ROADMAP.md
 ---
 
 **Problem.** No open item builds ROADMAP item 34's area system at all - PL-3J2P and PL-C842 decided the representation and the container, PL-FTP5 recorded the provenance, and every other interface-areas item is a prerequisite waiting on a build item that does not exist
@@ -58,3 +60,43 @@ yours to make it real."
 Eleven open items are `blocked-by` this one. They are the design prerequisites
 the area system needs and none of them can be answered against an unscoped
 milestone, so the answer here releases the cluster and nothing else does.
+
+---
+
+## Answered 2026-09-16: item 34 is scoped, split, and placed
+
+**The design round the project owner asked for.** Three questions were theirs
+and all three were put with a recommendation and answered:
+
+1. **Where it goes and what version it takes.** After v0.5.0 - the case you can
+   branch, and **split across two releases**: v0.6.0 "the layout is the reader's"
+   (the tiled half) and v0.7.0 "the second screen" (break-out). The schematic
+   (item 27) moves to v0.8.0 and multi-substance (items 6 and 7) to v0.9.0.
+   Grounds, in order of weight: a Workspace pinning which run it shows has no
+   content until v0.5.0 introduces a second run; placing it earlier would
+   renumber a milestone already scoped with a frozen gate; and nothing is
+   live-broken, because the handles are inert. The split is on the project's own
+   "keep each milestone narrow" rule - undivided the milestone was roughly twice
+   the largest this project has run - and the cut is at break-out because that is
+   the one place it costs nothing structural.
+2. **Whether it freezes a debt gate.** No. Gate 2 stays where the timeline puts
+   it - frozen when v0.5.0 ships - and becomes v0.6.0's gate. Recorded as the
+   second exception after v0.4.26 in § "The debt gate" -> "The cadence", with the
+   condition written down, and `PL-KKRP` filed to re-examine the trigger itself
+   rather than amending it in passing.
+3. **`PL-W54S`.** Answered with a tier split neither of its readings stated:
+   every top-level window carries the invariant tier and the run it shows, and
+   the per-substance tier lives once in a main window that cannot be closed while
+   another is open. `docs/MODEL.md` carries it.
+
+**The fourteen prerequisites the 2026-09-16 audit filed are disposed of.**
+Eleven are v0.6.0 `Required scope`; `PL-J4NW` and `PL-D584` closed in the same
+session; `PL-L6QR` follows item 36. None was dropped - the audit ran against a
+design that was already decided, so its findings were prerequisites rather than
+guesses, and re-reading all fourteen found none made moot. Twelve build items
+were filed alongside them.
+
+**One thing left open and recorded rather than decided**: whether the `v0.5.x`
+interface pass (item 33) should run before or after item 34, now that v0.6.0 has
+stopped meaning the schematic. Item 33's own entry carries both arguments and
+`docs/WORKING_NOTES.md` carries the thread.

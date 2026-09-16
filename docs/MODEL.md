@@ -172,7 +172,7 @@ stays a reviewer's question.
 
 | A reader could be misled into | What stops it | Held by |
 | --- | --- | --- |
-| reading a correct concentration as belonging to a different agent | agent colour is a redundant cue, never the sole identifier: the agent name is always visible, and the ISO 5360 colours and their accessible foregrounds are audited as one unit in `src/anesthesia_sim/app/theme.py` by `tools/agent_identity_check.py` | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
+| reading a correct concentration as belonging to a different agent | agent colour is a redundant cue, never the sole identifier: the agent name is always visible - carried by the invariant tier every top-level window shows, subject to the observability limit stated there (§ "Minimum displayed outputs" -> "What this list requires once the layout is the reader's") - and the ISO 5360 colours and their accessible foregrounds are audited as one unit in `src/anesthesia_sim/app/theme.py` by `tools/agent_identity_check.py` | `test_agent_dropdown_options_pair_every_color_with_the_agent_name`, `test_every_agent_has_render_objects_in_its_own_identification_color`, `test_the_agent_name_stays_legible_while_the_run_disables_the_selector` |
 | reading a run halted by a failure as one the user paused | a halt gets its own status words rather than falling back to "Paused", and the two failure modes are distinguished from each other as well | `test_refresh_view_reports_a_failed_run_as_stopped_not_paused`, `test_refresh_view_reports_the_supported_run_length_as_stopped_not_failed` |
 | believing a setting above the vaporizer maximum was simulated | such a setting is **rejected, not clamped**, so no run proceeds on a value the user did not choose; the boundary itself is accepted | `test_rejects_delivered_concentration_above_the_vaporizer_maximum`, `test_explicit_delivered_concentration_above_the_agent_max_is_rejected`, `test_accepts_delivered_concentration_exactly_at_the_vaporizer_maximum` |
 | reading a displayed value as resolved to its last digit | displayed precision is a recorded choice within a justified band, and the model retains precision the display discards rather than rounding its own state | `test_the_model_keeps_precision_the_display_throws_away`, `test_concentration_decimals_are_a_choice_within_a_recorded_band` |
@@ -4800,8 +4800,11 @@ is unconditional when a reader could misread the run's other displayed numbers
 without it. Applying that test gives two tiers.
 
 **Invariant, whatever is being simulated.** Simulated time; the rate it is
-advancing at; run state; why a run halted, when one has; and what is being
-administered. None of these depends on the substance or the model: a
+advancing at; run state; why a run halted, when one has; what is being
+administered; and, once more than one top-level window can exist, the name of
+the run the window is showing - see "What a second top-level window owes"
+below, which is where that last one comes from and why this tier and the next
+are allocated to windows differently. None of these depends on the substance or the model: a
 concentration with no time, no run state and no named drug is the correct
 number under the wrong patient, which this document treats as a display failure
 rather than a missing convenience.
@@ -4851,15 +4854,41 @@ exists only where a curve does.
 **The rule all three rest on is about occlusion, not about window types.** No
 value this list requires may be covered while the application still believes it
 is showing it. That one sentence binds a panel drawn over the dashboard, a
-second top-level window dragged over the one carrying the unconditional region,
-and any later floating mechanism, without being re-argued for each. It is a
-property of the display rather than of a window type, which is why it is stated
-once and here.
+second top-level window dragged over another window's invariant region or over
+the main window's per-substance readouts, and any later floating mechanism,
+without being re-argued for each. It is a property of the display rather than
+of a window type, which is why it is stated once and here.
 
-**Guaranteed structurally, not by validating a saved layout.** The
-unconditional region sits outside the area system, so no split, join, close or
-workspace switch reaches it and no saved layout has to be checked against this
-list to be safe. Validating each workspace and refusing the ones that fail is
+**What "the application believes" is bounded by what it can observe, and the
+boundary is stated rather than implied** (2026-09-16). The rule binds the
+application's *own* windows and panels - which it creates, positions and can
+interrogate - and it makes no claim about a window belonging to another
+application, or to the operating system, drawn on top of one of ours. That is
+not a loophole being reserved; it is the limit of what any application can
+enforce, and saying so is what stops a later reader taking the sentence above
+for a guarantee against every way a value can be hidden. The toolkit's own
+answer is narrower than it first appears and was measured rather than assumed
+(PySide6 6.11.2 / Qt 6.11.2, 2026-09-16): `QWidget.isVisible()` is documented
+to stay true for a widget "obscured by other windows on the screen", so it
+reports the application's own show/hide bookkeeping and never occlusion;
+`QWindow.visibility()` reports which of Hidden, Windowed, Minimized, Maximized
+or FullScreen a window occupies, which catches a minimized or hidden window and
+nothing else. The one occlusion-adjacent signal, `QWindow.isExposed()`, is
+documented only as something that *might* change when a window is "made totally
+obscured by another window", and the platform plugins disagree about it: the
+macOS plugin drives it from `NSWindow.occlusionState` while the Windows plugin
+deliberately keeps it true under occlusion for compatibility. So it is not a
+signal a safety rule may rest on, and this document does not rest one on it.
+What the application must do is the reachable half: never go on *asserting*
+that it is showing a value whose own window it can see is minimized or hidden.
+
+**Guaranteed structurally, not by validating a saved layout.** Each top-level
+window's unconditional region sits outside *that window's* area system, so no
+split, join, close or workspace switch reaches it and no saved layout has to be
+checked against this list to be safe. Closing a window is on that list too, and
+is the one operation the area system does not own: the main window is refused
+closure while any other is open, which is what keeps the per-substance tier from
+being closed out from under a reader. Validating each workspace and refusing the ones that fail is
 the fallback for anything that cannot live in that region; it warns after the
 fact where the structure prevents, which is the weaker of the two and is why it
 is the fallback. Blender is the model for the *structure* - a region outside
@@ -4873,6 +4902,74 @@ trade for a 3D application and the wrong one here, because Blender has no class
 of value whose absence is a safety failure and this application does. Take the
 structure; refuse the escape hatch, and say so where a reader would otherwise
 assume the whole precedent was copied.
+
+**What a second top-level window owes, and it is not the whole set** (project
+owner, 2026-09-16, deciding `PL-W54S`). The guarantee above is stated against
+the area system's own operations and stops at the frame of the window carrying
+the region. `ROADMAP.md` item 34 builds break-out - an area taken into its own
+top-level window, itself a full window with its own areas - in v0.7.0, and the
+region v0.6.0 builds has to be the right shape for it on the first attempt.
+`PL-WLWY` wrote three candidate readings of what such a window owes and closed
+without choosing between them. The answer is a fourth, and it splits the
+obligation the way this section has already split the list, because **the two
+tiers are unconditional for different reasons and those reasons travel
+differently**:
+
+- **Every top-level window the application owns carries the invariant tier** -
+  simulated time, the rate it is advancing at, run state, why a run halted when
+  one has, and what is being administered - **together with the name of the run
+  that window is showing**, in a region outside *that* window's area system.
+  The tier's own justification above is that "a concentration with no time, no
+  run state and no named drug is the correct number under the wrong patient",
+  and that is a property of any surface displaying a concentration rather than
+  of the display taken as a whole. So it follows the concentration into
+  whatever window the concentration goes. It is five values and a name, small
+  enough that a window holding one chart carries it without the squeeze
+  § "Diverged, and each divergence has a specific cause" of
+  `docs/interface-provenance.md` refuses.
+- **The per-substance tier lives once, in the main window**, which **cannot be
+  closed while any other top-level window is open**; closing it closes them.
+  Its justification is the other one - a reader could misread the run's *other*
+  displayed numbers without it - which is a statement about the display taken as
+  a whole rather than about any one surface.
+- **The accounting tier is unchanged**, being already an obligation on the
+  application rather than on any layout or window.
+
+**Why the other two readings were refused**, recorded so they are not
+re-proposed. *Every window carries the whole region* is not merely the stricter
+option: a broken-out window is typically small - one chart on a second screen -
+and forcing seven concentrations in two units into it either dominates the
+window, which defeats break-out, or is squeezed, which is the failure the
+never-hidden divergence exists to refuse. *The main window carries everything
+and a broken-out window names only its run* leaves a window drawing compartment
+traces with no time, no rate, no run state and no agent, and rests the guarantee
+on a window the reader may not be able to see - which is the property `PL-WLWY`
+used to rule out the reading that the contract binds the application rather than
+the window. A guarantee resting on where the window manager has put things is
+the same guarantee in both cases.
+
+**This is the display side of an evidenced failure mode, not a house
+preference.** That correct data read in the wrong context is a distinct class of
+clinical-information-system error is established: Ash, Berg and Coiera describe
+the "silent errors" such systems foster rather than prevent (*J Am Med Inform
+Assoc* 2004;11(2):104-112, doi:10.1197/jamia.M1471), and Magrabi and colleagues'
+classification of 42,616 reported incidents makes information *output* a
+category in its own right at 20% of computer-related problems (*J Am Med Inform
+Assoc* 2010;17(6):663-670, doi:10.1136/jamia.2009.002444). The closest measured
+analogue of the rule above is the wrong-patient order: restoring one piece of
+patient context to the display banner - a photograph - was associated with lower
+wrong-patient order entry across 2,558,746 orders (adjusted OR 0.57, 95% CI
+0.52-0.61; Salmasian et al., *JAMA Netw Open* 2020;3(11):e2019652,
+doi:10.1001/jamanetworkopen.2020.19652), which is the invariant tier's argument
+in a different clinical setting: context carried in the frame of the view rather
+than assumed from elsewhere on the screen. Two things are deliberately *not*
+claimed here, having been checked and not found: that duplicating a live
+readout across windows is itself a named hazard - the one randomised trial of
+concurrently open records found no difference in wrong-patient errors (Adelman
+et al., *JAMA* 2019;321(18):1780-1787, doi:10.1001/jama.2019.3698) - and that
+tiling is a published preference over overlapping windows, which the only
+controlled comparison does not support. The tiling argument stands on this
+project's own occlusion reasoning, as item 34 already records.
 
 **A stepping stone, and recorded as one** (project owner, 2026-09-15). This is
 deliberately the rigid version - a fixed unconditional region and a conditional
