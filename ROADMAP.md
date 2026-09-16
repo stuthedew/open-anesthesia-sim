@@ -4607,7 +4607,10 @@ once someone is ready to scope it.
     one coordinate and fuses them. Wanting either of those is what would reopen
     this decision; nothing else should.
 
-    *The condition that keeps it reversible* (recommended, not decided). The
+    *The condition that keeps it reversible* (recommended; **deferred to**
+    `PL-C842` by the project owner on 2026-09-16, to be decided from how
+    Blender actually separates container from view rather than from first
+    principles). The
     container sits behind a layout model of this project's own that owns split,
     join, resize, swap and persistence, with `QSplitter` an implementation detail
     behind it - so no view calls `saveState()`, reaches for a parent splitter, or
