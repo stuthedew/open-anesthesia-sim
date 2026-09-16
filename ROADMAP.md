@@ -2675,7 +2675,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 153 entries
+### Declined to Gate 2 on the refilling-queue ground — 151 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3150,40 +3150,32 @@ afterwards. `PL-S5YM` turned `main` red exactly this way, and four open items
 carry the shape today. It is recommended as the first of these seven taken off
 the list.
 
-**Four more from the 2026-09-16 evening triage pass over the six captures open
+**Two more from the 2026-09-16 evening triage pass over the six captures open
 that day** (`PL-Q0J1`). Six arrived across the day from four sessions, after
-`PL-0C6W` cleared that morning's fourteen; two of the six are not debt
-(`PL-85NT` was dropped, and `PL-M3YJ` is `infra`, which "What counts" says
-explicitly is not debt), leaving four.
+`PL-0C6W` cleared that morning's fourteen. Two are not debt (`PL-85NT` was
+dropped, and `PL-M3YJ` is `infra`, which "What counts" says explicitly is not
+debt), and two - `PL-2M4X` and `PL-SYG4` - were triaged concurrently on
+`claude/pl-syg4-pl-2m4x-triage` and are disposed of by that branch, higher in
+this subsection, rather than twice here. That leaves two.
 
-**Three are apparatus and sit exactly where the groups above do**: captured
-after the 2026-09-06 freeze, `P2` or `P3`, neither `safety` nor `science`, and
-wholly in the workflow lane. They are `PL-2M4X` (`PL-J45M`'s `verify` and
-`touches` name a shell-hook test file that cannot exercise `release.py`),
-`PL-L4KX` (`bin/docket verify` REJECTs every close-out of a dropped or
-`not-delegable` item, so the skill's own close-out step cannot reach `ACCEPT`)
-and `PL-SYG4` (the digest's `RESERVED` verdict suppresses the release offer
-instead of naming the free patch number). The refilling-queue arithmetic above
-is unchanged and is still the reason.
+**`PL-L4KX` is apparatus and sits exactly where the groups above do**: captured
+after the 2026-09-06 freeze, `P2`, neither `safety` nor `science`, wholly in the
+workflow lane. `bin/docket verify` REJECTs every close-out of a dropped or
+`not-delegable` item, so the skill's own close-out step cannot reach `ACCEPT`.
+The refilling-queue arithmetic above is unchanged and is still the reason.
 
-`PL-SYG4` is the `needs-decision` one, and it is `PL-VV6N`'s shape rather than
-`PL-Q8RQ`'s: it carries a recommendation but the choice is the project owner's,
-because one of its three candidate wordings would turn renaming a scoped
-milestone section into a side effect of a digest line. Admitting it would put
-an entry on the frozen list that no session can close on its own.
-
-`PL-L4KX` is the one to watch, on the same test `PL-Q8RQ` is named under: it
-is `CLAUDE.md`'s second compounding-friction test, a refusal firing routinely
-on correct work. Every close-out that drops an item now ends on a `REJECT` the
-session has to talk past, which trains a reader to skim the block where a real
-protected-path failure is printed - the cost `PL-69JZ` named. It is
-recommended as the first of these four taken off the list.
+It is also the one to watch, on the same test `PL-Q8RQ` is named under: it is
+`CLAUDE.md`'s second compounding-friction test, a refusal firing routinely on
+correct work. Every close-out that drops an item ends on a `REJECT` the session
+has to talk past, which trains a reader to skim the block where a real
+protected-path failure is printed - the cost `PL-69JZ` named. It is recommended
+as the first of these taken off the list.
 
 **One more from the same evening, found while starting `PL-L9RD`** - `PL-Y4YX`
 (`PL-L9RD`'s `verify:` requires `app/theme.py` to name PySide6, which that
 file's own documented invariant forbids). Captured 2026-09-16, `P3`, `defect`,
 neither `safety` nor `science`, so the snapshot rule places it in the next
-gate like the four above. Its ground is not the refilling queue, though: it is
+gate like the two above. Its ground is not the refilling queue, though: it is
 `blocked-by: PL-L9RD` and resolves inside that item, which is in this port's
 own Required scope. Admitting it would put an entry on the frozen list whose
 only route to closing runs through a milestone the plan has not reached.
@@ -3192,15 +3184,16 @@ only route to closing runs through a milestone the plan has not reached.
 stretched. `PL-PGZF` records that `PL-GS3R` made the chart's column budget
 follow the window width, so `assemble_chart_frame` costs 8.4 ms at 150 columns
 and 15.4 ms at 1 601, where `PL-CNCF` measured only the fixed budget. Its
-ground is that it cannot be worked here at all: its **Done when.** requires the
-*full* frame - assembly and paint - on real hardware, and every figure this
-container can produce is `QT_QPA_PLATFORM=offscreen` on a software rasteriser
-with no GPU, which `PL-QXSB` already found reports 18-28 ms for a frame where
-nothing changed. That is the `PL-X9T3` shape: a measurement only the project
-owner's own machine can take. It also names `app/chart_frame.py`, which
-`v0.4.26 - the interface moves to Qt` is rewriting, so a figure taken now would
-describe a tree that is moving. Holding this gate open on either is holding it
-open on something no session can close.
+ground is the snapshot rule alone - captured ten days after this gate was
+frozen, `P3`, `perf`, neither `safety` nor `science`. What is worth saying
+beside that is a fact about its **Done when.** rather than a claim about who
+can work it: the half that settles whether the interface has margin is the
+*full* frame, assembly and paint together, and every figure this container can
+produce is `QT_QPA_PLATFORM=offscreen` on a software rasteriser with no GPU,
+which `PL-QXSB` already found reports 18-28 ms for a frame where nothing
+changed. So the assembly half is measurable anywhere and the conclusion is not;
+that is the `PL-X9T3` shape. It also names `app/chart_frame.py`, which
+`v0.4.26 - the interface moves to Qt` is rewriting.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first

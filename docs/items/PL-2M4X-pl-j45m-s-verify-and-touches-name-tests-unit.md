@@ -1,14 +1,8 @@
 ---
 id: PL-2M4X
 title: PL-J45M's verify and touches name tests/unit/test_docket_digest_hook.py, a shell-hook test file that cannot exercise release.py, so its pytest half proves the wrong tree and a worker would edit the wrong file
-priority: P3
-effort: S
-status: ready
-classes: defect
-feature: release-roadmap-seam
-touches: docs/items
+status: untriaged
 added: 2026-09-16
-verify: bin/docket check && grep -q 'subprojects/docket/tests/test_release.py' docs/items/PL-J45M-*.md
 ---
 
 **Problem.** PL-J45M's verify and touches name tests/unit/test_docket_digest_hook.py, a shell-hook test file that cannot exercise release.py, so its pytest half proves the wrong tree and a worker would edit the wrong file
@@ -38,20 +32,3 @@ exceeded its commission.
 watched fail for the right reason, and the `! grep` half is left exactly as
 written - it is what keeps the item from reading as closeable while
 `_release_due`'s positional classifier stands.
-
-**Why it matters.** `touches` is read by two mechanisms that act on it without
-a reader in the loop. `bin/docket verify` audits a delegated branch's diff
-against it, so a worker who edits the file the item is actually about -
-`subprojects/docket/tests/test_release.py` - is reported as having exceeded its
-commission, while one who edits the shell-hook test it names is not. And
-`bin/docket concurrent` answers from it, so every collision prediction this
-item takes part in is made against a file nobody will touch. The `verify:`
-half is the cheaper error of the two, because a command that proves the wrong
-tree still fails for its own reason here and so is not silently green - but it
-proves nothing about `release.py`, which is the whole subject of `PL-J45M`.
-
-**Triaged `P3`, at `PL-J45M`'s own band.** Repairing the metadata ahead of the
-item it describes buys nothing: `PL-J45M` (the positional `_release_due`
-classifier) is `P3` and not near the top of the queue, and the skill's rule is
-that a wrong `verify:` is repaired as its item is started. This is filed so
-that the repair is not re-derived at that moment.

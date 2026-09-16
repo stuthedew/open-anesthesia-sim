@@ -121,3 +121,16 @@ None of that displaces this item's own point, which outranks all three: an
 existing command, `bin/docket concurrent <id>`, already reads the files live
 branches have changed, and all three colliding branches had touched the one
 path. The failure was routing, not detection.
+
+**A fourth instance, 2026-09-16, and it is the sharpest because nobody erred.**
+Two sessions triaged `PL-2M4X` and `PL-SYG4` concurrently and reached
+materially the same verdict on both (`P3 · M · needs-decision` on `PL-SYG4`
+from each, differing only in one class and the feature name). `PL-Q0J1`
+carries the account. The mechanism is one level below the three above and is
+new: every in-flight guard matches an id against a **commit subject**, and the
+leading-id rule names the ids a commit *closes*. A triage pass closes nothing,
+so its commits lead with the pass's own id and the items it triaged appear in
+no subject at all - making the pass invisible to `flight`, `show` and `next`
+*while it is following the rule exactly*. Neither session could have looked
+harder. Any detector proposed for this item should be tested against this case
+specifically, because filing first would not have helped either of them.
