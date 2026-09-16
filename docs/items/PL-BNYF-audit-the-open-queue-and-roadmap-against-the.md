@@ -1,9 +1,14 @@
 ---
 id: PL-BNYF
 title: Audit the open queue and ROADMAP against the area/workspace layout model, so items scoped before it was decided are re-briefed or dropped rather than built and undone
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: planning
+feature: interface-areas
 touches: ROADMAP.md, docs/items/
 added: 2026-09-16
+verify: bin/docket check && test "$(grep -rlF 'Area-model audit (PL-BNYF)' docs/items | wc -l)" -ge 5
 ---
 
 **Problem.** Audit the open queue and ROADMAP against the area/workspace layout model, so items scoped before it was decided are re-briefed or dropped rather than built and undone
@@ -57,3 +62,12 @@ tree). The audit records which items each answer would affect; it does not pick.
 of the five dispositions or explicitly cleared, the re-briefs are written, the
 missing prerequisites are filed, and `ROADMAP.md`'s ordering reflects the
 sequencing wins found.
+
+**Population widened to the untriaged captures too** (project owner,
+2026-09-16, mid-session: "include untriaged items in sweep"). The `touches`
+filter alone would have missed them by construction: capture writes no
+`touches`, so 13 of the 14 items at `status: untriaged` declare none at all and
+no path filter can reach them. They are swept on their text instead, against the
+same five dispositions. That makes the population **49** — 36 open items
+declaring `app/` in `touches`, plus the 13 untriaged captures other than this
+item itself.
