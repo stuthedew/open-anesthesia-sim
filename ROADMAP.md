@@ -3270,6 +3270,18 @@ the last nine are the feature itself.
   McDonnel B, Elmqvist N. *Graphical Perception of Multiple Time Series.* IEEE
   Trans Vis Comput Graph. 2010;16(6):927-34. doi:10.1109/TVCG.2010.162).
 
+  **Which run carries the width offset was settled when it was built**
+  (`PL-8PSW`, 2026-09-16, project owner). The first run is drawn wider and the
+  second keeps the width the single-run chart draws it at. `PL-HLD5` had
+  assumed the two curves are merely adjacent; they are not, because the entry
+  above requires a branch to reproduce its parent element-wise up to the fork,
+  so before the branch point they coincide exactly and whichever is thicker
+  hides the other entirely over that stretch. Widening rather than narrowing
+  also keeps every trace at or above 2 px, where a 1 px antialiased line
+  renders lighter than its declared colour and walks into the 3:1 floor
+  `.claude/rules/ui-color.md` treats as an error. `docs/MODEL.md` § "The six
+  compartment traces" carries it.
+
   **The channel assignment is reversed from what this bullet said until
   2026-09-07, and the compartment cap is what makes it possible** (`PL-HLD5`).
   It read "the run encoded by line style and the compartment by colour", which
