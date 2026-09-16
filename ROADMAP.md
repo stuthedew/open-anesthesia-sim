@@ -309,11 +309,15 @@ adds no capability and exists to clear the ground they are built on:
 | 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. The placement argument above stands for what it placed, and is left as written. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 170 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. **Five more shipped early the same way**, in v0.4.25 (2026-09-14, `PL-G7RD`): `PL-TFX5`, `PL-J2TD`, `PL-ZMRT`, `PL-B9PY` and `PL-5328`, ahead of the port; the scope list is unchanged and they are closed against it. | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
 | — | **v0.5.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. | — |
-| 6 | **Gate 2** | Frozen when v0.6.0 is scoped; ships inside it. | — |
-| 7 | **v0.6.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. | — |
-| 8 | **Gate 3** | Frozen when v0.7.0 is scoped; ships inside it. | — |
-| 9 | **v0.7.0 — multi-substance and nitrous oxide** | Planned-milestone items 6 and 7, and the substance generalization Phase 1 describes. | — |
-| 10+ | **Beyond** | The machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. | — |
+| 6 | **Gate 2** | **Frozen when v0.5.0 ships, not when the milestone below is scoped** (project owner, 2026-09-16). Row 7 was scoped two releases early, so the cadence's own trigger would have frozen this list before v0.5.0 had been implemented — leaving it holding none of v0.5.0's findings, which is the one thing a gate is defined to hold. § "The cadence" records the exception and the item that re-examines the trigger; v0.6.0's own section says where the frozen list goes when the moment comes. Ships inside v0.6.0. | — |
+| 7 | **v0.6.0 — the layout is the reader's** | Planned-milestone item 34's tiled half: the layout model, the Editor contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, on `PL-NMTF`) and it has its own section below. The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out is row 9, deliberately — see that section's "Explicitly out of scope" for why the split costs nothing structural. | 5 L, 11 M, 3 S |
+| 8 | **Gate 3** | Frozen when v0.6.0 ships; ships inside v0.7.0. | — |
+| 9 | **v0.7.0 — the second screen** | Planned-milestone item 34's break-out half: an area taken into its own top-level window, itself a full window with its own areas. Not yet scoped. What it owes the display is already decided rather than left to its scoping — `docs/MODEL.md` § "Minimum displayed outputs" → "What this list requires once the layout is the reader's" carries the tier split (project owner, 2026-09-16, on `PL-W54S`), because it decides the shape v0.6.0 builds the unconditional region in. | — |
+| 10 | **Gate 4** | Frozen when v0.7.0 ships; ships inside v0.8.0. | — |
+| 11 | **v0.8.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. (Written `v0.6.0` until 2026-09-16, when item 34 took that number and this moved down two.) | — |
+| 12 | **Gate 5** | Frozen when v0.8.0 ships; ships inside v0.9.0. | — |
+| 13 | **v0.9.0 — multi-substance and nitrous oxide** | Planned-milestone items 6 and 7, and the substance generalization Phase 1 describes. (Written `v0.7.0` until 2026-09-16, for the same reason as row 11.) | — |
+| 14+ | **Beyond** | The machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. | — |
 
 **Rows 1 and 2 are the only releases whose whole content is a frozen list,
 and they are not the same kind of thing.** Row 2 is Gate 0's release: that
@@ -325,14 +329,25 @@ a gate heading because that subsection is what `bin/docket wave` reads, and
 the second of the two groups it lists is new workflow capability rather than
 debt.
 Gates 1 onward hold one milestone's findings and ship inside the milestone
-they gate, which is why rows 4, 6 and 8 carry no version.
+they gate, which is why rows 4, 6, 8, 10 and 12 carry no version.
 
-Row 5 was scoped on 2026-09-06 and has its own section below, as is the
-`v0.4.26` row above it, scoped 2026-09-10 and moved ahead of row 5 on
-2026-09-14. Rows 7 and 9 are
-the intended order and are not yet scoped; each becomes real only when it gets
-its own goal, required scope, definition of done and out-of-scope list here,
-per the development rules.
+Rows 5 and 7 are scoped and have their own sections below, as does the
+`v0.4.26` row above them — v0.5.0 on 2026-09-06, the Qt port on 2026-09-10 and
+moved ahead of row 5 on 2026-09-14, and v0.6.0 on 2026-09-16. Rows 9, 11 and 13
+are the intended order and are not yet scoped; each becomes real only when it
+gets its own goal, required scope, definition of done and out-of-scope list
+here, per the development rules.
+
+**Row 7 is the first milestone scoped out of turn, and the reason is recorded
+because the cadence assumes otherwise.** Every earlier milestone was scoped
+when it was next; this one was scoped while two releases still sat ahead of it,
+because the design was already settled — `PL-3J2P` fixed the representation,
+`PL-C842` the container and `PL-FTP5` the provenance, and a queue audit
+(`PL-BNYF`) had filed fourteen prerequisites against a build item that did not
+exist. Scoping was what those fourteen were waiting on. The consequence is row
+6's, and § "The cadence" carries it: beat 1 no longer immediately precedes beat
+4, so the freeze that beat 1 normally performs is dated to v0.5.0's ship
+instead.
 
 Row 5's internal ordering — forking and comparison ahead of save/load and
 replay — was recorded here as a proposal rather than a decision, on the grounds
@@ -348,9 +363,13 @@ out of scope. That is a deliberate departure from "Development pathway"'s Phase
 A gate that lives in a separate document, or in a session's memory, is
 renegotiated every time it is inconvenient. Put on the timeline it is a step
 with a size, and skipping it is visible as skipping a step. The cadence that
-generates rows 2, 4, 6 and 8 is specified under "The debt gate" below; the
-rule is that scoping a milestone freezes its gate, and the gate clears before
-that milestone's implementation begins.
+generates rows 2, 4, 6, 8, 10 and 12 is specified under "The debt gate" below;
+the rule is that scoping a milestone freezes its gate, and the gate clears
+before that milestone's implementation begins. Row 6 is where that rule has an
+exception rather than an application, and § "The cadence" states it: a
+milestone scoped out of turn freezes its gate at the moment the cadence
+*intended* — when the milestone before it ships — rather than on the day it was
+scoped.
 
 ## Completed: v0.1.0 - first patient sevo model
 
@@ -3825,7 +3844,33 @@ shows them on one timeline with the milestones they gate:
    of which re-enters this one.
 
 A milestone whose gate has not been recorded has not been scoped, whatever
-else has been written about it.
+else has been written about it — **except where the milestone was scoped out
+of turn, which is the one case beat 1 was not written for.**
+
+**The exception, and why it is the rule's purpose rather than a departure from
+it** (project owner, 2026-09-16, scoping v0.6.0). Beat 1 freezes the list
+because scoping is normally the last thing that happens before beat 4: the
+milestone before has shipped, its findings are in the queue, and the gate that
+freezes is the gate that holds them. v0.6.0 was scoped with two releases still
+ahead of it, so applying beat 1 on the day would have frozen Gate 2 before
+v0.5.0 had been *implemented* — a list holding none of v0.5.0's findings, which
+is the one thing "Gate 1 onward hold one milestone's findings" defines a gate to
+hold, and v0.5.0's findings would have fallen to Gate 3. So a milestone scoped
+out of turn freezes its gate **when the milestone before it ships**, which is
+the moment beat 1 was reaching for, and beats 2, 3 and 4 then run unchanged.
+Nothing is renegotiable in it: the freeze date is fixed by the timeline rather
+than by whoever next opens the section, which is a stronger commitment than the
+day of a scoping round, and the milestone's own section names the heading the
+frozen list goes under when the moment comes.
+
+**Twice in a row now, which is a fact about the trigger rather than about the
+two milestones.** v0.4.26 took no gate by its own exception and v0.6.0 takes
+this one, so "scoping freezes the gate" has not described the last two
+milestones this project scoped. Whether the trigger should read "the gate
+freezes when the preceding milestone ships" is a real question and is
+`PL-KKRP`'s, filed 2026-09-16 rather than settled here: a rule that has been
+excepted twice wants re-examining deliberately, not amended in passing by the
+session that needed the second exception.
 
 Which beat is due is computed rather than recalled: `bin/docket wave` reads
 the version, the timeline above, the milestone sections and the frozen list

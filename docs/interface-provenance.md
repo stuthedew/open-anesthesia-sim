@@ -91,9 +91,11 @@ processes, methods of operation and concepts from copyright — but this
 project's own provenance standard asks for it, and it is the answer to the
 spirit of the question rather than the letter.
 
-`README.md` and `ROADMAP.md` item 34 record that the workspace / area / editor
-model is modelled on Blender's, studied from its published source and design
-documentation. The three words *Area*, *Editor* and *Workspace* are Blender's
+`ROADMAP.md` item 34 records that the workspace / area / editor model is
+modelled on Blender's, studied from its published source and design
+documentation, and `README.md` does not yet — deliberately, for the reason
+§ "Attribution" below gives and until the release that makes the sentence
+true. The three words *Area*, *Editor* and *Workspace* are Blender's
 and are used here for the same three things deliberately, so that this
 project's code and its roadmap do not drift into a private vocabulary.
 
