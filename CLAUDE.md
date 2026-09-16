@@ -70,6 +70,16 @@ So, before building what was described:
   whenever what gets implemented differs from what they asked for. Approval
   is expected to be the usual answer, which is a reason to keep the case
   short — not a reason to skip asking for it.
+- **The gate has one trigger and no others: a deliverable that would differ
+  materially from the one described.** It is not a general licence to ask, and
+  the cases most often mistaken for it are already decided — filing an item,
+  decomposing an idea into items, opening the pull request on approved work
+  that is green, choosing between approaches with little between them, and
+  anything not yet actionable. Each is settled below, in § "The queue", or by
+  `.claude/rules/instruction-writing.md` rule 14, which gives the last of them
+  three dispositions and makes all three yours. None returns here as a
+  question. This list is here rather than only at those five places because a
+  session that retains one sentence of this section retains the bolded one.
 - Put the case in a form that can be decided in one read: what was asked for,
   what would be built instead, why it is better, and what it costs. Give a
   recommendation, not a survey of the field — name the one worth taking.

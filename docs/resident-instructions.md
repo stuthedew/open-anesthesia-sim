@@ -74,6 +74,22 @@ arriving and the session deciding how to answer it; nothing but resident text
 reaches that moment. The same argument covers `What this project is`, which
 sets the horizon every one of those judgments is made against.
 
+The gate-scope bullet in that section was added on 2026-09-16 for the same
+reason and against a measured asymmetry. The stop-and-wait rule is stated once,
+bolded, at line 66; the cases that release it are stated four times — a note
+rather than a gate (line 96), decomposition (line 246), filing an item (line
+254), opening the pull request (line 343) — across 250 lines, none of them
+emphasised, each buried in a bullet about something else, plus rule 14's three
+dispositions in the other resident file. Claude Code's own documentation names
+the consequence: "if two rules contradict each other, Claude may pick one
+arbitrarily" ([memory](https://code.claude.com/docs/en/memory)). The project
+owner reported the predicted failure — decisions offered that `CLAUDE.md`
+already settles. The bullet restates no rule; it names where each release
+lives, at the one place a session is guaranteed to read them together. It is
+resident because the moment it governs is a request arriving, which this
+group's argument already covers, and it costs 683 characters against a hazard
+that was costing a decision per session (`PL-5D2R`).
+
 That section's closing paragraph — the apparatus is not judged by its share of
 the queue — was added on the same argument and for a measured reason
 (`PL-9J2W`). `apparatus` appeared in `CLAUDE.md` three times and every one was a
