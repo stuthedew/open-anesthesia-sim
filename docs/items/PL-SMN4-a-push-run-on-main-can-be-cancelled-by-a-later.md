@@ -115,3 +115,43 @@ supports, and the obvious-looking alternative of adjusting `cancel-in-progress`
 is ruled out: it does not reach the queue at all. Nothing here is a
 misconfiguration to correct; the expression evaluates exactly as written, and
 what is wrong is that `concurrency` cannot deliver what the comment promises.
+
+**Second instance, 2026-09-16 01:14 UTC - and it took the commit that was
+unblocking `main`.** Observed live from the session that caused it (`PL-0C6W`,
+the 2026-09-16 triage pass), which is why the timings are to the second.
+
+| run | commit | pull request | created | outcome |
+| --- | --- | --- | --- | --- |
+| 2036 | `df3b1de` | #610 - *"This unblocks `main`"* | 01:13:38 | **cancelled** at 01:14:14 |
+| 2037 | `18bc132` | #611 | 01:14:13 | pending, then ran |
+
+Run 2036 was cancelled **one second after** run 2037 was created, on the
+mechanism confirmed above: 2036 was pending in `quality-refs/heads/main`, and
+2037 arriving took the single slot. Two merges, thirty-five seconds apart, was
+enough - the first instance needed three inside thirteen seconds.
+
+**Three things this changes about the item.**
+
+1. **It is not rare.** Two instances in two hours and fifteen minutes, on an
+   ordinary evening's merges. The first brief could reasonably be read as
+   describing a freak burst; this one cannot.
+2. **It fires hardest exactly when it costs most.** `df3b1de` was the fix for a
+   red `main` - `PL-GN8C`'s `verify:` command matching a sentence about another
+   book, which had `bin/docket check --verify` failing on the default branch.
+   So the one commit whose verdict everybody was waiting for is the one that
+   lost it. That is not a coincidence to note and move past: an outage is
+   precisely when merges cluster, so the failure's rate is *correlated* with
+   the moments its verdict matters. Any threshold analysis of whether to fix
+   this has to price that correlation rather than the average rate.
+3. **Two merges is the real threshold, not three.** The scope paragraph above
+   reasons about a commit lost between an in-progress run and a later merge.
+   What actually happened is simpler and more common: one run in progress, one
+   pending, one arriving. On a repository where a person merges several
+   approved pull requests in a sitting - which is how this one is worked - that
+   is the normal shape rather than a burst.
+
+**The recovery is still linear-history luck, and it is worth saying plainly.**
+`18bc132` contains `df3b1de`, so run 2037 covers the accumulated store state
+and `main`'s tip is verified either way. What is permanently unknown is whether
+`df3b1de` *alone* was green. Nothing reports that, which is the reporting half
+this item's **Done when.** names as its second candidate shape.
