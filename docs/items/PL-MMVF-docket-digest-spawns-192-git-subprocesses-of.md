@@ -58,3 +58,28 @@ before it. Scope it to the process, and hold that with a test.
 where it now makes 192, the digest's output is unchanged, a test pins the
 cache to one process, and the item records the re-measured wall time on both
 machines.
+
+**Correction, same day: 43% of the calls is not 43% of the time.** The first
+measurement above counted calls. Timing each one individually gives the value
+of the memo directly, and it is smaller than the call count implies, because
+the duplicated calls skew cheap:
+
+| | calls | replay time |
+| --- | --- | --- |
+| all git calls in one `digest` | 220 | 1.21 s |
+| of which exact repeats | 90 (41%) | **0.57 s (47%)** |
+
+So on a container the memo is worth 0.57 s of `digest`'s 2.08 s - **27%**, not
+43%. It happens to land better than the call count suggested rather than worse,
+because the single most expensive repeat is `rev-list --objects origin/main`
+asked three times at ~0.08 s each. The claim to hold this item to is the 27%,
+and the same measurement has to be re-run on the slow machine before the item
+is worked, because nothing guarantees the ratio survives a 6.4x slower git.
+
+**And the per-spawn story in the section above is wrong.** It inferred ~92 ms
+per spawn from `digest`'s wall time divided by the call count. Measured
+directly on the owner's machine: `/bin/echo` 2.9 ms, `git rev-parse HEAD`
+12.8 ms, no `xcrun` shim. 220 x 12.8 ms is about 2.8 s, which is a sixth of
+that machine's 17.64 s, so process creation is a minor term and the rest is git
+doing work - disk, not spawn. What is actually slow there is still open at the
+time of writing; `PL-JH3T` carries it.
