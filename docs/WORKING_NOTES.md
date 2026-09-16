@@ -664,8 +664,10 @@ noted now so they aren't lost:
 
 **The project owner asked again on 2026-09-08, so the condition below is met
 and this thread now lives in `ROADMAP.md`** — Planned-milestone item 33, "Run
-the interface pass", with the `v0.5.x — the interface pass` row of "The
-timeline" giving it a position between v0.5.0 and v0.6.0. What was decided that
+the interface pass", with the interface-pass row of "The
+timeline" giving it a position - written `v0.5.x` and sitting between v0.5.0 and
+v0.6.0 then, and `v0.7.x` sitting after item 34's two releases since 2026-09-16
+(`PL-PHKP`). What was decided that
 day: the placement above, and that the structural half of an overhaul is not
 polish and does not wait for it (`PL-2CS8` consolidates the display constants,
 `PL-NGF7` decides the theme object, `PL-B9PY` is the component seam). No design
@@ -1677,19 +1679,19 @@ v0.6.0's section carries the goal, scope and definition of done; § "The debt
 gate" -> "The cadence" carries why this scoping froze no gate; and
 `docs/MODEL.md` carries what a second top-level window owes the display.
 
-**What is still open, and it is the reason this note exists.** The `v0.5.x - the
-interface pass` row - planned-milestone item 33, the visual pass over palette,
-type scale, spacing and density - sits *before* v0.6.0 on the timeline, which
-was decided when v0.6.0 meant the schematic. Whether it should run before or
-after item 34 is the project owner's and is undecided. The case for moving it
-after v0.7.0: item 34 and break-out introduce visual surface that does not exist
-to be styled today - an area header (which the provenance read establishes is
-the Editor's own, not the container's), a workspace tab strip, a live splitter
-handle, a drag affordance - so a pass run first is partly redone. The case for
-leaving it: `PL-BNYF` already separated arrangement from appearance, and the
-visual composition of a surface survives that surface being rearranged. Item
-33's own entry carries both arguments; nothing is blocked on the answer, which
-is why the row was left where it was rather than moved.
+**The one question this note was opened for is now answered** (project owner,
+2026-09-16, ratified on `PL-PHKP`). The interface pass - planned-milestone item
+33 - **runs after item 34 rather than before it**, and its timeline row moved
+from between MVP and Gate 2 to after v0.7.0, renumbering `v0.5.x` to `v0.7.x`
+as a patch track takes the number of the release it follows. The reason: item 34
+and break-out introduce an area header (the *Editor's* own, per the provenance
+read), a workspace tab strip, a live splitter handle and a drag affordance, none
+of which exists to be styled today, so a pass run first would be partly redone.
+What that costs is a styled interface two releases later, and `PL-BNYF`'s
+separation of arrangement from appearance means the composition of each existing
+surface would mostly have survived being rearranged - both recorded in item 33's
+entry so a later session can weigh the trade rather than only read the outcome.
+Nothing was blocked on the answer either way.
 
 **Two measurements taken on 2026-09-16 that the build work will want.** Both
 were run rather than recalled, on PySide6 6.11.2 / Qt 6.11.2. First,

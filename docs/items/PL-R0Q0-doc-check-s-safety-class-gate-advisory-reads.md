@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-16
 closed: 2026-09-16
+pr: 628
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_deferred_safety_item_still_re_enters_the_gate' tests/unit/test_doc_check.py
 ---
 
