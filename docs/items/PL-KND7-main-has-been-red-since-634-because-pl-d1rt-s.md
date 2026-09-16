@@ -3,11 +3,13 @@ id: PL-KND7
 title: main has been red since #634 because PL-D1RT's Done when. was overtaken by two owner decisions, and the only check that sees it is one no local make check runs
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect
 feature: queue-hygiene
 touches: docs/items
 added: 2026-09-16
+closed: 2026-09-16
+verify: bin/docket check && grep -q '^status: done' docs/items/PL-D1RT-docs-working-notes-md-s-ui-structure-thread-and.md && grep -qF 'the three ids below now sit under headings that agree' docs/items/PL-C4RS-gate-1-s-group-headings-and-v0-5-0-s-required.md
 ---
 
 **Problem.** main has been red since #634 because PL-D1RT's Done when. was overtaken by two owner decisions, and the only check that sees it is one no local make check runs
@@ -148,3 +150,31 @@ dispositions - `PL-D1RT` closed because its work had landed, `PL-C4RS` had its
 command rewritten because its work had not - which is the evidence that the
 shared defect is the sentinel's shape rather than any one item's state, and it is
 the case `PL-879R` should be decided on.
+
+---
+
+**Done, 2026-09-16. `main` is green.** Run `#2134` on `262b38b` succeeded - the
+first green `main` since `#2102` on `57fdb8c`, eight commits and roughly four
+hours earlier. Every clause of the `Done when.` above is met: `PL-D1RT` carries a
+disposition (closed, in `#645`), `bin/docket check --verify` reports 0 errors over
+the whole store, and the green run is on `262b38b`, which is two commits after
+`16a0a4a`, the one carrying that disposition.
+
+**The two blockers took opposite dispositions, which is the finding rather than a
+detail.** `PL-D1RT` closed because its work had landed under `PL-PHKP` and
+`PL-L9RD`; `PL-C4RS`, uncovered behind it because the check reports one error and
+stops, had its command rewritten because its work had *not*. One defect, two
+correct-and-opposite remedies, which is what shows the fault was the sentinel's
+shape rather than either item's state.
+
+**The duplicate question this brief raised dissolved rather than being decided.**
+It said one of this item and `PL-32Z9` should be dropped with a reason naming the
+other. Neither needed it: both `Done when.`s are satisfied by the same green run,
+so both close as done and both records stand. `PL-32Z9` carries the references and
+the workflow-scoping argument; this one carries the commit-by-commit count that
+settled the mechanism. A reader wanting either is served.
+
+**What is *not* closed here** is the general rule - that a `verify:` sentinel
+asserting an **absence** is satisfiable by anyone who deletes the string. That is
+`PL-879R`'s (`docket check` advises on a command's outcome, never its shape), now
+with three instances behind it: `PL-Y1W6`, `PL-D1RT` and `PL-C4RS`.
