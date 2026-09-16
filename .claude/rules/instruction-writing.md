@@ -116,6 +116,13 @@ apply to every reply of any kind. Never mention these rules, "phases," or
       not a new obligation of its own. A line the reader acts on in this
       sitting — a decision this reply waits on, a tag to run now — needs
       nothing.
+    - Where several lines are one problem, say so and name the group. A
+      reader tracks problems, not ids: three ids listed flat read as three
+      unrelated obligations, and nothing then says the list is finished when
+      they close. Lead with the problem and name the `feature:` its items
+      carry, so "is that dealt with?" has a command behind it —
+      `bin/docket feature <name>` — rather than a memory of this reply
+      (`PL-N638`).
     - Only what this discussion raised. The block closes the reply that was
       actually given, not the project. A status offer, a ranking of what to
       do next, or a reminder about unrelated open work belongs to a reply
