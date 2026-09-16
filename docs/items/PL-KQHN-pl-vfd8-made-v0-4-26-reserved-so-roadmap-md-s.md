@@ -21,10 +21,13 @@ and named rather than offered as free." One paragraph now records the
 collision as an accepted mechanic and as something the apparatus prevents.
 
 **The roadmap says it three times, and the project has executed it once with
-approval.** Line 306 (the `v0.4.x` row): "`docket release` offers the next free
-number to whatever is finished, so any patch cut before the exact step lands
-would take it." Line 1495 (this paragraph). Line 4043 (planned-milestone item
-29): "a patch cut before this work lands takes it." And `PL-G7RD`'s own title is
+approval.** Quoted rather than cited by line, because two of the three have
+already moved since this was measured at `16f3ce0`. The `v0.4.x` timeline row:
+"`docket release` offers the next free number to whatever is finished, so any
+patch cut before the exact step lands would take it." The port's risk paragraph,
+this one: "a patch cut before this lands takes this section's number."
+Planned-milestone item 29: "a patch cut before this work lands takes it." And
+`PL-G7RD`'s own title is
 "Cut v0.4.25 from the ten finished items, **renumbering the Qt port's section to
 v0.4.26 as ROADMAP.md's own risk paragraph provides for**", `P2`, owner-approved,
 with `ROADMAP.md` in `touches` and the rename asserted by its `verify`.

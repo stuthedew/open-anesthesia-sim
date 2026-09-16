@@ -53,9 +53,11 @@ was wrong, and correcting it is why this brief is longer than the finding.**
 Sharper understates it in the one direction that matters. Before `#606` the
 patch bump was *free*: the digest would have offered `0.4.26`, which is exactly
 what `ROADMAP.md` says a patch cut on this track does. It says so three times -
-the `v0.4.x` row (line 306), the port's own risk paragraph (line 1495, "a patch
-cut before this lands takes this section's number"), and planned-milestone item
-29 (line 4043) - and `PL-G7RD` executed it on 2026-09-14 with the owner's
+the `v0.4.x` timeline row ("any patch cut before the exact step lands would take
+it"), the port's own risk paragraph ("a patch cut before this lands takes this
+section's number") and planned-milestone item 29 ("a patch cut before this work
+lands takes it"), quoted rather than cited by line because two of the three have
+moved since - and `PL-G7RD` executed it on 2026-09-14 with the owner's
 approval, renumbering the port to `v0.4.26` as its own title records. So "the
 next free patch number" in this project's vocabulary has always meant
 *current + 1, including a number an unreleased section holds*. `#606` made that
