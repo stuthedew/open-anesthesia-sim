@@ -154,3 +154,32 @@ a source that has to be cited and can go stale. It is listed here so the unit
 decision is taken over the whole field rather than over the three Gas Man
 happened to implement. No source has been consulted for it yet; doing so is
 part of whatever item 28 becomes.
+
+**DECIDED: liquid agent volume, millilitres by default** (project owner,
+2026-09-16). "The values we care about are liquid agent volume, and mL is a
+fine default, can add price down road (want user settable price eventually so
+user can simulate cost at their institutions price)."
+
+So the unit question this item carried is closed. Of the four candidates —
+litres of vapour, millilitres of liquid equivalent, money, CO2-equivalent —
+the answer is millilitres of liquid equivalent now, money later as a
+reader-set option (`PL-VJZK` carries what that owes), and CO2-equivalent
+undecided and not in the way.
+
+**The Gas Man reading above stands: its litres are vapour** (project owner,
+2026-09-16: "I misunderstood liters of vapor"). The Workbook's own text does
+not name the substance at pp. 180 and 196, but `Cost = DELIVERED Flow x Cost/mL
+vapor` (p. 174) does, and `GASMAN.INI`'s per-agent `Volatility` ratio exists to
+convert out of it. No ambiguity is left in the record.
+
+**The shape decided is Gas Man's, the default is not** (project owner,
+2026-09-16): "ok to do what gas man does, but default unit can be ml of liquid
+for now. Will eventually flesh out a widget for more precise control of what's
+displayed down road." So the readout offers the same set Gas Man does and
+opens on millilitres of liquid equivalent rather than on litres of vapour,
+with a display-control widget as later work. That default is a *preference* in
+`PL-MQHN`'s sense — it belongs in the preferences store, not in a Workspace —
+and it is what `PL-GL5X`'s Load Factory Preferences restores to.
+
+**What is left of this item** is building the readout, which is
+planned-milestone item 28's, and it now has its unit.

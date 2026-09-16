@@ -40,3 +40,34 @@ condition, and this model treats them as one). Either that, or the sentence at
 line 499 is corrected to say the model is invariant to the condition and that
 no conversion out of the unit may assume one — which is the weaker option,
 because `PL-B396` is exactly such a conversion.
+
+**GAS MAN ANSWERS THIS, AND MORE DIRECTLY THAN EXPECTED (2026-09-16).** The
+Gas Man Workbook's Appendix C documents `GASMAN.INI` and one of its per-agent
+parameters is, verbatim:
+
+> Volatility=209           Vapor/Liquid volume ratio (20'C)
+
+with `Volatility=200` in the second example (printed pp. 171 and 174 of the
+Workbook; `stuthedew/open-anesthesia-sim-references`,
+`text/gasman_workbook/05_Appendices_Bibliography.txt`). So the reference
+implementation whose parameter set this project adopted states its vapour/
+liquid ratio **at 20 °C**, which means its own gas volumes are referenced
+there. Its cost formula on the same page, `Cost = DELIVERED Flow x Cost/mL
+vapor`, confirms the amounts it converts are vapour volumes.
+
+**Why that is more than corroboration.** This project's partition
+coefficients, MAC divisors and reference patient are the Gas Man set
+(`docs/MODEL.md` § "Source hierarchy"), so the trajectories these gas volumes
+come out of are that program's arithmetic. Adopting a different reference
+temperature for the same volumes would mean this model's litre and Gas Man's
+litre are not the same quantity while every parameter feeding them is.
+
+**Still the project owner's to decide, and here is the tension.** 20 °C is
+where the parameter lineage points. 37 °C is where the *partition
+coefficients* are measured and where the tissue and blood compartments
+physically are, and `docs/MODEL.md` § "Assumptions" already records
+"temperature is constant" without saying which. The honest resolution is
+probably to state 20 °C as the reference and record in § "Known limitations"
+that one condition is used for a circuit at ambient and tissues at 37 °C,
+which is a real approximation this model makes and does not currently
+disclose.
