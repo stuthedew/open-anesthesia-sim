@@ -1540,6 +1540,15 @@ the layout containers are built once here with their splitter handles inert, and
 item 33 is what turns them live. A reservation is cheap and a design round is
 not, which is the distinction the absorption blurred.
 
+**One question is left open on purpose, and it is not in this scope.** Where
+the Qt styling layer *lives* - 27 `setStyleSheet` sites composing CSS strings
+from `app/theme.py`'s constants, with partial helpers in the view modules,
+against a `theme.py` whose own comment forbids it a toolkit import - is
+`PL-Y4YX`. It is named here rather than under `Required scope` deliberately:
+naming an id in that list *places* it in this milestone, and the owner approved
+un-absorbing the interface pass rather than a refactor of where styling lives.
+The port ships with the styling composed where it is today.
+
 **Gate 2's freeze is deferred, deliberately, and moving this port did not
 disturb it.** "The debt gate"'s cadence would freeze it as this milestone is
 scoped. Gate 2 is meant to hold *v0.5.0's* findings, and v0.5.0 has not been
@@ -1626,10 +1635,8 @@ Four grounds survive:
    with the six compartment colours and their dash patterns intact and both
    tools that read the file still describing it. **The visual pass is not
    here** - item 33 was un-absorbed on 2026-09-16 and is the `v0.5.x` row
-   again; see the note above for the measurement that reversed it. Where the
-   Qt styling layer *lives* - 27 `setStyleSheet` sites composing CSS strings
-   from this file's constants, against a `theme.py` whose own comment forbids
-   it a toolkit import - is `PL-Y4YX` and is deliberately not decided here.
+   again; see the note above for the measurement that reversed it, and for the
+   styling-layer question this port deliberately leaves open.
 4. **The two checks that read the theme.** `tools/contrast_check.py` and
    `tools/agent_identity_check.py` both read `theme.py` and
    `simulation_view.py` by path until 2026-09-14. `PL-JRS3` measured what a

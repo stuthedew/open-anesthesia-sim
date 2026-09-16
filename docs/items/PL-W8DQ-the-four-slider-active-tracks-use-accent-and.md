@@ -3,12 +3,12 @@ id: PL-W8DQ
 title: The four slider active tracks use ACCENT and miss the non-text minimum
 priority: P3
 effort: S
-status: blocked
-blocked-by: PL-L9RD
+status: done
 classes: defect, ux
 feature: presentation-safety
 touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, tools/contrast_check.py
 added: 2026-09-02
+closed: 2026-09-16
 verify: python3 tools/contrast_check.py && ! grep -q '("ACCENT", "PANEL"): ' tools/contrast_check.py
 ---
 
@@ -81,3 +81,45 @@ for a milestone to be *scoped*, and `docket check` promotes it back to `ready`
 the moment that section carries its four subsections - which the port's already
 does, so the version form raised "ready to promote" on every run. The port item
 is the edge that is actually true.
+
+## Closed 2026-09-16: `ACCENT` is `#17A192`, and the shortfall ledger is empty
+
+**Unblocked by `PL-L9RD` closing**, which is what the deferral was waiting for.
+The route taken is the one this item already chose - candidate 1, darken
+`ACCENT` - and nothing about it changed, because the Qt port turned out not to
+have redecided the palette at all.
+
+**The value.** `#18A999` → `#17A192`, giving **3.21:1** against `PANEL` where it
+measured 2.93:1. Chosen the same way the six traces were re-picked: the
+*lightest* shade clearing **3.2:1** rather than 3.0:1, so the shipped value is
+not itself the boundary case the next edit trips over, with hue and saturation
+held - 173.4 deg and 0.858 become 173.5 and 0.857, which is 8-bit rounding
+rather than a change. The accent family still reads as one colour, and
+`ACCENT_TEXT`'s description of itself as a uniform darkening of `ACCENT` stays
+true.
+
+**Bounded by exactly one requirement, which is why this was a
+one-dimensional pick.** `PL-GVXP` had already given the alveolar trace its own
+`ALVEOLAR_COLOR`, so `ACCENT` is no longer a chart colour: it had neither the
+simulated-dichromacy floor nor the six-way separation constraint to satisfy.
+Against the `GRIDLINE` groove the filled track sits in, darkening only
+increases the separation, so the one adjacency the declared pair does not name
+moves the right way too.
+
+**The ledger is now empty and the mechanism stays.** `KNOWN_SHORTFALLS` held
+this as its last entry; `tools/contrast_check.py` reports **24 of 24 declared
+requirements meeting WCAG 2.2 AA, 0 known shortfalls, 0 errors**. The comment
+above the dict says explicitly that an empty dict is not a reason to delete it -
+a shortfall that is found, owned and visible is what it replaced a
+comment-nobody-checks with, and the next one needs somewhere to go that is not
+a silent failure.
+
+**Docs swept**, and the distinction worth recording is which `#18A999` mentions
+are live and which are history. `app/theme.py:10` quoted 2.93:1 as a live fact
+about why the accent is not legible as text and is now 3.21:1 - the argument is
+unchanged, since SC 1.4.3 asks 4.5:1 and neither value meets it.
+`docs/MODEL.md` § the six compartment traces and `tools/contrast_check.py:250`
+both say the *alveolar trace was* `#18A999`, which is past tense and still
+true. `docs/MODEL.md:5706` describes `ACCENT`'s role rather than its value and
+needed nothing. `tests/unit/test_contrast_check.py:138` uses the string in an
+identity assertion where any colour would do.

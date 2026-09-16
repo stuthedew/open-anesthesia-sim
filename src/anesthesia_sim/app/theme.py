@@ -7,8 +7,8 @@ BACKGROUND = "#F4F7FA"
 PANEL = "#FFFFFF"
 PRIMARY = "#176B87"
 # ACCENT is a *graphical* color: the sliders' active track. It is not legible
-# as text - 2.93:1 on the panel - so text that wants to look like the accent
-# uses ACCENT_TEXT below. One constant serving both roles is what PL-30P6
+# as text - 3.21:1 on the panel, against SC 1.4.3's 4.5:1 - so text that wants
+# to look like the accent uses ACCENT_TEXT below. One constant serving both roles is what PL-30P6
 # found: the two roles carry different WCAG minima (4.5:1 for text under SC
 # 1.4.3, 3:1 for graphical objects under SC 1.4.11) and no single value can be
 # chosen against both without one of them losing.
@@ -20,7 +20,29 @@ PRIMARY = "#176B87"
 # trace now carries its own value, `ALVEOLAR_COLOR` below, so this one is
 # bounded by nothing but the panel behind it - which is what PL-W8DQ needs to
 # know before it darkens it, and why that item deferred to this one.
-ACCENT = "#18A999"
+#
+# Darkened from #18A999 on 2026-09-16 (PL-W8DQ), which measured 2.93:1 against
+# the panel - below SC 1.4.11's 3:1 for a user-interface component, and missing
+# by an amount no reader would ever spot by eye. The four parameter sliders are
+# the entire input surface of the simulator, and the active track is the only
+# continuous cue for where a value sits in its range, so a reader who cannot
+# separate the filled portion from the unfilled has to read the number twice.
+#
+# Now 3.21:1. Hue and saturation are unchanged to two decimal places (173.4 deg
+# and 0.858 become 173.5 and 0.857, which is 8-bit rounding), so this is a
+# uniform darkening in the same sense ACCENT_TEXT is, and the accent family
+# still reads as one color. The target was the *lightest* value clearing 3.2:1
+# rather than 3.0:1 - the same two-tenths margin the six traces were re-picked
+# on, so the shipped value is not itself the boundary case the next edit trips
+# over.
+#
+# It is bounded by one requirement and no longer shared. PL-GVXP gave the
+# alveolar trace its own ALVEOLAR_COLOR, so darkening this moves the four
+# slider tracks and nothing else; a trace would additionally have to clear 3:1
+# under simulated dichromacy and stay separable from five siblings, and this
+# has neither constraint. Against the GRIDLINE groove the filled track sits in,
+# darkening only increases the separation.
+ACCENT = "#17A192"
 # The accent, dark enough to be read as text: 5.00:1 on PANEL and 4.65:1 on
 # BACKGROUND. A uniform darkening of ACCENT, so hue and saturation are
 # unchanged (173 deg, 0.86) and the two still read as the same color family.

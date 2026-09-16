@@ -656,12 +656,19 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
 #: that closes it. Not a suppression list: an entry here that starts passing is
 #: reported as an error, so a fix cannot leave its excuse behind.
 #:
-#: `ACCENT` was listed twice with the same measured value and two different
-#: owners - the alveolar trace and the slider track, two on-screen elements
-#: sharing one constant, which was itself the defect each item described.
-#: `PL-GVXP` ended the sharing by giving the trace `ALVEOLAR_COLOR` of its own
-#: and clearing it, so one entry remains and it is the slider track's.
-KNOWN_SHORTFALLS: dict[tuple[str, str], str] = {("ACCENT", "PANEL"): "PL-W8DQ"}
+#: **Empty since 2026-09-16, and that is the state to keep it in.** `ACCENT` was
+#: listed twice with the same measured value and two different owners - the
+#: alveolar trace and the slider track, two on-screen elements sharing one
+#: constant, which was itself the defect each item described. `PL-GVXP` ended
+#: the sharing by giving the trace `ALVEOLAR_COLOR` of its own and clearing it;
+#: `PL-W8DQ` then darkened `ACCENT` from `#18A999` to `#17A192`, taking the
+#: slider track from 2.93:1 to 3.21:1 and clearing the last entry. Every
+#: declared pair meets its minimum today.
+#:
+#: An empty dict is not a reason to delete the mechanism. A shortfall that is
+#: found, owned and visible is the thing this replaced a comment-nobody-checks
+#: with, and the next one wants somewhere to go that is not a silent failure.
+KNOWN_SHORTFALLS: dict[tuple[str, str], str] = {}
 
 #: The six chart traces, in the order `chart_frame.COMPARTMENT_TRACES` lists them.
 TRACES: tuple[str, ...] = (
