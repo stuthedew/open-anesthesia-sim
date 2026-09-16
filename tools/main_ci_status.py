@@ -22,10 +22,16 @@ appears in.
 
 Two consequences of that rule are worth stating, because both look like gaps:
 
-- **A `cancelled` run is not a verdict.** The workflow cancels superseded runs,
-  so the newest completed run on `main` is regularly one that never finished
-  judging anything. This reports the newest run that actually *reached* a
-  conclusion, which is the most recent real answer about `main`.
+- **A `cancelled` run is not a verdict.** This reports the newest run that
+  actually *reached* a conclusion, which is the most recent real answer about
+  `main`. That skip used to carry more than it looks: until `PL-SMN4` every
+  push to `main` shared one concurrency group, so a merge arriving while an
+  earlier one was still pending evicted it, and 31 of the 257 completed `main`
+  push runs between 2026-09-05 and 2026-09-16 - 12.1% - were passed over here
+  for that reason alone. A per-commit group ended the eviction, so a cancelled
+  run on `main` now means a hand cancellation or a lost runner. Those are still
+  passed over in silence, and the commit behind one has no whole-store verdict
+  at all: `PL-JTHW`.
 - **Silence is not a green tree.** It means "no failing verdict was readable
   from here", which is also what an offline container gets. The line exists to
   surface a red nobody would otherwise see, never to certify a green one.
