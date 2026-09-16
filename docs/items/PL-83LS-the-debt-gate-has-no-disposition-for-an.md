@@ -3,12 +3,13 @@ id: PL-83LS
 title: The debt gate has no disposition for an anticipated safety finding whose hazard an unscoped later milestone creates
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs, planning
 feature: debt-gate
 touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
 verify: python3 tools/doc_check.py check && grep -qF 'not debt until the hazard it describes exists' ROADMAP.md && grep -q 'def test_an_anticipated_safety_item_is_quiet' tests/unit/test_doc_check.py
 added: 2026-09-16
+closed: 2026-09-16
 ---
 
 **Problem.** Four open `safety`-classed items - `PL-7Z84` (a run has no identity
