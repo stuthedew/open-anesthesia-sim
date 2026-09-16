@@ -90,3 +90,47 @@ not make you look. A red default branch is the archetype of the shape, because
 it is a shared subject that every session discovers independently and files
 under its own fresh id, and `PL-X0ND` shows the same repository has a second
 way to produce one.
+
+**The measurement record is `PL-85NT`, dropped into this item 2026-09-16.**
+`PL-85NT` (repository-level breakage visible to every session and claimed by
+none) was filed the same evening for the same failure and was dropped as
+superseded, on its own recommendation, because the diagnosis here is sharper.
+What it has that this item does not is measured, and it is not repeated here -
+read `docs/items/PL-85NT-repository-level-breakage-is-visible-to-every.md`
+before proposing any detector. Three results decide most of the design:
+
+- **The collision is chronic, not a burst.** 45% of everything this store has
+  ever dropped (50 of 112) was dropped as a duplicate or superseded, spread
+  over 16 separate capture-days; 2026-09-05 produced ten to 2026-09-15's four.
+  So a mechanism aimed only at the same-evening case addresses a subset.
+- **Route 1 - matching captures by shared referent - was built against the real
+  store, measured, and deleted unshipped.** Every variant fired on 84-95% of
+  open items while putting the true original in the top three at best 3 times
+  in 5, and the signal *decays as duplicates accumulate*, because the shared
+  ids stop being rare. `docs/dead-ends.md` carries it. The refutation was
+  already available in `PL-KM3X`: in a store where 86.1% of items cite other
+  items, referent overlap cannot separate a duplicate from a citation.
+- **Route 2 - the digest naming any open item that cites the red streak's runs
+  or shas - is measured and unbuilt.** Head-only matching misses two of four
+  red-`main` events; widening to every sha from the last green run through the
+  failing head returns the item that actually claimed the failure on all four,
+  at 6-8 candidate items instead of 0-6. Streaks longer than four are
+  unmeasured.
+
+None of that displaces this item's own point, which outranks all three: an
+existing command, `bin/docket concurrent <id>`, already reads the files live
+branches have changed, and all three colliding branches had touched the one
+path. The failure was routing, not detection.
+
+**A fourth instance, 2026-09-16, and it is the sharpest because nobody erred.**
+Two sessions triaged `PL-2M4X` and `PL-SYG4` concurrently and reached
+materially the same verdict on both (`P3 · M · needs-decision` on `PL-SYG4`
+from each, differing only in one class and the feature name). `PL-Q0J1`
+carries the account. The mechanism is one level below the three above and is
+new: every in-flight guard matches an id against a **commit subject**, and the
+leading-id rule names the ids a commit *closes*. A triage pass closes nothing,
+so its commits lead with the pass's own id and the items it triaged appear in
+no subject at all - making the pass invisible to `flight`, `show` and `next`
+*while it is following the rule exactly*. Neither session could have looked
+harder. Any detector proposed for this item should be tested against this case
+specifically, because filing first would not have helped either of them.

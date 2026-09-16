@@ -1362,11 +1362,32 @@ five-Hz render cadence, `--self-check` driving its own ticks:
 | `refresh` | 5.2 ms | 6.2 ms | 1.6 ms | 4.6 ms |
 | `handoff` / `page.update` | 1.0 ms | 1.2 ms | 26.6 ms | 45.5 ms |
 
-**Only the third row is a comparison.** The other two changed underneath the
-Flet figures when `PL-2FM6` landed, so `PL-YSZN`'s table is a measurement of a
-tree that no longer exists in two of its three stages, and reading the first
-two rows as a Qt-against-Flet result would be reading a toolkit difference off
-an architecture change. `PL-C92D` is the re-measure that closes that gap.
+**Only the third row is a comparison.** The first two are
+not comparable across PL-2FM6 (`PL-C92D`, 2026-09-16). `PL-YSZN` measured the Flet column on
+2026-09-08, before `PL-2FM6` merged the same day, and that merge changed what
+two of the three stages *are* rather than how fast they run:
+
+- **`advance`** included recording a sample into `RunHistory` on every step.
+  `RunHistory` is gone, so the Flet figure counts work the Qt figure never
+  does. Its threefold fall is the history recording going, not Qt.
+- **`refresh` / `_refresh_view`** was a binary search over recorded samples
+  plus M4 selection. The chart's read is now a closed-form evaluation of the
+  run definition, so the Qt figure counts work the Flet figure never did. Its
+  rise is the new read path, not Qt.
+
+Reading either row as a Qt-against-Flet result would be reading a toolkit
+difference off an architecture change, in opposite directions.
+
+**The `handoff` / `page.update` row is unaffected and is the toolkit
+comparison.** Handing a finished frame to the toolkit is the same job on both
+sides of `PL-2FM6`, which is why the decision `PL-QXSB` took rests on it alone.
+
+**Re-measurement is out of scope, deliberately.** `PL-C92D` was written to
+re-take the Flet column on the post-`PL-2FM6` tree; it was re-scoped on
+2026-09-12, because `PL-QXSB` has since decided to leave Flet and the tree
+that would be re-measured is one this project is deleting (`PL-7SVX`). What
+was worth keeping is this caveat, for a later reader asking why the interface
+left Flet - not three comparable rows nobody will act on.
 
 On the row that *is* a comparison, the result holds and is the one `PL-QXSB`
 predicted: **handing the frame to the toolkit costs 1.0-1.2 ms against Flet's
