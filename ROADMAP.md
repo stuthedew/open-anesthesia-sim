@@ -309,10 +309,10 @@ adds no capability and exists to clear the ground they are built on:
 | 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. The placement argument above stands for what it placed, and is left as written. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 170 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. **Five more shipped early the same way**, in v0.4.25 (2026-09-14, `PL-G7RD`): `PL-TFX5`, `PL-J2TD`, `PL-ZMRT`, `PL-B9PY` and `PL-5328`, ahead of the port; the scope list is unchanged and they are closed against it. | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
 | — | **v0.5.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. | — |
-| 6 | **Gate 2** | **Frozen when v0.5.0 ships, not when the milestone below is scoped** (project owner, 2026-09-16). Row 7 was scoped two releases early, so the cadence's own trigger would have frozen this list before v0.5.0 had been implemented — leaving it holding none of v0.5.0's findings, which is the one thing a gate is defined to hold. § "The cadence" records the exception and the item that re-examines the trigger; v0.6.0's own section says where the frozen list goes when the moment comes. Ships inside v0.6.0. | — |
-| 7 | **v0.6.0 — the layout is the reader's** | Planned-milestone item 34's tiled half: the layout model, the Editor contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, on `PL-NMTF`) and it has its own section below. The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out is row 9, deliberately — see that section's "Explicitly out of scope" for why the split costs nothing structural. | 4 L, 16 M, 3 S |
+| 6 | **Gate 2** | **Frozen when v0.5.0 ships, not when the milestone below is scoped** (project owner, 2026-09-16, ratified - chosen over freezing it on the scoping day as beat 1 says, and over deferring the whole scoping round until v0.5.0 ships). Row 7 was scoped two releases early, so the cadence's own trigger would have frozen this list before v0.5.0 had been implemented — leaving it holding none of v0.5.0's findings, which is the one thing a gate is defined to hold. § "The cadence" records the exception and the item that re-examines the trigger; v0.6.0's own section says where the frozen list goes when the moment comes. Ships inside v0.6.0. | — |
+| 7 | **v0.6.0 — the layout is the reader's** | Planned-milestone item 34's tiled half: the layout model, the Editor contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out is row 9, deliberately — see that section's "Explicitly out of scope" for why the split costs nothing structural. | 4 L, 16 M, 3 S |
 | 8 | **Gate 3** | Frozen when v0.6.0 ships; ships inside v0.7.0. | — |
-| 9 | **v0.7.0 — the second screen** | Planned-milestone item 34's break-out half: an area taken into its own top-level window, itself a full window with its own areas. Not yet scoped. What it owes the display is already decided rather than left to its scoping — `docs/MODEL.md` § "Minimum displayed outputs" → "What this list requires once the layout is the reader's" carries the tier split (project owner, 2026-09-16, on `PL-W54S`), because it decides the shape v0.6.0 builds the unconditional region in. | — |
+| 9 | **v0.7.0 — the second screen** | Planned-milestone item 34's break-out half: an area taken into its own top-level window, itself a full window with its own areas. Not yet scoped. What it owes the display is already decided rather than left to its scoping — `docs/MODEL.md` § "Minimum displayed outputs" → "What this list requires once the layout is the reader's" carries the tier split (project owner, 2026-09-16, ratified - chosen over `PL-W54S`'s own two live readings, every window carrying the whole region and the main window carrying it alone), because it decides the shape v0.6.0 builds the unconditional region in. | — |
 | 10 | **Gate 4** | Frozen when v0.7.0 ships; ships inside v0.8.0. | — |
 | 11 | **v0.8.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. (Written `v0.6.0` until 2026-09-16, when item 34 took that number and this moved down two.) | — |
 | 12 | **Gate 5** | Frozen when v0.8.0 ships; ships inside v0.9.0. | — |
@@ -3670,8 +3670,12 @@ v0.5.0 is complete only when:
 
 ## v0.6.0 - the layout is the reader's
 
-Planned-milestone item 34's first half. Scoped 2026-09-16 (project owner, on
-`PL-NMTF`), two releases ahead of its turn, because the design was already
+Planned-milestone item 34's first half. Scoped 2026-09-16 (project owner,
+**ratified** on `PL-NMTF` - the placement, the split and the gate decision were
+all recommendations put to them and agreed, so `CLAUDE.md`'s lower bar to
+reopen applies to each; what the owner *specified* is item 34's own content,
+which this milestone builds rather than re-decides), two releases ahead of its
+turn, because the design was already
 settled and fourteen prerequisites were waiting on a build item that did not
 exist. Item 34 carries the design and the Blender provenance behind every
 decision below; `docs/interface-provenance.md` carries what was read, what this
@@ -4231,7 +4235,7 @@ else has been written about it — **except where the milestone was scoped out
 of turn, which is the one case beat 1 was not written for.**
 
 **The exception, and why it is the rule's purpose rather than a departure from
-it** (project owner, 2026-09-16, scoping v0.6.0). Beat 1 freezes the list
+it** (project owner, 2026-09-16, ratified while scoping v0.6.0). Beat 1 freezes the list
 because scoping is normally the last thing that happens before beat 4: the
 milestone before has shipped, its findings are in the queue, and the gate that
 freezes is the gate that holds them. v0.6.0 was scoped with two releases still
@@ -5174,7 +5178,7 @@ once someone is ready to scope it.
 
     *Tiled first, with break-out into a separate window* (project owner,
     2026-09-15). **Scoped across two releases on 2026-09-16**: § "v0.6.0 - the
-    layout is the reader's" builds the tiled no-overlap invariant, the Editor
+    layout is the reader's" (ratified 2026-09-16) builds the tiled no-overlap invariant, the Editor
     contract, the registry, workspaces, persistence and the unconditional
     region, and the v0.7.0 row - "the second screen" - adds break-out. The
     split costs nothing structural because the two things break-out would
@@ -5218,7 +5222,8 @@ once someone is ready to scope it.
     value, because the numbers never left. The unconditional set sits outside
     the area system, which is the guarantee v0.6.0 has to build - and
     **what a second top-level window owes that set is settled too** (project
-    owner, 2026-09-16, answering `PL-W54S`): every top-level window carries the
+    owner, 2026-09-16, ratified, answering `PL-W54S` - chosen over that item's
+    own two live readings): every top-level window carries the
     *invariant* tier and the name of the run it shows, while the
     *per-substance* tier lives once in a main window that cannot be closed
     while any other is open. The two tiers are unconditional for different
@@ -5303,7 +5308,10 @@ once someone is ready to scope it.
     views to be interchangeable rather than merely movable; this extends the same
     reasoning to the container.
 
-    *Given a version, and split, on 2026-09-16* (project owner, on `PL-NMTF`).
+    *Given a version, and split, on 2026-09-16* (project owner, ratified on
+    `PL-NMTF` - the alternatives put with it were inserting item 34 ahead of
+    v0.5.0, which renumbers a scoped milestone, and shipping it undivided with
+    break-out inside).
     Item 34 goes **after v0.5.0** rather than before it, on three grounds. A
     workspace pinning which run it shows has no content until more than one run
     exists, and v0.5.0 is what introduces the second run - `run_label` names a

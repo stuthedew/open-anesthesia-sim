@@ -107,6 +107,27 @@ is simply wide:
 - **No approach proposed.** Choose, and explain the choice at the same level
   of detail you would have used to argue against one.
 
+**A decision the owner *ratified* and one they *specified* are not the same
+decision, and they have different bars to reopen** (project owner, 2026-09-16).
+"Agree with recs" means the case looked sound on a read that may not have caught
+every nuance - not that the question is closed. A user-facing behavior they
+asked for in their own words is firmer. Four consequences:
+
+- **Record which it was.** A decision taken on a session's recommendation is
+  written `(project owner, DATE, ratified)` and names, in one clause, what it
+  was chosen over. One they specified keeps the plain `(project owner, DATE)`.
+  One word and one clause, because the reply that put the case is gone and the
+  record is the only carrier - and without it a later session cannot tell a
+  design they authored from one they nodded at.
+- **Reopen a ratified decision on ordinary evidence**: a measurement, a cost the
+  case did not carry, a constraint that has since appeared. Say so and put it
+  back to them. "It is what the owner decided" does not defend it, because it
+  was a session's own recommendation wearing their signature.
+- **Reopen a specified one only on a compelling argument**, and say plainly that
+  is what you are doing.
+- **The safety-critical standard overrides both.** A wrong or misleading
+  clinical value is not a preference either kind of decision can settle.
+
 **`.claude/rules/instruction-writing.md` decides the shape of a reply, and it
 wins.** It loads in every session and applies unasked, so it never needs to be
 named in a prompt — including its rule 14, the closing block of what the owner

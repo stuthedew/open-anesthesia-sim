@@ -4904,7 +4904,10 @@ structure; refuse the escape hatch, and say so where a reader would otherwise
 assume the whole precedent was copied.
 
 **What a second top-level window owes, and it is not the whole set** (project
-owner, 2026-09-16, deciding `PL-W54S`). The guarantee above is stated against
+owner, 2026-09-16, ratified - a recommendation put to them and agreed, chosen
+over the two live readings `PL-W54S` had written, and reopenable on ordinary
+evidence per `CLAUDE.md`; the occlusion rule above is not, being the safety
+floor rather than the arrangement). The guarantee above is stated against
 the area system's own operations and stops at the frame of the window carrying
 the region. `ROADMAP.md` item 34 builds break-out - an area taken into its own
 top-level window, itself a full window with its own areas - in v0.7.0, and the
