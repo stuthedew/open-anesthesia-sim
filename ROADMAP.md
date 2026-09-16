@@ -308,7 +308,7 @@ adds no capability and exists to clear the ground they are built on:
 | — | **v0.4.26 — the interface moves to Qt** | **Scoped 2026-09-10**, on `PL-QXSB`'s decision the same day, and it has its own section below. The port `PL-55DH` spiked and `PL-X9T3` measured: the dashboard, the chart and the theme move to PySide6 + pyqtgraph, and nothing a learner can do is lost. **It absorbed planned-milestone item 33, the interface pass, and that absorption was reversed on 2026-09-16** (project owner, on `PL-L9RD`). The argument was that a restyle of a dashboard about to be rewritten is the same work twice, since porting redecides palette, type scale, spacing and layout regardless. The port that landed did not redecide them: its whole effect on `app/theme.py` is 10 insertions and 29 deletions, and the only constant whose value it touched is `ELAPSED_VALUE_WIDTH`, removed as a Flet layout width with no Qt equivalent - no palette entry, type size, padding or radius has moved since 2026-09-10. The port re-expressed the *widgets* and carried the *visual language* across intact, so the premise of the absorption did not come true and item 33 returns to the `v0.5.x` row it held. What the port keeps is the **reservation** rather than the pass: the layout containers are built once here with their splitter handles inert, which is Required scope item 2 and is unaffected. **Moved ahead of v0.5.0 on 2026-09-14** (project owner, on `PL-RKWB`), from the row it held after MVP. The question put was whether v0.5.0's work would be redone after the port, and **the count says mostly not**: of v0.5.0's eight open Required-scope ids, one is wholly inside the rewritten surface (`PL-8PSW`, the two-branch overlay), two have a slice there, and five never touch it - because `tools/import_boundary_check.py` confines Flet to three modules and the milestone's landed work (`PL-T691`, `PL-J2TD`, `PL-TFX5`, `PL-B9PY`) all sits on the surviving side. **Three other grounds carried it, and they are the reasons of record.** `PL-8PSW` is the most presentation-safety-loaded item in the milestone and on Flet it is built where no session can look at it (`PL-2QMK`), while the spike already screenshots offscreen in that same container and `PL-YCWZ` adds headless rendering tests over the real interface. `PL-GS3R` and `PL-YVHK` are both `P1` and `safety`-classed and both sat blocked behind this port for the whole of a milestone. And this port's definition of done is parity against a **closed** enumeration, which is cheapest to check before compare mode - the largest new visual surface in the project - joins the list. **The operative form of the decision is narrower than the move**: nothing new is built in `app/simulation_view.py` or the Flet chart-series module before the port, and v0.5.0's port-neutral spine (`PL-CTD7`, `PL-B8MK`, `PL-Z3W6`, `PL-W7H9`, `PL-49R8`) is untouched by it. **A patch number for a 5 133-line rewrite** because § "Versioning decision" chooses the number for the capability boundary crossed and this crosses none; v0.2.8 is the precedent for machinery at this scale taking one. **It no longer needs a section for the mechanical reason it had one** - every item that waited on it now names the port item doing the work rather than a version, so `blocked-by` resolves with no placed version - and it keeps one because a rewrite this size is not a patch-track row. **Gate 2's freeze is unchanged**: still when v0.5.0 ships, because that gate holds v0.5.0's findings and this port takes no gate of its own. | 2 L, 2 M, 3 S |
 | 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. The placement argument above stands for what it placed, and is left as written. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 170 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. **Five more shipped early the same way**, in v0.4.25 (2026-09-14, `PL-G7RD`): `PL-TFX5`, `PL-J2TD`, `PL-ZMRT`, `PL-B9PY` and `PL-5328`, ahead of the port; the scope list is unchanged and they are closed against it. | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
-| — | **v0.5.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and layout - rather than the per-defect corrections the queue has been making one at a time. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. | — |
+| — | **v0.5.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. | — |
 | 6 | **Gate 2** | Frozen when v0.6.0 is scoped; ships inside it. | — |
 | 7 | **v0.6.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. | — |
 | 8 | **Gate 3** | Frozen when v0.7.0 is scoped; ships inside it. | — |
@@ -1537,8 +1537,18 @@ where it was placed on 2026-09-08, and this milestone keeps two things that are
 not the pass itself. The first is `app/theme.py` expressed for Qt, which is
 `Required scope` item 3. The second is the **reservation** described at item 2:
 the layout containers are built once here with their splitter handles inert, and
-item 33 is what turns them live. A reservation is cheap and a design round is
-not, which is the distinction the absorption blurred.
+**item 34** is what turns them live - the area system, not the visual pass.
+A reservation is cheap and a design round is not, which is the distinction the
+absorption blurred.
+
+**Item 34 rather than item 33, corrected 2026-09-16 (`PL-BNYF`).** The
+un-absorption note above was written to pull the visual pass back out of this
+port, and in passing it attached the reservation's next step to item 33, which
+`Required scope` item 2 below and item 34's own entry both give to item 34.
+Item 33 decides how the interface *looks*; what a reader may do to its
+*arrangement* - split, join, swap, break out, save as a workspace - is item
+34's whole content. A session scoping the interface pass off the uncorrected
+sentence would have believed it owned building split and join.
 
 **One question is left open on purpose, and it is not in this scope.** Where
 the Qt styling layer *lives* - 27 `setStyleSheet` sites composing CSS strings
@@ -4514,11 +4524,21 @@ once someone is ready to scope it.
     scope this milestone or for the owner to ask.
 
 33. Run the interface pass: one deliberate visual design pass over the whole
-    interface — palette, type scale, spacing rhythm, density and layout — rather
-    than the per-defect corrections the queue has been making one at a time.
+    interface — palette, type scale, spacing rhythm, density and the visual
+    composition of each surface — rather than the per-defect corrections the
+    queue has been making one at a time.
+
     Requested by the project owner on 2026-09-08, who framed it as "a decent
     size overhaul (theme, style, overall polish)" and as not urgent, wanted
     after the simulator works rather than before.
+
+    *Arrangement is not on that list, and the word that used to be was
+    "layout"* (corrected 2026-09-16, `PL-BNYF`). Which areas exist, where they
+    sit, and what a reader may do to them is item 34's entire content; this item
+    decides how what sits inside them looks. The two were separable in 2026-09-08
+    when this was written against one fixed screen and are not separable any
+    more, because under item 34 the arrangement is the *reader's*, and so is not
+    a thing a design pass can decide once.
 
     *This resumes a shelved thread rather than opening a new one.*
     `docs/WORKING_NOTES.md` § "Shelved, then resumed: UI structure/form mockups" records a
@@ -4541,8 +4561,14 @@ once someone is ready to scope it.
     after it landed, it changed no palette entry, type size, padding or radius
     at all. The reversal leaves one piece behind deliberately: the port reserves
     the layout containers with their splitter handles inert (§ "v0.4.26 - the
-    interface moves to Qt" → "Required scope" item 2), and this item is what
-    turns them live. So the placement above stands unchanged, and the thing to
+    interface moves to Qt" → "Required scope" item 2), and **item 34** is what
+    turns them live - corrected 2026-09-16 (`PL-BNYF`), this entry having said
+    "this item" where item 34's own entry and the port's `Required scope` item 2
+    both name item 34. What this item inherits from the reservation is its
+    *other* half: every dashboard surface is now an independent widget with its
+    own spacing and density, which is what makes one pass over them possible at
+    all. It inherits none of the splitting, joining or workspace behaviour.
+    So the placement above stands unchanged, and the thing to
     read before scoping this is that a port is not a design round - re-expressing
     widgets in a new toolkit does not decide anything about how they should look.
 

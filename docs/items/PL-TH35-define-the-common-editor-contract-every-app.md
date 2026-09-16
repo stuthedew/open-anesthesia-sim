@@ -80,3 +80,50 @@ can reach the screen and every other area through the context they are handed,
 and 10 of 21 do. Interchangeability with teeth means a view is *given* what it
 draws and has no route to the container - a deliberate narrowing, not an
 inheritance.
+
+## Area-model audit (PL-BNYF)
+
+**Disposition: `missing-prereq`, answered here rather than by new items.** The
+2026-09-16 audit's gap sweep raised five contracts the area model implies that
+nothing had filed. Four of them are clauses this item's "What it has to settle"
+list is missing rather than items of their own, and they are added here on the
+audit's own store check, which found them unfiled and then found this item to be
+where they belong. They are written as questions because this item is a contract
+to be agreed, not a change to be made.
+
+1. **What a view's saved state *is*, and who writes it.**
+   `docs/interface-provenance.md` § "Adopted" takes Blender's delegation - "Each
+   view serializes itself; the layout layer does not know what is in a pane" -
+   and this item's list names serialization nowhere. The contract owes: what a
+   view hands the layout layer, in what form, and what the layout layer promises
+   never to inspect.
+2. **What a view owes when it is handed state it cannot read.** `PL-C842`'s
+   loud-failure rule stops at the *view kind*: a workspace naming a view this
+   build lacks must say so. It says nothing about a view this build *does* have
+   being handed state from an older or newer schema. `CLAUDE.md` prefers an
+   obvious failure to a plausible-looking wrong result, and a chart silently
+   falling back to a default time base is exactly the plausible-looking case.
+3. **What split, swap and a pane-stack round trip each do to a view's state.**
+   `PL-C842` adopted all three operations and `docs/interface-provenance.md`
+   adopts "a stack of previously-open editors per area", so a view leaves and
+   returns. Which of its state survives that, and which is rebuilt, is a
+   contract question rather than an implementation detail - it decides whether
+   a reader who swaps a pane away and back has lost their place.
+4. **What the container does when a pane cannot honour the size a view needs.**
+   `docs/interface-provenance.md` § "An editor cannot refuse a size, and there is
+   no minimum-size contract at all" records that Blender has no such contract and
+   collapses the region instead, and § "Diverged" refuses that answer here
+   because a required value must never be hidden to make room. So this project
+   needs the contract Blender does not have: whether a declared minimum is a
+   request or a constraint, and what a split or a border drag does when it cannot
+   be met.
+
+A fifth candidate - what a view's header must name - was checked and is already
+inside this item's existing first bullet ("how a view is titled in its area's
+header"), so nothing is added for it.
+
+**One thing the audit settles rather than asks**: keep the contract small and
+re-check it against its implementers. `docs/interface-provenance.md` § "Prune
+the contract" records that Blender's `SpaceType` carries two callbacks with live
+call sites and zero implementations and a field no editor assigns, and that
+nothing in its design surfaces either.
