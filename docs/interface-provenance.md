@@ -235,9 +235,47 @@ Also stated before the count: the shipped defaults are a proxy for "layouts a
 professional tiling interface actually needs", and they would be the wrong
 proxy if Blender chose them to be *teachable* rather than to exercise the
 representation. The check on that is whether the interaction model *permits*
-arrangements the defaults avoid — which is the next section's subject, and the
-answer there is that it largely does not: the operations a user has reach only
-a small distance beyond what the defaults show.
+arrangements the defaults avoid.
+
+**It does, and this escape clause fires. A non-slicing layout is reachable in
+six ordinary operations.** This was found by trying to falsify the opposite —
+the hypothesis was that split being full-span and join requiring a full shared
+edge would confine a user to slicing layouts — and the hypothesis is wrong.
+
+Split is indeed always full-span: `area_split`
+(`source/blender/editors/screen/screen_edit.cc`) inserts its two new vertices on
+the *area's own* left and right edges, so a cut spans exactly that area and
+never reaches past it. Splitting alone therefore cannot leave the slicing class.
+
+**Join is what leaves it.** Start from one area and make five full-span splits,
+arriving at six areas — a left column divided into an upper and a lower part,
+and five others around them. That arrangement is slicing. Now join the two
+parts of the left column: they share a full edge, so `area_getorientation`
+admits it and `screen_area_join_aligned` merges them into one rectangle. The
+result is the five-area pinwheel, which no sequence of full-span cuts can
+produce. One ordinary join took the layout out of the slicing class.
+
+Two further findings in the same direction, both verified in the source:
+
+- **Join does not require a full shared edge.** `area_getorientation` asks for
+  an exact facing-coordinate match and a perpendicular overlap of at least
+  `min(tolerance, extent of A, extent of B)` — so the required overlap can be
+  no more than the *smaller* area's own extent, and a short area beside a tall
+  one qualifies. `screen_area_join_ex` then trims the overhang into new areas
+  with `screen_area_trim` so the two line up, joins them, and optionally closes
+  the remainders.
+- **Every aligned join fuses coincident vertices across the whole screen**, via
+  `BKE_screen_remove_double_scrverts`. So four-area junctions are produced as a
+  matter of course by joining, rather than arising only by coincidence — which
+  is the mechanism behind the one in the Shading workspace.
+
+**What this does and does not change.** The count stands: Blender's designers
+shipped no non-slicing layout in thirty-two workspaces, and the two
+graph-specific drag behaviours remain opt-in. What falls is the stronger claim
+that the graph buys expressiveness Blender's own model never reaches. It does
+reach it, easily, and a nested-splitter tree is therefore **strictly less
+expressive than Blender's representation**, not merely differently organised.
+`PL-3J2P` records the decision that follows and the reasoning it now rests on.
 
 ## What Blender's window system is
 
@@ -399,9 +437,24 @@ substitutes the **3D viewport**, silently. There is no error, no warning, and
 nothing surfaced to the user; the only guard is a `BLI_assert` that the
 substitution itself worked, and asserts compile out of release builds.
 
-So: **Blender fails quietly here.** The area keeps its rectangle, fills with a
-different editor than the file asked for, and the interface looks entirely
-normal.
+So: **Blender is silent about which editor was lost.** The area keeps its
+rectangle, fills with a different editor than the file asked for, and nothing
+names the substitution.
+
+One qualification, because the first reading of this overstated it. Blender is
+*not* silent about the commonest situation that produces the loss. When the file
+was written by a newer Blender, `readfile.cc` sets a forward-compatibility flag
+on the main database; the status bar then carries a persistent warning-coloured
+version indicator, and saving over the file raises a dialog whose message is
+that the file was saved by a newer version of Blender. That is a real warning,
+and it is a **file-level** one: it says data may have been lost, never that this
+pane is now showing something other than what was saved.
+
+The silent path is therefore narrower than "Blender never warns" and is still
+the one that matters here: an editor type that is missing for any *other*
+reason — removed, renamed, or belonging to an add-on that is no longer
+installed — trips no forward-compatibility flag, and the substitution happens
+with nothing said at all.
 
 That is precisely the shape of failure this project already rejected on the Qt
 side. `PL-C842` disqualified `QSplitter.saveState()` as a source of truth partly
@@ -511,6 +564,14 @@ windows around *and from covering up content* — appears to come from a 2008
 Blender Conference paper rather than from the guidelines page itself. The
 substance is consistent across both, but a session that can open the pages
 should confirm which document says what before quoting either.
+
+One further qualifier, and it cuts the same way. Blender states non-overlap as
+a **default with acknowledged exceptions**, not as an invariant: the same
+guidelines page names multiple windows and screens as legitimate, and cases —
+multi-monitor work, render output — where an overlap is the better answer. A
+project citing Blender as precedent for an absolute no-occlusion rule is citing
+it for more than it says. What this project refuses is narrower and firmer than
+Blender's default, which is the right way round but is *our* rule.
 
 So Blender is good evidence that **tiling is workable and pleasant at scale**,
 and no evidence at all for the information-integrity claim. This project's
@@ -631,3 +692,120 @@ that the desktop area model is a desktop model. This project's interface is a
 desktop application and so sits inside that boundary — but it is the boundary,
 and a later session considering a tablet build should treat item 34's model as
 out of scope there rather than as something to shrink.
+
+## What this project adopts, diverges from, and refuses
+
+### Adopted
+
+**The three concepts and the three words.** An *area* is a rectangle that
+reserves screen space and holds one thing; an *editor* is what occupies it; a
+*workspace* is a set of areas geared to a task, switched as a tab. Blender's
+vocabulary, used here for the same three things, so that the code and the
+roadmap do not drift apart (`.claude/rules/ui-areas.md` fixes this).
+
+**Workspace and layout as two levels, not one.** The 2.8 split — a workspace is
+a task-level object, a layout is the geometry of areas in one window — is what
+makes `ROADMAP.md` item 34's wanted behaviour possible at all. Item 34 already
+wants a workspace to pin which **run** it shows, the analogue of Blender's pin
+scene. If a workspace were only a layout there would be nowhere to put that.
+
+**The area owns the geometry and the view owns none.** The strongest and
+cleanest thing in the design. A view is given its rectangle and never stores,
+computes or asks for one.
+
+**Each view serializes itself; the layout layer does not know what is in a
+pane.** Blender's `SpaceType.blend_write` / `blend_read_data` delegation is the
+answer to "how does a workspace save without the layout code knowing what an
+F_A/F_I chart is", and it is the right answer.
+
+**A stack of previously-open editors per area**, so that switching a pane to
+another view and back restores the first one's state. Blender achieves it by
+swapping *region* lists, with per-view state living in the regions; the shape to
+copy is that the outgoing view's state is kept rather than destroyed.
+
+**A view kind is a tag plus a registry lookup, never a subclass.** Nothing in
+the layout layer knows a concrete view type exists.
+
+**Context above tools.** The strip that says *what the numbers are about*
+outranks and sits above anything that acts on them — Blender's own information
+hierarchy argument, and directly in service of this project's requirement that a
+reader can never be wrong about what context a displayed value belongs to.
+
+**Split, join, swap and border-drag as the operation set**, with the layout
+stored as a **nested-splitter tree**. `PL-3J2P` carries that decision and the
+measurement behind it.
+
+### Diverged, and each divergence has a specific cause
+
+**A missing or unknown view kind must fail loudly.** Blender silently
+substitutes a 3D viewport and the interface looks normal. `CLAUDE.md` requires
+an obvious failure state in preference to a plausible-looking wrong one, and
+treats mis-contexted presentation as a safety failure. A saved workspace naming
+a view this build does not have must say so, visibly, and must not quietly
+present a different view in that pane. Blender's own asymmetry — it *does* warn
+about an unknown region type ten lines away — suggests this is an oversight to
+avoid rather than a design to follow.
+
+**A required value is never hidden to make room.** Blender's answer when a
+region will not fit is `RGN_FLAG_TOO_SMALL` and collapse to zero extent. For a
+3D tool that costs a keystroke. Here, `docs/MODEL.md` § "Minimum displayed
+outputs" divides the display into an unconditional set no workspace may remove
+and nothing may cover, and silently collapsing one of those is exactly the
+failure the division exists to prevent. The unconditional set sits outside the
+area system, and where a conditional surface genuinely cannot fit, the interface
+must say that rather than quietly shrink it away.
+
+**Isolation has to be built; it is not inherited.** Blender's editors receive a
+context through which they can reach the window, the screen and every other
+area, and ten of twenty-one do. This project wants interchangeability with
+teeth, so its views should be *handed* what they draw and given no route to the
+container at all. That is a deliberate narrowing of Blender's contract, not a
+copy of it — and it is cheap now and expensive later, which is why
+`.claude/rules/ui-areas.md` already asks for it in views written before the area
+system exists.
+
+**The container sits behind a layout model of this project's own.** The
+container-level form of the same reasoning. `PL-C842` carries the
+recommendation and the evidence.
+
+**Border chains, to recover the one thing the tree loses.** Blender's default
+drag moves a maximal connected collinear chain; a splitter tree's handle moves
+one handle. Across the thirty-two shipped workspaces this differs exactly once,
+at a four-way junction. The fix is not the graph: it is for the layout model to
+resolve, on a drag, the set of handles that are collinear and adjacent to the
+one being dragged, and move them together. That is a query over the tree rather
+than a change of representation.
+
+**Prune the contract; do not let it accumulate.** Blender's `SpaceType` carries
+hooks nothing implements and a field nothing assigns, and nothing in the design
+surfaces that. A contract of our own should be small, and should be re-checked
+against its implementers rather than only added to.
+
+### Refused
+
+**The shared-vertex graph**, as the layout's representation. Not because it is
+worse in the abstract — it is strictly more expressive — but because the
+measurement found nothing in thirty-two shipped workspaces that needs the extra
+expressiveness, and the cost of owning a planar subdivision falls on one person
+forever. `PL-3J2P` records the condition under which that reverses.
+
+**Blender's rationale for non-overlapping**, as support for this project's
+occlusion rule. Blender's reason is window management and visibility; this
+project's is that a covered value is a misread value. The conclusions look
+alike and the arguments are not the same, so item 34's safety argument stands on
+its own reasoning rather than on Blender's precedent. What Blender does supply
+is the existence proof that a tiled interface is workable and pleasant at the
+scale of a professional tool.
+
+## Attribution
+
+This project's workspace, area and editor model is modelled on Blender's,
+studied from its published source and its design documentation. Blender is
+developed by the Blender Foundation and its contributors; its source is licensed
+GPL-2.0-or-later per file with the work as a whole under GPL-3.0-or-later, and
+its Manual and Developer Documentation are licensed CC-BY-SA 4.0 by the Blender
+Documentation Team and the Blender Developer Documentation Team respectively.
+
+**No Blender code is used in this project, and none of its documentation is
+reproduced here.** What was taken is a design, described in this project's own
+words.

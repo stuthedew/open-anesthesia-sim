@@ -2675,7 +2675,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 151 entries
+### Declined to Gate 2 on the refilling-queue ground — 152 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -2872,6 +2872,18 @@ class. That asymmetry is worth naming rather than looking like an omission: the
 systemic item reaches the gate only because its next step is a decision, while
 the concrete defects it generalises do not reach it at all.
 
+**One more from the 2026-09-16 Blender research session, on the same ground.**
+`PL-C842` (whether the layout container sits behind a layout model of this
+project's own) was answered that day with a recommendation and left at
+`needs-decision` for the project owner's word, which is what makes it debt this
+gate has to dispose of. It is `P2`, neither `safety` nor `science`, and
+`planning`-classed. It is declined rather than admitted on the presence test
+itself rather than on the arithmetic: the question was **captured on 2026-09-16**
+and did not exist at the 2026-09-06 freeze, and what it decides - the shape of a
+container v0.4.26 builds - is milestone design rather than debt v0.5.0 inherits.
+Its sibling `PL-3J2P` needed no disposition: it closed `done` in the same
+session.
+
 - PL-0M32 (S) Nothing can tell an item finished under a renamed test from one nobody has started
 - PL-0VFF (S) ROADMAP.md's 'Declined to Gate 2' list names PL-483K, PL-69JZ and PL-L09X as deferred, but all three closed done in v0.4.14, and nothing distinguishes a still-open entry from a closed one
 - PL-12P8 (S) PL-JBZK's lane check assumes every file under tests/ is a test file, so a shared non-test helper is told to declare itself apparatus
@@ -2901,6 +2913,7 @@ the concrete defects it generalises do not reach it at all.
 - PL-BGMK (M) Two open items whose touches and verify: command overlap are never compared, so PL-1YDK and PL-8PT6 were filed and worked as one finding twice and only docket check --verify on main caught it
 - PL-BHVM (M) Nineteen items re-decide what evidence proves a ref is done, seventeen of them in vcs.py: one design round rather than nineteen heuristic patches
 - PL-BQ46 (S) MacAwakeReference.fraction_of_mac and formatting.mac_multiple are a third and fourth dimensionless convention beside Fraction, and neither is distinguished from a concentration fraction at the type level
+- PL-C842 (M) Decide whether the layout container sits behind a layout model of this project's own with QSplitter an implementation detail - recommended 2026-09-16 with the Blender read behind it, awaiting the project owner's word
 - PL-C92D (S) PL-YSZN's Flet frame table predates PL-2FM6 and measures a tree that no longer exists in two of its three stages, so the Qt/Flet comparison rests on one row
 - PL-CNCF (M) controller.drawn_window costs 6.2 ms a frame at the shipped 150-column budget - 99% of the frame's read and about eighty times the simulation at 1x
 - PL-DG84 (M) docs/WORKING_NOTES.md asks for resolved threads to be deleted and nothing reads that policy
@@ -4623,80 +4636,75 @@ once someone is ready to scope it.
     built, and is expected to be revisited as it matures; the occlusion rule is
     the part that must survive a revision.
 
-    *The license constraint, which is not a formality.* Blender's source is
-    GPL-2.0-or-later and its binaries ship under GPL-3.0-or-later; this project
-    is Apache-2.0 (`LICENSE`, `pyproject.toml`). So the behaviour may be studied
-    from the manual and the running application and the source read for
-    understanding, but code may not be copied or closely ported into this tree —
-    doing so would make the result GPL-encumbered and the stated license wrong.
-    The owner's note that "Blender is open source so can see implementation" is
-    recorded here with that limit attached, because the limit is exactly what a
-    session reading the note alone would miss. Qt supplies the primitives
-    directly in any case: nested `QSplitter` for the tiling, its own
-    `saveState()`/`restoreState()` for a layout, `QSettings` or a project file
-    for a named preset.
+    *The licence constraint, and it runs the opposite way for the two kinds of
+    source.* `docs/interface-provenance.md` is the record - the study protocol,
+    what was read, what this project adopts and what it deliberately does
+    differently - and it is where a session building the layout should start.
+    The short form: Blender's source files are GPL-2.0-or-later (the work as a
+    whole GPL-3.0-or-later) and this project is Apache-2.0, so **reading the
+    source is unrestricted** - GPLv2 s.0 puts activities other than copying,
+    distribution and modification outside the licence's scope - while copying,
+    translating or porting it into this tree is not, and would make the stated
+    licence wrong. But the constraint that actually bites is the other one: the
+    **Blender Manual and Developer Documentation, including the Human Interface
+    Guidelines, are CC-BY-SA 4.0**, and pasting their prose *is* copying where
+    reading source is not. **Paraphrase and cite; never paste** (`PL-P5QX`).
+    The design rationale this project wants lives in the Developer Docs and the
+    HIG rather than in the Manual, which documents behaviour for users. Qt
+    supplies the primitives directly in any case: nested `QSplitter` for the
+    tiling and a project file for a named preset.
 
-    *The layout is provisionally a nested-splitter tree, and Blender's default
-    behaviour looks the same* (`PL-3J2P`, direction taken 2026-09-16, **not yet
-    closed** - it decides after the `PL-FTP5` research, on the project owner's
-    rule that a rigid decision should not precede the study of how the thing
-    being emulated actually works). The question put
-    was whether the layout should be stored as Blender's shared-vertex graph -
-    areas naming four corner points, neighbours sharing them - or as nested
-    `QSplitter`s. **Nested splitters, which this section and § "v0.4.26" Required
-    scope item 2 already name**; what is new here is evidence for the reason.
-    It is a read of two functions rather than a study of the interaction model
-    they sit in, which is why it is a direction and not yet a decision.
+    *The layout is a nested-splitter tree, and Blender's own shipped layouts are
+    what settled it* (`PL-3J2P`, decided 2026-09-16 on the research the project
+    owner asked for before the decision was fixed). The question was whether the
+    layout is stored as Blender's shared-vertex graph - areas naming four corner
+    points, neighbours sharing them - or as nested splitters. It was answered by
+    measuring rather than arguing, against a threshold written down first.
+    **Across all 32 workspaces Blender ships** - 11 defaults and 21 in its five
+    application templates - **none uses an arrangement a splitter tree cannot
+    express**, and exactly one contains a four-way junction, where the tree must
+    split one of two crossing borders into two handles. The two behaviours a
+    tree cannot express are both opt-in: extend-drag is the Shift key on the
+    border drag, and snap-merge is its own operator on the border's right-click
+    menu.
 
-    The premise to correct: Blender's *default* border drag is
-    `screen_geom_select_connected_edge`, which moves the maximal **connected
-    collinear chain** through the dragged edge - which is what a splitter tree
-    gives, because a layout built by successive splits puts each border in its
-    own chain. Borders that merely share a coordinate without being connected
-    stay independent, and that is a permitted resting state rather than a defect.
-    The two behaviours a tree genuinely cannot express are both **opt-in extras
-    rather than the model**: `screen_geom_select_extended_edge`, which takes
-    every vertex within tolerance of the dragged coordinate regardless of
-    connectivity, runs only under an explicit extend flag
-    (`source/blender/editors/screen/screen_ops.cc`, `md->can_extend && extend`);
-    and `screen_geom_edge_aligned_merge`, which snaps near-aligned borders onto
-    one coordinate and fuses them. Whether either is load-bearing in how a layout is
-    actually built, rather than an accessory to it, is what the research has to
-    establish before this closes.
+    One supporting argument did **not** survive the research, and the decision
+    is recorded without it. A splitter tree is **strictly less expressive** than
+    Blender's representation: five full-span splits and one ordinary join reach
+    a five-area pinwheel, which no sequence of full-span cuts can produce. So
+    the tree is chosen knowing it gives something up - on the grounds that
+    Blender's own designers never used it in 32 shipped layouts, that this
+    audience picks a workspace rather than authoring one, that the tree's limit
+    shows up as a **join being unavailable** rather than as a wrong value, and
+    that a planar subdivision is owned by one person forever.
+    `docs/interface-provenance.md` carries the count, the method, the
+    construction and the condition under which this reverses.
 
     *The container sits behind a layout model of this project's own*
-    (`PL-C842`, direction taken 2026-09-16; the owner delegated the architecture
-    call). The negative half is settled by measurement and the research cannot
-    overturn it - `saveState()` will not be the source of truth. The shape below
-    is a sketch the research informs, not a closed design.
-    Not a reimplementation of `QSplitter` - Qt still draws the panes, drags the
-    handles and honours minimum sizes. A pure-Python `LayoutModel` is the source
-    of truth: a tree of splits and panes, with `split`, `join`, `resize`, `swap`
-    and `set_view`, serialized to versioned JSON. One adapter module is the only
-    place importing `QSplitter`; it builds the widget tree from the model and
-    writes sizes back on `splitterMoved`. A view is registered by kind, never
-    sees a splitter, never calls `saveState()`, and never stores its own
-    geometry.
+    (`PL-C842`, recommended 2026-09-16 with the Blender read behind it; the
+    owner delegated the architecture call). The negative half was settled by
+    measurement and the research did not overturn it: `QSplitter.saveState()`
+    returns 35 opaque bytes carrying sizes and a child count, **cannot record
+    which view occupies which pane** - which is the whole of what a named
+    workspace is - and restoring a three-child state into a two-child splitter
+    **returns `True`** with sizes `[318, 318]` rather than failing. That last is
+    disqualifying on this file's own standard, which prefers an obvious failure
+    to a plausible-looking wrong result.
 
-    *Why, measured rather than argued.* `QSplitter.saveState()` was run against
-    this project's PySide6 and returns **35 opaque bytes** carrying sizes and a
-    child count; it **cannot record which view occupies which pane**, which is
-    the whole of what a named workspace is; and restoring a three-child state
-    into a two-child splitter **returned `True`** with sizes `[318, 318]` rather
-    than failing. That last is the disqualifying one: this file's own standard
-    prefers an obvious failure to a plausible-looking wrong result, and treats
-    stale or mis-contexted presentation as a safety failure. `PL-C842` carries
-    the reproduction command and three further reasons - headless testability,
-    break-out windows needing a structure spanning windows either way, and
-    `tools/import_boundary_check.py` already confining the toolkit by declared
-    boundary. The
-    container sits behind a layout model of this project's own that owns split,
-    join, resize, swap and persistence, with `QSplitter` an implementation detail
-    behind it - so no view calls `saveState()`, reaches for a parent splitter, or
-    stores layout state in itself. `PL-LH18`'s path-scoped rule already requires
+    What the Blender read added is that three properties this project needs are
+    ones Blender does **not** provide, so they have to be built into a model of
+    our own rather than inherited: a **loud failure** when a saved layout names a
+    view this build lacks (Blender silently substitutes a 3D viewport); a
+    guarantee that a **required value is never hidden to make room** (Blender
+    collapses a region that will not fit); and **isolation with teeth** (Blender's
+    editors can reach the screen and ten of twenty-one do). A pure-Python
+    `LayoutModel` is the source of truth - a tree of splits and panes, with
+    `split`, `join`, `resize`, `swap` and `set_view`, serialized to versioned
+    JSON - with one adapter module the only place importing `QSplitter`. A view
+    is registered by kind, never sees a splitter, never calls `saveState()`, and
+    never stores its own geometry. `PL-LH18`'s path-scoped rule already requires
     views to be interchangeable rather than merely movable; this extends the same
-    reasoning to the container. The `saveState()`/`restoreState()` note above is
-    then how the layout model persists itself, not an interface the views see.
+    reasoning to the container.
 
     *Placed, and the timing question is decided* (project owner, 2026-09-12,
     `PL-8VL1`). The Qt port rewrites every layout in the dashboard onto Qt, and

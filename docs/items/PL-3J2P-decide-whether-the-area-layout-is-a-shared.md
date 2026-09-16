@@ -1,10 +1,14 @@
 ---
 id: PL-3J2P
 title: Decide whether the area layout is a shared-vertex graph or a nested-splitter tree before the Qt layout work starts, because ROADMAP item 34 already specifies aligned-border dragging, four-way corner operations and arbitrary area swap, and a QSplitter tree makes all three expensive
-status: blocked
-touches: ROADMAP.md
+priority: P2
+effort: S
+status: done
+classes: planning
+feature: interface-areas
+touches: ROADMAP.md, docs/
 added: 2026-09-16
-blocked-by: PL-FTP5
+closed: 2026-09-16
 verify: python3 tools/doc_check.py check && grep -qF 'The layout is a nested-splitter tree, and Blender' ROADMAP.md
 ---
 
@@ -164,3 +168,135 @@ actually built, this direction is wrong and the graph wins.
 **Recorded in** `ROADMAP.md` item 34, with the correction and the reversibility
 condition (the container behind a layout model of our own, so no view knows
 `QSplitter` exists).
+
+
+---
+
+## DECIDED 2026-09-16: the nested-splitter tree
+
+The direction this item carried survived the research it was blocked on. It was
+tested to be falsified, not confirmed, and the evidence is in
+`docs/interface-provenance.md` rather than restated here.
+
+### (a) Are extend-drag and snap-merge load-bearing? No. Both are opt-in.
+
+Read end to end rather than as two functions, and both mechanisms are now named
+precisely:
+
+- **Extend-drag is the Shift key.** In `screen_ops.cc`, the area-move operator's
+  interactive entry point passes `event->modifier & KM_SHIFT` as its `extend`
+  argument; the non-interactive `exec` path passes `false`. A helper exists so
+  the user can toggle extension *mid-drag*, which is itself the clearest
+  evidence it is a mode entered rather than the default.
+- **Snap-merge is a separate operator.** `screen_geom_edge_aligned_merge` has
+  exactly one caller: `SCREEN_OT_edge_merge` ("Merge aligned area edges"). It is
+  not part of any drag. It appears in one place in the interface - the area
+  border's right-click menu - and only when the edge qualifies.
+
+### (b) What is a user expected to do to build a layout?
+
+The border context menu (`SCREEN_OT_area_options`, "Operations for splitting and
+merging") is the complete inventory: horizontal split, vertical split, join in
+either direction, swap the two areas, and conditionally merge the edge. The
+corner action zone is a modal drag whose direction and threshold select join or
+split, with a modifier for swap. **Nothing in the documented workflow leans on
+four-way corner operations**, which is what would have overturned this.
+
+### (c) The count: 0 of 11, and 0 of 32
+
+Threshold written down before counting, per `.claude/rules/expert-review.md`; it
+is reproduced in `docs/interface-provenance.md` with the rest of the method.
+Measured from Blender's shipped startup data rather than from Manual
+screenshots.
+
+| | pre-registered (11 defaults) | extended (21 template workspaces) |
+|---|---|---|
+| non-slicing - a tree **cannot express** it | **0** | **0** |
+| contains a four-way junction | 1 (Shading) | 1 (inherited copy) |
+
+Pre-registered rule: *zero non-slicing and at most one of eleven junctions
+confirms the tree.* It landed exactly there, and the extended set - the
+templates built for tasks furthest from the default - found nothing further.
+
+### What it costs, stated exactly
+
+One thing, and it is bounded. At a four-way junction Blender's two crossing
+borders are each a single connected collinear chain, so dragging either moves
+its whole length. A slicing tree can preserve **one** of the two as a single
+handle and never both; all four decompositions of the Shading screen were
+enumerated and each loses exactly one.
+
+**The fix is not the graph.** It is for the layout model to resolve, on a drag,
+the set of handles collinear and adjacent to the one being dragged, and move
+them together - a query over the tree rather than a change of representation.
+`PL-C842` carries it as part of the model's shape.
+
+### One supporting argument did NOT survive, and the decision is restated without it
+
+The pre-registration named the condition that would make the count the wrong
+measurement: *the shipped defaults are the wrong proxy if Blender chose them to
+be teachable rather than to exercise the representation.* **That condition
+fires.** It was found by trying to falsify the convenient answer rather than to
+confirm it.
+
+The hypothesis was that split being full-span and join requiring a full shared
+edge would confine a user to slicing layouts. Split is full-span - `area_split`
+puts its new vertices on the area's own edges - but **join is not so confined,
+and one ordinary join leaves the slicing class**. Five full-span splits produce
+six areas including a left column in two parts; those two share a full edge, so
+joining them is admitted, and the result is the five-area pinwheel that no
+sequence of full-span cuts can produce. Six ordinary operations.
+
+Two further findings the same way: `area_getorientation` requires a
+perpendicular overlap of only `min(tolerance, extent of A, extent of B)`, so
+**partial neighbours can be joined** and `screen_area_join_ex` trims the
+overhang; and every aligned join runs `BKE_screen_remove_double_scrverts` over
+the whole screen, so **four-way junctions are produced as a matter of course**
+by joining rather than arising by coincidence.
+
+So the claim that the graph buys expressiveness Blender's own model never
+reaches is **false**. A splitter tree is strictly less expressive than Blender's
+representation, not merely differently organised.
+
+### Why the tree is still the decision
+
+The argument that survives is narrower than the one this item started with, and
+it is worth stating in the weaker form rather than pretending the count settled
+more than it did:
+
+1. **Blender's designers never used it.** Zero non-slicing layouts in 32
+   shipped workspaces, by people who had the capability available and are
+   expert in the tool. Reachable-but-never-shipped is weak evidence that the
+   capability matters; it is not no evidence.
+2. **The audience differs in the way that matters.** Blender is re-tiled
+   constantly across wildly different tasks by professionals authoring layouts.
+   A resident picks a workspace and leaves it. The graph buys *authoring*
+   generality; what this audience exercises is the *result*, which both
+   representations deliver identically.
+3. **The tree's limitation surfaces as a refusal, not as a wrong value.** With
+   a splitter tree the pinwheel is simply not offered - the join is unavailable
+   between panes in different splitters. That is a visible interface
+   limitation. It produces no wrong clinical number, so it is not a safety
+   question, which is the only kind that would force the expensive answer.
+4. **The cost of the graph falls on one person forever.** Minimum-size
+   propagation across every area touching a moved vertex column, join validity,
+   the degenerate states reachable by dragging one border past another. Every
+   bug in ours is a layout a learner can enter and not leave, in code that is
+   not the science.
+
+### What would overturn it
+
+Sharper than before, because the expressiveness question is now settled and only
+the need is open: **a workspace this project actually wants that is
+non-slicing.** Item 36's editor catalogue is where that would appear. If one
+does, this is a representation change rather than a tweak, so reopen this item
+rather than working around it.
+
+A second, cheaper trigger: if learners are observed trying to join two panes
+and finding it unavailable. That is the tree's one visible limitation, and it
+is measurable once there are learners.
+
+### Recorded in
+
+`ROADMAP.md` item 34, and `docs/interface-provenance.md` § "The measurement:
+what Blender's own shipped layouts actually contain".

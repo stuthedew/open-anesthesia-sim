@@ -1,14 +1,33 @@
 ---
 id: PL-C842
 title: Decide whether the layout container sits behind a layout model of our own with QSplitter as an implementation detail, deferred by the project owner until the Blender deep dive shows how Blender actually separates container from view
-status: blocked
+priority: P2
+effort: M
+status: needs-decision
+classes: planning
+feature: interface-areas
 touches: ROADMAP.md, src/anesthesia_sim/app/
 added: 2026-09-16
-blocked-by: PL-FTP5
 verify: python3 tools/doc_check.py check && grep -qF 'The container sits behind a layout model of this project' ROADMAP.md
 ---
 
 **Problem.** Decide whether the layout container sits behind a layout model of our own with QSplitter as an implementation detail, deferred by the project owner until the Blender deep dive shows how Blender actually separates container from view
+
+**Why it matters.** The container is the one piece of the area system every
+view sits inside, so getting it wrong is not a local mistake: a view that knows
+`QSplitter` exists is a view that cannot be moved, and a layout whose source of
+truth is an opaque widget blob cannot be tested, reviewed, or made to fail
+loudly when it no longer matches the application. `PL-25KS` builds the container,
+so this wants answering before that item is worked.
+
+**Decision needed.** Whether to accept the recommendation below - a pure-Python
+`LayoutModel` as the source of truth, with `QSplitter` an implementation detail
+behind one adapter module, and the four additions the Blender read produced
+(border chains, a per-pane view stack, loud failure on an unknown view kind, and
+the required display set held outside the model). The alternative is to let the
+widget tree be the source of truth, which the measurement recorded below rules
+out on this project's own standard. Answering it is the project owner's word on
+a recommendation, not a fresh investigation.
 
 **Where this came from.** `PL-3J2P` decided the layout is a nested-splitter
 tree (project owner, 2026-09-16). It recommended, without deciding, that the
@@ -154,3 +173,100 @@ So this direction does not depend on that one.
 **Recorded in** `ROADMAP.md` item 34, as a direction rather than a settled
 design. `PL-FTP5`'s six container/view questions feed the shape here and the
 contract in `PL-TH35`.
+
+
+---
+
+## RECOMMENDATION 2026-09-16, with the Blender read behind it
+
+**Yes - and the research strengthened the case rather than merely confirming
+it.** The six container/view questions are answered in
+`docs/interface-provenance.md`; this is what they mean for the shape.
+
+### The finding that changes the recommendation
+
+Going in, the expectation was that a layout model of our own would mostly
+*re-implement* what Blender gets for free, and the argument for it was
+testability and the `saveState()` measurement. That is not what the read found.
+
+**Three properties this project needs are ones Blender does not have.** They are
+not inherited by adopting the model; they have to be built, and a layout model of
+our own is where they live:
+
+1. **Loud failure on an unknown view kind.** Blender silently neutralises an
+   area whose editor type is not registered, then rewrites it into a 3D viewport
+   at the next refresh, with nothing naming the substitution. The tell that this
+   is an oversight rather than a considered choice: thirty lines above it, the
+   analogous *region* case emits a warning naming what it discards. Stated
+   precisely, because the first reading of this overstated it: Blender *does*
+   warn when the file came from a newer version - a persistent status-bar
+   indicator and a save dialog - but that is a **file-level** warning saying
+   data may have been lost, never that this pane now shows something other than
+   what was saved; and an editor missing for any other reason trips it not at
+   all. This is the same silent-success shape that disqualified
+   `QSplitter.restoreState()`, so **neither Qt nor Blender supplies the
+   pane-level behaviour the safety standard needs.**
+2. **A required value is never hidden to make room.** Blender's answer when a
+   region will not fit is a flag and a collapse to zero extent. And there is no
+   minimum-size contract to appeal to: `minsizex`/`minsizey` occur exactly once
+   in the tree - the declaration - and nothing reads them.
+3. **Isolation with teeth.** Editors are isolated by convention, not by
+   construction: 10 of 21 editor directories walk the screen's whole area list,
+   and 2 search it for another area by type. A view that is *handed* what it
+   draws and given no route to the container is a deliberate narrowing.
+
+### The shape
+
+Mostly as sketched, with four additions the research produced. Named here as a
+recommendation to react to, not as a design to implement.
+
+- **`LayoutModel`** - pure Python, no Qt import. A tree of `Split(orientation,
+  children, sizes)` and `Pane(pane_id, view_kind)`, with `split`, `join`,
+  `resize`, `swap`, `set_view`, and versioned JSON serialization.
+- **A view is given its rectangle and owns no geometry.** Straight from Blender,
+  where the base struct for every editor's state has nowhere to put one.
+- **NEW - border chains.** A `borders()` query returning, for any handle, the
+  set of handles collinear and adjacent to it, so a drag moves the whole border.
+  This is the one behaviour the tree loses against Blender (`PL-3J2P`), and it
+  is a query over the tree rather than a change of representation.
+- **NEW - a pane stack.** Each pane keeps the views it previously held, so
+  switching a pane to another view and back restores the first one's state.
+  Blender does this by swapping *region* lists; the property to copy is that the
+  outgoing view's state is kept rather than destroyed. Note Blender's stack is
+  unbounded - decide ours.
+- **NEW - loud load failure.** Deserializing a layout naming an unknown
+  `view_kind` fails visibly. It does not substitute, and it does not drop the
+  pane.
+- **NEW - the required set is not the model's to place.** `docs/MODEL.md`'s
+  unconditional displayed outputs sit outside the area system, so the model
+  never has a state in which one of them is collapsed or removed.
+- **One adapter module** - the only place importing `QSplitter`. Builds the
+  widget tree, writes sizes back on `splitterMoved`, and applies a border-chain
+  drag across the several splitters it spans.
+- **Views registered by kind.** A view never sees a splitter, never calls
+  `saveState()`, never stores its own geometry.
+
+### Where the evidence is thin, stated plainly
+
+- **The contract's content is not settled here, and should not be.** `PL-TH35`
+  is where the Editor contract is written, validated against two views that
+  already exist. What this read contributes to it is the required/practised/dead
+  three-way split in `docs/interface-provenance.md` - and the warning that
+  Blender's own contract accumulated hooks nothing implements and a field
+  nothing assigns.
+- **Split fidelity is per-view, not a layout property.** Blender delegates it to
+  each editor's `duplicate`. What a split of our panes should copy is therefore a
+  question this recommendation does not answer.
+- **Break-out windows are still unmodelled.** Item 34 wants an area taken into
+  its own top-level window. Blender's answer is a second screen under the same
+  workspace, with the per-window relation held separately. Nothing here designs
+  that, and it is the part most likely to change the model's shape.
+- **The unbounded pane stack is Blender's choice, not a validated one.** Nothing
+  evicts. Whether that is right here is undecided.
+
+### Status
+
+Left open at `needs-decision` deliberately. `ROADMAP.md` item 34 now records the
+recommendation and the evidence, which satisfies this item's "Done when" on a
+literal reading - but the session that wrote it is not the right one to also
+accept it. One word from the project owner closes this.
