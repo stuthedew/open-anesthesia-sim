@@ -1122,6 +1122,83 @@ frame at 60 fps is not the headroom 3.3 ms implied. The number to design
 against is the segment count, since the per-column cost is the smaller half
 once there is more than one.
 
+**Re-argued on the port's scope, and the answer is still no - on ground this
+note did not have (2026-09-16, `PL-3SQT`).** The question answered in 2026-09-05
+was whether to *take* numpy. The Qt port made that question unanswerable as
+posed: pyqtgraph 0.14.0's own metadata reads `Requires-Dist: numpy>=1.25.0`, a
+hard requirement rather than an extra, so since `PL-G59B` declared pyqtgraph
+numpy has been installed in every environment this project has and `uv.lock`
+names which one (2.5.3). There is nothing left to avoid. `PL-3SQT` was written
+to re-argue this note rather than cite it for exactly that reason, and its own
+framing - numpy as a storage choice against numpy underneath a plotting
+library - is the split the measurements below follow.
+
+**The original reasoning is spent, and the rider above said so first.** Both
+figures the 2026-09-05 answer rested on - `select_indices` on the read path,
+`RunHistory.record` on the write path - measure code `PL-2FM6` and `PL-8LXM`
+deleted. What follows measures the surface that replaced them.
+
+**numpy's array is the chart's required input type, not an optional
+acceleration.** `pyqtgraph.PlotCurveItem.updateData` converts a `list` with
+`np.array()` and raises `Plot data must be 1D ndarray.` on anything that is
+neither a list nor an ndarray - measured 2026-09-16 under the `offscreen`
+platform: a tuple is refused, a list and an ndarray are accepted. So
+`app/qt_chart.py`'s `curve.setData(list(run.times_s), list(run.percents(quantity)))`
+is load-bearing rather than stylistic, because `DrawnWindow.times_s` is a
+`tuple` and handing it over unwrapped would raise. numpy is therefore already
+on the drawn path of a safety-critical display, and nothing below changes
+that; what is being decided is only whether this project *names* it.
+
+**What that conversion costs, against the frame it rides on.** One
+`ConcentrationChart.draw` over a 20-minute sevoflurane run with one dial
+change, all six compartment traces shown; `QT_QPA_PLATFORM=offscreen`,
+4-core Xeon @ 2.80 GHz, Python 3.14.7, numpy 2.5.3, pyqtgraph 0.14.0; best of
+five repeats of 200:
+
+| plot width | columns | drawn instants | `list()` + `np.array()`, 6 traces | `assemble_chart_frame` | conversion's share |
+| --- | --- | --- | --- | --- | --- |
+| 149 px | 150 | 102 | 0.037 ms | 8.39 ms | 0.44% |
+| 900 px | 901 | 601 | 0.191 ms | 11.80 ms | 1.61% |
+| 1600 px | 1601 | 1069 | 0.336 ms | 15.42 ms | 2.18% |
+
+The frame column is the denominator this argument needs and not a
+re-measurement of `PL-R460`'s 7.64 ms above - a different window, a different
+instant count and a different container - so read the share rather than the
+absolute.
+
+**The one thing numpy could buy under `src/` buys about a tenth of a percent
+of a frame.** Producing arrays in `app/run_series.py`, instead of the tuples
+`qt_chart.py` copies into lists, would let pyqtgraph skip its conversion.
+`np.asarray()` straight from the tuple measures 0.033, 0.179 and 0.315 ms at
+the three widths, so the whole saving is 0.004-0.021 ms - **0.04% to 0.14% of
+the frame**. Against that it would put a mutable array where `DrawnWindow`
+holds immutable tuples of floats, on the class built so that a drawn value
+cannot become a keyframe, an export or a fork's opening state by having the
+right shape. That is a bad trade at any price, and this one is not close.
+
+**So numpy is not declared in `pyproject.toml`** - which is the half
+`PL-3SQT`'s title expected to go the other way, and the item asked for the
+conclusion recorded whichever way it went. Declaring a distribution nothing
+imports buys nothing this project does not already have, and costs a
+constraint no tool can report has gone stale: `uv sync --locked` installs
+2.5.3 either way, `tools/import_boundary_check.py` already permits numpy in no
+module under `core/`, and `make check` would go on passing if a declared numpy
+range drifted years from anything anyone ran. The version that decides what
+the chart draws is **pyqtgraph's**, which is declared, floored and capped - a
+numpy-version difference reaching a drawn value would be a reason to move that
+floor, not to add one here. Nor is there a packaged build to consider:
+`README.md` § "Running it" says building from source is the only route today,
+so nothing but `uv` resolves this list, against the lock.
+
+**What would reopen it, written down so the next session does not re-derive
+this.** Any module under `src/` importing numpy - declared in the same commit
+when it happens, because a package a project calls is one it names. A packaged
+wheel, where a consumer resolves pyqtgraph's own `numpy>=1.25.0` with no lock
+to pin it. Or a measured numpy-version difference in a displayed value, which
+is a pyqtgraph floor rather than a numpy declaration. None of the three is
+true today.
+
+
 ## Decided: control resolution is not what the interface promised at speed - PL-X9KD, PL-NBWP, PL-NBCJ (2026-09-06)
 
 `PL-X9KD` re-derived `MAXIMUM_SIMULATION_STEP_S` as a *declared control-resolution

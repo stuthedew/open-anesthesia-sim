@@ -3,11 +3,12 @@ id: PL-3SQT
 title: Swap the dependencies for the Qt port: PySide6-Essentials, pyqtgraph and numpy in, flet and flet-charts out, and re-argue the 'Decided: no numpy' note on its new scope
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra, feature
 feature: qt-port
-touches: pyproject.toml, uv.lock, docs/WORKING_NOTES.md
+touches: pyproject.toml, uv.lock, docs/WORKING_NOTES.md, docs/ARCHITECTURE.md, README.md, .github/workflows/drift.yml
 added: 2026-09-10
+closed: 2026-09-16
 verify: uv run python tools/import_boundary_check.py && ! grep -qE '^\s*"flet' pyproject.toml
 ---
 
@@ -106,3 +107,66 @@ half landed, and `docket check --verify` refused it on `PL-G59B`'s branch:
 a command that passes before the work proves nothing. It now names the one
 thing only the subtractive half creates, a `pyproject.toml` with no `flet`
 dependency line; run and seen to fail (exit 1) with both lines still there.
+
+**Closed 2026-09-16, and the numpy half went the other way from the title.**
+
+*The subtractive half.* `flet` and `flet-charts` are out of `pyproject.toml`
+and out of `uv.lock`, which drops 37 packages with them - `flet-cli`,
+`flet-desktop`, `flet-web` and their transitive tree, `msgpack` and `uvicorn`
+among them. The three declared runtime dependencies are now
+`PySide6-Essentials`, `pyqtgraph` and `pydantic`. This did **not** wait on
+`PL-7SVX` as the sequencing note expected: `PL-25KS` had already deleted the
+last module importing Flet, and `spikes/` - the other half of `PL-7SVX` -
+never read this list, running its own toolchain through `uv run --with`. The
+`verify:` command was seen to fail before the edit and pass after.
+
+*The numpy half, which is the argument the item was written for.* The answer
+is **no, numpy is not declared**, against this item's own title and the first
+clause of its Done-when. The item asked for "the conclusion recorded whichever
+way it goes", and this is it going the other way; the note carries the full
+argument and the measurements, and the short form is three findings:
+
+1. **There is nothing left to avoid.** pyqtgraph's metadata requires
+   `numpy>=1.25.0` outright, so numpy has been installed in every environment
+   since `PL-G59B` and `uv.lock` pins 2.5.3. The 2026-09-05 note's question -
+   whether to *take* the dependency - no longer has a referent.
+2. **numpy is already the chart's required input type.** Measured:
+   `pyqtgraph.PlotCurveItem.updateData` raises
+   `Plot data must be 1D ndarray.` on a tuple and converts a `list` with
+   `np.array()`, so `qt_chart.py`'s `list(run.times_s)` is load-bearing. That
+   conversion is 0.44-2.18% of a frame across the chart's whole width range.
+3. **The one thing declaring it could lead to buys nothing.** Producing arrays
+   in `app/run_series.py` so pyqtgraph could skip its conversion saves
+   0.04-0.14% of a frame, and would put a mutable array where `DrawnWindow`
+   holds immutable tuples. So no module under `src/` should import numpy, and
+   a distribution nothing imports should not be declared: the version that
+   decides what the chart draws is pyqtgraph's, which is declared, floored and
+   capped.
+
+Reversing this is one line in `pyproject.toml` plus the note's last paragraph,
+which names the three things that would reopen it.
+
+*The rest of the Done-when.* The Linux system libraries are documented in a
+new `docs/ARCHITECTURE.md` § "Dependencies", measured rather than restated -
+`ldd` over the wheel's own `libQt6Gui.so.6` and `platforms/libqoffscreen.so`
+maps them to `libegl1`, `libgl1`, `libxkbcommon0`, `libdbus-1-3` and
+`libfontconfig1` - and `README.md` § "Running it" now names the other four
+beside the `libegl1` it already had. The same section carries the **LGPL
+reading this item's rider asked for**: `pyside6_essentials` 6.11.2 and
+`shiboken6` 6.11.2 declare `LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only` and
+ship no licence text in the wheel (measured - neither `dist-info` has a
+`licenses` directory or a `License-File:`), this repository is Apache-2.0
+with no `NOTICE`, and nothing is violated because the obligations attach on
+conveying a binary and this project conveys none.
+
+*The rider's other two survey findings are already settled elsewhere.* The
+mypy override for the stubless pyqtgraph is in `pyproject.toml`, landed with
+`PL-G59B`; the `flet_charts` and `msgpack` overrides the rider expected to go
+dead are already gone, so there is nothing here for `warn_unused_configs` to
+find and that suggestion is not taken. The `disallow_subclassing_any` question
+was decided by `PL-G59B` and `PL-25KS` in the code they wrote.
+
+*One stale statement the swap created, fixed with it.*
+`.github/workflows/drift.yml`'s out-of-bounds comment used "flet 1.0" as its
+example of a major bound `--upgrade` cannot cross. Flet is no longer a bound
+this project declares, so the example now names ones it does.
