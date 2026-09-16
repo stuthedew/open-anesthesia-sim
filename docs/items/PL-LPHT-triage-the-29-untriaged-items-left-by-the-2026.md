@@ -9,6 +9,7 @@ feature: queue-hygiene
 touches: docs/items, ROADMAP.md
 added: 2026-09-16
 closed: 2026-09-16
+pr: 626
 verify: bin/docket check && python3 tools/doc_check.py check && bin/docket triage | grep -q '^1 item is untriaged'
 ---
 

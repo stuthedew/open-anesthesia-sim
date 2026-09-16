@@ -9,6 +9,7 @@ feature: interface-areas
 touches: ROADMAP.md, src/anesthesia_sim/app/
 added: 2026-09-16
 closed: 2026-09-16
+pr: 623
 verify: python3 tools/doc_check.py check && grep -qF 'The container sits behind a layout model of this project' ROADMAP.md
 ---
 
