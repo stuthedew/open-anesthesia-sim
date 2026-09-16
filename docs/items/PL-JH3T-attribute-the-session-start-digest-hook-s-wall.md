@@ -67,3 +67,27 @@ carries the repo-side half (82 of the 192 calls are exact duplicates); the
 per-spawn price is the machine's and is the larger of the two levers.
 
 This item's question is answered and it should close at triage.
+
+**Final attribution, 2026-09-16 - and it is the call count, not the clock.**
+The three-way split was run on both machines. `bin/docket digest` makes **1,107
+git calls on the owner's clone against 220 in a session container**, from
+identical code against an identical store. Per call that machine is 2.8x
+slower, which is unremarkable; 5x the calls is the finding. Neither the store
+(1,089 files, 0.17 s) nor python startup (0.15 s) nor the network (`digest`
+touches none) is involved.
+
+Where the 17.25 s of replay sits: `diff` 570 calls / 8.90 s, `show` 389 / 5.77 s,
+`merge-base` 78 / 1.19 s. The driver is the number of unmerged refs `digest`
+walks - 18 in a container, inferred ~90 on a clone that has held every session's
+branch since the project began.
+
+Three items carry what follows, and the order matters: **`PL-XD3C`** (digest is
+O(unmerged refs), which grows without bound and which pruning may not fix -
+verify the ref count first), **`PL-0J9K`** (batch the 389 blob reads into one
+`cat-file`, 24% and mechanical), **`PL-MMVF`** (memoize the runner, now measured
+at 10% on the machine that pays). This item is answered and should close at
+triage.
+
+Two figures this item carried and got wrong are retracted above: ~92 ms per
+spawn, and the network hypothesis. Both came from dividing a wall time by a
+count instead of measuring the parts.

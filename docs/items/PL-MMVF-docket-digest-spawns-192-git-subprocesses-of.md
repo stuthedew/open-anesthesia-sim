@@ -83,3 +83,18 @@ directly on the owner's machine: `/bin/echo` 2.9 ms, `git rev-parse HEAD`
 that machine's 17.64 s, so process creation is a minor term and the rest is git
 doing work - disk, not spawn. What is actually slow there is still open at the
 time of writing; `PL-JH3T` carries it.
+
+**Measured on the slow machine, 2026-09-16: 10%, not 27%.** The correction above
+asked for exactly this re-measurement before the item is worked, and it came
+back lower again. On the owner's clone `digest` makes 1,107 git calls of which
+**151 are exact repeats costing 2.37 s** - 14% of the 17.25 s replay, and 10% of
+the 24.19 s command. On a container it is 27%. The memo is worth less where it
+would help most, because that machine's extra calls are overwhelmingly *distinct*
+ones, not repeats.
+
+So the honest figure to hold this item to is **10% on the machine that pays**,
+and it is now the smallest of the three levers: `PL-0J9K` (batch the blob reads
+into one `cat-file`) is 24% and mechanical, and `PL-XD3C` (the ref-count growth)
+is the one that decides whether any of this stops mattering. Do this one last,
+or fold it into whichever of those two is worked first - it is a few lines
+inside the same runner either way.
