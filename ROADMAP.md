@@ -3124,6 +3124,24 @@ fixed layout, and it becomes real only when the area system makes a second of
 either possible — which is the same item 34. Both are product-lane, and both
 are recorded here rather than left to look deferred.
 
+**One more from 2026-09-16, and it is `safety`-classed, so it is written down
+with a reason rather than listed** — `PL-MN4J` (the chart hover names the agent
+and the instant but not which run). Captured ten days after this gate was
+frozen, so the snapshot rule already places it in the next one, and seated `P1`
+because `checks.py` will not seat a `safety` class lower.
+
+It is deferred on a ground of its own rather than on this section's arithmetic:
+**the display it concerns does not exist outside the feature this milestone
+builds.** A hover that does not say which run is ambiguous only while two runs
+are drawn, which is this milestone's own compare mode; before it ships there is
+one run on the chart and the hover names everything there is to name. A gate
+exists to clear debt *before* a milestone begins, and this item cannot be
+cleared before the thing it is about exists. It is also `needs-decision` and the
+decision is the project owner's — it amends `docs/MODEL.md` § "The chart's hover
+readout: what the tooltip may show", which derives the three-line form — so no
+session can close it either way. `PL-8PSW` shipped the legend and panel naming
+that make a curve attributable today; this is the remaining surface.
+
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
 `### Declined to Gate ...` subsection after the gate heading and stops at the
