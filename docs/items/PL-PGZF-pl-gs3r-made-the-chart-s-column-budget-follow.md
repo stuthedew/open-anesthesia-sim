@@ -9,8 +9,8 @@ added: 2026-09-16
 
 **Where it was measured.** Incidentally, by `PL-3SQT`, which needed a frame
 cost as the denominator for its numpy argument and is not otherwise about
-this. `docs/WORKING_NOTES.md` § "Decided: no numpy" carries the table; these
-are its `assemble_chart_frame` figures, best of three repeats of ten, one
+this. These are its `assemble_chart_frame` figures - this item is now the only
+place they are written down - best of three repeats of ten, one
 20-minute sevoflurane run with one dial change, all six compartment traces
 shown, `QT_QPA_PLATFORM=offscreen`, 4-core Xeon @ 2.80 GHz, Python 3.14.7:
 

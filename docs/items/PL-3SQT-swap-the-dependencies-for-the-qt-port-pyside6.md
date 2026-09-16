@@ -123,31 +123,31 @@ last module importing Flet, and `spikes/` - the other half of `PL-7SVX` -
 never read this list, running its own toolchain through `uv run --with`. The
 `verify:` command was seen to fail before the edit and pass after.
 
-*The numpy half, which is the argument the item was written for.* The answer
-is **no, numpy is not declared**, against this item's own title and the first
-clause of its Done-when. The item asked for "the conclusion recorded whichever
-way it goes", and this is it going the other way; the note carries the full
-argument and the measurements, and the short form is three findings:
+*The numpy half, and it resolved into "not yet relevant" rather than into a
+decision.* numpy is **not declared**, and neither is a position on declaring
+it. The measurements are what make that a finding rather than a dodge:
+pyqtgraph requires `numpy>=1.25.0` outright, so it is installed either way;
+no module under `src/` imports it; and nothing is contorted to keep it out -
+`app/qt_chart.py` passes `list(...)` because a list is one of the two types
+`PlotCurveItem` accepts, and producing arrays upstream would recover 0.04-0.14%
+of a frame. So there is no little custom routine being written to avoid numpy,
+and no backflip being performed either; there is simply nothing that wants it.
 
-1. **There is nothing left to avoid.** pyqtgraph's metadata requires
-   `numpy>=1.25.0` outright, so numpy has been installed in every environment
-   since `PL-G59B` and `uv.lock` pins 2.5.3. The 2026-09-05 note's question -
-   whether to *take* the dependency - no longer has a referent.
-2. **numpy is already the chart's required input type.** Measured:
-   `pyqtgraph.PlotCurveItem.updateData` raises
-   `Plot data must be 1D ndarray.` on a tuple and converts a `list` with
-   `np.array()`, so `qt_chart.py`'s `list(run.times_s)` is load-bearing. That
-   conversion is 0.44-2.18% of a frame across the chart's whole width range.
-3. **The one thing declaring it could lead to buys nothing.** Producing arrays
-   in `app/run_series.py` so pyqtgraph could skip its conversion saves
-   0.04-0.14% of a frame, and would put a mutable array where `DrawnWindow`
-   holds immutable tuples. So no module under `src/` should import numpy, and
-   a distribution nothing imports should not be declared: the version that
-   decides what the chart draws is pyqtgraph's, which is declared, floored and
-   capped.
+**Project owner, 2026-09-16**, on reading this item's first pass: if a little
+custom code avoids numpy, write it; if avoiding numpy means bending over
+backwards, take it; and if it is only being discussed because it was raised
+once, with no current need, then do not discuss it or declare either way until
+it is relevant. The third case is this one. The long re-argument this item
+first wrote into `docs/WORKING_NOTES.md`, and the paragraph it wrote into
+`pyproject.toml`'s dependency list, were both cut on that instruction - the
+note keeps a short record that the question is not live and that the
+2026-09-05 reasoning is spent, and `pyproject.toml` lists what the project
+depends on and says nothing about what it does not.
 
-Reversing this is one line in `pyproject.toml` plus the note's last paragraph,
-which names the three things that would reopen it.
+**So the Done-when's first clause is not met as written** - `pyproject.toml`
+does not declare numpy - and the last clause is met in a narrower form than it
+anticipated: the conclusion recorded is that there is no question to conclude
+yet, and when to revisit it.
 
 *The rest of the Done-when.* The Linux system libraries are documented in a
 new `docs/ARCHITECTURE.md` § "Dependencies", measured rather than restated -

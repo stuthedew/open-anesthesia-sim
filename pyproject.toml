@@ -79,18 +79,6 @@ dependencies = [
     # Qt modules this interface draws with (Core, Gui, Widgets) and none of
     # the Addons (WebEngine, Multimedia, 3D), which are the bulk of the full
     # distribution's download and are imported by nothing here.
-    #
-    # **numpy stays undeclared, and that is now a decision rather than a
-    # deferral.** `PL-3SQT` re-argued `docs/WORKING_NOTES.md` § "Decided: no
-    # numpy" on the scope the port gave it, and the answer held for new
-    # reasons: pyqtgraph requires numpy outright (`numpy>=1.25.0`), so it is
-    # installed in every environment this project has and `uv.lock` names
-    # which one, while no module under `src/` calls it - and measured, giving
-    # pyqtgraph arrays instead of the lists it converts would recover
-    # 0.04-0.14% of a frame. Declaring a package nothing imports would add a
-    # constraint no tool can report has gone stale, and the version that
-    # actually decides what the chart draws is pyqtgraph's, which is declared.
-    # The note carries the measurements and what would reopen it.
     "PySide6-Essentials>=6.9,<7.0",
     "pyqtgraph>=0.13.7,<0.15",
     # A floor, not an exact pin. pydantic 2.12.4 began passing

@@ -444,13 +444,12 @@ either. Removing them from that list is not what keeps Flet out, though -
 `tools/import_boundary_check.py` permits both in no module under `src/` at
 all, and that is the rule.
 
-**numpy arrives underneath pyqtgraph and is deliberately not declared.**
-pyqtgraph's own metadata requires `numpy>=1.25.0` outright rather than as an
-extra, so numpy is installed in every environment this project has and
-`uv.lock` names the version (2.5.3) - but no module under `src/` imports it,
-and `import_boundary_check.py` permits it in none under `core/`.
-`docs/WORKING_NOTES.md` § "Decided: no numpy" carries the argument, the
-measurements behind it, and the three things that would reopen it.
+**numpy arrives underneath pyqtgraph**, whose metadata requires
+`numpy>=1.25.0` outright, so it is installed in every environment and
+`uv.lock` names the version - but no module under `src/` imports it, and
+`import_boundary_check.py` permits it in none under `core/`. Nothing here
+takes a position on declaring it; `docs/WORKING_NOTES.md` § "Decided: no
+numpy" says why that stays open until a module wants it.
 
 **What Linux has to supply, which the Qt wheels do not carry.** Measured
 2026-09-16 with `ldd` over the wheel's own `Qt/lib/libQt6Gui.so.6` and
