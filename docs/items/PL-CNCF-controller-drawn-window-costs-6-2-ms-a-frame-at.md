@@ -81,3 +81,61 @@ column count a function of the selected span, is sized directly by this number.
 **Not a defect in `PL-2FM6`.** That change bought exactness at control changes
 that no selection over recorded samples could give; this is the price of it,
 stated rather than discovered later.
+
+**The question this item asks is answered, by reading rather than by measuring
+(2026-09-16).** "Worth checking before sizing any fix" above asks whether the
+evaluation re-propagates columns whose values cannot have changed. It does.
+`RunDefinition.evaluate_anchored` (`src/anesthesia_sim/core/run_definition.py:472`,
+the module `PL-ZX12` renamed `run_score.py` to) allocates `states` fresh on
+every call and walks every column in the window; nothing survives the call. The
+anchoring `PL-2FM6` bought holds the column *times* still so the drawn points do
+not all move each frame - it was never a claim that their *values* are reused.
+
+**The cost has two terms, and which one dominates is a function of the budget.**
+Inside one segment, consecutive grid columns are carried by a single propagator
+over `spacing_s` and one matrix-vector product per column; a bound or an event
+column breaks that run and `_state_from_opening` forms another propagator. Per
+frame, then: one `matrix_exponential` per segment boundary in view at about
+1.29 ms, and one chained product per drawn instant at about 6.2 us. Both figures
+are `evaluate_anchored`'s own docstring, measured 2026-09-08 under `PL-2FM6`;
+neither is re-measured here, and the split below is arithmetic over them rather
+than a fresh profile.
+
+At the 150-column budget this item measured, the fixed term dominates: 102 drawn
+instants is about 0.6 ms of products beside about 5 ms of propagators, which is
+what the "about 4.9 ms fixed" above is made of and implies two segments in view.
+`PL-GS3R` then made the budget `max(150, ceil(plot_width_px) + 1)`, and the
+per-instant term overtakes it well inside the range that change opened.
+
+**`PL-PGZF` is this item's cost measured one level up, not a second finding.**
+`assemble_chart_frame` reaches it through `_run_frame` ->
+`SimulationController.drawn_window` -> `evaluate_anchored`
+(`src/anesthesia_sim/app/chart_frame.py:645`, `src/anesthesia_sim/app/controller.py:852`),
+so its table - 8.39 ms at 102 drawn instants, 11.80 at 601, 15.42 at 1 069, one
+20-minute run with one dial change - is this item's own curve at the widened
+budget. Its brief expects the fold: "`PL-R460` and `PL-CNCF` are the neighbours;
+triage may well fold this into one of them." The residual over the two terms
+above grows from about 2.6 ms to about 3.6 ms across that range, which is
+`assemble_chart_frame`'s own per-instant packaging outside `drawn_window` and is
+unattributed; a profile, not arithmetic, is what would place it.
+
+**Memoizing is not free here, and the obstacle is a gated guarantee rather than
+a preference.** `RunDefinition.state_at` documents that it is "a function of the
+run definition and of nothing else - no cache, no memory of what was asked
+before", gated by `tests/reference/test_canonical_evaluation.py` and stated in
+`docs/MODEL.md` § "The canonical evaluation rule". A cache over a pure function
+is observationally transparent and does not by itself break that; what would
+break it is a key that cannot see the definition change underneath it, and
+`record_change` offers two shapes that do exactly that. A second control moved
+before the next step *replaces* the open segment's settings at the same opening
+instant, leaving the segment count unchanged and the physics different; a dial
+moved and moved back *deletes* the open segment, leaving the count lower. Either
+one leaves `(segment index, instant)` - the obvious key - naming a state the run
+was never computed under, which is `CLAUDE.md`'s plausible-but-incorrect value
+rather than a stale pixel. So any fix owes its invalidation key against those
+two shapes before its speed-up is worth measuring.
+
+**`touches` above still names `core/run_score.py`, which `PL-ZX12` renamed.**
+Left as it stands deliberately: `PL-RWBV` holds the re-point for eight open
+items together, and names the consequence for this one - the real path,
+`core/run_definition.py`, is in `protected_paths` and the stale spelling is not.
