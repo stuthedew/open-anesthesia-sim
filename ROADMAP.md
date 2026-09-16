@@ -3472,6 +3472,13 @@ both rather than two answers to cover one each. That is also why the figure is
 left as it stands here: correcting it in place would pick the form `PL-B8V1` is
 open to decide.
 
+`PL-KND7` joins them, filed the same day and waiting on the same kind of answer:
+`main` has been red since `52205f6` because `PL-D1RT`'s `Done when.` was
+overtaken by two decisions of record - the interface pass's un-absorption
+(`PL-L9RD`) and its move after item 34 (`PL-PHKP`) - so what becomes of that item
+is the project owner's rather than a session's. It is workflow-lane and reaches
+no reader of the simulator.
+
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
 `### Declined to Gate ...` subsection after the gate heading and stops at the
