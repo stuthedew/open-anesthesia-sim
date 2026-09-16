@@ -1,0 +1,54 @@
+---
+id: PL-JH3T
+title: Attribute the session-start digest hook's wall-clock cost to a stage: the only number on record is 20.7s median and the hook measures 3.0s in a session container
+status: untriaged
+added: 2026-09-16
+---
+
+**Problem.** Attribute the session-start digest hook's wall-clock cost to a stage: the only number on record is 20.7s median and the hook measures 3.0s in a session container
+
+**Where this came from.** A `/doctor` run on the project owner's machine
+(2026-09-16) reported `.claude/hooks/docket-digest.sh` at a **median 20.7 s,
+max 25.3 s across 13 recorded runs**, and flagged it against its own ">10 s for
+SessionStart" heuristic. That heuristic is not documented policy: the hooks
+reference gives `command` hooks a **600 s default timeout** on `SessionStart`,
+and lowers it only on `UserPromptSubmit`, `PreModelSwitch` and `PostModelSwitch`
+(https://code.claude.com/docs/en/hooks, read 2026-09-16). So the number is worth
+attributing, but nothing is in violation.
+
+**The number does not reproduce here.** Measured in a session container on
+2026-09-16, same commit:
+
+| stage | seconds |
+| --- | --- |
+| `bin/docket branch --brief` | 0.81 |
+| `bin/docket digest` | 1.50 |
+| `python3 tools/dead_ends.py emit` | 0.03 |
+| `python3 tools/main_ci_status.py` | 0.85 |
+| **hook end to end, warm** | **3.20, 2.93, 2.97** |
+| `git fetch --unshallow origin` (once per container) | 3.40 |
+
+So a cold container pays about **6.4 s**, and every session after that about
+**3.0 s** - a seventh of the reported median. The `--unshallow` is not the
+gap: 3.40 s here against the 3.4 s recorded in the hook's own comment on
+2026-09-02, unchanged across 952 commits and a 16 MB `.git`.
+
+**What the gap most likely is, and what would settle it.** Every stage that can
+be slow is a network round trip, and each is separately bounded: the deepen by
+`timeout 60`; `docket branch`'s `git fetch origin` by `_run_git`'s
+`subprocess.run(..., timeout=10)`; `main_ci_status.py` by `TIMEOUT_S = 8`, which
+it can spend twice because it makes two requests. Bounded, those sum to roughly
+the reported median on a link slower than this container's. That is a
+hypothesis, not a finding - it is the owner's machine that produces 20.7 s, so
+the attribution has to be measured there:
+
+```
+cd <repo> && for s in "bin/docket branch --brief" "bin/docket digest" \
+  "python3 tools/dead_ends.py emit" "python3 tools/main_ci_status.py"; do \
+  printf '%-38s ' "$s"; /usr/bin/time -f '%es' sh -c "$s >/dev/null 2>&1"; done
+```
+
+**Done when** the 20.7 s is attributed to named stages by a measurement taken
+where it occurs, and either the cause is fixed or this item records why the cost
+is accepted. `PL-RC86` is the fix worth considering if the attribution lands on
+the network stages.
