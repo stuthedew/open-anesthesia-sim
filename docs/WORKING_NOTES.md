@@ -1337,10 +1337,16 @@ the item to `blocked-by: PL-2FM6` - and a second edit would collide at merge.
 
 `PL-55DH` built the PySide6 + pyqtgraph spike the project owner approved:
 the concentration chart and the readout row behind the *existing*
-`SimulationController`, in `spikes/qt/`, which nothing under
-`src/anesthesia_sim/` imports and which `rm -rf spikes/` removes whole. It
-runs a real case end to end, and `--self-check` asserts every trace's newest
-drawn point against the readout printed beneath it.
+`SimulationController`, in a throwaway tree outside the package that nothing
+under `src/anesthesia_sim/` imported. It ran a real case end to end, and
+`--self-check` asserted every trace's newest drawn point against the readout
+printed beneath it.
+
+**The spike itself is gone**, deleted whole by `PL-7SVX` once the port landed,
+which is what it was built to allow. The tables below are what survives of it,
+and they are the record the decision to leave Flet rests on - there is no
+source tree left to re-run, so a figure here is re-derived only by rebuilding
+the measurement rather than by re-reading the spike.
 
 **It was scoped against a read path that was deleted while it was being
 built.** `PL-55DH` says "the shipped column budget", meaning M4 selection over
@@ -1387,7 +1393,7 @@ sides of `PL-2FM6`, which is why the decision `PL-QXSB` took rests on it alone.
 **Re-measurement is out of scope, deliberately.** `PL-C92D` was written to
 re-take the Flet column on the post-`PL-2FM6` tree; it was re-scoped on
 2026-09-12, because `PL-QXSB` has since decided to leave Flet and the tree
-that would be re-measured is one this project is deleting (`PL-7SVX`). What
+that would be re-measured is one this project has since deleted (`PL-7SVX`). What
 was worth keeping is this caveat, for a later reader asking why the interface
 left Flet - not three comparable rows nobody will act on.
 
@@ -1490,7 +1496,7 @@ for.
 
 ## Measured on real hardware: the Qt spike's paint cost and input latency - PL-X9T3, PL-55DH, PL-QXSB, PL-CNCF (2026-09-10)
 
-`PL-X9T3` closed. The project owner ran `spikes/qt/qt_spike.py` on their own
+`PL-X9T3` closed. The project owner ran the Qt spike on their own
 machine - macOS, build `0.4.12+g7e0ff5bb`, which is `main` at `7e0ff5b` - and
 read the instrument panel at both ends of the rate ladder. This is the half no
 session in the web container could produce, and `PL-QXSB` was right that the
