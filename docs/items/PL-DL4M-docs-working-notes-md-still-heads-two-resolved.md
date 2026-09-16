@@ -1,8 +1,14 @@
 ---
 id: PL-DL4M
 title: docs/WORKING_NOTES.md still heads two resolved threads 'Open thread' and opens with a 'Repository state' section describing the v0.2.0 baseline, so a reader picking it up cold is told the rule-routing and scenario-branching questions are open and main is forty releases behind
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
+feature: dev-tooling
+touches: docs/WORKING_NOTES.md
 added: 2026-09-14
+verify: python3 tools/doc_check.py check && ! grep -qF 'Open thread: which moment a rule has to reach' docs/WORKING_NOTES.md
 ---
 
 **Problem.** docs/WORKING_NOTES.md still heads two resolved threads 'Open thread' and opens with a 'Repository state' section describing the v0.2.0 baseline, so a reader picking it up cold is told the rule-routing and scenario-branching questions are open and main is forty releases behind
@@ -37,3 +43,18 @@ status word the file already uses for settled threads (`Settled:`,
 `Repository state` section either states the current baseline or is removed
 in favour of `ROADMAP.md` § "Current baseline", which is the one place that
 statement is maintained.
+
+**Why it matters.** `docs/WORKING_NOTES.md` is what a session reads to pick up
+an open thread cold, and `docket.toml` wires it in as this repository's
+`notes_file`, so `bin/docket show` surfaces its `##` headings against the item
+being shown. All three stale headings mislead in the same direction: they
+present a settled question as live.
+
+A session reading the rule-routing heading is told `PL-WWDT` and `PL-H588` are
+open, when one is `done` and the other `dropped`. One reading the
+scenario-branching heading is told the thread stays open until item 26 is
+scoped, which happened on 2026-09-06 - `ROADMAP.md`'s v0.5.0 section now
+carries the design. One reading `Repository state as of this writing` is told
+`main` is the v0.2.0 baseline when it is v0.4.25, forty releases on. The cost
+is a session spending its opening turns re-deriving a decision already recorded
+somewhere else, which is the expensive half of a cold start.
