@@ -1081,6 +1081,23 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   it draws, and never for the whole run: the states come back evaluated for
   the instants that span plots, so what crosses that boundary is bounded by
   the display rather than by the run's length.
+
+  **The *whose is it* question describes the fixed layout shipped today, and
+  is superseded when `ROADMAP.md` item 34's area system lands.** It routes by
+  which of two containers holds a surface, and an area holds one editor with
+  any editor able to occupy any area, so the question stops having an answer:
+  `PL-TH35` is where the Editor contract that replaces it is written, and
+  adding that route is its work rather than this bullet's. Until then this
+  bullet still decides **where the code goes**, and
+  `.claude/rules/ui-areas.md` — which loads on the same `src/` read as this
+  file — decides **what shape it is in**: a widget that does not assume its
+  size, its neighbours, or that it is alone. The two are not in conflict once
+  read that way, and neither licenses building splitting, joining, workspace
+  tabs or layout persistence early. What outlives the fixed layout is this
+  bullet's *reason* rather than its routing: a run's panel must not state one
+  branch's numbers over both, and a control shared between runs must not be
+  duplicated into each. Both are properties of the value rather than of the
+  container, and they bind an editor exactly as they bind a panel today.
 - A new way of *rendering* a value a reader interprets — a unit, a decimal
   count, a marker for what the display cannot resolve → `app/formatting.py`,
   as a pure function with its own test, and with the reason recorded in

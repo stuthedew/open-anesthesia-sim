@@ -3,11 +3,12 @@ id: PL-J4NW
 title: docs/ARCHITECTURE.md's 'Where new code belongs' routes every new display panel to run_view.py or simulation_view.py by asking whose it is, which is a fixed two-level layout the area model refuses - and .claude/rules/where-new-code-goes.md loads it on every src/ read
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: interface-areas
 touches: docs/ARCHITECTURE.md
 added: 2026-09-16
+closed: 2026-09-16
 verify: python3 tools/doc_check.py check && grep -qF 'describes the fixed layout shipped today' docs/ARCHITECTURE.md
 ---
 
