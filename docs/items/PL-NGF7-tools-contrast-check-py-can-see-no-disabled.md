@@ -110,14 +110,28 @@ pause, reset).
 this before the port would have measured a half of the interface about to stop
 existing - but its *expected disposition* does not. This is not `dropped`: the
 port did not dissolve it, and the same decision the item already names is still
-owed. The agent dropdown is the safety-relevant one, because ISO 5360 Table 2
-footnote b makes displaying an agent colour an obligation to display the right
-one, and `theme.py` currently asserts the fix for `PL-61WW` was structural -
-"nothing carrying agent identity is disabled" - while `run_view.py:577`
-disables the agent dropdown. Whether the stylesheet `color:` on that control
-survives disabling was not settled here: a synthetic offscreen probe could not
-render the item text reliably, and the honest measurement needs the real
-interface rendered, which is `PL-YCWZ`'s headless rendering tests.
+owed.
+
+**The safety-critical half is already covered, by a check rather than by this
+item.** ISO 5360 Table 2 footnote b makes displaying an agent colour an
+obligation to display the *right* one, so an agent-identity control rendered in
+an undeclared grey would be a safety defect rather than a coverage gap - which
+is what `PL-61WW` was. It cannot happen: `run_view.py:577-578` writes
+`setDisabled(lock.selector_locked)` beside `setHidden(lock.selector_locked)`
+with the same operand, so the selector draws nothing while it cannot be used,
+and `tools/agent_identity_check.py` holds the identity set to that pairing
+rather than trusting it. Its line on `make check` reads *"4 disabled-state
+write(s) ... 1 of them on identity controls and each paired with its hide; none
+rendered disabled"*. So `theme.py`'s claim that the `PL-61WW` fix was
+structural is true, by hiding rather than by not disabling.
+
+**What is left is therefore the ordinary half, and it is narrower than this
+item was written against.** The controls that do render disabled are the
+splitter handle and the start, pause and reset buttons - plain controls
+carrying no identity, no value and no clinical meaning, whose labels are the
+only thing at stake. That is squarely inside the WCAG exemption below. The gap
+is real and the reproducibility point stands; the thing that would have made it
+urgent does not apply.
 
 **One standards fact that bears on which answer to take.** WCAG 2.2 exempts
 disabled controls from both contrast criteria - SC 1.4.3 excludes text that is
