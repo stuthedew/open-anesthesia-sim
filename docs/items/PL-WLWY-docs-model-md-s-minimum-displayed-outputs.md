@@ -152,11 +152,13 @@ own recommendation: name the number, then go and count it.
 **What replaced it is a three-way split, by what a reader can misread a value
 without:**
 
-- **Unconditional** - simulated time, the rate, run state, halt reason, agent
-  identity, and the delivered plus six compartment concentrations in both units
-  with 1 MAC stated. No workspace may remove them and nothing may cover them,
-  guaranteed by a region outside the area system rather than by validating each
-  saved layout.
+- **Unconditional** - stated as a *test* rather than a list: a value is
+  unconditional when a reader could misread the run's other displayed numbers
+  without it. It has an invariant tier - simulated time, the rate, run state,
+  halt reason, and what is being administered - and a tier **instantiated per
+  modelled substance**. No workspace may remove them and nothing may cover
+  them, guaranteed by a region outside the area system rather than by
+  validating each saved layout.
 - **Reachable rather than simultaneously visible** - the agent accounting and
   the mass-balance residual, which state whether the *model* conserves mass and
   are not values a reader titrates against.
@@ -175,3 +177,31 @@ it. Stated once on the display, it binds an in-window floating panel, a
 broken-out window dragged back over the main one, and any later mechanism,
 without being re-argued per window type - which is what `PL-T86Q` had to
 correct when it was argued per mechanism.
+
+**Corrected 2026-09-16, before this ever landed, and the correction is the
+item's most useful line.** The first version of the unconditional set was
+written as a literal list ending "...the delivered plus six compartment
+concentrations in both units with 1 MAC stated", presented as a forever rule.
+The project owner refused it: "There are times when a user may want to simulate
+IV stuff only, and this would be irrelevant."
+
+They are right, and the error would have been reached rather than merely
+hypothetical. `ROADMAP.md` planned-milestone item 13 adds intravenous PK/PD and
+effect-site models. A run administering no volatile agent has no vaporizer
+dial, no circuit concentration and no MAC, so a rule demanding all three would
+have required the display to show quantities the run does not have - the
+opposite of what this section exists for.
+
+**So the set is now a test with two tiers**: an invariant tier that holds
+whatever is being simulated - time, rate, run state, halt reason, what is being
+administered - and a tier the test *instantiates* against whatever substance a
+run models. Today's inhaled instance is recorded as an instance, with a
+sentence saying it holds only while an inhaled agent is what the run models,
+and that a later substance owes its own instance named where its model is
+specified.
+
+**This is the third time in one session that a rule true of the current
+mechanism was written as a rule about the project** - after `PL-T86Q` (floating
+recorded as permanently refused) and this item's own strip recommendation
+(proposed before counting what it must carry). `PL-GDB0` captures the pattern
+rather than leaving it as three separate corrections.

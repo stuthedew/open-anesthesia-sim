@@ -4422,9 +4422,12 @@ once someone is ready to scope it.
     owner, 2026-09-15), in `docs/MODEL.md` § "Minimum displayed outputs" ->
     "What this list requires once the layout is the reader's": that list now
     divides into an **unconditional** set no workspace may remove and nothing
-    may cover, an **accounting** set that must stay reachable rather than
-    simultaneously visible, and **conditional** obligations that bind a surface
-    only when that surface is shown - so removing a chart removes no required
+    may cover - stated as a test rather than a list, with an invariant tier and
+    a tier instantiated per modelled substance, so the inhaled agent's
+    concentrations and MAC are today's instance and not a permanent
+    requirement (project owner, 2026-09-16) - an **accounting** set that must
+    stay reachable rather than simultaneously visible, and **conditional**
+    obligations that bind a surface only when that surface is shown - so removing a chart removes no required
     value, because the numbers never left. The unconditional set sits outside
     the area system, which is the guarantee this milestone has to build; the
     occlusion rule is what any later floating mechanism arrives under, rather

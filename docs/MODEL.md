@@ -4794,14 +4794,34 @@ no longer meets this list.
 So the list divides in three, by what a reader can misread a value without
 rather than by how the interface happens to be arranged today.
 
-**Unconditional - the values that no workspace may remove and nothing may cover.**
-Simulated time; the rate it is advancing at; run state; why a run halted, when
-one has; which agent is running; and the delivered concentration and the six
-compartment concentrations, in both units, with that agent's 1 MAC in percent
-stated. Each is context a displayed number cannot be read correctly without: a
-concentration with no agent, no unit, no simulated time and no run state is the
-correct number under the wrong patient, which this document treats as a display
-failure rather than a missing convenience.
+**Unconditional - the values that no workspace may remove and nothing may
+cover.** The set is stated as a *test*, not as a list, and the test is: a value
+is unconditional when a reader could misread the run's other displayed numbers
+without it. Applying that test gives two tiers.
+
+**Invariant, whatever is being simulated.** Simulated time; the rate it is
+advancing at; run state; why a run halted, when one has; and what is being
+administered. None of these depends on the substance or the model: a
+concentration with no time, no run state and no named drug is the correct
+number under the wrong patient, which this document treats as a display failure
+rather than a missing convenience.
+
+**Instantiated per modelled substance, and the current instance is not the
+rule** (project owner, 2026-09-16). For the inhaled-agent model this document
+specifies, the test selects the delivered concentration and the six compartment
+concentrations, in both units, with that agent's 1 MAC in percent stated. **That
+instance holds only while an inhaled agent is what the run models.** A run that
+administers no volatile agent - the intravenous models of `ROADMAP.md`
+planned-milestone item 13, or any later substance - owes no vaporizer dial, no
+circuit concentration and no MAC multiple, because there is no such quantity to
+misread. It owes its own instance of the same test instead, named where that
+substance's model is specified.
+
+Writing today's instance as the permanent list is a specific error this document
+has already made once and is guarding against here: a rule that is true of the
+model currently implemented, recorded as a rule about the application. The test
+above is what generalises; the seven concentrations are what it currently
+returns.
 
 **Reachable rather than simultaneously visible.** The agent accounting -
 cumulative delivered, cumulative exhausted, total stored, and the mass-balance
