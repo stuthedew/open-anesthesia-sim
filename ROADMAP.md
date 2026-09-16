@@ -4627,7 +4627,44 @@ once someone is ready to scope it.
     uncertainty visible rather than implied away by clean curves. Requested by
     the project owner, 2026-09-15 (`PL-JFXG`).
 
-None of items 1-37 mix scientific-core and UI/tooling concerns within a
+38. Decide what this project is called and what it looks like - the name it
+    ships under, an application icon, a splash screen if it has one, and the
+    wordmark the README and the interface carry. Raised by the project owner,
+    2026-09-16, explicitly as something to start thinking about down the road:
+    this is intent, and scoping it is a later decision (`PL-KFJQ`).
+
+    *Its own item because three others consume it.* Item 23 (packaging,
+    signing and distribution) needs platform bundle icons, item 32 (make the
+    repository presentable to a first-time visitor) needs whatever sits at the
+    top of the README, and item 33 (the interface pass) sets the palette and
+    type of the interface itself, which is adjacent to an identity and is not
+    one. Left undecided, each invents its own answer at the moment it first
+    needs one, which is how a project acquires three.
+
+    *The name comes first, and it is the project owner's alone.*
+    `open-anesthesia-sim` is a repository name; whether it is also the product
+    name is open, and the icon, wordmark, window title and bundle identifier
+    are all derived from that answer rather than independent of it.
+
+    *A splash screen, if this application has one, is a safety surface rather
+    than decoration.* It would be the one screen shown before any modelled
+    number is, which makes it the least skippable place to carry the
+    educational-simulation-not-for-clinical-use statement - and at the same
+    time the place where polish does most to make a simulator read as a
+    shipped clinical product, which `CLAUDE.md`'s clinical-output standard
+    already governs. So scoping this decides what a splash screen says, not
+    only what it looks like. Having none is a legitimate outcome: an
+    application that launches quickly has no reason to hold a user at a logo,
+    and that moves the same statement onto the first real screen rather than
+    removing the obligation.
+
+    *There is no placeholder to build on.* `PL-J7MM` removed the empty
+    branding asset directory on 2026-09-15, the day before this was raised,
+    because it had held one placeholder file since the bootstrap commit and
+    nothing referenced it. This line is where the intent lives until someone
+    scopes it.
+
+None of items 1-38 mix scientific-core and UI/tooling concerns within a
 single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
 on 9, 13 on 12), that dependency is noted inline rather than bundled into
 one item.
