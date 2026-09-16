@@ -3,7 +3,8 @@ id: PL-WLWY
 title: docs/MODEL.md's Minimum displayed outputs assumes one fixed layout, so planned-milestone item 34's removable areas would let a learner delete the readouts that are the stated safety floor for hiding a chart trace
 priority: P2
 effort: M
-status: ready
+status: done
+closed: 2026-09-16
 classes: docs, ux
 touches: docs/MODEL.md, ROADMAP.md
 added: 2026-09-15
@@ -73,11 +74,18 @@ hideable and this project's may not be, and the reason is the difference between
 the two applications rather than a detail: Blender has no class of value whose
 absence is a safety failure, and this one does. Follow Blender for the
 structure - a region outside the area system - and depart from it on
-hideability, saying so where the departure is recorded. (The manual could not
-be fetched directly from the session that wrote this - `docs.blender.org` is
-blocked by the network egress proxy - so it was read through search results
-rather than at the source, and the § "Status Bar" behaviour should be confirmed
-against the page before it is cited in `docs/MODEL.md`.)
+hideability, saying so where the departure is recorded.
+
+**The caveat on that correction is discharged, and the source is stronger than
+the correction was.** It was written from search results, `docs.blender.org`
+being blocked by this environment's egress proxy. The project owner supplied
+the § "Areas" and § "Workspaces" pages directly on 2026-09-16, and they say
+more than the *Show Status Bar* toggle did: **Focus Mode** (View -> Area ->
+Focus Mode, Ctrl-Alt-Spacebar) hides the Topbar, the Status Bar **and** the
+editor's secondary regions together. So neither of Blender's two out-of-area
+regions is unconditionally present, and this project departs from the precedent
+further than the first correction said. `docs/MODEL.md` cites Focus Mode rather
+than the toggle.
 
 **What break-out added to the question rather than answering** (project owner,
 2026-09-15, recorded at `ROADMAP.md` item 34). An area may be broken out into
@@ -123,3 +131,77 @@ it.* Answer it as a property of the display - which values, guaranteed by what
 mechanism, surviving any layout the learner chose - rather than as a rule about
 window types, and both shapes fall out of it. A per-mechanism answer is what
 produced the overreach `PL-T86Q` had to correct.
+
+**Closed 2026-09-16 on the project owner's decision**, taken as a deliberate
+stepping stone: "ultimately, will be able to resize everything however, but
+this is down the road ... I'm ok with starting with a relatively more rigid
+structure as a stepping stone to more mature resizing apparatus down the road."
+`docs/MODEL.md` § "Minimum displayed outputs" gains "What this list requires
+once the layout is the reader's", and `ROADMAP.md` item 34 names the answer
+instead of pointing here.
+
+**The answer was not the one this item was filed expecting, and the count is
+why.** The brief argued for a persistent strip carrying "the required values",
+without counting what that is. The list runs to roughly twenty obligations
+across six surfaces - a seven-panel readout row, a five-line accounting panel,
+transport and status, the concentration chart, the F_A/F_I plot and the
+control-input timeline - and two of those rows *are* charts, which no strip can
+hold. That is `.claude/rules/expert-review.md`'s rule arriving on this item's
+own recommendation: name the number, then go and count it.
+
+**What replaced it is a three-way split, by what a reader can misread a value
+without:**
+
+- **Unconditional** - stated as a *test* rather than a list: a value is
+  unconditional when a reader could misread the run's other displayed numbers
+  without it. It has an invariant tier - simulated time, the rate, run state,
+  halt reason, and what is being administered - and a tier **instantiated per
+  modelled substance**. No workspace may remove them and nothing may cover
+  them, guaranteed by a region outside the area system rather than by
+  validating each saved layout.
+- **Reachable rather than simultaneously visible** - the agent accounting and
+  the mass-balance residual, which state whether the *model* conserves mass and
+  are not values a reader titrates against.
+- **Conditional** - a chart carries its MAC-awake band, 1 MAC line, control
+  marks and time-base statement *if a chart is shown*; an F_A/F_I plot carries
+  its equilibrium rule and undefined domain *if it is shown*. A reference
+  exists so a trace is not read without its anchor, so with no trace there is
+  nothing to anchor.
+
+The control-input timeline splits the same way: the record unconditional, its
+chart marks conditional.
+
+**The rule underneath all three is the one that has to survive.** No value the
+list requires may be covered while the application still believes it is showing
+it. Stated once on the display, it binds an in-window floating panel, a
+broken-out window dragged back over the main one, and any later mechanism,
+without being re-argued per window type - which is what `PL-T86Q` had to
+correct when it was argued per mechanism.
+
+**Corrected 2026-09-16, before this ever landed, and the correction is the
+item's most useful line.** The first version of the unconditional set was
+written as a literal list ending "...the delivered plus six compartment
+concentrations in both units with 1 MAC stated", presented as a forever rule.
+The project owner refused it: "There are times when a user may want to simulate
+IV stuff only, and this would be irrelevant."
+
+They are right, and the error would have been reached rather than merely
+hypothetical. `ROADMAP.md` planned-milestone item 13 adds intravenous PK/PD and
+effect-site models. A run administering no volatile agent has no vaporizer
+dial, no circuit concentration and no MAC, so a rule demanding all three would
+have required the display to show quantities the run does not have - the
+opposite of what this section exists for.
+
+**So the set is now a test with two tiers**: an invariant tier that holds
+whatever is being simulated - time, rate, run state, halt reason, what is being
+administered - and a tier the test *instantiates* against whatever substance a
+run models. Today's inhaled instance is recorded as an instance, with a
+sentence saying it holds only while an inhaled agent is what the run models,
+and that a later substance owes its own instance named where its model is
+specified.
+
+**This is the third time in one session that a rule true of the current
+mechanism was written as a rule about the project** - after `PL-T86Q` (floating
+recorded as permanently refused) and this item's own strip recommendation
+(proposed before counting what it must carry). `PL-GDB0` captures the pattern
+rather than leaving it as three separate corrections.

@@ -4780,6 +4780,109 @@ one chart entry above that the reader does choose, and what this list requires
 of it is that the width in force is stated, never that any particular width is
 in force.
 
+### What this list requires once the layout is the reader's
+
+This list is written against one fixed layout, and `ROADMAP.md`
+planned-milestone item 34 makes the interface's areas the reader's to add,
+resize and remove. The two meet at the paragraph above: hiding a compartment
+trace is safe *because* the value stays in the numeric readouts, so a layout
+that can remove the readouts removes the floor that sentence stands on, and
+every show/hide affordance this document permits becomes unsafe at once. The
+failure is silent - the chart behaves exactly as documented while the display
+no longer meets this list.
+
+So the list divides in three, by what a reader can misread a value without
+rather than by how the interface happens to be arranged today.
+
+**Unconditional - the values that no workspace may remove and nothing may
+cover.** The set is stated as a *test*, not as a list, and the test is: a value
+is unconditional when a reader could misread the run's other displayed numbers
+without it. Applying that test gives two tiers.
+
+**Invariant, whatever is being simulated.** Simulated time; the rate it is
+advancing at; run state; why a run halted, when one has; and what is being
+administered. None of these depends on the substance or the model: a
+concentration with no time, no run state and no named drug is the correct
+number under the wrong patient, which this document treats as a display failure
+rather than a missing convenience.
+
+**Instantiated per modelled substance, and the current instance is not the
+rule** (project owner, 2026-09-16). For the inhaled-agent model this document
+specifies, the test selects the delivered concentration and the six compartment
+concentrations, in both units, with that agent's 1 MAC in percent stated. **That
+instance holds only while an inhaled agent is what the run models.** A run that
+administers no volatile agent - the intravenous models of `ROADMAP.md`
+planned-milestone item 13, or any later substance - owes no vaporizer dial, no
+circuit concentration and no MAC multiple, because there is no such quantity to
+misread. It owes its own instance of the same test instead, named where that
+substance's model is specified.
+
+Writing today's instance as the permanent list is a specific error this document
+has already made once and is guarding against here: a rule that is true of the
+model currently implemented, recorded as a rule about the application. The test
+above is what generalises; the seven concentrations are what it currently
+returns.
+
+**Reachable rather than simultaneously visible.** The agent accounting -
+cumulative delivered, cumulative exhausted, total stored, and the mass-balance
+residual with its absolute error. These state whether the *model* is conserving
+mass. They are not values a reader titrates against, and no clinical reading is
+made wrong by their absence from a particular workspace, so a layout may leave
+them out. They must stay reachable in every layout, and must not be removable
+from the application.
+
+**Conditional. These bind a surface only when that surface is shown.** A
+concentration chart carries the MAC-awake band, the 1 MAC line, the control
+marks, and the statement of how much simulated time it is showing and whether
+that width was chosen or fits the run. An $`F_A/F_I`$ plot carries its
+equilibrium rule and states where it is not defined. A reference exists so that
+a *trace* is not read without its clinical anchor, so where no trace is drawn
+there is nothing to anchor and nothing is lost by the surface's absence. What
+must never happen is the surface without its references, which is what these
+entries have always been about.
+
+**The control-input timeline splits the same way.** The record itself - every
+setting changed during the run, with the simulated time it took effect, the
+control it changed and the values it moved between - is unconditional. Its
+**marks on the chart** are conditional on a chart being shown: the list carries
+the facts, the marks carry the reading against the curve, and that reading
+exists only where a curve does.
+
+**The rule all three rest on is about occlusion, not about window types.** No
+value this list requires may be covered while the application still believes it
+is showing it. That one sentence binds a panel drawn over the dashboard, a
+second top-level window dragged over the one carrying the unconditional region,
+and any later floating mechanism, without being re-argued for each. It is a
+property of the display rather than of a window type, which is why it is stated
+once and here.
+
+**Guaranteed structurally, not by validating a saved layout.** The
+unconditional region sits outside the area system, so no split, join, close or
+workspace switch reaches it and no saved layout has to be checked against this
+list to be safe. Validating each workspace and refusing the ones that fail is
+the fallback for anything that cannot live in that region; it warns after the
+fact where the structure prevents, which is the weaker of the two and is why it
+is the fallback. Blender is the model for the *structure* - a region outside
+the area system - and explicitly not for its persistence. Its Topbar and Status
+Bar sit outside the area system as this region does, but neither is
+unconditionally present: *Focus Mode* (View -> Area -> Focus Mode,
+Ctrl-Alt-Spacebar) hides the Topbar, the Status Bar and the editor's secondary
+regions together, for maximum screen space (Blender Manual, "Interface ->
+Window System -> Areas", read at the source 2026-09-16). That is the right
+trade for a 3D application and the wrong one here, because Blender has no class
+of value whose absence is a safety failure and this application does. Take the
+structure; refuse the escape hatch, and say so where a reader would otherwise
+assume the whole precedent was copied.
+
+**A stepping stone, and recorded as one** (project owner, 2026-09-15). This is
+deliberately the rigid version - a fixed unconditional region and a conditional
+remainder - chosen to be correct while the layout apparatus is built rather
+than to be its final shape: "ultimately, will be able to resize everything
+however ... I'm ok with starting with a relatively more rigid structure as a
+stepping stone". So the particular split of this list is expected to be
+revisited as that apparatus matures. What must survive any revision is the
+occlusion rule above, which is the safety floor rather than the arrangement.
+
 **While two runs are shown, every readout names the run it describes, and all
 six compartments keep theirs** (`PL-1XPX`). This list is a requirement on the
 numeric readouts and does not become a smaller one in compare mode. The rule in
