@@ -49,6 +49,7 @@ from PySide6.QtGui import QBrush, QColor, QImage, QPainter, QPaintEvent, QPen
 from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 from anesthesia_sim.app.chart_frame import (
+    COMPARED_COMPARTMENT_CAP,
     COMPARTMENT_TRACES,
     MAX_CHART_CONTROL_MARKS,
     MAX_CHART_WASH_IN_SEGMENTS,
@@ -56,24 +57,35 @@ from anesthesia_sim.app.chart_frame import (
     ChartFrame,
     HoverTarget,
     TraceStyle,
+    compared_compartments,
     nearest_trace_point,
     nearest_wash_in_point,
+    run_trace_style,
+    trace_style,
     wash_in_axis_ticks,
 )
 from anesthesia_sim.app.dashboard_frame import (
+    BRANCH_POINT_LEGEND_LABEL,
+    COMPARED_TRACE_LEGEND_CAPTION,
     CONTROL_MARK_LEGEND_LABEL,
     EQUILIBRIUM_LEGEND_LABEL,
     MAC_AWAKE_BAND_LEGEND_LABEL,
+    MAX_DISPLAYED_RUNS,
     TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE,
     WASH_IN_TRACE_LEGEND_LABEL,
+    compared_trace_legend_label,
+    run_label,
+    trace_legend_label,
 )
 from anesthesia_sim.app.formatting import format_chart_time_label
 from anesthesia_sim.app.qt_widgets import FlowLayout
-from anesthesia_sim.app.run_series import RecordedQuantity
+from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.theme import (
     BAND_SWATCH_HEIGHT,
     BAND_SWATCH_WIDTH,
+    BRANCH_POINT_STROKE_WIDTH,
     CHART_HEIGHT,
+    COMPARED_RUN_WIDTH_STEP,
     CONTROL_MARK_COLOR,
     CONTROL_MARK_DASH_PATTERN,
     CONTROL_MARK_STROKE_WIDTH,
@@ -101,6 +113,7 @@ from anesthesia_sim.app.theme import (
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO
 
 __all__ = [
+    "BRANCH_POINT_LEGEND_LABEL",
     "CONTROL_MARK_LEGEND_LABEL",
     "EQUILIBRIUM_LEGEND_LABEL",
     "HOVER_RADIUS_PIXELS",
@@ -113,6 +126,7 @@ __all__ = [
     "WashInChart",
     "WashInLegend",
     "dashed_pen",
+    "run_trace_pen",
     "trace_pen",
 ]
 
@@ -195,14 +209,76 @@ def dashed_pen(color: str, stroke_width: float, dash_pattern: Sequence[int] | No
     return pen
 
 
-def _wash_in_pen() -> QPen:
-    """The pen the F_A/F_I trace is drawn with, on the plot and in its legend.
+def run_trace_pen(quantity: RecordedQuantity, run_index: int, run_count: int) -> QPen:
+    """The pen one run draws a compartment with, on the chart and in the legend.
+
+    `chart_frame.run_trace_style` decides it and this only builds it, so the
+    run's width channel is settled once, without a toolkit, where
+    `tests/unit/test_chart_frame.py` can hold it.
+
+    Args:
+        quantity: Which compartment.
+        run_index: Which run, as a position in the frame's runs.
+        run_count: How many runs are on the chart.
+
+    Returns:
+        The pen, in the compartment's colour and dash pattern at the run's
+        width.
+    """
+
+    return trace_pen(run_trace_style(quantity, run_index, run_count))
+
+
+def _branch_point_pen() -> QPen:
+    """The pen a fork is marked with: upright and solid where a control mark is dashed.
+
+    Both marks name an instant and both are vertical, so what separates them
+    is the dash pattern and the words in the legend - two channels, neither
+    of them colour. It reuses the control mark's colour deliberately rather
+    than declaring one: the pair is already measured against the panel, and
+    a mark a reader must not read as a control change should not rest on a
+    hue at all.
+    """
+
+    pen: QPen = pg.mkPen(CONTROL_MARK_COLOR, width=BRANCH_POINT_STROKE_WIDTH)
+
+    return pen
+
+
+def _wash_in_pen(run_index: int = 0, run_count: int = 1) -> QPen:
+    """The pen one run's F_A/F_I trace is drawn with, on the plot and in its legend.
 
     One constructor for both, as `trace_pen` is for the compartments, so the
     legend swatch cannot describe a line the plot is not drawing.
+
+    **The run's width channel reaches this plot too.** It draws one trace per
+    run in one colour and one dash pattern, so two runs here are not merely
+    hard to tell apart - they are identical but for their values, which is
+    the failure the compartment chart's cap and width levels exist to
+    prevent. The same step separates them, and for the same reason the same
+    run is the wider: the two ratios also coincide exactly before the fork.
+
+    Args:
+        run_index: Which run, as a position in the frame's runs.
+        run_count: How many runs are on the plot.
+
+    Returns:
+        The pen.
+
+    Raises:
+        ValueError: If `run_index` does not address one of `run_count` runs.
     """
 
-    return dashed_pen(WASH_IN_COLOR, WASH_IN_STROKE_WIDTH, None)
+    if run_count < 1 or not 0 <= run_index < run_count:
+        raise ValueError(
+            f"run {run_index} is not one of the {run_count} runs on the plot; a trace "
+            "is drawn at the width of a run that is being drawn"
+        )
+
+    widened = run_count > 1 and run_index == 0
+    width = WASH_IN_STROKE_WIDTH + (COMPARED_RUN_WIDTH_STEP if widened else 0)
+
+    return dashed_pen(WASH_IN_COLOR, width, None)
 
 
 def _control_mark_pen() -> QPen:
@@ -345,10 +421,74 @@ class _HoverReadout:
         return str(self._text.textItem.toPlainText()) if self._text.isVisible() else None
 
 
-class _RunItems:
-    """One run's items on the concentration chart: its curves and its marks."""
+class _RunPens:
+    """One run's pens, built on first use and kept.
 
-    def __init__(self, item: Any) -> None:
+    A trace's width carries the *run* once more than one is drawn
+    (`chart_frame.run_trace_style`), so a pen depends on how many runs are
+    on the chart as well as on the compartment - and that count changes when
+    a reader forks. Rebuilt only when it changes, and then cached, so the
+    per-frame cost stays what it was: items are moved, never rebuilt.
+    """
+
+    def __init__(self, run_index: int) -> None:
+        self._run_index = run_index
+        self._pens: dict[tuple[RecordedQuantity, int], QPen] = {}
+        self._penned_for: int | None = None
+
+    def changed_for(self, run_count: int) -> bool:
+        """Whether the pens in use are not this many runs' pens, and record that they are."""
+
+        if self._penned_for == run_count:
+            return False
+
+        self._penned_for = run_count
+
+        return True
+
+    def of(self, quantity: RecordedQuantity, run_count: int) -> QPen:
+        """This run's pen for a compartment, with this many runs drawn."""
+
+        key = (quantity, run_count)
+
+        if key not in self._pens:
+            self._pens[key] = run_trace_pen(quantity, self._run_index, run_count)
+
+        return self._pens[key]
+
+
+def _branch_point_mark(item: Any) -> Any:
+    """One run's fork mark, hidden, full height and drawn over the gridlines.
+
+    One per run rather than one per plot: a fork belongs to the run that
+    opened at it, and a trunk simply never shows its own.
+    """
+
+    mark = pg.InfiniteLine(pos=0.0, angle=90, pen=_branch_point_pen(), movable=False)
+    mark.setZValue(_Z_CONTROL_MARK)
+    mark.hide()
+    item.addItem(mark, ignoreBounds=True)
+
+    return mark
+
+
+def _place_branch_point(mark: Any, time_s: float | None) -> None:
+    """Stand a run's fork mark at its instant, or hide it where there is none."""
+
+    if time_s is None:
+        mark.hide()
+
+        return
+
+    mark.setPos(time_s)
+    mark.show()
+
+
+class _RunItems:
+    """One run's items on the concentration chart: its curves, its fork, its marks."""
+
+    def __init__(self, item: Any, run_index: int) -> None:
+        self.pens = _RunPens(run_index)
         self.curves: dict[RecordedQuantity, Any] = {}
 
         for style in COMPARTMENT_TRACES:
@@ -356,11 +496,14 @@ class _RunItems:
             item.addItem(curve)
             self.curves[style.quantity] = curve
 
+        self.branch_point = _branch_point_mark(item)
         self.marks = _control_mark_pool(item)
 
     def hide(self) -> None:
         for curve in self.curves.values():
             curve.hide()
+
+        self.branch_point.hide()
 
         for mark in self.marks:
             mark.hide()
@@ -499,10 +642,23 @@ class ConcentrationChart(QWidget):
         self._band.setRegion(frame.mac_awake_band_percent)
 
         while len(self._runs) < len(frame.runs):
-            self._runs.append(_RunItems(item))
+            self._runs.append(_RunItems(item, len(self._runs)))
+
+        # Each run's items are added to the plot in turn, so a later run draws
+        # over an earlier one. That order is load-bearing rather than
+        # incidental: a branch reproduces its parent up to the fork, so before
+        # the branch point the two curves coincide exactly, and it is the
+        # narrower second run drawn last that keeps both visible there
+        # (`theme.COMPARED_RUN_WIDTH_STEP`).
+        run_count = len(frame.runs)
 
         for items, run in zip(self._runs, frame.runs, strict=False):
+            repen = items.pens.changed_for(run_count)
+
             for quantity, curve in items.curves.items():
+                if repen:
+                    curve.setPen(items.pens.of(quantity, run_count))
+
                 if quantity in frame.visible:
                     # Only the traces the reader has left shown are written:
                     # a hidden trace costs nothing per frame and holds the
@@ -514,6 +670,7 @@ class ConcentrationChart(QWidget):
                 else:
                     curve.hide()
 
+            _place_branch_point(items.branch_point, run.branch_point_s)
             _place_marks(items.marks, run.control_marks_s)
 
         for items in self._runs[len(frame.runs) :]:
@@ -571,6 +728,24 @@ class ConcentrationChart(QWidget):
         times, values = curve.getData()
 
         return tuple(float(t) for t in times), tuple(float(v) for v in values)
+
+    def drawn_pen(self, run: int, quantity: RecordedQuantity) -> QPen:
+        """The pen one run's curve for a compartment is drawn with.
+
+        Read off the curve item rather than recomputed, so a test holds what
+        the toolkit is painting against what `chart_frame` said it should.
+        """
+
+        pen: QPen = self._runs[run].curves[quantity].opts["pen"]
+
+        return pen
+
+    def branch_point_time(self, run: int) -> float | None:
+        """Where one run's fork is marked, in simulated seconds, or None if unmarked."""
+
+        mark = self._runs[run].branch_point
+
+        return float(mark.value()) if mark.isVisible() else None
 
     def control_mark_times(self, run: int) -> tuple[float, ...]:
         """Where one run's shown control marks stand, in simulated seconds."""
@@ -676,9 +851,11 @@ class ConcentrationChart(QWidget):
 
 
 class _WashInRunItems:
-    """One run's items on the wash-in plot: its stretches, their ends, its marks."""
+    """One run's items on the wash-in plot: its stretches, their ends, its fork, its marks."""
 
-    def __init__(self, item: Any) -> None:
+    def __init__(self, item: Any, run_index: int) -> None:
+        self._run_index = run_index
+        self._penned_for: int | None = None
         pen = _wash_in_pen()
         self.stretches = []
 
@@ -695,13 +872,27 @@ class _WashInRunItems:
             size=_WASH_IN_TERMINUS_DIAMETER, pen=None, brush=pg.mkBrush(WASH_IN_COLOR)
         )
         item.addItem(self.termini, ignoreBounds=True)
+        self.branch_point = _branch_point_mark(item)
         self.marks = _control_mark_pool(item)
+
+    def repen(self, run_count: int) -> None:
+        """Re-pen every stretch when the number of runs on the plot has changed."""
+
+        if self._penned_for == run_count:
+            return
+
+        self._penned_for = run_count
+        pen = _wash_in_pen(self._run_index, run_count)
+
+        for stretch in self.stretches:
+            stretch.setPen(pen)
 
     def hide(self) -> None:
         for stretch in self.stretches:
             stretch.hide()
 
         self.termini.setData([], [])
+        self.branch_point.hide()
 
         for mark in self.marks:
             mark.hide()
@@ -767,9 +958,10 @@ class WashInChart(QWidget):
         self._grid.place(frame.tick_times_s, [position for position, _ in wash_in_axis_ticks()])
 
         while len(self._runs) < len(frame.runs):
-            self._runs.append(_WashInRunItems(item))
+            self._runs.append(_WashInRunItems(item, len(self._runs)))
 
         for items, run in zip(self._runs, frame.runs, strict=False):
+            items.repen(len(frame.runs))
             ends_x: list[float] = []
             ends_y: list[float] = []
 
@@ -785,6 +977,7 @@ class WashInChart(QWidget):
                 curve.hide()
 
             items.termini.setData(ends_x, ends_y)
+            _place_branch_point(items.branch_point, run.branch_point_s)
             _place_marks(items.marks, run.control_marks_s)
 
         for items in self._runs[len(frame.runs) :]:
@@ -833,6 +1026,20 @@ class WashInChart(QWidget):
         times, ratios = self._runs[run].termini.getData()
 
         return tuple((float(t), float(r)) for t, r in zip(times, ratios, strict=True))
+
+    def drawn_pen(self, run: int) -> QPen:
+        """The pen one run's stretches are drawn with, read off the plot item."""
+
+        pen: QPen = self._runs[run].stretches[0].opts["pen"]
+
+        return pen
+
+    def branch_point_time(self, run: int) -> float | None:
+        """Where one run's fork is marked, in simulated seconds, or None if unmarked."""
+
+        mark = self._runs[run].branch_point
+
+        return float(mark.value()) if mark.isVisible() else None
 
     def control_mark_times(self, run: int) -> tuple[float, ...]:
         """Where one run's shown control marks stand, in simulated seconds."""
@@ -1014,6 +1221,18 @@ class _LineSwatch(QWidget):
         self._filled = filled
         self.update()
 
+    def set_pen(self, pen: QPen) -> None:
+        """Paint this mark with another pen, for a swatch whose series changes.
+
+        The compare-mode row's entries are a fixed pool that stands for
+        whichever traces are drawn, so a swatch has to be able to take the
+        pen of the curve it currently describes. The size never changes with
+        it, for the reason the class docstring gives.
+        """
+
+        self._pen = pen
+        self.update()
+
     def paintEvent(self, event: QPaintEvent) -> None:  # Qt spells this in camelCase.
         del event
 
@@ -1091,14 +1310,57 @@ def _legend_row(caption: str | None, entries: Sequence[tuple[QWidget, QWidget]])
     row = FlowLayout(horizontal_spacing=16, vertical_spacing=6)
 
     if caption is not None:
-        caption_label = QLabel(caption)
-        caption_label.setStyleSheet(f"color: {MUTED};")
-        row.addWidget(caption_label)
+        row.addWidget(legend_caption(caption))
 
     for swatch, label in entries:
         row.addWidget(_legend_entry(swatch, label))
 
     return row
+
+
+class _PooledEntry:
+    """One legend entry whose swatch and words are rewritten rather than rebuilt.
+
+    The compare-mode rows name every curve actually on the plot, and which
+    curves those are changes with the reader's selection and with how many
+    runs are drawn. A fixed pool the size of the most that can be shown -
+    `COMPARED_COMPARTMENT_CAP` compartments times `MAX_DISPLAYED_RUNS` runs -
+    is written and hidden instead of a row rebuilt on every change, which is
+    the same reason the plots keep fixed pools of marks and stretches.
+    """
+
+    def __init__(self, row: FlowLayout) -> None:
+        self.swatch = _LineSwatch(_control_mark_pen(), LEGEND_SWATCH_WIDTH, LEGEND_SWATCH_HEIGHT)
+        self.label = _legend_label("")
+        self.widget = _legend_entry(self.swatch, self.label)
+        self.widget.setHidden(True)
+        row.addWidget(self.widget)
+
+    def show(self, pen: QPen, text: str) -> None:
+        """Stand for this curve: its own pen, and the words that name it."""
+
+        self.swatch.set_pen(pen)
+        self.label.setText(text)
+        self.widget.setHidden(False)
+
+    def hide(self) -> None:
+        """Show nothing, and take no space."""
+
+        self.widget.setHidden(True)
+
+
+def legend_caption(text: str) -> QLabel:
+    """A legend row's caption, in the muted role every row's caption takes.
+
+    Its own constructor because a row that has to hide its caption - the
+    compare row, which stands down entirely on a single run - needs to hold
+    the widget rather than fish it back out of the layout.
+    """
+
+    label = QLabel(text)
+    label.setStyleSheet(f"color: {MUTED};")
+
+    return label
 
 
 def _legend_entry(swatch: QWidget, label: QWidget) -> QWidget:
@@ -1151,7 +1413,7 @@ class TraceLegend(QWidget):
                 LEGEND_SWATCH_WIDTH,
                 max(LEGEND_SWATCH_HEIGHT, ceil(style.stroke_width)),
             )
-            box = QCheckBox(f"{style.label} ({style.line_style})")
+            box = QCheckBox(trace_legend_label(style))
             box.setAccessibleName(TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=style.label))
             box.setChecked(True)
             box.setStyleSheet(f"color: {INK};")
@@ -1166,6 +1428,19 @@ class TraceLegend(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
         layout.addLayout(_legend_row("Compartments:", compartments))
+        # The compare row: one entry per curve actually drawn, naming both the
+        # compartment and the run, because once a curve carries two dimensions
+        # a legend that names one of them attributes nothing. It is empty and
+        # takes no height on a single run, where the row above already names
+        # every drawn curve completely.
+        self._compared_row = _legend_row(None, [])
+        self._compared_caption = legend_caption(COMPARED_TRACE_LEGEND_CAPTION)
+        self._compared_row.addWidget(self._compared_caption)
+        self._compared_entries = [
+            _PooledEntry(self._compared_row)
+            for _ in range(COMPARED_COMPARTMENT_CAP * MAX_DISPLAYED_RUNS)
+        ]
+        layout.addLayout(self._compared_row)
         # Each reference names the compartment it is read against, which
         # `docs/MODEL.md` § "Interface boundary" requires of a reference in
         # the same breath as it exempts one from the drawn-trace rule.
@@ -1198,7 +1473,21 @@ class TraceLegend(QWidget):
         # above it: a compartment trace is a modelled quantity and a clinical
         # reference is a published constant; this is a record of something
         # the *user* did.
-        layout.addLayout(_legend_row("Run record:", [_control_mark_entry()]))
+        branch_swatch = _LineSwatch(
+            _branch_point_pen(),
+            CONTROL_MARK_SWATCH_WIDTH,
+            CONTROL_MARK_SWATCH_HEIGHT,
+            vertical=True,
+        )
+        self._branch_entry = _legend_entry(branch_swatch, _legend_label(BRANCH_POINT_LEGEND_LABEL))
+        self._branch_entry.setHidden(True)
+        run_record = _legend_row("Run record:", [_control_mark_entry()])
+        run_record.addWidget(self._branch_entry)
+        layout.addLayout(run_record)
+        self._run_count = 1
+        self._check_order: list[RecordedQuantity] = list(COMPARTMENT_QUANTITIES)
+        self._adjusting = False
+        self._refresh_compared_row()
 
     @property
     def shown(self) -> tuple[RecordedQuantity, ...]:
@@ -1211,15 +1500,174 @@ class TraceLegend(QWidget):
         )
 
     def set_shown(self, shown: Sequence[RecordedQuantity]) -> None:
-        """Check exactly these compartments, as a reader clicking would."""
+        """Check exactly these compartments, as a reader clicking would.
 
-        for quantity, box in self._boxes.items():
-            box.setChecked(quantity in shown)
+        Written as one act rather than six clicks: the cap is not applied
+        between the boxes, so a caller may pass a set that is briefly over it
+        without the legend unchecking something in the middle of the pass,
+        and the change is announced once rather than once per box.
+
+        A bulk set that is over the cap is reduced by
+        `compared_compartments` - the top of the compartment table - because
+        a set arriving whole carries no order of preference for this class to
+        read. `set_compartment_shown` is the one-at-a-time route, and it
+        keeps what was just asked for instead.
+        """
+
+        wanted = tuple(shown)
+
+        while True:
+            self._adjusting = True
+
+            try:
+                for quantity, box in self._boxes.items():
+                    box.setChecked(quantity in wanted)
+            finally:
+                self._adjusting = False
+
+            drawn, over = compared_compartments(self.shown, self._run_count)
+
+            if not over:
+                break
+
+            wanted = drawn
+
+        self._refresh_compared_row()
+        self.visibility_changed.emit()
+
+    def set_compartment_shown(self, quantity: RecordedQuantity, shown: bool) -> None:
+        """Show or hide one compartment, by exactly the route a reader's click takes.
+
+        Args:
+            quantity: Which compartment.
+            shown: Whether to draw it.
+
+        Raises:
+            KeyError: If `quantity` is not a compartment on this chart.
+        """
+
+        self._boxes[quantity].setChecked(shown)
 
     def swatch_pen(self, quantity: RecordedQuantity) -> QPen:
         """The pen one compartment's swatch is painted with."""
 
         return self._swatches[quantity]._pen
+
+    def set_run_count(self, run_count: int) -> None:
+        """Tell the legend how many runs are drawn, and hold the selection to the cap.
+
+        The cap is `chart_frame`'s and is applied there to what the chart
+        draws whatever route reached the selection. This is the same rule
+        arriving at the *control*, so that the boxes a reader sees checked
+        are the curves the plot is drawing: a legend left showing four
+        checked boxes against two curves is the disagreement this class
+        exists to make impossible.
+
+        Args:
+            run_count: How many runs the dashboard is displaying.
+
+        Raises:
+            ValueError: If fewer than one run is given. A legend for no runs
+                would cap a selection against nothing.
+        """
+
+        if run_count < 1:
+            raise ValueError(f"a legend describes at least one run, not {run_count}")
+
+        if run_count == self._run_count:
+            return
+
+        self._run_count = run_count
+        drawn, over = compared_compartments(self.shown, run_count)
+
+        self._branch_entry.setHidden(run_count <= 1)
+
+        if over:
+            # Reduced to exactly what the chart will draw, rather than to some
+            # other pair this class chose: `compared_compartments` is the one
+            # rule, and a legend applying a second one is how a checked box
+            # comes to name a curve that is not on the plot. `set_shown`
+            # refreshes the compare row and announces the change.
+            self.set_shown(drawn)
+        else:
+            self._refresh_compared_row()
+
+    @property
+    def compared_marks(self) -> tuple[LegendMark, ...]:
+        """The compare row's entries as drawn: each curve's words and its own pen.
+
+        Empty on a single run, where the compartment row already names every
+        drawn curve completely.
+        """
+
+        return tuple(
+            LegendMark(entry.label.text(), entry.swatch._pen, entry.swatch._vertical)
+            for entry in self._compared_entries
+            if not entry.widget.isHidden()
+        )
+
+    @property
+    def branch_mark(self) -> LegendMark | None:
+        """The fork's legend entry, or None while it is not shown."""
+
+        if self._branch_entry.isHidden():
+            return None
+
+        return LegendMark(BRANCH_POINT_LEGEND_LABEL, _branch_point_pen(), True)
+
+    def _drop_oldest_over_cap(self) -> None:
+        """Uncheck the longest-standing selections until the cap is met again.
+
+        The oldest rather than the newest, so the compartment a reader just
+        asked for is the one they get: a cap that refused the click instead
+        would leave them clicking a box that does not respond, which is the
+        worse of the two surprises. Only reached from a *check*, so it never
+        runs while a reader is putting compartments away.
+
+        It leaves the selection at or inside the cap, which is what makes
+        `compared_compartments` the identity on everything this legend hands
+        out afterwards - so the boxes and the curves cannot disagree.
+        """
+
+        if not compared_compartments(self.shown, self._run_count)[1]:
+            return
+
+        self._adjusting = True
+
+        try:
+            while compared_compartments(self.shown, self._run_count)[1]:
+                self._boxes[self._check_order[0]].setChecked(False)
+        finally:
+            self._adjusting = False
+
+    def _refresh_compared_row(self) -> None:
+        """Write one entry per drawn curve, and hide the rest of the pool."""
+
+        drawn, _ = compared_compartments(self.shown, self._run_count)
+        entries = (
+            []
+            if self._run_count <= 1
+            else [
+                (
+                    run_trace_pen(quantity, index, self._run_count),
+                    compared_trace_legend_label(
+                        trace_legend_label(trace_style(quantity)), run_label(index)
+                    ),
+                )
+                # Grouped by compartment rather than by run, so the two
+                # entries a reader compares stand beside each other exactly
+                # as the two curves they name do.
+                for quantity in drawn
+                for index in range(self._run_count)
+            ]
+        )
+        self._compared_caption.setHidden(not entries)
+
+        for entry, (pen, text) in zip(self._compared_entries, entries, strict=False):
+            entry.show(pen, text)
+
+        for entry in self._compared_entries[len(entries) :]:
+            entry.hide()
 
     @property
     def band_mark(self) -> BandMark:
@@ -1238,6 +1686,24 @@ class TraceLegend(QWidget):
     def _on_toggled(self, quantity: RecordedQuantity, checked: bool) -> None:
         self._swatches[quantity].set_filled(checked)
         self._boxes[quantity].setStyleSheet(f"color: {INK if checked else MUTED};")
+
+        if quantity in self._check_order:
+            self._check_order.remove(quantity)
+
+        if checked:
+            self._check_order.append(quantity)
+
+        # A box this legend unchecked itself, holding the selection to the
+        # cap, reaches here too: it repaints and takes its place in the order,
+        # and the pass that unchecked it reports the change once rather than
+        # once per box.
+        if self._adjusting:
+            return
+
+        if checked:
+            self._drop_oldest_over_cap()
+
+        self._refresh_compared_row()
         self.visibility_changed.emit()
 
 
@@ -1319,16 +1785,81 @@ class WashInLegend(QWidget):
         self._marks = tuple(
             LegendMark(label.text(), swatch._pen, swatch._vertical) for swatch, label in entries
         )
+        self._trace_swatch = trace_swatch
+        self._trace_label = entries[0][1]
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addLayout(_legend_row(None, entries))
+        row = _legend_row(None, entries)
+        # This plot draws one trace per run in one colour and one dash
+        # pattern, so the run's width is the only thing separating two of
+        # them and the row has to name which width is which. A fork entry
+        # joins it for the same reason it joins the chart's legend above.
+        self._branch_swatch = _LineSwatch(
+            _branch_point_pen(),
+            CONTROL_MARK_SWATCH_WIDTH,
+            CONTROL_MARK_SWATCH_HEIGHT,
+            vertical=True,
+        )
+        self._branch_entry = _legend_entry(
+            self._branch_swatch, _legend_label(BRANCH_POINT_LEGEND_LABEL)
+        )
+        self._branch_entry.setHidden(True)
+        row.addWidget(self._branch_entry)
+        self._compared_entries = [_PooledEntry(row) for _ in range(MAX_DISPLAYED_RUNS)]
+        layout.addLayout(row)
+        self._run_count = 1
+
+    def set_run_count(self, run_count: int) -> None:
+        """Tell the legend how many runs are drawn, and name each one's trace.
+
+        Args:
+            run_count: How many runs the dashboard is displaying.
+
+        Raises:
+            ValueError: If fewer than one run is given.
+        """
+
+        if run_count < 1:
+            raise ValueError(f"a legend describes at least one run, not {run_count}")
+
+        if run_count == self._run_count:
+            return
+
+        self._run_count = run_count
+        comparing = run_count > 1
+        # The single unqualified entry stands down while the per-run entries
+        # stand in for it: two entries naming the same trace, one of them
+        # saying nothing about which run, is the ambiguity this row is
+        # being given to remove.
+        self._trace_swatch.setHidden(comparing)
+        self._trace_label.setHidden(comparing)
+        self._branch_entry.setHidden(not comparing)
+
+        for index, entry in enumerate(self._compared_entries):
+            if index < run_count and comparing:
+                entry.show(
+                    _wash_in_pen(index, run_count),
+                    compared_trace_legend_label(WASH_IN_TRACE_LEGEND_LABEL, run_label(index)),
+                )
+            else:
+                entry.hide()
 
     @property
     def marks(self) -> tuple[LegendMark, ...]:
         """The three entries in row order, each with the pen its swatch is painted with."""
 
         return self._marks
+
+    @property
+    def compared_marks(self) -> tuple[LegendMark, ...]:
+        """One entry per run while more than one is drawn, each in that run's own pen."""
+
+        return tuple(
+            LegendMark(entry.label.text(), entry.swatch._pen, entry.swatch._vertical)
+            for entry in self._compared_entries
+            if not entry.widget.isHidden()
+        )
 
 
 def _legend_label(text: str) -> QLabel:

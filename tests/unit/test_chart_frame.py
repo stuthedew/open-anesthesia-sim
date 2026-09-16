@@ -12,6 +12,7 @@ import pytest
 
 from anesthesia_sim.app.chart_frame import (
     CHART_COLUMN_BUDGET_PER_SERIES,
+    COMPARED_COMPARTMENT_CAP,
     COMPARTMENT_TRACES,
     HOVER_INSTANT_RESOLUTION_S,
     MAX_CHART_CONTROL_MARKS,
@@ -23,11 +24,13 @@ from anesthesia_sim.app.chart_frame import (
     WashInStretch,
     assemble_chart_frame,
     chart_columns,
+    compared_compartments,
     format_trace_hover,
     format_wash_in_hover,
     nearest_trace_point,
     nearest_wash_in_point,
     percent_axis_ticks,
+    run_trace_style,
     trace_style,
     wash_in_axis_ticks,
     wash_in_stretches,
@@ -35,7 +38,8 @@ from anesthesia_sim.app.chart_frame import (
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER, time_base_for_span
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment
-from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.dashboard_frame import run_label
 from anesthesia_sim.app.formatting import (
     chart_axis_top_percent,
     chart_grid_interval_percent,
@@ -43,7 +47,7 @@ from anesthesia_sim.app.formatting import (
     format_percent,
 )
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
-from anesthesia_sim.app.theme import ONE_MAC_LINE_DASH_PATTERN
+from anesthesia_sim.app.theme import COMPARED_RUN_WIDTH_STEP, ONE_MAC_LINE_DASH_PATTERN
 from anesthesia_sim.core.concentration import Fraction, Percent
 from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S
 
@@ -64,8 +68,9 @@ def _run(seconds: float, agent_id: str = "sevoflurane") -> SimulationController:
     return controller
 
 
-def _input(controller: SimulationController, *marks_at_s: float) -> RunInput:
+def _input(controller: SimulationController, *marks_at_s: float, run_index: int = 0) -> RunInput:
     return RunInput(
+        run_label(run_index),
         controller,
         controller.snapshot(),
         tuple(
@@ -385,6 +390,8 @@ def _run_frame(times_s: tuple[float, ...], **fractions_by_name: tuple[float, ...
     }
 
     return RunFrame(
+        label=run_label(0),
+        branch_point_s=None,
         agent_id="sevoflurane",
         agent_display_name="Sevoflurane",
         mac_percent=2.0,
@@ -417,6 +424,7 @@ def _frame(
         one_mac_percent=2.0,
         mac_awake_band_percent=(0.58, 0.78),
         visible=visible,
+        undrawn_compartments=0,
         runs=(run,),
     )
 
@@ -520,3 +528,129 @@ def test_the_wash_in_hover_answers_its_own_stretches_in_its_own_units() -> None:
     assert target.readout.splitlines()[1:] == [WASH_IN_HOVER_LABEL, "0.71"]
     # On the equilibrium line, away from the trace: the reference is silent.
     assert nearest_wash_in_point(frame, 100.0, 1.0, **reach) is None
+
+
+# ------------------------------------------- the run's channel, and the cap
+
+
+def test_a_single_run_is_drawn_exactly_as_the_compartment_table_says() -> None:
+    """The width channel does not exist until there is a second run to tell apart."""
+
+    for style in COMPARTMENT_TRACES:
+        assert run_trace_style(style.quantity, 0, 1) == style
+
+
+def test_two_runs_differ_only_in_width_and_the_first_is_the_wider() -> None:
+    """`PL-HLD5`: compartment on style and colour, run on width, read locally.
+
+    The first is widened rather than the second narrowed because a branch
+    reproduces its parent up to the fork, so the two curves coincide there
+    and the narrower has to be the one drawn on top - and because nothing is
+    then drawn thinner than the single-run chart draws it, which is what
+    keeps every trace's contrast against the panel where it was measured.
+    """
+
+    for style in COMPARTMENT_TRACES:
+        first = run_trace_style(style.quantity, 0, 2)
+        second = run_trace_style(style.quantity, 1, 2)
+
+        assert second == style
+        assert first.stroke_width == style.stroke_width + COMPARED_RUN_WIDTH_STEP
+        assert first.color == second.color
+        assert first.dash_pattern == second.dash_pattern
+        assert first.line_style == second.line_style
+        assert first.label == second.label
+
+
+def test_a_style_is_refused_for_a_run_the_chart_is_not_drawing() -> None:
+    """A width for a run that is not there would be a width nothing on screen carries."""
+
+    for run_index, run_count in ((1, 1), (-1, 2), (2, 2), (0, 0)):
+        with pytest.raises(ValueError, match="runs on the chart"):
+            run_trace_style(RecordedQuantity.ALVEOLAR, run_index, run_count)
+
+
+def test_one_run_draws_every_compartment_the_reader_left_shown() -> None:
+    """The cap is what frees the width channel, so it binds only once it is needed."""
+
+    assert compared_compartments(COMPARTMENT_QUANTITIES, 1) == (COMPARTMENT_QUANTITIES, 0)
+
+
+def test_two_runs_cap_the_drawn_compartments_and_count_what_they_removed() -> None:
+    """Two compartments times two runs is four curves, and the rest are counted."""
+
+    drawn, undrawn = compared_compartments(COMPARTMENT_QUANTITIES, 2)
+
+    assert len(drawn) == COMPARED_COMPARTMENT_CAP
+    assert undrawn == len(COMPARTMENT_QUANTITIES) - COMPARED_COMPARTMENT_CAP
+    # Table order, not the order a reader clicked, so the drawn pair is the
+    # same pair whichever route reached the selection.
+    assert drawn == COMPARTMENT_QUANTITIES[:COMPARED_COMPARTMENT_CAP]
+
+
+def test_a_selection_already_inside_the_cap_is_left_alone() -> None:
+    """Nothing is removed, and nothing is reported removed."""
+
+    chosen = (RecordedQuantity.MUSCLE, RecordedQuantity.FAT)
+
+    assert compared_compartments(chosen, 2) == (chosen, 0)
+    assert compared_compartments((RecordedQuantity.FAT,), 2) == ((RecordedQuantity.FAT,), 0)
+    assert compared_compartments((), 2) == ((), 0)
+
+
+def test_a_frame_of_two_runs_draws_the_capped_set_and_says_what_it_left_out() -> None:
+    """The cap is applied where the frame is assembled, not where a reader clicks."""
+
+    first = _run(60.0)
+    second = _run(60.0)
+    frame = assemble_chart_frame(
+        (_input(first), _input(second, run_index=1)),
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+
+    assert frame.visible == COMPARTMENT_QUANTITIES[:COMPARED_COMPARTMENT_CAP]
+    assert frame.undrawn_compartments == len(COMPARTMENT_QUANTITIES) - COMPARED_COMPARTMENT_CAP
+    assert tuple(run.label for run in frame.runs) == (run_label(0), run_label(1))
+
+
+def test_a_branch_carries_its_fork_and_a_trunk_carries_none() -> None:
+    """The one instant two compared runs stop being the same run is marked."""
+
+    trunk = _run(60.0)
+    trunk.begin_control_adjustment()
+    trunk.set_fresh_gas_flow(3.0)
+    _advance(trunk, 60.0)
+    case = BranchedCase(trunk)
+    branch = case.fork_at(60.0)
+    frame = assemble_chart_frame(
+        (_input(trunk), _input(branch, run_index=1)),
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+
+    assert frame.runs[0].branch_point_s is None
+    assert frame.runs[1].branch_point_s == pytest.approx(60.0)
+
+
+def test_a_fork_outside_the_drawn_window_is_not_marked_at_its_edge() -> None:
+    """A mark pinned to the edge would put the fork at a time it did not happen."""
+
+    trunk = _run(60.0)
+    trunk.begin_control_adjustment()
+    trunk.set_fresh_gas_flow(3.0)
+    _advance(trunk, 1800.0)
+    case = BranchedCase(trunk)
+    branch = case.fork_at(60.0)
+    _advance(branch, 1800.0)
+    frame = assemble_chart_frame(
+        (_input(trunk), _input(branch, run_index=1)),
+        time_base_for_span(900.0),
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+
+    assert frame.start_s > 60.0
+    assert frame.runs[1].branch_point_s is None

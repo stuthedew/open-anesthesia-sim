@@ -5869,6 +5869,41 @@ also draws the $`F_A/F_I`$ wash-in plot, which carries a single line and never
 had a separation problem; it inherited the shortfall from the shared constant
 and is fixed by the same change.
 
+**What changes when two runs share the axis, and what does not.** Nothing about
+a compartment's appearance changes: it keeps the line style and the colour the
+table above gives it, because colour already means "compartment" here and a
+channel meaning something else either side of a mode change is a misread of a
+clinical value waiting to happen. What is added is the **run, on line width, at
+two levels**, which the arithmetic above makes possible only under a cap — at
+six compartments the width column above is already spent across 2 px and 3 px,
+so **at most two compartments are drawn while two runs are shown** (`PL-HLD5`,
+`PL-8PSW`). Two compartments times two runs is four curves. The cap is a
+colour-capacity limit on the chart and never a reduction of what the display
+owes: § "Minimum displayed outputs" keeps all six readouts on screen for both
+runs, and says so naming this cap.
+
+**The first run is the wider, and the second keeps the single-run width.** This
+is forced rather than chosen. A branch reproduces its parent element-wise up to
+the fork (planned-milestone item 12), so before the branch point the two curves
+do not merely run close together — they coincide exactly, and whichever is drawn
+thicker hides the other completely over that stretch. The narrower curve
+therefore has to be the one drawn last and on top. Widening rather than
+narrowing also keeps every trace at or above the 2 px the table above gives it:
+a 1 px antialiased line renders lighter than its declared colour, which would
+walk back into the 3:1 floor against the panel that this section treats as an
+error rather than a tracked shortfall. The two levels are read *locally* —
+between two curves of one compartment, which are adjacent by construction —
+rather than decoded across the plot.
+
+**Two marks that are not traces, and how they are separated.** A control change
+and a branch point are both vertical, both annotate an instant rather than
+showing any part of the run, and both are drawn in the control mark's colour.
+What separates them is the dash pattern — the control mark is finely dashed and
+the branch point solid — and the words in the legend, which name both. Neither
+rests on a hue, which is deliberate for a pair a reader must not confuse: a fork
+is where two runs stop being the same run, and reading one as a setting change
+would attribute a divergence to the wrong cause.
+
 **The dichromacy simulation.** Brettel, Viénot and Mollon's projection onto the
 reduced stimulus surface each dichromacy leaves — the surface defined by the
 neutral axis and the monochromatic stimuli a dichromat and a normal trichromat

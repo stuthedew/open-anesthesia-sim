@@ -361,6 +361,35 @@ CONTROL_MARK_STROKE_WIDTH = 1.5
 
 CONTROL_MARK_DASH_PATTERN = [3, 5]
 
+# How much wider the first of two compared runs is drawn than the compartment's
+# own width, in display pixels. The run's whole channel while two are shown
+# (`PL-HLD5`: compartment on line style and colour, run on line width), and it
+# is *added* to each compartment's width rather than replacing it, so the two
+# levels stay the same distance apart whichever pair of compartments the cap
+# leaves drawn - 2 px against 4, and 3 px against 5.
+#
+# **The wider run is the first, not the second, and that is a legibility
+# requirement rather than an arbitrary end of the scale.** A branch reproduces
+# its parent element-wise up to the fork (`PL-Z3W6`), so before the branch point
+# the two curves are not merely adjacent - they coincide exactly. Whichever run
+# is drawn thicker hides the other completely over that stretch, so the thin
+# curve has to be the one drawn last and on top: the second run keeps the width
+# the single-run chart draws it at and sits inside the first's line, and both
+# are visible everywhere. Widening rather than narrowing is what keeps the
+# contrast floor intact too - nothing is drawn thinner than 2 px, where a 1 px
+# antialiased line renders lighter than its declared colour and would walk into
+# the 3:1 against the panel that `.claude/rules/ui-color.md` treats as an error.
+COMPARED_RUN_WIDTH_STEP = 2
+
+# The fork a branch opened at, marked on both plots. Vertical like a control
+# mark, because an instant is what both of them name, and separated from one by
+# two channels that are not colour: it is solid where a control mark is dashed,
+# and it carries a word where a control mark carries none. It declares no new
+# colour - `CONTROL_MARK_COLOR` is already measured against the panel - which is
+# what keeps a mark a reader must not confuse with a control change from resting
+# on a hue at all.
+BRANCH_POINT_STROKE_WIDTH = 1.5
+
 # Wide enough for the discard warning to fall in two or three lines rather
 # than a column of fragments; the dialog is text and has no chart to size to.
 NEW_CASE_DIALOG_WIDTH = 420

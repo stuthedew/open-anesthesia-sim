@@ -254,12 +254,29 @@ class FlowLayout(QLayout):
     def minimumSize(self) -> QSize:  # Qt spells this in camelCase.
         size = QSize()
 
-        for item in self._items:
+        for item in self._laid_items():
             size = size.expandedTo(item.minimumSize())
 
         margins = self.contentsMargins()
 
         return size + QSize(margins.left() + margins.right(), margins.top() + margins.bottom())
+
+    def _laid_items(self) -> list[QLayoutItem]:
+        """The items this row actually places: everything but a hidden widget.
+
+        A hidden widget is not on screen, so reserving its width would leave
+        a gap in the row and push the entries after it onto a further line
+        for nothing. Qt's own layouts skip one; this row is hand-written and
+        has to do it explicitly. Rows whose entries appear and disappear -
+        the chart legend's per-run entries, which stand down while one run is
+        drawn - depend on it.
+        """
+
+        return [
+            item
+            for item in self._items
+            if (widget := item.widget()) is None or not widget.isHidden()
+        ]
 
     def _lay_out(self, rect: QRect, *, apply: bool) -> int:
         """Place the items inside `rect`, or only measure, and return the height used."""
@@ -270,7 +287,7 @@ class FlowLayout(QLayout):
         y = inner.y()
         line_height = 0
 
-        for item in self._items:
+        for item in self._laid_items():
             size = item.sizeHint()
             next_x = x + size.width() + self._horizontal_spacing
 

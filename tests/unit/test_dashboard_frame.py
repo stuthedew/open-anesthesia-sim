@@ -35,7 +35,7 @@ from anesthesia_sim.app.chart_frame import (
 from anesthesia_sim.app.chart_time_base import ChartTimeBase, time_base_for_span
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustments
-from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
+from anesthesia_sim.app.controller import ResumePoint, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_UNIT_CAPTION,
     CONTROL_MARK_LEGEND_LABEL,
@@ -74,6 +74,7 @@ from anesthesia_sim.app.dashboard_frame import (
     readout_row_width,
     readouts,
     refused_setting_notice,
+    run_label,
     setting_readouts,
     slider_position,
     slider_value,
@@ -267,13 +268,22 @@ class _FakeController:
     The real controller evaluates its definition at instants it chooses; a
     fake has no definition, and inventing one would make every frame test
     here assert the sampler's column placement rather than the reading
-    under test. Only `snapshot()` and `drawn_window()` are answered, because
-    those are the two things `assemble_chart_frame` asks a run for.
+    under test. Only `snapshot()`, `drawn_window()` and `opened_from` are
+    answered, because those are the three things `assemble_chart_frame` asks
+    a run for.
     """
 
-    def __init__(self, snapshot: SimulationSnapshot, history: tuple[_Sample, ...]) -> None:
+    def __init__(
+        self,
+        snapshot: SimulationSnapshot,
+        history: tuple[_Sample, ...],
+        opened_from: ResumePoint | None = None,
+    ) -> None:
         self.snapshot_value = snapshot
         self.history_value = history
+        #: Where this run forked, or `None` for one that is not a branch.
+        #: A frame marks the fork, so the fake has to be able to be one.
+        self.opened_from = opened_from
 
     def snapshot(self) -> SimulationSnapshot:
         return self.snapshot_value
@@ -317,7 +327,7 @@ def _frame(
     """The frame one tick would draw for one run, under "Fit run" unless told otherwise."""
 
     return assemble_chart_frame(
-        (RunInput(controller, controller.snapshot(), adjustments),),
+        (RunInput(run_label(0), controller, controller.snapshot(), adjustments),),
         time_base,
         shown,
         plot_width_px=_PLOT_WIDTH_PX,

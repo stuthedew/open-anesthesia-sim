@@ -284,6 +284,20 @@ class RunView(QWidget):
         self._frame: ChartFrame | None = None
         self._run_index = 0
 
+        # What this run is called, where the chart's legend calls it that.
+        # Its own label rather than a word inside the agent badge, because the
+        # badge carries the ISO 5360 identity pair and `_apply_agent_color_scheme`
+        # is the only writer of it (`.claude/rules/ui-color.md`); a run's name
+        # is not agent identity and must not take an agent's colour. Hidden
+        # while one run is displayed, where nothing is ambiguous and a name
+        # would be standing text saying what the single panel already says.
+        #
+        # `set_run_name` is deliberately not a chart-shaped or run-shaped
+        # method: naming the view in its own header is what every editor will
+        # owe an area (`.claude/rules/ui-areas.md`, `PL-TH35`), so it is given
+        # a name the next view could take.
+        self._run_name_text = styled_label("", color=INK, bold=True)
+        self._run_name_text.setHidden(True)
         self._status_text = styled_label("", color=MUTED, bold=True)
         _emphasised(self._status_text, status_word(snapshot))
         self._notice_text = NoticeLabel(self)
@@ -915,6 +929,7 @@ class RunView(QWidget):
         layout = QHBoxLayout(row)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
+        layout.addWidget(self._run_name_text)
         layout.addWidget(self._agent_dropdown)
         layout.addWidget(self._running_agent_display)
         layout.addWidget(self._start_button)
@@ -926,6 +941,22 @@ class RunView(QWidget):
         layout.addStretch(1)
 
         return row
+
+    def set_run_name(self, name: str | None) -> None:
+        """Name this view in its own header, or show no name at all.
+
+        The dashboard decides the name, from `dashboard_frame.run_label`, so
+        that this panel and the chart's legend call one run the same thing -
+        a legend entry reading "Run 2" attributes a curve only if something
+        holding that run's settings also says "Run 2".
+
+        Args:
+            name: What to call it, or `None` for no name - which is what a
+                lone run gets, having nothing to be told apart from.
+        """
+
+        self._run_name_text.setText(name or "")
+        self._run_name_text.setHidden(name is None)
 
     def build_notice(self) -> QWidget:
         """The banner for a halted run or a refused setting, placed above every value."""

@@ -1090,8 +1090,13 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   table is the chart's rather than any one run's: `assemble_chart_frame`
   reads it once per run, for the substance that run's snapshot names — the
   run is recorded under that identifier — and `ChartFrame.visible` is the
-  subset the legend leaves drawn, so `app/qt_chart.py` holds one curve per
-  run per trace and moves it to match; nothing is edited directly. A series
+  subset the legend leaves drawn, narrowed by `compared_compartments` to
+  `COMPARED_COMPARTMENT_CAP` once more than one run is on the chart, so
+  `app/qt_chart.py` holds one curve per run per trace and moves it to match;
+  nothing is edited directly. The *width* of that curve is the run's own
+  channel while two are drawn and is `chart_frame.run_trace_style`'s, not the
+  table's: the table is what a compartment looks like, and a new trace
+  declares no width for a run. A series
   that draws no state of the run — a
   clinical reference, a control mark — stays out of that table by
   construction, and owes the labelling requirement `docs/MODEL.md`
