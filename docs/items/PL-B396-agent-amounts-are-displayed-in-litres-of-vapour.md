@@ -89,3 +89,68 @@ density) surviving it and re-pointing at item 28. That disposition is the
 project owner's: it turns on whether item 28 stays on the roadmap, which is a
 scope question rather than a display one. Do not drop it on a session's own
 judgment.
+
+**WHAT GAS MAN ACTUALLY DOES, READ 2026-09-16** (project owner: "See gasman
+workbook on reference repo for their implementation"). Read from
+`stuthedew/open-anesthesia-sim-references`,
+`text/gasman_workbook/`. It answers the unit question, and the answer is
+neither of the two this item started with.
+
+**Gas Man's economic pair is Uptake and Delivered, and its unit toggles
+between litres of vapour and money — never millilitres of liquid.** Appendix,
+printed p. 180: a setting displays "uptake and delivered anesthetic quantities
+in currency (checked) or liters (unchecked)". Printed p. 196: the exportable
+per-instant list carries "uptake in liters, delivered in liters, uptake in
+dollars, and delivered in dollars". So the reference implementation resolves
+"the bottle is the thing a clinician has a handle on" by going one step past
+the bottle, to what the bottle costs.
+
+**Its cost basis is DELIVERED.** Printed p. 174 states the model's own
+formulae: `Feff = FGF (1+Del)`, `DELIVERED Flow = DEL x Feff`, and
+`Cost = DELIVERED Flow x Cost/mL vapor`. That is independent confirmation of
+`PL-H4N8` — `ROADMAP.md` planned-milestone item 28's "from the exhausted-agent
+amount" disagrees with the reference implementation as well as with the
+accounting identity.
+
+**Liquid millilitres appear in Gas Man as an INPUT, not an output.** Chapter
+10, printed pp. 103-105: liquid anaesthetic injection into the breathing
+circuit for closed-circuit technique, in 0.5 mL unit doses ("about four
+injections, or 2 mL, of liquid anesthetic is required to elevate..."). The
+expansion constants are printed there for exactly that purpose: desflurane
+209, enflurane 198, halothane 228, isoflurane 196, sevoflurane 183 mL of
+vapour per mL of liquid. Millilitres are the unit of the clinical *act* of
+injecting, not the unit of the consumption readout.
+
+**Those constants corroborate `PL-KZ99`'s derivation.** Deriving from
+Laster/Fang/Eger's measured densities at 20 C and the ideal-gas molar volume
+gives sevoflurane 182.8, isoflurane 195.8, desflurane 209.7 against Gas Man's
+183, 196 and 209 — within 0.6% on all three, and exact for sevoflurane. Gas
+Man's figures sit closer to the 20 C derivation than Biro 2014's do, which is
+weak evidence for a 20 C reference and is recorded in `PL-S6WW` as such rather
+than as an answer.
+
+**Two hazards before copying any of it.** Money means a stored price: Gas
+Man's defaults are "USA bottle volume and bottle cost as of March 5, 2008",
+with `BottleSize=240` in `GASMAN.INI` (printed p. 171). A shipped price goes
+stale and is institution-specific, so it would have to be reader-set rather
+than a shipped constant, and a stale one displayed as a clinical-economic fact
+is the kind of thing this project's safety standard is about. And the toggle
+is a mode: `.claude/rules/expert-review.md` requires hidden modes minimised, so
+a unit that switches under a toolbar button has to be legible on the value
+itself, not only in the button's state.
+
+**So this item is no longer a candidate for `dropped`.** It is the design
+input for planned-milestone item 28, and the question it now carries is which
+of Gas Man's three units this project offers, with what provenance for a price
+if money is one of them.
+
+**A fourth candidate unit Gas Man predates.** Gas Man's cost display is from a
+2008 price list, and in the years since, the argument for low fresh gas flow
+has become at least as much environmental as economic — desflurane's global
+warming potential is the usual headline. CO2-equivalent is therefore a
+candidate unit for item 28 alongside litres, millilitres of liquid equivalent
+and money, and it has the same shape as money: a stored per-agent factor, from
+a source that has to be cited and can go stale. It is listed here so the unit
+decision is taken over the whole field rather than over the three Gas Man
+happened to implement. No source has been consulted for it yet; doing so is
+part of whatever item 28 becomes.

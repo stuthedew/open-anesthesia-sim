@@ -58,3 +58,10 @@ read low for most of a case and lowest when the teaching point is sharpest.
 the difference between the two is measured at 15, 30 and 60 minutes for a
 reference-adult sevoflurane case so the item records what the wrong basis
 would have cost; and any cost or consumption surface reads delivered.
+
+**The reference implementation agrees, read 2026-09-16.** The Gas Man
+Workbook's Appendix states the program's own cost formula at printed p. 174:
+`Cost = DELIVERED Flow x Cost/mL vapor`, where `DELIVERED Flow = DEL x Feff`
+and `Feff = FGF (1+Del)`. Gas Man bills delivered, not exhausted. Item 28's
+sentence therefore disagrees with both the accounting identity and the
+simulator this project takes as its lineage.
