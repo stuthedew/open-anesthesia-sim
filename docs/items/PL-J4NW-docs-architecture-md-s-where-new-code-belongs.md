@@ -9,6 +9,7 @@ feature: interface-areas
 touches: docs/ARCHITECTURE.md
 added: 2026-09-16
 closed: 2026-09-16
+pr: 629
 verify: python3 tools/doc_check.py check && grep -qF 'describes the fixed layout shipped today' docs/ARCHITECTURE.md
 ---
 

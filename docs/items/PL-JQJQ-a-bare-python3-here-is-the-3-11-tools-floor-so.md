@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: .claude/hooks/floor-interpreter-guard.sh, .claude/settings.json, src/anesthesia_sim/app_metadata.py, tests/unit/test_floor_interpreter_guard.py, docs/ARCHITECTURE.md, docket.toml
 added: 2026-09-16
 closed: 2026-09-16
+pr: 630
 verify: uv run pytest tests/unit/test_floor_interpreter_guard.py && grep -q floor-interpreter-guard .claude/settings.json
 ---
 

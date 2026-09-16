@@ -1,13 +1,14 @@
 ---
 id: PL-XWH4
 title: A decision the owner ratified and one they specified read identically in the record, so a later session cannot tell a design they authored from a recommendation they agreed to, and defends both at the same bar
-status: done
-added: 2026-09-16
 priority: P2
 effort: S
+status: done
 classes: planning, docs
 touches: CLAUDE.md, ROADMAP.md, docs/MODEL.md
+added: 2026-09-16
 closed: 2026-09-16
+pr: 629
 verify: python3 tools/doc_check.py check && grep -qF 'are not the same' CLAUDE.md && grep -qF 'ratified' CLAUDE.md
 ---
 

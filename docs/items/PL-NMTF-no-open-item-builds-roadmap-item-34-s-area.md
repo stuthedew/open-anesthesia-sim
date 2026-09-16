@@ -9,6 +9,7 @@ feature: interface-areas
 touches: ROADMAP.md, docs/MODEL.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, docs/WORKING_NOTES.md, docs/items, .claude/skills/docket/SKILL.md
 added: 2026-09-16
 closed: 2026-09-16
+pr: 629
 verify: python3 tools/doc_check.py check && bin/docket check && grep -qF "## v0.6.0 - the layout is the reader's" ROADMAP.md
 ---
 

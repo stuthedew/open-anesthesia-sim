@@ -9,6 +9,7 @@ feature: interface-areas
 touches: docs/interface-provenance.md
 added: 2026-09-16
 closed: 2026-09-16
+pr: 629
 verify: python3 tools/doc_check.py check && grep -qF 'and `README.md` does not yet' docs/interface-provenance.md
 ---
 

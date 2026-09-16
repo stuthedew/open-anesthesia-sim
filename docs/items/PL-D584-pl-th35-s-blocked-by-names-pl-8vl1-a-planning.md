@@ -9,6 +9,7 @@ feature: interface-areas
 touches: docs/items
 added: 2026-09-16
 closed: 2026-09-16
+pr: 629
 verify: bin/docket check && grep -q '^blocked-by: PL-1FT6' docs/items/PL-TH35-*.md
 ---
 
