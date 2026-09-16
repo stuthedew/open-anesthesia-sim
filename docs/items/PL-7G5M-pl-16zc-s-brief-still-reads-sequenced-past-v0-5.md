@@ -9,6 +9,7 @@ feature: teachable-case
 touches: docs/items/
 added: 2026-09-15
 closed: 2026-09-15
+pr: 597
 verify: python3 tools/doc_check.py check && grep -qF 'The deferral this item carried is discharged' docs/items/PL-16ZC-the-two-clinical-references-and-the-control.md
 ---
 

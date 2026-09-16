@@ -9,6 +9,7 @@ feature: release-roadmap-seam
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_release.py
 added: 2026-09-14
 closed: 2026-09-16
+pr: 606
 verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_a_version_named_ahead_of_the_current_one_is_reserved' subprojects/docket/tests/test_release.py
 ---
 

@@ -2675,7 +2675,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 141 entries
+### Declined to Gate 2 on the refilling-queue ground — 148 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3104,6 +3104,52 @@ coverage hole that `main`'s next successful run closes, and admitting it would
 grow a gate that is not draining. It is the workflow lane, held to
 `.claude/rules/apparatus-standard.md`, and reaches no reader of the simulator.
 
+**Seven more from the 2026-09-16 triage pass** (`PL-0C6W`), over the fourteen
+captures open that morning. All seven were captured on 2026-09-15 or
+2026-09-16, nine and ten days after the 2026-09-06 freeze, so "The gate is a
+snapshot" already places them in the next gate; they are written down because
+each is debt - five classed `defect`, and `PL-6QZP` and `PL-PFK1` by their
+`needs-decision` status - and a reader finding one open would otherwise have to
+work out why it is absent from a gate this size.
+`PL-1RTM`, `PL-6QZP`, `PL-7CSP`, `PL-99YZ`, `PL-PFK1`, `PL-Q8RQ`, `PL-Z9K5`.
+
+**The arithmetic has changed under this section, and the ground is stated on
+what is true now rather than recited.** The paragraphs above decline on a gate
+"not draining" and then "finally draining"; `bin/docket wave` reads it today at
+**170 entries, 165 cleared, 5 open - and 0 that this gate can clear**, all five
+blocked on work outside it. So the refilling-queue argument no longer describes
+the fact pattern, and a weaker version of it should not be borrowed. What
+applies instead is simpler: the gate has done its job. Admitting seven
+post-freeze apparatus findings would re-open a cleared gate and hold v0.5.0 -
+a simulator milestone - behind workflow-lane debt, which is the outcome the
+snapshot rule exists to prevent. The timeline also puts v0.4.26 ahead of
+v0.5.0, so this gate is not even the beat that is due.
+
+**Three of the seven describe problems that are themselves new**, which defers
+them by the snapshot rule's own terms rather than by any exception: `PL-6QZP`
+and `PL-PFK1` are second-order consequences of `PL-69JZ` and `PL-7XTS` (closed
+2026-09-12 and 2026-09-15), and `PL-Z9K5` is a residual gap inside the
+exemption `PL-ZYQC` produced (closed 2026-09-12). The other four - `PL-1RTM`,
+`PL-7CSP`, `PL-99YZ`, `PL-Q8RQ` - describe problems that predate the freeze and
+pass the presence test squarely; they are declined on the ground stated above,
+with that said rather than blurred.
+
+**Six sit wholly in the workflow lane**, where the groups before them do:
+apparatus held to `.claude/rules/apparatus-standard.md`'s lower bar, none of
+which can reach a reader of the simulator. `PL-1RTM` is the exception and is
+named rather than quietly counted with them - its `touches` reaches
+`docs/ARCHITECTURE.md`, which `docket.toml` deliberately keeps out of
+`workflow_paths` because it is written for a reader of the simulator. Its
+product-lane half is one sentence describing what a tooling check covers, not
+anything a clinician could read a number from, so it is declined with the rest.
+
+`PL-Q8RQ` is the one to watch among them, and it is deferred with that said: a
+bare `pytest -k SUBSTRING` exits 5 when it matches nothing, so it reads as a
+command correctly failing before the work and goes on reading that way
+afterwards. `PL-S5YM` turned `main` red exactly this way, and four open items
+carry the shape today. It is recommended as the first of these seven taken off
+the list.
+
 **Two more from 2026-09-16, both filed under `PL-8PSW` and both about the
 interface's move to Blender-style areas** — `PL-VN6M` (`TraceLegend` owns the
 compartment-visibility state inside a widget) and `PL-TH35` (define the common
@@ -3112,7 +3158,7 @@ gate was frozen, so "The gate is a snapshot" already places them in the next
 one; they are written down because both are `refactor`-classed and therefore
 debt, and a reader finding them open would otherwise have to work out why.
 
-Neither is deferred on the refilling-queue arithmetic alone. `PL-TH35` is
+Neither is deferred on the ground the paragraph above restates. `PL-TH35` is
 `blocked` on the Qt port item that reserves for the area system, and the
 roadmap's own ordering argument — planned-milestone item 34, "a view's contract
 is whatever the area system requires of its contents, so views built first are
@@ -3130,7 +3176,7 @@ and the instant but not which run). Captured ten days after this gate was
 frozen, so the snapshot rule already places it in the next one, and seated `P1`
 because `checks.py` will not seat a `safety` class lower.
 
-It is deferred on a ground of its own rather than on this section's arithmetic:
+It is deferred on a ground of its own rather than on this section's:
 **the display it concerns does not exist outside the feature this milestone
 builds.** A hover that does not say which run is ambiguous only while two runs
 are drawn, which is this milestone's own compare mode; before it ships there is
@@ -3386,8 +3432,8 @@ v0.5.0 is complete only when:
 
 - Define equations, units, assumptions, and reference cases before changing the
   scientific core.
-- Keep simulation code independent of Flet, wall-clock time, filesystem state,
-  and display dimensions.
+- Keep simulation code independent of the UI toolkit, wall-clock time,
+  filesystem state, and display dimensions.
 - Store model parameters as validated data with schema version and provenance;
   do not place executable equations in data files.
 - Preserve deterministic results for identical initial state, events, and time
@@ -4631,7 +4677,44 @@ once someone is ready to scope it.
     uncertainty visible rather than implied away by clean curves. Requested by
     the project owner, 2026-09-15 (`PL-JFXG`).
 
-None of items 1-37 mix scientific-core and UI/tooling concerns within a
+38. Decide what this project is called and what it looks like - the name it
+    ships under, an application icon, a splash screen if it has one, and the
+    wordmark the README and the interface carry. Raised by the project owner,
+    2026-09-16, explicitly as something to start thinking about down the road:
+    this is intent, and scoping it is a later decision (`PL-KFJQ`).
+
+    *Its own item because three others consume it.* Item 23 (packaging,
+    signing and distribution) needs platform bundle icons, item 32 (make the
+    repository presentable to a first-time visitor) needs whatever sits at the
+    top of the README, and item 33 (the interface pass) sets the palette and
+    type of the interface itself, which is adjacent to an identity and is not
+    one. Left undecided, each invents its own answer at the moment it first
+    needs one, which is how a project acquires three.
+
+    *The name comes first, and it is the project owner's alone.*
+    `open-anesthesia-sim` is a repository name; whether it is also the product
+    name is open, and the icon, wordmark, window title and bundle identifier
+    are all derived from that answer rather than independent of it.
+
+    *A splash screen, if this application has one, is a safety surface rather
+    than decoration.* It would be the one screen shown before any modelled
+    number is, which makes it the least skippable place to carry the
+    educational-simulation-not-for-clinical-use statement - and at the same
+    time the place where polish does most to make a simulator read as a
+    shipped clinical product, which `CLAUDE.md`'s clinical-output standard
+    already governs. So scoping this decides what a splash screen says, not
+    only what it looks like. Having none is a legitimate outcome: an
+    application that launches quickly has no reason to hold a user at a logo,
+    and that moves the same statement onto the first real screen rather than
+    removing the obligation.
+
+    *There is no placeholder to build on.* `PL-J7MM` removed the empty
+    branding asset directory on 2026-09-15, the day before this was raised,
+    because it had held one placeholder file since the bootstrap commit and
+    nothing referenced it. This line is where the intent lives until someone
+    scopes it.
+
+None of items 1-38 mix scientific-core and UI/tooling concerns within a
 single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
 on 9, 13 on 12), that dependency is noted inline rather than bundled into
 one item.

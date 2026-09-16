@@ -73,3 +73,85 @@ claiming it does and says what actually holds. Either way the comment cites
 give `main` pushes a per-commit concurrency group (`${{ github.sha }}`) so no
 two ever share one; or accept the queue and add a check that a commit on `main`
 carries a completed run.
+
+**Update 2026-09-16: the mechanism is confirmed, and the inference above was
+right.** Folded in from `PL-X0ND`, a duplicate capture of this same run,
+dropped in the 2026-09-16 triage pass (`PL-0C6W`).
+
+Two pieces of evidence, neither available to the session that wrote the
+paragraph above.
+
+**The run never started a job.**
+`GET /repos/stuthedew/open-anesthesia-sim/actions/runs/35033624911` returns
+`conclusion: cancelled` with `run_started_at` and `updated_at` eight seconds
+apart, and `.../runs/35033624911/jobs` returns `total_count: 0`. A run cancelled
+with no job ever created was cancelled while *pending*, which is the state this
+item's inference named and is not the shape a hand cancellation leaves.
+
+**GitHub's documentation states the rule.** The egress block that stopped the
+original confirmation is still in place for `docs.github.com`, but the sentence
+is quoted in indexed copies and in GitHub's own community threads: "By default,
+any existing pending job or workflow in the same concurrency group will be
+canceled and the new queued job or workflow will take its place. By default,
+only one job or workflow run can be pending in a concurrency group at a time."
+
+- <https://docs.github.com/actions/writing-workflows/choosing-what-your-workflow-does/control-the-concurrency-of-workflows-and-jobs>
+- <https://github.com/orgs/community/discussions/41518> - the same behaviour
+  reported as a defect by users, worth reading before assuming this repository
+  is misconfigured.
+
+So `cancel-in-progress` governs the in-progress run and nothing else, and the
+queue slot behind it holds exactly one run. Runs 1999, 2000 and 2001 all shared
+the group `quality-refs/heads/main`: 1999 was *in progress* and protected by
+`cancel-in-progress: false`; 2000 was *pending* and protected by nothing; 2001
+arrived seven seconds later and took the slot. That also answers the objection
+that a concurrency group would have taken the oldest first - 1999 survived
+because in-progress and pending runs are governed by different rules, not
+because of ordering.
+
+**What this settles for the fix.** The first candidate shape below - a
+per-commit concurrency group on `main` pushes - is the one the mechanism
+supports, and the obvious-looking alternative of adjusting `cancel-in-progress`
+is ruled out: it does not reach the queue at all. Nothing here is a
+misconfiguration to correct; the expression evaluates exactly as written, and
+what is wrong is that `concurrency` cannot deliver what the comment promises.
+
+**Second instance, 2026-09-16 01:14 UTC - and it took the commit that was
+unblocking `main`.** Observed live from the session that caused it (`PL-0C6W`,
+the 2026-09-16 triage pass), which is why the timings are to the second.
+
+| run | commit | pull request | created | outcome |
+| --- | --- | --- | --- | --- |
+| 2036 | `df3b1de` | #610 - *"This unblocks `main`"* | 01:13:38 | **cancelled** at 01:14:14 |
+| 2037 | `18bc132` | #611 | 01:14:13 | pending, then ran |
+
+Run 2036 was cancelled **one second after** run 2037 was created, on the
+mechanism confirmed above: 2036 was pending in `quality-refs/heads/main`, and
+2037 arriving took the single slot. Two merges, thirty-five seconds apart, was
+enough - the first instance needed three inside thirteen seconds.
+
+**Three things this changes about the item.**
+
+1. **It is not rare.** Two instances in two hours and fifteen minutes, on an
+   ordinary evening's merges. The first brief could reasonably be read as
+   describing a freak burst; this one cannot.
+2. **It fires hardest exactly when it costs most.** `df3b1de` was the fix for a
+   red `main` - `PL-GN8C`'s `verify:` command matching a sentence about another
+   book, which had `bin/docket check --verify` failing on the default branch.
+   So the one commit whose verdict everybody was waiting for is the one that
+   lost it. That is not a coincidence to note and move past: an outage is
+   precisely when merges cluster, so the failure's rate is *correlated* with
+   the moments its verdict matters. Any threshold analysis of whether to fix
+   this has to price that correlation rather than the average rate.
+3. **Two merges is the real threshold, not three.** The scope paragraph above
+   reasons about a commit lost between an in-progress run and a later merge.
+   What actually happened is simpler and more common: one run in progress, one
+   pending, one arriving. On a repository where a person merges several
+   approved pull requests in a sitting - which is how this one is worked - that
+   is the normal shape rather than a burst.
+
+**The recovery is still linear-history luck, and it is worth saying plainly.**
+`18bc132` contains `df3b1de`, so run 2037 covers the accumulated store state
+and `main`'s tip is verified either way. What is permanently unknown is whether
+`df3b1de` *alone* was green. Nothing reports that, which is the reporting half
+this item's **Done when.** names as its second candidate shape.

@@ -1,8 +1,14 @@
 ---
 id: PL-99YZ
 title: Three sessions opened three pull requests for the same red-main fix within four minutes, each having correctly filed its own item first, because every in-flight guard matches an existing PL- id and none of them can see an item that did not exist when the other sessions looked
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, infra
+feature: parallel-sessions
+touches: docs/items
 added: 2026-09-15
+not-delegable: the deliverable is a count over the store's own history - how many same-subject, different-id collisions it contains - and then a recorded decision about whether anything deterministic is worth building for them. No command can run before that count exists, and per the item's own **Done when.** a recorded 'no, the digest line is enough' closes it as legitimately as a check would
 ---
 
 **Problem.** Three sessions opened three pull requests for the same red-main fix within four minutes, each having correctly filed its own item first, because every in-flight guard matches an existing PL- id and none of them can see an item that did not exist when the other sessions looked
@@ -66,3 +72,21 @@ how many same-subject, different-id collisions the store's history actually
 contains, and whether anything deterministic is worth building for them. A
 recorded "no, the digest line is enough" closes this as legitimately as a check
 does.
+
+**Why it matters.** The cost landed on the project owner rather than on the
+sessions: three pull requests against one file, two of which have to be closed
+and their captures rescued, and a conflict on that field for whichever two
+lose. What makes it an item rather than an apology is that no rule was broken.
+Every session filed its item first, exactly as `CLAUDE.md`'s housekeeping rule
+requires, and the rule worked in the direction it was written for - each
+session's own work was visible under its own id.
+
+The gap is structural and one-directional. Every guard this project has -
+`flight`, `show`, `next`, `concurrent`, `stranded`, the digest, and the
+session-list read the `docket` skill adds on top of them - matches an
+**existing** `PL-` id. A session filing a new id cannot be matched against two
+ids that did not exist when it looked. Filing first makes you visible; it does
+not make you look. A red default branch is the archetype of the shape, because
+it is a shared subject that every session discovers independently and files
+under its own fresh id, and `PL-X0ND` shows the same repository has a second
+way to produce one.
