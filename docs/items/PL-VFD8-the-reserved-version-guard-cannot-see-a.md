@@ -3,12 +3,13 @@ id: PL-VFD8
 title: The reserved-version guard cannot see a milestone that has a timeline row but no section yet, so the digest will offer v0.6.0 the moment v0.5.x is behind it
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: release-roadmap-seam
-touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/roadmap.py, tests/unit/test_docket_digest_hook.py
+touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_release.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md, ROADMAP.md, docs/items/PL-SYG4-the-digest-s-reserved-verdict-suppresses-the.md
 added: 2026-09-14
-verify: uv run pytest tests/unit/test_docket_digest_hook.py && grep -q 'def test_a_timeline_row_with_no_section_reserves_its_version' tests/unit/test_docket_digest_hook.py
+closed: 2026-09-16
+verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_a_timeline_row_with_no_section_reserves_its_version' subprojects/docket/tests/test_release.py
 ---
 
 
@@ -133,3 +134,79 @@ roadmap which unshipped sections and rows reserve a version and check the
 suggestion against all of them, which terminates by construction. `PL-WK0N`
 was filed for this instance before `PL-VFD8` was found and is dropped into
 this item.
+
+**Fixed 2026-09-16, by stopping the enumeration rather than extending it.**
+`wave` now carries `reserved`: every version `ROADMAP.md` names ahead of the
+current one, read from the release train's milestone rows *and* from the
+milestone sections, nearest first, each with the roadmap's own name for what
+holds it. `release_offer` checks the suggestion against that list instead of
+against `plan.step` and `plan.milestone`. Both of those are still bound and
+still used elsewhere; what changed is that the reservation no longer asks
+where the project is standing, and a version is reserved by the one property
+that survives the plan being rearranged - being *named* ahead of the current
+one. There is no fifth arrangement to find, because the question is now about
+the file rather than about a position in it.
+
+**Measured on the live `ROADMAP.md` at `7aa507c`, before and after.** Three
+probes, the first unchanged and the other two the two open doors:
+
+```
+                        before                       after
+0.4.25 -> 0.5.0   reserved 'the case you can    reserved 'the case you can
+                           branch'                       branch'        (PL-6T4L)
+0.5.1  -> 0.6.0   stands                        reserved 'the schematic' (this)
+0.4.25 -> 0.4.26  stands                        reserved 'the interface
+                                                          moves to Qt'  (PL-188T)
+```
+
+The second is this item's own arrangement and the third is `PL-188T`'s, which
+was live on `main`: with Gate 1 open the beat is `clear`, so `PL-FWJF`'s
+carrier - which reaches the port only once that gate clears - was not holding
+the port's number at all.
+
+**Four carriers are not four tests, which is the reason for the shape.** Each
+previous fix added the binding that had just bitten, and each was correct about
+its own arrangement; what none of them could say is why there was not another.
+Reading the roadmap's own statement of which numbers are spent terminates by
+construction, and it costs less code than the two bindings it replaces.
+
+**The exemption that stayed, and why it is not a fifth carrier.** `PL-J45M`'s
+case is a *finished* gate-only milestone that `_release_due` cannot classify,
+where `wave` falls through to `implement` and withholding the offer would print
+"which is unfinished" against work that is done. That is a subtraction of one
+version rather than an addition of a binding, it is bounded by the beat's own
+milestone, and `PL-J45M` deletes it by fixing the classifier - its `verify:`
+greps for the exact `supported = ...` line, which is left spelled as it was so
+that check still reads true.
+
+**The docstring's statement of its own limits is corrected, as the brief
+asked.** It had claimed the one unreachable case was "an unscoped milestone,
+which has a timeline row and no section yet"; the blind spot was a *distance*,
+both carriers reaching one row and nothing reaching two. `ReleaseOffer` now
+says what is read and where the single exemption is.
+
+**Tests.** Four in `subprojects/docket/tests/test_release.py`, each watched
+failing on the pre-fix tree: `test_a_timeline_row_with_no_section_reserves_its_version`
+pins this item's arrangement (a milestone placed and not yet scoped, with a
+boundary marker between it and the project so the old `step` carrier cannot
+reach it); `test_a_version_named_ahead_of_the_current_one_is_reserved` pins
+`PL-188T`'s; `test_the_digest_declines_the_number_of_a_milestone_it_says_to_scope`
+reads the two contradicting digest lines together; and
+`test_the_reserved_set_carries_every_version_the_plan_names_ahead` pins the set
+itself, including that a patch track reserves nothing. The 1 000 existing
+`docket` tests pass unchanged, `PL-6T4L`'s and `PL-J45M`'s among them.
+
+**Swept.** `subprojects/docket/README.md`'s reconciliation paragraphs named two
+carriers and stated the blind spot as a live limit; they now describe the
+reserved set and carry the history as history. `.claude/skills/docket/SKILL.md`'s
+release mode said the withheld version was given to "a step or a milestone";
+it now says a milestone ahead of the current one, placed or scoped or both.
+`ROADMAP.md` § "the interface moves to Qt" said the guard does not yet reserve
+that number, which this makes false. `PL-SYG4` carries a dated note: its
+verdict is unchanged, but the sentence resting on `PL-188T` is spent and there
+are now two reserved numbers ahead of the patch track rather than one. Checked
+and still true without editing: `ROADMAP.md`'s v0.4.25 baseline record and the
+closed `PL-6T4L`, `PL-FWJF` and `PL-WK0N` briefs, which are records of what was
+true when they closed; `docs/ARCHITECTURE.md`, `docs/worker.md`,
+`docs/maintainer.md`, `docs/WORKING_NOTES.md` and `docs/resident-instructions.md`,
+none of which names the guard.

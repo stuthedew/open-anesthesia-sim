@@ -460,16 +460,18 @@ class ReleaseOffer:
     cut (`PLANNED`), or the plan has already given the number to something it
     has not finished (`RESERVED`, and there is nothing to offer).
 
-    Two objects `wave` binds can hold that number, and the reservation reads
-    both: the step the project stands on, and the milestone the beat is about.
-    They are the same row in the simple arrangement and different objects in
-    the live one, where the step is a patch track beneath a milestone that has
-    not been implemented.
+    The reservation is read from the plan rather than from where the project
+    stands in it. `wave` carries every version `ROADMAP.md` names ahead of the
+    current one - the release train's milestone rows and the milestone
+    sections both - and the suggestion is checked against all of them. So a
+    milestone reserves its number from the moment it is *placed*, months
+    before anyone scopes it, and goes on reserving it however many rows the
+    plan later puts between it and the project.
 
-    Both are objects rather than a reading of the roadmap, so a version the
-    plan names ahead of the current one and binds to neither is not seen here -
-    an unscoped milestone, which has a timeline row and no section yet, is the
-    reachable case and is `PL-VFD8` rather than a claim this makes.
+    This used to read two objects `wave` binds, the step and the beat's
+    milestone, and the limit was a *distance* rather than a state: both reach
+    one row, and nothing reached two. The one version ahead that is not
+    reserved is one no beat counts as unfinished (`PL-J45M`).
     """
 
     kind: str
@@ -515,45 +517,53 @@ def release_offer(ready: Readiness, plan: Wave | None) -> ReleaseOffer:
             return ReleaseOffer(STANDS, suggested, "")
         return ReleaseOffer(PLANNED, planned, plan.release_name)
 
-    # Two carriers, because neither names the version in every arrangement.
-    # `plan.step` is the row the project stands on, which holds the number
-    # wherever that row is a milestone it has not cut. `plan.milestone` is the
-    # milestone the beat is *about*, which is where the number sits when the
-    # project stands on the patch-track row beneath it - and that row carries
-    # `(0, 4, -1)`, a track marker matching no suggestion, so a guard reading
-    # `step` alone is dead in this arrangement while looking alive.
+    # Ask the plan which numbers it has spent, rather than asking the two
+    # objects that happen to be bound here. `plan.reserved` is every version
+    # `ROADMAP.md` names ahead of the current one, with the roadmap's own name
+    # for what holds it.
     #
-    # That is `PL-KD98`'s own lesson reaching the branch it did not: it taught
-    # the release beat above to read the version off the beat rather than off
-    # `step`, and left this comparison on `step`. The same roadmap then read
-    # `Offer 0.5.0 before taking new work` directly above `Beat: implement
-    # v0.5.0 - the case you can branch ... 8 still open`, which would have
-    # stamped `milestone: 0.5.0` onto four items and tagged a branching release
-    # with no branching in it (`PL-6T4L`).
+    # The reason is the history rather than the tidiness. This compared the
+    # suggestion against one binding, then two, each added after the
+    # arrangement it reads had already produced a wrong offer: `PL-KD98` moved
+    # the release beat off `step`; `PL-6T4L` added the milestone the beat is
+    # about, after the digest printed `Offer 0.5.0 before taking new work`
+    # directly above `Beat: implement v0.5.0 - the case you can branch ... 8
+    # still open`, which would have stamped `milestone: 0.5.0` onto four items
+    # and tagged a branching release with no branching in it; `PL-188T` found a
+    # patch cut mid-port offered the port's own number as free; `PL-VFD8` found
+    # a milestone with a timeline row and no section binding neither. A third
+    # binding would have answered the fifth arrangement and no more. The plan
+    # can be rearranged - a row moved between the project and its milestone is
+    # an ordinary editorial act - faster than the bindings can be enumerated,
+    # so the enumeration had to stop rather than grow, and reading the file's
+    # own statement of what is spent is what stops it.
     #
-    # Nothing cuttable is suppressed here: a `release` beat has already
-    # returned above - `wave` sets `release_version` whenever it sets that
-    # beat - and every other beat is one that says its target is unfinished.
-    reserved: list[tuple[tuple[int, int, int], str]] = []
-    if plan.step is not None and plan.step.version is not None:
-        reserved.append((plan.step.version, plan.step.name))
-    # The milestone carrier answers only where the plan holds something saying
-    # that milestone is unfinished, because `RESERVED` is printed as exactly
-    # that claim. On `clear` the gate is open and on `scope` or `freeze` the
-    # section has not been scoped at all, so the beat is the evidence. On
-    # `implement` it is not: that beat is also `wave`'s fall-through when
-    # `_release_due` matches no arrangement, and one of the shapes it falls
-    # through on is *finished* - a gate-only milestone whose frozen list has
-    # cleared, reached from a step that is not its own row, which the second
-    # arrangement misses because it compares positions (`PL-J45M`). `own_scope`
-    # is what counts a milestone's own content, so its absence there is
-    # precisely the case with nothing behind the word "unfinished".
+    # Nothing cuttable is suppressed. Every version here is one the roadmap
+    # places *ahead* of the current one, so it is unreleased by construction,
+    # and a `release` beat has already returned above - `wave` sets
+    # `release_version` whenever it sets that beat - so the version a release
+    # is actually due at is still offered.
+    #
+    # One exemption, which is a subtraction rather than a carrier: the
+    # milestone the beat is about, on an `implement` beat that counts nothing.
+    # `RESERVED` is printed as the claim "which is unfinished", and `implement`
+    # is also `wave`'s fall-through when `_release_due` matches no arrangement
+    # - one shape it falls through on is a *finished* gate-only milestone whose
+    # frozen list has cleared, reached from a step that is not its own row.
+    # `own_scope` is what counts a milestone's own content, so its absence
+    # there is precisely the case with nothing behind the word. `PL-J45M`
+    # removes this by fixing the classifier that makes it necessary; until
+    # then it stays narrow, naming one version rather than standing the guard
+    # down.
     supported = plan.beat != IMPLEMENT or plan.own_scope is not None
-    if plan.milestone is not None and supported:
-        reserved.append((plan.milestone.version, plan.milestone.name))
-    for version, name in reserved:
-        if "{}.{}.{}".format(*version) == suggested:
-            return ReleaseOffer(RESERVED, suggested, name)
+    unsupported = (
+        frozenset() if supported or plan.milestone is None else frozenset({plan.milestone.version})
+    )
+    for reserved in plan.reserved:
+        if reserved.version in unsupported:
+            continue
+        if "{}.{}.{}".format(*reserved.version) == suggested:
+            return ReleaseOffer(RESERVED, suggested, reserved.name)
     return ReleaseOffer(STANDS, suggested, "")
 
 

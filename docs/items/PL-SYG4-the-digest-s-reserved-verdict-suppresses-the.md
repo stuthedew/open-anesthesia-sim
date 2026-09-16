@@ -35,6 +35,16 @@ advisory that says what it would displace, or keep the refusal and say that a
 patch-track cut is available by naming a version - which is the one thing the
 current sentence does not say.
 
+**Update 2026-09-16 (`PL-VFD8` and `PL-188T`, closed together).** The guard
+now answers from every version the roadmap names ahead of the current one, so
+`v0.4.26` - the port's own number - is reserved alongside `v0.5.0`. That leaves
+this item untouched and slightly sharper: the mechanical bump now collides with
+a reserved number on every patch the `v0.4.x` track cuts, and there are two
+numbers ahead of it to collide with rather than one. The third paragraph's
+remark that `PL-188T` records the guard not reserving the port's number is
+spent; the sentence around it, that naming the free number turns a rename of a
+scoped section into a side effect of a digest line, still stands.
+
 **Related but distinct.** `PL-Z85N` is the cut path not objecting to a reserved
 version (the opposite direction), `PL-VFD8` is the guard failing to see a
 milestone with a row but no section (a false negative of the guard itself), and

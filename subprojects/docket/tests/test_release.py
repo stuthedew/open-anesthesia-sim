@@ -20,7 +20,7 @@ from docket.release import (
     suggest_version,
     version_key,
 )
-from docket.roadmap import CLEAR, IMPLEMENT, RELEASE, Wave, wave
+from docket.roadmap import CLEAR, IMPLEMENT, RELEASE, SCOPE, Wave, wave
 
 TODAY = date(2026, 8, 24)
 
@@ -1064,6 +1064,103 @@ def test_the_reservation_reads_the_row_the_beat_anchors_on_before_the_gated_mile
     assert plan.beat == IMPLEMENT
     assert plan.milestone is not None and plan.milestone.version == (0, 3, 5)
     assert (offer.kind, offer.version, offer.milestone) == (RESERVED, "0.3.5", "the interface port")
+
+
+def test_a_version_named_ahead_of_the_current_one_is_reserved() -> None:
+    """`PL-188T`: a patch cut mid-port, offered the port's own number as free.
+
+    The port has both a timeline row and a section, and neither of the two
+    objects the guard used to read reached it: the project stands on the patch
+    track, and the beat is the open gate recorded under the milestone *after*
+    the port, so `wave` binds `step = v0.3.x` and `milestone = v0.4.0`. This is
+    the arrangement measured on `origin/main` at `0.4.25`, where a `0.4.26`
+    bump - the Qt port's own number - came back `stands`.
+
+    Distinct from the port test below it, which reaches the same section
+    through `plan.milestone` once the gate is clear. Here the gate is open, so
+    that binding is on something else entirely and the reservation rests on the
+    roadmap naming the number rather than on anything `wave` bound.
+    """
+    from docket.release import RESERVED, release_offer
+
+    plan = wave(PORTED_ROADMAP, "0.3.0", frozenset(), GATED_SCOPE_IDS | {"PL-PT03"}, {})
+    offer = release_offer(_ready("0.3.0", "0.3.5"), plan)
+
+    assert plan.beat == CLEAR
+    assert plan.step is not None and plan.step.version == (0, 3, -1)
+    assert plan.milestone is not None and plan.milestone.version == (0, 4, 0)
+    assert (offer.kind, offer.version, offer.milestone) == (RESERVED, "0.3.5", "the interface port")
+
+
+#: `GATED_SCOPE_ROADMAP` with its gated milestone shipped and a further one
+#: placed on the timeline but not yet scoped, a boundary marker between them.
+#: That is the state every milestone passes through between being placed and
+#: being scoped, and `ROADMAP.md` had two rows in it the day this was found.
+UNSCOPED_AHEAD_ROADMAP = GATED_SCOPE_ROADMAP.replace(
+    "| 2 | **v0.4.0 — the teachable case** | Scoped below. | 5 M |",
+    "| 2 | **v0.4.0 — the teachable case** | Scoped below. | 5 M |\n"
+    "| — | **MVP complete** | A learner can run one case. | — |\n"
+    "| 3 | **v0.5.0 — the schematic** | Not scoped yet, and has no section. | — |",
+)
+
+
+def test_a_timeline_row_with_no_section_reserves_its_version() -> None:
+    """`PL-VFD8`: the milestone that is placed but not yet scoped.
+
+    `wave` has no section to bind, so `plan.milestone` is `None`; the row the
+    project stands on is the boundary marker, which carries no version at all.
+    Both of the objects the guard used to read hold nothing, and the digest
+    offered the number the roadmap had already given to "the schematic" -
+    `Offer 0.5.0 before taking new work` above a beat asking for that same
+    milestone to be *scoped*.
+
+    The marker row is what makes it this defect rather than the one before it:
+    without it the project would stand on the v0.5.0 row and the old `step`
+    carrier would have caught the collision.
+    """
+    from docket.release import RESERVED, release_offer
+
+    plan = wave(UNSCOPED_AHEAD_ROADMAP, "0.4.0", GATED_SCOPE_IDS, GATED_SCOPE_IDS, {})
+    offer = release_offer(_ready("0.4.0", "0.5.0"), plan)
+
+    assert plan.beat == SCOPE
+    assert plan.milestone is None
+    assert plan.step is not None and plan.step.version is None
+    assert (offer.kind, offer.version, offer.milestone) == (RESERVED, "0.5.0", "the schematic")
+
+
+def test_the_digest_declines_the_number_of_a_milestone_it_says_to_scope() -> None:
+    """The two contradicting lines of the digest this was filed on, read
+    together: a release offer for the very version the beat under it is asking
+    somebody to go and scope."""
+    from docket.checks import Report
+    from docket.render import format_digest
+
+    plan = wave(UNSCOPED_AHEAD_ROADMAP, "0.4.0", GATED_SCOPE_IDS, GATED_SCOPE_IDS, {})
+    digest = format_digest(Report(items=[_item("PL-4444")]), None, _ready("0.4.0", "0.5.0"), plan)
+
+    assert "Offer 0.5.0 before taking new work" not in digest
+    assert 'No release to offer: the roadmap gives 0.5.0 to "the schematic"' in digest
+
+
+def test_the_reserved_set_carries_every_version_the_plan_names_ahead() -> None:
+    """What makes the guard terminate, stated on its own: the answer is the
+    roadmap's list of unspent numbers rather than whichever object `wave`
+    bound. The patch track is absent by kind - `v0.3.x` promises no particular
+    number, so it reserves none - and so is everything at or below the current
+    version, which is released and which no bump can suggest."""
+    plan = wave(UNSCOPED_AHEAD_ROADMAP, "0.4.0", GATED_SCOPE_IDS, GATED_SCOPE_IDS, {})
+
+    assert [(entry.version, entry.name) for entry in plan.reserved] == [
+        ((0, 5, 0), "the schematic")
+    ]
+
+    early = wave(UNSCOPED_AHEAD_ROADMAP, "0.3.0", GATED_SCOPE_IDS, GATED_SCOPE_IDS, {})
+
+    assert [(entry.version, entry.name) for entry in early.reserved] == [
+        ((0, 4, 0), "the teachable case"),
+        ((0, 5, 0), "the schematic"),
+    ]
 
 
 def test_wave_reports_the_scope_split_once_the_gate_is_clear() -> None:

@@ -1499,8 +1499,10 @@ ten finished items, and this heading moved to `v0.4.26` with **nothing else
 moving with it**: no item's `blocked-by` names a version, and `PL-YVM1` swept
 the last prose that named one, so outside this file the port is named by name.
 It will move again if another patch is cut before this lands - a rename each
-time, not a re-scope - and `PL-188T` records that the release guard does not
-yet reserve this number either.
+time, not a re-scope. The guard no longer adds to that risk: `PL-VFD8` and
+`PL-188T` taught it to answer from every version the roadmap names ahead of the
+current one, so a bump arriving at this section's number is withheld and named
+rather than offered as free.
 
 **The one question the reorder leaves open is this number, and it is recorded
 rather than settled.** § "The cadence" says a gate does not get a version and
