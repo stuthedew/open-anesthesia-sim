@@ -435,6 +435,59 @@ parameter under the patient would say something false about where it came
 from, which is why `PL-4YY1` added a third directory rather than a field to
 `reference_adult.json`.
 
+## Dependencies
+
+**Three declared runtime dependencies**, in `pyproject.toml`:
+`PySide6-Essentials`, `pyqtgraph` and `pydantic`. `flet` and `flet-charts`
+went out with `PL-3SQT`, once `PL-25KS` had deleted the last module importing
+either. Removing them from that list is not what keeps Flet out, though -
+`tools/import_boundary_check.py` permits both in no module under `src/` at
+all, and that is the rule.
+
+**numpy arrives underneath pyqtgraph**, whose metadata requires
+`numpy>=1.25.0` outright, so it is installed in every environment and
+`uv.lock` names the version - but no module under `src/` imports it, and
+`import_boundary_check.py` permits it in none under `core/`. Nothing here
+takes a position on declaring it; `docs/WORKING_NOTES.md` § "Decided: no
+numpy" says why that stays open until a module wants it.
+
+**What Linux has to supply, which the Qt wheels do not carry.** Measured
+2026-09-16 with `ldd` over the wheel's own `Qt/lib/libQt6Gui.so.6` and
+`Qt/plugins/platforms/libqoffscreen.so`: both link shared objects that resolve
+outside the wheel, and five OS packages provide them.
+
+| shared object | Debian/Ubuntu package |
+| --- | --- |
+| `libEGL.so.1` | `libegl1` |
+| `libGL.so.1`, `libGLX.so.0`, `libGLdispatch.so.0` | `libgl1` |
+| `libxkbcommon.so.0` | `libxkbcommon0` |
+| `libdbus-1.so.3` | `libdbus-1-3` |
+| `libfontconfig.so.1` | `libfontconfig1` |
+
+Only the first is normally absent. `README.md` § "Running it" names `libegl1`
+alone because the other four are on an ordinary desktop already, and
+`.github/workflows/quality.yml` installs `libegl1` alone because its own
+comment records the other four as present on the `ubuntu-latest` image
+(`PL-VHLZ`). The full list is here so that a minimal container - which is
+neither of those - has something to read. macOS and Windows need nothing
+extra.
+
+**Licensing, written down before a packaged build needs it (`PL-3SQT`).**
+`pyside6_essentials` 6.11.2 and `shiboken6` 6.11.2 both declare
+`LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only`, and neither wheel ships the
+licence text: measured 2026-09-16, neither `dist-info` carries a `licenses`
+directory or a `License-File:` entry. This repository is Apache-2.0 and has no
+`NOTICE`. **Nothing is violated today.** The LGPL obligations - dynamic
+linking, a recipient's ability to relink, conveying the licence text - attach
+when a binary is *conveyed*, and this project conveys none: `README.md`
+§ "Running it" says building from source is the only route, and `uv` installs
+each wheel from PyPI per user. They arrive the day a bundled build does, which
+is `ROADMAP.md`'s packaging work, and this paragraph exists so that is not
+discovered then. pyqtgraph is MIT and numpy is
+`BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0`; both ship their licence
+text in the wheel.
+
+
 ## Developer tooling (`tools/`)
 
 Outside the packaged application, and not imported by it:
