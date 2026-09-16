@@ -1516,14 +1516,32 @@ milestone by this file's own test, whatever number it ships under.
 once.** `bin/docket release` offers the next free number to whatever is
 finished, so a patch cut before this lands takes this section's number - the
 hazard the `v0.4.x` row names. `v0.4.25` was cut on 2026-09-14 (`PL-G7RD`) from
-ten finished items, and this heading moved to `v0.4.26` with **nothing else
-moving with it**: no item's `blocked-by` names a version, and `PL-YVM1` swept
-the last prose that named one, so outside this file the port is named by name.
-It will move again if another patch is cut before this lands - a rename each
-time, not a re-scope. The guard no longer adds to that risk: `PL-VFD8` and
-`PL-188T` taught it to answer from every version the roadmap names ahead of the
-current one, so a bump arriving at this section's number is withheld and named
-rather than offered as free.
+ten finished items, and this heading moved to `v0.4.26` with nothing else moving
+with it: no item's `blocked-by` named a version, and `PL-YVM1` had swept the
+last prose that did.
+
+**That rename was cheap once and is not cheap now**, which is the part "a rename
+each time, not a re-scope" got wrong. The port's own work has put the number
+back. Counted 2026-09-16, eight sites in five files outside this one name
+`v0.4.26`: three in `tools/import_boundary_check.py`, two of those inside error
+messages a developer reads; two in `docs/ARCHITECTURE.md`; and one each in
+`subprojects/docket/src/docket/roadmap.py`, `.claude/skills/docket/SKILL.md` and
+`subprojects/docket/README.md`. Four carry the section-citation form
+`tools/doc_check.py` validates, so a rename that missed them fails `make check`;
+the other four name the number bare, where no check reads it. **Re-counted after
+`PL-7SVX` closed in `#638`** - the last of this section's Required scope, and the
+one item whose `touches` covered the two largest of those files - and the eight
+sites are unchanged. So the count above is this section's settled total rather
+than a reading taken mid-flight, which is what makes it usable for deciding the
+question below.
+
+**Whether a patch cut still takes this number is open, and `PL-KQHN` holds the
+question.** `PL-VFD8` and `PL-188T` taught the reserved-version guard to answer
+from every version the roadmap names ahead of the current one, so a bump
+arriving at this section's number is withheld and named rather than offered as
+free. Whether that withholding prevents the mechanic above or converts it from a
+default into a deliberate decision was never put to the project owner. Until it
+is, a cut at this number is taken deliberately rather than by default.
 
 **The one question the reorder leaves open is this number, and it is recorded
 rather than settled.** § "The cadence" says a gate does not get a version and
@@ -3328,23 +3346,26 @@ fixed layout, and it becomes real only when the area system makes a second of
 either possible — which is the same item 34. Both are product-lane, and both
 are recorded here rather than left to look deferred.
 
-**One more from 2026-09-16, and it is `safety`-classed, so it is written down
-with a reason rather than listed** — `PL-MN4J` (the chart hover names the agent
-and the instant but not which run). Captured ten days after this gate was
-frozen, so the snapshot rule already places it in the next one, and seated `P1`
-because `checks.py` will not seat a `safety` class lower.
+**One more from 2026-09-16 was written down here as a deferral, and that was the
+wrong disposition for it** — `PL-MN4J` (the chart hover names the agent and the
+instant but not which run). Captured ten days after this gate was frozen, so the
+snapshot rule places it in the next one, and seated `P1` because `checks.py`
+will not seat a `safety` class lower.
 
-It is deferred on a ground of its own rather than on this section's:
-**the display it concerns does not exist outside the feature this milestone
-builds.** A hover that does not say which run is ambiguous only while two runs
-are drawn, which is this milestone's own compare mode; before it ships there is
-one run on the chart and the hover names everything there is to name. A gate
-exists to clear debt *before* a milestone begins, and this item cannot be
-cleared before the thing it is about exists. It is also `needs-decision` and the
-decision is the project owner's — it amends `docs/MODEL.md` § "The chart's hover
-readout: what the tooltip may show", which derives the three-line form — so no
-session can close it either way. `PL-8PSW` shipped the legend and panel naming
-that make a curve attributable today; this is the remaining surface.
+**It is `Required scope`, not a deferral** (`PL-R7XK`, project owner,
+2026-09-16, ratified - chosen over leaving it deferred here). The ground written
+for it was sound and is carried across to the bullet in § "Required scope"
+below: the display it concerns does not exist outside the feature this milestone
+builds, so it cannot be cleared before the compare mode it is about. But that is
+what § "Debt inside the milestone's own scope" is for, and a deferral is
+something else. "The gate is a snapshot" makes `safety` not deferrable, and the
+two records say different things about who is holding the item: a deferral says
+the gate has released it, where `Required scope` says this milestone's
+definition of done holds it. Only the second is true, and only the second stops
+it being closed out of v0.5.0 unnoticed. It is unaffected by `PL-83LS`'s
+`anticipated` carve-out above, which is a different shape - v0.5.0 builds the
+feature this hazard needs, where item 34's findings wait on a milestone two
+steps out.
 
 **Eighteen more from the 2026-09-16 triage pass, in three groups.** All
 eighteen were captured on 2026-09-16, ten days after this gate was frozen, so
@@ -3394,24 +3415,35 @@ are neither: `PL-KKRP` (re-examine the debt gate's own freeze trigger) is a
 decision about the cadence rather than debt against a milestone, and `PL-NDKC`
 (PySide6 segfaults on `QDataStream` over a temporary `QByteArray`) is a
 toolkit defect found while measuring, filed so the persistence work meets it
-already written down. Every one of them is `anticipated` on the same ground as
-the four above: the splitter handles are inert today, so none of these hazards
-exists until the milestone that creates them is built, and a gate that clears
-debt *before* a milestone cannot clear a hazard that milestone introduces.
+already written down. Every one of them is `anticipated`, and since 2026-09-16
+that is a rule rather than a ground this subsection states for itself
+(`PL-83LS`): § "The gate is a snapshot, not a moving target" makes an
+`anticipated` finding **not debt until the hazard it describes exists**. The
+splitter handles are inert today, so none of these hazards exists until the
+milestone that creates them is built, and a gate that clears debt *before* a
+milestone cannot clear a hazard that milestone introduces. So these are not
+deferred here: they are not debt against this gate at all, and the placement
+named for each above - v0.6.0's `Required scope`, v0.7.0's, or neither - is the
+whole of their disposition.
 
-Four of the nine are `safety`-classed, which by the presence rule re-enters them
-here regardless of when they were found: `PL-7Z84` (a run has no identity a
-workspace can pin to), `PL-9LNF` (three `app/` surfaces own state a layout could
-duplicate or relocate), `PL-NWTM` (the unconditional displayed set has no
-structural home in the code) and `PL-W54S` (what a broken-out top-level window
-owes that set). Each is classed `anticipated`, on `PL-MN4J`'s ground one
-milestone further out: the splitter handles are inert today
-(`src/anesthesia_sim/app/qt_widgets.py:784`), so no reader can close, replace or
-cover a required value until item 34 makes them live, and a gate that exists to
-clear debt before a milestone begins cannot clear a hazard the milestone
-creates. Each of the four is now named in v0.6.0's `Required scope`, which is
-the disposition the gate rule prefers to a deferral: the milestone that creates
-the hazard is the one that carries the guard.
+Four of the nine are `safety`-classed, and it is worth saying what that used to
+mean here and no longer does: `PL-7Z84` (a run has no identity a workspace can
+pin to), `PL-9LNF` (three `app/` surfaces own state a layout could duplicate or
+relocate), `PL-NWTM` (the unconditional displayed set has no structural home in
+the code) and `PL-W54S` (what a broken-out top-level window owes that set). The
+presence rule re-entered them here regardless of when they were found, and this
+subsection then had to argue them back out one hazard at a time - which is the
+argument `PL-83LS` turned into the rule above. Each is classed `anticipated`, so
+none of the four is debt against this gate: the splitter handles are inert today
+(`src/anesthesia_sim/app/qt_widgets.py:784`), and no reader can close, replace
+or cover a required value until item 34 makes them live.
+
+Each of the four is named in v0.6.0's `Required scope`, which is where the rule
+puts a hazard rather than where a deferral would leave it: the milestone that
+creates it is the one that carries the guard. `tools/doc_check.py`'s
+`check_gate_reentries` now passes over all ten `anticipated` findings on the
+class rather than on this prose, so what these paragraphs record is the
+reasoning, not the mechanism holding it.
 
 `PL-9PD6` (`docs/interface-provenance.md` contradicts itself about what
 `README.md` records), `PL-D584` (`PL-TH35`'s `blocked-by` names an item that has
@@ -3429,7 +3461,39 @@ that a patch cut takes this section's number and that the guard withholds it).
 It is product-lane, so this subsection's workflow-lane ground does not reach it,
 and it is `needs-decision` on a question `CLAUDE.md` puts on the project owner's
 side of the division of labour: what the release train does when a patch is cut
-mid-port. Like `PL-MN4J`, it waits on an answer rather than on attention.
+mid-port. Like `PL-MN4J` above, it waits on an answer rather than on attention -
+though unlike it, no milestone's scope holds it.
+
+**Six more arrived with the 2026-09-16 triage pass (`PL-554Q`) and are disposed
+of here rather than added to the list.** Four are post-freeze `defect`s in the
+apparatus, neither `safety` nor `science`, whose problems do not predate the
+freeze, and they are deferred on the ordinary snapshot ground: `PL-7K8Y`
+(`docket record` normalises front-matter key order as it writes `pr:`, so
+`docket verify` reads the backfill as a content edit), `PL-DMDF` (`docket digest`
+asks one `git diff` per item file because `_superseded` is called with a
+one-element tuple inside a loop), `PL-SH9Q` (`docket stranded` misses an item the
+base already carries and a branch has modified) and `PL-WXX8` (merged items owe a
+`pr` number and the advisory's remedy addresses the one population that is not
+holding the debt). Every one sits wholly in the workflow lane and none can reach
+a reader of the simulator.
+
+The other two wait on answers rather than on attention, as `PL-KQHN` does.
+`PL-7RYB` (nothing distinguishes a decision the owner ratified from one they
+specified, on anything recorded before 2026-09-16) is `needs-decision` on what
+their own past decisions meant, which is theirs rather than a session's.
+`PL-NLP4` is this subsection's own closing paragraph, whose "66 dispositions" has
+not been true for some time; it is `blocked-by` `PL-B8V1`, which holds the same
+question one paragraph over, and its `Done when.` requires one answer to cover
+both rather than two answers to cover one each. That is also why the figure is
+left as it stands here: correcting it in place would pick the form `PL-B8V1` is
+open to decide.
+
+`PL-KND7` joins them, filed the same day and waiting on the same kind of answer:
+`main` has been red since `52205f6` because `PL-D1RT`'s `Done when.` was
+overtaken by two decisions of record - the interface pass's un-absorption
+(`PL-L9RD`) and its move after item 34 (`PL-PHKP`) - so what becomes of that item
+is the project owner's rather than a session's. It is workflow-lane and reaches
+no reader of the simulator.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
@@ -3440,10 +3504,10 @@ the defect.
 
 ### Required scope
 
-Nineteen items, in the order the dependencies allow. The first five are the
+Twenty items, in the order the dependencies allow. The first five are the
 score architecture the 2026-09-05 design round filed and the project owner
 placed here; the next five are boundary work this milestone's own code moves;
-the last nine are the feature itself.
+the last ten are the feature itself.
 
 - **The run becomes a closed-form function of its control-input timeline**
   (queue item PL-T691). Keyframes are held at every control event and any
@@ -3617,6 +3681,20 @@ the last nine are the feature itself.
   PL-1XPX). A decision rather than an implementation: a numeric readout that
   does not say which run it describes is the safety-critical failure this
   project treats presentation as, and there is more than one defensible answer.
+- **The chart's hover says which run it is reading** (queue item PL-MN4J).
+  `safety`-classed, and milestone-scope debt under § "Debt inside the
+  milestone's own scope" rather than debt this gate can clear: a hover naming
+  the agent and the instant but not the run is ambiguous only while two runs are
+  drawn, which is this milestone's own compare mode, so it cannot be cleared
+  before the compare mode it is about. Before that ships there is one run on the
+  chart and the hover names everything there is to name. Like `PL-1XPX` it is a
+  decision rather than an implementation, and the project owner's: it amends
+  `docs/MODEL.md` § "The chart's hover readout: what the tooltip may show",
+  which derives the three-line form, so no session can close it either way.
+  `PL-8PSW` shipped the legend and panel naming that make a curve attributable
+  today; this is the remaining surface, and the definition of done's "no
+  readout, label, legend entry or reference band ambiguous as to which run it
+  describes" is what holds it.
 - **What a comparison asserts and what it does not** (queue item PL-W7H9), in
   `docs/MODEL.md` and `docs/ARCHITECTURE.md`: what is shared between two
   branches and what is not, that a difference between them is attributable only
@@ -4137,6 +4215,12 @@ is already running on charges interest every session, which is what debt means.
 Half-finished process machinery must not be in production use; either it is
 made to work reliably, or it is abandoned and removed.
 
+**The same test decides a hazard, and it is the one carve-out the `safety` and
+`science` exception takes.** A finding classed `anticipated` describes a hazard
+a later milestone will create rather than one the tree carries now, so it is not
+debt until that milestone builds it. § "The gate is a snapshot, not a moving
+target" below states the rule, what it was chosen over, and what it costs.
+
 A caution the first pass through this got wrong: classing tooling breakage as
 `infra` rather than `defect` makes it indistinguishable from a capability
 nobody has built yet. `docket release` leaving `uv.lock` stale and breaking
@@ -4215,6 +4299,43 @@ Two further exceptions re-enter the current gate regardless of presence:
 anything at `P0`, and anything classed `safety` or `science`. Those are not
 deferrable by this project's own standard, and a gate that let them wait would
 be inverting the reason it exists.
+
+**One exception to that exception: an `anticipated` `safety` or `science`
+finding is not debt until the hazard it describes exists** (project owner,
+2026-09-16, ratified — chosen over placing each on the *next* milestone's frozen
+list behind a marker nothing enforces, and over leaving the rule as it stands
+and putting the 2026-09-16 area-model findings on v0.5.0's list). The paragraph
+above is unconditional about *when* a finding was made; this says what it takes
+to be a finding against the current gate at all. An item classed `anticipated`
+describes a hazard a later milestone will create — the splitter handles are
+inert today (`src/anesthesia_sim/app/qt_widgets.py:784`), so no reader can
+close, replace or cover a required value until planned-milestone item 34 makes
+them live — and a gate that exists to clear debt *before* a milestone begins
+cannot clear a hazard that milestone introduces. It is § "What counts"'s own
+live-mechanism test — "Process work is debt once the mechanism is live, not
+before ... The distinction is state, not layer" — applied to a hazard rather
+than to a mechanism.
+
+It was also the only one of the three options that reaches a state a session can
+get to. The other two leave `tools/doc_check.py`'s corrected safety-class
+advisory lit against items nobody can dispose of, which is the defect
+`CLAUDE.md` names: a check that "fires every run without changing a decision".
+The disposition such a finding then takes is a **placement in the milestone that
+creates the hazard** — v0.6.0's `Required scope` holds the ten this was written
+for — never a deferral, which these two classes are still not offered.
+
+`check_gate_reentries` in `tools/doc_check.py` excludes an `anticipated`-classed
+item for this reason, so the rule runs on every `make check` rather than on
+whether a session recalled it.
+
+**What it costs, recorded rather than waved past.** `anticipated` now carries
+weight it did not carry before, so a `safety` item wrongly classed becomes
+invisible to the gate — `PL-MVC2`'s shape. Two things narrow that and neither
+closes it: the class is claimed rather than inferred, and `PL-MVC2` itself made
+a class outside the declared vocabulary a `bin/docket check` error, so a
+misspelling fails closed and leaves the item named. Nothing catches a class
+correctly spelled and wrongly applied. That is a reviewer's judgment, and this
+decision is what makes it one worth making.
 
 ### The cadence
 

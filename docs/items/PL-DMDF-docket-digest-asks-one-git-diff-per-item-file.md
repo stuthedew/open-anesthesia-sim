@@ -1,9 +1,14 @@
 ---
 id: PL-DMDF
 title: docket digest asks one git diff per item file because _superseded is called with a one-element tuple inside a loop, where the function already takes the whole set
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: perf, defect
 feature: session-start-cost
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests
 added: 2026-09-16
+verify: uv run pytest -q subprojects/docket/tests/test_vcs.py && grep -q 'def test_superseded_is_asked_once_for_the_whole_outstanding_set' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** docket digest asks one git diff per item file because _superseded is called with a one-element tuple inside a loop, where the function already takes the whole set
@@ -77,3 +82,15 @@ site at 25 of the container's 87 `diff` calls and **at least 440 of the owner's
 570**, reached from the `walk.edited` comprehension at `vcs.py:1283`. That agrees
 with the prototype measured here from the other direction - 593 to 148, a saving
 of 445 - which is the closest thing to confirmation this question has had.
+
+**Why it matters.** It is the largest single block left in `docket digest` after
+`PL-XD3C`'s ref work, and unlike the other three items in that measurement it is
+a one-line hoist rather than a redesign: `_superseded` already takes the whole
+set, and its sibling caller at line 3619 already passes it that way. The cost is
+paid at every session start, on every machine, for a call shape the same file
+elsewhere gets right.
+
+It also compounds with the ref count rather than merely adding to it. `diff` runs
+at roughly 4.0 per unmerged ref *plus* 0.95 per item file a ref introduces, so
+the per-file term grows as branches accumulate item edits - the normal state of
+this store, where a capture or a triage pass edits item files and nothing else.

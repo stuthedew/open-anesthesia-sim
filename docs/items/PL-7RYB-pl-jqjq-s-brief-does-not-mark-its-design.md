@@ -1,7 +1,12 @@
 ---
 id: PL-7RYB
 title: PL-JQJQ's brief does not mark its design decision as ratified rather than specified, and nothing sweeps the items closed before that rule landed on 2026-09-16
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: docs, planning
+feature: queue-hygiene
+touches: docs/items
 added: 2026-09-16
 ---
 
@@ -42,3 +47,28 @@ confusion the new rule was written to remove.
 
 **Found** while working `PL-FBXP` (the seven owed pull request numbers), when
 the re-read `CLAUDE.md` showed the rule had landed mid-session.
+
+**Done when.** `PL-JQJQ`'s brief marks its decision `(project owner, 2026-09-16,
+ratified)` with the clause naming the `python3`-at-3.14 route it was chosen over,
+and the general question below has an answer recorded - whichever way it goes - so
+that the absence of a marker on a pre-2026-09-16 decision means one thing rather
+than two.
+
+**Decision needed.** How should a decision recorded *before* 2026-09-16 be read?
+`CLAUDE.md`'s rule gives the plain form the meaning "specified", which carries the
+higher bar to reopen, so every decision already in the store now reads as
+specified whether it was or not. Three dispositions, and the choice is the project
+owner's because it is about what their own past decisions meant:
+
+1. **Read an unmarked pre-rule decision as unknown** and mark it so. Honest, and
+   it requires a session to assert nothing it cannot know.
+2. **Sweep and mark each one** from the reasoning recorded in its brief. The most
+   useful and the least safe - a session asserting what the owner meant on
+   decisions nobody can now reconstruct.
+3. **Leave them and apply the rule forward only**, accepting that every pre-rule
+   decision carries the higher bar by default.
+
+The concrete half is not open in the same way and does not wait on this:
+`PL-JQJQ`'s exchange is on record - "Agree with recs" to a session's
+recommendation - so it is ratified under any of the three, and marking it is this
+item's first edit.

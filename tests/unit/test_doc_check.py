@@ -2742,6 +2742,11 @@ def test_a_deferred_safety_item_still_re_enters_the_gate(tmp_path: Path) -> None
     snapshot" ends by making `safety` and `science` not deferrable, and the
     frozen list takes a post-freeze re-entry with its date, as this gate's own
     `PL-GS3R` shows. It was the offer that had to go.
+
+    `PL-83LS` then took the four out of this check's reach entirely, on their
+    `anticipated` class rather than on their deferral - the test below pins
+    that - and `PL-R7XK` placed `PL-MN4J` in `Required scope`. Neither touches
+    what this test holds: a deferral, on its own, still leaves the item named.
     """
     roadmap = VERSIONED_GATE_ROADMAP.replace(
         "### Definition of done",
@@ -2758,6 +2763,43 @@ def test_a_deferred_safety_item_still_re_enters_the_gate(tmp_path: Path) -> None
     assert len(advisories) == 1
     assert "PL-ZZZZ (safety)" in advisories[0]
     assert "or defer it with a reason" not in advisories[0]
+
+
+def test_an_anticipated_safety_item_is_quiet(tmp_path: Path) -> None:
+    """`PL-83LS`'s carve-out: an unbuilt hazard is not debt this gate can clear.
+
+    `ROADMAP.md` § "The gate is a snapshot, not a moving target" makes an
+    `anticipated` `safety` or `science` finding not debt until the milestone
+    that creates the hazard builds it (project owner, 2026-09-16, ratified).
+    Ten area-model findings were in exactly this state and could take neither
+    remedy the advisory named - nothing to clear, and a `Required scope` two
+    milestones away - so it fired on every `make check` with no state a session
+    could reach.
+    """
+    root = _repo(tmp_path, roadmap=VERSIONED_GATE_ROADMAP)
+    _queue_item(root, "PL-ZZZZ", classes="safety, anticipated", status="blocked")
+
+    assert _reentry_advisories(root) == []
+
+
+def test_a_plain_safety_item_beside_an_anticipated_one_is_still_reported(tmp_path: Path) -> None:
+    """The other direction, which is what keeps the carve-out narrow.
+
+    The cost recorded with the decision is that `anticipated` now carries weight
+    it did not: a `safety` item wrongly classed goes invisible to the gate,
+    which is `PL-MVC2`'s shape. So the exclusion has to turn on the class being
+    *present*, never on anything inferred from the item beside it.
+    """
+    root = _repo(tmp_path, roadmap=VERSIONED_GATE_ROADMAP)
+    _queue_item(root, "PL-ZZZZ", classes="safety, anticipated", status="blocked")
+    _queue_item(root, "PL-YYYY", classes="safety, ux")
+
+    advisories = _reentry_advisories(root)
+
+    assert len(advisories) == 1
+    assert "PL-YYYY (safety)" in advisories[0]
+    assert "PL-ZZZZ" not in advisories[0]
+    assert "1 open item" in advisories[0]
 
 
 def test_a_closed_safety_item_the_list_does_not_place_is_quiet(tmp_path: Path) -> None:
