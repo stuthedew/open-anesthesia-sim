@@ -1,8 +1,14 @@
 ---
 id: PL-YZKK
 title: PL-PGZF was triaged apart from PL-CNCF on 'different functions, different modules', but assemble_chart_frame reaches PL-CNCF's cost through drawn_window, so the two tables are one curve and nothing in either item says so
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
+feature: queue-hygiene
+touches: docs/items
 added: 2026-09-16
+verify: bin/docket check && grep -qF 'the same cost one call level up' docs/items/PL-PGZF-pl-gs3r-made-the-chart-s-column-budget-follow.md
 ---
 
 **Problem.** PL-PGZF was triaged apart from PL-CNCF on 'different functions, different modules', but assemble_chart_frame reaches PL-CNCF's cost through drawn_window, so the two tables are one curve and nothing in either item says so
@@ -55,3 +61,17 @@ pull-request body did not:
   `PL-CNCF` as the same cost one call level up so that the two `Done when`s
   are not read as two fixes. The call chain and the memoisation hazard are
   already written into `PL-CNCF` on `claude/check-inflight-sessions-uz5d7s`.
+
+**Why it matters.** Two open items describing one cost, each with its own
+**Done when.**, is an invitation to size two fixes when the fix is one. The
+separation is sound - `PL-PGZF` records the measurement, `PL-CNCF` reduces or
+accepts the cost - but the reason written down for it is not: "different
+functions, different modules" would separate any caller from its callee as
+unrelated performance findings, and a wrong reason is what the next session
+reads. Nothing in either item says the two tables are one curve.
+
+**Done when.** `PL-PGZF`'s brief names `PL-CNCF` as the same cost one call level
+up, reached through `drawn_window`, so the two **Done when.**s are not read as
+two fixes; and the "different functions, different modules" sentence is replaced
+by the separation's real ground - one item records the measurement, the other
+reduces or accepts it.

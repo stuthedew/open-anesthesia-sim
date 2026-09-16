@@ -86,6 +86,16 @@ alternative is every later session re-deriving the trim proposal this pass
 refuted; a rule that does not carry its refutation gets re-opened, which is the
 cost `docs/resident-instructions.md` exists to stop paying (`PL-H253`).
 
+It was reshaped on 2026-09-16, same number and a different moment: the budget
+is read *before starting an item* rather than on reaching the cap, and an
+overrun externalizes before handing off (`PL-NW76`, owner-approved). That
+sharpens this group's argument rather than changing it — the moment is now a
+session deciding whether to *begin* the next item, which no read precedes
+either, and it is the moment at which the rule can still act without loss. The
+stopping form could not: overshoot was bounded by the gap between natural
+breaks rather than by the cap, and `PL-H253`'s own author read 176,689 before
+looking. Still no mechanism, so there is still nothing to route it to.
+
 The gate-scope bullet in that section was added on 2026-09-16 for the same
 reason and against a measured asymmetry. The stop-and-wait rule is stated once,
 bolded, at line 66; the cases that release it are stated four times — a note

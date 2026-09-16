@@ -2731,6 +2731,35 @@ def test_a_safety_item_in_required_scope_is_quiet(tmp_path: Path) -> None:
     assert _reentry_advisories(root) == []
 
 
+def test_a_deferred_safety_item_still_re_enters_the_gate(tmp_path: Path) -> None:
+    """A written deferral answers `check_gate_dispositions` and not this check.
+
+    `PL-R0Q0`: the advisory offered a deferral as a third remedy and then
+    refused it, so `PL-MN4J` and four `anticipated` area-model findings - each
+    deferred in v0.5.0's `### Declined to Gate ...` subsection with its reason
+    written out - advised on every `make check` under text that named no
+    remedy it would accept. The refusal is the correct half: "The gate is a
+    snapshot" ends by making `safety` and `science` not deferrable, and the
+    frozen list takes a post-freeze re-entry with its date, as this gate's own
+    `PL-GS3R` shows. It was the offer that had to go.
+    """
+    roadmap = VERSIONED_GATE_ROADMAP.replace(
+        "### Definition of done",
+        "### Declined to Gate 2 on the refilling-queue ground — 1 entry\n\n"
+        "Deferred because the milestone creates the display it is about.\n\n"
+        "- PL-ZZZZ (S) The deferred thing\n\n### Definition of done",
+        1,
+    )
+    root = _repo(tmp_path, roadmap=roadmap)
+    _queue_item(root, "PL-ZZZZ", classes="safety, ux")
+
+    advisories = _reentry_advisories(root)
+
+    assert len(advisories) == 1
+    assert "PL-ZZZZ (safety)" in advisories[0]
+    assert "or defer it with a reason" not in advisories[0]
+
+
 def test_a_closed_safety_item_the_list_does_not_place_is_quiet(tmp_path: Path) -> None:
     """The rule is about open debt; a finished finding owes the gate nothing."""
     root = _repo(tmp_path, roadmap=VERSIONED_GATE_ROADMAP)
@@ -2768,12 +2797,12 @@ def test_the_advisory_names_every_unplaced_item_in_one_line(tmp_path: Path) -> N
 
 # --- gate dispositions ------------------------------------------------------
 #
-# `check_gate_reentries`, the sibling this sits beside, is covered by the six
+# `check_gate_reentries`, the sibling this sits beside, is covered by the seven
 # tests directly above - they reach it through `analyze` rather than by name,
 # which is why an audit grepping for the function found only this comment and
 # concluded it was untested (`PL-PDP6`, dropped 2026-09-12 after mutating the
-# function and watching two of those six fail). These cover the half of the
-# rule that needs a judgment, so they exercise both dispositions the rule
+# function and watching two of the six then present fail). These cover the half
+# of the rule that needs a judgment, so they exercise both dispositions the rule
 # allows and the silence it forbids.
 
 

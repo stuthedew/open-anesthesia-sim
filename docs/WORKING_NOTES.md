@@ -1661,3 +1661,51 @@ worth of work rather than a redesign.
 not filing, and the session doing the counting is the one under that pressure. The
 three items were filed on the capture rule and counted against the result. Any
 future run should expect the same pressure and say how it handled it.
+
+## Open: item 34's two releases, and the one ordering question left
+
+**Scoped 2026-09-16** (project owner, on `PL-NMTF`). `ROADMAP.md`
+planned-milestone item 34 - the Blender-style area/workspace system - was placed
+on the timeline and split across two releases: **v0.6.0 "the layout is the
+reader's"** (Areas, the Editor contract, the Editor registry, Workspaces,
+persistence, the unconditional display region and every layout operation) and
+**v0.7.0 "the second screen"** (break-out of an Area into its own top-level
+window). The schematic moved to v0.8.0 and multi-substance to v0.9.0.
+
+Three decisions are recorded where they belong and are not repeated here:
+v0.6.0's section carries the goal, scope and definition of done; § "The debt
+gate" -> "The cadence" carries why this scoping froze no gate; and
+`docs/MODEL.md` carries what a second top-level window owes the display.
+
+**What is still open, and it is the reason this note exists.** The `v0.5.x - the
+interface pass` row - planned-milestone item 33, the visual pass over palette,
+type scale, spacing and density - sits *before* v0.6.0 on the timeline, which
+was decided when v0.6.0 meant the schematic. Whether it should run before or
+after item 34 is the project owner's and is undecided. The case for moving it
+after v0.7.0: item 34 and break-out introduce visual surface that does not exist
+to be styled today - an area header (which the provenance read establishes is
+the Editor's own, not the container's), a workspace tab strip, a live splitter
+handle, a drag affordance - so a pass run first is partly redone. The case for
+leaving it: `PL-BNYF` already separated arrangement from appearance, and the
+visual composition of a surface survives that surface being rearranged. Item
+33's own entry carries both arguments; nothing is blocked on the answer, which
+is why the row was left where it was rather than moved.
+
+**Two measurements taken on 2026-09-16 that the build work will want.** Both
+were run rather than recalled, on PySide6 6.11.2 / Qt 6.11.2. First,
+`QSplitter.saveState()` is 35 bytes for a three-pane splitter and is
+*byte-identical* for the same three children in reverse order - it records no
+widget identity at all - and `restoreState()` returns `True` restoring a
+three-pane state into a two-pane splitter and a two-pane state into a
+three-pane one, leaving the third at zero. That is stronger than the form
+`PL-C842` recorded and is why the layout model owns persistence. Second, and
+the trap for v0.7.0: a secondary window built the obvious way,
+`QWidget(main, Qt.Window)`, has `main` as its *transient parent*, and Qt counts
+only primary windows - top-level, no transient parent - when deciding the last
+window has closed, so closing the main window quits the application while the
+break-out window is still visible. The rule v0.6.0's region is built for needs
+the main window to *veto its own close* instead; `PL-Y04W` carries it.
+
+**A third, filed rather than left here**: PySide6 6.11.2 segfaults on
+`QDataStream` over a temporary `QByteArray`, which the persistence work will
+meet the first time it decodes a saved blob (`PL-NDKC`).

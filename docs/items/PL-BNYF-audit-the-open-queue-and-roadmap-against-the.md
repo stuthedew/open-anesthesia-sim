@@ -1,9 +1,16 @@
 ---
 id: PL-BNYF
 title: Audit the open queue and ROADMAP against the area/workspace layout model, so items scoped before it was decided are re-briefed or dropped rather than built and undone
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: planning
+feature: interface-areas
 touches: ROADMAP.md, docs/items/
 added: 2026-09-16
+closed: 2026-09-16
+pr: 625
+verify: bin/docket check && grep -qF '**item 34** is what turns them live' ROADMAP.md && test "$(grep -rlF 'Area-model audit (PL-BNYF)' docs/items | wc -l)" -ge 5
 ---
 
 **Problem.** Audit the open queue and ROADMAP against the area/workspace layout model, so items scoped before it was decided are re-briefed or dropped rather than built and undone
@@ -57,3 +64,90 @@ tree). The audit records which items each answer would affect; it does not pick.
 of the five dispositions or explicitly cleared, the re-briefs are written, the
 missing prerequisites are filed, and `ROADMAP.md`'s ordering reflects the
 sequencing wins found.
+
+**Population widened to the untriaged captures too** (project owner,
+2026-09-16, mid-session: "include untriaged items in sweep"). The `touches`
+filter alone would have missed them by construction: capture writes no
+`touches`, so 13 of the 14 items at `status: untriaged` declare none at all and
+no path filter can reach them. They are swept on their text instead, against the
+same five dispositions. That makes the population **49** — 36 open items
+declaring `app/` in `touches`, plus the 13 untriaged captures other than this
+item itself.
+
+## Area-model audit (PL-BNYF)
+
+**Done 2026-09-16.** 49 items swept - the 36 open items declaring `app/` in
+`touches`, and 13 of the 14 untriaged captures, which the `touches` filter
+cannot reach because capture writes no `touches` at all.
+
+**No item landed in disposition 1, 2, 3 or 5, and that is the finding rather
+than an absence of one.** Fourteen candidates were raised and all fourteen were
+refuted, two skeptics apiece, on one shared ground: each rested on a step of the
+form
+*"item 34 makes this surface a separate Editor in an Area the reader can
+close"*, and no such step is decided. Item 34 defers the roster to item 36,
+which is sequenced after it and has not been written, and
+`.claude/rules/ui-areas.md` says so in terms. So the exposure this item was
+filed against is real but **deferred**: it fires when item 36 is scoped, not
+now. `PL-L6QR` carries the re-run, with that single trigger.
+
+The second refutation ground, which caught the rest, is that the "finding" was
+the item's own stated premise read back. `PL-RTG9` is the clean example: it was
+called a sequencing win because the README attribution is owed only once the
+area system ships - which is the item's own **title**. An audit that returns an
+item's declared dependency as a discovery has found nothing.
+
+**Nine missing prerequisites were filed** after a store check that deduplicated
+two candidates against `PL-41YP` and rejected one as extrapolation: `PL-W54S`
+(what a broken-out window owes the unconditional set), `PL-7Z84` (a run has no
+identity to pin a workspace to), `PL-L8RN` (nothing enforces the one-adapter
+`QSplitter` confinement), `PL-SSQW` (the saved-workspace file), `PL-WV9K`
+(Workspace as an object above the layout tree), `PL-HJPY` (no multi-window
+representation), `PL-NWTM` (the unconditional region has no structural home),
+`PL-9LNF` (three more state-ownership sites beside `PL-VN6M`'s) and `PL-L6QR`
+(the re-run above). Four further contracts went into `PL-TH35` as clauses of the
+Editor contract rather than as items, which is where the store check put them.
+
+**`ROADMAP.md` said two incompatible things about who turns the Qt port's inert
+splitter handles live**, and all three ordering lenses found it independently.
+`:1540`, `:4545` and `:1633` said item 33, the visual pass; `:1615` and `:4770`
+said item 34, the area system. The third site was missed on the first pass and
+found by this audit's own completeness critic, which is the check earning its
+place: the first two were the ones a grep for "turns them live" returns, and
+`:1633` says "*reserving* for item 33" instead. The un-absorption of item 33 on 2026-09-16
+introduced it: that note pulled the visual pass out of the port and attached the
+reservation's next step to it. Corrected in both places, and item 33's lever
+list - "palette, type scale, spacing rhythm, density and layout" - no longer
+claims `layout`, because the arrangement is the reader's under item 34 and so is
+not a thing a design pass decides once.
+
+**Checked at the source and reported clear**: the port's reservation *was* built
+as described - `inert_splitter()` at `src/anesthesia_sim/app/qt_widgets.py:784`
+disables every handle and refuses collapse, and `QSplitter` is imported by that
+module and no other under `src/`. The largest available false finding, that the
+port built the area system and it will be undone, does not hold.
+
+**Five more filed after the completeness critic ran**, which is the critic
+earning its place: `PL-NMTF` (no open item builds item 34's area system at all -
+the decisions, the provenance and nine prerequisites exist and the build does
+not), `PL-J4NW` (`docs/ARCHITECTURE.md` § "Where new code belongs" routes every
+new panel by which container holds it, loaded on every `src/` read alongside
+`.claude/rules/ui-areas.md`, which asks the opposite), `PL-R1WQ` (the view
+registry and the kind tag), `PL-9PD6` (`docs/interface-provenance.md`
+contradicts itself about the README attribution, which is what `PL-RTG9` was
+refuted against) and `PL-D584` (`PL-TH35`'s `blocked-by` names an item that
+closed on 2026-09-12, so the store advises promoting the Editor contract on
+every run).
+
+`PL-NMTF` is the one to read first, and it is why two other things here have no
+clean fix: `PL-TH35` has nothing real to point its `blocked-by` at, and the
+timeline cannot place item 34 as a release without a scope to place.
+
+**Left for the project owner**: item 34 has no row on "The timeline" at all.
+That is a defect of record, but which row it takes is a scheduling call rather
+than a session's, so it is raised rather than written in.
+
+**Docs swept**: `ROADMAP.md` (edited), `docs/MODEL.md` § "Minimum displayed
+outputs" (read; its second-window half is what `PL-W54S` now carries),
+`docs/interface-provenance.md`, `docs/ARCHITECTURE.md` § "Where new code
+belongs", `.claude/rules/ui-areas.md`. `make doc-check` passes.

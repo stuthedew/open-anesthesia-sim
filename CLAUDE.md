@@ -107,6 +107,27 @@ is simply wide:
 - **No approach proposed.** Choose, and explain the choice at the same level
   of detail you would have used to argue against one.
 
+**A decision the owner *ratified* and one they *specified* are not the same
+decision, and they have different bars to reopen** (project owner, 2026-09-16).
+"Agree with recs" means the case looked sound on a read that may not have caught
+every nuance - not that the question is closed. A user-facing behavior they
+asked for in their own words is firmer. Four consequences:
+
+- **Record which it was.** A decision taken on a session's recommendation is
+  written `(project owner, DATE, ratified)` and names, in one clause, what it
+  was chosen over. One they specified keeps the plain `(project owner, DATE)`.
+  One word and one clause, because the reply that put the case is gone and the
+  record is the only carrier - and without it a later session cannot tell a
+  design they authored from one they nodded at.
+- **Reopen a ratified decision on ordinary evidence**: a measurement, a cost the
+  case did not carry, a constraint that has since appeared. Say so and put it
+  back to them. "It is what the owner decided" does not defend it, because it
+  was a session's own recommendation wearing their signature.
+- **Reopen a specified one only on a compelling argument**, and say plainly that
+  is what you are doing.
+- **The safety-critical standard overrides both.** A wrong or misleading
+  clinical value is not a preference either kind of decision can settle.
+
 **`.claude/rules/instruction-writing.md` decides the shape of a reply, and it
 wins.** It loads in every session and applies unasked, so it never needs to be
 named in a prompt — including its rule 14, the closing block of what the owner
@@ -161,17 +182,25 @@ before finishing.
 
 - Keep a session short and scoped to one topic; start a fresh one for an
   unrelated topic rather than continuing or compacting a long one. **Hand off
-  at about 150,000 tokens** (project owner, 2026-09-16): finish the item in
-  hand, push it, and say in your reply that you stopped for length rather than
-  for the work. A session cannot feel its own length, so read it — one call to
-  `get_session`, field `external_metadata.context_usage.used_tokens` — at a
-  natural break rather than continuously. This is the largest adherence lever
-  the project has, and the reason trimming these instructions is not: the
-  resident set measured 2.5–5.6% of the 263k–519k contexts seven concurrent
-  sessions were carrying on 2026-09-16, so no cut to it substitutes for ending
-  the session (`PL-H253`). Pick up cold from the session-start digest,
-  `bin/docket next`, and the one item being worked — not by reading the queue
-  whole.
+  at about 150,000 tokens — and check that budget before starting an item,
+  not on reaching it** (project owner, 2026-09-16): a session cannot feel its
+  own length, so read it — one call to `get_session`, field
+  `external_metadata.context_usage.used_tokens` — as you pick up the next
+  item, and if it will not fit, hand off instead of starting. Checked before
+  the spend the budget cannot be overshot, and work never started cannot be
+  cut off half-done; as a stopping rule it was open to both, and the session
+  that wrote it read 176,689 before it looked (`PL-NW76`). Past the budget
+  anyway — an item that ran long, or a design round holding its reasoning in
+  the conversation — **externalize before handing off**: the item,
+  `docs/WORKING_NOTES.md`, a pushed commit. The handoff keeps only what is on
+  disk and costs about 25,000 tokens to rebuild. Finish the item in hand, push
+  it, and say in your reply that you stopped for length rather than for the
+  work. This is the largest adherence lever the project has, and the reason
+  trimming these instructions is not: the resident set measured 2.5–5.6% of
+  the 263k–519k contexts seven concurrent sessions were carrying on
+  2026-09-16, so no cut to it substitutes for ending the session (`PL-H253`).
+  Pick up cold from the session-start digest, `bin/docket next`, and the one
+  item being worked — not by reading the queue whole.
 - Batch related questions, and related edits, into one turn.
 - Prefer targeted reads over whole-file reads of large documents once you know
   roughly where the section is. Read the whole file when editing it.

@@ -1,8 +1,14 @@
 ---
 id: PL-Y1L0
 title: Cutting a patch at the Qt port's number drops its section out of wave's unreleased set and moves the beat to v0.5.0, reversing PL-RKWB, and outstanding_roadmap_edits returns an identical list for 0.4.26, 0.4.27 and 0.5.0 so nothing reports it
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, infra
+feature: release-roadmap-seam
+touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 added: 2026-09-16
+verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_a_cut_reaching_a_milestone_section_is_named' subprojects/docket/tests/test_release.py
 ---
 
 **Problem.** Cutting a patch at the Qt port's number drops its section out of wave's unreleased set and moves the beat to v0.5.0, reversing PL-RKWB, and outstanding_roadmap_edits returns an identical list for 0.4.26, 0.4.27 and 0.5.0 so nothing reports it
@@ -46,6 +52,6 @@ number a cut has reached or passed, as one more statement the release has made
 wrong, so the hand-off says to renumber it; a test in
 `subprojects/docket/tests/test_release.py` pins the arrangement above.
 
-**Depends on `PL-KQHN`** only for the wording: if the project decides a patch no
+**Not blocked on `PL-KQHN`, which decides only the wording.** If the project decides a patch no
 longer takes a reserved number, this fires on the `0.4.27` case alone rather
 than on both. The advisory is owed either way.
