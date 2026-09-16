@@ -106,3 +106,46 @@ per-subcommand totals and the refs it walked; the owner's clone and a container
 are both profiled **against the same ref set**; and this item records what
 actually drives the count, or closes having found the difference is not
 structural.
+
+---
+
+**Built and measured, 2026-09-16.** `bin/docket digest --profile` reports calls
+by subcommand, wall time, and the ref set walked, from a counter inside
+`GitRunner` in `subprojects/docket/src/docket/vcs.py`. No `PATH` shim, so the
+measurement adds no process of its own - which is the defect in the run that
+counted 1,107 calls at 24.19 s, where a shell shim sat ahead of git and the
+unshimmed run of the same command was 17.64 s.
+
+On this container, on the commit that adds it:
+
+```
+git: 217 asked, 130 ran, 109 processes, 0.55s
+  108 fewer processes than one-per-read (49% fewer)
+  ref set: 23 refs, 6 merged, 17 unmerged, carrying 39 commits
+           and 71 item-file edits
+```
+
+**`asked` is the pre-change count, so one run carries its own before and after.**
+Every read was one process before `GitRunner` existed, so `asked` is what the
+command used to spawn and `processes` is what it spawns now. Neither number has
+to be taken on a different commit, a different machine, or - the failure this
+item exists to stop - a different ref set.
+
+**And the scaling question the retraction left open is answered, by experiment
+rather than by ratio.** A scratch clone was given fabricated ref sets of known
+size; holding refs fixed while varying commits, then the reverse, separates the
+drivers: `merge-base` is 3.0 per unmerged ref and flat in commits, `show` is 1.0
+per item file a ref introduces and flat in refs, `diff` is both at ~4.0 and
+~0.95. So the premise was half right - the growth is real and unbounded, because
+a squash-merged branch stays unmerged forever and nothing prunes - but the
+variable is **the item edits those refs carry, not the refs**. That is why 1.44x
+the refs gave 5x the calls, and it is the model the two refuted ones missed.
+
+The laws predict the owner's clone rather than being fitted to it. At 30
+fabricated refs carrying 390 item edits: 1,237 calls against their 1,107, `diff`
+593 against 570, `show` 446 against 389, and `merge-base` 90 against their 78 -
+which is exactly 3 x 26, their measured unmerged ref count.
+
+**Still owed, and it needs the owner's machine.** Run `bin/docket digest
+--profile` there and compare the `ref set` block with this one before comparing
+any count. `PL-DMDF` carries the `diff` fan-out this profiling turned up.

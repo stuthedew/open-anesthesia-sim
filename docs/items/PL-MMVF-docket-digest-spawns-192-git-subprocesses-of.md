@@ -98,3 +98,28 @@ into one `cat-file`) is 24% and mechanical, and `PL-XD3C` (the ref-count growth)
 is the one that decides whether any of this stops mattering. Do this one last,
 or fold it into whichever of those two is worked first - it is a few lines
 inside the same runner either way.
+
+---
+
+**Done, 2026-09-16, and the duplication is structural rather than incidental.**
+`GitRunner` memoizes on `(argv, root)`. Dumping the argv of a real `digest` run
+settles what the three earlier estimates - 43% of calls, then 27% of time, then
+10% - were circling: **every `merge-base` this module issues is asked exactly
+three times.** 18 calls, 6 distinct, multiplicity 3 for every one of them.
+`_unlanded_refs` runs once each for `branches_in_flight`, `orphaned` and
+`cuts_in_flight`, and the same three-fold repeat covers the `diff --raw` shape.
+
+So the memo is not a guess at a rate. On this container `merge-base` goes 51
+asked to 17 ran and `diff` 96 to 60, and the whole command 217 asked to 130 -
+87 calls the memo answered, 40%.
+
+**It does not reach `show`, and that is the finding to carry forward.** 22 of 25
+`show` calls are distinct, because each asks for a different blob. A memo cannot
+help there, which is what makes `PL-0J9K`'s batch the only lever on that block
+and the two items genuinely separate rather than overlapping.
+
+**The fetch hazard is closed twice.** The memo covers only subcommands that
+cannot change anything, whatever their arguments; anything else - `fetch` among
+them - is run *and* empties it. A test drives that against a real remote that
+really moves, rather than asserting the clearing rule against itself, because
+`bin/docket branch` fetches in-process.

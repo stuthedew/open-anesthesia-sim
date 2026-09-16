@@ -40,3 +40,34 @@ were never going to be 389.
 one `show` per blob, the digest's output is byte-identical on both machines, the
 missing-blob path is covered by a test, and the item records the re-measured
 `show` time on the owner's clone.
+
+---
+
+**Done, 2026-09-16.** `GitRunner` in `subprojects/docket/src/docket/vcs.py`
+answers `show <rev>:<path>` from one `git cat-file --batch` per checkout,
+started on first use and closed from `main`'s `finally` so a command that
+raised still ends it. No call site changed: the runner is a `Runner` like
+`_run_git`, so all seven sites and their absent-blob handling are untouched.
+
+**The missing-path hazard, and what testing it actually showed.** `git show`
+exits 128 and `_run_git` turns that into the empty string; `cat-file --batch`
+prints `<spec> missing` on stdout. That line is read and returns the same empty
+string. But mutation testing found that *deleting* the branch leaves every
+caller's answer correct - an unreadable header drops the batch and `git show`
+answers instead - so correctness alone cannot tell the two apart. What it
+actually costs is the batch, for every later blob in the command, and an absent
+blob is ordinary here rather than rare. The test pins the process count for that
+reason, which is the only place the difference shows.
+
+Two shapes decline rather than guess: anything that is not a blob, because
+`git show` formats a tree where `cat-file` returns its raw bytes, and a spec
+carrying the newline the protocol delimits on.
+
+**Re-measured.** On this container `show` is 25 asked, 22 reaching git, 21 of
+them folded into the batch - 0.02 s. The container was never where this item's
+value lay: `show` is 1.0 call per item file an unmerged ref introduces, so it is
+15-25 calls here and 389 on the owner's clone. The premise survives; only its
+container share was misleading.
+
+**Still owed:** the re-measured `show` time on the owner's clone, from
+`bin/docket digest --profile` run there.
