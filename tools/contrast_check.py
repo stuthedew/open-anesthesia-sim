@@ -93,6 +93,47 @@ stated rather than hidden: a color that is neither a module-level constant nor
 a literal - one computed, or taken from a toolkit's own palette by name - is
 not a value this tool can see, and `tools/agent_identity_check.py` exists for
 the one such case that has bitten.
+
+**Disabled states are out of scope, and that is a decision rather than an
+oversight (PL-NGF7, decided 2026-09-16).** Every colour a control takes when it
+is disabled comes from `QPalette`'s `Disabled` colour group, which the platform
+style fills in - measured 2026-09-16 as `#BEBEBE` for every disabled text role
+under Fusion, confirmed per widget on a disabled `QPushButton`, `QComboBox` and
+`QLabel`. That value is declared nowhere in `app/theme.py`, so it is not merely
+undeclared but unreachable to the `ast` extraction above; and `app/main.py`
+never calls `setStyle`, so it is the *platform's* number rather than the
+product's and differs on the machine a learner uses. There is nothing here for
+this tool to measure, and a requirement written against `#BEBEBE` would assert
+a value this project does not choose.
+
+*What covers them instead, since "nothing covers them and nothing says so" is
+what PL-NGF7 was filed for.* The safety-relevant half is covered by
+`tools/agent_identity_check.py`: no control carrying agent identity may be
+*rendered* disabled (project owner, 2026-09-08), enforced as the
+`setDisabled`/`setHidden` pairing, so the ISO 5360 obligation to show the right
+agent colour is never left to a style's grey. What remains is the splitter
+handle and the start, pause and reset buttons - plain controls carrying no
+identity, no value and no clinical meaning, whose labels are the only thing at
+stake. W3C WCAG 2.2 SC 1.4.3 exempts "text ... that is part of an inactive user
+interface component" from any contrast requirement
+(https://www.w3.org/TR/WCAG22/#contrast-minimum), which is the same exemption
+`agent_identity_check` declines to claim for identity controls and which applies
+squarely here.
+
+*What is deliberately not claimed.* SC 1.4.11's own exception wording for
+inactive components was **not** read at the source for this decision: `w3.org`
+returns `EGRESS_BLOCKED` from this container, as PL-JX0Z recorded across five
+routes. So nothing here rests on it. The argument above stands on SC 1.4.3,
+which this repository already quotes verbatim, and on the measurement that
+there is no author-chosen colour to check.
+
+*And the scope note cannot rot silently*, which is the half a docstring alone
+would not buy. `check_disabled_states_are_the_style_s` fails the build the
+moment a `:disabled` rule or a `setPalette` call appears under `app/`, because
+at that moment the colour *is* author-controlled, *is* measurable, and the two
+paragraphs above stop being true. The correct response to that error is to
+declare the colour in the theme and add a requirement - not to delete the
+check.
 """
 
 from __future__ import annotations
@@ -615,12 +656,19 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
 #: that closes it. Not a suppression list: an entry here that starts passing is
 #: reported as an error, so a fix cannot leave its excuse behind.
 #:
-#: `ACCENT` was listed twice with the same measured value and two different
-#: owners - the alveolar trace and the slider track, two on-screen elements
-#: sharing one constant, which was itself the defect each item described.
-#: `PL-GVXP` ended the sharing by giving the trace `ALVEOLAR_COLOR` of its own
-#: and clearing it, so one entry remains and it is the slider track's.
-KNOWN_SHORTFALLS: dict[tuple[str, str], str] = {("ACCENT", "PANEL"): "PL-W8DQ"}
+#: **Empty since 2026-09-16, and that is the state to keep it in.** `ACCENT` was
+#: listed twice with the same measured value and two different owners - the
+#: alveolar trace and the slider track, two on-screen elements sharing one
+#: constant, which was itself the defect each item described. `PL-GVXP` ended
+#: the sharing by giving the trace `ALVEOLAR_COLOR` of its own and clearing it;
+#: `PL-W8DQ` then darkened `ACCENT` from `#18A999` to `#17A192`, taking the
+#: slider track from 2.93:1 to 3.21:1 and clearing the last entry. Every
+#: declared pair meets its minimum today.
+#:
+#: An empty dict is not a reason to delete the mechanism. A shortfall that is
+#: found, owned and visible is the thing this replaced a comment-nobody-checks
+#: with, and the next one wants somewhere to go that is not a silent failure.
+KNOWN_SHORTFALLS: dict[tuple[str, str], str] = {}
 
 #: The six chart traces, in the order `chart_frame.COMPARTMENT_TRACES` lists them.
 TRACES: tuple[str, ...] = (
@@ -983,6 +1031,50 @@ def check_colors_live_in_the_theme(root: Path) -> tuple[str, ...]:
     return tuple(offenders)
 
 
+def check_disabled_states_are_the_style_s(root: Path) -> tuple[str, ...]:
+    """Refuse author-controlled disabled styling, which this tool does not measure.
+
+    The module docstring records the decision that disabled states are out of
+    scope, and the whole of that decision rests on one fact: the colours belong
+    to `QPalette`'s `Disabled` group, which the platform style fills in and no
+    module here chooses. A `:disabled` rule in a stylesheet, or a `setPalette`
+    call, takes that choice back - and at that moment the colour is a value
+    this project picked, is measurable, and is covered by nothing.
+
+    So this is the guard that stops the scope note becoming a false green. It
+    is a hard error rather than an advisory because the rule is exact: either a
+    module under `app/` writes one of these two forms or it does not. The fix
+    is never to delete the check - it is to declare the colour in
+    `app/theme.py` and give it a requirement, which is what the scope note says
+    is owed the moment the premise changes (PL-NGF7).
+
+    Returns:
+        One message per offending site, empty while every disabled colour is
+        still the style's.
+    """
+    offenders: list[str] = []
+    for relative in app_modules(root):
+        path = root / relative
+        module = relative.as_posix()
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                if ":disabled" in node.value:
+                    offenders.append(
+                        f"  {module}:{node.lineno}: a ':disabled' rule makes a disabled "
+                        "colour author-controlled, so it is measurable and owes a "
+                        "constant in app/theme.py and a requirement here (PL-NGF7)"
+                    )
+            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                if node.func.attr == "setPalette":
+                    offenders.append(
+                        f"  {module}:{node.lineno}: setPalette takes the disabled colours "
+                        "from the platform style, so they are measurable and owe a "
+                        "constant in app/theme.py and a requirement here (PL-NGF7)"
+                    )
+    return tuple(offenders)
+
+
 def check_citations(root: Path) -> tuple[str, ...]:
     """Resolve every symbol the requirement descriptions cite.
 
@@ -1050,6 +1142,9 @@ class Report:
     citations: tuple[str, ...]
     #: Colors declared anywhere under `app/` other than the theme (PL-2CS8).
     misplaced_colors: tuple[str, ...]
+    #: Sites taking the disabled colours back from the platform style, which
+    #: ends this tool's scope decision about them (PL-NGF7).
+    author_styled_disabled: tuple[str, ...]
     #: `(trace, trace, vision model, ratio)`, every pair in every model.
     trace_pairs: tuple[tuple[str, str, str, float], ...]
     #: `(trace, vision model, ratio)` for each trace under `TRACE_FLOOR`.
@@ -1066,6 +1161,7 @@ class Report:
             or self.repaired
             or self.citations
             or self.misplaced_colors
+            or self.author_styled_disabled
             or self.below_trace_floor
         )
 
@@ -1130,6 +1226,7 @@ def analyze(root: Path) -> Report:
         repaired=repaired,
         citations=check_citations(root),
         misplaced_colors=check_colors_live_in_the_theme(root),
+        author_styled_disabled=check_disabled_states_are_the_style_s(root),
         trace_pairs=trace_pairs,
         below_trace_floor=below_trace_floor,
         modules_read=len(app_modules(root)),
@@ -1145,6 +1242,7 @@ def format_report(report: Report, *, matrix: bool) -> str:
         + len(report.repaired)
         + len(report.citations)
         + len(report.misplaced_colors)
+        + len(report.author_styled_disabled)
     )
     lines = [
         f"contrast: {met} of {len(report.results)} declared requirements meet WCAG 2.2 AA, "
@@ -1157,6 +1255,16 @@ def format_report(report: Report, *, matrix: bool) -> str:
         lines.append("")
         lines.append("Colors declared outside the theme:")
         lines.extend(report.misplaced_colors)
+
+    if report.author_styled_disabled:
+        lines.append("")
+        lines.append("Disabled colours taken back from the platform style:")
+        lines.extend(report.author_styled_disabled)
+        lines.append(
+            "  This tool treats disabled states as out of scope because the style "
+            "chooses them. These sites choose them here, so declare each colour in "
+            "app/theme.py and add a requirement - do not delete the check."
+        )
 
     if report.citations:
         lines.append("")

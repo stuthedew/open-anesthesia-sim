@@ -3,11 +3,10 @@ id: PL-Y4YX
 title: PL-L9RD's verify: demands PySide6 in app/theme.py, which that file's own documented invariant forbids, and the invariant's stated reason does not hold either - both tools ast.parse it and neither imports it
 priority: P3
 effort: S
-status: blocked
+status: needs-decision
 classes: defect
 feature: qt-port
-touches: src/anesthesia_sim/app/theme.py, docs/items
-blocked-by: PL-L9RD
+touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/qt_chart.py
 added: 2026-09-16
 ---
 
@@ -75,3 +74,42 @@ belongs". So the first half of the `verify:` passes whichever way this goes.
 agree, the comment states a reason that is true of the tree, and - if the
 toolkit-free rule is kept - `PL-L9RD`'s `verify:` names something that is
 actually a specification of the work rather than the presence of a string.
+
+## Promoted to `needs-decision` 2026-09-16, and narrowed to the half that is left
+
+`PL-L9RD` closed and did **not** resolve this, which its own ground in
+`ROADMAP.md` had assumed it would. What that item fixed was the *symptom*: its
+`verify:` no longer requires PySide6 in `app/theme.py`, and the file's comment
+no longer defends itself with the claim that the two tools need it to import
+nothing - they call `ast.parse`, which executes nothing, so that reason was
+checkably false and is replaced with one that holds.
+
+**Decision needed.** Whether `app/theme.py` keeps its no-toolkit rule, or
+becomes the place the Qt styling layer is composed.
+
+The case for moving it: 27 `setStyleSheet` sites across `app/qt_chart.py`,
+`app/qt_widgets.py`, `app/run_view.py` and `app/simulation_view.py` each build a
+CSS string from this file's constants, and the partial helpers that already
+exist (`_panel_stylesheet`, `_slider_stylesheet`, `selector_stylesheet`,
+`_surface_stylesheet`, `_text_stylesheet`) live in the view modules rather than
+beside the values they use. "Make the visual decisions once" wants one place.
+
+The case for keeping it: this file is where a value a clinician could be misled
+by is written down, and it is worth being importable and testable without a
+display, an event loop or a plugin. A stylesheet composer needs none of Qt's
+types either - it returns strings - so the two may not actually be in tension,
+which is the thing to establish before choosing.
+
+**Recommendation: keep the no-toolkit rule, and move the composers rather than
+the toolkit.** A function returning `f"QPushButton {{ color: {INK}; }}"` imports
+nothing, so the 27 sites can be centralised here without a PySide6 import at
+all. That gets the single place without giving up the property worth having.
+What needs checking before committing to it is whether any of the five existing
+helpers genuinely needs a Qt type - if one does, it stays in its view module
+and the rule holds for the rest.
+
+**Done when.** The question is answered in `app/theme.py`'s own comment, and
+either the composers have moved with the tests to match, or the item records why
+they stay where they are. `PL-NGF7`'s
+`check_disabled_states_are_the_style_s` is unaffected either way: it refuses a
+`:disabled` rule wherever the string is composed.
