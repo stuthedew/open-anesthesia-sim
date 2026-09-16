@@ -2,6 +2,7 @@
 id: PL-MMVF
 title: docket digest spawns 192 git subprocesses of which 82 are exact duplicates, so a machine that charges for exec pays 17.6s at every session start
 status: untriaged
+feature: session-start-cost
 added: 2026-09-16
 ---
 

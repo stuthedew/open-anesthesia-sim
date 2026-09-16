@@ -2,6 +2,7 @@
 id: PL-0J9K
 title: Replace docket's per-blob git show fan-out with one git cat-file --batch: 389 processes and 5.77s of a 24s session start on the owner's machine
 status: untriaged
+feature: session-start-cost
 added: 2026-09-16
 ---
 
