@@ -111,9 +111,12 @@ dependency line; run and seen to fail (exit 1) with both lines still there.
 **Closed 2026-09-16, and the numpy half went the other way from the title.**
 
 *The subtractive half.* `flet` and `flet-charts` are out of `pyproject.toml`
-and out of `uv.lock`, which drops 37 packages with them - `flet-cli`,
-`flet-desktop`, `flet-web` and their transitive tree, `msgpack` and `uvicorn`
-among them. The three declared runtime dependencies are now
+and out of `uv.lock`, which drops **44** packages with them - `flet-cli`,
+`flet-desktop`, `flet-web` and their transitive tree, `fastapi`, `uvicorn`,
+`requests`, `jinja2`, `cookiecutter`, `msgpack` and `qrcode` among them,
+counted from `git diff main -- uv.lock`. (The first commit's subject said 37,
+from the `uv lock` console tail rather than the diff; 44 is the measured
+number and this line is the record.) The three declared runtime dependencies are now
 `PySide6-Essentials`, `pyqtgraph` and `pydantic`. This did **not** wait on
 `PL-7SVX` as the sequencing note expected: `PL-25KS` had already deleted the
 last module importing Flet, and `spikes/` - the other half of `PL-7SVX` -
