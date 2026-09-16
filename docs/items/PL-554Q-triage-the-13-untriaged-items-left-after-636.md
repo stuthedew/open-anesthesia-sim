@@ -9,6 +9,7 @@ feature: queue-hygiene
 touches: docs/items
 added: 2026-09-16
 closed: 2026-09-16
+pr: 639
 verify: bin/docket check && ! bin/docket triage | grep -qE '^PL-(7K8Y|7RYB|DMDF|NLP4|SH9Q|WXX8|ZLS5) '
 ---
 
