@@ -63,13 +63,20 @@ and `PL-CNCF` carries `docs/MODEL.md` and `core/run_score.py` in its `touches`
 where this carries neither. Folding would make one item whose `verify:` cannot
 speak for both halves. `PL-R460` is closed and is not a candidate at all.
 
-**Done when.** The full frame cost - assembly *and* paint - has been measured
-on the Qt build at a maximised window on real hardware rather than offscreen,
-the result is written into `docs/WORKING_NOTES.md` beside the existing
-frame-cost thread with the phrase `measured at the window-following budget` so
-the old fixed-budget figures cannot be read as current, and the item closes on
-one of two recorded outcomes: the budget holds at the top of the range, in
-which case this closes as a measurement and the concern is retired; or it does
-not, in which case the reduction is filed as its own item with this number as
-its baseline. A recorded "the margin is adequate" closes this as legitimately
-as a speed-up would.
+**Done when.** The cost across the budget's actual range is written into
+`docs/WORKING_NOTES.md` beside the existing frame-cost thread, carrying the
+phrase `measured at the window-following budget` so the old fixed-budget
+figures cannot be read as current, and the item closes on a recorded
+conclusion about whether the margin is adequate. A recorded "it is" closes this
+as legitimately as a speed-up would.
+
+**What the environment decides, and what it does not.** The assembly half is
+measurable anywhere - `assemble_chart_frame` imports no toolkit and the figures
+in the table above were taken offscreen. What a container cannot settle is the
+*margin*, because paint here is a software rasteriser with no GPU, which
+`PL-QXSB` found reports 18-28 ms even for a frame where nothing changed. So a
+session can take the numbers and state the assembly cost as fact; asserting
+that the interface does or does not drop frames needs the project owner's own
+hardware, as `PL-X9T3` did. Either is a legitimate close, provided the item
+says which it did - this is deliberately not a requirement to reach real
+hardware before closing.
