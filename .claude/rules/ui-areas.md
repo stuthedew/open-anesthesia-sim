@@ -72,6 +72,11 @@ each is cheap now and expensive later.
 
 Area, Editor and Workspace are Blender's words and this project adopted them
 rather than inventing its own — `ROADMAP.md` item 34 carries the definitions,
-the docking operations and the two precedents copied from the source. Use those
+the docking operations and the two precedents copied from the source, and
+`docs/interface-provenance.md` carries where they came from: what was read of
+Blender, what this project adopts, and the four places it deliberately does
+something else. Read that before assuming a Blender behaviour carries here —
+three of the four divergences exist because Blender's answer would be unsafe
+with clinical values on screen. Use those
 three words for those three things and no others, so the code and the roadmap
 do not drift into separate vocabularies before the system is built.

@@ -8,6 +8,7 @@ classes: docs
 feature: interface-areas
 added: 2026-09-16
 closed: 2026-09-16
+pr: 618
 verify: test -f .claude/rules/ui-areas.md && grep -q 'anesthesia_sim/app' .claude/rules/ui-areas.md
 ---
 

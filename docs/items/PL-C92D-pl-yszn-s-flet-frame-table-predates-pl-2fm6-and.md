@@ -9,6 +9,7 @@ feature: qt-port
 touches: docs/WORKING_NOTES.md
 added: 2026-09-08
 closed: 2026-09-16
+pr: 617
 verify: python3 tools/doc_check.py check && grep -qF 'not comparable across PL-2FM6' docs/WORKING_NOTES.md
 ---
 

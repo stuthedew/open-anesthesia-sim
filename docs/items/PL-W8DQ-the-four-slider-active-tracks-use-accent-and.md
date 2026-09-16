@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, tools/contrast_check.py
 added: 2026-09-02
 closed: 2026-09-16
+pr: 621
 verify: python3 tools/contrast_check.py && ! grep -q '("ACCENT", "PANEL"): ' tools/contrast_check.py
 ---
 

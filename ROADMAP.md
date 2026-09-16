@@ -2708,7 +2708,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 152 entries
+### Declined to Gate 2 on the refilling-queue ground — 151 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -4686,18 +4686,75 @@ once someone is ready to scope it.
     built, and is expected to be revisited as it matures; the occlusion rule is
     the part that must survive a revision.
 
-    *The license constraint, which is not a formality.* Blender's source is
-    GPL-2.0-or-later and its binaries ship under GPL-3.0-or-later; this project
-    is Apache-2.0 (`LICENSE`, `pyproject.toml`). So the behaviour may be studied
-    from the manual and the running application and the source read for
-    understanding, but code may not be copied or closely ported into this tree —
-    doing so would make the result GPL-encumbered and the stated license wrong.
-    The owner's note that "Blender is open source so can see implementation" is
-    recorded here with that limit attached, because the limit is exactly what a
-    session reading the note alone would miss. Qt supplies the primitives
-    directly in any case: nested `QSplitter` for the tiling, its own
-    `saveState()`/`restoreState()` for a layout, `QSettings` or a project file
-    for a named preset.
+    *The licence constraint, and it runs the opposite way for the two kinds of
+    source.* `docs/interface-provenance.md` is the record - the study protocol,
+    what was read, what this project adopts and what it deliberately does
+    differently - and it is where a session building the layout should start.
+    The short form: Blender's source files are GPL-2.0-or-later (the work as a
+    whole GPL-3.0-or-later) and this project is Apache-2.0, so **reading the
+    source is unrestricted** - GPLv2 s.0 puts activities other than copying,
+    distribution and modification outside the licence's scope - while copying,
+    translating or porting it into this tree is not, and would make the stated
+    licence wrong. But the constraint that actually bites is the other one: the
+    **Blender Manual and Developer Documentation, including the Human Interface
+    Guidelines, are CC-BY-SA 4.0**, and pasting their prose *is* copying where
+    reading source is not. **Paraphrase and cite; never paste** (`PL-P5QX`).
+    The design rationale this project wants lives in the Developer Docs and the
+    HIG rather than in the Manual, which documents behaviour for users. Qt
+    supplies the primitives directly in any case: nested `QSplitter` for the
+    tiling and a project file for a named preset.
+
+    *The layout is a nested-splitter tree, and Blender's own shipped layouts are
+    what settled it* (`PL-3J2P`, decided 2026-09-16 on the research the project
+    owner asked for before the decision was fixed). The question was whether the
+    layout is stored as Blender's shared-vertex graph - areas naming four corner
+    points, neighbours sharing them - or as nested splitters. It was answered by
+    measuring rather than arguing, against a threshold written down first.
+    **Across all 32 workspaces Blender ships** - 11 defaults and 21 in its five
+    application templates - **none uses an arrangement a splitter tree cannot
+    express**, and exactly one contains a four-way junction, where the tree must
+    split one of two crossing borders into two handles. The two behaviours a
+    tree cannot express are both opt-in: extend-drag is the Shift key on the
+    border drag, and snap-merge is its own operator on the border's right-click
+    menu.
+
+    One supporting argument did **not** survive the research, and the decision
+    is recorded without it. A splitter tree is **strictly less expressive** than
+    Blender's representation: five full-span splits and one ordinary join reach
+    a five-area pinwheel, which no sequence of full-span cuts can produce. So
+    the tree is chosen knowing it gives something up - on the grounds that
+    Blender's own designers never used it in 32 shipped layouts, that this
+    audience picks a workspace rather than authoring one, that the tree's limit
+    shows up as a **join being unavailable** rather than as a wrong value, and
+    that a planar subdivision is owned by one person forever.
+    `docs/interface-provenance.md` carries the count, the method, the
+    construction and the condition under which this reverses.
+
+    *The container sits behind a layout model of this project's own*
+    (`PL-C842`, recommended 2026-09-16 with the Blender read behind it; the
+    owner delegated the architecture call). The negative half was settled by
+    measurement and the research did not overturn it: `QSplitter.saveState()`
+    returns 35 opaque bytes carrying sizes and a child count, **cannot record
+    which view occupies which pane** - which is the whole of what a named
+    workspace is - and restoring a three-child state into a two-child splitter
+    **returns `True`** with sizes `[318, 318]` rather than failing. That last is
+    disqualifying on this file's own standard, which prefers an obvious failure
+    to a plausible-looking wrong result.
+
+    What the Blender read added is that three properties this project needs are
+    ones Blender does **not** provide, so they have to be built into a model of
+    our own rather than inherited: a **loud failure** when a saved layout names a
+    view this build lacks (Blender silently substitutes a 3D viewport); a
+    guarantee that a **required value is never hidden to make room** (Blender
+    collapses a region that will not fit); and **isolation with teeth** (Blender's
+    editors can reach the screen and ten of twenty-one do). A pure-Python
+    `LayoutModel` is the source of truth - a tree of splits and panes, with
+    `split`, `join`, `resize`, `swap` and `set_view`, serialized to versioned
+    JSON - with one adapter module the only place importing `QSplitter`. A view
+    is registered by kind, never sees a splitter, never calls `saveState()`, and
+    never stores its own geometry. `PL-LH18`'s path-scoped rule already requires
+    views to be interchangeable rather than merely movable; this extends the same
+    reasoning to the container.
 
     *Placed, and the timing question is decided* (project owner, 2026-09-12,
     `PL-8VL1`). The Qt port rewrites every layout in the dashboard onto Qt, and

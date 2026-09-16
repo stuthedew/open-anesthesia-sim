@@ -9,6 +9,7 @@ feature: qt-port
 touches: src/anesthesia_sim/app/theme.py, ROADMAP.md, tools/contrast_check.py
 added: 2026-09-10
 closed: 2026-09-16
+pr: 621
 verify: python3 tools/doc_check.py check && grep -qF 'that absorption was reversed on 2026-09-16' ROADMAP.md
 ---
 
