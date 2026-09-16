@@ -1063,29 +1063,39 @@ plans in versions has usually spent that number already. Cutting it then is
 not a smaller release than the plan's — it is the plan's milestone going out
 under its own name with most of it missing, which a tag makes permanent. So
 `release.release_offer` puts the suggestion beside what the plan has already
-spoken for — the step `wave` says the project stands on, *and* the milestone
-its beat is about: where either already holds that version and is unfinished,
-the digest withholds the offer and names the one holding it; where the plan is
+spoken for — every version `ROADMAP.md` names *ahead* of the current one, which
+`wave` carries as `reserved`: where one of them is the number the bump arrived
+at, the digest withholds the offer and names what holds it; where the plan is
 itself asking for a release, the digest offers the version the roadmap named
 rather than the one a class label inferred. The digest's release line and its
 plan line can no longer recommend opposite actions.
 
-Two carriers rather than one, because in the live arrangement they are
-different objects: the project stands on a patch-track row, `v0.4.x` carries
-`(0, 4, -1)` — a track marker rather than a number anything can be cut at, so
-it matches no suggestion — while the number the bump arrives at belongs to the
-milestone the beat is asking to implement. Read off the step alone the
-reservation is dead there while looking alive, and the digest printed `Offer
-0.5.0 before taking new work` directly above `Beat: implement v0.5.0 — the case
-you can branch ... 8 still open` (`PL-6T4L`).
+A reading of the plan rather than of the reader's position in it, and that is
+the part with a history. The comparison began on one object `wave` binds — the
+step the project stands on — and a second was added when that turned out to
+hold no number in the live arrangement, where the step is the `v0.4.x` patch
+track carrying `(0, 4, -1)`, a track marker rather than a number anything can
+be cut at, while the number the bump arrives at belongs to the milestone the
+beat is asking to implement. Read off the step alone the reservation was dead
+there while looking alive, and the digest printed `Offer 0.5.0 before taking
+new work` directly above `Beat: implement v0.5.0 — the case you can branch ...
+8 still open` (`PL-6T4L`). Each binding answered the arrangement that had just
+bitten and no other, and the same wrong offer arrived four times (`PL-D2GW`,
+`PL-KD98`, `PL-6T4L`, `PL-188T`) — the last of them from a row moved between the
+project and its milestone, which is an ordinary editorial act rather than an
+edge case. A version is spoken for by being *named* ahead of the current one,
+and asking the file that question terminates where enumerating bindings does
+not (`PL-VFD8`).
 
-Both carriers are objects `wave` binds, which is also the limit of what the
-reservation can see: a milestone with a timeline row and no section yet binds
-neither, and its number is still offered (`PL-VFD8`). And the milestone carrier
-answers only where something counts that milestone's content, because
-withholding an offer prints the words "which is unfinished" — a claim the
-`implement` beat alone does not support, since `wave` falls through to it for a
-gate-only milestone that has in fact finished (`PL-J45M`).
+Two sources for that set, because a milestone spends months holding only one of
+them: a timeline row is written when it is *placed*, a section when it is
+*scoped*. Nothing cuttable is suppressed — every version in the set is ahead of
+the current one and so unreleased by construction, and a `release` beat is
+answered before the comparison is reached. The single exemption is the
+milestone the beat is about where that beat is `implement` and nothing counts
+its content, because withholding an offer prints the words "which is
+unfinished" — a claim that beat alone does not support, since `wave` falls
+through to it for a gate-only milestone that has in fact finished (`PL-J45M`).
 
 **What a release deliberately does not write is the roadmap.** A project that
 keeps a version table in a hand-maintained plan will find it left behind by

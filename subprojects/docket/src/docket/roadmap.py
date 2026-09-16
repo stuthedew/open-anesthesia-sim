@@ -1007,6 +1007,13 @@ class Wave:
     milestone: MilestoneSection | None
     #: Which items that milestone names, and which a later one names instead.
     scope: Scope
+    #: Every version the roadmap names ahead of the current one, from the
+    #: release train's rows and from the milestone sections both, nearest
+    #: first. Carried rather than left to `release_offer` to recompute: the
+    #: rows and the sections are already parsed here, and a reader of the plan
+    #: asking "is this number spent?" is asking about the plan rather than
+    #: about the position `step` and `milestone` describe.
+    reserved: tuple[ReservedVersion, ...]
     beat: str
     #: What the beat is to be done to, named as the roadmap names it.
     subject: str
@@ -1231,6 +1238,64 @@ def _due_before(
 
 
 @dataclass(frozen=True)
+class ReservedVersion:
+    """A version the roadmap has already spent, and what it spent it on.
+
+    A version is spoken for by being *named* ahead of the current one. That is
+    the whole rule, and it is a property of the file rather than of where a
+    reader stands in it - which is what makes the set of them finite and
+    readable in one pass, rather than a list of bindings to extend the next
+    time the plan is arranged differently (`PL-VFD8`).
+    """
+
+    version: tuple[int, int, int]
+    #: The roadmap's own name for what holds it - "the schematic", not
+    #: "v0.6.0". The timeline row's wording where there is a row, because the
+    #: release train is where the plan places a milestone first; the section's
+    #: where there is only a section, or where the row is a baseline stub
+    #: carrying no name of its own.
+    name: str
+
+
+def _reserved_versions(
+    steps: Sequence[TimelineStep],
+    sections: Sequence[MilestoneSection],
+    current: tuple[int, int, int] | None,
+) -> tuple[ReservedVersion, ...]:
+    """Every version the roadmap names ahead of the current one, nearest first.
+
+    Two sources, because the plan states a version in two places and a
+    milestone spends months holding only one of them: a timeline row is written
+    when the milestone is *placed*, a section when it is *scoped*. Reading both
+    covers the window between, and reading them *by version* rather than by
+    position means no arrangement of rows can hide one - which is the property
+    the reservation had been missing. It had been read off whichever object
+    `wave` bound, and the same defect then arrived four times through four
+    arrangements, each fixed by adding the binding that had just bitten
+    (`PL-D2GW`, `PL-KD98`, `PL-6T4L`, `PL-188T`).
+
+    Patch-track rows are left out by kind. The track promises no particular
+    number by construction - that is what `v0.4.x` means - so it reserves
+    none, and its `(0, 4, -1)` would in any case match no suggestion.
+    Milestone rows and sections at or below the current version are released,
+    and a bump only ever suggests a number above it.
+    """
+    names: dict[tuple[int, int, int], str] = {}
+    for step in steps:
+        if step.kind != "milestone" or step.version is None:
+            continue
+        if current is not None and step.version <= current:
+            continue
+        names.setdefault(step.version, step.name)
+    for section in sections:
+        if current is not None and section.version <= current:
+            continue
+        if not names.get(section.version):
+            names[section.version] = section.name
+    return tuple(ReservedVersion(version, names[version]) for version in sorted(names))
+
+
+@dataclass(frozen=True)
 class ReleaseDue:
     """The release a clear gate leaves to cut: how the roadmap labels it, its
     version, and its own name. Version and name are carried rather than derived
@@ -1420,6 +1485,7 @@ def wave(
                 else ""
             ),
         ),
+        reserved=_reserved_versions(steps, sections, current),
         beat=beat,
         subject=subject,
         release_version=due.version if due is not None else None,
