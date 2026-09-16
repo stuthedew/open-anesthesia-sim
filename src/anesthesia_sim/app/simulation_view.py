@@ -66,9 +66,11 @@ from anesthesia_sim.app.dashboard_frame import (
     WASH_IN_DENOMINATOR_TEXT,
     WASH_IN_HEADING,
     WASH_IN_MODELLED_TEXT,
+    compartment_cap_notice,
     mac_awake_caption,
     mac_reference_caption,
     no_traces_shown,
+    run_label,
     time_axis_caption,
 )
 from anesthesia_sim.app.formatting import format_time_base
@@ -203,6 +205,24 @@ class SimulationView(QWidget):
             NO_TRACES_SHOWN_TEXT, color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
         )
         self._hidden_traces_text.setHidden(True)
+        # Conditional text, and it earns a sentence on
+        # `.claude/rules/ui-reader.md`'s own test: it is the one state in
+        # which the legend's checked boxes and the plot's curves disagree by
+        # design, and no label, unit or axis title can carry that.
+        self._capped_traces_text = styled_label(
+            "", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, italic=True, wrap=True
+        )
+        self._capped_traces_text.setHidden(True)
+
+        # Said once, at construction, because the count cannot change while a
+        # dashboard is alive - `controllers` is what it was built over. Both
+        # legends need it to name the runs and the chart legend needs it to
+        # hold the compartment selection to `COMPARED_COMPARTMENT_CAP`.
+        self._legend.set_run_count(len(self._runs))
+        self._wash_in_legend.set_run_count(len(self._runs))
+
+        for index, run in enumerate(self._runs):
+            run.set_run_name(run_label(index) if len(self._runs) > 1 else None)
 
         self._chart_column = self._build_chart_column()
         self._build_page()
@@ -332,6 +352,7 @@ class SimulationView(QWidget):
         column.addWidget(self._mac_awake_reference_text)
         column.addWidget(self._legend)
         column.addWidget(self._hidden_traces_text)
+        column.addWidget(self._capped_traces_text)
 
         for run in self._runs:
             column.addWidget(run.build_off_scale_notice())
@@ -420,8 +441,8 @@ class SimulationView(QWidget):
 
         snapshots = tuple(run.snapshot() for run in self._runs)
         inputs = tuple(
-            RunInput(run.controller, snapshot, run.adjustments(snapshot))
-            for run, snapshot in zip(self._runs, snapshots, strict=True)
+            RunInput(run_label(index), run.controller, snapshot, run.adjustments(snapshot))
+            for index, (run, snapshot) in enumerate(zip(self._runs, snapshots, strict=True))
         )
         frame = assemble_chart_frame(
             inputs,
@@ -437,6 +458,9 @@ class SimulationView(QWidget):
         self._mac_reference_text.setText(mac_reference_caption(frame))
         self._mac_awake_reference_text.setText(mac_awake_caption(snapshots[0]))
         self._hidden_traces_text.setHidden(not no_traces_shown(frame))
+        cap_notice = compartment_cap_notice(frame)
+        self._capped_traces_text.setText(cap_notice or "")
+        self._capped_traces_text.setHidden(cap_notice is None)
 
         for index, (run, snapshot) in enumerate(zip(self._runs, snapshots, strict=True)):
             run.refresh(snapshot, frame, index)

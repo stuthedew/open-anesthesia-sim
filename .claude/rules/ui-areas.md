@@ -18,6 +18,30 @@ system early. Item 34 is placed, its ordering is decided, and it validates
 against two views that already exist. Do not build splitting, joining, docking,
 workspace tabs or layout persistence ahead of it.
 
+## Interchangeable, not merely movable
+
+An area holds *one editor and nothing else*, and any editor can occupy any area
+— that is what makes a layout the reader's to arrange rather than a fixed set of
+slots. So the target is not a widget that can be picked up and put down: it is a
+widget that is **interchangeable with every other main view**, because it
+presents the same contract they all do (project owner, 2026-09-16: "modular
+system where each widget ... has core common features that make them
+interchangeable in any blender-style area section").
+
+That contract is not designed yet and is not yours to invent mid-change —
+`ROADMAP.md` item 34 builds the area system and item 36 catalogues the editors,
+and the roadmap already records why the layout comes first: a view's contract is
+whatever the area system requires of its contents, so a contract written against
+today's fixed layout is rewritten. `PL-TH35` is where it gets defined.
+
+What that means for a change landing before then: **do not add a capability to
+one view in a shape only that view could have.** A heading, a caption, a
+per-view control, a way of saying "there is nothing to show yet" — ask whether
+the next view needs the same thing, and give it a name and a shape the next view
+could take, even while only one view uses it. A feature that is interchangeable
+in principle costs nothing extra now; one built into a single widget's internals
+has to be found and lifted back out later.
+
 ## What it asks of a view you write today
 
 The test is one question: **if this widget were lifted into an area a reader can

@@ -3104,6 +3104,26 @@ coverage hole that `main`'s next successful run closes, and admitting it would
 grow a gate that is not draining. It is the workflow lane, held to
 `.claude/rules/apparatus-standard.md`, and reaches no reader of the simulator.
 
+**Two more from 2026-09-16, both filed under `PL-8PSW` and both about the
+interface's move to Blender-style areas** — `PL-VN6M` (`TraceLegend` owns the
+compartment-visibility state inside a widget) and `PL-TH35` (define the common
+Editor contract every `app/` view implements). Captured ten days after this
+gate was frozen, so "The gate is a snapshot" already places them in the next
+one; they are written down because both are `refactor`-classed and therefore
+debt, and a reader finding them open would otherwise have to work out why.
+
+Neither is deferred on the refilling-queue arithmetic alone. `PL-TH35` is
+`blocked` on the Qt port item that reserves for the area system, and the
+roadmap's own ordering argument — planned-milestone item 34, "a view's contract
+is whatever the area system requires of its contents, so views built first are
+built against today's fixed layout and rewritten" — is why it *cannot* be
+cleared ahead of that work rather than merely why it is not. `PL-VN6M` is the
+one concrete violation of `.claude/rules/ui-areas.md` the same pass found: it
+misdraws nothing today, because there is exactly one legend and one chart in a
+fixed layout, and it becomes real only when the area system makes a second of
+either possible — which is the same item 34. Both are product-lane, and both
+are recorded here rather than left to look deferred.
+
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
 `### Declined to Gate ...` subsection after the gate heading and stops at the

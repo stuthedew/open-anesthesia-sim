@@ -44,7 +44,11 @@ from PySide6.QtWidgets import (
 from anesthesia_sim.app import control_timeline as control_timeline_module
 from anesthesia_sim.app import run_view as run_view_module
 from anesthesia_sim.app import theme
-from anesthesia_sim.app.chart_frame import HOVER_INSTANT_RESOLUTION_S, format_trace_hover
+from anesthesia_sim.app.chart_frame import (
+    COMPARED_COMPARTMENT_CAP,
+    HOVER_INSTANT_RESOLUTION_S,
+    format_trace_hover,
+)
 from anesthesia_sim.app.chart_time_base import (
     FIT_RUN_KEY,
     SELECTABLE_TIME_BASES,
@@ -301,16 +305,15 @@ def _select_time_base(view: SimulationView, key: str) -> None:
 def _set_trace_shown(
     application: QApplication, view: SimulationView, quantity: RecordedQuantity, shown: bool
 ) -> None:
-    """Check or uncheck one compartment in the legend, as a reader clicking would."""
+    """Check or uncheck one compartment in the legend, as a reader clicking would.
 
-    now = list(view._legend.shown)
+    Through the box rather than through `set_shown`, because the two are
+    different acts once the two-compartment cap is holding: a click keeps
+    what was just asked for and drops the longest-standing selection, where
+    a bulk set has no order of preference to read.
+    """
 
-    if shown and quantity not in now:
-        now.append(quantity)
-    elif not shown and quantity in now:
-        now.remove(quantity)
-
-    view._legend.set_shown(now)
+    view._legend.set_compartment_shown(quantity, shown)
     application.processEvents()
 
 
@@ -2732,7 +2735,13 @@ def test_each_run_draws_only_its_own_recorded_values(application: QApplication) 
     view = _shown_view(application, single, double)
     chart = view._concentration_chart
 
-    for quantity in COMPARTMENT_QUANTITIES:
+    frame = chart.frame
+    assert frame is not None
+    # Every compartment the cap leaves drawn, which is what "each run draws
+    # its own values" has to hold for; the cap itself is `PL-8PSW`'s own test.
+    assert frame.visible
+
+    for quantity in frame.visible:
         single_times, single_percents = chart.drawn_points(0, quantity)
         double_times, double_percents = chart.drawn_points(1, quantity)
 
@@ -2752,16 +2761,65 @@ def test_one_compartment_selection_applies_to_every_run(application: QApplicatio
     _advance(second, 60.0)
     view = _shown_view(application, first, second)
     chart = view._concentration_chart
+    # One of the two the cap leaves drawn, so what is being tested is the
+    # selection reaching both runs rather than the cap removing a trace.
+    quantity = RecordedQuantity.ALVEOLAR
 
-    _set_trace_shown(application, view, RecordedQuantity.FAT, False)
+    _set_trace_shown(application, view, quantity, False)
 
-    assert chart.drawn_points(0, RecordedQuantity.FAT) == ((), ())
-    assert chart.drawn_points(1, RecordedQuantity.FAT) == ((), ())
+    assert chart.drawn_points(0, quantity) == ((), ())
+    assert chart.drawn_points(1, quantity) == ((), ())
+
+    _set_trace_shown(application, view, quantity, True)
+
+    assert chart.drawn_points(0, quantity)[0]
+    assert chart.drawn_points(1, quantity)[0]
+
+
+def test_two_runs_cap_the_chart_at_two_compartments_and_say_so(application: QApplication) -> None:
+    """`PL-8PSW`: the cap holds the selection, the boxes agree with it, and it is stated.
+
+    The cap is what frees the line width for the run, so it is the half of
+    the encoding that must hold whatever a reader does - including checking
+    a third compartment, which takes the longest-standing one off rather
+    than being silently ignored.
+    """
+
+    first = SimulationController()
+    second = SimulationController()
+    first.start()
+    second.start()
+    _advance(first, 60.0)
+    _advance(second, 60.0)
+    single = _shown_view(application, first)
+
+    assert single._legend.shown == COMPARTMENT_QUANTITIES
+    assert single._capped_traces_text.isHidden() is True
+
+    view = _shown_view(application, first, second)
+    chart = view._concentration_chart
+    frame = chart.frame
+
+    assert frame is not None
+    # Reduced from six on the way in, to the top of the compartment table.
+    assert view._legend.shown == (RecordedQuantity.CIRCUIT, RecordedQuantity.ALVEOLAR)
+    assert frame.visible == (RecordedQuantity.CIRCUIT, RecordedQuantity.ALVEOLAR)
+    assert view._capped_traces_text.isHidden() is False
+    assert str(COMPARED_COMPARTMENT_CAP) in view._capped_traces_text.text()
 
     _set_trace_shown(application, view, RecordedQuantity.FAT, True)
 
-    assert chart.drawn_points(0, RecordedQuantity.FAT)[0]
-    assert chart.drawn_points(1, RecordedQuantity.FAT)[0]
+    # The third check is honoured and the oldest selection makes room for it,
+    # so the boxes never name more curves than the plot draws.
+    assert len(view._legend.shown) == COMPARED_COMPARTMENT_CAP
+    assert RecordedQuantity.FAT in view._legend.shown
+    assert view._concentration_chart.frame is not None
+    assert view._concentration_chart.frame.visible == view._legend.shown
+
+    for quantity in COMPARTMENT_QUANTITIES:
+        drawn = bool(chart.drawn_points(0, quantity)[0])
+
+        assert drawn is (quantity in view._legend.shown)
 
 
 def test_the_window_fits_the_longer_of_two_runs(application: QApplication) -> None:
