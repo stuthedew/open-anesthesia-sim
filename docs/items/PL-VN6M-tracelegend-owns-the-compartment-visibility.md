@@ -8,7 +8,7 @@ classes: refactor
 feature: interface-areas
 touches: src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/simulation_view.py, tests/integration
 added: 2026-09-16
-verify: uv run pytest tests/integration/test_qt_chart.py tests/integration/test_simulation_view.py
+verify: uv run pytest tests/integration/test_simulation_view.py && grep -q 'def test_the_compartment_selection_outlives_the_legend_that_renders_it' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** Which compartments are drawn is held in `TraceLegend`'s own
@@ -45,7 +45,9 @@ seam this item cuts along is visible in the source now.
 
 **Done when.** The compartment selection is owned outside `TraceLegend`, the
 legend renders it and requests changes to it, and the legend-agrees-with-plot
-property is still asserted by test.
+property is still asserted by test. The named test is what proves it: a
+selection that survives the legend being destroyed is exactly what cannot be
+written while the checkboxes *are* the state.
 
 **Found 2026-09-16** while building `PL-8PSW`, on the pass that wrote
 `.claude/rules/ui-areas.md` (`PL-LH18`). Filed rather than fixed: it needs a new

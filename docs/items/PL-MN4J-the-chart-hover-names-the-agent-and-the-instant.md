@@ -8,7 +8,7 @@ classes: safety, ux
 feature: scenario-branching
 touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit
 added: 2026-09-16
-verify: uv run pytest tests/unit/test_chart_frame.py -k hover
+verify: grep -qF 'The hover and the run it belongs to' docs/MODEL.md
 ---
 
 **Problem.** `format_trace_hover` opens "Modelled sevoflurane · 20m8s" and then
@@ -48,9 +48,13 @@ while more than one run is drawn - is conditional text and may be the answer.
 `format_wash_in_hover`, which take a `RunFrame` and so already hold `label`);
 `docs/MODEL.md` § "The chart's hover readout".
 
-**Done when.** Either the hover names the run while more than one is drawn, or
-`docs/MODEL.md` records why it does not, with the reasoning a later session
-would otherwise re-derive.
+**Done when.** `docs/MODEL.md` § "The chart's hover readout: what the tooltip
+may show" carries a paragraph headed "The hover and the run it belongs to",
+saying whether the run is named while more than one is drawn and why. Both
+answers write it: that section derives the three-line form, so naming the run
+amends it and declining to name the run is a limit on it that a later session
+would otherwise re-derive. The `verify:` command names that paragraph rather
+than a test, because one outcome adds no test at all.
 
 **Found 2026-09-16** while building `PL-8PSW`, on the docs sweep. Filed rather
 than fixed: it changes a specification, which is a decision rather than the
