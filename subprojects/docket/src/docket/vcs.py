@@ -286,7 +286,7 @@ class GitRunner:
             self._drop(root)
             return None
         try:
-            body = stream.stdout.read(size)
+            body: bytes = stream.stdout.read(size)
             stream.stdout.read(1)  # the newline git writes after every object
         except (OSError, ValueError):
             self._drop(root)
