@@ -5,10 +5,11 @@ priority: P3
 effort: S
 status: done
 classes: session-cost, docs
-verify: grep -qF 'Run, 2026-09-16, and it returned nothing' docs/items/PL-PX7V-nothing-runs-doctor-s-claude-md-trim-check-a.md
 touches: docs/items/
 added: 2026-09-16
 closed: 2026-09-16
+pr: 631
+verify: grep -qF 'Run, 2026-09-16, and it returned nothing' docs/items/PL-PX7V-nothing-runs-doctor-s-claude-md-trim-check-a.md
 ---
 
 **Problem.** Claude Code v2.1.206 added a trim check to `/doctor`: it "proposes

@@ -2,6 +2,7 @@
 id: PL-RC86
 title: The session-start hook's three network round trips run serially and none is needed before the first turn, so the slow-link cost is their sum rather than their max
 status: untriaged
+feature: session-start-cost
 added: 2026-09-16
 ---
 
