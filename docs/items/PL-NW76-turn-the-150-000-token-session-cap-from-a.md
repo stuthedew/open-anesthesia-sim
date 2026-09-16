@@ -5,11 +5,11 @@ priority: P2
 effort: S
 status: done
 classes: session-cost
-verify: grep -qF 'check that budget before starting an item' CLAUDE.md && grep -qF 'externalize before handing off' CLAUDE.md && grep -qF 'at about 150,000 tokens' CLAUDE.md && python3 tools/doc_check.py check
 touches: CLAUDE.md, docs/resident-instructions.md
 added: 2026-09-16
 closed: 2026-09-16
 pr: 624
+verify: grep -qF 'check that budget before starting an item' CLAUDE.md && grep -qF 'externalize before handing off' CLAUDE.md && grep -qF 'at about 150,000 tokens' CLAUDE.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** `PL-H253` capped session length at about 150,000 tokens and made
