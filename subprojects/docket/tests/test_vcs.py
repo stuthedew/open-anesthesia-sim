@@ -87,6 +87,8 @@ def _runner(
     duplicated: tuple[str, ...] = (),
     closed: tuple[str, ...] = (),
     base_items: dict[str, str] | None = None,
+    took: tuple[str, ...] = (),
+    same_as_base: tuple[str, ...] = (),
 ):
     """A git that holds `refs`, with `commits` mapping a ref to (day, subject).
 
@@ -131,6 +133,12 @@ def _runner(
     item's whole deliverable is a queue write - an id absent from both is an
     item the base does not hold at all, which is what a capture looks like.
 
+    `took` names the ids the base's own commit subjects lead with since the
+    fork point, and `same_as_base` the ids whose file the ref holds exactly as
+    the base does. Together they are what says a ref's claim on an id is spent
+    without the item having closed, which is what a triage pass merging leaves
+    behind (`PL-LKFP`).
+
     `adds` maps a ref to the blobs it introduces since its fork point and
     `on_base` names the blobs the default branch has held at some point, which
     is what separates a branch whose work has landed from one still carrying
@@ -144,6 +152,15 @@ def _runner(
         if log is not None:
             log.append(args)
         if args[0] == "rev-parse":
+            if ":" in args[-1]:
+                # `git rev-parse <end>:<path>`, the blob oid of one side's copy
+                # of an item file. An id in `same_as_base` answers the same oid
+                # for both ends; anything else answers a different one per end.
+                end, _, path = args[-1].partition(":")
+                identifier = "-".join(path.rsplit("/", 1)[-1].split("-")[:2])
+                if identifier in same_as_base:
+                    return f"blob-{identifier}\n"
+                return f"blob-{identifier}-{end}\n"
             if args[-1] == "HEAD":
                 return f"{head}\n" if head else ""
             return f"{BASE}\n" if args[-1] == BASE else ""
@@ -172,7 +189,7 @@ def _runner(
             # base. The store names each file for its item, which is what
             # `filename_for` guarantees and what this relies on.
             prefix = args[-1].rstrip("/")
-            held = [*closed, *(base_items or {})]
+            held = [*closed, *(base_items or {}), *same_as_base]
             return "\n".join(f"{prefix}/{identifier}-shipped.md" for identifier in held)
         if args[0] == "show":
             # `git show <base>:<path>`, which is how the closure is read off the
@@ -212,6 +229,10 @@ def _runner(
                 for entry in (adds or {}).get(args[-2], [])
             )
         if args[0] == "log":
+            if "--format=%s" in args:
+                # The base's own subjects since a ref's fork point, which is
+                # what says the base has already taken work under an id.
+                return "\n".join(f"{identifier}: taken on the base" for identifier in took)
             if "--left-right" in args:
                 # The rewrite fingerprint: the same author date and subject on
                 # both sides of the divergence, which is what a rewrite leaves
@@ -293,6 +314,8 @@ def _report(
     tips: dict[str, dict[str, tuple[str, str]]] | None = None,
     closed: tuple[str, ...] = (),
     base_items: dict[str, str] | None = None,
+    took: tuple[str, ...] = (),
+    same_as_base: tuple[str, ...] = (),
 ) -> FlightReport:
     """The whole report, for the tests reading the file edits beside the work.
 
@@ -313,6 +336,8 @@ def _report(
         tips=tips,
         closed=closed,
         base_items=base_items,
+        took=took,
+        same_as_base=same_as_base,
     )
     return branches_in_flight(ROOT, runner=runner)
 
@@ -782,6 +807,67 @@ def test_a_closed_item_is_not_reported_in_flight() -> None:
     )
 
     assert report.branches == ()
+
+
+def test_an_item_the_base_took_without_closing_is_not_reported_in_flight() -> None:
+    """A triage pass lands its items open, so closedness cannot end its claim.
+
+    `test_a_closed_item_is_not_reported_in_flight` covers a branch that shipped
+    something. A pass that triages an item lands it at `ready`, `blocked` or
+    `needs-decision` - open on the base, so that guard never fires and the ref
+    goes on saying "do not start" for as long as it survives.
+
+    Measured 2026-09-16 on `origin/main` at `2a538ec1`: `PL-2M4X` read
+    `P3 - S - ready` there while `bin/docket show` named a branch whose `#616`
+    had merged forty minutes earlier. The ref-level content test could not catch
+    it - of the seven blobs that branch introduced, six had landed byte for byte
+    and the seventh was `ROADMAP.md`, whose squash resolution against a moved
+    base is a blob the base has never held (`PL-LKFP`).
+    """
+    triaged = "origin/claude/pl-2m4x-triage-the-captures"
+    report = _report(
+        [triaged],
+        commits={triaged: [("2026-09-16", "PL-2M4X: triage the captures", "c1", "src/some.py")]},
+        same_as_base=("PL-2M4X",),
+        took=("PL-2M4X",),
+    )
+
+    assert report.branches == ()
+
+
+def test_a_claim_survives_where_the_base_took_nothing_under_its_id() -> None:
+    """The base having the same file is not enough, and this is why.
+
+    A session that has pushed its first failing test under its item's id has not
+    necessarily touched the item file yet, so its copy and the base's agree.
+    Dropping the claim on that alone would hand the item to a second session,
+    which is the collision the whole read exists to prevent.
+    """
+    live = "origin/claude/some-harness-name-abcd"
+    report = _report(
+        [live],
+        commits={live: [("2026-09-16", "PL-2M4X: the first failing test", "c1", "tests/new.py")]},
+        same_as_base=("PL-2M4X",),
+    )
+
+    assert [branch.item_id for branch in report.branches] == ["PL-2M4X"]
+
+
+def test_a_claim_survives_where_the_branch_holds_its_own_copy_of_the_item() -> None:
+    """And the base having taken the id is not enough either.
+
+    Both halves are needed: an id the base has taken work under, whose item file
+    the ref has nonetheless moved since, is a ref with something left to give.
+    """
+    live = "origin/claude/some-harness-name-efgh"
+    report = _report(
+        [live],
+        commits={live: [("2026-09-16", "PL-2M4X: close it out", "c1", "src/some.py")]},
+        base_items={"PL-2M4X": "src/some.py"},
+        took=("PL-2M4X",),
+    )
+
+    assert [branch.item_id for branch in report.branches] == ["PL-2M4X"]
 
 
 def test_an_item_closed_only_on_a_branch_is_still_reported_in_flight() -> None:
