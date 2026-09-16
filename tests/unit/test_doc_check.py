@@ -2775,11 +2775,54 @@ def test_an_anticipated_safety_item_is_quiet(tmp_path: Path) -> None:
     remedy the advisory named - nothing to clear, and a `Required scope` two
     milestones away - so it fired on every `make check` with no state a session
     could reach.
+
+    The `blocked` status is load-bearing rather than incidental scenery, since
+    `PL-ZF2G`: it is the half of the pair that lets the exemption end, and the
+    two tests below take the other side of each half.
     """
     root = _repo(tmp_path, roadmap=VERSIONED_GATE_ROADMAP)
     _queue_item(root, "PL-ZZZZ", classes="safety, anticipated", status="blocked")
 
     assert _reentry_advisories(root) == []
+
+
+def test_an_anticipated_safety_item_is_reported_once_it_is_no_longer_blocked(
+    tmp_path: Path,
+) -> None:
+    """`PL-ZF2G`: the carve-out expires with the wait it was granted for.
+
+    On the class alone the exclusion never stopped, so a finding written against
+    an unbuilt milestone stayed invisible to the gate after that milestone
+    shipped - a rule about *when* a hazard begins, unable to notice the one
+    event it exists for. `status: blocked` is what an item stops saying once its
+    wait is over, so promoting it off that status is what returns it to the gate
+    (project owner, 2026-09-16, ratified).
+    """
+    root = _repo(tmp_path, roadmap=VERSIONED_GATE_ROADMAP)
+    _queue_item(root, "PL-ZZZZ", classes="safety, anticipated", status="ready")
+
+    advisories = _reentry_advisories(root)
+
+    assert len(advisories) == 1
+    assert "PL-ZZZZ (safety)" in advisories[0]
+
+
+def test_a_blocked_safety_item_without_the_class_is_still_reported(tmp_path: Path) -> None:
+    """The other half of the pair: `blocked` on its own exempts nothing.
+
+    Most blocked items are merely sequenced - the blocker says what to do first,
+    not that the hazard is unbuilt - which is `checks.py`'s "A blocked item where
+    something is already wrong is the opposite case". Exempting on status alone
+    would hand the carve-out to every one of them, and the class is what draws
+    the distinction the status cannot.
+    """
+    root = _repo(tmp_path, roadmap=VERSIONED_GATE_ROADMAP)
+    _queue_item(root, "PL-ZZZZ", classes="safety, ux", status="blocked")
+
+    advisories = _reentry_advisories(root)
+
+    assert len(advisories) == 1
+    assert "PL-ZZZZ (safety)" in advisories[0]
 
 
 def test_a_plain_safety_item_beside_an_anticipated_one_is_still_reported(tmp_path: Path) -> None:

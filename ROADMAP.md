@@ -3455,8 +3455,10 @@ Each of the four is named in v0.6.0's `Required scope`, which is where the rule
 puts a hazard rather than where a deferral would leave it: the milestone that
 creates it is the one that carries the guard. `tools/doc_check.py`'s
 `check_gate_reentries` now passes over all ten `anticipated` findings on the
-class rather than on this prose, so what these paragraphs record is the
-reasoning, not the mechanism holding it.
+class and the `blocked` status that dates it, rather than on this prose, so what
+these paragraphs record is the reasoning and not the mechanism holding it. All
+ten are blocked on item 34 today; each returns to the gate when it is promoted,
+which is when the hazard it names has been built.
 
 `PL-9PD6` (`docs/interface-provenance.md` contradicts itself about what
 `README.md` records), `PL-D584` (`PL-TH35`'s `blocked-by` names an item that has
@@ -4339,9 +4341,26 @@ The disposition such a finding then takes is a **placement in the milestone that
 creates the hazard** — v0.6.0's `Required scope` holds the ten this was written
 for — never a deferral, which these two classes are still not offered.
 
-`check_gate_reentries` in `tools/doc_check.py` excludes an `anticipated`-classed
-item for this reason, so the rule runs on every `make check` rather than on
-whether a session recalled it.
+**The carve-out expires with the wait it is granted for** (project owner,
+2026-09-16, ratified — chosen over leaving it on the class alone, which never
+stopped). `anticipated` claims the hazard is not live yet; `status: blocked` is
+what the item stops saying once it is, and `blocked-by` is where it names what
+has to happen first. So the exemption is held only by an item that has written
+down what it is waiting for, and it lapses when that wait ends — where the class
+on its own ran on past the milestone that created the hazard, which is the one
+event the rule exists to notice (`PL-ZF2G`). It is the same pair
+`subprojects/docket/src/docket/checks.py` already requires for the safety-band
+exemption, read from there rather than decided again, so that `anticipated`
+means one thing across both tools.
+
+It lapses on the promotion rather than on the blocker closing, and nothing
+rewrites `status` on its own: `bin/docket check`'s "every blocker has closed; it
+is ready to promote" advisory is what asks for it. That leaves a window of one
+grooming pass, in place of the indefinite one it replaces.
+
+`check_gate_reentries` in `tools/doc_check.py` reads both fields for this
+reason, so the rule runs on every `make check` rather than on whether a session
+recalled it.
 
 **What it costs, recorded rather than waved past.** `anticipated` now carries
 weight it did not carry before, so a `safety` item wrongly classed becomes
