@@ -5,10 +5,11 @@ priority: P2
 effort: S
 status: done
 classes: session-cost
-verify: grep -qF 'at about 150,000 tokens' CLAUDE.md && grep -qF 'context_usage.used_tokens' CLAUDE.md && grep -qF 'session-length cap in' docs/resident-instructions.md && python3 tools/doc_check.py check
 touches: CLAUDE.md, docs/resident-instructions.md
 added: 2026-09-16
 closed: 2026-09-16
+pr: 622
+verify: grep -qF 'at about 150,000 tokens' CLAUDE.md && grep -qF 'context_usage.used_tokens' CLAUDE.md && grep -qF 'session-length cap in' docs/resident-instructions.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** Instruction adherence in this project is being attributed to

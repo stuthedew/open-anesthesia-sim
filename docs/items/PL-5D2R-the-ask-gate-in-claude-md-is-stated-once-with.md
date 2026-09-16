@@ -5,10 +5,11 @@ priority: P2
 effort: S
 status: done
 classes: defect, session-cost
-verify: grep -qF 'The gate has one trigger and no others' CLAUDE.md && grep -qF 'gate-scope bullet in that section was added' docs/resident-instructions.md && python3 tools/doc_check.py check
 touches: CLAUDE.md, docs/resident-instructions.md
 added: 2026-09-16
 closed: 2026-09-16
+pr: 622
+verify: grep -qF 'The gate has one trigger and no others' CLAUDE.md && grep -qF 'gate-scope bullet in that section was added' docs/resident-instructions.md && python3 tools/doc_check.py check
 ---
 
 **Problem.** `CLAUDE.md`'s stop-and-wait gate is stated once, bolded, at line

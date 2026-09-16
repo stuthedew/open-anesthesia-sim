@@ -9,6 +9,7 @@ feature: ci-cost
 touches: .github/workflows/quality.yml, tests/unit/test_ci_concurrency.py, tools/main_ci_status.py, docs/ARCHITECTURE.md, docket.toml
 added: 2026-09-15
 closed: 2026-09-16
+pr: 615
 verify: grep -q 'github.sha' .github/workflows/quality.yml && uv run pytest tests/unit/test_ci_concurrency.py
 ---
 

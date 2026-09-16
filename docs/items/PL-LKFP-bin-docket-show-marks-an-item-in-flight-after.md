@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-16
 closed: 2026-09-16
+pr: 620
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_an_item_the_base_took_without_closing_is_not_reported_in_flight' subprojects/docket/tests/test_vcs.py
 ---
 

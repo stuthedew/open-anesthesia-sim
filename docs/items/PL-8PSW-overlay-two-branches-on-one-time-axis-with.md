@@ -9,6 +9,7 @@ feature: scenario-branching
 touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/theme.py, tests/unit, tests/integration, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-09-16
+pr: 618
 verify: uv run pytest tests/integration/test_qt_chart.py && grep -q 'def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text' tests/integration/test_qt_chart.py
 ---
 

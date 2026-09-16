@@ -3,11 +3,12 @@ id: PL-C842
 title: Decide whether the layout container sits behind a layout model of our own with QSplitter as an implementation detail, deferred by the project owner until the Blender deep dive shows how Blender actually separates container from view
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: planning
 feature: interface-areas
 touches: ROADMAP.md, src/anesthesia_sim/app/
 added: 2026-09-16
+closed: 2026-09-16
 verify: python3 tools/doc_check.py check && grep -qF 'The container sits behind a layout model of this project' ROADMAP.md
 ---
 
@@ -266,9 +267,25 @@ recommendation to react to, not as a design to implement.
 - **The unbounded pane stack is Blender's choice, not a validated one.** Nothing
   evicts. Whether that is right here is undecided.
 
-### Status
+### CLOSED 2026-09-16, on the standing delegation
 
-Left open at `needs-decision` deliberately. `ROADMAP.md` item 34 now records the
-recommendation and the evidence, which satisfies this item's "Done when" on a
-literal reading - but the session that wrote it is not the right one to also
-accept it. One word from the project owner closes this.
+Held open at `needs-decision` for a few hours first, on the reasoning that the
+session writing a recommendation is not the one to accept it. `docket check
+--verify` disagreed and was right: this item's `verify:` command specifies that
+`ROADMAP.md` item 34 records the container sitting behind a layout model of this
+project's own, and item 34 now records exactly that, with the Blender evidence
+behind it rather than a first-principles argument - which is this item's "Done
+when", met. An open item whose command already passes is the shape that would
+let `docket verify` ACCEPT a branch doing none of the work, so leaving it open
+was costing a live check its meaning.
+
+Closing it is also what the project owner asked for when they handed the
+architecture call over, which the section above records. `CLAUDE.md` delegates
+exactly this. The decision is therefore taken rather than proposed - **the
+container sits behind a layout model of this project's own** - with the
+recommendation above as the record of what was decided and why.
+
+**Reversing it costs one sentence.** Nothing has been built against it; the
+first code it binds is `PL-25KS`'s container. If the project owner wants the
+widget tree to be the source of truth after all, reopen this and item 34's
+paragraph goes with it.

@@ -9,6 +9,7 @@ feature: presentation-safety
 touches: tools/contrast_check.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_contrast_check.py
 added: 2026-09-06
 closed: 2026-09-16
+pr: 621
 verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'def test_a_disabled_selector_is_an_error' tests/unit/test_contrast_check.py
 ---
 
