@@ -4,7 +4,7 @@ title: Define the common Editor contract every app/ view implements so any view 
 priority: P2
 effort: M
 status: blocked
-blocked-by: PL-8VL1
+blocked-by: PL-1FT6
 classes: refactor, ux
 feature: interface-areas
 touches: src/anesthesia_sim/app, docs/ARCHITECTURE.md

@@ -3,12 +3,13 @@ id: PL-D584
 title: PL-TH35's blocked-by names PL-8VL1, a planning item that closed 2026-09-12, so bin/docket check advises on every run that the Editor contract is ready to promote - the one thing ROADMAP.md and .claude/rules/ui-areas.md both say it must not do
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: interface-areas
 touches: docs/items
 added: 2026-09-16
-verify: bin/docket check && grep -q '^blocked-by: PL-NMTF' docs/items/PL-TH35-*.md
+closed: 2026-09-16
+verify: bin/docket check && grep -q '^blocked-by: PL-1FT6' docs/items/PL-TH35-*.md
 ---
 
 **Problem.** PL-TH35's blocked-by names PL-8VL1, a planning item that closed 2026-09-12, so bin/docket check advises on every run that the Editor contract is ready to promote - the one thing ROADMAP.md and .claude/rules/ui-areas.md both say it must not do
@@ -41,3 +42,18 @@ question of stale `blocked-by` fields across the store is not this item.
 ## Area-model audit (PL-BNYF)
 
 **Disposition: `missing-prereq`.** Surfaced 2026-09-16 by the area-model audit's completeness critic, after the main sweep had closed - which is the critic earning its place rather than a defect in the sweep.
+
+**Closed 2026-09-16 by the scoping round.** `PL-TH35`'s `blocked-by` now names
+`PL-1FT6` (build the `LayoutModel`), which is open and is genuinely what the
+Editor contract waits on - the contract is written *with* the area system, and
+the model is the first piece of it. `bin/docket check` no longer advises that
+the Editor contract is ready to promote.
+
+**The `verify:` command named the wrong blocker and was corrected before this
+closed.** As written it asserted `PL-TH35`'s `blocked-by` would become
+`PL-NMTF`, which was the only open candidate on the day this item was filed.
+`PL-NMTF` closed in the same session that fixed this, by scoping item 34 - so
+satisfying the command as written would have re-created this item's own defect,
+a `blocked-by` naming an item that has already closed. The blocker taken instead
+is `PL-1FT6` (build the `LayoutModel`), which is open and is genuinely what the
+Editor contract waits on.

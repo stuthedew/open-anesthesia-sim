@@ -6,7 +6,7 @@ effort: M
 status: blocked
 classes: planning
 feature: interface-areas
-blocked-by: PL-NMTF
+blocked-by: PL-1FT6
 touches: ROADMAP.md, docs/ARCHITECTURE.md
 added: 2026-09-16
 ---
