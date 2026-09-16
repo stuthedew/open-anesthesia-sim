@@ -3098,6 +3098,16 @@ It is written down here because it is `defect`-classed and therefore debt, and
 because a reader finding it open would otherwise have to work out why a
 `P2` CI defect is absent from a gate this large.
 
+**Two more from 2026-09-16, on the same ground and named for the same reason** -
+`PL-2M4X` (`PL-J45M`'s `verify` and `touches` name a shell-hook suite that
+cannot exercise `release.py`) and `PL-SYG4` (the digest's `RESERVED` verdict
+names its evidence and no way out). Both were captured ten days after this gate
+was frozen, so the snapshot rule places them in the next gate; both are `P3` and
+sit wholly in the workflow lane, reaching no reader of the simulator. They are
+written down because triage made them debt - `PL-2M4X` by its `defect` class and
+`PL-SYG4` by its `needs-decision` status - and a gate this large owes a reader a
+reason for every open debt item it does not hold.
+
 Deferred rather than admitted on the arithmetic this section rests on, not on
 its merits: it is a false guarantee in a workflow comment plus a narrow
 coverage hole that `main`'s next successful run closes, and admitting it would
