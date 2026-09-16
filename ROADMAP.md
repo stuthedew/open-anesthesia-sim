@@ -4387,11 +4387,20 @@ once someone is ready to scope it.
     floating panel over the dashboard is one way to do that, and a broken-out
     window dragged back over the main one is another - which is why the
     constraint belongs to the display rather than to a window type, stated once
-    instead of re-argued per mechanism. `PL-WLWY` is where it is settled: which
-    windows and regions owe `docs/MODEL.md` § "Minimum displayed outputs" its
-    minimum, and by what mechanism that survives a layout the learner chose.
-    Floating arrives under whatever that answer turns out to be, rather than
-    being ruled out ahead of it.
+    instead of re-argued per mechanism. **It is settled** (`PL-WLWY`, project
+    owner, 2026-09-15), in `docs/MODEL.md` § "Minimum displayed outputs" ->
+    "What this list requires once the layout is the reader's": that list now
+    divides into an **unconditional** set no workspace may remove and nothing
+    may cover, an **accounting** set that must stay reachable rather than
+    simultaneously visible, and **conditional** obligations that bind a surface
+    only when that surface is shown - so removing a chart removes no required
+    value, because the numbers never left. The unconditional set sits outside
+    the area system, which is the guarantee this milestone has to build; the
+    occlusion rule is what any later floating mechanism arrives under, rather
+    than being ruled out ahead of it. That division is recorded as **a stepping
+    stone**, deliberately the rigid version while the layout apparatus is
+    built, and is expected to be revisited as it matures; the occlusion rule is
+    the part that must survive a revision.
 
     *The license constraint, which is not a formality.* Blender's source is
     GPL-2.0-or-later and its binaries ship under GPL-3.0-or-later; this project
