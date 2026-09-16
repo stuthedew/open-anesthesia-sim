@@ -199,3 +199,10 @@ Left at `needs-decision` rather than triaged to `ready` because the owner
 ratified the `PL-KQHN` recommendation, not this one, and the two were put
 separately. What is outstanding is a confirmation rather than an open question:
 the four other candidates are spent.
+
+**The last clause of this item's `Done when.` is already satisfied.** "The
+answer to question 1 is written into `ROADMAP.md` § 'the interface moves to Qt'
+so the paragraph stops carrying both statements" landed with `PL-KQHN`, along
+with the same narrowing at the `v0.4.x` timeline row and at planned-milestone
+item 29. What is left here is `render.py`'s sentence, `format_status`'s second
+copy of it, and the test that pins them.

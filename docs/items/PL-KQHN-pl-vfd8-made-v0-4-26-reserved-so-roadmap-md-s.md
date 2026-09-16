@@ -3,11 +3,12 @@ id: PL-KQHN
 title: PL-VFD8 made v0.4.26 reserved, so ROADMAP.md's Qt-port paragraph now says both that a patch cut takes this section's number and that the guard withholds it, and the policy question was never put to the owner
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, planning
 feature: release-roadmap-seam
 touches: ROADMAP.md
 added: 2026-09-16
+closed: 2026-09-16
 verify: python3 tools/doc_check.py check && grep -qF "deliberate act rather than the release path's default" ROADMAP.md
 ---
 
@@ -157,10 +158,11 @@ direction `#606` had already moved the apparatus, and with this brief's own
 4. **Line ~4750, planned-milestone item 29's version note** - *"a patch cut
    before this work lands takes it"*. Same narrowing as site 1.
 
-**Not done here, and why.** `#639` (`claude/awesome-heisenberg-gp7ev6`) is open
-and rewrites the risk paragraph at site 2 from `main`'s older text. Editing the
-same lines from `main` would conflict on merge and discard that branch's green
-run on content it had already proved, which `CLAUDE.md` is explicit about
-avoiding. The prose correction lands on `main` once `#639` has merged; this
-commit is the decision, so it survives independently of whichever session lands
-the edit.
+**Sequencing, recorded because the decision and the prose landed in two
+commits.** `#639` (`claude/awesome-heisenberg-gp7ev6`) was open and rewriting
+the risk paragraph at site 2 from `main`'s older text when the decision arrived,
+so editing the same lines would have conflicted at merge and discarded that
+branch's green run on content it had already proved. The decision was committed
+on its own first, so that it survived whichever session landed the edit; `#639`
+merged as `4690412` minutes later and the four sites were then corrected on top
+of it in this same branch. Both commits are here.
