@@ -8,7 +8,7 @@ classes: docs, defect
 feature: planning-cadence
 touches: ROADMAP.md, tools/doc_check.py
 added: 2026-09-14
-verify: python3 tools/doc_check.py check && ! grep -q 'Nineteen items, in the order the dependencies allow' ROADMAP.md
+verify: python3 tools/doc_check.py check && grep -qF 'the three ids below now sit under headings that agree with `Required scope`' ROADMAP.md
 ---
 
 
@@ -67,3 +67,25 @@ have to agree with each other. Whichever lands second reads the other first.
 under `### Debt gate: the frozen list`, and what `bin/docket wave` reports all
 name the same set, with the ids that differ listed and each one's placement
 stated rather than implied.
+
+---
+
+**`verify:` rewritten 2026-09-16, and the item's judgment is untouched.** The old
+command was `! grep -q 'Nineteen items, in the order the dependencies allow'` - an
+*absence*, satisfiable by anyone who edits that heading. Someone did: the phrase
+was present in `ROADMAP.md` at `d7a3b05` and gone by `4690412`, so the command
+began passing on a tree carrying none of this item's work and `bin/docket check
+--verify` errored on `main`. This is the second instance of that shape in one
+sweep; `PL-D1RT` was the first, and `PL-KND7` carries both.
+
+Taken on the error's *second* disposition rather than its first, because the work
+genuinely is outstanding: the `Done when.` above still asks for three ids to be
+reconciled against `Required scope`, and this brief already records that which
+side is wrong is a judgment on the prose. Closing it would have decided that
+question by accident.
+
+The replacement pins the **presence** of a sentence the correction must add,
+which makes it a specification rather than a bet: it exits 1 today on the `grep`
+half with `doc_check` passing, and can only pass once the reconciliation is
+written. Whoever does the work writes that sentence into the gate section
+alongside the dated correction the `Done when.` requires.

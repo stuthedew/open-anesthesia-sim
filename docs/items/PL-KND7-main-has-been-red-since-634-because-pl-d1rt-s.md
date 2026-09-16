@@ -137,3 +137,14 @@ something only the work creates.
 One of the two items should be dropped with a reason naming the other. This one
 carries the measurement above and a gate disposition; `PL-32Z9` carries the
 references, now folded in here.
+
+**`PL-D1RT` was not the only one, which is the finding this item did not start
+with.** `bin/docket check --verify` reports one error and stops, so closing
+`PL-D1RT` uncovered `PL-C4RS` behind it - the same absence-sentinel shape, broken
+the same way: `! grep -q 'Nineteen items, in the order the dependencies allow'`,
+whose phrase was present at `d7a3b05` and gone by `4690412`. Two instances in one
+sweep, and `PL-Y1W6` was a third before either. The two took *opposite*
+dispositions - `PL-D1RT` closed because its work had landed, `PL-C4RS` had its
+command rewritten because its work had not - which is the evidence that the
+shared defect is the sentinel's shape rather than any one item's state, and it is
+the case `PL-879R` should be decided on.
