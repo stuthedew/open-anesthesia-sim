@@ -2,6 +2,7 @@
 id: PL-DMDF
 title: docket digest asks one git diff per item file because _superseded is called with a one-element tuple inside a loop, where the function already takes the whole set
 status: untriaged
+feature: session-start-cost
 added: 2026-09-16
 ---
 

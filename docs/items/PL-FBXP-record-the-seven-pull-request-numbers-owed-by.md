@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: docs/items/
 added: 2026-09-16
 closed: 2026-09-16
+pr: 633
 verify: bin/docket record
 ---
 

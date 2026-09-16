@@ -9,6 +9,7 @@ feature: queue-hygiene
 touches: CLAUDE.md, .claude/skills/docket/SKILL.md, .claude/rules/instruction-writing.md, docs/items/
 added: 2026-09-16
 closed: 2026-09-16
+pr: 632
 verify: grep -q 'group them as you file them' CLAUDE.md && grep -q 'A diagnosis that produces more than one item' .claude/skills/docket/SKILL.md && grep -q 'Where several lines are one problem' .claude/rules/instruction-writing.md
 ---
 
