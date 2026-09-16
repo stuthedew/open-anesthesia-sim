@@ -162,12 +162,29 @@ AGENT_COLOR_SCHEMES: Final[dict[str, AgentColorScheme]] = {
 # also shortens `tools/contrast_check.py`, which read two files only because
 # the six trace colours lived in the view.
 #
-# **This module stays free of any toolkit.** `tools/contrast_check.py` and
-# `tools/agent_identity_check.py` read this file with `ast` in a bare checkout
-# precisely because it imports nothing they would need installed, so a display
-# constant that needs a toolkit type belongs in the module that draws it - the
-# Flet build's `METRIC_GRID_COLUMNS` and `AGENT_RENDER_STYLES` stayed out for
-# that reason.
+# **This module stays free of any toolkit**, so a display constant that needs a
+# toolkit type belongs in the module that draws it - the Flet build's
+# `METRIC_GRID_COLUMNS` and `AGENT_RENDER_STYLES` stayed out for that reason.
+#
+# The reason given here until 2026-09-16 was that `tools/contrast_check.py` and
+# `tools/agent_identity_check.py` read this file in a bare checkout and so need
+# it to import nothing they would have to install. That is not what carries the
+# rule: both call `ast.parse` on the file's *text*
+# (`contrast_check.py:862`, `:906`, `:945`; `agent_identity_check.py:261`), and
+# `ast.parse` executes nothing and resolves no import, so a `from PySide6...`
+# line at the top would leave both working exactly as they do. The correction
+# matters because a rule defended by a reason a reader can check and find false
+# is a rule the next session deletes (`PL-Y4YX`).
+#
+# What does carry it: this file is the one place a *value* a clinician could be
+# misled by is written down, and it is worth being importable and testable
+# without a display, a Qt event loop or a plugin. `tests/` reads it directly,
+# and so can anything that never draws.
+#
+# **That is not a decision about where the Qt styling layer lives.** 27
+# `setStyleSheet` sites across `app/` compose CSS strings from these constants,
+# with partial helpers living in the view modules; whether those centralise
+# here, behind a toolkit import, is open and is `PL-Y4YX`.
 #
 # **Order is load-bearing.** `contrast_check.read_palette` resolves a bare name
 # against the palette built so far, in file order, so an alias must sit below

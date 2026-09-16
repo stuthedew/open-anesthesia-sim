@@ -1,14 +1,15 @@
 ---
 id: PL-L9RD
-title: Re-express app/theme.py for Qt and make the interface pass's visual decisions once, absorbing ROADMAP item 33
+title: Re-express app/theme.py for Qt, and decide whether the interface pass rides this port
 priority: P2
 effort: M
-status: ready
+status: done
 classes: feature, ux
 feature: qt-port
 touches: src/anesthesia_sim/app/theme.py, ROADMAP.md, tools/contrast_check.py
 added: 2026-09-10
-verify: uv run python tools/import_boundary_check.py && grep -q 'PySide6' src/anesthesia_sim/app/theme.py
+closed: 2026-09-16
+verify: python3 tools/doc_check.py check && grep -qF 'that absorption was reversed on 2026-09-16' ROADMAP.md
 ---
 
 **Problem.** Re-express app/theme.py for Qt and make the interface pass's visual decisions once, absorbing ROADMAP item 33
@@ -121,3 +122,66 @@ this one: this item, `PL-NGF7` (the disabled-colour coverage gap) and `PL-W8DQ`
 fourth outside the scope list. Of the other two, `PL-7SVX` goes last by its own
 instruction and `PL-8PSW` is the two-branch overlay. So the port's critical
 path runs entirely through a design round that has not been scheduled.
+
+## Closed 2026-09-16: item 33 is un-absorbed, and the re-expression was already done
+
+**The project owner accepted the recommendation** that planned-milestone item
+33 comes back out of this port. The section above carries the measurement that
+reversed it - the port changed no palette entry, type size, padding or radius -
+so this item's two halves were settled separately.
+
+**Half one, the visual pass, is not this item's any more.** `ROADMAP.md` is
+edited in seven places: the `v0.4.26` timeline row and the milestone section
+both record the absorption *and its reversal* with the measurement rather than
+quietly dropping it; the `v0.5.x — the interface pass` row is restored to "The
+timeline" between v0.5.0 and v0.6.0, where item 33's own placement note has
+pointed all along and which the absorption had removed, leaving that note
+dangling; `Required scope` item 3 is narrowed to the theme alone; and the two
+paragraphs that argued *from* the absorption - the splitter reservation and
+`PL-8VL1`'s layout-architecture note - are reworded to argue from the
+reservation instead, which survives it. Item 33 itself gains a dated note
+saying it was absorbed and returned, and why.
+
+**The reservation is the piece that stays here deliberately.** The port builds
+the layout containers once with their splitter handles inert, and item 33 turns
+them live. That passes the test the palette half failed: a container genuinely
+*is* built once by a port, so reserving costs nothing and rebuilding would cost
+twice.
+
+**Half two, the re-expression, was already true and is now verified rather than
+assumed.** `app/theme.py` is the token source all five Qt modules import, the
+six compartment colours are intact (`CIRCUIT_COLOR`, `ALVEOLAR_COLOR`,
+`MIXED_VENOUS_COLOR`, `VESSEL_RICH_COLOR`, `MUSCLE_COLOR`, `FAT_COLOR`) with
+their dash patterns carried on the trace specs in `app/chart_frame.py`, and
+`tools/contrast_check.py` and `tools/agent_identity_check.py` both pass against
+it.
+
+**One correction inside this item's own scope.** The file's "stays free of any
+toolkit" comment defended itself with a reason that is checkably false - that
+the two tools "read this file with `ast` in a bare checkout precisely because
+it imports nothing they would need installed". Both call `ast.parse` on the
+file's *text*, which executes nothing and resolves no import, so a PySide6
+import would leave both working exactly as they do. The rule is kept and the
+reason replaced with one that holds: this is the one place a value a clinician
+could be misled by is written down, and it is worth being importable and
+testable without a display or an event loop. A rule defended by a false reason
+is one the next session deletes.
+
+**`verify:` was replaced, and the old one is why `PL-Y4YX` exists.** It read
+`grep -q 'PySide6' src/anesthesia_sim/app/theme.py`, which this file's own
+comment forbids and which is satisfiable by a comment containing the string.
+The new command pairs `doc_check` with a grep for the sentence recording the
+reversal; it exits 1 on `origin/main` and 0 here, checked both ways before
+being written down.
+
+**Three things left this item rather than being dropped**, which is the part to
+read if you are looking for what happened to the riders:
+
+- `PL-Y4YX` - where the Qt styling layer lives. 27 `setStyleSheet` sites
+  compose CSS from these constants with partial helpers in the view modules.
+  Deliberately still open: the owner approved un-absorbing item 33, not a
+  refactor.
+- `PL-TMSN` - `tools/glyph_check.py`'s six `CONFIRMED` entries cite Flutter
+  evidence, and U+00A0's rests on a Flutter layout fact Qt may not share.
+- `PL-Z4K6` - whether seven readout columns is wanted on a 1 366 px laptop,
+  which misses the seven-column width by nine pixels.
