@@ -133,16 +133,35 @@ one document that decides it, which takes more words than a false absolute
 did. No block arrived or left, and the routing argument above is untouched.
 
 **Fires before a first write, which no read precedes.** The seven architecture
-invariants — simulation code independent of Flet, no calculation in a UI
-callback, simulation time as explicit state, deterministic results, tests with
-every core behavior change, validated versioned parameter files, no executable
-equations in data — plus the milestone bound and the quality suite. Two of them
-are *also* enforced by a check (`tools/import_boundary_check.py` confines the
-wall clock and the process generator out of `core/`, and holds Pydantic to one
-module), and the checks are cited from `CLAUDE.md` rather than replacing it:
-the check fails at `make check`, after the code is written, and the invariant
-is cheaper to hold before. `import_boundary_check.py` also cites `CLAUDE.md` as
-the source of the rule, so deleting the line would strand the citation.
+invariants — simulation code independent of the UI toolkit, no calculation in a
+UI callback, simulation time as explicit state, deterministic results, tests
+with every core behavior change, validated versioned parameter files, no
+executable equations in data — plus the milestone bound and the quality suite.
+Three of them are *also* enforced by a check (`tools/import_boundary_check.py`
+confines the UI toolkit and the numerics arriving with it out of `core/`, and
+both Flet distributions out of `src/` entirely; the wall clock and the process
+generator out of `core/`; and Pydantic to one module), and the checks are cited
+from `CLAUDE.md` rather than replacing it: the check fails at `make check`,
+after the code is written, and the invariant is cheaper to hold before.
+`import_boundary_check.py` also cites `CLAUDE.md` as the source of the rule, so
+deleting the line would strand the citation.
+
+*Corrected 2026-09-16, +10 characters, no routing change (`PL-Y88W`).* The
+first of the seven invariants read "independent of Flet" until `PL-3SQT` took
+both Flet distributions out of `pyproject.toml`, the port being complete. The
+name had outlived the rule twice over. `import_boundary_check.py` cites
+`CLAUDE.md` as this rule's authority for holding `PySide6`, `pyqtgraph` and
+`numpy` out of `core/` (`PL-9KDK`) while restating it in three of its own
+comments as "independent of the UI toolkit" — so the cited source stood
+narrower than the boundary built on it. And the count in this block said *two*
+invariants had a check behind them when that boundary had already made it
+three, which mattered more than the wording: this file is what § "When a
+resident rule is retired" reads to decide whether a rule still has a carrier,
+so the undercount was an error in the instrument rather than in the prose.
+Both are corrected above. The invariant is now named by what it is rather than
+by the toolkit of the day, which is `PL-YVM1`'s rule for version numbers one
+category over, and is the wording the enforcing tool had already chosen. No
+block arrived or left.
 
 **Fires before the session would have any reason to load the `docket` skill.**
 The two working modes, capture, housekeeping-filed-first, capture-intent-by-

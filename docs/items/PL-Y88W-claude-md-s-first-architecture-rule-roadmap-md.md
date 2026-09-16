@@ -1,10 +1,15 @@
 ---
 id: PL-Y88W
 title: CLAUDE.md's first architecture rule, ROADMAP.md's development rules and docs/resident-instructions.md all still say 'independent of Flet', a toolkit the tree no longer imports, so the resident rule names the wrong dependency in every session
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, infra
+feature: worker-instructions
 touches: CLAUDE.md, ROADMAP.md, docs/resident-instructions.md
 added: 2026-09-16
-verify: python3 tools/doc_check.py check && ! grep -q 'independent of Flet' CLAUDE.md ROADMAP.md docs/resident-instructions.md
+closed: 2026-09-16
+verify: python3 tools/doc_check.py check && grep -q 'independent of the UI toolkit' CLAUDE.md && grep -q 'independent of the UI toolkit' ROADMAP.md
 ---
 
 **Problem.** CLAUDE.md's first architecture rule, ROADMAP.md's development rules and docs/resident-instructions.md all still say 'independent of Flet', a toolkit the tree no longer imports, so the resident rule names the wrong dependency in every session
@@ -137,3 +142,32 @@ none of the four files is one. Nothing executable changes, so the `verify:`
 command pairs `doc_check.py check` - which passes today and proves the tree is
 consistent - with a `grep` for the phrase the work removes. Run 2026-09-16 on
 the unedited tree: exit 1.
+
+**Closed 2026-09-16, same session, on the project owner's approval.** All five
+edits landed: `CLAUDE.md:131` and `ROADMAP.md`'s scientific-milestone rule now
+read "independent of the UI toolkit"; `docs/resident-instructions.md`'s
+seven-invariant list reads the same; its check count went from *two* to
+*three*, with the toolkit boundary named beside the wall clock, the process
+generator and Pydantic; and the correction is recorded in § "What stays
+resident" in `PL-X19T`'s dated form. `make check` reports the resident total
+at **50580 characters, 10 more than `origin/main`** - the delta the note
+states, which is the growth instrument agreeing with its own ledger.
+
+**Done in this session rather than a fresh one, against this item's own
+suggestion.** The brief proposed a separate session because `CLAUDE.md` sits
+in every request's cached prefix. `CLAUDE.md` § "The queue, and how the project
+owner works" overrides that directly: an approved change to how sessions work
+is made *before the session ends*, and it names this as "the one case where
+editing this file mid-session is right despite the cache cost". The rule won.
+
+**The `verify:` command was rewritten before closing, because the first one
+was a bad specification rather than merely unlucky.** It read
+`! grep -q 'independent of Flet' ...` across the three files - which forbids
+those files from *quoting* the retired wording, and the fifth edit above is a
+ledger entry whose job is to quote it. § "When a resident rule is retired"
+requires that a later session "be able to find where a rule went instead of
+concluding it was dropped", so the record has to carry the old phrase. The
+command now greps for the wording the work *adds*, in the two files that carry
+the rule, paired with `doc_check.py check` as the shape the `docket` skill
+prescribes. Run against `origin/main` with `git archive`: exit 1. Run on this
+tree: exit 0.
