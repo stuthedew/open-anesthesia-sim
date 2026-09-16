@@ -8,6 +8,7 @@ classes: planning, docs
 touches: ROADMAP.md
 added: 2026-09-15
 closed: 2026-09-15
+pr: 597
 verify: python3 tools/doc_check.py check && grep -qF 'Add an opioid/hypnotic interaction display' ROADMAP.md
 ---
 

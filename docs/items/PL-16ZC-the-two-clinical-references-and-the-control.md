@@ -9,6 +9,7 @@ feature: teachable-case
 touches: src/anesthesia_sim/app/simulation_view.py
 added: 2026-09-04
 closed: 2026-09-15
+pr: 597
 verify: python3 tools/doc_check.py check && grep -qF 'Decided 2026-09-15: not hideable' docs/items/PL-16ZC-the-two-clinical-references-and-the-control.md
 ---
 
