@@ -32,6 +32,7 @@ ALLOWED_IMPORTS = {
     "concurrent",
     "dataclasses",
     "datetime",
+    "locale",
     "os",
     "pathlib",
     "random",

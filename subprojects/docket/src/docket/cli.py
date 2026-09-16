@@ -56,6 +56,7 @@ from .vcs import (
     Churn,
     CutsInFlight,
     FlightReport,
+    GitRunner,
     OrphanedReport,
     StrandedReport,
     branch_state,
@@ -74,6 +75,7 @@ from .vcs import (
     orphaned,
     precedence,
     records_on_base,
+    ref_walk,
     released_on_base,
     stranded,
     tags,
@@ -121,6 +123,28 @@ def _load(args: argparse.Namespace) -> tuple[Path, list[Item], Config]:
 #: fresh one per parse, and there is nothing to remember to reset.
 _FLIGHT_ATTR = "_flight_report"
 
+#: Where the command's one git runner is kept, on the namespace beside the
+#: flight report and for the reason `_flight` gives: `argparse` builds a fresh
+#: namespace per parse, so its lifetime is the invocation and nothing has to be
+#: remembered to reset. That lifetime is what makes `GitRunner`'s memo safe -
+#: `cmd_branch` fetches in-process - and what closes its `cat-file` batch.
+_RUNNER_ATTR = "_git_runner"
+
+
+def _runner(args: argparse.Namespace) -> GitRunner:
+    """The one git runner this invocation asks everything through.
+
+    Every read in `vcs` already takes a `runner`, so one object threaded from
+    here reaches all of them without a module global - which is what keeps the
+    memo's lifetime the command's rather than the process's.
+    """
+    cached: GitRunner | None = getattr(args, _RUNNER_ATTR, None)
+    if cached is not None:
+        return cached
+    made = GitRunner()
+    setattr(args, _RUNNER_ATTR, made)
+    return made
+
 
 def _flight(args: argparse.Namespace) -> FlightReport:
     """What is in flight, and which refs this checkout could not read to find out.
@@ -160,7 +184,7 @@ def _flight(args: argparse.Namespace) -> FlightReport:
         report = FlightReport()
     else:
         root, items_dir = _tracked(args)
-        report = branches_in_flight(root, items_dir=items_dir)
+        report = branches_in_flight(root, items_dir=items_dir, runner=_runner(args))
     setattr(args, _FLIGHT_ATTR, report)
     return report
 
@@ -229,7 +253,13 @@ def _stranded(
         tracked = directory.resolve().relative_to(root.resolve()).as_posix()
     except ValueError:
         return None
-    return stranded(root, {item.identifier for item in items}, items_dir=tracked, fetched=fetched)
+    return stranded(
+        root,
+        {item.identifier for item in items},
+        items_dir=tracked,
+        fetched=fetched,
+        runner=_runner(args),
+    )
 
 
 def _orphaned(root: Path, args: argparse.Namespace) -> OrphanedReport | None:
@@ -242,7 +272,7 @@ def _orphaned(root: Path, args: argparse.Namespace) -> OrphanedReport | None:
     """
     if getattr(args, "no_git", False):
         return None
-    return orphaned(root)
+    return orphaned(root, runner=_runner(args))
 
 
 def cmd_check(args: argparse.Namespace) -> int:
@@ -456,6 +486,11 @@ def cmd_digest(args: argparse.Namespace) -> int:
     )
     if rendered:
         print(rendered)
+    if getattr(args, "profile", False):
+        # The walk is asked with a plain runner, so the cost of measuring never
+        # lands in what was measured; and it is asked after the digest, so the
+        # digest's own output is identical whether or not `--profile` was given.
+        print(render.format_git_profile(_runner(args).profile(ref_walk(root, _tracked(args)[1]))))
     return 0
 
 
@@ -470,8 +505,9 @@ def _cuts(root: Path, config: Config, args: argparse.Namespace) -> CutsInFlight 
     """
     if getattr(args, "no_git", False):
         return None
-    base = released_on_base(root, version_file=config.version_file, notes_dir=NOTES_DIR)
-    return cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes)
+    run = _runner(args)
+    base = released_on_base(root, version_file=config.version_file, notes_dir=NOTES_DIR, runner=run)
+    return cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes, runner=run)
 
 
 def cmd_triage(args: argparse.Namespace) -> int:
@@ -1779,7 +1815,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     check_cmd.set_defaults(func=cmd_check)
     add("list", "one line per open item").set_defaults(func=cmd_list)
-    add("digest", "the session-start summary").set_defaults(func=cmd_digest)
+    digest_cmd = add("digest", "the session-start summary")
+    digest_cmd.add_argument(
+        "--profile",
+        action="store_true",
+        default=False,
+        help="also report the git calls this digest made and the ref set it walked",
+    )
+    digest_cmd.set_defaults(func=cmd_digest)
     add("flight", "branches carrying item work").set_defaults(func=cmd_flight)
     branch_cmd = add("branch", "where this branch stands against the default branch")
     branch_cmd.add_argument(
@@ -1947,7 +1990,14 @@ def merge_shared(args: argparse.Namespace) -> argparse.Namespace:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = merge_shared(build_parser().parse_args(argv))
-    return int(args.func(args))
+    try:
+        return int(args.func(args))
+    finally:
+        # The one thing a `cat-file --batch` must not do is outlive the command
+        # that opened it, and a command that raised opened one just the same.
+        runner: GitRunner | None = getattr(args, _RUNNER_ATTR, None)
+        if runner is not None:
+            runner.close()
 
 
 if __name__ == "__main__":  # pragma: no cover - exercised via __main__.py

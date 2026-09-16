@@ -397,7 +397,9 @@ def test_next_computes_the_flight_report_once(
     """
     calls: list[str] = []
 
-    def counted(root: Path, *, items_dir: str = "docs/items") -> FlightReport:
+    def counted(
+        root: Path, *, items_dir: str = "docs/items", runner: object = None
+    ) -> FlightReport:
         calls.append(items_dir)
         return FlightReport()
 
@@ -428,7 +430,9 @@ def test_the_flight_cache_does_not_outlive_one_invocation(
     """
     calls: list[str] = []
 
-    def counted(root: Path, *, items_dir: str = "docs/items") -> FlightReport:
+    def counted(
+        root: Path, *, items_dir: str = "docs/items", runner: object = None
+    ) -> FlightReport:
         calls.append(items_dir)
         return FlightReport()
 

@@ -41,6 +41,7 @@ from .vcs import (
     Carrier,
     CutsInFlight,
     FlightReport,
+    GitProfile,
     OrphanedReport,
     Precedence,
     QueueEdit,
@@ -1625,5 +1626,55 @@ def format_trend(report: Trend) -> str:
         "",
         f"{'Open now':<{_LABEL}}{_lane_counts(report.open_lanes)}",
         f"{report.top_band_name + ' band':<{_LABEL}}{_lane_counts(report.top_band)}",
+    ]
+    return "\n".join(lines)
+
+
+def format_git_profile(profile: GitProfile) -> str:
+    """What a command asked git, next to the ref set it asked about.
+
+    **The ref set is not an extra, and printing the counts without it is the
+    defect this exists to remove** (`PL-XD3C`). Two machines were once compared
+    at 220 git calls against 1,107, and three different scaling laws were fitted
+    to that ratio and refuted in one sitting - because the two counts had been
+    taken against different ref sets, hours apart, while other sessions pushed
+    branches. A count is a measurement only beside its input, so the input is
+    printed with it and two machines can be compared by subtracting their
+    columns instead of dividing their totals.
+
+    `asked` is what the module wanted to know and `ran` is what reached git;
+    they differ by what the memo answered. `procs` counts the subprocesses
+    actually created, which is below `ran` by every blob the `cat-file` batch
+    served.
+    """
+    walk = profile.walk
+    # `asked` is what this command would have spawned before the memo and the
+    # blob batch existed - every read was one process - so a single profiled run
+    # carries its own before-and-after and neither number has to be taken on a
+    # different commit, a different machine, or a different ref set.
+    saved = profile.asked - profile.processes
+    share = f" ({100 * saved // profile.asked}% fewer)" if profile.asked else ""
+    lines = [
+        f"git: {profile.asked} asked, {profile.ran} ran, {profile.processes} processes, "
+        f"{profile.seconds:.2f}s",
+        f"  {saved} fewer processes than one-per-read{share}: the memo answered "
+        f"{profile.saved}, the blob batch folded {profile.ran - profile.processes}",
+        f"  {'sub':<14}{'asked':>7}{'ran':>6}{'distinct':>10}{'seconds':>9}",
+    ]
+    for cost in profile.by_subcommand:
+        lines.append(
+            f"  {cost.subcommand:<14}{cost.asked:>7}{cost.ran:>6}"
+            f"{cost.distinct:>10}{cost.seconds:>8.2f}s"
+        )
+    if walk.declined:
+        lines.append(f"  ref set: not read - {walk.declined}")
+        return "\n".join(lines)
+    lines += [
+        "",
+        f"  ref set: {walk.listed} refs, {walk.merged} merged, {walk.unmerged} unmerged, "
+        f"carrying {walk.commits} commits and {walk.item_edits} item-file edits",
+    ]
+    lines += [
+        f"    {name:<52}{ahead:>5} commits{edits:>5} items" for name, ahead, edits in walk.refs
     ]
     return "\n".join(lines)
