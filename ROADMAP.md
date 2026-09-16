@@ -2652,12 +2652,18 @@ v0.5.0 by the decision recorded in § "Items this port moots or transforms".
 One entry was left, and it is this one. The general proposal would have
 suppressed nine real entries to catch it.
 
-**Behind a design round the roadmap places nowhere — 2.** `PL-8PS6` and
+**Behind a design round no milestone section places — 2.** `PL-8PS6` and
 `PL-WZVZ` both wait on `PL-FG9D`, the base anesthesia-machine abstraction,
-which no milestone section names and which has no planned-milestone line of its
-own. These two are unlike the seven above: nothing forbids clearing them before
-v0.5.0, but doing it means scoping that design round first, which is a
-milestone decision rather than gate work.
+which no milestone *section* names — though § "Planned milestones" item 1 is
+its line of intent, and now names `PL-FG9D` and its prerequisite survey
+`PL-4DCG` outright. This paragraph said item 1 did not exist ("has no
+planned-milestone line of its own") until `PL-Z4WL` corrected it;
+`PL-FG9D`'s own brief opens by quoting item 1, so the two documents had
+disagreed about whether the intent was recorded at all. What is true is the
+narrower claim: intent is not scope, no section places it, and so nothing
+schedules it. These two are unlike the seven above: nothing forbids clearing
+them before v0.5.0, but doing it means scoping that design round first, which
+is a milestone decision rather than gate work.
 
 **What reads this, and what reads past it.** `bin/docket wave` reaches the same
 eleven from the items rather than from this prose - an open entry whose
@@ -3743,6 +3749,18 @@ specified.
    without provenance, and the one number in that document's accuracy table
    tracing to no cited file. Scoping this milestone gives it a versioned data
    file and a provenance row (`PL-8DJ7`).
+
+   **Two queue items scope this one, and they are sequential.** `PL-4DCG`
+   surveys the machines in current clinical use for the variables that change
+   a simulated result; `PL-FG9D` then designs the base abstraction — what a
+   module is, what the base type owns against what each machine supplies, and
+   where the parameter/strategy line falls — and it depends on the survey,
+   because the extension points are the axes of real variation that reach a
+   number and designing them first is guessing. Named here because until one
+   of them is started nothing schedules this item, and two gate entries wait
+   behind it: `PL-8PS6` (fresh gas flow range is a machine property) and
+   `PL-WZVZ` (make an inter-machine difference attributable) are both carved
+   out of Gate 1 for that reason.
 2. Add agent switching with residual washout accounting, after item 1.
    Requires the multi-substance patient state described in "Development
    pathway" — residual washout means holding two agents at once.
