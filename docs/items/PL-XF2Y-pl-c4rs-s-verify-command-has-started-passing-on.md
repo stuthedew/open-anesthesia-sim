@@ -61,3 +61,20 @@ open items declare.
 **Done when** `main` is green, which needs `PL-C4RS` disposed of the way
 `PL-D1RT` was, and `PL-879R` answered so that the fourth instance is caught
 when the command is *written* rather than when it starts passing.
+
+**Superseded in part, 2026-09-16, by `#645`** (`PL-D1RT`, `PL-KND7`: take main
+green). That branch closes `PL-D1RT` *and* re-points `PL-C4RS`'s sentinel to
+pin a sentence the correction must add rather than an absence, leaving the item
+open because its work is genuinely outstanding - which is the error's other
+disposition and the right one for it. It reports `bin/docket check --verify`
+at **0 errors** on its tree merged with `4167e2a`.
+
+So the two paragraphs above about `PL-C4RS` being unfixed describe the state on
+2026-09-16 at 21:06Z and not the state once `#645` lands.
+
+**What is not superseded is the whole of the point.** Three instances, two of
+them in one day, and `#645` took *opposite* dispositions on two of them from
+one defect - one closed because its work had landed, one re-pointed because its
+work had not. That the same fault yields opposite remedies is the evidence that
+the fault is the **sentinel's shape** rather than any item's state, which is
+`PL-879R`'s subject and still undecided.
