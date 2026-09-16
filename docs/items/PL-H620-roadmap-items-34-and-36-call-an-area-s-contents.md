@@ -8,6 +8,7 @@ classes: planning, docs
 touches: ROADMAP.md
 added: 2026-09-16
 closed: 2026-09-16
+pr: 605
 verify: python3 tools/doc_check.py check && grep -qF 'The vocabulary is Blender' ROADMAP.md
 ---
 

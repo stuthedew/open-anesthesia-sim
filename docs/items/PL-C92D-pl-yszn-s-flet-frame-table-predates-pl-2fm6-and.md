@@ -3,11 +3,12 @@ id: PL-C92D
 title: PL-YSZN's Flet frame table predates PL-2FM6 and measures a tree that no longer exists in two of its three stages, so the Qt/Flet comparison rests on one row
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs, perf
 feature: qt-port
 touches: docs/WORKING_NOTES.md
 added: 2026-09-08
+closed: 2026-09-16
 verify: python3 tools/doc_check.py check && grep -qF 'not comparable across PL-2FM6' docs/WORKING_NOTES.md
 ---
 
@@ -71,3 +72,21 @@ the Qt spike runs" says which two of the three stages are not comparable across
 `refresh` rose because the chart's read moved to evaluating the score - and that
 the `page.update` / `handoff` row is the toolkit comparison and is unaffected.
 Re-measurement is explicitly out of scope.
+
+**Closed 2026-09-16.** The caveat was written into
+`docs/WORKING_NOTES.md` under "Built and measured: the Qt spike runs". One
+sentence of it was already there - *"Only the third row is a comparison"* - and
+three things it owed were not: **which** two stages moved and **why** each one
+did, in opposite directions (`advance` fell because `RunHistory` recording went,
+so the Flet figure counts work the Qt figure never does; `refresh` rose because
+the read became a closed-form evaluation, so the Qt figure counts work the Flet
+figure never did); that the `handoff` / `page.update` row is the toolkit
+comparison and is unaffected, which is why `PL-QXSB`'s decision rests on it
+alone; and that re-measurement is out of scope.
+
+**One statement was stale and is the reason this was worth doing rather than
+skipping.** The paragraph ended *"`PL-C92D` is the re-measure that closes that
+gap"*, which stopped being true when this item was re-scoped on 2026-09-12. A
+reader following that sentence would have gone looking for three comparable
+rows that are never going to exist, on a Flet tree `PL-7SVX` deletes. No
+measurement was taken, per the re-scope.

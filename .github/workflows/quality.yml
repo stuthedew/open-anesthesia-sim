@@ -43,14 +43,55 @@ on:
 # `PL-XYRN` holds is deliberately not overdue - the owner is not advertising
 # the project yet.
 #
-# `cancel-in-progress` is conditional rather than a flat `true` on purpose.
-# `github.ref` is `refs/pull/N/merge` under `pull_request`, so each pull
-# request gets its own lane; but it is `refs/heads/main` under the `push`
-# trigger above, and cancelling there would mean a merge landing while an
-# earlier merge was still being verified silently drops that commit's only
-# check. Every commit on `main` keeps its own run. `PL-QD9K`.
+# **The guarantee is that every commit on `main` keeps its own run, and it
+# takes both lines below to deliver it.** `cancel-in-progress` is conditional
+# rather than a flat `true` because `github.ref` is `refs/pull/N/merge` under
+# `pull_request`, where a superseded run should be cancelled, and
+# `refs/heads/main` under the `push` trigger above, where cancelling would mean
+# a merge landing while an earlier merge was still being verified silently
+# drops that commit's only check. `PL-QD9K`.
+#
+# **The flag alone never delivered that, and this comment claimed otherwise
+# from the day it was written** (`PL-SMN4`). `cancel-in-progress` governs the
+# run already *in progress* and reaches nothing else. Behind that run a
+# concurrency group holds exactly one *pending* run, and a newer arrival evicts
+# the older one whatever the flag says.
+#
+# Measured over the 257 completed `main` push runs between this block landing
+# on 2026-09-05 and 2026-09-16: **31 were cancelled, 12.1%** - alive between 8
+# and 215 seconds, and every one of them reporting `total_count: 0` jobs, which
+# is eviction while pending rather than the shape a hand cancellation leaves.
+# So roughly one commit in eight on `main` got no whole-store `bin/docket check
+# --verify` at all, and `tools/main_ci_status.py` passes over a cancelled run,
+# so nothing said so. Run 2036 (`df3b1dec`) was the fix for a red `main`, which
+# is the correlation worth pricing rather than the average rate: merges cluster
+# during an outage, so the loss is likeliest exactly when the verdict matters
+# most.
+#
+# **The `github.sha` segment is the fix.** It gives each `main` push a group of
+# its own, so no two ever share one and there is no pending slot to be evicted
+# from. `pull_request` keeps the shared per-ref lane its cancellation depends
+# on: `github.sha` is the merge commit there and changes on every push, so
+# putting it in that lane too would cancel nothing, which is the saving
+# `PL-QD9K` measured at 5 superseded runs in 51. The flag is left conditional
+# rather than flattened to `true` now that it is unreachable on `main`, so that
+# editing the segment away degrades to this defect rather than to cancelling a
+# `main` run mid-flight.
+#
+# **`queue: max` is the other shape and does not fit here.** It holds up to 100
+# pending runs in FIFO order instead of one, reaching the same guarantee by
+# serializing where this reaches it by separating. It cannot be combined with
+# `cancel-in-progress: true`, and `queue` is a fixed `single | max` enum with
+# no expression form - unlike `cancel-in-progress` beside it - so it cannot be
+# scoped to `main` pushes while pull requests keep theirs. Read from
+# SchemaStore's `github-workflow.json`, because `docs.github.com` and
+# `github.blog` are both blocked by this container's egress proxy: treat it as
+# the schema's declaration rather than as GitHub's own prose.
+#
+# `tests/unit/test_ci_concurrency.py` renders the group for a `main` push and
+# for a pull request and holds both to what this comment claims.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.ref == 'refs/heads/main' && github.sha || 'pr' }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:

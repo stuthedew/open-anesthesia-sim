@@ -1,8 +1,14 @@
 ---
 id: PL-L4KX
 title: bin/docket verify REJECTs every close-out of a dropped item and of a not-delegable one, because it refuses an empty verify: with no exemption for either, while docket check accepts both - so the skill's own close-out step cannot reach ACCEPT on work it prescribes
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
+feature: delegation
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-16
+verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_dropped_close_out_is_not_a_missing_command' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** bin/docket verify REJECTs every close-out of a dropped item and of a not-delegable one, because it refuses an empty verify: with no exemption for either, while docket check accepts both - so the skill's own close-out step cannot reach ACCEPT on work it prescribes

@@ -163,6 +163,69 @@ residual, 0.0028 pp at worst over the supported envelope.
 Read in full text on 2026-09-14 for the sections named above. §4.3's error
 taxonomy and §5's query rewriting were not read for this entry.
 
+### Lowe & Ernst 1981 — *The Quantitative Practice of Anesthesia*
+
+**Not held here.** A publisher-copyright monograph this public repository may
+not redistribute; see "Redistribution" above. It has no DOI and PubMed does
+not index monographs, so neither route this repository usually names reaches
+it. **It was reached by interlibrary loan**, which is the route
+`.claude/rules/citing-sources.md` now records — the project owner placed the
+request and the pages arrived inside a day because the request named the pages
+it needed.
+
+> Lowe HJ, Ernst EA. *The Quantitative Practice of Anesthesia: Use of Closed
+> Circuit*. Baltimore: Williams & Wilkins; 1981.
+> ISBN 0683052004 (9780683052008); OCLC
+> [6665746](https://search.worldcat.org/oclc/6665746).
+
+**Read at the source in two instalments**, both supplied by the project owner
+as RapidILL scans and neither held here. Pages 55–60 and 82–84 on 2026-09-08
+(`PL-7HDS`; lender University of Sydney Main Library, borrower University of
+Wisconsin–Madison Memorial Library), the request narrowed to pages 57 and 83
+in advance by two second-hand readings. Then pages 17–21 and 60–66 on
+2026-09-10 (`PL-8SDL`; lender Michigan State University Main Library, same
+borrower) — chapter 4's reference list and the chapter-2 derivation of the
+cardiac-output relation. **Pages outside those two ranges were not supplied
+and are not read**, among them chapter 2's own reference list.
+
+**Why it is here.** It is the upstream the Gas Man Workbook names for the
+reference patient's organ volumes and blood flows, and therefore the second
+link in this project's longest provenance chain. It is **tier 2, cited but not
+adopted**. Four findings are what the reading bought, and
+`src/anesthesia_sim/data/patients/reference_adult.json` holds them in full —
+this entry is the pointer, not the record:
+
+- **The model patient is 100 kg, not 70.** Figure 4.1b and every chapter-5
+  table are tabulated for a 100-kg patient, which page 56 says is so the organ
+  weights can be read as per cent of body weight. That is why the material
+  reaches this project as *fractions*, and why every 70-kg figure derived from
+  it is this project's arithmetic rather than the book's.
+- **The book cites these values onward; it measures nothing here.** Page 56
+  attributes figure 4.1b to four references, all four since identified and
+  read (`PL-8SDL`, `PL-LT51`). Three are uptake-and-distribution models, which
+  consume organ volumes and blood flows rather than measure them; two of those
+  turn out to be the same document one link apart. So the tier is 2 and cannot
+  become 1.
+- **The vessel-rich pair reproduces exactly and uniquely; muscle and fat
+  reproduce under no grouping at all.** Kidney + heart + brain + liver gives
+  6.02 L and 76 per cent of cardiac output at 70 kg, against the stored 6.0
+  and 0.76, and an exhaustive search of all 1,023 groupings of the book's ten
+  compartments finds no other match. The same search returns zero groupings
+  matching both stored figures for muscle, and zero for fat.
+- **The cardiac-output relation is derived, not measured.** Page 59's
+  0.2 × M^(3/4) — 4.84 L/min at 70 kg — is built in chapter 2 from Brody's
+  interspecies metabolic allometry divided by an arteriovenous oxygen
+  difference assumed constant across mammals. **It must not be read as a
+  measured human cardiac output**, which is why `docs/MODEL.md` § "Known
+  limitations" says so wherever it stands beside a measured value.
+
+Read it when the provenance of a tissue volume or a perfusion fraction is in
+question. Nothing in it is adopted, and the reason is in the data file's own
+note: for the values that do not reproduce there is nothing here to adopt, and
+for the two that do, adopting would mean naming as authority a compilation
+whose own four sources the book never measured.
+
+
 ### Philip — *Workbook for Gas Man*
 
 **Not held here. Held in the private corpus**,

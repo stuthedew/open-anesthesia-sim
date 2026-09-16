@@ -3,11 +3,13 @@ id: PL-GN8C
 title: docs/references/README.md records no reading of Lowe and Ernst 1981, and the interlibrary-loan route that reached it is the answer PL-XJ5P is looking for
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: provenance
 touches: docs/references/README.md
 added: 2026-09-08
+closed: 2026-09-16
+pr: 612
 verify: python3 tools/doc_check.py check && grep -q '^### Lowe' docs/references/README.md
 ---
 
@@ -84,3 +86,31 @@ reference 23 is Lowe and Ernst 1981, printed with the initial 'HF' there and
 done, which is the second of the two causes `docket check --verify` names, and
 `bin/docket check --verify` on `main` failed on it. It now greps for the
 heading only this item's work creates. Run on the pre-work tree: exit 1.
+
+**Closed 2026-09-16.** `docs/references/README.md` carries
+`### Lowe & Ernst 1981 — *The Quantitative Practice of Anesthesia*` under "The
+documents", between the Jugel and Philip entries, in the shape
+`### Baker & Farmery 2011` uses: **Not held here** with the reason, the
+citation with ISBN and OCLC rather than a DOI it does not have, and what the
+document establishes.
+
+**The route half was not written here**, because `PL-XJ5P` had already written
+it — the rider above records that. What this entry does carry is the one thing
+only it can: that the route *used for this document* was interlibrary loan,
+with both instalments' page ranges, dates, lenders and item ids, so the record
+of the reading sits in the file whose job is to hold it rather than only
+inside a JSON data file.
+
+**Four findings are summarised rather than reproduced**, with the data file
+named as the record: the model patient is 100 kg and not 70, which is why the
+material arrives as fractions; the book cites its values onward and measures
+nothing, so the tier is 2 and cannot become 1; the vessel-rich pair reproduces
+exactly and uniquely while muscle and fat reproduce under no grouping of the
+book's ten compartments at all; and `0.2 x M^(3/4)` is Brody's interspecies
+metabolic allometry over an assumed constant arteriovenous oxygen difference,
+so 4.84 L/min at 70 kg is not a measured human cardiac output. An entry that
+restated the whole `sources[1]` note would be a second copy to keep true.
+
+**Landed in two changes on purpose.** The `verify:` rewrite went first and
+alone, because the old command was holding `main` red and this prose wanted
+the project owner's eye; this is the second.

@@ -9,6 +9,7 @@ feature: worker-instructions
 touches: CLAUDE.md, ROADMAP.md, docs/resident-instructions.md
 added: 2026-09-16
 closed: 2026-09-16
+pr: 609
 verify: python3 tools/doc_check.py check && grep -q 'independent of the UI toolkit' CLAUDE.md && grep -q 'independent of the UI toolkit' ROADMAP.md
 ---
 
