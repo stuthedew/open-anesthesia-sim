@@ -1,8 +1,14 @@
 ---
 id: PL-GDB0
 title: Three times in one session a rule true only of the currently implemented model or mechanism was written into ROADMAP.md or docs/MODEL.md as a permanent rule about the project, each needing its own correction commit
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: docs, infra
+touches: .claude/rules/expert-review.md, docs/resident-instructions.md
 added: 2026-09-16
+closed: 2026-09-16
+verify: python3 tools/doc_check.py check && grep -qF 'Say what would falsify it' .claude/rules/expert-review.md
 ---
 
 **Problem.** Three times in one session a rule true only of the currently implemented model or mechanism was written into ROADMAP.md or docs/MODEL.md as a permanent rule about the project, each needing its own correction commit
@@ -48,3 +54,30 @@ writing a *new* section may not read the file first, which is the gap
 with the three instances above cited as the evidence, or the project owner
 records that three instances is not yet enough to pay for it. Either closes
 this.
+
+**Closed 2026-09-16. The project owner chose resident**, in
+`.claude/rules/expert-review.md` § "Say what would falsify it, then record the
+instance rather than the rule", beside the count-first discipline it is the
+sibling of. +1420 resident characters, which `make check` reports and
+`docs/resident-instructions.md` records with the argument.
+
+**Path-scoping was measured before the characters were spent, not waved off.**
+Two rules already scope `docs/MODEL.md` - `citing-sources.md` and
+`sources-and-docstrings.md` - and nothing scopes `ROADMAP.md`, so the cheap
+version was one new path-scoped file over both, at zero resident cost. It would
+have fired on all three instances: each opened the file before writing to it.
+
+**It loses on one moment, and that moment is where two of the three happened.**
+The floating refusal and the strip recommendation were *stated in a reply* -
+and reached the project owner - before any file was opened. Deciding an
+approach is precisely what `expert-review.md` governs and what no read
+precedes, which is the same argument that made that file resident in the first
+place (`PL-WWDT`). Also refused: widening `citing-sources.md` to `ROADMAP.md`,
+which would drag a source-routing document into every roadmap edit.
+
+**What would retire it.** `docs/resident-instructions.md` § "When a resident
+rule is retired" governs. Nothing deterministic can replace this one - whether
+a sentence sits at the right altitude is judgment, not a fact about the tree -
+so the retirement condition is evidential rather than mechanical: a long enough
+run of roadmap and spec writing with no instance of the failure, against three
+in a single session before it.
