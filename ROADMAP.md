@@ -2675,7 +2675,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 152 entries
+### Declined to Gate 2 on the refilling-queue ground — 153 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3178,6 +3178,15 @@ on correct work. Every close-out that drops an item now ends on a `REJECT` the
 session has to talk past, which trains a reader to skim the block where a real
 protected-path failure is printed - the cost `PL-69JZ` named. It is
 recommended as the first of these four taken off the list.
+
+**One more from the same evening, found while starting `PL-L9RD`** - `PL-Y4YX`
+(`PL-L9RD`'s `verify:` requires `app/theme.py` to name PySide6, which that
+file's own documented invariant forbids). Captured 2026-09-16, `P3`, `defect`,
+neither `safety` nor `science`, so the snapshot rule places it in the next
+gate like the four above. Its ground is not the refilling queue, though: it is
+`blocked-by: PL-L9RD` and resolves inside that item, which is in this port's
+own Required scope. Admitting it would put an entry on the frozen list whose
+only route to closing runs through a milestone the plan has not reached.
 
 **One is not apparatus and needs its own ground**, which is stated rather than
 stretched. `PL-PGZF` records that `PL-GS3R` made the chart's column budget

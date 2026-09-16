@@ -1,7 +1,13 @@
 ---
 id: PL-Y4YX
 title: PL-L9RD's verify: demands PySide6 in app/theme.py, which that file's own documented invariant forbids, and the invariant's stated reason does not hold either - both tools ast.parse it and neither imports it
-status: untriaged
+priority: P3
+effort: S
+status: blocked
+classes: defect
+feature: qt-port
+touches: src/anesthesia_sim/app/theme.py, docs/items
+blocked-by: PL-L9RD
 added: 2026-09-16
 ---
 
