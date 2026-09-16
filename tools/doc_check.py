@@ -1803,10 +1803,29 @@ def check_gate_reentries(root: Path, report: Report) -> None:
     is *placed* is: `MilestoneSection.scope_ids` names the ids a section places
     - its frozen list, then the ids under `Required scope` - and excludes an id
     the section merely mentions, which is the distinction `PL-NBCS` records.
-    What an unplaced one should *become* is not: it may join the frozen list,
-    be placed in `Required scope` so the milestone clears it, or be deferred
-    with a recorded reason. So this reports and does not decide, which is why
-    it is an advisory rather than an error.
+    Which of the two placements an unplaced one should take is not: it may join
+    the frozen list, added with the date and the reason as v0.4.0's three
+    post-freeze notes and this gate's own `PL-GS3R`, `PL-BXB2`, `PL-V53R` and
+    `PL-0PJG` were, or go under `Required scope` so the milestone clears it per
+    "Debt inside the milestone's own scope". So this reports and does not
+    decide, which is why it is an advisory rather than an error.
+
+    **It does not read `### Declined to Gate ...`, and that is the whole of what
+    distinguishes it from `check_gate_dispositions` below.** A deferral is a
+    recorded disposition, so it silences that check; it is not a disposition
+    *this* rule offers, because "The gate is a snapshot" closes by saying these
+    two classes "are not deferrable by this project's own standard". So the two
+    advisories disagree about a deferred `safety` item deliberately, and this
+    one's text now says so rather than leaving a session to read the
+    disagreement as a bug in one of them.
+
+    Until `PL-R0Q0` the text offered the deferral it then refused, which is the
+    apparatus floor's own failure - a check telling a session something that is
+    not true. Accepting one instead would not have been the smaller fix it
+    looked: `safety_classes` is a subset of `debt_classes`, so every item this
+    names would have become a duplicate of that check's line, and nothing would
+    have been left holding the unconditional half of the rule that `PL-KTKP`
+    records the cost of losing.
 
     The gate it reads is the one `docket.roadmap` reads: the first *unreleased*
     section recording a gate, rather than the newest recorded one, so that an
@@ -1871,9 +1890,13 @@ def check_gate_reentries(root: Path, report: Report) -> None:
         f"{ROADMAP}:{gate.gate_line}: {rendered}'s frozen list does not place "
         f"{_plural(len(owed), 'open item', 'open items')} classed "
         f"{' or '.join(config.safety_classes)}, which re-enter the current gate "
-        f"regardless of presence: {listed}. Record each on the list, place it in "
-        "Required scope, or defer it with a reason - the gate rule grants that "
-        "discretion and requires the reason to be written down"
+        f"regardless of presence: {listed}. Add each to the frozen list with the "
+        "date and the reason it re-entered, or place it in Required scope so the "
+        "milestone clears it. Deferring is not a third option here as it is for "
+        'the other debt classes: "The gate is a snapshot" ends by making these '
+        "two not deferrable, so a `### Declined to Gate ...` entry answers the "
+        "disposition advisory and leaves this one standing - which is the "
+        "disagreement to resolve, not a fault in either check"
     )
 
 

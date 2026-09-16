@@ -8,7 +8,7 @@ classes: defect, infra
 feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-16
-verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_deferred_safety_item_clears_the_class_advisory' tests/unit/test_doc_check.py
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_deferred_safety_item_still_re_enters_the_gate' tests/unit/test_doc_check.py
 ---
 
 **Problem.** `tools/doc_check.py` raises two gate advisories per open debt item:

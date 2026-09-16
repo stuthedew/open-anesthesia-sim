@@ -9,6 +9,7 @@ feature: interface-areas
 touches: ROADMAP.md, docs/items/
 added: 2026-09-16
 closed: 2026-09-16
+pr: 625
 verify: bin/docket check && grep -qF '**item 34** is what turns them live' ROADMAP.md && test "$(grep -rlF 'Area-model audit (PL-BNYF)' docs/items | wc -l)" -ge 5
 ---
 

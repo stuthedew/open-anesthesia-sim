@@ -9,6 +9,7 @@ feature: interface-areas
 touches: ROADMAP.md, docs/
 added: 2026-09-16
 closed: 2026-09-16
+pr: 623
 verify: python3 tools/doc_check.py check && grep -qF 'are CC-BY-SA 4.0' ROADMAP.md
 ---
 

@@ -9,6 +9,7 @@ feature: interface-areas
 touches: README.md, docs/, ROADMAP.md
 added: 2026-09-16
 closed: 2026-09-16
+pr: 623
 verify: python3 tools/doc_check.py check && grep -qF 'No Blender code is used in this project' docs/interface-provenance.md
 ---
 

@@ -9,6 +9,7 @@ verify: grep -qF 'check that budget before starting an item' CLAUDE.md && grep -
 touches: CLAUDE.md, docs/resident-instructions.md
 added: 2026-09-16
 closed: 2026-09-16
+pr: 624
 ---
 
 **Problem.** `PL-H253` capped session length at about 150,000 tokens and made
