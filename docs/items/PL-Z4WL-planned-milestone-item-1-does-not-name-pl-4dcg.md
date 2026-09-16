@@ -1,13 +1,14 @@
 ---
 id: PL-Z4WL
 title: Planned-milestone item 1 does not name PL-4DCG or PL-FG9D, the survey and design round that scope it, and ROADMAP.md twice says PL-FG9D has no planned-milestone line of its own when item 1 is that line
-status: done
 priority: P3
 effort: S
+status: done
 classes: docs
 touches: ROADMAP.md, docs/items
 added: 2026-09-16
 closed: 2026-09-16
+pr: 604
 verify: grep -q 'PL-4DCG' ROADMAP.md && ! grep -q 'has no planned-milestone line of its' ROADMAP.md
 ---
 

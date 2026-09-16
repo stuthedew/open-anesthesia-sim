@@ -97,11 +97,14 @@ jobs:
       - run: uv run mypy
 
       # Never fails, and that is the point. It reports what exists *beyond*
-      # the upper bounds in `pyproject.toml` - the flet 1.0 or pydantic 3 that
-      # `--upgrade` cannot reach because this project excludes it. Crossing a
-      # major bound is a deliberate migration rather than something CI should
-      # attempt, so this surfaces the option and stops. Without it, nothing
-      # would ever mention that the migration had become available.
+      # the upper bounds in `pyproject.toml` - the PySide6 7, pyqtgraph 0.15
+      # or pydantic 3 that `--upgrade` cannot reach because this project
+      # excludes it. (It read `flet 1.0` until `PL-3SQT` took Flet out of that
+      # file; the example had to be a bound this project still declares.)
+      # Crossing a major bound is a deliberate migration rather than
+      # something CI should attempt, so this surfaces the option and stops.
+      # Without it, nothing would ever mention that the migration had become
+      # available.
       - name: newer releases outside our declared bounds
         continue-on-error: true
         run: uv pip list --outdated
