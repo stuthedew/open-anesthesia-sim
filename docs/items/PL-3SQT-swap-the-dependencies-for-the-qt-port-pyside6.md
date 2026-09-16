@@ -9,6 +9,7 @@ feature: qt-port
 touches: pyproject.toml, uv.lock, docs/WORKING_NOTES.md, docs/ARCHITECTURE.md, README.md, .github/workflows/drift.yml
 added: 2026-09-10
 closed: 2026-09-16
+pr: 609
 verify: uv run python tools/import_boundary_check.py && ! grep -qE '^\s*"flet' pyproject.toml
 ---
 

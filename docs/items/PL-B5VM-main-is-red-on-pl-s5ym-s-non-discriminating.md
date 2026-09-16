@@ -9,6 +9,7 @@ feature: queue-hygiene
 touches: docs/items
 added: 2026-09-15
 closed: 2026-09-15
+pr: 598
 verify: test -z "$(grep -h '^verify:' docs/items/PL-S5YM-*.md | grep -- '-k covered')"
 ---
 

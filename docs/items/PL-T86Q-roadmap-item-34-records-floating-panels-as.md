@@ -8,6 +8,7 @@ classes: planning, docs
 touches: ROADMAP.md, docs/items/
 added: 2026-09-15
 closed: 2026-09-15
+pr: 601
 verify: python3 tools/doc_check.py check && grep -qF 'What is refused is silent occlusion, not floating' ROADMAP.md
 ---
 
