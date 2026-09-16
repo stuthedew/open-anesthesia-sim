@@ -1,8 +1,13 @@
 ---
 id: PL-NWTM
 title: The unconditional displayed set has no structural home in the code, so the guarantee docs/MODEL.md states as structural - a region outside the area system - exists only as prose
-status: untriaged
+priority: P2
+effort: L
+status: blocked
+classes: safety, anticipated
 feature: interface-areas
+blocked-by: PL-NMTF
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, docs/MODEL.md
 added: 2026-09-16
 ---
 

@@ -1,8 +1,13 @@
 ---
 id: PL-9LNF
 title: Three app/ surfaces own state a layout could duplicate or relocate beside PL-VN6M's TraceLegend: RunView's build_ accessors hand out the same widget object on every call, the chart time base is owned by a dropdown inside one plot's panel, and the chart's column budget is read from sibling plots
-status: untriaged
+priority: P2
+effort: L
+status: blocked
+classes: safety, anticipated, refactor
 feature: interface-areas
+blocked-by: PL-NMTF
+touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py
 added: 2026-09-16
 ---
 

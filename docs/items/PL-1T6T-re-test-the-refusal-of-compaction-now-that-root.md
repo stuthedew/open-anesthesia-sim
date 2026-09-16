@@ -1,7 +1,11 @@
 ---
 id: PL-1T6T
 title: Re-test the refusal of compaction now that root CLAUDE.md is known to reload after a compact
-status: untriaged
+priority: P3
+effort: S
+status: needs-decision
+classes: session-cost
+touches: CLAUDE.md
 added: 2026-09-16
 ---
 
@@ -35,3 +39,25 @@ cites the context-window doc directly and is the better starting point.
 **Sequencing.** Raised alongside `PL-NW76`, which reshaped the cap into a
 starting budget. Worth answering after that lands, since the cap's shape
 decides how much a compaction option would even buy.
+
+**Why it matters.** The grouping in `CLAUDE.md` rests on a premise nobody
+tested. If the resident set does reload, what a compact drops is precisely the
+accumulated tool output a long session should be shedding - so the standing rule
+may be refusing a cheap remedy at the one moment it is most wanted, near a rate
+limit, which is the case `CLAUDE.md` § "The queue" names as the worst outcome
+available. The rule is resident, so every session carries it and every session
+pays for whichever answer is right.
+
+**Done when.** The reload claim is confirmed against the two primary pages
+rather than search summaries; the skill-truncation half `PL-2XM2` measured is
+priced alongside it, since compaction is lossless for the resident set and lossy
+for skills; and `CLAUDE.md`'s sentence either stands with its premise stated, or
+is changed in the session that decides it, per `CLAUDE.md` § "A behavior change
+takes effect in the session that asks for it".
+
+**Decision needed.** Whether `CLAUDE.md`'s grouping of compacting with continuing
+- "start a fresh one for an unrelated topic rather than continuing or compacting
+a long one" - survives the reload finding. This changes how every session works,
+so it is the project owner's; `PL-H253` records their earlier decision against
+four options including a low `/autocompact`, and this item is the one premise
+under that decision which was never put to the test.

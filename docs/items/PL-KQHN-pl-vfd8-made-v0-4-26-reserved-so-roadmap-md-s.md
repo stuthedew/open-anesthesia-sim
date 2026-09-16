@@ -1,7 +1,12 @@
 ---
 id: PL-KQHN
 title: PL-VFD8 made v0.4.26 reserved, so ROADMAP.md's Qt-port paragraph now says both that a patch cut takes this section's number and that the guard withholds it, and the policy question was never put to the owner
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: docs, planning
+feature: release-roadmap-seam
+touches: ROADMAP.md
 added: 2026-09-16
 ---
 
@@ -61,3 +66,11 @@ candidate becomes available.
 **This is the first question of `PL-SYG4`'s `Decision needed.`**, carried here
 because the contradiction is in `ROADMAP.md` and outlives whichever sentence the
 digest ends up printing.
+
+**Decision needed.** Does a patch cut on the `v0.4.x` track still take the Qt
+port's section number - as `ROADMAP.md` provides for in three places and
+`PL-G7RD` executed once with the owner's approval - or does `PL-VFD8`'s
+reservation now withhold it? One paragraph records both today. This decides what
+the release train does rather than how a tool reports it, so it is the project
+owner's; `CLAUDE.md` puts setting direction on their side of the division of
+labour. The **Done when.** above says which sentences change under each answer.

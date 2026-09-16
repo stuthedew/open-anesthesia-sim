@@ -1,7 +1,12 @@
 ---
 id: PL-B11M
 title: Detect a silent model fallback: last_served_model can differ from the configured model with nothing recording it
-status: untriaged
+priority: P3
+effort: S
+status: needs-decision
+classes: infra, session-cost
+feature: commit-provenance
+touches: tools, .claude
 added: 2026-09-16
 ---
 
@@ -58,3 +63,17 @@ is unclear. It is unclear here: nobody has yet named a decision that would
 change on learning a past session was downgraded. Answer that before building
 anything. If it cannot be answered, the honest outcome is to close this
 unbuilt — which is a legitimate result, not a loss.
+
+**Done when.** Either a decision this project takes is named that would change
+on learning a past session was served by a different model than it was
+configured for, and the cheapest instrument that records it is built; or the
+item is closed unbuilt with that answer written down, so the question is not
+reopened as a matter of taste.
+
+**Decision needed.** Whether any such decision exists. `CLAUDE.md` § "Prefer
+deterministic tooling over repeated model work" gates a mechanism on whether it
+will genuinely run again and says the answer is no where the benefit is unclear.
+It is unclear here: `bin/docket delegable` reasons about model tier going in, and
+nothing reads tier coming out. Answer that before designing anything. A session
+can take this one - it rests on what this repository already does with tier, not
+on what the project wants.

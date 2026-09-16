@@ -1,8 +1,13 @@
 ---
 id: PL-L6QR
 title: Re-run the area-model queue audit when ROADMAP item 36 is scoped, because every disposition PL-BNYF could not reach turned on which of today's surfaces become editors - a question item 36 has not answered
-status: untriaged
+priority: P3
+effort: M
+status: blocked
+classes: planning
 feature: interface-areas
+blocked-by: PL-NMTF
+touches: docs/items
 added: 2026-09-16
 ---
 

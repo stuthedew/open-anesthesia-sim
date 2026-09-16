@@ -1,8 +1,13 @@
 ---
 id: PL-WV9K
 title: Nothing defines a Workspace as an object above PL-C842's layout tree - the named set, the tab lifecycle with item 34's last-workspace floor, and where a learner's own presets are kept
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: planning
 feature: interface-areas
+blocked-by: PL-NMTF
+touches: ROADMAP.md, docs/ARCHITECTURE.md
 added: 2026-09-16
 ---
 
