@@ -22,6 +22,7 @@ from PySide6.QtWidgets import QApplication, QCheckBox, QLabel, QWidget
 
 from anesthesia_sim.app.chart_frame import (
     CHART_COLUMN_BUDGET_PER_SERIES,
+    COMPARED_COMPARTMENT_CAP,
     COMPARTMENT_TRACES,
     MAX_CHART_CONTROL_MARKS,
     WASH_IN_HOVER_LABEL,
@@ -31,11 +32,17 @@ from anesthesia_sim.app.chart_frame import (
     assemble_chart_frame,
     chart_columns,
     format_trace_hover,
+    trace_style,
 )
 from anesthesia_sim.app.chart_time_base import time_base_for_span
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import AdjustmentGrouping, ControlAdjustment
-from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.controller import BranchedCase, SimulationController
+from anesthesia_sim.app.dashboard_frame import (
+    compared_trace_legend_label,
+    run_label,
+    trace_legend_label,
+)
 from anesthesia_sim.app.formatting import (
     chart_grid_interval_percent,
     format_chart_time_label,
@@ -43,6 +50,7 @@ from anesthesia_sim.app.formatting import (
     mac_axis_ticks,
 )
 from anesthesia_sim.app.qt_chart import (
+    BRANCH_POINT_LEGEND_LABEL,
     CONTROL_MARK_LEGEND_LABEL,
     EQUILIBRIUM_LEGEND_LABEL,
     MAC_AWAKE_BAND_LEGEND_LABEL,
@@ -56,6 +64,7 @@ from anesthesia_sim.app.qt_chart import (
 from anesthesia_sim.app.qt_widgets import FlowLayout
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.theme import (
+    COMPARED_RUN_WIDTH_STEP,
     CONTROL_MARK_COLOR,
     CONTROL_MARK_DASH_PATTERN,
     CONTROL_MARK_STROKE_WIDTH,
@@ -117,7 +126,11 @@ def _frame(
 
     for controller in controllers:
         snapshot = controller.snapshot()
-        runs.append(RunInput(controller, snapshot, grouping.of(snapshot.control_timeline)))
+        runs.append(
+            RunInput(
+                run_label(len(runs)), controller, snapshot, grouping.of(snapshot.control_timeline)
+            )
+        )
 
     return assemble_chart_frame(
         runs,
@@ -367,7 +380,7 @@ def test_marks_beyond_the_pool_are_the_oldest_left_unmarked(application: QApplic
         for at_s in range(10, 10 + 5 * (MAX_CHART_CONTROL_MARKS + 3), 5)
     )
     frame = assemble_chart_frame(
-        [RunInput(controller, snapshot, crowded)],
+        [RunInput(run_label(0), controller, snapshot, crowded)],
         None,
         COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
@@ -587,6 +600,14 @@ def _entries_inside(legend: QWidget, rows: list[FlowLayout]) -> None:
         for index in range(row.count()):
             item = row.itemAt(index)
             assert item is not None
+            widget = item.widget()
+
+            # A hidden entry is not laid out and keeps whatever geometry it
+            # was built with, so it is not a thing that can be outside the
+            # legend. `FlowLayout._laid_items` is what skips it.
+            if widget is not None and widget.isHidden():
+                continue
+
             geometry = item.geometry()
 
             assert geometry.x() >= 0
@@ -604,8 +625,13 @@ def test_the_legend_rows_wrap_under_a_narrow_chart_and_stand_on_one_line_under_a
     """
 
     legend = TraceLegend()
-    compartments, references, record = _legend_rows(legend)
+    compartments, compared, references, record = _legend_rows(legend)
     one_line = compartments.minimumSize().height()
+
+    # The per-run row stands down entirely while one run is drawn, where the
+    # compartment row above already names every drawn curve completely.
+    assert compared.count() > 0
+    assert legend.compared_marks == ()
 
     assert compartments.heightForWidth(1400) == one_line
     assert compartments.heightForWidth(500) > one_line
@@ -682,7 +708,10 @@ def test_the_wash_in_legend_names_its_three_marks_in_the_plot_s_own_pens(
         EQUILIBRIUM_LEGEND_LABEL,
         CONTROL_MARK_LEGEND_LABEL,
     ]
-    assert {label.text() for label in legend.findChildren(QLabel)} == {
+    # `isVisible` rather than `isHidden`: the per-run and fork entries are
+    # hidden by their wrapper, and a label inside a hidden parent carries no
+    # hidden flag of its own.
+    assert {label.text() for label in legend.findChildren(QLabel) if label.isVisible()} == {
         WASH_IN_TRACE_LEGEND_LABEL,
         EQUILIBRIUM_LEGEND_LABEL,
         CONTROL_MARK_LEGEND_LABEL,
@@ -728,3 +757,131 @@ def test_every_compartment_box_carries_the_name_assistive_technology_announces(
         TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=style.label)
         for style in COMPARTMENT_TRACES
     }
+
+
+def _dashes_px(pen) -> list[float]:
+    """A pen's dash pattern back in display pixels.
+
+    Qt states a dash pattern in units of the pen's width, so widening a pen
+    changes the numbers it reports while drawing the same dashes. The
+    compartment's pattern is declared in pixels
+    (`chart_frame.COMPARTMENT_TRACES`), and pixels are what two runs of one
+    compartment have to agree on.
+    """
+
+    return [length * pen.widthF() for length in pen.dashPattern()]
+
+
+def test_two_runs_on_one_axis_are_told_apart_by_line_width_and_named_in_text(
+    application: QApplication,
+) -> None:
+    """`PL-8PSW`: the whole encoding, on a real fork, on both plots and in both legends.
+
+    Four claims, and each is one a misread would make clinical. The
+    compartment keeps line style and colour exactly as the single-run chart
+    draws them, so no channel means two things either side of the mode
+    change. The run is on line width, at two levels, with the *first* run
+    the wider - the two curves coincide exactly before the fork
+    (`PL-Z3W6`), so the narrower one has to be the one drawn on top or one
+    run is invisible over that stretch. Every drawn curve's legend entry
+    names both its compartment and its run, because `docs/MODEL.md`
+    § "Minimum displayed outputs" requires the run to be named in text and
+    colour is already spent. And the fork itself is marked, since it is the
+    one instant the two runs stop being the same run.
+    """
+
+    trunk = _run_with_a_dial_change()
+    case = BranchedCase(trunk)
+    branch = case.fork_at(600.0)
+    branch.start()
+    branch.begin_control_adjustment()
+    branch.set_fresh_gas_flow(1.0)
+    _advance(branch, 600.0)
+
+    frame = _frame(*case.runs)
+    chart = _shown(application, ConcentrationChart(), 480)
+    wash_in = _shown(application, WashInChart(), 200)
+    chart.draw(frame)
+    wash_in.draw(frame)
+    legend = TraceLegend()
+    wash_in_legend = WashInLegend()
+    legend.set_run_count(len(frame.runs))
+    wash_in_legend.set_run_count(len(frame.runs))
+
+    # The cap: two compartments, which is what leaves the width free at all.
+    assert len(frame.runs) == 2
+    assert len(frame.visible) == COMPARED_COMPARTMENT_CAP
+
+    for quantity in frame.visible:
+        style = trace_style(quantity)
+        first = chart.drawn_pen(0, quantity)
+        second = chart.drawn_pen(1, quantity)
+
+        # The compartment is unchanged on both runs: same colour, and the
+        # same dashes in pixels, which is the unit the table declares.
+        assert first.color().name() == style.color.lower()
+        assert second.color().name() == style.color.lower()
+        assert _dashes_px(first) == pytest.approx(_dashes_px(second))
+        assert _dashes_px(second) == pytest.approx(list(style.dash_pattern or []))
+
+        # The run is the width, and only the first run's moved.
+        assert second.widthF() == style.stroke_width
+        assert first.widthF() == style.stroke_width + COMPARED_RUN_WIDTH_STEP
+        assert first.widthF() != second.widthF()
+
+    # The same channel on the wash-in plot, which draws one trace per run in
+    # one colour and would otherwise put two identical curves on one axis.
+    assert wash_in.drawn_pen(1).widthF() == WASH_IN_STROKE_WIDTH
+    assert wash_in.drawn_pen(0).widthF() == WASH_IN_STROKE_WIDTH + COMPARED_RUN_WIDTH_STEP
+
+    # The fork is marked, on the run that opened at it and on neither other.
+    assert chart.branch_point_time(0) is None
+    assert chart.branch_point_time(1) == pytest.approx(600.0)
+    assert wash_in.branch_point_time(1) == pytest.approx(600.0)
+
+    # Every drawn curve is named by both dimensions, in the pen it is drawn
+    # with, so the legend cannot describe a line the plot is not drawing.
+    marks = legend.compared_marks
+
+    assert len(marks) == len(frame.visible) * len(frame.runs)
+
+    for mark in marks:
+        assert not mark.vertical
+
+    named = {mark.label for mark in marks}
+    expected = {
+        compared_trace_legend_label(trace_legend_label(trace_style(quantity)), run_label(index))
+        for quantity in frame.visible
+        for index in range(len(frame.runs))
+    }
+
+    assert named == expected
+
+    for quantity in frame.visible:
+        for index in range(len(frame.runs)):
+            label = compared_trace_legend_label(
+                trace_legend_label(trace_style(quantity)), run_label(index)
+            )
+            entry = next(mark for mark in marks if mark.label == label)
+            drawn = chart.drawn_pen(index, quantity)
+
+            assert entry.pen.color().name() == drawn.color().name()
+            assert entry.pen.widthF() == drawn.widthF()
+            assert _dashes_px(entry.pen) == pytest.approx(_dashes_px(drawn))
+
+    # Every run's name appears in text, on both legends, and the fork is named.
+    wash_in_named = {mark.label for mark in wash_in_legend.compared_marks}
+
+    assert wash_in_named == {
+        compared_trace_legend_label(WASH_IN_TRACE_LEGEND_LABEL, run_label(index))
+        for index in range(len(frame.runs))
+    }
+
+    for index in range(len(frame.runs)):
+        assert any(run_label(index) in label for label in named)
+
+    branch_mark = legend.branch_mark
+
+    assert branch_mark is not None
+    assert branch_mark.label == BRANCH_POINT_LEGEND_LABEL
+    assert branch_mark.vertical

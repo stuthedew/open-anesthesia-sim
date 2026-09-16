@@ -3205,6 +3205,46 @@ changed. So the assembly half is measurable anywhere and the conclusion is not;
 that is the `PL-X9T3` shape. It also names `app/chart_frame.py`, which
 `v0.4.26 - the interface moves to Qt` is rewriting.
 
+**Two more filed under `PL-8PSW` while it was being built, both about the
+interface's move to Blender-style areas** — `PL-VN6M` (`TraceLegend` owns the
+compartment-visibility state inside a widget) and `PL-TH35` (define the common
+Editor contract every `app/` view implements). Captured ten days after this
+gate was frozen, so "The gate is a snapshot" already places them in the next
+one; they are written down because both are `refactor`-classed and therefore
+debt, and a reader finding them open would otherwise have to work out why.
+
+Neither is deferred on the ground this subsection restates for `PL-0C6W`'s
+seven - that the gate has done its job and admitting post-freeze findings would
+re-open a cleared one. `PL-TH35` is
+`blocked` on the Qt port item that reserves for the area system, and the
+roadmap's own ordering argument — planned-milestone item 34, "a view's contract
+is whatever the area system requires of its contents, so views built first are
+built against today's fixed layout and rewritten" — is why it *cannot* be
+cleared ahead of that work rather than merely why it is not. `PL-VN6M` is the
+one concrete violation of `.claude/rules/ui-areas.md` the same pass found: it
+misdraws nothing today, because there is exactly one legend and one chart in a
+fixed layout, and it becomes real only when the area system makes a second of
+either possible — which is the same item 34. Both are product-lane, and both
+are recorded here rather than left to look deferred.
+
+**One more from 2026-09-16, and it is `safety`-classed, so it is written down
+with a reason rather than listed** — `PL-MN4J` (the chart hover names the agent
+and the instant but not which run). Captured ten days after this gate was
+frozen, so the snapshot rule already places it in the next one, and seated `P1`
+because `checks.py` will not seat a `safety` class lower.
+
+It is deferred on a ground of its own rather than on this section's:
+**the display it concerns does not exist outside the feature this milestone
+builds.** A hover that does not say which run is ambiguous only while two runs
+are drawn, which is this milestone's own compare mode; before it ships there is
+one run on the chart and the hover names everything there is to name. A gate
+exists to clear debt *before* a milestone begins, and this item cannot be
+cleared before the thing it is about exists. It is also `needs-decision` and the
+decision is the project owner's — it amends `docs/MODEL.md` § "The chart's hover
+readout: what the tooltip may show", which derives the three-line form — so no
+session can close it either way. `PL-8PSW` shipped the legend and panel naming
+that make a curve attributable today; this is the remaining surface.
+
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
 `### Declined to Gate ...` subsection after the gate heading and stops at the
@@ -3350,6 +3390,18 @@ the last nine are the feature itself.
   comparing one compartment against itself under two settings is (Javed W,
   McDonnel B, Elmqvist N. *Graphical Perception of Multiple Time Series.* IEEE
   Trans Vis Comput Graph. 2010;16(6):927-34. doi:10.1109/TVCG.2010.162).
+
+  **Which run carries the width offset was settled when it was built**
+  (`PL-8PSW`, 2026-09-16, project owner). The first run is drawn wider and the
+  second keeps the width the single-run chart draws it at. `PL-HLD5` had
+  assumed the two curves are merely adjacent; they are not, because the entry
+  above requires a branch to reproduce its parent element-wise up to the fork,
+  so before the branch point they coincide exactly and whichever is thicker
+  hides the other entirely over that stretch. Widening rather than narrowing
+  also keeps every trace at or above 2 px, where a 1 px antialiased line
+  renders lighter than its declared colour and walks into the 3:1 floor
+  `.claude/rules/ui-color.md` treats as an error. `docs/MODEL.md` § "The six
+  compartment traces" carries it.
 
   **The channel assignment is reversed from what this bullet said until
   2026-09-07, and the compartment cap is what makes it possible** (`PL-HLD5`).

@@ -46,7 +46,7 @@ from __future__ import annotations
 
 from bisect import bisect_left, bisect_right
 from collections.abc import Collection, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from math import ceil, floor, isfinite, sqrt
 from types import MappingProxyType
 from typing import Final
@@ -79,6 +79,7 @@ from anesthesia_sim.app.run_series import (
 from anesthesia_sim.app.theme import (
     ALVEOLAR_COLOR,
     CIRCUIT_COLOR,
+    COMPARED_RUN_WIDTH_STEP,
     FAT_COLOR,
     MIXED_VENOUS_COLOR,
     MUSCLE_COLOR,
@@ -90,6 +91,7 @@ from anesthesia_sim.core.uptake_system import MAXIMUM_SIMULATION_STEP_S
 
 __all__ = [
     "CHART_COLUMN_BUDGET_PER_SERIES",
+    "COMPARED_COMPARTMENT_CAP",
     "COMPARTMENT_TRACES",
     "HOVER_INSTANT_RESOLUTION_S",
     "MAX_CHART_CONTROL_MARKS",
@@ -106,11 +108,13 @@ __all__ = [
     "WashInStretch",
     "assemble_chart_frame",
     "chart_columns",
+    "compared_compartments",
     "format_trace_hover",
     "format_wash_in_hover",
     "nearest_trace_point",
     "nearest_wash_in_point",
     "percent_axis_ticks",
+    "run_trace_style",
     "trace_style",
     "wash_in_axis_ticks",
     "wash_in_stretches",
@@ -144,6 +148,22 @@ CHART_COLUMN_BUDGET_PER_SERIES: Final = 150
 # on the display rather than dropped in silence (`docs/MODEL.md` § "The
 # control-input timeline", "Bounds are displayed, not silent").
 MAX_CHART_CONTROL_MARKS: Final = 24
+
+# How many compartments may be drawn while more than one run is on the chart.
+#
+# **The load-bearing half of `PL-HLD5`'s encoding rather than a nicety.** At six
+# compartments every line-level channel is already spent - line style carries
+# the compartment across six patterns, colour is its second cue, and width
+# varies 2 px to 3 px across the six - so nothing is free for the run until the
+# cap frees it. Two compartments times two runs is four curves, which is what
+# the run's two width levels have to separate.
+#
+# It is a colour-capacity limit on the *chart* and never a reduction of what the
+# display owes: `docs/MODEL.md` § "Minimum displayed outputs" requires all six
+# compartment readouts to stay on screen for both runs while comparing, and says
+# so naming this cap. What the cap removes is four curves; the readouts are what
+# keep those four values displayed.
+COMPARED_COMPARTMENT_CAP: Final = 2
 
 # Gridlines at quarter-fractions, which is the ruling every published wash-in
 # figure carries and the spacing a reader compares against. The axis is
@@ -339,6 +359,92 @@ def trace_style(quantity: RecordedQuantity) -> TraceStyle:
     return _TRACE_STYLE_BY_QUANTITY[quantity]
 
 
+def run_trace_style(quantity: RecordedQuantity, run_index: int, run_count: int) -> TraceStyle:
+    """The trace one run draws a compartment with: its own style, at its run's width.
+
+    The whole of the run's visual channel, in one place, so that the chart,
+    the legend swatch and any later view read one answer rather than three.
+    Everything about the compartment - colour, dash pattern, the words for
+    both - is `trace_style`'s and is returned unchanged, because nothing
+    about a compartment's appearance may change on entering compare mode
+    (`PL-HLD5`): colour means "compartment" on the single-run chart, and a
+    channel that meant something else either side of a mode change is a
+    misread of a clinical value waiting to happen.
+
+    **The run is on line width, at two levels, read locally.** The
+    distinction only has to be made between two curves of the *same*
+    compartment, which are adjacent by construction, rather than decoded
+    across the plot; `app/theme.py`'s `COMPARED_RUN_WIDTH_STEP` carries why
+    the first run is the wider of the two and why widening beats narrowing.
+    A single run is drawn exactly as it always was, so the width channel
+    does not exist until there is a second run to tell apart.
+
+    Args:
+        quantity: Which compartment.
+        run_index: Which run, as a position in the frame's runs.
+        run_count: How many runs are on the chart.
+
+    Returns:
+        The compartment's style, with `stroke_width` set for this run.
+
+    Raises:
+        KeyError: If no trace draws `quantity` (see `trace_style`).
+        ValueError: If `run_index` does not address one of `run_count` runs.
+            A style asked for a run the chart is not drawing would answer
+            with a width nothing on screen carries.
+    """
+
+    if run_count < 1 or not 0 <= run_index < run_count:
+        raise ValueError(
+            f"run {run_index} is not one of the {run_count} runs on the chart; a trace "
+            "is drawn at the width of a run that is being drawn"
+        )
+
+    style = trace_style(quantity)
+    widened = run_count > 1 and run_index == 0
+
+    if not widened:
+        return style
+
+    return replace(style, stroke_width=style.stroke_width + COMPARED_RUN_WIDTH_STEP)
+
+
+def compared_compartments(
+    shown: Collection[RecordedQuantity], run_count: int
+) -> tuple[tuple[RecordedQuantity, ...], int]:
+    """The compartments a frame draws for this many runs, and how many it could not.
+
+    The cap applied, in the one place that decides what the chart draws, so
+    that no view can hold a selection the plot is not honouring.
+    `COMPARED_COMPARTMENT_CAP` carries why capping is what frees the width
+    channel for the run.
+
+    Kept in table order and taken from the top of it rather than in the
+    order a reader clicked, so the drawn pair is the same pair whichever
+    route reached the selection - and so the circuit and alveolar traces,
+    which lead that table, are what a reader who has chosen nothing sees.
+
+    Args:
+        shown: The compartments the reader has left drawn.
+        run_count: How many runs are on the chart. One run is uncapped: the
+            six-trace encoding works as it always has, and it is a second
+            run that spends the channel the cap frees.
+
+    Returns:
+        The compartments drawn, in table order, and the count of selected
+        compartments the cap left undrawn. The second is displayed rather
+        than dropped in silence, per `docs/MODEL.md` § "The control-input
+        timeline", "Bounds are displayed, not silent".
+    """
+
+    selected = tuple(style.quantity for style in COMPARTMENT_TRACES if style.quantity in shown)
+
+    if run_count <= 1:
+        return selected, 0
+
+    return selected[:COMPARED_COMPARTMENT_CAP], max(0, len(selected) - COMPARED_COMPARTMENT_CAP)
+
+
 def chart_columns(plot_width_px: float) -> int:
     """Grid columns the axis is divided into, for a plot this many pixels wide.
 
@@ -406,6 +512,21 @@ class RunFrame:
     """One run's part of a frame: its drawn states, stretches and marks.
 
     Attributes:
+        label: What this run is called in text, as the legend and every
+            readout that names a run say it. Handed in rather than derived
+            from a position here, so one run is called the same thing on
+            the chart, in the legend and on its own panel, and so a view
+            that drew a different subset could not rename it
+            (`.claude/rules/ui-areas.md`). `docs/MODEL.md` § "Minimum
+            displayed outputs" requires the run to be named in text: colour
+            is spent on the compartment, and position alone fails the
+            reader who has looked away and back.
+        branch_point_s: The instant this run forked from the run it opened
+            out of, in simulated seconds, or `None` for a run that is not a
+            branch or whose fork lies outside the drawn window. The one
+            instant at which two compared runs stop being the same run, so
+            it is marked rather than left for the reader to find by
+            following two coincident curves until they part.
         agent_id: The substance every value here belongs to, under the
             identifier the run records it by.
         agent_display_name: The same agent as the hover names it.
@@ -435,6 +556,8 @@ class RunFrame:
             pool could not mark. Displayed rather than hidden.
     """
 
+    label: str
+    branch_point_s: float | None
     agent_id: str
     agent_display_name: str
     mac_percent: float
@@ -495,7 +618,14 @@ class ChartFrame:
         one_mac_percent: Where the 1 MAC line stands.
         mac_awake_band_percent: The MAC-awake band's lower and upper edges.
         visible: Which compartments are drawn, in table order. Presentation
-            state only: it is never read by the simulation.
+            state only: it is never read by the simulation. With more than
+            one run this is the reader's selection under
+            `COMPARED_COMPARTMENT_CAP`, which `compared_compartments`
+            applies.
+        undrawn_compartments: How many selected compartments the cap left
+            undrawn. Zero on a single run, which is uncapped. Displayed
+            rather than hidden: a selection the chart is not honouring, said
+            nowhere, is a legend naming a line that is not there.
         runs: One `RunFrame` per run on the chart, in drawing order.
     """
 
@@ -514,6 +644,7 @@ class ChartFrame:
     one_mac_percent: float
     mac_awake_band_percent: tuple[float, float]
     visible: tuple[RecordedQuantity, ...]
+    undrawn_compartments: int
     runs: tuple[RunFrame, ...]
 
 
@@ -522,6 +653,10 @@ class RunInput:
     """One run to draw, with the snapshot the same frame formats it from.
 
     Attributes:
+        label: What this run is called in text. The caller's, because the
+            same word has to appear on the run's own panel beside the
+            settings that produced it, and a name the chart invented would
+            be the chart's alone.
         controller: The run.
         snapshot: Its state, read once by the caller for this frame and
             handed down here, so a run's readouts and the traces beside them
@@ -532,6 +667,7 @@ class RunInput:
             supplies it, so a frame that recorded nothing regroups nothing.
     """
 
+    label: str
     controller: SimulationController
     snapshot: SimulationSnapshot
     adjustments: tuple[ControlAdjustment, ...]
@@ -604,6 +740,11 @@ def assemble_chart_frame(
         start_s, stop_s = following_window(base, elapsed_s)
 
     columns = chart_columns(plot_width_px)
+    # The cap is applied here rather than where a reader clicks, so that what
+    # the chart draws is capped however the selection was reached - by a
+    # legend, by a restored layout, or by a second view that has no legend of
+    # its own (`.claude/rules/ui-areas.md`).
+    drawn, capped = compared_compartments(shown, len(runs))
     mac_percent = reference.agent_mac_percent
     top_percent = chart_axis_top_percent(mac_percent)
     grid_percent = chart_grid_interval_percent(mac_percent)
@@ -628,7 +769,8 @@ def assemble_chart_frame(
             standard_deviation_fraction_of_mac=mac_awake.standard_deviation_fraction_of_mac,
             mac_percent=mac_percent,
         ),
-        visible=tuple(style.quantity for style in COMPARTMENT_TRACES if style.quantity in shown),
+        visible=drawn,
+        undrawn_compartments=capped,
         runs=tuple(_run_frame(run, start_s, stop_s, columns) for run in runs),
     )
 
@@ -654,8 +796,19 @@ def _run_frame(run: RunInput, start_s: float, stop_s: float, columns: int) -> Ru
         if start_s <= adjustment.started_at_s <= stop_s
     )
     marks = inside[-MAX_CHART_CONTROL_MARKS:]
+    # Marked only where it can be seen. A fork the window has scrolled past
+    # is not drawn at the edge, which would put the one instant two runs stop
+    # agreeing at a time it did not happen.
+    opened_from = run.controller.opened_from
+    branch_point_s = (
+        opened_from.elapsed_s
+        if opened_from is not None and start_s <= opened_from.elapsed_s <= stop_s
+        else None
+    )
 
     return RunFrame(
+        label=run.label,
+        branch_point_s=branch_point_s,
         agent_id=snapshot.agent_id,
         agent_display_name=snapshot.agent_display_name,
         mac_percent=snapshot.agent_mac_percent,

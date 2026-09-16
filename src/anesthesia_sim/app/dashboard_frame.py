@@ -29,7 +29,12 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Final
 
-from anesthesia_sim.app.chart_frame import ChartFrame, trace_style
+from anesthesia_sim.app.chart_frame import (
+    COMPARED_COMPARTMENT_CAP,
+    ChartFrame,
+    TraceStyle,
+    trace_style,
+)
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.control_timeline import ControlAdjustment, format_adjustment
@@ -283,6 +288,43 @@ MAC_AWAKE_BAND_LEGEND_LABEL: Final = "MAC-awake (population, ±1 SD; read agains
 #: the line and not the control. Carried over from the Flet legend's
 #: semantics label so the port loses nothing a screen reader had.
 TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE: Final = "Draw the {label} compartment on the chart"
+#: A compartment's legend words: its name and its line style, so the style is
+#: legible without reference to the plot (`docs/MODEL.md` § "The six
+#: compartment traces"). One template rather than an f-string at each legend
+#: row, because the compare-mode row has to say the same words as the
+#: checkbox above it or the two describe one curve differently.
+TRACE_LEGEND_LABEL_TEMPLATE: Final = "{label} ({line_style})"
+#: What a run is called in text. `docs/MODEL.md` § "Minimum displayed outputs"
+#: requires the run to be named in text rather than carried by colour or by
+#: position: colour is spent on the compartment, and position alone fails the
+#: reader who has looked away and back.
+#:
+#: Numbered by drawing order, which is also the order the run panels are laid
+#: out in, because the name has to be findable - a legend entry reading "Run 2"
+#: is only an attribution if something else on screen also says "Run 2", and
+#: that is the panel holding the settings that produced it.
+RUN_LABEL_TEMPLATE: Final = "Run {number}"
+#: One drawn trace's legend words while more than one run is shown: the
+#: compartment's own words, then the run's. Both dimensions named on every
+#: entry, which is what `PL-8PSW` asks of a legend once a curve carries two.
+COMPARED_TRACE_LEGEND_TEMPLATE: Final = "{trace}, {run}"
+#: The caption on the compare-mode legend row. "Drawn" rather than
+#: "Compartments", because the row above it already names the compartments and
+#: is the control; this row is the four curves actually on the plot.
+COMPARED_TRACE_LEGEND_CAPTION: Final = "Drawn traces:"
+#: The fork's legend words. Vertical like a control mark and solid where that
+#: is dashed, which is the pair of channels that separates them; the words say
+#: both so the mark is identifiable without reference to the plot.
+BRANCH_POINT_LEGEND_LABEL: Final = "Branch point (vertical, solid)"
+#: Said while the two-compartment cap is holding traces off the chart. It
+#: names the bound, what it removed, and where those values still are - the
+#: last because `docs/MODEL.md` § "Minimum displayed outputs" makes the
+#: readouts what keeps a capped compartment on the display, so a reader told
+#: only that a trace is gone has been told half of it.
+COMPARED_CAP_NOTICE_TEMPLATE: Final = (
+    "Two runs are shown, so the chart draws at most {cap} compartments at once. "
+    "Every compartment's value is in the readouts below, for both runs."
+)
 # What the wash-in plot is showing at this instant. A trace that stops has
 # to say which of its two boundaries it stopped at: "nothing has reached the
 # circuit yet" and "the patient is giving agent back" are opposite
@@ -1132,6 +1174,78 @@ def off_scale_notice(frame: ChartFrame, run_index: int) -> str | None:
             fraction_from_percent(Percent(frame.axis_top_percent)), Percent(frame.mac_percent)
         ),
     )
+
+
+def run_label(run_index: int) -> str:
+    """What the run at this position on the chart is called, in text.
+
+    The one place a run is named, so the legend entry, the run's own panel
+    heading and any later view say the same word. A name is only an
+    attribution if the reader can find what it refers to, and what it
+    refers to is the panel carrying that run's settings.
+
+    Args:
+        run_index: Which run, as a position in the frame's runs.
+
+    Returns:
+        The run's name.
+
+    Raises:
+        ValueError: If `run_index` is negative, which addresses no run.
+    """
+
+    if run_index < 0:
+        raise ValueError(f"a run is at a nonnegative position on the chart, not {run_index}")
+
+    return RUN_LABEL_TEMPLATE.format(number=run_index + 1)
+
+
+def trace_legend_label(style: TraceStyle) -> str:
+    """One compartment's legend words: its name and its line style."""
+
+    return TRACE_LEGEND_LABEL_TEMPLATE.format(label=style.label, line_style=style.line_style)
+
+
+def compared_trace_legend_label(trace: str, run: str) -> str:
+    """One drawn curve's legend words while more than one run is shown.
+
+    Args:
+        trace: The trace's own words - a compartment's from
+            `trace_legend_label`, or the wash-in plot's single trace label.
+        run: The run's name, from `run_label`.
+
+    Returns:
+        Both dimensions in one entry, in that order.
+    """
+
+    return COMPARED_TRACE_LEGEND_TEMPLATE.format(trace=trace, run=run)
+
+
+def compartment_cap_notice(frame: ChartFrame) -> str | None:
+    """What the chart says while the two-compartment cap is holding traces off it.
+
+    Conditional text, fired by the state it explains and costing nothing
+    otherwise (`.claude/rules/ui-reader.md`). It earns a sentence because it
+    accounts for two things a reader would otherwise have to guess at: why
+    four traces left the chart when the second run arrived, and why a fifth
+    box will not stay checked. Neither is a label, a unit or an axis title.
+
+    It fires on the cap being *in force* rather than on a count of traces
+    removed, because the legend holds the selection inside the cap from the
+    moment the second run appears - so by the time a frame is assembled the
+    count is zero and the reader has still lost four curves.
+
+    Args:
+        frame: The frame drawn this tick.
+
+    Returns:
+        The notice, or None while one run is drawn and nothing is capped.
+    """
+
+    if len(frame.runs) <= 1:
+        return None
+
+    return COMPARED_CAP_NOTICE_TEMPLATE.format(cap=COMPARED_COMPARTMENT_CAP)
 
 
 def no_traces_shown(frame: ChartFrame) -> bool:
