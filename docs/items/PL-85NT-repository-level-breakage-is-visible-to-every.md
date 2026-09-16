@@ -143,6 +143,41 @@ where 86% of items cite other items, referent overlap cannot separate a
 duplicate from an ordinary citation - which is what 84% firing means. That line
 should have killed route 1 before any code was written.
 
+**Route 2 was then measured, 2026-09-16, and it does not inherit what killed
+route 1.** The difference is structural rather than a better threshold: route 1
+compared every item against every other, so the store's 86% cross-reference
+density was the whole population it worked in. Route 2 asks one question against
+two exact tokens the digest already holds - the failing run number and the head
+sha - so density is irrelevant.
+
+*Precision*, over the last 25 commits on `main`: **19 are cited by no open item
+at all**, which is the correct "nobody claims this" answer. Of the 6 that are
+cited, the item counts are 1, 1, 2, 2, 4 and 6. A digest line naming them fits
+on one line.
+
+*Recall*, over the three red-`main` events of 2026-09-15:
+
+| event | items citing the run or sha | verdict |
+| --- | --- | --- |
+| `#1985` / `7ba6108e` | `PL-B5VM`, `PL-Y1W6`, `PL-7VSK`, `PL-S5YM`, `PL-85NT`, `PL-99YZ` | hit - the three claimers and three genuinely related |
+| `#1991` / `1ef84c4b` | none | **miss** |
+| `#1999` / `84b23720` | `PL-SMN4`, `PL-X0ND` | hit - exactly the two claimers |
+
+**The miss is systematic and worth stating before anyone builds this.** `main`
+was red at `1ef84c4b` for the same defect `PL-B5VM` already claimed - but
+`PL-B5VM` cites `7ba6108e`, where the failure *started*, and the digest reports
+the commit where it *recurred*. A recurring failure moves sha while the item
+stays fixed on the first one, so an exact-token match loses the claim on every
+event after the first.
+
+That halves the value on a failure lasting several merges, which is exactly the
+shape this item is about. Two candidate repairs, neither measured: carry the ids
+named in the failing job's own output (tonight's error text said `PL-S5YM`, and
+all three claimers cite `PL-S5YM`, so this would have hit all three events), or
+match any sha in the red run's range rather than only its head. The first needs
+CI log text the session-start hook cannot read offline; the second is local and
+cheap. **Measure one of them before building, on the standard applied above.**
+
 So **route 1 is refused on measurement**, and is recorded in
 `docs/dead-ends.md` so it is not proposed again. What survives untested is
 route 2, whose match is against the *digest's own facts* - one failing run, one
