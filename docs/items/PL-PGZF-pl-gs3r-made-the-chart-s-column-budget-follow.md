@@ -1,8 +1,14 @@
 ---
 id: PL-PGZF
 title: PL-GS3R made the chart's column budget follow the window width, so assemble_chart_frame costs 8.4 ms at 150 columns and 15.4 ms at 1601 - PL-CNCF measured only the fixed 150-column budget, and 15.4 ms is essentially a whole 60 fps frame
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: perf
+feature: chart-readout
+touches: src/anesthesia_sim/app/chart_frame.py, docs/WORKING_NOTES.md
 added: 2026-09-16
+verify: python3 tools/doc_check.py check && grep -qF 'measured at the window-following budget' docs/WORKING_NOTES.md
 ---
 
 **Problem.** PL-GS3R made the chart's column budget follow the window width, so assemble_chart_frame costs 8.4 ms at 150 columns and 15.4 ms at 1601 - PL-CNCF measured only the fixed 150-column budget, and 15.4 ms is essentially a whole 60 fps frame
@@ -31,3 +37,39 @@ pathological one.
 this is assembly rather than paint, measured in a container with no GPU, and
 the render cadence is not asserted here. `PL-R460` and `PL-CNCF` are the
 neighbours; triage may well fold this into one of them rather than keep it.
+
+**Why it matters.** The number is not the finding; the *gap in what is
+measured* is. `PL-CNCF` measured `controller.drawn_window` at 6.2 ms against a
+column budget that was a constant, and its figure is the one this project
+quotes when it reasons about frame cost. `PL-GS3R` then made the budget
+`max(150, ceil(plot_width_px) + 1)`, which turned a measured constant into an
+unmeasured function of the window, and nobody measured the other end of it. A
+maximised window on a wide display is the ordinary case rather than the
+pathological one, so the quoted figure now describes the *narrowest* window a
+learner will ever use.
+
+Two consequences follow, and only the second is about speed. The first is
+provenance: `docs/WORKING_NOTES.md`'s frame-cost thread is cited when the
+chart's design is argued, and it is now silently about a tree whose budget
+behaves differently. The second is that 15.4 ms of *assembly* leaves no margin
+inside a 16.7 ms frame for the paint it precedes - but that is a hypothesis
+here, not a measurement, because these figures are `QT_QPA_PLATFORM=offscreen`
+on a 4-core container with no GPU.
+
+**Triaged `P3`, and kept separate from `PL-CNCF` rather than folded in.** The
+two name different functions in different modules - `controller.drawn_window`
+in `app/controller.py` against `assemble_chart_frame` in `app/chart_frame.py` -
+and `PL-CNCF` carries `docs/MODEL.md` and `core/run_score.py` in its `touches`
+where this carries neither. Folding would make one item whose `verify:` cannot
+speak for both halves. `PL-R460` is closed and is not a candidate at all.
+
+**Done when.** The full frame cost - assembly *and* paint - has been measured
+on the Qt build at a maximised window on real hardware rather than offscreen,
+the result is written into `docs/WORKING_NOTES.md` beside the existing
+frame-cost thread with the phrase `measured at the window-following budget` so
+the old fixed-budget figures cannot be read as current, and the item closes on
+one of two recorded outcomes: the budget holds at the top of the range, in
+which case this closes as a measurement and the concern is retired; or it does
+not, in which case the reduction is filed as its own item with this number as
+its baseline. A recorded "the margin is adequate" closes this as legitimately
+as a speed-up would.

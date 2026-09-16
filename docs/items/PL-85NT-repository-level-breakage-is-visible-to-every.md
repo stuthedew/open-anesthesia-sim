@@ -1,8 +1,15 @@
 ---
 id: PL-85NT
 title: Repository-level breakage is visible to every session and claimed by none, so five duplicate items were filed for three findings in one evening
-status: untriaged
+priority: P3
+effort: M
+status: dropped
+classes: defect, infra
+feature: parallel-sessions
+touches: docs/items
 added: 2026-09-15
+closed: 2026-09-16
+reason: superseded by PL-99YZ on this item's own recommendation - PL-99YZ has the sharper diagnosis ("filing first makes you visible; it does not make you look") and names an existing command, bin/docket concurrent, that already answers the acute case. Dropped rather than merged so the measurements stay readable where they were made: this file remains the record for the 45% duplicate-drop rate, route 1's refutation, and the streak-range table, and PL-99YZ now cites it
 ---
 
 **Problem.** Repository-level breakage is visible to every session and claimed by none, so five duplicate items were filed for three findings in one evening
@@ -235,3 +242,21 @@ tables above. Merging that way loses nothing and leaves one item. Not done here:
 `PL-99YZ` is another session's untriaged capture, and resolving it from this
 branch would be a second answer in a file somebody else may be holding - which
 is the whole subject of both items.
+
+**Why it matters.** Kept for the record rather than as an argument for work:
+duplicate capture is chronic here (45% of everything this store has ever
+dropped was dropped as a duplicate, across 16 separate days), and the two
+routes proposed against it were measured rather than argued. Route 1 was built
+and thrown away because referent overlap cannot separate a duplicate from an
+ordinary citation in a store that is 86.1% cross-referenced; route 2 survives,
+with the streak-range repair, and is unbuilt.
+
+**Done when.** Nothing: this is `dropped`, superseded by `PL-99YZ` (the three
+pull requests opened for one red-`main` fix in four minutes). See `reason` in
+the front matter.
+
+**Dropped 2026-09-16, on this item's own recommendation.** The blocker it named
+for doing so has lapsed - `PL-99YZ` was an untriaged capture when this was
+written and is now `P2 · M · ready`, held by no branch (`bin/docket flight`,
+2026-09-16). `PL-99YZ` now carries a section citing this file for the
+measurements, so the drop points forward rather than burying them.
