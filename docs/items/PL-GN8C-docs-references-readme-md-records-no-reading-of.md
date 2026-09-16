@@ -9,6 +9,7 @@ feature: provenance
 touches: docs/references/README.md
 added: 2026-09-08
 closed: 2026-09-16
+pr: 612
 verify: python3 tools/doc_check.py check && grep -q '^### Lowe' docs/references/README.md
 ---
 

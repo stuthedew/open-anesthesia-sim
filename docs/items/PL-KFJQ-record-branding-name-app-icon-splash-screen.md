@@ -8,6 +8,7 @@ classes: planning
 touches: ROADMAP.md
 added: 2026-09-16
 closed: 2026-09-16
+pr: 614
 verify: python3 tools/doc_check.py check && grep -qF 'Decide what this project is called and what it looks like' ROADMAP.md
 ---
 
