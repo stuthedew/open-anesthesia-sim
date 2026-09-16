@@ -1,9 +1,14 @@
 ---
 id: PL-D584
 title: PL-TH35's blocked-by names PL-8VL1, a planning item that closed 2026-09-12, so bin/docket check advises on every run that the Editor contract is ready to promote - the one thing ROADMAP.md and .claude/rules/ui-areas.md both say it must not do
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, docs
 feature: interface-areas
+touches: docs/items
 added: 2026-09-16
+verify: bin/docket check && grep -q '^blocked-by: PL-NMTF' docs/items/PL-TH35-*.md
 ---
 
 **Problem.** PL-TH35's blocked-by names PL-8VL1, a planning item that closed 2026-09-12, so bin/docket check advises on every run that the Editor contract is ready to promote - the one thing ROADMAP.md and .claude/rules/ui-areas.md both say it must not do

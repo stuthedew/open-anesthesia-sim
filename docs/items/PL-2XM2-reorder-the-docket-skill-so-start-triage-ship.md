@@ -1,7 +1,12 @@
 ---
 id: PL-2XM2
 title: Reorder the docket skill so start, triage, ship and close-out survive the 5,000-token post-compaction truncation
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: session-cost, docs
+feature: worker-instructions
+touches: .claude/skills/docket/SKILL.md
 added: 2026-09-16
 ---
 
@@ -34,3 +39,23 @@ the cap. That choice wants its own session.
 **Not today's cause.** These sessions run a 1,000,000-token window and peaked
 at 519,237, so none had compacted. This is latent, and it fires the first time
 one does.
+
+**Why it matters.** `CLAUDE.md` routes the close-out procedure to this skill by
+name - "The `docket` skill's close-out carries what `make check` decides for you
+and what it cannot". After a compaction that pointer resolves to nothing and
+nothing says so, so a session finishes an item without the procedure that
+defines finishing: the docs sweep, the gate report, the `--self` audit. That is
+the silent-wrong-answer shape `CLAUDE.md` names, in the apparatus rather than in
+a number. It is latent only because no session here has compacted yet.
+
+**Done when.** The four modes a session acts on - start an item, triage, ship a
+release, close out - are readable in the post-compaction copy by whichever route
+is chosen, and the whole copy is still followable by a session that never
+compacts.
+
+**Decision needed.** Which of three routes: reorder the modes by survival, split
+the skill into two files, or compress the four modes enough that all of them fit
+under the cap. They trade the truncated copy's correctness against the whole
+copy's readability differently, and the present workflow order is deliberate. A
+session can take this one - it rests on how the file is read, not on what the
+project wants.

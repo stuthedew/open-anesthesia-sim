@@ -1,8 +1,13 @@
 ---
 id: PL-W54S
 title: Decide what a broken-out top-level window owes docs/MODEL.md's unconditional display set, which PL-WLWY named as its own real work and then closed without choosing between its three readings
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: safety, anticipated
 feature: interface-areas
+blocked-by: PL-NMTF
+touches: docs/MODEL.md, ROADMAP.md
 added: 2026-09-16
 ---
 

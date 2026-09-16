@@ -1,8 +1,14 @@
 ---
 id: PL-6YL1
 title: Six open items name a shell-hook test suite as their verify pytest target while touching subprojects/docket/src, and the rule that catches exactly that class has zero false positives today
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, infra
+feature: queue-hygiene
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-16
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_verify_target_outside_the_docket_suite' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** Six open items name a shell-hook test suite as their verify pytest target while touching subprojects/docket/src, and the rule that catches exactly that class has zero false positives today

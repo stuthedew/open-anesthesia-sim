@@ -1,9 +1,14 @@
 ---
 id: PL-9PD6
 title: docs/interface-provenance.md states at line 94 that README.md records the Blender attribution and at its Attribution section that README.md deliberately does not yet carry it, which is the contradiction PL-RTG9 was refuted against
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, docs
 feature: interface-areas
+touches: docs/interface-provenance.md
 added: 2026-09-16
+verify: python3 tools/doc_check.py check && grep -qF 'and `README.md` does not yet' docs/interface-provenance.md
 ---
 
 **Problem.** docs/interface-provenance.md states at line 94 that README.md records the Blender attribution and at its Attribution section that README.md deliberately does not yet carry it, which is the contradiction PL-RTG9 was refuted against

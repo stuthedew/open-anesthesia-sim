@@ -1,8 +1,13 @@
 ---
 id: PL-HJPY
 title: PL-C842's LayoutModel has no representation for more than one window, which item 34's break-out requires and which PL-C842 itself recorded as the part most likely to change shape
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: planning
 feature: interface-areas
+blocked-by: PL-NMTF
+touches: docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-16
 ---
 

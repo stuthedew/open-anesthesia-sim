@@ -1,8 +1,14 @@
 ---
 id: PL-T83R
 title: main's quality run has failed on 32.7% of the pushes that reached a verdict since 2026-09-05, including one unbroken stretch of 50, so the red-main digest line is closer to routine than to an alarm
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: infra, session-cost
+feature: ci-cost
+touches: tools/main_ci_status.py, docs/WORKING_NOTES.md
 added: 2026-09-16
+verify: python3 tools/doc_check.py check && grep -qF 'attributed by failing step' docs/WORKING_NOTES.md
 ---
 
 **Problem.** main's quality run has failed on 32.7% of the pushes that reached a verdict since 2026-09-05, including one unbroken stretch of 50, so the red-main digest line is closer to routine than to an alarm
@@ -29,7 +35,7 @@ UTC) to run #1546 (`3d6d6ca5`, 2026-09-07 16:46 UTC) - **37 hours and fifty
 consecutive merges during which `main`'s whole-store check was red the whole
 time**.
 
-**Why that is a finding rather than a statistic.** `CLAUDE.md` states that a
+**Why it matters, and why this is a finding rather than a statistic.** `CLAUDE.md` states that a
 check firing every run without changing a decision is a defect in the check,
 because it trains a session to skim the region where a real advisory appears.
 The session-start digest's red-`main` line is exactly such a region, and

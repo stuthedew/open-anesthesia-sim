@@ -3310,6 +3310,60 @@ readout: what the tooltip may show", which derives the three-line form — so no
 session can close it either way. `PL-8PSW` shipped the legend and panel naming
 that make a curve attributable today; this is the remaining surface.
 
+**Eighteen more from the 2026-09-16 triage pass, in three groups.** All
+eighteen were captured on 2026-09-16, ten days after this gate was frozen, so
+"The gate is a snapshot" already places them in the next one; most were filed
+by `PL-BNYF`'s area-model queue audit. They are written down with their reasons
+rather than listed because each group carries a ground of its own, and because
+a reader finding them open would otherwise have to work out why.
+
+**Eight are apparatus, on the ground this subsection already states** —
+`PL-1T6T` (re-test the refusal of compaction), `PL-2XM2` (reorder the docket
+skill so its four acted-on modes survive post-compaction truncation), `PL-6YL1`
+(a check for the verify-target class), `PL-B11M` (detect a silent model
+fallback), `PL-C6XD` (one renderer for the `RESERVED` release verdict),
+`PL-JTHW` (a cancelled `main` run reported rather than passed over), `PL-R0Q0`
+(the safety-class gate advisory that fires forever), and `PL-Y1L0`
+(`outstanding_roadmap_edits` naming the milestone section a cut has passed).
+Every one sits wholly in the workflow lane and none can reach a reader of the
+simulator, so the refilling-queue arithmetic above applies to them unchanged.
+
+**Nine are the area model, and the gate cannot precede the thing they are
+about** — which is the ground `PL-TH35` and `PL-VN6M` are already deferred on
+two paragraphs up. `PL-NMTF` (no open item builds `ROADMAP.md` item 34's area
+system) is the head of it, and the rest are `blocked-by` it or waiting on the
+same scoping round.
+
+Four of the nine are `safety`-classed, which by the presence rule re-enters them
+here regardless of when they were found: `PL-7Z84` (a run has no identity a
+workspace can pin to), `PL-9LNF` (three `app/` surfaces own state a layout could
+duplicate or relocate), `PL-NWTM` (the unconditional displayed set has no
+structural home in the code) and `PL-W54S` (what a broken-out top-level window
+owes that set). Each is classed `anticipated`, on `PL-MN4J`'s ground one
+milestone further out: the splitter handles are inert today
+(`src/anesthesia_sim/app/qt_widgets.py:784`), so no reader can close, replace or
+cover a required value until item 34 makes them live, and a gate that exists to
+clear debt before a milestone begins cannot clear a hazard the milestone
+creates.
+
+`PL-9PD6` (`docs/interface-provenance.md` contradicts itself about what
+`README.md` records), `PL-D584` (`PL-TH35`'s `blocked-by` names an item that has
+since closed, so the store advises every run that the Editor contract is ready
+to promote) and `PL-J4NW` (`docs/ARCHITECTURE.md` routes every new display panel
+by a fixed two-level layout) are startable today, and are deferred on the
+ordinary snapshot ground instead: post-freeze `defect`s, neither `safety` nor
+`science`, whose problems do not predate the freeze. `PL-L8RN` (nothing enforces
+the one-adapter `QSplitter` confinement) is deferred because the boundary it
+would declare has no tree to sit over until the adapter exists.
+
+**One is the release train's own numbering, and no session can close it** —
+`PL-KQHN` (`ROADMAP.md` § "v0.4.26 - the interface moves to Qt" now says both
+that a patch cut takes this section's number and that the guard withholds it).
+It is product-lane, so this subsection's workflow-lane ground does not reach it,
+and it is `needs-decision` on a question `CLAUDE.md` puts on the project owner's
+side of the division of labour: what the release train does when a patch is cut
+mid-port. Like `PL-MN4J`, it waits on an answer rather than on attention.
+
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
 `### Declined to Gate ...` subsection after the gate heading and stops at the

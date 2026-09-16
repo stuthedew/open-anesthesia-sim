@@ -1,8 +1,13 @@
 ---
 id: PL-SSQW
 title: Decide the saved-workspace file - where it lives, how it is written, what a first run with no file does, and what a build does with a schema_version it does not support
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: planning
 feature: interface-areas
+blocked-by: PL-NMTF
+touches: docs/ARCHITECTURE.md
 added: 2026-09-16
 ---
 

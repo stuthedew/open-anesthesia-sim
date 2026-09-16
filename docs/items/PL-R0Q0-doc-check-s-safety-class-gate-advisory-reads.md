@@ -1,8 +1,14 @@
 ---
 id: PL-R0Q0
 title: doc_check's safety-class gate advisory reads only the frozen list, so a safety item deferred with a written reason advises forever
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: dev-tooling
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-16
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_deferred_safety_item_clears_the_class_advisory' tests/unit/test_doc_check.py
 ---
 
 **Problem.** `tools/doc_check.py` raises two gate advisories per open debt item:
@@ -37,3 +43,11 @@ advisory text, which currently offers a remedy it does not accept.
 `ROADMAP.md` § "The debt gate" is the rule being enforced.
 
 **Found 2026-09-16** while closing `PL-8PSW`.
+
+**Done when.** The advisory offers no remedy it will not accept. Either it reads
+the current gate's `### Declined to Gate ...` subsection, so a deferral with a
+written reason clears it exactly as it already clears the disposition advisory -
+or its text stops offering deferral and says why a `safety`- or `science`-classed
+item is held to a higher bar than the disposition rule. A test in
+`tests/unit/test_doc_check.py` pins whichever rule is taken, against a
+safety-classed item deferred with a reason.

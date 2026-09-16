@@ -1,8 +1,13 @@
 ---
 id: PL-L8RN
 title: Nothing enforces the one-adapter QSplitter confinement PL-C842 decided, because import_boundary_check.py confines root packages and PySide6 is one root package
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: defect, infra
 feature: interface-areas
+blocked-by: PL-NMTF
+touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py
 added: 2026-09-16
 ---
 

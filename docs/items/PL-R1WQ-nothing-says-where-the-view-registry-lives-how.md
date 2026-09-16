@@ -1,8 +1,13 @@
 ---
 id: PL-R1WQ
 title: Nothing says where the view registry lives, how a view-kind tag is allocated so a class rename does not trip the loud failure meant for a missing view, or how a pure-Python LayoutModel validates a kind tag without importing a Qt view
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: planning
 feature: interface-areas
+blocked-by: PL-NMTF
+touches: docs/ARCHITECTURE.md
 added: 2026-09-16
 ---
 

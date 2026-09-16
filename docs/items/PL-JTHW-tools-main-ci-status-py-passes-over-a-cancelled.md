@@ -1,8 +1,14 @@
 ---
 id: PL-JTHW
 title: tools/main_ci_status.py passes over a cancelled main run in silence, so after PL-SMN4 a commit with no whole-store verdict is indistinguishable from one nobody asked about
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect, infra
+feature: ci-cost
+touches: tools/main_ci_status.py, tests/unit/test_main_ci_status.py
 added: 2026-09-16
+verify: uv run pytest tests/unit/test_main_ci_status.py && grep -q 'def test_a_cancelled_main_run_is_reported' tests/unit/test_main_ci_status.py
 ---
 
 **Problem.** tools/main_ci_status.py passes over a cancelled main run in silence, so after PL-SMN4 a commit with no whole-store verdict is indistinguishable from one nobody asked about
@@ -46,3 +52,12 @@ in it.
 remain once eviction is gone is not known - every instance in the window above
 has that cause. If the honest answer is a handful a year, the cheapest shape
 may be a line in `advisory` rather than any new state.
+
+**Why it matters.** A commit that got no whole-store check and a commit nobody
+asked about are different facts, and the tool now reports them identically: it
+names the *previous* commit's verdict as "the most recent real answer about
+`main`", which is true of that commit and silent about the one that lost its
+run. A check reporting confidently about a question it did not answer is the
+silent-wrong-answer shape `CLAUDE.md` names, and it reaches the session-start
+digest, which is where a session forms its first view of whether `main` is
+sound.

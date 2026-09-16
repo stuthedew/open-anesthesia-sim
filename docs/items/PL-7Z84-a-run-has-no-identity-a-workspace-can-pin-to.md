@@ -1,8 +1,13 @@
 ---
 id: PL-7Z84
 title: A run has no identity a workspace can pin to - the dashboard addresses runs by their position in its own drawing order, and ROADMAP item 34 commits a workspace to pinning which run it shows
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: safety, anticipated
 feature: interface-areas
+blocked-by: PL-NMTF
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md
 added: 2026-09-16
 ---
 

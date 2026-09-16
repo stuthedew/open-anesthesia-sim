@@ -1,8 +1,12 @@
 ---
 id: PL-NMTF
 title: No open item builds ROADMAP item 34's area system at all - PL-3J2P and PL-C842 decided the representation and the container, PL-FTP5 recorded the provenance, and every other interface-areas item is a prerequisite waiting on a build item that does not exist
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: planning
 feature: interface-areas
+touches: ROADMAP.md
 added: 2026-09-16
 ---
 
@@ -38,3 +42,19 @@ request to write one now.
 ## Area-model audit (PL-BNYF)
 
 **Disposition: `missing-prereq`.** Surfaced 2026-09-16 by the area-model audit's completeness critic, after the main sweep had closed - which is the critic earning its place rather than a defect in the sweep.
+
+**Decision needed.** Who builds `ROADMAP.md` item 34's area system, and when.
+Two dispositions, and the queue needs one of them: **scope item 34 as a
+milestone now** - a design round producing its goal, required scope, definition
+of done and out-of-scope list, per `ROADMAP.md`'s development rules, which then
+yields the build items - or **record it as deferred** with the trigger that
+would bring it forward, and point the queue at that record.
+
+This is the project owner's. It decides what enters `ROADMAP.md` and in what
+order against the Qt port and `v0.5.0`, which `CLAUDE.md` puts on their side of
+the division of labour: "The division of labour is theirs to set direction and
+yours to make it real."
+
+Eleven open items are `blocked-by` this one. They are the design prerequisites
+the area system needs and none of them can be answered against an unscoped
+milestone, so the answer here releases the cluster and nothing else does.
