@@ -61,3 +61,31 @@ physical constants are stored with theirs.
 **Out of the current milestone.** v0.4.26 is the Qt port, whose definition of
 done is parity against a closed enumeration; a new readout is not parity. This
 is interface work for after the port.
+
+**THE TWO OPTIONS ABOVE ARE SUPERSEDED, 2026-09-16.** Put the choice between
+re-unitting the accounting panel and building a consumption readout beside it,
+the project owner answered neither: "the info on the panel is not info the
+user really needs or cares to see. At most, we could turn it into an optional
+area widget a user could add back down the road." So option 1 is dead — there
+is no reader-facing panel here to re-unit — and option 2 turns out not to be
+this item's to invent.
+
+**Because the consumption display already exists as intent.** `ROADMAP.md`
+§ "Planned milestones" item 28, "Add agent cost ... The economic argument for
+low fresh gas flow is a standard teaching point and currently the one lesson in
+this class of simulator that the application has the numbers for and does not
+draw." That is the home for a liquid-millilitre figure, and `PL-H4N8` carries
+the correction item 28 needs before it is built (it names the wrong quantity).
+
+**What is left of this item, then.** Only the accounting Editor's own unit, and
+the answer is that it does not change: litres of equivalent pure agent gas is
+the natural unit of a mass-conservation instrument, its residual lines are
+meaningless in millilitres, and its reader — whoever opens it from the chooser
+— is asking whether the model conserves mass, not what the case cost.
+
+**So this item is a candidate for `dropped`**, with `PL-S6WW` (the
+undocumented reference temperature) and `PL-KZ99` (molar mass and liquid
+density) surviving it and re-pointing at item 28. That disposition is the
+project owner's: it turns on whether item 28 stays on the roadmap, which is a
+scope question rather than a display one. Do not drop it on a session's own
+judgment.

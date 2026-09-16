@@ -44,3 +44,11 @@ in `core/parameters.py`; the conversion itself in `core/`, pure and unit-
 explicit, never in a UI callback. Blocked by `PL-S6WW`: the conversion cannot
 be written until the gas volumes' reference temperature is on record, because
 that temperature is one of its two inputs.
+
+**Re-pointed 2026-09-16.** This was filed to serve a liquid-millilitre figure
+on the accounting panel; the project owner has since ruled that panel
+developer-facing (`PL-B396`). The consumer is now `ROADMAP.md` § "Planned
+milestones" item 28, agent cost, which needs the same two constants for the
+same conversion. Nothing about the work changes — the same two fields, the
+same primary source, the same `schema_version` bump, the same block on
+`PL-S6WW`. Only the thing that consumes it does.
