@@ -1,14 +1,15 @@
 ---
 id: PL-PHKP
 title: Move the v0.5.x interface pass after v0.7.0 on the timeline: item 34 and break-out introduce the area header, workspace tab strip and drag affordances that a visual pass run before them would have to be redone for
-feature: interface-areas
-added: 2026-09-16
 priority: P3
 effort: S
 status: done
 classes: planning, docs
+feature: interface-areas
 touches: ROADMAP.md, docs/WORKING_NOTES.md
+added: 2026-09-16
 closed: 2026-09-16
+pr: 634
 verify: python3 tools/doc_check.py check && grep -qF 'v0.7.x — the interface pass' ROADMAP.md
 ---
 
