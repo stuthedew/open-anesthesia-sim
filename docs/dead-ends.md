@@ -71,3 +71,4 @@ have to rediscover by building the thing.
 ## Process claims that did not survive checking
 
 - **Raising the apparatus capture bar on the self-generation rate** — refuted: the count never run came back 67% still-real findings. Name the number and count it before tightening anything. `PL-LKGL`
+- **Detecting duplicate captures by shared cited referents** (item ids, shas, `#NNN`, paths) — refuted 2026-09-16: fires on 84% of open items and ranks the true original in the top 3 for only 3 of 5 confirmed pairs; same-day narrowing is worse, 95%. This store is 86.1% cross-referenced, so referent overlap cannot separate a duplicate from an ordinary citation. Title terms are worse again. `PL-85NT`
