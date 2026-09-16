@@ -56,3 +56,55 @@ was reached for first.
 
 **Timing.** Before `PL-LH18` (the item building main UI elements as Blender-style
 areas, in flight on another branch) reaches its layout work.
+
+---
+
+## Recommendation, 2026-09-16: the tree, behind a layout interface of our own
+
+This reverses the recommendation the first two drafts of this item carried. The
+project owner asked directly whether the choice is a preference or a real
+trade-off, and weighing the cost side properly changes the answer.
+
+**There is a real trade-off, and it is ownership.** A shared-vertex planar
+subdivision is not a few hundred lines of geometry; it is a few hundred lines of
+geometry plus the cases that make it correct — minimum-size propagation
+cascading across every area touching a moved vertex column, join validity when a
+shared edge does not span both areas, and the degenerate states reachable by
+dragging one border past another. Blender carries real code for each. Every bug
+in ours is a layout a learner can enter and not leave, in code that is not the
+science, maintained forever by one person.
+
+**The payoff is smaller here than in Blender, for a specific reason.** Blender
+is a professional tool re-tiled constantly across wildly different tasks. A
+resident picks a workspace tab and leaves it. The graph buys *authoring*
+fidelity, which this audience exercises rarely; what they exercise constantly is
+the *result*, which both representations deliver identically.
+
+**And the default layout this project specified is already a tree.** Item 34's
+"central graph of the compartments with the other views arranged around it" is
+an outer split into three bands with the middle band split into three columns.
+The top and bottom bands span the full width, so no border has a perpendicular
+partner to come apart from. The junction problem does not arise in our own
+stated default.
+
+**What would falsify this** — stated before building, per
+`.claude/rules/expert-review.md`. The graph wins the moment a wanted layout puts
+a border running the full width or height *past* a perpendicular one: a 2×2 or
+3×3 grid of views. That is the tell, and it is measurable once the first real
+workspaces exist. It is not measurable now, which is the argument against paying
+for the graph now: no one knows whether the maintenance workspace wants a grid,
+and item 36's catalogue is unscoped.
+
+**The condition that makes this safe to defer**, and the half that is not
+optional: a `LayoutModel` of our own owns split / join / resize / swap and
+layout persistence, with `QSplitter` behind it as an implementation detail. No
+widget calls `saveState()`, no widget reaches for a parent splitter, no layout
+state lives in a widget. `PL-LH18`'s path-scoped rule already requires views to
+be interchangeable rather than merely movable, which is most of this; what this
+adds is that the *container* is also behind an interface. Without that
+condition the recommendation flips, because the tree stops being reversible.
+
+**Not decided here.** This is a recommendation to the project owner, not a
+decision taken. `ROADMAP.md` item 34 and § "v0.4.26" Required scope item 2
+already name nested `QSplitter`s, so adopting this changes nothing in the
+roadmap except to record why; adopting the graph changes both.
