@@ -786,6 +786,11 @@ class _Refs:
     #: computes it, and `orphaned` would otherwise ask git the same question a
     #: second time to find out *which* half was which.
     landing: dict[str, tuple[tuple[str, ...], tuple[str, ...]]]
+    #: Per candidate ref, the commit it forked from. Kept because resolving it
+    #: is how a ref is decided readable at all, and `_taken_on_base` needs the
+    #: same commit to bound its window - asking git for it a second time could
+    #: return a different answer about where the branch left from.
+    fork: dict[str, str]
 
 
 def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) -> _Refs:
@@ -822,6 +827,7 @@ def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) 
     unlanded: list[str] = []
     unreadable: set[str] = set()
     landing: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {}
+    fork: dict[str, str] = {}
     # One walk of the base's objects, before the loop rather than inside it:
     # the question is per blob and the answer is the same set for every ref.
     base_blobs = _base_blobs(base, root, run)
@@ -830,6 +836,7 @@ def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) 
         if not fork_point:
             unreadable.add(name)
             continue
+        fork[name] = fork_point
         split = _landing_split(name, fork_point, base_blobs, root, run)
         if not _work_already_on_base(split):
             unlanded.append(name)
@@ -840,6 +847,7 @@ def _unlanded_refs(base: str, root: Path, run: Runner, *, include_remote: bool) 
         unlanded=unlanded,
         unreadable=unreadable,
         landing=landing,
+        fork=fork,
     )
 
 
@@ -919,6 +927,96 @@ def _closed_on_base(
         if text and parse_item(text, path.rsplit("/", 1)[-1]).status in CLOSED_STATUSES:
             closed.add(identifier)
     return frozenset(closed)
+
+
+def _taken_on_base(
+    claims: dict[str, str],
+    forks: dict[str, str],
+    items_dir: str,
+    base: str,
+    root: Path,
+    run: Runner,
+) -> frozenset[str]:
+    """Of `claims`, the ids whose ref has nothing left to give - without closing them.
+
+    **`_closed_on_base` is the same question asked of the only answer it can
+    see, and a triage pass is the gap between them.** That guard drops an id
+    whose item the base records as *closed*, which covers a branch that shipped
+    something. A pass that triages an item lands it at `ready`, `blocked` or
+    `needs-decision`, so the item is open on the base, the guard cannot fire,
+    and the spent claim outlives the merge (`PL-LKFP`). Measured 2026-09-16 on
+    `origin/main` at `2a538ec1`: `PL-2M4X` read `P3 - S - ready` there and
+    `bin/docket show` still printed `do not start PL-2M4X again`, naming a
+    branch whose `#616` had merged forty minutes earlier.
+
+    **Why the ref-level content test cannot catch it.** `_work_already_on_base`
+    asks whether every blob a ref introduces is one the base has held, and one
+    shared file is enough to make a fully landed branch answer no forever: a
+    squash resolves `ROADMAP.md` against a base that has moved, and later merges
+    then rewrite lines the branch added, so the branch's own copy is a blob the
+    base has never held. Both branches measured that day were outstanding on
+    that path and on nothing else - 6 item blobs of 7 landed on one, 13 of 14 on
+    the other. `_superseded` answers the second of them and not the first,
+    because a rewrite reads as an addition rather than as a removal.
+
+    So the question moves to where the report's own subject already is: per id,
+    rather than per ref. Two facts, and both are needed.
+
+    - **The base's copy of the item's own file is the ref's copy**, byte for
+      byte, so the ref carries no unmerged change to that item. On its own this
+      is not enough: a session that has pushed `src/` work under its item's id
+      but not yet edited the item file looks exactly like this.
+    - **The base took a commit leading with that id, at or after the ref's fork
+      point.** That is what says the base has already had this ref's work under
+      this name. The fork point is what keeps it honest - an *older* commit
+      naming the id is the item's own capture, which every session's branch
+      forks from, and counting it would suppress the live work this whole read
+      exists to protect.
+
+    Every silence keeps the claim: no fork point, no file on either side, a blob
+    git would not resolve. That is the direction the module fails in by
+    construction - an item wrongly left marked costs a session one alternative
+    pick, an item wrongly unmarked costs two sessions one merge.
+
+    The residual case is a session whose *own* branch has a commit leading with
+    its id already merged from underneath it while the item file stayed
+    untouched. That branch is the `PL-3D2M` shape - work its pull request left
+    behind - which `orphaned` reports on its own terms.
+    """
+    if not claims:
+        return frozenset()
+    prefix = items_dir.strip("/") + "/"
+    names: dict[str, str] = {}
+    for line in run(["ls-tree", "--name-only", base, "--", prefix], root).splitlines():
+        path = line.strip()
+        if not path:
+            continue
+        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
+        if match is not None:
+            names.setdefault(match.group(1).upper(), path)
+    # One subject walk per fork point rather than per id: two refs that forked
+    # from the same commit ask git the identical question.
+    since: dict[str, set[str]] = {}
+    taken: set[str] = set()
+    for identifier, ref in claims.items():
+        fork_point = forks.get(ref, "")
+        path = names.get(identifier.upper(), "")
+        if not fork_point or not path:
+            continue
+        sides = [run(["rev-parse", f"{end}:{path}"], root).strip() for end in (base, ref)]
+        if not all(sides) or sides[0] != sides[1]:
+            continue
+        if fork_point not in since:
+            since[fork_point] = {
+                found
+                for subject in run(
+                    ["log", "--format=%s", f"{fork_point}..{base}"], root
+                ).splitlines()
+                for found in leading_ids(subject)
+            }
+        if identifier.upper() in since[fork_point]:
+            taken.add(identifier)
+    return frozenset(taken)
 
 
 def _queue_only_work(
@@ -1140,6 +1238,22 @@ def branches_in_flight(
     # cost to the few entries that exist rather than the whole store
     # (`PL-6BDX`).
     for identifier in _closed_on_base(set(in_flight), items_dir, base, root, run):
+        del in_flight[identifier]
+
+    # **And an item the base took without closing leaves it too** (`PL-LKFP`).
+    # `_closed_on_base` above covers a branch that shipped something; a triage
+    # pass lands its items open, so the guard cannot fire and the claim outlives
+    # the merge. Asked of what is left rather than of what that guard already
+    # removed, and asked per id because the ref-level content test is what a
+    # shared file defeats.
+    for identifier in _taken_on_base(
+        {identifier: branch.name for identifier, branch in in_flight.items()},
+        refs.fork,
+        items_dir,
+        base,
+        root,
+        run,
+    ):
         del in_flight[identifier]
 
     # Refs whose commits went unread contribute no paths either, for the reason

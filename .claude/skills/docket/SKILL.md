@@ -16,6 +16,26 @@ no install step. `make docket` is the same validation, wired into `make check`.
 `list`, `check`, and `concurrent` exist so a session spends tokens on the
 work rather than on the queue. Read an item's file when implementing it.
 
+## Always
+
+Kept at the top deliberately: compaction re-injects a skill body capped at
+5,000 tokens and truncates from the end, and this file is roughly 18,000.
+A block named `Always` that only a session which never compacted can read
+is the one placement it must not have.
+
+
+**Check repository state; never recall it.** Rule 14 of
+`.claude/rules/instruction-writing.md` requires anything asserted about
+external state to be re-verified before it is repeated. Here that is one
+command each, against the remote rather than the local checkout: `bin/docket
+show <id>` for an item's status, `git log origin/main` for what has merged,
+`git fetch --tags` for what is tagged, the pull request's own state for
+whether it is open. Say what the check showed when it changes the answer.
+
+`make docket` after editing the store — it gates `make check` and CI, and its
+errors mean an item is about to be silently wrong. Commit item changes with
+the work they describe. An uncommitted queue is a lost queue.
+
 ## The two modes this queue serves
 
 The project owner works in two distinct modes, and they have opposite cost
@@ -1240,16 +1260,3 @@ in the tree reports it; `git ls-remote --tags origin` is what answers.
    Run the bare `bin/docket verify <id>` only when reviewing a branch somebody
    else was commissioned to write.
 
-## Always
-
-**Check repository state; never recall it.** Rule 14 of
-`.claude/rules/instruction-writing.md` requires anything asserted about
-external state to be re-verified before it is repeated. Here that is one
-command each, against the remote rather than the local checkout: `bin/docket
-show <id>` for an item's status, `git log origin/main` for what has merged,
-`git fetch --tags` for what is tagged, the pull request's own state for
-whether it is open. Say what the check showed when it changes the answer.
-
-`make docket` after editing the store — it gates `make check` and CI, and its
-errors mean an item is about to be silently wrong. Commit item changes with
-the work they describe. An uncommitted queue is a lost queue.

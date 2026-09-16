@@ -1,0 +1,60 @@
+---
+id: PL-H253
+title: Measure session context length as the dominant instruction-adherence variable, and give a session a way to see its own
+priority: P2
+effort: S
+status: done
+classes: session-cost
+verify: grep -qF 'at about 150,000 tokens' CLAUDE.md && grep -qF 'context_usage.used_tokens' CLAUDE.md && grep -qF 'session-length cap in' docs/resident-instructions.md && python3 tools/doc_check.py check
+touches: CLAUDE.md, docs/resident-instructions.md
+added: 2026-09-16
+closed: 2026-09-16
+---
+
+**Problem.** Instruction adherence in this project is being attributed to
+resident-file size, and the measurement does not support it. On 2026-09-16 the
+resident set was 52,000 characters over 749 lines — roughly 13,000–15,000
+tokens. Concurrent sessions on this repository were running at 263,964,
+265,066, 295,446, 328,374, 362,582, 453,340 and 519,237 used tokens against a
+1,000,000-token window (`list_sessions`, `external_metadata.context_usage`).
+
+The resident set is therefore 2.5%–5.6% of those contexts. Halving `CLAUDE.md`
+— which no rule in `docs/resident-instructions.md` would permit anyway — moves
+that share by about one percentage point.
+
+**The threshold, per `.claude/rules/expert-review.md`.** Trimming resident text
+is the right primary lever only if resident share is what drives adherence. The
+count says it is not: the sessions are 5×–20× the resident set. What the
+evidence attributes degradation to is total context length. Attention dilution
+scales with input length, with a measured negative correlation between input
+length and system-prompt adherence; multi-turn adherence degrades across turns
+independently of instruction size
+([context degradation](https://www.emergentmind.com/topics/context-degradation-in-large-language-models),
+[long-context instruction following](https://aclanthology.org/2026.findings-eacl.254.pdf),
+[multi-turn attention loss](https://arxiv.org/pdf/2605.12922)).
+
+`CLAUDE.md` § "Session and tool-use efficiency" already states the rule — "Keep
+a session short and scoped to one topic; start a fresh one for an unrelated
+topic rather than continuing or compacting a long one". It is being missed by
+3×–5×, and nothing surfaces it. A session cannot see its own context usage from
+inside; the harness can, through `get_session`.
+
+**Decided, project owner, 2026-09-16: hand off at about 150,000 tokens, and
+build no mechanism for it.** The options put were a `SessionStart` budget line,
+a periodic `get_session` self-check, a low `/autocompact`, or nothing beyond
+ending sessions sooner. The last was taken.
+
+What landed is the rule and not a mechanism: one sentence in `CLAUDE.md`
+§ "Session and tool-use efficiency", naming the number, the one call that reads
+it (`get_session`, `external_metadata.context_usage.used_tokens` — confirmed
+against a live call, not assumed), and the measurement that makes it the
+primary lever. No hook, no script, no polling loop.
+
+**Why the reason is in the rule rather than only here.** Without it the next
+session to notice a 444-line `CLAUDE.md` re-derives the trim proposal from
+scratch, which is what this pass was. The sentence forecloses it by carrying
+its own refutation — 2.5–5.6% — so the objection is answered where it will be
+raised.
+
+**Honoured on the spot.** The session that landed this was at 176,689 tokens
+when it read its own number, past the cap it was writing, and handed off.
