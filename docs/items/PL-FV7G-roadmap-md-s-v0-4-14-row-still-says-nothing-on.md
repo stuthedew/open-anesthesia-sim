@@ -1,8 +1,14 @@
 ---
 id: PL-FV7G
 title: ROADMAP.md's v0.4.14 row still says nothing on the documented close-out path names verify --self, which PL-7XTS made false
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
+feature: release-roadmap-seam
+touches: ROADMAP.md
 added: 2026-09-15
+verify: python3 tools/doc_check.py check && ! grep -qF 'names that mode yet' ROADMAP.md
 ---
 
 **Problem.** ROADMAP.md's v0.4.14 row still says nothing on the documented close-out path names verify --self, which PL-7XTS made false
@@ -30,3 +36,24 @@ the history and removes the live claim.
 `tools/doc_check.py` cannot decide this: the citation resolves and the prose is
 internally consistent. It is exactly the judgment half the close-out sweep
 reserves for a reader.
+
+**Why it matters.** `ROADMAP.md` is one of the two documents a later session
+cites to *refuse* work, so a live-sounding claim in it is obeyed rather than
+checked. The clause says nothing on the documented close-out path names
+`verify --self`; `PL-7XTS` put exactly that into step 5 of the `docket` skill's
+"Mode: close out an item" and closed. A session reading the row now is told the
+gap is open, and the forward reference it offers - "`PL-7XTS` was filed in this
+range to say so" - resolves to a closed item, which reads as work still owed by
+somebody.
+
+`tools/doc_check.py` cannot see it, and this is worth stating because the
+close-out sweep leans on that tool: the citation resolves, the prose is
+internally consistent, and every check passes. This is precisely the judgment
+half the sweep reserves for a reader.
+
+**Done when.** The `v0.4.14` row reads as history rather than as current state.
+Past-tensing the clause - "nothing on the documented close-out path named that
+mode, and `PL-7XTS` was filed in this range to say so" - is the fix the brief
+argues for: every other clause in that row is plainly historical, the word
+"yet" is what makes this one read as a live claim, and removing it keeps what
+the range actually did. `python3 tools/doc_check.py check` passes afterwards.

@@ -2675,7 +2675,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 141 entries
+### Declined to Gate 2 on the refilling-queue ground — 148 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3103,6 +3103,52 @@ its merits: it is a false guarantee in a workflow comment plus a narrow
 coverage hole that `main`'s next successful run closes, and admitting it would
 grow a gate that is not draining. It is the workflow lane, held to
 `.claude/rules/apparatus-standard.md`, and reaches no reader of the simulator.
+
+**Seven more from the 2026-09-16 triage pass** (`PL-0C6W`), over the fourteen
+captures open that morning. All seven were captured on 2026-09-15 or
+2026-09-16, nine and ten days after the 2026-09-06 freeze, so "The gate is a
+snapshot" already places them in the next gate; they are written down because
+each is debt - five classed `defect`, and `PL-6QZP` and `PL-PFK1` by their
+`needs-decision` status - and a reader finding one open would otherwise have to
+work out why it is absent from a gate this size.
+`PL-1RTM`, `PL-6QZP`, `PL-7CSP`, `PL-99YZ`, `PL-PFK1`, `PL-Q8RQ`, `PL-Z9K5`.
+
+**The arithmetic has changed under this section, and the ground is stated on
+what is true now rather than recited.** The paragraphs above decline on a gate
+"not draining" and then "finally draining"; `bin/docket wave` reads it today at
+**170 entries, 165 cleared, 5 open - and 0 that this gate can clear**, all five
+blocked on work outside it. So the refilling-queue argument no longer describes
+the fact pattern, and a weaker version of it should not be borrowed. What
+applies instead is simpler: the gate has done its job. Admitting seven
+post-freeze apparatus findings would re-open a cleared gate and hold v0.5.0 -
+a simulator milestone - behind workflow-lane debt, which is the outcome the
+snapshot rule exists to prevent. The timeline also puts v0.4.26 ahead of
+v0.5.0, so this gate is not even the beat that is due.
+
+**Three of the seven describe problems that are themselves new**, which defers
+them by the snapshot rule's own terms rather than by any exception: `PL-6QZP`
+and `PL-PFK1` are second-order consequences of `PL-69JZ` and `PL-7XTS` (closed
+2026-09-12 and 2026-09-15), and `PL-Z9K5` is a residual gap inside the
+exemption `PL-ZYQC` produced (closed 2026-09-12). The other four - `PL-1RTM`,
+`PL-7CSP`, `PL-99YZ`, `PL-Q8RQ` - describe problems that predate the freeze and
+pass the presence test squarely; they are declined on the ground stated above,
+with that said rather than blurred.
+
+**Six sit wholly in the workflow lane**, where the groups before them do:
+apparatus held to `.claude/rules/apparatus-standard.md`'s lower bar, none of
+which can reach a reader of the simulator. `PL-1RTM` is the exception and is
+named rather than quietly counted with them - its `touches` reaches
+`docs/ARCHITECTURE.md`, which `docket.toml` deliberately keeps out of
+`workflow_paths` because it is written for a reader of the simulator. Its
+product-lane half is one sentence describing what a tooling check covers, not
+anything a clinician could read a number from, so it is declined with the rest.
+
+`PL-Q8RQ` is the one to watch among them, and it is deferred with that said: a
+bare `pytest -k SUBSTRING` exits 5 when it matches nothing, so it reads as a
+command correctly failing before the work and goes on reading that way
+afterwards. `PL-S5YM` turned `main` red exactly this way, and four open items
+carry the shape today. It is recommended as the first of these seven taken off
+the list.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first

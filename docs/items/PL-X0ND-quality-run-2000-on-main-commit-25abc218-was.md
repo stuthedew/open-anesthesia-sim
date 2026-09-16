@@ -1,8 +1,12 @@
 ---
 id: PL-X0ND
 title: quality run 2000 on main commit 25abc218 was cancelled 8s in, so that commit has no verdict, which is exactly what PL-QD9K's cancel-in-progress exemption for refs/heads/main is supposed to prevent
-status: untriaged
+status: dropped
+feature: ci-cost
+touches: .github/workflows/quality.yml
 added: 2026-09-15
+closed: 2026-09-16
+reason: Duplicate of `PL-SMN4`, which describes the same cancellation of the same run from the same evening, was captured first, and is already triaged `ready` and declined to Gate 2. `PL-SMN4` is also the better brief: it scopes the loss honestly (main is linear, so the next successful push run covers the accumulated store state; what is genuinely lost is that commit's own run and the truth of the comment), and it seats itself `P2` on the false guarantee rather than on the coverage hole. The one thing this item added - confirming the pending-run mechanism, which `PL-SMN4` labels an inference and explicitly asks to be checked against GitHub's documentation before the fix is designed - has been folded into `PL-SMN4` rather than lost here. Filed without checking the open queue first, which is exactly the failure `PL-99YZ` and `PL-85NT` describe
 ---
 
 **Problem.** quality run 2000 on main commit 25abc218 was cancelled 8s in, so that commit has no verdict, which is exactly what PL-QD9K's cancel-in-progress exemption for refs/heads/main is supposed to prevent

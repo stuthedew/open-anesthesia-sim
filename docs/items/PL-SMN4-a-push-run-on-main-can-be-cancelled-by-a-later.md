@@ -73,3 +73,45 @@ claiming it does and says what actually holds. Either way the comment cites
 give `main` pushes a per-commit concurrency group (`${{ github.sha }}`) so no
 two ever share one; or accept the queue and add a check that a commit on `main`
 carries a completed run.
+
+**Update 2026-09-16: the mechanism is confirmed, and the inference above was
+right.** Folded in from `PL-X0ND`, a duplicate capture of this same run,
+dropped in the 2026-09-16 triage pass (`PL-0C6W`).
+
+Two pieces of evidence, neither available to the session that wrote the
+paragraph above.
+
+**The run never started a job.**
+`GET /repos/stuthedew/open-anesthesia-sim/actions/runs/35033624911` returns
+`conclusion: cancelled` with `run_started_at` and `updated_at` eight seconds
+apart, and `.../runs/35033624911/jobs` returns `total_count: 0`. A run cancelled
+with no job ever created was cancelled while *pending*, which is the state this
+item's inference named and is not the shape a hand cancellation leaves.
+
+**GitHub's documentation states the rule.** The egress block that stopped the
+original confirmation is still in place for `docs.github.com`, but the sentence
+is quoted in indexed copies and in GitHub's own community threads: "By default,
+any existing pending job or workflow in the same concurrency group will be
+canceled and the new queued job or workflow will take its place. By default,
+only one job or workflow run can be pending in a concurrency group at a time."
+
+- <https://docs.github.com/actions/writing-workflows/choosing-what-your-workflow-does/control-the-concurrency-of-workflows-and-jobs>
+- <https://github.com/orgs/community/discussions/41518> - the same behaviour
+  reported as a defect by users, worth reading before assuming this repository
+  is misconfigured.
+
+So `cancel-in-progress` governs the in-progress run and nothing else, and the
+queue slot behind it holds exactly one run. Runs 1999, 2000 and 2001 all shared
+the group `quality-refs/heads/main`: 1999 was *in progress* and protected by
+`cancel-in-progress: false`; 2000 was *pending* and protected by nothing; 2001
+arrived seven seconds later and took the slot. That also answers the objection
+that a concurrency group would have taken the oldest first - 1999 survived
+because in-progress and pending runs are governed by different rules, not
+because of ordering.
+
+**What this settles for the fix.** The first candidate shape below - a
+per-commit concurrency group on `main` pushes - is the one the mechanism
+supports, and the obvious-looking alternative of adjusting `cancel-in-progress`
+is ruled out: it does not reach the queue at all. Nothing here is a
+misconfiguration to correct; the expression evaluates exactly as written, and
+what is wrong is that `concurrency` cannot deliver what the comment promises.
