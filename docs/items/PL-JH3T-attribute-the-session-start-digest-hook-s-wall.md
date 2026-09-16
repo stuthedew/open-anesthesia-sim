@@ -52,3 +52,18 @@ cd <repo> && for s in "bin/docket branch --brief" "bin/docket digest" \
 where it occurs, and either the cause is fixed or this item records why the cost
 is accepted. `PL-RC86` is the fix worth considering if the attribution lands on
 the network stages.
+
+---
+
+**Answered 2026-09-16, same day.** The owner ran the attribution on their
+machine. `bin/docket digest` is **17.64 s of the 20.01 s**, 88%, against 1.50 s
+in a session container. The network hypothesis above is wrong and is refuted in
+`PL-RC86`: `digest` touches no network at all.
+
+The cause is git process spawns - 192 per `digest`, at ~92 ms each on that
+machine against 2.1 ms in a container, a 44x spread. Neither the store nor the
+item count is involved: 1,073 files and 5.1 MB parse in 0.019 s. `PL-MMVF`
+carries the repo-side half (82 of the 192 calls are exact duplicates); the
+per-spawn price is the machine's and is the larger of the two levers.
+
+This item's question is answered and it should close at triage.

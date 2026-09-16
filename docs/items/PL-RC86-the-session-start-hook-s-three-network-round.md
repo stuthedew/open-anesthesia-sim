@@ -35,3 +35,28 @@ here to win.
 silent-failure behaviour unchanged and `tests/unit/test_docket_digest_hook.py`
 still passing, or this item records the measurement that showed the saving was
 not worth the complexity.
+
+---
+
+**Refuted the day it was filed, 2026-09-16, before any work started.** The
+premise was that a slow link made the hook's serial network stages the cost.
+Measured on the machine that actually produces the slow session start:
+
+| stage | owner's macOS machine | session container |
+| --- | --- | --- |
+| `bin/docket branch --brief` (network) | 0.96 s | 0.81 s |
+| `bin/docket digest` (**no network**) | **17.64 s** | 1.50 s |
+| `tools/dead_ends.py emit` | 0.08 s | 0.03 s |
+| `tools/main_ci_status.py` (network) | 1.32 s | 0.85 s |
+| sum | 20.01 s | 3.19 s |
+
+Both network stages together are 2.28 s of a 20.01 s session start, and
+overlapping them could save at most about 1 s. The 17.64 s is `digest`, which
+goes to the network never - it is git process spawns, 192 of them, at ~92 ms
+each on that machine. `PL-MMVF` is the real finding and this one should close
+at triage: the complexity it would add to a hook whose silent-failure
+simplicity is worth keeping buys a saving that is now measured and small.
+
+This is `.claude/rules/expert-review.md`'s rule arriving the expensive way -
+the hypothesis carried a plausible mechanism and no number, and the number was
+one command away.
