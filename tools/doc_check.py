@@ -2814,9 +2814,11 @@ def check_ruff_cache(root: Path, report: Report) -> None:
     The exposure is the tree outside the package, which is what makes it easy
     to miss rather than rare: isort's `detect-same-package` branch settles an
     `anesthesia_sim.*` import first-party for any file under
-    `src/anesthesia_sim/` before the filesystem probe is reached, so `tests/`,
-    `tools/` and `spikes/` are where a deleted module actually shows up - the
-    four files the port left stale were all of them.
+    `src/anesthesia_sim/` before the filesystem probe is reached, so `tests/`
+    and `tools/` are where a deleted module actually shows up. All four files
+    the port left stale were outside the package that way, two of them in the
+    Qt spike tree `PL-7SVX` has since deleted - which narrows where this can
+    happen without changing that it can.
 
     An exact rule about one flag on one line, so a hard failure rather than an
     advisory - there is no context in which a cached `ruff check` is the

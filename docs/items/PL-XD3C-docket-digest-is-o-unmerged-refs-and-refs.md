@@ -2,6 +2,7 @@
 id: PL-XD3C
 title: docket digest is O(unmerged refs) and refs accumulate without bound, so session start gets slower every month on a long-lived clone and never on a fresh container
 status: untriaged
+feature: session-start-cost
 added: 2026-09-16
 ---
 

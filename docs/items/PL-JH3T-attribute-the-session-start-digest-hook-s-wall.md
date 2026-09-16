@@ -2,6 +2,7 @@
 id: PL-JH3T
 title: Attribute the session-start digest hook's wall-clock cost to a stage: the only number on record is 20.7s median and the hook measures 3.0s in a session container
 status: untriaged
+feature: session-start-cost
 added: 2026-09-16
 ---
 
