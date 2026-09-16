@@ -3336,8 +3336,8 @@ v0.5.0 is complete only when:
 
 - Define equations, units, assumptions, and reference cases before changing the
   scientific core.
-- Keep simulation code independent of Flet, wall-clock time, filesystem state,
-  and display dimensions.
+- Keep simulation code independent of the UI toolkit, wall-clock time,
+  filesystem state, and display dimensions.
 - Store model parameters as validated data with schema version and provenance;
   do not place executable equations in data files.
 - Preserve deterministic results for identical initial state, events, and time

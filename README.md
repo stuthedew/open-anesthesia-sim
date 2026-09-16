@@ -143,8 +143,11 @@ Building from source needs two things:
   predates it.
 - **On Linux, `libegl1`** (`apt install libegl1`), which the Qt interface
   needs and the PySide6 wheels do not carry. Nothing
-  else: the other libraries Qt expects are on an ordinary desktop already, and
-  macOS and Windows need nothing extra.
+  else on an ordinary desktop: the four other OS libraries Qt links -
+  `libgl1`, `libxkbcommon0`, `libdbus-1-3` and `libfontconfig1` - are already
+  there, and macOS and Windows need nothing extra. On a minimal container,
+  where they may not be, `docs/ARCHITECTURE.md` § "Dependencies" has the
+  measured list of what the wheels expect from the OS.
 
 ```bash
 git clone https://github.com/stuthedew/open-anesthesia-sim.git

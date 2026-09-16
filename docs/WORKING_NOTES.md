@@ -1122,6 +1122,26 @@ frame at 60 fps is not the headroom 3.3 ms implied. The number to design
 against is the segment count, since the per-column cost is the smaller half
 once there is more than one.
 
+**Not a live question, and that is the answer (2026-09-16, `PL-3SQT`).** The
+port changed what this note is about rather than answering it again. pyqtgraph
+requires `numpy>=1.25.0` outright, so numpy is installed in every environment
+this project has and `uv.lock` names the version - and no module under `src/`
+imports it. Nothing is being avoided, and nothing is bending in order to avoid
+it: `app/qt_chart.py` hands pyqtgraph `list(...)` because a list is one of the
+two types `PlotCurveItem` takes, and producing arrays upstream instead would
+recover 0.04-0.14% of a frame (measured 2026-09-16, six traces, three plot
+widths).
+
+So there is no current need and nothing to declare either way, and this note
+records that rather than a new argument. What is dead is the 2026-09-05
+reasoning: both figures it rested on measure code `PL-2FM6` and `PL-8LXM`
+deleted, so it should not be cited. **Decide it in the commit that wants it** -
+a package this project calls is one it declares, and until one does,
+`pyproject.toml` lists what the project depends on and nothing else. (Project
+owner, 2026-09-16: do not take a position on numpy until it is relevant. The
+longer re-argument `PL-3SQT` first wrote here was the thing that rule was aimed
+at, and was cut to this.)
+
 ## Decided: control resolution is not what the interface promised at speed - PL-X9KD, PL-NBWP, PL-NBCJ (2026-09-06)
 
 `PL-X9KD` re-derived `MAXIMUM_SIMULATION_STEP_S` as a *declared control-resolution

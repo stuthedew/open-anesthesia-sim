@@ -59,27 +59,27 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
 ]
 dependencies = [
-    # Both toolkits, for the length of the Qt port and no longer. The port
-    # lands a chart, then a dashboard, then deletes Flet (`ROADMAP.md`
-    # § "v0.4.26 - the interface moves to Qt", Required scope items 1, 2 and
-    # 7), and the Flet build stays the shipped interface until the second of
-    # those. So PySide6 and pyqtgraph enter here with `PL-G59B`, the chart,
-    # and `flet` leaves with `PL-7SVX`, the deletion - the two halves of
-    # `PL-3SQT`, taken in the order the port needs them.
+    # One toolkit, which is what finishing the port meant. Both were declared
+    # here for the length of it: PySide6 and pyqtgraph entered with `PL-G59B`,
+    # the chart, and `flet` stayed until the last module importing it was gone
+    # (`ROADMAP.md` § "v0.4.26 - the interface moves to Qt", Required scope
+    # items 1, 2 and 5). `PL-25KS` deleted that module, so the two lines below
+    # went out with `PL-3SQT` - the subtractive half, taken after the tree
+    # stopped needing them rather than on the schedule the item guessed.
+    #
+    # Nothing here is what keeps Flet out. `tools/import_boundary_check.py`
+    # permits `flet` and `flet_charts` in no module under `src/` at all, so a
+    # module reaching for either fails the build whatever this list says; a
+    # dependency removed from a manifest is only a download saved. Nor does
+    # this wait on `PL-7SVX`, which deletes `spikes/`: the spike imports
+    # neither Flet distribution and declares its own toolchain through
+    # `uv run --with`, so it never read this list.
     #
     # `PySide6-Essentials` rather than `PySide6`: the Essentials wheel is the
     # Qt modules this interface draws with (Core, Gui, Widgets) and none of
     # the Addons (WebEngine, Multimedia, 3D), which are the bulk of the full
     # distribution's download and are imported by nothing here.
-    #
-    # numpy is deliberately not declared, though pyqtgraph installs it: nothing
-    # under `src/` imports it, and whether it should is the half of `PL-3SQT`
-    # that re-argues `docs/WORKING_NOTES.md` § "Decided: no numpy" on its new
-    # scope. Declaring it before that argument is made would settle the
-    # question by accident.
     "PySide6-Essentials>=6.9,<7.0",
-    "flet-charts>=0.86,<1.0",
-    "flet[all]>=0.86,<1.0",
     "pyqtgraph>=0.13.7,<0.15",
     # A floor, not an exact pin. pydantic 2.12.4 began passing
     # `prefer_fwd_module=` to `typing._eval_type`, a keyword CPython added

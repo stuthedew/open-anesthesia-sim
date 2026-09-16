@@ -128,7 +128,7 @@ is not optional.
 
 ## Architecture and development discipline
 
-- Keep scientific/simulation code independent of Flet.
+- Keep scientific/simulation code independent of the UI toolkit.
 - Put no simulation calculations in UI callbacks.
 - Treat simulation time as explicit state, never wall-clock time.
 - Preserve deterministic results for identical inputs.
