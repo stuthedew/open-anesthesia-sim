@@ -1,10 +1,10 @@
 ---
 id: PL-3J2P
 title: Decide whether the area layout is a shared-vertex graph or a nested-splitter tree before the Qt layout work starts, because ROADMAP item 34 already specifies aligned-border dragging, four-way corner operations and arbitrary area swap, and a QSplitter tree makes all three expensive
-status: done
+status: blocked
 touches: ROADMAP.md
 added: 2026-09-16
-closed: 2026-09-16
+blocked-by: PL-FTP5
 verify: python3 tools/doc_check.py check && grep -qF 'The layout is a nested-splitter tree, and Blender' ROADMAP.md
 ---
 
@@ -114,9 +114,17 @@ roadmap except to record why; adopting the graph changes both.
 
 ---
 
-## Decided 2026-09-16: the nested-splitter tree
+## Provisional direction 2026-09-16: the nested-splitter tree, pending research
 
-**Project owner's call, and it also corrects this item's premise.** The owner
+**Reopened 2026-09-16, deliberately.** This was briefly written up as a closed
+decision. The project owner reversed that on method, and is right: "I think that
+decision is correct, but I don't like making a rigid decision like that off the
+cuff before doing research on how something I know behaves like I want, actually
+works." The evidence below is a targeted read of two functions, not a study of
+the interaction model they sit in — enough to form a direction, not enough to
+close. `PL-FTP5` is the research; this item decides after it.
+
+**The direction, and the owner's own reading of it.** The owner
 said "Splitter tree is what I want, And I'm pretty sure that's what blender
 does" - and on the source, they are right, where the first two drafts of this
 item and the comparison artifact built alongside it were wrong.
@@ -146,8 +154,12 @@ tree matches Blender's default, and the graph buys two deliberate extras. The
 recommendation happened to land on the tree anyway, on cost-of-ownership
 grounds, but it got there past a wrong description of the alternative.
 
-**What would reopen it.** Wanting extend-drag across the layout, or snap-merge
-of near-aligned borders. Nothing else - and neither is on the roadmap.
+**What the research has to check before this closes.** Whether extend-drag or
+snap-merge is load-bearing in the interaction model rather than an accessory —
+which is a question about how the borders, corner actions and area operations
+work *together*, and cannot be answered from these two functions alone. If the
+prose sources or a wider read show either is central to how a layout is
+actually built, this direction is wrong and the graph wins.
 
 **Recorded in** `ROADMAP.md` item 34, with the correction and the reversibility
 condition (the container behind a layout model of our own, so no view knows

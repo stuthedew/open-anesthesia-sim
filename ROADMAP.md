@@ -4584,13 +4584,17 @@ once someone is ready to scope it.
     `saveState()`/`restoreState()` for a layout, `QSettings` or a project file
     for a named preset.
 
-    *The layout is a nested-splitter tree, and Blender's is too in its default
-    behaviour* (project owner, 2026-09-16, deciding `PL-3J2P`). The question put
+    *The layout is provisionally a nested-splitter tree, and Blender's default
+    behaviour looks the same* (`PL-3J2P`, direction taken 2026-09-16, **not yet
+    closed** - it decides after the `PL-FTP5` research, on the project owner's
+    rule that a rigid decision should not precede the study of how the thing
+    being emulated actually works). The question put
     was whether the layout should be stored as Blender's shared-vertex graph -
     areas naming four corner points, neighbours sharing them - or as nested
     `QSplitter`s. **Nested splitters, which this section and § "v0.4.26" Required
-    scope item 2 already name**; what is new here is the reason, so a later
-    session does not reopen it on a wrong premise about Blender.
+    scope item 2 already name**; what is new here is evidence for the reason.
+    It is a read of two functions rather than a study of the interaction model
+    they sit in, which is why it is a direction and not yet a decision.
 
     The premise to correct: Blender's *default* border drag is
     `screen_geom_select_connected_edge`, which moves the maximal **connected
@@ -4604,13 +4608,36 @@ once someone is ready to scope it.
     connectivity, runs only under an explicit extend flag
     (`source/blender/editors/screen/screen_ops.cc`, `md->can_extend && extend`);
     and `screen_geom_edge_aligned_merge`, which snaps near-aligned borders onto
-    one coordinate and fuses them. Wanting either of those is what would reopen
-    this decision; nothing else should.
+    one coordinate and fuses them. Whether either is load-bearing in how a layout is
+    actually built, rather than an accessory to it, is what the research has to
+    establish before this closes.
 
-    *The condition that keeps it reversible* (recommended; **deferred to**
-    `PL-C842` by the project owner on 2026-09-16, to be decided from how
-    Blender actually separates container from view rather than from first
-    principles). The
+    *The container sits behind a layout model of this project's own*
+    (`PL-C842`, direction taken 2026-09-16; the owner delegated the architecture
+    call). The negative half is settled by measurement and the research cannot
+    overturn it - `saveState()` will not be the source of truth. The shape below
+    is a sketch the research informs, not a closed design.
+    Not a reimplementation of `QSplitter` - Qt still draws the panes, drags the
+    handles and honours minimum sizes. A pure-Python `LayoutModel` is the source
+    of truth: a tree of splits and panes, with `split`, `join`, `resize`, `swap`
+    and `set_view`, serialized to versioned JSON. One adapter module is the only
+    place importing `QSplitter`; it builds the widget tree from the model and
+    writes sizes back on `splitterMoved`. A view is registered by kind, never
+    sees a splitter, never calls `saveState()`, and never stores its own
+    geometry.
+
+    *Why, measured rather than argued.* `QSplitter.saveState()` was run against
+    this project's PySide6 and returns **35 opaque bytes** carrying sizes and a
+    child count; it **cannot record which view occupies which pane**, which is
+    the whole of what a named workspace is; and restoring a three-child state
+    into a two-child splitter **returned `True`** with sizes `[318, 318]` rather
+    than failing. That last is the disqualifying one: this file's own standard
+    prefers an obvious failure to a plausible-looking wrong result, and treats
+    stale or mis-contexted presentation as a safety failure. `PL-C842` carries
+    the reproduction command and three further reasons - headless testability,
+    break-out windows needing a structure spanning windows either way, and
+    `tools/import_boundary_check.py` already confining the toolkit by declared
+    boundary. The
     container sits behind a layout model of this project's own that owns split,
     join, resize, swap and persistence, with `QSplitter` an implementation detail
     behind it - so no view calls `saveState()`, reaches for a parent splitter, or
