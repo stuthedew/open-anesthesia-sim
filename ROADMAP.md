@@ -3328,23 +3328,26 @@ fixed layout, and it becomes real only when the area system makes a second of
 either possible — which is the same item 34. Both are product-lane, and both
 are recorded here rather than left to look deferred.
 
-**One more from 2026-09-16, and it is `safety`-classed, so it is written down
-with a reason rather than listed** — `PL-MN4J` (the chart hover names the agent
-and the instant but not which run). Captured ten days after this gate was
-frozen, so the snapshot rule already places it in the next one, and seated `P1`
-because `checks.py` will not seat a `safety` class lower.
+**One more from 2026-09-16 was written down here as a deferral, and that was the
+wrong disposition for it** — `PL-MN4J` (the chart hover names the agent and the
+instant but not which run). Captured ten days after this gate was frozen, so the
+snapshot rule places it in the next one, and seated `P1` because `checks.py`
+will not seat a `safety` class lower.
 
-It is deferred on a ground of its own rather than on this section's:
-**the display it concerns does not exist outside the feature this milestone
-builds.** A hover that does not say which run is ambiguous only while two runs
-are drawn, which is this milestone's own compare mode; before it ships there is
-one run on the chart and the hover names everything there is to name. A gate
-exists to clear debt *before* a milestone begins, and this item cannot be
-cleared before the thing it is about exists. It is also `needs-decision` and the
-decision is the project owner's — it amends `docs/MODEL.md` § "The chart's hover
-readout: what the tooltip may show", which derives the three-line form — so no
-session can close it either way. `PL-8PSW` shipped the legend and panel naming
-that make a curve attributable today; this is the remaining surface.
+**It is `Required scope`, not a deferral** (`PL-R7XK`, project owner,
+2026-09-16, ratified - chosen over leaving it deferred here). The ground written
+for it was sound and is carried across to the bullet in § "Required scope"
+below: the display it concerns does not exist outside the feature this milestone
+builds, so it cannot be cleared before the compare mode it is about. But that is
+what § "Debt inside the milestone's own scope" is for, and a deferral is
+something else. "The gate is a snapshot" makes `safety` not deferrable, and the
+two records say different things about who is holding the item: a deferral says
+the gate has released it, where `Required scope` says this milestone's
+definition of done holds it. Only the second is true, and only the second stops
+it being closed out of v0.5.0 unnoticed. It is unaffected by `PL-83LS`'s
+`anticipated` carve-out above, which is a different shape - v0.5.0 builds the
+feature this hazard needs, where item 34's findings wait on a milestone two
+steps out.
 
 **Eighteen more from the 2026-09-16 triage pass, in three groups.** All
 eighteen were captured on 2026-09-16, ten days after this gate was frozen, so
@@ -3440,7 +3443,8 @@ that a patch cut takes this section's number and that the guard withholds it).
 It is product-lane, so this subsection's workflow-lane ground does not reach it,
 and it is `needs-decision` on a question `CLAUDE.md` puts on the project owner's
 side of the division of labour: what the release train does when a patch is cut
-mid-port. Like `PL-MN4J`, it waits on an answer rather than on attention.
+mid-port. Like `PL-MN4J` above, it waits on an answer rather than on attention -
+though unlike it, no milestone's scope holds it.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
@@ -3451,10 +3455,10 @@ the defect.
 
 ### Required scope
 
-Nineteen items, in the order the dependencies allow. The first five are the
+Twenty items, in the order the dependencies allow. The first five are the
 score architecture the 2026-09-05 design round filed and the project owner
 placed here; the next five are boundary work this milestone's own code moves;
-the last nine are the feature itself.
+the last ten are the feature itself.
 
 - **The run becomes a closed-form function of its control-input timeline**
   (queue item PL-T691). Keyframes are held at every control event and any
@@ -3628,6 +3632,20 @@ the last nine are the feature itself.
   PL-1XPX). A decision rather than an implementation: a numeric readout that
   does not say which run it describes is the safety-critical failure this
   project treats presentation as, and there is more than one defensible answer.
+- **The chart's hover says which run it is reading** (queue item PL-MN4J).
+  `safety`-classed, and milestone-scope debt under § "Debt inside the
+  milestone's own scope" rather than debt this gate can clear: a hover naming
+  the agent and the instant but not the run is ambiguous only while two runs are
+  drawn, which is this milestone's own compare mode, so it cannot be cleared
+  before the compare mode it is about. Before that ships there is one run on the
+  chart and the hover names everything there is to name. Like `PL-1XPX` it is a
+  decision rather than an implementation, and the project owner's: it amends
+  `docs/MODEL.md` § "The chart's hover readout: what the tooltip may show",
+  which derives the three-line form, so no session can close it either way.
+  `PL-8PSW` shipped the legend and panel naming that make a curve attributable
+  today; this is the remaining surface, and the definition of done's "no
+  readout, label, legend entry or reference band ambiguous as to which run it
+  describes" is what holds it.
 - **What a comparison asserts and what it does not** (queue item PL-W7H9), in
   `docs/MODEL.md` and `docs/ARCHITECTURE.md`: what is shared between two
   branches and what is not, that a difference between them is attributable only
