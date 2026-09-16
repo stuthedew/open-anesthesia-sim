@@ -1516,14 +1516,31 @@ milestone by this file's own test, whatever number it ships under.
 once.** `bin/docket release` offers the next free number to whatever is
 finished, so a patch cut before this lands takes this section's number - the
 hazard the `v0.4.x` row names. `v0.4.25` was cut on 2026-09-14 (`PL-G7RD`) from
-ten finished items, and this heading moved to `v0.4.26` with **nothing else
-moving with it**: no item's `blocked-by` names a version, and `PL-YVM1` swept
-the last prose that named one, so outside this file the port is named by name.
-It will move again if another patch is cut before this lands - a rename each
-time, not a re-scope. The guard no longer adds to that risk: `PL-VFD8` and
-`PL-188T` taught it to answer from every version the roadmap names ahead of the
-current one, so a bump arriving at this section's number is withheld and named
-rather than offered as free.
+ten finished items, and this heading moved to `v0.4.26` with nothing else moving
+with it: no item's `blocked-by` named a version, and `PL-YVM1` had swept the
+last prose that did.
+
+**That rename was cheap once and is not cheap now**, which is the part "a rename
+each time, not a re-scope" got wrong. The port's own work has put the number
+back. Counted 2026-09-16, eight sites in five files outside this one name
+`v0.4.26`: three in `tools/import_boundary_check.py`, two of those inside error
+messages a developer reads; two in `docs/ARCHITECTURE.md`; and one each in
+`subprojects/docket/src/docket/roadmap.py`, `.claude/skills/docket/SKILL.md` and
+`subprojects/docket/README.md`. Four carry the section-citation form
+`tools/doc_check.py` validates, so a rename that missed them fails `make check`;
+the other four name the number bare, where no check reads it. The cost of a
+rename rises as the port lands rather than staying flat, and the two files most
+likely to gain more of them - `tools/import_boundary_check.py` and
+`docs/ARCHITECTURE.md` - are both in `PL-7SVX`'s `touches`, this section's one
+remaining scope item.
+
+**Whether a patch cut still takes this number is open, and `PL-KQHN` holds the
+question.** `PL-VFD8` and `PL-188T` taught the reserved-version guard to answer
+from every version the roadmap names ahead of the current one, so a bump
+arriving at this section's number is withheld and named rather than offered as
+free. Whether that withholding prevents the mechanic above or converts it from a
+default into a deliberate decision was never put to the project owner. Until it
+is, a cut at this number is taken deliberately rather than by default.
 
 **The one question the reorder leaves open is this number, and it is recorded
 rather than settled.** § "The cadence" says a gate does not get a version and
