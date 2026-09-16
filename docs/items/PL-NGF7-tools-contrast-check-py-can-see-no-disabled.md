@@ -3,12 +3,13 @@ id: PL-NGF7
 title: tools/contrast_check.py can see no disabled-state colour, because none of them is a constant in theme.py
 priority: P2
 effort: M
-status: blocked
+status: done
 classes: infra, test
 feature: presentation-safety
 touches: tools/contrast_check.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_contrast_check.py
-blocked-by: PL-L9RD
 added: 2026-09-06
+closed: 2026-09-16
+verify: uv run pytest tests/unit/test_contrast_check.py && grep -q 'def test_a_disabled_selector_is_an_error' tests/unit/test_contrast_check.py
 ---
 
 > **Deferred to the Qt port, which dissolves this rather than fixing it** (project
@@ -147,3 +148,56 @@ and an agent-identity control is an obligation this project took on from ISO
 https://www.w3.org/TR/WCAG22/#contrast-minimum and
 https://www.w3.org/TR/WCAG22/#non-text-contrast before the decision is written
 down.
+
+## Closed 2026-09-16: the second answer, taken as a decision and then made self-enforcing
+
+**The project owner chose the second of the two answers this item names** -
+`tools/contrast_check.py` states that disabled states are out of scope and says
+what covers them instead - over the first, declaring an explicit foreground for
+every disabled control. Not `dropped`: the measurement above showed the port
+did not dissolve this, so a decision was still owed, and this is it.
+
+**Why the second answer rather than the first.** Declaring a foreground for
+every disabled control would mean choosing a value the product does not
+currently choose, purely so a tool could measure it. That is a real cost in the
+wrong place: `#BEBEBE` is Fusion's, the native style's number differs, and
+overriding it would make this project responsible for looking right on every
+platform's disabled controls in exchange for measuring something no clinician
+reads. The first answer buys coverage of a surface with no clinical content.
+
+**What the docstring now says**, in three parts, so that the next reader gets
+the decision rather than an absence:
+
+- **The measurement.** `QPalette`'s `Disabled` group is filled in by the
+  platform style - `#BEBEBE` for every disabled text role under Fusion,
+  confirmed per widget - and `app/main.py` never calls `setStyle`, so the value
+  is the platform's rather than the product's. There is nothing for an `ast`
+  extraction to reach.
+- **What covers them.** The safety-relevant half is
+  `tools/agent_identity_check.py`: no control carrying agent identity may be
+  *rendered* disabled, enforced as the `setDisabled`/`setHidden` pairing. What
+  is left is the splitter handle and the start, pause and reset buttons, and
+  W3C WCAG 2.2 SC 1.4.3 exempts "text ... that is part of an inactive user
+  interface component" from any contrast requirement.
+- **What is not claimed.** SC 1.4.11's own exception wording was **not** read at
+  the source: `w3.org` returns `EGRESS_BLOCKED` here, as `PL-JX0Z` recorded
+  across five routes, so nothing rests on it. The argument stands on SC 1.4.3,
+  which this repository already quotes verbatim in
+  `tools/agent_identity_check.py`, and on the measurement above.
+
+**And the scope note cannot rot, which is the half that makes this more than a
+comment.** This item exists because *"nothing covers them and nothing says so"*
+- so an answer that was only prose would be the same shape one layer up: a
+sentence asserting a premise, with nothing checking the premise still holds.
+`check_disabled_states_are_the_style_s` fails the build the moment a
+`:disabled` rule or a `setPalette` call appears under `app/`, because at that
+moment the colour is author-chosen, measurable, and covered by nothing. The
+error says to declare it in the theme and add a requirement, never to delete
+the check. Three tests pin it: the `:disabled` form fires, the `setPalette`
+form fires, and an ordinary enabled-state stylesheet does not - the last so
+that a check firing on everything cannot pass the first two.
+
+**A hard error rather than an advisory**, on `CLAUDE.md`'s rule that hard
+failure is for exact rules: either a module under `app/` writes one of those
+two forms or it does not, and the violation is exactly the event that voids the
+scope decision.

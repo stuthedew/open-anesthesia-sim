@@ -2701,7 +2701,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 151 entries
+### Declined to Gate 2 on the refilling-queue ground — 152 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3208,13 +3208,32 @@ protected-path failure is printed - the cost `PL-69JZ` named. It is recommended
 as the first of these taken off the list.
 
 **One more from the same evening, found while starting `PL-L9RD`** - `PL-Y4YX`
-(`PL-L9RD`'s `verify:` requires `app/theme.py` to name PySide6, which that
-file's own documented invariant forbids). Captured 2026-09-16, `P3`, `defect`,
-neither `safety` nor `science`, so the snapshot rule places it in the next
-gate like the two above. Its ground is not the refilling queue, though: it is
-`blocked-by: PL-L9RD` and resolves inside that item, which is in this port's
-own Required scope. Admitting it would put an entry on the frozen list whose
-only route to closing runs through a milestone the plan has not reached.
+(where the Qt styling layer lives: 27 `setStyleSheet` sites compose CSS from
+`app/theme.py`'s constants, against a file whose own comment forbids it a
+toolkit import). Captured 2026-09-16, `P3`, `defect`, neither `safety` nor
+`science`, so the snapshot rule places it in the next gate like the two above.
+
+*Its ground was rewritten on 2026-09-16 when `PL-L9RD` closed.* It read that
+this was `blocked-by: PL-L9RD` and would resolve inside that item. It did not:
+`PL-L9RD` closed having fixed the *symptom* - the `verify:` command that
+required PySide6 in `theme.py`, and the false reason the file's own comment
+gave for forbidding it - and left the question itself open on purpose, because
+the project owner approved un-absorbing the interface pass rather than a
+refactor of where styling lives. So the ground now is the ordinary one this
+subsection rests on: apparatus, wholly in the workflow lane, deferred on the
+refilling-queue arithmetic. It is `needs-decision` rather than `ready`, which
+is what makes it debt at all.
+
+**And one from the split of `PL-L9RD`** - `PL-Z4K6` (whether seven readout
+columns is wanted on a 1 366 px laptop, which misses the seven-column width by
+nine pixels). Captured 2026-09-16, `P3`, `ux`, and debt only because it is
+`needs-decision`. Deferred rather than admitted because the interface it asks
+about is one planned-milestone item 33 is going to redecide: the levers are the
+readout font size and the panel padding, both of which the interface pass
+sets, and the third - `WINDOW_SCREEN_FRACTION` - is the one this can answer
+alone. Four columns is correct meanwhile, so the row degrades rather than
+breaking, and holding a gate open on a question whose own answer says "leave
+two of the three levers to item 33" would be holding it open on item 33.
 
 **One is not apparatus and needs its own ground**, which is stated rather than
 stretched. `PL-PGZF` records that `PL-GS3R` made the chart's column budget

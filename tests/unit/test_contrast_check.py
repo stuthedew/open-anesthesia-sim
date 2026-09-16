@@ -842,3 +842,43 @@ def test_the_report_says_how_many_modules_it_read(tmp_path: Path, declare) -> No
     assert "3 modules read under src/anesthesia_sim/app/" in contrast_check.format_report(
         report, matrix=False
     )
+
+
+def test_a_disabled_selector_is_an_error(tmp_path: Path) -> None:
+    """`PL-NGF7`: a `:disabled` rule ends the premise the scope decision rests on.
+
+    The module docstring says disabled states are out of scope *because* the
+    platform style chooses their colours. A stylesheet rule choosing one here
+    makes it this project's value, measurable and covered by nothing - so the
+    guard fires and names what is owed.
+    """
+    root = _repo(tmp_path, qt_widgets='SHEET = "QPushButton:disabled { color: #BEBEBE; }"\n')
+
+    report = contrast_check.analyze(root)
+
+    assert any("qt_widgets.py" in message for message in report.author_styled_disabled)
+    assert any("PL-NGF7" in message for message in report.author_styled_disabled)
+    assert report.errors
+
+
+def test_set_palette_is_an_error(tmp_path: Path) -> None:
+    """`PL-NGF7`: the other way to take the disabled colours back from the style."""
+    root = _repo(
+        tmp_path, qt_widgets="def build(widget, palette):\n    widget.setPalette(palette)\n"
+    )
+
+    report = contrast_check.analyze(root)
+
+    assert any("setPalette" in message for message in report.author_styled_disabled)
+    assert report.errors
+
+
+def test_the_shipped_tree_leaves_disabled_colours_to_the_style(tmp_path: Path) -> None:
+    """The guard is quiet while the premise holds, which is the state it defends.
+
+    Without this the two tests above would pass against a check that fired on
+    everything, and `make check` would be red for the wrong reason.
+    """
+    root = _repo(tmp_path, qt_widgets='SHEET = "QPushButton { color: #243B53; }"\n')
+
+    assert contrast_check.analyze(root).author_styled_disabled == ()
