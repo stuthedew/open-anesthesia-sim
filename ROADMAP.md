@@ -3394,24 +3394,35 @@ are neither: `PL-KKRP` (re-examine the debt gate's own freeze trigger) is a
 decision about the cadence rather than debt against a milestone, and `PL-NDKC`
 (PySide6 segfaults on `QDataStream` over a temporary `QByteArray`) is a
 toolkit defect found while measuring, filed so the persistence work meets it
-already written down. Every one of them is `anticipated` on the same ground as
-the four above: the splitter handles are inert today, so none of these hazards
-exists until the milestone that creates them is built, and a gate that clears
-debt *before* a milestone cannot clear a hazard that milestone introduces.
+already written down. Every one of them is `anticipated`, and since 2026-09-16
+that is a rule rather than a ground this subsection states for itself
+(`PL-83LS`): § "The gate is a snapshot, not a moving target" makes an
+`anticipated` finding **not debt until the hazard it describes exists**. The
+splitter handles are inert today, so none of these hazards exists until the
+milestone that creates them is built, and a gate that clears debt *before* a
+milestone cannot clear a hazard that milestone introduces. So these are not
+deferred here: they are not debt against this gate at all, and the placement
+named for each above - v0.6.0's `Required scope`, v0.7.0's, or neither - is the
+whole of their disposition.
 
-Four of the nine are `safety`-classed, which by the presence rule re-enters them
-here regardless of when they were found: `PL-7Z84` (a run has no identity a
-workspace can pin to), `PL-9LNF` (three `app/` surfaces own state a layout could
-duplicate or relocate), `PL-NWTM` (the unconditional displayed set has no
-structural home in the code) and `PL-W54S` (what a broken-out top-level window
-owes that set). Each is classed `anticipated`, on `PL-MN4J`'s ground one
-milestone further out: the splitter handles are inert today
-(`src/anesthesia_sim/app/qt_widgets.py:784`), so no reader can close, replace or
-cover a required value until item 34 makes them live, and a gate that exists to
-clear debt before a milestone begins cannot clear a hazard the milestone
-creates. Each of the four is now named in v0.6.0's `Required scope`, which is
-the disposition the gate rule prefers to a deferral: the milestone that creates
-the hazard is the one that carries the guard.
+Four of the nine are `safety`-classed, and it is worth saying what that used to
+mean here and no longer does: `PL-7Z84` (a run has no identity a workspace can
+pin to), `PL-9LNF` (three `app/` surfaces own state a layout could duplicate or
+relocate), `PL-NWTM` (the unconditional displayed set has no structural home in
+the code) and `PL-W54S` (what a broken-out top-level window owes that set). The
+presence rule re-entered them here regardless of when they were found, and this
+subsection then had to argue them back out one hazard at a time - which is the
+argument `PL-83LS` turned into the rule above. Each is classed `anticipated`, so
+none of the four is debt against this gate: the splitter handles are inert today
+(`src/anesthesia_sim/app/qt_widgets.py:784`), and no reader can close, replace
+or cover a required value until item 34 makes them live.
+
+Each of the four is named in v0.6.0's `Required scope`, which is where the rule
+puts a hazard rather than where a deferral would leave it: the milestone that
+creates it is the one that carries the guard. `tools/doc_check.py`'s
+`check_gate_reentries` now passes over all ten `anticipated` findings on the
+class rather than on this prose, so what these paragraphs record is the
+reasoning, not the mechanism holding it.
 
 `PL-9PD6` (`docs/interface-provenance.md` contradicts itself about what
 `README.md` records), `PL-D584` (`PL-TH35`'s `blocked-by` names an item that has
@@ -4137,6 +4148,12 @@ is already running on charges interest every session, which is what debt means.
 Half-finished process machinery must not be in production use; either it is
 made to work reliably, or it is abandoned and removed.
 
+**The same test decides a hazard, and it is the one carve-out the `safety` and
+`science` exception takes.** A finding classed `anticipated` describes a hazard
+a later milestone will create rather than one the tree carries now, so it is not
+debt until that milestone builds it. § "The gate is a snapshot, not a moving
+target" below states the rule, what it was chosen over, and what it costs.
+
 A caution the first pass through this got wrong: classing tooling breakage as
 `infra` rather than `defect` makes it indistinguishable from a capability
 nobody has built yet. `docket release` leaving `uv.lock` stale and breaking
@@ -4215,6 +4232,43 @@ Two further exceptions re-enter the current gate regardless of presence:
 anything at `P0`, and anything classed `safety` or `science`. Those are not
 deferrable by this project's own standard, and a gate that let them wait would
 be inverting the reason it exists.
+
+**One exception to that exception: an `anticipated` `safety` or `science`
+finding is not debt until the hazard it describes exists** (project owner,
+2026-09-16, ratified — chosen over placing each on the *next* milestone's frozen
+list behind a marker nothing enforces, and over leaving the rule as it stands
+and putting the 2026-09-16 area-model findings on v0.5.0's list). The paragraph
+above is unconditional about *when* a finding was made; this says what it takes
+to be a finding against the current gate at all. An item classed `anticipated`
+describes a hazard a later milestone will create — the splitter handles are
+inert today (`src/anesthesia_sim/app/qt_widgets.py:784`), so no reader can
+close, replace or cover a required value until planned-milestone item 34 makes
+them live — and a gate that exists to clear debt *before* a milestone begins
+cannot clear a hazard that milestone introduces. It is § "What counts"'s own
+live-mechanism test — "Process work is debt once the mechanism is live, not
+before ... The distinction is state, not layer" — applied to a hazard rather
+than to a mechanism.
+
+It was also the only one of the three options that reaches a state a session can
+get to. The other two leave `tools/doc_check.py`'s corrected safety-class
+advisory lit against items nobody can dispose of, which is the defect
+`CLAUDE.md` names: a check that "fires every run without changing a decision".
+The disposition such a finding then takes is a **placement in the milestone that
+creates the hazard** — v0.6.0's `Required scope` holds the ten this was written
+for — never a deferral, which these two classes are still not offered.
+
+`check_gate_reentries` in `tools/doc_check.py` excludes an `anticipated`-classed
+item for this reason, so the rule runs on every `make check` rather than on
+whether a session recalled it.
+
+**What it costs, recorded rather than waved past.** `anticipated` now carries
+weight it did not carry before, so a `safety` item wrongly classed becomes
+invisible to the gate — `PL-MVC2`'s shape. Two things narrow that and neither
+closes it: the class is claimed rather than inferred, and `PL-MVC2` itself made
+a class outside the declared vocabulary a `bin/docket check` error, so a
+misspelling fails closed and leaves the item named. Nothing catches a class
+correctly spelled and wrongly applied. That is a reviewer's judgment, and this
+decision is what makes it one worth making.
 
 ### The cadence
 

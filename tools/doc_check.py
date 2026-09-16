@@ -1778,6 +1778,23 @@ def check_scope_exclusions(root: Path, report: Report) -> None:
             )
 
 
+#: The class an item carries to claim that the hazard it describes does not
+#: exist yet, because the milestone that creates it has not been built.
+#: `ROADMAP.md` § "The gate is a snapshot, not a moving target" makes such a
+#: finding not debt until that milestone lands (project owner, 2026-09-16,
+#: ratified), which is the one carve-out the unconditional `safety`/`science`
+#: re-entry takes.
+#:
+#: Spelled here rather than imported, although `docket.config` declares it:
+#: there it is one member of `BRANCHED_ON`, a list of the classes `checks.py`
+#: branches on, and that tuple names a vocabulary rather than this rule's
+#: subject - reading the rule off it would make any future member of it silence
+#: this advisory too. The drift that spelling risks fails in the safe
+#: direction: a name that stops matching excludes nothing, so the advisory keeps
+#: naming the item rather than going quiet about it.
+ANTICIPATED_CLASS = "anticipated"
+
+
 def check_gate_reentries(root: Path, report: Report) -> None:
     """Name every open `safety`/`science` item the current gate does not place.
 
@@ -1827,6 +1844,26 @@ def check_gate_reentries(root: Path, report: Report) -> None:
     have been left holding the unconditional half of the rule that `PL-KTKP`
     records the cost of losing.
 
+    **An `anticipated` item is excluded, and that is a rule rather than a
+    judgment.** `ROADMAP.md` § "The gate is a snapshot, not a moving target"
+    makes an `anticipated` `safety` or `science` finding not debt until the
+    hazard it describes exists (project owner, 2026-09-16, ratified). Without
+    it this named ten area-model findings on every `make check` under two
+    remedies neither of which they could take: they cannot be *cleared*, because
+    the splitter handles are inert until planned-milestone item 34 makes them
+    live, and v0.5.0's `Required scope` cannot hold them because item 34 is two
+    milestones out. An advisory with no reachable clean state is the defect
+    `CLAUDE.md` describes - one that "fires every run without changing a
+    decision" - which is what `PL-83LS` was filed to remove.
+
+    The exclusion is decidable rather than scripted judgment: `anticipated` is a
+    declared class the store already carries and `docket check` already holds to
+    a vocabulary, so this reads a claim somebody wrote down rather than guessing
+    whether a hazard is live. What it costs is recorded beside the rule: a
+    `safety` item wrongly classed `anticipated` goes invisible to the gate,
+    which is `PL-MVC2`'s shape, and no check can catch a class correctly spelled
+    and wrongly applied.
+
     The gate it reads is the one `docket.roadmap` reads: the first *unreleased*
     section recording a gate, rather than the newest recorded one, so that an
     open item is never measured against a shipped milestone's closed list.
@@ -1873,6 +1910,7 @@ def check_gate_reentries(root: Path, report: Report) -> None:
         for item in items
         if item.status not in CLOSED_STATUSES
         and item.identifier not in placed
+        and ANTICIPATED_CLASS not in item.classes
         and any(name in config.safety_classes for name in item.classes)
     ]
     if not owed:
