@@ -232,8 +232,10 @@ recommendation to react to, not as a design to implement.
 - **NEW - a pane stack.** Each pane keeps the views it previously held, so
   switching a pane to another view and back restores the first one's state.
   Blender does this by swapping *region* lists; the property to copy is that the
-  outgoing view's state is kept rather than destroyed. Note Blender's stack is
-  unbounded - decide ours.
+  outgoing view's state is kept rather than destroyed. Blender's stack needs no
+  cap because it is bounded by construction - at most one entry per editor type
+  - and the same holds here if a pane stores at most one instance per
+  `view_kind`.
 - **NEW - loud load failure.** Deserializing a layout naming an unknown
   `view_kind` fails visibly. It does not substitute, and it does not drop the
   pane.

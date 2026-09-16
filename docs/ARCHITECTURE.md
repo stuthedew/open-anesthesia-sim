@@ -4,7 +4,10 @@ This document describes how the code is organized and how data flows through
 it. It is a map for contributors, not a scientific specification — for the
 equations, units, parameter provenance, and numerical method, see
 [`docs/MODEL.md`](MODEL.md). For version history and milestones, see
-[`ROADMAP.md`](../ROADMAP.md).
+[`ROADMAP.md`](../ROADMAP.md). For where the interface's planned area and
+workspace model comes from — what was studied of Blender, under what licence
+rules, and what this project deliberately does differently — see
+[`docs/interface-provenance.md`](interface-provenance.md).
 
 ## Layering
 

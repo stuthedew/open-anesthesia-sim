@@ -54,3 +54,29 @@ named pattern a session can route to.
 **Done when.** A contract is written down, two existing views implement it, and
 `docs/ARCHITECTURE.md` routes "a new editor" the way it already routes a
 compartment or a chart series.
+
+
+---
+
+## What the 2026-09-16 Blender read contributes to this contract
+
+`docs/interface-provenance.md` § "What an editor must implement" is the
+evidence. Three things it settles that this item would otherwise re-derive:
+
+- **Three different answers to "what is required", and they must be kept
+  apart.** Blender's *enforced* contract is three fields; its *practised* one is
+  seven callbacks plus a region type per region; and the simplest real editor in
+  its tree implements exactly the practised floor. Design against the practised
+  one and state the enforced one.
+- **A vtable-as-data contract accumulates dead members, and nothing surfaces
+  it.** Blender ships two hooks with live call sites and zero implementations,
+  and a field that is read and never assigned by any editor. Plan the pruning
+  into the contract rather than discovering it later.
+- **The editor declares its own header region**; the container does not supply
+  a title bar. A view's chrome is the view's business.
+
+One divergence this contract owes, which Blender does not supply: its editors
+can reach the screen and every other area through the context they are handed,
+and 10 of 21 do. Interchangeability with teeth means a view is *given* what it
+draws and has no route to the container - a deliberate narrowing, not an
+inheritance.

@@ -141,142 +141,6 @@ the honest answer was that Blender does not appear to state something, that is
 what is recorded, rather than a confident summary assembled from general
 knowledge.
 
-## The measurement: what Blender's own shipped layouts actually contain
-
-The architectural fork this project had to decide was whether its layout is
-stored as Blender's **shared-vertex graph** — areas naming four corner points,
-neighbours sharing them — or as a **nested-splitter tree**, which is what Qt
-hands you and what `ROADMAP.md` item 34 already named. `PL-3J2P` is the item
-that decided it.
-
-Arguing it from the two representations' expressive power is a trap, because
-the graph is strictly more expressive and the argument then ends before it has
-weighed anything. The question worth answering is narrower: **does Blender, in
-the layouts it actually ships, use the power the graph has and the tree does
-not?** That is a count, and it was taken rather than estimated.
-
-### The threshold, stated before the count
-
-Per `.claude/rules/expert-review.md` § "Name the number that would change your
-mind, then go and count it", the thresholds below were written down before any
-counting code was run:
-
-- **A — non-slicing.** Is the arrangement expressible as recursive subdivision
-  by full-span cuts (a *slicing floorplan*)? The minimal non-slicing
-  arrangement is the pinwheel: five rectangles with no full-span cut anywhere.
-  A non-slicing screen is one a splitter tree **cannot represent at all**.
-  *Two or more of eleven and the tree is wrong outright.*
-- **B — cross junction.** Does any interior point have four areas meeting at
-  it? This *is* expressible in a slicing tree — two cuts at the same coordinate
-  — but it is not *represented*: the two collinear border segments become
-  independent handles where Blender's share one vertex. *Zero non-slicing and
-  at most one of eleven here, and the tree is confirmed; four or more and the
-  tree is expressible but behaviourally wrong at a configuration Blender uses
-  routinely.*
-- **C — drag fidelity.** Does any decomposition into splitters reproduce
-  Blender's border-drag behaviour exactly?
-
-### How it was measured
-
-Blender's shipped workspaces live in `release/datafiles/startup.blend`, which
-is stored in Git LFS and arrives as a pointer stub on an anonymous clone. The
-data was instead read from the `bpy` package on PyPI — Blender built as a
-Python module, **version 5.0.1**, which embeds the same startup data — by
-enumerating `bpy.data.screens` and each area's rectangle. Each screen was
-reduced to an exact integer grid, then tested for all three properties, with
-every possible slicing decomposition enumerated so that the tree was judged on
-its best case rather than on the first decomposition tried.
-
-Two honest limitations. The `bpy` build is **5.0.1** where the source read was
-**5.3**, so the layouts are one minor version behind the code; the default
-workspace set has been stable across that range, but it is a gap. And a
-rectangle-level reconstruction recovers the *arrangement*, not Blender's
-vertex and edge objects themselves, which RNA does not expose.
-
-### The result
-
-Against the pre-registered denominator — Blender's eleven default workspaces:
-
-| | count |
-|---|---|
-| **A** non-slicing (a splitter tree cannot express it) | **0 of 11** |
-| **B** contains a cross junction | **1 of 11** (Shading) |
-| **C** no splitter decomposition reproduces the drag | **1 of 11** (Shading) |
-
-Extended, as a secondary check never folded into the pre-registered figure, to
-the twenty-one workspaces in Blender's five shipped application templates (2D
-Animation, Sculpting, Storyboarding, VFX, Video Editing) — the layouts built
-for tasks furthest from the default, and so where a non-slicing arrangement
-would appear if anywhere: **0 of 21 non-slicing, 1 of 21 with a cross
-junction**, and that one is the same four-editor arrangement inherited from
-the Shading workspace.
-
-**Across all thirty-two shipped workspaces, not one uses a layout a nested
-splitter tree cannot express.**
-
-The single exception is worth stating precisely, because it is the whole of
-what the tree costs. The Shading workspace puts four editors in a 2×2 block —
-image editor and node editor along the bottom, file browser and 3D viewport
-along the top. In Blender the two borders crossing at the centre of that block
-each consist of two edges sharing the centre vertex, so each is one *maximal
-connected collinear chain* and dragging either moves its whole length. A
-slicing tree can preserve **one** of the two as a single handle, never both:
-whichever cut it takes first spans the block, and the other becomes two
-independent handles. This is not an artefact of a particular decomposition —
-all four decompositions of that screen were enumerated and each loses exactly
-one of the two.
-
-So the count lands squarely on the pre-registered "confirmed" row, with one
-named and bounded divergence rather than none.
-
-### What would have made this the wrong measurement
-
-Also stated before the count: the shipped defaults are a proxy for "layouts a
-professional tiling interface actually needs", and they would be the wrong
-proxy if Blender chose them to be *teachable* rather than to exercise the
-representation. The check on that is whether the interaction model *permits*
-arrangements the defaults avoid.
-
-**It does, and this escape clause fires. A non-slicing layout is reachable in
-six ordinary operations.** This was found by trying to falsify the opposite —
-the hypothesis was that split being full-span and join requiring a full shared
-edge would confine a user to slicing layouts — and the hypothesis is wrong.
-
-Split is indeed always full-span: `area_split`
-(`source/blender/editors/screen/screen_edit.cc`) inserts its two new vertices on
-the *area's own* left and right edges, so a cut spans exactly that area and
-never reaches past it. Splitting alone therefore cannot leave the slicing class.
-
-**Join is what leaves it.** Start from one area and make five full-span splits,
-arriving at six areas — a left column divided into an upper and a lower part,
-and five others around them. That arrangement is slicing. Now join the two
-parts of the left column: they share a full edge, so `area_getorientation`
-admits it and `screen_area_join_aligned` merges them into one rectangle. The
-result is the five-area pinwheel, which no sequence of full-span cuts can
-produce. One ordinary join took the layout out of the slicing class.
-
-Two further findings in the same direction, both verified in the source:
-
-- **Join does not require a full shared edge.** `area_getorientation` asks for
-  an exact facing-coordinate match and a perpendicular overlap of at least
-  `min(tolerance, extent of A, extent of B)` — so the required overlap can be
-  no more than the *smaller* area's own extent, and a short area beside a tall
-  one qualifies. `screen_area_join_ex` then trims the overhang into new areas
-  with `screen_area_trim` so the two line up, joins them, and optionally closes
-  the remainders.
-- **Every aligned join fuses coincident vertices across the whole screen**, via
-  `BKE_screen_remove_double_scrverts`. So four-area junctions are produced as a
-  matter of course by joining, rather than arising only by coincidence — which
-  is the mechanism behind the one in the Shading workspace.
-
-**What this does and does not change.** The count stands: Blender's designers
-shipped no non-slicing layout in thirty-two workspaces, and the two
-graph-specific drag behaviours remain opt-in. What falls is the stronger claim
-that the graph buys expressiveness Blender's own model never reaches. It does
-reach it, easily, and a nested-splitter tree is therefore **strictly less
-expressive than Blender's representation**, not merely differently organised.
-`PL-3J2P` records the decision that follows and the reasoning it now rests on.
-
 ## What Blender's window system is
 
 Read at `blender/blender` commit `931bb2e7` (Blender 5.3). Implementation, not
@@ -485,8 +349,11 @@ holds the others. That is why switching an area to another editor and back
 restores the view exactly, which is what `ROADMAP.md` item 34's "induction
 workspace with the graph zoomed in" case needs.
 
-Two caveats worth recording: the stack is **unbounded** — nothing evicts old
-entries, so an area accumulates one stored editor per type it has ever held; and
+Two caveats worth recording. The stack is **bounded by construction rather than
+by a cap**: `ED_area_newspace` creates a new `SpaceLink` only when the area holds
+no entry of that type already, so the list can never exceed one entry per editor
+type — about twenty. There is no eviction code and no cap, and none is needed,
+which is a different statement from "unbounded" and the one to copy. And
 `SpaceType.duplicate` is what decides how much of an editor's state a *split*
 carries into the new area, so split fidelity is per-editor rather than a property
 of the layout system.
@@ -497,12 +364,20 @@ of the layout system.
 once at startup. Three different answers to "what is required" fall out of it,
 and keeping them apart is the useful part.
 
-**The enforced contract is tiny.** Only `spaceid`, `name` and `create` are
-genuinely unavoidable — `create` is called with no null guard — plus one
+**The enforced contract is tiny.** Three members are genuinely unavoidable:
+`spaceid`, which is the registry key; `create`, called with no null guard and
+its result dereferenced immediately; and `free`, which is guarded at one of its
+two call sites and **not** at the other, in `ED_area_newspace`. Plus one
 structural invariant: every region an editor's `create` builds must have a
 matching declared `ARegionType` with the same `regionid`. `ARegionType` itself
 has **no required callbacks at all**; the tree ships one with nothing but
-`regionid` set. Everything else on `SpaceType` is null-guarded at its call site.
+`regionid` set.
+
+`name` is *not* structurally required, which is worth noticing rather than
+tidying away: it has no functional reader anywhere in the tree and appears only
+in human-readable diagnostics. One of those is the unknown-region-type warning
+above — so an editor that omitted its name would leave the one warning Blender
+does emit unable to say what it was warning about.
 
 **The practised contract is larger.** All twenty in-tree editors set `create`,
 `free`, `init`, `duplicate`, `operatortypes`, `keymap` and `blend_write`, and
@@ -528,6 +403,142 @@ region.** The container does not supply a title bar and hand the editor the spac
 beneath it; the editor registers a header region type alongside its main one,
 with its own draw callback. A view's chrome is the view's business, and the area
 only allocates the rectangle the container computes.
+
+## The measurement: what Blender's own shipped layouts actually contain
+
+The architectural fork this project had to decide was whether its layout is
+stored as Blender's **shared-vertex graph** — areas naming four corner points,
+neighbours sharing them — or as a **nested-splitter tree**, which is what Qt
+hands you and what `ROADMAP.md` item 34 already named. `PL-3J2P` is the item
+that decided it.
+
+Arguing it from the two representations' expressive power is a trap, because
+the graph is strictly more expressive and the argument then ends before it has
+weighed anything. The question worth answering is narrower: **does Blender, in
+the layouts it actually ships, use the power the graph has and the tree does
+not?** That is a count, and it was taken rather than estimated.
+
+### The threshold, stated before the count
+
+Per `.claude/rules/expert-review.md` § "Name the number that would change your
+mind, then go and count it", the thresholds below were written down before any
+counting code was run:
+
+- **A — non-slicing.** Is the arrangement expressible as recursive subdivision
+  by full-span cuts (a *slicing floorplan*)? The minimal non-slicing
+  arrangement is the pinwheel: five rectangles with no full-span cut anywhere.
+  A non-slicing screen is one a splitter tree **cannot represent at all**.
+  *Two or more of eleven and the tree is wrong outright.*
+- **B — cross junction.** Does any interior point have four areas meeting at
+  it? This *is* expressible in a slicing tree — two cuts at the same coordinate
+  — but it is not *represented*: the two collinear border segments become
+  independent handles where Blender's share one vertex. *Zero non-slicing and
+  at most one of eleven here, and the tree is confirmed; four or more and the
+  tree is expressible but behaviourally wrong at a configuration Blender uses
+  routinely.*
+- **C — drag fidelity.** Does any decomposition into splitters reproduce
+  Blender's border-drag behaviour exactly?
+
+### How it was measured
+
+Blender's shipped workspaces live in `release/datafiles/startup.blend`, which
+is stored in Git LFS and arrives as a pointer stub on an anonymous clone. The
+data was instead read from the `bpy` package on PyPI — Blender built as a
+Python module, **version 5.0.1**, which embeds the same startup data — by
+enumerating `bpy.data.screens` and each area's rectangle. Each screen was
+reduced to an exact integer grid, then tested for all three properties, with
+every possible slicing decomposition enumerated so that the tree was judged on
+its best case rather than on the first decomposition tried.
+
+Two honest limitations. The `bpy` build is **5.0.1** where the source read was
+**5.3**, so the layouts are one minor version behind the code; the default
+workspace set has been stable across that range, but it is a gap. And a
+rectangle-level reconstruction recovers the *arrangement*, not Blender's
+vertex and edge objects themselves, which RNA does not expose.
+
+### The result
+
+Against the pre-registered denominator — Blender's eleven default workspaces:
+
+| | count |
+|---|---|
+| **A** non-slicing (a splitter tree cannot express it) | **0 of 11** |
+| **B** contains a cross junction | **1 of 11** (Shading) |
+| **C** no splitter decomposition reproduces the drag | **1 of 11** (Shading) |
+
+Extended, as a secondary check never folded into the pre-registered figure, to
+the twenty-one workspaces in Blender's five shipped application templates (2D
+Animation, Sculpting, Storyboarding, VFX, Video Editing) — the layouts built
+for tasks furthest from the default, and so where a non-slicing arrangement
+would appear if anywhere: **0 of 21 non-slicing, 1 of 21 with a cross
+junction**, and that one is the same four-editor arrangement inherited from
+the Shading workspace.
+
+**Across all thirty-two shipped workspaces, not one uses a layout a nested
+splitter tree cannot express.**
+
+The single exception is worth stating precisely, because it is the whole of
+what the tree costs. The Shading workspace puts four editors in a 2×2 block —
+image editor and node editor along the bottom, file browser and 3D viewport
+along the top. In Blender the two borders crossing at the centre of that block
+each consist of two edges sharing the centre vertex, so each is one *maximal
+connected collinear chain* and dragging either moves its whole length. A
+slicing tree can preserve **one** of the two as a single handle, never both:
+whichever cut it takes first spans the block, and the other becomes two
+independent handles. This is not an artefact of a particular decomposition —
+all four decompositions of that screen were enumerated and each loses exactly
+one of the two.
+
+So the count lands squarely on the pre-registered "confirmed" row, with one
+named and bounded divergence rather than none.
+
+### What would have made this the wrong measurement
+
+Also stated before the count: the shipped defaults are a proxy for "layouts a
+professional tiling interface actually needs", and they would be the wrong
+proxy if Blender chose them to be *teachable* rather than to exercise the
+representation. The check on that is whether the interaction model *permits*
+arrangements the defaults avoid.
+
+**It does, and this escape clause fires. A non-slicing layout is reachable in
+six ordinary operations.** This was found by trying to falsify the opposite —
+the hypothesis was that split being full-span and join requiring a full shared
+edge would confine a user to slicing layouts — and the hypothesis is wrong.
+
+Split is indeed always full-span: `area_split`
+(`source/blender/editors/screen/screen_edit.cc`) inserts its two new vertices on
+the *area's own* left and right edges, so a cut spans exactly that area and
+never reaches past it. Splitting alone therefore cannot leave the slicing class.
+
+**Join is what leaves it.** Start from one area and make five full-span splits,
+arriving at six areas — a left column divided into an upper and a lower part,
+and five others around them. That arrangement is slicing. Now join the two
+parts of the left column: they share a full edge, so `area_getorientation`
+admits it and `screen_area_join_aligned` merges them into one rectangle. The
+result is the five-area pinwheel, which no sequence of full-span cuts can
+produce. One ordinary join took the layout out of the slicing class.
+
+Two further findings in the same direction, both verified in the source:
+
+- **Join does not require a full shared edge.** `area_getorientation` asks for
+  an exact facing-coordinate match and a perpendicular overlap of at least
+  `min(tolerance, extent of A, extent of B)` — so the required overlap can be
+  no more than the *smaller* area's own extent, and a short area beside a tall
+  one qualifies. `screen_area_join_ex` then trims the overhang into new areas
+  with `screen_area_trim` so the two line up, joins them, and optionally closes
+  the remainders.
+- **Every aligned join fuses coincident vertices across the whole screen**, via
+  `BKE_screen_remove_double_scrverts`. So four-area junctions are produced as a
+  matter of course by joining, rather than arising only by coincidence — which
+  is the mechanism behind the one in the Shading workspace.
+
+**What this does and does not change.** The count stands: Blender's designers
+shipped no non-slicing layout in thirty-two workspaces, and the two
+graph-specific drag behaviours remain opt-in. What falls is the stronger claim
+that the graph buys expressiveness Blender's own model never reaches. It does
+reach it, easily, and a nested-splitter tree is therefore **strictly less
+expressive than Blender's representation**, not merely differently organised.
+`PL-3J2P` records the decision that follows and the reasoning it now rests on.
 
 ## What the code cannot answer: Blender's stated reasoning
 
@@ -809,3 +820,10 @@ Documentation Team and the Blender Developer Documentation Team respectively.
 **No Blender code is used in this project, and none of its documentation is
 reproduced here.** What was taken is a design, described in this project's own
 words.
+
+`README.md` does not yet carry this line, deliberately. The area and workspace
+model is a *planned* milestone and nothing in the shipped application
+implements it, so a README sentence saying the interface is modelled on
+Blender's would describe software that does not exist. The attribution lives
+here until the area system ships and then moves to `README.md` as well;
+`PL-RTG9` is the item that does it.
