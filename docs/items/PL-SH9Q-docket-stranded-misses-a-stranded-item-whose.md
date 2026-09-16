@@ -1,8 +1,14 @@
 ---
 id: PL-SH9Q
 title: docket stranded misses a stranded item whose file already exists on the base, because it reads branch-only adds rather than branch-only content
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
+feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests
 added: 2026-09-16
+verify: uv run pytest -q subprojects/docket/tests/test_vcs.py && grep -q 'def test_stranded_reports_an_item_modified_only_on_a_branch' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** `bin/docket stranded` reports an item as existing "only on a

@@ -1,8 +1,14 @@
 ---
 id: PL-WXX8
 title: Eleven merged items owe a pr number and no session claims the work, because docket record's advisory assumes a commit is already being made
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
+feature: release-process
+touches: subprojects/docket/src/docket/release.py, .claude/skills/docket/SKILL.md, subprojects/docket/tests
 added: 2026-09-16
+verify: uv run pytest -q subprojects/docket/tests/test_release.py && grep -q 'def test_release_writes_the_pr_numbers_the_base_is_owed' subprojects/docket/tests/test_release.py
 ---
 
 **Problem.** `bin/docket check` on `main` at `6114ce8` names eleven items
@@ -50,3 +56,23 @@ rule 14 prescribes worked as designed — it warns and never certifies — and a
 **Recommendation: option 2.** Not started here — the session that found it was
 at 264,817 tokens, past the 150,000-token handoff cap `PL-H253` landed the same
 hour, and composing the commit is more than a capture.
+
+**Why it matters.** A missing `pr` is provenance lost rather than a cosmetic gap.
+`docket check` recovers the number from the merge commit that named the id, so it
+is recoverable only while that commit is the newest one naming it; past that the
+field cannot be written by command at all, because `bin/docket record` refuses to
+guess, and the route back to the tree a closure was proved on is a hand search of
+the history.
+
+The backlog also grows monotonically by construction, which is what makes it an
+item rather than a habit. Every merge adds to it; nothing removes from it except
+a session that goes looking. And the advisory is addressed to the one population
+that by definition is not holding the debt - sessions mid-work - while the
+session that owed the number has finished and usually archived. Three owed at
+03:00Z and eleven by 04:00Z is one hour of ordinary merging.
+
+**Done when.** A merged closure's `pr` is written by a mechanism that runs without
+a session noticing it is owed - candidate 2 above, folding `docket record` into
+the release cut, unless a cheaper one is found - and `docket check`'s advisory
+reports zero owed on a base where a release has since been cut. The eleven named
+above are backfilled as part of it.

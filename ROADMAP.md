@@ -1516,14 +1516,32 @@ milestone by this file's own test, whatever number it ships under.
 once.** `bin/docket release` offers the next free number to whatever is
 finished, so a patch cut before this lands takes this section's number - the
 hazard the `v0.4.x` row names. `v0.4.25` was cut on 2026-09-14 (`PL-G7RD`) from
-ten finished items, and this heading moved to `v0.4.26` with **nothing else
-moving with it**: no item's `blocked-by` names a version, and `PL-YVM1` swept
-the last prose that named one, so outside this file the port is named by name.
-It will move again if another patch is cut before this lands - a rename each
-time, not a re-scope. The guard no longer adds to that risk: `PL-VFD8` and
-`PL-188T` taught it to answer from every version the roadmap names ahead of the
-current one, so a bump arriving at this section's number is withheld and named
-rather than offered as free.
+ten finished items, and this heading moved to `v0.4.26` with nothing else moving
+with it: no item's `blocked-by` named a version, and `PL-YVM1` had swept the
+last prose that did.
+
+**That rename was cheap once and is not cheap now**, which is the part "a rename
+each time, not a re-scope" got wrong. The port's own work has put the number
+back. Counted 2026-09-16, eight sites in five files outside this one name
+`v0.4.26`: three in `tools/import_boundary_check.py`, two of those inside error
+messages a developer reads; two in `docs/ARCHITECTURE.md`; and one each in
+`subprojects/docket/src/docket/roadmap.py`, `.claude/skills/docket/SKILL.md` and
+`subprojects/docket/README.md`. Four carry the section-citation form
+`tools/doc_check.py` validates, so a rename that missed them fails `make check`;
+the other four name the number bare, where no check reads it. **Re-counted after
+`PL-7SVX` closed in `#638`** - the last of this section's Required scope, and the
+one item whose `touches` covered the two largest of those files - and the eight
+sites are unchanged. So the count above is this section's settled total rather
+than a reading taken mid-flight, which is what makes it usable for deciding the
+question below.
+
+**Whether a patch cut still takes this number is open, and `PL-KQHN` holds the
+question.** `PL-VFD8` and `PL-188T` taught the reserved-version guard to answer
+from every version the roadmap names ahead of the current one, so a bump
+arriving at this section's number is withheld and named rather than offered as
+free. Whether that withholding prevents the mechanic above or converts it from a
+default into a deliberate decision was never put to the project owner. Until it
+is, a cut at this number is taken deliberately rather than by default.
 
 **The one question the reorder leaves open is this number, and it is recorded
 rather than settled.** § "The cadence" says a gate does not get a version and
@@ -3445,6 +3463,37 @@ and it is `needs-decision` on a question `CLAUDE.md` puts on the project owner's
 side of the division of labour: what the release train does when a patch is cut
 mid-port. Like `PL-MN4J` above, it waits on an answer rather than on attention -
 though unlike it, no milestone's scope holds it.
+
+**Six more arrived with the 2026-09-16 triage pass (`PL-554Q`) and are disposed
+of here rather than added to the list.** Four are post-freeze `defect`s in the
+apparatus, neither `safety` nor `science`, whose problems do not predate the
+freeze, and they are deferred on the ordinary snapshot ground: `PL-7K8Y`
+(`docket record` normalises front-matter key order as it writes `pr:`, so
+`docket verify` reads the backfill as a content edit), `PL-DMDF` (`docket digest`
+asks one `git diff` per item file because `_superseded` is called with a
+one-element tuple inside a loop), `PL-SH9Q` (`docket stranded` misses an item the
+base already carries and a branch has modified) and `PL-WXX8` (merged items owe a
+`pr` number and the advisory's remedy addresses the one population that is not
+holding the debt). Every one sits wholly in the workflow lane and none can reach
+a reader of the simulator.
+
+The other two wait on answers rather than on attention, as `PL-KQHN` does.
+`PL-7RYB` (nothing distinguishes a decision the owner ratified from one they
+specified, on anything recorded before 2026-09-16) is `needs-decision` on what
+their own past decisions meant, which is theirs rather than a session's.
+`PL-NLP4` is this subsection's own closing paragraph, whose "66 dispositions" has
+not been true for some time; it is `blocked-by` `PL-B8V1`, which holds the same
+question one paragraph over, and its `Done when.` requires one answer to cover
+both rather than two answers to cover one each. That is also why the figure is
+left as it stands here: correcting it in place would pick the form `PL-B8V1` is
+open to decide.
+
+`PL-KND7` joins them, filed the same day and waiting on the same kind of answer:
+`main` has been red since `52205f6` because `PL-D1RT`'s `Done when.` was
+overtaken by two decisions of record - the interface pass's un-absorption
+(`PL-L9RD`) and its move after item 34 (`PL-PHKP`) - so what becomes of that item
+is the project owner's rather than a session's. It is workflow-lane and reaches
+no reader of the simulator.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
