@@ -71,3 +71,25 @@ container share was misleading.
 
 **Still owed:** the re-measured `show` time on the owner's clone, from
 `bin/docket digest --profile` run there.
+
+**Correction, same day: "1.0 per item edit" is a marginal rate, not the driver.**
+An independent pass refuted it and the refutation holds. Attributing every `show`
+to the line that issued it, on this container:
+
+| call site | calls |
+| --- | --- |
+| `_queue_only_work` | 16 |
+| `_title_at`, via `stranded` | 5 |
+| `_closed_on_base` | 3 |
+| `released_on_base` | 1 |
+
+So `show` is a sum over four differently-driven collections, and only the largest
+loops over `walk.edited`. The 1.0 slope measured by fabricating ref sets is
+sound for what it measured - each synthetic commit touched exactly one item file,
+so each added one `_queue_only_work` call - but it predicts the *marginal* call
+and not the total, and the three other terms have their own inputs. Anyone
+predicting a count from it will be wrong the way this item's own history was
+wrong, which is why the correction is here rather than left implied.
+
+Nothing shipped changes: the batch folds every `show` whatever line issued it,
+and the four sites were already covered.

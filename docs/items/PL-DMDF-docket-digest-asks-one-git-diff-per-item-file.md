@@ -70,3 +70,9 @@ contract `_superseded`'s docstring reasons about.
 rather than once per item file, the digest's output is byte-identical, a test
 pins that a ref with several outstanding paths is answered in one call, and this
 item records the re-measured `diff` count on the owner's clone.
+
+**Independently quantified.** A separate pass reading the call graph put this
+site at 25 of the container's 87 `diff` calls and **at least 440 of the owner's
+570**, reached from the `walk.edited` comprehension at `vcs.py:1283`. That agrees
+with the prototype measured here from the other direction - 593 to 148, a saving
+of 445 - which is the closest thing to confirmation this question has had.

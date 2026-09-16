@@ -149,3 +149,11 @@ which is exactly 3 x 26, their measured unmerged ref count.
 **Still owed, and it needs the owner's machine.** Run `bin/docket digest
 --profile` there and compare the `ref set` block with this one before comparing
 any count. `PL-DMDF` carries the `diff` fan-out this profiling turned up.
+
+**Correction to the table above: the `show` row is a marginal rate.** Attributing
+each call to its issuing line shows four sites, not one - `_queue_only_work` 16,
+`_title_at` 5, `_closed_on_base` 3, `released_on_base` 1 - so 1.0 per item edit
+is what the *next* edited id costs, not a formula for the total. The
+`merge-base` row is exact and unconditional: 3.0 per unmerged ref, because
+`_unlanded_refs` runs once each for `branches_in_flight`, `orphaned` and
+`cuts_in_flight`. Read the rows as slopes, and take totals from `--profile`.
