@@ -275,23 +275,34 @@ what kind of region it wants and how big it would like to be; it never assigns a
 rectangle. So the rule holds in the form that matters: **geometry flows
 downward from the area, and never upward from the editor.**
 
-### An editor cannot refuse a size, and the container's fallback is to hide
+### An editor cannot refuse a size, and there is no minimum-size contract at all
 
-`ARegionType` (`source/blender/blenkernel/BKE_screen.hh`) carries `minsizex` /
-`minsizey` and `prefsizex` / `prefsizey`. These are a **request, honoured where
-it fits, and overridden by concealment where it does not.**
+`ARegionType` (`source/blender/blenkernel/BKE_screen.hh`) declares
+`minsizex` / `minsizey` and `prefsizex` / `prefsizey`, and a reader who stopped
+at the header would conclude that an editor states a minimum the container
+honours. It does not. **`minsizex` and `minsizey` occur exactly once in the
+entire checkout — that declaration — and nothing reads them.** They are
+vestigial. This is the clearest illustration in the study of why the reading
+scope was widened to implementation: the earlier pass read headers only, and the
+header alone gives the wrong answer here.
 
-When `region_rect_recursive` cannot give a region its minimum — the area is too
-narrow, or a sidebar would collide with one on the other side — it sets
-`RGN_FLAG_TOO_SMALL` on the region and returns. Downstream, a region carrying
-that flag is treated exactly as a hidden one: its `winrct` is collapsed to zero
-extent, so it occupies no space and draws nothing.
+What is live is `prefsizey` / `prefsizex`, a *preferred* size consulted mainly
+when a region first opens, and even that is a starting value rather than a
+constraint — `region_rect_recursive` in
+`source/blender/editors/screen/area.cc` substitutes its own defaults for a
+header, a footer or an asset shelf regardless of what the type asked for.
 
-There is no negotiation and no veto. An editor has no callback that can reject a
-size or demand a different one; the container decides, and **its failure mode is
-to make the content disappear rather than to refuse the layout.** That is a
-reasonable answer for a 3D content tool and a directly unsafe one here, which
-"What this project does differently" returns to.
+The container computes every rectangle, and where a region cannot be fitted —
+the area is too narrow, or a sidebar would collide with one aligned to the
+opposite side — it sets `RGN_FLAG_TOO_SMALL` and returns. Downstream a region
+carrying that flag is treated exactly as a hidden one: its `winrct` is collapsed
+to zero extent, so it occupies no space and draws nothing.
+
+So there is no negotiation, no veto, and no declared minimum that means
+anything. **The container decides, and its failure mode is to make content
+disappear rather than to refuse the layout.** That is a defensible answer for a
+3D content tool, where a hidden sidebar costs a user one keystroke. It is
+directly unsafe here, and "What this project does differently" returns to it.
 
 ### An editor is isolated by convention, not by construction
 
@@ -429,21 +440,194 @@ of the layout system.
 
 ### What an editor must implement
 
-`SpaceType` is a vtable-as-data: metadata plus function pointers, registered once
-at startup. The required core is small, and the best evidence for where the line
-falls is not a null check but the simplest editor in the tree.
+`SpaceType` is a vtable-as-data: metadata plus function pointers, registered
+once at startup. Three different answers to "what is required" fall out of it,
+and keeping them apart is the useful part.
 
-`space_script` (`source/blender/editors/space_script/space_script.cc`, 220
-lines) registers: `spaceid` and `name` for identity; `create`, `free`, `init` and
-`duplicate` for lifecycle; and two region types — a main window region and a
-header — each with its own `init` and `draw`. That is a working editor.
+**The enforced contract is tiny.** Only `spaceid`, `name` and `create` are
+genuinely unavoidable — `create` is called with no null guard — plus one
+structural invariant: every region an editor's `create` builds must have a
+matching declared `ARegionType` with the same `regionid`. `ARegionType` itself
+has **no required callbacks at all**; the tree ships one with nothing but
+`regionid` set. Everything else on `SpaceType` is null-guarded at its call site.
 
-Everything else `SpaceType` offers is optional and absent from at least one real
-editor: `operatortypes`, `keymap`, `dropboxes`, `listener`, the context callback,
-`blend_write` / `blend_read_data`, `foreach_id`.
+**The practised contract is larger.** All twenty in-tree editors set `create`,
+`free`, `init`, `duplicate`, `operatortypes`, `keymap` and `blend_write`, and
+declare one `ARegionType` per region they use, even though every one of those
+is guarded somewhere. The simplest real editor,
+`source/blender/editors/space_script/space_script.cc` (~220 lines), implements
+exactly that floor and nothing more: identity, those lifecycle hooks, and two
+region types — a main window region and a header — each with `init` and `draw`.
 
-One detail matters for this project's own contract: **the editor declares its own
-header region.** The container does not supply a title bar and then hand the
-editor a space beneath it; the editor registers a header region type alongside its
-main one, with its own draw callback. A view's chrome is the view's business, and
-the area only allocates the rectangle it is computed into.
+**And part of the declared interface is dead**, which is the most useful warning
+in this section for a project about to design a contract of its own.
+`SpaceType::draw_pre` and `draw_post` have live, guarded call sites in the
+window manager's draw path and **zero implementations anywhere in the tree**.
+`SpaceType::keymapflag` is read in `source/blender/editors/screen/area.cc` and
+**never assigned by any editor** — every `keymapflag` assignment in the tree is
+to the identically-named field on `ARegionType`, which is a different member of a
+different struct. A vtable-as-data contract accumulates members nothing
+implements and fields nothing sets, and nothing in the design makes that
+visible. `PL-TH35` should take the shape and plan for the pruning.
+
+One detail matters for our own contract: **the editor declares its own header
+region.** The container does not supply a title bar and hand the editor the space
+beneath it; the editor registers a header region type alongside its main one,
+with its own draw callback. A view's chrome is the view's business, and the area
+only allocates the rectangle the container computes.
+
+## What the code cannot answer: Blender's stated reasoning
+
+**Evidence warning, and it applies to this whole section.** None of the pages
+below could be opened; every `blender.org` host and `web.archive.org` are
+refused by this environment's egress proxy. What follows rests on search-engine
+summaries of those pages. Where a claim could be checked against the source it
+was, and that is marked. Everything else should be re-read at the page itself by
+any session that can reach one. Where the honest answer was that Blender does
+not appear to say something, that is recorded as the finding.
+
+### Blender's reason for non-overlapping is not this project's reason
+
+This is the most important finding in the section, and it is a negative one.
+
+`ROADMAP.md` item 34 refuses silent occlusion on a safety argument: a covered
+value on this application's dashboard is a misread value, which `CLAUDE.md`'s
+standard treats as a safety failure. It would be convenient if Blender's own
+rationale were the same, because then the precedent would carry the argument.
+**It is not.**
+
+Blender's Human Interface Guidelines name **Non-Overlapping**, **Non-Blocking**
+and **Non-Modal** as three separate paradigms with three separate reasons —
+which is itself worth knowing, because the three are often treated as one idea.
+Non-overlapping is a *window-management and visibility* argument: the interface
+should let you see the relevant options and tools at a glance, without pushing
+or dragging editors around. Non-blocking is about not being locked out of the
+rest of the application by a requester. Non-modal is select-then-act, with an
+operator's settings adjustable after it has run.
+
+An attribution caveat, because the search route cannot settle it: the most
+pointed phrasing of the non-overlapping rationale — freeing artists from moving
+windows around *and from covering up content* — appears to come from a 2008
+Blender Conference paper rather than from the guidelines page itself. The
+substance is consistent across both, but a session that can open the pages
+should confirm which document says what before quoting either.
+
+So Blender is good evidence that **tiling is workable and pleasant at scale**,
+and no evidence at all for the information-integrity claim. This project's
+safety argument stands on its own reasoning and on `docs/MODEL.md`'s minimum
+displayed outputs, and citing Blender in support of it would be citing a
+different argument that reaches a similar-looking conclusion.
+
+### "Non-overlapping" is narrower than it sounds, and the source proves it
+
+Nothing reachable states a general principle for which elements may overlap an
+editor and which may not; the line has to be inferred from practice. But the
+practice is clear, and one part of it corrects a mistaken reading this project
+was at risk of carrying.
+
+**Blender's non-overlap guarantee is about areas, not about everything.**
+Verified in the source rather than inferred: `RGN_TYPE_HUD` and
+`RGN_ALIGN_FLOAT` are region types (`DNA_screen_types.h`), `region_overlap_fix`
+in `source/blender/editors/screen/area.cc` exists precisely to arbitrate regions
+that overlap within one area, and the user preference controlling it,
+`USER_REGION_OVERLAP` (`DNA_userdef_types.h`), is **on by default** —
+`uiflag2` is initialised to it. So a toolbar, sidebar or header floats
+translucently over the main region of its own area out of the box, and the redo
+panel is a floating region type.
+
+What does *not* overlap is one **area** over another. Menus, popovers, tooltips
+and pie menus overlap freely; so do temporary top-level windows, and those are a
+named category rather than an accident — `WM_window_is_temp_screen`
+(`source/blender/windowmanager/WM_api.hh`) is a public predicate for them, and
+Preferences, the file manager and the render window are its members.
+
+The line this project needs is therefore **not** inherited from Blender and has
+to be drawn here. The useful part of the precedent is the shape: a small,
+named, enumerable set of things that may float, with a predicate that identifies
+them, rather than a case-by-case judgement per widget.
+
+### Header, sidebar, toolbar and footer are keyed to scope of effect
+
+The source defines roughly sixteen region roles and no guidance. What the HIG
+offers is closer to a set of **defaults than to a decision procedure**, and the
+idea organising them is **scope of effect rather than frequency of use**:
+display options — what you are looking at — go in the header; options affecting
+several tools or the editor's own behaviour go to the right of the header or
+into tool settings, optionally behind an options popover; interactive
+gizmo-driven tools go in the toolbar; grouped object- and editor-level settings
+go in the sidebar, under a discipline that prefers reusing an existing tab to
+adding one.
+
+One piece of Blender's own reasoning here is worth more to this project than the
+placement rules, and it emerged from the design discussion that moved the tool
+settings strip below the header rather than above it. The argument was
+**information hierarchy**, not aesthetics: the header carries the controls that
+define the working context — the mode, most of all — and tools are interpreted
+*relative to* that context, so the context-defining strip must sit above the
+tool strip rather than beneath it. That is a real principle and it transfers
+directly. Anything that says *what the numbers on screen are about* — which run,
+which patient, which model — outranks and sits above anything that acts on
+them.
+
+Two gaps worth recording rather than papering over. Nothing reachable gives the
+**main region** a role definition at all — it is simply what is left. And there
+is no prohibition list for headers; the only stated pressure is limited
+horizontal width, answered with pulldowns and popovers rather than with a rule
+about what may not go there. A project whose required values must never be in a
+hideable region will not find that rule in Blender.
+
+### Workspace and Screen are two concepts because one was doing two jobs
+
+The clearest and best-evidenced of the rationale findings. Before 2.8, screen
+layouts were being used as whole-task presets *and* as arrangements of areas.
+The 2.8 interface work separated them: a **WorkSpace** became a task-level ID
+data-block, and a **bScreen** was demoted to the geometry of areas in one
+window — renamed "layout" in the interface.
+
+A workspace therefore carries more than an arrangement: an object mode it
+switches to on activation, an optional pinned scene, and an optional
+per-workspace add-on filter. It holds *several* layouts because a screen is
+bound to a single window, and because maximizing an area or opening a temporary
+window creates an extra hidden screen; per-window and temporary layouts
+accumulate under the one workspace.
+
+That is directly applicable here. Item 34 already wants a workspace to pin which
+**run** it shows, which is the analogue of pin-scene. The two-level split is
+what makes that possible: if a workspace were only a layout, there would be
+nowhere to put it.
+
+### There is no mode-awareness doctrine to borrow
+
+Worth stating because the absence is the answer, and because this project's
+safety standard needs exactly such a doctrine.
+
+Blender's **Non-Modal** paradigm turns out to be primarily about *not blocking*
+— no requester that must be completed before a tool runs, settings shown in
+non-blocking regions, operator settings adjustable after the fact — plus a
+secondary noun-then-verb claim. It is explicitly not a claim that Blender has no
+interaction modes; the guidelines concede that Blender's complexity makes some
+editing modes inevitable and mitigate them by scoping them.
+
+What is absent is any doctrine about **mode awareness** — keeping the current
+mode visible, or what to do about a mode that is hard to notice. Blender has
+strong mode-awareness devices in practice (the mode selector in the header, a
+different keymap, different shading), but nothing reachable presents them as a
+deliberate answer to the hazard of an unnoticed mode. So this project's
+requirement — that a reader can never be wrong about what state the application
+is in or what context a displayed value belongs to — has no Blender precedent to
+lean on, and is ours to design.
+
+### Where Blender says the model does not apply
+
+Mostly Blender documents its exceptions as behaviour rather than as reasoned
+boundaries. The temporary windows are named and detectable but explained by what
+they do rather than by why they are exempt.
+
+The one place the model is clearly said not to carry is Blender's own
+tablet and touch work, which names a single full-screen window, small screen
+area, and the absence of a mouse and keyboard as constraints calling for
+task-oriented, lower-density interfaces. That is an admission by implication
+that the desktop area model is a desktop model. This project's interface is a
+desktop application and so sits inside that boundary — but it is the boundary,
+and a later session considering a tablet build should treat item 34's model as
+out of scope there rather than as something to shrink.
