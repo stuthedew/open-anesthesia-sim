@@ -106,6 +106,29 @@ open items that bar would have suppressed — was 67% still-real findings, which
 killed the proposal. The project owner caught it by instinct first; the number
 only confirmed what the objection already said (`PL-LKGL`, `PL-27S8`).
 
+## Say what would falsify it, then record the instance rather than the rule
+
+An argument licenses the narrowest rule that removes the hazard, never the
+widest rule the hazard could motivate. So before writing a rule into
+`ROADMAP.md` or `docs/MODEL.md` — the two documents a later session cites to
+refuse work — say what would have to change for the sentence to stop being
+true: a new substance, a new toolkit, a new mechanism. **If the answer is
+already on the roadmap, it is an instance and not a rule.** Write it as one,
+with its condition named, and pitch the rule at the altitude that survives.
+
+It fails quietly. A wrongly permanent sentence trips no check and never can,
+because altitude is judgment rather than a fact about the tree; it simply sits
+there being obeyed by sessions that were not there when it was written.
+
+`PL-GDB0` holds three instances from a single session, each caught by the
+project owner and none by any gate: floating windows recorded as permanently
+refused where a not-yet was asked for; a persistent strip recommended before
+counting what it would have to carry; and the minimum display's unconditional
+set written as the inhaled model's own list of concentrations, which
+planned-milestone item 13's intravenous models would have falsified. All three
+began from a sound argument about the mechanism in front of the session, which
+is what makes this worth a rule rather than an apology.
+
 The principles governing what a **displayed clinical value** may imply —
 false precision, modeled versus measured, misleading plots, visible model
 limitations — are not here. They are in `CLAUDE.md`'s safety-critical

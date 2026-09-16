@@ -121,6 +121,26 @@ failure added. Its code-and-provenance half stayed path-scoped in
 docstring obligations both fire with a file already open. Cost: +4721
 characters, the largest single addition this file records (`PL-WWDT`).
 
+*Extended 2026-09-16, +1420 characters (`PL-GDB0`, project owner).* § "Say
+what would falsify it, then record the instance rather than the rule": before
+writing a rule into `ROADMAP.md` or `docs/MODEL.md`, name what would make the
+sentence stop being true, and where the answer is already on the roadmap,
+record an instance with its condition rather than a rule. Three instances in
+one session bought it, each caught by the owner and none by any gate.
+
+**Path-scoping was measured against this rather than waved off, and it loses
+on one moment.** Two rules already scope `docs/MODEL.md` — `citing-sources.md`
+and `sources-and-docstrings.md` — and nothing scopes `ROADMAP.md`, so the
+cheap version was a fourth path-scoped file over both. It would have fired: all
+three instances opened the file before writing it. What it would not have
+caught is that two of the three were *stated in a reply first* — floating
+recorded as refused, and the strip recommended — and reached the project owner
+before any file was opened. That is the deciding-an-approach moment this whole
+file governs, which is why the rule sits beside the count-first discipline it is
+the sibling of rather than in a rule of its own. The alternative refused with
+it: widening `citing-sources.md` to `ROADMAP.md`, which would drag a
+source-routing document into every roadmap edit.
+
 *Corrected 2026-09-07, +450 characters, no routing change (`PL-X19T`).* The
 paragraph carrying the Gas Man rule into a reply said a reference
 implementation is *never* the authority for a constant, which the shipped
