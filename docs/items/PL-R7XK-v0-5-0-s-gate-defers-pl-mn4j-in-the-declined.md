@@ -1,7 +1,13 @@
 ---
 id: PL-R7XK
 title: v0.5.0's gate defers PL-MN4J in the declined subsection, but 'Debt inside the milestone's own scope' already places it in Required scope
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs, planning
+feature: debt-gate
+touches: ROADMAP.md
+verify: python3 tools/doc_check.py check && grep -qF 'cannot be cleared before the compare mode it is about' ROADMAP.md
 added: 2026-09-16
 ---
 
@@ -51,3 +57,18 @@ Required scope, or the frozen list with the date and reason as `PL-GS3R`,
 the declined subsection carried across rather than dropped, and every count
 `doc_check` holds to the document updated with it. `make check` reports
 `PL-MN4J` no longer.
+
+## Decided (project owner, 2026-09-16, ratified)
+
+**`PL-MN4J` moves into v0.5.0's `Required scope`**, chosen over leaving it
+deferred in the `### Declined to Gate 2 ...` subsection where it sits today.
+
+Ratified on this session's recommendation, so it reopens on ordinary evidence
+per `CLAUDE.md`. The ground is not new judgment: § "Debt inside the milestone's
+own scope" already answers this exact case, and says so about the safety
+interaction in terms - such an item "is still not deferrable - it just cannot be
+finished earlier than the work it is part of, and the milestone's definition of
+done is what holds it."
+
+Carry the reasoning currently in the declined subsection across rather than
+dropping it, and move every count `doc_check` holds to those two structures.
