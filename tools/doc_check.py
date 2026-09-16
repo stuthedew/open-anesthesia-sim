@@ -1794,6 +1794,27 @@ def check_scope_exclusions(root: Path, report: Report) -> None:
 #: naming the item rather than going quiet about it.
 ANTICIPATED_CLASS = "anticipated"
 
+#: The status that carries the class above's expiry, and the half that makes it
+#: a wait rather than a permanent exemption. `anticipated` says the hazard is
+#: not live yet; `blocked` is what the item stops saying once it is, and
+#: `blocked-by` - which `checks.py` errors on a `blocked` item for omitting - is
+#: where it names what has to happen first. So the pair is a claim with its own
+#: stated end, where the class alone was open-ended (`PL-ZF2G`, project owner,
+#: 2026-09-16, ratified - chosen over leaving the exclusion on the class alone).
+#:
+#: `subprojects/docket/src/docket/checks.py` already requires exactly this pair
+#: for the safety-band exemption, on the same reasoning: "A blocked item where
+#: something is already wrong is the opposite case". Read from there rather than
+#: re-decided here, so that `anticipated` does not come to mean one thing in the
+#: checker and another in this tool.
+#:
+#: Spelled rather than imported for `ANTICIPATED_CLASS`'s reason: `docket.model`
+#: declares it inside `OPEN_STATUSES`, which names a vocabulary rather than this
+#: rule's subject. The drift fails in the same safe direction - a name that stops
+#: matching exempts nothing, so every `anticipated` item is named rather than
+#: passed over.
+BLOCKED_STATUS = "blocked"
+
 
 def check_gate_reentries(root: Path, report: Report) -> None:
     """Name every open `safety`/`science` item the current gate does not place.
@@ -1864,6 +1885,41 @@ def check_gate_reentries(root: Path, report: Report) -> None:
     which is `PL-MVC2`'s shape, and no check can catch a class correctly spelled
     and wrongly applied.
 
+    **The exclusion expires, which is `PL-ZF2G` and why it reads `status` as
+    well as `classes`.** On the class alone it never stopped. The rule is about
+    *when* a hazard begins, and a finding written against an unbuilt milestone
+    went on being passed over after that milestone shipped and the hazard went
+    live - so the one thing the rule was for was the one thing it could not
+    notice. Requiring `blocked` alongside the class gives it an end: the item
+    itself says what it is waiting for, and stops saying it when the wait is
+    over.
+
+    It expires on the *promotion* rather than on the blocker closing, and that
+    gap is real rather than waved past. Nothing rewrites `status` when a blocker
+    closes; `bin/docket check`'s "every blocker has closed; it is ready to
+    promote" is what asks for it, and on 2026-09-16 it was asking for seven
+    items - `PL-W7H9`, `safety, anticipated` behind a `PL-8PSW` that is `done`,
+    among them. So the carve-out now outlives its hazard by one grooming pass
+    instead of indefinitely, and the advisory that closes that window already
+    runs on every `bin/docket check`.
+
+    Resolving the blockers here directly would close the window outright, and
+    was not built: it would put a second copy of `checks.py`'s resolution logic
+    - item edges, milestone edges, `ships_with` - in the tool whose job is to
+    read the store rather than reason about it, to buy a pass that an existing
+    advisory already covers. The conjunct is what `checks.py` spells, and
+    agreeing with it is worth more here than being a pass quicker.
+
+    The roadmap had already decided one of these by hand, which is what settles
+    it. `PL-V6M0` is `safety, anticipated` and was never blocked, and
+    `ROADMAP.md` § "Why `anticipated` does not defer it" both seats it at `P1` -
+    "`checks.py` grants the class its exemption from the band only at `status:
+    blocked`, and nothing blocks this one" - and has it re-entering the gate
+    "whatever its presence answer". On the class alone this check would have
+    passed over the item that paragraph exists to keep in. So the conjunct is
+    this rule agreeing with a disposition the project already took, rather than
+    a rule borrowed from the checker.
+
     The gate it reads is the one `docket.roadmap` reads: the first *unreleased*
     section recording a gate, rather than the newest recorded one, so that an
     open item is never measured against a shipped milestone's closed list.
@@ -1910,7 +1966,7 @@ def check_gate_reentries(root: Path, report: Report) -> None:
         for item in items
         if item.status not in CLOSED_STATUSES
         and item.identifier not in placed
-        and ANTICIPATED_CLASS not in item.classes
+        and not (item.status == BLOCKED_STATUS and ANTICIPATED_CLASS in item.classes)
         and any(name in config.safety_classes for name in item.classes)
     ]
     if not owed:
