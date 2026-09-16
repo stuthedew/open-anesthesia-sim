@@ -160,9 +160,18 @@ applies to routine iteration, never to skipping a check before a commit or
 before finishing.
 
 - Keep a session short and scoped to one topic; start a fresh one for an
-  unrelated topic rather than continuing or compacting a long one. Pick up cold
-  from the session-start digest, `bin/docket next`, and the one item being
-  worked — not by reading the queue whole.
+  unrelated topic rather than continuing or compacting a long one. **Hand off
+  at about 150,000 tokens** (project owner, 2026-09-16): finish the item in
+  hand, push it, and say in your reply that you stopped for length rather than
+  for the work. A session cannot feel its own length, so read it — one call to
+  `get_session`, field `external_metadata.context_usage.used_tokens` — at a
+  natural break rather than continuously. This is the largest adherence lever
+  the project has, and the reason trimming these instructions is not: the
+  resident set measured 2.5–5.6% of the 263k–519k contexts seven concurrent
+  sessions were carrying on 2026-09-16, so no cut to it substitutes for ending
+  the session (`PL-H253`). Pick up cold from the session-start digest,
+  `bin/docket next`, and the one item being worked — not by reading the queue
+  whole.
 - Batch related questions, and related edits, into one turn.
 - Prefer targeted reads over whole-file reads of large documents once you know
   roughly where the section is. Read the whole file when editing it.

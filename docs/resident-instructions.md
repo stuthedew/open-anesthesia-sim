@@ -74,6 +74,18 @@ arriving and the session deciding how to answer it; nothing but resident text
 reaches that moment. The same argument covers `What this project is`, which
 sets the horizon every one of those judgments is made against.
 
+The session-length cap in § "Session and tool-use efficiency" was added on
+2026-09-16 on the project owner's decision, and is resident for this group's
+reason rather than its own: a session decides whether to keep going while it is
+working, and no read precedes that. The four dispositions were put to the owner
+as real options — a `SessionStart` budget line, a periodic `get_session`
+self-check, a low `/autocompact`, or the habit alone — and the habit was chosen,
+so what is resident is the rule and there is no mechanism to route it to. It
+carries its own measurement (2.5–5.6% of a 263k–519k context) because the
+alternative is every later session re-deriving the trim proposal this pass
+refuted; a rule that does not carry its refutation gets re-opened, which is the
+cost `docs/resident-instructions.md` exists to stop paying (`PL-H253`).
+
 The gate-scope bullet in that section was added on 2026-09-16 for the same
 reason and against a measured asymmetry. The stop-and-wait rule is stated once,
 bolded, at line 66; the cases that release it are stated four times — a note

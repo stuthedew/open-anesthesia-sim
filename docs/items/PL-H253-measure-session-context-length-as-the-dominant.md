@@ -1,8 +1,14 @@
 ---
 id: PL-H253
 title: Measure session context length as the dominant instruction-adherence variable, and give a session a way to see its own
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: session-cost
+verify: grep -qF 'at about 150,000 tokens' CLAUDE.md && grep -qF 'context_usage.used_tokens' CLAUDE.md && grep -qF 'session-length cap in' docs/resident-instructions.md && python3 tools/doc_check.py check
+touches: CLAUDE.md, docs/resident-instructions.md
 added: 2026-09-16
+closed: 2026-09-16
 ---
 
 **Problem.** Instruction adherence in this project is being attributed to
@@ -33,9 +39,22 @@ topic rather than continuing or compacting a long one". It is being missed by
 3×–5×, and nothing surfaces it. A session cannot see its own context usage from
 inside; the harness can, through `get_session`.
 
-**Not yet decided.** Whether to give a session that number, and what it should
-do with it. Options: a `SessionStart` line stating the budget; a periodic
-self-check via `get_session`; `/autocompact` set low enough that compaction is
-the signal; or nothing beyond the owner ending sessions sooner. The last is
-free and may be sufficient — this is the project owner's working habit, not a
-mechanism, and no mechanism should be built before they choose.
+**Decided, project owner, 2026-09-16: hand off at about 150,000 tokens, and
+build no mechanism for it.** The options put were a `SessionStart` budget line,
+a periodic `get_session` self-check, a low `/autocompact`, or nothing beyond
+ending sessions sooner. The last was taken.
+
+What landed is the rule and not a mechanism: one sentence in `CLAUDE.md`
+§ "Session and tool-use efficiency", naming the number, the one call that reads
+it (`get_session`, `external_metadata.context_usage.used_tokens` — confirmed
+against a live call, not assumed), and the measurement that makes it the
+primary lever. No hook, no script, no polling loop.
+
+**Why the reason is in the rule rather than only here.** Without it the next
+session to notice a 444-line `CLAUDE.md` re-derives the trim proposal from
+scratch, which is what this pass was. The sentence forecloses it by carrying
+its own refutation — 2.5–5.6% — so the objection is answered where it will be
+raised.
+
+**Honoured on the spot.** The session that landed this was at 176,689 tokens
+when it read its own number, past the cap it was writing, and handed off.
