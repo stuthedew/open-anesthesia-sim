@@ -1630,9 +1630,12 @@ Four grounds survive:
    that "the Qt view is built decomposed from the start", so what this decides
    is only the container those components go into - nested splitters rather
    than fixed layouts. The alternative is laying out every panel twice, which
-   is the argument this milestone makes for *reserving* for item 33 here rather
-   than building it - the reservation survived the un-absorption above, because
-   a layout container genuinely is built once by this port.
+   is the argument this milestone makes for *reserving* for **item 34** here
+   rather than building it - the reservation survived the un-absorption above,
+   because a layout container genuinely is built once by this port. (Written
+   "item 33" until 2026-09-16, `PL-BNYF`: the fourth and last site where the
+   un-absorption note's wording had attached the layout reservation to the
+   visual pass, two lines after this same scope item gives it to item 34.)
 
    *The inert handles are the deliberate half, not an oversight.* A draggable
    splitter is something a learner can do that they cannot do today, so live

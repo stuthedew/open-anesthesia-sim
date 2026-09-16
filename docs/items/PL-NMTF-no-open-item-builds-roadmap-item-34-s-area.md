@@ -1,0 +1,40 @@
+---
+id: PL-NMTF
+title: No open item builds ROADMAP item 34's area system at all - PL-3J2P and PL-C842 decided the representation and the container, PL-FTP5 recorded the provenance, and every other interface-areas item is a prerequisite waiting on a build item that does not exist
+status: untriaged
+feature: interface-areas
+added: 2026-09-16
+---
+
+**Problem.** No open item builds ROADMAP item 34's area system at all - PL-3J2P and PL-C842 decided the representation and the container, PL-FTP5 recorded the provenance, and every other interface-areas item is a prerequisite waiting on a build item that does not exist
+
+**Why it matters.** `bin/docket feature interface-areas` lists decisions
+(`PL-3J2P` the splitter tree, `PL-C842` the LayoutModel), provenance (`PL-FTP5`,
+`PL-P5QX`), a path-scoped rule (`PL-LH18`), a contract waiting on the system
+(`PL-TH35`), and nine prerequisites this audit filed. Not one of them *builds*
+the thing. The Qt port has already paid for the reservation - `inert_splitter()`
+at `src/anesthesia_sim/app/qt_widgets.py:784` disables every handle so that a
+later item can enable them - and the item that enables them does not exist.
+
+That is why two other problems have no honest fix. `PL-TH35` cannot re-point its
+`blocked-by` at anything real (`PL-D584`), and `ROADMAP.md` § "The timeline"
+cannot place item 34 as a release without a scope to place. A design held in
+four closed items and a reservation held in inert code is the state this project
+is worst at keeping: nothing in the queue decays visibly, and the next session
+to open `app/` reads a rule telling it to build for a system nobody has
+scheduled.
+
+**Done when.** Either an item exists that builds the area system with a scope of
+its own, or `ROADMAP.md` records item 34 as a milestone to be scoped and the
+queue points at that - so that "who builds this, and when" has an answer a
+session can read.
+
+**Not a scoping round.** Scoping item 34 is the project owner's, and
+`ROADMAP.md`'s development rules say a milestone gets a goal, required scope,
+definition of done and an out-of-scope list before implementation begins. This
+item is the observation that neither the milestone nor the item exists, not a
+request to write one now.
+
+## Area-model audit (PL-BNYF)
+
+**Disposition: `missing-prereq`.** Surfaced 2026-09-16 by the area-model audit's completeness critic, after the main sweep had closed - which is the critic earning its place rather than a defect in the sweep.

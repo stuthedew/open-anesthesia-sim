@@ -109,8 +109,11 @@ Editor contract rather than as items, which is where the store check put them.
 
 **`ROADMAP.md` said two incompatible things about who turns the Qt port's inert
 splitter handles live**, and all three ordering lenses found it independently.
-`:1540` and `:4545` said item 33, the visual pass; `:1615`, `:1633` and `:4770`
-said item 34, the area system. The un-absorption of item 33 on 2026-09-16
+`:1540`, `:4545` and `:1633` said item 33, the visual pass; `:1615` and `:4770`
+said item 34, the area system. The third site was missed on the first pass and
+found by this audit's own completeness critic, which is the check earning its
+place: the first two were the ones a grep for "turns them live" returns, and
+`:1633` says "*reserving* for item 33" instead. The un-absorption of item 33 on 2026-09-16
 introduced it: that note pulled the visual pass out of the port and attached the
 reservation's next step to it. Corrected in both places, and item 33's lever
 list - "palette, type scale, spacing rhythm, density and layout" - no longer
@@ -122,6 +125,22 @@ as described - `inert_splitter()` at `src/anesthesia_sim/app/qt_widgets.py:784`
 disables every handle and refuses collapse, and `QSplitter` is imported by that
 module and no other under `src/`. The largest available false finding, that the
 port built the area system and it will be undone, does not hold.
+
+**Five more filed after the completeness critic ran**, which is the critic
+earning its place: `PL-NMTF` (no open item builds item 34's area system at all -
+the decisions, the provenance and nine prerequisites exist and the build does
+not), `PL-J4NW` (`docs/ARCHITECTURE.md` § "Where new code belongs" routes every
+new panel by which container holds it, loaded on every `src/` read alongside
+`.claude/rules/ui-areas.md`, which asks the opposite), `PL-R1WQ` (the view
+registry and the kind tag), `PL-9PD6` (`docs/interface-provenance.md`
+contradicts itself about the README attribution, which is what `PL-RTG9` was
+refuted against) and `PL-D584` (`PL-TH35`'s `blocked-by` names an item that
+closed on 2026-09-12, so the store advises promoting the Editor contract on
+every run).
+
+`PL-NMTF` is the one to read first, and it is why two other things here have no
+clean fix: `PL-TH35` has nothing real to point its `blocked-by` at, and the
+timeline cannot place item 34 as a release without a scope to place.
 
 **Left for the project owner**: item 34 has no row on "The timeline" at all.
 That is a defect of record, but which row it takes is a scheduling call rather
