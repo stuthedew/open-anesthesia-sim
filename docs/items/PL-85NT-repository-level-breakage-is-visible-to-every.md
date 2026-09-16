@@ -185,3 +185,53 @@ commit sha - rather than against the whole store, and which therefore does not
 inherit the cross-reference density that killed route 1. That is a different
 claim and it is unmeasured; it should be measured before it is built, on the
 same standard applied here.
+
+**The sha-range repair was measured 2026-09-16, and it works.** Route 2's
+systematic miss is repaired by matching any sha in the *red streak* - from the
+last successful `main` run through the failing head - rather than the head
+alone:
+
+| event | head-only | streak-range | shas in range |
+| --- | --- | --- | --- |
+| `#1985` / `7ba6108e` | 6 | 6 | 1 |
+| `#1990` / `b47b81f9` | **0** | 6 | 2 |
+| `#1991` / `1ef84c4b` | 1 | 6 | 3 |
+| `#1999` / `84b23720` | 3 | 8 | 4 |
+
+The head-only column corrects this brief: it reported **one** missed event and
+there were **two**. `#1990` returned nothing at all, and `#1991`'s single hit was
+`PL-85NT` itself rather than any claimer. Streak-range returns `PL-B5VM` - the
+item that actually claimed the failure - on every one, at a cost of 6 to 8 items
+where head-only gave 0 to 6. Where the streak is one commit the two are
+identical, so the widening is paid only on a failure that survives a merge,
+which is when it is needed. Precision degrades with streak length and the
+longest streak here was four; a ten-commit streak is unmeasured.
+
+**`PL-99YZ` describes this same gap and is sharper on the diagnosis.** Filed by
+a further session on 2026-09-15 - the seventh capture of the evening, and a
+duplicate of *this* item, which is either the finding proving itself or a joke
+at its own expense. It should not be lost in favour of this one, and two points
+in it are better than anything above:
+
+- **"Filing first makes you visible; it does not make you look."** Every guard
+  matches an *existing* id, and a session filing a new id cannot be matched
+  against ids that did not exist when it looked. That is the mechanism in one
+  sentence.
+- **An existing command already answers the acute case, and the routing is what
+  failed.** `bin/docket concurrent <id>`'s second half reads the files branches
+  have *actually changed*, and all three branches had touched the one path. So
+  routes 1 and 2 propose new detectors where a built one was not reached.
+
+That last point outranks the measurements above and should be weighed before
+either route is built. `PL-99YZ` is honest about its own limit - `concurrent` is
+bounded by what has been *pushed*, and `#598` and `#599` were 113 seconds
+apart - so it is not a complete answer either, and the acute case may have no
+cheap fix at all.
+
+**Recommendation on the overlap: keep `PL-99YZ`, fold this item's measurements
+into it.** Its diagnosis is better and its timeline is exact; what this one has
+that it lacks is the 45% duplicate rate, route 1's refutation, and the two
+tables above. Merging that way loses nothing and leaves one item. Not done here:
+`PL-99YZ` is another session's untriaged capture, and resolving it from this
+branch would be a second answer in a file somebody else may be holding - which
+is the whole subject of both items.
