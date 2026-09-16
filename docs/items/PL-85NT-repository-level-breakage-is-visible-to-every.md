@@ -115,3 +115,38 @@ reaches the chronic class the count reveals; route 2 is narrower, firing only
 where `main` is red. Had the count come back showing tonight as an outlier the
 order would have stayed 2-then-1, which is what made it worth running. Route 3
 is refused on the evidence above.
+
+**Route 1 was then built, measured and thrown away, 2026-09-16.** The project
+owner approved it; a `neighbors.py` was written against the real store and
+deleted unshipped, because building it properly disproved the numbers this brief
+had used to recommend it.
+
+| variant | true original in top 3 | fires on |
+| --- | --- | --- |
+| shared referents, rare-filtered | 2 of 5 | 84% of open items |
+| raw shared count, no filter | 3 of 5 | 84% |
+| Jaccard over the referent sets | 1 of 5 | 91% |
+| overlap coefficient | 0 of 5 | 93% |
+| same-day **and** shared referent | 3 of 5 | 95%, median 19 candidates |
+
+**Why the earlier figure in this brief was too kind, stated plainly because it
+is the reason a session was spent on a dead end.** The 4-of-5 above was computed
+with rarity fixed over a snapshot taken before tonight's items existed. Once the
+duplicates themselves are in the store, `#593` and `7ba6108e` are cited by
+enough items to cross any rarity threshold and get filtered out - so the signal
+decays precisely as the duplicates it should catch accumulate. `PL-7VSK` scored
+4 shared referents under the snapshot and zero under the live store.
+
+**The refutation was already in `docs/dead-ends.md` and was under-weighted:**
+*"this store is cross-referenced (86.1%, 2,773 edges)"* (`PL-KM3X`). In a store
+where 86% of items cite other items, referent overlap cannot separate a
+duplicate from an ordinary citation - which is what 84% firing means. That line
+should have killed route 1 before any code was written.
+
+So **route 1 is refused on measurement**, and is recorded in
+`docs/dead-ends.md` so it is not proposed again. What survives untested is
+route 2, whose match is against the *digest's own facts* - one failing run, one
+commit sha - rather than against the whole store, and which therefore does not
+inherit the cross-reference density that killed route 1. That is a different
+claim and it is unmeasured; it should be measured before it is built, on the
+same standard applied here.
