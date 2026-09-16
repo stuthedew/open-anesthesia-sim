@@ -1,7 +1,7 @@
 ---
 id: PL-MN4J
 title: The chart hover names the agent and the instant but not which run, so a hovered value is unattributed while two runs are drawn
-priority: P2
+priority: P1
 effort: S
 status: needs-decision
 classes: safety, ux
@@ -27,6 +27,13 @@ line width, so a reader *can* attribute a curve - but a hover box floats away
 from the legend, which is the same argument § "The chart's hover readout"
 already makes for why the hedge travels with the value rather than being left to
 the readout row beside it.
+
+**Decision needed.** Whether the hover names the run while more than one is
+drawn — and if so, whether as a fourth line or folded into the first — or
+whether the curve's own line width and the legend are held to be sufficient and
+`docs/MODEL.md` records that instead. It is the project owner's because it
+amends § "The chart's hover readout: what the tooltip may show", which derives
+the three-line form the hover has today.
 
 **Why `needs-decision` rather than `ready`.** The three-line form is derived in
 `docs/MODEL.md` § "The chart's hover readout: what the tooltip may show" and a
