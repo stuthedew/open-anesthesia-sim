@@ -9,9 +9,9 @@ feature: release-roadmap-seam
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_release.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md, ROADMAP.md, docs/items/PL-SYG4-the-digest-s-reserved-verdict-suppresses-the.md
 added: 2026-09-14
 closed: 2026-09-16
+pr: 606
 verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_a_timeline_row_with_no_section_reserves_its_version' subprojects/docket/tests/test_release.py
 ---
-
 
 **Problem.** The reserved-version guard cannot see a milestone that has a timeline row but no section yet, so the digest will offer v0.6.0 the moment v0.5.x is behind it
 

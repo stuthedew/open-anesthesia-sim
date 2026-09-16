@@ -8,6 +8,7 @@ classes: docs, infra
 touches: .claude/rules/expert-review.md, docs/resident-instructions.md
 added: 2026-09-16
 closed: 2026-09-16
+pr: 608
 verify: python3 tools/doc_check.py check && grep -qF 'Say what would falsify it' .claude/rules/expert-review.md
 ---
 
