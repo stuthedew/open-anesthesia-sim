@@ -4362,6 +4362,37 @@ once someone is ready to scope it.
     inconvenience. See the Blender Manual, "Interface → Window System →
     Areas" and "→ Workspaces".
 
+    *The vocabulary is Blender's, and it is the concept rather than a
+    resemblance* (project owner, 2026-09-16: "the workspace/area concept ...
+    is what I want to implement"). Read at the source, the manual's § "Areas"
+    and § "Workspaces" pages having been supplied directly - `docs.blender.org`
+    is blocked by the session egress proxy. Three terms, and this project
+    adopts them rather than inventing its own:
+
+    - an **Area** is a rectangle that reserves screen space. It holds one
+      thing and nothing else, and areas never overlap;
+    - an **Editor** is what occupies an area - the thing with the
+      functionality. Item 36 is the catalogue of them;
+    - a **Workspace** is a set of areas containing editors, geared to a task,
+      switched between as tabs. Blender puts the tabs in the Topbar, saves
+      workspaces in the file, and lets a custom set become the defaults.
+
+    **Docking** is the manual's word for the corner-drag operations, and the
+    set is larger than "split and join": dragging from an area corner joins
+    two areas, splits one, does both at once, or - dragged into the middle of
+    a second area - *replaces* it. Areas also swap, adjacent ones through the
+    border's Area Options and any two in a window through Ctrl-LMB from a
+    corner. Resizing is a border drag, with modifiers to snap and to move
+    aligned borders together.
+
+    **Two precedents worth copying, both from the source.** Blender refuses to
+    delete the last workspace - a floor it enforces structurally rather than
+    by warning, which is the same shape `PL-WLWY` settled for the minimum
+    display. And a workspace carries *settings*, not only a layout: Pin Scene
+    makes activating a workspace switch back to the scene it remembers. The
+    analogue here is a workspace pinning which **run** it shows, which is
+    exactly what a broken-out window naming its run needs.
+
     *Tiled first, with break-out into a separate window* (project owner,
     2026-09-15). What this milestone builds is the no-overlap invariant above,
     plus break-out: an area may be taken into **its own top-level window**,
@@ -4482,17 +4513,21 @@ once someone is ready to scope it.
     same foundation.
 
 
-36. Build the catalogue of views item 34's areas can hold, as work separate
-    from the layout mechanism and after it. Item 34 decides what an area is,
-    how it is split, joined and broken out, and how a workspace is saved; this
-    decides what a learner can put in one. The candidates named so far are the
+36. Build the catalogue of **editors** an area can hold, as work separate from
+    the layout mechanism and after it. Item 34 decides what an area is, how it
+    is docked, split, joined, swapped and broken out, and how a workspace is
+    saved; this decides what a learner can put in one. "Editor" is Blender's
+    term for the occupant of an area and is the project's term too (item 34,
+    project owner 2026-09-16); earlier drafts called these *widgets* or
+    *views*, and both are retired. The candidates named so far are the
     compartment schematic (item 27), the concentration chart and the F_A/F_I
-    plot as views a workspace places rather than fixed sections of one screen,
-    the control-input timeline, the numeric readouts, and item 37's interaction
-    display. Requested by the project owner, 2026-09-15, as its own track
-    (`PL-4D1M`). Each view added here owes what any displayed clinical value
-    owes under `CLAUDE.md`'s clinical-output standard, and a catalogue is where
-    that is settled once per view instead of being rediscovered per layout.
+    plot as editors a workspace places rather than fixed sections of one
+    screen, the control-input timeline, the numeric readouts, and item 37's
+    interaction display. Requested by the project owner, 2026-09-15, as its own
+    track (`PL-4D1M`). Each editor added here owes what any displayed clinical
+    value owes under `CLAUDE.md`'s clinical-output standard, and a catalogue is
+    where that is settled once per editor instead of being rediscovered per
+    layout.
 
 37. Add an opioid/hypnotic interaction display - iso-effect contours over a
     pair of effect-site concentrations, for a named endpoint such as tolerance
