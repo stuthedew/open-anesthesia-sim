@@ -9,6 +9,7 @@ feature: delegation
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-12
 closed: 2026-09-15
+pr: 595
 verify: python3 tools/doc_check.py check && grep -qF 'verify --self' .claude/skills/docket/SKILL.md
 ---
 

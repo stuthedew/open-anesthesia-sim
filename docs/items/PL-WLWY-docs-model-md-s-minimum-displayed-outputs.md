@@ -4,10 +4,11 @@ title: docs/MODEL.md's Minimum displayed outputs assumes one fixed layout, so pl
 priority: P2
 effort: M
 status: done
-closed: 2026-09-16
 classes: docs, ux
 touches: docs/MODEL.md, ROADMAP.md
 added: 2026-09-15
+closed: 2026-09-16
+pr: 605
 verify: python3 tools/doc_check.py check && grep -qF 'no workspace may remove' docs/MODEL.md
 ---
 
