@@ -1,9 +1,11 @@
 ---
 id: PL-3J2P
 title: Decide whether the area layout is a shared-vertex graph or a nested-splitter tree before the Qt layout work starts, because ROADMAP item 34 already specifies aligned-border dragging, four-way corner operations and arbitrary area swap, and a QSplitter tree makes all three expensive
-status: untriaged
+status: done
 touches: ROADMAP.md
 added: 2026-09-16
+closed: 2026-09-16
+verify: python3 tools/doc_check.py check && grep -qF 'The layout is a nested-splitter tree, and Blender' ROADMAP.md
 ---
 
 **Problem.** Decide whether the area layout is a shared-vertex graph or a nested-splitter tree before the Qt layout work starts, because ROADMAP item 34 already specifies aligned-border dragging, four-way corner operations and arbitrary area swap, and a QSplitter tree makes all three expensive
@@ -108,3 +110,45 @@ condition the recommendation flips, because the tree stops being reversible.
 decision taken. `ROADMAP.md` item 34 and § "v0.4.26" Required scope item 2
 already name nested `QSplitter`s, so adopting this changes nothing in the
 roadmap except to record why; adopting the graph changes both.
+
+
+---
+
+## Decided 2026-09-16: the nested-splitter tree
+
+**Project owner's call, and it also corrects this item's premise.** The owner
+said "Splitter tree is what I want, And I'm pretty sure that's what blender
+does" - and on the source, they are right, where the first two drafts of this
+item and the comparison artifact built alongside it were wrong.
+
+**What the source actually says.** `screen_geom_select_connected_edge`
+(`source/blender/editors/screen/screen_geometry.cc`) is the default border drag.
+It flood-fills from the dragged edge and flags the maximal **connected
+collinear** chain - collinearity alone is not enough, the edges must also be
+connected. A layout built by successive splits puts most borders in their own
+chain, so the default feel is a splitter tree's. Two borders sharing a
+coordinate but separated by an area spanning across them move independently, and
+Blender treats that as a permitted state, not a broken one.
+
+The two behaviours a tree cannot express are both opt-in:
+
+- `screen_geom_select_extended_edge` takes every vertex within
+  `EDGE_ALIGN_TOLERANCE` of the dragged coordinate regardless of connectivity.
+  It runs only under an explicit extend flag - `screen_ops.cc` guards it with
+  `if (md->can_extend && extend)`, so it is not the default path.
+- `screen_geom_edge_aligned_merge` snaps near-aligned borders onto one
+  coordinate and fuses them, after which they are one chain permanently.
+
+**Where this item was wrong.** It framed the tree's independent borders as a
+failure mode ("come apart", drawn in alarm red in the artifact) and the graph's
+unified drag as Blender's ordinary behaviour. It is the other way round: the
+tree matches Blender's default, and the graph buys two deliberate extras. The
+recommendation happened to land on the tree anyway, on cost-of-ownership
+grounds, but it got there past a wrong description of the alternative.
+
+**What would reopen it.** Wanting extend-drag across the layout, or snap-merge
+of near-aligned borders. Nothing else - and neither is on the roadmap.
+
+**Recorded in** `ROADMAP.md` item 34, with the correction and the reversibility
+condition (the container behind a layout model of our own, so no view knows
+`QSplitter` exists).

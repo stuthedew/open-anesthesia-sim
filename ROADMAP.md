@@ -4584,6 +4584,38 @@ once someone is ready to scope it.
     `saveState()`/`restoreState()` for a layout, `QSettings` or a project file
     for a named preset.
 
+    *The layout is a nested-splitter tree, and Blender's is too in its default
+    behaviour* (project owner, 2026-09-16, deciding `PL-3J2P`). The question put
+    was whether the layout should be stored as Blender's shared-vertex graph -
+    areas naming four corner points, neighbours sharing them - or as nested
+    `QSplitter`s. **Nested splitters, which this section and § "v0.4.26" Required
+    scope item 2 already name**; what is new here is the reason, so a later
+    session does not reopen it on a wrong premise about Blender.
+
+    The premise to correct: Blender's *default* border drag is
+    `screen_geom_select_connected_edge`, which moves the maximal **connected
+    collinear chain** through the dragged edge - which is what a splitter tree
+    gives, because a layout built by successive splits puts each border in its
+    own chain. Borders that merely share a coordinate without being connected
+    stay independent, and that is a permitted resting state rather than a defect.
+    The two behaviours a tree genuinely cannot express are both **opt-in extras
+    rather than the model**: `screen_geom_select_extended_edge`, which takes
+    every vertex within tolerance of the dragged coordinate regardless of
+    connectivity, runs only under an explicit extend flag
+    (`source/blender/editors/screen/screen_ops.cc`, `md->can_extend && extend`);
+    and `screen_geom_edge_aligned_merge`, which snaps near-aligned borders onto
+    one coordinate and fuses them. Wanting either of those is what would reopen
+    this decision; nothing else should.
+
+    *The condition that keeps it reversible* (recommended, not decided). The
+    container sits behind a layout model of this project's own that owns split,
+    join, resize, swap and persistence, with `QSplitter` an implementation detail
+    behind it - so no view calls `saveState()`, reaches for a parent splitter, or
+    stores layout state in itself. `PL-LH18`'s path-scoped rule already requires
+    views to be interchangeable rather than merely movable; this extends the same
+    reasoning to the container. The `saveState()`/`restoreState()` note above is
+    then how the layout model persists itself, not an interface the views see.
+
     *Placed, and the timing question is decided* (project owner, 2026-09-12,
     `PL-8VL1`). The Qt port rewrites every layout in the dashboard onto Qt, and
     the argument that release already makes for absorbing item 33 — that
