@@ -34,16 +34,18 @@ written *and* after it is pushed" - so the gap is known and its cost was not.
 Every session on this repository has run `make check`, seen it exit 0, and had no
 way to learn that `main` was red.
 
-**Nor does a pull request see it, which is the structural half.**
-`.github/workflows/quality.yml:271-280` runs two different commands: on
-`pull_request` it is `bin/docket check --verify --verify-base "$VERIFY_BASE"`,
-**scoped to what the branch changed**, and only on `push` to `main` is it the
-bare `--verify` over the whole store. So a `verify:` command that goes stale
+**Nor does a pull request see it - and that scoping is deliberate, which this
+item first got wrong.** `.github/workflows/quality.yml:271-280` runs two
+different commands: on `pull_request` it is `bin/docket check --verify
+--verify-base "$VERIFY_BASE"`, **scoped to what the branch changed**, and only on
+`push` to `main` is it the bare `--verify` over the whole store. `PL-SDHR`
+measured that sweep at 87 s of a 152 s job and `PL-P3B6` argued the scope, so
+both halves are reasoned and recorded; the cost was not an oversight. What
+follows from it is still the thing to see: a `verify:` command that goes stale
 through *another* item's work is invisible on every branch that does not touch
-it, and becomes visible the moment it is merged. Measured on `#639`: `checks`
-green in 2m50s on the `pull_request` event, against 6m14s and one error for the
-same store on `main`. The scoping is deliberate and its cost is this: the
-whole-store replay has no pre-merge run anywhere.
+it, and becomes visible only once merged. Measured on `#639`: `checks` green in
+2m50s on the `pull_request` event, against 6m14s and one error for the same store
+on `main`.
 
 **The cause, and it is not what the error's two dispositions assume.**
 `PL-D1RT`'s command is:
@@ -97,11 +99,41 @@ check --verify` reports no error on `main`, and the green run is on a commit at 
 after the one carrying that disposition. The second finding below is recorded
 here and answered wherever `PL-Q8RQ` is answered, not as a condition of this.
 
-**A second finding, recorded rather than fixed here.** A `verify:` command whose
-sentinel is an *absence* (`! grep -qF`) can be satisfied by any change that
-removes the string, including another item's. That is the class `PL-Q8RQ` names
-for a bare `pytest -k`, arriving through a different door: the paired shape
-`.claude/skills/docket/SKILL.md` prescribes pins the *presence* of something the
-work creates, and a negated `grep` inverts exactly that property. Whether
-`docket check` can refuse a negated-grep sentinel the way `PL-Q8RQ` would have it
-refuse a bare `-k` is worth deciding alongside that item.
+**The structural fix is already filed and is not this item.** `PL-879R`
+(`needs-decision`) is that `docket check` advises on a `verify:` command's
+*outcome* but never its *shape*, so a command that cannot discriminate is
+reported only once it has started passing. `PL-Q8RQ` is the same class for a bare
+`pytest -k`. `PL-Y1W6` is the same class one instance earlier - `main` red on
+`PL-S5YM`'s bare `-k` - and was **dropped**, which is the precedent worth reading
+before deciding what happens to this one. This item is only the live instance
+blocking `main`.
+
+**A duplicate exists, and the two disagree on the mechanism.** `PL-32Z9`, on
+`origin/claude/gifted-fermi-m1cksg`, is the same finding filed independently the
+same day, and it is better connected than this one was - the four references
+above are all its. It is wrong on one point, and the two accounts imply different
+fixes, so the measurement is recorded here rather than left to be re-run:
+
+`PL-32Z9` says the negated `grep` "was already true when the command was
+recorded", reasoning from `PL-D1RT`'s own brief that the timeline *row* no longer
+exists. But the command pins a citing *phrase*, not the row heading, and
+`PL-D1RT`'s brief lists the two sites that still carried it. Counted against the
+history, for the exact em-dash string the command greps:
+
+| commit | run | phrase in `ROADMAP.md` |
+| --- | --- | --- |
+| `57fdb8c` | `#2102` green | **2** |
+| `52205f6` (`#634`) | `#2103` red | 0 |
+| `ff4be61` | `#2104` red | 0 |
+| `d7a3b05` | `#2106` red | 0 |
+
+So the command discriminated correctly for as long as the phrase existed, and
+`#634` removed it. It was not written away from its work; it was invalidated by
+another item's. That is the more general hazard, and it is what `PL-879R` should
+weigh: a sentinel asserting an *absence* is satisfiable by anyone who removes the
+string, where the paired shape the skill prescribes pins the *presence* of
+something only the work creates.
+
+One of the two items should be dropped with a reason naming the other. This one
+carries the measurement above and a gate disposition; `PL-32Z9` carries the
+references, now folded in here.
