@@ -1,7 +1,13 @@
 ---
 id: PL-83LS
 title: The debt gate has no disposition for an anticipated safety finding whose hazard an unscoped later milestone creates
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: docs, planning
+feature: debt-gate
+touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
+verify: python3 tools/doc_check.py check && grep -qF 'not debt until the hazard it describes exists' ROADMAP.md && grep -q 'def test_an_anticipated_safety_item_is_quiet' tests/unit/test_doc_check.py
 added: 2026-09-16
 ---
 
@@ -80,3 +86,45 @@ and a plain one is not.
 item the same advisory names and is not this shape - v0.5.0 builds the feature
 its hazard needs, so Required scope already answers it. `PL-NMTF` (no open item
 builds item 34's area system) is the head of the work these four wait on.
+
+## Decided: option 1 (project owner, 2026-09-16, ratified)
+
+**An `anticipated` safety finding is not debt until the hazard it describes
+exists**, chosen over option 2 (place it on the next milestone's frozen list
+when that milestone is scoped, carrying an unenforced marker until then) and
+option 3 (leave the rule as it stands and put the four on v0.5.0's list).
+
+Ratified on this session's recommendation rather than specified, so
+`CLAUDE.md` § "Working with the project owner" makes it reopenable on ordinary
+evidence: a measurement, a cost this case did not carry, or a constraint that
+appears later. The safety-critical standard overrides it regardless.
+
+**Why it beat the other two.** Option 3 was rejected in the brief above: the
+gate is open when its entries are clear, and these cannot be cleared before the
+milestone that creates the hazard, so v0.5.0 would block on work belonging two
+milestones out. Option 2 is honest but nothing holds the marker, and the
+advisory stays lit in the meantime - which is the `CLAUDE.md` defect the whole
+item exists to remove. Option 1 is the only one that reaches a clean state, and
+it is `ROADMAP.md` § "What counts"'s own live-mechanism test - "Process work is
+debt once the mechanism is live, not before ... The distinction is state, not
+layer" - applied to a hazard rather than to a mechanism.
+
+**Its cost, stated rather than waved past.** A `safety` item wrongly classed
+`anticipated` becomes invisible to the gate, which is `PL-MVC2`'s shape. The
+mitigation is that `anticipated` is a declared class `checks.py` already
+branches on, so the exclusion is decidable and reviewable rather than a guess -
+but the class then carries weight it did not carry before, and whoever
+implements this should say so where the rule is written.
+
+## What implementing it takes
+
+1. `ROADMAP.md` § "The debt gate" states the carve-out, with the ratified
+   marker and the clause naming what it was chosen over.
+2. `tools/doc_check.py` `check_gate_reentries` excludes an `anticipated`-classed
+   item from `owed`.
+3. `tests/unit/test_doc_check.py` pins both directions:
+   `test_an_anticipated_safety_item_is_quiet` and a plain `safety` item still
+   reported.
+4. v0.5.0's `### Declined to Gate 2 ...` subsection re-grounds `PL-7Z84`,
+   `PL-9LNF`, `PL-NWTM` and `PL-W54S` on the new rule rather than on deferral,
+   and every count `doc_check` holds to that list moves with them.
