@@ -299,7 +299,12 @@ correction rather than handing the question back.
   raises and findings you make on your own alike. `bin/docket new "..."` is the
   whole procedure: no id to allocate, no band to choose, nothing that can
   conflict with another branch, and it takes several titles in one call because
-  ideas arrive in clusters. Do not ask whether to record it — filing an item is
+  ideas arrive in clusters.
+  **Where those titles are one problem, group them as you file them:**
+  `bin/docket new --feature <name> "..." "..."`. The session that diagnosed it
+  is the only one that knows they are one thing; the next reads separate
+  files. Name the group for what *completes*, and the `docket` skill has the
+  rest (`PL-N638`). Do not ask whether to record it — filing an item is
   not a decision the owner needs to make. Say in your reply that you did. Where
   a thread is still open when the session ends, update `docs/WORKING_NOTES.md`
   too — but only for a thread spanning more than one item, outliving its item,

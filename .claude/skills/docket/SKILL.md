@@ -207,6 +207,41 @@ Never hold a finding in conversation until the current work lands. The
 container is ephemeral; an uncommitted thought is one interruption from gone.
 Commit the new item on its own so it survives an abandoned branch.
 
+**A diagnosis that produces more than one item files them under one
+`feature:`, in the same call.**
+
+```bash
+docket new --feature session-start-cost \
+  "Attribute the session-start hook's wall-clock cost to a stage" \
+  "Replace the per-blob git show fan-out with one git cat-file --batch" \
+  "Memoize the runner: 82 of 192 git subprocesses are exact duplicates"
+```
+
+One flag, spent at the only moment anybody knows the items are one problem.
+Without it the group exists in the reply and nowhere else: `feature:` is the
+store's only grouping, and `docket feature <name>`, `docket status` and
+`recommend`'s finish-a-feature preference all read it, so an ungrouped group
+is ranked, surfaced and reported as unrelated work forever. The project owner
+tracks problems rather than ids - "when do we fix the slow session start",
+not "when do PL-XD3C, PL-0J9K and PL-MMVF land" - and five items filed across
+five commits on 2026-09-16 carried no feature at all (`PL-N638`).
+
+**Pitch the name at what completes.** A feature here is a group with a "done
+when" the owner would notice closing: `session-start-cost` at 5 items,
+`doc-consistency-checks` at 4, `core-boundaries` closed at 6. Not a standing
+theme - `dev-tooling` is 134/212 and answers no question about whether
+anything finished. The big end already has a home: anything release-sized is
+a `ROADMAP.md` milestone, so the gap this closes is at the small end, where a
+two-to-five item fix would otherwise scatter.
+
+**Two consequences to know before using it.** A small feature outranks a
+large one inside its band, because `recommend` orders by open items
+remaining, fewest first - so grouping tightly also pulls the rest of a group
+up `docket next` once one of them lands, which is the point rather than a
+side effect. And `docket gate --feature <name>` splits a milestone's debt by
+this same field, so moving an item into a fine group moves it from "cleared
+by the milestone" to "cleared before it begins".
+
 The digest names an item that exists only on a branch when it finds one, and
 `bin/docket stranded` prints it with the `git checkout` line that restores the
 file. The command cannot tell live work from an abandoned branch, so that
