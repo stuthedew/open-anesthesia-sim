@@ -70,10 +70,7 @@ dependencies = [
     # Nothing here is what keeps Flet out. `tools/import_boundary_check.py`
     # permits `flet` and `flet_charts` in no module under `src/` at all, so a
     # module reaching for either fails the build whatever this list says; a
-    # dependency removed from a manifest is only a download saved. Nor does
-    # this wait on `PL-7SVX`, which deletes `spikes/`: the spike imports
-    # neither Flet distribution and declares its own toolchain through
-    # `uv run --with`, so it never read this list.
+    # dependency removed from a manifest is only a download saved.
     #
     # `PySide6-Essentials` rather than `PySide6`: the Essentials wheel is the
     # Qt modules this interface draws with (Core, Gui, Widgets) and none of

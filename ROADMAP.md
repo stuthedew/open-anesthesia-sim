@@ -1463,11 +1463,11 @@ other grounds:**
 
 1. **`PL-8PSW` would otherwise be built blind.** `PL-2QMK` records that no
    session in the web container can visually confirm a chart change, because
-   Flet's renderer fetches Flutter assets the egress proxy denies;
-   `spikes/qt/qt_spike.py --screenshot` already renders offscreen in that same
-   container once `libegl1` is installed (`PL-VHLZ`), and Required scope item 6
-   adds headless rendering tests over the
-   real interface. `PL-7J96`, the Flet equivalent, is `dropped` as superseded -
+   Flet's renderer fetches Flutter assets the egress proxy denies; the Qt spike
+   rendered offscreen in that same container once `libegl1` was installed
+   (`PL-VHLZ`), and Required scope item 6 has since landed headless rendering
+   tests over the real interface in
+   `tests/integration/test_qt_rendering.py`. `PL-7J96`, the Flet equivalent, is `dropped` as superseded -
    so the Flet build gets no automated rendering check at all. `PL-8PSW` is the
    most presentation-safety-loaded item in v0.5.0: six channels already spent,
    a two-compartment cap the design rests on, and every curve owing an
@@ -1705,8 +1705,8 @@ Four grounds survive:
    workable. With this port ahead of v0.5.0 it also means `PL-8PSW` is the first
    large display this project builds with a rendering check in place rather
    than after one.
-7. **Deletion** (queue item `PL-7SVX`). `spikes/` goes, and so does every Flet
-   import. `PL-C92D` retires the Flet frame-cost table that predates the port.
+7. **Deletion** (queue item `PL-7SVX`). The Qt spike tree goes, and so does
+   every Flet import. `PL-C92D` retires the Flet frame-cost table that predates the port.
 8. **The queued fixes named below**, on the rule stated there: `PL-3355`,
    `PL-Q4VH`, `PL-THXF`, `PL-W8DQ`, `PL-TG60` and `PL-005`. Named here and
    not only under that heading because `MilestoneStates.ships_with` reads
@@ -1800,9 +1800,9 @@ thrown away.
   investigation against a different backend.
 - **`PL-7J96`** ("nothing in this repository draws the interface") is what
   `PL-YCWZ` now does. **Decided for `PL-YCWZ` (project owner, 2026-09-13), and
-  `PL-7J96` is `dropped` as superseded.** `PL-YCWZ`'s capability is demonstrated
-  rather than assumed - `spikes/qt/qt_spike.py --screenshot` already renders the
-  interface offscreen inside the web container - where `PL-7J96` would have built
+  `PL-7J96` is `dropped` as superseded.** `PL-YCWZ`'s capability was demonstrated
+  rather than assumed - the Qt spike rendered the interface offscreen inside the
+  web container before the decision was taken - where `PL-7J96` would have built
   a Playwright renderer for the interface this milestone replaces. What that
   accepts is that the shipped Flet build gets no automated wrapping check before
   the port; the two defects `PL-7J96` records are filed and dispositioned
@@ -1831,7 +1831,7 @@ and say why. `PL-B9PY` is not moved, for the reason in its entry above.
 - `PL-GS3R`'s worst drawn departure re-measured at every rung of
   `TIME_BASE_LADDER` and recorded in `docs/MODEL.md`.
 - `docs/ARCHITECTURE.md` describes the interface that exists.
-- `spikes/` is deleted and no module imports Flet.
+- The Qt spike tree is deleted and no module imports Flet.
 
 ### Explicitly out of scope for v0.4.26
 
@@ -2798,9 +2798,9 @@ six need their own ground, because "wholly in the workflow lane" is not true of
 them, so it is stated rather than stretched.
 
 **Four are waiting on the port rather than on anybody's attention.** `PL-7SVX`
-*is* the port's Required scope item 7 and deleting `spikes/` before the port
-lands would remove the working reference every other item in that milestone
-reads from. `PL-C92D` asks for a caveat on a Flet measurement whose toolkit is
+*is* the port's Required scope item 7 and deleting the Qt spike tree before the
+port landed would have removed the working reference every other item in that
+milestone read from. `PL-C92D` asks for a caveat on a Flet measurement whose toolkit is
 being removed, and was re-scoped in the same pass to stop asking for a
 re-measurement. `PL-SQJ1` measures a playback shortfall that is a consequence of
 frame cost the port removes, so measuring it now measures a tree about to
