@@ -163,6 +163,9 @@ def test_a_cluster_reproducing_into_itself_says_so(repo: Path) -> None:
 
     assert found.ratio == 1.0
     assert any("not shrinking" in signal for signal in found.signals)
+    # Two runs against one tree print the same rows in the same order, or the
+    # advisory is noise in every diff that touches the store.
+    assert found.open_ids == sorted(found.open_ids)
 
 
 def test_a_cluster_with_nothing_open_is_history_not_friction(repo: Path) -> None:

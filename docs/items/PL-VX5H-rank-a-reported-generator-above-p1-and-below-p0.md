@@ -8,7 +8,7 @@ closed: 2026-09-17
 priority: P2
 effort: M
 classes: infra
-touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_plan.py, subprojects/docket/README.md, tools/generator_check.py, tests/unit/test_generator_check.py, docs/ARCHITECTURE.md, docs/items
+touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_plan.py, subprojects/docket/README.md, tools/generator_check.py, tests/unit/test_generator_check.py, docs/ARCHITECTURE.md, docs/items, .claude/skills/docket/SKILL.md, docs/WORKING_NOTES.md
 verify: uv run pytest subprojects/docket/tests/test_plan.py subprojects/docket/tests/test_model.py tests/unit/test_generator_check.py -q && grep -q 'def test_a_generator_outranks_a_safety_classed_p1' subprojects/docket/tests/test_plan.py
 ---
 
