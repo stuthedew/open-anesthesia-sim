@@ -94,3 +94,34 @@ It also compounds with the ref count rather than merely adding to it. `diff` run
 at roughly 4.0 per unmerged ref *plus* 0.95 per item file a ref introduces, so
 the per-file term grows as branches accumulate item edits - the normal state of
 this store, where a capture or a triage pass edits item files and nothing else.
+
+---
+
+**Decided: chunk the pathspec** (project owner, 2026-09-17, ratified). Chosen
+over dropping the pathspec and filtering git's full output in Python, which
+removes the `ARG_MAX` ceiling but changes the contract `_superseded`'s docstring
+reasons about — "git names every path it was given that differs" is the property
+the "absent from the diff means the tips agree" branch relies on, and filtering
+in Python means re-deriving that property in a second place. Chunking keeps the
+contract and confines the change to the call site, which is what the brief above
+already scoped.
+
+Ratified rather than specified: this was a session's recommendation, so
+`CLAUDE.md`'s reopening bar is the lower one — a measurement, or a cost the case
+did not carry, is enough to put it back to the owner.
+
+**Two things to settle while implementing, neither of them reopening the above.**
+The chunk size is not stated here on purpose: ~60 bytes a path against a 2 MB
+`ARG_MAX` on Linux and 256 KB on macOS means macOS is the binding constraint, so
+size the chunk against that rather than against the platform the session runs on.
+And a chunked `_superseded` is called more than once per ref, so whatever the
+loop hoist saves must be re-measured after chunking rather than quoted from the
+593 → 148 figure above, which was measured unchunked.
+
+**Scope correction, verified 2026-09-17 against `origin/main`.** This item was
+recommended as one of a four-item `vcs.py` branch with `PL-0J9K`, `PL-MMVF` and
+`PL-XD3C`. Two of those three had already landed in `#635` (`ff4be61`): `git
+cat-file --batch` is at `subprojects/docket/src/docket/vcs.py:313` (`PL-0J9K`)
+and `GitRunner`'s memo is at `vcs.py:174` (`PL-MMVF`). Their item files were
+left at `status: untriaged` by that commit, which is why they still read as
+open. The live branch is therefore this item plus `PL-XD3C`, not four.
