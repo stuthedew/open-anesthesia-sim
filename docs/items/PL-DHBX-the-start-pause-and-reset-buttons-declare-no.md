@@ -122,7 +122,7 @@ minimum. The general decision survives - every other disabled colour under
 `app/` is still the platform style's - and what changes is that this interface
 now declares exactly one.
 
-**`MUTED` for the disabled label, which claims no exemption.** 5.00:1 on
+**`MUTED` for the disabled label, which claims no exemption** (project owner, 2026-09-17, ratified - chosen over leaving the disabled label to the platform on SC 1.4.3's exemption, which is what `PL-NGF7` had decided)**.** 5.00:1 on
 `PANEL`, above SC 1.4.3's 4.5:1 for normal text, so it is held to the full
 minimum rather than excused from it. That matters here specifically: SC 1.4.11's
 own inactive-component wording has never been readable from this container

@@ -40,8 +40,10 @@ text in an inactive component is an exemption from a *minimum*, not a licence
 for a control to vanish - under macOS Dark appearance the platform's disabled
 grey rendered the unavailable transport button absent, which the owner found on
 his own screen after the enabled half had already been fixed. So
-`transport_button_stylesheet` declares `MUTED` for it, at 5.00:1 on `PANEL`,
-which meets the full normal-text minimum and claims no exemption at all.
+`transport_button_stylesheet` declares `MUTED` for it (project owner,
+2026-09-17, ratified - chosen over leaving the disabled label to the platform on
+SC 1.4.3's exemption, which is what `PL-NGF7` had decided), at 5.00:1 on
+`PANEL`, which meets the full normal-text minimum and claims no exemption at all.
 `check_authored_disabled_colours_are_measured` admits a `:disabled` rule only
 from a function some requirement cites, so a new one fails `make check` until
 its pair is written down. Do not soften a disabled control's *border* to

@@ -9,6 +9,7 @@ feature: session-start-cost
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_git_runner.py
 added: 2026-09-16
 closed: 2026-09-17
+pr: 663
 verify: uv run pytest subprojects/docket/tests/test_git_runner.py && grep -q 'def test_a_missing_blob_does_not_cost_the_batch_for_the_rest_of_the_command' subprojects/docket/tests/test_git_runner.py
 ---
 

@@ -136,7 +136,9 @@ platform's number, whatever it is, is somebody else's to choose. Under a dark
 host appearance the platform's number does not merely fall below a minimum, it
 renders the control invisible, and an exemption from a contrast *minimum* is not
 a licence for a control to disappear. So the disabled label is declared too, at
-`MUTED`.
+`MUTED` (project owner, 2026-09-17, ratified - chosen over leaving the
+disabled label to the platform on SC 1.4.3's exemption, which is what `PL-NGF7`
+had decided).
 
 *Which means this tool now measures exactly one authored disabled colour, and
 claims no exemption for it.* `MUTED` on `PANEL` is 5.00:1, above SC 1.4.3's

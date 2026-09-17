@@ -66,6 +66,14 @@ a contrast table measuring surfaces that are not on screen is worse than a
 window that ignores the system appearance - and option 3 cannot be done
 cheaply or half-way without producing exactly that.
 
+**Put to the project owner 2026-09-17 and deferred.** The recommendation above
+was given with `PL-DHBX`'s fix; the answer was to take the recommendations that
+had to be decided in that session and to defer anything opening a new topic,
+which this does. It stays `needs-decision` rather than being closed: the
+question is unchanged and still answerable, and nothing in the interface is
+waiting on it - `PL-DHBX` declared every colour that carries meaning, so this
+decides the chrome.
+
 **What this is not.** Not a question about the transport buttons, which are
 fixed. Not blocked on the interface pass being scoped: the decision is
 answerable now and options 1 and 2 are both one line or none.
