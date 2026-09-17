@@ -267,6 +267,139 @@ def reads_check_output(command: str) -> str:
     return ""
 
 
+# Every word of a clause, and the shape a path is written in. The second is
+# deliberately loose: it runs over the *raw* clause, quoted spans included, so
+# a path inside a `python3 -c "..."` body or a `grep` pattern is a candidate
+# like any other. Nothing is decided from the shape alone - a candidate only
+# matters where it matches a path the branch actually changed - so a loose
+# pattern costs a wasted comparison and a strict one costs a missed replay.
+WORD_RE = re.compile(r"\S+")
+PATH_TOKEN_RE = re.compile(r"[A-Za-z0-9_.][A-Za-z0-9_./+-]*")
+
+# What a clause *runs*, as against what it reads, and this distinction is the
+# whole of `command_paths`. `python3 tools/doc_check.py check` names a path and
+# reads nothing: the path is the program, and the clause is the health half of
+# a command whose discriminating half is somewhere else. 54 of the 168 open
+# commands carrying that gate would otherwise replay behind any edit to it.
+# A path handed to something else - `grep -q … docs/MODEL.md`, `pytest
+# tests/unit/test_x.py` - is what the clause reads, and is what can change the
+# command's outcome while nobody touches the item.
+#
+# The first word of a clause is its program. These come before it and are not.
+SHELL_PREFIXES = frozenset({"!", "(", "{", "then", "do", "else"})
+
+#: Programs whose first non-flag argument is a script they execute, so that
+#: argument is a program too. Every other command takes its arguments as data.
+#: A wrapped interpreter - `uv run python3 tools/x.py` - is not recognised, so
+#: its script counts as read: that widens the scope rather than narrowing it,
+#: which is the direction this reader errs in everywhere.
+INTERPRETERS = frozenset({"python", "python3", "bash", "sh", "zsh", "dash", "node", "perl", "ruby"})
+
+#: Interpreter flags after which what follows is code rather than a script.
+INLINE_CODE = frozenset({"-c", "-m"})
+
+
+def _blanked(command: str) -> str:
+    """`_outside_quotes`, with each blanked span keeping its own length.
+
+    The same rule about which quotes hide a command, in the shape a slice can
+    use. `_outside_quotes` collapses a quoted span to one space, which is right
+    for searching it and wrong for reading offsets back off it: everything
+    after the span shifts. `command_paths` splits on the blanked text and then
+    reads each clause out of the *raw* command, so the two have to agree
+    character for character.
+    """
+
+    def blank(match: re.Match[str]) -> str:
+        return " " * len(match.group())
+
+    text = SINGLE_QUOTED_RE.sub(blank, command)
+    return DOUBLE_QUOTED_RE.sub(
+        lambda m: m.group() if ("$(" in m.group() or "`" in m.group()) else blank(m), text
+    )
+
+
+def _programs(words: Sequence[tuple[int, str]]) -> set[int]:
+    """The offsets of the words this clause runs rather than reads."""
+    index = 0
+    while index < len(words) and words[index][1] in SHELL_PREFIXES:
+        index += 1
+    if index >= len(words):
+        return set()
+    offsets = {words[index][0]}
+    if words[index][1] in INTERPRETERS:
+        for offset, word in words[index + 1 :]:
+            if word in INLINE_CODE:  # what follows is code, not a script
+                break
+            if word.startswith("-"):
+                continue
+            offsets.add(offset)
+            break
+    return offsets
+
+
+def command_paths(command: str) -> frozenset[str]:
+    """Every path this `verify:` command reads, as against the programs it runs.
+
+    A command's outcome can change without its item being touched, and this is
+    what says which edits could do it: a branch that edits `docs/MODEL.md`
+    changes the answer of every open command that greps it, while editing none
+    of their items. Six recorded breaks were that case, and each was reported
+    only by the whole-store sweep after the merge (`PL-XMNC`).
+
+    Read clause by clause, split on `&&`, `||` and `;` outside quotes, because
+    only the discriminating clauses count. `|` does not split: the command
+    after a pipe reads the previous one's output rather than a file of its own.
+
+    Deliberately textual, and deliberately loose. Nothing here is asked of the
+    filesystem, so a path a branch is *creating* is matched like any other -
+    `test -f CONTRIBUTING.md` is one of the six, and the file existed nowhere
+    until the branch that broke it. What comes back is candidates rather than
+    a claim that any of them is a path; the caller compares them against paths
+    the branch really changed, which is where a token that is not one falls
+    out for free.
+
+    What it cannot read it over-reports rather than skipping. A quoted span is
+    scanned for paths even though the clause may only be matching the text; a
+    wrapped interpreter's script counts as read. Both put an extra command in
+    a replay, which costs a second; the other direction costs the finding.
+    """
+    blanked = _blanked(command)
+    spans: list[tuple[int, int]] = []
+    cut = 0
+    for match in PIPELINE_END_RE.finditer(blanked):
+        spans.append((cut, match.start()))
+        cut = match.end()
+    spans.append((cut, len(blanked)))
+
+    found: set[str] = set()
+    for start, end in spans:
+        words = [(start + m.start(), m.group()) for m in WORD_RE.finditer(blanked[start:end])]
+        run = _programs(words)
+        for match in PATH_TOKEN_RE.finditer(command[start:end]):
+            if start + match.start() not in run:
+                found.add(match.group())
+    return frozenset(found)
+
+
+def reads_any(command: str, paths: Collection[str]) -> bool:
+    """Whether this command reads any of `paths`.
+
+    A directory named by the command covers everything under it - `grep -rq …
+    docs/items/` reads an item file the branch added - which is `_within`'s
+    containment rule, the same one an item's `touches` is judged by.
+
+    Containment is offered only to a candidate carrying a `/`, and the rest
+    must match a changed path exactly. A bare word is far more often part of a
+    pattern than a directory: `grep -q 'src' …` would otherwise put the command
+    behind every edit under `src/`, while `grep -q … Makefile` still matches
+    the file it names.
+    """
+    named = command_paths(command)
+    directories = tuple(candidate for candidate in named if "/" in candidate)
+    return any(path in named or _within(path, directories) for path in paths)
+
+
 #: Appended to a commission check's detail when it is reporting rather than
 #: refusing. Short, because it repeats on up to four lines of one report; the
 #: reasoning is in `verify_item`'s docstring, which is where a reader who wants
@@ -1331,6 +1464,27 @@ class LandedReport:
         return not self.declined
 
 
+def items_reading(items: Sequence[Item], paths: Collection[str]) -> frozenset[str]:
+    """Open items whose `verify:` command reads one of the paths a branch changed.
+
+    The second half of a pull request's replay scope. `vcs.changed_items` gives
+    the first - the items whose own file the branch edited - and on its own it
+    replays the command a branch *writes* and never the command it
+    *invalidates*, which is the case every recorded break was (`PL-XMNC`).
+
+    Closed items are left out. A closed `verify:` is a record of what was run
+    on a tree that no longer exists rather than an assertion about this one, so
+    replaying it would report a break in something already finished.
+    """
+    if not paths:
+        return frozenset()
+    return frozenset(
+        item.identifier
+        for item in items
+        if item.is_open and item.verify and reads_any(item.verify, paths)
+    )
+
+
 def already_passing(
     root: Path,
     items: Sequence[Item],
@@ -1340,6 +1494,7 @@ def already_passing(
     timeout: float = LANDED_TIMEOUT,
     workers: int | None = None,
     scoped_to: Collection[str] | None = None,
+    reading: Collection[str] = (),
     scope_base: str = "",
 ) -> LandedReport:
     """Run every open item's `verify:` command, and report what running it showed.
@@ -1397,12 +1552,21 @@ def already_passing(
     while the answer is about the store rather than about the commit. It is
     `PL-P3B6`'s argument one step further: that item took the replay off `make
     check` because a pre-commit gate cannot have changed whether some *other*
-    item's work merged, and a pull request cannot either. What a branch can
-    have changed is the items it edited, so CI scopes to those on
+    item's work merged, and a pull request cannot either. So CI scopes on
     `pull_request` and sweeps everything on `push` to the default branch, where
     the question is a fact about that branch. Measured 2026-09-05: 87 s of the
     quality job's 152 s for 111 commands, against nine items changed by the
     branch that measured it.
+
+    What a branch can have changed is *two* sets, and reading it as one was the
+    defect: the items it edited, and the items whose command reads a file it
+    edited. Only the first was ever in scope, so a command was replayed on the
+    pull request that wrote it and never on the pull request that invalidated
+    it - and all six recorded breaks were the second case, each reported only
+    by the whole-store sweep once it was already on `main`. `items_reading`
+    computes the second set and `reading` is the caller's word for which ids
+    came from it, carried so the cost line can say which of the two produced
+    its count (`PL-XMNC`).
 
     A scoped run says so in `scope`, and every path out of here carries it -
     including the one where the scope holds nothing to run. A narrowed run
@@ -1422,11 +1586,23 @@ def already_passing(
     # would have covered. "Nothing was checked" and "nothing was checked, and
     # it would have been nine items rather than the store" are different
     # sentences to whoever reads the log.
+    # `reading` is the half of `scoped_to` that is in scope for the other
+    # reason, and the sentence names both: "9 items" on a branch that changed
+    # nine item files and one that changed one item file and a `docs/MODEL.md`
+    # eight commands grep are different runs, and a reader acting on the
+    # finding needs to know which they are looking at.
+    widened = set(reading) & set(scoped_to or ())
     scope = (
         ""
         if scoped_to is None
         else (
-            f"{len(scoped_to)} item(s) this branch changed"
+            (
+                f"{len(scoped_to)} item(s) in scope: {len(scoped_to) - len(widened)} this "
+                f"branch changed and {len(widened)} whose `verify:` command reads a file it "
+                "changed"
+                if widened
+                else f"{len(scoped_to)} item(s) this branch changed"
+            )
             + (f" against {scope_base}" if scope_base else "")
         )
     )

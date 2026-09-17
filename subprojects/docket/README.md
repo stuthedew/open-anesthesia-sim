@@ -41,7 +41,7 @@ docket digest --profile      # what the session-start digest asks git, and the r
 docket record                # write every pull request number the base is owed
 docket check                 # validate the store; exits non-zero on errors
 docket check --verify        # ...and replay every open item's `verify:` command
-docket check --verify --verify-base origin/main   # ...only the ones this branch changed
+docket check --verify --verify-base origin/main   # ...only the ones this branch could have changed
 ```
 
 ### Capture costs nothing
@@ -1692,16 +1692,30 @@ its wall clock asking about a state its own commit could not have changed.
 Measured 2026-09-05 on four cores, `make check` went 60.0 s → 29.5 s. CI passes
 the flag and answers on the same events it always did (`PL-P3B6`).
 
-**`--verify-base REF` narrows the replay to the items this branch changed
-against `REF`**, which is the same argument one step on (`PL-SDHR`). A pull
-request cannot have changed whether some *other* item's work merged, any more
-than a pre-commit gate can, and the sweep was measured at 74.6 s of a 102-command
-run against 5.5 s scoped. So CI scopes on `pull_request` and sweeps on `push` to
-the default branch, where the answer is a fact about that branch. The scope is
-read from the diff — the item files the branch touched, not their declared
-`touches`, which is a claim made before the work. **A scoped run always says so**,
-on the cost line and even when the scope held nothing to run: a narrowed run
-reporting nothing must never read as a whole store with nothing to report.
+**`--verify-base REF` narrows the replay to the items this branch could have
+changed the answer for**, which is the same argument one step on (`PL-SDHR`). A
+pull request cannot have changed whether some *other* item's work merged, any
+more than a pre-commit gate can, and the sweep was measured at 74.6 s of a
+102-command run against 5.5 s scoped. So CI scopes on `pull_request` and sweeps
+on `push` to the default branch, where the answer is a fact about that branch.
+
+**That is two sets, and reading it as one was a defect** (`PL-XMNC`). The first
+is the items whose own file the branch edited, read from the diff rather than
+from their declared `touches`, which is a claim made before the work. The
+second is the open items whose `verify:` command *reads* a file the branch
+edited — the command a branch invalidates without ever opening its item, which
+every one of the six recorded breaks was, and which the first set replays
+never. A command is read clause by clause, split on `&&`, `||` and `;` outside
+quotes, and the program a clause runs is not a file it reads: `python3
+tools/doc_check.py check` names a path and discriminates on none, so counting
+it would drag the 54 open commands carrying that gate behind any edit to it.
+
+Where the reader cannot classify a token it widens rather than narrows, and it
+asks the filesystem nothing — a file the branch is *creating* matches, which
+`test -f CONTRIBUTING.md` needed. **A scoped run always says so**, on the cost
+line and even when the scope held nothing to run: a narrowed run reporting
+nothing must never read as a whole store with nothing to report. Where the two
+sets both contributed, the line says how many came from each.
 
 **It reports two findings rather than a verdict**, because a passing command is
 consistent with two states no exit status can separate:

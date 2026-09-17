@@ -29,7 +29,9 @@ from docket.verify import (
     Verification,
     already_passing,
     changed_paths,
+    command_paths,
     item_commits,
+    items_reading,
     landed_workers,
     selects_no_test,
     verify,
@@ -1286,6 +1288,124 @@ def test_a_declined_run_still_reports_what_it_would_have_covered(
 
     assert not report.known
     assert report.scope == "1 item(s) this branch changed against origin/main"
+
+
+# Widening that scope to the items a branch *invalidates*, not only the ones it
+# edited (`PL-XMNC`). Read from the item files alone, the replay ran a command
+# on the pull request that *wrote* it and never on the one that broke it - and
+# all six recorded breaks were the second case, a branch editing a file some
+# other item's command reads, each reported only by the whole-store sweep once
+# it was already on `main`.
+
+
+def test_a_branch_editing_a_file_a_verify_command_reads_is_in_scope() -> None:
+    # `PL-L9FC`'s own shape: its command greps `README.md`, and `#512` made it
+    # pass by writing that file without ever opening the item.
+    item = _item(
+        identifier="PL-L9FC", verify="python3 tools/doc_check.py check && grep -q x README.md"
+    )
+
+    assert items_reading([item], ["README.md"]) == {"PL-L9FC"}
+
+
+def test_the_gate_a_command_runs_is_not_a_file_it_reads() -> None:
+    """The half that keeps the widening affordable.
+
+    `tools/doc_check.py` is named by 54 of the 168 open commands and is the
+    health half of every one of them, so counting the program a clause runs
+    would put the whole of that set behind any edit to the gate - while the
+    thing each of them actually discriminates on sits in another clause.
+    """
+    item = _item(verify="python3 tools/doc_check.py check && grep -q x README.md")
+
+    assert items_reading([item], ["tools/doc_check.py"]) == frozenset()
+    assert items_reading([item], ["bin/docket"]) == frozenset()
+
+
+def test_a_test_file_handed_to_pytest_is_a_file_it_reads() -> None:
+    # Not the same case as the one above, though both name a path in the first
+    # clause: `pytest` is the program and the file is its input, so editing the
+    # file can change what the command returns.
+    item = _item(verify="uv run pytest tests/unit/test_x.py && grep -q def tests/unit/test_x.py")
+
+    assert items_reading([item], ["tests/unit/test_x.py"]) == {"PL-K7QX"}
+
+
+def test_a_directory_a_command_greps_covers_a_file_added_under_it() -> None:
+    # `PL-X9T3`'s shape, and the reason containment is the rule rather than
+    # equality: the branch that broke it added a file the recursive grep then
+    # found.
+    item = _item(verify="bin/docket check && ! grep -rq phrase docs/items/")
+
+    assert items_reading([item], ["docs/items/PL-A1B2-a-new-capture.md"]) == {"PL-K7QX"}
+
+
+def test_a_file_the_branch_is_creating_is_matched_before_it_exists() -> None:
+    # `PL-XH1D`'s shape, and the reason this reader asks the filesystem
+    # nothing: `#487` broke it by *creating* `CONTRIBUTING.md`, which existed
+    # nowhere in the tree the command was written against.
+    item = _item(verify="test -f CONTRIBUTING.md")
+
+    assert items_reading([item], ["CONTRIBUTING.md"]) == {"PL-K7QX"}
+
+
+def test_a_bare_word_is_not_read_as_a_directory() -> None:
+    # A candidate carrying no `/` has to match a changed path exactly. Offered
+    # containment, a word inside a pattern would put the command behind every
+    # edit under a directory that happens to share its name.
+    item = _item(verify="grep -q src README.md")
+
+    assert items_reading([item], ["src/core.py"]) == frozenset()
+    assert items_reading([item], ["README.md"]) == {"PL-K7QX"}
+
+
+def test_a_path_inside_an_inline_script_is_read() -> None:
+    # Quoted spans are scanned for paths as well, which over-reports where the
+    # command is matching text rather than opening a file. That costs a replay;
+    # the other direction costs the finding.
+    inline = "python3 -c \"import json; json.load(open('src/a.json'))\""
+    item = _item(verify=inline)
+
+    assert items_reading([item], ["src/a.json"]) == {"PL-K7QX"}
+
+
+def test_a_separator_inside_a_quoted_pattern_does_not_split_a_clause() -> None:
+    # Clauses are cut on the blanked command, so a `&&` inside a pattern cannot
+    # start a phantom clause whose first word - the real file - would then read
+    # as the program it runs.
+    assert command_paths("grep -q 'a && b' docs/MODEL.md") >= {"docs/MODEL.md"}
+
+
+def test_a_closed_item_is_not_put_back_in_scope_by_its_command() -> None:
+    # A closed `verify:` records what was run on a tree that no longer exists.
+    # Replaying it would report a break in work that is finished.
+    item = _item(status="done", verify="grep -q x README.md")
+
+    assert items_reading([item], ["README.md"]) == frozenset()
+
+
+def test_an_item_with_no_command_is_in_no_scope_at_all() -> None:
+    assert items_reading([_item(verify="")], ["README.md"]) == frozenset()
+
+
+def test_a_widened_scope_says_which_half_each_id_came_from(tmp_path: Path) -> None:
+    # The cost line is the only place a reader learns why a command ran, and
+    # the two halves want different reactions: an item this branch edited is
+    # probably finished, while one it merely invalidated is a command that has
+    # stopped discriminating.
+    root = _repo(tmp_path)
+    report = already_passing(
+        root,
+        [_item(identifier="PL-K7QX"), _item(identifier="PL-A1B2")],
+        scoped_to={"PL-K7QX", "PL-A1B2"},
+        reading={"PL-A1B2"},
+        scope_base="origin/main",
+    )
+
+    assert report.scope == (
+        "2 item(s) in scope: 1 this branch changed and 1 whose `verify:` command "
+        "reads a file it changed against origin/main"
+    )
 
 
 # A blocked item's command, asked about only where a branch touched the item

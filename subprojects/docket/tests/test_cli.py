@@ -352,6 +352,73 @@ def test_verify_base_narrows_the_replay_to_what_the_branch_changed(tmp_path: Pat
     assert not (tmp_path / "ran.marker").exists()
 
 
+#: An item whose command reads a file, so that editing the file - and nothing
+#: else - can change what the command returns. `touch` runs first so the marker
+#: says the command was executed at all, which is the question the scope is
+#: being tested on.
+READING = """---
+id: PL-R34D
+title: An item whose command reads a file it does not own
+priority: P1
+effort: S
+status: ready
+classes: perf
+touches: a.py
+verify: touch ran.marker && grep -q sentinel README.md
+added: 2026-08-01
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+
+def _reading_repo(tmp_path: Path) -> tuple[Path, str]:
+    """A checkout holding `READING`, and the base its branch is measured against."""
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    (root / "items" / "reading.md").write_text(READING, encoding="utf-8")
+    (root / "README.md").write_text("nothing here yet\n", encoding="utf-8")
+    # A real checkout, for the reason `_release_repo` gives: the scope is read
+    # from a diff, so a stub would test the stub.
+    subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        subprocess.run(["git", "config", name, value], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "base"], cwd=root, check=True, capture_output=True)
+    base = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=root, check=True, capture_output=True, text=True
+    ).stdout.strip()
+    return root, base
+
+
+def test_a_branch_that_invalidates_another_item_s_command_replays_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The end-to-end shape of `PL-XMNC`, through the flag CI actually passes.
+
+    The branch never opens `PL-R34D`'s item file; it writes the word its
+    command greps for. Scoped to the items a branch edited, that replayed
+    nothing and the break surfaced only on the whole-store sweep after the
+    merge - six recorded times.
+    """
+    root, base = _reading_repo(tmp_path)
+    store = str(root / "items")
+
+    # Nothing changed yet, so the command is out of scope and does not run.
+    assert _run("check", "--verify", "--verify-base", base, "--items", store) == 0
+    assert not (root / "ran.marker").exists()
+
+    (root / "README.md").write_text("sentinel\n", encoding="utf-8")
+
+    assert _run("check", "--verify", "--verify-base", base, "--items", store) == 1
+    assert (root / "ran.marker").exists()
+    printed = capsys.readouterr().out
+    assert "PL-R34D" in printed
+    assert "whose `verify:` command reads a file it changed" in printed
+
+
 def test_digest_is_silent_on_an_empty_store(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
