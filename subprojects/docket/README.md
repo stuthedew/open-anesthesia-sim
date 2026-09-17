@@ -905,8 +905,12 @@ A queue answers "which item next". It cannot answer "what is the project
 *doing* next", because that is settled by the roadmap and the roadmap is
 prose. `docket wave` reads the parts of it that are not — the release train,
 the milestone sections, and the debt list each one records when it is scoped —
-and reports the version, the step, the gate's size and how much of it is
-closed, and which beat of the cadence that leaves due. It splits the open
+and reports the version, the versions ahead of it the plan has already given
+out, the step, the gate's size and how much of it is closed, and which beat of
+the cadence that leaves due. The reserved set is printed rather than only
+consulted: the release guard refuses a bump that lands on one of those numbers
+and names the milestone holding it, so without the list a reader sees the
+verdict on one version and nothing about the rest. It splits the open
 entries once more, from the items rather than from the roadmap: an entry whose
 `blocked-by` chain leaves the frozen list — a later milestone, or an item the
 list does not hold — cannot be closed by clearing this gate in any order, so it

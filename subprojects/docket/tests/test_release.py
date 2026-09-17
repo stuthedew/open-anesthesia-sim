@@ -578,6 +578,37 @@ def test_the_digest_withholds_the_offer_and_says_which_step_owns_the_version() -
     assert "Beat: clear the gate - 2 entries of 2 still open" in digest
 
 
+def test_digest_and_status_render_one_reserved_verdict() -> None:
+    """One verdict, one arrangement, both surfaces - which is the assertion
+    neither surface's own test can make.
+
+    `format_status` carried a second independent branch on `offer.kind` and a
+    refusal of its own wording, so a change to the digest's left the survey
+    printing the old one and nothing failed. Both are checked against the same
+    expected clause here rather than against a literal each, because a literal
+    each is exactly what the defect was (`PL-C6XD`).
+
+    Only the pointer differs, which is the one part each surface is entitled
+    to: the digest prints the beat directly beneath and says so, the survey
+    does not and names the command that would print it.
+    """
+    from docket.checks import Report
+    from docket.render import format_digest, format_status
+
+    report = Report(items=[_item("PL-4444")])
+    ready, plan = _ready("0.2.7", "0.2.8"), _plan("0.2.7")
+    refusal = (
+        'No release to offer: the roadmap gives 0.2.8 to "the workflow works", which is unfinished'
+    )
+
+    digest = format_digest(report, None, ready, plan)
+    status = format_status(report, ready, None, plan)
+
+    assert f"{refusal} - the beat below is what is due." in digest
+    assert f"{refusal} - `docket wave` for what is due." in status
+    assert "Next version would be" not in status
+
+
 def test_the_digest_names_the_branch_already_cutting_instead_of_offering_a_release() -> None:
     """PL-66FP: the offer is where a duplicate release starts, so it stops here.
 
@@ -628,19 +659,6 @@ def test_the_digest_offers_the_planned_version_over_the_bumps_guess() -> None:
 
     assert "Offer 0.3.0 before taking new work - the version the plan names" in digest
     assert "not the 0.2.9 a bump arrives at" in digest
-
-
-def test_status_stops_predicting_a_version_the_roadmap_has_spent() -> None:
-    """The same wrong statement in the command the queue skill sends a reader to."""
-    from docket.checks import Report
-    from docket.render import format_status
-
-    status = format_status(
-        Report(items=[_item("PL-4444")]), _ready("0.2.7", "0.2.8"), None, _plan("0.2.7")
-    )
-
-    assert "Next version would be" not in status
-    assert 'Not 0.2.8: the roadmap gives that version to "the workflow works"' in status
 
 
 # --- what `status` says about the plan (`PL-BZCM`) ---------------------------
@@ -1163,6 +1181,25 @@ def test_the_reserved_set_carries_every_version_the_plan_names_ahead() -> None:
     ]
 
 
+def test_wave_prints_every_reserved_version_and_not_only_the_colliding_one() -> None:
+    """`reserved` did not occur in `render.py` at all, so the only reserved
+    version a session could see was whichever one a bump happened to land on,
+    named in prose by the refusal above. The guard's answer was legible and the
+    evidence behind it was not, which is what `PL-SYG4` needs to reason about a
+    patch cut on a track running alongside a reserved milestone (`PL-C6XD`).
+
+    Withheld rather than printed empty where the roadmap names nothing ahead:
+    the current version is the last row `PLAN_ROADMAP` has, so there is no
+    number to report and a bare label would report one anyway.
+    """
+    from docket.render import format_wave
+
+    ahead = wave(UNSCOPED_AHEAD_ROADMAP, "0.3.0", GATED_SCOPE_IDS, GATED_SCOPE_IDS, {})
+
+    assert "Reserved  0.4.0, 0.5.0 - spent by ROADMAP.md, nearest first" in format_wave(ahead)
+    assert "Reserved" not in format_wave(_plan("0.4.0", KNOWN_IDS))
+
+
 def test_wave_reports_the_scope_split_once_the_gate_is_clear() -> None:
     from docket.render import format_wave
 
@@ -1184,7 +1221,7 @@ def test_wave_says_the_scope_closed_when_it_reports_a_release() -> None:
 
 
 def test_wave_withholds_the_scope_split_while_the_gate_is_open() -> None:
-    """Five lines read beside the digest rather than studied: while the beat is
+    """A few lines read beside the digest rather than studied: while the beat is
     `clear`, the gate block above already says what is due and the scope is work
     the step has not reached."""
     from docket.render import format_wave
