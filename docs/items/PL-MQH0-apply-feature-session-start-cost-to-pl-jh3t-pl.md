@@ -9,6 +9,7 @@ feature: session-start-cost
 touches: docs/items/
 added: 2026-09-16
 closed: 2026-09-16
+pr: 637
 verify: make docket && bin/docket feature session-start-cost | grep -cE '^  \[.\] PL-(JH3T|XD3C|0J9K|MMVF|RC86|DMDF) ' | grep -qx 6
 ---
 

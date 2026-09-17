@@ -9,6 +9,7 @@ feature: qt-port
 touches: spikes, ROADMAP.md, docs/WORKING_NOTES.md, pyproject.toml, tools/doc_check.py
 added: 2026-09-10
 closed: 2026-09-16
+pr: 638
 verify: uv run python tools/import_boundary_check.py && ! test -d spikes
 ---
 
