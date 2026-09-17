@@ -178,6 +178,7 @@ stays a reviewer's question.
 | reading a displayed value as resolved to its last digit | displayed precision is a recorded choice within a justified band, and the model retains precision the display discards rather than rounding its own state | `test_the_model_keeps_precision_the_display_throws_away`, `test_concentration_decimals_are_a_choice_within_a_recorded_band` |
 | reading a control mark on the timeline as a measurement | the timeline labels its marks "Settings only — not a measurement." | `test_the_interface_says_a_control_mark_is_an_input_not_a_measurement` |
 | reading a modelled compartment value as a measured one | the readout section states beside its values that they are model outputs and not measurements (`INTERPRETATION_DISCLAIMER_TEXT`, `PL-2K1R`), and the chart's hover names every value it reports as modelled (§ "The chart's hover readout: what the tooltip may show") | `test_the_interface_says_the_readouts_are_model_outputs_not_measurements`, `test_the_readouts_say_they_are_model_outputs_beside_the_values`, `test_the_hover_reports_the_drawn_state_through_the_formatters` |
+| reading one run's concentration as the other's while two are compared | the run is named in text wherever a value is shown: on each run's own readout panel (§ "Minimum displayed outputs") and, while more than one run is drawn, on the first line of the chart's hover readout (§ "The hover and the run it belongs to"), because the hover floats free of the legend and line width has no textual analogue | `test_the_hover_names_the_run_only_while_more_than_one_is_drawn`, `test_two_runs_within_the_hover_radius_answer_under_their_own_names` |
 
 ### The row that was only partly mitigated until the Qt port
 
@@ -6513,7 +6514,8 @@ the number it hedges is a warning: the number has already been read.
 
 Each line, and what obliges it:
 
-1. **Run context — the modelled marker, the agent, and the instant.** The
+1. **Run context — the modelled marker, the agent, the run where more than
+   one is drawn, and the instant.** The
    marker is on every hover, not only on the compartments with a measured
    twin, because the box is detached from the heading that would otherwise
    carry it. The agent is there because the same percentage means different
@@ -6542,6 +6544,81 @@ The MAC multiple resolves against the snapshot's own `mac_percent`, exactly as
 the MAC axis and the readout row do. A hover reporting a MAC multiple computed
 from any other divisor would be the traceability failure `CLAUDE.md` forbids,
 arriving through the one display that looks least like a calculation.
+
+#### The hover and the run it belongs to
+
+**While more than one run is drawn, the first line names the run; while one is,
+it does not** (project owner, 2026-09-17, ratified, over giving the run a
+fourth line of its own and over holding the curve's line width and the legend
+to be sufficient).
+
+```
+Modelled sevoflurane · Run 2 · 20m8s
+Alveolar (end-tidal-equivalent)
+1.43%   0.71 ×MAC
+```
+
+**The hover is a displayed concentration, so § "Minimum displayed outputs"
+already decides the principle**: "The run is named in text, not carried by
+colour or by position… Text has no width analogue… A concentration that does
+not say which management produced it is the correct number under the wrong
+patient context." That paragraph is written against the numeric readouts, and
+every reason it gives applies here with more force rather than less — the
+readouts sit in a labelled block beside the run's own panel, and this box
+floats over the plot with nothing around it, which is the argument the top of
+this section already makes for why the modelled marker travels with the value.
+
+**The argument that the pointer is already over one curve is false, and was
+measured.** `nearest_trace_point` keeps the single globally nearest drawn point
+across *every* run on the frame, so the pointer is within reach of both runs
+wherever their curves for one compartment run close together. Measured
+2026-09-17 on a branched sevoflurane case — reference adult, trunk held at
+1 MAC, branch forked at 10 min, a 60-minute axis 900 px wide and 360 px tall,
+so 4.00 s/px and 0.0167 %/px — the share of the shared axis on which both runs'
+points for one compartment sit inside the 12 px hover radius:
+
+| Branch's management at the fork | Alveolar | Fat |
+| --- | ---: | ---: |
+| doubled to 2 MAC | 1.6% | 100% |
+| raised to 1.25 MAC | 8.5% | 100% |
+| vaporizer turned off | 1.6% | 100% |
+
+The fat row is total in every case, including against the widest management
+difference the interface permits, because the percent axis is scaled by the
+alveolar peak and the slow compartments are compressed near zero. Those are the
+compartments this chart exists to teach. It is consequential rather than
+cosmetic: of the hovers that could answer for either run, 83.3–95.3% (alveolar)
+and 43.8–81.4% (fat) would print *different* text. On the emergence case the
+fat hover at 3492 s reads either `0.03%   0.02 ×MAC` or `0.01%   <0.01 ×MAC`
+depending on which run answered — a threefold difference in stored agent
+between a run still carrying it and one 48 minutes into emergence.
+
+**It goes on line 1 rather than on a fourth line** because line 1 is the line
+this section already calls *run context*, so naming the run completes it rather
+than changing the three-line form the rest of this section derives. While two
+runs are compared it is also the only token on that line that tells them apart:
+`assemble_chart_frame` refuses a frame whose runs differ on agent, because they
+share one MAC axis and one set of clinical references, so the agent is constant
+across the runs being compared and the line would otherwise spend its
+distinguishing slot on a constant. The one argument for a fourth line is that a
+distinct line is scanned where a mid-line token may not be, which matters
+because the run under a resting pointer can change; it is answered by the value
+on line 3 changing at the same moment, so the reader has two cues rather than
+none.
+
+**It is conditional, and that is not a hidden mode.** A single run has nothing
+to be told apart from, and a name on the only run drawn implies a comparison
+that is not on screen. The condition is the same one the width channel already
+carries — `run_trace_style` widens nothing until a second run exists — and it
+is visible on its face: a second run brings a second legend entry, a second
+readout panel and a second set of curves with it. A reader cannot be in the
+two-run state without seeing the two runs.
+
+**What this does not fix.** Naming the run makes the choice between runs
+*visible*; it does not make the hover answer for the curve the reader aimed at.
+On the measurement above, a 2 px movement of the pointer flips which run
+answers on 75.4–99.9% of the fat axis. That is a targeting rule rather than a
+readout question, and it is `PL-JVHL`.
 
 #### Resolution: the readouts' derivation applies unchanged
 
