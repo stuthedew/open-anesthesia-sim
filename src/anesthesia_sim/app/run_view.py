@@ -112,6 +112,7 @@ from anesthesia_sim.app.qt_widgets import (
     ReadoutRow,
     selector_stylesheet,
     styled_label,
+    transport_button_stylesheet,
 )
 from anesthesia_sim.app.theme import (
     ACCENT_TEXT,
@@ -359,6 +360,12 @@ class RunView(QWidget):
         self._start_button = QPushButton(START_LABEL)
         self._pause_button = QPushButton(PAUSE_LABEL)
         self._reset_button = QPushButton(RESET_LABEL)
+
+        # The transport's colours are the interface's rather than the host
+        # appearance's (`PL-DHBX`); `transport_button_stylesheet` carries why.
+        for button in (self._start_button, self._pause_button, self._reset_button):
+            button.setStyleSheet(transport_button_stylesheet())
+
         self._write_transport(transport(snapshot))
         self._start_button.clicked.connect(self._handle_start)
         self._pause_button.clicked.connect(self._handle_pause)

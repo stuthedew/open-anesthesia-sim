@@ -120,6 +120,18 @@ interface component" from any contrast requirement
 `agent_identity_check` declines to claim for identity controls and which applies
 squarely here.
 
+*What that paragraph did not say, and PL-DHBX cost.* "The start, pause and reset
+buttons" were undeclared in **both** states, not only the disabled one, and only
+the disabled half is exempt. An enabled button with no foreground takes the
+platform's `ButtonText`, which follows the *host appearance*: under macOS Dark it
+is near-white, and the three labels went to white-on-white while every surface
+this interface draws stayed the light theme's. That is squarely inside SC 1.4.3.
+`transport_button_stylesheet` now declares the enabled pair and it is measured
+above; the disabled state is still the platform's, and deliberately whole - box
+and label together, so the two stay consistent with each other on whatever host
+draws them. Declaring the fill without the label would be the worst of the three:
+a white box under a foreground still following the dark scheme.
+
 *What is deliberately not claimed.* SC 1.4.11's own exception wording for
 inactive components was **not** read at the source for this decision: `w3.org`
 returns `EGRESS_BLOCKED` from this container, as PL-JX0Z recorded across five
@@ -408,7 +420,14 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "names the rate the clock is advancing at, which docs/MODEL.md requires "
         "displayed, so it is read rather than merely operated (PL-SN2C); and "
         "the chart's time base (`_time_base_dropdown`), which names how much of "
-        "the run is on screen and is read the same way",
+        "the run is on screen and is read the same way. Also the labels of the "
+        "three transport buttons while they are usable "
+        "(`transport_button_stylesheet`, applied in `RunView`): they set no "
+        "foreground until PL-DHBX and so took Qt's palette ButtonText role, which "
+        "is the host appearance's value rather than this interface's - near-white "
+        "under macOS Dark, which put Start, Pause and Reset to white-on-white "
+        "while every surface around them stayed this light theme's. The pair is "
+        "measured here only because the stylesheet writes it",
     ),
     Requirement(
         "MUTED",
@@ -423,7 +442,10 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "the playback-rate dropdown drawn beside them "
         "(`_playback_rate_dropdown`), which is a user-interface component "
         "and so needs only SC 1.4.11's 3:1 - met with room to spare by the text "
-        "minimum this pair already carries (PL-SN2C)",
+        "minimum this pair already carries (PL-SN2C), and the border of each "
+        "usable transport button in the same row (`transport_button_stylesheet`), "
+        "which is the edge that locates the control once its fill is PANEL "
+        "rather than the platform's bevel (PL-DHBX)",
     ),
     Requirement(
         "MUTED",

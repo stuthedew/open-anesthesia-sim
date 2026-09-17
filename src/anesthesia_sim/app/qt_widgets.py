@@ -187,6 +187,37 @@ def selector_stylesheet() -> str:
     )
 
 
+def transport_button_stylesheet() -> str:
+    """Start, Pause and Reset while they are usable: PANEL fill, MUTED edge, INK label.
+
+    Declared rather than left to the platform style, which is what `PL-DHBX`
+    was: a button that sets no foreground takes one from `QPalette`'s
+    `ButtonText` role, and that role is the *host appearance's* value rather
+    than this interface's. Under macOS Dark appearance it is near-white, while
+    every surface this interface draws around it stays the light theme's - so
+    the three labels went to white-on-white and the run controls could not be
+    read. Switching macOS back to Light restored them, which is the same fact
+    from the other side.
+
+    `:enabled` scopes this to the state WCAG 2.2 SC 1.4.3 governs. A disabled
+    control is exempt from the contrast minimum and is deliberately left whole
+    to the platform - box and label together, so the two stay consistent with
+    each other on whatever host draws them (`PL-NGF7`, project owner,
+    2026-09-16). Declaring the fill here without the label would be worse than
+    declaring neither: it would pin a white box under a foreground still
+    following the dark scheme.
+
+    `tools/contrast_check.py` measures INK on PANEL for the label and MUTED
+    against the row behind the button for the edge, and both claims hold only
+    because these colours are written here rather than inherited.
+    """
+
+    return (
+        f"QPushButton:enabled {{ background-color: {PANEL}; color: {INK}; "
+        f"border: 1px solid {MUTED}; border-radius: {PANEL_RADIUS}px; padding: 4px 12px; }}"
+    )
+
+
 class FlowLayout(QLayout):
     """A row of items that wraps onto further lines when the width runs out.
 
