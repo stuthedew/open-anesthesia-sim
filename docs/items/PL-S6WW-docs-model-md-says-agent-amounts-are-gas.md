@@ -153,11 +153,22 @@ block, the `verify:` string above, and the direction of the "Known
 limitations" note — which would then say the fresh-gas terms are the
 approximated ones. Under an hour; nothing outside `docs/MODEL.md`.
 
-**To close it at 20 °C** takes `status: done`, `closed:`, and the pull
-request. `PL-KZ99` (store each agent's molar mass and liquid density with the
-density's measurement temperature) and `PL-0S0V` (agent volume display
-decimals) are both `blocked-by` this item and are released by either answer,
-not only by this one.
+**To close it at 20 °C** takes `status: done`, `closed:`, the pull request,
+and one edit outside this item's `touches`: `ROADMAP.md`'s Gate entry for
+`PL-S6WW` says the document "documents no temperature anywhere", which stops
+being true the moment this branch merges. `PL-KZ99` (store each agent's molar
+mass and liquid density with the density's measurement temperature) and
+`PL-0S0V` (agent volume display decimals) are both `blocked-by` this item and
+are released by either answer, not only by this one.
+
+**Docs swept 2026-09-17**, against the branch: `docs/MODEL.md` and
+`docs/references/README.md` (both edited, `make doc-check` clean), `README.md`,
+`docs/WORKING_NOTES.md` and `docs/interface-provenance.md` (none names the
+amount unit's condition), `ROADMAP.md` (the Gate entry above, accurate until
+this closes), and `app/dashboard_frame.py`'s `ACCOUNTING_UNIT_CAPTION` with
+`app/formatting.py`'s two amount docstrings — all three still read correctly,
+because they name the unit and the condition is read only by a conversion out
+of it, which nothing performs today.
 
 **Widened `touches` mid-work, deliberately.** `docs/references/README.md`
 gained the extraction note for Appendix C's `Volatility` line, which
