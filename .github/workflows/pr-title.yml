@@ -47,6 +47,26 @@ jobs:
   # repository settings, which no script here can read, so nothing in
   # `make check` or CI will catch the next one. Change a job name only together
   # with that setting.
+  #
+  # **This job is in the required set as of 2026-09-17, and was not before**
+  # (project owner, on `PL-H8YD`). It is recorded here because it cannot be
+  # read from anywhere else in the tree. The gap was not a decision and not an
+  # escape hatch: the title check began as a *step inside* `quality.yml`'s
+  # `checks` job (`PL-2XTF`, `#227`), where the requirement on `checks` already
+  # gated it, and `PL-3V8K` (`#256`) moved it out into this workflow so a
+  # rename could clear it. That turned a step into a job, and a new job reports
+  # a new status check that nothing makes required by default. So the gate was
+  # left behind by a correct fix to a different problem, and stayed lost for
+  # eleven releases.
+  #
+  # The comment above guards renaming or removing a job that *has* a
+  # requirement. This is the opposite direction and has no guard at all:
+  # **adding** a job whose check ought to be required. `#654` is what it cost -
+  # auto-merge landed a pull request three seconds after `checks` went green,
+  # while the only completed `pr-title` run was a failure, and the correct
+  # squash subject reached `main` only because the rename happened to win the
+  # race. Add a new reporting job here and the required list is yours to update
+  # in the same change.
   pr-title:
     runs-on: ubuntu-latest
     # Observed at 12 seconds; one checkout and one standard-library script.

@@ -2070,7 +2070,7 @@ def test_the_hover_readout_states_the_agent_compartment_and_both_units(
     readout = chart.readout_at(time_s, run.percents(RecordedQuantity.ALVEOLAR)[index])
 
     assert readout is not None
-    assert readout == format_trace_hover(run, RecordedQuantity.ALVEOLAR, index)
+    assert readout == format_trace_hover(run, RecordedQuantity.ALVEOLAR, index, len(frame.runs))
     context, what, value = readout.splitlines()
     instant_s = round(time_s / HOVER_INSTANT_RESOLUTION_S) * HOVER_INSTANT_RESOLUTION_S
     assert "sevoflurane" in context

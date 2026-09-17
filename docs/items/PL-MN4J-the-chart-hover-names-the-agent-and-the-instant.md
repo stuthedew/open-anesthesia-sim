@@ -3,10 +3,11 @@ id: PL-MN4J
 title: The chart hover names the agent and the instant but not which run, so a hovered value is unattributed while two runs are drawn
 priority: P1
 effort: S
-status: needs-decision
+status: done
+closed: 2026-09-17
 classes: safety, ux
 feature: scenario-branching
-touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit
+touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, README.md, tests/unit
 added: 2026-09-16
 verify: grep -qF 'The hover and the run it belongs to' docs/MODEL.md
 ---
@@ -27,6 +28,16 @@ line width, so a reader *can* attribute a curve - but a hover box floats away
 from the legend, which is the same argument § "The chart's hover readout"
 already makes for why the hedge travels with the value rather than being left to
 the readout row beside it.
+
+**Decided 2026-09-17** (project owner, ratified, over a fourth line of its own
+and over holding line width and the legend to be sufficient): the hover names
+the run on line 1, `Modelled sevoflurane · Run 2 · 20m8s`, only while more
+than one run is drawn. The counter-argument below - that the pointer is over
+one curve - was measured and is false: `nearest_trace_point` keeps the nearest
+point across every run, and both runs' fat points sit inside the 12 px radius
+over 100% of the shared axis in every management scenario tested, with
+43.8-81.4% of those hovers printing different text. `docs/MODEL.md` § "The
+hover and the run it belongs to" carries the derivation and the measurement.
 
 **Decision needed.** Whether the hover names the run while more than one is
 drawn — and if so, whether as a fourth line or folded into the first — or

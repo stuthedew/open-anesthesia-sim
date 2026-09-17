@@ -1,8 +1,13 @@
 ---
 id: PL-M21Q
 title: A needs-decision item carries the question but not the recommendation, so a session's recommendation lives only in a reply and cannot be agreed with once that session's branch is deleted
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, docs
+touches: .claude/skills/docket/SKILL.md, .claude/rules/instruction-writing.md, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-16
+verify: python3 tools/doc_check.py check && grep -qF 'record the recommendation in the item, not only in the reply' .claude/skills/docket/SKILL.md
 ---
 
 **Problem.** A needs-decision item carries the question but not the recommendation, so a session's recommendation lives only in a reply and cannot be agreed with once that session's branch is deleted
@@ -66,3 +71,25 @@ that poses a decision and recommends nothing.
 `CLAUDE.md`'s "will it genuinely run again" gate, and the count that answers it
 is how many of the store's open `needs-decision` items already carry a
 recommendation. Run that count before building anything.
+
+**Why it matters.** `needs-decision` is the status that routes a question to the
+project owner, and `bin/docket gate` counts it as debt somebody can resolve. The
+recommendation that would let them resolve it in one read lives only in the reply
+that posed it, and a reply dies with its session while the item persists - so the
+longer an item waits, the likelier the recommendation is gone when the answer
+arrives. That is backwards, because waiting is what the status is for. The cost
+is already on the record: `PL-KQHN`'s answer had to be reconstructed from a
+harness-written summary line naming two options and marking neither, and a
+decision about the release train rested on a reading of another model's
+compressed prose.
+
+**Done when** the rule is written where a session acts on it - the `docket`
+skill's triage mode, and rule 14's handover bullet in
+`.claude/rules/instruction-writing.md`, which today routes only to `bin/docket
+new` - and a `needs-decision` brief carries the recommending session's
+recommendation in its own words beside the question. Run the count the brief
+asks for *first*: how many of the store's open `needs-decision` items already
+carry one. The advisory in `bin/docket check` is built only if that count says it
+would fire on a real population, per `CLAUDE.md`'s "where the benefit is unclear,
+the answer is no"; the rule half lands either way, which is what the `verify:`
+command pins.

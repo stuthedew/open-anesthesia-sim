@@ -3,12 +3,13 @@ id: PL-GPYV
 title: Editor is the wrong word for what occupies an Area in this project: Blender's editors predominantly edit, ours predominantly display modelled values, and nothing has been built with the name yet
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning
-touches: docs/items, ROADMAP.md
-verify: python3 tools/doc_check.py check && ! grep -rl 'set_editor' docs/items/
+touches: docs/items, ROADMAP.md, docs/WORKING_NOTES.md, src/anesthesia_sim/app
+verify: python3 tools/doc_check.py check && ! grep -rlE 'set_editor|\bEditor\b' docs/items/ --exclude='PL-FTP5-*' --exclude='PL-C842-*' --exclude='PL-H620-*' --exclude='PL-GPYV-*' --exclude='PL-FXBS-*'
 feature: interface-areas
 added: 2026-09-17
+closed: 2026-09-17
 ---
 
 **Problem.** Editor is the wrong word for what occupies an Area in this project: Blender's editors predominantly edit, ours predominantly display modelled values, and nothing has been built with the name yet
@@ -145,17 +146,63 @@ Recorded in three places, which is what makes it effective:
 cause". `ROADMAP.md` and that rule are swept; `PL-1FT6`'s `set_editor` is now
 `set_view`.
 
-**What is left, and it is the whole of this item's remaining work.** 33 item
-files under `docs/items/` still say Editor in this project's sense. They are a
-mechanical sweep with one judgment in it, which is why it is an item rather than
-a `sed`: **anything quoting or describing Blender keeps Blender's word**, as
-does every citation of a `docs/interface-provenance.md` section title - that
-document describes Blender and is deliberately not renamed. `PL-C842` needs no
-change at all: it wrote `view_kind` and `set_view` before the 2026-09-16 rename,
-so the sweep restores its vocabulary rather than replacing it.
+**The sweep, and its one judgment.** 33 item files under `docs/items/` said
+Editor in this project's sense. They were a mechanical sweep with one judgment
+in it, which is why this was an item rather than a `sed`: **anything quoting or
+describing Blender keeps Blender's word**, as does every citation of a
+`docs/interface-provenance.md` section title - that document describes Blender
+and is deliberately not renamed. `PL-C842` needed no change to its vocabulary:
+it wrote `view_kind` and `set_view` before the 2026-09-16 rename.
 
-**Done when.** No item file under `docs/items/` uses `Editor` for this project's
-own objects, `set_editor` appears nowhere, and every remaining `Editor` in the
-tree either describes Blender or cites a `docs/interface-provenance.md` section
-title by name. `ROADMAP.md`, `.claude/rules/ui-areas.md`,
-`docs/interface-provenance.md`, `PL-1FT6` and `PL-MQHN` are already done.
+**That judgment is now recorded as a file list, not as prose** (project owner,
+2026-09-17). Five item files legitimately keep Blender's word and are excluded
+from this item's `verify:` command: `PL-FTP5` (the Blender study record),
+`PL-C842` (the Blender read behind the container decision), `PL-H620` (the item
+that adopted Blender's vocabulary, quoting the manual's own definitions table),
+`PL-GPYV` (this item, whose brief must name `set_editor` to record the rename)
+and `PL-FXBS` (the verify-command finding, whose title must name it too).
+Everything else was swept.
+
+**The old `verify:` could never pass, and `PL-FXBS` has the measurement.**
+`! grep -rl 'set_editor' docs/items/` asks the store to prove a string absent
+from itself, and the `verify:` line stating it lives in `docs/items/` - so it
+was falsified by five lines of this item's own file, four of them the record of
+the rename this item is required to keep. Replaced with a pattern matching
+`set_editor` and the capitalized noun `Editor`, excluding the five files above.
+Checked against `origin/main`: it fails there, naming the 17 files this sweep
+changed, and passes here.
+
+**Three corrections the sweep found, all from the 2026-09-16 rename having been
+run as a blind `sed`:**
+
+- `ROADMAP.md` carried six occurrences of "an **View**" - the article left
+  behind when `Editor` became `View`. Fixed.
+- `ROADMAP.md` still carried `set_editor` twice, in Required scope entry 1 and
+  in the deferred-docking list, though this item's own brief recorded the
+  roadmap as swept.
+- `docs/WORKING_NOTES.md` and one comment in
+  `src/anesthesia_sim/app/run_view.py` still named this project's object
+  `editor`; the comment cited `.claude/rules/ui-areas.md`, which had already
+  been renamed, and used *view* twice and *editor* once for the same thing.
+
+Four quotations of project text that had itself been renamed were updated so
+they match their sources again: `PL-L6QR` and `PL-BNYF` quote `ROADMAP.md`
+item 34, `PL-9LNF` quotes `.claude/rules/ui-areas.md` test 2, and `PL-YHWG`
+quotes item 34's scope line.
+
+**Done when.** No item file under `docs/items/` uses `Editor` for this
+project's own objects outside the five excluded above, `set_editor` appears
+nowhere but in the two items recording the rename, and every remaining
+`Editor` in the tree either describes Blender or cites a
+`docs/interface-provenance.md` section title by name. `ROADMAP.md`,
+`.claude/rules/ui-areas.md`, `docs/interface-provenance.md`, `PL-1FT6` and
+`PL-MQHN` were already done.
+
+**Shipped release notes are not swept**, and that is deliberate rather than an
+omission. `docs/releases/v0.4.26.md` names the `Editor` contract in two entries
+because that was the contract's name on the day it shipped;
+`subprojects/docket/src/docket/release.py` calls the notes "the half that is
+permanent", and `checks._check_release_notes` matches ids rather than titles,
+so nothing depends on rewriting them. Rewriting a shipped release's prose to
+match a vocabulary decided afterwards would falsify the record - most sharply
+for `PL-H620`, whose entry records the owner *choosing* Blender's word.

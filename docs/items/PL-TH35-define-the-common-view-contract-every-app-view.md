@@ -1,6 +1,6 @@
 ---
 id: PL-TH35
-title: Define the common Editor contract every app/ view implements so any view is interchangeable in any area
+title: Define the common View contract every app/ view implements so any view is interchangeable in any area
 priority: P2
 effort: M
 status: blocked
@@ -13,8 +13,8 @@ not-delegable: the deliverable is a contract to be agreed before it is coded, an
 ---
 
 **Problem.** `ROADMAP.md` planned-milestone item 34 takes Blender's area system
-as the model, where an Area holds one Editor and *any* editor can occupy *any*
-area. Nothing yet says what an editor is, in this codebase, as a contract a view
+as the model, where an Area holds one View and *any* view can occupy *any*
+area. Nothing yet says what a View is, in this codebase, as a contract a view
 implements - so "modular" currently means the dashboard surfaces are separate
 widgets, which is movability rather than interchangeability.
 
@@ -48,11 +48,11 @@ view gets a name and a shape the next view could take, even while only one view
 uses it.
 
 **Where.** `src/anesthesia_sim/app/` (the views themselves);
-`docs/ARCHITECTURE.md` § "Where new code belongs" is where an editor becomes a
+`docs/ARCHITECTURE.md` § "Where new code belongs" is where a view becomes a
 named pattern a session can route to.
 
 **Done when.** A contract is written down, two existing views implement it, and
-`docs/ARCHITECTURE.md` routes "a new editor" the way it already routes a
+`docs/ARCHITECTURE.md` routes "a new view" the way it already routes a
 compartment or a chart series.
 
 

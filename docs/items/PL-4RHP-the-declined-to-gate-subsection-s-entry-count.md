@@ -1,9 +1,14 @@
 ---
 id: PL-4RHP
 title: The Declined-to-Gate subsection's entry count is outside check_gate_counts' reach, and its group counts cannot be reconciled to the 151 it states
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs, defect
 feature: debt-gate
+touches: ROADMAP.md, tools/doc_check.py
 added: 2026-09-16
+verify: python3 tools/doc_check.py check && ! grep -qE '^### Declined to Gate 2 .*[0-9]+ entries$' ROADMAP.md
 ---
 
 **Problem.** The Declined-to-Gate subsection's entry count is outside check_gate_counts' reach, and its group counts cannot be reconciled to the 151 it states
@@ -46,3 +51,23 @@ it there, or the heading stops stating a number. The second is cheaper and may
 be right: `CLAUDE.md` says a count nobody can check is a count nobody is
 checking, and the subsection's purpose is that each disposition is written down,
 which no total carries.
+
+**Why it matters.** It is a number in `ROADMAP.md` that reads as checked and is
+not. `check_gate_counts` exists because "a count written into a document goes
+stale the next time an item closes", and every other gate count in that document
+is inside its reach - so a reader has no way to tell this one apart from the ones
+the checker holds. That is the first of `CLAUDE.md`'s compounding-friction
+shapes in miniature: the guarantee is void while the check reports correctly.
+
+**It has moved again since this item was filed.** The heading read 151 entries on
+2026-09-16 and reads **152** on 2026-09-17, which is the item's own prediction
+arriving nine days early. Its history is now eleven hand edits.
+
+**Done when** the heading states no count, and nothing in the subsection states
+one either. Triage chose that remedy over reconciling the number and building a
+check for it - which is what this item's `verify:` command pins - on `CLAUDE.md`'s
+own grounds: the subsection's purpose is that each disposition is written down
+with a reason, which no total carries, and a check built to hold a number nobody
+reads would fire on every run without changing a decision. Reconciling instead
+remains admissible if whoever takes it finds the count load-bearing somewhere
+this reading missed; the command is then repointed, since the item is open.

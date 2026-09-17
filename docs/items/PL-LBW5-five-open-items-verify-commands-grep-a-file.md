@@ -1,8 +1,14 @@
 ---
 id: PL-LBW5
 title: Five open items' verify: commands grep a file their own touches does not declare, so bin/docket concurrent gives a wrong answer for work that will certainly edit it
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
+feature: verify-command-health
+touches: docs/items
 added: 2026-09-17
+verify: bin/docket check && grep -q '^touches:.*subprojects/docket/tests/test_cli.py' docs/items/PL-L4YG-*.md
 ---
 
 **Problem.** Five open items' verify: commands grep a file their own touches does not declare, so bin/docket concurrent gives a wrong answer for work that will certainly edit it
@@ -40,3 +46,8 @@ run again, and where the benefit is unclear the answer is no.
 
 **Done when** the four items declare the test files their commands name, or a
 reason is recorded for leaving one of them out.
+
+**Grouped under `feature: verify-command-health`** at triage, with `PL-RCQM` -
+the same question from the other end: whether every open item's `verify:` command
+is one the store can act on. This half is whether the command's paths are
+declared; `PL-RCQM`'s is whether the command can run at all.

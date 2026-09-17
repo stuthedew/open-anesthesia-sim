@@ -1,7 +1,14 @@
 ---
 id: PL-FXBS
 title: A verify: command that negates a recursive grep over docs/items/ is falsified by the item store itself, so it can never pass: PL-GPYV's greps for set_editor, which its own verify line and its record of the rename both contain
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect
+touches: docs/items
+verify: bin/docket check && grep -qF "docs/items/PL-WZBX-*.md" docs/items/PL-0BSC-*.md && grep -qF "exclude='PL-FXBS-*'" docs/items/PL-GPYV-*.md
+feature: interface-areas
+closed: 2026-09-17
 added: 2026-09-17
 ---
 
@@ -90,3 +97,34 @@ their work and passes with it.
 **It does not block `PL-GPYV`'s sweep; it blocks closing it**, since close-out
 step 5 runs the item's own command until `ACCEPT`. Cheapest fixed on the
 holding branch before it lands.
+
+
+## Fixed 2026-09-17, on `claude/lucid-darwin-zwishk` with `PL-GPYV`
+
+Both instances now carry a command that fails without its work and passes with
+it, by the second of the two routes this item named - naming the files rather
+than recursing.
+
+**`PL-GPYV`.** The negation now matches `set_editor` and the capitalized noun
+`Editor`, excluding the five item files that legitimately keep Blender's word:
+`PL-FTP5`, `PL-C842`, `PL-H620`, `PL-GPYV` and this item (project owner,
+2026-09-17 - that list is the sweep's one judgment). Checked against
+`origin/main`, where it fails naming the 17 files the sweep changed, and against
+the swept tree, where it passes.
+
+**`PL-0BSC`.** `! grep -rq 'wave counts the four entries' docs/items/` became
+`! grep -q 'wave counts the four entries' docs/items/PL-WZBX-*.md`. The
+recursive form was falsified by three files - `PL-WZBX`'s title, `PL-0BSC`'s own
+body, and this item, which had to quote the string to report it. Naming
+`PL-WZBX` leaves exactly the file whose title is the work. Measured: exit 1
+before the correction, 0 after it.
+
+**This item was recovered from a stranded branch.** It was captured on
+`origin/claude/awesome-brown-x29b1e`, whose session stood down on `PL-GPYV`
+(held here) and was then archived with the item never merged - so its own
+handoff, "merge `claude/awesome-brown-x29b1e` or hand `PL-FXBS` to the `PL-GPYV`
+session", was deleted with it. `bin/docket stranded` is what still named it;
+that is the mechanism `PL-H1JD` describes working as intended.
+
+The count above is left as measured on the day rather than re-run, per
+`PL-JZ1D`: a closed item's numbers are a record.

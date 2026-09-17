@@ -50,6 +50,68 @@ from .store import ID_PATTERN
 # search, and answering it here would be guessing at the judgment half.
 SUPPRESSIONS = ("# type: ignore", "typing.no_type_check", "xfail", "pytest.skip", "@skip")
 
+#: Only a file Python executes can hold an assertion, so a removed line from
+#: anything else is prose whatever words it uses. This is the larger half of
+#: the narrowing by count: every close-out edits its own item's `.md`, and
+#: every release edits `ROADMAP.md`, so the documentation tree is where a
+#: substring grep over the word `assert` met a session most often.
+ASSERTION_BEARING_SUFFIX = ".py"
+
+#: What an assertion *statement* looks like on the line that opens it.
+#: `assert` is a keyword, so it opens its statement: even one wrapped across
+#: five lines carries the keyword on the first, which is the line a
+#: whole-statement deletion puts in the diff - so anchoring gives up none of
+#: the wrapped forms, which is what the item asked to be checked rather than
+#: assumed. The second alternative is the call form, which the keyword anchor
+#: cannot see because the name runs on: `unittest`'s `assertEqual`, `mock`'s
+#: `assert_called_once_with`, `numpy.testing`'s `assert_allclose`.
+ASSERTION_RE = re.compile(
+    r"(?:^|[:;])\s*assert\b"  # `assert x`, and the one-liner `if cond: assert x`
+    r"|\bassert[A-Za-z0-9_]*\s*\("  # assertEqual(, assert_called_once_with(
+)
+
+#: Positions the word occupies where no assertion is being made. A comment and
+#: a decorator cannot assert; a `def` names a helper rather than calling one,
+#: and removing that definition removes its call sites too, which the call
+#: form above catches; an import moves a name without evaluating it.
+NOT_AN_ASSERTION_RE = re.compile(r"^\s*(?:#|@|def\s|async\s+def\s|import\s|from\s)")
+
+
+def is_assertion_line(path: str, line: str) -> bool:
+    """Whether a removed line was an assertion, for `no existing assertion removed`.
+
+    The check used to ask `"assert" in line`, which is true of a comment, a
+    docstring, a release note, an item's brief, a variable called
+    `removed_assertions` and of the matcher itself - so a correct close-out
+    that touched any of them was REJECTed by an integrity check that is
+    supposed to be unarguable, which is the second of `CLAUDE.md`'s
+    compounding-friction tests: a refusal that fires on correct work trains a
+    reader to skim the block where a real weakening is printed (`PL-7TYC`).
+
+    Counted rather than reasoned about, because the safe direction here is
+    *reporting* and a tightening has to earn it. The predicate is wrong if it
+    suppresses a real assertion, so that is what was counted, three ways, with
+    `ast` as the oracle rather than a reading:
+
+    - over 867 commits of this repository's history, 200 removed lines carrying
+      the word stop being reported and **none** of them is an assertion;
+    - across the test trees, where the check is aimed, 271 of 5,574 lines stop
+      being reported and **none** of them is an assertion - 229 prose, 37
+      comments, 5 definitions or imports;
+    - in non-test source the exposure the item measured falls from 91 lines to
+      4, one of which is a genuine `assert` that is meant to be reported.
+
+    It still errs toward reporting where it cannot tell: three of those four
+    are docstring lines that a reflow happened to start with the word
+    `assert`, and they stay on the page rather than being guessed at.
+    """
+    if path and not path.endswith(ASSERTION_BEARING_SUFFIX):
+        return False
+    if NOT_AN_ASSERTION_RE.match(line):
+        return False
+    return bool(ASSERTION_RE.search(line))
+
+
 RESIDUAL = (
     "Not proven: whether a new test asserts the value the model should produce "
     "or merely the value it currently produces. A test can exercise the right "
@@ -203,6 +265,139 @@ def reads_check_output(command: str) -> str:
         if "|" in (after[: end.start()] if end else after):
             return "pipes its output into another command"
     return ""
+
+
+# Every word of a clause, and the shape a path is written in. The second is
+# deliberately loose: it runs over the *raw* clause, quoted spans included, so
+# a path inside a `python3 -c "..."` body or a `grep` pattern is a candidate
+# like any other. Nothing is decided from the shape alone - a candidate only
+# matters where it matches a path the branch actually changed - so a loose
+# pattern costs a wasted comparison and a strict one costs a missed replay.
+WORD_RE = re.compile(r"\S+")
+PATH_TOKEN_RE = re.compile(r"[A-Za-z0-9_.][A-Za-z0-9_./+-]*")
+
+# What a clause *runs*, as against what it reads, and this distinction is the
+# whole of `command_paths`. `python3 tools/doc_check.py check` names a path and
+# reads nothing: the path is the program, and the clause is the health half of
+# a command whose discriminating half is somewhere else. 54 of the 168 open
+# commands carrying that gate would otherwise replay behind any edit to it.
+# A path handed to something else - `grep -q … docs/MODEL.md`, `pytest
+# tests/unit/test_x.py` - is what the clause reads, and is what can change the
+# command's outcome while nobody touches the item.
+#
+# The first word of a clause is its program. These come before it and are not.
+SHELL_PREFIXES = frozenset({"!", "(", "{", "then", "do", "else"})
+
+#: Programs whose first non-flag argument is a script they execute, so that
+#: argument is a program too. Every other command takes its arguments as data.
+#: A wrapped interpreter - `uv run python3 tools/x.py` - is not recognised, so
+#: its script counts as read: that widens the scope rather than narrowing it,
+#: which is the direction this reader errs in everywhere.
+INTERPRETERS = frozenset({"python", "python3", "bash", "sh", "zsh", "dash", "node", "perl", "ruby"})
+
+#: Interpreter flags after which what follows is code rather than a script.
+INLINE_CODE = frozenset({"-c", "-m"})
+
+
+def _blanked(command: str) -> str:
+    """`_outside_quotes`, with each blanked span keeping its own length.
+
+    The same rule about which quotes hide a command, in the shape a slice can
+    use. `_outside_quotes` collapses a quoted span to one space, which is right
+    for searching it and wrong for reading offsets back off it: everything
+    after the span shifts. `command_paths` splits on the blanked text and then
+    reads each clause out of the *raw* command, so the two have to agree
+    character for character.
+    """
+
+    def blank(match: re.Match[str]) -> str:
+        return " " * len(match.group())
+
+    text = SINGLE_QUOTED_RE.sub(blank, command)
+    return DOUBLE_QUOTED_RE.sub(
+        lambda m: m.group() if ("$(" in m.group() or "`" in m.group()) else blank(m), text
+    )
+
+
+def _programs(words: Sequence[tuple[int, str]]) -> set[int]:
+    """The offsets of the words this clause runs rather than reads."""
+    index = 0
+    while index < len(words) and words[index][1] in SHELL_PREFIXES:
+        index += 1
+    if index >= len(words):
+        return set()
+    offsets = {words[index][0]}
+    if words[index][1] in INTERPRETERS:
+        for offset, word in words[index + 1 :]:
+            if word in INLINE_CODE:  # what follows is code, not a script
+                break
+            if word.startswith("-"):
+                continue
+            offsets.add(offset)
+            break
+    return offsets
+
+
+def command_paths(command: str) -> frozenset[str]:
+    """Every path this `verify:` command reads, as against the programs it runs.
+
+    A command's outcome can change without its item being touched, and this is
+    what says which edits could do it: a branch that edits `docs/MODEL.md`
+    changes the answer of every open command that greps it, while editing none
+    of their items. Six recorded breaks were that case, and each was reported
+    only by the whole-store sweep after the merge (`PL-XMNC`).
+
+    Read clause by clause, split on `&&`, `||` and `;` outside quotes, because
+    only the discriminating clauses count. `|` does not split: the command
+    after a pipe reads the previous one's output rather than a file of its own.
+
+    Deliberately textual, and deliberately loose. Nothing here is asked of the
+    filesystem, so a path a branch is *creating* is matched like any other -
+    `test -f CONTRIBUTING.md` is one of the six, and the file existed nowhere
+    until the branch that broke it. What comes back is candidates rather than
+    a claim that any of them is a path; the caller compares them against paths
+    the branch really changed, which is where a token that is not one falls
+    out for free.
+
+    What it cannot read it over-reports rather than skipping. A quoted span is
+    scanned for paths even though the clause may only be matching the text; a
+    wrapped interpreter's script counts as read. Both put an extra command in
+    a replay, which costs a second; the other direction costs the finding.
+    """
+    blanked = _blanked(command)
+    spans: list[tuple[int, int]] = []
+    cut = 0
+    for match in PIPELINE_END_RE.finditer(blanked):
+        spans.append((cut, match.start()))
+        cut = match.end()
+    spans.append((cut, len(blanked)))
+
+    found: set[str] = set()
+    for start, end in spans:
+        words = [(start + m.start(), m.group()) for m in WORD_RE.finditer(blanked[start:end])]
+        run = _programs(words)
+        for match in PATH_TOKEN_RE.finditer(command[start:end]):
+            if start + match.start() not in run:
+                found.add(match.group())
+    return frozenset(found)
+
+
+def reads_any(command: str, paths: Collection[str]) -> bool:
+    """Whether this command reads any of `paths`.
+
+    A directory named by the command covers everything under it - `grep -rq …
+    docs/items/` reads an item file the branch added - which is `_within`'s
+    containment rule, the same one an item's `touches` is judged by.
+
+    Containment is offered only to a candidate carrying a `/`, and the rest
+    must match a changed path exactly. A bare word is far more often part of a
+    pattern than a directory: `grep -q 'src' …` would otherwise put the command
+    behind every edit under `src/`, while `grep -q … Makefile` still matches
+    the file it names.
+    """
+    named = command_paths(command)
+    directories = tuple(candidate for candidate in named if "/" in candidate)
+    return any(path in named or _within(path, directories) for path in paths)
 
 
 #: Appended to a commission check's detail when it is reporting rather than
@@ -375,10 +570,21 @@ def _diff_text(root: Path, base: str, commits: tuple[str, ...]) -> str:
     return diff
 
 
+#: The post-image path out of a `diff --git a/x b/x` header. A header this
+#: cannot read yields `""`, which `is_assertion_line` reads as "could be code"
+#: rather than as "is not" - an unreadable header stays on the reporting side.
+DIFF_HEADER_RE = re.compile(r"^diff --git a/(?:.*) b/(?P<path>.*)$")
+
+
 def _net_line_changes(
     root: Path, base: str, commits: tuple[str, ...]
-) -> tuple[list[str], list[str]]:
+) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
     """The lines the work added and removed, with cancelling pairs folded out per file.
+
+    Each line comes back paired with the path it came from. The fold below was
+    already keyed by file; what changed is that the key stops being discarded,
+    because whether a removed line can be an assertion at all depends on
+    whether Python executes the file (`PL-7TYC`).
 
     `git show` over an item's commits concatenates one patch per commit rather
     than producing the branch's net change, because an item's commits need not
@@ -393,9 +599,9 @@ def _net_line_changes(
     and so the worker cannot argue with it (`PL-VP40`).
 
     Cancelling an added line against an identical removed line within the same
-    file is exactly as precise as the two checks consuming this, which are
-    substring greps over line text rather than structural readings, and it costs
-    no extra git call. Counting rather than de-duplicating is what keeps it
+    file is exactly as precise as the two checks consuming this, which read a
+    line's text rather than the tree it parses to, and it costs no extra git
+    call. Counting rather than de-duplicating is what keeps it
     safe: a file whose patches remove one `# type: ignore` and add two still
     reports one added. A line merely *moved* within a file cancels too, which is
     the right answer to both questions - the suppression was already there, and
@@ -410,11 +616,16 @@ def _net_line_changes(
     diff = _diff_text(root, base, commits)
     # Insertion-ordered by first appearance of each file, which is what makes
     # the returned order - and so the five lines the report prints - stable.
-    per_file: dict[str, tuple[Counter[str], Counter[str]]] = {}
+    # The path sits beside the two counters rather than in front of them, so
+    # that `side` still indexes a homogeneous pair.
+    per_file: dict[str, tuple[str, tuple[Counter[str], Counter[str]]]] = {}
     current = ""
+    path = ""
     for line in diff.splitlines():
         if line.startswith("diff --git "):
             current = line
+            header = DIFF_HEADER_RE.match(line)
+            path = header.group("path") if header else ""
             continue
         # The `+++`/`---` header lines are excluded by the second test, exactly
         # as they were before the fold.
@@ -425,15 +636,15 @@ def _net_line_changes(
         else:
             continue
         if current not in per_file:
-            per_file[current] = (Counter(), Counter())
-        per_file[current][side][line[1:]] += 1
-    added: list[str] = []
-    removed: list[str] = []
-    for added_here, removed_here in per_file.values():
+            per_file[current] = (path, (Counter(), Counter()))
+        per_file[current][1][side][line[1:]] += 1
+    added: list[tuple[str, str]] = []
+    removed: list[tuple[str, str]] = []
+    for where, (added_here, removed_here) in per_file.values():
         # `Counter.__sub__` keeps only positive counts, which is multiset
         # difference: the fold each check wants.
-        added.extend((added_here - removed_here).elements())
-        removed.extend((removed_here - added_here).elements())
+        added.extend((where, text) for text in (added_here - removed_here).elements())
+        removed.extend((where, text) for text in (removed_here - added_here).elements())
     return added, removed
 
 
@@ -860,7 +1071,7 @@ def verify_item(
 
     # One diff read for both checks, where there were two.
     added, removed = _net_line_changes(root, base, commits)
-    suppressed = [line.strip() for line in added if any(s in line for s in SUPPRESSIONS)]
+    suppressed = [line.strip() for _, line in added if any(s in line for s in SUPPRESSIONS)]
     report.checks.append(
         Check(
             "no suppression added",
@@ -872,18 +1083,23 @@ def verify_item(
 
     # An assertion the item was commissioned to *falsify* is the one shape this
     # check has never had a passing route for, and it is not the hazard the
-    # check exists for. Three cases reach a substring grep over removed lines
-    # as one: an assertion weakened to let bad work through, an assertion moved
+    # check exists for. Three cases reach one reading of the removed lines as
+    # one: an assertion weakened to let bad work through, an assertion moved
     # or reworded with its subject intact, and an assertion whose subject the
     # item was asked to delete. `PL-VP40`'s fold separated the second. This
     # separates the third, and it cannot be folded the same way, because
     # nothing identical comes back - so it is declared instead, in the item,
     # before the work (`PL-K82G`).
     #
+    # A fourth case never belonged here at all: a line that merely contains the
+    # word. `is_assertion_line` is what removes it, and it is the only one of
+    # the four settled by looking at the line rather than at the item
+    # (`PL-7TYC`).
+    #
     # The removal stays on the page either way: what changes is that it reads
     # as a commissioned act rather than an unexplained one, which is the
     # property the check was defending.
-    removed_assertions = [line.strip() for line in removed if "assert" in line]
+    removed_assertions = [line.strip() for where, line in removed if is_assertion_line(where, line)]
     declared, unread = commissioned_falsification(root, base, config.items_dir, item)
     folded = [line for line in removed_assertions if declared and declared in line]
     dropped = [line for line in removed_assertions if not (declared and declared in line)]
@@ -1248,6 +1464,27 @@ class LandedReport:
         return not self.declined
 
 
+def items_reading(items: Sequence[Item], paths: Collection[str]) -> frozenset[str]:
+    """Open items whose `verify:` command reads one of the paths a branch changed.
+
+    The second half of a pull request's replay scope. `vcs.changed_items` gives
+    the first - the items whose own file the branch edited - and on its own it
+    replays the command a branch *writes* and never the command it
+    *invalidates*, which is the case every recorded break was (`PL-XMNC`).
+
+    Closed items are left out. A closed `verify:` is a record of what was run
+    on a tree that no longer exists rather than an assertion about this one, so
+    replaying it would report a break in something already finished.
+    """
+    if not paths:
+        return frozenset()
+    return frozenset(
+        item.identifier
+        for item in items
+        if item.is_open and item.verify and reads_any(item.verify, paths)
+    )
+
+
 def already_passing(
     root: Path,
     items: Sequence[Item],
@@ -1257,6 +1494,7 @@ def already_passing(
     timeout: float = LANDED_TIMEOUT,
     workers: int | None = None,
     scoped_to: Collection[str] | None = None,
+    reading: Collection[str] = (),
     scope_base: str = "",
 ) -> LandedReport:
     """Run every open item's `verify:` command, and report what running it showed.
@@ -1314,12 +1552,21 @@ def already_passing(
     while the answer is about the store rather than about the commit. It is
     `PL-P3B6`'s argument one step further: that item took the replay off `make
     check` because a pre-commit gate cannot have changed whether some *other*
-    item's work merged, and a pull request cannot either. What a branch can
-    have changed is the items it edited, so CI scopes to those on
+    item's work merged, and a pull request cannot either. So CI scopes on
     `pull_request` and sweeps everything on `push` to the default branch, where
     the question is a fact about that branch. Measured 2026-09-05: 87 s of the
     quality job's 152 s for 111 commands, against nine items changed by the
     branch that measured it.
+
+    What a branch can have changed is *two* sets, and reading it as one was the
+    defect: the items it edited, and the items whose command reads a file it
+    edited. Only the first was ever in scope, so a command was replayed on the
+    pull request that wrote it and never on the pull request that invalidated
+    it - and all six recorded breaks were the second case, each reported only
+    by the whole-store sweep once it was already on `main`. `items_reading`
+    computes the second set and `reading` is the caller's word for which ids
+    came from it, carried so the cost line can say which of the two produced
+    its count (`PL-XMNC`).
 
     A scoped run says so in `scope`, and every path out of here carries it -
     including the one where the scope holds nothing to run. A narrowed run
@@ -1339,11 +1586,23 @@ def already_passing(
     # would have covered. "Nothing was checked" and "nothing was checked, and
     # it would have been nine items rather than the store" are different
     # sentences to whoever reads the log.
+    # `reading` is the half of `scoped_to` that is in scope for the other
+    # reason, and the sentence names both: "9 items" on a branch that changed
+    # nine item files and one that changed one item file and a `docs/MODEL.md`
+    # eight commands grep are different runs, and a reader acting on the
+    # finding needs to know which they are looking at.
+    widened = set(reading) & set(scoped_to or ())
     scope = (
         ""
         if scoped_to is None
         else (
-            f"{len(scoped_to)} item(s) this branch changed"
+            (
+                f"{len(scoped_to)} item(s) in scope: {len(scoped_to) - len(widened)} this "
+                f"branch changed and {len(widened)} whose `verify:` command reads a file it "
+                "changed"
+                if widened
+                else f"{len(scoped_to)} item(s) this branch changed"
+            )
             + (f" against {scope_base}" if scope_base else "")
         )
     )
