@@ -51,3 +51,20 @@ was written for.
 **Done when** `bin/docket verify --self` on a dropped item runs the four
 integrity checks and can reach `ACCEPT`, an item with neither a command nor an
 exemption still fails, and both are covered by tests.
+
+---
+
+**Already fixed on `origin/main`; close at triage. Verified 2026-09-17.** The
+narrow fix proposed above is the code that landed in `#655` (`17ca23d`,
+`PL-K82G, PL-L4KX: give verify's absolute integrity checks a declared route`),
+at `subprojects/docket/src/docket/verify.py:746-758`: `exemption` is set for
+`status: dropped` and for `not-delegable:`, and where it is set the missing
+command is appended as an `advisory=True` check and the function *carries on*
+rather than returning. The bare `report.stopped_early = True; return report`
+survives only for the case this brief says should keep failing - no command and
+no exemption. Both halves of the **Done when** above therefore hold on `main`
+today, and `PL-L4KX`'s own tests cover them.
+
+This item was captured while closing `PL-879R` on the same day `#655` merged, so
+it is a race rather than a mistake: the disposition is `dropped`, with the
+`reason` naming `PL-L4KX`. Nothing here is work.
