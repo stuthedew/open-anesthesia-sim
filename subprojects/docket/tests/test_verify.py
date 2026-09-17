@@ -1593,6 +1593,142 @@ def test_a_self_audit_still_refuses_a_failing_command(tmp_path: Path) -> None:
     assert not report.passed
 
 
+# `PL-7TYC` - what counts as a *removed assertion*. The check asked
+# `"assert" in line`, which is true of a comment, a docstring, a release note,
+# an item's brief, a variable named `removed_assertions` and of the matcher
+# itself - so a correct close-out touching any of them was refused by an
+# integrity check that is supposed to be unarguable. Both directions are pinned
+# below, and the second group is the one that matters: a tightening of this
+# check fails silently, where the over-report at least announced itself.
+
+PROSE = (
+    "def test_a() -> None:\n"
+    '    """The band asserts a spread no wider than the literature supports."""\n'
+    "    # what these assert is the judgment, not the git reading behind it\n"
+    "    assert 1 == 1\n"
+)
+
+
+def test_prose_that_merely_mentions_an_assertion_is_not_reported(tmp_path: Path) -> None:
+    """A docstring and a comment carrying the word, reworded away.
+
+    The assertion itself is untouched across both commits, so it folds out and
+    what reaches the check is two lines of prose.
+    """
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX write the prose", "tests/test_thing.py", PROSE)
+    _work(root, "PL-K7QX reword it", "tests/test_thing.py", KEPT)
+
+    check = _check(
+        verify(root, _item(), _config(), "HEAD~1", self_audit=True), "no existing assertion removed"
+    )
+    assert check.passed
+    assert check.detail == "none"
+
+
+def test_the_matcher_itself_is_not_an_assertion(tmp_path: Path) -> None:
+    """`PL-7TYC`'s own line, which is how the defect was found.
+
+    `bin/docket verify --self PL-K82G` REJECTed the branch that gave this check
+    its first passing route, for the line of code that does the looking.
+    """
+    root = _repo(tmp_path)
+    matcher = (
+        "def collect(removed: list[str]) -> list[str]:\n"
+        '    dropped = [line.strip() for line in removed if "assert" in line]\n'
+        "    return dropped\n"
+    )
+    _work(root, "PL-K7QX the old matcher", "tests/test_thing.py", matcher)
+    _work(
+        root,
+        "PL-K7QX replace it",
+        "tests/test_thing.py",
+        "def collect(removed: list[str]) -> list[str]:\n    return []\n",
+    )
+
+    check = _check(
+        verify(root, _item(), _config(), "HEAD~1", self_audit=True), "no existing assertion removed"
+    )
+    assert check.passed
+
+
+def test_prose_removed_from_a_document_is_never_an_assertion(tmp_path: Path) -> None:
+    """Only a file Python executes can hold one.
+
+    The second line would be reported in a `.py` file - a reflow can start a
+    sentence with the word - and is prose here whatever its shape. This is the
+    larger half of the narrowing by count: every close-out edits its own item's
+    `.md` and every release edits `ROADMAP.md`.
+    """
+    root = _repo(tmp_path)
+    note = "The test asserts the band is drawn.\nassert-led wrap of a sentence.\n"
+    _work(root, "PL-K7QX write the note", "docs/notes.md", note)
+    _work(root, "PL-K7QX cut it", "docs/notes.md", "Gone.\n")
+
+    check = _check(
+        verify(root, _item(touches=("docs/notes.md",)), _config(), "HEAD~1", self_audit=True),
+        "no existing assertion removed",
+    )
+    assert check.passed
+
+
+def test_a_helper_definition_or_import_is_not_an_assertion(tmp_path: Path) -> None:
+    """Removing `def assert_ok` removes its call sites too, and those are caught."""
+    root = _repo(tmp_path)
+    helper = (
+        "from unittest import TestCase  # assertEqual lives here\n"
+        "\n"
+        "def assert_ok(value: int) -> None:\n"
+        "    pass\n"
+    )
+    _work(root, "PL-K7QX add the helper", "tests/test_thing.py", helper)
+    _work(root, "PL-K7QX drop the helper", "tests/test_thing.py", "PLACEHOLDER = 1\n")
+
+    check = _check(
+        verify(root, _item(), _config(), "HEAD~1", self_audit=True), "no existing assertion removed"
+    )
+    assert check.passed
+
+
+@pytest.mark.parametrize(
+    ("shape", "removed"),
+    [
+        ("bare", "    assert value == 1\n"),
+        ("message", '    assert value == 1, "the readout moved"\n'),
+        ("unittest", "    self.assertEqual(value, 1)\n"),
+        ("mock", "    handler.assert_called_once_with(value)\n"),
+        ("numpy", "    numpy.testing.assert_allclose(value, 1.0)\n"),
+        ("one-liner", "    if flaky: assert value == 1\n"),
+        ("wrapped", "    assert (\n        value == 1\n    )\n"),
+    ],
+)
+def test_a_genuinely_removed_assertion_is_still_reported(
+    tmp_path: Path, shape: str, removed: str
+) -> None:
+    """The direction that fails silently, so every shape the check ever caught is here.
+
+    `wrapped` is the one the item asked to be checked rather than assumed:
+    `assert` is a keyword and opens its statement, so a reflow across three
+    lines still puts it on the first, which is the line the deletion shows.
+    `one-liner` is the shape a naive `^\\s*assert` anchor would have given up.
+    """
+    root = _repo(tmp_path)
+    body = "def test_b(value: int, flaky: bool, handler: object, numpy: object) -> None:\n"
+    _work(root, f"PL-K7QX add the {shape} assertion", "tests/test_thing.py", KEPT + body + removed)
+    _work(
+        root,
+        f"PL-K7QX cut the {shape} assertion",
+        "tests/test_thing.py",
+        KEPT + body + "    pass\n",
+    )
+
+    check = _check(
+        verify(root, _item(), _config(), "HEAD~1", self_audit=True), "no existing assertion removed"
+    )
+    assert check.blocks and not check.advisory
+    assert not check.passed
+
+
 # `falsifies:` - the declared exemption to "no existing assertion removed"
 # (`PL-K82G`). The check had no passing route for an item whose own work makes
 # a rendered string false, so a correct close-out could only game the fold or
