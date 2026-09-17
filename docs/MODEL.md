@@ -522,8 +522,10 @@ mass, or the millilitres of liquid a vaporizer is filled from. There the two
 candidate conditions differ by a factor of 1.058, because the ideal-gas molar
 volume is 24.055 L/mol at 20 °C and 25.450 L/mol at 37 °C.
 
-**Why 20 °C, and what it was chosen over** (recorded 2026-09-17, `PL-S6WW`).
-Three grounds, and the first is checkable rather than conventional.
+**Why 20 °C, and what it was chosen over** (project owner, 2026-09-17,
+ratified — over 37 °C, the condition at which the stored amounts are
+natively exact; `PL-S6WW`). Three grounds, and the first is checkable
+rather than conventional.
 
 1. **The published vapour-to-liquid constants are 20 °C constants.** The
    consumption literature quotes one composite number per agent — the vapour

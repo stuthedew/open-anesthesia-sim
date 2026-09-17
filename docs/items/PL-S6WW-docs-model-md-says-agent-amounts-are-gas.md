@@ -3,12 +3,13 @@ id: PL-S6WW
 title: docs/MODEL.md says agent amounts are gas volumes 'at one documented reference temperature and pressure' but documents no temperature anywhere, and a liquid-equivalent conversion moves 5.8 percent between a 20 C and a 37 C reference
 priority: P1
 effort: S
-status: needs-decision
+status: done
 classes: science, docs
 feature: liquid-agent-consumption
-touches: docs/MODEL.md, docs/references/README.md
+touches: docs/MODEL.md, docs/references/README.md, ROADMAP.md
 verify: python3 tools/doc_check.py check && grep -qF 'where the ideal-gas molar volume is 24.055 L/mol' docs/MODEL.md && grep -qF 'One reference condition, where the model physically has two' docs/MODEL.md
 added: 2026-09-16
+closed: 2026-09-17
 ---
 
 **Problem.** docs/MODEL.md says agent amounts are gas volumes 'at one documented reference temperature and pressure' but documents no temperature anywhere, and a liquid-equivalent conversion moves 5.8 percent between a 20 C and a 37 C reference
@@ -249,3 +250,36 @@ removes it — 20 °C puts it on the stores, 37 °C puts it on the fresh-gas
 terms, STPD puts it on both. The question is only *which terms should be
 exact*, and that follows from what gets displayed: today, and under
 planned-milestone item 28, that is delivered and exhausted.
+
+**RATIFIED AT 20 °C** (project owner, 2026-09-17): *"Ok, sounds good. let's not
+reinvent the wheel."* Recorded as `ratified` rather than specified, per
+`CLAUDE.md` — it was taken on this session's recommendation, over 37 °C.
+
+**The ground it was ratified on is worth keeping, because it is narrower than
+the case that was put.** The reply that earned the answer was the one about
+what Gas Man actually does, and the reason given back was not the arithmetic:
+it was that this project should not diverge from its reference implementation
+without cause. So a later session reopening this on ordinary evidence — a
+measurement, a cost the case did not carry — should understand that the
+decision rests on *lineage consistency with Gas Man* first and on the 20 °C
+reproduction second. Changing the reference condition means accepting that this
+model's litre and Gas Man's litre are different quantities.
+
+**Ground 3 was rebuilt before the close**, on the same question. It had rested
+on a comment in `GASMAN.INI`; it now rests on the five expansion constants the
+Workbook prints in chapter 10 (halothane 228, enflurane 198, isoflurane 196,
+sevoflurane 183, desflurane 209 mL vapour per mL liquid), recorded in
+`PL-B396`. Derived from Laster, Fang and Eger's 20 °C densities they reproduce
+within 0.35 % on all five; at 37 °C the same derivation is 5.6–6.2 % high on
+every one. Two of the five are agents this model does not carry, so it is not
+a fit to the set.
+
+**`ROADMAP.md` was added to `touches` at the close**, for the Gate entry under
+v0.5.0 that described the finding in the present tense — "documents no
+temperature anywhere" — which the merge falsifies. It now records the
+resolution instead.
+
+**Released by this close:** `PL-KZ99` (store each agent's molar mass and liquid
+density with the density's measurement temperature) has this as its only
+blocker and is promotable. `PL-0S0V` (display-precision constants per quantity
+and unit) also lists `PL-B396`, which is still open, so it stays blocked.
