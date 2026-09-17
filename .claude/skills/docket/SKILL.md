@@ -1051,6 +1051,20 @@ itself (the items carrying its feature) and what clears before it begins, with
 effort totals for each. Recording Gate 0 by hand meant reading 48 items and
 applying the rule to each; do not repeat that.
 
+**Sweep the frozen list for staleness before clearing it.** That is beat 3 of
+`ROADMAP.md`'s cadence and the first thing to happen once the list exists. A
+`verify:` command tests for the presence of the fix and never for the presence
+of the fault, so an entry whose problem was solved another way fails forever and
+reads as outstanding work — and nothing in the store marks it, so it is ranked,
+offered by `bin/docket next`, and counted into this gate. The one pass that has
+run found 12 of 134 items dead and 31 more overtaken, 32% of the lane, and a
+churn advisory was built, measured against its verdicts and rejected, so there
+is no mechanical substitute (`PL-LKGL`). Read each frozen entry against the
+tree, drop what no longer reproduces with its `reason`, and correct the briefs
+that overstate what is left. `PL-6ZQY` is the standing item for the pass, and
+its own brief carries a 134-item map whose verification phase never finished —
+nothing in it may be acted on without re-checking against the tree.
+
 **Recorded debt is cleared before a new milestone begins.** `ROADMAP.md`'s
 "The debt gate" is the rule: open items classed `defect`, `safety`, `science`,
 `refactor` or `perf`, and anything at `needs-decision`, reach `done` — or
