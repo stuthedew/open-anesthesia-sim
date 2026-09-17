@@ -1591,3 +1591,192 @@ def test_a_self_audit_still_refuses_a_failing_command(tmp_path: Path) -> None:
     report = verify(root, _item(verify="false"), _config(), "HEAD~1", self_audit=True)
 
     assert not report.passed
+
+
+# `falsifies:` - the declared exemption to "no existing assertion removed"
+# (`PL-K82G`). The check had no passing route for an item whose own work makes
+# a rendered string false, so a correct close-out could only game the fold or
+# push through a red integrity check.
+
+FALSIFIES = "the roadmap gives that version"
+PINNED = "def test_a() -> None:\n    assert 'the roadmap gives that version' in status()\n"
+
+
+def _commission(root: Path, name: str, **fields: str) -> None:
+    """Rewrite an item in the store and commit it, so the *base* is what declares."""
+    (root / "docs" / "items" / name).write_text(_stored("PL-K7QX", "Do the thing", **fields))
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "commission PL-K7QX")
+
+
+def test_an_assertion_the_commission_declared_falsified_is_folded(tmp_path: Path) -> None:
+    """`PL-C6XD`'s own close-out: the string the assertion pins is what the item deletes.
+
+    No arrangement of the tests keeps it, so folding it is the only route this
+    check has to a verdict other than a `REJECT` that has to be argued past.
+    """
+    root = _repo(tmp_path)
+    (root / "tests" / "test_thing.py").write_text(PINNED)
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "base: the assertion that pins the string")
+    _commission(root, "PL-K7QX-do-the-thing.md", falsifies=FALSIFIES)
+    _work(root, "PL-K7QX drop the duplicated refusal", "tests/test_thing.py", KEPT)
+
+    report = verify(root, _item(falsifies=FALSIFIES), _config(), "HEAD~1")
+
+    check = _check(report, "no existing assertion removed")
+    assert check.passed
+    assert check.detail == "none, 1 declared falsified"
+    assert any("declared falsified, not counted" in line for line in check.lines)
+    assert report.passed
+
+
+def test_a_removal_the_declaration_does_not_name_is_still_refused(tmp_path: Path) -> None:
+    """The fold is scoped to the declared subject, not opened by the field's presence."""
+    root = _repo(tmp_path)
+    (root / "tests" / "test_thing.py").write_text(PINNED + "\ndef test_b():\n    assert 2 == 2\n")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "base: two assertions")
+    _commission(root, "PL-K7QX-do-the-thing.md", falsifies=FALSIFIES)
+    _work(root, "PL-K7QX drop both", "tests/test_thing.py", "def test_a():\n    pass\n")
+
+    report = verify(root, _item(falsifies=FALSIFIES), _config(), "HEAD~1")
+
+    check = _check(report, "no existing assertion removed")
+    assert check.blocks
+    assert check.detail == "1 line(s), 1 declared falsified"
+    assert not report.passed
+
+
+def test_a_declaration_the_branch_never_acted_on_is_reported(tmp_path: Path) -> None:
+    """A commission describing work the branch did not do is a finding, not silence."""
+    root = _repo(tmp_path)
+    _commission(root, "PL-K7QX-do-the-thing.md", falsifies=FALSIFIES)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(root, _item(falsifies=FALSIFIES), _config(), "HEAD~1")
+
+    note = _check(report, "the `falsifies:` declaration holds")
+    assert note.advisory and not note.blocks
+    assert "no assertion matching it was removed" in note.detail
+    assert report.passed
+
+
+def test_a_declaration_added_on_the_branch_folds_nothing(tmp_path: Path) -> None:
+    """The line the field rests on, tested in the mode that would defeat it.
+
+    `PL-K82G` argued the field was safe because `front_matter_check` refuses a
+    branch that edits its own item's front matter. That is true of a delegated
+    review and false of the self-audit the close-out runs, where the guard is
+    an advisory by design. Reading the declaration from the base is what holds
+    the property in both modes.
+    """
+    root = _repo(tmp_path)
+    (root / "tests" / "test_thing.py").write_text(PINNED)
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "base: the assertion that pins the string")
+    _work(root, "PL-K7QX delete it and say I meant to", "tests/test_thing.py", KEPT)
+
+    report = verify(root, _item(falsifies=FALSIFIES), _config(), "HEAD~1", self_audit=True)
+
+    check = _check(report, "no existing assertion removed")
+    assert check.blocks and not check.advisory
+    assert not report.passed
+    note = _check(report, "the `falsifies:` declaration holds")
+    assert "declared on this branch and not in" in note.detail
+
+
+def test_an_unreadable_commission_says_so_rather_than_folding_nothing_silently(
+    tmp_path: Path,
+) -> None:
+    """A partial read handed over as a complete one is the one thing the floor refuses."""
+    root = _repo(tmp_path)
+    _work(
+        root, "PL-K7QX delete the test's teeth", "tests/test_thing.py", "def test_a():\n    pass\n"
+    )
+
+    report = verify(root, _item(falsifies=FALSIFIES), _config(items_dir="nowhere"), "HEAD~1")
+
+    note = _check(report, "the `falsifies:` declaration holds")
+    assert "no item store at" in note.detail
+    assert not report.passed
+
+
+# The command check's two declared exemptions (`PL-L4KX`). `docket check`
+# accepts both states and `verify` refused both, so the close-out the skill
+# prescribes had no passing state at all.
+
+
+def test_dropped_close_out_is_not_a_missing_command(tmp_path: Path) -> None:
+    """A dropped item built nothing, so there is nothing for a command to prove."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX drop it",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(root, _item(status="dropped", verify=""), _config(), "HEAD~1", self_audit=True)
+
+    command = _check(report, "has a `verify:` command")
+    assert command.advisory and not command.blocks
+    assert "a dropped item built nothing" in command.detail
+    # The half a hard stop was throwing away: the other checks actually ran.
+    assert not report.stopped_early
+    assert _check(report, "no existing assertion removed").passed
+    assert _check(report, "the project's own checks pass").passed
+    assert report.passed
+
+
+def test_a_not_delegable_item_close_out_is_not_a_missing_command(tmp_path: Path) -> None:
+    """`docket check` accepts a recorded reason *instead of* a command, in those words."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX do it by hand",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(
+        root,
+        _item(verify="", not_delegable="proving it means cutting a release"),
+        _config(),
+        "HEAD~1",
+        self_audit=True,
+    )
+
+    command = _check(report, "has a `verify:` command")
+    assert command.advisory and not command.blocks
+    assert "proving it means cutting a release" in command.detail
+    assert not report.stopped_early
+    assert report.passed
+
+
+def test_a_done_item_with_no_command_and_no_reason_still_fails_hard(tmp_path: Path) -> None:
+    """The exemption reads the store; it is not a way to skip the test.
+
+    Neither state is free to reach for - a drop owes a `reason` and a `closed`
+    date, and a `not-delegable` line is what withholds the item from delegation
+    in the first place. An item carrying neither has genuinely skipped it.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(root, _item(status="done", verify=""), _config(), "HEAD~1", self_audit=True)
+
+    command = _check(report, "has a `verify:` command")
+    assert command.blocks and not command.advisory
+    assert report.stopped_early
+    assert not report.passed
