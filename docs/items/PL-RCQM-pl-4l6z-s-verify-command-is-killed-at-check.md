@@ -3,12 +3,13 @@ id: PL-RCQM
 title: "PL-4L6Z's verify: command is killed at check --verify's 120s limit, so the sweep claims nothing about it"
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect, infra
 feature: verify-command-health
 touches: docs/items
 added: 2026-09-16
-verify: bin/docket check && ! grep -q '^verify: uv run pytest tests/reference/ &&' docs/items/PL-4L6Z-*.md
+closed: 2026-09-17
+reason: duplicates `PL-6YWK` (PL-4L6Z's verify: runs the whole reference suite, so it is killed at docket check's 120s limit and nothing is claimed about the item on any run), which is the same finding written better: it carries the `LANDED_TIMEOUT` reasoning this one lacks - the limit is 'long enough for a project's own suite, short enough that one wedged command cannot hang make check', so raising it for one item spends that guarantee on the item least able to justify it - and a `Done when` that names the paired shape the replacement command must take. Nothing in this brief is outstanding that `PL-6YWK` does not carry, except the two measurements now cross-referenced there
 ---
 
 **Problem.** `bin/docket check --verify` runs every open item's `verify:`
@@ -90,3 +91,17 @@ item adds, paired with a `grep` for that test, which is the shape
 or `PL-4L6Z` records `not-delegable:` and carries no command. The first looks
 right, and the test it names does not exist yet, so whoever writes it decides
 what proves it.
+
+**Dropped at triage, 2026-09-17, as a duplicate of `PL-6YWK`** (project owner).
+Both items describe `PL-4L6Z`'s `verify:` being killed at `check --verify`'s
+120 s per-command limit; they were filed a day apart by sessions that each found
+it from a different direction, which is the re-discovery the capture rule's
+`feature:` grouping exists to prevent and which nothing caught here because
+neither carried one.
+
+Two measurements in this brief are not in `PL-6YWK` and are cross-referenced
+there rather than left to be re-taken: the sweep cost **233.8 s for 164
+commands** on run #2104, and the slowest command that *did* complete was
+`PL-P1P6` at **97.2 s against the 120 s limit** - which is the evidence that the
+budget has no headroom to give, and so that narrowing `PL-4L6Z`'s command is the
+only available remedy.

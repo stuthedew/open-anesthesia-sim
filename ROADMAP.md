@@ -2844,7 +2844,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 165 entries
+### Declined to Gate 2 on the refilling-queue ground — 163 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3593,7 +3593,7 @@ which no release names. So this is the whole of their disposition, and it
 expires the day either item is placed - at which point they belong in that
 milestone's `Required scope` on exactly the terms the four already there hold.
 
-**Twelve from the 2026-09-17 triage of the twenty-six untriaged captures**
+**Ten from the 2026-09-17 triage of the twenty-six untriaged captures**
 (`PL-Y4D6`). Two grounds, and they are not the same ground.
 
 *One on the anticipated ground, which is the v0.6.0 section's rather than this
@@ -3616,32 +3616,27 @@ takes the carve-out. They are on the frozen list above, added under the
 unconditional exception, which is what `tools/doc_check.py` requires and says so
 in terms: deferring is not a third option for these two classes.
 
-*Eleven on this subsection's own refilling-queue ground.* All were captured on
+*Nine on this subsection's own refilling-queue ground.* All were captured on
 2026-09-16 or 2026-09-17, all are apparatus or documentation findings, and none
-completes an entry already on the frozen list: `PL-3DC7` (`bin/docket verify
---self` returns before running any of its four integrity checks on an item naming
-no command, so the close-out `ACCEPT` is unreachable for 118 dropped items),
-`PL-4RHP` (this subsection's own entry count is outside `check_gate_counts`'
-reach), `PL-B396` (whether item 28 is scoped at all, which is a milestone
+completes an entry already on the frozen list: `PL-4RHP` (this subsection's own
+entry count is outside `check_gate_counts`' reach), `PL-B396` (whether item 28 is scoped at all, which is a milestone
 decision rather than gate work), `PL-KF0T` and `PL-YD6X` (planned-milestone items
 33 and 24 describe closed work as open), `PL-KSCW` (`stranded` sees a missing
-item file and not a missing *section* of one), `PL-LBW5` and `PL-RCQM` (a
-`verify:` command naming a path its own `touches` omits; one that cannot finish
-inside the sweep's per-command budget), `PL-M21Q` (a `needs-decision` item
+item file and not a missing *section* of one), `PL-LBW5` (a `verify:` command naming a
+path its own `touches` omits), `PL-M21Q` (a `needs-decision` item
 carries the question and not the recommendation), `PL-SY1J` (`bin/docket show`
 named the later of two branches carrying one item) and `PL-XD3C` (`digest`'s cost
 grows with the item edits unmerged refs carry, and nothing prunes).
 
-**The compounding-friction test was applied to three of the eleven and none
-passes it.** `PL-3DC7` and `PL-SY1J` are the closest, both handing a session a
-confident answer that is wrong, and `PL-XD3C` is the one that grows. The test is
-arithmetic — name what each remaining entry pays and multiply — and none of the
-three is paid per remaining entry: what remains of this gate is the milestone's
-own work, while a close-out audit that cannot reach ACCEPT costs the sessions
-that drop items, an in-flight verdict naming one carrier costs the sessions that
-collide, and `digest`'s growth costs every session equally whether this gate is
-open or shut. No per-entry saving can be named, so all three wait, which is what
-"work that is merely valuable makes no remaining entry cheaper" says to do.
+**The compounding-friction test was applied to two of the nine and neither
+passes it.** `PL-SY1J` is the closest, handing a session a confident verdict that
+names the wrong carrier, and `PL-XD3C` is the one that grows. The test is
+arithmetic — name what each remaining entry pays and multiply — and neither is
+paid per remaining entry: what remains of this gate is the milestone's own work,
+while an in-flight verdict naming one carrier costs the sessions that collide and
+`digest`'s growth costs every session equally whether this gate is open or shut.
+No per-entry saving can be named, so both wait, which is what "work that is
+merely valuable makes no remaining entry cheaper" says to do.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
