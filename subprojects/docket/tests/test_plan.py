@@ -23,6 +23,7 @@ def _item(
     effort: str = "S",
     classes: tuple[str, ...] = ("perf",),
     touches: tuple[str, ...] = ("a.py",),
+    root_cause_of: tuple[str, ...] = (),
 ) -> Item:
     return Item(
         identifier=identifier,
@@ -40,6 +41,7 @@ def _item(
         commit="abc1234" if status == "done" else "",
         reason="",
         body="**Problem.** x\n**Why it matters.** y\n**Done when.** z\n",
+        root_cause_of=root_cause_of,
     )
 
 
@@ -622,3 +624,120 @@ def test_an_undeclared_boundary_places_nothing_in_a_lane() -> None:
 
     assert recommend(items, lane="workflow") == []
     assert recommend(items, lane="product") == []
+
+
+# `root-cause-of:` and the rank it buys.
+#
+# The project owner decided on 2026-09-17 that a generator ranks above
+# everything but `P0`, and reaffirmed it when asked whether the clinical bands
+# should be exempt: they are not. So the test that matters most here is
+# `test_a_generator_outranks_a_safety_classed_p1` - it pins a decision that was
+# put twice and refused twice, and a later session reading only `plan.py` would
+# have every reason to think it was an oversight.
+#
+# The rest are the fail-closed half. `docket check` is a separate command, so a
+# store is routinely ranked before it is validated; an unsound claim that
+# ranked anyway would outrank a clinical defect on a typo.
+
+GENERATOR = ("PL-E1E1", "PL-E2E2", "PL-E3E3")
+
+
+def _explained() -> list[Item]:
+    return [_item(identifier, priority="P3") for identifier in GENERATOR]
+
+
+def test_a_generator_outranks_a_safety_classed_p1() -> None:
+    """Asked and answered twice: a generator ranks above everything but P0."""
+    picks = recommend(
+        [
+            _item("PL-9999", priority="P0"),
+            _item("PL-1111", priority="P1", classes=("safety",)),
+            _item("PL-5555", priority="P2", root_cause_of=GENERATOR),
+            *_explained(),
+        ],
+        limit=3,
+    )
+
+    assert [p.item.identifier for p in picks] == ["PL-9999", "PL-5555", "PL-1111"]
+
+
+def test_a_generator_outranks_work_the_current_step_includes() -> None:
+    """Above `PLACEMENT_ORDER` too, which is what "every band" has to mean.
+
+    Placement sits above band in the ranking, so a generator ranked only above
+    `band` would still lose to any in-scope `P3`.
+    """
+    picks = recommend(
+        [
+            _item("PL-1111", priority="P1"),
+            _item("PL-5555", priority="P3", root_cause_of=GENERATOR),
+            *_explained(),
+        ],
+        scope=_scope(current=("PL-1111",)),
+        limit=2,
+    )
+
+    assert [p.item.identifier for p in picks] == ["PL-5555", "PL-1111"]
+
+
+def test_the_reason_says_it_was_ranked_as_a_generator() -> None:
+    """A `P2` above a `P1` has to say the ranking meant it."""
+    (pick,) = recommend(
+        [_item("PL-5555", priority="P2", root_cause_of=GENERATOR), *_explained()], limit=1
+    )
+
+    assert "Ranked as a generator" in pick.reason
+    assert "root cause of 3 items" in pick.reason
+    assert "PL-E1E1" in pick.reason
+    assert pick.generator == 3
+    assert "root cause of 3 items" in pick.describe()
+
+
+def test_a_claim_naming_too_few_items_ranks_on_its_band() -> None:
+    picks = recommend(
+        [
+            _item("PL-1111", priority="P1"),
+            _item("PL-5555", priority="P2", root_cause_of=GENERATOR[:2]),
+            *_explained(),
+        ],
+        limit=2,
+    )
+
+    assert [p.item.identifier for p in picks] == ["PL-1111", "PL-5555"]
+    assert picks[1].generator == 0
+
+
+def test_a_claim_naming_an_id_no_item_carries_ranks_on_its_band() -> None:
+    """Fail closed: `docket check` runs separately, so a typo must not promote."""
+    picks = recommend(
+        [
+            _item("PL-1111", priority="P1"),
+            _item("PL-5555", priority="P2", root_cause_of=(*GENERATOR[:2], "PL-NOPE")),
+            *_explained(),
+        ],
+        limit=2,
+    )
+
+    assert [p.item.identifier for p in picks] == ["PL-1111", "PL-5555"]
+
+
+def test_a_claim_does_not_decay_as_the_items_it_explains_close() -> None:
+    """A root cause still explains an item that has since closed."""
+    closed = [_item(identifier, status="done") for identifier in GENERATOR]
+    picks = recommend(
+        [_item("PL-1111", priority="P1"), _item("PL-5555", root_cause_of=GENERATOR), *closed],
+        limit=2,
+    )
+
+    assert [p.item.identifier for p in picks] == ["PL-5555", "PL-1111"]
+
+
+def test_a_generator_in_flight_is_still_excluded() -> None:
+    """The rank changes what is offered, never whether somebody else has it."""
+    picks = recommend(
+        [_item("PL-1111", priority="P1"), _item("PL-5555", root_cause_of=GENERATOR), *_explained()],
+        {"PL-5555"},
+        limit=2,
+    )
+
+    assert [p.item.identifier for p in picks] == ["PL-1111", "PL-E1E1"]
