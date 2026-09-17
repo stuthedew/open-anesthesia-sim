@@ -3,11 +3,12 @@ id: PL-XD3C
 title: docket digest is O(unmerged refs) and refs accumulate without bound, so session start gets slower every month on a long-lived clone and never on a fresh container
 priority: P2
 effort: M
-status: ready
+status: done
 classes: session-cost, perf
 feature: session-start-cost
 touches: subprojects/docket/src/docket/vcs.py, docs/items
 added: 2026-09-16
+closed: 2026-09-17
 not-delegable: what is left is one measurement on the project owner's own clone - `bin/docket digest --profile` run there, compared against a container's `ref set` block - and no command in this checkout can take it. The instrument it needed is built and on `main`
 ---
 
@@ -185,3 +186,76 @@ Compare its `ref set` block with a container's *before* comparing any count -
 that is the controlled comparison whose absence invalidated this item's first
 two models. `PL-0J9K`'s re-measured `show` time on that clone is the same run
 and is carried here rather than there, so one command closes both obligations.
+
+---
+
+**Closed 2026-09-17: the owner ran the command, and all three "Done when"
+clauses are met.** `bin/docket digest --profile` was run on the project owner's
+clone twice, before and after `PL-DMDF`'s hoist landed, against a ref set that
+did not move between the runs. That is the controlled comparison whose absence
+invalidated this item's first two models, and it is the first one this question
+has ever had.
+
+**The input, printed by the instrument this item built:**
+
+```
+ref set: 38 refs, 5 merged, 33 unmerged, carrying 2270 commits
+         and 1284 item-file edits
+```
+
+Against a container's 25 refs, 19 unmerged, 30 commits and 111 item-file edits.
+So the clone carries **1.7x the unmerged refs, 76x the commits and 11.6x the
+item-file edits** - and it is the last two, not the refs, that the original
+premise missed.
+
+**What actually drives the count, which is the clause this item could not
+answer for two days.** Attributing by subcommand on that clone, before and
+after the one change:
+
+| subcommand | before | after | scales with |
+| --- | --- | --- | --- |
+| `diff` | 654 asked, 586 ran, 9.76 s | 161, 95, **1.63 s** | refs *and* item edits, before; refs alone, after |
+| `show` | 409 asked, 373 ran, 0.06 s | 412, 376, 0.06 s | item files, but folded into one `cat-file` |
+| `merge-base` | 99 asked, 33 ran | 99, 33 | exactly 3.0 per unmerged ref |
+| `ls-tree` | 43 asked, 40 ran | 43, 40 | the store, not the refs |
+| everything else | 40 asked | 40 | flat |
+| **total** | **1,245 asked, 689 processes, 11.72 s** | **755, 198, 3.61 s** | |
+
+**So the answer is: `diff`, and within it the per-item-edit term, and it is
+gone.** 8.11 of the 11.72 seconds this command spent in git on the machine that
+pays were one function being asked a question per path that it takes whole
+sets for. What remains is `merge-base` at exactly 3.0 per unmerged ref - which
+*is* O(refs), the original premise, at 33 calls and 0.54 s - and `show` at
+roughly one per item file, which `PL-0J9K`'s batch already answers from a
+single process at 0.06 s.
+
+**The original premise is therefore half-vindicated and no longer load-bearing.**
+Refs do accumulate without bound on that clone and nothing prunes them: 33
+unmerged, of which five local branches carry 1,754 of the 2,270 commits between
+them, the oldest named for the v0.3.0 release. The O(refs) term is real. It is
+also now 0.54 s of a 3.61 s command, so the thing that made session start slow
+was never the ref count on its own - it was the ref count multiplied by the
+item files those refs touch, which is the model neither of the two refuted ones
+found. Reaching it needed the instrument rather than another ratio, which is
+what this item became.
+
+**`PL-0J9K`'s obligation, carried here, is discharged in the same run.** `show`
+on that clone is 412 asked, 376 reaching git, 375 folded into one
+`cat-file --batch`: **0.06 s, against the 5.77 s that item measured before the
+batch existed.**
+
+**One defect in the instrument is filed rather than fixed**: the `ref set`
+block's `item-file edits` is a per-ref sum, while the walk holds one entry per
+identifier, so predicting a `diff` count from it over-predicts by ~2x on a
+clone whose branches overlap. `PL-3BYK` carries it. It does not touch any
+number above, all of which are measured rather than derived.
+
+**One document was checked and deliberately left as written.** `ROADMAP.md`'s
+v0.5.0 gate glosses this entry as "`digest`'s cost grows with the item edits
+unmerged refs carry, and nothing prunes", inside the paragraph recording why
+nine deferred entries were not pulled forward. That is a snapshot of a decision
+taken at the freeze, in the past tense, and the reasoning it records - that no
+per-entry saving could be named, so it waits - is still a correct account of
+that decision. Editing it would be rewriting the snapshot the gate exists to
+be. A reader following the id from there lands here, where the growth term is
+reported gone.
