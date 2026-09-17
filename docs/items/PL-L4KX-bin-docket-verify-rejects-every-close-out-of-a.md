@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect
 feature: delegation
+milestone: v0.4.27
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-16
 closed: 2026-09-17
+pr: 655
 verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_dropped_close_out_is_not_a_missing_command' subprojects/docket/tests/test_verify.py
 ---
 

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning, ux
 feature: preferences-store
+milestone: v0.4.27
 touches: ROADMAP.md
 added: 2026-09-16
 closed: 2026-09-17
