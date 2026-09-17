@@ -9,6 +9,7 @@ feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items/, docs/ARCHITECTURE.md
 added: 2026-09-17
 closed: 2026-09-17
+pr: 651
 verify: python3 tools/doc_check.py check && grep -q '^version = "0.4.26"' pyproject.toml && test -f docs/releases/v0.4.26.md && grep -q '^## Completed: v0.4.26 - the interface moves to Qt' ROADMAP.md
 ---
 
