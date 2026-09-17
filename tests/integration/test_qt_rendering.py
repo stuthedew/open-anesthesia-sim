@@ -244,12 +244,13 @@ def test_the_hover_reports_the_drawn_state_on_the_shipped_chart(dashboard: Simul
     """A hover on the dashboard's own chart says agent, compartment gloss and both units."""
 
     chart = dashboard._concentration_chart
-    run = _drawn_frame(dashboard).runs[0]
+    frame = _drawn_frame(dashboard)
+    run = frame.runs[0]
     index = len(run.times_s) // 3
 
     readout = chart.readout_at(run.times_s[index], run.percents(RecordedQuantity.ALVEOLAR)[index])
 
-    assert readout == format_trace_hover(run, RecordedQuantity.ALVEOLAR, index)
+    assert readout == format_trace_hover(run, RecordedQuantity.ALVEOLAR, index, len(frame.runs))
     assert readout is not None
     context, what, value = readout.splitlines()
     assert context.startswith(f"Modelled {run.agent_display_name.lower()} · ")

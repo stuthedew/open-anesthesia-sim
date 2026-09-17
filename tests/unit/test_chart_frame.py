@@ -6,6 +6,7 @@ instants are drawn, what a hover says - and every test here runs with no
 display and no plotting library, which is the point of that module.
 """
 
+from dataclasses import replace
 from types import MappingProxyType
 
 import pytest
@@ -434,12 +435,90 @@ def test_the_hover_reads_as_the_specification_shows() -> None:
 
     run = _run_frame((1208.0,), alveolar=(0.0143,))
 
-    assert format_trace_hover(run, RecordedQuantity.ALVEOLAR, 0) == (
+    assert format_trace_hover(run, RecordedQuantity.ALVEOLAR, 0, 1) == (
         "Modelled sevoflurane · 20m8s\nAlveolar (end-tidal-equivalent)\n1.43%   0.71 ×MAC"
     )
-    assert format_wash_in_hover(run, run.wash_in[0], 0) == (
+    assert format_wash_in_hover(run, run.wash_in[0], 0, 1) == (
         f"Modelled sevoflurane · 20m8s\n{WASH_IN_HOVER_LABEL}\n0.71"
     )
+
+
+def test_the_hover_names_the_run_only_while_more_than_one_is_drawn() -> None:
+    """`docs/MODEL.md` § "The hover and the run it belongs to": on line 1, conditional.
+
+    The run goes in the line the specification already calls run context, and
+    only while there is a second run to tell it apart from - the same
+    condition the width channel carries in `run_trace_style`.
+    """
+
+    first = _run_frame((1208.0,), alveolar=(0.0143,))
+    second = replace(first, label=run_label(1))
+
+    assert format_trace_hover(first, RecordedQuantity.ALVEOLAR, 0, 1).splitlines()[0] == (
+        "Modelled sevoflurane \u00b7 20m8s"
+    )
+    assert format_trace_hover(first, RecordedQuantity.ALVEOLAR, 0, 2).splitlines()[0] == (
+        "Modelled sevoflurane \u00b7 Run 1 \u00b7 20m8s"
+    )
+    assert format_trace_hover(second, RecordedQuantity.ALVEOLAR, 0, 2).splitlines()[0] == (
+        "Modelled sevoflurane \u00b7 Run 2 \u00b7 20m8s"
+    )
+
+    # The wash-in hover shares the context line, so it names the run too.
+    assert format_wash_in_hover(second, second.wash_in[0], 0, 2).splitlines()[0] == (
+        "Modelled sevoflurane \u00b7 Run 2 \u00b7 20m8s"
+    )
+
+    # Naming the run changes nothing else about the readout.
+    assert (
+        format_trace_hover(second, RecordedQuantity.ALVEOLAR, 0, 2).splitlines()[1:]
+        == (format_trace_hover(first, RecordedQuantity.ALVEOLAR, 0, 1).splitlines()[1:])
+    )
+
+
+def test_a_hover_cannot_be_answered_for_a_chart_drawing_no_runs() -> None:
+    """A readout claiming to compare while naming no run is what this prevents."""
+
+    run = _run_frame((1208.0,), alveolar=(0.0143,))
+
+    for count in (0, -1):
+        with pytest.raises(ValueError, match="at least one run"):
+            format_trace_hover(run, RecordedQuantity.ALVEOLAR, 0, count)
+
+        with pytest.raises(ValueError, match="at least one run"):
+            format_wash_in_hover(run, run.wash_in[0], 0, count)
+
+
+def test_two_runs_within_the_hover_radius_answer_under_their_own_names() -> None:
+    """The regression `PL-MN4J` was filed for, end to end from the pointer.
+
+    `nearest_trace_point` keeps the globally nearest point across every run,
+    so where two runs' points for one compartment are both inside the radius
+    the run that answers is settled below a reader's resolution. Measured on
+    a branched sevoflurane case, the two runs' fat points sit inside the 12 px
+    radius over 100% of the shared axis, and 43.8-81.4% of those hovers print
+    different values. The readout has to say which run it answered for.
+    """
+
+    first = _run_frame((1208.0,), alveolar=(0.0143,))
+    second = replace(_run_frame((1208.0,), alveolar=(0.0145,)), label=run_label(1))
+    frame = replace(_frame(first), runs=(first, second))
+
+    # Both runs' alveolar points are well inside the radius of this pointer.
+    nearer_second = nearest_trace_point(frame, 1208.0, 1.45, 4.0, 0.0167, 12.0)
+    nearer_first = nearest_trace_point(frame, 1208.0, 1.43, 4.0, 0.0167, 12.0)
+
+    assert nearer_second is not None
+    assert nearer_first is not None
+    assert abs(1.45 - 1.43) / 0.0167 < 12.0, "the two points must contend for this to test anything"
+
+    assert nearer_second.run == 1
+    assert nearer_second.readout.splitlines()[0] == "Modelled sevoflurane \u00b7 Run 2 \u00b7 20m8s"
+    assert nearer_first.run == 0
+    assert nearer_first.readout.splitlines()[0] == "Modelled sevoflurane \u00b7 Run 1 \u00b7 20m8s"
+
+    # The values differ, which is what makes the attribution load-bearing.
+    assert nearer_second.readout.splitlines()[2] != nearer_first.readout.splitlines()[2]
 
 
 def test_the_hover_keeps_the_below_resolution_forms_and_the_readout_row_s_glosses() -> None:
@@ -447,14 +526,14 @@ def test_the_hover_keeps_the_below_resolution_forms_and_the_readout_row_s_glosse
 
     run = _run_frame((48.3,), fat=(3.52e-7,), circuit=(0.0262,), mixed_venous=(0.005,))
 
-    assert format_trace_hover(run, RecordedQuantity.FAT, 0).splitlines()[1:] == [
+    assert format_trace_hover(run, RecordedQuantity.FAT, 0, 1).splitlines()[1:] == [
         "Fat",
         "<0.01%   <0.01 ×MAC",
     ]
-    assert format_trace_hover(run, RecordedQuantity.CIRCUIT, 0).splitlines()[1] == (
+    assert format_trace_hover(run, RecordedQuantity.CIRCUIT, 0, 1).splitlines()[1] == (
         "Circuit (inspired)"
     )
-    assert format_trace_hover(run, RecordedQuantity.MIXED_VENOUS, 0).splitlines()[1] == (
+    assert format_trace_hover(run, RecordedQuantity.MIXED_VENOUS, 0, 1).splitlines()[1] == (
         "Mixed venous"
     )
 
@@ -463,7 +542,7 @@ def test_every_hover_number_is_the_formatter_s_at_the_snapshot_s_own_divisor() -
     run = _run_frame((300.0,), vessel_rich=(0.0123,))
     fraction = Fraction(0.0123)
 
-    assert format_trace_hover(run, RecordedQuantity.VESSEL_RICH, 0).splitlines()[2] == (
+    assert format_trace_hover(run, RecordedQuantity.VESSEL_RICH, 0, 1).splitlines()[2] == (
         f"{format_percent(fraction)}   {format_mac_multiple(fraction, Percent(2.0))}"
     )
 
@@ -473,7 +552,7 @@ def test_the_hover_states_the_instant_at_the_clock_s_own_resolution() -> None:
 
     run = _run_frame((410.7383,), alveolar=(0.01,))
 
-    assert format_trace_hover(run, RecordedQuantity.ALVEOLAR, 0).splitlines()[0] == (
+    assert format_trace_hover(run, RecordedQuantity.ALVEOLAR, 0, 1).splitlines()[0] == (
         "Modelled sevoflurane · 6m50.7s"
     )
 
@@ -496,7 +575,7 @@ def test_the_hover_answers_the_nearest_drawn_point_within_reach_and_nothing_else
         100.0,
         1.0,
     )
-    assert on_alveolar.readout == format_trace_hover(run, RecordedQuantity.ALVEOLAR, 1)
+    assert on_alveolar.readout == format_trace_hover(run, RecordedQuantity.ALVEOLAR, 1, 1)
 
     # Between two columns, on the 1 MAC line: no drawn point is near, and a
     # reference never answers.
