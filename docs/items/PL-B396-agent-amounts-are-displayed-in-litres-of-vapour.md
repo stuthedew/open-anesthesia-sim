@@ -3,13 +3,11 @@ id: PL-B396
 title: Agent amounts are displayed in litres of vapour, which is not the unit a reader buys, fills or wastes agent in - report a liquid-equivalent millilitre figure
 priority: P2
 effort: M
-status: dropped
+status: needs-decision
 classes: ux, docs
 feature: liquid-agent-consumption
-touches: docs/items
+touches: ROADMAP.md, docs/items
 added: 2026-09-16
-closed: 2026-09-17
-reason: the unit question it carried is decided (project owner, 2026-09-16: millilitres of liquid equivalent by default, Gas Man's unit set behind it, a reader-set price later), and its other half is answered too - the accounting Editor is developer-facing and keeps litres of equivalent pure agent gas, which is the natural unit of a mass-conservation instrument whose residual lines are meaningless in millilitres. What is left is building the consumption readout, which is ROADMAP planned-milestone item 28's work and not a queue item. The Gas Man reading in this brief is that milestone's design input and stays here; PL-S6WW, PL-KZ99, PL-H4N8 and PL-DWHV survive it as its prerequisites
 ---
 
 **Problem.** Agent amounts are displayed in litres of vapour, which is not the unit a reader buys, fills or wastes agent in - report a liquid-equivalent millilitre figure
@@ -206,3 +204,38 @@ brief that reserved the disposition to the project owner turned on whether item
 answer places the readout there explicitly ("ok to do what gas man does, but
 default unit can be ml of liquid for now"). Reopening it costs one line if that
 reading is wrong.
+
+**NOT DROPPED AFTER ALL, 2026-09-17, and the reason is a dependency this item
+turned out to be carrying.** Triage had it as a drop - its unit question is
+answered and building the readout is planned-milestone item 28's work, not a
+queue item's. Then `PL-0S0V` and `PL-VJZK` were read: both are `safety,
+anticipated` and both are `blocked-by: PL-B396`. Closing this item would have
+reported them as ready to promote, and promoting an `anticipated` safety item is
+precisely the event that returns it to the debt gate (`PL-ZF2G`), while the
+hazard it describes - a reader-selectable unit, a reader-set price - still does
+not exist. So the drop would have pushed two safety findings into a gate that
+cannot clear them, on a technicality of queue bookkeeping.
+
+**Decision needed.** Whether `ROADMAP.md` planned-milestone item 28 - the agent
+consumption readout - is scoped into a release now, and which.
+
+*Recommendation: not yet, and keep this item open as the handle until it is.*
+Five items now depend on item 28 and none of them can say so in `blocked-by`,
+because `docket check` accepts only an item id or a version the roadmap names,
+and item 28 has neither: `PL-0S0V` and `PL-VJZK` (blocked here), `PL-KZ99` (the
+two physical constants), `PL-H4N8` (cost is delivered, not exhausted) and
+`PL-DWHV` (uptake is computed and discarded). Scoping item 28 would give all five
+a real blocker and let this one close. Leaving it unscoped is also a defensible
+answer - the current step is v0.5.0 and item 28 is an addition rather than a
+prerequisite - but then this item stays open as the stand-in, which is what the
+recommendation asks for rather than a drop.
+
+**Why it matters.** Everything the owner decided on 2026-09-16 about the unit is
+recorded here, together with the Gas Man reading behind it. Whichever way the
+decision goes, this file is where a session building item 28 finds out why the
+answer is millilitres of liquid equivalent, why money is later and reader-set,
+and why the accounting Editor keeps litres of vapour.
+
+**Done when** item 28 is either scoped - at which point the five items above are
+re-pointed at it and this one closes - or explicitly left unscoped with this item
+recorded as the stand-in.

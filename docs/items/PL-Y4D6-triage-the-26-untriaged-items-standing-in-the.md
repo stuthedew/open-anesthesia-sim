@@ -19,8 +19,15 @@ every session that asks what to work on, however urgent it is. Four of the
 twenty-six turned out to be work that had already landed on `main` or questions
 already answered, so the queue was also overstating what is left.
 
-**Done when** every item captured before 2026-09-17 carries a priority, an effort
-and a status, with `classes`, `touches` and `feature` filled where they apply; the
+**Done when** each of the twenty-six items standing untriaged at 2026-09-17
+03:55Z carries a priority, an effort and a status, with `classes`, `touches` and `feature` filled where they apply; the
 full brief where the status is past `untriaged`; a `verify:` command that has been
 run and seen to fail where the status is `ready`, or a `not-delegable:` reason
 where no command can prove it; and `bin/docket check` reports 0 errors.
+
+**Three captures that arrived while the pass ran are deliberately not in it.**
+`PL-7TYC` and `PL-TKFD` were filed by `#655` and `PL-XZD0` by `#657`, all after
+this pass read the store. `PL-7TYC` is being worked by another session right now
+(`session_01KstW6HaDazX1VTrM1Uizj2`, titled for it), so triaging it here would be
+a second resolution of a file somebody holds. They are the next pass's, and the
+store reports them.

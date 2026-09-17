@@ -1,10 +1,10 @@
 ---
 id: PL-KZ99
 title: Store each agent's molar mass and liquid density with the density's measurement temperature, so a vapour-to-liquid conversion is derived from a primary measurement rather than from a published composite constant
-priority: P1
+priority: P2
 effort: M
 status: blocked
-classes: science
+classes: science, anticipated
 feature: liquid-agent-consumption
 touches: src/anesthesia_sim/data, src/anesthesia_sim/core/parameters.py, docs/MODEL.md, tests/reference
 blocked-by: PL-S6WW
@@ -73,3 +73,16 @@ turns Biro 2014 from a source into an independent cross-check in
 is now declared in `blocked-by` rather than only in prose: the conversion has two
 inputs and that temperature is one of them, so it cannot be written first.
 `docket check` was advising on exactly that gap.
+
+**Classed `anticipated` at triage, 2026-09-17.** No vapour-to-liquid conversion
+exists in this application, so the hazard these two constants would remove -
+a liquid-equivalent figure derived from a composite constant whose temperature
+is invisible - is one planned-milestone item 28 will create rather than one that
+is live. With `status: blocked` that is the carve-out `ROADMAP.md` § "The gate is
+a snapshot" records (project owner, 2026-09-16, ratified): an `anticipated`
+`safety` or `science` finding is not debt until its hazard exists, and its
+disposition is a placement in the milestone that creates it rather than a
+deferral. Item 28 is named by no release, which is why the disposition is
+recorded in the gate's declined subsection alongside `PL-0S0V` and `PL-VJZK`,
+on the same ground and with the same expiry: the day item 28 is placed, this
+belongs in that milestone's `Required scope`.
