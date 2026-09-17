@@ -3518,6 +3518,26 @@ overtaken by two decisions of record - the interface pass's un-absorption
 is the project owner's rather than a session's. It is workflow-lane and reaches
 no reader of the simulator.
 
+**Two more from the 2026-09-17 triage of the `preferences-store` captures, on a
+ground none of the paragraphs above states.** `PL-0S0V` (display precision
+becomes a function of quantity *and* unit once the unit is reader-selectable)
+and `PL-VJZK` (a reader-set price needs its currency, the date it was set and
+whether it is the shipped default, and must not read as an authority) are both
+`safety`-classed and both `anticipated`. The `anticipated` rule is what disposes
+of them, and it is stated in full in the v0.6.0 section rather than here: an
+`anticipated` finding is not debt until the hazard it describes exists, and a
+gate that clears debt *before* a milestone cannot clear a hazard that milestone
+introduces. Nothing in this application is reader-selectable today, so neither
+hazard exists to clear.
+
+They differ from the four `anticipated` entries that section argues out in one
+way only, and it is the reason they are recorded here rather than placed: those
+four are each named in a `Required scope`, and these two have no milestone to be
+placed by. The readouts they constrain are planned-milestone items 24 and 28,
+which no release names. So this is the whole of their disposition, and it
+expires the day either item is placed - at which point they belong in that
+milestone's `Required scope` on exactly the terms the four already there hold.
+
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
 `### Declined to Gate ...` subsection after the gate heading and stops at the
@@ -3962,6 +3982,40 @@ scope names the id, and nine of the ids below are `defect`-, `safety`- or
     that would destroy it. The minimum form is in scope: one retained entry per
     Editor kind, which is how Blender bounds the stack by construction rather
     than by a cap.
+
+    *A Workspace excludes preference state, and the tier a setting belongs to is
+    decided by instance multiplicity rather than by Workspace membership.* Three
+    tiers. **Run state** - the simulated values - is one set of numbers every
+    Editor draws from and no reader setting reaches. **Per-Editor-instance view
+    state** is how *this* Editor draws them: which compartments it shows, its
+    axis denomination and range, its time window. The Editor serializes it into
+    the Workspace containing it, by the delegation `docs/interface-provenance.md`
+    § "Persistence, and what happens when an editor is missing" already adopts
+    from Blender's `SpaceType`, and two instances of one Editor kind **in one
+    Workspace** hold it independently. The project owner's stated case, 2026-09-17:
+    one graph showing the vessel-rich group against the MAC-awake band and the
+    1 MAC line, a smaller one below it with every compartment on, and a third in
+    a squarer Area zoomed to the first fifteen minutes to read the wash-in - all
+    three in the same Workspace. **Reader preferences** are the settings for which
+    a second simultaneous value is incoherent rather than merely unusual; the
+    agent price and its currency is the one this project has today.
+
+    The test, therefore, is *can a reader sensibly have two of these on screen at
+    once?* Yes routes to the Editor; incoherent routes to preferences; and a
+    setting that changes the numbers rather than their drawing is neither and
+    stays in the versioned data files. So a Workspace excludes preference state
+    because it is a container of Editor instances and a preference has one value
+    - not because a unit or a price "is not layout", which is the weaker argument
+    and the one that misroutes the axis range. This is also what keeps Blender's
+    four Save & Load entries addable later without a migration: its preference
+    reset reads `use_data = false, use_userdef = true`, resetting that third tier
+    alone, while "reset this Workspace" restores the second from item 13's
+    shipped JSON.
+
+    **This holds while a run is ephemeral, which is a condition and not a
+    permanent property.** Planned-milestone items 9, 10, 12, 26 and 30 add a
+    saved scenario; a scenario is a fourth tier, and where it sits is placed when
+    the first of them is scoped rather than assumed here.
 
 12. **Persistence** (queue item `PL-SSQW`). Where the file lives per platform
     and the override a headless run or a test uses; an atomic write, so an
