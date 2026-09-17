@@ -526,6 +526,7 @@ def _under_a_dark_host(button: QPushButton) -> QPushButton:
 
     palette = QPalette(button.palette())
     palette.setColor(QPalette.ColorRole.ButtonText, QColor("#FFFFFF"))
+    palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor("#FFFFFF"))
     palette.setColor(QPalette.ColorRole.Button, QColor("#323232"))
     button.setPalette(palette)
 
@@ -544,6 +545,15 @@ def _channel_distance(one: str, other: str) -> int:
     )
 
 
+def _transport_button(enabled: bool) -> QPushButton:
+    """One transport button in the state under test."""
+
+    button = QPushButton("Pause")
+    button.setEnabled(enabled)
+
+    return button
+
+
 def _drawn(button: QPushButton, application: QApplication) -> list[str]:
     """Every pixel of a rendered button, as upper-case hex names."""
 
@@ -559,36 +569,43 @@ def _drawn(button: QPushButton, application: QApplication) -> list[str]:
     ]
 
 
-def test_a_usable_transport_button_draws_the_theme_rather_than_the_host_palette(
-    application: QApplication,
+@pytest.mark.parametrize(
+    ("enabled", "expected"), [(True, INK), (False, MUTED)], ids=["usable", "unavailable"]
+)
+def test_a_transport_button_draws_the_theme_rather_than_the_host_palette(
+    application: QApplication, enabled: bool, expected: str
 ) -> None:
     """Start, Pause and Reset keep their own colours under a dark host appearance.
 
-    The regression test for `PL-DHBX`: the three buttons set no foreground, so
-    they took `QPalette`'s `ButtonText` - the host appearance's value, not this
-    interface's - and went illegible under macOS Dark while every surface around
-    them stayed this light theme's.
+    The regression test for `PL-DHBX`, in both states, because the defect
+    arrived twice. The buttons set no foreground at all, so they took Qt's
+    palette `ButtonText` - the host appearance's value, not this interface's -
+    and went illegible under macOS Dark while every surface around them stayed
+    this light theme's. The first fix declared `:enabled` only, and the project
+    owner's screenshots then showed the *unavailable* button still absent: Start
+    while running, Pause while paused. So both states are pinned here.
 
-    The bare button is rendered beside it so the test cannot pass vacuously: if
-    the platform plugin ignored the palette, both halves would agree and the
+    The bare button is rendered beside each so the test cannot pass vacuously:
+    if the platform plugin ignored the palette, both halves would agree and the
     second assertion would fail.
     """
 
-    bare = _drawn(_under_a_dark_host(QPushButton("Start")), application)
-    declared = QPushButton("Start")
+    bare = _drawn(_under_a_dark_host(_transport_button(enabled)), application)
+    declared = _transport_button(enabled)
     declared.setStyleSheet(transport_button_stylesheet())
     drawn = _drawn(_under_a_dark_host(declared), application)
 
     assert max(set(drawn), key=drawn.count) == PANEL.upper()
     assert max(set(bare), key=bare.count) != PANEL.upper()
 
-    # No pixel lands exactly on INK - the glyphs are antialiased - so the label
-    # is identified by which declared colour its darkest pixel is nearest: the
-    # theme's ink rather than the palette's white or the button's own border.
+    # No pixel need land exactly on the declared colour - the glyphs are
+    # antialiased - so the label is identified by which declared colour its
+    # darkest pixel is nearest: the theme's, never the palette's white.
     darkest = min(drawn, key=lambda name: QColor(name).lightness())
+    other = MUTED if expected == INK else INK
 
-    assert _channel_distance(darkest, INK) < _channel_distance(darkest, "#FFFFFF")
-    assert _channel_distance(darkest, INK) < _channel_distance(darkest, MUTED)
+    assert _channel_distance(darkest, expected) < _channel_distance(darkest, "#FFFFFF")
+    assert _channel_distance(darkest, expected) < _channel_distance(darkest, other)
 
 
 # ------------------------------------------------------------ the notice

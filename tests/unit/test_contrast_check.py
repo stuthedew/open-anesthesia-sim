@@ -844,13 +844,13 @@ def test_the_report_says_how_many_modules_it_read(tmp_path: Path, declare) -> No
     )
 
 
-def test_a_disabled_selector_is_an_error(tmp_path: Path) -> None:
-    """`PL-NGF7`: a `:disabled` rule ends the premise the scope decision rests on.
+def test_a_disabled_rule_no_requirement_cites_is_an_error(tmp_path: Path) -> None:
+    """`PL-NGF7`: an authored disabled colour that nothing measures is still refused.
 
-    The module docstring says disabled states are out of scope *because* the
-    platform style chooses their colours. A stylesheet rule choosing one here
-    makes it this project's value, measurable and covered by nothing - so the
-    guard fires and names what is owed.
+    The scope decision says every disabled colour is the platform style's
+    *unless* this project declares one, in which case it owes a constant and a
+    requirement. `SHEET` is cited by no requirement, so the colour it writes is
+    measured by nothing and the guard names what is owed.
     """
     root = _repo(tmp_path, qt_widgets='SHEET = "QPushButton:disabled { color: #BEBEBE; }"\n')
 
@@ -859,6 +859,25 @@ def test_a_disabled_selector_is_an_error(tmp_path: Path) -> None:
     assert any("qt_widgets.py" in message for message in report.author_styled_disabled)
     assert any("PL-NGF7" in message for message in report.author_styled_disabled)
     assert report.errors
+
+
+def test_a_disabled_rule_a_requirement_cites_is_admitted(tmp_path: Path) -> None:
+    """`PL-DHBX`: the remedy the scope decision named is what the guard now enforces.
+
+    `transport_button_stylesheet` is cited by the MUTED-on-PANEL requirement, so
+    the disabled label it writes is measured above and the rule is admitted. The
+    test above and this one differ only in whether a requirement names the
+    enclosing function, which is the whole of the check's rule.
+    """
+    root = _repo(
+        tmp_path,
+        qt_widgets=(
+            "def transport_button_stylesheet():\n"
+            '    return "QPushButton:disabled { color: #59728A; }"\n'
+        ),
+    )
+
+    assert contrast_check.analyze(root).author_styled_disabled == ()
 
 
 def test_set_palette_is_an_error(tmp_path: Path) -> None:
@@ -873,10 +892,10 @@ def test_set_palette_is_an_error(tmp_path: Path) -> None:
     assert report.errors
 
 
-def test_the_shipped_tree_leaves_disabled_colours_to_the_style(tmp_path: Path) -> None:
-    """The guard is quiet while the premise holds, which is the state it defends.
+def test_an_ordinary_enabled_stylesheet_is_not_a_disabled_rule(tmp_path: Path) -> None:
+    """The guard is quiet where no disabled colour is authored at all.
 
-    Without this the two tests above would pass against a check that fired on
+    Without this the tests above would pass against a check that fired on
     everything, and `make check` would be red for the wrong reason.
     """
     root = _repo(tmp_path, qt_widgets='SHEET = "QPushButton { color: #243B53; }"\n')

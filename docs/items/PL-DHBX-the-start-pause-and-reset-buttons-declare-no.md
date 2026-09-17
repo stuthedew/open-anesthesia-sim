@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: platform-palette
-touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, tools/contrast_check.py, tests/integration/test_qt_widgets.py, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, tools/contrast_check.py, tests/integration/test_qt_widgets.py, tests/integration/test_simulation_view.py, tests/unit/test_contrast_check.py, .claude/rules/ui-color.md
 added: 2026-09-17
 closed: 2026-09-17
 verify: uv run pytest tests/integration/test_simulation_view.py -q && grep -q 'def test_every_transport_button_declares_its_own_foreground' tests/integration/test_simulation_view.py
@@ -102,3 +102,64 @@ splitter handles included. Qt 6.11's own documentation rules it out as the
 is not supported on all platforms." A legibility guarantee for the run controls
 cannot rest on a hint the toolkit says may be ignored. It remains worth
 deciding on its own merits, which is `PL-KRZW`.
+
+---
+
+**Second round, 2026-09-17: the disabled half failed the same way.** The project
+owner ran `0.4.26+g22bc6d82` in Dark appearance and sent two screenshots. In
+`Running`, Start was the ghost; in `Paused`, Pause was. `dashboard_frame.transport`
+disables exactly those two in exactly those states, so the invisible button was
+the **disabled** one in both - the half the first round deliberately left to the
+platform.
+
+**That is the cost `PL-NGF7`'s case did not carry, and the evidence that
+reopens it.** Its argument was that a disabled label is exempt under WCAG 2.2 SC
+1.4.3 and that the platform's number, whatever it is, is somebody else's to
+choose. Both halves of that are true and neither is sufficient: an exemption
+from a contrast *minimum* is not a licence for a control to disappear, and under
+a dark host appearance the platform's disabled grey does not merely fall below a
+minimum. The general decision survives - every other disabled colour under
+`app/` is still the platform style's - and what changes is that this interface
+now declares exactly one.
+
+**`MUTED` for the disabled label, which claims no exemption.** 5.00:1 on
+`PANEL`, above SC 1.4.3's 4.5:1 for normal text, so it is held to the full
+minimum rather than excused from it. That matters here specifically: SC 1.4.11's
+own inactive-component wording has never been readable from this container
+(`PL-JX0Z`), so resting anything on an exemption would have been resting it on
+text nobody here has seen. Against the enabled label's `INK` at 11.50:1, the
+2.3x step is what separates the states.
+
+**The edge stays `MUTED` in both states, deliberately.** Softening it would have
+bought a second visual channel at the price of the boundary: `PANEL` on
+`BACKGROUND` is 1.07:1, so the border is what identifies the control, and a
+user-interface component needs SC 1.4.11's 3:1 - which `MUTED` meets at 4.65:1
+and `GRIDLINE` would fail at 1.22:1. The second channel is already on screen and
+in text instead: `_status_text` says "Running" or "Paused", and
+`dashboard_frame.transport` derives the enablement from the same flag, so the
+state is readable without resolving INK from MUTED at all. That is
+`.claude/rules/ui-color.md` judgment 2 satisfied by an existing channel rather
+than by a new one.
+
+**The guard was rebuilt rather than deleted, which is what it asked for.**
+`check_disabled_states_are_the_style_s` refused *any* authored disabled styling;
+its own error message said the correct response was to declare the colour and
+add a requirement. That is what happened, so it is now
+`check_authored_disabled_colours_are_measured`: a `:disabled` rule is admitted
+only from a function some requirement cites by name, and refused with what is
+owed anywhere else. `setPalette` is still refused outright, and now for a stated
+reason the admission cannot reach - it replaces the whole `Disabled` group at
+once, so there is no pair a requirement could name. Two unit tests pin the
+difference, and they differ only in whether a requirement cites the enclosing
+function.
+
+**Tests.** The widget test is parametrized over both states and asserts the
+darkest drawn pixel is nearest the state's declared colour rather than the
+palette's white, with a bare button rendered beside each so neither can pass
+vacuously. The `RunView` test asserts both rules are present on all three
+buttons. Measured under a hostile palette: enabled draws `#243C54` (1 off
+`INK`), disabled draws `#59728A` (exactly `MUTED`), both on a `#FFFFFF` box,
+where the palette said `#FFFFFF` text on `#323232`.
+
+**Still the owner's to confirm**, for the same reason as the first round: macOS
+is not reachable here and Fusion is not Cocoa.

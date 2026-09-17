@@ -564,12 +564,15 @@ def test_a_dashboard_refuses_two_runs_on_different_agents() -> None:
 def test_every_transport_button_declares_its_own_foreground(application: QApplication) -> None:
     """None of the three is left to take its label colour from the host palette.
 
-    `PL-DHBX`: a button that declares no foreground is drawn in `QPalette`'s
-    `ButtonText`, which follows the host appearance rather than this interface,
-    and went near-white under macOS Dark while every surface around it stayed
-    this light theme's. `transport_button_stylesheet` carries the colours; this
-    holds `RunView` to applying them, which is the half a test of the helper
-    alone would not catch.
+    `PL-DHBX`: a button that declares no foreground is drawn in Qt's palette
+    `ButtonText` role, which follows the host appearance rather than this
+    interface, and went near-white under macOS Dark while every surface around
+    it stayed this light theme's. Both states are asserted because the defect
+    arrived twice - declaring `:enabled` alone left the *unavailable* button
+    still absent on the project owner's screen.
+
+    `transport_button_stylesheet` carries the colours; this holds `RunView` to
+    applying them, which is the half a test of the helper alone would not catch.
     """
 
     view = _shown_view(application, SimulationController())
@@ -577,8 +580,11 @@ def test_every_transport_button_declares_its_own_foreground(application: QApplic
     transport = (run._start_button, run._pause_button, run._reset_button)
 
     for button in transport:
-        assert f"color: {INK}" in button.styleSheet()
-        assert f"background-color: {PANEL}" in button.styleSheet()
+        sheet = button.styleSheet()
+
+        assert f"QPushButton:enabled {{ color: {INK}; }}" in sheet
+        assert f"QPushButton:disabled {{ color: {MUTED}; }}" in sheet
+        assert f"background-color: {PANEL}" in sheet
 
 
 def test_start_pause_reset_handlers_drive_the_real_controller(application: QApplication) -> None:

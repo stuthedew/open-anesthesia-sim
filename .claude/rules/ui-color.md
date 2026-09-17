@@ -32,6 +32,23 @@ colour anywhere outside `_apply_agent_color_scheme` — where it is constructed,
 or by a later `setStyleSheet` or `setItemData` — must also be written by that
 method, which is what keeps the checked set complete.
 
+**A disabled colour is the platform's here, with exactly one declared
+exception, and adding a second is a decision rather than a style choice.** The
+scope decision is `PL-NGF7` and the reasoning is in `tools/contrast_check.py`'s
+module docstring. What `PL-DHBX` added: the exemption WCAG 2.2 SC 1.4.3 gives
+text in an inactive component is an exemption from a *minimum*, not a licence
+for a control to vanish - under macOS Dark appearance the platform's disabled
+grey rendered the unavailable transport button absent, which the owner found on
+his own screen after the enabled half had already been fixed. So
+`transport_button_stylesheet` declares `MUTED` for it, at 5.00:1 on `PANEL`,
+which meets the full normal-text minimum and claims no exemption at all.
+`check_authored_disabled_colours_are_measured` admits a `:disabled` rule only
+from a function some requirement cites, so a new one fails `make check` until
+its pair is written down. Do not soften a disabled control's *border* to
+compensate: the edge is what identifies the control's boundary, it needs SC
+1.4.11's 3:1, and that criterion's own inactive-component wording has never
+been read at source from this container (`PL-JX0Z`).
+
 ## The four judgments the tool leaves to you
 
 1. **A new color is added to `REQUIREMENTS` in the same change that introduces

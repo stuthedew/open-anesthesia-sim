@@ -188,33 +188,54 @@ def selector_stylesheet() -> str:
 
 
 def transport_button_stylesheet() -> str:
-    """Start, Pause and Reset while they are usable: PANEL fill, MUTED edge, INK label.
+    """Start, Pause and Reset in both states: PANEL fill, MUTED edge, INK or MUTED label.
 
     Declared rather than left to the platform style, which is what `PL-DHBX`
-    was: a button that sets no foreground takes one from `QPalette`'s
+    was: a button that sets no foreground takes one from Qt's palette
     `ButtonText` role, and that role is the *host appearance's* value rather
-    than this interface's. Under macOS Dark appearance it is near-white, while
-    every surface this interface draws around it stays the light theme's - so
-    the three labels went to white-on-white and the run controls could not be
-    read. Switching macOS back to Light restored them, which is the same fact
-    from the other side.
+    than this interface's. Under macOS Dark it is near-white, while every
+    surface this interface draws around it stays the light theme's - so the
+    labels went to white-on-white and the run controls could not be read.
 
-    `:enabled` scopes this to the state WCAG 2.2 SC 1.4.3 governs. A disabled
-    control is exempt from the contrast minimum and is deliberately left whole
-    to the platform - box and label together, so the two stay consistent with
-    each other on whatever host draws them (`PL-NGF7`, project owner,
-    2026-09-16). Declaring the fill here without the label would be worse than
-    declaring neither: it would pin a white box under a foreground still
-    following the dark scheme.
+    **Both states, because the project owner's screenshots showed the second
+    half failing the same way.** The first fix declared `:enabled` only and
+    left the disabled button whole to the platform, on `PL-NGF7`'s decision of
+    2026-09-16 and on WCAG 2.2 SC 1.4.3's exemption for text in an inactive
+    component. On `0.4.26+g22bc6d82` the disabled button was then the invisible
+    one - Start while running, Pause while paused - which is the cost that
+    decision's case did not carry: the platform's disabled grey is not merely
+    low-contrast under a dark host appearance, it is absent. An exemption from
+    a contrast *minimum* is not a licence for a control to disappear.
 
-    `tools/contrast_check.py` measures INK on PANEL for the label and MUTED
-    against the row behind the button for the edge, and both claims hold only
-    because these colours are written here rather than inherited.
+    So the disabled label is `MUTED`, which is **5.00:1 on PANEL** and clears
+    SC 1.4.3's 4.5:1 for normal text outright. No exemption is claimed for it,
+    which matters here: SC 1.4.11's own inactive-component wording has never
+    been read at the source from this container (`PL-JX0Z`, `w3.org` is
+    `EGRESS_BLOCKED`), so nothing in this interface may rest on it.
+
+    **The two states are not separated by colour alone.** `.claude/rules/ui-color.md`
+    judgment 2 asks for a second channel, and the row already carries one in
+    text: `_status_text` beside these three says "Running" or "Paused", which
+    is what decides which button is unavailable - `dashboard_frame.transport`
+    derives both from the same flag. A reader who cannot resolve INK from MUTED
+    reads the state from the word, not from the buttons.
+
+    The edge stays `MUTED` in both states. It is what identifies the control's
+    boundary - `PANEL` on `BACKGROUND` is 1.07:1, so the fill does not - and a
+    user-interface component needs SC 1.4.11's 3:1, which `MUTED` meets at
+    4.65:1 against the row behind it. Softening it for the disabled state would
+    have bought a second visual channel at the price of the boundary.
+
+    `tools/contrast_check.py` measures all three pairs, and
+    `check_disabled_states_are_the_style_s` is what requires that: a
+    `:disabled` rule is admitted only from a function a requirement cites.
     """
 
     return (
-        f"QPushButton:enabled {{ background-color: {PANEL}; color: {INK}; "
-        f"border: 1px solid {MUTED}; border-radius: {PANEL_RADIUS}px; padding: 4px 12px; }}"
+        f"QPushButton {{ background-color: {PANEL}; border: 1px solid {MUTED}; "
+        f"border-radius: {PANEL_RADIUS}px; padding: 4px 12px; }} "
+        f"QPushButton:enabled {{ color: {INK}; }} "
+        f"QPushButton:disabled {{ color: {MUTED}; }}"
     )
 
 
