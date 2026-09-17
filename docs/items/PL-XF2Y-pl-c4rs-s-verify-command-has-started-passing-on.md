@@ -1,15 +1,15 @@
 ---
 id: PL-XF2Y
 title: PL-C4RS's verify: command has started passing on main, the third instance of a non-discriminating sentinel redding main and the second in one day, so PL-879R's decision is now the thing holding main red
-priority: P2
-effort: S
 status: dropped
-classes: defect, infra
-feature: verify-invalidation
-touches: docs/items
+feature: sentinel-verify-commands
 added: 2026-09-16
 closed: 2026-09-17
-reason: both halves of its `Done when` are settled elsewhere. `main` is green - quality runs 2151, 2154 and 2155 all concluded success on 2026-09-17 - because #645 re-pointed PL-C4RS's sentinel to pin a sentence the correction must add rather than an absence, leaving that item open because its work is genuinely outstanding. The other half, catching the next instance when the command is written rather than when it starts passing, is PL-XMNC, which supersedes PL-879R (dropped in #650 on a count: 31 of 31 negated clauses still discriminate, so a shape advisory would print 31 correct ids every run). Moved into `feature: verify-invalidation` from `sentinel-verify-commands` so the evidence and the mechanism close together
+priority: P2
+effort: S
+classes: defect, infra
+touches: docs/items
+reason: Both halves are answered. PL-879R was decided and dropped in #650 on 2026-09-17 - a shape advisory would have printed 31 correct ids every run - and its goal is carried by PL-XMNC, which widens the pull-request replay to the items whose verify: command reads a file the branch changed. PL-C4RS's sentinel was re-pointed by #645. Nothing in this item is outstanding that PL-XMNC does not carry.
 ---
 
 **Problem.** PL-C4RS's verify: command has started passing on main, the third instance of a non-discriminating sentinel redding main and the second in one day, so PL-879R's decision is now the thing holding main red
@@ -84,12 +84,3 @@ one defect - one closed because its work had landed, one re-pointed because its
 work had not. That the same fault yields opposite remedies is the evidence that
 the fault is the **sentinel's shape** rather than any item's state, which is
 `PL-879R`'s subject and still undecided.
-
-**Why it matters.** The three-instance table above is the evidence that the fault
-is the sentinel's *shape* rather than any item's state - the same defect yielded
-opposite remedies on 2026-09-16, one item closed because its work had landed and
-one re-pointed because its work had not. That is what `PL-XMNC` is built from, so
-this file stays readable after it closes rather than being deleted.
-
-**Done when.** Not applicable: dropped at triage, 2026-09-17, with both halves
-settled elsewhere. The `reason` above names where.
