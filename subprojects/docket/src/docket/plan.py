@@ -551,12 +551,23 @@ def recommend(
             # is unplaced by this test while `ROADMAP.md`'s `v0.4.x` row names
             # it outright. Saying "the roadmap places this nowhere" would have
             # every session assert that falsehood.
-            reason = (
-                f"{reason} Placed by no section of {scope.anchor}: neither its frozen "
-                f"list nor its `Required scope` names this id, so it is neither "
-                f"preferred nor excluded and ranks on its band alone. A timeline row "
-                f"or prose may still place it."
+            placed_nowhere = (
+                f"Placed by no section of {scope.anchor}: neither its frozen list nor "
+                f"its `Required scope` names this id. A timeline row or prose may still "
+                f"place it."
             )
+            # The tail states how the item ranked, and for a generator that
+            # sentence is false - it did not rank on its band, it ranked above
+            # every band. Two claims about one ranking, in one reason line,
+            # is the apparatus floor broken where a reader can see both.
+            if item.identifier not in generating:
+                placed_nowhere = (
+                    f"Placed by no section of {scope.anchor}: neither its frozen "
+                    f"list nor its `Required scope` names this id, so it is neither "
+                    f"preferred nor excluded and ranks on its band alone. A timeline "
+                    f"row or prose may still place it."
+                )
+            reason = f"{reason} {placed_nowhere}"
         elif scope is not None and where == OUT_OF_SCOPE:
             scoped_to = scope.milestone(item.identifier)
             reason = (

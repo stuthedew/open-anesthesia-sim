@@ -741,3 +741,30 @@ def test_a_generator_in_flight_is_still_excluded() -> None:
     )
 
     assert [p.item.identifier for p in picks] == ["PL-1111", "PL-E1E1"]
+
+
+def test_a_generator_is_not_also_told_it_ranks_on_its_band_alone() -> None:
+    """One reason line, one claim about how the item ranked.
+
+    The unplaced-scope clause closes with "ranks on its band alone", which is
+    true of everything except the one kind of item that does not: a generator
+    ranked above every band. Both sentences in one line is the apparatus floor
+    broken where a reader can see both at once.
+    """
+    (pick,) = recommend(
+        [_item("PL-5555", priority="P2", root_cause_of=GENERATOR), *_explained()],
+        scope=_scope(current=("PL-1111",)),
+        limit=1,
+    )
+
+    assert "Placed by no section of" in pick.reason
+    assert "ranks on its band alone" not in pick.reason
+    assert "above every band but P0" in pick.reason
+
+
+def test_an_ordinary_unplaced_item_still_says_it_ranks_on_its_band() -> None:
+    (pick,) = recommend(
+        [_item("PL-5555", priority="P2")], scope=_scope(current=("PL-1111",)), limit=1
+    )
+
+    assert "ranks on its band alone" in pick.reason
