@@ -3,12 +3,14 @@ id: PL-R7XK
 title: v0.5.0's gate defers PL-MN4J in the declined subsection, but 'Debt inside the milestone's own scope' already places it in Required scope
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, planning
 feature: debt-gate
 touches: ROADMAP.md
-verify: python3 tools/doc_check.py check && grep -qF 'cannot be cleared before the compare mode it is about' ROADMAP.md
 added: 2026-09-16
+closed: 2026-09-16
+pr: 640
+verify: python3 tools/doc_check.py check && grep -qF 'cannot be cleared before the compare mode it is about' ROADMAP.md
 ---
 
 **Problem.** v0.5.0's `### Declined to Gate 2 ...` subsection defers `PL-MN4J`

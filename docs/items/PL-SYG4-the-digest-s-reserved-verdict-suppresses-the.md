@@ -176,3 +176,33 @@ this item smaller); a test in `subprojects/docket/tests/test_release.py` pins th
 sentence on the live arrangement; and the answer to question 1 is written into
 `ROADMAP.md` § "the interface moves to Qt" so the paragraph stops carrying both
 statements.
+
+**Question 1 is answered (project owner, 2026-09-16, ratified, on `PL-KQHN`).**
+A patch cut on the `v0.4.x` track **no longer takes** the Qt port's section
+number: the guard withholds it and names it, so a cut at a reserved number is a
+deliberate act rather than the release path's default. Chosen over keeping the
+documented mechanic and narrowing `PL-VFD8`'s reservation to match; `PL-KQHN`
+carries the reasoning, the two measurements behind it, and what it supersedes.
+
+**So question 2 narrows to one candidate, and only its confirmation is left.**
+This brief's own recommendation was *"if it is 'no longer', take the third"* -
+keep the `RESERVED` refusal and add that a patch-track cut is available by
+naming a version. That candidate names no number, so the `0.4.26`/`0.4.27`
+question the answer above settles never arises in the sentence at all; it is the
+smallest surface of the five; and it satisfies `PL-66FP`'s standard that a
+release refusal names the evidence *and* the way out, as a command rather than
+as intent. The fifth candidate - offer the reserved number itself, naming the
+renumber as its cost - is the one the answer removes, since it was available
+only if a patch still took that number.
+
+Left at `needs-decision` rather than triaged to `ready` because the owner
+ratified the `PL-KQHN` recommendation, not this one, and the two were put
+separately. What is outstanding is a confirmation rather than an open question:
+the four other candidates are spent.
+
+**The last clause of this item's `Done when.` is already satisfied.** "The
+answer to question 1 is written into `ROADMAP.md` § 'the interface moves to Qt'
+so the paragraph stops carrying both statements" landed with `PL-KQHN`, along
+with the same narrowing at the `v0.4.x` timeline row and at planned-milestone
+item 29. What is left here is `render.py`'s sentence, `format_status`'s second
+copy of it, and the test that pins them.

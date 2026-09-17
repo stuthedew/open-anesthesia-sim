@@ -3,14 +3,15 @@ id: PL-D1RT
 title: docs/WORKING_NOTES.md's UI-structure thread and PL-037Y still describe the port as following v0.5.0, which the 2026-09-14 reorder makes stale
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, defect
 feature: planning-cadence
 touches: docs/WORKING_NOTES.md, ROADMAP.md
 added: 2026-09-14
-verify: python3 tools/doc_check.py check && ! grep -qF '`v0.5.x — the interface pass` row of "The timeline"' ROADMAP.md
+closed: 2026-09-16
+pr: 645
+verify: python3 tools/doc_check.py check && grep -qF '`v0.7.x` sitting after item 34' docs/WORKING_NOTES.md && grep -qF 'item 33 returns to the interface-pass row it held' ROADMAP.md
 ---
-
 
 **Problem.** docs/WORKING_NOTES.md's UI-structure thread and PL-037Y still describe the port as following v0.5.0, which the 2026-09-14 reorder makes stale
 
@@ -68,3 +69,37 @@ absorbed by the port milestone, and the notes thread says the interface pass now
 renumbered the port's section to `v0.4.26`. Both citations survive the
 renumber unchanged, because what they name is a row that no longer exists at
 any number.
+
+---
+
+**Done, 2026-09-16 - by `PL-PHKP` and `PL-L9RD` rather than by this item**, and
+closed here on the first of the two dispositions `bin/docket check --verify`
+offers: the work landed and the item was never closed. Each clause of the
+`Done when.` above, measured rather than argued:
+
+| Clause | State |
+| --- | --- |
+| Neither `ROADMAP.md` nor `docs/WORKING_NOTES.md` cites a `v0.5.x - the interface pass` timeline row | **Satisfied** - 0 matches in both, since `#634` |
+| Item 33's placement note says it is **absorbed by the port** | **Superseded** - the absorption was reversed (project owner, on `PL-L9RD`), and `ROADMAP.md:308` records it |
+| The notes thread says where the interface pass now runs | **Satisfied** - `docs/WORKING_NOTES.md:668` carries both orderings, dated |
+
+The second clause is why this looked like a question and is not one. It asks the
+roadmap to say something a decision of record has since made false, so meeting it
+would mean undoing `PL-L9RD`. Applying a decision already on the record is
+ordinary work; nothing here rests on what the project is *for*.
+
+**The `PL-037Y` half is that item's, as this brief already said.** Its remaining
+`v0.5.x - the interface pass` mention sits inside its own reasoning about where a
+missing item would be worked, and its `Done when.` is about a gloss naming an item
+that exists. Untouched.
+
+**The `verify:` command was replaced, and the replacement is the point.** The old
+one was `! grep -qF` for a phrase - an *absence*, satisfiable by anyone who
+deletes the string, which is what `#634` did when it renumbered the row `v0.5.x`
+to `v0.7.x`. It had discriminated correctly until then: the phrase was present
+twice at `57fdb8c`, the last green run, and absent from `52205f6` onward. The
+replacement pins the *presence* of two sentences the work created, and was run
+against `57fdb8c` first, where both greps exit 1.
+
+That difference is `PL-879R`'s to generalize - `docket check` advises on a
+command's outcome but never its shape - and `PL-KND7` carries the measurement.

@@ -1,7 +1,13 @@
 ---
 id: PL-NLP4
 title: ROADMAP.md's Declined-to-Gate-2 closing paragraph says the subsection holds 66 dispositions and it now names 132 open debt items, which is PL-B8V1's stale-present-tense defect in a paragraph that item does not reach
-status: untriaged
+priority: P2
+effort: S
+status: blocked
+classes: defect, docs
+feature: planning-cadence
+touches: ROADMAP.md
+blocked-by: PL-B8V1
 added: 2026-09-16
 ---
 
