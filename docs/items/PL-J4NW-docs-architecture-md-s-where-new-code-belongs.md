@@ -33,7 +33,7 @@ which is exactly what this routing prescribes.
 **Done when.** `docs/ARCHITECTURE.md` § "Where new code belongs" routes a
 display surface by what it *is* rather than by which container currently holds
 it, or states its own condition - that it describes today's fixed layout and is
-superseded when the area system lands. `PL-TH35` owns adding the "a new editor"
+superseded when the area system lands. `PL-TH35` owns adding the "a new view"
 route; this item is about the sentence that is there now.
 
 ## Area-model audit (PL-BNYF)

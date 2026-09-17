@@ -142,5 +142,5 @@ become an area-type widget). The run's name is a value the dashboard hands down
 rather than a position the chart reads off its own run list, so a view drawing a
 different subset could not rename a run; and `RunView.set_run_name` is named for
 naming a view in its own header rather than for naming a run, because that is
-what every editor will owe an area. `PL-VN6M` is the one violation found and not
+what every view will owe an area. `PL-VN6M` is the one violation found and not
 fixed: `TraceLegend` still owns the compartment selection.

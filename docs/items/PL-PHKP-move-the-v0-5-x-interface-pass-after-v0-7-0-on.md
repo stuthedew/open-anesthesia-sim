@@ -26,7 +26,7 @@ had moved.
 ahead of item 34). It runs **after** v0.7.0. Item 34 and break-out introduce an
 area header, a workspace tab strip, a live splitter handle and a drag affordance;
 none exists today, and `docs/interface-provenance.md` § "What an editor must
-implement" establishes from Blender's source that the header is the *Editor's*
+implement" establishes from Blender's source that the header is the *View's*
 own rather than the container's. So a visual pass run first would decide palette,
 type scale and spacing across one set of surfaces and then meet four more.
 

@@ -41,7 +41,7 @@ can split, resize, close or replace, what would break? - and the five recurring
 answers: a view is given what it draws rather than reaching for it; state a
 layout could duplicate or relocate does not live inside the widget; a view is
 instantiable more than once; a view does not assume its size; a required value
-never moves into something closeable. It also fixes Area/Editor/Workspace as the
+never moves into something closeable. It also fixes Area/View/Workspace as the
 vocabulary, which `ROADMAP.md` item 34 already adopted from Blender, so the code
 and the roadmap do not drift apart before the system is built.
 

@@ -34,7 +34,7 @@ The questions the model cannot currently answer: what holds the set of windows; 
 Scoping item 34 split it across two releases, and this item goes wholly to the
 first. What it owes v0.6.0 is the **serialized shape**: what owns the set of
 windows, whether a Workspace owns several layouts or one layout spans windows,
-how an Area is addressed across windows so `swap` and `set_editor` mean
+how an Area is addressed across windows so `swap` and `set_view` mean
 something between them, and where the border-chain query terminates - which it
 must at a window boundary, because two windows' handles can be screen-collinear
 and belong to different trees. That lands in `PL-1FT6`'s model at version 1 even

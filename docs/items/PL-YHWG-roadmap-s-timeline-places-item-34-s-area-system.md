@@ -75,7 +75,7 @@ row move re-opens the question by accident.
    display surface is built before the area model, with the condition that
    would end it named, so it survives a row move. `.claude/rules/expert-review.md`
    § "Say what would falsify it" applies - the rule's condition is "until item
-   34's Editor contract and view registry ship", which is an instance and not a
+   34's View contract and view registry ship", which is an instance and not a
    permanent refusal.
 
 **Not a scoping round, and not a session's decision.** Which order the timeline
@@ -117,7 +117,7 @@ and not a new value. Without that clause the rule would have been the more
 dangerous of the two states it was written to fix.
 
 **Its condition is named, per `.claude/rules/expert-review.md` § "Say what would
-falsify it":** the rule ends when `PL-TH35` (the common Editor contract) and
+falsify it":** the rule ends when `PL-TH35` (the common View contract) and
 `PL-R1WQ` (the view registry) ship, because at that point a new surface is one
 registry entry and the second build stops existing. That makes it an instance
 with a trigger rather than a permanent refusal.

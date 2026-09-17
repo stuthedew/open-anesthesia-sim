@@ -290,7 +290,7 @@ more than it did:
 
 Sharper than before, because the expressiveness question is now settled and only
 the need is open: **a workspace this project actually wants that is
-non-slicing.** Item 36's editor catalogue is where that would appear. If one
+non-slicing.** Item 36's view catalogue is where that would appear. If one
 does, this is a representation change rather than a tweak, so reopen this item
 rather than working around it.
 
