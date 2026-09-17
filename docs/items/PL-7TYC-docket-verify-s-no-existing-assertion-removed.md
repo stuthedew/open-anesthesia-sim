@@ -1,15 +1,16 @@
 ---
 id: PL-7TYC
 title: docket verify's no existing assertion removed check greps for the substring assert, so removing any of the 90 non-test source lines containing that word REJECTs a correct close-out
-status: done
 priority: P2
 effort: S
+status: done
 classes: defect, infra
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 feature: verify-close-out
-verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_the_matcher_itself_is_not_an_assertion' subprojects/docket/tests/test_verify.py
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-17
 closed: 2026-09-17
+pr: 660
+verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_the_matcher_itself_is_not_an_assertion' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** docket verify's no existing assertion removed check greps for the substring assert, so removing any of the 90 non-test source lines containing that word REJECTs a correct close-out
