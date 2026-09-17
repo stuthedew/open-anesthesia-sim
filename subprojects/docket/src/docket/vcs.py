@@ -28,7 +28,7 @@ import re
 import subprocess
 import time
 from collections import Counter
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -1012,6 +1012,44 @@ def _work_already_on_base(split: tuple[tuple[str, ...], tuple[str, ...]]) -> boo
     return bool(landed) and not outstanding
 
 
+#: How many bytes of pathspec one `git diff` may be handed at a time. Every
+#: path a caller names goes on the command line, and the callers hand over
+#: whole sets: a triage pass edits several hundred item files on one branch.
+#:
+#: **The split is a safety bound rather than a speed one.** An argv over the
+#: platform's `ARG_MAX` makes `subprocess` raise, `_run_git` answer the empty
+#: string, and `_superseded` read that silence as "the tips agree about every
+#: path it was asked" - which drops every in-flight mark the ref carries, the
+#: one direction this module must not fail in (`PL-DMDF`). Chosen far below
+#: any limit rather than tuned to one; `getconf ARG_MAX` measures 2,097,152 on
+#: the session container, and the smallest limit this has ever run against is
+#: three orders of magnitude above the ~5 KB a real branch asks for. At ~60
+#: bytes a queue path this holds about 1,000 of them, so no branch in this
+#: store's history has needed a second chunk.
+_PATHSPEC_BYTES = 64 * 1024
+
+
+def _pathspec_chunks(paths: tuple[str, ...]) -> Iterator[tuple[str, ...]]:
+    """`paths`, in runs short enough to spell on one command line.
+
+    A single path longer than the whole budget is still yielded, alone: leaving
+    it out would drop it from the answer silently, which is the failure this
+    split exists to prevent rather than one it can repair.
+    """
+    held: list[str] = []
+    used = 0
+    for path in paths:
+        cost = len(path.encode(_ENCODING, "replace")) + 1
+        if held and used + cost > _PATHSPEC_BYTES:
+            yield tuple(held)
+            held = []
+            used = 0
+        held.append(path)
+        used += cost
+    if held:
+        yield tuple(held)
+
+
 def _superseded(ref: str, base: str, paths: tuple[str, ...], root: Path, run: Runner) -> set[str]:
     """Of `paths`, those the base's tip already accounts for, so nothing is left behind.
 
@@ -1058,30 +1096,39 @@ def _superseded(ref: str, base: str, paths: tuple[str, ...], root: Path, run: Ru
     `--no-renames` because the paths compared against come from
     `_landing_split`, which also passes it: a rename read on one side and not
     the other would compare two different path sets.
+
+    **`paths` is the whole set to ask about, and asking it whole is the point**
+    (`PL-DMDF`). One `git diff` answers for every path it is given, so a caller
+    that loops over its own set calling this once per path pays a process per
+    item file instead of a process per ref. `_pathspec_chunks` is the only
+    thing between the set and the command line, and it splits on a byte budget
+    rather than on a count, so the single-call shape survives any branch a
+    reader will actually meet.
     """
-    if not paths:
-        return set()
-    output = run(["diff", "--numstat", "--no-renames", base, ref, "--", *paths], root)
-    differing: dict[str, tuple[str, str]] = {}
-    for line in output.splitlines():
-        fields = line.split("\t", 2)
-        if len(fields) != 3:
-            continue
-        added, deleted, path = fields
-        differing[path.strip()] = (added.strip(), deleted.strip())
     superseded: set[str] = set()
-    for path in paths:
-        counts = differing.get(path)
-        if counts is None:
-            # The two tips agree on this path, so the base is missing nothing.
-            # A path git did not report on at all reads the same way only
-            # because it was asked for by name: git names every path it was
-            # given that differs.
-            superseded.add(path)
-            continue
-        added, deleted = counts
-        if added == "0" and deleted.isdigit() and int(deleted) > 0:
-            superseded.add(path)
+    for chunk in _pathspec_chunks(paths):
+        output = run(["diff", "--numstat", "--no-renames", base, ref, "--", *chunk], root)
+        differing: dict[str, tuple[str, str]] = {}
+        for line in output.splitlines():
+            fields = line.split("\t", 2)
+            if len(fields) != 3:
+                continue
+            added, deleted, path = fields
+            differing[path.strip()] = (added.strip(), deleted.strip())
+        # Read within the chunk that asked, never against the union: "absent
+        # means the tips agree" is sound only about paths this call named.
+        for path in chunk:
+            counts = differing.get(path)
+            if counts is None:
+                # The two tips agree on this path, so the base is missing
+                # nothing. A path git did not report on at all reads the same
+                # way only because it was asked for by name: git names every
+                # path it was given that differs.
+                superseded.add(path)
+                continue
+            added, deleted = counts
+            if added == "0" and deleted.isdigit() and int(deleted) > 0:
+                superseded.add(path)
     return superseded
 
 
@@ -1597,12 +1644,31 @@ def branches_in_flight(
     # standing, which is the direction this read has always failed in - an item
     # wrongly left marked is one a session picks around, while an item wrongly
     # unmarked is two sessions resolving one file.
+    #
+    # **Asked once per ref rather than once per path** (`PL-DMDF`).
+    # `_superseded` takes the whole set and spells it as one pathspec - both of
+    # its other callers hand it one - so calling it from inside a comprehension
+    # put a `git diff` on the command line for every item file edited on every
+    # unmerged ref. Measured against a fabricated store of 30 unmerged refs
+    # carrying 390 item-file edits, chosen to match the project owner's clone:
+    # 593 `diff` calls before the hoist and 148 after, of 1,237 git calls and
+    # 792. The marks are collected first because the two cheap filters decide
+    # what is worth asking about, and `walk.edited`'s order is kept so the
+    # report is assembled in the order the walk found the ids.
+    marks: list[tuple[str, str, str]] = []
+    asked_of: dict[str, list[str]] = {}
+    for identifier, (name, path) in walk.edited.items():
+        if name in walk.unbounded or identifier in in_flight:
+            continue
+        marks.append((identifier, name, path))
+        held = asked_of.setdefault(name, [])
+        if path not in held:
+            held.append(path)
+    superseded_by_ref = {
+        name: _superseded(name, base, tuple(paths), root, run) for name, paths in asked_of.items()
+    }
     edited = {
-        identifier: name
-        for identifier, (name, path) in walk.edited.items()
-        if name not in walk.unbounded
-        and identifier not in in_flight
-        and path not in _superseded(name, base, (path,), root, run)
+        identifier: name for identifier, name, path in marks if path not in superseded_by_ref[name]
     }
     edited = {identifier: _preferred(name, candidates) for identifier, name in edited.items()}
 
