@@ -2613,18 +2613,17 @@ whatever their presence answer, under the second of "The gate is a snapshot"'s
 two unconditional exceptions. None is inside this milestone's Required scope, so
 all three clear before implementation begins. Each is `S`.
 
-- PL-S6WW (S) — **added 2026-09-17.** `docs/MODEL.md` § "Agent amount" states
-  that every compartment stores agent as an equivalent gas volume "at one
-  documented reference temperature and pressure", documents the pressure, and
-  documents no temperature anywhere — not in that file, not in `core/`, not in
-  `data/`. `science`, and its presence answer is yes as well: the sentence has
-  been wrong since long before this freeze. It is `needs-decision`, and the
-  recommendation is recorded in the item rather than only here (`PL-M21Q`'s rule,
-  applied to the item that prompted noticing it): 20 °C, on the Gas Man lineage
-  this project's parameter set comes from — `GASMAN.INI`'s own `Volatility=209
-  Vapor/Liquid volume ratio (20'C)` — with § "Known limitations" recording what
-  one condition costs for a circuit at ambient and tissues at 37 °C. Which
-  temperature it is remains the project owner's.
+- PL-S6WW (S) — **added 2026-09-17, closed 2026-09-17.** `docs/MODEL.md`
+  § "Agent amount" stated that every compartment stores agent as an equivalent
+  gas volume "at one documented reference temperature and pressure", documented
+  the pressure, and documented no temperature anywhere — not in that file, not
+  in `core/`, not in `data/`. `science`, and its presence answer was yes as
+  well: the sentence had been wrong since long before this freeze. Resolved at
+  **20 °C and 760 mmHg, dry** (project owner, 2026-09-17, ratified — over
+  37 °C), on the reference implementation's own five expansion constants, which
+  the 20 °C derivation reproduces within 0.35 % and the 37 °C derivation misses
+  by 5.6–6.2 %. § "Known limitations" now records what one condition costs for a
+  circuit at ambient and tissues at 37 °C, and sizes it.
 - PL-H4N8 (S) — **added 2026-09-17.** Planned-milestone item 28 specifies agent
   cost "from the exhausted-agent amount", and cost is what left the bottle, which
   is the delivered amount. `science`. By the accounting identity `initial +
