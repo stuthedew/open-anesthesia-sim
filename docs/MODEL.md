@@ -562,14 +562,32 @@ Three grounds, and the first is checkable rather than conventional.
    carries, which is a change to the governing equations rather than to a
    label.
 
-3. **The reference implementation states its own ratio at 20 °C.** Gas Man's
-   per-agent `GASMAN.INI` parameter is written `Volatility=209  Vapor/Liquid
-   volume ratio (20'C)`. This project's partition coefficients, MAC divisors
-   and reference patient are the Gas Man set ("Source hierarchy"), so the
-   trajectories these amounts come out of are that program's arithmetic;
-   adopting a different reference for the same volumes would make this model's
-   litre and Gas Man's litre different quantities while every parameter
-   feeding them is shared.
+3. **The reference implementation's own constants are 20 °C constants, and
+   its litres carry no condition at all.** Gas Man states a condition in one
+   place only — the `GASMAN.INI` parameter written `Volatility=209
+   Vapor/Liquid volume ratio (20'C)` — and never on the litres of uptake and
+   delivered it displays. That is the same structure as this model's: the
+   condition is read at the vapour-to-liquid boundary and nowhere else. Its
+   five printed expansion constants settle which condition that is, because
+   the 20 °C derivation reproduces every one of them and the 37 °C derivation
+   reproduces none:
+
+   | Agent | Gas Man | Derived, 20 °C | Derived, 37 °C |
+   | --- | --- | --- | --- |
+   | Halothane | 228 | 227.7 (−0.15 %) | 240.9 (+5.6 %) |
+   | Enflurane | 198 | 198.6 (+0.29 %) | 210.1 (+6.1 %) |
+   | Isoflurane | 196 | 195.8 (−0.09 %) | 207.2 (+5.7 %) |
+   | Sevoflurane | 183 | 182.8 (−0.11 %) | 193.4 (+5.7 %) |
+   | Desflurane | 209 | 209.7 (+0.35 %) | 221.9 (+6.2 %) |
+
+   Within 0.35 % on all five at 20 °C, against 5.6–6.2 % at 37 °C — two
+   agents wider than the set this model carries, and the two whose densities
+   Laster, Fang and Eger measured in the same experiment. This project's
+   partition coefficients, MAC divisors and reference patient are the Gas Man
+   set ("Source hierarchy"), so the trajectories these amounts come out of are
+   that program's arithmetic; adopting a different reference for the same
+   volumes would make this model's litre and Gas Man's litre different
+   quantities while every parameter feeding them is shared.
 
 **37 °C was the alternative, and it is not a poor one.** It is where this
 model's partition coefficients were measured and where the alveolar, venous
@@ -591,11 +609,15 @@ Sources for this section, by the route each was read:
   PubMed and verified against the abstract 2026-09-17; the abstract carries
   the four constants and does not itself state their temperature, which is why
   the reproduction above is the evidence and not the citation.
-- Philip JH. *Workbook for Gas Man*, Appendix C's `GASMAN.INI` listing. Read
-  from the private reference corpus on 2026-09-16 and recorded in `PL-S6WW`;
-  `docs/references/README.md` § "Philip — *Workbook for Gas Man*" carries the
-  extraction note and the page. Tier 3 under "Source hierarchy": it fixes what
-  the reference implementation does, and measures nothing.
+- Philip JH. *Workbook for Gas Man*, Appendix C's `GASMAN.INI` listing for
+  the `Volatility` parameter, and chapter 10's closed-circuit liquid-injection
+  section (printed pp. 103-105) for the five expansion constants, where they
+  are the unit of an *input* — the volume injected — rather than of a
+  readout. Both read from the private reference corpus on 2026-09-16 and
+  recorded in `PL-S6WW` and `PL-B396`; `docs/references/README.md`
+  § "Philip — *Workbook for Gas Man*" carries the extraction note. Tier 3
+  under "Source hierarchy": it fixes what the reference implementation does,
+  and measures nothing.
 
 ## Symbols
 
