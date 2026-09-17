@@ -7,9 +7,10 @@ status: done
 classes: docs, defect
 feature: debt-gate
 touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
-verify: uv run pytest tests/unit/test_doc_check.py && grep -qF 'The carve-out expires with the wait it is granted for' ROADMAP.md && grep -q 'def test_an_anticipated_safety_item_is_reported_once_it_is_no_longer_blocked' tests/unit/test_doc_check.py
 added: 2026-09-16
 closed: 2026-09-16
+pr: 644
+verify: uv run pytest tests/unit/test_doc_check.py && grep -qF 'The carve-out expires with the wait it is granted for' ROADMAP.md && grep -q 'def test_an_anticipated_safety_item_is_reported_once_it_is_no_longer_blocked' tests/unit/test_doc_check.py
 ---
 
 **Problem.** The anticipated debt-gate carve-out never expires, so an anticipated safety item stays invisible to the gate after its hazard goes live

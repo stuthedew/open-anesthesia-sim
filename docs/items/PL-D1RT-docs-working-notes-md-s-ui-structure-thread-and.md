@@ -9,9 +9,9 @@ feature: planning-cadence
 touches: docs/WORKING_NOTES.md, ROADMAP.md
 added: 2026-09-14
 closed: 2026-09-16
+pr: 645
 verify: python3 tools/doc_check.py check && grep -qF '`v0.7.x` sitting after item 34' docs/WORKING_NOTES.md && grep -qF 'item 33 returns to the interface-pass row it held' ROADMAP.md
 ---
-
 
 **Problem.** docs/WORKING_NOTES.md's UI-structure thread and PL-037Y still describe the port as following v0.5.0, which the 2026-09-14 reorder makes stale
 

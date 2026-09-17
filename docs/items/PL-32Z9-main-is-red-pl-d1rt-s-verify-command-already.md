@@ -1,8 +1,15 @@
 ---
 id: PL-32Z9
 title: main is red: PL-D1RT's verify: command already passes on a tree carrying none of its work, and only the push-to-main --verify sweep can see it, so no pull request will go red and every merge re-reds main
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect
+feature: queue-hygiene
+touches: docs/items
 added: 2026-09-16
+closed: 2026-09-16
+verify: bin/docket check && grep -q '^status: done' docs/items/PL-D1RT-docs-working-notes-md-s-ui-structure-thread-and.md
 ---
 
 **Problem.** main is red: PL-D1RT's verify: command already passes on a tree carrying none of its work, and only the push-to-main --verify sweep can see it, so no pull request will go red and every merge re-reds main
@@ -106,3 +113,32 @@ Runs 2115 (`674a15e`, #637 - the commit carrying this item) and 2116
 (`0ba9aa4`, #638) were still in progress and are not counted. Both are
 expected red on the same error, since `PL-D1RT` is still `ready` on `main` and
 neither diff touches it, but expected is not measured.
+
+**Why it matters.** A red default branch makes every branch's red CI unreadable: a
+session cannot tell its own failure from the inherited one without reading the job
+log. It is also `CLAUDE.md`'s silent-wrong-answer test exactly - `make check`
+passes while the guarantee it stands for is void - and the population is every
+session rather than one.
+
+---
+
+**Done, 2026-09-16. `main` is green**, run `#2134` on `262b38b`, the first since
+`#2102`. The `Done when.` above is met in its first branch: `PL-D1RT` was closed
+in `#645` with a replacement command that was run against `57fdb8c` - the last
+green commit - and seen to fail there on both greps before being recorded, and
+`PL-D1RT`'s brief carries the clause-by-clause table saying why closing was chosen
+over re-pointing.
+
+**One claim in this brief was wrong, and the correction is worth keeping.** It
+said the negated `grep` "was already true when the command was recorded". It was
+not: the command pins a citing *phrase*, not the row heading, and that phrase was
+present **twice** in `ROADMAP.md` at `57fdb8c` and **zero** times from `52205f6`
+(`#634`) onward. So the command discriminated correctly until `#634` removed the
+phrase - it was invalidated by another item's work rather than written away from
+its own. `PL-KND7` carries the full count. The difference matters because the two
+readings imply different fixes, and only the second identifies the absence
+sentinel as the hazard.
+
+**Everything else here held**, including the half `PL-KND7` first got wrong: the
+pull-request scoping is deliberate and measured (`PL-SDHR`, `PL-P3B6`), not a gap,
+and `PL-879R` is where the structural rule belongs.

@@ -9,6 +9,7 @@ feature: release-roadmap-seam
 touches: ROADMAP.md
 added: 2026-09-16
 closed: 2026-09-16
+pr: 642
 verify: python3 tools/doc_check.py check && grep -qF "deliberate act rather than the release path's default" ROADMAP.md
 ---
 
