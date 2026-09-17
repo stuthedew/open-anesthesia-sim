@@ -5,11 +5,12 @@ priority: P2
 effort: S
 status: done
 classes: defect
-touches: docs/items
-verify: bin/docket check && grep -qF "docs/items/PL-WZBX-*.md" docs/items/PL-0BSC-*.md && grep -qF "exclude='PL-FXBS-*'" docs/items/PL-GPYV-*.md
 feature: interface-areas
-closed: 2026-09-17
+touches: docs/items
 added: 2026-09-17
+closed: 2026-09-17
+pr: 661
+verify: bin/docket check && grep -qF "docs/items/PL-WZBX-*.md" docs/items/PL-0BSC-*.md && grep -qF "exclude='PL-FXBS-*'" docs/items/PL-GPYV-*.md
 ---
 
 **Problem.** A verify: command that negates a recursive grep over docs/items/ is falsified by the item store itself, so it can never pass: PL-GPYV's greps for set_editor, which its own verify line and its record of the rename both contain

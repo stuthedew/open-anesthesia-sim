@@ -4,11 +4,12 @@ title: The chart hover names the agent and the instant but not which run, so a h
 priority: P1
 effort: S
 status: done
-closed: 2026-09-17
 classes: safety, ux
 feature: scenario-branching
 touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, README.md, tests/unit
 added: 2026-09-16
+closed: 2026-09-17
+pr: 665
 verify: grep -qF 'The hover and the run it belongs to' docs/MODEL.md
 ---
 

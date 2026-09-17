@@ -9,6 +9,7 @@ feature: session-start-cost
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests
 added: 2026-09-16
 closed: 2026-09-17
+pr: 664
 verify: uv run pytest -q subprojects/docket/tests/test_vcs.py && grep -q 'def test_superseded_is_asked_once_for_the_whole_outstanding_set' subprojects/docket/tests/test_vcs.py
 ---
 

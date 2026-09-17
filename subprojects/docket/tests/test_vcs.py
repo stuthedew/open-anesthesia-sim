@@ -35,6 +35,7 @@ from docket.vcs import (
     cut_window,
     cuts_in_flight,
     default_base,
+    filed_with_work,
     files_in_flight,
     lost,
     merged_pull_requests,
@@ -4381,3 +4382,133 @@ def test_a_cut_whose_fork_point_is_unreadable_declines_rather_than_reading_as_em
     assert window.version == "0.3.8"
     assert window.landed == ()
     assert "no readable history" in window.declined
+
+
+# `filed_with_work`: the shape `PL-3CBS`'s landed-work advisory cannot reach -
+# an item captured and worked in one commit, which never passes through `ready`
+# and so never acquires the `verify:` command that advisory is keyed on.
+
+
+def _filing_runner(shallow: str, log: str, changed: dict[str, list[str]] | None = None):
+    """Git for a store whose item files were added by the commits `log` describes."""
+
+    def run(args: list[str], root: Path) -> str:
+        if args[:2] == ["rev-parse", "--is-shallow-repository"]:
+            return shallow + "\n" if shallow else ""
+        if args[0] == "rev-parse":
+            return "origin/main\n"
+        if args[0] == "log":
+            return log
+        if args[0] == "show":
+            return "\n".join((changed or {}).get(args[-1], []))
+        return ""
+
+    return run
+
+
+# #635's shape: one commit files six items and lands 385 lines of `vcs.py`.
+# `PL-QQQQ` is the item the same commit filed and did not name - the ordinary
+# capture in passing, and the case the subject clause exists to suppress.
+FILED_LOG = "".join(
+    (
+        "\x00ff4be610\x01PL-XD3C, PL-MMVF, PL-0J9K: make digest's git calls",
+        " measurable (#635)\n\n",
+        "A\tdocs/items/PL-0J9K-git-cat-file-batch.md\n",
+        "A\tdocs/items/PL-MMVF-memoize-the-runner.md\n",
+        "A\tdocs/items/PL-QQQQ-something-else-entirely.md\n",
+    )
+)
+
+FILED_CHANGED = {
+    "ff4be610": [
+        "docs/items/PL-0J9K-git-cat-file-batch.md",
+        "docs/items/PL-MMVF-memoize-the-runner.md",
+        "subprojects/docket/src/docket/vcs.py",
+        "subprojects/docket/tests/test_vcs.py",
+    ]
+}
+
+
+def test_an_item_filed_by_a_commit_that_also_changed_code_is_reported() -> None:
+    report = filed_with_work(
+        frozenset({"PL-0J9K"}),
+        ROOT,
+        prefix="docs/items",
+        runner=_filing_runner("false", FILED_LOG, FILED_CHANGED),
+    )
+
+    assert report.known
+    filing = report.filings["PL-0J9K"]
+    assert filing.commit == "ff4be610"
+    assert filing.pull_request == 635
+    assert filing.paths == (
+        "subprojects/docket/src/docket/vcs.py",
+        "subprojects/docket/tests/test_vcs.py",
+    )
+
+
+def test_an_item_the_filing_subject_does_not_name_is_not_reported() -> None:
+    """The clause that does the work: without it this matched 248 of 319 open items.
+
+    `PL-QQQQ` was filed by the same commit and is not named by it - the ordinary
+    case of a finding captured while doing unrelated work, which `CLAUDE.md`
+    asks for and which is 78% of this store (`PL-SWP3`).
+    """
+    report = filed_with_work(
+        frozenset({"PL-QQQQ"}),
+        ROOT,
+        prefix="docs/items",
+        runner=_filing_runner("false", FILED_LOG, FILED_CHANGED),
+    )
+
+    assert report.known
+    assert report.filings == {}
+
+
+def test_a_pure_capture_commit_is_not_reported() -> None:
+    """A commit whose whole diff is the queue worked nothing, however it is titled."""
+    report = filed_with_work(
+        frozenset({"PL-0J9K"}),
+        ROOT,
+        prefix="docs/items",
+        runner=_filing_runner(
+            "false", FILED_LOG, {"ff4be610": ["docs/items/PL-0J9K-git-cat-file-batch.md"]}
+        ),
+    )
+
+    assert report.known
+    assert report.filings == {}
+
+
+def test_a_shallow_clone_declines_rather_than_reporting_nothing_filed() -> None:
+    """Its missing commits are the oldest, so an old item would read as filed by nobody."""
+    report = filed_with_work(
+        frozenset({"PL-0J9K"}),
+        ROOT,
+        prefix="docs/items",
+        runner=_filing_runner("true", FILED_LOG, FILED_CHANGED),
+    )
+
+    assert not report.known
+    assert "shallow" in report.declined
+    assert report.filings == {}
+
+
+def test_a_checkout_with_no_readable_history_declines() -> None:
+    report = filed_with_work(
+        frozenset({"PL-0J9K"}), ROOT, prefix="docs/items", runner=_filing_runner("false", "")
+    )
+
+    assert not report.known
+    assert "no default branch" in report.declined
+
+
+def test_no_untriaged_items_asks_git_nothing() -> None:
+    asked: list[list[str]] = []
+
+    def run(args: list[str], root: Path) -> str:
+        asked.append(args)
+        return ""
+
+    assert filed_with_work(frozenset(), ROOT, prefix="docs/items", runner=run).known
+    assert asked == []

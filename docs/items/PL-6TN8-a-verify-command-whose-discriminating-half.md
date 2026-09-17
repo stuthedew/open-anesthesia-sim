@@ -1,8 +1,13 @@
 ---
 id: PL-6TN8
 title: A verify: command whose discriminating half greps for a test name can exit 1 because the name was guessed, not because the work is outstanding, so watching it fail proves less than the rule assumes
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
 feature: verify-command-health
+touches: .claude/skills/docket/SKILL.md, docs/items
+not-delegable: the outcome is a disjunction the count decides - either the skill gains a sentence or this item records why one instance did not justify one - so nothing can be named in advance that the work adds. Pinning a `grep` on a sentence not yet written would be exactly the name-bet this item is about.
 added: 2026-09-17
 ---
 

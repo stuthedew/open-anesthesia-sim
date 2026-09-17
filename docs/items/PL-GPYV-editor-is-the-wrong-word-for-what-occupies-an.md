@@ -5,11 +5,12 @@ priority: P2
 effort: S
 status: done
 classes: planning
-touches: docs/items, ROADMAP.md, docs/WORKING_NOTES.md, src/anesthesia_sim/app
-verify: python3 tools/doc_check.py check && ! grep -rlE 'set_editor|\bEditor\b' docs/items/ --exclude='PL-FTP5-*' --exclude='PL-C842-*' --exclude='PL-H620-*' --exclude='PL-GPYV-*' --exclude='PL-FXBS-*'
 feature: interface-areas
+touches: docs/items, ROADMAP.md, docs/WORKING_NOTES.md, src/anesthesia_sim/app
 added: 2026-09-17
 closed: 2026-09-17
+pr: 661
+verify: python3 tools/doc_check.py check && ! grep -rlE 'set_editor|\bEditor\b' docs/items/ --exclude='PL-FTP5-*' --exclude='PL-C842-*' --exclude='PL-H620-*' --exclude='PL-GPYV-*' --exclude='PL-FXBS-*'
 ---
 
 **Problem.** Editor is the wrong word for what occupies an Area in this project: Blender's editors predominantly edit, ours predominantly display modelled values, and nothing has been built with the name yet
