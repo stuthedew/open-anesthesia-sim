@@ -8,6 +8,7 @@ classes: infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/store.py
 added: 2026-09-02
+root-cause-of: PL-7K8Y, PL-LBR6, PL-NF6N, PL-YTDN, PL-Z9K5
 verify: uv run pytest subprojects/docket/tests/test_cli.py -k new_captures && grep -q 'def test_set_writes_fields_in_canonical_order' subprojects/docket/tests/test_cli.py
 ---
 
@@ -58,3 +59,25 @@ duplicate-key hazard arriving through the front door.
 without hand-editing a file, the written block comes out in the same field
 order as the rest of the store, and an unknown field name is refused rather
 than written.
+
+**Recorded as a generator (2026-09-17, `PL-VX5H`).** This is one of the six
+clusters `PL-6ZQY` found under "the apparatus infers a fact it could have
+recorded", and it is the one whose remedy is a *writer*. Five open items exist
+because there is not one: `PL-NF6N` is this finding re-filed ten days later;
+`PL-YTDN` is nine item files whose slug drifted from a title edited in place;
+and `PL-LBR6`, `PL-7K8Y` and `PL-Z9K5` are all `bin/docket record` - the only
+other writer - renaming a file or reordering a hand-typed front-matter block as
+a side effect of inserting `pr:`, which then reads as a content edit to the
+close-out audit. Each of the five is the second cost this brief already names:
+"field order and formatting drift, because the convention lives only in the
+existing files". A writer that emits canonical order removes the population all
+five sit in.
+
+So `docket next` now offers this above every band but `P0`. Scope is unchanged
+by the mark - `docket set`, refusing an unknown field, and nothing more.
+
+Deliberately not named, though `PL-6ZQY`'s cluster sentence reaches them:
+`PL-8JY7`, `PL-RWBV` and `PL-T86P` are gaps in `docket check` rather than in
+the writer - a path that does not exist, a `needs-decision` item with no
+`Decision needed` section - and a write command closes none of them. `PL-FX0K`
+is `parse_item` misreading a YAML-list `touches:`, which is the reader.
