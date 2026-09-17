@@ -3,11 +3,14 @@ id: PL-L4KX
 title: bin/docket verify REJECTs every close-out of a dropped item and of a not-delegable one, because it refuses an empty verify: with no exemption for either, while docket check accepts both - so the skill's own close-out step cannot reach ACCEPT on work it prescribes
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: delegation
+milestone: v0.4.27
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-16
+closed: 2026-09-17
+pr: 655
 verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_dropped_close_out_is_not_a_missing_command' subprojects/docket/tests/test_verify.py
 ---
 
@@ -88,3 +91,13 @@ early-stopping `REJECT` on a close-out whose ids are `dropped` or carry
 `not-delegable`, with the remaining checks actually run; a `done` item carrying
 neither still fails hard; and a test pins all three cases. `docket check` and
 `docket verify` then agree about every item in this store.
+
+**Worked 2026-09-17**, with `PL-K82G`, as that item asked - one reading of the
+gate settles both, and both exemptions are read off the item as the *base* holds
+it rather than off the branch.
+
+Built exactly as the approach above describes: `dropped`, or a non-empty
+`not-delegable`, reports the command check as an advisory naming which of the
+two applies, and the remaining checks still run instead of stopping early. A
+`done` item carrying neither still fails hard and still stops. `docket check`
+and `docket verify` now agree about every item in this store.

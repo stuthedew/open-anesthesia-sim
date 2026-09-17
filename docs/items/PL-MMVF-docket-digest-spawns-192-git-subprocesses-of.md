@@ -1,9 +1,15 @@
 ---
 id: PL-MMVF
 title: docket digest spawns 192 git subprocesses of which 82 are exact duplicates, so a machine that charges for exec pays 17.6s at every session start
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: session-cost, perf
 feature: session-start-cost
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_git_runner.py
 added: 2026-09-16
+closed: 2026-09-17
+verify: uv run pytest subprojects/docket/tests/test_git_runner.py && grep -q 'def test_the_memo_does_not_answer_from_before_a_fetch' subprojects/docket/tests/test_git_runner.py
 ---
 
 **Problem.** docket digest spawns 192 git subprocesses of which 82 are exact duplicates, so a machine that charges for exec pays 17.6s at every session start
@@ -124,3 +130,19 @@ cannot change anything, whatever their arguments; anything else - `fetch` among
 them - is run *and* empties it. A test drives that against a real remote that
 really moves, rather than asserting the clearing rule against itself, because
 `bin/docket branch` fetches in-process.
+
+**Why it matters.** The duplication turned out to be structural rather than
+incidental - every `merge-base` this module issues is asked exactly three times,
+because `_unlanded_refs` runs once each for `branches_in_flight`, `orphaned` and
+`cuts_in_flight` - so it was a fixed multiple paid at every session start rather
+than a rate that might drift away on its own.
+
+**Closed at triage, 2026-09-17.** `GitRunner` memoizes on `(argv, root)` on
+`origin/main`, landed by `#635` and pinned by
+`subprojects/docket/tests/test_git_runner.py`, including the fetch hazard the
+brief names. The item was never taken out of `untriaged`.
+
+The three estimates this brief carried and corrected - 43% of calls, 27% of
+time, then 10% on the machine that pays - are left as written. They are the
+reason `--profile` exists, and the last of them is why this was the smallest of
+the three levers rather than the first.

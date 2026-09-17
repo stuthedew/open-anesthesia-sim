@@ -1051,6 +1051,20 @@ itself (the items carrying its feature) and what clears before it begins, with
 effort totals for each. Recording Gate 0 by hand meant reading 48 items and
 applying the rule to each; do not repeat that.
 
+**Sweep the frozen list for staleness before clearing it.** That is beat 3 of
+`ROADMAP.md`'s cadence and the first thing to happen once the list exists. A
+`verify:` command tests for the presence of the fix and never for the presence
+of the fault, so an entry whose problem was solved another way fails forever and
+reads as outstanding work — and nothing in the store marks it, so it is ranked,
+offered by `bin/docket next`, and counted into this gate. The one pass that has
+run found 12 of 134 items dead and 31 more overtaken, 32% of the lane, and a
+churn advisory was built, measured against its verdicts and rejected, so there
+is no mechanical substitute (`PL-LKGL`). Read each frozen entry against the
+tree, drop what no longer reproduces with its `reason`, and correct the briefs
+that overstate what is left. `PL-6ZQY` is the standing item for the pass, and
+its own brief carries a 134-item map whose verification phase never finished —
+nothing in it may be acted on without re-checking against the tree.
+
 **Recorded debt is cleared before a new milestone begins.** `ROADMAP.md`'s
 "The debt gate" is the rule: open items classed `defect`, `safety`, `science`,
 `refactor` or `perf`, and anything at `needs-decision`, reach `done` — or
@@ -1307,6 +1321,25 @@ in the tree reports it; `git ls-remote --tags origin` is what answers.
    command passes, `make check` passes. A session may re-scope its own
    commission; it may not weaken what measures it, and it may not skip the
    test.
+
+   **Two of the four take an exemption the *item* declares, and a session
+   cannot declare one for itself mid-work.** Both are read from the base's
+   copy of the item rather than from your branch, so adding either beside the
+   work it would excuse folds nothing and is reported as your own word for it.
+
+   - `falsifies:` names enough of an assertion to identify the one subject the
+     item's work makes untrue - the string it pins is what the item was asked
+     to delete, so no arrangement of the tests keeps it. A matching removal
+     folds and is printed beside the check (`PL-K82G`).
+   - A `dropped` item, or one carrying `not-delegable:`, has no command to run,
+     and the check says which applies rather than stopping the audit dead
+     (`PL-L4KX`).
+
+   **So a `REJECT` here is still a `REJECT`.** Meeting one on work you believe
+   correct means the commission did not anticipate it: say so to the project
+   owner with the check's own words, and do not add the declaration to the item
+   on this branch to clear it. The whole worth of the field is that a reviewer
+   wrote it first.
 
    Run the bare `bin/docket verify <id>` only when reviewing a branch somebody
    else was commissioned to write.

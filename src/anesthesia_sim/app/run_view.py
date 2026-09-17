@@ -294,7 +294,7 @@ class RunView(QWidget):
         # would be standing text saying what the single panel already says.
         #
         # `set_run_name` is deliberately not a chart-shaped or run-shaped
-        # method: naming the view in its own header is what every editor will
+        # method: naming the view in its own header is what every view will
         # owe an area (`.claude/rules/ui-areas.md`, `PL-TH35`), so it is given
         # a name the next view could take.
         self._run_name_text = styled_label("", color=INK, bold=True)

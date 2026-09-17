@@ -14,7 +14,7 @@ touches: src/anesthesia_sim/app/, src/anesthesia_sim/layout/, tests/integration
 **Problem.** Build the one adapter module that drives the Qt widget tree from the LayoutModel, and turn the Qt port's inert splitter handles live
 
 **Why it matters.** `PL-C842` confined `QSplitter` to one adapter module so
-that no Editor can see a splitter, call `saveState()`, or store its own
+that no View can see a splitter, call `saveState()`, or store its own
 geometry - the property interchangeability rests on. The adapter is also where
 v0.4.26's reservation is spent: `inert_splitter`
 (`src/anesthesia_sim/app/qt_widgets.py:784`) disables every handle so that a

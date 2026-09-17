@@ -1,9 +1,15 @@
 ---
 id: PL-0J9K
 title: Replace docket's per-blob git show fan-out with one git cat-file --batch: 389 processes and 5.77s of a 24s session start on the owner's machine
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: session-cost, perf
 feature: session-start-cost
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_git_runner.py
 added: 2026-09-16
+closed: 2026-09-17
+verify: uv run pytest subprojects/docket/tests/test_git_runner.py && grep -q 'def test_a_missing_blob_does_not_cost_the_batch_for_the_rest_of_the_command' subprojects/docket/tests/test_git_runner.py
 ---
 
 **Problem.** Replace docket's per-blob git show fan-out with one git cat-file --batch: 389 processes and 5.77s of a 24s session start on the owner's machine
@@ -94,3 +100,19 @@ wrong, which is why the correction is here rather than left implied.
 
 Nothing shipped changes: the batch folds every `show` whatever line issued it,
 and the four sites were already covered.
+
+**Why it matters.** `bin/docket digest` runs in the session-start hook, so every
+session pays it before its first turn, and `show` was 24% of it on the machine
+that does the work. The batch is also the only lever on that block: 22 of 25
+`show` calls ask for a different blob, so `PL-MMVF`'s memo cannot reach them.
+
+**Closed at triage, 2026-09-17.** The work is on `origin/main` - `GitRunner`'s
+`cat-file --batch` in `subprojects/docket/src/docket/vcs.py`, landed by `#635`
+(`PL-XD3C, PL-MMVF, PL-0J9K: make digest's git calls measurable, then cut them
+by half`) and pinned by `subprojects/docket/tests/test_git_runner.py`. The item
+was never taken out of `untriaged`, so the queue has been offering landed work.
+
+**The one obligation it did not meet is carried forward rather than dropped.**
+The re-measured `show` time on the project owner's clone is the same single
+command `PL-XD3C` (digest is O(unmerged refs)) still owes - `bin/docket digest
+--profile` run there - so it is held by that item alone rather than by three.

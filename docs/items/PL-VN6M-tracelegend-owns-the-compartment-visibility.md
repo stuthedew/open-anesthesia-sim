@@ -20,7 +20,7 @@ reaches into that widget to find out.
 **Why it matters.** `.claude/rules/ui-areas.md` test 2: state a layout could
 duplicate or relocate does not live inside the widget. Under
 `ROADMAP.md` planned-milestone item 34 the legend and the chart become separate
-Editors in separate Areas, either of which a reader can close. Close the legend
+Views in separate Areas, either of which a reader can close. Close the legend
 and the selection goes with it; open a second chart Area and there is no answer
 to which legend it follows. Neither is a bug today, because there is exactly one
 of each in a fixed layout - which is precisely why it is cheap to move now and

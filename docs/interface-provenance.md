@@ -754,6 +754,25 @@ has already saved their own workspaces into.
 
 ### Diverged, and each divergence has a specific cause
 
+**The occupant of an Area is called a View here, not an Editor** (project owner,
+2026-09-17, ratified - chosen over keeping Blender's `Editor`, and over
+`Component` and `Widget`). `Area` and `Workspace` are taken from Blender
+unchanged; the third word is not. Blender's editors predominantly *edit* - the
+3D viewport, the dope sheet, the text editor - and the name is accurate there.
+This project's occupants are the concentration graph, the compartment table, the
+MAC readout and the control panel: one takes input and the rest display modelled
+values, so `Editor` would assert a mutability the reader does not have, which
+`CLAUDE.md`'s clinical-output standard treats as a presentation defect rather
+than a naming preference. `Widget` was unavailable because `QWidget` is the base
+class of every one of them, and `Component` was rejected as vaguer rather than
+wrong. Eclipse is the closest precedent and it splits the same way - its
+Perspective is Blender's Workspace, its editors follow an open-save-close
+document lifecycle and its views do not - though it ties *multiplicity* to
+editors, where this project needs several instances of one View kind in a single
+Workspace. So neither framework's term transfers whole, which is the cause here.
+**Everything this document says about Blender keeps Blender's word**, because
+renaming it would misreport the source; `PL-GPYV` carries the comparison.
+
 **A missing or unknown view kind must fail loudly.** Blender silently
 substitutes a 3D viewport and the interface looks normal. `CLAUDE.md` requires
 an obvious failure state in preference to a plausible-looking wrong one, and

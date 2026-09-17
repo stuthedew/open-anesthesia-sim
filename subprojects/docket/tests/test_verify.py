@@ -29,7 +29,9 @@ from docket.verify import (
     Verification,
     already_passing,
     changed_paths,
+    command_paths,
     item_commits,
+    items_reading,
     landed_workers,
     selects_no_test,
     verify,
@@ -1288,6 +1290,124 @@ def test_a_declined_run_still_reports_what_it_would_have_covered(
     assert report.scope == "1 item(s) this branch changed against origin/main"
 
 
+# Widening that scope to the items a branch *invalidates*, not only the ones it
+# edited (`PL-XMNC`). Read from the item files alone, the replay ran a command
+# on the pull request that *wrote* it and never on the one that broke it - and
+# all six recorded breaks were the second case, a branch editing a file some
+# other item's command reads, each reported only by the whole-store sweep once
+# it was already on `main`.
+
+
+def test_a_branch_editing_a_file_a_verify_command_reads_is_in_scope() -> None:
+    # `PL-L9FC`'s own shape: its command greps `README.md`, and `#512` made it
+    # pass by writing that file without ever opening the item.
+    item = _item(
+        identifier="PL-L9FC", verify="python3 tools/doc_check.py check && grep -q x README.md"
+    )
+
+    assert items_reading([item], ["README.md"]) == {"PL-L9FC"}
+
+
+def test_the_gate_a_command_runs_is_not_a_file_it_reads() -> None:
+    """The half that keeps the widening affordable.
+
+    `tools/doc_check.py` is named by 54 of the 168 open commands and is the
+    health half of every one of them, so counting the program a clause runs
+    would put the whole of that set behind any edit to the gate - while the
+    thing each of them actually discriminates on sits in another clause.
+    """
+    item = _item(verify="python3 tools/doc_check.py check && grep -q x README.md")
+
+    assert items_reading([item], ["tools/doc_check.py"]) == frozenset()
+    assert items_reading([item], ["bin/docket"]) == frozenset()
+
+
+def test_a_test_file_handed_to_pytest_is_a_file_it_reads() -> None:
+    # Not the same case as the one above, though both name a path in the first
+    # clause: `pytest` is the program and the file is its input, so editing the
+    # file can change what the command returns.
+    item = _item(verify="uv run pytest tests/unit/test_x.py && grep -q def tests/unit/test_x.py")
+
+    assert items_reading([item], ["tests/unit/test_x.py"]) == {"PL-K7QX"}
+
+
+def test_a_directory_a_command_greps_covers_a_file_added_under_it() -> None:
+    # `PL-X9T3`'s shape, and the reason containment is the rule rather than
+    # equality: the branch that broke it added a file the recursive grep then
+    # found.
+    item = _item(verify="bin/docket check && ! grep -rq phrase docs/items/")
+
+    assert items_reading([item], ["docs/items/PL-A1B2-a-new-capture.md"]) == {"PL-K7QX"}
+
+
+def test_a_file_the_branch_is_creating_is_matched_before_it_exists() -> None:
+    # `PL-XH1D`'s shape, and the reason this reader asks the filesystem
+    # nothing: `#487` broke it by *creating* `CONTRIBUTING.md`, which existed
+    # nowhere in the tree the command was written against.
+    item = _item(verify="test -f CONTRIBUTING.md")
+
+    assert items_reading([item], ["CONTRIBUTING.md"]) == {"PL-K7QX"}
+
+
+def test_a_bare_word_is_not_read_as_a_directory() -> None:
+    # A candidate carrying no `/` has to match a changed path exactly. Offered
+    # containment, a word inside a pattern would put the command behind every
+    # edit under a directory that happens to share its name.
+    item = _item(verify="grep -q src README.md")
+
+    assert items_reading([item], ["src/core.py"]) == frozenset()
+    assert items_reading([item], ["README.md"]) == {"PL-K7QX"}
+
+
+def test_a_path_inside_an_inline_script_is_read() -> None:
+    # Quoted spans are scanned for paths as well, which over-reports where the
+    # command is matching text rather than opening a file. That costs a replay;
+    # the other direction costs the finding.
+    inline = "python3 -c \"import json; json.load(open('src/a.json'))\""
+    item = _item(verify=inline)
+
+    assert items_reading([item], ["src/a.json"]) == {"PL-K7QX"}
+
+
+def test_a_separator_inside_a_quoted_pattern_does_not_split_a_clause() -> None:
+    # Clauses are cut on the blanked command, so a `&&` inside a pattern cannot
+    # start a phantom clause whose first word - the real file - would then read
+    # as the program it runs.
+    assert command_paths("grep -q 'a && b' docs/MODEL.md") >= {"docs/MODEL.md"}
+
+
+def test_a_closed_item_is_not_put_back_in_scope_by_its_command() -> None:
+    # A closed `verify:` records what was run on a tree that no longer exists.
+    # Replaying it would report a break in work that is finished.
+    item = _item(status="done", verify="grep -q x README.md")
+
+    assert items_reading([item], ["README.md"]) == frozenset()
+
+
+def test_an_item_with_no_command_is_in_no_scope_at_all() -> None:
+    assert items_reading([_item(verify="")], ["README.md"]) == frozenset()
+
+
+def test_a_widened_scope_says_which_half_each_id_came_from(tmp_path: Path) -> None:
+    # The cost line is the only place a reader learns why a command ran, and
+    # the two halves want different reactions: an item this branch edited is
+    # probably finished, while one it merely invalidated is a command that has
+    # stopped discriminating.
+    root = _repo(tmp_path)
+    report = already_passing(
+        root,
+        [_item(identifier="PL-K7QX"), _item(identifier="PL-A1B2")],
+        scoped_to={"PL-K7QX", "PL-A1B2"},
+        reading={"PL-A1B2"},
+        scope_base="origin/main",
+    )
+
+    assert report.scope == (
+        "2 item(s) in scope: 1 this branch changed and 1 whose `verify:` command "
+        "reads a file it changed against origin/main"
+    )
+
+
 # A blocked item's command, asked about only where a branch touched the item
 # (`PL-RC0M`). `PL-N092`'s command passed for a day on a tree where none of its
 # work had been done, because the file its `grep` negated had been deleted and
@@ -1590,4 +1710,329 @@ def test_a_self_audit_still_refuses_a_failing_command(tmp_path: Path) -> None:
 
     report = verify(root, _item(verify="false"), _config(), "HEAD~1", self_audit=True)
 
+    assert not report.passed
+
+
+# `PL-7TYC` - what counts as a *removed assertion*. The check asked
+# `"assert" in line`, which is true of a comment, a docstring, a release note,
+# an item's brief, a variable named `removed_assertions` and of the matcher
+# itself - so a correct close-out touching any of them was refused by an
+# integrity check that is supposed to be unarguable. Both directions are pinned
+# below, and the second group is the one that matters: a tightening of this
+# check fails silently, where the over-report at least announced itself.
+
+PROSE = (
+    "def test_a() -> None:\n"
+    '    """The band asserts a spread no wider than the literature supports."""\n'
+    "    # what these assert is the judgment, not the git reading behind it\n"
+    "    assert 1 == 1\n"
+)
+
+
+def test_prose_that_merely_mentions_an_assertion_is_not_reported(tmp_path: Path) -> None:
+    """A docstring and a comment carrying the word, reworded away.
+
+    The assertion itself is untouched across both commits, so it folds out and
+    what reaches the check is two lines of prose.
+    """
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX write the prose", "tests/test_thing.py", PROSE)
+    _work(root, "PL-K7QX reword it", "tests/test_thing.py", KEPT)
+
+    check = _check(
+        verify(root, _item(), _config(), "HEAD~1", self_audit=True), "no existing assertion removed"
+    )
+    assert check.passed
+    assert check.detail == "none"
+
+
+def test_the_matcher_itself_is_not_an_assertion(tmp_path: Path) -> None:
+    """`PL-7TYC`'s own line, which is how the defect was found.
+
+    `bin/docket verify --self PL-K82G` REJECTed the branch that gave this check
+    its first passing route, for the line of code that does the looking.
+    """
+    root = _repo(tmp_path)
+    matcher = (
+        "def collect(removed: list[str]) -> list[str]:\n"
+        '    dropped = [line.strip() for line in removed if "assert" in line]\n'
+        "    return dropped\n"
+    )
+    _work(root, "PL-K7QX the old matcher", "tests/test_thing.py", matcher)
+    _work(
+        root,
+        "PL-K7QX replace it",
+        "tests/test_thing.py",
+        "def collect(removed: list[str]) -> list[str]:\n    return []\n",
+    )
+
+    check = _check(
+        verify(root, _item(), _config(), "HEAD~1", self_audit=True), "no existing assertion removed"
+    )
+    assert check.passed
+
+
+def test_prose_removed_from_a_document_is_never_an_assertion(tmp_path: Path) -> None:
+    """Only a file Python executes can hold one.
+
+    The second line would be reported in a `.py` file - a reflow can start a
+    sentence with the word - and is prose here whatever its shape. This is the
+    larger half of the narrowing by count: every close-out edits its own item's
+    `.md` and every release edits `ROADMAP.md`.
+    """
+    root = _repo(tmp_path)
+    note = "The test asserts the band is drawn.\nassert-led wrap of a sentence.\n"
+    _work(root, "PL-K7QX write the note", "docs/notes.md", note)
+    _work(root, "PL-K7QX cut it", "docs/notes.md", "Gone.\n")
+
+    check = _check(
+        verify(root, _item(touches=("docs/notes.md",)), _config(), "HEAD~1", self_audit=True),
+        "no existing assertion removed",
+    )
+    assert check.passed
+
+
+def test_a_helper_definition_or_import_is_not_an_assertion(tmp_path: Path) -> None:
+    """Removing `def assert_ok` removes its call sites too, and those are caught."""
+    root = _repo(tmp_path)
+    helper = (
+        "from unittest import TestCase  # assertEqual lives here\n"
+        "\n"
+        "def assert_ok(value: int) -> None:\n"
+        "    pass\n"
+    )
+    _work(root, "PL-K7QX add the helper", "tests/test_thing.py", helper)
+    _work(root, "PL-K7QX drop the helper", "tests/test_thing.py", "PLACEHOLDER = 1\n")
+
+    check = _check(
+        verify(root, _item(), _config(), "HEAD~1", self_audit=True), "no existing assertion removed"
+    )
+    assert check.passed
+
+
+@pytest.mark.parametrize(
+    ("shape", "removed"),
+    [
+        ("bare", "    assert value == 1\n"),
+        ("message", '    assert value == 1, "the readout moved"\n'),
+        ("unittest", "    self.assertEqual(value, 1)\n"),
+        ("mock", "    handler.assert_called_once_with(value)\n"),
+        ("numpy", "    numpy.testing.assert_allclose(value, 1.0)\n"),
+        ("one-liner", "    if flaky: assert value == 1\n"),
+        ("wrapped", "    assert (\n        value == 1\n    )\n"),
+    ],
+)
+def test_a_genuinely_removed_assertion_is_still_reported(
+    tmp_path: Path, shape: str, removed: str
+) -> None:
+    """The direction that fails silently, so every shape the check ever caught is here.
+
+    `wrapped` is the one the item asked to be checked rather than assumed:
+    `assert` is a keyword and opens its statement, so a reflow across three
+    lines still puts it on the first, which is the line the deletion shows.
+    `one-liner` is the shape a naive `^\\s*assert` anchor would have given up.
+    """
+    root = _repo(tmp_path)
+    body = "def test_b(value: int, flaky: bool, handler: object, numpy: object) -> None:\n"
+    _work(root, f"PL-K7QX add the {shape} assertion", "tests/test_thing.py", KEPT + body + removed)
+    _work(
+        root,
+        f"PL-K7QX cut the {shape} assertion",
+        "tests/test_thing.py",
+        KEPT + body + "    pass\n",
+    )
+
+    check = _check(
+        verify(root, _item(), _config(), "HEAD~1", self_audit=True), "no existing assertion removed"
+    )
+    assert check.blocks and not check.advisory
+    assert not check.passed
+
+
+# `falsifies:` - the declared exemption to "no existing assertion removed"
+# (`PL-K82G`). The check had no passing route for an item whose own work makes
+# a rendered string false, so a correct close-out could only game the fold or
+# push through a red integrity check.
+
+FALSIFIES = "the roadmap gives that version"
+PINNED = "def test_a() -> None:\n    assert 'the roadmap gives that version' in status()\n"
+
+
+def _commission(root: Path, name: str, **fields: str) -> None:
+    """Rewrite an item in the store and commit it, so the *base* is what declares."""
+    (root / "docs" / "items" / name).write_text(_stored("PL-K7QX", "Do the thing", **fields))
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "commission PL-K7QX")
+
+
+def test_an_assertion_the_commission_declared_falsified_is_folded(tmp_path: Path) -> None:
+    """`PL-C6XD`'s own close-out: the string the assertion pins is what the item deletes.
+
+    No arrangement of the tests keeps it, so folding it is the only route this
+    check has to a verdict other than a `REJECT` that has to be argued past.
+    """
+    root = _repo(tmp_path)
+    (root / "tests" / "test_thing.py").write_text(PINNED)
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "base: the assertion that pins the string")
+    _commission(root, "PL-K7QX-do-the-thing.md", falsifies=FALSIFIES)
+    _work(root, "PL-K7QX drop the duplicated refusal", "tests/test_thing.py", KEPT)
+
+    report = verify(root, _item(falsifies=FALSIFIES), _config(), "HEAD~1")
+
+    check = _check(report, "no existing assertion removed")
+    assert check.passed
+    assert check.detail == "none, 1 declared falsified"
+    assert any("declared falsified, not counted" in line for line in check.lines)
+    assert report.passed
+
+
+def test_a_removal_the_declaration_does_not_name_is_still_refused(tmp_path: Path) -> None:
+    """The fold is scoped to the declared subject, not opened by the field's presence."""
+    root = _repo(tmp_path)
+    (root / "tests" / "test_thing.py").write_text(PINNED + "\ndef test_b():\n    assert 2 == 2\n")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "base: two assertions")
+    _commission(root, "PL-K7QX-do-the-thing.md", falsifies=FALSIFIES)
+    _work(root, "PL-K7QX drop both", "tests/test_thing.py", "def test_a():\n    pass\n")
+
+    report = verify(root, _item(falsifies=FALSIFIES), _config(), "HEAD~1")
+
+    check = _check(report, "no existing assertion removed")
+    assert check.blocks
+    assert check.detail == "1 line(s), 1 declared falsified"
+    assert not report.passed
+
+
+def test_a_declaration_the_branch_never_acted_on_is_reported(tmp_path: Path) -> None:
+    """A commission describing work the branch did not do is a finding, not silence."""
+    root = _repo(tmp_path)
+    _commission(root, "PL-K7QX-do-the-thing.md", falsifies=FALSIFIES)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(root, _item(falsifies=FALSIFIES), _config(), "HEAD~1")
+
+    note = _check(report, "the `falsifies:` declaration holds")
+    assert note.advisory and not note.blocks
+    assert "no assertion matching it was removed" in note.detail
+    assert report.passed
+
+
+def test_a_declaration_added_on_the_branch_folds_nothing(tmp_path: Path) -> None:
+    """The line the field rests on, tested in the mode that would defeat it.
+
+    `PL-K82G` argued the field was safe because `front_matter_check` refuses a
+    branch that edits its own item's front matter. That is true of a delegated
+    review and false of the self-audit the close-out runs, where the guard is
+    an advisory by design. Reading the declaration from the base is what holds
+    the property in both modes.
+    """
+    root = _repo(tmp_path)
+    (root / "tests" / "test_thing.py").write_text(PINNED)
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "base: the assertion that pins the string")
+    _work(root, "PL-K7QX delete it and say I meant to", "tests/test_thing.py", KEPT)
+
+    report = verify(root, _item(falsifies=FALSIFIES), _config(), "HEAD~1", self_audit=True)
+
+    check = _check(report, "no existing assertion removed")
+    assert check.blocks and not check.advisory
+    assert not report.passed
+    note = _check(report, "the `falsifies:` declaration holds")
+    assert "declared on this branch and not in" in note.detail
+
+
+def test_an_unreadable_commission_says_so_rather_than_folding_nothing_silently(
+    tmp_path: Path,
+) -> None:
+    """A partial read handed over as a complete one is the one thing the floor refuses."""
+    root = _repo(tmp_path)
+    _work(
+        root, "PL-K7QX delete the test's teeth", "tests/test_thing.py", "def test_a():\n    pass\n"
+    )
+
+    report = verify(root, _item(falsifies=FALSIFIES), _config(items_dir="nowhere"), "HEAD~1")
+
+    note = _check(report, "the `falsifies:` declaration holds")
+    assert "no item store at" in note.detail
+    assert not report.passed
+
+
+# The command check's two declared exemptions (`PL-L4KX`). `docket check`
+# accepts both states and `verify` refused both, so the close-out the skill
+# prescribes had no passing state at all.
+
+
+def test_dropped_close_out_is_not_a_missing_command(tmp_path: Path) -> None:
+    """A dropped item built nothing, so there is nothing for a command to prove."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX drop it",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(root, _item(status="dropped", verify=""), _config(), "HEAD~1", self_audit=True)
+
+    command = _check(report, "has a `verify:` command")
+    assert command.advisory and not command.blocks
+    assert "a dropped item built nothing" in command.detail
+    # The half a hard stop was throwing away: the other checks actually ran.
+    assert not report.stopped_early
+    assert _check(report, "no existing assertion removed").passed
+    assert _check(report, "the project's own checks pass").passed
+    assert report.passed
+
+
+def test_a_not_delegable_item_close_out_is_not_a_missing_command(tmp_path: Path) -> None:
+    """`docket check` accepts a recorded reason *instead of* a command, in those words."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX do it by hand",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(
+        root,
+        _item(verify="", not_delegable="proving it means cutting a release"),
+        _config(),
+        "HEAD~1",
+        self_audit=True,
+    )
+
+    command = _check(report, "has a `verify:` command")
+    assert command.advisory and not command.blocks
+    assert "proving it means cutting a release" in command.detail
+    assert not report.stopped_early
+    assert report.passed
+
+
+def test_a_done_item_with_no_command_and_no_reason_still_fails_hard(tmp_path: Path) -> None:
+    """The exemption reads the store; it is not a way to skip the test.
+
+    Neither state is free to reach for - a drop owes a `reason` and a `closed`
+    date, and a `not-delegable` line is what withholds the item from delegation
+    in the first place. An item carrying neither has genuinely skipped it.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX add a test",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+
+    report = verify(root, _item(status="done", verify=""), _config(), "HEAD~1", self_audit=True)
+
+    command = _check(report, "has a `verify:` command")
+    assert command.blocks and not command.advisory
+    assert report.stopped_early
     assert not report.passed

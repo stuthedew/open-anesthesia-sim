@@ -231,6 +231,11 @@ HOVER_INSTANT_RESOLUTION_S: Final = MAXIMUM_SIMULATION_STEP_S
 # chart's hover readout" derives why the qualifiers precede the number.
 _HOVER_MODELLED_MARKER: Final = "Modelled"
 
+# What separates the tokens of the hover's run-context line. One constant
+# rather than a literal per join, so a line assembled from three tokens or
+# from four is punctuated identically.
+_HOVER_CONTEXT_SEPARATOR: Final = " · "
+
 
 @dataclass(frozen=True, slots=True)
 class TraceStyle:
@@ -1023,7 +1028,9 @@ def wash_in_axis_ticks() -> tuple[tuple[float, str], ...]:
     )
 
 
-def format_trace_hover(run: RunFrame, quantity: RecordedQuantity, index: int) -> str:
+def format_trace_hover(
+    run: RunFrame, quantity: RecordedQuantity, index: int, run_count: int
+) -> str:
     """The three lines a hover over one drawn point of a compartment trace says.
 
     `docs/MODEL.md` § "The chart's hover readout: what the tooltip may show"
@@ -1039,6 +1046,8 @@ def format_trace_hover(run: RunFrame, quantity: RecordedQuantity, index: int) ->
         run: The run the point belongs to.
         quantity: The compartment the trace draws.
         index: Which drawn point, as a position in `run.times_s`.
+        run_count: How many runs are on the chart. The first line names the
+            run while more than one is drawn; `_hover_context` carries why.
 
     Returns:
         The readout, three lines joined by newlines.
@@ -1046,6 +1055,7 @@ def format_trace_hover(run: RunFrame, quantity: RecordedQuantity, index: int) ->
     Raises:
         KeyError: If `quantity` is not a compartment on this chart.
         IndexError: If `index` is outside the drawn points.
+        ValueError: If `run_count` is less than one.
     """
 
     style = trace_style(quantity)
@@ -1055,10 +1065,10 @@ def format_trace_hover(run: RunFrame, quantity: RecordedQuantity, index: int) ->
         f"{format_percent(fraction)}   {format_mac_multiple(fraction, Percent(run.mac_percent))}"
     )
 
-    return "\n".join((_hover_context(run, run.times_s[index]), what, value))
+    return "\n".join((_hover_context(run, run.times_s[index], run_count), what, value))
 
 
-def format_wash_in_hover(run: RunFrame, stretch: WashInStretch, index: int) -> str:
+def format_wash_in_hover(run: RunFrame, stretch: WashInStretch, index: int, run_count: int) -> str:
     """The three lines a hover over one drawn point of the wash-in trace says.
 
     The same form as `format_trace_hover`, in the ratio's own units: F_A/F_I
@@ -1069,31 +1079,74 @@ def format_wash_in_hover(run: RunFrame, stretch: WashInStretch, index: int) -> s
         run: The run the stretch belongs to.
         stretch: The stretch the point is on.
         index: Which drawn point, as a position in `stretch.times_s`.
+        run_count: How many runs are on the chart, as `format_trace_hover`
+            takes it and for the same reason.
 
     Returns:
         The readout, three lines joined by newlines.
 
     Raises:
         IndexError: If `index` is outside the stretch's points.
+        ValueError: If `run_count` is less than one.
     """
 
     return "\n".join(
         (
-            _hover_context(run, stretch.times_s[index]),
+            _hover_context(run, stretch.times_s[index], run_count),
             WASH_IN_HOVER_LABEL,
             format_wash_in_ratio(stretch.ratios[index]),
         )
     )
 
 
-def _hover_context(run: RunFrame, time_s: float) -> str:
-    """The first line of every hover: the modelled marker, the agent, the instant."""
+def _hover_context(run: RunFrame, time_s: float, run_count: int) -> str:
+    """The first line of every hover: the modelled marker, the agent, the run, the instant.
+
+    The run is named while more than one is drawn and omitted while one is
+    (project owner, 2026-09-17, ratified, over a fourth line of its own and
+    over leaving the curve's line width to carry it). `docs/MODEL.md` § "The
+    chart's hover readout" -> "The hover and the run it belongs to" is the
+    derivation; in short, this is the line that specification already calls
+    *run context*, and while two runs are compared the run is the only token
+    on it that tells them apart - `assemble_chart_frame` refuses a frame whose
+    runs differ on agent, so the agent is a constant across the runs here.
+
+    It is conditional for the reason the width channel is
+    (`run_trace_style`): a single run has nothing to be told apart from, and
+    a name on the only run drawn implies a comparison that is not on screen.
+    The condition is not a hidden mode - a second run brings a second legend
+    entry and a second readout panel with it.
+
+    Args:
+        run: The run the point belongs to.
+        time_s: The point's simulated time.
+        run_count: How many runs are on the chart.
+
+    Returns:
+        The run-context line: three tokens while one run is drawn, four while
+        more than one is.
+
+    Raises:
+        ValueError: If `run_count` is less than one. A hover is answered from
+            a chart that is drawing something, and a readout that named no
+            run while claiming to compare would be the failure this names the
+            run to prevent.
+    """
+
+    if run_count < 1:
+        raise ValueError(
+            f"a chart draws at least one run; a hover cannot be answered for {run_count}"
+        )
 
     instant_s = round(time_s / HOVER_INSTANT_RESOLUTION_S) * HOVER_INSTANT_RESOLUTION_S
+    tokens = [f"{_HOVER_MODELLED_MARKER} {run.agent_display_name.lower()}"]
 
-    return (
-        f"{_HOVER_MODELLED_MARKER} {run.agent_display_name.lower()} · {format_elapsed(instant_s)}"
-    )
+    if run_count > 1:
+        tokens.append(run.label)
+
+    tokens.append(format_elapsed(instant_s))
+
+    return _HOVER_CONTEXT_SEPARATOR.join(tokens)
 
 
 @dataclass(frozen=True, slots=True)
@@ -1177,7 +1230,7 @@ def nearest_trace_point(
                             quantity=quantity,
                             time_s=run.times_s[column],
                             value=drawn_percent,
-                            readout=format_trace_hover(run, quantity, column),
+                            readout=format_trace_hover(run, quantity, column, len(frame.runs)),
                         ),
                     )
 
@@ -1235,7 +1288,7 @@ def nearest_wash_in_point(
                             quantity=RecordedQuantity.WASH_IN_RATIO,
                             time_s=stretch.times_s[column],
                             value=stretch.ratios[column],
-                            readout=format_wash_in_hover(run, stretch, column),
+                            readout=format_wash_in_hover(run, stretch, column, len(frame.runs)),
                         ),
                     )
 

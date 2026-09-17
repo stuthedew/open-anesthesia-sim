@@ -1,9 +1,14 @@
 ---
 id: PL-C7XV
 title: docs/WORKING_NOTES.md's UI-structure thread says 'What was decided that day: the placement above' where the sentence above now carries two placements, so the 2026-09-16 v0.7.x move reads as a 2026-09-08 decision
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
 feature: interface-pass-narrative
+touches: docs/WORKING_NOTES.md
 added: 2026-09-16
+verify: python3 tools/doc_check.py check && ! grep -qF 'the placement above' docs/WORKING_NOTES.md
 ---
 
 **Problem.** docs/WORKING_NOTES.md's UI-structure thread says 'What was decided that day: the placement above' where the sentence above now carries two placements, so the 2026-09-16 v0.7.x move reads as a 2026-09-08 decision
@@ -35,3 +40,16 @@ the owner's own 2026-09-08 framing raises the bar to reopen it.
 
 **Done when** the thread names one placement per decision date, so that the
 2026-09-08 sentence claims only what was decided on 2026-09-08.
+
+**Why it matters.** `docs/WORKING_NOTES.md` is where a later session goes to find
+out what was decided and by whom, and this sentence now attributes a 2026-09-16
+move to a 2026-09-08 conversation with the project owner. Misattributed
+provenance is worse than none: `CLAUDE.md` distinguishes a decision the owner
+*specified* from one they *ratified* precisely because the two have different
+bars to reopen, and a reader cannot apply that rule to a decision whose date is
+wrong.
+
+**Done when** the thread names the 2026-09-08 decision and the 2026-09-16 move
+separately, each with its date, so "what was decided that day" resolves to one
+placement. The `verify:` command pins the ambiguous clause being gone rather than
+any particular replacement wording.

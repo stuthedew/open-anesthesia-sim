@@ -1,9 +1,14 @@
 ---
 id: PL-XD3C
 title: docket digest is O(unmerged refs) and refs accumulate without bound, so session start gets slower every month on a long-lived clone and never on a fresh container
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: session-cost, perf
 feature: session-start-cost
+touches: subprojects/docket/src/docket/vcs.py, docs/items
 added: 2026-09-16
+not-delegable: what is left is one measurement on the project owner's own clone - `bin/docket digest --profile` run there, compared against a container's `ref set` block - and no command in this checkout can take it. The instrument it needed is built and on `main`
 ---
 
 **Problem.** docket digest is O(unmerged refs) and refs accumulate without bound, so session start gets slower every month on a long-lived clone and never on a fresh container
@@ -158,3 +163,25 @@ is what the *next* edited id costs, not a formula for the total. The
 `merge-base` row is exact and unconditional: 3.0 per unmerged ref, because
 `_unlanded_refs` runs once each for `branches_in_flight`, `orphaned` and
 `cuts_in_flight`. Read the rows as slopes, and take totals from `--profile`.
+
+**Why it matters.** It is the only one of the three session-start items whose
+cost grows. `PL-0J9K` and `PL-MMVF` each cut a constant; this one asks whether
+the constant is being multiplied by something unbounded, and a squash-merged
+branch stays unmerged forever while `--prune` is deliberately refused. On a
+multi-year horizon that is the accumulation `CLAUDE.md` names as the shape that
+ends a project, and no container or CI run can ever reproduce it.
+
+**Triaged 2026-09-17, and what is left is one command on one machine.** The
+instrument is built and on `main`: `bin/docket digest --profile` reports calls
+by subcommand, wall time and the ref set walked, and the scaling laws were
+separated by experiment rather than by ratio. The item stays open for the half
+that needs the owner's clone:
+
+```
+cd <repo> && bin/docket digest --profile
+```
+
+Compare its `ref set` block with a container's *before* comparing any count -
+that is the controlled comparison whose absence invalidated this item's first
+two models. `PL-0J9K`'s re-measured `show` time on that clone is the same run
+and is carried here rather than there, so one command closes both obligations.

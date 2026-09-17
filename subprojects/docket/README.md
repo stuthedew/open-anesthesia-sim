@@ -41,7 +41,7 @@ docket digest --profile      # what the session-start digest asks git, and the r
 docket record                # write every pull request number the base is owed
 docket check                 # validate the store; exits non-zero on errors
 docket check --verify        # ...and replay every open item's `verify:` command
-docket check --verify --verify-base origin/main   # ...only the ones this branch changed
+docket check --verify --verify-base origin/main   # ...only the ones this branch could have changed
 ```
 
 ### Capture costs nothing
@@ -1191,6 +1191,18 @@ Two further fields govern whether the work may be handed to a cheaper model:
 holding the reason an otherwise-qualifying item is withheld. See *Delegation is
 derived, never granted* below.
 
+`falsifies` is read by `docket verify` alone, and is almost always absent. It
+holds enough of one assertion to name the single subject this item's work makes
+untrue — a substring rather than the whole line, because an exact line breaks on
+reformatting and on the commas a real assertion carries, and one subject rather
+than a list, because an item falsifying several unrelated assertions is doing
+several things. A fragment shorter than twelve characters is an error: `verify`
+folds every removed assertion containing it, so `assert` would fold the lot.
+Whether the fragment is long enough to name a subject is decidable; whether it
+names the *right* one is left to whoever reads the lines `verify` prints. Write
+it when the item is triaged, not while working it — a declaration only counts
+where the base already holds it. See *Verification is scoped, not just green*.
+
 An item at `ready` must carry one of them: the command that would prove it
 done, or a recorded reason why no command can. The gate sits at `ready` rather
 than at capture deliberately — demanding a command at the moment an idea occurs
@@ -1680,16 +1692,30 @@ its wall clock asking about a state its own commit could not have changed.
 Measured 2026-09-05 on four cores, `make check` went 60.0 s → 29.5 s. CI passes
 the flag and answers on the same events it always did (`PL-P3B6`).
 
-**`--verify-base REF` narrows the replay to the items this branch changed
-against `REF`**, which is the same argument one step on (`PL-SDHR`). A pull
-request cannot have changed whether some *other* item's work merged, any more
-than a pre-commit gate can, and the sweep was measured at 74.6 s of a 102-command
-run against 5.5 s scoped. So CI scopes on `pull_request` and sweeps on `push` to
-the default branch, where the answer is a fact about that branch. The scope is
-read from the diff — the item files the branch touched, not their declared
-`touches`, which is a claim made before the work. **A scoped run always says so**,
-on the cost line and even when the scope held nothing to run: a narrowed run
-reporting nothing must never read as a whole store with nothing to report.
+**`--verify-base REF` narrows the replay to the items this branch could have
+changed the answer for**, which is the same argument one step on (`PL-SDHR`). A
+pull request cannot have changed whether some *other* item's work merged, any
+more than a pre-commit gate can, and the sweep was measured at 74.6 s of a
+102-command run against 5.5 s scoped. So CI scopes on `pull_request` and sweeps
+on `push` to the default branch, where the answer is a fact about that branch.
+
+**That is two sets, and reading it as one was a defect** (`PL-XMNC`). The first
+is the items whose own file the branch edited, read from the diff rather than
+from their declared `touches`, which is a claim made before the work. The
+second is the open items whose `verify:` command *reads* a file the branch
+edited — the command a branch invalidates without ever opening its item, which
+every one of the six recorded breaks was, and which the first set replays
+never. A command is read clause by clause, split on `&&`, `||` and `;` outside
+quotes, and the program a clause runs is not a file it reads: `python3
+tools/doc_check.py check` names a path and discriminates on none, so counting
+it would drag the 54 open commands carrying that gate behind any edit to it.
+
+Where the reader cannot classify a token it widens rather than narrows, and it
+asks the filesystem nothing — a file the branch is *creating* matches, which
+`test -f CONTRIBUTING.md` needed. **A scoped run always says so**, on the cost
+line and even when the scope held nothing to run: a narrowed run reporting
+nothing must never read as a whole store with nothing to report. Where the two
+sets both contributed, the line says how many came from each.
 
 **It reports two findings rather than a verdict**, because a passing command is
 consistent with two states no exit status can separate:
@@ -1923,6 +1949,45 @@ refusing. The four **integrity** checks are untouched — no suppression added, 
 assertion removed, the item's own command passes, the project's own checks pass.
 A session may re-scope its own commission; it may not weaken what measures it,
 and it may not skip the test (`PL-69JZ`, `PL-B5YN`, `PL-4LT9`).
+
+What counts as a *removed assertion* is decided by shape rather than by the
+word: a line in a file Python executes, opening an `assert` statement or
+calling a name that begins `assert` — `assertEqual`, `assert_called_once_with`,
+`assert_allclose`. A comment, a docstring, a release note or an item's brief
+carrying the word is not one, and neither is the code that looks for
+assertions. The check still errs toward reporting where it cannot tell, which
+is the direction that is safe; what it no longer does is refuse a correct
+close-out for rewording its own item's brief (`PL-7TYC`).
+
+Two of the four take a **declared** exemption, which is what lets them stay
+absolute rather than a softening of them. Both were checks a correct close-out
+could trip with no passing route at all, leaving a session to game the fold or
+push through a red integrity check — and either sets the precedent the split
+exists to prevent.
+
+- **`falsifies:`** names enough of an assertion to identify the one subject
+  the item's work makes untrue. Not weakened — *falsified*: the string the
+  assertion pins is what the item was commissioned to delete, so no
+  arrangement of the tests keeps it. A removed assertion containing that
+  substring folds out of "no existing assertion removed" and is printed
+  beside it, so the removal stays on the page and reads as a commissioned act
+  rather than an unexplained one (`PL-K82G`).
+- **A `dropped` item, or one carrying `not-delegable:`**, has no `verify:`
+  command by construction — the first built nothing, and the second is what
+  `docket check` accepts *instead of* a command. The check names which applies
+  and the remaining checks still run, where a missing command used to stop the
+  audit dead. `docket check` and `docket verify` had disagreed about every
+  such item, so the close-out the `docket` skill prescribes had no passing
+  state (`PL-L4KX`).
+
+Neither is anything a session can grant itself. Both are read off the item as
+the **base** holds it — the commission — rather than off the branch, so a
+`falsifies:` line added beside the deletion it excuses folds nothing and is
+reported as the worker's own word for it. That matters most in `--self`, where
+`front_matter_check` is an advisory by design and so catches nothing; reading
+the base holds the property in both modes and needs no second guard. Where the
+base's copy cannot be read at all, the report says so rather than folding
+nothing silently.
 
 `--self` also adds one line when the audited commits name other items' ids.
 `item_commits` selects by id so a batch can be judged per item, and a commit

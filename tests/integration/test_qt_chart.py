@@ -439,7 +439,7 @@ def test_the_hover_reports_the_drawn_state_through_the_formatters(
 
     readout = chart.readout_at(time_s, run.percents(RecordedQuantity.VESSEL_RICH)[index])
 
-    assert readout == format_trace_hover(run, RecordedQuantity.VESSEL_RICH, index)
+    assert readout == format_trace_hover(run, RecordedQuantity.VESSEL_RICH, index, len(frame.runs))
     assert readout is not None
     assert readout.startswith("Modelled sevoflurane · ")
     assert readout.splitlines()[1] == "Vessel-rich"

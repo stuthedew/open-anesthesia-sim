@@ -1,9 +1,15 @@
 ---
 id: PL-RC86
 title: The session-start hook's three network round trips run serially and none is needed before the first turn, so the slow-link cost is their sum rather than their max
-status: untriaged
+priority: P3
+effort: S
+status: dropped
+classes: session-cost, infra
 feature: session-start-cost
+touches: .claude/hooks/docket-digest.sh, tests/unit/test_docket_digest_hook.py
 added: 2026-09-16
+closed: 2026-09-17
+reason: refuted by measurement before any work started: both network stages together are 2.28s of the owner's 20.01s session start, so overlapping them saves at most about 1s, while the 17.64s is `bin/docket digest`, which touches no network at all. The hook's silent-failure simplicity is worth more than the saving
 ---
 
 **Problem.** The session-start hook's three network round trips run serially and none is needed before the first turn, so the slow-link cost is their sum rather than their max
@@ -61,3 +67,13 @@ simplicity is worth keeping buys a saving that is now measured and small.
 This is `.claude/rules/expert-review.md`'s rule arriving the expensive way -
 the hypothesis carried a plausible mechanism and no number, and the number was
 one command away.
+
+**Why it matters.** Not that the item was wrong, but that it was refuted by one
+command that could have been run before it was filed. It is the worked example
+of `.claude/rules/expert-review.md`'s rule arriving the expensive way: the
+premise carried a plausible mechanism and no number, and the number was already
+obtainable.
+
+**Dropped at triage, 2026-09-17**, on the brief's own instruction ("this one
+should close at triage"). The measurement table above is the record; `PL-MMVF`
+and `PL-0J9K` are where the time actually was, and both have landed.

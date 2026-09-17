@@ -1675,7 +1675,7 @@ future run should expect the same pressure and say how it handled it.
 **Scoped 2026-09-16** (project owner, on `PL-NMTF`). `ROADMAP.md`
 planned-milestone item 34 - the Blender-style area/workspace system - was placed
 on the timeline and split across two releases: **v0.6.0 "the layout is the
-reader's"** (Areas, the Editor contract, the Editor registry, Workspaces,
+reader's"** (Areas, the View contract, the View registry, Workspaces,
 persistence, the unconditional display region and every layout operation) and
 **v0.7.0 "the second screen"** (break-out of an Area into its own top-level
 window). The schematic moved to v0.8.0 and multi-substance to v0.9.0.
@@ -1690,7 +1690,7 @@ gate" -> "The cadence" carries why this scoping froze no gate; and
 33 - **runs after item 34 rather than before it**, and its timeline row moved
 from between MVP and Gate 2 to after v0.7.0, renumbering `v0.5.x` to `v0.7.x`
 as a patch track takes the number of the release it follows. The reason: item 34
-and break-out introduce an area header (the *Editor's* own, per the provenance
+and break-out introduce an area header (the *View's* own, per the provenance
 read), a workspace tab strip, a live splitter handle and a drag affordance, none
 of which exists to be styled today, so a pass run first would be partly redone.
 What that costs is a styled interface two releases later, and `PL-BNYF`'s

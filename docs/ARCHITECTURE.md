@@ -776,7 +776,10 @@ entry in the same commit, and the last took the allowances with it.
 one that reads the network. `.github/workflows/quality.yml` runs the whole-store
 `verify:` replay only on push to `main` — `PL-SDHR`'s decision, because a pull
 request cannot have changed whether some *other* item's work merged, and
-replaying the store on every branch costs more than it buys. The consequence is
+replaying the store on every branch costs more than it buys. A pull request
+*can* stop another item's command discriminating, by editing a file that
+command reads, so the scoped replay covers those items too and the sweep is
+what is left over rather than what catches them (`PL-XMNC`). The consequence is
 that when that replay fails it fails on a run no pull request shows, and `main`
 was red across three consecutive merges with every session believing the tree
 was clean (`PL-0ZGK`). So the loop is closed from the reading end rather than by

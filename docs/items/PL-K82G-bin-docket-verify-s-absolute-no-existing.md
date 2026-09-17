@@ -3,11 +3,14 @@ id: PL-K82G
 title: bin/docket verify's absolute 'no existing assertion removed' check has no passing route for an item whose own work makes a rendered string false, so a correct close-out REJECTs
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: delegation
+milestone: v0.4.27
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-17
+closed: 2026-09-17
+pr: 655
 verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'falsifies' subprojects/docket/src/docket/model.py
 ---
 
@@ -116,3 +119,34 @@ remedy, an exemption rather than a declaration. Work them together so one
 reading of the gate settles both; do not fold them into one item, because
 declaring a falsified assertion and exempting an absent command are different
 edits to different checks.
+
+**Worked 2026-09-17**, with `PL-L4KX`, as this item asked. The field is built as
+described and `PL-C6XD`'s close-out would now reach `ACCEPT` with the removal
+still printed.
+
+**One correction to the case above, because a later session will read it as
+precedent.** The paragraph answering the obvious objection - that a worker could
+declare whatever it wanted to delete - names `front_matter_check` as the guard
+that catches a `falsifies:` line added on the branch. That is true of a
+*delegated* review and false of the self-audit this item was written for: in
+`--self` the front-matter guard is `advisory=self_audit`, because the close-out
+sets `status: done` in the same commit as the work, so it prints `NOTE` and
+refuses nothing. Built to the letter, the field would have been a self-grant
+with no guard at all in the one mode that fires routinely.
+
+So the declaration is read from the **base's** copy of the item rather than from
+the working tree. That holds the property the paragraph wanted - the declaration
+is the reviewer's text, written before the work - in both modes, and needs no
+second guard: a line added on the branch changes what a *later* branch is
+measured against and nothing about the branch that writes it. A branch-only
+declaration folds nothing and is reported in those words.
+
+Three shapes are pinned as the brief asked, plus two the base-reading adds: a
+declaration added on the branch folds nothing (in `--self`, the mode that would
+have defeated it), and an unreadable commission says so rather than folding
+nothing silently.
+
+The cost this buys is real and is filed rather than hidden: a session that
+discovers mid-work that its work falsifies an assertion has no route to a clean
+`ACCEPT` within the session, because it cannot put the declaration on the base.
+`PL-TKFD` carries it.
