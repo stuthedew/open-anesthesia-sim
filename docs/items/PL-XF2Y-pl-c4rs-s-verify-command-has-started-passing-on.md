@@ -1,9 +1,15 @@
 ---
 id: PL-XF2Y
 title: PL-C4RS's verify: command has started passing on main, the third instance of a non-discriminating sentinel redding main and the second in one day, so PL-879R's decision is now the thing holding main red
-status: untriaged
+status: dropped
 feature: sentinel-verify-commands
 added: 2026-09-16
+closed: 2026-09-17
+priority: P2
+effort: S
+classes: defect, infra
+touches: docs/items
+reason: Both halves are answered. PL-879R was decided and dropped in #650 on 2026-09-17 - a shape advisory would have printed 31 correct ids every run - and its goal is carried by PL-XMNC, which widens the pull-request replay to the items whose verify: command reads a file the branch changed. PL-C4RS's sentinel was re-pointed by #645. Nothing in this item is outstanding that PL-XMNC does not carry.
 ---
 
 **Problem.** PL-C4RS's verify: command has started passing on main, the third instance of a non-discriminating sentinel redding main and the second in one day, so PL-879R's decision is now the thing holding main red
