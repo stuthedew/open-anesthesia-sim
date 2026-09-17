@@ -38,3 +38,42 @@ owner before building; do not infer it.
 under the answer to that question; a test constructs a reported cluster and
 asserts the ordering against both a `P0` and a `P1`; and the rank is visible in
 `docket next`'s stated reason, so a session can see why it was offered.
+
+**Decision reaffirmed and widened (project owner, 2026-09-17).** Asked whether
+`safety`- and `science`-classed `P1` should be exempt, the answer was no: a
+generator ranks above **everything but `P0`**. The session's recommendation to
+carve out the clinical bands is refused and must not be re-proposed without a
+new argument. The rule is now resident in `CLAUDE.md`.
+
+**The definition changed with it, and it is not what `generator_check.py`
+measures.** The owner's test is *"the root cause of more than 2 PLs"* - three
+or more downstream items traced to one mechanism. `generator_check.py` measures
+something else: a ratio over a `touches` path, `r >= 1.0`, gated behind
+`MIN_CLOSED = 8` closures. The two disagree in the direction that matters. On
+2026-09-17 the ratio test reported **no** generators while `PL-6ZQY` had
+already named **six** clusters under one root cause, `PL-BHVM` among them at
+nineteen items. A test that can only fire after eight closures reports the weed
+once it has seeded, which is the failure the owner's metaphor names.
+
+**Why the citation count cannot be the test either.** Items cited by more than
+two other open items number 33 on this tree. Citation is not causation - an
+item is cited for context, for provenance, for a stale line reference - and
+promoting 33 items above `P1` would mean nothing. This is the judgment half
+`CLAUDE.md` refuses to script.
+
+**So record the fact rather than infer it**, which is `PL-6ZQY`'s own remedy
+turned on this problem. Proposed and not yet built:
+
+1. A `root-cause-of:` front-matter field naming three or more item ids. A
+   session that identifies a generator writes it; nothing guesses it.
+2. `docket check` validates every id resolves, and that the field carries at
+   least three.
+3. `docket next` ranks any item carrying it above every band but `P0`, and says
+   so in its stated reason.
+4. `generator_check.py` moves from verdict to **candidate surfacing** - it
+   prints clusters worth a session's judgment (shared `feature`, citation
+   density, the ratio it already computes) without claiming any is a generator.
+   Its `MIN_CLOSED = 8` gate is wrong for the new definition and comes out.
+
+**Done when** all four hold, and `PL-BHVM` carries a `root-cause-of:` listing
+the items it explains, since it is the worked example the rule was written for.
