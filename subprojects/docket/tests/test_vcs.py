@@ -12,6 +12,7 @@ from pathlib import Path
 
 from docket.checks import Report
 from docket.vcs import (
+    _PATHSPEC_BYTES,
     REWRITTEN,
     BaseRelease,
     Branch,
@@ -24,6 +25,8 @@ from docket.vcs import (
     RewriteReport,
     StrandedItem,
     StrandedReport,
+    _pathspec_chunks,
+    _superseded,
     behind_remote,
     branch_state,
     branches_in_flight,
@@ -782,6 +785,176 @@ def test_an_item_file_already_on_the_base_is_not_reported_as_edited_on_a_branch(
 
     assert report.editing == ()
     assert report.branches == ()
+
+
+def _numstat_calls(log: list[list[str]]) -> list[list[str]]:
+    """The tip comparisons a run made, each as the paths it named.
+
+    `_superseded` is the only caller spelling `--numstat`, so this is exactly
+    the question `PL-DMDF` is about: how many times it was put, and about what.
+    """
+    return [
+        args[args.index("--") + 1 :] for args in log if args[0] == "diff" and "--numstat" in args
+    ]
+
+
+def test_superseded_is_asked_once_for_the_whole_outstanding_set() -> None:
+    """One `git diff` per ref, not one per item file (`PL-DMDF`).
+
+    `_superseded` takes `paths` and hands them to git as a single pathspec, and
+    two of its three callers always did. The third called it from inside a dict
+    comprehension with a one-element tuple, so a branch that edited forty item
+    files - an ordinary triage pass - cost forty processes to answer one
+    question about one ref.
+
+    It is the session-start hook that pays this, on every machine, before the
+    first turn. Measured on this container at 19 unmerged refs carrying 111
+    item-file edits: `digest` asked git 348 times and spawned 179 processes
+    before the hoist, 285 and 118 after, with `diff` alone going 155 asked and
+    115 run to 92 and 54. The digest's output is byte-identical either way,
+    which is the whole point - nothing about the answer changes, only how many
+    times git is asked for it.
+
+    What this pins is the call shape rather than the saving, because the saving
+    is a property of the store and the call shape is a property of the code.
+    """
+    files = {
+        "PL-3JN2": "docs/items/PL-3JN2-first.md",
+        "PL-7QW5": "docs/items/PL-7QW5-second.md",
+        "PL-9KD4": "docs/items/PL-9KD4-third.md",
+    }
+    calls: list[list[str]] = []
+    report = branches_in_flight(
+        ROOT,
+        runner=_runner(
+            [HARNESS],
+            commits={
+                HARNESS: [
+                    ("2026-09-03", f"{identifier}: triage it", f"c{position}", path)
+                    for position, (identifier, path) in enumerate(files.items())
+                ]
+            },
+            log=calls,
+        ),
+    )
+
+    assert [edit.item_id for edit in report.editing] == sorted(files)
+    assert _numstat_calls(calls) == [list(files.values())]
+
+
+def test_two_refs_are_asked_separately_and_each_about_only_its_own_paths() -> None:
+    """The hoist groups by ref, because the question is per ref and not per store.
+
+    `_superseded` compares one ref's tip against the base's, so a pathspec
+    mixing two refs' files would ask the wrong question of half of them. One
+    call per ref is the floor this can reach, and the guard against reaching
+    for a lower one.
+    """
+    other = "origin/claude/second-branch-qqqq11"
+    calls: list[list[str]] = []
+    branches_in_flight(
+        ROOT,
+        runner=_runner(
+            [HARNESS, other],
+            commits={
+                HARNESS: [
+                    ("2026-09-03", "PL-3JN2: triage it", "c1", "docs/items/PL-3JN2-first.md")
+                ],
+                other: [
+                    ("2026-09-03", "PL-7QW5: triage it", "c2", "docs/items/PL-7QW5-second.md"),
+                    ("2026-09-03", "PL-9KD4: triage it", "c3", "docs/items/PL-9KD4-third.md"),
+                ],
+            },
+            log=calls,
+        ),
+    )
+
+    assert sorted(_numstat_calls(calls)) == [
+        ["docs/items/PL-3JN2-first.md"],
+        ["docs/items/PL-7QW5-second.md", "docs/items/PL-9KD4-third.md"],
+    ]
+
+
+def test_one_call_still_answers_each_path_on_its_own_evidence() -> None:
+    """Batching the question must not batch the answer.
+
+    Three item files on one ref, with three different verdicts in one
+    `--numstat`: one whose tips agree (superseded on the branch), one the base
+    holds a superset of (superseded on the base, the expensive shape
+    `PL-XLQ5` records), and one carrying content the base's tip does not have.
+    Only the third is work the base is missing, so only the third keeps its
+    mark.
+    """
+    report = _report(
+        [HARNESS],
+        commits={
+            HARNESS: [
+                ("2026-09-03", "PL-3JN2: triage it", "c1", "docs/items/PL-3JN2-first.md"),
+                ("2026-09-03", "PL-7QW5: triage it", "c2", "docs/items/PL-7QW5-second.md"),
+                ("2026-09-03", "PL-9KD4: triage it", "c3", "docs/items/PL-9KD4-third.md"),
+            ]
+        },
+        tips={
+            HARNESS: {
+                # PL-3JN2 is absent, which is how git reports two tips that agree.
+                "docs/items/PL-7QW5-second.md": ("0", "4"),
+                "docs/items/PL-9KD4-third.md": ("7", "0"),
+            }
+        },
+    )
+
+    assert [edit.item_id for edit in report.editing] == ["PL-9KD4"]
+
+
+def test_a_pathspec_too_long_for_one_command_line_is_split_rather_than_sent() -> None:
+    """The bound the hoist needs, and it is a safety bound rather than a speed one.
+
+    Asking about a whole ref's paths at once puts them all on one command line.
+    An argv over the platform's `ARG_MAX` does not fail loudly: `subprocess`
+    raises, `_run_git` answers the empty string, and a `--numstat` that names
+    no paths reads as "the tips agree about every one of them" - so every
+    in-flight mark the ref carries would be dropped, which is the direction
+    this module must never fail in. Splitting on a byte budget removes the
+    failure mode rather than making it rarer.
+
+    The budget holds about a thousand queue paths, so this is reachable only by
+    a branch far larger than any this store has seen; the test fabricates one.
+    """
+    paths = tuple(
+        f"docs/items/PL-{index:04d}-a-fabricated-item-file-name.md" for index in range(4000)
+    )
+    chunks = list(_pathspec_chunks(paths))
+
+    assert len(chunks) > 1
+    assert sum(len(chunk) for chunk in chunks) == len(paths)
+    assert [path for chunk in chunks for path in chunk] == list(paths)
+    for chunk in chunks:
+        assert sum(len(path) + 1 for path in chunk) <= _PATHSPEC_BYTES
+
+
+def test_a_split_pathspec_answers_every_path_it_was_given() -> None:
+    """Splitting changes how many times git is asked, never what it is told.
+
+    Each chunk's absences are read against that chunk alone, because "git did
+    not name this path" means "the tips agree" only about paths that call
+    actually asked for. Read against the union it would be a silent false
+    positive for every path answered in some other chunk.
+    """
+    paths = tuple(
+        f"docs/items/PL-{index:04d}-a-fabricated-item-file-name.md" for index in range(4000)
+    )
+    agreed = {paths[0], paths[2500], paths[-1]}
+    asked: list[tuple[str, ...]] = []
+
+    def run(args: list[str], root: Path) -> str:
+        chunk = tuple(args[args.index("--") + 1 :])
+        asked.append(chunk)
+        return "\n".join(f"3\t1\t{path}" for path in chunk if path not in agreed)
+
+    superseded = _superseded(HARNESS, BASE, paths, ROOT, run)
+
+    assert len(asked) > 1
+    assert superseded == agreed
 
 
 def test_a_closed_item_is_not_reported_in_flight() -> None:
@@ -3415,8 +3588,8 @@ def test_a_branch_whose_changes_the_base_already_holds_is_not_partly_merged() ->
     report = _orphaned(
         adds={
             PARTLY: [
-                ("r1", "docs/items/PL-AAAA-one.md"),
-                ("r2", "docs/items/PL-BBBB-two.md"),
+                ("r1", "docs/items/PL-3JN2-one.md"),
+                ("r2", "docs/items/PL-7QW5-two.md"),
                 ("w1", "docs/items/PL-7PLY-the-real-work.md"),
                 ("w2", "docs/WORKING_NOTES.md"),
             ]
@@ -3428,8 +3601,8 @@ def test_a_branch_whose_changes_the_base_already_holds_is_not_partly_merged() ->
                 (
                     "PL-7PLY triage, and record the numbers the base also recorded",
                     (
-                        "docs/items/PL-AAAA-one.md",
-                        "docs/items/PL-BBBB-two.md",
+                        "docs/items/PL-3JN2-one.md",
+                        "docs/items/PL-7QW5-two.md",
                         "docs/items/PL-7PLY-the-real-work.md",
                     ),
                 ),

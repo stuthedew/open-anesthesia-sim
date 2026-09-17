@@ -3,11 +3,12 @@ id: PL-DMDF
 title: docket digest asks one git diff per item file because _superseded is called with a one-element tuple inside a loop, where the function already takes the whole set
 priority: P2
 effort: S
-status: ready
+status: done
 classes: perf, defect
 feature: session-start-cost
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests
 added: 2026-09-16
+closed: 2026-09-17
 verify: uv run pytest -q subprojects/docket/tests/test_vcs.py && grep -q 'def test_superseded_is_asked_once_for_the_whole_outstanding_set' subprojects/docket/tests/test_vcs.py
 ---
 
@@ -94,3 +95,78 @@ It also compounds with the ref count rather than merely adding to it. `diff` run
 at roughly 4.0 per unmerged ref *plus* 0.95 per item file a ref introduces, so
 the per-file term grows as branches accumulate item edits - the normal state of
 this store, where a capture or a triage pass edits item files and nothing else.
+
+---
+
+**Done, 2026-09-17.** `branches_in_flight` collects the candidate `(id, ref,
+path)` marks in one pass over `walk.edited`, groups their paths by ref, and
+asks `_superseded` once per ref. Nothing else about the read changed: the two
+cheap filters are applied before the grouping, `walk.edited`'s order is kept so
+the report is assembled in the order the walk found the ids, and each path is
+still judged on its own row of the answer.
+
+**Measured on this container, against a ref set that did not move between the
+two runs** - the defect `PL-XD3C` records, where a 5x ratio was attributed to
+three different scaling laws because the two sides were counted hours apart.
+Both runs are `bin/docket digest --profile` on the same checkout, one with
+`vcs.py` from `HEAD` and one with the change, at 25 refs, 6 merged, 19
+unmerged, carrying 30 commits and 111 item-file edits:
+
+| | before | after |
+| --- | --- | --- |
+| `diff` asked | 155 | **92** |
+| `diff` run | 115 | **54** |
+| git calls asked | 348 | **285** |
+| git processes spawned | 179 | **118** |
+| seconds in git | 0.93 | **0.69** |
+
+`bin/docket digest`'s output is byte-identical between the two, diffed rather
+than eyeballed.
+
+**The saving is bigger where the store is, and this container is the wrong
+place to read it from.** `diff` runs at ~4.0 per unmerged ref plus ~0.95 per
+item file a ref introduces, and only the second term is what the hoist
+removes - so a container carrying 111 item edits sees 61 fewer processes where
+the fabricated 30-ref, 390-edit store predicted 445. What the *tests* pin is
+the call shape rather than the saving, because the shape is a property of the
+code and the saving is a property of the ref set.
+
+**The pathspec-length question the brief left open is decided: split, and split
+on bytes.** Not because the command line would otherwise be too long - it would
+not, at ~60 bytes a path against the 2,097,152 `getconf ARG_MAX` reports here -
+but because of what happens if it ever were. `subprocess` raises on an
+over-long argv, `_run_git` turns that into the empty string, and a `--numstat`
+naming no paths is read as "the tips agree about every one of them", so every
+in-flight mark the ref carries would be dropped silently. That is the direction
+`_superseded`'s own docstring says it must never fail in, and the hoist is what
+would make one failure cost a whole ref rather than one path. `_pathspec_chunks`
+bounds it at 64 KiB - about a thousand queue paths, so no branch in this store's
+history reaches a second chunk - and each chunk's absences are read against that
+chunk alone, since "git did not name this path" means "the tips agree" only
+about paths that call actually asked for.
+
+The alternative the brief named - dropping the pathspec and filtering git's
+whole-tree output in Python - was refused for cost rather than contract. The
+inference survives it (a path absent from an unfiltered `--numstat` has
+identical content on both tips, exactly as before), but it makes every call
+parse the branch's entire diff to answer a question about its item files, which
+on a branch carrying a Qt port is thousands of rows for a handful of answers.
+
+**Five tests, each shown to fail against the code it pins.** Reverting the
+hoist alone fails `test_superseded_is_asked_once_for_the_whole_outstanding_set`
+and `test_two_refs_are_asked_separately_and_each_about_only_its_own_paths` and
+nothing else; raising `_PATHSPEC_BYTES` by 1024x fails the two splitting tests;
+reading a chunk's answer against the whole set rather than against the chunk
+fails `test_a_split_pathspec_answers_every_path_it_was_given`.
+
+**What this did not fix, and it is now filed.** The empty-output reading above
+is only *newly dangerous* here; it was already wrong. `_superseded`'s docstring
+claims all three of its silences leave a path outstanding, and two of them do
+the opposite. `PL-Q9Z1` carries it, with the two routes to a fix and why
+neither is a fix-now.
+
+**The re-measured `diff` count on the project owner's clone is still owed**, and
+it is the same single command `PL-XD3C` (digest is O(unmerged refs)) already
+owes - `bin/docket digest --profile` run there, compared against a container's
+`ref set` block before any count is compared. Held by that item alone rather
+than by two.
