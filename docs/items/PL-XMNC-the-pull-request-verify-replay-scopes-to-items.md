@@ -1,9 +1,14 @@
 ---
 id: PL-XMNC
 title: The pull-request verify replay scopes to items whose item file the branch edited, so a branch that invalidates some other item's verify: command by editing the file that command reads replays nothing, and the break is reported only by the whole-store sweep after the merge
-status: untriaged
+priority: P2
+effort: L
+status: ready
+classes: defect, infra
 feature: verify-invalidation
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-17
+verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_the_replay_scope_reaches_an_item_whose_command_reads_a_changed_file' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** The pull-request verify replay scopes to items whose item file the branch edited, so a branch that invalidates some other item's verify: command by editing the file that command reads replays nothing, and the break is reported only by the whole-store sweep after the merge
@@ -78,3 +83,23 @@ yet.
 reads replays that command and reports it if it now passes, with the scope
 widening and its clause-splitting covered by tests, and with `docket check`'s
 cost line saying what the widened scope was.
+
+**Why it matters.** A `verify:` command that has stopped discriminating is a gate
+reporting success over a guarantee that is void - the first of `CLAUDE.md`'s
+three compounding-friction tests - and it sits in the check every merge to `main`
+runs. Today it is reported only by the whole-store sweep *after* the merge, so
+`main` goes red on work no open pull request can see, which happened three times
+before 2026-09-17 and twice in one day. The pull request that breaks it is the
+one place the break is cheap to fix, and it is the one place nothing looks.
+
+It also carries `PL-879R`'s goal, which was dropped on a count rather than
+abandoned: report the break before it has started passing. Six of six recorded
+instances are caught here against four of six for the shape check that was
+refused, at a measured worst case of ten extra replays.
+
+**Done when** a pull request that edits a file an open item's `verify:` command
+reads replays that command and reports it if it now passes; the clause-splitting
+that keeps the health half (`tools/doc_check.py` appears in 54 of 168 commands)
+out of the scope is covered by tests; an unclassifiable path widens the scope or
+is reported rather than silently narrowing it; and `docket check`'s cost line
+says what the widened scope was.

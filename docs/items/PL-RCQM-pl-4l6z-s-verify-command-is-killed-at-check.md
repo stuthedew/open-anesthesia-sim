@@ -1,8 +1,14 @@
 ---
 id: PL-RCQM
 title: "PL-4L6Z's verify: command is killed at check --verify's 120s limit, so the sweep claims nothing about it"
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: verify-command-health
+touches: docs/items
 added: 2026-09-16
+verify: bin/docket check && ! grep -q '^verify: uv run pytest tests/reference/ &&' docs/items/PL-4L6Z-*.md
 ---
 
 **Problem.** `bin/docket check --verify` runs every open item's `verify:`
@@ -67,3 +73,20 @@ proves it.
 is on another session's branch. `PL-0HPV` (`make check` omits the verify replay)
 is why no local run sees either. `PL-FSH9` (no workflow sets `timeout-minutes`)
 is the other half of a hung command. `PL-SDHR` measured the replay's cost.
+
+**Why it matters.** One item in the store has a command the sweep can never
+evaluate, and it is therefore the one command that cannot be shown to
+discriminate: `bin/docket verify` would `ACCEPT` a branch that did none of
+`PL-4L6Z`'s work and nothing would say so. That is the failure the `already
+passes` error exists to catch, reached from the other direction - by never
+running. Every whole-store sweep also spends the full 120s on it and learns
+nothing, and the per-command budget has no headroom left: the slowest command
+that did finish was 97.2s.
+
+**Done when** `bin/docket check --verify` returns a verdict for `PL-4L6Z` inside
+the per-command limit - by narrowing its command to the one reference test the
+item adds, paired with a `grep` for that test, which is the shape
+`.claude/skills/docket/SKILL.md`'s table prescribes for a single-behaviour item -
+or `PL-4L6Z` records `not-delegable:` and carries no command. The first looks
+right, and the test it names does not exist yet, so whoever writes it decides
+what proves it.

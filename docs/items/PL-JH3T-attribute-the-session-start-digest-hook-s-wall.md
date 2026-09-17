@@ -1,9 +1,15 @@
 ---
 id: PL-JH3T
 title: Attribute the session-start digest hook's wall-clock cost to a stage: the only number on record is 20.7s median and the hook measures 3.0s in a session container
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: session-cost
 feature: session-start-cost
+touches: docs/items
 added: 2026-09-16
+closed: 2026-09-17
+not-delegable: the deliverable was a measurement taken on the project owner's own machine, which is the only place the 20.7s reproduces; no command in this checkout can re-run it
 ---
 
 **Problem.** Attribute the session-start digest hook's wall-clock cost to a stage: the only number on record is 20.7s median and the hook measures 3.0s in a session container
@@ -92,3 +98,16 @@ triage.
 Two figures this item carried and got wrong are retracted above: ~92 ms per
 spawn, and the network hypothesis. Both came from dividing a wall time by a
 count instead of measuring the parts.
+
+**Why it matters.** The hook runs before every session's first turn, and the
+only number on record was a `/doctor` median that did not reproduce anywhere a
+session could look. An unattributed cost cannot be fixed or accepted - it can
+only be guessed at, which is what the two refuted hypotheses in this brief were.
+
+**Closed at triage, 2026-09-17**, on the brief's own instruction ("This item's
+question is answered and it should close at triage"). The attribution is
+recorded above: `bin/docket digest` is 17.64s of 20.01s, 88%, and the driver is
+git call count rather than per-call cost or the network. Its three successors
+carry what follows - `PL-XD3C` (digest is O(unmerged refs)), `PL-0J9K` (batch
+the blob reads) and `PL-MMVF` (memoize the runner), the last two now closed with
+their work on `main`.

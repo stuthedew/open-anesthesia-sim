@@ -1,9 +1,14 @@
 ---
 id: PL-H4N8
 title: ROADMAP planned-milestone item 28 specifies agent cost 'from the exhausted-agent amount', but cost is what left the bottle, which is the delivered amount - exhausted understates it mid-run by exactly what is still stored
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: science, docs
 feature: liquid-agent-consumption
+touches: ROADMAP.md
 added: 2026-09-16
+verify: python3 tools/doc_check.py check && grep -qF 'from the delivered-agent amount' ROADMAP.md
 ---
 
 **Problem.** The exhausted line invites reading as 'wasted', but this model has no metabolism so nearly all stored agent becomes exhausted by end of case - the figure that means cost is delivered
@@ -65,3 +70,19 @@ Workbook's Appendix states the program's own cost formula at printed p. 174:
 and `Feff = FGF (1+Del)`. Gas Man bills delivered, not exhausted. Item 28's
 sentence therefore disagrees with both the accounting identity and the
 simulator this project takes as its lineage.
+
+**Why it matters.** `ROADMAP.md` planned-milestone item 28 is the specification a
+later session will build the cost readout from, and it names the wrong quantity.
+A cost built on `exhausted_agent_l` reads low for most of a case and lowest
+during wash-in - the phase the low-flow lesson is about - because by the
+accounting identity it understates delivered by exactly what is still stored.
+That is a plausible-looking number that is wrong in a teaching display, which is
+the failure `CLAUDE.md`'s safety-critical standard puts above tidiness. It is
+also cheap to fix now and expensive later: once the readout exists, the wrong
+basis is in code, in a test and on a screen.
+
+**Done when** item 28's sentence names the delivered-agent amount rather than the
+exhausted one; the gap between the two is measured at 15, 30 and 60 minutes for a
+reference-adult sevoflurane case and recorded here, so the item carries what the
+wrong basis would have cost; and the exhausted/stored split, if it is displayed
+at all, is labelled as where the agent is now rather than as what it cost.

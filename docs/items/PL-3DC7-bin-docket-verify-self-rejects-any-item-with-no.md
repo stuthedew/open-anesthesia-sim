@@ -1,8 +1,14 @@
 ---
 id: PL-3DC7
 title: bin/docket verify --self REJECTs any item with no verify: command and returns before running a single integrity check, so the close-out audit the docket skill says to re-run until ACCEPT is unreachable for the 118 dropped items and for every not-delegable: one
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
+feature: verify-close-out
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-17
+verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_dropped_item_naming_no_command_still_runs_the_integrity_checks' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** bin/docket verify --self REJECTs any item with no verify: command and returns before running a single integrity check, so the close-out audit the docket skill says to re-run until ACCEPT is unreachable for the 118 dropped items and for every not-delegable: one
@@ -51,3 +57,25 @@ was written for.
 **Done when** `bin/docket verify --self` on a dropped item runs the four
 integrity checks and can reach `ACCEPT`, an item with neither a command nor an
 exemption still fails, and both are covered by tests.
+
+**Why it matters.** The close-out audit is the last gate before an item is
+declared finished, and `.claude/skills/docket/SKILL.md` step 5 tells a session to
+re-run it until it says `ACCEPT`. For the 118 dropped items and every
+`not-delegable:` one, `ACCEPT` is unreachable - so the instruction cannot be
+followed and the session must either skip the step or read a `REJECT` that
+measured nothing. That is `PL-69JZ`'s "defect absorbed into policy", arriving in
+the command whose docstring cites it, and it trains a reader to skim the block
+where a real protected-path failure prints.
+
+The damage is the early return rather than the verdict: `stopped_early = True`
+means no suppression check, no removed-assertion check and no `make check` ran on
+a diff that is about to land.
+
+**Done when** `bin/docket verify --self` on a dropped item, and on one recording
+a `not-delegable:` reason, runs the four integrity checks and can reach `ACCEPT`;
+an item that is neither and names no command still fails; and both are covered by
+tests.
+
+**Grouped under `feature: verify-close-out`** at triage, with `PL-7TYC` and
+`PL-TKFD` from `#655` - the same audit, the same three states it has no clean
+route through.

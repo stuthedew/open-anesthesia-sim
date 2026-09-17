@@ -1,9 +1,15 @@
 ---
 id: PL-B396
 title: Agent amounts are displayed in litres of vapour, which is not the unit a reader buys, fills or wastes agent in - report a liquid-equivalent millilitre figure
-status: untriaged
+priority: P2
+effort: M
+status: dropped
+classes: ux, docs
 feature: liquid-agent-consumption
+touches: docs/items
 added: 2026-09-16
+closed: 2026-09-17
+reason: the unit question it carried is decided (project owner, 2026-09-16: millilitres of liquid equivalent by default, Gas Man's unit set behind it, a reader-set price later), and its other half is answered too - the accounting Editor is developer-facing and keeps litres of equivalent pure agent gas, which is the natural unit of a mass-conservation instrument whose residual lines are meaningless in millilitres. What is left is building the consumption readout, which is ROADMAP planned-milestone item 28's work and not a queue item. The Gas Man reading in this brief is that milestone's design input and stays here; PL-S6WW, PL-KZ99, PL-H4N8 and PL-DWHV survive it as its prerequisites
 ---
 
 **Problem.** Agent amounts are displayed in litres of vapour, which is not the unit a reader buys, fills or wastes agent in - report a liquid-equivalent millilitre figure
@@ -183,3 +189,20 @@ and it is what `PL-GL5X`'s Load Factory Preferences restores to.
 
 **What is left of this item** is building the readout, which is
 planned-milestone item 28's, and it now has its unit.
+
+**Why it matters.** The item is worth reading after it closes rather than
+deleting, because it is where the unit decision was actually taken and where the
+reference implementation was read. Four candidate units were on the table -
+litres of vapour, millilitres of liquid equivalent, money, CO2-equivalent - and
+the record of why the answer is the second, with the third deferred and the
+fourth left open, is here and nowhere else.
+
+**Done when.** Not applicable: dropped at triage, 2026-09-17, with its question
+answered rather than abandoned. The `reason` above names what survives it.
+
+**On dropping it rather than leaving it open.** The earlier paragraph in this
+brief that reserved the disposition to the project owner turned on whether item
+28 stays on the roadmap. That condition has lapsed - the owner's 2026-09-16
+answer places the readout there explicitly ("ok to do what gas man does, but
+default unit can be ml of liquid for now"). Reopening it costs one line if that
+reading is wrong.

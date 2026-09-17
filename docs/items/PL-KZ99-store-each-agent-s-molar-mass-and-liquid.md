@@ -1,8 +1,13 @@
 ---
 id: PL-KZ99
 title: Store each agent's molar mass and liquid density with the density's measurement temperature, so a vapour-to-liquid conversion is derived from a primary measurement rather than from a published composite constant
-status: untriaged
+priority: P1
+effort: M
+status: blocked
+classes: science
 feature: liquid-agent-consumption
+touches: src/anesthesia_sim/data, src/anesthesia_sim/core/parameters.py, docs/MODEL.md, tests/reference
+blocked-by: PL-S6WW
 added: 2026-09-16
 ---
 
@@ -52,3 +57,19 @@ milestones" item 28, agent cost, which needs the same two constants for the
 same conversion. Nothing about the work changes — the same two fields, the
 same primary source, the same `schema_version` bump, the same block on
 `PL-S6WW`. Only the thing that consumes it does.
+
+**Why it matters.** The alternative is storing the published composite constant
+- one number per agent for the vapour volume from 1 mL of liquid - which puts a
+temperature-dependent quantity in the data files with its temperature invisible.
+That is the same defect as `PL-S6WW`, reproduced one layer down and harder to
+see, and it would sit under a displayed millilitre figure a reader would take as
+the bottle. Storing the two primary quantities instead keeps the conversion
+auditable to a measurement that states its own conditions and its own dispersion,
+which is what `docs/MODEL.md` § "Source hierarchy" asks of a stored value, and it
+turns Biro 2014 from a source into an independent cross-check in
+`tests/reference/`.
+
+**Blocked on `PL-S6WW`** (the model's undocumented reference temperature), which
+is now declared in `blocked-by` rather than only in prose: the conversion has two
+inputs and that temperature is one of them, so it cannot be written first.
+`docket check` was advising on exactly that gap.
