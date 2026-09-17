@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning
 feature: interface-areas
+milestone: v0.4.27
 touches: ROADMAP.md, docs/WORKING_NOTES.md, docs/items
 added: 2026-09-16
 closed: 2026-09-17

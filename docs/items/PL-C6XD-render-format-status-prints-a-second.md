@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, refactor
 feature: release-roadmap-seam
+milestone: v0.4.27
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_release.py, .claude/skills/docket/SKILL.md, subprojects/docket/README.md
 added: 2026-09-16
 closed: 2026-09-17

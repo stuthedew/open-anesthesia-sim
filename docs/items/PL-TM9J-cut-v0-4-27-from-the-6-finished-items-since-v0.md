@@ -3,11 +3,12 @@ id: PL-TM9J
 title: Cut v0.4.27 from the 6 finished items since v0.4.26: a patch on the v0.4.x track, carrying no learner-facing change, with v0.5.0 through v0.9.0 reserved
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning, docs
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items/
 added: 2026-09-17
+closed: 2026-09-17
 verify: python3 tools/doc_check.py check && grep -q '^version = "0.4.27"' pyproject.toml && test -f docs/releases/v0.4.27.md && grep -q '^## Current baseline: v0.4.27' ROADMAP.md
 ---
 
@@ -80,3 +81,43 @@ reopens where item 34's area system sits relative to v0.5.0.
 `docs/releases/v0.4.27.md` exists, the version table carries the row, the
 `Current baseline` section stands on `v0.4.27`, `make check` is green, and
 `v0.4.27` is tagged on the merge commit on `origin/main`.
+
+## Cut 2026-09-17
+
+`make release VERSION=0.4.27` stamped 6 items, wrote `docs/releases/v0.4.27.md`
+and relocked `uv.lock`. Three of the six recorded no `pr` yet, so
+`bin/docket record` wrote them - `PL-K82G` and `PL-L4KX` to `#655`, `PL-MQHN` to
+`#654` - and the notes were regenerated afterwards through the documented resume
+path (delete the notes file, re-run the same number), so all six carry their
+pull request rather than three of them.
+
+Three edits followed in `ROADMAP.md`, which is the whole of what
+`bin/docket release` named: the version-table row, the `current baseline` mark
+moved off the v0.4.26 row, and the baseline section rewritten onto this release.
+`PL-Y1L0`'s hidden fourth edit did not apply - `0.4.27` reaches no milestone
+section, so no heading needed promoting - and the v0.5.0 timeline row's
+early-shipped tally is untouched, because none of the six is a Required-scope id.
+
+**The measured claim in the release prose was measured.** `src/`, `tests/` and
+`docs/MODEL.md` are byte-identical to `v0.4.26`, compared by tree object
+(`git rev-parse v0.4.26:<path>` against `HEAD:<path>`) rather than by reading the
+diff. Outside `docs/items/`, the release changes eleven files: `ROADMAP.md`,
+`docs/interface-provenance.md`, `.claude/rules/ui-areas.md`,
+`.claude/skills/docket/SKILL.md`, `subprojects/docket/README.md` and six files
+under `subprojects/docket/src/` and `tests/`.
+
+**Docs swept:** `ROADMAP.md` (table row, baseline mark, baseline section),
+`docs/releases/v0.4.27.md` (generated),
+`python3 tools/doc_check.py candidates --base origin/main` returned only
+`pyproject.toml` and `uv.lock` mentions, which are statements about those files'
+role rather than their version, plus the three new `v0.4.27` lines in
+`ROADMAP.md`. The four sites naming `v0.4.26` outside the queue were read:
+`docs/ARCHITECTURE.md:67` and `:741` cite the port's `## Completed:` section,
+which still exists, and `subprojects/docket/README.md:949` uses the port row as
+the worked example of a `-` timeline row, which is unchanged. The fourth,
+`.claude/skills/docket/SKILL.md:1039`, is stale and is captured as `PL-D7T9`
+rather than fixed here - it is outside this item's `touches`, so
+`CLAUDE.md`'s fix-now door is shut on it.
+
+`make check` green: 2 992 tests, 100% coverage, `docket check` 0 errors,
+`doc_check` 0 errors and 0 advisories.
