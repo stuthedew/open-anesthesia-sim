@@ -119,3 +119,71 @@ item's work satisfies it, invisible until it has already started passing. The
 pair is also the argument for the shape check being worth extending rather than
 retired - it caught one of the two at the right moment, and the one it missed
 was a bare case-insensitive word grep, which is a shape.
+
+**A fourth shape, and it is a different failure from the three above**
+(`PL-32Z9`/`PL-D1RT`, 2026-09-16). Those three never discriminated; this one
+discriminated correctly and was then **invalidated by another item's work**.
+`PL-D1RT`'s command asserted an *absence*:
+
+```
+python3 tools/doc_check.py check && ! grep -qF '`v0.5.x — the interface pass` row of "The timeline"' ROADMAP.md
+```
+
+The phrase was present when the command was written (measured: 1 occurrence at
+`c31449e`, 2 at `57fdb8c`), so it failed as intended. `PL-PHKP` (`#634`)
+renumbered the row `v0.7.x`, the phrase went to 0, and the command began passing
+on a tree whose work `PL-D1RT` had not done. `main` went red on that commit and
+stayed red for three.
+
+**It is decidable from the text alone, which puts it on the yes side of this
+item's own line:** a discriminating half that is a negated match — `! grep`,
+`! test -f`, `grep -v` used as the gate — asserts that a string is gone, and
+*anybody* who deletes that string satisfies it. The paired shape
+`.claude/skills/docket/SKILL.md` prescribes pins the **presence** of something
+only the work creates, which nobody else can supply by deletion. No judgment
+about whether the phrase is uniquely the item's is needed to say that, so this
+one does not run into the "not decidable" paragraph above.
+
+It also raises the population this item is weighing: the three instances above
+are all from one day, and this makes four, from a shape the existing
+`_check_landed` reports only after `main` has already gone red.
+
+**A second instance of that fourth shape, 15 minutes later and on the same
+branch of main.** `PL-C4RS`'s command was
+`! grep -q 'Nineteen items, in the order the dependencies allow' ROADMAP.md`.
+`#640` (`e5ad821`) placed one id into v0.5.0's `Required scope` and rewrote the
+count word to **Twenty**; the string vanished, the negation began passing, and
+run `#2118` reported `PL-C4RS, PL-D1RT are open but their verify: command
+already passes`. Neither item's work had landed.
+
+That makes **two** absence-asserting sentinels invalidated on `main` inside two
+hours, by two unrelated items whose authors had no reason to look at either
+command. It is the strongest argument this item has for the shape check being
+worth an advisory: the population is not one command written carelessly, it is
+every command of this shape in the store, and each one goes off when somebody
+else edits the file it names. `bin/docket check --verify` catches them only on
+`main`, after the fact, where no pull request shows it.
+
+**So here is the population, counted rather than estimated** (2026-09-16, at
+`4690412`): of the **168 open items carrying a `verify:`**, **36 - 21% - have a
+negated discriminating half**, and every one of them is at `ready`. Sixty-three
+closed items carry one too, which are records and not exposure. The 36:
+
+`PL-037Y`, `PL-0BSC`, `PL-0R06`, `PL-2GQW`, `PL-2M4X`, `PL-38PN`, `PL-5748`,
+`PL-59WB`, `PL-5F26`, `PL-60CQ`, `PL-75R0`, `PL-880Z`, `PL-8BLJ`, `PL-BHJW`,
+`PL-C25K`, `PL-CY5H`, `PL-CY8B`, `PL-CZTR`, `PL-DBGT`, `PL-DL4M`, `PL-FT3M`,
+`PL-FV7G`, `PL-GDS2`, `PL-GXPP`, `PL-J45M`, `PL-JXVD`, `PL-LM8P`, `PL-LSTW`,
+`PL-MSFB`, `PL-S5YM`, `PL-TTMF`, `PL-VYK1`, `PL-W3Q5`, `PL-WHQS`, `PL-WTXB`,
+`PL-X5L4`.
+
+That is the number the decision should turn on, in both directions. It is large
+enough that two going off in one afternoon is a rate rather than a coincidence,
+and large enough that an advisory firing on all 36 at once would be the kind of
+check `CLAUDE.md` says to retire rather than promote. The shape that answers
+both is a check that fires **as a command is written or an item reaches
+`ready`**, not one that re-lists a standing 36 every run - which is the same
+distinction this item's own "at the moment it is written" paragraph already
+draws, now with a count behind it. `PL-S5YM` is on the list, and is the item
+`PL-Y1W6` was filed against when `main` went red once before - by a bare `-k`
+selector rather than by this shape, so it is a near neighbour and not a third
+instance.
