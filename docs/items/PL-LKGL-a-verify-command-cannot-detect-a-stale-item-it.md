@@ -9,6 +9,7 @@ feature: queue-hygiene
 touches: docs/items, .claude/skills/docket/SKILL.md, ROADMAP.md
 added: 2026-09-12
 closed: 2026-09-17
+pr: 658
 verify: python3 tools/doc_check.py check && grep -q 'is the standing item for the pass' ROADMAP.md && grep -q 'Sweep the frozen list for staleness before clearing it' .claude/skills/docket/SKILL.md
 ---
 

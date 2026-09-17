@@ -5,11 +5,12 @@ priority: P2
 effort: S
 status: done
 classes: defect
-touches: .github/workflows/pr-title.yml
-closed: 2026-09-17
-verify: python3 tools/doc_check.py check && grep -qF 'This job is in the required set as of 2026-09-17' .github/workflows/pr-title.yml
 feature: pr-title-enforcement
+touches: .github/workflows/pr-title.yml
 added: 2026-09-17
+closed: 2026-09-17
+pr: 657
+verify: python3 tools/doc_check.py check && grep -qF 'This job is in the required set as of 2026-09-17' .github/workflows/pr-title.yml
 ---
 
 **Problem.** Auto-merge landed #654 while pr-title was in a failed state, so the check that protects the squash subject does not actually gate the merge: the correct subject landed only because the rename beat auto-merge by three seconds

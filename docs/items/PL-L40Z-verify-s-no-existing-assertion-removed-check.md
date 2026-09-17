@@ -1,9 +1,14 @@
 ---
 id: PL-L40Z
 title: verify's 'no existing assertion removed' check greps the substring 'assert' across every removed line including Markdown prose, so a documentation rewrite REJECTs for sentences that are not assertions - 6 of the last 7 release cuts removed such a line from ROADMAP.md alone
-status: untriaged
+status: dropped
+classes: defect, infra
 feature: verify-close-out
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-17
+closed: 2026-09-17
+reason: Superseded by PL-7TYC, which merged as #660 at c5e9776 minutes before this item was picked up. Its is_assertion_line asks the same file question this item's Approach named - only a file Python executes can hold an assertion - so both halves of the Done when are already satisfied. Replaying the eight release cuts v0.4.20-v0.4.27 through the current predicate: the substring grep flags 23 removed lines across six of the eight, every one of them ROADMAP.md prose and five of them the v0.4.27 case this item was found on; the current predicate flags none of the 23. test_prose_removed_from_a_document_is_never_an_assertion and test_a_genuinely_removed_assertion_is_still_reported pin both directions. Kept rather than deleted so the measurement is not run a third time. The one finding PL-7TYC does not carry - that falsifies: is structurally unreachable for an item filed and closed on one branch, not merely awkward when discovered mid-work - is appended to PL-TKFD, where that decision is made.
+not-delegable: Nothing to do - the fix merged on main before this item was started, and the regression tests it asks for came with it.
 ---
 
 **Problem.** verify's 'no existing assertion removed' check greps the substring 'assert' across every removed line including Markdown prose, so a documentation rewrite REJECTs for sentences that are not assertions - 6 of the last 7 release cuts removed such a line from ROADMAP.md alone
@@ -83,3 +88,35 @@ documentation of assertions, not assertions.
 with no declaration; a test in `subprojects/docket/tests/test_verify.py` pins a
 removed Markdown prose line containing `assert` as not counted, and a removed
 test assertion in a `.py` file as still counted.
+
+**Dropped 2026-09-17: fixed by `PL-7TYC` before this item was started.** Everything
+above describes the tree as it stood at `ae1ba2a`. `PL-7TYC` merged as `#660` at
+`c5e9776`, replacing the substring grep with `is_assertion_line`, whose first
+question is the file filter this item's **Approach** section recommended -
+`ASSERTION_BEARING_SUFFIX = ".py"`, so a removed `.md` line is prose whatever its
+shape. It answers the fenced-code-block question the same way this item did, and
+for the same reason.
+
+Measured rather than read, by replaying each release cut's own diff through the
+current predicate:
+
+| cut | flagged by the substring grep | flagged now |
+| --- | --- | --- |
+| v0.4.20 | 0 | 0 |
+| v0.4.21 | 2 | 0 |
+| v0.4.22 | 6 | 0 |
+| v0.4.23 | 4 | 0 |
+| v0.4.24 | 4 | 0 |
+| v0.4.25 | 2 | 0 |
+| v0.4.26 | 0 | 0 |
+| v0.4.27 | 5 | 0 |
+
+All 23 are `ROADMAP.md`, and the five on v0.4.27 are the ones this item was found
+on. The left column differs from the table above for v0.4.20 because this replay
+counts the squash commit on `origin/main` rather than the branch; the mechanism
+claim is unaffected.
+
+`PL-QJQL` carries the opposite direction - `pytest.raises` and `pytest.warns`,
+which the new shape test cannot see - and is open. `PL-TKFD` carries the
+`falsifies:` reachability question, with this item's structural half appended to
+it.
