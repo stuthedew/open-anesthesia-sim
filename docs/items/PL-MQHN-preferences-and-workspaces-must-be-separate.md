@@ -40,11 +40,11 @@ than a peer of the other two.** Recorded in `ROADMAP.md` § "v0.6.0 - the layout
 is the reader's" -> "Required scope" item 11, which is what `PL-WV9K`'s session
 reads.
 
-- **Run state** - the simulated values - is one set of numbers every Editor
+- **Run state** - the simulated values - is one set of numbers every View
   draws from and no reader setting reaches.
-- **Per-Editor-instance view state** is how *this* Editor draws them: which
+- **Per-View-instance state** is how *this* View draws them: which
   compartments it shows, its axis denomination and range, its time window. The
-  Editor serializes it into the Workspace containing it, by the delegation
+  View serializes it into the Workspace containing it, by the delegation
   `docs/interface-provenance.md` § "Persistence, and what happens when an editor
   is missing" already adopts from Blender's `SpaceType`.
 - **Reader preferences** are the settings for which a second simultaneous value
@@ -53,7 +53,7 @@ reads.
   a preference rather than Workspace state.
 
 The test is *can a reader sensibly have two of these on screen at once?* Yes
-routes to the Editor; incoherent routes to preferences; a setting that changes
+routes to the View; incoherent routes to preferences; a setting that changes
 the numbers rather than their drawing is neither and stays in the versioned data
 files.
 
@@ -61,9 +61,9 @@ files.
 vessel-rich group against the MAC-awake band and the 1 MAC line, a smaller one
 below it with every compartment on, and a third in a squarer Area zoomed to the
 first fifteen minutes to read the wash-in - **all three in the same Workspace**.
-So two instances of one Editor kind disagree inside a single Workspace, and a
+So two instances of one View kind disagree inside a single Workspace, and a
 rule keyed on Workspace pairs cannot even state the case. `.claude/rules/ui-areas.md`
-rule 2 already asks "who owns it when two areas show the same editor", with
+rule 2 already asks "who owns it when two areas show the same view", with
 `PL-VN6M` as the standing counter-example, and rule 3 already requires a view to
 be instantiable more than once.
 

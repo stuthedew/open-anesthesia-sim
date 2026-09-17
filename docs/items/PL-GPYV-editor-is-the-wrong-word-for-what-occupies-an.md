@@ -1,7 +1,12 @@
 ---
 id: PL-GPYV
 title: Editor is the wrong word for what occupies an Area in this project: Blender's editors predominantly edit, ours predominantly display modelled values, and nothing has been built with the name yet
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: planning
+touches: docs/items, ROADMAP.md
+verify: python3 tools/doc_check.py check && ! grep -rl 'set_editor' docs/items/
 feature: interface-areas
 added: 2026-09-17
 ---
@@ -63,9 +68,9 @@ once it is recorded as a caused divergence: `docs/interface-provenance.md`
 § "Diverged, and each divergence has a specific cause" is the section for it,
 and the cause is that Blender's editors edit and this project's views display.
 
-**Decision needed.** Whether to keep `Editor`, take `View`, or take another word.
-The vocabulary is the project owner's to set; this item carries the measurement
-and a recommendation, not an answer.
+**The decision was the project owner's to make**, and it is recorded below. The
+vocabulary is theirs to set; this item carried the measurement and a
+recommendation.
 
 ## What common GUI-programming terminology offers (project owner asked, 2026-09-17)
 
@@ -122,3 +127,35 @@ already this project's own word, collides with nothing in the toolkit, matches
 Eclipse on the axis that actually describes these objects (lifecycle), and needs
 one recorded caveat rather than a rename. Second choice is `Component`, and the
 cost of taking it is vagueness rather than error.
+
+
+## Decided 2026-09-17: `View`
+
+**The project owner agreed with the recommendation** (ratified - chosen over
+keeping `Editor`, and over `Component` and `Widget`). This **reverses** the
+2026-09-16 decision recorded in `ROADMAP.md` planned item 36, which took
+Blender's `Editor` as the project's term and explicitly retired *views* and
+*widgets*. The reversal is deliberate and the earlier sentence has been
+rewritten rather than deleted, so the record shows both.
+
+Recorded in three places, which is what makes it effective:
+`.claude/rules/ui-areas.md` § "Where the vocabulary is fixed", `ROADMAP.md`
+§ "v0.6.0 - the layout is the reader's" and planned item 36, and
+`docs/interface-provenance.md` § "Diverged, and each divergence has a specific
+cause". `ROADMAP.md` and that rule are swept; `PL-1FT6`'s `set_editor` is now
+`set_view`.
+
+**What is left, and it is the whole of this item's remaining work.** 33 item
+files under `docs/items/` still say Editor in this project's sense. They are a
+mechanical sweep with one judgment in it, which is why it is an item rather than
+a `sed`: **anything quoting or describing Blender keeps Blender's word**, as
+does every citation of a `docs/interface-provenance.md` section title - that
+document describes Blender and is deliberately not renamed. `PL-C842` needs no
+change at all: it wrote `view_kind` and `set_view` before the 2026-09-16 rename,
+so the sweep restores its vocabulary rather than replacing it.
+
+**Done when.** No item file under `docs/items/` uses `Editor` for this project's
+own objects, `set_editor` appears nowhere, and every remaining `Editor` in the
+tree either describes Blender or cites a `docs/interface-provenance.md` section
+title by name. `ROADMAP.md`, `.claude/rules/ui-areas.md`,
+`docs/interface-provenance.md`, `PL-1FT6` and `PL-MQHN` are already done.
