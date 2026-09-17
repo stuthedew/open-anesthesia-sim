@@ -104,3 +104,12 @@ other route to the same goal and was dropped on a count - a shape advisory
 would have printed 31 correct ids on every run, forever, which is the check
 `CLAUDE.md` says to retire rather than promote.
 
+**Gate disposition, 2026-09-17** (project owner, ratified — chosen over
+re-entering it into Gate 1's frozen list on the ground that the problem it
+describes predates the 2026-09-06 freeze). Declined to Gate 2 under
+`ROADMAP.md`'s standing refilling-queue ground: the capture postdates the
+freeze, Gate 1 is already the largest gate this project has held, and this item
+is being cleared immediately, so it holds nothing open either way. Recorded
+because the presence rule forbids neither answer being written down, not
+because the choice was close to consequential.
+
