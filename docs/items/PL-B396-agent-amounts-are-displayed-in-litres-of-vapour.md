@@ -77,7 +77,7 @@ this class of simulator that the application has the numbers for and does not
 draw." That is the home for a liquid-millilitre figure, and `PL-H4N8` carries
 the correction item 28 needs before it is built (it names the wrong quantity).
 
-**What is left of this item, then.** Only the accounting Editor's own unit, and
+**What is left of this item, then.** Only the accounting View's own unit, and
 the answer is that it does not change: litres of equivalent pure agent gas is
 the natural unit of a mass-conservation instrument, its residual lines are
 meaningless in millilitres, and its reader — whoever opens it from the chooser

@@ -16,7 +16,7 @@ touches: src/anesthesia_sim/data/, tests/unit
 **Why it matters.** Item 34 asks for task-oriented presets by example - an
 induction Workspace with the concentration graph zoomed in, a big-picture
 Workspace to switch to during maintenance - and a default with a central graph
-of the compartments and the other Editors around it. They are also what a
+of the compartments and the other Views around it. They are also what a
 learner's "reset" restores to, and what Blender's refusal to delete the last
 Workspace needs in order to have something to fall back on.
 
@@ -29,7 +29,7 @@ named task Workspaces.
 *Scope.* `ROADMAP.md` § "v0.6.0 - the layout is the reader's" -> "Required
 scope" item 13.
 
-**The accounting Editor is not in the shipped defaults** (project owner,
+**The accounting View is not in the shipped defaults** (project owner,
 2026-09-16). Asked whether the agent-accounting panel should report liquid
 millilitres, the owner's position was that "the info on the panel is not info
 the user really needs or cares to see. At most, we could turn it into an
@@ -40,7 +40,7 @@ required tier "a layout may leave them out", so nothing in that document needs
 to change for it.
 
 **Consequence for these three Workspaces:** none of the central-graph default,
-induction or big-picture maintenance presets names the accounting Editor. It
+induction or big-picture maintenance presets names the accounting View. It
 is reached through the chooser (`PL-50PZ`) instead.
 
 **It cannot be acted on before `PL-50PZ`.** The panel is structurally present

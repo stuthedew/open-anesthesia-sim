@@ -28,7 +28,7 @@ makes for absorbing item 33. `PL-LH18` (closed in PR #618, unmerged as of this
 writing) adds the enforcement — a path-scoped rule for
 `src/anesthesia_sim/app/**` recording that every main UI element is built to
 become an area-type widget and that views must be *interchangeable* rather than
-merely movable. `PL-TH35` (define the common Editor contract) is filed beside
+merely movable. `PL-TH35` (define the common View contract) is filed beside
 it.
 
 What is not answered is the per-item question: of the open items declaring
@@ -85,7 +85,7 @@ cannot reach because capture writes no `touches` at all.
 than an absence of one.** Fourteen candidates were raised and all fourteen were
 refuted, two skeptics apiece, on one shared ground: each rested on a step of the
 form
-*"item 34 makes this surface a separate Editor in an Area the reader can
+*"item 34 makes this surface a separate View in an Area the reader can
 close"*, and no such step is decided. Item 34 defers the roster to item 36,
 which is sequenced after it and has not been written, and
 `.claude/rules/ui-areas.md` says so in terms. So the exposure this item was
@@ -107,7 +107,7 @@ identity to pin a workspace to), `PL-L8RN` (nothing enforces the one-adapter
 representation), `PL-NWTM` (the unconditional region has no structural home),
 `PL-9LNF` (three more state-ownership sites beside `PL-VN6M`'s) and `PL-L6QR`
 (the re-run above). Four further contracts went into `PL-TH35` as clauses of the
-Editor contract rather than as items, which is where the store check put them.
+View contract rather than as items, which is where the store check put them.
 
 **`ROADMAP.md` said two incompatible things about who turns the Qt port's inert
 splitter handles live**, and all three ordering lenses found it independently.
@@ -137,7 +137,7 @@ new panel by which container holds it, loaded on every `src/` read alongside
 registry and the kind tag), `PL-9PD6` (`docs/interface-provenance.md`
 contradicts itself about the README attribution, which is what `PL-RTG9` was
 refuted against) and `PL-D584` (`PL-TH35`'s `blocked-by` names an item that
-closed on 2026-09-12, so the store advises promoting the Editor contract on
+closed on 2026-09-12, so the store advises promoting the View contract on
 every run).
 
 `PL-NMTF` is the one to read first, and it is why two other things here have no

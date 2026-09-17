@@ -16,7 +16,7 @@ touches: .claude/rules/ui-areas.md, docs/ARCHITECTURE.md
 **Why it matters.** `.claude/rules/ui-areas.md` is a standing prohibition on
 exactly what this milestone builds - "Do not build splitting, joining, docking,
 workspace tabs or layout persistence ahead of it" - and it tells a reader the
-Editor contract does not exist yet. Shipped unchanged it would refuse the code
+View contract does not exist yet. Shipped unchanged it would refuse the code
 around it. Its `paths:` frontmatter is `/src/anesthesia_sim/app/**`, which does
 not reach a layout package living outside `app/`, so it would also stop loading
 for the code it most concerns. `docs/ARCHITECTURE.md` has the matching problem
@@ -26,7 +26,7 @@ from the other side: its routing bullet now states its own condition
 **Done when.** The rule is retired, or re-scoped to what still holds once the
 area system exists with `paths:` that reach the layout package; and
 `docs/ARCHITECTURE.md` § "Where new code belongs" routes a display surface by
-what it is, with "a new Editor" as a named route, per `PL-TH35`.
+what it is, with "a new View" as a named route, per `PL-TH35`.
 
 *Scope.* `ROADMAP.md` § "v0.6.0 - the layout is the reader's" -> "Required
 scope" item 19.

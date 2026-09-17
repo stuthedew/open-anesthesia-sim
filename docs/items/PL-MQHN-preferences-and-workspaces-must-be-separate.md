@@ -9,6 +9,7 @@ feature: preferences-store
 touches: ROADMAP.md
 added: 2026-09-16
 closed: 2026-09-17
+pr: 654
 verify: python3 tools/doc_check.py check && grep -qF 'decided by instance multiplicity rather than by Workspace membership' ROADMAP.md
 ---
 

@@ -15,7 +15,7 @@ verify: uv run pytest tests/unit/test_layout_model.py && grep -q 'def test_a_joi
 
 **Why it matters.** This is the object every other piece of the area system
 addresses. `PL-C842` decided it and nothing built it: `QSplitter.saveState()`
-was disqualified as a source of truth because it records no Editor identity -
+was disqualified as a source of truth because it records no View identity -
 re-measured 2026-09-16 on PySide6 6.11.2, a three-pane splitter saves 35 bytes
 that are byte-identical for the same three children in reverse order, and
 `restoreState()` returns `True` restoring that state into a two-pane splitter.

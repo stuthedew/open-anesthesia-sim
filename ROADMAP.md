@@ -3890,7 +3890,7 @@ scope names the id, and nine of the ids below are `defect`-, `safety`- or
 
 1. **The layout model** (queue item `PL-1FT6`). Pure Python, no Qt import: a
    tree of splits and Areas with `split`, `join`, `resize`, `swap` and
-   `set_editor`, a `borders()` query returning the handles collinear and
+   `set_view`, a `borders()` query returning the handles collinear and
    adjacent to a given one, and versioned JSON serialization. The serialized
    root holds a *set of windows* from version 1, which `PL-HJPY` is what
    settles - what owns the set, how an Area is addressed across windows, and
@@ -3929,7 +3929,7 @@ scope names the id, and nine of the ids below are `defect`-, `safety`- or
 4. **Loud failure on an unknown View kind, per Area** (queue items `PL-R1WQ`
    and `PL-SSQW`). The flagship divergence from Blender, and it is a *pane*-level
    rule that the file-level version policy in entry 10 cannot reach: a saved
-   Workspace naming an View this build does not have fails **visibly, in that
+   Workspace naming a View this build does not have fails **visibly, in that
    Area**, substitutes nothing and drops nothing. Blender's own answer is to
    install a 3D viewport silently, which `docs/interface-provenance.md`
    § "Diverged" refuses on this project's preference for an obvious failure over
@@ -3937,7 +3937,7 @@ scope names the id, and nine of the ids below are `defect`-, `safety`- or
 
 5. **The View contract** (queue item `PL-TH35`), written *with* the area
    system and validated against two Views that already exist, carrying the
-   four clauses the 2026-09-16 audit added: what an View's saved state is and
+   four clauses the 2026-09-16 audit added: what a View's saved state is and
    who writes it, what it owes when handed state it cannot read, what a split,
    a swap and a stack round trip each preserve, and what the container does when
    an Area cannot honour a size. Small by construction and re-checked against its
@@ -3977,7 +3977,7 @@ scope names the id, and nine of the ids below are `defect`-, `safety`- or
    second request silently reparents the first placement away; the chart time
    base, owned by a dropdown built into one plot's panel while governing both;
    and the chart's column budget, read as a maximum over two named siblings that
-   stop being siblings once each is an View in its own Area.
+   stop being siblings once each is a View in its own Area.
 
 10. **Run identity** (queue item `PL-7Z84`). A run carries an identity stable
     across serialization and independent of drawing order, with
@@ -4142,7 +4142,7 @@ scope names the id, and nine of the ids below are `defect`-, `safety`- or
   and the unconditional region is built in its per-window shape (entry 7). What
   v0.7.0 adds is the window, its lifetime and the test that drives it.
 - **The View catalogue** - planned-milestone item 36, which stays after this
-  milestone for the reason item 34 records: an View's contract is whatever the
+  milestone for the reason item 34 records: a View's contract is whatever the
   area system requires of its contents, so Views built first are built against
   today's fixed layout and rewritten. This milestone validates against two that
   exist and builds no new one. The queue audit that re-runs once item 36 is
@@ -4163,7 +4163,7 @@ scope names the id, and nine of the ids below are `defect`-, `safety`- or
   construction, and the condition under which the representation choice
   reverses.
 - **Replace-by-dragging an Area into the middle of another.** The *operation* is
-  in scope as `set_editor` through the Area's own chooser (entries 1 and 16);
+  in scope as `set_view` through the Area's own chooser (entries 1 and 16);
   only the corner-drag affordance for it is deferred, to whichever release takes
   up the rest of Blender's docking set.
 - **Schema migration code.** The policy for an older file is in Required scope
@@ -5394,7 +5394,7 @@ once someone is ready to scope it.
 
     - an **Area** is a rectangle that reserves screen space. It holds one
       thing and nothing else, and areas never overlap;
-    - an **View** is what occupies an area - the thing with the
+    - a **View** is what occupies an area - the thing with the
       functionality. Item 36 is the catalogue of them;
     - a **Workspace** is a set of areas containing views, geared to a task,
       switched between as tabs. Blender puts the tabs in the Topbar, saves
@@ -5597,7 +5597,7 @@ once someone is ready to scope it.
     2026-09-17, ratified - chosen over leaving the ordering implied by row
     position). A surface built before the area system is built against whatever
     layout exists at the time and against no view contract, so it is built
-    twice: once into a fixed parent, and again as an View. Every remaining one
+    twice: once into a fixed parent, and again as a View. Every remaining one
     is already behind this item - the schematic (item 27, v0.8.0),
     multi-substance and its readouts (items 6 and 7, v0.9.0), the interface pass
     (item 33, `v0.7.x`) - so the rule costs nothing today and exists so that the
