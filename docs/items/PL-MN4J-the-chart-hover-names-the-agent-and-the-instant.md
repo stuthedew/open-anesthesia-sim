@@ -7,7 +7,7 @@ status: done
 closed: 2026-09-17
 classes: safety, ux
 feature: scenario-branching
-touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit
+touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, README.md, tests/unit
 added: 2026-09-16
 verify: grep -qF 'The hover and the run it belongs to' docs/MODEL.md
 ---
