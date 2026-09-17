@@ -50,6 +50,68 @@ from .store import ID_PATTERN
 # search, and answering it here would be guessing at the judgment half.
 SUPPRESSIONS = ("# type: ignore", "typing.no_type_check", "xfail", "pytest.skip", "@skip")
 
+#: Only a file Python executes can hold an assertion, so a removed line from
+#: anything else is prose whatever words it uses. This is the larger half of
+#: the narrowing by count: every close-out edits its own item's `.md`, and
+#: every release edits `ROADMAP.md`, so the documentation tree is where a
+#: substring grep over the word `assert` met a session most often.
+ASSERTION_BEARING_SUFFIX = ".py"
+
+#: What an assertion *statement* looks like on the line that opens it.
+#: `assert` is a keyword, so it opens its statement: even one wrapped across
+#: five lines carries the keyword on the first, which is the line a
+#: whole-statement deletion puts in the diff - so anchoring gives up none of
+#: the wrapped forms, which is what the item asked to be checked rather than
+#: assumed. The second alternative is the call form, which the keyword anchor
+#: cannot see because the name runs on: `unittest`'s `assertEqual`, `mock`'s
+#: `assert_called_once_with`, `numpy.testing`'s `assert_allclose`.
+ASSERTION_RE = re.compile(
+    r"(?:^|[:;])\s*assert\b"  # `assert x`, and the one-liner `if cond: assert x`
+    r"|\bassert[A-Za-z0-9_]*\s*\("  # assertEqual(, assert_called_once_with(
+)
+
+#: Positions the word occupies where no assertion is being made. A comment and
+#: a decorator cannot assert; a `def` names a helper rather than calling one,
+#: and removing that definition removes its call sites too, which the call
+#: form above catches; an import moves a name without evaluating it.
+NOT_AN_ASSERTION_RE = re.compile(r"^\s*(?:#|@|def\s|async\s+def\s|import\s|from\s)")
+
+
+def is_assertion_line(path: str, line: str) -> bool:
+    """Whether a removed line was an assertion, for `no existing assertion removed`.
+
+    The check used to ask `"assert" in line`, which is true of a comment, a
+    docstring, a release note, an item's brief, a variable called
+    `removed_assertions` and of the matcher itself - so a correct close-out
+    that touched any of them was REJECTed by an integrity check that is
+    supposed to be unarguable, which is the second of `CLAUDE.md`'s
+    compounding-friction tests: a refusal that fires on correct work trains a
+    reader to skim the block where a real weakening is printed (`PL-7TYC`).
+
+    Counted rather than reasoned about, because the safe direction here is
+    *reporting* and a tightening has to earn it. The predicate is wrong if it
+    suppresses a real assertion, so that is what was counted, three ways, with
+    `ast` as the oracle rather than a reading:
+
+    - over 867 commits of this repository's history, 200 removed lines carrying
+      the word stop being reported and **none** of them is an assertion;
+    - across the test trees, where the check is aimed, 271 of 5,574 lines stop
+      being reported and **none** of them is an assertion - 229 prose, 37
+      comments, 5 definitions or imports;
+    - in non-test source the exposure the item measured falls from 91 lines to
+      4, one of which is a genuine `assert` that is meant to be reported.
+
+    It still errs toward reporting where it cannot tell: three of those four
+    are docstring lines that a reflow happened to start with the word
+    `assert`, and they stay on the page rather than being guessed at.
+    """
+    if path and not path.endswith(ASSERTION_BEARING_SUFFIX):
+        return False
+    if NOT_AN_ASSERTION_RE.match(line):
+        return False
+    return bool(ASSERTION_RE.search(line))
+
+
 RESIDUAL = (
     "Not proven: whether a new test asserts the value the model should produce "
     "or merely the value it currently produces. A test can exercise the right "
@@ -375,10 +437,21 @@ def _diff_text(root: Path, base: str, commits: tuple[str, ...]) -> str:
     return diff
 
 
+#: The post-image path out of a `diff --git a/x b/x` header. A header this
+#: cannot read yields `""`, which `is_assertion_line` reads as "could be code"
+#: rather than as "is not" - an unreadable header stays on the reporting side.
+DIFF_HEADER_RE = re.compile(r"^diff --git a/(?:.*) b/(?P<path>.*)$")
+
+
 def _net_line_changes(
     root: Path, base: str, commits: tuple[str, ...]
-) -> tuple[list[str], list[str]]:
+) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
     """The lines the work added and removed, with cancelling pairs folded out per file.
+
+    Each line comes back paired with the path it came from. The fold below was
+    already keyed by file; what changed is that the key stops being discarded,
+    because whether a removed line can be an assertion at all depends on
+    whether Python executes the file (`PL-7TYC`).
 
     `git show` over an item's commits concatenates one patch per commit rather
     than producing the branch's net change, because an item's commits need not
@@ -393,9 +466,9 @@ def _net_line_changes(
     and so the worker cannot argue with it (`PL-VP40`).
 
     Cancelling an added line against an identical removed line within the same
-    file is exactly as precise as the two checks consuming this, which are
-    substring greps over line text rather than structural readings, and it costs
-    no extra git call. Counting rather than de-duplicating is what keeps it
+    file is exactly as precise as the two checks consuming this, which read a
+    line's text rather than the tree it parses to, and it costs no extra git
+    call. Counting rather than de-duplicating is what keeps it
     safe: a file whose patches remove one `# type: ignore` and add two still
     reports one added. A line merely *moved* within a file cancels too, which is
     the right answer to both questions - the suppression was already there, and
@@ -410,11 +483,16 @@ def _net_line_changes(
     diff = _diff_text(root, base, commits)
     # Insertion-ordered by first appearance of each file, which is what makes
     # the returned order - and so the five lines the report prints - stable.
-    per_file: dict[str, tuple[Counter[str], Counter[str]]] = {}
+    # The path sits beside the two counters rather than in front of them, so
+    # that `side` still indexes a homogeneous pair.
+    per_file: dict[str, tuple[str, tuple[Counter[str], Counter[str]]]] = {}
     current = ""
+    path = ""
     for line in diff.splitlines():
         if line.startswith("diff --git "):
             current = line
+            header = DIFF_HEADER_RE.match(line)
+            path = header.group("path") if header else ""
             continue
         # The `+++`/`---` header lines are excluded by the second test, exactly
         # as they were before the fold.
@@ -425,15 +503,15 @@ def _net_line_changes(
         else:
             continue
         if current not in per_file:
-            per_file[current] = (Counter(), Counter())
-        per_file[current][side][line[1:]] += 1
-    added: list[str] = []
-    removed: list[str] = []
-    for added_here, removed_here in per_file.values():
+            per_file[current] = (path, (Counter(), Counter()))
+        per_file[current][1][side][line[1:]] += 1
+    added: list[tuple[str, str]] = []
+    removed: list[tuple[str, str]] = []
+    for where, (added_here, removed_here) in per_file.values():
         # `Counter.__sub__` keeps only positive counts, which is multiset
         # difference: the fold each check wants.
-        added.extend((added_here - removed_here).elements())
-        removed.extend((removed_here - added_here).elements())
+        added.extend((where, text) for text in (added_here - removed_here).elements())
+        removed.extend((where, text) for text in (removed_here - added_here).elements())
     return added, removed
 
 
@@ -860,7 +938,7 @@ def verify_item(
 
     # One diff read for both checks, where there were two.
     added, removed = _net_line_changes(root, base, commits)
-    suppressed = [line.strip() for line in added if any(s in line for s in SUPPRESSIONS)]
+    suppressed = [line.strip() for _, line in added if any(s in line for s in SUPPRESSIONS)]
     report.checks.append(
         Check(
             "no suppression added",
@@ -872,18 +950,23 @@ def verify_item(
 
     # An assertion the item was commissioned to *falsify* is the one shape this
     # check has never had a passing route for, and it is not the hazard the
-    # check exists for. Three cases reach a substring grep over removed lines
-    # as one: an assertion weakened to let bad work through, an assertion moved
+    # check exists for. Three cases reach one reading of the removed lines as
+    # one: an assertion weakened to let bad work through, an assertion moved
     # or reworded with its subject intact, and an assertion whose subject the
     # item was asked to delete. `PL-VP40`'s fold separated the second. This
     # separates the third, and it cannot be folded the same way, because
     # nothing identical comes back - so it is declared instead, in the item,
     # before the work (`PL-K82G`).
     #
+    # A fourth case never belonged here at all: a line that merely contains the
+    # word. `is_assertion_line` is what removes it, and it is the only one of
+    # the four settled by looking at the line rather than at the item
+    # (`PL-7TYC`).
+    #
     # The removal stays on the page either way: what changes is that it reads
     # as a commissioned act rather than an unexplained one, which is the
     # property the check was defending.
-    removed_assertions = [line.strip() for line in removed if "assert" in line]
+    removed_assertions = [line.strip() for where, line in removed if is_assertion_line(where, line)]
     declared, unread = commissioned_falsification(root, base, config.items_dir, item)
     folded = [line for line in removed_assertions if declared and declared in line]
     dropped = [line for line in removed_assertions if not (declared and declared in line)]

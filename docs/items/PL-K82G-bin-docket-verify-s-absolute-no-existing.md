@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: delegation
+milestone: v0.4.27
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-17
 closed: 2026-09-17
