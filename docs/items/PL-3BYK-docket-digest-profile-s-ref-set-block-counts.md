@@ -1,0 +1,50 @@
+---
+id: PL-3BYK
+title: docket digest --profile's ref set block counts item-file edits per ref and sums across refs, while the walk holds one entry per identifier, so anyone predicting a diff count from it over-predicts by about 2x on a clone with overlapping long-lived branches
+status: untriaged
+added: 2026-09-17
+---
+
+**Problem.** docket digest --profile's ref set block counts item-file edits per ref and sums across refs, while the walk holds one entry per identifier, so anyone predicting a diff count from it over-predicts by about 2x on a clone with overlapping long-lived branches
+
+**Found by comparing a prediction against the machine it was made for
+(`PL-DMDF`), 2026-09-17.** The `ref set` block exists so a call count is read
+next to the input that produced it, which is the whole remedy `PL-XD3C` built
+after three scaling models were refuted for being ratios between uncontrolled
+inputs. It works for `refs` and `commits`. The `item-file edits` figure is the
+one that does not mean what a reader will take it to mean.
+
+**The two quantities, and why they diverge.** `_ref_walk` in
+`subprojects/docket/src/docket/vcs.py` counts, per unmerged ref, the distinct
+paths `git diff --name-only <fork> <ref> -- docs/items/` names, and sums that
+across refs. `branches_in_flight`'s `walk.edited` is a `dict` keyed by item
+**identifier** for the whole walk, so an item file edited on ten refs
+contributes ten to the profile and one to the walk - and the walk's entry is
+then filtered again by `walk.unbounded` and by what is already `in_flight`.
+
+On a fresh container the two nearly coincide, because few refs overlap. On the
+project owner's clone they are 2.6x apart, because the ref set is dominated by
+long-lived branches all editing the same store: `simulation-lag-input-issue`
+(416 item files), `0-3-0-release-workflow` (247), `triage-untriaged-items`
+(150), two `codex/*` batches (74 and 75). Measured there: 1,284 summed
+per-ref edits, against ~493 identifiers that actually reached `_superseded`.
+
+**What it cost, concretely.** `PL-DMDF` established `diff` at ~0.95 calls per
+item-file edit. Applied to that clone's 1,284 the law predicts ~1,353 `diff`
+calls; the machine made 654. The law was not wrong - it was measured against a
+scratch clone whose synthetic refs touched disjoint files, where the two counts
+are the same number. Nothing failed, because the before/after numbers that
+mattered were measured rather than derived. But the next reader to divide by
+that figure gets an answer that is wrong by a factor that grows with how much
+the branches overlap, and the block is printed precisely to be trusted.
+
+**Two routes.** Print the *distinct* item files across the whole walk beside
+the per-ref sum - two numbers, and the gap between them is itself the
+overlap signal a reader wants. Or rename the field to say it is a per-ref sum.
+The first is more useful and is a few lines in `_ref_walk`; the second is
+cheaper and pins nothing. Not a fix-now either way: it needs a test over a ref
+set with deliberate overlap, which no existing fixture has.
+
+**Done when** the `ref set` block states a figure a reader can divide a
+per-item-edit rate by without over-predicting, or names the one it prints as a
+per-ref sum, and a test drives two refs editing one item file.

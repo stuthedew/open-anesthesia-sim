@@ -170,3 +170,51 @@ it is the same single command `PL-XD3C` (digest is O(unmerged refs)) already
 owes - `bin/docket digest --profile` run there, compared against a container's
 `ref set` block before any count is compared. Held by that item alone rather
 than by two.
+
+---
+
+**Measured on the project owner's clone, 2026-09-17, and it is the largest
+single saving this lane has produced.** Both runs are `bin/docket digest
+--profile` on that machine, before and after the hoist, against a ref set that
+did not move between them - 38 refs, 5 merged, 33 unmerged, carrying ~2,270
+commits and ~1,284 item-file edits (the two runs differ by 3 commits and 1 edit,
+0.1%, from other sessions pushing in between):
+
+| | before | after | change |
+| --- | --- | --- | --- |
+| `diff` asked | 654 | 161 | -75% |
+| `diff` processes | 586 | 95 | -84% |
+| `diff` seconds | 9.76 | **1.63** | **-8.13 s** |
+| git calls asked | 1,245 | 755 | -39% |
+| git processes | 689 | 198 | -71% |
+| git seconds | 11.72 | **3.61** | **-8.11 s** |
+
+**Every other subcommand is flat, which is the control rather than a footnote**:
+`ls-tree` 40 to 40, `merge-base` 33 to 33, `log` 17 to 17, `show` 373 to 376,
+`rev-parse` 9 to 9, `rev-list` 1 to 1, `for-each-ref` 2 to 2. The only
+subcommand that moved is the only one this change touches. The folded-read
+counts are unmoved too - the memo 184 to 182, the blob batch 372 to 375 - so
+`PL-MMVF` and `PL-0J9K` are neither helped nor harmed by it; the "73% fewer
+processes" line reads better than the earlier "44%" only because its
+denominator shrank.
+
+**The fabricated-store experiment predicted the ratio to within 1%.** It was
+run on a scratch clone given ref sets of known size, varying commits with refs
+held fixed and then the reverse, and it predicted `diff` would fall 4.01x and
+the whole command 36%. On the real machine `diff` fell **4.06x** and the whole
+command **39%**. Given that this item's feature had three scaling models
+refuted in one sitting (`PL-XD3C`), a controlled synthetic that predicts the
+real machine this closely is the finding about method, not only about `diff`.
+
+**Where the laws did mis-predict is the absolute per-item-edit slope**, by
+about 2x: 0.95 per item-file edit against 1,284 edits predicts ~1,353 `diff`
+calls before the hoist, and the machine made 654. The cause is a units
+mismatch in `--profile`'s own `ref set` block rather than in the law -
+`PL-3BYK` carries it - and it does not touch the before/after numbers above,
+which are measured rather than derived.
+
+**Both obligations this item and `PL-XD3C` were carrying are now met**, from
+this one run: the re-measured `diff` count is above, and `PL-0J9K`'s re-measured
+`show` time on the same clone is 412 asked, 376 reaching git, 375 of them folded
+into one `cat-file --batch` - **0.06 s, against the 5.77 s that item measured
+before the batch existed.**
