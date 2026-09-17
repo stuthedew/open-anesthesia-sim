@@ -1,8 +1,12 @@
 ---
 id: PL-S6WW
 title: docs/MODEL.md says agent amounts are gas volumes 'at one documented reference temperature and pressure' but documents no temperature anywhere, and a liquid-equivalent conversion moves 5.8 percent between a 20 C and a 37 C reference
-status: untriaged
+priority: P1
+effort: S
+status: needs-decision
+classes: science, docs
 feature: liquid-agent-consumption
+touches: docs/MODEL.md
 added: 2026-09-16
 ---
 
@@ -71,3 +75,37 @@ probably to state 20 °C as the reference and record in § "Known limitations"
 that one condition is used for a circuit at ambient and tissues at 37 °C,
 which is a real approximation this model makes and does not currently
 disclose.
+
+**Why it matters.** `docs/MODEL.md` § "Agent amount" asserts a documented
+reference condition that is not documented, which is a provenance failure in the
+authoritative model specification rather than a gap in prose. Today it costs
+nothing because every gas volume shares the same unstated condition and the
+partition coefficients are ratios. It stops being free at the first conversion
+out of the unit, where the choice moves the answer 5.8% - ideal-gas molar volume
+is 24.055 L/mol at 20 C and 25.450 L/mol at 37 C - and `ROADMAP.md`
+planned-milestone item 28 is exactly such a conversion, now that the project
+owner has settled its display unit as millilitres of liquid equivalent.
+
+**Decision needed.** Which reference temperature the model's gas volumes are
+stated at: **20 C** or **37 C**.
+
+*Recommendation: 20 C*, recorded here rather than only in a reply, per `PL-M21Q`.
+Three reasons, strongest first. The parameter lineage points there - this
+project's partition coefficients, MAC divisors and reference patient are the Gas
+Man set, and `GASMAN.INI` states its own vapour/liquid ratio as `Volatility=209
+Vapor/Liquid volume ratio (20'C)`, so those trajectories are arithmetic
+referenced at 20 C. Adopting 37 C for the same volumes would mean this model's
+litre and Gas Man's litre are not the same quantity while every parameter
+feeding them is. The primary density measurement this project would derive from
+(`PL-KZ99`, Laster/Fang/Eger 1994) is also at 20 C. And the derivation
+reproduces the published composite constants at 20 C to within 1%.
+
+The case against, stated so the decision is taken over both: 37 C is where the
+partition coefficients are measured and where the tissue and blood compartments
+physically are. Choosing 20 C therefore means one condition is used for a
+circuit at ambient and tissues at 37 C, which is a real approximation this model
+makes and does not currently disclose.
+
+**Done when** `docs/MODEL.md` § "Agent amount" states the temperature as it
+already states the pressure, with the reasoning for the choice and its source,
+and § "Known limitations" records what the single-condition assumption costs.

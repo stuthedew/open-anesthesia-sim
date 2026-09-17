@@ -1,8 +1,13 @@
 ---
 id: PL-CPLX
 title: .claude/skills/docket/SKILL.md says v0.4.26 and v0.6.0 are both milestones scoped out of turn whose gate freezes when the milestone before them ships, but v0.4.26 shipped on 2026-09-17 and took no gate of its own, so the example names a release that can no longer be waiting for anything
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
+touches: .claude/skills/docket/SKILL.md
 added: 2026-09-17
+verify: python3 tools/doc_check.py check && ! grep -qF 'v0.4.26 and v0.6.0 are both in that state' .claude/skills/docket/SKILL.md
 ---
 
 **Problem.** .claude/skills/docket/SKILL.md says v0.4.26 and v0.6.0 are both milestones scoped out of turn whose gate freezes when the milestone before them ships, but v0.4.26 shipped on 2026-09-17 and took no gate of its own, so the example names a release that can no longer be waiting for anything
@@ -31,3 +36,10 @@ exactly that.
 
 **Done when.** The example names only milestones actually awaiting a freeze,
 and says what happened to v0.4.26 if it is worth keeping as a closed case.
+
+**Done when** the out-of-turn exception's worked example names only milestones
+that are genuinely waiting for a freeze, and says what happened to v0.4.26 - it
+shipped 2026-09-17 having taken no gate by its own exception - if that closed
+case is worth keeping. A reader matching their situation against two instances,
+one of which is not an instance, is the shape that teaches the wrong rule
+quietly.

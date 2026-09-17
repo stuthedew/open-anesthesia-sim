@@ -1,9 +1,14 @@
 ---
 id: PL-KF0T
 title: ROADMAP.md planned-milestone item 33 calls PL-2CS8, PL-NGF7 and PL-B9PY open debt that 'reach the gate on their own class', and all three are done
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs, defect
 feature: interface-pass-narrative
+touches: ROADMAP.md
 added: 2026-09-16
+verify: python3 tools/doc_check.py check && ! grep -qF 'All three are debt and reach the gate on' ROADMAP.md
 ---
 
 **Problem.** ROADMAP.md planned-milestone item 33 calls PL-2CS8, PL-NGF7 and PL-B9PY open debt that 'reach the gate on their own class', and all three are done

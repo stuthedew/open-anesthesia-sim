@@ -1,9 +1,14 @@
 ---
 id: PL-SY1J
 title: bin/docket show named only one of two branches carrying PL-D1RT, and it was the later one, so the session holding the item read a verdict telling it to stand down
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
 feature: inflight-verdict
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, .claude/skills/docket/SKILL.md
 added: 2026-09-16
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_every_carrier_of_an_item_is_named_in_first_commit_order' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** bin/docket show named only one of two branches carrying PL-D1RT, and it was the later one, so the session holding the item read a verdict telling it to stand down
@@ -53,3 +58,23 @@ re-points `PL-C4RS` and takes `main` green, which `#643` did not.
 **Done when** the behaviour is reproduced, and either the command names every
 carrier in first-commit order as the skill describes, or the skill is corrected
 to say what the command actually reports.
+
+**Why it matters.** The in-flight verdict's whole value is that both sessions
+compute the same order from the same commits and therefore read the same answer.
+If it names one carrier and that carrier is the later one, the session holding
+the item is told to stand down - and the skill names the outcome that costs most:
+not both continuing, which is where the project already was, but **both standing
+down**, leaving the item unstarted with each session believing the other has it.
+It cost nothing on 2026-09-16 only because the two sessions reached the same
+disposition on the merits.
+
+**Reproduce before believing the framing.** The brief records an observation, not
+a diagnosis: a current-branch filter was ruled out, and whether
+`branches_in_flight` reports one carrier per item by construction was not
+established.
+
+**Done when** the behaviour is reproduced in a test, and either `bin/docket show`
+names every carrier in first-commit order as `.claude/skills/docket/SKILL.md`
+describes, or that passage is corrected to say what the command actually
+reports - the two documents agreeing being the property that matters, since a
+session acts on the skill's description of the verdict rather than on the code.

@@ -1,9 +1,14 @@
 ---
 id: PL-JFQ3
 title: Seven blocked items have blockers that have closed, and since PL-ZF2G promoting one is what returns an anticipated safety finding to the debt gate
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: planning, docs
 feature: debt-gate
+touches: docs/items
 added: 2026-09-16
+not-delegable: the deliverable is a per-item judgment recorded in seven item files - whether each was blocked on something nobody wrote into `blocked-by` - and no command can tell a promotion that was reasoned from one that was typed
 ---
 
 **Problem.** Seven blocked items have blockers that have closed, and since PL-ZF2G promoting one is what returns an anticipated safety finding to the debt gate
@@ -41,3 +46,18 @@ edge is clear, not that the work is startable.
 
 **Where.** `docs/items/`, the seven items named above.
 
+**Why it matters.** `bin/docket next` reads `status`, so a blocked item whose
+blockers have all closed is startable work that nobody is ever offered. Seven of
+them is a second queue behind the queue. One carries more than that: `PL-W7H9`
+is `docs, safety, anticipated`, blocked on `PL-8PSW`, which is `done` - and since
+`PL-ZF2G` the promotion is the *event* that returns an anticipated safety finding
+to the debt gate. So the grooming pass nobody runs is what holds a safety finding
+outside the gate built to catch it, which is the mechanism working exactly as
+designed and reaching nobody.
+
+**Done when** each of the seven - `PL-5NR5`, `PL-LPLD`, `PL-MBP6`, `PL-QR6Q`,
+`PL-QRD1`, `PL-W7H9`, `PL-Z3V5` - has been read and either promoted out of
+`blocked`, or left blocked with the real blocker written into `blocked-by`; and
+`PL-W7H9` records whether `PL-8PSW` closing made its hazard live or merely
+removed one prerequisite. Read each item before changing its status: the advisory
+says the edge is clear, not that the work is startable.

@@ -1,8 +1,13 @@
 ---
 id: PL-KZ99
 title: Store each agent's molar mass and liquid density with the density's measurement temperature, so a vapour-to-liquid conversion is derived from a primary measurement rather than from a published composite constant
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: science, anticipated
 feature: liquid-agent-consumption
+touches: src/anesthesia_sim/data, src/anesthesia_sim/core/parameters.py, docs/MODEL.md, tests/reference
+blocked-by: PL-S6WW
 added: 2026-09-16
 ---
 
@@ -52,3 +57,32 @@ milestones" item 28, agent cost, which needs the same two constants for the
 same conversion. Nothing about the work changes — the same two fields, the
 same primary source, the same `schema_version` bump, the same block on
 `PL-S6WW`. Only the thing that consumes it does.
+
+**Why it matters.** The alternative is storing the published composite constant
+- one number per agent for the vapour volume from 1 mL of liquid - which puts a
+temperature-dependent quantity in the data files with its temperature invisible.
+That is the same defect as `PL-S6WW`, reproduced one layer down and harder to
+see, and it would sit under a displayed millilitre figure a reader would take as
+the bottle. Storing the two primary quantities instead keeps the conversion
+auditable to a measurement that states its own conditions and its own dispersion,
+which is what `docs/MODEL.md` § "Source hierarchy" asks of a stored value, and it
+turns Biro 2014 from a source into an independent cross-check in
+`tests/reference/`.
+
+**Blocked on `PL-S6WW`** (the model's undocumented reference temperature), which
+is now declared in `blocked-by` rather than only in prose: the conversion has two
+inputs and that temperature is one of them, so it cannot be written first.
+`docket check` was advising on exactly that gap.
+
+**Classed `anticipated` at triage, 2026-09-17.** No vapour-to-liquid conversion
+exists in this application, so the hazard these two constants would remove -
+a liquid-equivalent figure derived from a composite constant whose temperature
+is invisible - is one planned-milestone item 28 will create rather than one that
+is live. With `status: blocked` that is the carve-out `ROADMAP.md` § "The gate is
+a snapshot" records (project owner, 2026-09-16, ratified): an `anticipated`
+`safety` or `science` finding is not debt until its hazard exists, and its
+disposition is a placement in the milestone that creates it rather than a
+deferral. Item 28 is named by no release, which is why the disposition is
+recorded in the gate's declined subsection alongside `PL-0S0V` and `PL-VJZK`,
+on the same ground and with the same expiry: the day item 28 is placed, this
+belongs in that milestone's `Required scope`.

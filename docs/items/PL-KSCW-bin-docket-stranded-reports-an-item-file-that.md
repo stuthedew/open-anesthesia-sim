@@ -1,8 +1,14 @@
 ---
 id: PL-KSCW
 title: bin/docket stranded reports an item file that exists only on a branch but says nothing about a section appended to an item main already holds, which is how PL-879R's fourth-instance evidence and five other item edits sat unreported on claude/focused-dijkstra-outqzu
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
+feature: stranded-item-edits
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-17
+verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_an_unmerged_edit_to_an_item_the_base_already_holds_is_named' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** bin/docket stranded reports an item file that exists only on a branch but says nothing about a section appended to an item main already holds, which is how PL-879R's fourth-instance evidence and five other item edits sat unreported on claude/focused-dijkstra-outqzu
@@ -49,3 +55,19 @@ run, and the live-versus-abandoned judgment left to the reader.
 four remaining item edits are unreviewed. `PL-32Z9` and `PL-D1RT` both closed on
 `main` under `#645`/`#646` with different content, so those two are likely
 superseded; `PL-7SVX`, `PL-C4RS` and `PL-MQH0` are not.
+
+**Why it matters.** `bin/docket stranded` exists because a diagnosis nobody
+receives is a session spent for nothing, and it catches the rarer half of that.
+An item file is created once; its brief is appended to by every session that
+learns something about it, so the unmerged *section* is the common case and
+nothing reports it. `PL-879R`'s decision turned on evidence that sat unreported
+on a branch with no pull request open, and five more item edits are still there.
+The only signal a session gets today is `Its file is already edited on <branch>`,
+which is a concurrency warning - it says somebody may be in this file, never that
+something is in it that `main` will never get.
+
+**Done when** a `docket` command names, for each unmerged ref, the items the ref
+edits that the base already holds and is ahead on, and prints the **diff to
+read** rather than a `git checkout` to run - the distinction `PL-KBFN` and
+`PL-39B7` record `PL-XLQ5` paying for - with the live-versus-abandoned judgment
+left to the reader, as `stranded` already leaves it.

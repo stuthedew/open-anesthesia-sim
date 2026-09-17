@@ -32,3 +32,23 @@ true on every run since the command was written.
 work adds rather than the whole directory, completes inside `LANDED_TIMEOUT`,
 and fails today for the reason the paired shape intends - the suite half
 passing, the `grep` half finding no such test.
+
+**`PL-RCQM` was dropped into this item on 2026-09-17** (project owner), having
+been filed a day earlier from the other direction - the session-start digest's
+red-`main` line rather than the sweep's cost. Two measurements it took are not
+repeated above and are worth having before the command is rewritten:
+
+- `bin/docket check --verify` cost **233.8 s for 164 commands** on run #2104, so
+  the 120 s this one item burns and learns nothing from is about half again the
+  mean command.
+- The slowest command that *did* complete was `PL-P1P6` at **97.2 s**, against
+  the 120 s limit. **The budget has no headroom left**, which is the evidence
+  that closes the alternative remedy: raising `LANDED_TIMEOUT` would have to
+  clear 97.2 s for everything else too, so narrowing `PL-4L6Z`'s command is the
+  only route that does not spend the guarantee the limit exists to hold.
+
+`PL-RCQM`'s brief also settles a misattribution worth not repeating: run #2104's
+log names `PL-4L6Z` immediately before its non-zero exit, and that is the *not
+checked* line, which claims nothing and fails nothing. The error on that run was
+`PL-D1RT`'s command already passing. Fixing this item does not take `main`
+green, and nothing here ever did.
