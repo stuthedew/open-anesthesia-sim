@@ -181,3 +181,71 @@ re-verified: the corpus could not be attached this session (`add_repo` was
 declined by the sandbox's permission classifier, and an unauthenticated clone
 fails), so p. 174 sitting outside the pp. 171–72 span the entry gives, and
 which agent each `Volatility` value belongs to, are both recorded as open.
+
+**What the literature does, checked 2026-09-17 on the project owner's
+question — and it is not what either candidate assumed.** The field has no
+single reference condition. It has a *rule*, which is to state the condition
+on the quantity, and three conventions that different quantities own:
+
+- **STPD (0 °C, 760 mmHg, dry; 22.414 L/mol)** for an *amount of gas
+  transferred*. This is the respiratory-physiology convention and it is
+  written on the number: "carbon dioxide elimination 151 ± 38 ml (STPD)"
+  (Jonsson & Wahlgreen, *Acta Anaesthesiol Scand* 1989;33(4):331-5,
+  PMID 2497618); "173 ml·min⁻¹ (STPD)" (Jonsson & Zetterström, same journal
+  1985;29(3):309-14, PMID 3922197); "standard temperature and pressure, dry,
+  correction of airway VCO2 and VO2" (Rosenbaum, Kirby & Breen,
+  *Anesthesiology* 2004;100(6):1427-37, PMID 15166562).
+- **BTPS** for a *ventilated volume*: "VE (BTPS)" beside "CO2 production
+  (ATPD)" in one sentence (Bowie et al., *J Clin Monit* 1995;11(6):354-7,
+  PMID 8576717); "PETCO2 ... corrected for BTPS conditions" (Laffon et al.,
+  *Can J Anaesth* 1998;45(6):561-3, PMID 9669011).
+- **20 °C** for the agent's own liquid-to-vapour ratio, which this brief
+  already establishes.
+
+**So the project owner's instinct is the BTPS convention and it is correct
+for what it covers** — a gas volume physically in the body is stated at body
+temperature. It does not settle this item, because the amounts here are not
+all in the body.
+
+**No classic uptake model answers this, because none of them carries an
+amount.** Mapleson, Eger and Gas Man are written in fractions and partial
+pressures, which are dimensionless and carry no condition. The question
+exists here only because this model carries a *volume* as its amount unit.
+
+**The models that do carry amounts carry mass, not volume.** The PBPK
+literature works in mg, mg/L and mg/kg/h against blood:air and tissue:blood
+partition coefficients — Fisher et al., *Toxicol Appl Pharmacol*
+1989;99(3):395-414 (PMID 2749729) and 1998;152(2):339-59 (PMID 9853003);
+Simmons et al., *Toxicol Sci* 2002;69(1):3-15 (PMID 12215655). That is the
+third option and it is the one that actually removes the 5.8 %.
+
+**What that third option costs, worked.** Carrying moles changes exactly one
+term. With $`n_C = F_I V_C / V_m(20)`$ and the alveolar and tissue stores
+built on $`V_m(37)`$, the alveolar, venous and tissue balances reduce to
+exactly the equations already in § "Governing equations" — the molar volume
+cancels — and the *circuit* balance becomes
+
+    V_C dF_I/dt = V̇_F(F_D − F_I) − 0.9452 · V̇_A(F_I − F_A)
+
+where 0.9452 is $`V_m(20)/V_m(37)`$. One factor, on one term. But it costs a
+**circuit gas temperature**, which no source publishes as a model parameter
+and which varies with fresh-gas flow, absorber activity and whether an HME is
+fitted; and it moves $`F_I`$, and through it $`F_A`$, off Gas Man's
+trajectory and off the published wash-in comparison in § "Required tests".
+That makes it a milestone-sized change to the gas-phase model, not a unit
+decision — it belongs on `ROADMAP.md` if it is wanted, not inside this item.
+
+**And it is the smaller of the two condition effects it would sit beside.**
+Temperature moves only volume↔moles; it does not touch any fraction, so it
+reaches no partial pressure and no pharmacology. Humidification does the
+opposite: it changes the *fraction* by 47/760 = 6.2 % and therefore the
+partial pressure, which is what the model is about. That is `PL-7DMJ`, filed
+the same day. Correcting the 5.8 % while leaving the 6.2 % is picking the one
+of the two that cannot reach a clinical reading.
+
+**Which leaves the decision sharper than the two-way framing above.** The
+5.8 % is the size of a simplification the model already makes, and no label
+removes it — 20 °C puts it on the stores, 37 °C puts it on the fresh-gas
+terms, STPD puts it on both. The question is only *which terms should be
+exact*, and that follows from what gets displayed: today, and under
+planned-milestone item 28, that is delivered and exhausted.
