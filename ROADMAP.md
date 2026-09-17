@@ -2791,7 +2791,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 152 entries
+### Declined to Gate 2 on the refilling-queue ground — 153 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3060,6 +3060,7 @@ the concrete defects it generalises do not reach it at all.
 - PL-VJFQ (S) Nothing enforces that KNOWN_SHORTFALLS only shrinks, so the contrast ledger could become the suppression list ui-color.md forbids in prose
 - PL-VYK1 (S) The docket skill's release handover tags at origin/main rather than at the cut's own merge commit, so a re-run of the three commands tags whatever merged next
 - PL-WZBX (M) bin/docket wave counts the four entries ROADMAP.md's gate places under 'Cleared by v0.5.0 itself' as clearable before the milestone begins, where the gate rule says the milestone clears them
+- PL-XMNC (M) The pull-request verify replay scopes to items whose item file the branch edited, so a branch that invalidates some other item's verify: command by editing the file that command reads replays nothing, and the break is reported only by the whole-store sweep after the merge
 - PL-Y1LD (M) docket concurrent orders a batch by file, but the lane mechanism separates only two sessions, so the third and fourth simultaneous session have no command that picks for them
 - PL-Y31G (M) bin/docket stranded classes a branch left on pre-rewrite history as one whose pull request merged, because it compares file content and a rewrite leaves content unchanged
 - PL-YKXQ (S) This container's initial clone had local main diverged 407 commits into pre-rewrite history, so a session that checks out main gets a stale tree and an old bin/docket
@@ -4460,7 +4461,21 @@ shows them on one timeline with the milestones they gate:
 2. **Freeze and record** the debt list in that milestone's own section, as
    item ids, on the day it was frozen.
 3. **Clear** it — every item `done`, or `dropped` with its reason — before
-   implementation of the milestone begins.
+   implementation of the milestone begins. **Sweep the frozen list for
+   staleness first** (project owner, 2026-09-17, ratified — chosen over a second
+   `verify:`-style field recording a fault test beside each fix test, and over
+   leaving the sweep to whoever next noticed). A `verify:` command is specified
+   as one that fails before the work and passes after, so it tests for the
+   presence of the fix and never for the presence of the fault: an entry whose
+   defect no longer reproduces fails forever and reads as outstanding work. One
+   measured pass found 12 of 134 open items dead and 31 more overtaken — 32% —
+   and nothing in the project noticed or can, a churn advisory having been
+   built, measured against that pass's verdicts and rejected because `partly`
+   churns *less* than `yes` (`PL-LKGL`). Staleness is a judgment, which is why
+   this is a beat and not a check: read each frozen entry against the tree, drop
+   what no longer reproduces with its reason, and correct the briefs that
+   overstate what is left — before spending a session on any of them.
+   `PL-6ZQY` is the standing item for the pass.
 4. **Implement** the milestone. A finding made while clearing or implementing
    goes to the next gate unless the problem it describes predates the freeze
    (per "The gate is a snapshot" above) or is `P0`/`safety`/`science`, either

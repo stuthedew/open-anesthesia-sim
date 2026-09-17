@@ -3,11 +3,13 @@ id: PL-LKGL
 title: A verify: command cannot detect a stale item: it tests for the presence of the fix, not the fault, so an item whose problem was solved another way stays red forever and reads as outstanding work
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, infra
 feature: queue-hygiene
-touches: docs/items, .claude/skills/docket/SKILL.md
+touches: docs/items, .claude/skills/docket/SKILL.md, ROADMAP.md
 added: 2026-09-12
+closed: 2026-09-17
+verify: python3 tools/doc_check.py check && grep -q 'is the standing item for the pass' ROADMAP.md && grep -q 'Sweep the frozen list for staleness before clearing it' .claude/skills/docket/SKILL.md
 ---
 
 **Problem.** A verify: command cannot detect a stale item: it tests for the presence of the fix, not the fault, so an item whose problem was solved another way stays red forever and reads as outstanding work
@@ -96,3 +98,22 @@ advisory and its numbers stay recorded here so it is not rebuilt.
 **Done when.** The route is chosen and recorded, and if it is (1) the beat is
 written where a session running the release train will meet it rather than in
 this brief.
+
+**Decided 2026-09-17: route 1, schedule the sweep** (project owner, ratified —
+chosen over route 2, a second optional field recording a fault test beside the
+fix test, and over route 3, dropping this item and letting `PL-6ZQY`'s sweep be
+the answer each time somebody notices). Route 2 was refused on the brief's own
+ground: a second command per item, written at the same moment as the first and
+wrong in the same ways. Route 3 was refused because it leaves the only mechanism
+that has worked depending on somebody remembering to ask for it.
+
+The beat is written in two places a session running the release train will meet
+it, rather than here: `ROADMAP.md` § "The cadence", beat 3, which now opens the
+clear with the sweep; and `.claude/skills/docket/SKILL.md` § "Mode: freeze a
+milestone's debt gate", which is where a session holds the frozen list. Both
+name `PL-6ZQY` as the standing item for the pass and `PL-LKGL` as the
+measurement behind it.
+
+The rejected churn advisory and its numbers stay recorded above so it is not
+rebuilt.
+

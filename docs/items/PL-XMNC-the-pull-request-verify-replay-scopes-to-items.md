@@ -1,9 +1,14 @@
 ---
 id: PL-XMNC
 title: The pull-request verify replay scopes to items whose item file the branch edited, so a branch that invalidates some other item's verify: command by editing the file that command reads replays nothing, and the break is reported only by the whole-store sweep after the merge
-status: untriaged
+status: ready
 feature: verify-invalidation
 added: 2026-09-17
+priority: P1
+effort: M
+classes: defect, infra
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_vcs.py
+verify: uv run pytest subprojects/docket/tests/test_verify.py subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_editing_a_file_a_verify_command_reads_is_in_scope' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** The pull-request verify replay scopes to items whose item file the branch edited, so a branch that invalidates some other item's verify: command by editing the file that command reads replays nothing, and the break is reported only by the whole-store sweep after the merge
@@ -78,3 +83,33 @@ yet.
 reads replays that command and reports it if it now passes, with the scope
 widening and its clause-splitting covered by tests, and with `docket check`'s
 cost line saying what the widened scope was.
+
+**Why it matters.** This is the gate every merge to `main` runs, and it is
+blind in the one direction the failures actually come from. Six recorded
+instances, three of them inside 2026-09-16, each the same shape: a branch edits
+a file some other open item's `verify:` command reads, that command flips from
+failing to passing with nobody having touched the item it guards, and `main`
+goes red on the push-to-`main` sweep where no pull request could have shown it.
+`PL-XF2Y` recorded two landing on one day, which is the rate rather than an
+anecdote.
+
+It meets `CLAUDE.md`'s compounding-friction tests on two counts. The check
+**gives a wrong answer silently** - while an item's command already passes,
+`docket verify` would `ACCEPT` a branch that did none of that item's work - and
+it **sits upstream of everything**, in the gate the whole store runs through on
+every merge. The cost of leaving it is paid twice: once by whoever finds `main`
+red after the fact, and once by every session that reads the queue while a
+guard that is supposed to prove doneness is proving nothing. `PL-879R` was the
+other route to the same goal and was dropped on a count - a shape advisory
+would have printed 31 correct ids on every run, forever, which is the check
+`CLAUDE.md` says to retire rather than promote.
+
+**Gate disposition, 2026-09-17** (project owner, ratified — chosen over
+re-entering it into Gate 1's frozen list on the ground that the problem it
+describes predates the 2026-09-06 freeze). Declined to Gate 2 under
+`ROADMAP.md`'s standing refilling-queue ground: the capture postdates the
+freeze, Gate 1 is already the largest gate this project has held, and this item
+is being cleared immediately, so it holds nothing open either way. Recorded
+because the presence rule forbids neither answer being written down, not
+because the choice was close to consequential.
+
