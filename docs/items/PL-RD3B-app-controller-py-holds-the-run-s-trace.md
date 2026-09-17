@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: refactor
 feature: teachable-case
+milestone: v0.4.26
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/run_series.py, src/anesthesia_sim/app/control_record.py, src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/control_timeline.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_chart.py, tests/unit, tests/integration, docs/ARCHITECTURE.md, docs/MODEL.md
 added: 2026-09-04
 closed: 2026-09-15
@@ -128,7 +129,7 @@ module, `docs/MODEL.md`'s citation points at it, and no behavior changed - the
 existing tests pass with no change but their imports.
 
 **Blocked on `PL-G59B`, 2026-09-14** (project owner, in the session that cut
-v0.4.25). Not for anything in this brief: `ROADMAP.md` § "v0.4.26 - the
+v0.4.25). Not for anything in this brief: `ROADMAP.md` § "Completed: v0.4.26 - the
 interface moves to Qt" records that "nothing new is built in
 `app/simulation_view.py` or `app/chart_series.py` before this port", and this
 item's `touches` names both. Its durable half is in `app/controller.py`, so it

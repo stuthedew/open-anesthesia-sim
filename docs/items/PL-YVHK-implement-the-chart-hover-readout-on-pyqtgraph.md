@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, ux
 feature: presentation-safety
+milestone: v0.4.26
 touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, README.md, tests/integration
 added: 2026-09-14
 closed: 2026-09-15

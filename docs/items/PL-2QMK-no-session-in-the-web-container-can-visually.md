@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: infra, session-cost, ux
+milestone: v0.4.26
 touches: tests/integration/test_qt_rendering.py, docs/worker.md
 added: 2026-09-05
 closed: 2026-09-15

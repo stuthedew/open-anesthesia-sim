@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: presentation-safety
+milestone: v0.4.26
 touches: src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_formatting.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md
 added: 2026-08-30
 closed: 2026-09-15
@@ -13,7 +14,7 @@ pr: 588
 verify: uv run pytest tests/unit/test_formatting.py && grep -q 'def test_agent_amounts_precision' tests/unit/test_formatting.py
 ---
 
-> **This fix rides the Qt port, not Flet.** `ROADMAP.md` § "v0.4.26 -
+> **This fix rides the Qt port, not Flet.** `ROADMAP.md` § "Completed: v0.4.26 -
 > the interface moves to Qt" names this item under "Fixes this port carries":
 > the defect lives in code that milestone rewrites from scratch, so fixing it
 > on Flet means writing the same lines twice. Project owner, 2026-09-10.

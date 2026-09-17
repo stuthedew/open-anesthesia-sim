@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, safety
 feature: teachable-case
+milestone: v0.4.26
 touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, tests/unit/test_chart_frame.py, tests/unit/test_run_definition.py, tests/integration/test_qt_chart.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-09-08
 closed: 2026-09-14

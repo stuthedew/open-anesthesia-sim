@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning
 feature: interface-areas
+milestone: v0.4.26
 touches: ROADMAP.md, docs/MODEL.md, docs/ARCHITECTURE.md, docs/interface-provenance.md, docs/WORKING_NOTES.md, docs/items, .claude/skills/docket/SKILL.md
 added: 2026-09-16
 closed: 2026-09-16

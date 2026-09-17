@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra, test
 feature: presentation-safety
+milestone: v0.4.26
 touches: tools/contrast_check.py, src/anesthesia_sim/app/theme.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_contrast_check.py
 added: 2026-09-06
 closed: 2026-09-16

@@ -56,7 +56,7 @@ surfaced; 11 were one false positive. A quotation inside a `>` blockquote
 carries the marker of every line it wraps onto, so
 
 ```markdown
-> `ROADMAP.md` § "v0.4.26 -
+> `ROADMAP.md` § "Completed: v0.4.26 -
 > the interface moves to Qt"
 ```
 

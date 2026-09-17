@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning
 feature: interface-areas
+milestone: v0.4.26
 touches: ROADMAP.md, docs/
 added: 2026-09-16
 closed: 2026-09-16
@@ -112,7 +113,7 @@ adds is that the *container* is also behind an interface. Without that
 condition the recommendation flips, because the tree stops being reversible.
 
 **Not decided here.** This is a recommendation to the project owner, not a
-decision taken. `ROADMAP.md` item 34 and § "v0.4.26" Required scope item 2
+decision taken. `ROADMAP.md` item 34 and § "Completed: v0.4.26" Required scope item 2
 already name nested `QSplitter`s, so adopting this changes nothing in the
 roadmap except to record why; adopting the graph changes both.
 

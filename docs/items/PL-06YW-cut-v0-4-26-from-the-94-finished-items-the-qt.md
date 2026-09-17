@@ -3,11 +3,12 @@ id: PL-06YW
 title: Cut v0.4.26 from the 94 finished items: the Qt port release, whose Required scope is 28 of 28 closed and whose section takes the number
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning, docs
 feature: release-process
-touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items/
+touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items/, docs/ARCHITECTURE.md
 added: 2026-09-17
+closed: 2026-09-17
 verify: python3 tools/doc_check.py check && grep -q '^version = "0.4.26"' pyproject.toml && test -f docs/releases/v0.4.26.md && grep -q '^## Completed: v0.4.26 - the interface moves to Qt' ROADMAP.md
 ---
 
@@ -28,7 +29,7 @@ tagged on `origin` at `6f2532d`, so the refusal-on-untagged-predecessor does not
 bind either.
 
 **The definition of done, checked rather than assumed.** Every clause in
-§ "v0.4.26 - the interface moves to Qt" -> "Definition of done" has a closed
+§ "Completed: v0.4.26 - the interface moves to Qt" -> "Definition of done" has a closed
 item behind it: parity and the two re-pointed theme checks (`PL-BXB2`,
 `PL-V53R`, `PL-NGF7`), the headless rendering test (`PL-YCWZ`, `PL-2QMK`),
 `PL-GS3R`'s re-measured worst drawn departure, `docs/ARCHITECTURE.md`
@@ -65,3 +66,27 @@ one.
 `## Completed: v0.4.26 - the interface moves to Qt`, its timeline row records
 the ship, `make check` is green, and `v0.4.26` is tagged on the merge commit on
 `origin/main`.
+
+## Cut 2026-09-17
+
+`make release VERSION=0.4.26` stamped 94 items, wrote `docs/releases/v0.4.26.md`
+and relocked `uv.lock`. Six edits followed in `ROADMAP.md`: the version-table
+row and the baseline mark, the `Current baseline` section rewritten onto this
+release, the port's section promoted to `## Completed:` with its 33 `§`
+citations moved across 20 files, the timeline row recording the ship, the
+early-shipped tally in the v0.5.0 row taking `PL-8PSW` as its sixth, and the
+`PL-NGF7` deferral recording that it closed `done` where the gate predicted
+`dropped`.
+
+**The out-of-scope list is corrected without naming an id, which is not a
+style choice.** `PL-8PSW` landed a two-run overlay against a section that says
+the release adds no learner-facing capability, so the line needed amending -
+but `docket next` reads the `Explicitly out of scope` heading, and an id named
+under it while the Required scope also names it makes `doc_check` report the
+section as saying an item is both in scope and out of it. The correction
+therefore states the fact and cites the baseline section for the id.
+
+**Docs swept:** `ROADMAP.md` (row, baseline, port section, timeline, v0.5.0
+row, gate deferral, out-of-scope list), `docs/releases/v0.4.26.md` (generated),
+`docs/ARCHITECTURE.md` and 17 item files (citation moves only). `make check`
+green; `python3 tools/doc_check.py check` clean.

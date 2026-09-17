@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: dev-tooling
+milestone: v0.4.26
 touches: docs/items
 added: 2026-09-15
 closed: 2026-09-15

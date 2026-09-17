@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: infra
+milestone: v0.4.26
 touches: .gitignore
 added: 2026-09-15
 closed: 2026-09-15

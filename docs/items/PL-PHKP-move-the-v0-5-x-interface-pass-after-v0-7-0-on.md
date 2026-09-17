@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning, docs
 feature: interface-areas
+milestone: v0.4.26
 touches: ROADMAP.md, docs/WORKING_NOTES.md
 added: 2026-09-16
 closed: 2026-09-16
@@ -43,7 +44,7 @@ which is mechanical rather than a second decision - item 33's entry records the
 placement and the trade-off it was chosen over, and every reference to the row's
 old name and position moves with it.
 
-**Where.** `ROADMAP.md` "The timeline" (the row itself), § "v0.4.26" (the
+**Where.** `ROADMAP.md` "The timeline" (the row itself), § "Completed: v0.4.26" (the
 un-absorption paragraph naming the row), planned-milestone item 33's placement
 paragraphs; `docs/WORKING_NOTES.md` § "Shelved, then resumed: UI structure/form
 mockups" and the item-34 scoping thread that recorded this as open.

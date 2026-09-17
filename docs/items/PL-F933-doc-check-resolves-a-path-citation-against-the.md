@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.4.26
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, subprojects/docket/README.md
 added: 2026-09-13
 closed: 2026-09-15

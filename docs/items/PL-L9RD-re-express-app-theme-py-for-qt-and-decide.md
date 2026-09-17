@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature, ux
 feature: qt-port
+milestone: v0.4.26
 touches: src/anesthesia_sim/app/theme.py, ROADMAP.md, tools/contrast_check.py
 added: 2026-09-10
 closed: 2026-09-16

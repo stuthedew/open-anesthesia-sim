@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: queue-hygiene
+milestone: v0.4.26
 touches: CLAUDE.md, .claude/skills/docket/SKILL.md, .claude/rules/instruction-writing.md, docs/items/
 added: 2026-09-16
 closed: 2026-09-16

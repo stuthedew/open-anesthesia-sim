@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, docs
 feature: model-spec-accuracy
+milestone: v0.4.26
 touches: docs/MODEL.md
 added: 2026-09-14
 closed: 2026-09-14

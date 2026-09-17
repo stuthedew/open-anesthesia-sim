@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, docs
 feature: qt-port
+milestone: v0.4.26
 touches: docs/ARCHITECTURE.md
 added: 2026-09-14
 closed: 2026-09-15

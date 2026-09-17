@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: docs, ux
+milestone: v0.4.26
 touches: docs/MODEL.md, ROADMAP.md
 added: 2026-09-15
 closed: 2026-09-16

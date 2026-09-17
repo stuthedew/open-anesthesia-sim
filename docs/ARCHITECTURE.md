@@ -64,7 +64,7 @@ src/anesthesia_sim/
 │   ├── run_definition.py               # a run as its settings over time; any state in closed form
 │   ├── agent_simulation_validation.py  # mass-balance / agent-accounting tracker
 │   └── simulation.py              # SimulationState: explicit elapsed time (bounded) + AgentUptakeSystem
-├── app/                  # user interface - PySide6 and pyqtgraph since PL-25KS (ROADMAP.md § "v0.4.26 - the interface moves to Qt")
+├── app/                  # user interface - PySide6 and pyqtgraph since PL-25KS (ROADMAP.md § "Completed: v0.4.26 - the interface moves to Qt")
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots; ResumePoint and BranchedCase: where a branch opened, and the trunk it belongs to
 │   ├── run_series.py               # the vocabulary a run's drawn values are addressed by, and the window one frame reads them from: RecordedQuantity, RecordedSeries, DrawnWindow; toolkit-independent
 │   ├── control_record.py           # what a run's settings are addressed by and the change a run records: ControlInput, CONTROL_INPUT_UNITS, ControlChange; toolkit-independent
@@ -738,7 +738,7 @@ dataclass pairs exist so the rest of `core/` never imports Pydantic;
 `docs/MODEL.md` "The reproducibility guarantee" says that a run is a function of
 its inputs and of the number of steps taken and of nothing else — so the run
 loop reads no clock; and `CLAUDE.md`'s first architecture rule keeps simulation
-code independent of the UI toolkit, which `ROADMAP.md` § "v0.4.26 - the
+code independent of the UI toolkit, which `ROADMAP.md` § "Completed: v0.4.26 - the
 interface moves to Qt" turned into a figure — exactly three modules imported
 Flet — and reasoned from while the port ran. Nothing checked any of them, so a
 leak into a compartment
