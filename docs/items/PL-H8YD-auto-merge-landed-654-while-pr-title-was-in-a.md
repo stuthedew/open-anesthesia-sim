@@ -1,7 +1,13 @@
 ---
 id: PL-H8YD
 title: Auto-merge landed #654 while pr-title was in a failed state, so the check that protects the squash subject does not actually gate the merge: the correct subject landed only because the rename beat auto-merge by three seconds
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect
+touches: .github/workflows/pr-title.yml
+closed: 2026-09-17
+verify: python3 tools/doc_check.py check && grep -qF 'This job is in the required set as of 2026-09-17' .github/workflows/pr-title.yml
 feature: pr-title-enforcement
 added: 2026-09-17
 ---
@@ -42,12 +48,33 @@ stands for is void at the moment it matters, while the check itself reports
 correctly and looks like it is working. It also sits upstream of every future
 merge rather than affecting one pull request.
 
-**What is not yet established**, and is the first thing to check: whether
-`pr-title` is absent from the branch's required status checks, or is required
-but was satisfied by a stale run. The session that found this could not read the
-repository's branch-protection settings. The remedy differs - adding the check
-to the required set, versus making the rename re-run block - so measure before
-changing anything.
+## Answered 2026-09-17: absent, and lost in a refactor rather than decided
+
+**It was absent from the required set**, and the project owner has added it. The
+question this brief left open - absent, or required but satisfied by a stale run
+- is settled, and so is the one the owner asked next: whether it had been
+removed deliberately to leave human editors a way through. It had not.
+
+The title check was created as a **step inside `quality.yml`'s `checks` job**
+(`PL-2XTF`, `#227`): at that commit `quality.yml`'s job list is `checks:` at
+line 2, the title check at line 54, `floor:` at line 77. `checks` was already a
+required status check, so the title rule genuinely gated merges.
+
+`PL-3V8K` (`#256`, 2026-09-03) then split it into `pr-title.yml`, for a correct
+and unrelated reason: `quality.yml` declared a bare `pull_request:` trigger,
+which excludes `edited`, so renaming a title could not clear the check it had
+just failed and the only way out was an empty commit the working agreement
+forbids. **That split turned a step into a job**, and a job reports a status
+check of its own that nothing makes required by default. The gate was therefore
+left behind by a good fix to a different problem, and nothing in the tree could
+show it, because the required list lives in repository settings no script here
+can read.
+
+**The repository already guards the opposite direction and only that one.**
+`PL-KPP1` (`#377`) recorded that removing a job orphans any required check named
+after it, which is why both workflows carry the job-name warning. Nothing guards
+*adding* a job whose check ought to be required - which is the direction that
+bit here, and which stayed lost for eleven releases until `#654`.
 
 **Worth weighing against a real cost.** `pr-title.yml` exists as its own
 workflow precisely so a rename can clear it (`PL-3V8K`, `#256`), and making it
