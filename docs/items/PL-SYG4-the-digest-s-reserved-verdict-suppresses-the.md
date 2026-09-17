@@ -3,11 +3,12 @@ id: PL-SYG4
 title: The digest's RESERVED verdict suppresses the release offer entirely rather than naming the next free patch number, so on the v0.4.x track with v0.5.0 reserved a session never offers a cut the plan actually wants
 priority: P3
 effort: M
-status: needs-decision
+status: ready
 classes: defect, infra
 feature: release-roadmap-seam
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_release.py
 added: 2026-09-15
+verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_the_reserved_refusal_names_the_way_out' subprojects/docket/tests/test_release.py
 ---
 
 **Problem.** The digest's RESERVED verdict suppresses the release offer entirely rather than naming the next free patch number, so on the v0.4.x track with v0.5.0 reserved a session never offers a cut the plan actually wants
@@ -206,3 +207,44 @@ so the paragraph stops carrying both statements" landed with `PL-KQHN`, along
 with the same narrowing at the `v0.4.x` timeline row and at planned-milestone
 item 29. What is left here is `render.py`'s sentence, `format_status`'s second
 copy of it, and the test that pins them.
+
+**Question 2 is answered (project owner, 2026-09-17, ratified).** The `RESERVED`
+branch **keeps its refusal and adds that a patch-track cut is available by naming
+a version** - the third of the five candidates above. Chosen over offering the
+next unreserved patch (`0.4.27`, which would skip a number for the first time in
+46 releases and move the beat off the port), over an advisory naming what the cut
+would displace (a clause nothing can compute), over removing every mechanical
+number from the verdict (which would delete the only surface saying `0.5.0` is
+spoken for while the cut path has no guard), and over offering the reserved number
+itself - the fifth, which question 1's answer removed, since it was available only
+if a patch still took that number.
+
+Marked `ratified` rather than specified: it came as agreement with this brief's
+own recommendation rather than in the owner's words, so `CLAUDE.md`'s bar to
+reopen it is ordinary evidence rather than a compelling argument.
+
+**What the sentence owes, and the one tension to resolve while writing it.**
+`PL-66FP`'s standard is that a release refusal names the evidence *and* the way
+out, **as a command rather than as intent** - and this candidate was chosen partly
+because it names no mechanical number, so the `0.4.26`/`0.4.27` question never
+arises in the sentence. Those pull against each other: `make release VERSION=...`
+needs an argument. Resolving that is the implementing session's, and the
+constraint is that the sentence must not *recommend* a number while still handing
+the reader a runnable command. The other release refusals in `cli.py` -
+`_untagged_warning`, `_unfinished_cut_refusal`, `_duplicate_warning`,
+`_parallel_cut_warning` - are the precedent for the form.
+
+**Take `PL-C6XD` first, in the same session.** It is `P2 · S · ready`, declares
+the same two files, and de-duplicates `format_status`'s independent second copy of
+this verdict. Written first, there is one sentence to get right instead of two
+that drift; written second, this item ships a digest and a `bin/docket status`
+that disagree. That is this brief's own `Done when.` - *"`PL-C6XD` is that
+de-duplication, and taking it first makes this item smaller"* - now that the
+answer exists to act on.
+
+**Not implemented here.** The session that took the decision was at **308,310
+tokens** against `CLAUDE.md`'s 150,000 handoff budget, which says to read the
+budget *before starting an item* and hand off rather than start. The decision is
+committed on its own so it reaches `main`: left on a branch, the next session
+would pick this up still reading `needs-decision` with the answer nowhere in the
+store.
