@@ -309,7 +309,7 @@ adds no capability and exists to clear the ground they are built on:
 | 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. The placement argument above stands for what it placed, and is left as written. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 170 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. **Five more shipped early the same way**, in v0.4.25 (2026-09-14, `PL-G7RD`): `PL-TFX5`, `PL-J2TD`, `PL-ZMRT`, `PL-B9PY` and `PL-5328`, ahead of the port; the scope list is unchanged and they are closed against it. | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
 | 6 | **Gate 2** | **Frozen when v0.5.0 ships, not when the milestone below is scoped** (project owner, 2026-09-16, ratified - chosen over freezing it on the scoping day as beat 1 says, and over deferring the whole scoping round until v0.5.0 ships). Row 7 was scoped two releases early, so the cadence's own trigger would have frozen this list before v0.5.0 had been implemented — leaving it holding none of v0.5.0's findings, which is the one thing a gate is defined to hold. § "The cadence" records the exception and the item that re-examines the trigger; v0.6.0's own section says where the frozen list goes when the moment comes. Ships inside v0.6.0. | — |
-| 7 | **v0.6.0 — the layout is the reader's** | Planned-milestone item 34's tiled half: the layout model, the Editor contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out is row 9, deliberately — see that section's "Explicitly out of scope" for why the split costs nothing structural. | 4 L, 16 M, 3 S |
+| 7 | **v0.6.0 — the layout is the reader's** | Planned-milestone item 34's tiled half: the layout model, the Editor contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out is row 9, deliberately — see that section's "Explicitly out of scope" for why the split costs nothing structural. **The placement was reopened and re-affirmed on 2026-09-17** (project owner, ratified - chosen over moving item 34 ahead of v0.5.0, on the argument that every interface question settled before the area model is settled against a layout that is going away): v0.5.0's Required scope is 13 of 20 `done` and the compare surface is among the closed, so the tail a re-order would protect is 4 M and 3 S against this row's own 4 L, 16 M, 3 S. Planned-milestone item 34's entry carries the count, and the standing rule that round produced - **no new display surface is built before this release**, until item 34's Editor contract and view registry ship. | 4 L, 16 M, 3 S |
 | 8 | **Gate 3** | Frozen when v0.6.0 ships; ships inside v0.7.0. | — |
 | 9 | **v0.7.0 — the second screen** | Planned-milestone item 34's break-out half: an area taken into its own top-level window, itself a full window with its own areas. Not yet scoped. What it owes the display is already decided rather than left to its scoping — `docs/MODEL.md` § "Minimum displayed outputs" → "What this list requires once the layout is the reader's" carries the tier split (project owner, 2026-09-16, ratified - chosen over `PL-W54S`'s own two live readings, every window carrying the whole region and the main window carrying it alone), because it decides the shape v0.6.0 builds the unconditional region in. | — |
 | — | **v0.7.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. **Moved here from between MVP and Gate 2 on 2026-09-16** (project owner, ratified - chosen over leaving it ahead of item 34, on the argument that item 34 and break-out introduce an area header, a workspace tab strip, a live splitter handle and a drag affordance, none of which exists to be styled today; what the other side bought was a styled interface two releases sooner, and `PL-BNYF`'s separation of arrangement from appearance means the composition of each surface would mostly have survived the move). It renumbers from `v0.5.x` to `v0.7.x` as a consequence: a patch track takes the number of the release it follows, which is mechanical rather than a second decision. `PL-PHKP` carries it. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. | — |
@@ -5488,6 +5488,51 @@ once someone is ready to scope it.
     cut taken at break-out because that is the one place the split costs nothing
     structural. The schematic (item 27) moves to v0.8.0 and multi-substance
     (items 6 and 7) to v0.9.0 as a consequence.
+
+    *Reopened and re-affirmed, 2026-09-17* (project owner, ratified - chosen
+    over moving item 34 ahead of v0.5.0, which is the alternative that was put).
+    The placement above was reopened on an argument the `PL-NMTF` round had not
+    weighed: that the build order is what decides whether a new display is a
+    widget registered against a contract or an edit to whatever layout exists at
+    the time, so every interface question settled before the area model is
+    settled against a layout that is going away. The argument is sound and has
+    an instance in the record - `PL-J4NW` found `docs/ARCHITECTURE.md` routing
+    every new display panel to `run_view.py` or `simulation_view.py` "by asking
+    whose it is", which is the fixed two-level layout this item refuses, and
+    `.claude/rules/ui-areas.md` is a standing proxy for the system existing.
+    What it does not reach is the tail actually in front of it, and the count is
+    why. **v0.5.0's Required scope is 13 of 20 `done`, and the monolithic half
+    is the part that landed**: `PL-8PSW`, the two-branch overlay this file calls
+    the largest new visual surface in the project, and `PL-1XPX`, what the
+    readouts show while two branches are displayed, are both closed, as are the
+    fork (`PL-TFX5`) and the resumption (`PL-J2TD`). What remains is the
+    bookmarks chain and three small items - **4 M and 3 S**, against this item's
+    own 4 L / 16 M / 3 S. So the re-order would park an MVP a seventh the size
+    behind this milestone to protect a surface that has already shipped, and it
+    would strand `PL-7Z84`, because the bookmarks and fork work is what gives a
+    workspace a run identity to pin to. The order stands. What the argument does
+    change is the paragraph below, which until now was implied by § "The
+    timeline"'s row order and is written as a rule because row order is not
+    something a session reads as one.
+
+    *No new display surface is built before this item* (project owner,
+    2026-09-17, ratified - chosen over leaving the ordering implied by row
+    position). A surface built before the area system is built against whatever
+    layout exists at the time and against no view contract, so it is built
+    twice: once into a fixed parent, and again as an Editor. Every remaining one
+    is already behind this item - the schematic (item 27, v0.8.0),
+    multi-substance and its readouts (items 6 and 7, v0.9.0), the interface pass
+    (item 33, `v0.7.x`) - so the rule costs nothing today and exists so that the
+    next row move cannot reopen the question by accident. **It binds a new
+    surface, not a new value.** A reading `docs/MODEL.md` -> "Minimum displayed
+    outputs" already owes, or a correction to one on screen, is not deferred by
+    it: the safety-critical standard is a floor no ordering rule may lower, and
+    a misleading displayed value is never held for a layout. **Its condition,
+    and it is an instance rather than a permanent refusal**: the rule ends when
+    this item's Editor contract (`PL-TH35`) and view registry (`PL-R1WQ`) ship,
+    because at that point a new surface *is* one registry entry and the second
+    build is what stops existing. A surface wanted before then is filed against
+    item 36's catalogue rather than built.
 
     *Placed, and the timing question is decided* (project owner, 2026-09-12,
     `PL-8VL1`). The Qt port rewrites every layout in the dashboard onto Qt, and

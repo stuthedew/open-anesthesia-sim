@@ -1,10 +1,15 @@
 ---
 id: PL-YHWG
 title: ROADMAP's timeline places item 34's area system after v0.5.0 on a decision ratified 2026-09-16, and the project owner has reopened it: the modularity argument - that every UI decision taken before the area model is taken against a layout that is going away, and every new display is an edit to a monolith rather than one more widget - was not weighed in that round
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: planning
 feature: interface-areas
 touches: ROADMAP.md, docs/WORKING_NOTES.md, docs/items
 added: 2026-09-16
+closed: 2026-09-17
+verify: python3 tools/doc_check.py check && bin/docket check && grep -qF "No new display surface is built before this item" ROADMAP.md
 ---
 
 **Problem.** ROADMAP's timeline places item 34's area system after v0.5.0 on a decision ratified 2026-09-16, and the project owner has reopened it: the modularity argument - that every UI decision taken before the area model is taken against a layout that is going away, and every new display is an edit to a monolith rather than one more widget - was not weighed in that round
@@ -74,3 +79,49 @@ row move re-opens the question by accident.
 **Not a scoping round, and not a session's decision.** Which order the timeline
 takes is the project owner's, per `CLAUDE.md`'s division of labour. This item is
 the record that the question is open again and the measurement that bears on it.
+
+---
+
+## Answered 2026-09-17: the order stands, and the principle is now a rule
+
+**The project owner ratified both recommendations.** Item 34 keeps its place
+after v0.5.0, and the ordering principle behind the reopening is written into
+`ROADMAP.md` as a rule rather than left implied by row position.
+
+**Why the order stands** is the count above, and it is recorded in item 34's
+entry rather than only here: v0.5.0's Required scope is 13 of 20 `done` with
+the monolithic half among the closed, so the re-order would park a 4 M / 3 S
+MVP tail behind a 4 L / 16 M / 3 S milestone to protect a surface that has
+already shipped, and would strand `PL-7Z84` by removing the work that gives a
+Workspace a run identity to pin to.
+
+**Two edits landed, both in `ROADMAP.md`:**
+
+1. **Item 34's entry** gains *"Reopened and re-affirmed, 2026-09-17"* after the
+   `PL-NMTF` placement paragraph it amends - the argument, the instance in the
+   record (`PL-J4NW`), the count, and what it was chosen over - and then
+   *"No new display surface is built before this item"* as the rule.
+2. **§ "The timeline" row 7** records the re-affirmation in one sentence and
+   points at item 34's entry for the count and the rule, rather than repeating
+   either.
+
+**The rule carries a guard the request did not name, and it is deliberate.**
+Written flat, "no new display surface before the area model" is a sentence a
+later session could use to defer a *safety* correction - a reading
+`docs/MODEL.md` -> "Minimum displayed outputs" already owes, or a wrong or
+misleading value on screen. `CLAUDE.md`'s safety-critical standard is a floor no
+ordering rule may lower, so the rule says outright that it binds a new surface
+and not a new value. Without that clause the rule would have been the more
+dangerous of the two states it was written to fix.
+
+**Its condition is named, per `.claude/rules/expert-review.md` § "Say what would
+falsify it":** the rule ends when `PL-TH35` (the common Editor contract) and
+`PL-R1WQ` (the view registry) ship, because at that point a new surface is one
+registry entry and the second build stops existing. That makes it an instance
+with a trigger rather than a permanent refusal.
+
+**Not duplicated with `.claude/rules/ui-areas.md`** (`PL-LH18`), which governs
+*how* an `app/` widget is built - as if it were already an area-type widget. This
+rule governs *whether* a new surface is built at all before the system exists.
+The two are complementary, and the entry names the rule file as the standing
+proxy the system's absence requires.
