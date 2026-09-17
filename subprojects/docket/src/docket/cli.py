@@ -55,6 +55,7 @@ from .vcs import (
     BranchCut,
     Churn,
     CutsInFlight,
+    FilingReport,
     FlightReport,
     GitRunner,
     OrphanedReport,
@@ -69,6 +70,7 @@ from .vcs import (
     cuts_in_flight,
     default_base,
     fetch_remote,
+    filed_with_work,
     files_in_flight,
     lost,
     merged_pull_requests,
@@ -540,8 +542,26 @@ def cmd_triage(args: argparse.Namespace) -> int:
     """
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
-    print(render.format_triage(report, config, _flight(args)))
+    print(render.format_triage(report, config, _flight(args), _filed(args, report.untriaged)))
     return 0
+
+
+def _filed(args: argparse.Namespace, untriaged: list[Item]) -> FilingReport:
+    """Which of these items were filed by a commit that also changed code.
+
+    Asked only here. The mark answers "was this worked when it was filed?",
+    which is a question only a triage pass has, and the read is scoped to the
+    items that pass is about to print rather than to the store (`PL-SWP3`).
+    """
+    if getattr(args, "no_git", False) or not untriaged:
+        return FilingReport()
+    root, items_dir = _tracked(args)
+    return filed_with_work(
+        frozenset(item.identifier for item in untriaged),
+        root,
+        prefix=items_dir,
+        runner=_runner(args),
+    )
 
 
 def cmd_new(args: argparse.Namespace) -> int:

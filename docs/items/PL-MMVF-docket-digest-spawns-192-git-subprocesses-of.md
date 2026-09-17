@@ -9,6 +9,7 @@ feature: session-start-cost
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_git_runner.py
 added: 2026-09-16
 closed: 2026-09-17
+pr: 663
 verify: uv run pytest subprojects/docket/tests/test_git_runner.py && grep -q 'def test_the_memo_does_not_answer_from_before_a_fetch' subprojects/docket/tests/test_git_runner.py
 ---
 

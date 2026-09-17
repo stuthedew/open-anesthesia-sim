@@ -1,9 +1,15 @@
 ---
 id: PL-SWP3
 title: PL-3CBS's landed-work advisory is keyed on verify: and scoped to ready/needs-decision, so an item captured and worked in the same commit is structurally invisible to it: #635 left PL-0J9K and PL-MMVF untriaged with their code on main
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: defect
 feature: queue-hygiene
+touches: subprojects/docket
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_an_item_filed_by_a_commit_that_also_changed_code_is_reported' subprojects/docket/tests/test_vcs.py
 added: 2026-09-17
+closed: 2026-09-17
 ---
 
 **Problem.** PL-3CBS's landed-work advisory is keyed on verify: and scoped to ready/needs-decision, so an item captured and worked in the same commit is structurally invisible to it: #635 left PL-0J9K and PL-MMVF untriaged with their code on main
@@ -151,22 +157,42 @@ Why this and not the check the item proposed:
   already edited on …`), so this is one more line in a list that has them.
 
 The cost is one `git log --diff-filter=A` over `docs/items/` plus one
-`git show --name-only` per untriaged item, on a command that already reads the
-whole store.
+`git show --name-only` **per item that survives the subject clause** — on the
+current list, none. The subject arrives with the log, so the expensive call is
+made only where the annotation will print.
 
 **Precision is the wrong measure for an annotation** and the right one for an
 advisory, which is the whole of why the disposition moved. An advisory claims
 the item has landed; this claims only that the commit which filed it also
 changed code, which is true by construction every time it prints.
 
-### Open question for the project owner
+### What was built
 
-Whether to build the annotation at all, given that what it buys is a pointer
-rather than an answer, and that the shape recurs roughly 22 times across ~1,180
-items filed. Recorded rather than decided here: the deliverable differs
-materially from the check this item describes, so it is the owner's call.
+**Build the annotation on `bin/docket triage`; build no `docket check`
+advisory** (project owner, 2026-09-17, ratified) — chosen over the advisory in
+`subprojects/docket/src/docket/checks.py` that this item's own **Where** section
+names, which the counts above refuted: at Key 1 it would mark 10 of the 11 rows
+a triage pass reads, and at Key 2 it would carry six standing false positives
+forever, which is `CLAUDE.md`'s "a check that fires every run without changing a
+decision is a defect in the check".
 
-`PL-6TN8`, the first row of the current untriaged list, is the same failure
-recurring under a different key — `PL-3DC7` was set `ready` with a `verify:`
-command naming a test that did not exist, for behaviour already on `main` — so
-the underlying hazard is live and is not confined to the capture-and-work shape.
+Landed as `vcs.filed_with_work` → `render._filed_with_work`, called from
+`cli._filed` and printed per row by `format_triage`. It reports the filing
+commit, its pull request and the paths it changed outside the queue, and asks
+for a read; it says nothing about whether the item has landed, because nothing
+measurable here can. A shallow clone declines rather than reporting nothing
+filed — its missing commits are the oldest, so an old item would read as filed
+by nobody, and the apparatus floor forbids handing that over as a clean answer.
+
+Verified against the real store: it names `PL-0J9K` and `PL-MMVF` — the two
+instances this item was filed for — from `ff4be61` (#635), and stays silent on
+all 11 rows of the current untriaged list.
+
+### The hazard is wider than this shape, and `PL-6TN8` is the other half
+
+`PL-6TN8` — a `verify:` command whose `grep` half names a guessed test, so
+watching it fail proves less than the rule assumes — is the same failure
+reaching through a different key: `PL-3DC7` was set `ready`, with a command run
+and seen to fail, for behaviour already on `main`. Neither `verify:` nor the
+filing commit can see the other's case, so this item closes its own half only.
+Triaged alongside this one rather than filed as a successor.

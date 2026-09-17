@@ -8,6 +8,7 @@ classes: planning
 touches: docs/items
 added: 2026-09-17
 closed: 2026-09-17
+pr: 663
 not-delegable: the deliverable is a judgment per item - what each is worth, how big it is and what it belongs with - recorded in twenty-six item files; `bin/docket check` proves the answers are well-formed and can prove nothing about whether they are right
 ---
 
