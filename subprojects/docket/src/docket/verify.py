@@ -502,6 +502,48 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
     return "pr" if added and all(PR_LINE_RE.match(line) for line in added) else ""
 
 
+def commissioned_falsification(
+    root: Path, base: str, items_dir: str, item: Item
+) -> tuple[str, str]:
+    """The `falsifies:` declaration the *base* holds for this item, or why none could be read.
+
+    Exactly one of the two is ever non-empty, and an empty pair means the
+    commission was read and declares nothing. Keeping "could not look" apart
+    from "looked, found nothing" is the same distinction `front_matter_check`
+    makes below, for the same reason: folding is suppressed identically by
+    both, and only one of them is a finding.
+
+    **Read from the base rather than from the working tree**, which is the
+    whole of what makes the field worth having. `PL-K82G` argued the field was
+    safe because `front_matter_check` refuses a branch that edits its own
+    item's front matter - true of a delegated review, and not of the self-audit
+    the close-out actually runs, where that guard is an advisory by design
+    (the close-out sets `status: done` in the same commit as the work). A
+    session could otherwise write the declaration beside the deletion it
+    excuses and fold its own integrity check. Reading the base holds the
+    property in both modes and needs no second guard: a line added on the
+    branch changes what a *later* branch is measured against, and nothing about
+    the branch that writes it.
+
+    A base holding no copy of this item is not a failure to read - the item is
+    new on the branch, which is what every capture looks like. It declares
+    nothing, and the caller says so only where the branch claims otherwise.
+    """
+    if not item.path:
+        return "", "the item names no file, so no commission could be read"
+    held = _store_at(root, base, items_dir)
+    if held is None:
+        return "", f"no item store at {base}:{items_dir} to read the commission from"
+    was = next((held_name for held_name in held if held_name.startswith(f"{item.identifier}-")), "")
+    if not was:
+        return "", ""
+    status, before = _run(["git", "show", f"{base}:{items_dir}/{was}"], root)
+    if status != 0:
+        return "", f"{base}:{items_dir}/{was} could not be read"
+    fields, _ = parse_front_matter(before)
+    return fields.get("falsifies", "").strip(), ""
+
+
 def front_matter_check(
     root: Path, base: str, items_dir: str, item: Item, advisory: bool = False
 ) -> Check:
@@ -652,6 +694,23 @@ def verify_item(
     session may legitimately re-scope its own commission; it may not weaken
     the thing that measures it, and it may not skip the test.
 
+    Two of the four have a **declared** exemption, which is not a relaxation
+    of that line but the reason it can stay absolute. Each is read off the
+    item as the *base* holds it - the commission - rather than off the branch,
+    so neither is anything a session can grant itself mid-work:
+
+    - `falsifies:` names an assertion the item was commissioned to make
+      untrue, and a matching removal folds out of the assertion check and is
+      printed beside it (`PL-K82G`).
+    - A `dropped` item, or one carrying `not-delegable:`, has no command to
+      run by construction, and the command check reports which applies
+      (`PL-L4KX`).
+
+    Without them the absolute checks had no passing route on close-outs the
+    project's own instructions prescribe, and a session meeting one could only
+    game the fold or push through a red integrity check. Either sets the
+    precedent the split exists to prevent.
+
     The alternative was to relax the guards for everyone, which would have
     made the delegated audit - the case the command exists for - quietly
     weaker. `PL-69JZ` had already been routed around instead: `bin/docket
@@ -664,10 +723,39 @@ def verify_item(
     commits = item_commits(root, base, item.identifier)
     paths = changed_paths(root, base, commits)
 
+    # "No command recorded" means the test was skipped, except in the two
+    # states where the store has already decided that no command can exist. A
+    # `dropped` item built nothing, so there is nothing for a command to prove;
+    # a `not-delegable` reason is what `docket check` accepts *instead of* a
+    # command, in those words. Refusing both here made the two tools disagree
+    # about the same item - `check` clean, `verify --self` REJECT - and left the
+    # close-out the skill prescribes with no passing state at all, since writing
+    # a `verify:` onto a closed item is separately refused (`PL-L4KX`,
+    # `PL-JZ1D`).
+    #
+    # Read off the store rather than taken on the session's word, and neither
+    # state is free to reach for: a drop is a closure that owes a `reason` and a
+    # `closed` date, and a `not-delegable` line is the thing that withholds the
+    # item from delegation in the first place.
+    #
+    # Advisory unconditionally rather than under `self_audit`, because what
+    # excuses the command is a fact about the item and not about who is asking.
+    # And it does not stop early: that no command was recorded says nothing
+    # about whether the diff stayed inside `touches` or whether an assertion
+    # went missing, which is the half a hard stop was throwing away.
+    exemption = ""
+    if item.status == "dropped":
+        exemption = "a dropped item built nothing, so no command can prove it"
+    elif item.not_delegable:
+        exemption = f"the item records why no command can prove it - {item.not_delegable}"
     if not item.verify:
-        report.checks.append(Check("has a `verify:` command", False, "none recorded"))
-        report.stopped_early = True
-        return report
+        if not exemption:
+            report.checks.append(Check("has a `verify:` command", False, "none recorded"))
+            report.stopped_early = True
+            return report
+        report.checks.append(
+            Check("has a `verify:` command", False, f"none recorded: {exemption}", advisory=True)
+        )
 
     # An empty diff is not verified work. Every path check below would pass on
     # nothing at all, and the report would read ACCEPT for a branch carrying no
@@ -782,19 +870,73 @@ def verify_item(
         )
     )
 
-    dropped = [line.strip() for line in removed if "assert" in line]
+    # An assertion the item was commissioned to *falsify* is the one shape this
+    # check has never had a passing route for, and it is not the hazard the
+    # check exists for. Three cases reach a substring grep over removed lines
+    # as one: an assertion weakened to let bad work through, an assertion moved
+    # or reworded with its subject intact, and an assertion whose subject the
+    # item was asked to delete. `PL-VP40`'s fold separated the second. This
+    # separates the third, and it cannot be folded the same way, because
+    # nothing identical comes back - so it is declared instead, in the item,
+    # before the work (`PL-K82G`).
+    #
+    # The removal stays on the page either way: what changes is that it reads
+    # as a commissioned act rather than an unexplained one, which is the
+    # property the check was defending.
+    removed_assertions = [line.strip() for line in removed if "assert" in line]
+    declared, unread = commissioned_falsification(root, base, config.items_dir, item)
+    folded = [line for line in removed_assertions if declared and declared in line]
+    dropped = [line for line in removed_assertions if not (declared and declared in line)]
+    detail = f"{len(dropped)} line(s)" if dropped else "none"
+    if folded:
+        detail += f", {len(folded)} declared falsified"
     report.checks.append(
         Check(
             "no existing assertion removed",
             not dropped,
-            f"{len(dropped)} line(s)" if dropped else "none",
-            tuple(dropped[:5]),
+            detail,
+            tuple(dropped[:5])
+            + tuple(f"declared falsified, not counted: {line}" for line in folded[:5]),
         )
     )
+
+    # Said only where there is something to say, so an ordinary branch - which
+    # declares nothing and has nothing to declare - sees no extra line. Each
+    # case is a declaration that did not do what it looks like it did, and all
+    # three are advisory: none of them folds anything, so whatever the diff
+    # removed is already being refused by the check above.
+    if item.falsifies and unread:
+        claim = (
+            f"this branch declares `falsifies: {item.falsifies}`, but {unread}, "
+            "so nothing was folded"
+        )
+    elif item.falsifies and not declared:
+        claim = (
+            f"`{item.falsifies}` is declared on this branch and not in {base}'s copy of the "
+            "item, so nothing was folded: the declaration is the commission's, written "
+            "before the work, and one added beside the deletion it excuses is the worker's "
+            "own word for it"
+        )
+    elif declared and not folded:
+        claim = (
+            f"{base} declares `{declared}` falsified, but no assertion matching it was "
+            "removed - the item is describing work this branch did not do"
+        )
+    else:
+        claim = ""
+    if claim:
+        report.checks.append(
+            Check("the `falsifies:` declaration holds", False, claim, advisory=True)
+        )
 
     report.checks.append(
         front_matter_check(root, base, config.items_dir, item, advisory=self_audit)
     )
+
+    # An exempt item reached here with no command; the advisory above already
+    # said which exemption applied, and there is nothing left to run.
+    if not item.verify:
+        return report
 
     if os.environ.get(VERIFY_GUARD):
         report.checks.append(

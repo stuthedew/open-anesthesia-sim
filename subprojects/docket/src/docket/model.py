@@ -213,6 +213,26 @@ class Item:
     #: The reason a qualifying item is withheld from delegation. Presence is
     #: the switch; there is deliberately no field that grants delegability.
     not_delegable: str = ""
+    #: Enough of an assertion to name the one subject this item's work makes
+    #: untrue. Not *weakened* - falsified: the string the assertion pins is
+    #: what the item was commissioned to delete, so no arrangement of the
+    #: tests keeps it. `verify` folds a matching removal out of its "no
+    #: existing assertion removed" check and prints what it folded, which is
+    #: the only route that check has ever had for a correct close-out
+    #: (`PL-K82G`).
+    #:
+    #: A substring rather than the exact line, because an exact line breaks on
+    #: reformatting and on the commas a real assertion carries; one subject
+    #: rather than a list, because an item falsifying several unrelated
+    #: assertions is doing several things. `checks.py` refuses a fragment too
+    #: short to name anything.
+    #:
+    #: `verify` reads this field from the *base's* copy of the item, never
+    #: from the branch's - the declaration is worth something only as the
+    #: reviewer's text, written before the work. Editing it here changes what
+    #: a later branch is measured against, and nothing about the branch that
+    #: writes it.
+    falsifies: str = ""
     #: The item file's name inside the store directory - `PL-K7QX-do-it.md`,
     #: never `docs/items/PL-K7QX-do-it.md`. A repository path is that name
     #: joined to the store directory, which is what `verify.front_matter_check`
@@ -449,6 +469,7 @@ def parse_item(text: str, path: str = "") -> Item:
         "reason",
         "verify",
         "not-delegable",
+        "falsifies",
     }
     return Item(
         identifier=fields.get("id", ""),
@@ -468,6 +489,7 @@ def parse_item(text: str, path: str = "") -> Item:
         reason=fields.get("reason", ""),
         verify=fields.get("verify", ""),
         not_delegable=fields.get("not-delegable", ""),
+        falsifies=fields.get("falsifies", ""),
         body=body,
         path=path,
         unknown_fields=tuple(sorted(set(fields) - known)),
@@ -500,6 +522,7 @@ def render_item(item: Item) -> str:
         ("reason", item.reason),
         ("verify", item.verify),
         ("not-delegable", item.not_delegable),
+        ("falsifies", item.falsifies),
     ):
         if value:
             lines.append(f"{name}: {value}")

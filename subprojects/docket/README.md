@@ -1191,6 +1191,18 @@ Two further fields govern whether the work may be handed to a cheaper model:
 holding the reason an otherwise-qualifying item is withheld. See *Delegation is
 derived, never granted* below.
 
+`falsifies` is read by `docket verify` alone, and is almost always absent. It
+holds enough of one assertion to name the single subject this item's work makes
+untrue — a substring rather than the whole line, because an exact line breaks on
+reformatting and on the commas a real assertion carries, and one subject rather
+than a list, because an item falsifying several unrelated assertions is doing
+several things. A fragment shorter than twelve characters is an error: `verify`
+folds every removed assertion containing it, so `assert` would fold the lot.
+Whether the fragment is long enough to name a subject is decidable; whether it
+names the *right* one is left to whoever reads the lines `verify` prints. Write
+it when the item is triaged, not while working it — a declaration only counts
+where the base already holds it. See *Verification is scoped, not just green*.
+
 An item at `ready` must carry one of them: the command that would prove it
 done, or a recorded reason why no command can. The gate sits at `ready` rather
 than at capture deliberately — demanding a command at the moment an idea occurs
@@ -1923,6 +1935,36 @@ refusing. The four **integrity** checks are untouched — no suppression added, 
 assertion removed, the item's own command passes, the project's own checks pass.
 A session may re-scope its own commission; it may not weaken what measures it,
 and it may not skip the test (`PL-69JZ`, `PL-B5YN`, `PL-4LT9`).
+
+Two of the four take a **declared** exemption, which is what lets them stay
+absolute rather than a softening of them. Both were checks a correct close-out
+could trip with no passing route at all, leaving a session to game the fold or
+push through a red integrity check — and either sets the precedent the split
+exists to prevent.
+
+- **`falsifies:`** names enough of an assertion to identify the one subject
+  the item's work makes untrue. Not weakened — *falsified*: the string the
+  assertion pins is what the item was commissioned to delete, so no
+  arrangement of the tests keeps it. A removed assertion containing that
+  substring folds out of "no existing assertion removed" and is printed
+  beside it, so the removal stays on the page and reads as a commissioned act
+  rather than an unexplained one (`PL-K82G`).
+- **A `dropped` item, or one carrying `not-delegable:`**, has no `verify:`
+  command by construction — the first built nothing, and the second is what
+  `docket check` accepts *instead of* a command. The check names which applies
+  and the remaining checks still run, where a missing command used to stop the
+  audit dead. `docket check` and `docket verify` had disagreed about every
+  such item, so the close-out the `docket` skill prescribes had no passing
+  state (`PL-L4KX`).
+
+Neither is anything a session can grant itself. Both are read off the item as
+the **base** holds it — the commission — rather than off the branch, so a
+`falsifies:` line added beside the deletion it excuses folds nothing and is
+reported as the worker's own word for it. That matters most in `--self`, where
+`front_matter_check` is an advisory by design and so catches nothing; reading
+the base holds the property in both modes and needs no second guard. Where the
+base's copy cannot be read at all, the report says so rather than folding
+nothing silently.
 
 `--self` also adds one line when the audited commits name other items' ids.
 `item_commits` selects by id so a batch can be judged per item, and a commit
