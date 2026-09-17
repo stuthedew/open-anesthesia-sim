@@ -6,6 +6,7 @@ effort: L
 status: done
 classes: feature, ux
 feature: qt-port
+milestone: v0.4.26
 touches: src/anesthesia_sim/app/chart_frame.py, src/anesthesia_sim/app/qt_chart.py, src/anesthesia_sim/app/chart_series.py, src/anesthesia_sim/app/simulation_view.py, tests/unit/test_chart_frame.py, tests/integration/test_qt_chart.py, tests/conftest.py, pyproject.toml, uv.lock, .github/workflows/quality.yml, docs/ARCHITECTURE.md, docs/MODEL.md
 added: 2026-09-10
 closed: 2026-09-14

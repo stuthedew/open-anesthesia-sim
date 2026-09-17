@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, defect
 feature: documentation-standard
+milestone: v0.4.26
 touches: docs/ARCHITECTURE.md
 added: 2026-09-14
 closed: 2026-09-14

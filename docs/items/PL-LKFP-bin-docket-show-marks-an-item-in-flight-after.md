@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: parallel-sessions
+milestone: v0.4.26
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-16
 closed: 2026-09-16

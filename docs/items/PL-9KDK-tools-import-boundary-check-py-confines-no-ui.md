@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: qt-port
+milestone: v0.4.26
 touches: tools/import_boundary_check.py, tests/unit/test_import_boundary_check.py, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-14
 closed: 2026-09-14

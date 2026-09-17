@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
+milestone: v0.4.26
 touches: .gitignore, .vscode/extensions.json
 added: 2026-09-15
 closed: 2026-09-15

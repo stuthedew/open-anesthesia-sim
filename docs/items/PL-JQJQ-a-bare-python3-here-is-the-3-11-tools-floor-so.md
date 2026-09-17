@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra, session-cost
 feature: dev-tooling
+milestone: v0.4.26
 touches: .claude/hooks/floor-interpreter-guard.sh, .claude/settings.json, src/anesthesia_sim/app_metadata.py, tests/unit/test_floor_interpreter_guard.py, docs/ARCHITECTURE.md, docket.toml
 added: 2026-09-16
 closed: 2026-09-16

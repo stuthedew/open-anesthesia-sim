@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: interface-areas
+milestone: v0.4.26
 added: 2026-09-16
 closed: 2026-09-16
 pr: 618

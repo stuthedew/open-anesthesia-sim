@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, planning
 feature: release-roadmap-seam
+milestone: v0.4.26
 touches: ROADMAP.md
 added: 2026-09-16
 closed: 2026-09-16
@@ -19,7 +20,7 @@ verify: python3 tools/doc_check.py check && grep -qF "deliberate act rather than
 `#606` merged, and it is a correction to that session's own sweep.
 
 **The two statements, a few lines apart in one paragraph.** `ROADMAP.md`
-§ "v0.4.26 - the interface moves to Qt", under the heading "**The one risk,
+§ "Completed: v0.4.26 - the interface moves to Qt", under the heading "**The one risk,
 recorded rather than engineered around - and it has happened once**", says a
 patch cut before the port lands "takes this section's number ... It will move
 again if another patch is cut before this lands - a rename each time, not a
@@ -145,7 +146,7 @@ direction `#606` had already moved the apparatus, and with this brief's own
    cut before the exact step lands would take it."* Narrow rather than reverse:
    a number the roadmap has reserved for a milestone section ahead of the
    current one is not free, and the guard withholds it.
-2. **The port's risk paragraph, § "v0.4.26 - the interface moves to Qt"**
+2. **The port's risk paragraph, § "Completed: v0.4.26 - the interface moves to Qt"**
    (line 1515 here; rewritten by `#639` into three paragraphs, the last of
    which marks the question open). Replace that last paragraph with the
    decision above. It must contain the phrase **`deliberate act rather than the

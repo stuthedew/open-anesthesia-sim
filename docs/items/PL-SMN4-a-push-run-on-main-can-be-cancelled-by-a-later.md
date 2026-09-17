@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: ci-cost
+milestone: v0.4.26
 touches: .github/workflows/quality.yml, tests/unit/test_ci_concurrency.py, tools/main_ci_status.py, docs/ARCHITECTURE.md, docket.toml
 added: 2026-09-15
 closed: 2026-09-16

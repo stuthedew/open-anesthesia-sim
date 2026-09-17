@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, safety, infra
 feature: qt-port
+milestone: v0.4.26
 touches: tools/contrast_check.py, tests/unit/test_contrast_check.py, docs/ARCHITECTURE.md
 added: 2026-09-14
 closed: 2026-09-14
@@ -26,7 +27,7 @@ that reports green. Nothing exploits it today - no hex constant sits outside
 `app/theme.py` anywhere under `src/` - but `PL-25KS` builds the Qt view
 decomposed from the start, so the port is exactly the change that creates the
 modules this tool cannot see. It lands before the port's first commit for that
-reason (`ROADMAP.md` § "v0.4.26 - the interface moves to Qt" → "Required
+reason (`ROADMAP.md` § "Completed: v0.4.26 - the interface moves to Qt" → "Required
 scope" item 4).
 
 **Done when.** `read_palette`, `read_symbols` and

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: release-roadmap-seam
+milestone: v0.4.26
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_release.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md, ROADMAP.md, docs/items/PL-SYG4-the-digest-s-reserved-verdict-suppresses-the.md
 added: 2026-09-14
 closed: 2026-09-16

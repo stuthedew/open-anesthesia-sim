@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, safety, infra
 feature: qt-port
+milestone: v0.4.26
 touches: tools/agent_identity_check.py, tests/unit/test_agent_identity_check.py, docs/ARCHITECTURE.md, Makefile
 added: 2026-09-14
 closed: 2026-09-14

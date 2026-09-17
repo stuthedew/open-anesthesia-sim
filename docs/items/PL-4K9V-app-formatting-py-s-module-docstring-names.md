@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: documentation-standard
+milestone: v0.4.26
 touches: src/anesthesia_sim/app/formatting.py
 added: 2026-09-14
 closed: 2026-09-14

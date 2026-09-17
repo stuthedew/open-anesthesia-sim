@@ -12,7 +12,7 @@ closed: 2026-09-13
 added: 2026-09-02
 ---
 
-> **The Qt port moots or transforms this.** `ROADMAP.md` § "v0.4.26 -
+> **The Qt port moots or transforms this.** `ROADMAP.md` § "Completed: v0.4.26 -
 > the interface moves to Qt" names this item under "Items this port moots or
 > transforms". Read that entry before starting: the work may be thrown away by
 > the port, or may be a different question after it. Found 2026-09-10.

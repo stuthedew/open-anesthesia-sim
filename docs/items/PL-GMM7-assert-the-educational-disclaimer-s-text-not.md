@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: test
 feature: dev-tooling
+milestone: v0.4.26
 touches: tests/unit/test_dashboard_frame.py, tests/integration/test_simulation_view.py
 added: 2026-08-30
 closed: 2026-09-15

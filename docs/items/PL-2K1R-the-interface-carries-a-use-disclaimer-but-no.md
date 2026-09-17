@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: safety, ux
 feature: presentation-safety
+milestone: v0.4.26
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/run_view.py, tests/unit/test_dashboard_frame.py, tests/integration/test_simulation_view.py, docs/MODEL.md
 added: 2026-09-13
 closed: 2026-09-15
@@ -63,7 +64,7 @@ dashboard a clinician reads; `S` because it is text beside values that already
 exist. Blocked on `PL-25KS` (port the dashboard) rather than built on Flet
 first: the readouts and chart it sits beside are rewritten from scratch there,
 so a Flet version is the same lines written twice - the port's own carried-fix
-rule. It is named on `ROADMAP.md` § "v0.4.26 - the interface moves to Qt" →
+rule. It is named on `ROADMAP.md` § "Completed: v0.4.26 - the interface moves to Qt" →
 "Decisions the port has to make anyway", which is what keeps the port's parity
 claim - "identical except for this list" - checkable with this on it. It is
 text the dashboard states, not a control a learner operates, so it is not new

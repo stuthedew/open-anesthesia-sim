@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, test
+milestone: v0.4.26
 touches: tests/unit/test_docket_branch_guard.py, tests/unit/test_docket_digest_hook.py
 added: 2026-09-14
 closed: 2026-09-14

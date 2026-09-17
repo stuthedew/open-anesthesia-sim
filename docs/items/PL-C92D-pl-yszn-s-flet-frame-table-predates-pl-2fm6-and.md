@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, perf
 feature: qt-port
+milestone: v0.4.26
 touches: docs/WORKING_NOTES.md
 added: 2026-09-08
 closed: 2026-09-16

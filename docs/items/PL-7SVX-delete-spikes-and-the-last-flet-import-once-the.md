@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: refactor, infra
 feature: qt-port
+milestone: v0.4.26
 touches: spikes, ROADMAP.md, docs/WORKING_NOTES.md, pyproject.toml, tools/doc_check.py
 added: 2026-09-10
 closed: 2026-09-16

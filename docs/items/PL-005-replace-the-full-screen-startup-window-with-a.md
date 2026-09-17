@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: ux
 feature: vaporizer-controls
+milestone: v0.4.26
 touches: src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_qt_widgets.py, tests/unit/test_bootstrap.py, docs/MODEL.md
 added: 2026-08-23
 closed: 2026-09-15
@@ -13,7 +14,7 @@ pr: 588
 verify: uv run pytest tests/integration/test_qt_widgets.py tests/unit/test_bootstrap.py && grep -q 'def test_the_startup_window_is_sized_from_the_screen_and_centred' tests/integration/test_qt_widgets.py
 ---
 
-> **This fix rides the Qt port, not Flet.** `ROADMAP.md` § "v0.4.26 -
+> **This fix rides the Qt port, not Flet.** `ROADMAP.md` § "Completed: v0.4.26 -
 > the interface moves to Qt" names this item under "Fixes this port carries":
 > the defect lives in code that milestone rewrites from scratch, so fixing it
 > on Flet means writing the same lines twice. Project owner, 2026-09-10.

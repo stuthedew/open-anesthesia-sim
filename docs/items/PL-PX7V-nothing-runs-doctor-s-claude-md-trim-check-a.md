@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: session-cost, docs
+milestone: v0.4.26
 touches: docs/items/
 added: 2026-09-16
 closed: 2026-09-16

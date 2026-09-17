@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: session-cost
+milestone: v0.4.26
 touches: CLAUDE.md, docs/resident-instructions.md
 added: 2026-09-16
 closed: 2026-09-16

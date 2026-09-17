@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: test, infra
 feature: qt-port
+milestone: v0.4.26
 touches: tests/integration, tests/conftest.py, src/anesthesia_sim/app/simulation_view.py, docs/ARCHITECTURE.md, docs/worker.md
 added: 2026-09-10
 closed: 2026-09-15

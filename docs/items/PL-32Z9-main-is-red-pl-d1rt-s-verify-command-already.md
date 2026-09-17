@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect
 feature: queue-hygiene
+milestone: v0.4.26
 touches: docs/items
 added: 2026-09-16
 closed: 2026-09-16
+pr: 646
 verify: bin/docket check && grep -q '^status: done' docs/items/PL-D1RT-docs-working-notes-md-s-ui-structure-thread-and.md
 ---
 

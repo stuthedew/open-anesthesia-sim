@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: docs, infra
+milestone: v0.4.26
 touches: .claude/rules/expert-review.md, docs/resident-instructions.md
 added: 2026-09-16
 closed: 2026-09-16
