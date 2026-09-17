@@ -253,10 +253,14 @@ jobs:
       # step on. That item took the replay off `make check` because a
       # pre-commit gate cannot have changed whether some *other* item's work
       # merged - and neither can a pull request. What a branch can have changed
-      # is the items it edited, so a pull request replays exactly those, which
-      # `--verify-base` reads from the diff. The finding a session can act on -
-      # "you finished this item's work and left it open" - is kept; the finding
-      # about the rest of the store is not a pull request's question.
+      # is two sets, both read from the diff by `--verify-base`: the items it
+      # edited, and the open items whose `verify:` command reads a file it
+      # edited (`PL-XMNC` - the second is the command a branch *invalidates*,
+      # which every one of six recorded breaks was and which the first replays
+      # never). The findings a session can act on - "you finished this item's
+      # work and left it open", "you have just stopped this command
+      # discriminating" - are kept; the rest of the store is not a pull
+      # request's question.
       #
       # The whole-store sweep still runs on every push to the default branch,
       # which is where it is a fact about `main` rather than about a branch. A

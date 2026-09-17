@@ -80,7 +80,7 @@ from .vcs import (
     stranded,
     tags,
 )
-from .verify import already_passing, verify_batch
+from .verify import already_passing, changed_paths, items_reading, verify_batch
 
 # The one thing that is true at capture, and nothing else. Empty headings for a
 # session to write over were indistinguishable from headings a session had left
@@ -280,6 +280,19 @@ def cmd_check(args: argparse.Namespace) -> int:
     # directory, and the roadmap `_offered` reads sits a level above it.
     _, items, config = _load(args)
     root = args.items.parent if args.items else find_root()
+    # The pull-request replay's scope, in two halves, computed here rather than
+    # inside `already_passing` so the cost line can name which half an id came
+    # from. The first is the items this branch edited; the second is the open
+    # items whose `verify:` command reads a file this branch edited, which is
+    # the half that catches a command a branch *invalidates* without ever
+    # opening its item (`PL-XMNC`). Both read the diff against the same base,
+    # and both under-report where that base cannot be resolved rather than
+    # guessing - a scoped run then checks nothing and says so.
+    changed: frozenset[str] = frozenset()
+    reading: frozenset[str] = frozenset()
+    if args.verify and args.verify_base:
+        changed = changed_items(root, args.verify_base, items_dir=config.items_dir)
+        reading = items_reading(items, changed_paths(root, args.verify_base)) - changed
     # The only command that asks git anything, because it is the only one whose
     # answer depends on what has merged. `None` comes back from a checkout too
     # shallow to be trusted, and the provenance check is skipped rather than
@@ -317,8 +330,8 @@ def cmd_check(args: argparse.Namespace) -> int:
         # right one to ask should produce. A line on every `make check` saying
         # the replay did not run would be an advisory nobody reads.
         #
-        # `--verify-base` narrows it further, to the items this branch changed
-        # against that ref (`PL-SDHR`). The same argument one step on: if a
+        # `--verify-base` narrows it further, to the two sets computed above
+        # (`PL-SDHR`, widened by `PL-XMNC`). The same argument one step on: if a
         # pre-commit gate cannot have changed whether another item's work
         # merged, neither can a pull request, and the sweep costs 87 s of the
         # quality job's 152 s on every push to every open pull request while
@@ -329,7 +342,8 @@ def cmd_check(args: argparse.Namespace) -> int:
             already_passing(
                 root,
                 items,
-                scoped_to=changed_items(root, args.verify_base, items_dir=config.items_dir),
+                scoped_to=changed | reading,
+                reading=reading,
                 scope_base=args.verify_base,
             )
             if args.verify and args.verify_base
@@ -1809,9 +1823,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--verify-base",
         default="",
         metavar="REF",
-        help="with --verify, replay only the items this branch changed against REF "
-        "(for a pull request, where the whole-store sweep answers about the store "
-        "rather than about the change)",
+        help="with --verify, replay only the items this branch changed against REF, "
+        "plus the open items whose verify: command reads a file it changed (for a "
+        "pull request, where the whole-store sweep answers about the store rather "
+        "than about the change)",
     )
     check_cmd.set_defaults(func=cmd_check)
     add("list", "one line per open item").set_defaults(func=cmd_list)
