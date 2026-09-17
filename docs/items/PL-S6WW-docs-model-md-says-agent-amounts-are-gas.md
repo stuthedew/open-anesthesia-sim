@@ -6,7 +6,8 @@ effort: S
 status: needs-decision
 classes: science, docs
 feature: liquid-agent-consumption
-touches: docs/MODEL.md
+touches: docs/MODEL.md, docs/references/README.md
+verify: python3 tools/doc_check.py check && grep -qF 'where the ideal-gas molar volume is 24.055 L/mol' docs/MODEL.md && grep -qF 'One reference condition, where the model physically has two' docs/MODEL.md
 added: 2026-09-16
 ---
 
@@ -109,3 +110,63 @@ makes and does not currently disclose.
 **Done when** `docs/MODEL.md` § "Agent amount" states the temperature as it
 already states the pressure, with the reasoning for the choice and its source,
 and § "Known limitations" records what the single-condition assumption costs.
+
+**Written on `claude/agent-amounts-ref-temp-vk1c39` at 20 °C, 2026-09-17, and
+the item stays open for one word from the project owner.** The whole
+deliverable is on the branch — `docs/MODEL.md` § "Agent amount" states the
+condition, § "Assumptions" points at it from "temperature is constant", and
+§ "Known limitations" carries the single-condition note and its 5.8 % — so
+what is outstanding is the ratification, not the work. No pull request was
+opened for that reason.
+
+**One ground the original brief did not have, and it is the strongest.**
+Biro's composite constants can be *derived* rather than taken on authority,
+from Laster, Fang and Eger's 20 °C densities and the ideal-gas molar volume.
+Run at 20 °C the derivation gives sevoflurane 182.8, isoflurane 195.8 and
+desflurane 209.7 mL of vapour per mL of liquid, against Biro's 184, 195 and
+210 — within 0.7 % on all three. Run at 37 °C it gives 193.4, 207.2 and 221.9,
+which is 5.1–6.3 % high and matches none of them. So "the published constants
+are 20 °C constants" is arithmetic that anyone can re-run, not a convention
+being appealed to. That reproduction is what moved this from a balanced
+two-sided decision to a recommendation with a measurement under it.
+
+**The second ground was also sharpened.** `ROADMAP.md` planned-milestone item
+28's figure converts $`M_{\mathrm{delivered}}`$ (`PL-H4N8`), which integrates
+$`\dot V_F`$ — the flow at the common gas outlet, at operating-room
+temperature. Declaring 20 °C makes that term exact. Declaring 37 °C would not
+merely relabel it: it would call for an ambient-to-body correction on
+$`\dot V_F`$ that no governing equation here carries, which is a change to the
+model rather than to a unit definition.
+
+**What the case against now amounts to.** 37 °C remains where the partition
+coefficients were measured and where the alveolar, venous and tissue
+compartments are, so the *stores* are natively exact there. The branch does
+not hide this — it is the "Known limitations" note, sized at 5.8 % on those
+three terms and at zero on the fresh-gas terms. The trade is therefore
+explicit: 20 °C puts the error on the stores and none on the amounts a
+consumption figure converts; 37 °C would reverse that and would disagree with
+the published constants.
+
+**To flip it to 37 °C** takes the one sentence in § "Agent amount" that names
+the condition, the molar volume beside it (25.450 L/mol), the "Why 20 °C"
+block, the `verify:` string above, and the direction of the "Known
+limitations" note — which would then say the fresh-gas terms are the
+approximated ones. Under an hour; nothing outside `docs/MODEL.md`.
+
+**To close it at 20 °C** takes `status: done`, `closed:`, and the pull
+request. `PL-KZ99` (store each agent's molar mass and liquid density with the
+density's measurement temperature) and `PL-0S0V` (agent volume display
+decimals) are both `blocked-by` this item and are released by either answer,
+not only by this one.
+
+**Widened `touches` mid-work, deliberately.** `docs/references/README.md`
+gained the extraction note for Appendix C's `Volatility` line, which
+`.claude/rules/citing-sources.md` requires of any reading taken from the
+private reference corpus and which did not exist — the entry recorded three
+values Appendix C carries beyond Appendix B's table and this is a fourth. It
+is the in-repo carrier the § "Agent amount" citation now points at, so it is
+this item's work rather than a drive-by fix. Two things in it could not be
+re-verified: the corpus could not be attached this session (`add_repo` was
+declined by the sandbox's permission classifier, and an unauthenticated clone
+fails), so p. 174 sitting outside the pp. 171–72 span the entry gives, and
+which agent each `Volatility` value belongs to, are both recorded as open.

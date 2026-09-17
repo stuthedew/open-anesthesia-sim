@@ -283,6 +283,19 @@ value:
   is where they are written down. `PL-9GP1` brought it into those notes and
   into `docs/MODEL.md`, which had recorded the venous pool's 1.0 L as a value
   no source contained; no stored value changed.
+- **Appendix C also carries a `Volatility` line, and it states a
+  temperature.** Read on 2026-09-16 while working `PL-S6WW`: the per-agent
+  entry is written `Volatility=209           Vapor/Liquid volume ratio
+  (20'C)`, with `Volatility=200` in a second listing, printed pp. 171 and 174.
+  It is the only place in the material this project has read where the
+  reference implementation states the condition its gas volumes are referenced
+  to, and it is ground 3 of the reference condition `docs/MODEL.md` § "Agent
+  amount" now fixes at 20 °C. Two things left open, neither re-verifiable in
+  the session that recorded them here: p. 174 sits outside the pp. 171–72 span
+  this entry gives for the Appendix C listing, so the appendix either runs
+  further or holds a second example; and which agent each of the two values
+  belongs to was not recorded. Confirm both the next time the corpus is
+  attached. Tier 3 either way — a program's parameter, not a measurement.
 - **Appendix B's second table is mis-captioned.** Under "Tissue/Gas partition
   coefficients (calculated)" it lists Blood/Gas, Brain/Blood, Muscle/Blood and
   Fat/Blood rows, which are tissue/**blood** ratios. Every column reproduces as
