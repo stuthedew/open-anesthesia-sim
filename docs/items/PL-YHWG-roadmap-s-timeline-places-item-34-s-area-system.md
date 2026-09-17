@@ -9,6 +9,7 @@ feature: interface-areas
 touches: ROADMAP.md, docs/WORKING_NOTES.md, docs/items
 added: 2026-09-16
 closed: 2026-09-17
+pr: 648
 verify: python3 tools/doc_check.py check && bin/docket check && grep -qF "No new display surface is built before this item" ROADMAP.md
 ---
 

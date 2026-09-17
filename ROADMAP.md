@@ -297,7 +297,7 @@ adds no capability and exists to clear the ground they are built on:
 | 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. The placement argument above stands for what it placed, and is left as written. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 170 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. **Five more shipped early the same way**, in v0.4.25 (2026-09-14, `PL-G7RD`): `PL-TFX5`, `PL-J2TD`, `PL-ZMRT`, `PL-B9PY` and `PL-5328`, ahead of the port; the scope list is unchanged and they are closed against it. **`PL-8PSW` makes a sixth**, in v0.4.26 (2026-09-17, `PL-06YW`): the two-branch overlay, asked for by id and built on the port's own chart rather than twice, on the same disposition - its Required-scope entry below records what shipped and is unchanged. | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
 | 6 | **Gate 2** | **Frozen when v0.5.0 ships, not when the milestone below is scoped** (project owner, 2026-09-16, ratified - chosen over freezing it on the scoping day as beat 1 says, and over deferring the whole scoping round until v0.5.0 ships). Row 7 was scoped two releases early, so the cadence's own trigger would have frozen this list before v0.5.0 had been implemented — leaving it holding none of v0.5.0's findings, which is the one thing a gate is defined to hold. § "The cadence" records the exception and the item that re-examines the trigger; v0.6.0's own section says where the frozen list goes when the moment comes. Ships inside v0.6.0. | — |
-| 7 | **v0.6.0 — the layout is the reader's** | Planned-milestone item 34's tiled half: the layout model, the Editor contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out is row 9, deliberately — see that section's "Explicitly out of scope" for why the split costs nothing structural. **The placement was reopened and re-affirmed on 2026-09-17** (project owner, ratified - chosen over moving item 34 ahead of v0.5.0, on the argument that every interface question settled before the area model is settled against a layout that is going away): v0.5.0's Required scope is 13 of 20 `done` and the compare surface is among the closed, so the tail a re-order would protect is 4 M and 3 S against this row's own 4 L, 16 M, 3 S. Planned-milestone item 34's entry carries the count, and the standing rule that round produced - **no new display surface is built before this release**, until item 34's Editor contract and view registry ship. | 4 L, 16 M, 3 S |
+| 7 | **v0.6.0 — the layout is the reader's** | Planned-milestone item 34's tiled half: the layout model, the View contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out is row 9, deliberately — see that section's "Explicitly out of scope" for why the split costs nothing structural. **The placement was reopened and re-affirmed on 2026-09-17** (project owner, ratified - chosen over moving item 34 ahead of v0.5.0, on the argument that every interface question settled before the area model is settled against a layout that is going away): v0.5.0's Required scope is 13 of 20 `done` and the compare surface is among the closed, so the tail a re-order would protect is 4 M and 3 S against this row's own 4 L, 16 M, 3 S. Planned-milestone item 34's entry carries the count, and the standing rule that round produced - **no new display surface is built before this release**, until item 34's View contract and view registry ship. | 4 L, 16 M, 3 S |
 | 8 | **Gate 3** | Frozen when v0.6.0 ships; ships inside v0.7.0. | — |
 | 9 | **v0.7.0 — the second screen** | Planned-milestone item 34's break-out half: an area taken into its own top-level window, itself a full window with its own areas. Not yet scoped. What it owes the display is already decided rather than left to its scoping — `docs/MODEL.md` § "Minimum displayed outputs" → "What this list requires once the layout is the reader's" carries the tier split (project owner, 2026-09-16, ratified - chosen over `PL-W54S`'s own two live readings, every window carrying the whole region and the main window carrying it alone), because it decides the shape v0.6.0 builds the unconditional region in. | — |
 | — | **v0.7.x — the interface pass** | Planned-milestone item 33: one deliberate visual design pass over the whole interface - palette, type scale, spacing rhythm, density and the visual composition of each surface - rather than the per-defect corrections the queue has been making one at a time. **Arrangement is item 34's and not this row's** (`PL-BNYF`, 2026-09-16); the entry for item 33 carries why. A patch track rather than a numbered milestone, because it crosses no capability boundary. **Restored here 2026-09-16**, having been absorbed into v0.4.26 on 2026-09-10 and un-absorbed when that port turned out not to have redecided the visuals; the row that release's own entry reversed is this one. **Moved here from between MVP and Gate 2 on 2026-09-16** (project owner, ratified - chosen over leaving it ahead of item 34, on the argument that item 34 and break-out introduce an area header, a workspace tab strip, a live splitter handle and a drag affordance, none of which exists to be styled today; what the other side bought was a styled interface two releases sooner, and `PL-BNYF`'s separation of arrangement from appearance means the composition of each surface would mostly have survived the move). It renumbers from `v0.5.x` to `v0.7.x` as a consequence: a patch track takes the number of the release it follows, which is mechanical rather than a second decision. `PL-PHKP` carries it. It is a design round with the project owner before it is items: the owner framed it as "a decent size overhaul (theme, style, overall polish)" and as not urgent, wanted after the simulator works. | — |
@@ -3347,7 +3347,7 @@ that is the `PL-X9T3` shape. It also names `app/chart_frame.py`, which
 **Two more filed under `PL-8PSW` while it was being built, both about the
 interface's move to Blender-style areas** — `PL-VN6M` (`TraceLegend` owns the
 compartment-visibility state inside a widget) and `PL-TH35` (define the common
-Editor contract every `app/` view implements). Captured ten days after this
+View contract every `app/` view implements). Captured ten days after this
 gate was frozen, so "The gate is a snapshot" already places them in the next
 one; they are written down because both are `refactor`-classed and therefore
 debt, and a reader finding them open would otherwise have to work out why.
@@ -3423,11 +3423,11 @@ paragraph is their disposition.
 **Eight more were filed by that scoping round itself, and are disposed of here
 rather than added to the list.** Five are v0.6.0 `Required scope` and are
 cleared by that milestone under § "Debt inside the milestone's own scope":
-`PL-K285` (an Area that cannot be given the size its Editor needs says so
+`PL-K285` (an Area that cannot be given the size its View needs says so
 rather than collapsing it), `PL-904Y` (the whole-interface visibility predicate,
 which stops meaning "can the reader see it" once an Area can be closed),
 `PL-G5SX` (the headless tests that drive every layout operation against the
-required set), `PL-50PZ` (the Editor chooser and the registry flag that make the
+required set), `PL-50PZ` (the View chooser and the registry flag that make the
 accounting tier reachable) and `PL-JSY5` (two `docs/MODEL.md` statements that
 assume one window's width and one permanent surface). `PL-Y04W` (build
 break-out) is v0.7.0's by the same rule one release further out. The last two
@@ -3469,7 +3469,7 @@ which is when the hazard it names has been built.
 
 `PL-9PD6` (`docs/interface-provenance.md` contradicts itself about what
 `README.md` records), `PL-D584` (`PL-TH35`'s `blocked-by` names an item that has
-since closed, so the store advises every run that the Editor contract is ready
+since closed, so the store advises every run that the View contract is ready
 to promote) and `PL-J4NW` (`docs/ARCHITECTURE.md` routes every new display panel
 by a fixed two-level layout) are startable today, and are deferred on the
 ordinary snapshot ground instead: post-freeze `defect`s, neither `safety` nor
@@ -3518,6 +3518,26 @@ overtaken by two decisions of record - the interface pass's un-absorption
 (`PL-L9RD`) and its move after item 34 (`PL-PHKP`) - so what becomes of that item
 is the project owner's rather than a session's. It is workflow-lane and reaches
 no reader of the simulator.
+
+**Two more from the 2026-09-17 triage of the `preferences-store` captures, on a
+ground none of the paragraphs above states.** `PL-0S0V` (display precision
+becomes a function of quantity *and* unit once the unit is reader-selectable)
+and `PL-VJZK` (a reader-set price needs its currency, the date it was set and
+whether it is the shipped default, and must not read as an authority) are both
+`safety`-classed and both `anticipated`. The `anticipated` rule is what disposes
+of them, and it is stated in full in the v0.6.0 section rather than here: an
+`anticipated` finding is not debt until the hazard it describes exists, and a
+gate that clears debt *before* a milestone cannot clear a hazard that milestone
+introduces. Nothing in this application is reader-selectable today, so neither
+hazard exists to clear.
+
+They differ from the four `anticipated` entries that section argues out in one
+way only, and it is the reason they are recorded here rather than placed: those
+four are each named in a `Required scope`, and these two have no milestone to be
+placed by. The readouts they constrain are planned-milestone items 24 and 28,
+which no release names. So this is the whole of their disposition, and it
+expires the day either item is placed - at which point they belong in that
+milestone's `Required scope` on exactly the terms the four already there hold.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
@@ -3787,13 +3807,30 @@ decision below; `docs/interface-provenance.md` carries what was read, what this
 project adopts and what it deliberately does differently. This section is what
 gets built.
 
-**The vocabulary is Blender's and is used exactly** (`.claude/rules/ui-areas.md`):
-an **Area** is a rectangle that reserves screen space and holds one thing; an
-**Editor** is what occupies it; a **Workspace** is a set of Areas geared to a
+**The vocabulary is Blender's for two of its three words** (`.claude/rules/ui-areas.md`):
+an **Area** is a rectangle that reserves screen space and holds one thing; a
+**View** is what occupies it; a **Workspace** is a set of Areas geared to a
 task, switched as a tab. Where `PL-C842` wrote `Pane` and `view_kind` while
-recommending the container, this section supersedes that naming and nothing
-else of it: the vocabulary rule is the more specific instruction and a model
-that says `Pane` while the roadmap says Area is the drift it exists to prevent.
+recommending the container, this section supersedes `Pane` and nothing else of
+it: a model that says `Pane` while the roadmap says Area is the drift the
+vocabulary rule exists to prevent.
+
+**The third word is deliberately not Blender's** (project owner, 2026-09-17,
+ratified - chosen over keeping `Editor`, and over `Component` and `Widget`).
+Blender calls an Area's occupant an **Editor**, and most of Blender's editors
+edit: the 3D viewport, the dope sheet, the text editor. This project's occupants
+are the concentration graph, the compartment table, the MAC readout and the
+control panel - one of the four takes input and the rest display modelled
+values, so `Editor` asserts a mutability the reader does not have, which is the
+class of wrong implication `CLAUDE.md`'s clinical-output standard treats as a
+presentation defect. `Widget` was unavailable because `QWidget` is the base
+class of every one of them; `Component` was rejected as vaguer rather than
+wrong. `View` restores `PL-C842`'s own `view_kind`, is already the word
+`app/run_view.py` and `app/simulation_view.py` use, and collides with no Qt
+class used here. `PL-GPYV` carries the comparison and the Eclipse precedent -
+Perspective/View/Editor, which matches this project on lifecycle and not on
+multiplicity. Blender's own editors keep the name wherever
+`docs/interface-provenance.md` describes Blender.
 
 ### Goal
 
@@ -3809,7 +3846,7 @@ chart larger is to make the whole window larger. Stated as they stand on
   34's four requested properties - resizable areas, modular views, presets for
   tasks, and presets the learner owns rather than a fixed shipped set - are
   none of them available.
-- **There is no object above the widget tree.** No layout model, no Editor
+- **There is no object above the widget tree.** No layout model, no View
   registry, no Workspace, and no user-writable state of any kind: nothing under
   `src/anesthesia_sim/` writes a file, so a layout cannot be named, saved, or
   returned to next launch. A saved Workspace would be this application's first
@@ -3828,7 +3865,7 @@ chart larger is to make the whole window larger. Stated as they stand on
   closeable yet.
 
 The end state: a learner divides a window into non-overlapping Areas, each
-holding one Editor; switches between named task Workspaces as tabs; rearranges,
+holding one View; switches between named task Workspaces as tabs; rearranges,
 duplicates and saves their own and returns to them next launch - while the
 values the display is required to show cannot be closed, cannot be collapsed to
 make room, and cannot leave the screen with the surface that drew them.
@@ -3884,30 +3921,30 @@ scope names the id, and nine of the ids below are `defect`-, `safety`- or
    PySide6 6.11.2 / Qt 6.11.2 on 2026-09-16, which is the evidence behind
    `PL-C842` and is stronger than the form that item recorded.
 
-3. **The Editor registry and the kind tag** (queue item `PL-R1WQ`). Where the
+3. **The View registry and the kind tag** (queue item `PL-R1WQ`). Where the
    registry lives, how a tag is allocated so an ordinary class rename does not
-   trip the loud failure meant for a genuinely missing Editor, and how the
+   trip the loud failure meant for a genuinely missing View, and how the
    pure-Python model validates a tag without importing a Qt view.
 
-4. **Loud failure on an unknown Editor kind, per Area** (queue items `PL-R1WQ`
+4. **Loud failure on an unknown View kind, per Area** (queue items `PL-R1WQ`
    and `PL-SSQW`). The flagship divergence from Blender, and it is a *pane*-level
    rule that the file-level version policy in entry 10 cannot reach: a saved
-   Workspace naming an Editor this build does not have fails **visibly, in that
+   Workspace naming an View this build does not have fails **visibly, in that
    Area**, substitutes nothing and drops nothing. Blender's own answer is to
    install a 3D viewport silently, which `docs/interface-provenance.md`
    § "Diverged" refuses on this project's preference for an obvious failure over
    a plausible-looking wrong one.
 
-5. **The Editor contract** (queue item `PL-TH35`), written *with* the area
-   system and validated against two Editors that already exist, carrying the
-   four clauses the 2026-09-16 audit added: what an Editor's saved state is and
+5. **The View contract** (queue item `PL-TH35`), written *with* the area
+   system and validated against two Views that already exist, carrying the
+   four clauses the 2026-09-16 audit added: what an View's saved state is and
    who writes it, what it owes when handed state it cannot read, what a split,
    a swap and a stack round trip each preserve, and what the container does when
    an Area cannot honour a size. Small by construction and re-checked against its
    implementers, per § "Prune the contract" in the provenance record.
 
 6. **The import boundary with teeth** (queue item `PL-L8RN`). `QSplitter`
-   confined to the adapter and concrete Editor modules confined out of the
+   confined to the adapter and concrete View modules confined out of the
    layout tree, which needs `tools/import_boundary_check.py` to decide a dotted
    import target rather than a root package. Both entries land in the commit
    that creates the adapter, because a boundary over a tree that does not exist
@@ -3940,7 +3977,7 @@ scope names the id, and nine of the ids below are `defect`-, `safety`- or
    second request silently reparents the first placement away; the chart time
    base, owned by a dropdown built into one plot's panel while governing both;
    and the chart's column budget, read as a maximum over two named siblings that
-   stop being siblings once each is an Editor in its own Area.
+   stop being siblings once each is an View in its own Area.
 
 10. **Run identity** (queue item `PL-7Z84`). A run carries an identity stable
     across serialization and independent of drawing order, with
@@ -3949,20 +3986,54 @@ scope names the id, and nine of the ids below are `defect`-, `safety`- or
     that identity rather than of how many runs are displayed.
 
 11. **The Workspace object** (queue item `PL-WV9K`). What a Workspace carries
-    **beyond its layout** - the pinned run by the identity above, each Editor's
+    **beyond its layout** - the pinned run by the identity above, each View's
     own saved state, and what a Workspace switch does to a run in progress - and
     how the set behaves: order, rename, duplicate, delete and save-as-mine, with
     Blender's refusal to delete the last Workspace enforced by the type rather
     than by a warning dialog. Shipped defaults are distinguished from the
     learner's own, and "reset" is defined.
 
-    *An Editor's state survives leaving its Area and coming back.* The provenance
+    *A View's state survives leaving its Area and coming back.* The provenance
     record adopts Blender's per-Area stack of previously-open Editors for the
-    property it buys - the outgoing Editor's state is kept rather than destroyed
-    - and this milestone ships `swap` and `set_editor`, which are the operations
+    property it buys - the outgoing View's state is kept rather than destroyed
+    - and this milestone ships `swap` and `set_view`, which are the operations
     that would destroy it. The minimum form is in scope: one retained entry per
-    Editor kind, which is how Blender bounds the stack by construction rather
+    View kind, which is how Blender bounds the stack by construction rather
     than by a cap.
+
+    *A Workspace excludes preference state, and the tier a setting belongs to is
+    decided by instance multiplicity rather than by Workspace membership.* Three
+    tiers. **Run state** - the simulated values - is one set of numbers every
+    View draws from and no reader setting reaches. **Per-View-instance
+    state** is how *this* View draws them: which compartments it shows, its
+    axis denomination and range, its time window. The View serializes it into
+    the Workspace containing it, by the delegation `docs/interface-provenance.md`
+    § "Persistence, and what happens when an editor is missing" already adopts
+    from Blender's `SpaceType`, and two instances of one View kind **in one
+    Workspace** hold it independently. The project owner's stated case, 2026-09-17:
+    one graph showing the vessel-rich group against the MAC-awake band and the
+    1 MAC line, a smaller one below it with every compartment on, and a third in
+    a squarer Area zoomed to the first fifteen minutes to read the wash-in - all
+    three in the same Workspace. **Reader preferences** are the settings for which
+    a second simultaneous value is incoherent rather than merely unusual; the
+    agent price and its currency is the one this project has today.
+
+    The test, therefore, is *can a reader sensibly have two of these on screen at
+    once?* Yes routes to the View; incoherent routes to preferences; and a
+    setting that changes the numbers rather than their drawing is neither and
+    stays in the versioned data files. So a Workspace excludes preference state
+    because it is a container of View instances and a preference has one value
+    - not because a unit or a price "is not layout", which is the weaker argument
+    and the one that misroutes the axis range. This is also what keeps Blender's
+    four Save & Load entries addable later without a migration: its preference
+    reset reads `use_data = false, use_userdef = true`, resetting that third tier
+    alone, while "reset this Workspace" restores the second from item 13's
+    shipped JSON.
+
+    **This holds while a run is ephemeral, which is a condition and not a
+    permanent property.** Planned-milestone items 9, 10, 12, 26 and 30 add a
+    saved scenario; a scenario is a fourth tier, and where it sits is placed when
+    the first of them is scoped rather than assumed here.
 
 12. **Persistence** (queue item `PL-SSQW`). Where the file lives per platform
     and the override a headless run or a test uses; an atomic write, so an
@@ -3975,7 +4046,7 @@ scope names the id, and nine of the ids below are `defect`-, `safety`- or
     for a file the learner wrote, so the rule is decided rather than inherited.
 
 13. **The shipped default Workspaces** (queue item `PL-KXTL`). The central-graph
-    default with the other Editors arranged around it, an induction Workspace
+    default with the other Views arranged around it, an induction Workspace
     with the concentration graph zoomed in, and a big-picture maintenance one -
     as validated versioned JSON beside the other shipped parameter files, with
     the provenance line `docs/interface-provenance.md` asks of anything derived
@@ -3994,7 +4065,7 @@ scope names the id, and nine of the ids below are `defect`-, `safety`- or
     milestone does not *introduce* an interaction a keyboard-only reader cannot
     perform, which is cheap now and a retrofit later.
 
-16. **The Editor chooser, and the accounting tier's reachability** (queue item
+16. **The View chooser, and the accounting tier's reachability** (queue item
     `PL-50PZ`). `docs/MODEL.md` puts the agent accounting - cumulative delivered,
     cumulative exhausted, total stored, and the mass-balance residual with its
     absolute error - in a tier a Workspace may omit but that "must stay reachable
@@ -4041,8 +4112,8 @@ scope names the id, and nine of the ids below are `defect`-, `safety`- or
   fixture file one schema version ahead of the build and a file truncated
   mid-write.
 - `tools/import_boundary_check.py` fails the build if any module but the adapter
-  imports `QSplitter`, or if the layout tree imports a concrete Editor module.
-- A Workspace naming an unknown Editor kind fails visibly in that Area and
+  imports `QSplitter`, or if the layout tree imports a concrete View module.
+- A Workspace naming an unknown View kind fails visibly in that Area and
   substitutes nothing; a Workspace file of an unsupported version is handled per
   the written policy rather than by whatever the load path found natural.
 - Every unconditional value is outside the layout container, and a test asserts
@@ -4050,9 +4121,9 @@ scope names the id, and nine of the ids below are `defect`-, `safety`- or
   still on screen after a split, a join, a close, a Workspace switch and a
   reload.
 - The accounting tier can be brought on screen through the interface alone from
-  every shipped Workspace, and a Workspace naming none of those Editors still
+  every shipped Workspace, and a Workspace naming none of those Views still
   leaves them reachable.
-- Two Editors that already exist implement the Editor contract, and a test
+- Two Views that already exist implement the View contract, and a test
   builds two of one run's surfaces and asserts both draw.
 - **No learner-visible regression against v0.5.0.** Compare mode ships before
   this milestone and is then rearranged by it; everything a learner could do
@@ -4070,9 +4141,9 @@ scope names the id, and nine of the ids below are `defect`-, `safety`- or
   built here: the serialized root carries a window set from version 1 (entry 1),
   and the unconditional region is built in its per-window shape (entry 7). What
   v0.7.0 adds is the window, its lifetime and the test that drives it.
-- **The Editor catalogue** - planned-milestone item 36, which stays after this
-  milestone for the reason item 34 records: an Editor's contract is whatever the
-  area system requires of its contents, so Editors built first are built against
+- **The View catalogue** - planned-milestone item 36, which stays after this
+  milestone for the reason item 34 records: an View's contract is whatever the
+  area system requires of its contents, so Views built first are built against
   today's fixed layout and rewritten. This milestone validates against two that
   exist and builds no new one. The queue audit that re-runs once item 36 is
   scoped is queue item `PL-L6QR`.
@@ -5217,7 +5288,7 @@ once someone is ready to scope it.
     style after item 34 than before it, and would otherwise be partly redone.**
     Item 34 and break-out introduce an area header, a workspace tab strip, a
     live splitter handle and a drag affordance - none of which exists today, and
-    the header is the *Editor's* own rather than the container's, which
+    the header is the *View's* own rather than the container's, which
     `docs/interface-provenance.md` § "What an editor must implement" establishes
     from the source. A pass run first would decide palette, type scale and
     spacing for a set of surfaces, and then meet four more.
@@ -5303,7 +5374,7 @@ once someone is ready to scope it.
 
     *Why Blender specifically, and what is worth copying.* Its window system is
     **tiling**, not floating: the window is subdivided into non-overlapping
-    resizable areas, each area hosts one editor, and areas are split and joined
+    resizable areas, each area hosts one view, and areas are split and joined
     from their corners and borders. Areas are grouped into **Workspaces**,
     presented as tabs and each geared to a task, which the user can reorder,
     duplicate and delete; a layout persists by being saved into the startup
@@ -5318,14 +5389,14 @@ once someone is ready to scope it.
     resemblance* (project owner, 2026-09-16: "the workspace/area concept ...
     is what I want to implement"). Read at the source, the manual's § "Areas"
     and § "Workspaces" pages having been supplied directly - `docs.blender.org`
-    is blocked by the session egress proxy. Three terms, and this project
-    adopts them rather than inventing its own:
+    is blocked by the session egress proxy. Three terms, two of them adopted
+    from Blender rather than invented:
 
     - an **Area** is a rectangle that reserves screen space. It holds one
       thing and nothing else, and areas never overlap;
-    - an **Editor** is what occupies an area - the thing with the
+    - an **View** is what occupies an area - the thing with the
       functionality. Item 36 is the catalogue of them;
-    - a **Workspace** is a set of areas containing editors, geared to a task,
+    - a **Workspace** is a set of areas containing views, geared to a task,
       switched between as tabs. Blender puts the tabs in the Topbar, saves
       workspaces in the file, and lets a custom set become the defaults.
 
@@ -5347,7 +5418,7 @@ once someone is ready to scope it.
 
     *Tiled first, with break-out into a separate window* (project owner,
     2026-09-15). **Scoped across two releases on 2026-09-16**: § "v0.6.0 - the
-    layout is the reader's" (ratified 2026-09-16) builds the tiled no-overlap invariant, the Editor
+    layout is the reader's" (ratified 2026-09-16) builds the tiled no-overlap invariant, the View
     contract, the registry, workspaces, persistence and the unconditional
     region, and the v0.7.0 row - "the second screen" - adds break-out. The
     split costs nothing structural because the two things break-out would
@@ -5468,7 +5539,7 @@ once someone is ready to scope it.
     view this build lacks (Blender silently substitutes a 3D viewport); a
     guarantee that a **required value is never hidden to make room** (Blender
     collapses a region that will not fit); and **isolation with teeth** (Blender's
-    editors can reach the screen and ten of twenty-one do). A pure-Python
+    views can reach the screen and ten of twenty-one do). A pure-Python
     `LayoutModel` is the source of truth - a tree of splits and panes, with
     `split`, `join`, `resize`, `swap` and `set_view`, serialized to versioned
     JSON - with one adapter module the only place importing `QSplitter`. A view
@@ -5526,7 +5597,7 @@ once someone is ready to scope it.
     2026-09-17, ratified - chosen over leaving the ordering implied by row
     position). A surface built before the area system is built against whatever
     layout exists at the time and against no view contract, so it is built
-    twice: once into a fixed parent, and again as an Editor. Every remaining one
+    twice: once into a fixed parent, and again as an View. Every remaining one
     is already behind this item - the schematic (item 27, v0.8.0),
     multi-substance and its readouts (items 6 and 7, v0.9.0), the interface pass
     (item 33, `v0.7.x`) - so the rule costs nothing today and exists so that the
@@ -5536,7 +5607,7 @@ once someone is ready to scope it.
     it: the safety-critical standard is a floor no ordering rule may lower, and
     a misleading displayed value is never held for a layout. **Its condition,
     and it is an instance rather than a permanent refusal**: the rule ends when
-    this item's Editor contract (`PL-TH35`) and view registry (`PL-R1WQ`) ship,
+    this item's View contract (`PL-TH35`) and view registry (`PL-R1WQ`) ship,
     because at that point a new surface *is* one registry entry and the second
     build is what stops existing. A surface wanted before then is filed against
     item 36's catalogue rather than built.
@@ -5612,20 +5683,23 @@ once someone is ready to scope it.
     same foundation.
 
 
-36. Build the catalogue of **editors** an area can hold, as work separate from
+36. Build the catalogue of **views** an area can hold, as work separate from
     the layout mechanism and after it. Item 34 decides what an area is, how it
     is docked, split, joined, swapped and broken out, and how a workspace is
-    saved; this decides what a learner can put in one. "Editor" is Blender's
-    term for the occupant of an area and is the project's term too (item 34,
-    project owner 2026-09-16); earlier drafts called these *widgets* or
-    *views*, and both are retired. The candidates named so far are the
+    saved; this decides what a learner can put in one. **The occupant of an area
+    is a View** (project owner, 2026-09-17, ratified - chosen over `Editor`, and
+    over `Component` and `Widget`). This reverses the 2026-09-16 decision that
+    took Blender's own "Editor" and retired *views* and *widgets*: Blender's
+    editors mostly edit, these mostly display modelled values, and `QWidget` is
+    the base class of every one of them. § "v0.6.0 - the layout is the reader's"
+    carries the full reasoning and `PL-GPYV` the comparison. The candidates named so far are the
     compartment schematic (item 27), the concentration chart and the F_A/F_I
-    plot as editors a workspace places rather than fixed sections of one
+    plot as views a workspace places rather than fixed sections of one
     screen, the control-input timeline, the numeric readouts, and item 37's
     interaction display. Requested by the project owner, 2026-09-15, as its own
-    track (`PL-4D1M`). Each editor added here owes what any displayed clinical
+    track (`PL-4D1M`). Each view added here owes what any displayed clinical
     value owes under `CLAUDE.md`'s clinical-output standard, and a catalogue is
-    where that is settled once per editor instead of being rediscovered per
+    where that is settled once per view instead of being rediscovered per
     layout.
 
 37. Add an opioid/hypnotic interaction display - iso-effect contours over a

@@ -7,7 +7,7 @@ paths:
 
 `ROADMAP.md` planned-milestone item 34 takes Blender's window system as the
 model for this interface: the window subdivided into non-overlapping resizable
-**Areas**, each holding one **Editor**, grouped into **Workspaces** switched as
+**Areas**, each holding one **View**, grouped into **Workspaces** switched as
 tabs. That item builds the system. This file is what the rest of `app/` owes it
 in the meantime, because the owner has ruled that **any main UI element going
 forward is built understanding it will ultimately be converted into an
@@ -20,7 +20,7 @@ workspace tabs or layout persistence ahead of it.
 
 ## Interchangeable, not merely movable
 
-An area holds *one editor and nothing else*, and any editor can occupy any area
+An area holds *one view and nothing else*, and any view can occupy any area
 — that is what makes a layout the reader's to arrange rather than a fixed set of
 slots. So the target is not a widget that can be picked up and put down: it is a
 widget that is **interchangeable with every other main view**, because it
@@ -29,7 +29,7 @@ system where each widget ... has core common features that make them
 interchangeable in any blender-style area section").
 
 That contract is not designed yet and is not yours to invent mid-change —
-`ROADMAP.md` item 34 builds the area system and item 36 catalogues the editors,
+`ROADMAP.md` item 34 builds the area system and item 36 catalogues the views,
 and the roadmap already records why the layout comes first: a view's contract is
 whatever the area system requires of its contents, so a contract written against
 today's fixed layout is rewritten. `PL-TH35` is where it gets defined.
@@ -53,8 +53,8 @@ each is cheap now and expensive later.
    controller, no parent and no global. A view that walks up to its parent, or
    reads a module-level singleton, is bound to one layout by that call.
 2. **State a layout could duplicate or relocate does not live inside the
-   widget.** Ask who owns it when two areas show the same editor, or when the
-   editor is closed and reopened. `TraceLegend` owning compartment visibility
+   widget.** Ask who owns it when two areas show the same view, or when the
+   view is closed and reopened. `TraceLegend` owning compartment visibility
    is the standing counter-example (`PL-VN6M`); a view holds its own scroll
    position, not the selection the rest of the dashboard draws from.
 3. **A view is instantiable more than once and assumes it is not alone.**
@@ -70,13 +70,28 @@ each is cheap now and expensive later.
 
 ## Where the vocabulary is fixed
 
-Area, Editor and Workspace are Blender's words and this project adopted them
-rather than inventing its own — `ROADMAP.md` item 34 carries the definitions,
+Area and Workspace are Blender's words and this project adopted them rather
+than inventing its own — `ROADMAP.md` item 34 carries the definitions,
 the docking operations and the two precedents copied from the source, and
 `docs/interface-provenance.md` carries where they came from: what was read of
-Blender, what this project adopts, and the four places it deliberately does
+Blender, what this project adopts, and the places it deliberately does
 something else. Read that before assuming a Blender behaviour carries here —
-three of the four divergences exist because Blender's answer would be unsafe
-with clinical values on screen. Use those
-three words for those three things and no others, so the code and the roadmap
-do not drift into separate vocabularies before the system is built.
+most of the divergences exist because Blender's answer would be unsafe
+with clinical values on screen.
+
+**The third word is `View`, not Blender's `Editor`** (project owner,
+2026-09-17, ratified - chosen over keeping `Editor`, and over `Component` and
+`Widget`). A View is what occupies an Area: a graph, a table of values, a
+control panel. Blender's editors predominantly *edit* something; this project's
+Views predominantly display modelled values, and calling a read-only trace an
+"Editor" implies a mutability the reader does not have. `Widget` was
+unavailable because `QWidget` is the base class of every one of them, and
+`Component` was rejected as vaguer rather than wrong. `PL-GPYV` carries the
+full comparison, including Eclipse's Perspective/View/Editor split, which
+matches this project on lifecycle and not on multiplicity.
+
+**Blender's own editors keep the name.** `docs/interface-provenance.md`
+describes Blender, where `Editor` is Blender's correct term, so nothing there
+is renamed; the divergence is recorded instead. Use Area, View and Workspace
+for this project's three things and no others, so the code and the roadmap do
+not drift into separate vocabularies before the system is built.
