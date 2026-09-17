@@ -3,11 +3,12 @@ id: PL-C6XD
 title: render.format_status prints a second independent copy of the RESERVED refusal that no item covers, and no surface anywhere prints the reserved set a session would need to act on either one
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, refactor
 feature: release-roadmap-seam
-touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_release.py
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_release.py, .claude/skills/docket/SKILL.md, subprojects/docket/README.md
 added: 2026-09-16
+closed: 2026-09-17
 verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_digest_and_status_render_one_reserved_verdict' subprojects/docket/tests/test_release.py
 ---
 

@@ -28,7 +28,7 @@ from .model import (
 )
 from .notes import Thread
 from .plan import PLACEMENT_MARKS, Feature, Gate, effort_total, placement_mark, recommend, set_aside
-from .release import PLANNED, RESERVED, Readiness, release_offer
+from .release import PLANNED, RESERVED, Readiness, ReleaseOffer, release_offer
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Scope, Wave
 from .trend import APPARATUS, BY_DAY, EFFORT_POINTS, LANES, PRODUCT_BUCKETS, QUEUE, Trend
 from .vcs import (
@@ -1327,10 +1327,7 @@ def format_status(
         )
         offer = release_offer(ready, plan)
         if offer.kind == RESERVED:
-            lines.append(
-                f"  Not {offer.version}: the roadmap gives that version to "
-                f'"{offer.milestone}", which is unfinished. `docket wave` for what is due.'
-            )
+            lines.append(f"  {_reserved_refusal(offer, '`docket wave` for what is due')}")
         else:
             lines.append(f"  Next version would be {offer.version}.")
     if unread := format_unread(flight):
@@ -1372,11 +1369,30 @@ def _plan_header(scope: Scope | None, used: tuple[str, ...]) -> list[str]:
 def format_wave(plan: Wave) -> str:
     """Where the project stands on the cadence, and nothing about whether it should.
 
-    Five lines at most, because this is read at the top of a session beside
-    the digest, not studied. Each one states a fact with the file it came from
-    behind it; none of them says whether the plan is still the right plan.
+    A labelled line per fact and no more, because this is read at the top of a
+    session beside the digest, not studied. Each one states a fact with the
+    file it came from behind it; none of them says whether the plan is still
+    the right plan.
     """
     lines = [f"Version   {plan.version or 'unknown'}"]
+    if plan.reserved:
+        # Versions without their milestone names, which is the whole payload
+        # here: the question this line answers is "which numbers are spoken
+        # for", and the name of the one a bump actually collides with is
+        # already printed by the refusal that sends a reader to this command.
+        # Six names would not fit a line, and the set is what was missing -
+        # `reserved` did not occur in this module at all, so a session could
+        # read the guard's verdict on one version and nothing about the rest
+        # (`PL-C6XD`).
+        #
+        # A number's absence from this list is not a statement that it is
+        # cuttable, and nothing here says otherwise: this reports where the
+        # plan has spent its numbers, never whether a cut should take a free
+        # one. Stepping over a reservation drops the skipped milestone's
+        # section out of `wave`'s unreleased set with nothing reporting it,
+        # which is a judgment for the reader and `PL-SYG4`'s open question.
+        spent = ", ".join("{}.{}.{}".format(*entry.version) for entry in plan.reserved)
+        lines.append(f"Reserved  {spent} - spent by ROADMAP.md, nearest first")
 
     if plan.step is None:
         lines.append("Step      the timeline names no step after this version")
@@ -1432,8 +1448,8 @@ def format_wave(plan: Wave) -> str:
 def _scope_lines(plan: Wave) -> list[str]:
     """The gated milestone's own `Required scope`, counted - once the gate is clear.
 
-    Withheld while the gate is open, deliberately. `format_wave`'s budget is
-    five lines read beside the digest rather than studied, and while the beat is
+    Withheld while the gate is open, deliberately. `format_wave`'s budget is a
+    few lines read beside the digest rather than studied, and while the beat is
     `clear` the gate block above already says what is due; the scope is work the
     step has not reached, which `docket next` marks per item. Once the gate
     clears, the scope *is* the remaining question - `implement` or `release`
@@ -1455,6 +1471,28 @@ def _scope_lines(plan: Wave) -> list[str]:
     return lines
 
 
+def _reserved_refusal(offer: ReleaseOffer, pointer: str) -> str:
+    """The one sentence both release surfaces say when the plan owns the number.
+
+    `format_status` and `_release_advice` each branched on `offer.kind` and
+    each wrote their own refusal, so a change to either left the other saying
+    the old thing - one verdict with two independent readers, which is the
+    shape `PL-VFD8` had just been through one layer down inside the guard
+    itself (`PL-C6XD`).
+
+    The pointer is the argument because it is the only part either surface is
+    entitled to differ on. The digest prints the beat directly beneath this
+    line and can say so; the survey does not, so it names the command that
+    would print it. Sending the digest's reader to `docket wave` for what is
+    already on the next line would be prose restating what a command prints,
+    which is the bloat `.claude/rules/apparatus-standard.md` cuts.
+    """
+    return (
+        f'No release to offer: the roadmap gives {offer.version} to "{offer.milestone}", '
+        f"which is unfinished - {pointer}."
+    )
+
+
 def _release_advice(ready: Readiness, plan: Wave | None) -> str:
     """The digest's release sentence, once the roadmap has had its say.
 
@@ -1466,10 +1504,7 @@ def _release_advice(ready: Readiness, plan: Wave | None) -> str:
     """
     offer = release_offer(ready, plan)
     if offer.kind == RESERVED:
-        return (
-            f"No release to offer: the roadmap gives {offer.version} to "
-            f'"{offer.milestone}", which is unfinished - the beat below is what is due.'
-        )
+        return _reserved_refusal(offer, "the beat below is what is due")
     if offer.kind == PLANNED:
         return (
             f"Offer {offer.version} before taking new work - the version the plan names, "

@@ -381,9 +381,10 @@ docket next workflow   # ...the apparatus only
 ```
 
 **Start above the queue.** `docket wave` says where the project stands on the
-roadmap's cadence: the version, the step of the release train, the frozen debt
-gate and how much of it is closed, and whether that leaves a gate to clear, a
-release to cut, a milestone to implement or the next one to scope. The queue
+roadmap's cadence: the version, the versions ahead of it the roadmap has
+already given out, the step of the release train, the frozen debt gate and how
+much of it is closed, and whether that leaves a gate to clear, a release to
+cut, a milestone to implement or the next one to scope. The queue
 cannot answer that, so a session that opens with `docket status` is answering
 a narrower question than the one it was asked. Where the beat and the top of
 the queue disagree, say so rather than following the queue: the beat is what
@@ -1078,7 +1079,11 @@ arrive at is one `ROADMAP.md` has already given to a milestone ahead of the
 current one and not yet finished — placed on the release train, scoped in a
 section, or both — and the line names what holds it. There is nothing to raise then: the beat printed
 under it is the work, and cutting the version anyway would ship a milestone
-under its own name with most of it missing.
+under its own name with most of it missing. `bin/docket status` prints that
+refusal in the same words off the same verdict, and `docket wave`'s `Reserved`
+line is the whole set of numbers the plan has spent rather than the one that
+collided — which is the evidence behind either refusal, and the thing to read
+before arguing that some other number is free.
 
 But the digest says it in *every* session, including the ones where it is
 beside the point. Offer it when the owner is choosing what to work on or has
