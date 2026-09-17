@@ -3,11 +3,13 @@ id: PL-879R
 title: docket check advises on a verify: command's outcome but never its shape, so a grep for an id, or for a file another item is known to create, is only reported once it has already started passing
 priority: P2
 effort: S
-status: needs-decision
+status: dropped
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-10
+closed: 2026-09-17
+reason: The shape route is refused on a count, and the goal is carried by PL-XMNC. Measured 2026-09-17 across the 168 open items carrying a verify:. The four narrow subsets this item named are 1, 5, 1 and 4 items, and the five-item one is a touches under-declaration rather than a command that fails to discriminate. The fifth and only populated subset - 36 negated discriminating halves, 31 of them the command's sole assertion - was executed against an untouched tree: 31 of 31 still discriminate, so a shape advisory would print 31 correct ids on every run, which is CLAUDE.md's 'a check that fires every run without changing a decision is a defect in the check'. A negation is the honest specification of work that deletes something; what broke PL-D1RT and PL-C4RS was another branch editing the file they read. The goal in this item's title is latency, and the mechanism for it already exists: the pull-request replay (bin/docket check --verify --verify-base, PL-SDHR) scopes to the items whose item file the branch edited, and widening that to the items whose command reads a file the branch changed catches all six recorded instances on the pull request that broke them, against four of six for the shape check. Full counts, the six-instance table and the cost measurement are in the brief.
 ---
 
 **Problem.** docket check advises on a verify: command's outcome but never its shape, so a grep for an id, or for a file another item is known to create, is only reported once it has already started passing
@@ -187,3 +189,85 @@ draws, now with a count behind it. `PL-S5YM` is on the list, and is the item
 `PL-Y1W6` was filed against when `main` went red once before - by a bare `-k`
 selector rather than by this shape, so it is a near neighbour and not a third
 instance.
+
+## Decided 2026-09-17: the shape check is refused, and the goal is one scope widening away
+
+**The subsets were counted, and only one of the five has a population.** Across
+the 307 open items, 168 carry a `verify:` (625 closed ones do too, which are
+records rather than exposure). Each candidate this brief names, counted against
+the discriminating clause:
+
+| Candidate subset | Open items |
+| --- | --- |
+| (a) discriminating half greps a bare item id | 1 (`PL-PQQ2`) |
+| (b) discriminating half names a path its own `touches` omits | 5 |
+| (c) `test -f` on a path another open item declares | 1 (`PL-46VF`) |
+| (d) greps a title-quoting listing file for words from its own title | 4 |
+| (e) discriminating half is negated (`! grep`, `! test`, `grep -v`) | 36 (21%) |
+
+(a), (c) and (d) are 6 items between them. (b)'s five are not this item's defect
+at all: one is a trailing-slash artifact (`PL-MSFB` declares `docs/items/` and
+greps `docs/items`), and the other four grep a **test file the item will add to
+and did not declare**, which is a `touches` under-declaration rather than a
+command that fails to discriminate. So four of the five subsets are a regex each
+for a handful of items, at least one of which fires wrongly.
+
+**And the fifth subset — the one with the population, and the one both
+2026-09-16 failures came from — is entirely correct today.** Of the 36 negated
+commands, 5 pair the negation with a positive assertion; 31 are negation-only.
+Every one of those 31 negation clauses was executed against this untouched
+tree on 2026-09-17: **31 of 31 exit non-zero. Not one is satisfied.** Each is
+discriminating exactly as written.
+
+That is the number this decision turns on, and it settles it. An advisory on the
+negated shape would print 31 ids on every run, all 31 of them correct, forever —
+`CLAUDE.md`'s "a check that fires every run without changing a decision is a
+defect in the check" describes it exactly, and its "reserve hard failure for
+exact rules; a signal needing context is an advisory, and an advisory nobody
+acts on is a candidate for retirement rather than promotion" is the rule this
+one would be born failing. A negation is not a defect: **31 of these items are
+work that deletes something**, and asserting the deleted string is gone is the
+honest specification of that work. What made `PL-D1RT` and `PL-C4RS` go red was
+not their shape but somebody else editing the file they read.
+
+**So shape was the wrong axis, and the mechanism this item's goal wants already
+exists.** The goal in the title is *"only reported once it has already started
+passing"* — latency, not wording. `.github/workflows/quality.yml` already
+replays commands on every pull request (`bin/docket check --verify --verify-base
+"$VERIFY_BASE"`, `PL-SDHR`), and `vcs.changed_items()` scopes that replay to
+**the items whose item file the branch edited**. That scope is the whole gap:
+every recorded instance was invalidated by a branch that edited a file the
+command *reads* while never touching the item's own file, so the pull request
+that broke it replayed nothing and the whole-store sweep on push-to-`main`
+reported it after the merge, where no pull request can go red.
+
+Checked against the commit that did the invalidating, for all six instances this
+brief records:
+
+| Item | Its command reads | Invalidated by | That branch touched it |
+| --- | --- | --- | --- |
+| `PL-XH1D` | `CONTRIBUTING.md` | `#487` (`4a4a483`) | created it |
+| `PL-X9T3` | `docs/WORKING_NOTES.md` | `#490` (`f393e16`) | yes |
+| `PL-MMWX` | `ROADMAP.md` | its own branch | already in scope |
+| `PL-L9FC` | `README.md` | `#512` (`bc21c32`) | yes |
+| `PL-D1RT` | `ROADMAP.md` | `#634` (`52205f6`) | yes |
+| `PL-C4RS` | `ROADMAP.md` | `#640` (`e5ad821`) | yes |
+
+**Six of six, at the moment they broke, on the pull request that broke them** —
+against four of six for the shape check, which cannot reach `PL-XH1D` without a
+cross-item `touches` lookup and cannot reach `PL-L9FC`'s bare `grep -qi
+elimination` without flagging every case-insensitive word grep in the store.
+
+**Its cost is bounded and was measured.** 83 distinct files are read by some
+open item's discriminating clause. The hottest would add 10 replays
+(`docs/WORKING_NOTES.md`), then 8 (`subprojects/docket/tests/test_checks.py`),
+7 (`ROADMAP.md`), 6 (`subprojects/docket/tests/test_cli.py`), 6
+(`docs/MODEL.md`). A branch touching none of the 83 adds nothing, which is most
+of them. Only discriminating clauses count: `tools/doc_check.py` appears in 54
+commands and in every one of them it is the health half, so a branch editing it
+must not drag 54 replays behind it.
+
+**Dropped on the second of the two dispositions this item's `Done when.`
+names** — the subset is too noisy to earn a check that fires on every run — with
+the count recorded so the shape route is not re-proposed from the same evidence.
+The goal is carried forward by `PL-XMNC`, under `feature: verify-invalidation`.
