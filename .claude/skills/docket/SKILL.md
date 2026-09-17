@@ -1308,6 +1308,25 @@ in the tree reports it; `git ls-remote --tags origin` is what answers.
    commission; it may not weaken what measures it, and it may not skip the
    test.
 
+   **Two of the four take an exemption the *item* declares, and a session
+   cannot declare one for itself mid-work.** Both are read from the base's
+   copy of the item rather than from your branch, so adding either beside the
+   work it would excuse folds nothing and is reported as your own word for it.
+
+   - `falsifies:` names enough of an assertion to identify the one subject the
+     item's work makes untrue - the string it pins is what the item was asked
+     to delete, so no arrangement of the tests keeps it. A matching removal
+     folds and is printed beside the check (`PL-K82G`).
+   - A `dropped` item, or one carrying `not-delegable:`, has no command to run,
+     and the check says which applies rather than stopping the audit dead
+     (`PL-L4KX`).
+
+   **So a `REJECT` here is still a `REJECT`.** Meeting one on work you believe
+   correct means the commission did not anticipate it: say so to the project
+   owner with the check's own words, and do not add the declaration to the item
+   on this branch to clear it. The whole worth of the field is that a reviewer
+   wrote it first.
+
    Run the bare `bin/docket verify <id>` only when reviewing a branch somebody
    else was commissioned to write.
 
