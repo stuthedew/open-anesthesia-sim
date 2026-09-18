@@ -293,6 +293,7 @@ test:
 # editing an item and before committing it.
 docket:
 	bin/docket check
+	python3 tools/generator_check.py
 
 doc-check:
 	python3 tools/doc_check.py check
