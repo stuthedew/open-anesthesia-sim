@@ -1,10 +1,16 @@
 ---
 id: PL-M2SD
 title: CLAUDE.md's compounding-friction rule is prose a session must notice, so a cluster that hands back an item for every one it closes sits in the flat P2 band unranked: make the self-generation ratio decidable and report it every run
-status: untriaged
+priority: P2
+effort: M
+status: done
+classes: infra, session-cost
 feature: convergence-visibility
 touches: tools/generator_check.py, tests/unit/test_generator_check.py, Makefile
 added: 2026-09-17
+closed: 2026-09-18
+pr: 670
+verify: uv run pytest tests/unit/test_generator_check.py && grep -q 'python3 tools/generator_check.py' Makefile && grep -q 'generator_check.py' docs/ARCHITECTURE.md && grep -q 'tests/unit/test_generator_check.py' docket.toml
 ---
 
 **Problem.** CLAUDE.md's compounding-friction rule is prose a session must notice, so a cluster that hands back an item for every one it closes sits in the flat P2 band unranked: make the self-generation ratio decidable and report it every run

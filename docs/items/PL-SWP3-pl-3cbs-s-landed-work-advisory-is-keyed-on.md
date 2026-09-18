@@ -7,9 +7,10 @@ status: done
 classes: defect
 feature: queue-hygiene
 touches: subprojects/docket
-verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_an_item_filed_by_a_commit_that_also_changed_code_is_reported' subprojects/docket/tests/test_vcs.py
 added: 2026-09-17
 closed: 2026-09-17
+pr: 667
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_an_item_filed_by_a_commit_that_also_changed_code_is_reported' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** PL-3CBS's landed-work advisory is keyed on verify: and scoped to ready/needs-decision, so an item captured and worked in the same commit is structurally invisible to it: #635 left PL-0J9K and PL-MMVF untriaged with their code on main

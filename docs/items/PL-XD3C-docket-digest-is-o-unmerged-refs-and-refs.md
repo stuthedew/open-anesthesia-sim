@@ -9,6 +9,7 @@ feature: session-start-cost
 touches: subprojects/docket/src/docket/vcs.py, docs/items
 added: 2026-09-16
 closed: 2026-09-17
+pr: 668
 not-delegable: what is left is one measurement on the project owner's own clone - `bin/docket digest --profile` run there, compared against a container's `ref set` block - and no command in this checkout can take it. The instrument it needed is built and on `main`
 ---
 
