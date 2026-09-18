@@ -7,9 +7,10 @@ status: done
 classes: science, docs
 feature: liquid-agent-consumption
 touches: docs/MODEL.md, docs/references/README.md, ROADMAP.md
-verify: python3 tools/doc_check.py check && grep -qF 'where the ideal-gas molar volume is 24.055 L/mol' docs/MODEL.md && grep -qF 'One reference condition, where the model physically has two' docs/MODEL.md
 added: 2026-09-16
 closed: 2026-09-17
+pr: 669
+verify: python3 tools/doc_check.py check && grep -qF 'where the ideal-gas molar volume is 24.055 L/mol' docs/MODEL.md && grep -qF 'One reference condition, where the model physically has two' docs/MODEL.md
 ---
 
 **Problem.** docs/MODEL.md says agent amounts are gas volumes 'at one documented reference temperature and pressure' but documents no temperature anywhere, and a liquid-equivalent conversion moves 5.8 percent between a 20 C and a 37 C reference
