@@ -3731,3 +3731,51 @@ def test_show_survives_a_notes_file_the_checkout_does_not_have(
     out = capsys.readouterr().out
     assert "notes:" not in out
     assert "PL-B1B1 A ready item" in out
+
+
+def test_triage_marks_an_item_whose_filing_commit_also_changed_code(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """#635's shape, against a real checkout: the commit files the item and lands the work.
+
+    Against git rather than an injected runner, because `test_vcs.py` asserts
+    the filtering and this asserts that the commands are spelled in a way git
+    accepts - the split that file's own docstring draws (`PL-SWP3`).
+    """
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    (root / "README.md").write_text("nothing here yet\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True)
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        subprocess.run(["git", "config", name, value], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-qm", "base"], cwd=root, check=True, capture_output=True)
+
+    items = root / "items"
+    (items / "PL-0J9K-batch-the-blob-reads.md").write_text(
+        "---\nid: PL-0J9K\ntitle: Batch the blob reads\nstatus: untriaged\nadded: 2026-09-16\n"
+        "---\n\n**Problem.** Batch the blob reads\n",
+        encoding="utf-8",
+    )
+    (items / "PL-QQQQ-a-finding-captured-in-passing.md").write_text(
+        "---\nid: PL-QQQQ\ntitle: A finding captured in passing\nstatus: untriaged\n"
+        "added: 2026-09-16\n---\n\n**Problem.** A finding captured in passing\n",
+        encoding="utf-8",
+    )
+    (root / "vcs.py").write_text("def batch():\n    return 1\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-qm", "PL-0J9K: batch the blob reads (#635)"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+
+    assert main(["--items", str(items), "triage"]) == 0
+    out = capsys.readouterr().out
+
+    assert "Filed by" in out and "(#635)" in out and "vcs.py" in out
+    # The commit filed both and named only one. The other is the ordinary
+    # capture-in-passing that made the unconditional key match 78% of the store.
+    assert out.index("PL-0J9K") < out.index("Filed by") < out.index("PL-QQQQ")
+    assert out.count("Filed by") == 1

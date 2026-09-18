@@ -2844,6 +2844,151 @@ def merged_pull_requests(root: Path, *, runner: Runner | None = None) -> PullReq
 
 
 @dataclass(frozen=True)
+class FilingCommit:
+    """The commit that added an item's file, where that commit also changed code.
+
+    It records what the commit **did** and never what the item *is*. Everything
+    here is read off one diff and one subject - the sha, the subject, the paths
+    outside the queue - so every field is true by construction whenever this
+    prints. That is the whole design constraint, and `PL-SWP3` is the
+    measurement behind it: no key over this data can decide whether such a
+    commit *finished* the item it filed, because that is a relation between the
+    item's intent and the diff's content rather than a property of the diff.
+    Three keys were counted and all three failed on it.
+    """
+
+    item_id: str
+    commit: str
+    subject: str
+    paths: tuple[str, ...]
+
+    @property
+    def pull_request(self) -> int | None:
+        """The pull request the filing commit arrived through, where the subject names one."""
+        match = PR_SUBJECT_RE.search(self.subject.strip())
+        return int(match.group(1) or match.group(2)) if match is not None else None
+
+
+@dataclass(frozen=True)
+class FilingReport:
+    """Which items were filed by a commit that also changed code, or why that is unknown.
+
+    `declined` for the same reason `PullRequestHistory` carries one: an empty
+    mapping cannot tell "no item was filed this way" from "this checkout could
+    not look", and a triage pass shown the first while the second is true is
+    being handed a partial reading as a complete one.
+    """
+
+    filings: Mapping[str, FilingCommit] = field(default_factory=dict)
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        return not self.declined
+
+
+def filed_with_work(
+    item_ids: frozenset[str],
+    root: Path,
+    *,
+    prefix: str = "docs/items/",
+    runner: Runner | None = None,
+) -> FilingReport:
+    """Items whose own file was added by a commit that also changed something outside the queue.
+
+    The shape `PL-3CBS`'s landed-work advisory cannot reach. That advisory is
+    keyed on `verify:` and scoped to `ready` and `needs-decision`, so an item
+    captured *and* worked in one commit never becomes a candidate for it: it
+    never passes through `ready`, so it never acquires a command. `#635` landed
+    385 lines of this file while filing `PL-0J9K` and `PL-MMVF`, and both were
+    still `untriaged` on the default branch days later, offered to the project
+    owner as live work.
+
+    **It reports rather than concludes, and that is the finding rather than a
+    caution.** `PL-SWP3` measured three keys over this store. The bare shape -
+    an open item whose file was added beside any code change - matches 248 of
+    319 open items and 10 of the 11 rows a triage pass actually reads, because
+    filing findings alongside unrelated work is the shape `CLAUDE.md` asks for.
+    Adding the subject test cuts that to 6, and none of the 6 is an item that
+    should have closed: sessions lead a subject with the ids they *captured* as
+    readily as the ids they *worked*. Replayed over history it fires 22 times at
+    27% precision, and the script scoring it misjudges in both directions -
+    scoring the two genuine instances false and two captured follow-ups true.
+
+    So the subject test is kept for what it does do, which is suppress the 78%,
+    and nothing is claimed from it. What prints is the commit and the paths, for
+    a reader who is about to decide the item's fate and can open them.
+
+    **The subject test uses `leading_ids`** rather than any id in the subject:
+    the run a subject opens with is this project's declared grammar, and
+    `PL-SVRW` is the standing item about not spelling it a second time. It also
+    makes a slug rename harmless - `git mv` shows here as an add, but a rename
+    pass leads its subject with its own housekeeping id, not with the ids of the
+    files it moved.
+
+    **Cost is one `git log` for the whole store, plus one `git show` per item
+    that survives the subject test** - typically none. The subject arrives with
+    the log, so the expensive call is made only where the annotation will print.
+    """
+    run = runner or _run_git
+    if not item_ids:
+        return FilingReport()
+    shallow = is_shallow(root, runner=run)
+    if shallow is True:
+        return FilingReport(
+            declined="the checkout is a shallow clone, so an item filed before its horizon "
+            "would read as filed by nobody"
+        )
+    if shallow is None:
+        return FilingReport(declined="git cannot say whether this checkout is complete")
+    log = run(
+        [
+            "log",
+            default_base(root, runner=run),
+            "--diff-filter=A",
+            "--format=%x00%H%x01%s",
+            "--name-status",
+            "--",
+            prefix,
+        ],
+        root,
+    )
+    if not log.strip():
+        return FilingReport(
+            declined="no default branch this checkout can read, so nothing says which "
+            "commit filed an item"
+        )
+
+    # Newest add wins: a file added, removed and restored is carried by the
+    # commit that put the copy being read there, which is the one a reader
+    # opening it would find.
+    filed: dict[str, tuple[str, str]] = {}
+    commit = subject = ""
+    for line in log.splitlines():
+        if line.startswith("\x00"):
+            commit, _, subject = line[1:].partition("\x01")
+            continue
+        if not commit or not line.strip() or not line.split("\t")[0].startswith("A"):
+            continue
+        for item_id, _path in _item_files([line.split("\t")[-1]], prefix):
+            filed.setdefault(item_id, (commit, subject))
+
+    found: dict[str, FilingCommit] = {}
+    for item_id in sorted(item_ids):
+        entry = filed.get(item_id)
+        if entry is None or item_id not in leading_ids(entry[1]):
+            continue
+        commit, subject = entry
+        changed = run(["show", "--format=", "--name-only", commit], root).split()
+        outside = tuple(path for path in changed if not path.startswith(prefix))
+        if outside:
+            found[item_id] = FilingCommit(
+                item_id=item_id, commit=commit, subject=subject, paths=outside
+            )
+    return FilingReport(filings=found)
+
+
+@dataclass(frozen=True)
 class ClosureReport:
     """Which item closures already stand on the default base, or why that is unknown.
 

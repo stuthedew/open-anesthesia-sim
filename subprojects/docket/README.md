@@ -564,6 +564,39 @@ absent from `flight`, where capture being mandatory would put a row under
 nearly every live branch and change no answer to the question that command
 asks.
 
+**A third mark on the triage list answers a different question: was this item
+already worked when it was filed?** The two above are about other sessions;
+this one is about the commit that created the item's own file. `filed_with_work`
+reports an untriaged item whose file was *added* by a commit that also changed
+something outside the queue and whose subject leads with that item's id — #635
+filed `PL-0J9K` and `PL-MMVF` while landing 385 lines of `vcs.py`, and both were
+still untriaged on `main` days later, offered to the project owner as live work.
+It is the shape `PL-3CBS`'s landed-work advisory cannot reach at all: that one is
+keyed on `verify:` and scoped to `ready`, and an item captured and worked in one
+commit never passes through `ready` to acquire a command.
+
+**It prints a pointer and never a verdict**, which is a measured limit rather
+than caution. `PL-SWP3` counted three keys over this store. Without the subject
+clause the shape matches 248 of 319 open items and 10 of the 11 rows a triage
+pass reads, because filing findings alongside unrelated work is what `CLAUDE.md`
+asks for. With it, 6 — and none of the 6 is an item that should have closed,
+because sessions lead a subject with the ids they *captured* as readily as the
+ids they *worked*. Replayed over history it fires 22 times at 27% precision, and
+the script adjudicating it misjudges in both directions. Whether such a commit
+*finished* the item it filed is a relation between the item's intent and the
+diff's content, not a property of the diff, so the reader is the only thing that
+can decide it. What prints is the commit, the pull request and the paths; the
+sentence asks for a read.
+
+It lives on `triage` alone, for the reason the mark above lives on `triage` and
+`show`: that is the moment the question is live and a wrong answer reaches the
+owner. As a `docket check` advisory it would carry six standing false positives
+forever, which is the defect the "a check earns its place every run" rule names.
+It costs one `git log` for the store plus one `git show` per item that survives
+the subject clause — on the current list, none. A shallow clone declines rather
+than reporting nothing filed, since its missing commits are the oldest and an
+old item would read as filed by nobody.
+
 **Detection stops at "somebody is on it"; `precedence` says which one
 continues.** Everything above answers whether an item is being worked, and
 nothing said which of two sessions discovering each other was the one to stop.

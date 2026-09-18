@@ -40,6 +40,8 @@ from .vcs import (
     BranchState,
     Carrier,
     CutsInFlight,
+    FilingCommit,
+    FilingReport,
     FlightReport,
     GitProfile,
     OrphanedReport,
@@ -931,7 +933,12 @@ def _flight_lines(flight: FlightReport) -> str:
     return "\n".join(lines)
 
 
-def format_triage(report: Report, config: Config, flight: FlightReport | None = None) -> str:
+def format_triage(
+    report: Report,
+    config: Config,
+    flight: FlightReport | None = None,
+    filed: FilingReport | None = None,
+) -> str:
     """Every untriaged item, what is unset on it, and the rules that bind the answer.
 
     A worklist and a constraint sheet, deliberately not a recommendation. What
@@ -979,6 +986,8 @@ def format_triage(report: Report, config: Config, flight: FlightReport | None = 
         return "Nothing is untriaged."
 
     flight = flight or FlightReport()
+    filed = filed or FilingReport()
+    filings = filed.filings if filed.known else {}
     # The branch name, not merely the fact of one: a session reading `IN FLIGHT
     # on claude/pl-lxr3-...` can tell another session's work from its own
     # without leaving the output, which is the whole difference between a
@@ -1000,6 +1009,8 @@ def format_triage(report: Report, config: Config, flight: FlightReport | None = 
                 "  A capture or another triage pass, not work in flight - but a second answer"
             )
             lines.append("  here is a second resolution of the same file, so skip it.")
+        if filing := filings.get(item.identifier):
+            lines.extend(_filed_with_work(filing))
         lines.append(f"  unset: {_unset(item)}")
         missing, empty, stub = brief_gaps(item.body)
         if missing:
@@ -1026,7 +1037,39 @@ def format_triage(report: Report, config: Config, flight: FlightReport | None = 
     lines.append("computed here. This prints the rules; applying them is yours.")
     if unread := format_unread(flight):
         lines.append(unread)
+    if filed.declined:
+        lines.append("")
+        lines.append(
+            f"Not checked: which commit filed each item - {filed.declined}. So no item "
+            "below carries the mark that its filing commit also changed code."
+        )
     return "\n".join(lines)
+
+
+def _filed_with_work(filing: FilingCommit) -> list[str]:
+    """Point at the commit that filed this item, where that commit also changed code.
+
+    **A pointer, never a verdict**, and the wording carries that on its face:
+    it says what the commit changed and asks for a read, rather than saying the
+    item has landed. `PL-SWP3` measured every key that would license the
+    stronger sentence and none survived - whether such a commit *finished* the
+    item it filed is a relation between intent and diff, so the reader is the
+    only thing here that can decide it.
+
+    Three paths at most. `PL-YNYK`'s filing commit changed 25, and a wall of
+    them buries the two rows on the list that are worth opening.
+    """
+    where = f"{filing.commit[:7]}"
+    if (number := filing.pull_request) is not None:
+        where += f" (#{number})"
+    shown = ", ".join(filing.paths[:3])
+    if len(filing.paths) > 3:
+        shown += f", and {len(filing.paths) - 3} more"
+    return [
+        f"  Filed by {where}, which also changed {shown}.",
+        "  That commit both filed this item and changed code, so its work may already",
+        "  be on the default branch - read the diff before triaging this as live work.",
+    ]
 
 
 def _unset(item: Item) -> str:

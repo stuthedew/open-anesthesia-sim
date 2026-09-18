@@ -1,14 +1,15 @@
 ---
 id: PL-XMNC
 title: The pull-request verify replay scopes to items whose item file the branch edited, so a branch that invalidates some other item's verify: command by editing the file that command reads replays nothing, and the break is reported only by the whole-store sweep after the merge
-status: done
-feature: verify-invalidation
-added: 2026-09-17
-closed: 2026-09-17
 priority: P1
 effort: M
+status: done
 classes: defect, infra
+feature: verify-invalidation
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .github/workflows/quality.yml, docs/ARCHITECTURE.md
+added: 2026-09-17
+closed: 2026-09-17
+pr: 666
 verify: uv run pytest subprojects/docket/tests/test_verify.py subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_editing_a_file_a_verify_command_reads_is_in_scope' subprojects/docket/tests/test_verify.py
 ---
 
