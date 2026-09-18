@@ -14,9 +14,17 @@ from collections.abc import Iterator
 
 import pytest
 from PySide6.QtCore import QRect, QSize, Qt
-from PySide6.QtGui import QFontMetrics
+from PySide6.QtGui import QColor, QFontMetrics, QPalette
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QDialog, QGridLayout, QLabel, QScrollArea, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QGridLayout,
+    QLabel,
+    QPushButton,
+    QScrollArea,
+    QWidget,
+)
 
 from anesthesia_sim.app.control_record import ControlInput
 from anesthesia_sim.app.controller import SimulationController
@@ -49,8 +57,9 @@ from anesthesia_sim.app.qt_widgets import (
     inert_splitter,
     initial_window_geometry,
     styled_label,
+    transport_button_stylesheet,
 )
-from anesthesia_sim.app.theme import ACCENT, INK, MUTED, WARNING
+from anesthesia_sim.app.theme import ACCENT, INK, MUTED, PANEL, WARNING
 
 
 @pytest.fixture(scope="module")
@@ -501,6 +510,102 @@ def test_the_slider_active_track_is_the_accent(application: QApplication) -> Non
     assert accent_columns
     assert min(accent_columns) < image.width() // 4
     assert max(accent_columns) < image.width()
+
+
+# ------------------------------------------------------ the transport buttons
+
+
+def _under_a_dark_host(button: QPushButton) -> QPushButton:
+    """Give one button the palette a dark host appearance supplies.
+
+    Set on the widget rather than the application so it cannot leak into the
+    other tests sharing the module-scoped `QApplication`. The values stand in
+    for what macOS supplies in Dark appearance, where `PL-DHBX` was reported:
+    a near-white `ButtonText` over a dark `Button`.
+    """
+
+    palette = QPalette(button.palette())
+    palette.setColor(QPalette.ColorRole.ButtonText, QColor("#FFFFFF"))
+    palette.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor("#FFFFFF"))
+    palette.setColor(QPalette.ColorRole.Button, QColor("#323232"))
+    button.setPalette(palette)
+
+    return button
+
+
+def _channel_distance(one: str, other: str) -> int:
+    """The largest per-channel difference between two colours, 0-255."""
+
+    first, second = QColor(one), QColor(other)
+
+    return max(
+        abs(first.red() - second.red()),
+        abs(first.green() - second.green()),
+        abs(first.blue() - second.blue()),
+    )
+
+
+def _transport_button(enabled: bool) -> QPushButton:
+    """One transport button in the state under test."""
+
+    button = QPushButton("Pause")
+    button.setEnabled(enabled)
+
+    return button
+
+
+def _drawn(button: QPushButton, application: QApplication) -> list[str]:
+    """Every pixel of a rendered button, as upper-case hex names."""
+
+    button.resize(90, 30)
+    button.show()
+    application.processEvents()
+    image = button.grab().toImage()
+
+    return [
+        image.pixelColor(x, y).name().upper()
+        for y in range(image.height())
+        for x in range(image.width())
+    ]
+
+
+@pytest.mark.parametrize(
+    ("enabled", "expected"), [(True, INK), (False, MUTED)], ids=["usable", "unavailable"]
+)
+def test_a_transport_button_draws_the_theme_rather_than_the_host_palette(
+    application: QApplication, enabled: bool, expected: str
+) -> None:
+    """Start, Pause and Reset keep their own colours under a dark host appearance.
+
+    The regression test for `PL-DHBX`, in both states, because the defect
+    arrived twice. The buttons set no foreground at all, so they took Qt's
+    palette `ButtonText` - the host appearance's value, not this interface's -
+    and went illegible under macOS Dark while every surface around them stayed
+    this light theme's. The first fix declared `:enabled` only, and the project
+    owner's screenshots then showed the *unavailable* button still absent: Start
+    while running, Pause while paused. So both states are pinned here.
+
+    The bare button is rendered beside each so the test cannot pass vacuously:
+    if the platform plugin ignored the palette, both halves would agree and the
+    second assertion would fail.
+    """
+
+    bare = _drawn(_under_a_dark_host(_transport_button(enabled)), application)
+    declared = _transport_button(enabled)
+    declared.setStyleSheet(transport_button_stylesheet())
+    drawn = _drawn(_under_a_dark_host(declared), application)
+
+    assert max(set(drawn), key=drawn.count) == PANEL.upper()
+    assert max(set(bare), key=bare.count) != PANEL.upper()
+
+    # No pixel need land exactly on the declared colour - the glyphs are
+    # antialiased - so the label is identified by which declared colour its
+    # darkest pixel is nearest: the theme's, never the palette's white.
+    darkest = min(drawn, key=lambda name: QColor(name).lightness())
+    other = MUTED if expected == INK else INK
+
+    assert _channel_distance(darkest, expected) < _channel_distance(darkest, "#FFFFFF")
+    assert _channel_distance(darkest, expected) < _channel_distance(darkest, other)
 
 
 # ------------------------------------------------------------ the notice
