@@ -2484,3 +2484,47 @@ def test_a_window_git_would_not_answer_is_declined_rather_than_read_as_empty() -
 
     assert len(advisories) == 1
     assert "could not be compared" in advisories[0]
+
+
+# `root-cause-of:` is held to naming real items, and enough of them, because it
+# is the one field that lifts an item above every band but `P0`. The failure it
+# catches is quiet: `plan.py` already refuses to rank an unsound claim, so a
+# mistyped id mis-ranks nothing - it just leaves the session that recorded the
+# generator believing the mechanism is ranked when it is not.
+
+_EXPLAINS = ("PL-E1E1", "PL-E2E2", "PL-E3E3")
+
+
+def _explained() -> list[Item]:
+    return [_item(identifier) for identifier in _EXPLAINS]
+
+
+def test_a_sound_root_cause_is_accepted() -> None:
+    errors = _errors(_item("PL-K7QX", root_cause_of=_EXPLAINS), *_explained())
+
+    assert not _has(errors, "root-cause-of")
+
+
+def test_a_root_cause_naming_an_unknown_item_is_an_error() -> None:
+    errors = _errors(_item("PL-K7QX", root_cause_of=(*_EXPLAINS, "PL-NOPE")), *_explained())
+
+    assert _has(errors, "PL-NOPE, which no item in this store carries")
+
+
+def test_a_root_cause_under_three_items_is_an_error() -> None:
+    errors = _errors(_item("PL-K7QX", root_cause_of=_EXPLAINS[:2]), *_explained())
+
+    assert _has(errors, "a generator is the root cause of at least 3")
+
+
+def test_an_item_listing_itself_as_its_own_root_cause_is_an_error() -> None:
+    errors = _errors(_item("PL-K7QX", root_cause_of=("PL-K7QX", *_EXPLAINS)), *_explained())
+
+    assert _has(errors, "lists itself among the items it is the root cause of")
+
+
+def test_the_root_cause_error_says_the_generator_is_not_being_ranked() -> None:
+    """The repair is the point: an unsound claim is recorded and inert."""
+    errors = _errors(_item("PL-K7QX", root_cause_of=_EXPLAINS[:1]), *_explained())
+
+    assert _has(errors, "recorded and unranked until the field is repaired")

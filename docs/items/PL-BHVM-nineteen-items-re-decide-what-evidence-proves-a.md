@@ -8,6 +8,7 @@ classes: defect, refactor
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-12
+root-cause-of: PL-99YZ, PL-HX5C, PL-KSCW, PL-LF2C, PL-MBTZ, PL-Q9Z1, PL-R808, PL-SH9Q, PL-SY1J, PL-WNQT
 ---
 
 **Problem.** Nineteen items re-decide what evidence proves a ref is done, seventeen of them in vcs.py: one design round rather than nineteen heuristic patches
@@ -72,3 +73,27 @@ choosing their own answer to one question is duplication, and it is counted
 from the items themselves rather than from any spawn rate. So the case for one
 design round still holds; the case for doing it *ahead of everything else* does
 not.
+
+**Ranked as a generator after all - on the other definition (2026-09-17,
+`PL-VX5H`).** What the paragraph above retracts is a *ratio*, and the ratio was
+never the definition. `CLAUDE.md` now makes a mechanism causing three or more
+items a generator and ranks it above everything but `P0`, and the count this
+item argues from - items each choosing their own answer to one question - is
+that definition exactly. Both readings stand: on the spawn rate this is not
+runaway, and on the recorded definition it is a generator, so the
+`root-cause-of:` line in the front matter is the claim and `docket next` now
+offers this ahead of every band but `P0`.
+
+The ten ids it names are the open items still re-deciding what evidence proves
+a claim on a ref is done - the `stranded`/`flight`/`show` content comparisons
+(`PL-SH9Q`, `PL-WNQT`, `PL-MBTZ`, `PL-KSCW`, `PL-SY1J`, `PL-Q9Z1`), the exact
+ref test and the premise it rests on (`PL-R808`, `PL-LF2C`), and the two
+records of guards passing while two sessions duplicated work anyway
+(`PL-HX5C`, `PL-99YZ`). Ten rather than the title's nineteen because nine
+closed as one round on 2026-09-13, which `PL-CSHL` records and measures.
+
+Deliberately not named: items that merely declare `vcs.py`. `PL-GVC0` (the
+hard-coded `PL-` id prefix), `PL-3LLZ` (four test fakes teaching the same git
+question) and `PL-7XNX` (one `git diff` per ref rather than per file, which its
+own brief calls "not a correctness question") are in the same file and are not
+this decision.

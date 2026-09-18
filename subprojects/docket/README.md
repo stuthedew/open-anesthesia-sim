@@ -681,17 +681,29 @@ item.
 
 ### Choosing is answered, not browsed
 
-`docket next` ranks the work and says why it picked it. `P0` first, then what
-the roadmap's current step includes, then — *within* a priority band — work
-in a feature already underway, the one nearest finishing first, because a
-shipped feature is worth more than equal progress spread across several. Work already in flight on a
-branch is excluded rather than ranked low.
+`docket next` ranks the work and says why it picked it. `P0` first, then a
+recorded generator, then what the roadmap's current step includes, then —
+*within* a priority band — work in a feature already underway, the one nearest
+finishing first, because a shipped feature is worth more than equal progress
+spread across several. Work already in flight on a branch is excluded rather
+than ranked low.
 
 The step's scope is preferred *absolutely* rather than as a tie-breaker inside
 a band, because the priority field cannot express the phase: `docket check`
 pins `safety` and `science` items to `P1`, so the top band is product work by
 construction and a tie-breaker there would never fire in the case the rule
 exists for. `P0` sits above it: a hotfix outranks the phase.
+
+An item carrying a sound `root-cause-of:` sits between the two, above the
+phase and above every band. Promotion *within* a band was the alternative and
+was refused by the project owner on 2026-09-17: *"We constantly add more P1 as
+we develop, so these never get done and the bugs pile up."* A band that is
+itself growing moves nothing in absolute terms, so the decision is about what
+a generator competes with rather than where it sits in a list. The safety floor
+is untouched by it — a clinical defect that has to be fixed now is what `P0` is
+for, and `P0` still outranks a generator. The reason line says it was ranked as
+a generator and names the items it explains, so a `P2` leading a queue with
+`P1`s in it reads as the ranking meaning it.
 
 ### Two sessions, one queue: the lanes
 
@@ -1235,6 +1247,22 @@ Whether the fragment is long enough to name a subject is decidable; whether it
 names the *right* one is left to whoever reads the lines `verify` prints. Write
 it when the item is triaged, not while working it — a declaration only counts
 where the base already holds it. See *Verification is scoped, not just green*.
+
+`root-cause-of` names three or more items this one is the cause of, and it is
+the only field that changes an item's queue position. `CLAUDE.md` calls such a
+mechanism a *generator*: every session it stands through pays it again, so it
+ranks above everything but `P0` — a `safety`-classed `P1` included, which the
+project owner was asked about and confirmed. `docket check` holds every id to
+naming a real item and holds the list to three, because this is the one place
+in the store where a typo would buy a promotion; below three, or with an id
+that does not resolve, the item ranks on its band exactly as it did before and
+the checker says so.
+
+Nothing infers it. A ratio over a `touches` path measures how busy a file is,
+and citation is not causation — 33 items in this store are cited by more than
+two others. `tools/generator_check.py` prints the clusters carrying those
+signals so a session can look, and claims none of them is a generator; the
+judgment is a session's, and writing the field is how it is recorded.
 
 An item at `ready` must carry one of them: the command that would prove it
 done, or a recorded reason why no command can. The gate sits at `ready` rather

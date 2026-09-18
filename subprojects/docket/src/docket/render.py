@@ -354,6 +354,12 @@ def format_digest(
     top = picks[0] if picks else None
     if top is not None and top.item.priority != "P0":
         marks = _marks(top.item, flight.ids)
+        # The one line every session reads before it has run anything. A
+        # generator outranks every band but `P0`, so without this the digest
+        # opens with a `P2` leading a queue that has `P1`s in it and nothing
+        # saying the ranking meant it - which reads as a bug in `recommend`.
+        if top.generator:
+            marks += f", root cause of {top.generator} items - ranked above every band but P0"
         if top.scoped_to:
             marks += f", scoped to {top.scoped_to}, not this step"
         lines.append(f"  Top: {top.item.identifier} {top.item.title} ({marks})")

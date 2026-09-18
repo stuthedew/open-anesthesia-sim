@@ -1717,3 +1717,46 @@ the main window to *veto its own close* instead; `PL-Y04W` carries it.
 **A third, filed rather than left here**: PySide6 6.11.2 segfaults on
 `QDataStream` over a temporary `QByteArray`, which the persistence work will
 meet the first time it decodes a saved blob (`PL-NDKC`).
+
+## Four of PL-6ZQY's six clusters have no head, so four cannot be ranked - PL-6TP8, PL-HWW1, PL-4FBP, PL-4Q9B
+
+`PL-VX5H` built the way to rank a generator: `root-cause-of:` on the item that
+causes a cluster, which `docket next` then offers above every band but `P0`.
+Applying it to the six clusters `PL-6ZQY` found under one mechanism - *the
+apparatus infers a fact it could have recorded* - turned up something its own
+description
+does not say - **naming a mechanism is not the same as having an item that
+would settle it**, and on 2026-09-17 only two of the six had one.
+
+`PL-BHVM` and `PL-L4YG` carry the field. The other four do not, and the point
+worth keeping is *why the obvious candidate failed in each case*, because the
+failure has one shape: a real item, correctly filed, scoped deliberately
+narrower than the mechanism it sits under.
+
+- **`PL-036`** (prose that asserts facts about the tree) is the clearest. Its
+  `Decided` section records the general case as closed - *"Recorded, and not to
+  be revisited by tooling: whether a documented statement is still true stays
+  human"* - and its `Done when` implements one link, fifteen bullets under
+  `docs/MODEL.md` "Minimum displayed outputs". Marking it would have recorded a
+  claim its own brief refuses.
+- **`PL-6P9Y`** (the roadmap is prose the tooling parses) says in its own triage
+  note that it is `P3` "because it moves exactly one id today".
+- **`PL-F48B`** (the checkout is a cache) is scoped to tags after a history
+  rewrite, and its `Done when` permits recording the decision *not* to act. The
+  permitted-ref-operations half of that cluster has no item at all.
+- **What a `verify:` command proves** has no candidate: `PL-LKGL` is the
+  measurement, is `done`, and explicitly refused the general contract.
+
+So the four are filed under `feature: generator-heads` with their candidate
+members recorded and unverified. **They are deliberately not marked.** The
+field is what lifts an item above a `safety`-classed `P1`, and its worth is
+that it is a recorded fact rather than an inference; four heads composed in one
+session, by the session that also built the ranking, would be inferences
+wearing that authority. Whether to write them is `PL-VX5H`'s open end.
+
+**The general finding, which outlives all five items.** `PL-6ZQY`'s map is a
+list of *mechanisms*, and the queue holds *items*. Nothing in the project
+connects the two, so a cluster can be correctly diagnosed, correctly recorded,
+and still have nowhere for the diagnosis to live - which is the same failure the
+map itself names, one level up: the apparatus inferring a fact (which item heads
+this cluster) that it could have recorded.

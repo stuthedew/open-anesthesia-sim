@@ -1,58 +1,54 @@
-"""Find the clusters that generate more work than they close.
+"""Surface the clusters worth a session's judgment about a root cause.
 
-`CLAUDE.md` already says that friction which compounds is recommended the
-moment it is found rather than filed. That rule is prose, and prose needs a
-session to notice: `PL-BHVM` recorded a cluster whose own brief measured it
-generating more items than it closed, and it then sat in `P2` - a band of 187
-items - for days, because nothing ranked it above any other `P2`. A flat band
-is where a generator hides. This check is that rule made decidable, so the
-noticing does not depend on which session happens to read which item.
+`CLAUDE.md` makes a mechanism that causes three or more items a *generator*,
+which ranks above everything but `P0`. The claim is a **recorded fact**: a
+session that identifies one writes `root-cause-of:` on the causing item, naming
+the items it explains, and `docket next` ranks it from that field. Nothing
+infers it, and this script is not an exception - it reports candidates and
+decides nothing.
 
-**What a generator is.** Not a file with many items - a large file honestly
-attracts many. A generator is a cluster where working an item *produces* more
-items than it closes, so effort spent on it does not reduce the remaining
-work. That is a ratio, and the project can already measure it exactly.
+**Why it cannot be the verdict.** The two things that can be measured here are
+both close to causation without being it:
 
-**How a spawn is attributed.** `CLAUDE.md` requires every commit subject to
-lead with the id of the item being worked, and `bin/docket new` writes each
-captured item as a file in that same commit. So the commit that *adds* an
-item file names, in its subject, the item whose work produced it. Where the
-leading ids are the new item's own, the commit is a plain capture and the
-item has no parent. This is the method `PL-6ZQY` used by hand on 2026-09-12;
-here it is one `git log` call rather than a session's afternoon.
+- *A self-generation ratio over a `touches` path* measures how often work on a
+  file hands back more work on that same file. It is a real signal and it is
+  not the definition. Measured 2026-09-17, the ratio reported **no** cluster on
+  this tree while `PL-6ZQY` had already named **six** under one root cause,
+  `PL-BHVM` among them at nineteen items.
+- *Citation density* measures how often other items name this one. Items cited
+  by more than two other open items number 33 here, and an item is cited for
+  context, for provenance, and for a stale line reference as readily as for
+  cause. Promoting 33 items above `P1` would mean nothing.
 
-**The rule.** For a path `p` that items declare in `touches`:
+Both are inputs to a judgment, which is the half `CLAUDE.md` refuses to script.
 
-    r(p) = items spawned by work on p's closed items that ALSO declare p
-           / p's closed items
+**What changed, and why the old gate was wrong.** This script used to report
+`r >= 1.0` as a verdict, behind a floor of eight closures on the path. Under
+the recorded definition that floor is backwards: a generator is a mechanism
+three *open* items stand on, and eight closures is a state a cluster reaches
+only after it has been worked at length. A test that can fire only then reports
+the weed once it has seeded. The floor here is instead the definition's own -
+three open items on the cluster - and it selects what to *show*, never what is
+true.
 
-`r >= 1.0` means the cluster is not shrinking: each closure hands back at
-least one new item *in the same cluster*.
-
-The "also declare p" half is what makes this a generator rather than a
-busy file. A session closing an item captures whatever else it noticed, and
-those captures are attributed to the item it was working - so counting every
-spawned child rates any heavily-worked file a generator. Measured
-2026-09-17, that error put `src/anesthesia_sim/core` at r = 5.08 and
-`docs/ARCHITECTURE.md` at 2.96, neither of which reproduces into itself at
-anything like that rate. Only a child that lands back in the same cluster is
-evidence that the mechanism there is unsettled.
-
-A cluster is reported when `r >= 1.0`, it has at least
-`MIN_CLOSED` closures behind that ratio, and it still has open items - a
-generator that has already been fully closed out is history, not friction.
-
-**Advisory, not a failure.** `CLAUDE.md` reserves hard failure for exact
-rules and requires a check to change a decision every run or be retired.
-Whether a generator is worth a design round is a judgment about the
-mechanism underneath it, which this cannot make. What it can do, and what no
-session reliably does, is refuse to let the ratio go unsaid - and name the
-open items that carry it, so raising them is one command away.
+**How a spawn is attributed**, for the ratio column. `CLAUDE.md` requires every
+commit subject to lead with the id of the item being worked, and `bin/docket
+new` writes each captured item as a file in that same commit. So the commit
+that *adds* an item file names, in its subject, the item whose work produced
+it; where the leading ids are the new item's own, the commit is a plain capture
+and the item has no parent. Only a child that also declares the same `touches`
+path is counted, because a session closing an item captures whatever else it
+noticed and those captures attribute to the item it was working - counting all
+of them rates any heavily-worked file a generator.
 
 Store paths are excluded from clustering: `docs/items` sits inside
 `workflow_paths`, so every capture made while doing something else would
 otherwise read as one enormous cluster. `docket trend` excludes them from its
 churn share for the same reason.
+
+Advisory, and it exits 0 whatever it finds. There is no state of this tree that
+this script can call an error, because the thing it looks for is not something
+it can decide.
 """
 
 from __future__ import annotations
@@ -61,7 +57,8 @@ import argparse
 import re
 import subprocess
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
+from dataclasses import dataclass
 from pathlib import Path
 
 ITEM_DIR = Path("docs/items")
@@ -70,15 +67,85 @@ STORE_PATHS = {"docs/items", "docs/WORKING_NOTES.md", "docs/dead-ends.md"}
 #: A `touches` entry is compared after stripping any trailing separator:
 #: `docs/items/` and `docs/items` are the same cluster and both are the store.
 OPEN_STATUSES = {"ready", "blocked", "needs-decision", "untriaged"}
-TOP_BAND = {"P0", "P1"}
 
-#: Below this many closures a ratio is noise: one item spawning two children
-#: reaches r = 1.0 on a cluster of two. Eight is the smallest count at which a
-#: single unlucky item cannot carry the cluster over the line on its own.
-MIN_CLOSED = 8
+#: The floor for showing a cluster, and it is the recorded definition's own:
+#: `CLAUDE.md` calls a mechanism causing three or more items a generator, so a
+#: path with fewer than three open items cannot host one. It selects what to
+#: print and asserts nothing about what is printed.
+MIN_OPEN = 3
+
+#: How many other open items have to name an id before its citation count is
+#: worth showing. Three for the same reason as `MIN_OPEN`, and it is emphatically
+#: not a promotion rule - 33 items clear it on this tree.
+CITED_BY = 3
+
+#: The ratio at which a cluster is not shrinking: each closure hands back at
+#: least one new item in the same cluster. It was this script's whole verdict
+#: and is now one of three signals, none of which decides anything.
+NOT_SHRINKING = 1.0
+
+#: How many clusters to print. A display limit; the rest are counted.
+SHOW = 6
 
 ID_RE = re.compile(r"\bPL-[A-Z0-9]{4}\b")
 LEADING_IDS_RE = re.compile(r"^((?:PL-[A-Z0-9]{4})(?:\s*,\s*PL-[A-Z0-9]{4})*)\s*:")
+
+
+@dataclass(frozen=True)
+class Cluster:
+    """One `touches` path, with every signal measured about it and no verdict.
+
+    Each field is a separate reading, deliberately not folded into a score. A
+    composite would rank these against each other on a number, and a number is
+    exactly what wins an argument on fluency rather than on merit here - which
+    is the trap `.claude/rules/expert-review.md` names. A reader comparing three
+    columns has to think; a reader handed one has been given an answer.
+    """
+
+    path: str
+    open_ids: list[str]
+    closed: int
+    #: Children of this cluster's closed items that landed back in it.
+    produced: int
+    #: The most common `feature` among the open items, and how many carry it.
+    feature: str
+    feature_count: int
+    #: Open items here that three or more other open items name.
+    cited: list[str]
+    #: Open items here already inside a recorded `root-cause-of:`, either
+    #: carrying one or named by one.
+    recorded: list[str]
+
+    @property
+    def signals(self) -> tuple[str, ...]:
+        """The reasons this cluster is worth a look, or `()`.
+
+        Size alone is not one of them. A large file honestly attracts many
+        items, and ranking by open count would put `docs/MODEL.md`'s 40 at the
+        top of every run forever - a check that fires every run without
+        changing a decision, which `CLAUDE.md` calls a defect in the check.
+        What makes a cluster worth judgment is *concentration*: items that are
+        one problem, named as one problem, or naming each other.
+        """
+        reasons = []
+        if self.feature_count >= MIN_OPEN:
+            reasons.append(f"{self.feature_count} share feature '{self.feature}'")
+        if self.cited:
+            reasons.append(f"{len(self.cited)} cited by {CITED_BY}+ open items")
+        if self.ratio is not None and self.ratio >= NOT_SHRINKING:
+            reasons.append(f"r = {self.ratio:.2f}, so it is not shrinking")
+        return tuple(reasons)
+
+    @property
+    def ratio(self) -> float | None:
+        """Children per closure, or `None` where nothing has closed yet.
+
+        `None` rather than `0.0`: a cluster with no closures has not been
+        measured, and printing a zero would say it was measured and came back
+        clean. That is the apparatus floor - an answer is true or says it could
+        not answer - on one column of one advisory.
+        """
+        return self.produced / self.closed if self.closed else None
 
 
 def read_front_matter(path: Path) -> dict[str, str]:
@@ -133,7 +200,31 @@ def creation_parents(repo: Path) -> dict[str, set[str]]:
     return parents
 
 
-def clusters(repo: Path) -> list[tuple[float, str, int, int, list[tuple[str, str, str]]]]:
+def citations(repo: Path, open_ids: set[str]) -> Counter[str]:
+    """How many *other open* items name each id, anywhere in their file.
+
+    Counted over open items only, in both directions. A closed item's citation
+    is history: it names something that was relevant to work already finished,
+    and it cannot be evidence that a mechanism is still standing.
+    """
+    counts: Counter[str] = Counter()
+    for path in sorted((repo / ITEM_DIR).glob("PL-*.md")):
+        fields = read_front_matter(path)
+        source = fields.get("id", "")
+        if source not in open_ids:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for target in set(ID_RE.findall(text)) & open_ids:
+            if target != source:
+                counts[target] += 1
+    return counts
+
+
+def clusters(repo: Path) -> list[Cluster]:
+    """Every `touches` path with at least `MIN_OPEN` open items, best-signalled first."""
     items: dict[str, dict[str, str]] = {}
     for path in sorted((repo / ITEM_DIR).glob("PL-*.md")):
         fields = read_front_matter(path)
@@ -141,6 +232,21 @@ def clusters(repo: Path) -> list[tuple[float, str, int, int, list[tuple[str, str
             items[fields["id"]] = fields
 
     parents = creation_parents(repo)
+    open_ids = {i for i, f in items.items() if f.get("status") in OPEN_STATUSES}
+    cited = citations(repo, open_ids)
+
+    # Ids already inside a recorded claim - carrying `root-cause-of:` or named
+    # by one. Those clusters have had the judgment made and are marked rather
+    # than dropped: a recorded claim can be wrong, and hiding the evidence
+    # under it is how it would stay wrong.
+    claimants = {i for i, f in items.items() if f.get("root-cause-of", "").strip()}
+    explained = {
+        part.strip()
+        for i in claimants
+        for part in items[i].get("root-cause-of", "").split(",")
+        if part.strip()
+    }
+    in_a_claim = claimants | explained
 
     def declared(identifier: str) -> set[str]:
         raw = items.get(identifier, {}).get("touches", "")
@@ -163,22 +269,44 @@ def clusters(repo: Path) -> list[tuple[float, str, int, int, list[tuple[str, str
             if touch and touch not in STORE_PATHS:
                 by_path[touch].append(identifier)
 
-    reported = []
+    found: list[Cluster] = []
     for touch, ids in by_path.items():
+        here = sorted(i for i in ids if i in open_ids)
+        if len(here) < MIN_OPEN:
+            continue
         closed = [i for i in ids if items[i].get("status") == "done"]
-        open_ids = [i for i in ids if items[i].get("status") in OPEN_STATUSES]
-        if len(closed) < MIN_CLOSED or not open_ids:
-            continue
-        produced = sum(spawned[i][touch] for i in closed)
-        ratio = produced / len(closed)
-        if ratio < 1.0:
-            continue
-        carriers = sorted(
-            (items[i].get("priority", "--"), i, items[i].get("title", "")) for i in open_ids
+        features = Counter(items[i].get("feature", "") for i in here if items[i].get("feature"))
+        name, count = features.most_common(1)[0] if features else ("", 0)
+        found.append(
+            Cluster(
+                path=touch,
+                open_ids=here,
+                closed=len(closed),
+                produced=sum(spawned[i][touch] for i in closed),
+                feature=name,
+                feature_count=count,
+                cited=[i for i in here if cited[i] >= CITED_BY],
+                recorded=[i for i in here if i in in_a_claim],
+            )
         )
-        reported.append((ratio, touch, produced, len(closed), carriers))
-    reported.sort(reverse=True)
-    return reported
+    # Concentration first - the most open items sharing one `feature`, which is
+    # the project's own name for "these are one problem" - then how much open
+    # work sits on the path, then the path so two runs agree. Deliberately not a
+    # composite of the three signals: a score would rank these against each
+    # other on a number, and a number wins an argument on fluency rather than on
+    # merit, which is the trap `.claude/rules/expert-review.md` names.
+    found = [c for c in found if c.signals]
+    found.sort(key=lambda c: (-c.feature_count, -len(c.open_ids), c.path))
+    return found
+
+
+def _line(cluster: Cluster) -> str:
+    ratio = "no closures yet" if cluster.ratio is None else f"r = {cluster.ratio:.2f}"
+    parts = [f"{len(cluster.open_ids)} open", f"{ratio} over {cluster.closed} closed"]
+    parts.extend(cluster.signals)
+    if cluster.recorded:
+        parts.append(f"{len(cluster.recorded)} already inside a recorded root cause")
+    return "  ·  ".join(parts)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -186,28 +314,29 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--repo", type=Path, default=Path("."))
     args = parser.parse_args(argv)
 
-    reported = clusters(args.repo)
-    if not reported:
-        print("generator check: no open cluster closes less work than it creates.")
+    found = clusters(args.repo)
+    if not found:
+        print("generator candidates: no cluster shows concentration worth a look.")
         return 0
 
-    print("Clusters that generate at least as much work as they close:")
+    print("Clusters worth a look for one root cause. None of these is a generator:")
     print()
-    for ratio, touch, produced, closed, carriers in reported:
-        unranked = [c for c in carriers if c[0] not in TOP_BAND]
-        print(f"  {touch}")
-        print(
-            f"    r = {ratio:.2f}  ({closed} closed produced {produced} new)"
-            f"  ·  {len(carriers)} open, {len(unranked)} below P1"
-        )
-        for priority, identifier, title in carriers[:6]:
-            print(f"      {priority}  {identifier}  {title[:76]}")
-        if len(carriers) > 6:
-            print(f"      ... and {len(carriers) - 6} more")
+    for cluster in found[:SHOW]:
+        print(f"  {cluster.path}")
+        print(f"    {_line(cluster)}")
+        print(f"      {', '.join(cluster.open_ids[:6])}")
+        if len(cluster.open_ids) > 6:
+            print(f"      ... and {len(cluster.open_ids) - 6} more")
+        print()
+    if len(found) > SHOW:
+        print(f"  ... and {len(found) - SHOW} more clusters with a signal.")
         print()
     print(
-        "Effort on these does not reduce what is left. Decide the mechanism under\n"
-        "one, or say why the ratio is acceptable - do not work the items singly."
+        "A ratio, a shared feature and a citation count are evidence, not causation.\n"
+        "Where one mechanism really explains three or more of these, record it:\n"
+        "`root-cause-of: PL-AAAA, PL-BBBB, PL-CCCC` on the item that causes them.\n"
+        "`docket next` then ranks it above every band but P0, and `docket check`\n"
+        "holds the ids to existing. Under three, it is an ordinary item."
     )
     return 0
 

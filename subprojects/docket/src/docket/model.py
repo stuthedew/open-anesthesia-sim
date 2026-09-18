@@ -20,6 +20,7 @@ with no virtualenv.
 from __future__ import annotations
 
 import re
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -54,7 +55,15 @@ SAFETY_CLASSES = ("safety", "science")
 # set, so a `science`-and-`infra` item is still science.
 PROCESS_CLASSES = ("session-cost", "docs", "infra")
 
-LIST_FIELDS = ("classes", "touches", "blocked-by")
+LIST_FIELDS = ("classes", "touches", "blocked-by", "root-cause-of")
+
+# How many distinct items a `root-cause-of:` has to name before the claim is a
+# generator rather than an ordinary item. Three is the project owner's own
+# threshold - "the root cause of more than 2 PLs" - and it is a floor rather
+# than a measurement: two items sharing a cause is a coincidence a session can
+# work singly, while a mechanism standing under three is paid again by every
+# session it stands through.
+MIN_ROOT_CAUSE_ITEMS = 3
 
 # The second kind of entry `blocked-by` accepts: a milestone version, written
 # exactly as the roadmap's timeline writes it.
@@ -233,6 +242,21 @@ class Item:
     #: a later branch is measured against, and nothing about the branch that
     #: writes it.
     falsifies: str = ""
+    #: The items this one is the root cause of - three or more of them, or it
+    #: is an ordinary item. `CLAUDE.md` makes a mechanism causing three or more
+    #: items a *generator*, which ranks above everything but `P0`, and this
+    #: field is what makes that a recorded fact rather than the next session's
+    #: inference. Nothing can infer it: a ratio over a `touches` path measures
+    #: how busy a file is, and citation is not causation - 33 items in this
+    #: store are cited by more than two others, and promoting all of them would
+    #: mean nothing (`PL-VX5H`). So the session that identifies a generator
+    #: writes it down, and `tools/generator_check.py` surfaces candidates for
+    #: that judgment without making it.
+    #:
+    #: Resolution and the three-item floor live in `root_cause_faults`, which
+    #: `checks.py` and `plan.py` both read, so the checker and the ranking
+    #: cannot disagree about what counts as a claim.
+    root_cause_of: tuple[str, ...] = ()
     #: The item file's name inside the store directory - `PL-K7QX-do-it.md`,
     #: never `docs/items/PL-K7QX-do-it.md`. A repository path is that name
     #: joined to the store directory, which is what `verify.front_matter_check`
@@ -417,6 +441,66 @@ class Item:
         return (band, effort, self.identifier)
 
 
+def root_cause_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
+    """Why an item's `root-cause-of:` is not a generator claim, or `()`.
+
+    One predicate with two readers, which is the point of writing it here
+    rather than in either of them. `checks.py` turns each fault into an error;
+    `plan.py` ranks a claim only when this returns nothing. A second copy of
+    the rule would be a second chance for the checker and the ranking to
+    disagree about what a claim is - on a field whose whole purpose is to lift
+    an item above every band but `P0`.
+
+    Ranking on the field's mere presence would be the wrong way to fail.
+    `docket check` is a separate command, so a store is routinely ranked
+    before it is validated: a field naming two ids, or naming an id that does
+    not resolve, would otherwise outrank a `safety`-classed `P1` until
+    somebody happened to run the checker.
+
+    An item carrying no field at all has made no claim and has no faults. That
+    is not the same answer as a sound claim, and `is_generator` is where the
+    two are told apart.
+
+    Counted over *distinct* ids, with the item's own removed: three entries
+    spelling one id name one item, and a floor a repetition defeats is not a
+    floor.
+    """
+    if not item.root_cause_of:
+        return ()
+
+    faults: list[str] = []
+    named = list(dict.fromkeys(item.root_cause_of))
+    if item.identifier and item.identifier in named:
+        faults.append("lists itself among the items it is the root cause of")
+        named = [i for i in named if i != item.identifier]
+
+    missing = [i for i in named if i not in known]
+    if missing:
+        faults.append(f"names {', '.join(missing)}, which no item in this store carries")
+
+    # Reported over what is *written* rather than over what resolved, so a
+    # typo and a short list stay two findings with two repairs. A field naming
+    # `PL-A, PL-NOPE` is both, and saying only "resolves to one item" would
+    # hide the typo behind a count.
+    if len(named) < MIN_ROOT_CAUSE_ITEMS:
+        faults.append(
+            f"names {len(named)} item(s); a generator is the root cause of at least "
+            f"{MIN_ROOT_CAUSE_ITEMS}, and below that it is an ordinary item"
+        )
+    return tuple(faults)
+
+
+def is_generator(item: Item, known: Collection[str]) -> bool:
+    """Whether this item carries a sound, resolvable generator claim.
+
+    The question `recommend` asks before lifting an item above every band but
+    `P0`. Presence and soundness are deliberately one test here: an unsound
+    claim ranks as an ordinary item, and `docket check` is what tells somebody
+    it was unsound.
+    """
+    return bool(item.root_cause_of) and not root_cause_faults(item, known)
+
+
 def is_under(path: str, roots: tuple[str, ...]) -> bool:
     """Whether one declared path falls inside any of `roots`.
 
@@ -470,6 +554,7 @@ def parse_item(text: str, path: str = "") -> Item:
         "verify",
         "not-delegable",
         "falsifies",
+        "root-cause-of",
     }
     return Item(
         identifier=fields.get("id", ""),
@@ -490,6 +575,7 @@ def parse_item(text: str, path: str = "") -> Item:
         verify=fields.get("verify", ""),
         not_delegable=fields.get("not-delegable", ""),
         falsifies=fields.get("falsifies", ""),
+        root_cause_of=_split_list(fields.get("root-cause-of", "")),
         body=body,
         path=path,
         unknown_fields=tuple(sorted(set(fields) - known)),
@@ -523,6 +609,7 @@ def render_item(item: Item) -> str:
         ("verify", item.verify),
         ("not-delegable", item.not_delegable),
         ("falsifies", item.falsifies),
+        ("root-cause-of", ", ".join(item.root_cause_of)),
     ):
         if value:
             lines.append(f"{name}: {value}")
