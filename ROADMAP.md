@@ -3812,6 +3812,20 @@ if a triage pass classes it, which is the next gate's question" — and the pass
 classed it `defect`, so that sentence is now its recorded disposition rather
 than a forecast, on exactly the same ground as the eleven.
 
+**One more from closing `PL-QJQL`** (`PL-XQGH`, 2026-09-19). Teaching the
+assertion check to see `with pytest.raises(...)` anchored the new alternative on
+the `with` keyword, which is the right anchor for every shape this tree writes
+and gives up one it does not: the parenthesized multi-manager form, where
+`with (` opens the statement and the expectation sits on a line of its own. It
+is declined on the ground the first thirty sit on - found after the 2026-09-06
+freeze, `P3`, neither `safety` nor `science`, and wholly in the workflow lane,
+so it cannot reach a reader of the simulator. One thing this entry can say more
+strongly than most: the hazard is not live. `ast` reports zero multi-manager
+`with` statements of any kind across the tree's 97,687 lines, so there is
+nothing for the blind spot to hide today, and what would make it live is a
+condition on the tree rather than an argument - which the item records, so a
+later session checks it instead of re-deriving it.
+
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
 `### Declined to Gate ...` subsection after the gate heading and stops at the
