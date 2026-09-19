@@ -134,3 +134,10 @@ no subject at all - making the pass invisible to `flight`, `show` and `next`
 *while it is following the rule exactly*. Neither session could have looked
 harder. Any detector proposed for this item should be tested against this case
 specifically, because filing first would not have helped either of them.
+
+**Removed from `PL-BHVM`'s cluster, 2026-09-19.** That item's design round found
+this is a different question from the one it root-causes: `PL-BHVM` asks what
+evidence proves a **ref is done**, and this asks how a session's **claim**
+becomes visible before any ref carries it. Bundling the two is what made the
+cluster look uniform. Nothing here is answered by `PL-BHVM`'s decision, and
+nothing here waits on it — `feature: parallel-sessions` is where this belongs.

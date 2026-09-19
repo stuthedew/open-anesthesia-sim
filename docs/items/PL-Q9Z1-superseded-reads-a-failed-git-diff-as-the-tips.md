@@ -61,3 +61,39 @@ that drives a failing git, which is why this is filed rather than folded into
 call outstanding, a test drives the failure rather than asserting the rule
 against itself, and the docstring's three-silence sentence is either true or
 rewritten to say what the code does.
+
+**Re-pointed by `PL-BHVM`'s design round, 2026-09-19 — this is the first build,
+and it is wider than the brief above says.** `PL-BHVM` carries the reasoning.
+Three amendments:
+
+- **The reachability argument is wrong in its mechanism and right in its
+  conclusion.** The brief rests on `_run_git`'s 10-second timeout. Measured on
+  2026-09-19 against this repository, the real `diff --numstat` calls run in
+  **4.5 ms** — three orders of magnitude of headroom, so a timeout is not the
+  trigger. A **non-zero exit** is, and the likely one here is a ref that
+  vanishes between the `for-each-ref` that lists it and the `diff` that reads
+  it: another session's branch deleted, or a merged branch cleaned up, while
+  the digest runs. Verified — git answers `fatal: bad revision`, `_run_git`
+  returns `""`, and every path in that call reads as superseded.
+- **The cost is measured rather than argued.** Substituting a runner that fails
+  only `diff --numstat` and answers everything else truthfully takes
+  `branches_in_flight` from **13 `editing` marks to 0**, with `unreadable`
+  staying **empty** in both cases. One failed call deletes every in-flight edit
+  warning the digest has and nothing says anything went unread. That is
+  `.claude/rules/apparatus-standard.md`'s floor breached on
+  `FlightReport.unreadable` — the field the floor's own text cites as an
+  instance of the code holding to it.
+- **It is not confined to `_superseded`.** Under a total git failure
+  `stranded`, `lost`, `orphaned` and `merged_pull_requests` decline correctly,
+  while `branches_in_flight`, `precedence`, `branch_state` and `default_base`
+  each return a confident clean answer. So the fix is the failure channel *and*
+  a **fault-injection test that fails the Nth git call and asserts each public
+  read declines or keeps the mark** — prose cannot enforce it, since this
+  function's docstring already states the right direction in three cases while
+  the code inverts two.
+
+**One test changes with it.** `subprojects/docket/tests/test_vcs.py:467`,
+`test_no_git_means_no_claims_about_branches`, drives a total git failure and
+asserts `branches == ()` — it pins the breach. It sits one file away from
+`test_no_git_declines_rather_than_reporting_a_clean_store`, which asserts the
+opposite for `stranded`.
