@@ -38,7 +38,11 @@ from .store import ID_PATTERN
 
 HEADING_RE = re.compile(r"^(?P<hashes>#{1,6})\s+(?P<title>.+?)\s*#*\s*$")
 TABLE_ROW_RE = re.compile(r"^\|(?P<cells>.+)\|\s*$")
-BULLET_RE = re.compile(r"^[-*]\s+(?P<text>\S.*)$")
+#: A top-level list entry: a bullet, or a numbered item. Both are entries,
+#: because `ROADMAP.md` writes v0.5.0's `Required scope` as bullets and
+#: v0.6.0's as a numbered list - so a reader that knew only the bullet was
+#: blind to a whole milestone's worth of entries.
+LIST_ENTRY_RE = re.compile(r"^(?:[-*]|\d+\.)\s+(?P<text>\S.*)$")
 
 
 def table_rows(text: str, heading: str, level: int = 2) -> Iterator[tuple[int, list[str]]]:
@@ -328,9 +332,10 @@ REQUIRED_SUBSECTIONS = ("goal", SCOPE_SUBSECTION, "definition of done", "explici
 # another item, not a second thing the entry is waiting on.
 LEADING_ID_RE = re.compile(rf"^[*_\s]*(?:and[*_\s]+)?[*_\s]*(?P<id>{ID_PATTERN})")
 
-# An id wherever it sits in a sentence. Used only inside the two subsections
-# that record membership, because the sentence around an id is unreadable and
-# a section says far more about an id than "this is mine".
+# An id wherever it sits in a sentence. Left to `Explicitly out of scope`,
+# whose heading has already said what every id beneath it means, because
+# elsewhere the sentence around an id is unreadable and a section says far
+# more about an id than "this is mine".
 #
 # Membership is read from *where* an id is written, never from the fact that
 # it is written. A milestone's section names ids for at least four reasons -
@@ -340,22 +345,42 @@ LEADING_ID_RE = re.compile(rf"^[*_\s]*(?:and[*_\s]+)?[*_\s]*(?P<id>{ID_PATTERN})
 # membership. Counting every mention read the exclusions as the opposite of
 # what they say, which is queue item PL-HDY6.
 #
-# So each of the two structures is read by its own grammar, and nothing else
-# in the section is read at all:
+# So each structure is read by its own grammar, and nothing else in the
+# section is read at all:
 #
 # - the frozen list, by its entries' heads, because an entry is one bullet per
 #   problem and an id later in the sentence is prose about another item;
-# - `Required scope`, in full, because a milestone names what it covers in
-#   whatever grammar the sentence wanted - "(queue item PL-DHV7)" mid-bullet,
-#   or a paragraph - and the heading has already declared that everything
-#   under it is scope.
+# - `Required scope`, by the `(queue item ...)` slot the entries declare in -
+#   see `DECLARATION_RE`. Reading that subsection *in full* was the same
+#   over-read one level down: naming the id that re-briefed an entry is how
+#   this document records provenance, so every correct maintenance edit added
+#   a member, the count drifted as the file was kept up to date, and three
+#   separate items were filed to patch one reading of it (`PL-HWW1`);
+# - `Explicitly out of scope`, in full, which is what this pattern is left
+#   for. The heading states the claim, so no id under it needs a grammar of
+#   its own to say which claim is being made.
 #
-# What this costs is stated rather than hidden: scope recorded *only* in the
-# section's prose is not read, so an id named nowhere but a paragraph is
-# placed nowhere. That is the safe direction to fail. An unread mention makes
-# no claim, where an over-read one tells a session that work the milestone
-# excludes is the work the milestone is waiting on.
+# What this costs is stated rather than hidden: scope written without a slot
+# is not read, so an entry declaring nothing places nothing. That is the safe
+# direction to fail, and it is no longer silent - `tools/doc_check.py` fails
+# an entry that declares none where the section's other entries declare, so
+# the cost is paid by a loud failure rather than by a quiet undercount.
 SECTION_ID_RE = re.compile(ID_PATTERN)
+
+# The slot that *declares* membership, and the run of ids it may hold. An
+# entry writes "(queue item `PL-T691`)" after its bold title, or "(queue items
+# `PL-1FT6` and `PL-HJPY`)" where one entry completes two. `ROADMAP.md` was
+# already written this way - 58 of its 76 `Required scope` entries, and 39 of
+# the 39 belonging to a milestone not yet released - so this promotes the
+# file's own idiom to a rule rather than asking the document to be rewritten
+# (`PL-HWW1`).
+#
+# The run stops at the first token that is neither an id nor a connective, so
+# a citation *inside* the parenthetical is prose like any other: v0.5.0's
+# fourth entry reads "(queue item PL-8LXM, moved with `PL-2FM6` into the
+# `v0.4.x` track on 2026-09-08 and shipped there)" and declares one item.
+DECLARATION_RE = re.compile(r"\(queue items?\b")
+DECLARED_ID_RE = re.compile(rf"^[`,\s]*(?:and[`\s]+)?[`\s]*(?P<id>{ID_PATTERN})`?")
 
 
 @dataclass(frozen=True)
@@ -365,6 +390,21 @@ class GateEntry:
     Entries rather than ids are the gate's size, because one problem may have
     surfaced under two ids and be recorded as a single entry. Both numbers are
     reported; neither is inferred from the other.
+    """
+
+    line: int
+    ids: tuple[str, ...]
+    text: str
+
+
+@dataclass(frozen=True)
+class ScopeEntry:
+    """One entry of a `Required scope` list: what it declares, and what it says.
+
+    `ids` is the entry's declaration slot alone - see `DECLARATION_RE` - so an
+    entry citing three items in its prose and declaring one carries one id.
+    Empty where the entry declares nothing, which is a fault
+    `tools/doc_check.py` reports rather than a shape to drop here.
     """
 
     line: int
@@ -388,7 +428,9 @@ class MilestoneSection:
     #: named under `Required scope`, in the order they appear. An id the
     #: section merely mentions is absent, deliberately - see `SECTION_ID_RE`.
     scope_ids: tuple[str, ...]
-    #: The `Required scope` half of `scope_ids`, alone. The union above answers
+    #: The `Required scope` half of `scope_ids`, alone - the ids its entries
+    #: *declare*, in the order they are written, never the ids its prose cites
+    #: (`DECLARATION_RE`). The union above answers
     #: placement, where a gate entry and a scope entry are both "this milestone
     #: names it"; this answers whether the milestone's *own* content is
     #: finished, which the gate half would contaminate - a gate can be clear
@@ -400,13 +442,20 @@ class MilestoneSection:
     #: both headings (`PL-NBCS`). A gate entry excluded by the same section
     #: would be a different claim, and not one anybody has made.
     own_scope_ids: tuple[str, ...] = ()
-    #: The ids named under `Explicitly out of scope for vX.Y.Z`. Parsed, and
-    #: deliberately *not* fed into placement here: an exclusion recorded by a
-    #: milestone the project has already passed says what was true then, and
-    #: `milestone_scope` reads no section at or below the anchor. Making an
-    #: exclusion speak in the ranking is `PL-6P9Y`, which this leaves ready to
-    #: consume rather than doing on its behalf.
+    #: The ids named under `Explicitly out of scope for vX.Y.Z`. Fed into
+    #: placement for the *anchor's* section alone (`PL-6P9Y`), never for
+    #: another section's: an exclusion recorded by a milestone the project has
+    #: already passed says what was true then, and one recorded by a milestone
+    #: it has not reached is a decision that milestone's own scoping round may
+    #: still revisit. `Scope.excluded` is where that narrowing is applied.
     excluded_ids: tuple[str, ...] = ()
+    #: Every entry of the `Required scope` list, each with the ids it declares.
+    #: `own_scope_ids` is what places an item and is read from the subsection
+    #: whole; this is the same subsection split into the units a *rule* is
+    #: stated over, which is what lets `tools/doc_check.py` name the entry that
+    #: declares nothing. Empty for a section recording no scope subsection, and
+    #: for one whose scope is a paragraph rather than a list.
+    scope_entries: tuple[ScopeEntry, ...] = ()
 
     @property
     def label(self) -> str:
@@ -489,42 +538,113 @@ def _scope_ids(entries: Sequence[GateEntry], scope_ids: Iterable[str]) -> tuple[
     return _deduped([identifier for entry in entries for identifier in entry.ids] + list(scope_ids))
 
 
-def _gate_entries(lines: Sequence[str], start: int) -> tuple[GateEntry, ...]:
-    """Read the list entries under a gate heading, ignoring its prose.
+def list_entries(lines: Sequence[str], start: int) -> Iterator[tuple[int, str]]:
+    """Each top-level list entry under one `###` heading, as (line, joined text).
 
-    An entry is a top-level bullet that opens with an item id. The prose around
-    it - why the list was frozen, how many were done on some past date, which
-    of them the milestone clears itself - is left where it is: it is a person's
-    summary of the same facts, and reading it would mean parsing sentences.
+    `start` is the heading's line number, so reading begins on the line after
+    it and stops at the next heading of the same depth or shallower - the same
+    bound `_subsection_ids` uses, for the same reason.
+
+    Continuation lines are folded into the entry they open, because an entry
+    routinely wraps and a phrase split across the break would be invisible to
+    every reader of this - the declaration slot included, where a pair of ids
+    can wrap between them. A nested bullet folds in too: `LIST_ENTRY_RE`
+    anchors at the margin, so only a top-level marker starts an entry.
+
+    One walker and three readers - the frozen list, `Required scope`, and the
+    exclusion advisory in `tools/doc_check.py` - because what an entry *is* is
+    one question, and it was answered in three places that could drift.
     """
-    entries: list[GateEntry] = []
     line_number = 0
     parts: list[str] = []
-
-    def flush() -> None:
-        if not parts:
-            return
-        text = " ".join(parts)
-        ids = _leading_ids(text)
-        if ids:
-            entries.append(GateEntry(line=line_number, ids=ids, text=text))
-
     for index in range(start, len(lines)):
         line = lines[index]
         heading = HEADING_RE.match(line)
         if heading is not None and len(heading.group("hashes")) <= 3:
             break
-        bullet = BULLET_RE.match(line)
-        if bullet is not None:
-            flush()
-            line_number, parts = index + 1, [bullet.group("text")]
+        entry = LIST_ENTRY_RE.match(line)
+        if entry is not None:
+            if parts:
+                yield line_number, " ".join(parts)
+            line_number, parts = index + 1, [entry.group("text")]
         elif parts and line.strip() and line[:1].isspace():
             parts.append(line.strip())
         elif parts:
-            flush()
+            yield line_number, " ".join(parts)
             parts = []
-    flush()
+    if parts:
+        yield line_number, " ".join(parts)
+
+
+def _subsection_text(lines: Sequence[str], start: int) -> str:
+    """Everything under one `###` heading, joined into a single line.
+
+    Joined rather than read line by line because the declaration slot wraps:
+    "(queue items `PL-1FT6` and `PL-HJPY`)" is one statement however the
+    paragraph breaks, and a line-at-a-time reader would drop its second id with
+    nothing reporting the loss.
+
+    The whole subsection rather than its entries, because a milestone with one
+    thing to say writes a sentence rather than a list - v0.2.0's scope is a
+    paragraph - and the slot is the statement wherever it is written. The entry
+    unit is what `tools/doc_check.py` needs, and it reads `scope_entries`.
+    """
+    end = len(lines)
+    for index in range(start, len(lines)):
+        heading = HEADING_RE.match(lines[index])
+        if heading is not None and len(heading.group("hashes")) <= 3:
+            end = index
+            break
+    return " ".join(line.strip() for line in lines[start:end])
+
+
+def _declared_ids(text: str) -> tuple[str, ...]:
+    """Every id declared in a `(queue item ...)` slot of `text`, in order.
+
+    Each slot is walked to its first token that is neither an id nor a
+    connective, so a pair declares two and a parenthetical that goes on to cite
+    another item declares only what it opened with.
+    """
+    ids: list[str] = []
+    for opening in DECLARATION_RE.finditer(text):
+        rest = text[opening.end() :]
+        while True:
+            match = DECLARED_ID_RE.match(rest)
+            if match is None:
+                break
+            ids.append(match.group("id"))
+            rest = rest[match.end() :]
+    return tuple(ids)
+
+
+def _gate_entries(lines: Sequence[str], start: int) -> tuple[GateEntry, ...]:
+    """Read the list entries under a gate heading, ignoring its prose.
+
+    An entry is a top-level list entry that opens with an item id. The prose
+    around it - why the list was frozen, how many were done on some past date,
+    which of them the milestone clears itself - is left where it is: it is a
+    person's summary of the same facts, and reading it would mean parsing
+    sentences.
+    """
+    entries: list[GateEntry] = []
+    for line_number, text in list_entries(lines, start):
+        ids = _leading_ids(text)
+        if ids:
+            entries.append(GateEntry(line=line_number, ids=ids, text=text))
     return tuple(entries)
+
+
+def _scope_entries(lines: Sequence[str], start: int) -> tuple[ScopeEntry, ...]:
+    """Read the entries of a `Required scope` list, declarations and all.
+
+    Every entry, including one declaring nothing: an empty `ids` is exactly
+    what `tools/doc_check.py` fails on, so dropping those here would leave the
+    rule unenforceable from the only place that can see them.
+    """
+    return tuple(
+        ScopeEntry(line=line_number, ids=_deduped(_declared_ids(text)), text=text)
+        for line_number, text in list_entries(lines, start)
+    )
 
 
 def parse_milestones(text: str) -> list[MilestoneSection]:
@@ -546,7 +666,8 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
             return
         heading_line, heading_title = gate or (0, "")
         entries = _gate_entries(lines, heading_line) if gate else ()
-        own_scope = _deduped(_subsection_ids(lines, scope)) if scope else ()
+        own_scope = _deduped(_declared_ids(_subsection_text(lines, scope))) if scope else ()
+        scope_entries = _scope_entries(lines, scope) if scope else ()
         found.append(
             MilestoneSection(
                 line=line_number,
@@ -560,6 +681,7 @@ def parse_milestones(text: str) -> list[MilestoneSection]:
                 scope_ids=_scope_ids(entries, own_scope),
                 own_scope_ids=own_scope,
                 excluded_ids=_deduped(_subsection_ids(lines, excluded)) if excluded else (),
+                scope_entries=scope_entries,
             )
         )
 
@@ -837,20 +959,28 @@ def scope_status(
     )
 
 
-# What a milestone section says about an id, as three answers rather than two.
+# What a milestone section says about an id, as four answers rather than two.
 IN_SCOPE = "in-scope"
 UNPLACED = "unplaced"
 OUT_OF_SCOPE = "out-of-scope"
+#: The anchor's own `Explicitly out of scope` heading names it. Distinct from
+#: `OUT_OF_SCOPE`, which says a *later* milestone places the id and is a
+#: statement about timing - "the current step has not reached it" is the
+#: sentence that answer prints, and it is not what an exclusion means
+#: (`PL-6P9Y`).
+EXCLUDED = "excluded"
 
 
 @dataclass(frozen=True)
 class Scope:
     """Where the plan places an item, relative to the beat now due.
 
-    Three answers, and the middle one is why there are three. An id the
-    milestone the current beat is about places is work this step includes. An
-    id only a *later* milestone places is work this step has not reached. An
-    id no section places is neither: the roadmap places most of the queue
+    Four answers, and the last two are why there are four. An id the milestone
+    the current beat is about places is work this step includes. An id only a
+    *later* milestone places is work this step has not reached. An id the
+    anchor's own section names under `Explicitly out of scope` is work the
+    roadmap has ruled out, which is a decision rather than a delay. An id no
+    section places is none of those: the roadmap places most of the queue
     nowhere, and reading that silence as exclusion would be a verdict rather
     than a fact.
 
@@ -866,12 +996,15 @@ class Scope:
     beat its ids are later work mapped to the port, where reading "below the
     anchor" as "released" left them placed by nobody (`PL-FWJF`).
 
-    Two structures are the whole of the evidence, per `SECTION_ID_RE`: the
-    frozen list a section records, and its `Required scope`. So a milestone
-    that records scope in prose alone records it invisibly here - and one that
-    excludes something in prose alone excludes it invisibly too, which is the
-    same silence rather than its opposite. Both limitations are recorded in
-    the README beside the concurrency one.
+    Three structures are the whole of the evidence, per `SECTION_ID_RE`: the
+    frozen list a section records, the declarations under its `Required
+    scope`, and - for the anchor alone - the ids under its `Explicitly out of
+    scope`. So a milestone that records scope in a sentence carrying no
+    declaration records it invisibly here, and one that excludes something in
+    prose under another heading excludes it invisibly too, which is the same
+    silence rather than its opposite. Both limitations are recorded in the
+    README beside the concurrency one; `tools/doc_check.py` fails the first of
+    them where a section's own entries show what it meant to write.
     """
 
     #: The milestone the current beat is about, labelled as the roadmap does.
@@ -890,6 +1023,13 @@ class Scope:
     #: the step and the anchor are the same milestone, which is the ordinary
     #: case and needs no distinguishing.
     step_label: str = ""
+    #: Ids the anchor's own section names under `Explicitly out of scope`.
+    #: Consulted last, after both placements: a milestone excluding work that a
+    #: *later* milestone then took on is placed by the later one, which is the
+    #: more useful answer and the more recent decision. So this speaks only
+    #: where nothing else places the id, which is the case it exists for - an
+    #: id the roadmap has ruled on, ranked level with work nobody has ruled on.
+    excluded: frozenset[str] = frozenset()
     #: Whether `current` is a gate's entries rather than a milestone's whole
     #: section. A caller naming where an id sits needs this and `step_label`
     #: separately: they answer "on a gate?" and "which row?", and the beat can
@@ -901,6 +1041,8 @@ class Scope:
             return IN_SCOPE
         if identifier in self.later:
             return OUT_OF_SCOPE
+        if identifier in self.excluded:
+            return EXCLUDED
         return UNPLACED
 
     def milestone(self, identifier: str) -> str:
@@ -968,6 +1110,7 @@ def milestone_scope(
         anchor=anchor.label,
         current=current,
         later=later,
+        excluded=frozenset(anchor.excluded_ids),
         step_label=step_label,
         clearing=clearing_gate is not None,
     )

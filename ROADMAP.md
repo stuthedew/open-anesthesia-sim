@@ -1710,7 +1710,11 @@ Four grounds survive:
    again, which moved after item 34 later the same day and is now `v0.7.x`
    (`PL-PHKP`); see the note above for the measurement that reversed it, and for the
    styling-layer question this port deliberately leaves open.
-4. **The two checks that read the theme.** `tools/contrast_check.py` and
+4. **The two checks that read the theme** (queue items `PL-BXB2`, `PL-V53R`
+   and `PL-0PJG`; moved into the slot 2026-09-19, when `PL-HWW1` made a
+   declaration the record of membership - the three are the re-pointings this
+   entry describes and the three the release stamped `v0.4.26`).
+   `tools/contrast_check.py` and
    `tools/agent_identity_check.py` both read `theme.py` and
    `simulation_view.py` by path until 2026-09-14. `PL-JRS3` measured what a
    port does to them (2026-09-14) rather than reasoning it: `contrast_check`
@@ -1738,8 +1742,10 @@ Four grounds survive:
    than after one.
 7. **Deletion** (queue item `PL-7SVX`). The Qt spike tree goes, and so does
    every Flet import. `PL-C92D` retires the Flet frame-cost table that predates the port.
-8. **The queued fixes named below**, on the rule stated there: `PL-3355`,
-   `PL-Q4VH`, `PL-THXF`, `PL-W8DQ`, `PL-TG60` and `PL-005`. Named here and
+8. **The queued fixes named below** (queue items `PL-3355`, `PL-Q4VH`,
+   `PL-THXF`, `PL-W8DQ`, `PL-TG60` and `PL-005`), on the rule stated there.
+   The six moved from this sentence into the declaration slot on 2026-09-19,
+   which is where `PL-HWW1` put membership; they are named here and
    not only under that heading because `MilestoneStates.ships_with` reads
    `Required scope` and nothing else: it is what separates `blocked-by:
    <this milestone's version>` meaning *ships with this milestone* from the same field meaning

@@ -95,11 +95,10 @@ try:
     from docket.model import CLOSED_STATUSES, Item
     from docket.roadmap import (
         BASELINE_MARK,
-        BULLET_RE,
+        DECLARATION_RE,
         EXCLUDED_SUBSECTION,
         HEADING_RE,
         SCOPE_SUBSECTION,
-        SECTION_ID_RE,
         TABLE_ROW_RE,
         TIMELINE_HEADING,
         VERSION_TABLE_HEADING,
@@ -1589,33 +1588,6 @@ def check_gate_counts(root: Path, report: Report) -> None:
 SCOPE_EXCLUSION_MARKERS = ("not in scope", "out of scope", "stays at gate", "stays on gate")
 
 
-def _scope_bullets(lines: list[str], start: int) -> Iterator[tuple[int, str]]:
-    """Each bullet under one `###` heading, as (line number, joined text).
-
-    Continuation lines are folded in, because a sentence excluding an item
-    routinely wraps - the one this rule was written for wrapped twice - and a
-    marker split across a line break would be invisible to a substring test.
-    """
-    line_number = 0
-    parts: list[str] = []
-    for index in range(start, len(lines)):
-        heading = HEADING_RE.match(lines[index])
-        if heading is not None and len(heading.group("hashes")) <= 3:
-            break
-        bullet = BULLET_RE.match(lines[index])
-        if bullet is not None:
-            if parts:
-                yield line_number, " ".join(parts)
-            line_number, parts = index + 1, [bullet.group("text")]
-        elif parts and lines[index].strip() and lines[index][:1].isspace():
-            parts.append(lines[index].strip())
-        elif parts:
-            yield line_number, " ".join(parts)
-            parts = []
-    if parts:
-        yield line_number, " ".join(parts)
-
-
 def _subsection_line(section: MilestoneSection, lines: list[str], prefix: str) -> int | None:
     """The **1-based** line of one `###` heading inside a milestone section.
 
@@ -1759,23 +1731,100 @@ def check_scope_exclusions(root: Path, report: Report) -> None:
                 "item is in scope and out of it; `docket next` reads the scope heading "
                 "and reports it as in scope"
             )
-        start = _subsection_line(section, lines, SCOPE_SUBSECTION)
-        if start is None:
-            continue
-        for number, bullet in _scope_bullets(lines, start):
-            lowered = bullet.lower()
+        for entry in section.scope_entries:
+            # The ids the entry *declares*, and the words that introduce the
+            # declaration. Reading the whole bullet was right while the whole
+            # bullet was read as scope; since `PL-HWW1` an id outside the slot
+            # places nothing, so the hazard is now exactly one shape - an entry
+            # whose title says "not in scope" and whose slot declares the item
+            # anyway. Prose *after* the slot is a different sentence about a
+            # different item, and warning on it would report a hazard that no
+            # longer exists, which costs attention every run and trains a
+            # reader past the line where the real one appears.
+            opening = DECLARATION_RE.search(entry.text)
+            if not entry.ids or opening is None:
+                continue
+            lowered = entry.text[: opening.start()].lower()
             marker = next((m for m in SCOPE_EXCLUSION_MARKERS if m in lowered), None)
             if marker is None:
                 continue
-            named = SECTION_ID_RE.findall(bullet)
-            if not named:
-                continue
             report.advisories.append(
-                f'{ROADMAP}:{number}: this "{SCOPE_SUBSECTION.capitalize()}" bullet says '
-                f'"{marker}" and names {", ".join(dict.fromkeys(named))}, which `docket next` '
+                f'{ROADMAP}:{entry.line}: this "{SCOPE_SUBSECTION.capitalize()}" entry says '
+                f'"{marker}" and declares {", ".join(entry.ids)}, which `docket next` '
                 f'reads as scope. Move the exclusion under "{EXCLUDED_SUBSECTION.capitalize()} for '
-                f'{section.label.split()[0]}" and leave the bullet saying only what is in scope'
+                f'{section.label.split()[0]}" and leave the entry declaring only what is in scope'
             )
+
+
+def check_scope_declarations(root: Path, report: Report) -> None:
+    """Hold a `Required scope` entry to declaring the work it places.
+
+    Membership is the `(queue item ...)` slot and nothing else (`PL-HWW1`), so
+    the two ways a section can now be wrong about its own size are both
+    decidable and both silent without this. An entry that declares nothing
+    places nothing while reading to a person as scope. A declaration naming an
+    id the queue does not hold places nothing either - the same reading
+    `GateStatus.unknown_ids` takes of a frozen list, applied to the structure
+    beside it. Either way the milestone is smaller than the document says, and
+    nothing else reports the gap: `bin/docket wave` counts what it parsed, so
+    an undeclared entry simply is not there to be missed.
+
+    **Only a section whose other entries declare.** v0.1.0's and v0.2.0's scope
+    entries were written before the queue existed and name no ids at all, so
+    they place nothing under any reading and failing them would be asking for
+    ids to be invented for a milestone that shipped two years of work ago. The
+    rule reads what the section already does rather than imposing a form on
+    it, which is the same property that lets a milestone be scoped in prose
+    before its items are filed.
+    """
+    roadmap = root / ROADMAP
+    if not roadmap.is_file():
+        report.declined.append(f"{ROADMAP} is absent, so its scope declarations were not read")
+        return
+    text = roadmap.read_text(encoding="utf-8")
+    items = _read_store(root)
+    scope_heading = SCOPE_SUBSECTION.capitalize()
+    declaring = False
+
+    for section in parse_milestones(text):
+        if not any(entry.ids for entry in section.scope_entries):
+            continue
+        declaring = True
+        for entry in section.scope_entries:
+            if not entry.ids:
+                report.errors.append(
+                    f'{ROADMAP}:{entry.line}: this "{scope_heading}" entry of '
+                    f"{section.label} declares no queue item where the section's other "
+                    f'entries declare: "{_opening(entry.text)}". Membership is the '
+                    "`(queue item PL-XXXX)` slot after the entry's title, so an entry "
+                    "without one places nothing and the milestone is smaller than it reads"
+                )
+                continue
+            if items is None:
+                continue
+            for identifier in entry.ids:
+                if identifier in items:
+                    continue
+                report.errors.append(
+                    f'{ROADMAP}:{entry.line}: this "{scope_heading}" entry of '
+                    f"{section.label} declares {identifier}, which the queue does not "
+                    "hold. A declaration is what places an item in a milestone, so a "
+                    "typo here places nothing and reports nothing"
+                )
+    if declaring and items is None:
+        # Only where there was something to check. A roadmap whose scope
+        # entries declare nothing - one written before the queue existed, or a
+        # fixture - has no ids to look up, and a decline there would report a
+        # gap that does not exist and suppress the run's own "all resolve".
+        report.declined.append(
+            f"{ROADMAP}: whether its scope declarations name items that exist, because "
+            "the item store could not be read; `bin/docket check` is what reports why"
+        )
+
+
+def _opening(text: str, width: int = 60) -> str:
+    """The first few words of an entry, for naming it in a message."""
+    return text if len(text) <= width else f"{text[:width].rstrip()}..."
 
 
 #: The class an item carries to claim that the hazard it describes does not
@@ -3334,6 +3383,7 @@ def analyze(root: Path) -> Report:
     check_baseline(root, report)
     check_gate_counts(root, report)
     check_scope_exclusions(root, report)
+    check_scope_declarations(root, report)
     check_named_tests(root, report)
     check_gate_reentries(root, report)
     check_gate_dispositions(root, report)

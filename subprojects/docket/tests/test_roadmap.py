@@ -139,7 +139,7 @@ SELF_CLEARING = ROADMAP.replace(
     "- PL-SLF9 (M) An entry the milestone's own Required scope names\n- Not an entry at all:",
 ).replace(
     "A displayed clinical unit (queue item PL-MNPQ).",
-    "A displayed clinical unit (queue item PL-MNPQ), and the decomposition PL-SLF9.",
+    "A displayed clinical unit (queue item PL-MNPQ), and the decomposition\n(queue item PL-SLF9).",
 )
 SELF_KNOWN = KNOWN | {"PL-SLF9"}
 
@@ -622,7 +622,7 @@ SCOPE_PAIR_ROADMAP = ROADMAP.replace(
 SCOPE_NUMBERED_ROADMAP = ROADMAP.replace(
     "A displayed clinical unit (queue item PL-MNPQ).",
     "1. **A displayed clinical unit** (queue item PL-MNPQ).\n"
-    "2. **A second entry** (queue item `PL-STUV`).",
+    "2. **A second entry** (queue item `PL-RSTW`).",
 )
 
 
@@ -652,9 +652,7 @@ def test_a_declaration_wrapped_across_a_line_break_is_read_whole() -> None:
     line by line, the second id of a wrapped pair would be dropped silently,
     which is the direction of failure the declaration rule exists to remove.
     """
-    section = next(
-        one for one in parse_milestones(SCOPE_PAIR_ROADMAP) if one.version == (0, 4, 0)
-    )
+    section = next(one for one in parse_milestones(SCOPE_PAIR_ROADMAP) if one.version == (0, 4, 0))
 
     assert section.own_scope_ids == ("PL-MNPQ", "PL-BCDF", "PL-GHJK")
 
@@ -671,8 +669,8 @@ def test_a_numbered_scope_entry_is_an_entry_like_a_bulleted_one() -> None:
         one for one in parse_milestones(SCOPE_NUMBERED_ROADMAP) if one.version == (0, 4, 0)
     )
 
-    assert section.own_scope_ids == ("PL-MNPQ", "PL-STUV")
-    assert [entry.ids for entry in section.scope_entries] == [("PL-MNPQ",), ("PL-STUV",)]
+    assert section.own_scope_ids == ("PL-MNPQ", "PL-RSTW")
+    assert [entry.ids for entry in section.scope_entries] == [("PL-MNPQ",), ("PL-RSTW",)]
 
 
 def test_an_id_a_scope_entry_names_only_in_prose_is_not_claimed() -> None:
@@ -1227,7 +1225,9 @@ def test_a_patch_track_and_a_gate_are_not_milestones() -> None:
 # --- ships with, rather than blocked until scoped (`PL-L09X`) ---------------
 
 SHIPS_WITH_ROADMAP = MILESTONE_STATES_ROADMAP.replace(
-    "### Required scope\n\nr\n", "### Required scope\n\n- PL-GS3R (S) The chord-width rule\n", 1
+    "### Required scope\n\nr\n",
+    "### Required scope\n\n- **The chord-width rule** (queue item PL-GS3R).\n",
+    1,
 )
 
 

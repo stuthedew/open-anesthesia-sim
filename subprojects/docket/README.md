@@ -859,10 +859,15 @@ structure is read by its own grammar instead:
 
 - the frozen list, by its entries' heads — an entry is one bullet per problem,
   and an id later in the sentence is prose about another item;
-- `Required scope`, in full — a milestone names what it covers in whatever
-  grammar the sentence wanted, `(queue item PL-DHV7)` mid-bullet or a
-  paragraph, and the heading has already said that everything under it is
-  scope.
+- `Required scope`, by the `(queue item …)` slot its entries declare in —
+  `(queue item PL-DHV7)` after an entry's bold title, `(queue items PL-1FT6
+  and PL-HJPY)` where one entry completes two. Reading that subsection *in
+  full* was the same over-read one level down: citing the id that re-briefed
+  an entry is how the roadmap records provenance, so every correct maintenance
+  edit added a member and the count drifted as the file was kept up to date
+  (`PL-HWW1`);
+- `Explicitly out of scope`, in full — its heading states the claim, so no id
+  under it needs a grammar of its own.
 
 Out-of-scope work is marked, never hidden. Whether an item is *really* out of
 scope is a judgment about the prose around its id, and the command reads
@@ -871,17 +876,21 @@ structure rather than sentences.
 Three things follow, and they are limitations in the same way the concurrency
 answer below is:
 
-- Scope recorded *only* in a section's prose is placed nowhere. Printing the
-  id inside `Required scope` is what places it.
-- An exclusion is invisible rather than reported, a milestone's own
-  `Explicitly out of scope` list included. Silence is the honest answer to a
-  sentence the command cannot read, and the safe one: an unread mention makes
-  no claim, where an over-read one told a session that work a milestone
-  excludes was the work that milestone was waiting on. That list *is* parsed,
-  onto `MilestoneSection.excluded_ids` - `tools/doc_check.py` compares it
-  against `Required scope` and fails a milestone naming one id under both
-  (`PL-NBCS`) - but nothing feeds it into placement, so the ranking still says
-  nothing in either direction. Reporting it there is queue item `PL-6P9Y`.
+- Scope written without a declaration is placed nowhere. Declaring the id in
+  the slot is what places it — and that cost is no longer paid in silence:
+  `tools/doc_check.py` fails an entry declaring none where the section's other
+  entries declare, so a milestone cannot quietly be smaller than it reads.
+- An exclusion written anywhere but under `Explicitly out of scope` is
+  invisible rather than reported. Silence is the honest answer to a sentence
+  the command cannot read, and the safe one: an unread mention makes no claim,
+  where an over-read one told a session that work a milestone excludes was the
+  work that milestone was waiting on. The heading itself *is* read, onto
+  `MilestoneSection.excluded_ids` — `tools/doc_check.py` compares it against
+  `Required scope` and fails a milestone naming one id under both (`PL-NBCS`),
+  and the ranking reports an id under the **anchor's own** exclusion heading as
+  ruled out rather than unplaced (`PL-6P9Y`). Another section's exclusions stay
+  out of it: one the project has passed says what was true then, and one it has
+  not reached is a decision that milestone's own scoping round may revisit.
 - A released milestone's section places nothing. Its narrative records where a
   problem was raised, not what is current work. Released is decided by the
   version the project is on, never by position relative to the anchor: an

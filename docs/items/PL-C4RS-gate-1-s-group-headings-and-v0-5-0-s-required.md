@@ -89,3 +89,38 @@ which makes it a specification rather than a bet: it exits 1 today on the `grep`
 half with `doc_check` passing, and can only pass once the reconciliation is
 written. Whoever does the work writes that sentence into the gate section
 alongside the dated correction the `Done when.` requires.
+
+---
+
+**Re-measured 2026-09-19, and one of the three is resolved.** `PL-HWW1` made
+`Required scope` membership a declaration - the `(queue item ...)` slot rather
+than every id under the heading - and `PL-GVXP` was never an entry there. It is
+cited inside the `PL-8PSW` entry's prose, which is what put it in `Required
+scope` at all, so it is no longer named on both sides: it sits under "Cleared
+before v0.5.0 begins, the product lane - 39 entries" and nowhere else. That
+half is closed by the parse rather than by an edit, which is the outcome this
+item asked for when it said the two answers have to agree with each other.
+
+**What is left is the other two, unchanged.** `PL-2FM6` and `PL-8LXM` are
+*declared* entries 3 and 4 of v0.5.0's `Required scope` - so the narrowing did
+not touch them - while Gate 1's frozen list carries them under "Cleared by the
+\`v0.4.x\` track, ahead of this gate - 7 entries". Both structures are read
+by their own grammar and both now say what they mean, which is exactly what
+makes the disagreement real rather than a parse artefact: the section says the
+milestone requires this work and the gate heading says another track already
+cleared it.
+
+**And the entry itself agrees with the gate heading, in prose.** Entry 4 reads
+"(queue item PL-8LXM, moved with \`PL-2FM6\` into the \`v0.4.x\` track on
+2026-09-08 and shipped there)". So the `Done when.` above is now a narrow
+editorial question with the facts settled: either the two entries stay,
+recording what the milestone required and where it was done, and the gate
+heading is the one to reword; or the declarations come out and the entries
+become prose about work that shipped elsewhere. Which is `ROADMAP.md`'s to
+answer, and the reason `PL-HWW1` re-briefed this rather than closing it - a
+session that picked one would be deciding what a milestone contains on the
+strength of a parser change.
+
+**`verify:` unchanged.** The sentence it pins - "the three ids below now sit
+under headings that agree with \`Required scope\`" - is still exactly what the
+reconciliation must write, and is still absent.
