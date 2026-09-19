@@ -10,6 +10,7 @@ milestone: v0.4.28
 touches: docs/items
 added: 2026-09-19
 closed: 2026-09-19
+pr: 699
 verify: grep -q '^feature: verify-replay-cost' docs/items/PL-6YWK-pl-4l6z-s-verify-runs-the-whole-reference-suite.md
 ---
 

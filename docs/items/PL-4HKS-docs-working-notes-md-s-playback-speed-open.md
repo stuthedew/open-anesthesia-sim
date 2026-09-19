@@ -45,3 +45,16 @@ gets the numbers for the rewrite for free, which is why both carry
 per-step cost or an available optimization that the Qt port or a closed item
 has overtaken, and its playback-speed section either cites a live item or is
 gone.
+
+**The numbers this rewrite needs now come from one command** (`PL-ZG5J`,
+closed 2026-09-19). `uv run python tests/benchmarks/frame_cost.py` prints the
+frame split for any rate on the interface's ladder in about three seconds, so
+the section can cite a measurement a reader can reproduce rather than a figure
+copied out of an item. On this container at 300x, medians over three runs:
+`advance` 12.0 ms for the frame's 600 steps - 0.020 ms a step - `present`
+15.3 ms and the paint 13.1 ms, for a 40.4 ms frame against the 200 ms render
+budget. Note what that does to the section's argument as well as to its
+figures: the pre-port thread treats chart-point construction as the cost to
+attack, and under Qt the interface's 28.4 ms is split roughly evenly between
+assembling the frame and painting it, so headroom found in one half buys half
+of what the old reasoning assumed.

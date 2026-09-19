@@ -9,6 +9,7 @@ feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items/
 added: 2026-09-19
 closed: 2026-09-19
+pr: 704
 verify: grep -q '^## Current baseline: v0.4.28' ROADMAP.md
 ---
 

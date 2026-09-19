@@ -10,6 +10,7 @@ milestone: v0.4.28
 touches: docs/items
 added: 2026-09-17
 closed: 2026-09-19
+pr: 699
 verify: grep -q '^verify: grep' docs/items/PL-M26Q-bin-docket-gate-prints-no-product-workflow-lane.md
 ---
 

@@ -10,6 +10,7 @@ milestone: v0.4.28
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, ROADMAP.md
 added: 2026-09-19
 closed: 2026-09-19
+pr: 696
 verify: grep -q 'def test_a_superseded_file_edit_on_a_bystander_branch_does_not_drop_a_live_one' subprojects/docket/tests/test_vcs.py
 ---
 

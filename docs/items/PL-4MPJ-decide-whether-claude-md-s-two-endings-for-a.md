@@ -10,6 +10,7 @@ milestone: v0.4.28
 touches: CLAUDE.md
 added: 2026-09-19
 closed: 2026-09-19
+pr: 700
 not-delegable: the whole item is a decision only the project owner can take; no command can prove it, and the edit it authorizes is one clause
 ---
 

@@ -10,6 +10,7 @@ milestone: v0.4.28
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md, docket.toml, CLAUDE.md, .claude/skills/docket/SKILL.md, docs/items
 added: 2026-09-19
 closed: 2026-09-19
+pr: 700
 verify: uv run pytest subprojects/docket/tests/test_plan.py subprojects/docket/tests/test_model.py subprojects/docket/tests/test_checks.py -q && grep -q 'def test_a_generator_machinery_defect_ranks_with_a_generator' subprojects/docket/tests/test_plan.py
 ---
 

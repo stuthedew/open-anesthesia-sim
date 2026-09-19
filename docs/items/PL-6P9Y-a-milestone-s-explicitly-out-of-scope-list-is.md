@@ -10,6 +10,7 @@ milestone: v0.4.28
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-01
 closed: 2026-09-19
+pr: 692
 verify: uv run pytest subprojects/docket/tests/test_roadmap.py -q && grep -rq 'def test_an_out_of_scope_id_is_reported_excluded' subprojects/docket/tests
 ---
 

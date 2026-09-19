@@ -10,6 +10,7 @@ milestone: v0.4.28
 touches: subprojects/docket/src/docket/roadmap.py, tools/doc_check.py, ROADMAP.md, docs/items
 added: 2026-09-17
 closed: 2026-09-19
+pr: 692
 verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_required_scope_places_only_declared_ids' subprojects/docket/tests/test_roadmap.py
 root-cause-of: PL-4PC5, PL-6P9Y, PL-C4RS
 ---
