@@ -5278,6 +5278,19 @@ specified.
    behind it: `PL-8PS6` (fresh gas flow range is a machine property) and
    `PL-WZVZ` (make an inter-machine difference attributable) are both carved
    out of Gate 1 for that reason.
+
+   **The survey is done and is `docs/machine-survey.md`.** It records which
+   variables reach a number, which are per-machine data and which are genuinely
+   different behavior, and what remains unknown. Two of its findings bear on
+   how this milestone is scoped rather than on how it is built: apparatus
+   volume alone does not account for the measured differences between machines,
+   so a profile that is a volume and a set of bounds is already falsified; and
+   the fresh gas inlet's position changes the inspired/delivered ratio at a
+   fixed volume, which a single well-mixed circuit compartment cannot
+   represent, so this milestone has to decide on the record whether to
+   represent internal topology, to state that machines differing only in it are
+   indistinguishable here, or to route it into the per-compartment gas-phase
+   model at item 39.
 2. Add agent switching with residual washout accounting, after item 1.
    Requires the multi-substance patient state described in "Development
    pathway" — residual washout means holding two agents at once.

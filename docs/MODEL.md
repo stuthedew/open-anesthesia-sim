@@ -2515,6 +2515,30 @@ is not a lung, and that apparatus had no patient taking up agent.
 <!-- derived: 8.5 L from data/machines/reference_circle_system.json circuit_volume_l = 6.0 -->
 <!-- derived: 8.5 L from data/patients/reference_adult.json alveolar_gas_volume_l = 2.5 -->
 
+**What real workstations hold, and why that does not settle this row either**
+(`PL-4DCG`). `docs/machine-survey.md` surveys the machines in current clinical
+use for the variables that reach a number this model computes, and the
+apparatus volumes it collects sit below both figures above: 4.7 L for a Dräger
+Primus, 2.1 L for a Perseus A500 and 2.0 L for a Zeus IE, each including the
+absorber and excluding the disposable patient circuit. Adding the 1.2 L circuit
+those measurements were made with gives 5.9, 3.3 and 3.2 L, so at this file's
+flow the apparatus lag runs from 89 s on the oldest of the three to about 50 s
+on the newest — a factor of about 1.8 across machines a learner would meet in
+the same department. The stored 6.0 L lands within 2% of the Primus figure,
+which is a coincidence rather than a sourcing: it predates the survey and was
+kept on the ruling above.
+<!-- derived: 89 s from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
+
+**And volume is not the whole of the difference**, which is the survey's
+finding rather than this document's. Fukuda et al. moved only the fresh gas
+inlet, at a fixed machine and a fixed volume, and the inspired/delivered ratio
+of both isoflurane and sevoflurane rose significantly at low flow (*J Anesth*
+2006;20(4):268–73). $`F_I/F_D`$ is what the circuit equation above computes, so
+a real machine changed it through a property this model has no place to put.
+The survey carries the consequence for the planned machine abstraction; what it
+means here is that a future per-machine `circuit_volume_l` reproduces part of
+an inter-machine difference and must not be described as reproducing all of it.
+
 There is no "arterial blood-pool volume" row: arterial blood is flow-limited
 and holds no independent state (see "Model boundary"). Tissue:blood
 coefficients are derived at load time (`AgentParameters` properties in
