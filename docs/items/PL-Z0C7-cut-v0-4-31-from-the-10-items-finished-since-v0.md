@@ -3,11 +3,13 @@ id: PL-Z0C7
 title: Cut v0.4.31 from the 10 items finished since v0.4.30: the release that completes model-capability-routing
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: planning, docs
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 added: 2026-09-19
+closed: 2026-09-19
+reason: Duplicate of PL-R5VS, which is further along and more current: filed on claude/friendly-noether-hw4lly at 23:13 with the cut itself already committed there over 12 finished items, where this one was written for 10 and names only model-capability-routing. Two open items for one release cut is the PL-66FP hazard, and leaving this one open would have re-broken main the moment that cut merged - its verify: command would start passing while the item stayed open, which is precisely the PL-8GQW failure that held main red for four runs.
 verify: grep -q '^version = "0.4.31"' pyproject.toml && test -f docs/releases/v0.4.31.md && grep -q '^## Current baseline: v0.4.31' ROADMAP.md
 ---
 
