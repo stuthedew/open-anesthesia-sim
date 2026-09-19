@@ -3827,9 +3827,21 @@ declining this.
 
 Its two siblings are the same collapse in front of the other two per-ref tests
 in that function - `PL-RY2R` (`walk.edited` before `_superseded`) and `PL-61MD`
-(`own_edits` before `_superseded` and the `needs-decision` promotion). Both are
-untriaged and so are not debt by the rule above; they reach this gate only if a
-triage pass classes them, which is the next gate's question.
+(`own_edits` before `_superseded` and the `needs-decision` promotion). The
+session that started them classed both `defect` the same day, so the forecast
+this paragraph carried - that they reach this gate only if a triage pass classes
+them - is now their recorded disposition, on the same refilling-queue ground as
+their sibling above and on the same three facts: captured after this freeze,
+neither `safety` nor `science`, and wholly in the workflow lane. Both closed in
+the branch that recorded them, so the gate never held either open; the
+disposition is written because the presence rule asks for an answer in writing,
+not because anything is outstanding.
+
+That closes `feature: carrier-collapse`, which was named for what completes:
+no reading in `branches_in_flight` now picks one carrier per id ahead of a guard
+that judges carriers. `precedence`, the fourth reader of the same walk, never
+collapsed - it keeps every candidate and sorts them - so the three are the whole
+of it.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first

@@ -1,9 +1,15 @@
 ---
 id: PL-RY2R
 title: branches_in_flight collapses walk.edited to one ref per id before the superseded test, so a stale file edit on a bystander branch takes a live edit's mark with it
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect
 feature: carrier-collapse
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, ROADMAP.md
 added: 2026-09-19
+closed: 2026-09-19
+verify: grep -q 'def test_a_superseded_file_edit_on_a_bystander_branch_does_not_drop_a_live_one' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** branches_in_flight collapses walk.edited to one ref per id before the superseded test, so a stale file edit on a bystander branch takes a live edit's mark with it
@@ -41,3 +47,10 @@ take, and the id leaves `editing` only where every carrier's edit is
 superseded or unread. A test pins the pair the way
 `test_a_spent_claim_on_a_bystander_branch_does_not_drop_a_live_one` does for
 `PL-2BZY`.
+
+**One entry per ref, and that part of the collapse stays.** `nearer` decided two
+things at once: which ref to keep for an id, and which path to keep for a ref
+when one commit changed two - a round that renames the item's file. Only the
+first was wrong. The replacement appends the first path each ref offers, which
+is the newest commit's in walk order, so the within-ref choice is unchanged and
+`nearer` itself is now dead and removed.
