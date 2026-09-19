@@ -3,12 +3,12 @@ id: PL-MM7F
 title: GitRunner memoizes a failed git call, so one non-zero exit is served to every later caller in the session and a transient failure becomes a permanent wrong answer
 priority: P2
 effort: S
-status: blocked
-blocked-by: PL-Q9Z1
+status: ready
 classes: defect
 feature: evidence-declines
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_git_runner.py, subprojects/docket/tests/test_vcs_silence.py
 added: 2026-09-19
+verify: grep -q 'def test_a_call_git_did_not_answer_is_put_to_git_again' subprojects/docket/tests/test_git_runner.py
 ---
 
 **Problem.** GitRunner memoizes a failed git call, so one non-zero exit is served to every later caller in the session and a transient failure becomes a permanent wrong answer
