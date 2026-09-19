@@ -8,8 +8,9 @@ classes: defect, docs
 feature: dev-tooling
 touches: docs/items/PL-TFWR-a-session-cannot-delete-a-remote-branch-the-git.md, docs/items/PL-XQRK-a-session-cannot-delete-a-remote-branch-git.md
 added: 2026-09-12
-not-delegable: Establishing which cause is real means attempting a remote ref deletion from a live agent session and reading the proxy's own diagnostics at the moment it fails. Nothing in this tree can run that, and no command can prove the resulting sentence is true; what a reviewer can check is that neither brief asserts a cause the evidence does not carry.
 closed: 2026-09-19
+pr: 685
+not-delegable: Establishing which cause is real means attempting a remote ref deletion from a live agent session and reading the proxy's own diagnostics at the moment it fails. Nothing in this tree can run that, and no command can prove the resulting sentence is true; what a reviewer can check is that neither brief asserts a cause the evidence does not carry.
 ---
 
 **Problem.** PL-TFWR and PL-XQRK record incompatible causes for the same remote-deletion failure and both ruled out the git proxy on a field that does not record policy denials, so whichever lands first writes an unproven cause into the instructions

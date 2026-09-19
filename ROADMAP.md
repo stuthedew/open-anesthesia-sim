@@ -2855,7 +2855,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 173 entries
+### Declined to Gate 2 on the refilling-queue ground — 174 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3159,6 +3159,7 @@ command names with one.
 - PL-LBR6 (S) bin/docket record renames a drifted item file as a side effect of writing a pr number, which conflicts against whoever else is holding that file
 - PL-LF2C (S) PL-VV4D's exact left-behind check rests on refs/pull/<n>/head being permanent, and GitHub is about to unreference 90 of them, so the check needs a third decline condition and one of its two test vectors dies
 - PL-LKGL (S) A verify: command cannot detect a stale item: it tests for the presence of the fix, not the fault, so an item whose problem was solved another way stays red forever and reads as outstanding work
+- PL-LN3T (S) wave does not report a milestone row the version has released whose section's Required scope is still open, so a patch cut at a milestone's own number leaves the plan stepped past it once the hand-off has scrolled by
 - PL-LPWK (S) A release note cites the pull request that closed an item, not the one that carried its code, whenever the two differ
 - PL-LT77 (S) git fetch --tags does not prune, so a tag deleted on origin keeps failing doc_check in every checkout that already fetched it, and nothing distinguishes stale local state from a real repository fault
 - PL-MSFB (S) PL-6194's verify: command still uses [(] and [)] to work around the math check that PL-WTQ1 fixed, and WORKING_NOTES.md:504 still uses backticks to work around PL-KJ63

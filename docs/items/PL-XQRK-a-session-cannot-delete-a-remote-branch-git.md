@@ -7,9 +7,10 @@ status: done
 classes: docs, infra
 feature: worker-instructions
 touches: docs/worker.md
-verify: python3 tools/doc_check.py check && grep -q 'cannot delete a remote branch' docs/worker.md
 added: 2026-09-04
 closed: 2026-09-19
+pr: 685
+verify: python3 tools/doc_check.py check && grep -q 'cannot delete a remote branch' docs/worker.md
 ---
 
 **Problem.** `git push origin --delete <branch>` fails with `HTTP 403` from a

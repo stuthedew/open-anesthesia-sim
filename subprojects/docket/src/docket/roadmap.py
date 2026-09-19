@@ -121,6 +121,17 @@ def parse_version_table(text: str) -> list[VersionRow]:
     return rows
 
 
+def released_versions(rows: Iterable[VersionRow]) -> frozenset[str]:
+    """The versions the table records as shipped, as the table writes them.
+
+    One site for the rule because two readers now ask it - `stale_milestones`
+    and the `ReleaseTrain.released` it is handed - and `COMPLETED` is matched as
+    a substring, so a second copy would be a second place for the substring to
+    drift.
+    """
+    return frozenset(row.version for row in rows if COMPLETED in row.status)
+
+
 def baseline_heading(text: str) -> tuple[int, str] | None:
     """The version named by the `## Current baseline: vX.Y.Z` heading, if any."""
     for index, line in enumerate(text.splitlines(), start=1):
@@ -1073,9 +1084,11 @@ class Wave:
     release_name: str = ""
     #: Statements the plan and the project disagree on - a milestone row the
     #: version has passed with no release of that number recorded, a section no
-    #: row places - from `ReleaseTrain.stale`. Distinct from `problems`, which
-    #: are breaches of the table's grammar: these rows parse, and the beat above
-    #: them is computed from an arrangement one of two files has made stale.
+    #: row places - from `ReleaseTrain.stale`, plus the one the store answers and
+    #: the train cannot: a row recorded as released whose section's own scope is
+    #: still open (`stale_scopes`). Distinct from `problems`, which are breaches
+    #: of the table's grammar: these rows parse, and the beat above them is
+    #: computed from an arrangement one of the files has made stale.
     stale: tuple[str, ...] = ()
 
 
@@ -1122,6 +1135,12 @@ class ReleaseTrain:
     #: Every milestone section, in the version order `parse_milestones` returns.
     sections: tuple[MilestoneSection, ...]
     current: tuple[int, int, int] | None
+    #: The versions the version table records as shipped. `current` is where the
+    #: project stands; this is what it has released, which is the other half of
+    #: every statement in `stale` - carried rather than re-parsed because
+    #: `stale_scopes` needs the same reading and `release_train` has already
+    #: made it.
+    released: frozenset[str]
     #: The index of the row the project stands on: the one after the last
     #: milestone row it has released (`_current_step`). `None` when the
     #: timeline is empty or the version has run off its end.
@@ -1193,6 +1212,7 @@ def release_train(roadmap: str, version: str) -> ReleaseTrain:
     """Read the release train once: the rows, the position, and what is ahead."""
     steps, problems = parse_timeline(roadmap)
     sections = parse_milestones(roadmap)
+    version_rows = parse_version_table(roadmap)
     current = version_tuple(version)
     position = _current_step(steps, current)
 
@@ -1204,7 +1224,7 @@ def release_train(roadmap: str, version: str) -> ReleaseTrain:
     placed = sorted((s for s in unreleased if s.version in rows), key=lambda s: rows[s.version])
     unplaced = [s for s in unreleased if s.version not in rows]
 
-    stale = stale_milestones(steps, sections, parse_version_table(roadmap), current)
+    stale = stale_milestones(steps, sections, version_rows, current)
     stale.extend(
         f"line {section.line}: the {section.label} section has no timeline row, so the plan"
         " does not say where it comes"
@@ -1214,6 +1234,7 @@ def release_train(roadmap: str, version: str) -> ReleaseTrain:
         steps=tuple(steps),
         sections=tuple(sections),
         current=current,
+        released=released_versions(version_rows),
         position=position,
         ahead=tuple(placed + unplaced),
         problems=tuple(problems),
@@ -1243,7 +1264,7 @@ def stale_milestones(
     owes. A table recording nothing is no record to compare against and
     answers nothing here; `outstanding_roadmap_edits` reports that on its own.
     """
-    recorded = {row.version for row in rows if COMPLETED in row.status}
+    recorded = released_versions(rows)
     if not recorded or reached is None:
         return []
     by_version = {section.version: section for section in sections}
@@ -1269,6 +1290,59 @@ def stale_milestones(
                 f" with no v{number} release in the version table: the row and its section"
                 " owe a number the project has not passed"
             )
+    return statements
+
+
+def stale_scopes(
+    train: ReleaseTrain, closed_ids: frozenset[str], known_ids: frozenset[str]
+) -> list[str]:
+    """The milestone rows the version table records as released whose section's
+    own `Required scope` still holds open ids, each as a statement.
+
+    The complement of `stale_milestones` above, and the case that one cannot
+    reach. A patch cut at a milestone's own number writes that number into the
+    version table, so from then on the row reads as released: the section leaves
+    `ReleaseTrain.ahead`, the beat moves to the next row, and the statement made
+    once at the hand-off - `outstanding_roadmap_edits`, which names both
+    readings of a number the cut has exactly reached - has scrolled by. The
+    owner's placement of that milestone is then reversed by a release that never
+    touched it, with nothing saying so, which is `PL-Y1L0`'s failure surviving
+    its own fix (`PL-LN3T`).
+
+    Only the store separates the port shipped from the port skipped, because
+    both leave the same table row. So this is the one statement in `Wave.stale`
+    that is not a fact about two files, and the reason it is computed in `wave`
+    rather than in `release_train`, which reads no store.
+
+    Open is `ScopeStatus.outstanding`: an id the store holds and has not closed.
+    An id the store does not hold is `unknown_ids` and is passed over, for the
+    reason that field already records - it withholds completeness rather than
+    establishing that work is outstanding, so it cannot carry the claim this
+    statement makes. A section recording no `Required scope` of its own says
+    nothing here either, which is v0.3.0's shape: its whole content is the gate
+    recorded under the milestone after it.
+    """
+    if train.current is None:
+        return []
+    statements: list[str] = []
+    for step in train.steps:
+        if step.kind != "milestone" or step.version is None or step.version > train.current:
+            continue
+        number = "{}.{}.{}".format(*step.version)
+        section = train.section(step)
+        if number not in train.released or section is None:
+            continue
+        scope = scope_status(section, closed_ids, known_ids)
+        if not scope.outstanding:
+            continue
+        statements.append(
+            f"{step.label} (timeline line {step.line}, section line {section.line}) is numbered"
+            f" v{number}, which the version table records as released while"
+            f" {len(scope.outstanding)} of {len(scope.ids)} ids in its own Required scope are still"
+            f" open ({', '.join(scope.outstanding)}): the scope owes those closures if this release"
+            " was that milestone, and the row owes a number the project has not reached if it"
+            " was not"
+        )
     return statements
 
 
@@ -1757,5 +1831,5 @@ def wave(
         release_version=due.version if due is not None else None,
         release_name=due.name if due is not None else "",
         problems=train.problems,
-        stale=train.stale,
+        stale=train.stale + tuple(stale_scopes(train, closed_ids, known_ids)),
     )

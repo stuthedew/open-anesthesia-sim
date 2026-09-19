@@ -1489,12 +1489,7 @@ def test_a_released_milestone_whose_scope_has_closed_says_nothing() -> None:
     """The statement above has to be silent on every milestone that genuinely
     shipped, or it prints on this repository's own file for every release it
     has ever made."""
-    plan = _wave(
-        "0.3.6",
-        GATE_IDS | {"PL-PRT7"},
-        roadmap=SHIPPED_PORT_ROADMAP,
-        known=PORT_KNOWN,
-    )
+    plan = _wave("0.3.6", GATE_IDS | {"PL-PRT7"}, roadmap=SHIPPED_PORT_ROADMAP, known=PORT_KNOWN)
 
     assert plan.stale == ()
     assert "The plan and the project disagree" not in format_wave(plan)
