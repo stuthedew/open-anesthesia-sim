@@ -40,3 +40,9 @@ added: 2026-09-16
 ## Area-model audit (PL-BNYF)
 
 **Disposition: `missing-prereq`.** Filed 2026-09-16 by the area-model queue audit (`PL-BNYF`), which swept 49 open and untriaged items and seven gap lenses against `ROADMAP.md` item 34, `docs/interface-provenance.md` and `.claude/rules/ui-areas.md`. Each candidate was checked against the store before it was filed, so a gap an existing item already covers is not here.
+
+**Confirmed 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+Unchanged, and still `blocked` as its own front matter records. Under clause 2
+the unconditional displayed set becomes a code declaration the document is held
+to, which is the strongest form the convention takes anywhere - a family whose
+members resolve against the tree rather than against a citation.

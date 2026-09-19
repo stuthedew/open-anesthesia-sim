@@ -62,3 +62,12 @@ pass, which is eighteen judgments, not the forty lines of checking.
 `doc_check.py` checks each against the dataclass with unit tests of its own,
 `make check` gates it, and the tool's docstring records both the new check and
 the limit above.
+
+**Re-scoped 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+This is the annotation pass for `docs/MODEL.md` § "Minimum displayed outputs"
+under clause 2, mechanism unchanged. Its recorded principle - the tool checks
+**linkage, not truth** - is kept whole and is now clause 1's own line rather
+than an exception to anything. What changes is only the altitude: this list is
+one bound family among several rather than the whole of the idea, so the
+bullets are annotated here and the general rule lives in `docs/MODEL.md` §
+"How this document is held to the tree".

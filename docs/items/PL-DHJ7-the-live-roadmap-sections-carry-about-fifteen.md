@@ -3,11 +3,12 @@ id: PL-DHJ7
 title: The live ROADMAP sections carry about fifteen subset counts of the shape PL-GLBF checked, and unlike v0.2.8's those lists are still growing
 priority: P3
 effort: M
-status: needs-decision
+status: ready
 classes: docs, infra
 feature: dev-tooling
 touches: ROADMAP.md, tools/doc_check.py
 added: 2026-09-13
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_live_roadmap_subset_count_is_held_or_dated' tests/unit/test_doc_check.py
 ---
 
 **Problem.** The live ROADMAP sections carry about fifteen subset counts of the shape PL-GLBF checked, and unlike v0.2.8's those lists are still growing
@@ -61,3 +62,13 @@ are handled: the decidable counts checked on the `PL-GLBF` pattern in
 a record or left alone with that reasoning written where the next audit will
 find it. The anchored kind needs nothing, and saying so explicitly is part of
 the answer - otherwise the next pass re-examines it from scratch.
+
+**Decided 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+The decision this item was holding is made, and it is the counts rule: a count
+in prose is stated only where a check holds it to what it counts, or it is
+dated. So the **decidable** counts gain checks on the `PL-GLBF` pattern, the
+**judgment** counts are dated so they read as records under clause 4, and the
+**anchored** kind needs nothing - which the item asked to have said explicitly,
+so that the next audit does not re-examine it. Promoted from `needs-decision`
+to `ready`, with a `verify:` command run on 2026-09-19 and watched to fail
+(exit 1: the suite passes, the test it names does not exist yet).

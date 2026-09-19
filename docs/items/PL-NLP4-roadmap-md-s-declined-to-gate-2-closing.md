@@ -42,3 +42,9 @@ legible.
 **Done when.** The paragraph states the figure in a form that does not go stale -
 dated in place, per `PL-B8V1`'s recommendation, or expressed without a live
 count - and `PL-B8V1`'s decision covers both paragraphs rather than one.
+
+**Confirmed 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+Follows `PL-B8V1` (date the gate arithmetic in place), and stays `blocked` on
+it. The same clause 4 reading applies once that lands: this closing sentence is
+a record of what the 2026-09-08 argument concluded, so it is dated rather than
+recomputed.

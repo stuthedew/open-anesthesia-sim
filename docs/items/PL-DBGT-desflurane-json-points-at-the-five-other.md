@@ -74,3 +74,9 @@ cannot catch either: neither is a section citation.
 goes stale and refers to the section instead - and names
 `tests/reference/test_published_wash_in_and_elimination.py`, having confirmed
 the assertion it describes is in that file. No stored value changes.
+
+**Re-scoped 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+`check_citations` reaching a `sources` note is the work. The restated count is
+**dropped rather than checked**, per the counts rule: a count in prose is
+stated only where a check holds it to what it counts, or it is dated, and this
+one is neither - the sentence states the rule without the number instead.

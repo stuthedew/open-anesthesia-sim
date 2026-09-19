@@ -53,3 +53,9 @@ route and how deeply you read; most already do"), or - only if the argument
 genuinely needs the numbers - they are re-counted and the numerator established
 by reading the notes. The first is recommended in the brief above and is the
 cheaper answer to maintain.
+
+**Confirmed 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+Unchanged one-off: drop the figures. `PL-6ZQY` lists this as a drop candidate;
+the sentence was re-read on 2026-09-19 and is still present, so it does not
+drop on staleness grounds. Whether it drops for any other reason stays
+`PL-6ZQY`'s own sweep to decide.

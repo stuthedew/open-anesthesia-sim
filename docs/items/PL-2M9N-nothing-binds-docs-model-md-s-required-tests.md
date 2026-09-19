@@ -64,3 +64,11 @@ are marked and it is clear whether any such section exists.
 heading under `## Required tests` that does not resolve to a test function that
 exists, and `tests/unit/test_doc_check.py` covers a heading that resolves, one
 that names a missing function, and one that names a missing file.
+
+**Re-scoped 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+This is the annotation pass for `docs/MODEL.md` § "Required tests" under
+clause 2, and its open question - error or advisory - is answered: **error**,
+because a bound family's members are held by `check_bound_families`, which
+gates `make check`. Each subsection names the test that holds it, or carries
+the declared-none form; the family joins the check's table as the pass
+lands.

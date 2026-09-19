@@ -57,3 +57,8 @@ mode, and `PL-7XTS` was filed in this range to say so" - is the fix the brief
 argues for: every other clause in that row is plainly historical, the word
 "yet" is what makes this one read as a live claim, and removing it keeps what
 the range actually did. `python3 tools/doc_check.py check` passes afterwards.
+
+**Confirmed 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+Past-tense the clause. A release row's "nothing ... yet" is a record under
+clause 4 - it asserts what was true when the row was written - so the repair is
+a tense, not a link, and the later fact goes in its own dated sentence.

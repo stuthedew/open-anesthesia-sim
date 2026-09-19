@@ -64,3 +64,9 @@ complete.
 **Done when.** No line in `docs/` names `floor` as a job CI currently runs,
 either by correcting the wiring statement or by marking it as history the way
 `:797` does.
+
+**Confirmed 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+Corrected as history rather than as a live claim. `PL-D551` closed 2026-09-05,
+the same day the note is dated, so the note names both the job and its fold in
+one dated sentence - clause 4's "a later fact is appended with its own date"
+applied to a fact that arrived the same day.

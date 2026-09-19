@@ -113,3 +113,8 @@ and the per-tier split, and the adopted/not-adopted split.
 leaves: it "decides that a documented key holds the stated value, never what tier
 its source carries." The value half is already guarded in both directions; this
 is the tier and adoption half.
+
+**Confirmed 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+Unchanged, and owner-decided already (project owner, 2026-09-13). The counts
+rule in `docs/MODEL.md` § "How this document is held to the tree" cites this
+item as the decision it generalises beyond data-file rows.
