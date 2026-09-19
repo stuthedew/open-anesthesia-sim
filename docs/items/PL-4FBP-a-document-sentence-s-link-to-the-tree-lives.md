@@ -3,12 +3,13 @@ id: PL-4FBP
 title: A document sentence's link to the tree lives only in the reader's head, so each drift is repaired by hand: decide whether a live assertion must name what it asserts, and a dated one carry its date
 priority: P2
 effort: M
-status: ready
-verify: python3 tools/doc_check.py check && uv run pytest tests/unit/test_doc_check.py && grep -q 'def check_bound_families' tools/doc_check.py
+status: done
 classes: docs, infra
 feature: generator-heads
 touches: tools/doc_check.py, docs/MODEL.md, docs/items
 added: 2026-09-17
+closed: 2026-09-19
+verify: python3 tools/doc_check.py check && uv run pytest tests/unit/test_doc_check.py && grep -q 'def check_bound_families' tools/doc_check.py
 root-cause-of: PL-8LDF, PL-2M9N, PL-41YP, PL-GQWP, PL-5N7T, PL-9LXK, PL-T9XJ, PL-4RHP, PL-DHJ7, PL-B8V1, PL-NLP4, PL-LM8P, PL-NWTM, PL-B5LB, PL-GTSL, PL-036, PL-0VFF, PL-C25K, PL-N32Y, PL-FV7G, PL-BHJW, PL-C7XV, PL-0R06, PL-DBGT
 ---
 
@@ -323,3 +324,50 @@ stood at 200,000 tokens when the answer came.**
    member gets the one-line disposition the table gives it, written under a
    dated lead in its own brief.
 4. Close this item, with the docs sweep the `docket` skill's close-out names.
+
+**Built 2026-09-19, and what each step landed as.**
+
+1. `docs/MODEL.md` § "How this document is held to the tree" carries the four
+   clauses, the bound set, the counts rule and the declared-none form, placed
+   directly after the hazard table whose own sentence they generalise. The
+   section states no count of anything, which is the counts rule applied to
+   itself.
+2. `tools/doc_check.py`'s module docstring gains the bound-families entry, and
+   `check_bound_families` holds each member of a family to naming its entity or
+   declaring none against an open item. It reads `BOUND_FAMILIES`, which holds
+   the hazard table alone: all 7 live rows conform, so the check landed green,
+   and each annotation pass adds its family as it lands. Resolution stays with
+   the checks that already do it - this asks only whether the statement named
+   anything at all.
+
+   One design point not in the brief: **a family whose heading the check cannot
+   find is an error rather than a pass.** Reading no members as "nothing to
+   check" would let a renamed heading retire a family silently, which is the
+   same decay one level up from the row. The fixture repository in
+   `tests/unit/test_doc_check.py` grew a conforming family for that reason, and
+   a suite defining the test it names.
+
+   Seven unit tests: the four the brief asked for (names its entity, declares
+   none against an open item, declares none against a closed one, declares none
+   against an absent one), the member that names nothing at all, the declared
+   absence in a checkout with no queue - which declines rather than failing -
+   and the family whose heading has moved. An eighth holds this repository's own
+   `BOUND_FAMILIES` to conforming, so the table can never run ahead of the
+   document.
+3. All 24 members carry a dated disposition. `PL-B8V1`, `PL-N32Y` and `PL-DHJ7`
+   are promoted from `needs-decision` to `ready`, each with a `verify:` command
+   run on 2026-09-19 and watched to fail at exit 1 with its healthy half
+   passing. `PL-8LDF`, `PL-2M9N` and `PL-036` are re-scoped as the three
+   annotation passes.
+4. Docs sweep: `docs/MODEL.md`, `docs/ARCHITECTURE.md`, `ROADMAP.md`,
+   `CONTRIBUTING.md`, `CLAUDE.md`, `.claude/rules/`, `subprojects/docket/README.md`
+   and `docs/resident-instructions.md`, read through
+   `tools/doc_check.py candidates --base origin/main` plus a grep for every
+   `check_*` name in live prose. One finding: `docs/ARCHITECTURE.md:505`'s
+   inventory of what `doc_check` validates does not name
+   `check_bound_families`. It is recorded on `PL-GTSL` rather than repaired
+   here - that item owns the line, is `ready`, and its re-scoped disposition
+   holds the inventory complete against `def check_*`, which catches this entry
+   and `check_resident_instructions` together. Nothing else was stale: every
+   other live mention is of a different check, and the rest are release records
+   dated by their own section under clause 4.

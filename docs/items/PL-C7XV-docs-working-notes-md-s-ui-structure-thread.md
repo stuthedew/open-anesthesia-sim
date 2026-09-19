@@ -53,3 +53,9 @@ wrong.
 separately, each with its date, so "what was decided that day" resolves to one
 placement. The `verify:` command pins the ambiguous clause being gone rather than
 any particular replacement wording.
+
+**Confirmed 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+One placement per dated entry. The 2026-09-16 move gets its own dated sentence
+rather than being written over the earlier one, which is the specific edit
+clause 4 forbids - a dated statement edited to carry a later fact reads as a
+record of something that was never recorded.

@@ -46,3 +46,8 @@ than inferred - dropped as unnecessary, dropped as superseded and dropped as
 never achievable are three different sentences and only one of them is true.
 `PL-S4M2` (squash-merge) is untouched: it is `done` and the clause about it is
 correct, so the fix separates the two rather than rewriting the pair.
+
+**Confirmed 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+Separate the two ids and read `PL-J786`'s recorded reason. A release section is
+dated by its own version, so this is a record correction under clause 4 rather
+than a live claim to be linked.

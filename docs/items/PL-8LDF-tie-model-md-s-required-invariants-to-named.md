@@ -31,3 +31,15 @@ whether the test is any good.
 
 **Done when.** Each invariant names its test, and `doc_check.py` fails when a
 named test does not resolve.
+
+**Re-scoped 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+This is the annotation pass for `docs/MODEL.md` § "Required invariants" under
+clause 2: every bullet gains a code-spanned test name, or the declared-none
+form naming an open item, and the family joins `BOUND_FAMILIES` in
+`tools/doc_check.py` as the pass lands. The check half is already built -
+`check_named_tests` resolves the names and `check_bound_families` holds the
+list complete - so what is left here is the lookup rather than a
+test-writing project. Reading every invariant and required test against the
+suite on 2026-09-19 found 36 of 38 held by a test whose body asserts the
+statement directly, 2 held in part and none unheld, so the declared-none form
+is expected to be needed nowhere.

@@ -42,3 +42,10 @@ the next closure from widening the gap silently.
 alongside the frozen total, and each entry the store now calls closed carries
 the release that took it - `PL-483K`, `PL-69JZ` and `PL-L09X` with `v0.4.14` -
 so the list stays a snapshot and stops reading as a backlog.
+
+**Re-scoped 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+Closed entries carry their release, which is a record fact and cannot go stale.
+The **open count is not stated at all** - `bin/docket wave` prints it - which is
+the counts rule's second branch: where no check can hold a number to what it
+counts, the sentence states the rule without the number rather than dating a
+figure that a reader would take as current.

@@ -209,6 +209,81 @@ concentrations: {agent}", rather than being repeated on the chart, because a
 disclaimer that is repeated is one that stops being read and the chart's own
 hover already names every value it reports as modelled. The wording is the
 port's choice and the owner may revise it; the requirement is the row above.
+
+## How this document is held to the tree
+
+The hazard table above states, for its own rows, the rule this section states
+for the whole document: *every row names the test that holds it, or says
+plainly that it has none*. The four clauses below are that rule generalised,
+adopted 2026-09-19 (`PL-4FBP`, project owner, ratified) over refusing the
+convention and over marking free prose one sentence at a time.
+
+They exist because a sentence's link to the tree otherwise lives only in the
+reader's head. Prose reads exactly as it did when it was true after the test it
+names has been renamed away, the field it describes has been removed, or the
+number it states has drifted — which is the silent-wrong-answer shape
+`CLAUDE.md` requires to be caught in code rather than remembered. Reading 38 of
+this document's own required invariants and required tests against the suite on
+2026-09-19 found two held only in part, neither surfaced by any check. The
+practice is the established one for software of this class: IEC 62304 § 5.1.1
+requires the software development plan to carry traceability between system
+requirements, software requirements, software system tests and risk control
+measures; the FDA's *General Principles of Software Validation* (2002) § 5.2.2
+names traceability analysis among the validation tasks; and the problem itself
+is Gotel and Finkelstein, *An analysis of the requirements traceability
+problem*, ICRE 1994, pp. 94–101.
+
+**Bound: this document and `README.md`** — the two held to the specialist
+standard, and the two a reader of a displayed value trusts. `ROADMAP.md`'s
+frozen lists are already families under clause 2 and its prose is under clause
+4; `docs/ARCHITECTURE.md`'s package map is already a family; every thread in
+`docs/WORKING_NOTES.md` is dated, so clause 4 governs it and nothing else does.
+Apparatus prose — `.claude/`, `CONTRIBUTING.md`, `docs/resident-instructions.md`
+— is not bound, and the counts rule below is advice there rather than a
+requirement.
+
+1. **A live assertion names what it asserts.** A sentence asserting a fact
+   about the tree — that a test holds an invariant, that a field exists, that a
+   value is *N*, that a job runs something — names the entity in a form the
+   tree resolves: a code-spanned test, path, symbol or field, or a
+   `<!-- provenance: -->` marker over a restated number. This is the author's
+   obligation rather than the checker's reach; `check_named_tests`,
+   `check_citations`, `check_prose_provenance` and `check_make_targets` in
+   `tools/doc_check.py` already resolve every one of those forms.
+2. **An enumerated family is held complete.** Where a heading promises one
+   assertion per member — the invariants list, the required-tests subsections,
+   the displayed-outputs list, the hazard table, a frozen gate list, a marked
+   enumeration — every member names its entity or carries the declared-none
+   form of clause 3, and `check_bound_families` fails a member that does
+   neither. A family joins that check's table as its annotation pass lands, so
+   the check never holds `make check` red for work not yet done.
+3. **The declared-none form names the item that owes the link.** An absence is
+   written ``no test yet (`PL-XXXX`)`` — the leading words are the sentence's,
+   the parenthesis is fixed — naming an item the queue still holds open. A
+   forgotten link and a declared absence are then distinguishable by a script,
+   an exemption is a forward reference to work rather than a permanent hole,
+   and closing the named item without adding the link fails the check.
+4. **A dated statement is a record, held to its date and never to the tree.** A
+   sentence carrying a date, sitting under a dated heading, or inside a shipped
+   release's section asserts what was true then. It is not linked, not checked,
+   and **not edited to carry a later fact**; a later fact is appended with its
+   own date. `check_gate_counts` states the same line from the checker's side —
+   a frozen count is "a dated fact that must never change" — and this makes it
+   the author's rule as well.
+
+**Counts, which both halves meet.** A count in prose is stated only where a
+check holds it to what it counts — a group heading over its entries, a marker
+over a data value — or it is dated. Otherwise the rule is stated without the
+number, or the number is read from the tool that prints it. That is the project
+owner's 2026-09-13 decision on data-file rows (`PL-9LXK`) applied beyond them,
+and it is why this document states the sizes of its own families nowhere.
+
+**What an assertion that names nothing looks like.** Inside a bound family:
+the declared-none form, or the check fails. Outside one, in a bound document: a
+number without a marker or a claim without a code span is left to the close-out
+sweep by decision rather than by oversight, and `tools/doc_check.py candidates`
+prints it when its subject changes. Anywhere: dated, and it is a record.
+
 ## Purpose
 
 The milestone must demonstrate:

@@ -32,3 +32,8 @@ ruff flag as a documentation problem.
 holds to the tree, and the gate invocations it holds to each other - in a form
 that does not need re-editing for the next check of either kind, and
 `python3 tools/doc_check.py check` still passes.
+
+**Confirmed 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+Unchanged one-off: describe the tool without enumerating what the tree
+enumerates. That is the same move `PL-GTSL` makes from the other side - the
+enumeration is bound, the description is not.

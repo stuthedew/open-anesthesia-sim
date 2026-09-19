@@ -28,3 +28,8 @@ run in a bare checkout. A test is the right home.
 
 **Done when.** A test asserts each required displayed output reaches the
 rendered view, and fails when one loses its widget.
+
+**Confirmed 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+Unchanged: the test carrying the field-to-widget link is still what this item
+is for. It reads `PL-NWTM`'s declaration once that exists, so the ordering
+between the two is unaffected by the convention.

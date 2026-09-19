@@ -62,3 +62,9 @@ matplotlib thread is still live now that `v0.4.25` moves the chart to pyqtgraph
 ahead of `v0.5.0` is not this item. This is a two-line correction to a gloss;
 re-opening the recommendation is a decision, and belongs to whoever scopes the
 port's chart work.
+
+**Re-scoped 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+Append a dated note naming `PL-YVHK` rather than rewriting the 2026-09-08
+costing. The costing is correct as the arithmetic of its own date; what changed
+is what the two items turned out to be, which is a later fact and takes a later
+date.
