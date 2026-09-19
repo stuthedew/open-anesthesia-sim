@@ -3,12 +3,14 @@ id: PL-6TN8
 title: A verify: command whose discriminating half greps for a test name can exit 1 because the name was guessed, not because the work is outstanding, so watching it fail proves less than the rule assumes
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: verify-command-health
 touches: .claude/skills/docket/SKILL.md, docs/items
-not-delegable: the outcome is a disjunction the count decides - either the skill gains a sentence or this item records why one instance did not justify one - so nothing can be named in advance that the work adds. Pinning a `grep` on a sentence not yet written would be exactly the name-bet this item is about.
 added: 2026-09-17
+closed: 2026-09-19
+pr: 680
+not-delegable: the outcome is a disjunction the count decides - either the skill gains a sentence or this item records why one instance did not justify one - so nothing can be named in advance that the work adds. Pinning a `grep` on a sentence not yet written would be exactly the name-bet this item is about.
 ---
 
 **Problem.** A verify: command whose discriminating half greps for a test name can exit 1 because the name was guessed, not because the work is outstanding, so watching it fail proves less than the rule assumes
@@ -58,3 +60,15 @@ correct ids every run. The count that decides this one: of the open items whose
 verify-command guidance says that a name-pinning `grep` on an item whose work may
 already exist has to be checked against the code rather than against the test
 names, or this item records why one instance did not justify the sentence.
+
+**Counted and closed under `PL-6TP8`, 2026-09-19.** The mechanical half of the
+count: 63 open items pin a `def test_…` name with a `grep`, and none of the 63
+names a test that already exists in the tree, so no such command passes today
+for the wrong reason. The judgment half - how many describe behaviour already
+present under another name - is not countable by a script, and that is the
+finding rather than a gap in it: `PL-6TP8`'s contract records the case as
+undecidable by any exit status, which makes the sentence this item asked for a
+consequence of the contract rather than a rule a count has to justify. The
+sentence is in the `docket` skill's `verify:` section: a name-pinning `grep` on
+an item whose work may already exist is checked against the code before it is
+written.

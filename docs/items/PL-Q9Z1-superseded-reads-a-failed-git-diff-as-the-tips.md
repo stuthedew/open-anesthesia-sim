@@ -9,7 +9,7 @@ effort: M
 classes: defect
 feature: git-silence-channel
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/tests/test_cli.py
-verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -qr 'def test_one_silenced_git_call_never_leaves_a_read_looking_clean' subprojects/docket/tests/
+verify: uv run pytest subprojects/docket/tests/test_vcs_silence.py
 ---
 
 **Problem.** _superseded reads a failed git diff as the tips agreeing about every path, so any silence from git drops every in-flight mark a ref carries - the one direction its own docstring says it must never fail in
@@ -168,9 +168,12 @@ is how `orphaned`, `filed_with_work` and `cut_window` came to be covered at all.
 Findings are compared as sets rather than counts, so a silence that swaps one
 finding for another is caught too.
 
-**Three reads cannot decline at all** - `tags`, `changed_items` and
-`default_base` answer with a bare collection or string - and are held by a test
-that *asserts the breach* against `PL-ZPDM` rather than left looking covered.
+**Three reads cannot decline at all** - `tags` and `changed_items` answer with a
+bare collection, and `default_base` with a bare string - and are held by a test
+that *asserts the breach* rather than left looking covered. The first two are
+`PL-ZPDM`; `default_base` is `PL-73P0`, filed the same day by the design round's
+own session and the more specific of the two, so `PL-ZPDM` was narrowed to the
+other pair rather than both items being kept.
 Asserted rather than marked expected-to-fail, which was the first shape and was
 wrong twice over: a test marked that way does not run, so it reads as a hole
 whatever reason is attached to it, and `bin/docket verify` cannot read that
@@ -188,3 +191,11 @@ exactly what changes the shape of a trend.
 **Not taken here:** `GitRunner` memoizes a silence as a silence, so the mark
 survives the cache and a second caller sees what the first did. Whether a
 failure should be memoized at all is `PL-MM7F`, which this unblocks.
+
+**Two notes from the merge that brought `origin/main` in, 2026-09-19.** The
+`verify:` command above lost its `pytest ... &&` prerequisite clause: `#684`
+retired the paired shape on the day this closed, and the field now records the
+discriminator alone. And `PL-29HL`, filed here for `cli`'s `verify` passing no
+runner to `default_base`, is dropped into `PL-73P0` rather than kept - that item
+is the same finding with the wider scope, and two items for one fallback is what
+this cluster exists to stop.

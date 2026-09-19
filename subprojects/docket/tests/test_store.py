@@ -9,11 +9,21 @@ later - so it is asserted directly.
 from __future__ import annotations
 
 import random
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
 from docket.model import Item
-from docket.store import ID_RE, filename_for, find_item, new_id, read_items, slugify, write_item
+from docket.store import (
+    ID_RE,
+    filename_for,
+    find_item,
+    new_id,
+    read_items,
+    rewrite_item,
+    slugify,
+    write_item,
+)
 
 
 def _item(identifier: str = "PL-K7QX", title: str = "Do the thing") -> Item:
@@ -123,3 +133,19 @@ def test_find_item_tolerates_case_and_a_missing_prefix() -> None:
     assert find_item(items, "pl-k7qx") is not None
     assert find_item(items, "K7QX") is not None
     assert find_item(items, "PL-0000") is None
+
+
+def test_rewrite_item_keeps_the_file_it_came_from(tmp_path: Path) -> None:
+    """A title edit through `write_item` renames; a field write through this never does.
+
+    A rename arriving as a side effect of a field write lands in a diff about
+    something else and conflicts against whoever else holds the file (`PL-LBR6`).
+    """
+    original = write_item(tmp_path, _item(title="Old title"))
+    (restored,) = read_items(tmp_path)
+
+    target = rewrite_item(tmp_path, replace(restored, title="New title"))
+
+    assert target == original
+    assert [p.name for p in tmp_path.glob("*.md")] == [original.name]
+    assert "title: New title" in original.read_text(encoding="utf-8")

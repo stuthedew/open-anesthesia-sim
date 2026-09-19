@@ -453,7 +453,10 @@ def test_a_read_answering_with_a_bare_value_has_no_way_to_decline(read: Read, re
     `tags`, `changed_items` and `default_base` answer with a bare collection or
     string, so there is nowhere in the answer to say git did not speak - a
     silence is indistinguishable from a repository with no tags, no changed
-    items, no `origin/main` (`PL-ZPDM`). Giving them a channel changes three
+    items, no `origin/main`. The first two are `PL-ZPDM`; `default_base` is
+    `PL-73P0`, which carries the wider case - the base is the one input whose
+    wrongness cannot be seen in any answer downstream of it, because every
+    downstream answer is *about* that base. Giving them a channel changes three
     public return types and every caller, which is a build of its own.
 
     **Asserted rather than marked expected-to-fail**, and the difference is what

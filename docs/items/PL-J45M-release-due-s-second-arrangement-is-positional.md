@@ -5,7 +5,7 @@ priority: P3
 effort: M
 status: ready
 classes: defect
-feature: release-roadmap-seam
+feature: timeline-arrangement
 touches: subprojects/docket/src/docket/release.py, tests/unit/test_docket_digest_hook.py
 added: 2026-09-14
 verify: uv run pytest tests/unit/test_docket_digest_hook.py && ! grep -q "supported = plan.beat != IMPLEMENT or plan.own_scope is not None" subprojects/docket/src/docket/release.py

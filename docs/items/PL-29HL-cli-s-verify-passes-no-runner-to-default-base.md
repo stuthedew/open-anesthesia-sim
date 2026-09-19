@@ -1,7 +1,9 @@
 ---
 id: PL-29HL
 title: cli's verify passes no runner to default_base, so a git that does not answer leaves it comparing against a 'main' that may not resolve and verify reports a clean scope
-status: untriaged
+status: dropped
+closed: 2026-09-19
+reason: superseded by PL-73P0, which was filed the same day for the same fallback with the wider case; the concrete observation here - that cli.py's verify passes no runner, so the silence is watched by nobody - has been folded into that item's brief
 added: 2026-09-19
 ---
 

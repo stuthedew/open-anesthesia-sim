@@ -3,11 +3,14 @@ id: PL-BHVM
 title: Nineteen items re-decide what evidence proves a ref is done, seventeen of them in vcs.py: one design round rather than nineteen heuristic patches
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect, refactor
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-12
+closed: 2026-09-19
+pr: 677
+verify: python3 tools/doc_check.py check && grep -q '^root-cause-of: PL-KSCW, PL-LF2C, PL-MBTZ, PL-Q9Z1, PL-R808, PL-SH9Q, PL-SY1J, PL-WNQT$' docs/items/PL-BHVM-nineteen-items-re-decide-what-evidence-proves-a.md
 root-cause-of: PL-KSCW, PL-LF2C, PL-MBTZ, PL-Q9Z1, PL-R808, PL-SH9Q, PL-SY1J, PL-WNQT
 ---
 
@@ -239,3 +242,30 @@ reads as superseded.
 Costs accepted: a failure channel touches the seam every test fake uses, so the
 Q1 build is larger than its item suggests; and the fault-injection test is a
 standing cost on every new public read, which is the point of it.
+
+### Ratified (project owner, 2026-09-19, ratified)
+
+Chosen over this item's own framing — a single question answered by recording
+evidence at the moment a session claims or lands work, rather than four
+questions with the recording half already refused by `vcs.py`'s module
+docstring.
+
+Recorded as a ratification rather than a specification, per `CLAUDE.md`: the
+case was put in one reply and agreed to on a read that may not have caught
+every nuance, so **ordinary evidence reopens it** — a measurement, a cost this
+round did not carry, a constraint that appears later. "It is what the owner
+decided" does not defend it, because it was this session's own recommendation
+wearing their signature. Three places it is most likely to be wrong:
+
+- **Q3's three-valued predicate is untested against `PL-MBTZ`'s named instance**,
+  which no longer reproduces — the branch was fetched away. The predicate is
+  argued from the three briefs, not from a run.
+- **`PL-SY1J` is assigned to Q1 on a mechanism, not a reproduction.** If
+  `precedence` turns out to collapse carriers for a reason unrelated to evidence
+  failure, it belongs in its own question and Q1 has one item.
+- **The fault-injection test is costed at "one standing cost per new public
+  read" and that was not measured**, only asserted.
+
+**What the round spawned, for `PL-CSHL`'s count: two items** — `PL-MM7F` and
+`PL-73P0`, both filed under `feature: evidence-declines`, both found by the
+measurement rather than by the argument.

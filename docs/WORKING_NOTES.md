@@ -1783,39 +1783,113 @@ and still have nowhere for the diagnosis to live - which is the same failure the
 map itself names, one level up: the apparatus inferring a fact (which item heads
 this cluster) that it could have recorded.
 
-## PL-BHVM's Q1 is built, and the sweep found five breaches the design round could not - PL-Q9Z1, PL-MM7F, PL-ZPDM
+**One of the four heads split on 2026-09-19, and the reason generalizes.**
+`PL-HWW1` was filed holding eight members under one diagnosis - milestone
+membership is scraped rather than recorded. Measured against the code, three
+are that - `PL-4PC5`, `PL-6P9Y`, `PL-C4RS`, all about `### Required scope`
+having no grammar - and four are a *different* mechanism: `PL-Y1L0`,
+`PL-J45M`, `PL-7CSP` and `PL-B5DW` re-derive the release train's arrangement
+by comparing version numbers, where § "The timeline" is already a parsed,
+grammar-checked table whose row order *is* the arrangement. They are now
+`PL-2T03`, under `feature: timeline-arrangement`. `PL-SVRW` left the list
+entirely as an ordinary consolidation.
 
-`PL-BHVM`'s design round separated its ten items into four questions and named
-Q1 - *what does silence mean?* - the substrate under the rest, with `PL-Q9Z1` as
-the first build. That landed 2026-09-19: `_run_git` now returns `GitSilence` for
-a call git did not answer, `_Silences` carries a read's silences to its
-`declined`, and `subprojects/docket/tests/test_vcs_silence.py` holds every
-public read to declining or keeping its marks, one silenced call at a time.
+The distinction is worth carrying because `PL-6ZQY`'s map names only the first
+half of it. *Infers a fact it could have recorded* and *re-derives a fact it
+already has* look identical from the symptom - a heuristic patched at one call
+site - and want opposite fixes: the first needs a place to write the fact
+down, the second needs the existing record to be read. A head composed from
+symptoms will mix them, which this one did. The test that separated them was
+cheap: ask whether the document already states the fact somewhere with a
+grammar. For arrangement it does; for membership it does not.
 
-**The part worth carrying forward is that the sweep out-measured the design
-round, and by a factor.** `PL-BHVM` measured a *total* git failure and found
-four reads in breach - `branches_in_flight`, `precedence`, `branch_state`,
-`default_base` - noting that `stranded`, `lost`, `orphaned` and
-`merged_pull_requests` "decline correctly". Under a **single** silenced call
-they do not. `stranded` dropped an item existing on one branch and nowhere
-else; `lost` dropped a deleted item; `closed_by`, `closures_on_base`,
-`records_on_base`, `filed_with_work` and `cut_window` each lost a finding with
-`declined` empty. Nine reads in breach rather than four.
+## The evidence layer has no failure channel, so every reader re-decides what silence means — PL-Q9Z1, PL-MM7F, PL-73P0
 
-The generalisable bit: **a total failure is the easy case and the least
-informative one.** Every read here has some early gate - an unresolvable base,
-no refs - that a total failure trips, so it declines for a reason that has
-nothing to do with the silence, and the reading looks compliant. Only failing
-*one* call at a time reaches the middle of a read, which is where the
-conflation lives. Any future measurement of this kind should start there.
+`PL-BHVM` closed on 2026-09-19 as a design round, and this is the thread that
+outlives it. The item asked whether the apparatus should *record* evidence
+rather than infer it; `vcs.py`'s module docstring had already refused that, in
+its opening paragraphs, because an abandoned session leaves an item marked
+in-progress forever. So the framing was closed rather than answered, and the
+round's finding is one level down.
 
-**Two items came out of it**, both filed rather than folded in: `PL-ZPDM`, the
-three reads answering with a bare collection or string, which cannot decline at
-all and are held by a test asserting the breach rather than by a marker excusing
-it - `bin/docket verify` reads a suppression marker and cannot read the reason
-attached to it, so a recorded breach has to be written as an assertion to survive
-its own audit;
-and `PL-29HL`, `cli`'s `verify` passing no runner to `default_base`. `PL-MM7F` - the memo serving a
-cached failure forever - is unblocked by this and is the next build in the
-cluster, with Q3's directional predicate (`PL-SH9Q`, `PL-KSCW`, `PL-MBTZ` as one
-build) after it.
+`_run_git` returns `""` for a non-zero exit, a missing git and a timeout alike,
+so absence-of-evidence and evidence-of-absence are the same value. Every caller
+then adjudicates that silence on its own: eight `known()` properties, 54
+references to `declined`, and 67 lines of prose settling it one read at a time —
+and two calls inside `branches_in_flight` settle it in opposite directions.
+
+**The measurement is the part worth keeping**, because the cost had been argued
+and never counted. Substituting a runner that fails one subcommand and answers
+everything else truthfully, against the real repository: failing `diff
+--numstat` alone takes `branches_in_flight` from 13 `editing` marks to **0**,
+with `unreadable` staying **empty** in both cases, while failing `diff --raw`
+over-reports to 24 and so fails safe. Under a total failure the module splits
+four-four: `stranded`, `lost`, `orphaned` and `merged_pull_requests` decline
+correctly; `branches_in_flight`, `precedence`, `branch_state` and
+`default_base` each return a confident clean answer.
+
+That is `.claude/rules/apparatus-standard.md`'s floor breached on
+`FlightReport.unreadable` — **the field the floor's own text cites as proof the
+code already holds to it**. Which is why this is a defect against a written
+standard rather than a new policy question, and why the fix is an enforcement
+a session cannot forget: a fault-injection test that fails the Nth git call and
+asserts each public read declines or keeps the mark. Prose demonstrably cannot
+do it — `_superseded`'s docstring states the correct direction in three cases
+while the code inverts two of them, and `test_vcs.py:467` asserts the inverted
+one.
+
+**Two corrections this thread should not lose.** `PL-Q9Z1`'s brief argues
+reachability from `_run_git`'s 10-second timeout; the real `diff --numstat`
+calls run in 4.5 ms, so that mechanism is off by three orders of magnitude. The
+conclusion survives on a different one — a non-zero exit, most plausibly a ref
+that vanishes between the `for-each-ref` that lists it and the `diff` that
+reads it, which happens here whenever a branch is deleted while the digest
+runs. And the `r_vcs` ratio is not what makes this a generator: the count of
+items each choosing their own answer to one question is.
+
+**Where it goes next.** `PL-Q9Z1` is the head and carries the channel plus the
+test; `PL-MM7F` (the memo caching a failed call) is `blocked-by` it and is an
+amplifier rather than a second defect; `PL-73P0` (`default_base` guessing
+`"main"`) is untriaged and sits upstream of every comparison in the module.
+`PL-SY1J` may resolve against `PL-Q9Z1` without its own diagnosis, since
+`precedence` returns `carriers=()` *and* `unreadable=()` on failed evidence.
+
+**Built 2026-09-19, and the sweep out-measured the round.** `PL-Q9Z1` landed the
+channel: `_run_git` returns `GitSilence` for a call git did not answer,
+`_Silences` carries a read's silences into its `declined`, and
+`subprojects/docket/tests/test_vcs_silence.py` holds every public read to
+declining or keeping its marks, one silenced call at a time.
+
+The four-four split above is a measurement of a *total* git failure, and that is
+the least informative test available. Every read here has an early gate - an
+unresolvable base, no refs - that a total failure trips, so it declines for a
+reason that has nothing to do with the silence and the reading looks compliant.
+Failing **one** call at a time reaches the middle of a read, which is where the
+conflation lives, and there **nine** reads were in breach rather than four:
+`stranded` dropped an item existing on one branch and nowhere else, `lost`
+dropped a deleted item, and `closed_by`, `closures_on_base`, `records_on_base`,
+`filed_with_work` and `cut_window` each lost a finding with `declined` empty.
+Any future measurement of this kind should start one call at a time.
+
+Two properties of the sweep are what make it worth its size, and both were
+learned from it failing. It **refuses a vacuous pass** - a read the fixture
+gives nothing to find can lose nothing, so it would pass whatever it does with a
+silence, which is the check `CLAUDE.md` retires rather than keeps; that is what
+drove the fixture to six branches and is how `orphaned`, `filed_with_work` and
+`cut_window` came to be covered at all. And a **registry guard** fails when a
+read taking a runner is added without saying which half it is in, because
+nothing made the last new read answer the question.
+
+`PL-SY1J`'s guess above is confirmed in part: `precedence` now declines on
+failed evidence and prints that its ordering is partial. Whether the
+2026-09-16 observation had a second cause is still its own item.
+
+**`PL-ZPDM` is what the sweep cannot yet cover**: `tags` and `changed_items`
+answer with a bare collection, so a silence is indistinguishable from a
+repository with no tags and a branch that changed nothing. `default_base` is the
+third of that shape and is `PL-73P0`, above, which is the more specific item and
+keeps it. All three are held by a test asserting the breach rather than by a
+marker excusing them - `bin/docket verify` reads a suppression marker and cannot
+read the reason attached to it, so a recorded breach has to be written as an
+assertion to survive its own audit (`PL-4FD2`, which that audit refused three
+times on its own brief).

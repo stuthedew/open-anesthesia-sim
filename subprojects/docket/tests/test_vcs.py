@@ -94,6 +94,8 @@ def _runner(
     base_items: dict[str, str] | None = None,
     took: tuple[str, ...] = (),
     same_as_base: tuple[str, ...] = (),
+    statuses: dict[str, str] | None = None,
+    created: tuple[str, ...] = (),
 ):
     """A git that holds `refs`, with `commits` mapping a ref to (day, subject).
 
@@ -138,6 +140,14 @@ def _runner(
     item's whole deliverable is a queue write - an id absent from both is an
     item the base does not hold at all, which is what a capture looks like.
 
+    `statuses` maps an id to the `status` its copy on the base carries, for
+    the reading that promotes a design round on an item at `needs-decision`;
+    an id named here is held by the base whether or not `base_items` also
+    names it, and one left out is `done` if `closed` names it and `ready`
+    otherwise. `created` names the ids whose file a ref's commit created
+    rather than changed - the commit's parent has no copy - which is what a
+    capture looks like and a design round does not.
+
     `took` names the ids the base's own commit subjects lead with since the
     fork point, and `same_as_base` the ids whose file the ref holds exactly as
     the base does. Together they are what says a ref's claim on an id is spent
@@ -163,6 +173,10 @@ def _runner(
                 # for both ends; anything else answers a different one per end.
                 end, _, path = args[-1].partition(":")
                 identifier = "-".join(path.rsplit("/", 1)[-1].split("-")[:2])
+                if end.endswith("^"):
+                    # `<commit>^:<path>`, whether the commit inherited the
+                    # file: a created one has no copy there to name.
+                    return "" if identifier in created else f"blob-{identifier}-parent\n"
                 if identifier in same_as_base:
                     return f"blob-{identifier}\n"
                 return f"blob-{identifier}-{end}\n"
@@ -194,7 +208,7 @@ def _runner(
             # base. The store names each file for its item, which is what
             # `filename_for` guarantees and what this relies on.
             prefix = args[-1].rstrip("/")
-            held = [*closed, *(base_items or {}), *same_as_base]
+            held = [*closed, *(base_items or {}), *same_as_base, *(statuses or {})]
             return "\n".join(f"{prefix}/{identifier}-shipped.md" for identifier in held)
         if args[0] == "show":
             # `git show <base>:<path>`, which is how the closure is read off the
@@ -204,11 +218,12 @@ def _runner(
             # (`PL-GVXP-shipped.md`), not the first one.
             identifier = "-".join(wanted.rsplit("/", 1)[-1].split("-")[:2])
             declared = (base_items or {}).get(identifier)
-            if declared is not None:
-                status = "done" if identifier in closed else "ready"
+            status = (statuses or {}).get(identifier, "done" if identifier in closed else "ready")
+            if declared is not None or identifier in (statuses or {}):
+                touches = "" if declared is None else f"touches: {declared}\n"
                 return (
                     f"---\nid: {identifier}\ntitle: shipped\nstatus: {status}\n"
-                    f"touches: {declared}\n---\n\nOn the base.\n"
+                    f"{touches}---\n\nOn the base.\n"
                 )
             if identifier not in closed:
                 return ""
@@ -321,6 +336,8 @@ def _report(
     base_items: dict[str, str] | None = None,
     took: tuple[str, ...] = (),
     same_as_base: tuple[str, ...] = (),
+    statuses: dict[str, str] | None = None,
+    created: tuple[str, ...] = (),
 ) -> FlightReport:
     """The whole report, for the tests reading the file edits beside the work.
 
@@ -343,6 +360,8 @@ def _report(
         base_items=base_items,
         took=took,
         same_as_base=same_as_base,
+        statuses=statuses,
+        created=created,
     )
     return branches_in_flight(ROOT, runner=runner)
 
@@ -641,6 +660,135 @@ def test_a_write_onto_a_shipped_queue_only_item_does_not_resurrect_it() -> None:
     )
 
     assert report.branches == ()
+
+
+def test_a_design_round_on_a_needs_decision_item_is_in_flight() -> None:
+    """The other half of `_annotates_only`'s residual, recovered (`PL-VYSP`).
+
+    A design round records its decision into the item it decides, so its
+    whole output can be queue edits. Observed 2026-09-19: `PL-BHVM` had three
+    commits pushed, every subject led by the id, a live session on the branch,
+    and `bin/docket show` called it startable. The status on the base is what
+    says this is the work rather than a note about it.
+    """
+    report = _report(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-19", "PL-K7QX: record the design round", "c1", QUEUE_ONLY)]},
+        statuses={"PL-K7QX": "needs-decision"},
+    )
+
+    assert [branch.item_id for branch in report.branches] == ["PL-K7QX"]
+    assert report.editing == (), "promoted to the stronger mark, never reported as both"
+
+
+def test_a_round_that_re_points_other_deciding_items_claims_only_its_own() -> None:
+    """The conjunction, and why the promotion asks for the leading id.
+
+    A design round re-points its cluster, so one commit writes a dozen other
+    items' files - some at `needs-decision` themselves, and some being worked
+    by other sessions. Only the item the subject leads with is claimed; the
+    rest are file edits, which is what they are.
+    """
+    other = "docs/items/PL-9Z9Z-re-pointed.md"
+    report = _report(
+        [HARNESS],
+        commits={
+            HARNESS: [("2026-09-19", "PL-K7QX: re-point the cluster", "c1", QUEUE_ONLY, other)]
+        },
+        statuses={"PL-K7QX": "needs-decision", "PL-9Z9Z": "needs-decision"},
+    )
+
+    assert [branch.item_id for branch in report.branches] == ["PL-K7QX"]
+    assert [edit.item_id for edit in report.editing] == ["PL-9Z9Z"]
+
+
+def test_a_note_written_into_a_deciding_item_under_another_id_is_not_a_claim() -> None:
+    """A capture that also annotates a `needs-decision` item is annotation.
+
+    The subject leads with the captured item, not the one annotated, so the
+    shape the promotion reads is absent - and the annotated item stays where
+    `PL-N1JK` put it, as a file edit a second writer needs to know about.
+    """
+    captured = "docs/items/PL-9Z9Z-captured.md"
+    subject = "PL-9Z9Z: capture it, and note it on PL-K7QX"
+    report = _report(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-19", subject, "c1", captured, QUEUE_ONLY)]},
+        statuses={"PL-K7QX": "needs-decision"},
+    )
+
+    assert report.branches == ()
+    assert "PL-K7QX" in {edit.item_id for edit in report.editing}
+
+
+def test_the_same_commit_shape_on_any_other_open_status_is_annotation() -> None:
+    """`PL-X3WZ`'s reading is intact everywhere the status is not `needs-decision`.
+
+    A triage pass moves an item out of `untriaged` and a note lands on a
+    `ready` one; both lead with the id and write its own file, and both are
+    the false marks the path test exists to withhold. Measured over the 1,006
+    commits on `origin/main` on 2026-09-19: of 235 queue-only commits changing
+    the leading id's own file where the base held it, 120 were triage passes.
+    """
+    for status in ("untriaged", "ready", "blocked"):
+        report = _report(
+            [HARNESS],
+            commits={HARNESS: [("2026-09-19", "PL-K7QX: triage it", "c1", QUEUE_ONLY)]},
+            statuses={"PL-K7QX": status},
+        )
+
+        assert report.branches == (), status
+        assert [edit.item_id for edit in report.editing] == ["PL-K7QX"], status
+
+
+def test_a_design_round_the_base_already_holds_is_not_a_claim() -> None:
+    """A round that merged leaves its ref behind, and the ref must not go on claiming.
+
+    The base's copy is what the branch wrote, so the two-dot diff names
+    nothing for the path; the same `_superseded` read that clears a merged
+    file edit clears this, in the one call (`PL-8MJ3`).
+    """
+    report = _report(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-19", "PL-K7QX: record the design round", "c1", QUEUE_ONLY)]},
+        statuses={"PL-K7QX": "needs-decision"},
+        tips={HARNESS: {}},
+    )
+
+    assert report.branches == ()
+    assert report.editing == ()
+
+
+def test_a_stale_capture_of_an_item_since_triaged_to_deciding_is_not_a_claim() -> None:
+    """The false mark the status test alone produced, live, three times over.
+
+    A capture merges by some other route, is triaged to `needs-decision` on
+    the base, and its own branch lives on: eleven days later that branch still
+    leads with the id and changes its own file, and the base holds the item at
+    the status that promotes. The commit's parent is what tells it from a
+    round - it created the file, and a round writes into one that exists.
+    """
+    report = _report(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-08", "PL-K7QX: capture the finding", "c1", QUEUE_ONLY)]},
+        statuses={"PL-K7QX": "needs-decision"},
+        created=("PL-K7QX",),
+    )
+
+    assert report.branches == ()
+    assert [edit.item_id for edit in report.editing] == ["PL-K7QX"]
+
+
+def test_a_round_that_renames_the_item_file_still_claims_it() -> None:
+    """A rename changes two paths; the one the commit inherited is the evidence."""
+    renamed = "docs/items/PL-K7QX-three-items-not-eight.md"
+    report = _report(
+        [HARNESS],
+        commits={HARNESS: [("2026-09-19", "PL-K7QX: narrow the head", "c1", QUEUE_ONLY, renamed)]},
+        statuses={"PL-K7QX": "needs-decision"},
+    )
+
+    assert [branch.item_id for branch in report.branches] == ["PL-K7QX"]
 
 
 def test_a_commit_reaching_past_the_queue_is_work() -> None:
@@ -3122,8 +3270,13 @@ def _precedence(
     head: str = "",
     item: str = "PL-K7QX",
     ran_out: tuple[str, ...] = (),
+    statuses: dict[str, str] | None = None,
+    created: tuple[str, ...] = (),
 ):
-    return precedence(ROOT, item, runner=_runner(refs, commits=commits, head=head, ran_out=ran_out))
+    runner = _runner(
+        refs, commits=commits, head=head, ran_out=ran_out, statuses=statuses, created=created
+    )
+    return precedence(ROOT, item, runner=runner)
 
 
 def test_precedence_gives_the_item_to_the_branch_that_named_it_first() -> None:
@@ -3168,6 +3321,49 @@ def test_precedence_does_not_make_a_carrier_of_a_branch_that_only_annotated() ->
     )
 
     assert [carrier.ref for carrier in order.carriers] == [FIRST]
+
+
+def test_precedence_orders_two_design_rounds_on_a_deciding_item() -> None:
+    """The yield verdict reads the same claim the in-flight mark does (`PL-VYSP`).
+
+    Two sessions opened a design round on `PL-BHVM` on 2026-09-19 and neither
+    could be shown a verdict, because a round's commits are queue-only and
+    `staked` withholds them; one yielded by reasoning it out, which is what
+    the verdict exists to replace. On an item at `needs-decision` the commits
+    are the claim, and the earlier one holds.
+    """
+    first = "origin/claude/round-one-abcdef"
+    second = "origin/claude/round-two-abcdef"
+    earlier = ("2026-09-19T04:05:00+00:00", "PL-K7QX: record the round", "aaa1111", QUEUE_ONLY)
+    later = ("2026-09-19T04:20:00+00:00", "PL-K7QX: put the case", "bbb2222", QUEUE_ONLY)
+    order = _precedence(
+        [second, first], {first: [earlier], second: [later]}, statuses={"PL-K7QX": "needs-decision"}
+    )
+
+    assert [carrier.ref for carrier in order.carriers] == [first, second]
+
+
+def test_precedence_does_not_make_a_carrier_of_a_stale_capture() -> None:
+    """The same parent test the mark applies, so the two reads keep agreeing."""
+    stale = "origin/claude/capture-abcdef"
+    capture = ("2026-09-08T04:05:00+00:00", "PL-K7QX: capture the finding", "ddd4444", QUEUE_ONLY)
+    order = _precedence(
+        [stale], {stale: [capture]}, statuses={"PL-K7QX": "needs-decision"}, created=("PL-K7QX",)
+    )
+
+    assert order.carriers == ()
+
+
+def test_precedence_still_ignores_a_queue_only_commit_on_a_ready_item() -> None:
+    """The status decides it, so the annotation rule holds where it always did."""
+    annotating = "origin/claude/some-triage-pass-abcdef"
+    order = _precedence(
+        [annotating],
+        {annotating: [("2026-09-19T04:05:00+00:00", "PL-K7QX: triage", "ccc3333", QUEUE_ONLY)]},
+        statuses={"PL-K7QX": "ready"},
+    )
+
+    assert order.carriers == ()
 
 
 def test_precedence_breaks_a_tie_on_the_commit_hash() -> None:

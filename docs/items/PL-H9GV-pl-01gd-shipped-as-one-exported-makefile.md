@@ -34,3 +34,9 @@ is the honest place to put the test that was owed.
 **Done when.** `tests/unit/test_tools_portability.py` asserts that the Makefile
 exports `PYTHONDONTWRITEBYTECODE`, so removing the line turns a test red rather
 than returning a `make check` failure nobody can trace to its source.
+
+**Re-pointed by `PL-6TP8`, 2026-09-19.** The contract is why `PL-01GD`'s
+command is not re-pointed: a closed item's `verify:` is the record of what
+ran, and a command that passed against an untouched suite is the
+non-discriminating shape the contract's first obligation names, recorded here
+as an instance. The test this item owes is ordinary work and stands as briefed.

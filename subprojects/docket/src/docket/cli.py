@@ -12,6 +12,7 @@ from collections.abc import Sequence
 from dataclasses import replace as with_fields
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 from . import notes, render
 from .checks import analyze
@@ -28,7 +29,7 @@ from .concurrency import (
 )
 from .config import CONFIG_NAME, Config
 from .config import load as load_config
-from .model import LANE_CROSSING, SELECTABLE_LANES, Item
+from .model import EFFORTS, LANE_CROSSING, LIST_FIELDS, PRIORITIES, SELECTABLE_LANES, STATUSES, Item
 from .plan import OfferedReport, features, gate, placement_line, recommend, set_aside
 from .release import (
     NOTES_DIR,
@@ -47,7 +48,7 @@ from .release import (
     unrecorded_milestones,
 )
 from .roadmap import MilestoneStates, Wave, milestone_states, wave
-from .store import find_item, new_id, read_items, write_item
+from .store import find_item, new_id, read_items, rewrite_item, write_item
 from .trend import BY_DAY, BY_WEEK
 from .trend import analyze as analyze_trend
 from .vcs import (
@@ -595,8 +596,12 @@ def cmd_new(args: argparse.Namespace) -> int:
     return 0
 
 
-def _declared_touches(values: list[str] | None) -> tuple[str, ...]:
-    """`--touches` as the item file spells it: comma-separated, in order, no blanks."""
+def _comma_separated(values: list[str] | None) -> tuple[str, ...]:
+    """A list flag as the item file spells it: comma-separated, in order, no blanks.
+
+    One value per flag and the flag repeatable, for `new --touches` and for
+    every list field `set` writes.
+    """
     paths: list[str] = []
     for value in values or ():
         paths.extend(part.strip() for part in value.split(",") if part.strip())
@@ -627,7 +632,7 @@ def _capture(directory: Path, title: str, taken: set[str], args: argparse.Namesp
         effort="",
         status="untriaged",
         classes=(),
-        touches=_declared_touches(args.touches),
+        touches=_comma_separated(args.touches),
         blocked_by=(),
         feature=args.feature or "",
         milestone="",
@@ -640,6 +645,167 @@ def _capture(directory: Path, title: str, taken: set[str], args: argparse.Namesp
     path = write_item(directory, item)
     print(f"{identifier}  {path}")
     return identifier
+
+
+#: The fields `set` writes, as the file spells them, paired with the `Item`
+#: attribute each lands on - which is also the flag's `dest`, so one table
+#: serves the parser, the conflict check and the write. Every field triage
+#: answers is here and nothing else is: `id`, `title` and `added` are the
+#: capture's, `pr` is `record`'s, `milestone` is `release`'s, and `commit` is
+#: retired. A flag outside this table is an unknown field, and argparse refuses
+#: it before the store is read.
+SET_FIELDS: tuple[tuple[str, str], ...] = (
+    ("priority", "priority"),
+    ("effort", "effort"),
+    ("status", "status"),
+    ("classes", "classes"),
+    ("feature", "feature"),
+    ("touches", "touches"),
+    ("blocked-by", "blocked_by"),
+    ("closed", "closed"),
+    ("reason", "reason"),
+    ("verify", "verify"),
+    ("not-delegable", "not_delegable"),
+    ("falsifies", "falsifies"),
+    ("root-cause-of", "root_cause_of"),
+)
+
+
+def cmd_set(args: argparse.Namespace) -> int:
+    """Write triage's answers onto one item, in the order the store spells them.
+
+    The judgment stays with the session - what an item is worth, how big it
+    is, what it belongs with. What moves into code is the decidable half:
+    which fields exist, the order they go in, and every rule `docket check`
+    would apply a moment later, applied at the moment of writing instead so
+    the answer is refused now rather than found by the checker one step on.
+    A triage pass that wrote a 25-line helper for this and threw it away is
+    the measurement behind it (`PL-L4YG`).
+
+    Three refusals, and none is a rule of its own:
+
+    - a flag the parser does not know is an unknown field, refused by argparse
+      before the store is read. A misspelled field is silently ignored by
+      every reader of it, so it is never written.
+    - a field the item already records with a *different* value is refused
+      without `--overwrite`. Replacing a value nobody looked at is the
+      duplicate-key hazard arriving through the front door (`PL-BR4G`).
+      `status` is exempt, because moving it is what the command is for: a
+      status is a position in a lifecycle rather than a recorded fact, and
+      the checker holds each one to what it requires.
+    - a write that would add an error to `docket check`'s answer is refused
+      with that error, and nothing is written. Measured as the difference
+      between the store's errors with and without the write, so an error the
+      store already carries elsewhere blocks nothing and no rule is restated
+      here - the vocabulary, the safety pin, what `ready` and `dropped` owe,
+      all arrive from `checks.py` in its own words.
+
+    A file the rewrite could not keep faithful is refused too: one spelling a
+    key twice would be collapsed to the parser's pick, and one carrying a
+    field the format does not know would lose it. Both are what `check`
+    already reports, and a writer repairing them on its way past would be
+    choosing a value on nobody's behalf.
+
+    The file keeps its name. A rename arriving as a side effect of a field
+    write is `PL-LBR6`, and bringing a drifted name back is `PL-YTDN`'s pass.
+    An empty value removes a field, since the renderer omits what is empty.
+    """
+    directory, items, config = _load(args)
+    item = find_item(items, args.item)
+    if item is None:
+        print(f"no item matching '{args.item}'")
+        return 1
+    if item.duplicate_fields or item.unknown_fields:
+        print(
+            f"{item.identifier}: its file spells "
+            f"{', '.join(item.duplicate_fields + item.unknown_fields)} in a way a "
+            "rewrite would silently change, so nothing was written; `docket check` "
+            "names the repair"
+        )
+        return 1
+
+    requested = _requested(args)
+    if not requested:
+        print("set: nothing to write; name at least one field (`docket set --help` lists them)")
+        return 2
+
+    refused: list[str] = []
+    changes: dict[str, Any] = {}
+    for key, attribute, value in requested:
+        current = _spelled(getattr(item, attribute))
+        wanted = _spelled(value)
+        if current == wanted:
+            print(f"{item.identifier}: `{key}` already records `{current}`; nothing to write")
+            continue
+        if current and key != "status" and not args.overwrite:
+            refused.append(
+                f"{item.identifier}: `{key}` already records `{current}`; pass "
+                f"--overwrite to replace it with `{wanted}`"
+            )
+        changes[attribute] = value
+    if refused:
+        print(*refused, sep="\n")
+        print(f"{item.identifier}: nothing was written")
+        return 1
+    if not changes:
+        return 0
+
+    updated = with_fields(item, **changes)
+    today = args.today or date.today()
+    introduced = analyze([updated if i is item else i for i in items], today, config).errors
+    if introduced:
+        # Only what this write adds counts against it. An error the store
+        # already carries is somebody else's, and blocking every write until
+        # the whole store is clean would refuse the command on exactly the
+        # days it is needed.
+        already = set(analyze(items, today, config).errors)
+        introduced = [error for error in introduced if error not in already]
+    if introduced:
+        print(f"{item.identifier}: nothing was written; `docket check` would then report:")
+        for error in introduced:
+            print(f"  {error}")
+        return 1
+
+    path = rewrite_item(directory, updated)
+    for key, attribute, value in requested:
+        if attribute in changes:
+            print(f"{item.identifier}: {key}: {_spelled(value) or '(removed)'}")
+    print(f"  {path}")
+    return 0
+
+
+def _requested(args: argparse.Namespace) -> list[tuple[str, str, object]]:
+    """The fields the command line named, as (file key, attribute, value).
+
+    An absent flag is `None` and is no request; an empty value is one, and
+    asks for the field to be removed.
+    """
+    requested: list[tuple[str, str, object]] = []
+    for key, attribute in SET_FIELDS:
+        given = getattr(args, attribute)
+        if given is None:
+            continue
+        value: object = given
+        if key in LIST_FIELDS:
+            value = _comma_separated(given)
+        elif key == "closed":
+            value = given or None
+        requested.append((key, attribute, value))
+    return requested
+
+
+def _spelled(value: object) -> str:
+    """A field's value as the item file writes it, so two spellings compare as text."""
+    if isinstance(value, tuple):
+        return ", ".join(value)
+    if isinstance(value, date):
+        return value.isoformat()
+    return "" if value is None else str(value)
+
+
+def _closing_date(text: str) -> date | str:
+    """`--closed` as a date. The empty value passes through: it asks for the field's removal."""
+    return date.fromisoformat(text) if text else text
 
 
 def cmd_show(args: argparse.Namespace) -> int:
@@ -1878,8 +2044,12 @@ def build_parser() -> argparse.ArgumentParser:
     _shared(parser)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    def add(name: str, help_text: str) -> argparse.ArgumentParser:
-        return sub.add_parser(name, help=help_text, parents=[common])
+    def add(
+        name: str, help_text: str, *, allow_abbrev: bool = True, epilog: str | None = None
+    ) -> argparse.ArgumentParser:
+        return sub.add_parser(
+            name, help=help_text, parents=[common], allow_abbrev=allow_abbrev, epilog=epilog
+        )
 
     check_cmd = add("check", "validate the store")
     check_cmd.add_argument(
@@ -1970,6 +2140,40 @@ def build_parser() -> argparse.ArgumentParser:
     )
     new.add_argument("--feature", default=None, help="group this with related work")
     new.set_defaults(func=cmd_new)
+
+    # No abbreviations here, where argparse's default would turn `--pr 123` into
+    # `--priority 123`: a field name on this command is exact, or it is unknown.
+    setter = add(
+        "set",
+        "write triage's answers onto one item, in canonical field order",
+        allow_abbrev=False,
+        epilog="An empty value (--feature '') removes the field. `id`, `title` and `added` "
+        "are the capture's, `pr` is written by `docket record` and `milestone` by "
+        "`docket release`; none is set here.",
+    )
+    setter.add_argument("item")
+    setter.add_argument("--priority", choices=PRIORITIES)
+    setter.add_argument("--effort", choices=EFFORTS)
+    setter.add_argument("--status", choices=STATUSES)
+    for flag, metavar in (
+        ("--classes", "A,B"),
+        ("--touches", "A.PY,B.PY"),
+        ("--blocked-by", "PL-XXXX,vX.Y.Z"),
+        ("--root-cause-of", "PL-XXXX,PL-YYYY,PL-ZZZZ"),
+    ):
+        setter.add_argument(
+            flag, action="append", metavar=metavar, help="comma-separated; may be repeated"
+        )
+    setter.add_argument("--feature")
+    setter.add_argument("--closed", type=_closing_date, metavar="YYYY-MM-DD")
+    setter.add_argument("--reason")
+    setter.add_argument("--verify", metavar="COMMAND")
+    setter.add_argument("--not-delegable", metavar="WHY")
+    setter.add_argument("--falsifies", metavar="FRAGMENT")
+    setter.add_argument(
+        "--overwrite", action="store_true", help="replace a value the item already records"
+    )
+    setter.set_defaults(func=cmd_set)
 
     nxt = add("next", "what to work on now, and why")
     nxt.add_argument(

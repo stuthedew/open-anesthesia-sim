@@ -37,3 +37,9 @@ campaign the `docket` skill refuses - "each is repaired as its item is
 started", because a command written away from its work is how every wrong one
 in this store came to exist. A test pins both the refusal and the
 grandfathering.
+
+**Re-pointed by `PL-6TP8`, 2026-09-19.** The contract's first obligation on a
+command - its failure before the work is an evaluation, an ordinary exit 1 and
+never pytest's 5 - is the rule this item makes mechanical, and the check is
+still wanted as briefed, grandfathering included. Population today: `PL-10MX`,
+`PL-GVC0` and `PL-8JY7` at `ready`, `PL-LWMS` at `blocked`.

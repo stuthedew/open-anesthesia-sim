@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: defect, infra
-feature: planning-cadence
+feature: timeline-arrangement
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-14
 verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_the_plan_header_names_the_step_apart_from_the_anchor' subprojects/docket/tests/test_roadmap.py

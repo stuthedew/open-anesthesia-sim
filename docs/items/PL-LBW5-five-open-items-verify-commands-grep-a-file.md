@@ -51,3 +51,8 @@ reason is recorded for leaving one of them out.
 the same question from the other end: whether every open item's `verify:` command
 is one the store can act on. This half is whether the command's paths are
 declared; `PL-RCQM`'s is whether the command can run at all.
+
+**Re-pointed by `PL-6TP8`, 2026-09-19.** This is the contract's second
+obligation on a command - the paths its discriminating clause reads are
+declared in `touches` - and the work is as briefed: the four declare the test
+files their commands name.

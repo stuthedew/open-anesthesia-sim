@@ -38,3 +38,21 @@ return, or a declined flag on the reports that consume it — and the reads that
 compare against it decline rather than answering. Sits with `PL-Q9Z1` and
 `PL-MM7F`: all three are the evidence layer having no way to say it could not
 answer.
+
+**One concrete call site, folded in from `PL-29HL` (dropped as superseded,
+2026-09-19).** `PL-Q9Z1` gave every read in the module a runner wrapped in
+`_Silences`, so a call git did not answer reaches the report as `declined` even
+where the helper that met it - `default_base` among them - cannot say so in its
+own return type. That cover has exactly one hole, and it is the command whose
+whole job is to certify a branch:
+
+```python
+base = args.base or default_base(root)   # subprojects/docket/src/docket/cli.py:1455
+```
+
+No runner, so nothing watches the probe. Under a git that does not answer,
+`verify` compares against a `"main"` that may not resolve, `git diff
+main...HEAD` exits 128, `_run_git` gives the empty string, and the commission
+audit reports no paths outside the item's `touches` - a clean scope established
+from a read that never happened. Whatever shape this item's answer takes, that
+line is the one that has to consume it.
