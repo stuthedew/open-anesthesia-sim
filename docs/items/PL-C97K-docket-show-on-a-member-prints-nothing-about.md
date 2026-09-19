@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: generator-heads
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/README.md, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
 closed: 2026-09-19
 verify: grep -q 'def test_show_names_the_generator_that_explains_a_member' subprojects/docket/tests/test_cli.py

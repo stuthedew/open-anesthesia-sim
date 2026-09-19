@@ -1304,6 +1304,14 @@ in the store where a typo would buy a promotion; below three, or with an id
 that does not resolve, the item ranks on its band exactly as it did before and
 the checker says so.
 
+The edge reads from both ends. `docket show` on an item that some sound claim
+names prints the head, its status and how many items it explains, because the
+field is written on the head alone: a session reaching a *member* by name -
+the way an item is usually started - would otherwise work it as an ordinary
+item while the generator above it was still being decided, and that decision
+can re-scope or drop the member. An unsound claim prints nothing here, for the
+same reason the ranking refuses it.
+
 Nothing infers it. A ratio over a `touches` path measures how busy a file is,
 and citation is not causation — 33 items in this store are cited by more than
 two others. `tools/generator_check.py` prints the clusters carrying those
