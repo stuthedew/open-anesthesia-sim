@@ -1021,8 +1021,17 @@ ahead of it - `doc_check.py check`, `bin/docket check`, the file's `pytest`
 run - and do not record one on its own: `doc_check.py check` passes whenever
 the docs are internally consistent, which they are before the item is started
 too, and five open items once shared exactly that command with none of them
-proving anything. The commands recorded before 2026-09-19 still carry such a
+proving anything. The commands recorded before 2026-09-20 still carry such a
 clause; each loses it as its item is started, never in a pass.
+
+**The `pytest` half of that is now refused rather than remembered.** `docket
+set` will not write, and `docket check` errors on, a command captured from
+2026-09-20 that runs `pytest` over `tests/` or `subprojects/docket/tests/`
+while another clause stands beside it - the shape 82 open commands carry and
+`PL-FZ58` costed at 59% of a whole-store replay. So this paragraph now only
+has to be remembered for the clauses a check cannot judge: `doc_check.py
+check` and `bin/docket check`, where which clause discriminates depends on
+what the item's work is (`PL-09G9`).
 
 The first is the one that goes wrong loudly. `--cov=` takes the **dotted module**
 (`anesthesia_sim.core.tissue`), never the path, and the run is the **whole

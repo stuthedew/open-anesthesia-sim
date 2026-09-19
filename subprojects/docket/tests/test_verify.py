@@ -222,6 +222,39 @@ def test_an_added_suppression_is_rejected(tmp_path: Path) -> None:
     assert any("suppression" in c.name and not c.passed for c in report.checks)
 
 
+def test_a_pytest_option_containing_a_suppression_name_is_not_one(tmp_path: Path) -> None:
+    """Each entry in `SUPPRESSIONS` names a token, and a substring search finds one
+    inside a longer word: `xfail` sits in pytest's own `--maxfail`. A line listing
+    that option was reported as a suppression, which rejects correct work and trains
+    a reader to skim the block where a real one is printed (`PL-VHVJ`, `PL-69JZ`).
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX read the option",
+        "tests/test_thing.py",
+        KEPT + '\n\nVALUE_OPTIONS = {"--maxfail", "--durations"}\n',
+    )
+    report = verify(root, _item(), _config(), "HEAD~1")
+
+    assert _check(report, "no suppression added").passed
+
+
+def test_a_suppression_is_still_found_after_a_word_character(tmp_path: Path) -> None:
+    """The anchor is left-only and must not cost the check a real finding: a
+    decorated `@pytest.mark.xfail` has a word character before the name too."""
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX silence it",
+        "tests/test_thing.py",
+        KEPT + "\n\n@pytest.mark.xfail\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    report = verify(root, _item(), _config(), "HEAD~1")
+
+    assert not _check(report, "no suppression added").passed
+
+
 def test_a_removed_assertion_is_rejected(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     _work(root, "PL-K7QX drop it", "tests/test_thing.py", "def test_a() -> None:\n    pass\n")

@@ -1603,6 +1603,35 @@ a mechanical strip of all of them. Measured 2026-09-19: 162 of 177 open
 commands carried one, they were 1,879 of the replay's 1,884 serial seconds,
 and none of them masked a pass.
 
+**The decidable half of that is a check, and only that half.**
+`verify_prerequisite_refused_from` refuses a command that runs `pytest` over a
+tree named in `collected_test_paths` while a *separate*, non-pytest clause
+stands beside it. The separate clause is what makes it decidable: the author
+has already said which clause discriminates, so the `pytest` run is not it,
+whatever the item turns out to be about. A command whose only clause is the
+`pytest` run says the opposite and is untouched, as is one whose run carries
+`-k`, `-m`, `--cov` or a `::`, and as is a target outside the declared trees -
+that one is running something no other consumer does, which is the condition
+that would falsify the rule and the reason the trees are declared rather than
+assumed. Measured 2026-09-19: 0 of the 82 open commands of this shape name
+such a target.
+
+The other 73 multi-clause commands - `python3 tools/doc_check.py check &&
+grep …` and its relatives - are the same contract and are deliberately not
+refused. Which clause is the prerequisite there is a question about the item's
+work: an item whose work is *making `doc_check` pass* has that clause as its
+discriminator, and two of the 73 are two discriminators rather than a
+prerequisite and a discriminator at all. A tool guessing at that half would be
+worse than no tool, so it stays prose (`PL-09G9`).
+
+The cutover is read against the item's `added` date, so the commands already
+recorded are a closed set - nothing can join it - and it drains as each item
+is started, which is the repair-as-started policy rather than an exception to
+it. It leaks in the same bounded way `verify_required_from` does: an item
+captured before the cutover can still have a command written after it. Because
+`docket set` refuses any write `docket check` would then fail, the rule is met
+at the moment the command is typed rather than at the next run.
+
 ### A closed item's command is a record, and it is not rewritten
 
 Once the item is `done`, `verify` stops being a command and becomes the record
@@ -2440,6 +2469,9 @@ debt_classes = ["defect", "safety", "science", "refactor", "perf"]
 top_band_limit = 5
 untriaged_stale_days = 14
 verify_required_from = 2026-08-30   # omit to leave the `verify:` rule off
+verify_prerequisite_refused_from = 2026-09-20   # when a command may no longer
+                                   # re-run a tree `check_command` collects
+collected_test_paths = ["tests"]   # the trees it does collect; empty = rule off
 minor_classes = ["feature"]
 protected_paths = []
 gate_paths = ["Makefile", "pyproject.toml", ".github", ".claude", "docket.toml"]
