@@ -42,7 +42,15 @@ from .model import (
     impairs_generators_soundly,
     is_generator,
 )
-from .plan import OfferedReport, features, gate, placement_line, recommend, set_aside
+from .plan import (
+    OfferedReport,
+    features,
+    gate,
+    placement_clause,
+    placement_line,
+    recommend,
+    set_aside,
+)
 from .release import (
     NOTES_DIR,
     Readiness,
@@ -1243,16 +1251,32 @@ def _say_answer_lane(
         )
         return found[0].item if found else None
 
+    scope = plan.scope if plan is not None else None
+
+    def why(item: Item) -> str:
+        """The band and the gate relation - what "why this one" reduces to here.
+
+        Both are facts in the store rather than readings of it, which is what
+        keeps this on the right side of scripting the judgment: the tool says
+        where the item stands, and what the work buys stays prose somebody
+        wrote. Before `PL-Z27P` this line offered the other lane's pick as a
+        bare id and title, so the one place the project owner meets the
+        workflow lane carried no ranking information at all.
+        """
+        clause = placement_clause(scope, item.identifier)
+        return f"{item.priority}, {clause}" if clause else item.priority
+
     def name(wanted: str) -> str:
         found = pick_for(wanted)
-        return f"{found.identifier} ({found.title})" if found else "nothing startable"
+        return f"{found.identifier} ({why(found)}): {found.title}" if found else "nothing startable"
 
     top_lane = top.lane(config.workflow_paths)
     if top_lane in SELECTABLE_LANES:
         other = next(one for one in SELECTABLE_LANES if one != top_lane)
         print(
-            f"Lane of this answer: {top.identifier} is {top_lane} work. "
-            f"The {other} lane's own pick is {name(other)} - `docket next {other}`."
+            f"Lane of this answer: {top.identifier} is {top_lane} work ({why(top)}).\n"
+            f"The {other} lane's own pick is {name(other)}\n"
+            f"  - `docket next {other}` for its reason."
         )
         return
 
@@ -1260,9 +1284,12 @@ def _say_answer_lane(
     # lane" to name and both are printed. The sentence says which of the two
     # it is, because they are recovered differently: a crossing item wants a
     # session that can hold the whole change, an unplaced one wants a `touches`.
-    why = "reaches both halves" if top_lane == LANE_CROSSING else "declares no `touches`"
-    named = "; ".join(f"{one} {name(one)}" for one in SELECTABLE_LANES)
-    print(f"Lane of this answer: {top.identifier} {why}, so no lane places it. By lane: {named}.")
+    unplaceable = "reaches both halves" if top_lane == LANE_CROSSING else "declares no `touches`"
+    named = "\n  ".join(f"{one}: {name(one)}" for one in SELECTABLE_LANES)
+    print(
+        f"Lane of this answer: {top.identifier} {unplaceable}, so no lane places it. "
+        f"By lane:\n  {named}"
+    )
 
 
 def cmd_gate(args: argparse.Namespace) -> int:
