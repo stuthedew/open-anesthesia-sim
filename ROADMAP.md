@@ -2974,7 +2974,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 200 entries
+### Declined to Gate 2 on the refilling-queue ground — 201 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -4045,6 +4045,16 @@ reaches a displayed value, so the safety exception that admitted `PL-DZFJ` does
 not reach it either. It is `v0.5.0`'s own frame cost it leaves unmeasured,
 which is an argument for doing it during that milestone rather than for holding
 the gate open ahead of it.
+
+**One more, raised by the project owner while the pass above was running**
+(`PL-TQFB`). It asks whether a housekeeping item should have to argue for its
+own category, on the measurement that 22 triage-pass items carry 1,127 lines of
+which only 2 hold a finding. It declares `CLAUDE.md`, the `docket` skill and
+`checks.py`, all three wholly inside `docket.toml`'s `workflow_paths`, so it
+cannot reach a reader of the simulator and sits on the same refilling-queue
+ground as the first thirty. It is also a question about whether a mechanism is
+worth changing at all, which is the shape `PL-NF6N` was declined on above -
+least likely to be worth holding a gate open for.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
