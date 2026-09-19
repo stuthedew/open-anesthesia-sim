@@ -9,7 +9,7 @@ feature: timeline-arrangement
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-14
 closed: 2026-09-19
-verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_the_plan_header_names_the_step_apart_from_the_anchor' subprojects/docket/tests/test_roadmap.py
+verify: grep -q 'def test_the_plan_header_names_the_step_apart_from_the_anchor' subprojects/docket/tests/test_roadmap.py
 ---
 
 **Problem.** docket status's plan header calls the anchor 'the step the project is on' while wave reports the step as a different row

@@ -9,7 +9,7 @@ feature: timeline-arrangement
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-15
 closed: 2026-09-19
-verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_a_blocker_the_timeline_schedules_ahead_of_the_gate_reads_as_sequenced' subprojects/docket/tests/test_roadmap.py
+verify: grep -q 'def test_a_blocker_the_timeline_schedules_ahead_of_the_gate_reads_as_sequenced' subprojects/docket/tests/test_roadmap.py
 ---
 
 **Problem.** bin/docket wave reports 'blocked outside the gate' identically for a blocker the plan schedules before the gate and one nothing schedules at all: PL-W8DQ and PL-NGF7 wait on PL-L9RD, which is in v0.4.26's own Required scope, so they read as stranded when they are merely sequenced

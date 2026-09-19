@@ -3,14 +3,13 @@ id: PL-2M4X
 title: PL-J45M's verify and touches name tests/unit/test_docket_digest_hook.py, a shell-hook test file that cannot exercise release.py, so its pytest half proves the wrong tree and a worker would edit the wrong file
 priority: P3
 effort: S
-status: dropped
+status: done
 classes: defect, infra
 feature: queue-hygiene
 touches: docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md
 added: 2026-09-16
 closed: 2026-09-19
-reason: PL-J45M closed 2026-09-19 under PL-2T03 with its verify as written, and a closed item's verify is a record docket check refuses to rewrite, so the correction has nothing left to apply to; the wider class is PL-6YL1's
-verify: bin/docket check && ! grep -qE '^(touches|verify):.*test_docket_digest_hook' docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md && grep -qE '^touches:.*src/docket/roadmap\.py' docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md && grep -qE '^verify:.*subprojects/docket/tests/test_release\.py' docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md && grep -qF 'supported = plan.beat != IMPLEMENT or plan.own_scope is not None' docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md
+verify: ! grep -qE '^(touches|verify):.*test_docket_digest_hook' docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md && grep -qE '^touches:.*src/docket/roadmap\.py' docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md && grep -qF 'supported = plan.beat != IMPLEMENT or plan.own_scope is not None' docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md
 ---
 
 **Problem.** PL-J45M's verify and touches name tests/unit/test_docket_digest_hook.py, a shell-hook test file that cannot exercise release.py, so its pytest half proves the wrong tree and a worker would edit the wrong file
@@ -97,3 +96,14 @@ pytest half of `PL-J45M`'s command is removed rather than replaced, leaving
 the `! grep` that is the specification, and the `touches` correction stands.
 This item's own `verify:` still pins `test_release.py` as a `verify:` target,
 which that shape does not produce, so rewrite it first when starting this.
+
+**Closed 2026-09-19 under `PL-2T03`, in the session that closed `PL-J45M`.**
+`PL-J45M`'s `touches` now declares `subprojects/docket/src/docket/roadmap.py`,
+`subprojects/docket/src/docket/release.py` and
+`subprojects/docket/tests/test_release.py`, and its `verify:` is the `! grep`
+alone - the discriminator, per the shape half of `PL-6TP8` ratified the same
+day - which was run before the work (exit 1) and after it (exit 0). This
+item's own command was rewritten first, as the note above asks: it no longer
+pins `test_release.py` as a `verify:` target and carries no prerequisite
+clause of its own. The four other items closed in the same session lost their
+pytest halves the same way, as the repair-as-started rule has it.

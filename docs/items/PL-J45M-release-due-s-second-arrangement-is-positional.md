@@ -6,10 +6,10 @@ effort: M
 status: done
 classes: defect
 feature: timeline-arrangement
-touches: subprojects/docket/src/docket/release.py, tests/unit/test_docket_digest_hook.py
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 added: 2026-09-14
 closed: 2026-09-19
-verify: uv run pytest tests/unit/test_docket_digest_hook.py && ! grep -q "supported = plan.beat != IMPLEMENT or plan.own_scope is not None" subprojects/docket/src/docket/release.py
+verify: ! grep -q "supported = plan.beat != IMPLEMENT or plan.own_scope is not None" subprojects/docket/src/docket/release.py
 ---
 
 
