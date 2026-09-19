@@ -3140,6 +3140,20 @@ rather than only `subprojects/docket/`, and is stated here rather than
 stretched: what it changes there is a rule's *length*, by replacing three
 command names with one.
 
+**One more, from the 2026-09-19 session that gave the generator tier a second
+entrance** (`PL-4MPJ`). `PL-G5ZH` made a defect in the machinery that
+identifies and ranks generators rank at the same priority as a generator, on
+the project owner's instruction; what it did *not* settle is whether
+`CLAUDE.md`'s two endings for a generator - fix it now, or hand off a prompt -
+bind a session that finds one. The clause standing in `CLAUDE.md` today is a
+holding pattern, and `PL-4MPJ` is the decision that replaces it. It declines on
+this subsection's own ground: captured after the freeze, `P3`, and neither
+`safety` nor `science`. It is `needs-decision` rather than a class, which is
+what makes it debt at all, and the question it holds is about how sessions
+work rather than about anything a reader of the simulator meets - so v0.5.0
+waiting on it would be the gate protecting something it does not exist to
+protect.
+
 - PL-0M32 (S) Nothing can tell an item finished under a renamed test from one nobody has started
 - PL-0VFF (S) ROADMAP.md's 'Declined to Gate 2' list names PL-483K, PL-69JZ and PL-L09X as deferred, but all three closed done in v0.4.14, and nothing distinguishes a still-open entry from a closed one
 - PL-12P8 (S) PL-JBZK's lane check assumes every file under tests/ is a test file, so a shared non-test helper is told to declare itself apparatus
@@ -3152,6 +3166,7 @@ command names with one.
 - PL-3V6C (S) PL-TFWR and PL-XQRK record incompatible causes for the same remote-deletion failure and both ruled out the git proxy on a field that does not record policy denials, so whichever lands first writes an unproven cause into the instructions
 - PL-483K (S) The stop hook demands a push for work already pushed after a branch is restarted per the merged-PR recovery, because checkout -B from origin/main leaves the upstream pointing at main
 - PL-4FBP (M) Fifteen items repair a document sentence whose link to the tree lives only in the reader's head: decide whether an assertion must name what it asserts
+- PL-4MPJ (S) Decide whether CLAUDE.md's two endings for a generator extend to a defect in the generator machinery, which now shares the generator's rank but not that obligation
 - PL-4Q9B (M) Ten items work around the clone being trusted as the remote and around an unrecorded set of permitted ref operations: record both
 - PL-69JZ (S) docket verify's 'the checks themselves are unedited' audit REJECTs every item whose declared work is editing a .claude rules file, since gate_paths includes .claude and touches is not consulted
 - PL-6BDX (S) Two shipped items are reported in flight in every session's digest, because their branch refs outlived their merges: PL-GVXP (v0.4.7) and PL-S5LB (v0.4.6)

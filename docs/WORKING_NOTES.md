@@ -1718,6 +1718,40 @@ the main window to *veto its own close* instead; `PL-Y04W` carries it.
 `QDataStream` over a temporary `QByteArray`, which the persistence work will
 meet the first time it decodes a saved blob (`PL-NDKC`).
 
+## The generator tier has a second entrance, and one question left open
+
+`PL-G5ZH` gave the tier a second way in (project owner, 2026-09-19): a defect
+in the machinery that *identifies and ranks* generators ranks at the same
+priority as a generator. The thread is here rather than only in that item
+because it has an open decision belonging to no item's own work, and because
+the design turned on a count a later session would otherwise redo.
+
+**The count that decided the design.** Deriving the claim from `touches` -
+promote anything touching `plan.py`, `model.py`, `checks.py`, `render.py`,
+`cli.py` or `generator_check.py` - would have promoted **36 of 322 open items**
+above every `P1` (20 `P2`, 16 `P3`, measured 2026-09-19). That is the same
+objection `tools/generator_check.py` already records against citation density
+at 33: promoting that many means nothing. The machinery is a few functions
+inside files that do many other things, so `impairs-generators:` is a recorded
+judgment like `root-cause-of:`, and `generator_paths` is only its falsifier -
+it refutes a claim on code the item never goes near (286 of the 322) and
+establishes none.
+
+**Do not re-propose the path-derived version** without a new argument that
+survives that number.
+
+**Open: does the obligation come with the rank?** `CLAUDE.md`'s two endings for
+a generator - fix it now, or hand off a prompt - were deliberately *not*
+extended, because the owner specified the rank and not the obligation.
+`PL-4MPJ` carries the decision and the recommendation (no, on the grounds that
+a prose claim should not compel an interruption the way a measured three-item
+cluster does). Until it is answered, the clause in `CLAUDE.md` is a holding
+pattern rather than a decision.
+
+**Also open:** `PL-C97K` is the store's only machinery defect and carries no
+field, because it was in flight on another branch while this was built;
+`PL-GYRX` is the one-line retrofit, to be done after that branch merges.
+
 ## All six of PL-6ZQY's clusters now have a head - PL-6TP8, PL-HWW1, PL-4FBP, PL-4Q9B became theirs
 
 `PL-VX5H` built the way to rank a generator: `root-cause-of:` on the item that
