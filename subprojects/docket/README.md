@@ -883,13 +883,24 @@ is what a session reads *first* — before it would think to ask for a lane, and
 before anything has been said that could tell it which half it is. Naming both
 is what lets the hook avoid guessing:
 
-    By lane, for a second session: product PL-F52R, workflow PL-Y0RZ; 15 in neither lane.
+    By lane, for a second session: product PL-F52R (P1, on the debt gate), workflow PL-Y0RZ (P2, not on the gate); 15 in neither lane.
 
 It costs one line in every digest, single-session ones included, which is why
 it reads as an offer rather than an instruction, and why it is omitted entirely
 where no boundary is declared or neither lane has anything startable. The
 spanning count rides the same line: two picks read as the whole queue without
 it.
+
+Each pick carries its band and its relation to the gate, and deliberately not
+its title. An id alone cannot tell a `P1` sitting on the debt gate from a `P3`
+the roadmap places nowhere, so an offer worth waving through and one worth
+questioning read identically — which is what `PL-Z27P` fixed, after the two
+lines naming the workflow lane to this project's owner turned out to be the
+only places it is ever surfaced to them. Titles stay out because this line is
+resident in every session's context and the `Top:` line above it already
+carries one in full; `placement_clause` is the shared renderer, and it names a
+gate only while one is open, since with the gate clear "not on the gate" would
+be true of every item in the store.
 
 ### The one command that looks backwards: `docket trend`
 
