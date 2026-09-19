@@ -8,7 +8,7 @@ classes: test
 feature: model-spec-accuracy
 touches: tests/reference/, docs/MODEL.md
 added: 2026-09-06
-verify: uv run pytest tests/reference/ && grep -rq 'def test_a_tissue_volume_recovered_from_its_washin_matches_the_stored_value' tests/reference/
+verify: grep -rq 'def test_a_tissue_volume_recovered_from_its_washin_matches_the_stored_value' tests/reference/
 ---
 
 **Problem.** This project's verification rests on comparing the shipped step

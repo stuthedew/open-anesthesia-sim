@@ -3,12 +3,13 @@ id: PL-6YWK
 title: PL-4L6Z's verify: runs the whole reference suite, so it is killed at docket check's 120s limit and nothing is claimed about the item on any run
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: verify-replay-cost
 touches: docs/items
 added: 2026-09-13
-verify: uv run pytest subprojects/docket/tests/test_verify.py -q && grep -qE '^verify: .*tests/reference/test_[a-z0-9_]+\.py' docs/items/PL-4L6Z-*.md
+closed: 2026-09-19
+verify: grep -q '^verify: grep' docs/items/PL-4L6Z-verify-the-model-by-making-it-compute-a.md
 ---
 
 **Problem.** PL-4L6Z's verify: runs the whole reference suite, so it is killed at docket check's 120s limit and nothing is claimed about the item on any run
@@ -28,10 +29,15 @@ selecting nothing. The one open item this project holds up as its verification
 centrepiece is the one item its own check has no reading of, and that has been
 true on every run since the command was written.
 
-**Done when.** `PL-4L6Z`'s `verify:` names the single reference test file its
-work adds rather than the whole directory, completes inside `LANDED_TIMEOUT`,
-and fails today for the reason the paired shape intends - the suite half
-passing, the `grep` half finding no such test.
+**Done when.** `PL-4L6Z`'s `verify:` is the discriminating `grep` alone, with
+no prerequisite clause ahead of it, so it completes well inside
+`LANDED_TIMEOUT` and fails today because the test it names does not exist yet.
+
+The "single reference test file" this originally asked for is superseded:
+`PL-6TP8`'s ratified shape makes the command a `grep`, and `grep -rq` over
+`tests/reference/` exits 1 - the code an ordinary failure gives - where a named
+file the work has not yet created would exit 2 on a missing path. The directory
+is the right argument once the `pytest` half is gone.
 
 **`PL-RCQM` was dropped into this item on 2026-09-17** (project owner), having
 been filed a day earlier from the other direction - the session-start digest's
@@ -67,3 +73,17 @@ test_a_tissue_volume_recovered_from_its_washin_matches_the_stored_value'
 tests/reference/`. This item's own `verify:` still pins a single-file pytest
 target, which that shape does not produce, so rewrite it first when starting
 this - run and watched failing, as the skill asks.
+
+**Done 2026-09-19.** `PL-4L6Z`'s command is now `grep -rq 'def
+test_a_tissue_volume_recovered_from_its_washin_matches_the_stored_value'
+tests/reference/`, measured at **2 ms, exit 1** on this checkout, against the
+120 s kill it replaced. That returns the whole-store replay's headroom: the
+budget's previous slowest completing command was `PL-P1P6` at 97.2 s, and this
+item was the only one of the 176 killed outright.
+
+This item's own `verify:` was rewritten in the same commit, for the same
+reason: it carried a `uv run pytest subprojects/docket/tests/test_verify.py -q`
+prerequisite and then pinned a single-file target that `PL-6TP8`'s shape does
+not produce. It is now `grep -q '^verify: grep'` against `PL-4L6Z`'s file - the
+same shape `PL-8T83` already used for `PL-M26Q` - run and watched failing at
+exit 1 before the work.
