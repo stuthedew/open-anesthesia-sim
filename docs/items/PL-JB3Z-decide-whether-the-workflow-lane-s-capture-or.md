@@ -3,7 +3,7 @@ id: PL-JB3Z
 title: Decide whether the workflow lane's capture or tagging criteria change, on the never-was-an-issue versus overtaken split the 2026-09-19 staleness sweep measured
 priority: P2
 effort: S
-status: needs-decision
+status: untriaged
 classes: docs, infra
 feature: apparatus-capture-criteria
 touches: .claude/skills/docket/SKILL.md, docs/items
@@ -117,3 +117,16 @@ rule). The table above **is** that count for the workflow lane — 73 still-real
 suppressed to catch 8 dead. It is not written onto `PL-YVV4` because that item's
 scope is the whole store's 109 open `P3` items, not this lane's, and because
 this sweep was commissioned not to work the items it keeps.
+
+**Note for triage.** Left `untriaged` deliberately, on `PL-G424`'s precedent from
+earlier the same day. `needs-decision` makes this debt under "The debt gate",
+and v0.5.0's gate was frozen 2026-09-06 with two open entries left of 175 — so
+an undispositioned entry fails
+`test_this_repository_records_a_disposition_for_every_open_debt_item`, and
+disposing of it means editing a frozen list in `ROADMAP.md` during a sweep
+commissioned not to widen into the product lane. The disposition is genuinely
+open rather than dodged: the *finding* is from 2026-09-19, which sends it to
+the next gate, but the *problem* has instances back to 2026-08-25 (`PL-RZPX`),
+which under "The gate is a snapshot" would put it on the list instead.
+`check_gate_reentries` decides that, not this note. Whoever triages this seats
+the band and the gate together.
