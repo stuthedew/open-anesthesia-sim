@@ -3,11 +3,13 @@ id: PL-T86P
 title: PL-SCB4 is status needs-decision with no Decision needed section, which the checker requires and does not catch
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: defect, infra
 feature: queue-hygiene
 touches: docs/items, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-14
+closed: 2026-09-19
+reason: Premise false at capture on both halves: PL-SCB4 carried '**Decision needed before any code.**' from its creation on 2026-09-13, the day before this was filed, and checks.py has enforced the needs-decision section since docket's first commit (verified 2026-09-19).
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_needs_decision_item_without_a_decision_section_is_an_error' subprojects/docket/tests/test_checks.py
 ---
 
