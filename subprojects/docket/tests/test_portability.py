@@ -37,6 +37,7 @@ ALLOWED_IMPORTS = {
     "pathlib",
     "random",
     "re",
+    "shlex",
     "statistics",
     "subprocess",
     "tempfile",

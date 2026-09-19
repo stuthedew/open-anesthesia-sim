@@ -3,11 +3,12 @@ id: PL-09G9
 title: Nothing refuses a new verify: command that re-runs a test file make check already collects, so PL-6TP8's contract is enforced by prose alone and 82 of 180 open commands carry the clause
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: verify-replay-cost
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_config.py, docket.toml, subprojects/docket/README.md
 added: 2026-09-19
+closed: 2026-09-19
 verify: grep -q 'def test_a_new_command_re_running_a_collected_test_file_is_refused' subprojects/docket/tests/test_checks.py
 ---
 

@@ -2444,3 +2444,122 @@ def test_the_field_survives_a_round_trip_through_the_store() -> None:
     item = _item(touches=_MACHINERY, impairs_generators=_IMPAIRS)
 
     assert parse_item(render_item(item)).impairs_generators == _IMPAIRS
+
+
+# --- what a `verify:` command may be, not merely that it is there ------------
+#
+# `PL-6TP8`'s contract (project owner, 2026-09-19, ratified): the field records
+# the discriminator, and proving the tree is `check_command`'s job, which every
+# consumer of the field already runs. `PL-FZ58` measured the second proof's
+# price - three test files carrying 59% of a whole-store replay's serial cost,
+# each re-run once per item whose command named them. These pin the decidable
+# half of that contract; the judgment half stays with the item's author.
+
+SHAPE = Config(
+    verify_prerequisite_refused_from=date(2026, 9, 20),
+    collected_test_paths=("tests", "subprojects/docket/tests"),
+)
+TWICE = "proves the tree twice"
+AFTER = date(2026, 9, 20)
+
+
+def _shape_errors(**overrides: object) -> list[str]:
+    overrides.setdefault("added", AFTER)
+    return analyze([_item(**overrides)], TODAY, SHAPE).errors
+
+
+def test_a_new_command_re_running_a_collected_test_file_is_refused() -> None:
+    """The shape the store recorded 82 times while only a skill table refused it.
+
+    The pytest half proves the file's suite green, which `check_command` proves
+    for the whole tree anyway; the `grep` is what discriminates. Two proofs,
+    one of them costing a full test file per item that records it.
+    """
+    errors = _shape_errors(
+        verify=(
+            "uv run pytest subprojects/docket/tests/test_cli.py && "
+            "grep -q 'def test_flight_fetches' subprojects/docket/tests/test_cli.py"
+        )
+    )
+
+    assert _has(errors, TWICE)
+    assert _has(errors, "uv run pytest subprojects/docket/tests/test_cli.py")
+
+
+def test_a_command_whose_only_clause_is_the_pytest_run_is_left_alone() -> None:
+    """With nothing beside it the run *is* the discriminator, and this cannot tell
+    a redundant one from a load-bearing one without knowing the item's work."""
+    assert not _has(_shape_errors(verify="uv run pytest tests/unit/test_alveolar.py"), TWICE)
+
+
+def test_a_run_carrying_its_own_selector_is_left_alone() -> None:
+    """`-k`, `-m`, `--cov` and `::` each make the run select something narrower than
+    the file, so it is discriminating rather than proving a suite green."""
+    for command in (
+        "uv run pytest tests/unit -k commit_msg && grep -q 'x' a.py",
+        "uv run pytest 'tests/reference/test_coupled.py::test_oracle' && grep -q 'x' a.py",
+        "uv run pytest --cov=anesthesia_sim.core --cov-fail-under=100 && grep -q 'x' a.py",
+    ):
+        assert not _has(_shape_errors(verify=command), TWICE), command
+
+
+def test_a_run_over_a_tree_the_project_check_does_not_collect_is_left_alone() -> None:
+    """The falsifying case, and the reason `collected_test_paths` is declared rather
+    than assumed: a run nothing else performs is not a second proof of anything."""
+    command = "uv run pytest spikes/test_probe.py && grep -q 'def test_probe' spikes/test_probe.py"
+
+    assert not _has(_shape_errors(verify=command), TWICE)
+
+
+def test_a_bare_run_beside_a_discriminator_is_refused() -> None:
+    """No path is the whole suite, which is exactly what `check_command` runs."""
+    assert _has(_shape_errors(verify="uv run pytest && grep -q 'def test_x' a.py"), TWICE)
+
+
+def test_an_option_value_is_not_read_as_a_path_to_run() -> None:
+    """`4` and `worksteal` are positional tokens, and neither is a tree to run. Reading
+    one as a target outside `collected_test_paths` would silence the rule."""
+    command = "uv run pytest -n 4 --dist worksteal subprojects/docket/tests && grep -q 'x' a.py"
+
+    assert _has(_shape_errors(verify=command), TWICE)
+
+
+def test_a_non_pytest_prerequisite_is_not_refused() -> None:
+    """The same contract and deliberately not this check's, because which clause is
+    the prerequisite there is a question about the item's work: one whose work makes
+    `doc_check` pass has that clause as its discriminator. `CLAUDE.md` holds that a
+    tool guessing at the judgment half is worse than no tool."""
+    command = "python3 tools/doc_check.py check && grep -qF 'the sentence' docs/MODEL.md"
+
+    assert not _has(_shape_errors(verify=command), TWICE)
+
+
+def test_a_command_recorded_before_the_cutover_is_left_alone() -> None:
+    """Repair-as-started, chosen over a one-pass strip (project owner, 2026-09-19).
+    The exempt set is closed - the test is the capture date - so it drains."""
+    command = (
+        "uv run pytest subprojects/docket/tests/test_cli.py && "
+        "grep -q 'def test_x' subprojects/docket/tests/test_cli.py"
+    )
+
+    assert not _has(_shape_errors(added=date(2026, 9, 19), verify=command), TWICE)
+
+
+def test_a_closed_item_s_command_is_a_record_and_is_not_refused() -> None:
+    """`PL-JZ1D`: a closed command says what was run on a tree that no longer exists.
+    Refusing one asks for a rewrite that replaces the command which proved the work."""
+    command = (
+        "uv run pytest subprojects/docket/tests/test_cli.py && "
+        "grep -q 'def test_x' subprojects/docket/tests/test_cli.py"
+    )
+
+    assert not _has(_shape_errors(status="done", closed=AFTER, pr="48", verify=command), TWICE)
+
+
+def test_the_rule_is_off_where_a_project_names_no_collected_trees() -> None:
+    """Empty means "this project has not said", which leaves the rule off rather than
+    guessing which of its pytest runs another command already performs."""
+    off = Config(verify_prerequisite_refused_from=date(2026, 9, 20))
+    command = "uv run pytest tests/unit/test_alveolar.py && grep -q 'def test_x' a.py"
+
+    assert not _has(analyze([_item(added=AFTER, verify=command)], TODAY, off).errors, TWICE)
