@@ -3241,6 +3241,17 @@ nor `science`. It is stated rather than left silent because the disposition
 rule asks for a sentence either way, and an open debt item the gate neither
 places nor defers is reported as undisposed whatever the reason.
 
+**A second on that same ground, and it is the rule catching itself**
+(`PL-YFXG`, 2026-09-19). `_carried_work` was written on 2026-09-12 under
+`PL-YDL6`, six days after this gate froze, so the mechanism this item describes
+did not exist for a 2026-09-06 list to hold. It is `P2`, `defect`-classed,
+wholly workflow-lane apparatus, and neither `safety` nor `science`. It was
+found while closing `PL-Y5JX` as the reason `main` was red - a closure whose
+work is queue files cannot have its `pr` recovered, and the resulting
+`docket check` error fails `make check` on every branch - and recording it here
+the same day is what the disposition rule exists to force, since the session
+that found it is the one that would otherwise leave it silent.
+
 - PL-09G9 (M) Nothing refuses a new verify: command that re-runs a test file make check already collects, so PL-6TP8's contract is enforced by prose alone and 82 of 180 open commands carry the clause
 - PL-0M32 (S) Nothing can tell an item finished under a renamed test from one nobody has started
 - PL-0VFF (S) ROADMAP.md's 'Declined to Gate 2' list names PL-483K, PL-69JZ and PL-L09X as deferred, but all three closed done in v0.4.14, and nothing distinguishes a still-open entry from a closed one
@@ -3323,6 +3334,7 @@ places nor defers is reported as undisposed whatever the reason.
 - PL-XMNC (M) The pull-request verify replay scopes to items whose item file the branch edited, so a branch that invalidates some other item's verify: command by editing the file that command reads replays nothing, and the break is reported only by the whole-store sweep after the merge
 - PL-Y1LD (M) docket concurrent orders a batch by file, but the lane mechanism separates only two sessions, so the third and fourth simultaneous session have no command that picks for them
 - PL-Y31G (M) bin/docket stranded classes a branch left on pre-rewrite history as one whose pull request merged, because it compares file content and a rewrite leaves content unchanged
+- PL-YFXG (S) bin/docket record can never supply the pr of an item whose work is the queue itself - _carried_work reads a queue-only diff as a closure that landed without its work, so PL-YTDN left main red with an error no command could clear
 - PL-YKXQ (S) This container's initial clone had local main diverged 407 commits into pre-rewrite history, so a session that checks out main gets a stale tree and an old bin/docket
 - PL-YTDN (S) Rename the nine item files whose slug no longer matches their title, now that docket check names them
 - PL-Z5FG (S) The PL-B32L and PL-TCW5 edits to core/parameters.py shifted line numbers cited by PL-0NQ1 and PL-HXKC, which is PL-J7C5's hazard arriving again from an unrelated branch
