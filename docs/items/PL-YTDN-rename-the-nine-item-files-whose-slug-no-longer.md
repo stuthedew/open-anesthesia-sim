@@ -141,7 +141,8 @@ test that decides this is `git diff $(git merge-base origin/main <branch>)..<bra
 which was empty.
 
 **`PL-TFWR` was the one the brief expected to hold back, and holding it back was
-the weaker option.** `PL-Y5JX` had deliberately skipped it on 2026-09-19 because
+the weaker option** (project owner, 2026-09-19, ratified, over leaving it
+drifted behind `PL-Y5JX`'s recorded skip). `PL-Y5JX` had deliberately skipped it on 2026-09-19 because
 two items name its file by full path in `touches:`, and a rename leaves those
 declarations pointing at nothing - silently, since a `touches` entry naming a
 missing path is not yet an error. That hazard is *a declaration broken without

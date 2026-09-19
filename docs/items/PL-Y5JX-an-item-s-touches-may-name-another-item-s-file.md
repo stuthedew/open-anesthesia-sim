@@ -50,7 +50,10 @@ advisory currently names are `PL-TFWR` and `PL-XQRK`, which are exactly the two
 `PL-3V6C` declares.
 
 **Superseded in part, 2026-09-19, by `PL-YTDN`** (rename the item files whose
-slug no longer matches their title). That pass renamed `PL-TFWR` after measuring
+slug no longer matches their title), on a decision the project owner ratified
+the same day over leaving `PL-TFWR` drifted behind the skip recorded here.
+Ratified rather than specified, so ordinary evidence reopens it: a cost the
+case did not carry is enough, and it was a session's own recommendation. That pass renamed `PL-TFWR` after measuring
 the coupling, and repaired both declarations in the same commit: `PL-3V6C`'s and
 `PL-77SV`'s `touches` now name the new path. So the paragraph above records what
 was found on the day, not what is true now, and the live instance this item was
