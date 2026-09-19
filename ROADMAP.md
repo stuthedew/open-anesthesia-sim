@@ -4076,33 +4076,6 @@ this deferrable. The observation that prompted them — `PL-G424` started on a
 weaker model than `PL-LSR0` while both carried the flag — cost nothing that a
 gate entry would have prevented.
 
-**One more on how a recommendation explains itself, 2026-09-19.** `PL-WYKF`
-(whether an item carries a one-line plain-language statement of what the work
-buys, so a recommendation reads in consequence terms rather than mechanism
-terms) is the open third of the `recommendation-rationale` feature; its two
-defects, `PL-MN0F` and `PL-Z27P`, were found and closed in the same session and
-never reached this list. It was captured that day, is `P2`, is neither `safety`
-nor `science`, and sits wholly in the workflow lane — `docket next`'s own
-output and the item format it reads from.
-
-It is `needs-decision` and so qualifies on status alone rather than on class,
-which is stated rather than blurred: "What counts" makes an unanswered decision
-debt whatever it is about. The ground is the arithmetic the groups above run on,
-and it is at its sharpest here — this gate stands at 173 of 175 cleared, two
-entries from draining, and both remaining entries are `P1` simulator work
-(`PL-7DMJ` on water vapour, `PL-JVHL` on the hover's nearest-run ambiguity).
-Admitting an `M`-effort decision about the queue's own file format to a gate in
-that state is exactly the refilling shape Phase 0 was retired for.
-
-What makes it deferrable rather than merely deferred: the half that was costing
-the project owner something real is already fixed. `docket next` now names the
-debt gate in the words the rest of the project uses and prints each lane pick's
-band and gate relation, and the `docket` skill now requires a recommendation to
-be reported in consequence terms. What `PL-WYKF` decides is whether that
-sentence is *stored* rather than recomposed per session — a session-cost
-question, and one that gets a better answer after a few releases of sessions
-writing the sentence by hand.
-
 ### Required scope
 
 Eighteen items, in the order the dependencies allow. The first three are the
