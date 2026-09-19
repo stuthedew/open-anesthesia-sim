@@ -3,11 +3,13 @@ id: PL-GYRX
 title: PL-C97K is a defect in the generator machinery but carries no impairs-generators: field, because it was in flight on another branch when the field was built - it ranks on its band alone until the field is added
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: infra
 feature: generator-machinery-rank
 touches: docs/items
 added: 2026-09-19
+closed: 2026-09-19
+reason: PL-C97K merged in #693 hours after this was filed, so there is nothing left to retrofit: a closed item is never ranked, and impairs-generators: only changes a queue position. Backfilling the field onto merged work would record a claim nothing acts on, which is the shape this project already refuses for verify: commands on closed items. The field's first live use is the next machinery defect captured.
 verify: grep -q 'impairs-generators:' docs/items/PL-C97K-docket-show-on-a-member-prints-nothing-about.md
 ---
 
