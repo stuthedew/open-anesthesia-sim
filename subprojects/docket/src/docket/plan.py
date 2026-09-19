@@ -20,7 +20,15 @@ from __future__ import annotations
 from collections.abc import Collection
 from dataclasses import dataclass, field
 
-from .model import EFFORTS, LANE_CROSSING, LANE_UNPLACED, PRIORITIES, Item, is_generator
+from .model import (
+    EFFORTS,
+    LANE_CROSSING,
+    LANE_UNPLACED,
+    PRIORITIES,
+    Item,
+    impairs_generators_soundly,
+    is_generator,
+)
 from .roadmap import EXCLUDED, IN_SCOPE, OUT_OF_SCOPE, UNPLACED, Scope
 
 
@@ -158,6 +166,14 @@ class Recommendation:
     #: `P2` leading a queue with `P1`s in it and nothing saying why, which is
     #: the first thing every session reads.
     generator: int = 0
+    #: Whether this item ranked as a defect in the generator machinery - the
+    #: tier's other entrance, carried separately because it is a different
+    #: claim with a different warrant. A generator names the items standing on
+    #: it and the count is the evidence; a machinery defect names none, and
+    #: what a reader checks instead is the declared prose. Folding the two
+    #: into one count would print "root cause of 0 items" on an item that
+    #: outranks every `P1`.
+    impairs_generators: bool = False
 
     def describe(self) -> str:
         marks = [m for m in (self.item.effort, self.item.status) if m]
@@ -165,6 +181,8 @@ class Recommendation:
             marks.append(f"{self.item.model_guidance} - use your strongest model")
         if self.generator:
             marks.append(f"root cause of {self.generator} items")
+        if self.impairs_generators:
+            marks.append("defect in the generator machinery")
         if self.scoped_to:
             marks.append(f"scoped to {self.scoped_to}, not this step")
         head = f"{self.item.priority} {self.item.identifier} {self.item.title}"
@@ -257,7 +275,7 @@ def _startable(
     ]
 
 
-def placement_line(scope: Scope | None, identifier: str) -> str:
+def placement_line(scope: Scope | None, identifier: str, *, ranks_above_bands: bool = False) -> str:
     """One short phrase saying where the plan places an id, or `""`.
 
     `docket next` states the relation inside a ranked item's reason, which
@@ -270,6 +288,15 @@ def placement_line(scope: Scope | None, identifier: str) -> str:
     shared with them: this is a header field beside `touches`, where a
     sentence explaining the ranking would not fit. What the two must agree on
     is the *relation*, which is `scope.placement` in both.
+
+    `ranks_above_bands` is the caller saying this item is on the generator
+    tier - a sound `root-cause-of:` or a sound `impairs-generators:`. Only the
+    unplaced branch reads it, and only to drop a clause: "it ranks on its band
+    alone" is false of such an item, which ranked above every band. `recommend`
+    already refuses that sentence for the same reason, and until now `docket
+    show` asserted it on every generator in the store - on the path the project
+    owner usually starts work on, where `next`'s corrected wording never
+    reaches. The relation itself is unchanged, so the two still agree.
     """
 
     if scope is None or not scope.anchor:
@@ -294,6 +321,8 @@ def placement_line(scope: Scope | None, identifier: str) -> str:
         return f"outside what {scope.anchor} names; placed by {placed_by}"
     if where == EXCLUDED:
         return f"explicitly out of scope for {scope.anchor}"
+    if ranks_above_bands:
+        return f"placed by no section of {scope.anchor} - it ranks above every band but P0"
     return f"placed by no section of {scope.anchor} - it ranks on its band alone"
 
 
@@ -355,6 +384,22 @@ def _named_ids(identifiers: tuple[str, ...], limit: int = 3) -> str:
     return f"{shown} and {rest} more" if rest > 0 else shown
 
 
+def _clipped(text: str, limit: int = 160) -> str:
+    """One field's prose, bounded so it cannot take over a reason line.
+
+    `impairs-generators` is written to be read - it is the only evidence a
+    reader has for a promotion above every band - so the line quotes it rather
+    than pointing at `docket show`. A field long enough to bury the three
+    recommendations around it defeats that, which is the same concern
+    `_named_ids` answers for nineteen ids. Clipped on a word boundary so the
+    fragment reads as a sentence rather than as a truncated token.
+    """
+    text = " ".join(text.split())
+    if len(text) <= limit:
+        return text
+    return text[:limit].rsplit(" ", 1)[0] + "..."
+
+
 def recommend(
     items: list[Item],
     in_flight: Collection[str] | None = None,
@@ -364,6 +409,7 @@ def recommend(
     scope: Scope | None = None,
     lane: str | None = None,
     workflow_paths: tuple[str, ...] = (),
+    generator_paths: tuple[str, ...] = (),
 ) -> list[Recommendation]:
     """Rank the work worth starting now.
 
@@ -393,6 +439,17 @@ def recommend(
     has to be fixed now is what `P0` is for, and `P0` still outranks a
     generator.
 
+    That tier has a second entrance: an item carrying a sound
+    `impairs-generators:`, which claims to be a defect in the machinery that
+    identifies and ranks generators (project owner, 2026-09-19). Same tier,
+    not a sub-order - "the same priority as a generator" is what was asked
+    for, so between the two the ordinary terms below decide. The warrant is
+    the generator argument one level up: a generator is paid again by every
+    session it stands through, and a broken identification path means the
+    generator is never recorded, so nothing pays anything until somebody
+    notices by hand. `generator_paths` is what refutes a false claim; see
+    `model.generator_defect_faults` for why it cannot establish a true one.
+
     Soundness is re-decided here rather than assumed from the field's presence,
     against every id in `items` including closed ones: a root cause still
     explains an item that has since closed, so a claim must not decay as its
@@ -419,6 +476,11 @@ def recommend(
     generating = {
         item.identifier: item.root_cause_of for item in startable if is_generator(item, known)
     }
+    impairing = {
+        item.identifier: item.impairs_generators
+        for item in startable
+        if impairs_generators_soundly(item, generator_paths)
+    }
     underway = {
         item.identifier: feature
         for feature in features(items).values()
@@ -443,7 +505,9 @@ def recommend(
         exist". It is above `PLACEMENT_ORDER` as well as above `band`, so a
         generator the roadmap places nowhere still outranks in-scope work -
         which is what "above everything but P0" means, and the whole of what
-        was decided.
+        was decided. One term carries both entrances to the tier, rather than
+        two terms ordering them against each other, because the decision was
+        that a machinery defect ranks at *the same* priority as a generator.
 
         Two terms carry that preference, not one. `finishes` is the binary
         question - is this item in a feature already underway - and `remaining`
@@ -456,7 +520,7 @@ def recommend(
         separated them.
         """
         hotfix = 0 if item.priority == "P0" else 1
-        generator = 0 if item.identifier in generating else 1
+        generator = 0 if item.identifier in generating or item.identifier in impairing else 1
         band = PRIORITIES.index(item.priority) if item.priority in PRIORITIES else len(PRIORITIES)
         feature = underway.get(item.identifier)
         finishes = 1 if feature is None else 0
@@ -489,6 +553,19 @@ def recommend(
                 f"a mechanism three items stand on is paid again by every session it "
                 f"stands through, and patching them one at a time closes items while "
                 f"leaving it running."
+            )
+        elif item.identifier in impairing:
+            # A separate sentence from the generator's, because the warrant is
+            # different and a reader checking the claim needs the one that
+            # applies. A generator shows its items; this shows the declared
+            # prose, which is the only evidence there is that the machinery is
+            # impaired at all.
+            reason = (
+                f"Ranked as a defect in the generator machinery: "
+                f"{_clipped(impairing[item.identifier])} This is the generator tier - "
+                f"above every band but P0 - because while identification or ranking is "
+                f"broken a generator is not recorded, and an unrecorded generator is "
+                f"ranked by nothing. Nothing in the store would say one went unfound."
             )
         elif item.identifier in underway:
             feature = underway[item.identifier]
@@ -568,7 +645,7 @@ def recommend(
             # sentence is false - it did not rank on its band, it ranked above
             # every band. Two claims about one ranking, in one reason line,
             # is the apparatus floor broken where a reader can see both.
-            if item.identifier not in generating:
+            if item.identifier not in generating and item.identifier not in impairing:
                 placed_nowhere = (
                     f"Placed by no section of {scope.anchor}: neither its frozen "
                     f"list nor its `Required scope` names this id, so it is neither "
@@ -597,6 +674,7 @@ def recommend(
                 reason,
                 scoped_to=scoped_to,
                 generator=len(generating.get(item.identifier, ())),
+                impairs_generators=item.identifier in impairing,
             )
         )
 

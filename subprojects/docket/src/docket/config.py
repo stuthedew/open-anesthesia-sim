@@ -109,6 +109,26 @@ class Config:
     #: the failure the split exists to prevent, wearing the flag that was
     #: supposed to prevent it.
     workflow_paths: tuple[str, ...] = ()
+    #: Paths holding the machinery that identifies and ranks *generators* -
+    #: the `root-cause-of:` field, the predicate that decides a claim is
+    #: sound, the rank term that lifts one above every band but `P0`, and
+    #: whatever surfaces the claim to a reader. An item declaring
+    #: `impairs-generators:` claims to be a defect in that machinery, which
+    #: puts it on the generator tier; this list is what refutes the claim
+    #: when its `touches` reaches none of it.
+    #:
+    #: It can only refute, never decide. Measured against this project's store
+    #: on 2026-09-19, 36 of 322 open items touch one of these files for
+    #: reasons having nothing to do with generators, so promoting on the path
+    #: alone would mean what promoting on citation density would mean -
+    #: nothing (`tools/generator_check.py` makes the same argument about 33).
+    #: The machinery is a few functions inside shared files, so the judgment
+    #: stays the declaring session's and this is the cheap falsifier.
+    #:
+    #: Empty by default, and fail-closed like `protected_paths` and
+    #: `workflow_paths`: with no machinery declared, every claim is unsound
+    #: and `docket check` says so, rather than every claim being free.
+    generator_paths: tuple[str, ...] = ()
     #: Paths holding the product's own source and its tests, as against the
     #: prose written about it. `docket trend` splits product work on this, so
     #: that a period spent rewriting the roadmap is not read as a period spent
@@ -216,6 +236,7 @@ def load(root: Path) -> Config:
         known_classes=_tuple(section.get("known_classes"), defaults.known_classes),
         protected_paths=_tuple(section.get("protected_paths"), defaults.protected_paths),
         workflow_paths=_tuple(section.get("workflow_paths"), defaults.workflow_paths),
+        generator_paths=_tuple(section.get("generator_paths"), defaults.generator_paths),
         gate_paths=_tuple(section.get("gate_paths"), defaults.gate_paths),
         check_command=str(section.get("check_command", defaults.check_command)),
         code_paths=_tuple(section.get("code_paths"), defaults.code_paths),

@@ -2530,3 +2530,56 @@ def test_the_root_cause_error_says_the_generator_is_not_being_ranked() -> None:
     errors = _errors(_item("PL-K7QX", root_cause_of=_EXPLAINS[:1]), *_explained())
 
     assert _has(errors, "recorded and unranked until the field is repaired")
+
+
+# `impairs-generators:` is the generator tier's other entrance, and it fails the
+# same quiet way: `plan.py` refuses to rank an unsound claim, so a bad field
+# mis-ranks nothing and instead leaves the session that recorded the defect
+# believing it is ranked above every band. These are what say otherwise.
+
+_MACHINERY = ("subprojects/docket/src/docket/plan.py",)
+_IMPAIRS = "root_cause_faults is never called, so no claim is ever ranked"
+
+
+def _machinery_errors(*items: Item) -> list[str]:
+    return analyze(list(items), TODAY, Config(generator_paths=_MACHINERY)).errors
+
+
+def test_a_sound_machinery_claim_is_accepted() -> None:
+    errors = _machinery_errors(_item(touches=_MACHINERY, impairs_generators=_IMPAIRS))
+
+    assert not _has(errors, "impairs-generators")
+
+
+def test_a_machinery_claim_touching_none_of_the_machinery_is_an_error() -> None:
+    errors = _machinery_errors(
+        _item(touches=("src/anesthesia_sim/core/blood.py",), impairs_generators=_IMPAIRS)
+    )
+
+    assert _has(errors, "impairs-generators")
+    assert _has(errors, "none of which is inside")
+    assert _has(errors, "recorded and unranked until the field is repaired")
+
+
+def test_a_machinery_claim_that_is_a_bare_boolean_is_an_error() -> None:
+    errors = _machinery_errors(_item(touches=_MACHINERY, impairs_generators="true"))
+
+    assert _has(errors, "not a boolean")
+
+
+def test_a_machinery_claim_is_an_error_where_no_generator_paths_are_declared() -> None:
+    """The package default is empty, so this is what an unconfigured project sees."""
+    errors = _errors(_item(touches=_MACHINERY, impairs_generators=_IMPAIRS))
+
+    assert _has(errors, "declares no `generator_paths`")
+
+
+def test_an_item_making_no_machinery_claim_raises_nothing() -> None:
+    assert not _has(_machinery_errors(_item()), "impairs-generators")
+
+
+def test_the_field_survives_a_round_trip_through_the_store() -> None:
+    """A field that parses but does not render would be silently dropped on any `docket set`."""
+    item = _item(touches=_MACHINERY, impairs_generators=_IMPAIRS)
+
+    assert parse_item(render_item(item)).impairs_generators == _IMPAIRS

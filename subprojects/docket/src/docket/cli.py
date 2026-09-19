@@ -37,7 +37,10 @@ from .model import (
     SELECTABLE_LANES,
     STATUSES,
     Item,
+    generator_defect_faults,
     generators_explaining,
+    impairs_generators_soundly,
+    is_generator,
 )
 from .plan import OfferedReport, features, gate, placement_line, recommend, set_aside
 from .release import (
@@ -428,7 +431,12 @@ def _offered(
     """
     plan = _plan(root, items, config)
     flight = _flight(args)
-    picks = recommend(list(items), flight.ids, scope=plan.scope if plan is not None else None)
+    picks = recommend(
+        list(items),
+        flight.ids,
+        scope=plan.scope if plan is not None else None,
+        generator_paths=config.generator_paths,
+    )
     return OfferedReport(
         ids=frozenset(pick.item.identifier for pick in picks), declined=render.format_unread(flight)
     )
@@ -509,6 +517,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
         config.workflow_paths,
         _orphaned(root, args),
         _cuts(root, config, args) if ready.is_worth_cutting else None,
+        generator_paths=config.generator_paths,
     )
     if rendered:
         print(rendered)
@@ -677,6 +686,7 @@ SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("not-delegable", "not_delegable"),
     ("falsifies", "falsifies"),
     ("root-cause-of", "root_cause_of"),
+    ("impairs-generators", "impairs_generators"),
 )
 
 
@@ -872,11 +882,34 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(f"  milestone: {item.milestone}")
     root = args.items.parent if args.items else find_root()
     plan = _plan(root, items, config)
-    placement = placement_line(plan.scope if plan is not None else None, item.identifier)
+    # Whether this item is on the generator tier, by either entrance, so the
+    # plan line does not tell a session it "ranks on its band alone" about an
+    # item that ranked above every band. `recommend` refuses that sentence
+    # already; `show` asserted it, and `show` is the path a named item arrives
+    # on.
+    on_the_tier = is_generator(item, {i.identifier for i in items if i.identifier}) or (
+        impairs_generators_soundly(item, config.generator_paths)
+    )
+    placement = placement_line(
+        plan.scope if plan is not None else None, item.identifier, ranks_above_bands=on_the_tier
+    )
     if placement:
         print(f"  plan: {placement}")
     if heads := generators_explaining(item.identifier, items):
         print(render.format_generators(heads))
+    if item.impairs_generators:
+        # The promotion is invisible from the item file alone - `impairs-generators`
+        # lifts this above every band but `P0`, and a session reading `P2` at the
+        # top has no other way to learn that the ranking meant it. Soundness is
+        # re-decided here rather than assumed from the field, for the reason
+        # `plan.recommend` re-decides it: an unsound claim ranks nothing, and a
+        # session believing otherwise is the failure `docket check` exists to end.
+        faults = generator_defect_faults(item, config.generator_paths)
+        print(f"  impairs generators: {item.impairs_generators}")
+        if faults:
+            print(f"    UNSOUND - {'; '.join(faults)}; ranks on its band alone until repaired")
+        else:
+            print("    ranked on the generator tier - above every band but P0")
     if item.identifier in flight.ids:
         # The whole precedence read only where something is actually carrying
         # the item, which is the rare case. A session starting ordinary work
@@ -1105,6 +1138,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         scope=plan.scope if plan is not None else None,
         lane=lane,
         workflow_paths=config.workflow_paths,
+        generator_paths=config.generator_paths,
     )
     where = f" in the {lane} lane" if lane else ""
     if not picks:
@@ -1204,6 +1238,7 @@ def _say_answer_lane(
             scope=plan.scope if plan is not None else None,
             lane=wanted,
             workflow_paths=config.workflow_paths,
+            generator_paths=config.generator_paths,
         )
         return found[0].item if found else None
 
@@ -2196,6 +2231,7 @@ def build_parser() -> argparse.ArgumentParser:
     setter.add_argument("--verify", metavar="COMMAND")
     setter.add_argument("--not-delegable", metavar="WHY")
     setter.add_argument("--falsifies", metavar="FRAGMENT")
+    setter.add_argument("--impairs-generators", metavar="WHY")
     setter.add_argument(
         "--overwrite", action="store_true", help="replace a value the item already records"
     )

@@ -25,7 +25,15 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from .config import Config
-from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item, root_cause_faults
+from .model import (
+    EFFORTS,
+    OPEN_STATUSES,
+    PRIORITIES,
+    STATUSES,
+    Item,
+    generator_defect_faults,
+    root_cause_faults,
+)
 from .plan import OfferedReport
 from .release import NOTES_DIR, SEMVER_RE, notes_name, unrecorded_milestones, version_key
 from .roadmap import MilestoneStates
@@ -1140,6 +1148,34 @@ def _check_root_causes(report: Report, known: set[str]) -> None:
         )
 
 
+def _check_generator_defects(report: Report, config: Config) -> None:
+    """Hold an `impairs-generators:` to reaching the machinery it claims to break.
+
+    The tier's other entrance, and it fails the same quiet way as the first.
+    `plan.py` refuses to rank an unsound claim - it reads the same
+    `generator_defect_faults`, so the two cannot drift - so a bad field
+    mis-ranks nothing. What it does instead is leave the session that recorded
+    the defect believing it is now ranked above every band, with nothing in the
+    project ever saying otherwise. This is what says it.
+
+    Errors rather than advisories, because both halves are exact rules.
+    Whether a defect really impairs generator identification is judgment and is
+    checked nowhere; whether the field holds a reason rather than a boolean,
+    and whether the item's `touches` reaches a declared `generator_path`, are
+    decidable - which is what `CLAUDE.md` reserves hard failure for.
+    """
+    for item in report.items:
+        faults = generator_defect_faults(item, config.generator_paths)
+        if not faults:
+            continue
+        report.errors.append(
+            f"{_where(item)}: `impairs-generators:` {'; '.join(faults)}. `docket next` "
+            f"ranks a sound claim on the generator tier, above every band but P0, and "
+            f"ignores an unsound one, so this defect is recorded and unranked until the "
+            f"field is repaired"
+        )
+
+
 def _check_filenames(report: Report) -> None:
     """Report an item file whose name no longer matches the slug its title makes.
 
@@ -1959,6 +1995,7 @@ def analyze(
     for item in report.items:
         _check_item(item, report, settings)
     _check_references(report, milestones)
+    _check_generator_defects(report, settings)
     _check_feature_spellings(report)
     _check_filenames(report)
     _check_milestones(report, version)

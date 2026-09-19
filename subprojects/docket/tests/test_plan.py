@@ -32,6 +32,7 @@ def _item(
     classes: tuple[str, ...] = ("perf",),
     touches: tuple[str, ...] = ("a.py",),
     root_cause_of: tuple[str, ...] = (),
+    impairs_generators: str = "",
 ) -> Item:
     return Item(
         identifier=identifier,
@@ -50,6 +51,7 @@ def _item(
         reason="",
         body="**Problem.** x\n**Why it matters.** y\n**Done when.** z\n",
         root_cause_of=root_cause_of,
+        impairs_generators=impairs_generators,
     )
 
 
@@ -804,3 +806,131 @@ def test_an_ordinary_unplaced_item_still_says_it_ranks_on_its_band() -> None:
     )
 
     assert "ranks on its band alone" in pick.reason
+
+
+# --- the tier's other entrance: a defect in the machinery itself ------------
+
+MACHINERY = ("subprojects/docket/src/docket/plan.py",)
+IMPAIRS = "docket show prints no reverse edge, so a member cannot see its head"
+
+
+def test_a_generator_machinery_defect_ranks_with_a_generator() -> None:
+    """Project owner, 2026-09-19: the same priority as a generator, not below it.
+
+    Both entrances feed one rank term, so the two are genuinely on a tier and
+    the ordinary terms settle which comes first - here the band, since neither
+    is placed and neither is in an underway feature. A design ordering them
+    against each other would have been a sub-order nobody asked for.
+    """
+    picks = recommend(
+        [
+            _item("PL-9999", priority="P0"),
+            _item("PL-1111", priority="P1", classes=("safety",)),
+            _item("PL-5555", priority="P2", root_cause_of=GENERATOR),
+            _item("PL-7777", priority="P2", touches=MACHINERY, impairs_generators=IMPAIRS),
+            *_explained(),
+        ],
+        limit=4,
+        generator_paths=MACHINERY,
+    )
+
+    assert [p.item.identifier for p in picks][:3] == ["PL-9999", "PL-5555", "PL-7777"]
+    assert picks[3].item.identifier == "PL-1111"
+
+
+def test_a_machinery_defect_outranks_a_safety_classed_p1() -> None:
+    """The consequence the owner accepted for generators, inherited by the child rule."""
+    picks = recommend(
+        [
+            _item("PL-1111", priority="P1", classes=("safety",)),
+            _item("PL-7777", priority="P3", touches=MACHINERY, impairs_generators=IMPAIRS),
+        ],
+        limit=2,
+        generator_paths=MACHINERY,
+    )
+
+    assert [p.item.identifier for p in picks] == ["PL-7777", "PL-1111"]
+
+
+def test_a_claim_touching_none_of_the_machinery_ranks_on_its_band() -> None:
+    """The falsifier. `docket check` runs separately, so a false claim must not promote."""
+    picks = recommend(
+        [
+            _item("PL-1111", priority="P1"),
+            _item(
+                "PL-7777",
+                priority="P2",
+                touches=("src/anesthesia_sim/core/blood.py",),
+                impairs_generators=IMPAIRS,
+            ),
+        ],
+        limit=2,
+        generator_paths=MACHINERY,
+    )
+
+    assert [p.item.identifier for p in picks] == ["PL-1111", "PL-7777"]
+    assert not picks[1].impairs_generators
+
+
+def test_a_claim_is_unsound_where_the_project_declares_no_machinery() -> None:
+    """Fail closed, like `protected_paths` and `workflow_paths` before it.
+
+    With nothing declared, no item can be shown to touch the machinery, so
+    every claim is unsound. Defaulting the other way would hand the tier to
+    any project that never read the setting.
+    """
+    picks = recommend(
+        [
+            _item("PL-1111", priority="P1"),
+            _item("PL-7777", priority="P2", touches=MACHINERY, impairs_generators=IMPAIRS),
+        ],
+        limit=2,
+    )
+
+    assert [p.item.identifier for p in picks] == ["PL-1111", "PL-7777"]
+
+
+def test_the_reason_quotes_the_declared_prose_rather_than_asserting_the_promotion() -> None:
+    """The prose is the only evidence a reader has, so the line that acts on it shows it."""
+    (pick,) = recommend(
+        [_item("PL-7777", priority="P2", touches=MACHINERY, impairs_generators=IMPAIRS)],
+        limit=1,
+        generator_paths=MACHINERY,
+    )
+
+    assert "Ranked as a defect in the generator machinery" in pick.reason
+    assert "reverse edge" in pick.reason
+    assert "above every band but P0" in pick.reason
+    assert pick.impairs_generators
+    assert pick.generator == 0
+    assert "root cause of" not in pick.describe()
+    assert "defect in the generator machinery" in pick.describe()
+
+
+def test_an_unplaced_machinery_defect_does_not_claim_to_rank_on_its_band() -> None:
+    """Same falsehood the generator tail already refuses - it did not rank on its band."""
+    (pick,) = recommend(
+        [_item("PL-7777", priority="P2", touches=MACHINERY, impairs_generators=IMPAIRS)],
+        scope=_scope(current=("PL-1111",)),
+        limit=1,
+        generator_paths=MACHINERY,
+    )
+
+    assert "Placed by no section of" in pick.reason
+    assert "ranks on its band alone" not in pick.reason
+
+
+def test_the_plan_line_does_not_tell_a_tier_item_it_ranks_on_its_band() -> None:
+    """`docket show`'s header, which asserted this on every generator in the store.
+
+    `recommend` has refused the sentence since the tier existed, but that
+    wording only reaches a session that asked for a ranking. Naming an item
+    reaches `placement_line` instead - the path the project owner usually
+    starts work on.
+    """
+    unplaced = _scope(current=("PL-2222",))
+
+    assert "ranks on its band alone" in placement_line(unplaced, "PL-1111")
+    above = placement_line(unplaced, "PL-1111", ranks_above_bands=True)
+    assert "ranks on its band alone" not in above
+    assert "ranks above every band but P0" in above

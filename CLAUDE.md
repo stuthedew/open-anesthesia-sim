@@ -358,6 +358,19 @@ correction rather than handing the question back.
   below and holds for the same reason — an item alone changes nothing, and a
   weed left standing seeds. Identifying one is judgment and stays a session's;
   what follows from it is not.
+
+  **A defect in the machinery that finds and ranks generators ranks with one**
+  (project owner, 2026-09-19). Same tier, below `P0` and above every band,
+  because while identification is broken a generator is never recorded and an
+  unrecorded generator is ranked by nothing — and nothing in the store would
+  ever say one went unfound. Record it as `impairs-generators:` on an item
+  whose `touches` reaches `generator_paths`: prose naming the function that
+  broke, never `yes`, and `bin/docket check` refuses a claim on code the item
+  never goes near. **The two endings above bind it too** — fix it in this
+  session, or end the reply with a prompt starting a fresh one; filing it and
+  carrying on is not a third. Asked and answered against the recommendation to
+  confine them to a measured cluster, so reopening it needs a compelling
+  argument rather than ordinary evidence (`PL-4MPJ`).
 - **A behavior change takes effect in the session that asks for it.** When the
   owner asks for a change to how sessions work — these instructions,
   `docs/worker.md`, the `docket` skill — record it like any other finding and
@@ -412,7 +425,10 @@ correction rather than handing the question back.
   commits**, so a branch carrying only captured items is not a pull request; and
   where the **web harness says not to open one unless the owner explicitly
   asks**, this bullet is that ask, standing rather than per pull request, so a
-  session reading both proceeds rather than stalls. Then
+  session reading both proceeds rather than stalls. A session-level
+  auto-pull-request switch set *off* is that same case and not a third: it
+  stops the harness opening one unasked and does not withdraw this ask
+  (project owner, 2026-09-19). Then
   **read the published body back and compare it against what was sent**: the
   server rewrites bodies silently and still returns success, so an
   angle-bracket placeholder — `<branch>`, `<id>` — is taken for an HTML tag and

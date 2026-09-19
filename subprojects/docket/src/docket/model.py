@@ -257,6 +257,23 @@ class Item:
     #: `checks.py` and `plan.py` both read, so the checker and the ranking
     #: cannot disagree about what counts as a claim.
     root_cause_of: tuple[str, ...] = ()
+    #: Why this item is a defect in the machinery that identifies and ranks
+    #: generators - the sibling entrance to the tier `root_cause_of` opens.
+    #: A generator earns that tier because three items stand on it; a defect
+    #: in the machinery earns it one level up, because while identification is
+    #: broken a generator is not recorded, and an unrecorded generator is
+    #: ranked by nothing. The suppressed cost is invisible in a way the
+    #: generator's is not: nothing in a store says a generator went unfound
+    #: (project owner, 2026-09-19).
+    #:
+    #: Prose, never a boolean, for the reason `not_delegable` is prose: the
+    #: field lifts an item above every band but `P0`, so a reader is owed
+    #: which function is impaired rather than an unexplained promotion.
+    #:
+    #: Soundness lives in `generator_defect_faults`, read by both `checks.py`
+    #: and `plan.py`, so the checker and the ranking cannot disagree about
+    #: what a claim is - the same arrangement `root_cause_faults` already has.
+    impairs_generators: str = ""
     #: The item file's name inside the store directory - `PL-K7QX-do-it.md`,
     #: never `docs/items/PL-K7QX-do-it.md`. A repository path is that name
     #: joined to the store directory, which is what `verify.front_matter_check`
@@ -539,6 +556,73 @@ def generators_explaining(identifier: str, items: Collection[Item]) -> tuple[Ite
     )
 
 
+def generator_defect_faults(item: Item, generator_paths: tuple[str, ...]) -> tuple[str, ...]:
+    """Why an item's `impairs-generators:` is not a machinery claim, or `()`.
+
+    The second entrance to the generator tier, and it is built like the first.
+    `checks.py` turns each fault into an error; `plan.py` ranks a claim only
+    when this returns nothing. One predicate with two readers, so the checker
+    and the ranking cannot drift on a field whose whole purpose is to lift an
+    item above every band but `P0`.
+
+    **Why `touches` refutes a claim and cannot make one.** The machinery is a
+    few functions living inside files that do many other things. Measured
+    against this project's store on 2026-09-19, 36 of 322 open items declare
+    one of those files for unrelated reasons, so deriving the claim from the
+    path would promote 36 items and mean nothing - which is the objection
+    `tools/generator_check.py` already records against citation density at 33.
+    So the claim is the declaring session's judgment, recorded in prose, and
+    the path test is only the cheap falsifier: it rejects a claim on an item
+    that never goes near the machinery. Exactly the division
+    `root_cause_faults` draws with its three-item floor, which also refutes a
+    claim without ever establishing one.
+
+    An item carrying no field has made no claim and has no faults, which is
+    not the same answer as a sound claim; `impairs_generators_soundly` is
+    where the two are told apart.
+    """
+    if not item.impairs_generators:
+        return ()
+
+    faults: list[str] = []
+    if item.impairs_generators.strip().lower() in ("no", "yes", "true", "false"):
+        faults.append(
+            "holds the reason the machinery is impaired, not a boolean; write which "
+            "function of generator identification or ranking this defect breaks"
+        )
+    # Reported separately from the path test below, because an undeclared
+    # `generator_paths` is the project's omission and a `touches` that misses
+    # it is the item's. One repair is a config edit and the other is an item
+    # edit, and a single message would send a reader to the wrong file.
+    if not generator_paths:
+        faults.append(
+            "cannot be placed: this project declares no `generator_paths`, so no item "
+            "can be shown to touch the machinery and every such claim is unsound"
+        )
+    elif not item.touches:
+        faults.append(
+            "declares no `touches`, so nothing places the defect inside the machinery; "
+            "name the file the impaired function lives in"
+        )
+    elif not any(is_under(path, generator_paths) for path in item.touches):
+        faults.append(
+            f"declares {', '.join(item.touches)}, none of which is inside "
+            f"`generator_paths` ({', '.join(generator_paths)})"
+        )
+    return tuple(faults)
+
+
+def impairs_generators_soundly(item: Item, generator_paths: tuple[str, ...]) -> bool:
+    """Whether this item carries a sound claim to be a generator-machinery defect.
+
+    The second question `recommend` asks before lifting an item onto the
+    generator tier. Presence and soundness are one test here for the reason
+    they are one in `is_generator`: an unsound claim ranks as an ordinary
+    item, and `docket check` is what tells somebody it was unsound.
+    """
+    return bool(item.impairs_generators) and not generator_defect_faults(item, generator_paths)
+
+
 def is_under(path: str, roots: tuple[str, ...]) -> bool:
     """Whether one declared path falls inside any of `roots`.
 
@@ -593,6 +677,7 @@ def parse_item(text: str, path: str = "") -> Item:
         "not-delegable",
         "falsifies",
         "root-cause-of",
+        "impairs-generators",
     }
     return Item(
         identifier=fields.get("id", ""),
@@ -614,6 +699,7 @@ def parse_item(text: str, path: str = "") -> Item:
         not_delegable=fields.get("not-delegable", ""),
         falsifies=fields.get("falsifies", ""),
         root_cause_of=_split_list(fields.get("root-cause-of", "")),
+        impairs_generators=fields.get("impairs-generators", ""),
         body=body,
         path=path,
         unknown_fields=tuple(sorted(set(fields) - known)),
@@ -648,6 +734,7 @@ def render_item(item: Item) -> str:
         ("not-delegable", item.not_delegable),
         ("falsifies", item.falsifies),
         ("root-cause-of", ", ".join(item.root_cause_of)),
+        ("impairs-generators", item.impairs_generators),
     ):
         if value:
             lines.append(f"{name}: {value}")
