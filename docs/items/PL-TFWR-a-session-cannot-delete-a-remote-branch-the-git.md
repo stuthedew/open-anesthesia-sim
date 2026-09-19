@@ -1,14 +1,15 @@
 ---
 id: PL-TFWR
-title: "A session cannot delete a remote branch: the git proxy drops the deletion ref, so every branch cleanup has to be handed to the project owner"
+title: "A session cannot delete a remote branch: the push ends on Everything up-to-date having deleted nothing, so every branch cleanup has to be handed to the project owner"
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: infra, docs
 feature: dev-tooling
 touches: CLAUDE.md, .claude/skills/docket/SKILL.md
 added: 2026-09-04
-verify: python3 tools/doc_check.py check && grep -qF 'git push origin --delete' CLAUDE.md
+closed: 2026-09-19
+reason: Superseded by docs/worker.md's "Ref operations a session cannot perform", written under PL-4Q9B, which states both operations a session cannot perform in one place and carries this item's two distinctive points - re-read git ls-remote before reporting either done, and there is no second route. Its remaining deliverable was a CLAUDE.md line, deliberately not added: CLAUDE.md is resident in every session and the routing ladder puts a document that loads on demand above resident prose for a rule read when a procedure is composed.
 ---
 
 **Problem.** `git push origin --delete <branch>` and `git push origin :<branch>`
@@ -22,13 +23,19 @@ fatal: the remote end hung up unexpectedly
 Everything up-to-date
 ```
 
-Not a permissions problem — the same session had just pushed a branch and
-opened a pull request against the same remote — and not the proxy being
-unhealthy: `curl "$HTTPS_PROXY/__agentproxy/status"` reported `enabled: true`
-with an empty `recentRelayFailures`. The deletion ref appears to be dropped on
-the way through, after which git reports `Everything up-to-date` because there
-is nothing left in the push. The GitHub MCP server offers `create_branch` and
-`list_branches` but no branch deletion, so there is no second route either.
+The same session had just pushed a branch and opened a pull request against the
+same remote, and `curl "$HTTPS_PROXY/__agentproxy/status"` reported
+`enabled: true` with an empty `recentRelayFailures`. **Those are the
+observations; the mechanism this item originally inferred from them - that the
+deletion ref is dropped in transit, and that neither credentials nor the proxy
+are involved - is struck, 2026-09-19, under `PL-3V6C`.** An empty
+`recentRelayFailures` does not exonerate the proxy, because a request declined
+on policy is not a relay failure; and `PL-XQRK` measured the same operation the
+same day and recorded an HTTP 403, which cannot be true at the same time as a
+silent drop. What is established is the symptom in the transcript above: git
+reports `Everything up-to-date` and the branch is still there. The GitHub MCP
+server offers `create_branch` and `list_branches` but no branch deletion, so
+there is no second route either.
 
 **Why it matters.** Two of this repository's own workflows assume branches can
 be cleaned up. `CLAUDE.md`'s stale-ref rule prescribes `git branch -dr` for the
@@ -68,3 +75,17 @@ it gets when nothing happened.
 **Done when.** A session that needs a remote branch deleted knows it cannot do
 it, does not report success when the push silently no-ops, and hands the owner
 steps rather than intent.
+
+**Dropped 2026-09-19 under `PL-4Q9B`** (record clone trust and the permitted ref
+operations), as superseded rather than as wrong. See `reason:` above.
+
+**The cause this item asserts is not established, and the title carries it
+too.** Per `PL-3V6C`: "the deletion ref appears to be dropped on the way
+through" is an inference, not a measurement, and the empty
+`recentRelayFailures` offered against the proxy does not support it - a request
+declined on policy is not a relay failure, and `/root/.ccr/README.md` lists 403
+among the proxy's own outcomes. `PL-XQRK` measured the same operation the same
+day and recorded an HTTP 403 instead. At most one of the two is what this
+project meets, and nothing has established which. What this item measured and
+what is safe to carry forward is the *symptom*: the push ends on `Everything
+up-to-date` having deleted nothing. That is what `docs/worker.md` now says.

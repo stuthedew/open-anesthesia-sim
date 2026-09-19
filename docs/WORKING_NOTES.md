@@ -1783,6 +1783,29 @@ and still have nowhere for the diagnosis to live - which is the same failure the
 map itself names, one level up: the apparatus inferring a fact (which item heads
 this cluster) that it could have recorded.
 
+**First of the four resolved, 2026-09-19: `PL-4Q9B`, and it closed by
+dispersing rather than by building.** Worked as a head, the clone-trust cluster
+turned out not to be one mechanism. Its first question - whether one
+reconciliation point could stand for the clone against the remote - answers
+*no*: `vcs.fetch_remote` is the only place every command passes through, and
+neither of its omissions can be reversed there, since forcing tags moves local
+tags without asking on every invocation and pruning is refused outright. The
+four staleness conditions fire at four moments and want four cheap local fixes.
+Its second question - record the permitted ref operations - is now
+`docs/worker.md` § "Ref operations a session cannot perform", stating the
+symptom and whose the operation is and **naming no cause**, because `PL-3V6C`'s
+two measurements are mutually exclusive and neither is established.
+
+**The generalisable part, for the three heads still open.** A `root-cause-of:`
+field is a *hypothesis* that one mechanism explains its members, and working
+the head is what tests it. This one failed the test, and the failure was worth
+the pass: five members closed or dropped, two answered and moved to `ready`,
+and the four left standing are visibly independent rather than presumed
+related. So "the head did not survive contact" is a successful outcome for a
+generator, not a wasted one - what it must not do is close having built a
+central mechanism the members did not want. `PL-6TP8`, `PL-HWW1` and `PL-4FBP`
+should each expect the same question to be live.
+
 **One of the four heads split on 2026-09-19, and the reason generalizes.**
 `PL-HWW1` was filed holding eight members under one diagnosis - milestone
 membership is scraped rather than recorded. Measured against the code, three
