@@ -18,6 +18,12 @@ checked here, and never left to a session to remember:
   names a key that file actually holds, carrying the value the table states.
 - **Citations.** Every repository path and every section heading cited from
   a documentation file resolves to something that exists.
+- **Bound families.** Where a heading in `docs/MODEL.md` promises one
+  assertion per member - the hazard table's rows, and the annotated lists
+  that join it - every member names the entity it asserts, or declares in a
+  fixed form that it has none and names the open item that owes the link.
+  The convention is that document's own, in its section "How this document is
+  held to the tree"; this checks the half of it a script can decide.
 - **Release train.** Every row of `ROADMAP.md`'s timeline matches the step
   grammar, and the milestones, gates and step numbers run in order. The table
   is the project's only statement of which milestone is current and which is
@@ -1714,6 +1720,175 @@ def check_named_tests(root: Path, report: Report) -> None:
             )
 
 
+@dataclass(frozen=True)
+class EntityKind:
+    """What a bound family's members must name, and the two forms that do it."""
+
+    #: The word the document uses for the thing, in both the declared-none form
+    #: and the error text: "test", and later "field".
+    noun: str
+    #: Finds an entity the member names. Presence is all this asks: resolving
+    #: what it finds stays with the check that already does it -
+    #: `check_named_tests` for a test name - so this never becomes a second
+    #: resolver that could disagree with the first.
+    names: re.Pattern[str]
+    #: `docs/MODEL.md` clause 3's fixed form. The words in front of it are the
+    #: sentence's own; this parenthesis is what makes a declared absence
+    #: distinguishable from a forgotten link by a script rather than by a
+    #: reader.
+    declares_none: re.Pattern[str]
+
+
+def _entity_kind(noun: str, names: re.Pattern[str]) -> EntityKind:
+    """An `EntityKind` whose declared-none form is built from its own noun."""
+    return EntityKind(noun, names, re.compile(rf"\bno {noun} yet \(`(PL-[A-Z0-9]{{4}})`\)"))
+
+
+TEST_ENTITY = _entity_kind("test", NAMED_TEST_RE)
+
+
+@dataclass(frozen=True)
+class BoundFamily:
+    """A heading that promises one assertion per member, and what each owes.
+
+    `docs/MODEL.md` § "How this document is held to the tree" clause 2: where a
+    heading promises one assertion per member, every member names its entity or
+    carries the declared-none form. The table is what turns that sentence into
+    a decidable question, one family at a time.
+    """
+
+    document: Path
+    #: The section title, without its hashes, and the depth it sits at. A
+    #: renamed heading yields no members, which is an error rather than a pass;
+    #: see `check_bound_families`.
+    heading: str
+    level: int
+    kind: EntityKind
+    #: How the members are laid out under that heading. A callable rather than
+    #: a shape name, so that the list and subsection shapes arrive with the
+    #: annotation passes that need them and this file carries no branch nothing
+    #: takes.
+    members: Callable[[str, BoundFamily], Iterator[tuple[int, str]]]
+    #: What the heading promises, in the document's own words, so the error
+    #: reads as the document's requirement rather than as the tool's.
+    promise: str
+
+
+def _table_members(text: str, family: BoundFamily) -> Iterator[tuple[int, str]]:
+    """Each body row of the first table under the family's heading, as one line.
+
+    Cells are rejoined rather than read by position: which column carries the
+    entity is the family's business and can differ between them, and the
+    question here is only whether the row names one somewhere.
+    """
+    for line, cells in table_rows(text, family.heading, family.level):
+        yield line, " | ".join(cells)
+
+
+# Every family bound by clause 2 today. **One entry, and that is the design
+# rather than a start.** The check is introduced over the hazard table, which
+# conforms already, so it lands green; each annotation pass - `PL-8LDF` for the
+# required invariants, `PL-2M9N` for the required tests, `PL-036` for the
+# minimum displayed outputs - adds its family here as it lands, so the check
+# never holds `make check` red for work nobody has done yet.
+BOUND_FAMILIES = (
+    BoundFamily(
+        document=MODEL,
+        heading="Reasonably foreseeable misuse, and the hazards the presentation carries",
+        level=2,
+        kind=TEST_ENTITY,
+        members=_table_members,
+        promise="every row names the test that holds it, or says plainly that it has none",
+    ),
+)
+
+
+def check_bound_families(root: Path, report: Report) -> None:
+    """Hold every member of an enumerated family to naming what it asserts.
+
+    `check_named_tests` asks whether a name resolves. This asks the prior
+    question - whether the statement named anything at all - and it is the
+    question a specification written as prose cannot answer about itself. A
+    `must` with no link to what holds it reads exactly as it did when a test
+    held it, so the sentence decays silently, which is the shape `CLAUDE.md`
+    requires to be caught in code. Reading 38 of `docs/MODEL.md`'s invariants
+    and required tests against the suite by hand on 2026-09-19 found two held
+    only in part; nothing that runs had surfaced either (`PL-4FBP`).
+
+    **Only where the heading promises one assertion per member.** Free prose is
+    not read, by decision rather than by reach: the ratified convention leaves
+    an unmarked claim outside a family to the close-out sweep, so that a rule
+    with an escape nobody declares does not become a rule nobody follows. A
+    family is therefore added to `BOUND_FAMILIES` by the annotation pass that
+    makes it conform, never in anticipation of one.
+
+    **A family with no members is an error, not a pass.** A renamed heading or
+    a deleted table would otherwise retire the family silently while the entry
+    above still claims to hold it, which is the same silent decay one row down.
+
+    The declared-none form is resolved against the queue because an exemption
+    naming a closed item is a hole rather than a forward reference. What this
+    check cannot judge - whether the named test is any good, or tests the
+    sentence it sits under - stays a reviewer's question, exactly as it does
+    for `check_provenance` and `check_named_tests`.
+    """
+    items: Mapping[str, Item] | None = None
+    store_read = False
+    for family in BOUND_FAMILIES:
+        document = root / family.document
+        if not document.is_file():
+            report.declined.append(
+                f'{family.document} is absent, so § "{family.heading}" was not held to its members'
+            )
+            continue
+        members = list(family.members(document.read_text(encoding="utf-8"), family))
+        if not members:
+            report.errors.append(
+                f'{family.document}: § "{family.heading}" is a bound family and has no '
+                "members here; the heading has moved or its entries are gone, and the "
+                "family is unchecked either way"
+            )
+            continue
+        for line, member in members:
+            # Every finding names the family as well as the line, because one
+            # document holds several and a line number alone does not say which
+            # promise was broken.
+            where = f'{family.document}:{line}: § "{family.heading}"'
+            if family.kind.names.search(member):
+                continue
+            declared = family.kind.declares_none.search(member)
+            if declared is None:
+                report.errors.append(
+                    f"{where} promises that {family.promise}; this member names no "
+                    f"{family.kind.noun} and does not declare that it has none "
+                    f"(`no {family.kind.noun} yet (`PL-XXXX`)`, naming the open item that "
+                    "owes the link)"
+                )
+                continue
+            if not store_read:
+                items, store_read = _read_store(root), True
+            if items is None:
+                report.declined.append(
+                    f"{where} declares no {family.kind.noun} yet against "
+                    f"`{declared.group(1)}`, which no queue in this checkout can resolve"
+                )
+                continue
+            owed = items.get(declared.group(1))
+            if owed is None:
+                report.errors.append(
+                    f"{where} declares no {family.kind.noun} yet against "
+                    f"`{declared.group(1)}`, which the queue does not hold; a declared "
+                    "absence must forward-reference work that exists"
+                )
+            elif not owed.is_open:
+                report.errors.append(
+                    f"{where} declares no {family.kind.noun} yet against "
+                    f"`{declared.group(1)}`, which is {owed.status}; the link that item "
+                    f"forward-referenced is owed now, so the {family.kind.noun} goes here "
+                    "or another open item takes the debt"
+                )
+
+
 def check_scope_exclusions(root: Path, report: Report) -> None:
     """Keep a milestone's exclusions out of its `Required scope`.
 
@@ -3335,6 +3510,7 @@ def analyze(root: Path) -> Report:
     check_gate_counts(root, report)
     check_scope_exclusions(root, report)
     check_named_tests(root, report)
+    check_bound_families(root, report)
     check_gate_reentries(root, report)
     check_gate_dispositions(root, report)
     check_tags(root, report)
