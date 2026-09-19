@@ -31,7 +31,21 @@ note under "The documents".
 prerequisite. They were kept here under the project owner's personal access
 while the repository was private; that stopped being the situation when
 `PL-XYRN` opened the go-public gate, and the removal did not happen with it.
-`PL-SHG5` carries what went wrong, what was rewritten, and what remains.
+`PL-SHG5` carries what went wrong and what was rewritten.
+
+**That removal is not finished, and this is where its state is recorded.** The
+rewrite cleared `origin/main`, every branch and every tag, but GitHub's
+`refs/pull/*/head` are read-only to a repository owner and went on pointing at
+pre-rewrite commits. GitHub Support ticket 4733783, raised 2026-09-06, asks for
+those to be removed; Support replied on 2026-09-12 naming 90 pull requests and
+undertaking to delete their internal references. **Measured 2026-09-19, one
+remains.** A single pull head still serves both works, out of 631 pull refs on
+this repository — all 631 were checked, and no other carries either one. So
+both are still fetchable by anyone holding the commit hash, and the rewrite has
+narrowed the exposure rather than ended it. `PL-0SCG` names that ref, carries
+the command that re-measures it, and is where the closing date will be written.
+Until it closes, treat both works as still reachable from this public
+repository.
 
 Their entries stay below, without the files. The citations were always the
 part designed to survive such a removal, which is why they are recorded here
