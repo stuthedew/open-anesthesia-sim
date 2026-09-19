@@ -3,12 +3,13 @@ id: PL-JF5Z
 title: Recover PL-5QLP from origin/claude/tender-keller-omy3ec, which carries one capture commit and no pull request, so the only copy of the rename finding is on a ref a prune would take
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: slug-rename-on-write
-touches: docs/items
+touches: docs/items/
 added: 2026-09-19
-verify: test -n "$(ls docs/items/PL-5QLP-* 2>/dev/null)"
+closed: 2026-09-19
+verify: test -f docs/items/PL-5QLP-bin-docket-record-renames-an-item-file-whose.md
 ---
 
 **Problem.** Recover PL-5QLP from origin/claude/tender-keller-omy3ec, which carries one capture commit and no pull request, so the only copy of the rename finding is on a ref a prune would take
@@ -34,13 +35,11 @@ it. A `git fetch --prune` would take it, which is exactly the loss
 `.claude/hooks/no-prune-guard.sh` exists to prevent and exactly the loss a
 stranded ref keeps risking until somebody acts on it.
 
-**Done when.** `docs/items/PL-5QLP-…md` is on the default branch, committed on its
-own, and `bin/docket stranded` no longer names it. The remote branch deletions are
-the project owner's and are outside this item.
+**Recovered 2026-09-19.** `docs/items/PL-5QLP-bin-docket-record-renames-an-item-file-whose.md`
+was restored from `origin/claude/tender-goldberg-psn2x7`, which had itself
+recovered it off `origin/claude/tender-keller-omy3ec`, and committed on its own
+as `f8e9daf`. Both branches carry byte-identical copies, so whichever merges
+first the other adds nothing.
 
-**State at triage, 2026-09-19: a second ref now carries it.** `bin/docket stranded`
-names two - `origin/claude/tender-keller-omy3ec` and
-`origin/claude/tender-goldberg-psn2x7` - and the second was a session running
-during this pass. So the recovery may land without this item ever being worked.
-Whoever picks it up runs `bin/docket stranded` first: if the file has reached the
-default branch, this is `dropped` with that as its reason rather than work to do.
+Closed with the three items the recovered file unblocked: `PL-5QLP` itself,
+`PL-LBR6` (`record`) and `PL-QMC0` (`release`).

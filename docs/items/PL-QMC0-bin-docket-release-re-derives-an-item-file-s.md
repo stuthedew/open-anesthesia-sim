@@ -2,13 +2,14 @@
 id: PL-QMC0
 title: bin/docket release re-derives an item file's slug while stamping milestone:, so PL-5QLP's rename is not confined to bin/docket record: cutting v0.4.28 moved PL-XQRK's file and the fix has to cover every writer
 priority: P2
-effort: M
-status: blocked
-classes: defect
+effort: S
+status: done
+classes: defect, infra
 feature: slug-rename-on-write
-touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/store.py, docs/items
-blocked-by: PL-JF5Z
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
+closed: 2026-09-19
+verify: grep -q 'def test_a_cut_does_not_rename_the_files_it_stamps' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** bin/docket release re-derives an item file's slug while stamping milestone:, so PL-5QLP's rename is not confined to bin/docket record: cutting v0.4.28 moved PL-XQRK's file and the fix has to cover every writer
@@ -39,3 +40,22 @@ merge the tooling promises is not the merge git performs, and that reverting
 with `git checkout` leaves a duplicate-id error. A release cut is the write
 most likely to hit many items at once and the one least likely to be reviewed
 file by file, so it is where a silent rename does the most damage.
+
+**Fixed 2026-09-19, with `PL-LBR6`.** The stamp loop in `cmd_release` now
+calls `store.rewrite_item` rather than `store.write_item(replace=...)`, so a
+cut stamps `milestone:` without moving any file. This was the worse of the two
+cases as the brief says: `record` moves one file and a cut moves as many as it
+stamps, into the commit a release tag points at - `PL-XQRK` in the v0.4.28 cut
+is the observed instance.
+
+`test_a_cut_does_not_rename_the_files_it_stamps` pins it. It failed before the
+change; `_interrupt_after`, which stops the stamp loop part way to stand for a
+lost container, was retargeted to the same writer so the interrupted-cut tests
+still interrupt what the loop now calls.
+
+**The decision this item deferred to `PL-5QLP` was already taken.** Stop
+re-deriving the slug on write, rather than rename deliberately and stage both
+sides: `store.rewrite_item`'s docstring records it against `PL-LBR6` and
+`PL-YTDN`, and bringing a drifted name back into line stays its own pass
+(`PL-YTDN`, still open, 7 files). Nothing new was settled here - two callers
+were brought to a decision the store had already encoded.

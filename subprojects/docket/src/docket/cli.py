@@ -1479,8 +1479,11 @@ def cmd_release(args: argparse.Namespace) -> int:
         return 1
 
     for item in stamp(ready.shippable, name):
-        original = next(i for i in items if i.identifier == item.identifier)
-        write_item(directory, item, replace=directory / original.path)
+        # `milestone:` is a field write, so it keeps the file it found, exactly
+        # as `pr:` does. A cut stamps a whole batch at once, so one drifted name
+        # among them would put a rename nobody asked for into the commit the
+        # release tag points at (`PL-LBR6`).
+        rewrite_item(directory, item)
     previous = bump.write()
     notes_path = root / NOTES_DIR / notes_name(version)
     notes_path.parent.mkdir(parents=True, exist_ok=True)
@@ -2059,9 +2062,17 @@ def _record_owed(
 
 
 def _write_pr(directory: Path, item: Item, number: str, dry_run: bool) -> None:
-    """Set one item's `pr`, leaving every other field exactly as it was."""
+    """Set one item's `pr`, leaving every other field - and its filename - as it was.
+
+    `rewrite_item` rather than `write_item`, because the name is derived from
+    the title and this command was asked for a number. On a file whose slug has
+    drifted the two differ, and re-deriving it turns one added line into a
+    delete-plus-add: the skill grants `record` its standing exemption from the
+    in-flight guard on the grounds that two sessions running it write the same
+    line and git merges them, which a rename defeats (`PL-LBR6`, `PL-5QLP`).
+    """
     if not dry_run:
-        write_item(directory, with_fields(item, pr=number), replace=directory / item.path)
+        rewrite_item(directory, with_fields(item, pr=number))
 
 
 def build_parser() -> argparse.ArgumentParser:

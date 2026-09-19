@@ -10,6 +10,7 @@ milestone: v0.4.28
 touches: docs/items, ROADMAP.md
 added: 2026-09-19
 closed: 2026-09-19
+pr: 689
 verify: grep -qF 'Added 2026-09-19 under the unconditional safety/science exception' ROADMAP.md
 ---
 

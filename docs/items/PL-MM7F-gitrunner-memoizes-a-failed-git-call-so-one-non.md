@@ -10,6 +10,7 @@ milestone: v0.4.28
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_git_runner.py, subprojects/docket/tests/test_vcs_silence.py
 added: 2026-09-19
 closed: 2026-09-19
+pr: 694
 verify: grep -q 'def test_a_call_git_did_not_answer_is_put_to_git_again' subprojects/docket/tests/test_git_runner.py
 ---
 

@@ -8,6 +8,7 @@ classes: docs
 touches: CLAUDE.md
 added: 2026-09-19
 closed: 2026-09-19
+pr: 702
 verify: grep -q 'project owner, 2026-09-19, ratified, over treating the switch' CLAUDE.md
 ---
 

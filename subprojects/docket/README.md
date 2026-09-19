@@ -776,7 +776,10 @@ right.
 --classes defect --touches a.py --status ready --verify '...'` sets the named
 fields, renders the front matter in the order every tool-written file has, and
 keeps the file's name whatever the title now says — a rename arriving as a side
-effect of a field write conflicts against whoever else holds the file. It
+effect of a field write conflicts against whoever else holds the file. That is
+the rule for every field write rather than this command's own: `record`'s `pr:`
+and a cut's `milestone:` keep the name too, and bringing a drifted one back
+into line is its own pass (`PL-LBR6`, `PL-QMC0`). It
 refuses three things and adds no rule of its own: a flag it does not know,
 since a misspelled field is silently ignored by every reader of it (`--pr` is
 refused rather than read as `--priority`, so no abbreviation lands on the wrong

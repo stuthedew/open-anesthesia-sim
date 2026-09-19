@@ -3028,6 +3028,15 @@ change. `PL-ZG5J` would land a harness built on `flet.messaging.session.Session`
 for one milestone's use. Each is real and each gets a worse answer if it is
 hurried in front of the port.
 
+The port has since landed (`PL-25KS`, § "Completed: v0.4.26 — the interface
+moves to Qt"), so the ground above is spent rather than wrong: it records why
+these four were deferred on 2026-09-12, and whether each is startable now is
+the queue's answer rather than this section's. `PL-ZG5J` closed on 2026-09-19
+with a Qt harness under `tests/benchmarks/`, which is not the Flet one
+described above — the serializing connection that made the Flet method subtle
+is held in Qt by the paint, and the harness is written down rather than
+thrown away so the next session re-measures instead of re-deriving.
+
 **Two are decisions this gate should not force.** `PL-3JP0` and `PL-HKTB` both
 ask whether a piece of the interface should change or be recorded as
 deliberate, and `PL-L9RD` - the port's pass that makes the interface's visual
@@ -3357,6 +3366,17 @@ Required scope.
 
 The fifth non-apparatus item from that pass, `PL-DJYF`, is **admitted above**
 rather than declined, under the unconditional science exception.
+
+**One more, captured 2026-09-19 — `PL-ZMGR`** (a `needs-decision` item whose
+answer is "retire this" can never carry `falsifies:`, so every session-decided
+retirement rejects its own close-out). It sits exactly where the nine apparatus
+entries above do: found well after the 2026-09-06 freeze, `P2`, neither
+`safety` nor `science`, and apparatus held to
+`.claude/rules/apparatus-standard.md`'s deliberately lower bar. The mechanism it
+describes is itself post-freeze - `PL-7TYC` was still repairing the assertion
+check's matcher on 2026-09-17 - so the snapshot rule places it in the next gate
+on its own terms rather than by exception. The refilling-queue arithmetic above
+is unchanged and is still the reason.
 
 **Two more from the second 2026-09-13 triage pass**, which folded in the two
 the first pass had to defer plus six that merged in from other sessions while it
@@ -5268,12 +5288,42 @@ specified.
     `app/simulation_view.py`'s module-level constants, and the default
     values duplicated between `core/*.py` dataclasses and
     `app/controller.py`, into one settings module the panel can read from
-    and write to, rather than adding a fourth scattered location. This
-    panel must never expose the scientific parameters in `data/**/*.json`
-    (partition coefficients, tissue volumes, etc.) for editing — those stay
-    validated, versioned, and cited, changed only through deliberate
-    scientific review per `CLAUDE.md`'s safety-critical standard, not an ad
-    hoc settings screen.
+    and write to, rather than adding a fourth scattered location.
+
+    *What the panel must never make editable, and the test that decides it*
+    (`PL-QBX0`, 2026-09-19). This gate named `data/**/*.json` and nothing
+    else until then, which is one location rather than a criterion, and
+    the agent-identification colours and the contrast-checked palette both
+    sit outside it. **What decides is the guarantee a value carries, never the
+    file it happens to live in:** a constant whose value is held to a safety,
+    standards-conformance or accessibility guarantee by something outside the
+    panel is out of the panel's reach wherever it is declared. An enumeration
+    cannot carry that rule - this one has already been wrong once - so the
+    table below is the instances known on that date and the criterion governs
+    whatever is added after it.
+
+    | What | Where it is declared | What holds its value |
+    | --- | --- | --- |
+    | Scientific parameters - partition coefficients, tissue volumes, MAC | `data/**/*.json` | validated, versioned and cited; `tools/doc_check.py` walks the provenance both ways |
+    | The three ISO 5360:2016 agent-identification colours | `app/theme.py` | `tests/unit/test_theme.py` pins each fill to Table 2; `tools/agent_identity_check.py` keeps the pair as measured equal to the pair as rendered |
+    | Every colour `tools/contrast_check.py` measures - the six compartment traces at 3:1 against the panel under normal vision and three simulated dichromacies, and every text pair at WCAG 2.2 AA | `app/theme.py`, and any module under `app/` that declares its own | `tools/contrast_check.py`, which reads every module under `app/` with `ast` |
+    | The six compartment traces' dash patterns | `app/chart_frame.py` | nothing mechanical - a recorded judgment, which is exactly why it is listed |
+
+    Each stays changeable only through the review that set it - deliberate
+    scientific review per `CLAUDE.md`'s safety-critical standard for the first
+    row, and the recorded reasoning in `app/theme.py` and `docs/MODEL.md` for
+    the rest - never through an ad hoc settings screen.
+
+    The colours are in scope for the same reason the parameters are. ISO 5360
+    Table 2 footnote b makes displaying an agent colour an obligation to
+    display the *right* one, so a panel that let a reader recolour them would
+    let one agent be shown in another's identification colour, which is
+    `CLAUDE.md`'s "the correct number with the wrong label" exactly. The last
+    row is the one to read twice: colour cannot separate six traces at all -
+    the 3:1 floor caps every trace's luminance, so six of them cannot be more
+    than 1.48 apart, and `app/theme.py` records the search - so the dash
+    patterns are the separating channel, and they are the single entry here
+    that no check would defend if a panel flattened them.
 
 25. Add a playback speed multiplier, so a run can be advanced faster or slower
     than real time without changing the simulation's own time step. Kept
@@ -5339,12 +5389,81 @@ specified.
     and confusing them is a standard novice error. Needs per-compartment agent
     amounts exposed on the snapshot, which the core already computes and the
     snapshot does not yet carry.
-28. Add agent cost, from the exhausted-agent amount the model already tracks.
+28. Add agent cost, from the delivered-agent amount the model already tracks.
     The economic argument for low fresh gas flow is a standard teaching point
     and currently the one lesson in this class of simulator that the
     application has the numbers for and does not draw. Depends on nothing;
     kept out of the v0.4.0 scope because it is an addition rather than a
     prerequisite.
+
+    *That sentence read "the exhausted-agent amount" until 2026-09-19, and
+    that is the wrong quantity* (`PL-H4N8`).
+    `core/agent_simulation_validation.py` holds the accounting identity
+    `initial + delivered = exhausted + currently stored`, so with `initial` at
+    zero, delivered *is* the total and the exhausted/stored pair says only
+    where that agent is at this instant. Cost is what left the bottle, which
+    is what the vaporizer added: `delivered_agent_l`. `exhausted_agent_l` is
+    what has left the *circuit*, and understates delivered by exactly
+    `currently_stored_agent_l`. The two converge only at full washout - this
+    model has no metabolism and no chemical degradation, per `docs/MODEL.md`
+    § "Assumptions" - which is what makes the wrong basis read plausibly. The
+    Gas Man reference simulator bills delivered too (Workbook Appendix,
+    printed p. 174: `Cost = DELIVERED Flow x Cost/mL vapor`), and so does
+    this project's own `docs/MODEL.md`, whose "Known limitations" entry on
+    the 20 °C reference already calls the delivered total "the figure that
+    means cost". This sentence was the only document saying otherwise.
+
+    *What the wrong basis would have cost.* Measured 2026-09-19 on
+    `AgentUptakeSystem.default()` - reference adult, sevoflurane held at a
+    fixed 1 MAC dial, 0.1 s step - as the percentage by which exhausted sits
+    below delivered:
+
+    | fresh gas flow | 15 min | 30 min | 60 min |
+    | --- | --- | --- | --- |
+    | 1.0 L/min | 63.7% low | 53.8% low | 45.7% low |
+    | 4.0 L/min (the shipped default) | 28.6% low | 21.4% low | 16.9% low |
+    | 8.0 L/min | 16.2% low | 11.8% low | 9.1% low |
+
+    It is worst early, which is the phase the low-flow lesson is about, and
+    worst at *low* flow - so it distorts the comparison the lesson *is*,
+    rather than shifting both arms of it together. At a fixed dial delivered
+    is proportional to flow, so 1 against 8 L/min is exactly 8:1 at all three
+    times; on the exhausted basis the same pair reads 18.4:1, 15.3:1 and
+    13.4:1, overstating the saving by as much as 2.3x. A teaching display
+    that flatters its own lesson is worse than one that understates it.
+    `PL-H4N8` carries the method, and the caveat that a fixed dial is not the
+    equal-alveolar-concentration comparison a real low-flow protocol makes.
+
+    *A prerequisite of its own, and it is narrower than it first looks.*
+    `delivered_agent_l` is vapour litres and a bottle is liquid millilitres,
+    so a figure in money or in bottles needs a vapour-to-liquid ratio - and
+    that constant is already sourced and its reference condition already
+    decided. `docs/MODEL.md` § "Agent amount" carries Biro's 184 mL of vapour
+    per mL of liquid sevoflurane, reproduced to 182.8 mL from Laster, Fang
+    and Eger's 20 °C density and the exact molar mass, and records the
+    project owner's ratification of a 20 °C reference over 37 °C on
+    2026-09-17 - naming this item as the consumer (`PL-S6WW`, shipped in
+    v0.4.28). One litre of vapour is 5.47 mL of liquid sevoflurane here.
+
+    What is left is that those numbers live in prose. None of
+    `data/agents/sevoflurane.json`, `data/agents/isoflurane.json` or
+    `data/agents/desflurane.json` carries a density, a molar mass or the
+    ratio, so `CLAUDE.md`'s rule that model parameters live in validated,
+    versioned data files is unmet for them and `tools/doc_check.py`'s
+    provenance walk is structurally blind to a constant that never entered
+    one - the same gap `PL-4YY1` closed for the circuit's volume and flow.
+    That work is already filed as `PL-KZ99`, which stores each agent's molar
+    mass and liquid density *with the density's measurement temperature* so
+    the conversion is derived from Laster's primary measurement rather than
+    from Biro's composite constant; it was blocked on `PL-S6WW` and is
+    unblocked now that `PL-S6WW` has shipped. So this item's first step is
+    `PL-KZ99` rather than anything new, and `PL-B396` chooses what the
+    resulting figure looks like.
+
+    *The exhausted/stored split keeps its own labels.* It is the uptake curve
+    in mass form and is worth drawing; it is simply not the economics, and
+    nothing here may relabel either line as waste. `PL-B396` chooses that
+    display.
 
 29. Make `core/` read like the domain, as one deliberate pass over the whole
     package rather than opportunistically. `CLAUDE.md` sets the bar — a

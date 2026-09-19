@@ -10,6 +10,7 @@ milestone: v0.4.28
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-17
 closed: 2026-09-19
+pr: 698
 verify: grep -q 'def test_an_assertion_rewritten_in_place_is_not_reported_as_removed' subprojects/docket/tests/test_verify.py
 ---
 
