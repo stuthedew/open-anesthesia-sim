@@ -1,13 +1,15 @@
 ---
 id: PL-YMY7
 title: The uncovered lines in `simulation_view.py` are Flet-construction paths, not guards
-status: ready
 priority: P3
 effort: S
+status: dropped
 classes: test, docs
 feature: core-guard-coverage
 touches: docs/items/PL-7YZH-test-the-two-failure-paths-in-simulation-view.md
 added: 2026-08-25
+closed: 2026-09-19
+reason: Both premises false after the Qt port: simulation_view.py names Flet nowhere, and tests/integration/test_simulation_view.py builds a real QApplication under the offscreen platform, which is the live rendering harness the item said the project does not have (verified 2026-09-19).
 ---
 
 **Problem.** Thirteen uncovered statements in `app/simulation_view.py` (lines

@@ -3,13 +3,14 @@ id: PL-YNYK
 title: PL-6194's no-check decision rested on the prediction that a redundant-parenthesis check would fire once and never again, and the count falsifies it: the population in tests/ regenerated from 6 to 15 over the 11 days the item sat open, while src/ fell 40 to 35
 priority: P3
 effort: S
-status: needs-decision
+status: dropped
 classes: defect
 feature: dev-tooling
 touches: tools, .github
 added: 2026-09-14
+closed: 2026-09-19
+reason: Premise false at capture: the falsifying count the title asserts did not reproduce on the filing date - the item's own body records 0 in src and 0 in tests - and the pattern's population is 0 across src, tests, tools and subprojects today, across 140 commits (verified 2026-09-19).
 ---
-
 
 **Problem.** PL-6194's no-check decision rested on the prediction that a redundant-parenthesis check would fire once and never again, and the count falsifies it: the population in tests/ regenerated from 6 to 15 over the 11 days the item sat open, while src/ fell 40 to 35
 

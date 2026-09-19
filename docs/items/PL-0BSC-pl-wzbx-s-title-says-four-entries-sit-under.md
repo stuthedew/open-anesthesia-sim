@@ -3,11 +3,13 @@ id: PL-0BSC
 title: PL-WZBX's title says four entries sit under ROADMAP.md's 'Cleared by v0.5.0 itself', but only three of the eight are still open, so a reader sizing the correction from the title is off by one
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: docs
 feature: queue-hygiene
 touches: docs/items
 added: 2026-09-13
+closed: 2026-09-19
+reason: PL-WZBX closed 2026-09-14 in #560 and all eight entries under ROADMAP.md's 'Cleared by v0.5.0 itself' have since shipped, so the title this would correct is a closed item's historical record and no session can size a correction from it (verified 2026-09-19).
 verify: bin/docket check && ! grep -q 'wave counts the four entries' docs/items/PL-WZBX-*.md
 ---
 

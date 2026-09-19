@@ -3,11 +3,13 @@ id: PL-PQQ2
 title: PL-KBD0 is the workflow lane's top pick but all three live instances its brief names are now closed, and no open item at ready or needs-decision carries a blocked-by field
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect, docs
 feature: planning-cadence
 touches: docs/items/PL-KBD0-a-blocked-by-edge-with-no-status-blocked-is.md
 added: 2026-09-12
+closed: 2026-09-19
+reason: PL-KBD0 shipped 2026-09-13, the day after this was filed, with the general decision recorded in its own brief, so it can never again be offered as the workflow lane's top pick (verified 2026-09-19).
 verify: python3 tools/doc_check.py check && grep -qF 'PL-PQQ2' docs/items/PL-KBD0-a-blocked-by-edge-with-no-status-blocked-is.md
 ---
 

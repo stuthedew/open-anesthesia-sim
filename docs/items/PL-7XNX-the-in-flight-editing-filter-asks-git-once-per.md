@@ -1,14 +1,16 @@
 ---
 id: PL-7XNX
 title: The in-flight editing filter asks git once per edited item file, where one diff per ref would answer for all of them
-status: ready
 priority: P3
 effort: S
+status: dropped
 classes: perf
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
-verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_the_editing_filter_asks_git_once_per_ref' subprojects/docket/tests/test_vcs.py
 added: 2026-09-13
+closed: 2026-09-19
+reason: Done under PL-DMDF in #664 - vcs.py:2136 asks _superseded once per ref and test_superseded_is_asked_once_for_the_whole_outstanding_set pins the call count; this item's verify greps a test name that never landed, so it fails forever (verified 2026-09-19).
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_the_editing_filter_asks_git_once_per_ref' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** The in-flight editing filter asks git once per edited item file, where one diff per ref would answer for all of them
