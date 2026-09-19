@@ -1,8 +1,14 @@
 ---
 id: PL-MPWP
 title: Two Known-limitations notes in docs/MODEL.md name a per-compartment gas-phase model as the lift for the temperature and humidity simplifications, and ROADMAP.md's planned milestones track it nowhere
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: docs, planning
+touches: ROADMAP.md
 added: 2026-09-19
+closed: 2026-09-19
+verify: grep -qF 'Carry explicit gas-phase conditions per compartment' ROADMAP.md
 ---
 
 **Problem.** Two Known-limitations notes in docs/MODEL.md name a per-compartment gas-phase model as the lift for the temperature and humidity simplifications, and ROADMAP.md's planned milestones track it nowhere
