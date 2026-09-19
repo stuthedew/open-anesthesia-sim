@@ -3,12 +3,13 @@ id: PL-3V6C
 title: PL-TFWR and PL-XQRK record incompatible causes for the same remote-deletion failure and both ruled out the git proxy on a field that does not record policy denials, so whichever lands first writes an unproven cause into the instructions
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: dev-tooling
 touches: docs/items/PL-TFWR-a-session-cannot-delete-a-remote-branch-the-git.md, docs/items/PL-XQRK-a-session-cannot-delete-a-remote-branch-git.md
 added: 2026-09-12
 not-delegable: Establishing which cause is real means attempting a remote ref deletion from a live agent session and reading the proxy's own diagnostics at the moment it fails. Nothing in this tree can run that, and no command can prove the resulting sentence is true; what a reviewer can check is that neither brief asserts a cause the evidence does not carry.
+closed: 2026-09-19
 ---
 
 **Problem.** PL-TFWR and PL-XQRK record incompatible causes for the same remote-deletion failure and both ruled out the git proxy on a field that does not record policy denials, so whichever lands first writes an unproven cause into the instructions
@@ -50,3 +51,22 @@ this is that shape about to be written down.
 briefs describe the symptom they measured and stop short of naming a mechanism
 the evidence does not carry, and neither cites `recentRelayFailures` as proof
 that the proxy was not involved.
+
+**Done 2026-09-19 under `PL-4Q9B`** (record clone trust and the permitted ref
+operations), by the second of the two endings this item allows: neither cause
+is established, and both briefs now say so.
+
+`PL-TFWR` and `PL-XQRK` each carry a dated note striking the mechanism they
+asserted and keeping the symptom they measured, and neither now offers an empty
+`recentRelayFailures` as proof the proxy was uninvolved. The instruction that
+went on to be written - `docs/worker.md` § "Ref operations a session cannot
+perform" - states the symptom and whose the operation is, and names no cause at
+all; the paragraph closing it says why, so a later session does not read the
+silence as an oversight and fill it in.
+
+**What would settle it, for whoever is in a position to run it.** One remote ref
+deletion attempted from a live session, with `$HTTPS_PROXY/__agentproxy/status`
+read at the moment it fails, distinguishes the two: a policy denial is recorded
+there as a declined request rather than in `recentRelayFailures`, and a dropped
+transfer appears as a relay failure naming the host. It is destructive and
+outward-facing, so no session has run it unasked.

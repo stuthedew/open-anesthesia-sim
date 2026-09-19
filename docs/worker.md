@@ -194,6 +194,48 @@ from and how deeply you read. Read it before you write a citation into
 anything. It loads on its own for a session that opens `docs/MODEL.md` or a
 file under `src/anesthesia_sim/data/`, neither of which you may edit.
 
+## Ref operations a session cannot perform
+
+Two git operations fail from a session in this environment, and they fail in
+the worst available shape: exit status 0, with a last line that reads as
+success. This section records **what happens**, not why - see the last
+paragraph.
+
+| Operation | What a session sees | Whose it is |
+| --- | --- | --- |
+| Push a tag | `send-pack: unexpected disconnect`, then `Everything up-to-date` - and `git push --dry-run` reports `[new tag]` beforehand, so the obvious way to test the capability returns a false green | the project owner (`PL-N936`) |
+| Delete a remote branch | `Everything up-to-date` after a disconnect, or `HTTP 403` | the project owner (`PL-TFWR`, `PL-XQRK`) |
+
+So a session **cannot delete a remote branch**, and cannot push a tag. There is
+no second route: the GitHub MCP server offers `create_branch` and
+`list_branches` and no deletion tool.
+
+**The local halves do work, and the half that matters is still yours.**
+`git branch -dr origin/<branch>` clears this clone's remote-tracking ref
+without touching the remote. And the recovery that actually matters - reading
+what a branch uniquely carries and landing it on `main` - is a session's job,
+because a tracking ref can be the only surviving copy of a captured item
+(`bin/docket stranded` is what reads it). Only the deletion is withheld.
+
+**Never report one of these done without re-reading the remote.**
+`git ls-remote` is what answers; exit status 0 and `Everything up-to-date` are
+exactly what a session gets when nothing happened. Hand the owner the exact
+commands rather than the intent - a cleanup pass ends by handing over a list,
+not by reporting a job finished.
+
+**Why they fail is deliberately not stated here.** Two sessions measured the
+same branch deletion on 2026-09-04 and recorded mutually exclusive causes - a
+deletion ref dropped in transit, and an HTTP 403 from GitHub - and both offered
+an empty `recentRelayFailures` as proof the proxy was uninvolved. It is not
+proof: a request declined on policy is not a relay failure, and the container's
+own `/root/.ccr/README.md` lists 403 among the proxy's own outcomes. Settling it
+needs a live deletion attempt read against the proxy's diagnostics at the moment
+it fails, which is destructive and outward-facing, so no session has run it
+(`PL-3V6C`). A wrong cause here would be worse than none, because a session told
+"the proxy drops ref deletions" will generalise it and a session told "the token
+lacks the permission" will not think to retry anything. The table says what
+happens and stops.
+
 ## When something errors
 
 **What you decide for yourself**, above, is what you decide. This is what you

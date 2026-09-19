@@ -3,11 +3,13 @@ id: PL-F48B
 title: Nothing ever repairs a clone's tags after a history rewrite: fetch_remote runs git fetch without --tags --force, so release tags keep pointing at purged commits
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/vcs.py, .claude/hooks/docket-digest.sh
 added: 2026-09-06
+closed: 2026-09-19
+not-delegable: The deliverable this item's own "Done when" permits is a recorded decision not to automate, which no command can prove right. The measurement behind it is reproducible - every local tag reachable from origin/main, every tag object identical to the remote - but it describes the checkout a session happens to be in rather than the tree, so it cannot be pinned as a test.
 ---
 
 **Problem.** `vcs.fetch_remote` runs `git fetch --quiet origin`, which will not
@@ -50,3 +52,34 @@ is the other candidate, already running a conditional `--unshallow` once per
 container. Against both: a clone whose tags are stale produces no wrong answer,
 only holds bytes it should not, so the two prose lines `PL-YGF3` added may be
 the whole answer this deserves.
+
+**Closed 2026-09-19 under `PL-4Q9B`** (record clone trust and the permitted ref
+operations), by the second disposition this item's "Done when" offers: the
+decision not to refresh tags automatically, recorded with its reasoning (project owner, 2026-09-19, ratified),
+chosen over forcing tags in `vcs.fetch_remote` or in the session-start hook.
+
+**Measured 2026-09-19 in this container.** All 54 tags are reachable from
+`origin/main`, and every local tag object is byte-identical to the remote's. So
+the condition - a clone holding tags that point into purged history - is not
+present here, and nothing in the current tree is producing a wrong answer or
+holding bytes it should not.
+
+**Why not `fetch_remote`.** It is the one fetch every command runs, so forcing
+tags there moves a session's local tags without asking, on every invocation, to
+repair a condition that arises only after a history rewrite. That is a standing
+cost against a rare event, and it would also silently discard a tag a session
+created locally - which is how `PL-PNW6`'s warm-checkout case gets *worse*
+rather than better.
+
+**Why not the session-start hook either.** It is the better of the two - once
+per container, already running a conditional `--unshallow` - but it pays a
+network round-trip in every session for the same rare event, and the repair it
+would perform is one `bin/docket branch` already prints, at the only moment
+anybody is looking: on a branch whose history has been rewritten. A check that
+fires every run without changing a decision is what `CLAUDE.md` asks to be
+retired, not added.
+
+**What reopens this.** A second history rewrite, or any measurement showing a
+tag in a working checkout pointing outside `origin/main`'s history. The command
+is in the paragraph above and takes seconds; the two prose lines `PL-YGF3` added
+remain the remedy.

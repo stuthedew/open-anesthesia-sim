@@ -3,11 +3,12 @@ id: PL-LT77
 title: git fetch --tags does not prune, so a tag deleted on origin keeps failing doc_check in every checkout that already fetched it, and nothing distinguishes stale local state from a real repository fault
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: defect, infra
 feature: dev-tooling
 touches: tools/doc_check.py, .claude/hooks
 added: 2026-09-07
+verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_stale_local_tag_names_its_own_remedy' tests/unit/test_doc_check.py
 ---
 
 **Problem.** `doc_check`'s release-tag rule reads **local** tags. `git fetch
@@ -106,3 +107,25 @@ round-trip for a rare condition and silently discards a locally created tag; or
 stated offline property and the item rejects unless the other two fail. Answer
 this and the item is `ready`; a `verify:` command cannot be written before it,
 because each shape asserts something different.
+
+**Answered 2026-09-19 under `PL-4Q9B`** (record clone trust and the permitted ref
+operations): **shape 1, widen the error message** - this item's own
+recommendation (project owner, 2026-09-19, ratified), chosen over pruning tags in the session-start hook and
+over giving `doc_check` a network read.
+
+The reasoning is the one the item already made, and the head confirmed it
+generalises: there is no single point at which this checkout gets reconciled
+against the remote, so each staleness condition is repaired where it surfaces.
+This one surfaces in `doc_check`'s own output, which is where the reader is
+standing when they need to know.
+
+The message is at `tools/doc_check.py:2320`. It should name the possibility -
+that the tag may have been withdrawn on origin and survive locally - and the
+one command that clears it, `git tag -d v<version>` by name. Not
+`--prune-tags`, which implies `--prune` and is refused by
+`.claude/hooks/no-prune-guard.sh`, and not `--tags --force`, which updates a
+tag and cannot remove one the remote has dropped (`PL-KFWL` records both).
+
+**The `verify:` command was run 2026-09-19 and fails for the right reason**: the
+240-test `doc_check` suite passes and the `grep` half exits 1, so the pair exits
+1 today and the test it names is what the work owes.

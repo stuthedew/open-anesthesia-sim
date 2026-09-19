@@ -3,12 +3,14 @@ id: PL-4Q9B
 title: Ten items work around the clone being trusted as the remote and around an unrecorded set of permitted ref operations: record both
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect, infra
 feature: generator-heads
 touches: subprojects/docket/src/docket/vcs.py, .claude/skills/docket/SKILL.md, docs/worker.md, docs/items
 added: 2026-09-17
 root-cause-of: PL-LT77, PL-PNW6, PL-YKXQ, PL-90CJ, PL-KFWL, PL-TFWR, PL-XQRK, PL-3V6C, PL-G8TR, PL-F48B
+closed: 2026-09-19
+verify: python3 tools/doc_check.py check && grep -q 'Ref operations a session cannot perform' docs/worker.md
 ---
 
 **Problem.** Two facts nobody recorded, and ten open items between them. The
@@ -86,3 +88,62 @@ way to rank one: `root-cause-of:` on the item that causes the cluster, which
 `PL-L4YG`); this item was filed to record that this cluster had none. On
 2026-09-18 it became the head itself rather than a tracker of one, which is the
 cheaper of the two endings its own `Done when` offered.
+
+**Answered 2026-09-19, and the answer is that this cluster is not one mechanism.**
+The framing was dropped on the session's recommendation (project owner, 2026-09-19, ratified), chosen over
+building a central reconciliation point in `vcs.fetch_remote` and a single new
+permitted-set fact beside it.
+
+**Question 1 - is there one reconciliation point, and where? No, and the
+evidence is against building one.** The only place every command passes through
+is `vcs.fetch_remote`, which runs `git fetch --quiet origin`: no `--tags`, no
+`--prune`, both deliberate. Neither omission can be reversed there. Forcing
+tags on every command moves local tags without asking, which `PL-F48B` (repair
+tags after a history rewrite) already argued against and which is now closed on
+that reasoning; pruning branches is refused outright by
+`.claude/hooks/no-prune-guard.sh`, because a stale `origin/<branch>` can be the
+only surviving copy of a captured item. What is left are four unrelated
+staleness conditions that fire at four different moments and want four cheap
+local fixes - the session-start hook for a diverged branch ref (`PL-YKXQ`),
+`doc_check`'s own message for a tag withdrawn on origin (`PL-LT77`), the
+release handover for a re-used version number (`PL-PNW6`), and the existing
+rewrite-recovery prose for tags after a force-push (`PL-F48B`). A single
+reconciler would have to be all four and is permitted to be none of them.
+
+**Measured 2026-09-19, which is what closed `PL-F48B`:** all 54 tags in this checkout
+are reachable from `origin/main`, and every local tag object is byte-identical
+to the remote's. The condition that item was filed against is not present here,
+and the recovery prose `bin/docket branch` prints fires exactly where it is.
+
+**Question 2 - record the permitted set.** Done, in `docs/worker.md`
+§ "Ref operations a session cannot perform": a two-row table of what a session
+cannot do (push a tag, delete a remote branch), what it sees when it tries,
+and whose the operation is. Placed there rather than in `CLAUDE.md` because the
+routing ladder puts a document that loads on demand below a check and above
+resident prose, and this is read at the moment a cleanup or a release handover
+is being composed rather than before a first write.
+
+**The cause is deliberately absent from it, and that is the load-bearing
+part.** `PL-3V6C` is right that the two measurements are mutually exclusive and
+that neither exonerates the proxy. Settling it needs a live remote deletion read
+against the proxy's diagnostics as it fails - destructive and outward-facing, so
+this session did not run it. The block says what happens and stops.
+
+**A guard hook was considered and refused.** `no-prune-guard.sh` shows the
+shape, and intercepting a tag push or a remote deletion would convert a silent
+no-op into an explicit refusal at the moment of the attempt. Against it: the
+operation already fails, so the guard buys information rather than safety;
+`CLAUDE.md`'s gate for a new mechanism is that it will genuinely run again, and
+a session attempts these rarely; and it would block the one experiment that
+settles `PL-3V6C`. Prose was the right tier here.
+
+**The ten members, re-pointed.** Closed with this: `PL-XQRK` (the worker.md
+line - this block is it), `PL-3V6C` (both briefs corrected), `PL-F48B` (no
+automation, on the measurement above). Dropped: `PL-TFWR`, superseded by the
+same block. Answered and moved to `ready` with a command that was run:
+`PL-LT77`, `PL-PNW6`. Left standing as ordinary items on their own merits, none
+of them blocked on this: `PL-YKXQ`, `PL-90CJ`, `PL-G8TR`, `PL-KFWL`.
+
+**What falsifies the "no central point" answer.** A fifth staleness condition
+arriving that the four local fixes cannot each absorb, or a change making
+`fetch_remote` safe to force tags in - neither of which is on the roadmap.

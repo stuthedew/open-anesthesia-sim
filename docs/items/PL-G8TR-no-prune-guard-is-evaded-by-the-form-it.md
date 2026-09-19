@@ -53,3 +53,8 @@ recovery recipe in `.claude/skills/docket/SKILL.md` that prints
 from a pipe, or which names several refs at once, is refused with the same
 message as `--prune` - while a single named ref typed by a session still
 passes, so the documented remedy keeps working.
+
+**Left standing 2026-09-19 by `PL-4Q9B`** (record clone trust and the permitted ref
+operations), which closed with the finding that its ten members are not one
+mechanism. It is an independent apparatus defect with a test behind it, and the strongest of the ten: the guard's whitelisted remedy reaches the same end state as the flag it refuses. Unrelated to clone staleness. Nothing here is blocked on that head; this item stands on
+its own merits at its own band.

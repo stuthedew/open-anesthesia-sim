@@ -34,3 +34,8 @@ answers, and `PL-WW08` records the diagnosis.
 **Done when.** The behaviour is reported to the container's maintainers with the
 reproduction, and `docs/maintainer.md` records that it was - so a later session
 neither re-reports it nor assumes it was done.
+
+**Left standing 2026-09-19 by `PL-4Q9B`** (record clone trust and the permitted ref
+operations), which closed with the finding that its ten members are not one
+mechanism. It was only ever a loose member: the stop hook's false unpushed-work demand is a different mechanism from the clone's staleness, and the deliverable is a report to the container's maintainers plus a line in `docs/maintainer.md`. Nothing here is blocked on that head; this item stands on
+its own merits at its own band.

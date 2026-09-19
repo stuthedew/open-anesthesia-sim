@@ -3,11 +3,12 @@ id: PL-PNW6
 title: A release cut at a version number some withdrawn tag once named leaves every warm checkout pointing v<version> at the old commit, and the handover's own 'git fetch origin main' is the command that leaves it stale silently
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: defect, infra
 feature: release-process
 touches: .claude/skills/docket/SKILL.md, subprojects/docket/src/docket/release.py
 added: 2026-09-07
+verify: python3 tools/doc_check.py check && grep -qF 'a version number a tag has previously named' .claude/skills/docket/SKILL.md
 ---
 
 **Problem.** A release cut at a version number some withdrawn tag once named leaves every warm checkout pointing v<version> at the old commit, and the handover's own 'git fetch origin main' is the command that leaves it stale silently
@@ -114,3 +115,29 @@ it deterministic at the cost of teaching the release tool about tag history it
 does not read today. Answer this and the item is `ready`; a `verify:` command
 cannot be written before it, because the two shapes put the change in different
 files.
+
+**Answered 2026-09-19 under `PL-4Q9B`** (record clone trust and the permitted ref
+operations): **option 1, the cutting session writes the extra commands into the
+handover it already produces** (project owner, 2026-09-19, ratified), chosen over teaching
+`bin/docket release` to record the re-use and generate them.
+
+Two reasons, and the second is the one that decided it. The cutting session is
+the only party that knows the number was previously tagged, and it is already
+composing the handover by hand. And `bin/docket release` would have to read tag
+*history* - what a number once pointed at and no longer does - which is not
+recoverable from the remote at all once the tag is withdrawn: the evidence has
+been deleted. A deterministic mechanism that cannot see its own input is worse
+than the prose, because it would report "no re-use" with authority.
+
+So the work is in `.claude/skills/docket/SKILL.md`, Mode: ship a release: where
+the number being cut is one a tag has previously named, the handover carries
+the local delete before the tag, and says why. The sequence is already verified
+in this item's own brief.
+
+**The acute instance is gone, which narrows this to the general case.** v0.4.8
+was re-cut for real: the remote and this checkout both hold it at `93f1902`,
+`ROADMAP.md` has its row, and `doc_check` is green. What remains is the next
+re-used number, not this one.
+
+**The `verify:` command was run 2026-09-19 and fails for the right reason**:
+`doc_check` passes and the `grep` half exits 1.
