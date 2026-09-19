@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: platform-palette
+milestone: v0.4.28
 touches: src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/run_view.py, tools/contrast_check.py, tests/integration/test_qt_widgets.py, tests/integration/test_simulation_view.py, tests/unit/test_contrast_check.py, .claude/rules/ui-color.md
 added: 2026-09-17
 closed: 2026-09-17

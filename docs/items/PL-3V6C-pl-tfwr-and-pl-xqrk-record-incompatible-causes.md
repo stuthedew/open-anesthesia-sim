@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: dev-tooling
+milestone: v0.4.28
 touches: docs/items/PL-TFWR-a-session-cannot-delete-a-remote-branch-the-git.md, docs/items/PL-XQRK-a-session-cannot-delete-a-remote-branch-git.md
 added: 2026-09-12
 closed: 2026-09-19

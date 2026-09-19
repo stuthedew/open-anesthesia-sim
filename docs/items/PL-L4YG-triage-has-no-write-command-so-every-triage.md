@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: dev-tooling
+milestone: v0.4.28
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/store.py
 added: 2026-09-02
 closed: 2026-09-19

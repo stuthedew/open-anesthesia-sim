@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: queue-hygiene
+milestone: v0.4.28
 touches: docs/items, .claude/skills/docket/SKILL.md, ROADMAP.md
 added: 2026-09-12
 closed: 2026-09-17

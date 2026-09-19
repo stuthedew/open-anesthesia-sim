@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs, infra
 feature: generator-heads
+milestone: v0.4.28
 touches: tools/doc_check.py, docs/MODEL.md, docs/items
 added: 2026-09-17
 closed: 2026-09-19

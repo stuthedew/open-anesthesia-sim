@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning
 feature: queue-hygiene
+milestone: v0.4.28
 touches: docs/items, ROADMAP.md
 added: 2026-09-19
 closed: 2026-09-19

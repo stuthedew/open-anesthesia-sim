@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: verify-replay-cost
+milestone: v0.4.28
 touches: docs/items
 added: 2026-09-19
 closed: 2026-09-19

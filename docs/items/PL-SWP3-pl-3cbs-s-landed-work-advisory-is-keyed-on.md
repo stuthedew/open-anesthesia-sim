@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: queue-hygiene
+milestone: v0.4.28
 touches: subprojects/docket
 added: 2026-09-17
 closed: 2026-09-17

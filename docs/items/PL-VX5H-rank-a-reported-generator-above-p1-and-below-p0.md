@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: convergence-visibility
+milestone: v0.4.28
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_plan.py, subprojects/docket/README.md, tools/generator_check.py, tests/unit/test_generator_check.py, docs/ARCHITECTURE.md, docs/items, .claude/skills/docket/SKILL.md, docs/WORKING_NOTES.md
 added: 2026-09-17
 closed: 2026-09-17

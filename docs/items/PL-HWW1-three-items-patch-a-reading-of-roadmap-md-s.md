@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: generator-heads
+milestone: v0.4.28
 touches: subprojects/docket/src/docket/roadmap.py, tools/doc_check.py, ROADMAP.md, docs/items
 added: 2026-09-17
 closed: 2026-09-19

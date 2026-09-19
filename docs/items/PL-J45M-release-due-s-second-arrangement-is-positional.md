@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: timeline-arrangement
+milestone: v0.4.28
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 added: 2026-09-14
 closed: 2026-09-19

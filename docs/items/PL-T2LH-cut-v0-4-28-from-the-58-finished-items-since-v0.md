@@ -3,11 +3,12 @@ id: PL-T2LH
 title: Cut v0.4.28 from the 58 finished items since v0.4.27: a patch on the v0.4.x track carrying one Gate 1 entry and v0.5.0's seventh early-shipped scope item, with v0.5.0 through v0.9.0 reserved
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning, docs
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items/
 added: 2026-09-19
+closed: 2026-09-19
 verify: grep -q '^## Current baseline: v0.4.28' ROADMAP.md
 ---
 
@@ -73,8 +74,8 @@ itself records what shipped and is unchanged, as `PL-8PSW`'s was.
 `origin` at `381d770`, so the refusal-on-untagged-predecessor does not bind,
 and v0.5.0's implementation is still behind four open gate entries. Leaving 58
 items untagged across that span means `git describe --contains` resolves
-nothing over the largest block of work the project has accumulated between two
-tags — and the block includes `docs/MODEL.md` gaining 314 lines of
+nothing over 58 items - second only to v0.4.26's 94 among the releases that
+record a count — and the block includes `docs/MODEL.md` gaining 314 lines of
 reference-condition specification, which is exactly the kind of change a later
 reader needs to be able to date.
 
@@ -98,6 +99,5 @@ appearance could not read the Start, Pause and Reset labels at all, and until
 of two drawn runs it came from — the correct number with the wrong patient
 context. The tag is what lets a later session say which tree first had them,
 and which tree first carried `docs/MODEL.md`'s reference conditions
-(`PL-S6WW`); at 58 items this is the largest block the project has left
-untagged, and an untagged span cannot be repaired with confidence once the
+(`PL-S6WW`); an untagged span cannot be repaired with confidence once the
 history moves on.
