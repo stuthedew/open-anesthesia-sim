@@ -57,7 +57,7 @@ round rather than a patch.
 half is either narrowed on a rule that cannot swallow `# type: ignore` or
 recorded as undecidable with the reason.
 
-**A second item for this defect was captured independently, 17 minutes later.**
+**A second item for this defect was captured independently, three minutes later.**
 `PL-BHBZ` - "bin/docket verify's suppression check reads every added line
 regardless of file type, so prose naming xfail in ROADMAP.md or a release note
 REJECTs a correct close-out" - was filed on 2026-09-19 by the session cutting
@@ -78,5 +78,6 @@ two.
 
 **It is also a live instance of `PL-TZ7T`**, the item this same triage pass
 seated: `bin/docket new` files a duplicate title without noticing. Two sessions
-running concurrently filed one defect twice inside twenty minutes, which is the
+running concurrently filed one defect twice inside four minutes - this pass's
+triage commit at 19:39:47 UTC, `PL-BHBZ`'s capture at 19:43:03 - which is the
 third recorded occurrence after `PL-LBR6`/`PL-5QLP`/`PL-QMC0`.
