@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: infra
+milestone: v0.4.30
 touches: docs/items, ROADMAP.md
 added: 2026-09-19
 closed: 2026-09-19

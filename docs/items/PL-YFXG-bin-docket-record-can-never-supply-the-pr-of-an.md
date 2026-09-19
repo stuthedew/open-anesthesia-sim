@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: commit-provenance
+milestone: v0.4.30
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-19
 closed: 2026-09-19

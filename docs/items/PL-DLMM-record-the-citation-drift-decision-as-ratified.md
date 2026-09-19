@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: docs
 feature: generator-heads
+milestone: v0.4.30
 touches: .claude/rules/citation-drift.md, docs/items
 added: 2026-09-19
 closed: 2026-09-19
+pr: 727
 verify: grep -qF '(project owner, 2026-09-19, ratified, over extending the' .claude/rules/citation-drift.md
 ---
 
