@@ -3,11 +3,12 @@ id: PL-2BZY
 title: branches_in_flight keeps one ref per id before the taken-on-base guard runs, so a spent claim on a bystander branch drops a live one: PL-HWW1 and PL-6TP8 read startable while keen-cannon and eager-brown carry them
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: carrier-collapse
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, ROADMAP.md
 added: 2026-09-19
+closed: 2026-09-19
 verify: grep -q 'def test_a_spent_claim_on_a_bystander_branch_does_not_drop_a_live_one' subprojects/docket/tests/test_vcs.py
 ---
 

@@ -2855,7 +2855,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 173 entries
+### Declined to Gate 2 on the refilling-queue ground — 174 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3748,6 +3748,24 @@ call failed, nothing can tell a failure from an empty answer worth caching. Its
 sibling `PL-73P0` (`default_base` falls back to a guessed `"main"`) is
 untriaged and so is not debt by the rule above; it reaches this gate only if a
 triage pass classes it, which is the next gate's question.
+
+**One from `PL-VYSP`'s design round** (`PL-2BZY`, 2026-09-19). That round found
+that `branches_in_flight` kept one ref per id before `_taken_on_base` judged
+the claim, so a bystander branch whose pull request had squash-merged deleted
+the id from the report's do-not-start line and took two live design rounds'
+claims with it: `PL-HWW1` and `PL-6TP8` read startable while `keen-cannon` and
+`eager-brown` carried them. It is declined on this subsection's own
+refilling-queue ground - captured after this freeze, `defect` rather than
+`safety` or `science`, wholly in the workflow lane, and completing no entry on
+the frozen list. `PL-LKFP`, which added the guard it defeats, was itself
+captured after the freeze and is closed, so nothing here is left half-done by
+declining this.
+
+Its two siblings are the same collapse in front of the other two per-ref tests
+in that function - `PL-RY2R` (`walk.edited` before `_superseded`) and `PL-61MD`
+(`own_edits` before `_superseded` and the `needs-decision` promotion). Both are
+untriaged and so are not debt by the rule above; they reach this gate only if a
+triage pass classes them, which is the next gate's question.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
