@@ -1,8 +1,14 @@
 ---
 id: PL-Z6M3
 title: bin/docket stranded prints 'No item exists only on a branch' while an item sits on two branches and not on main, because the predicate is 'neither the store nor the default branch' and the rendered sentence drops the store half
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
+feature: rendered-claim-accuracy
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
+verify: grep -q 'def test_stranded_states_both_halves_of_its_predicate' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** bin/docket stranded prints 'No item exists only on a branch' while an item sits on two branches and not on main, because the predicate is 'neither the store nor the default branch' and the rendered sentence drops the store half
@@ -33,7 +39,7 @@ predicate as a one-part claim. The digest's own wording gets it right - "Only on
 a branch, not in this checkout" - so the accurate phrasing already exists in the
 tree.
 
-**Why it is not cosmetic.** The silence is self-inflicted and arrives at the
+**Why it matters, and why it is not cosmetic.** The silence is self-inflicted and arrives at the
 worst moment. A session that recovers a stranded item is, by construction, the
 session whose checkout now holds it - so from that moment the command tells that
 session the hole is closed while the item is still absent from `main`. If the
@@ -62,3 +68,10 @@ unmerged recovery looks like.
 
 **Where.** `subprojects/docket/src/docket/render.py:484`, and the finding-case
 heading above it. No change to `vcs.stranded`.
+
+**Done when.** `bin/docket stranded` states both halves of its predicate in the
+no-finding case as well as the finding case - naming the count it suppressed
+because this checkout's own store holds those items, or saying in the sentence
+that the claim is bounded by the store as well as by what was fetched - and a
+test under `subprojects/docket/tests/test_cli.py` drives an item present on a
+branch and in the store but absent from the default branch.

@@ -1,9 +1,14 @@
 ---
 id: PL-K1WS
 title: verify's 'no existing assertion removed' check never asks whether a replacement exists, so any function-signature change REJECTs for every call site it updates in place
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
 feature: verify-assertion-check
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-17
+verify: grep -q 'def test_an_assertion_rewritten_in_place_is_not_reported_as_removed' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** verify's 'no existing assertion removed' check never asks whether a replacement exists, so any function-signature change REJECTs for every call site it updates in place
@@ -36,6 +41,21 @@ hover naming no run on a two-run chart, silently. That is the failure `PL-MN4J`
 exists to remove, and `CLAUDE.md`'s safety-critical standard refuses a default
 that could produce a plausible but incorrect clinical value. The check should
 learn the pattern rather than the code avoiding a required parameter.
+
+**Why it matters.** The four integrity checks are the part of `verify --self` a
+session may not relax, so a `REJECT` from one is meant to stop the close-out.
+This one fires on a diff that removed no coverage, and it fires once per call
+site, so the correct response to it is to read eleven lines and talk past the
+check - which is exactly how a session is trained to skim the block where a real
+removal would be printed. It also has no honest clearing route: both exemptions
+are read from the base's copy of the item, correctly, so the only way past it
+today is the project owner reading the diff.
+
+**Done when.** A removed `assert` line whose normalised form appears among the
+diff's added lines is not reported as an assertion removed, a genuinely removed
+assertion still is, and `subprojects/docket/tests/test_verify.py` drives both
+directions - including the signature-change shape that `PL-MN4J` hit, where the
+replacement differs only by an appended argument.
 
 **A third mode of the same defect.** `PL-L40Z` is the check reading Markdown
 prose containing the word "assert"; `PL-QJQL` is it failing to see

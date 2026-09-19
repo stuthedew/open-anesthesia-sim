@@ -1,8 +1,14 @@
 ---
 id: PL-D7T9
 title: docket SKILL.md § 'Mode: freeze a milestone's debt gate' says 'v0.4.26 and v0.6.0 are both in that state' of the freeze-on-ship exception, but v0.4.26 shipped 2026-09-17 and ROADMAP's own cadence says it took no gate by a different exception, so a session reading it is told to wait for a freeze that is neither pending nor v0.4.26's
-status: untriaged
+priority: P3
+effort: S
+status: dropped
+classes: docs
+touches: .claude/skills/docket/SKILL.md
 added: 2026-09-17
+closed: 2026-09-19
+reason: Duplicate of PL-CPLX, which is ready and carries both halves of this finding already: the same sentence at .claude/skills/docket/SKILL.md, the same v0.4.26 staleness, and the same ROADMAP.md 'took no gate by its own exception' reading that this item raised as a second, independent fault. PL-CPLX also already records the verify: command that proves it - ! grep -qF 'v0.4.26 and v0.6.0 are both in that state'. Two sessions found the same stale example on 2026-09-17, one during the PL-06YW cut and one during the PL-TM9J close-out. Kept rather than deleted so the finding is not raised a third time; the sequencing note against PL-KKRP, which asks whether the exception's trigger should be reworded at all, is the one thing here PL-CPLX does not say, and it changes no work since PL-CPLX's fix does not touch the trigger.
 ---
 
 **Problem.** docket SKILL.md § 'Mode: freeze a milestone's debt gate' says 'v0.4.26 and v0.6.0 are both in that state' of the freeze-on-ship exception, but v0.4.26 shipped 2026-09-17 and ROADMAP's own cadence says it took no gate by a different exception, so a session reading it is told to wait for a freeze that is neither pending nor v0.4.26's

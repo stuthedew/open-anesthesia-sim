@@ -1,8 +1,12 @@
 ---
 id: PL-TKFD
 title: A session that discovers mid-work that its work falsifies an assertion cannot declare falsifies: on the base, so verify --self has no clean route for the case the field was built for
-status: untriaged
+priority: P3
+effort: M
+status: needs-decision
+classes: infra
 feature: verify-close-out
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-17
 ---
 
@@ -76,3 +80,11 @@ That is one instance and a count, not the two or three this item asked to wait
 for. It is recorded here rather than as a fifth item in `verify-close-out`
 because it is evidence for the decision this item already poses, not a second
 question.
+
+**Done when.** The decision above is recorded - in this item, in
+`.claude/skills/docket/SKILL.md`, or in `subprojects/docket/README.md`'s account
+of what `falsifies:` is for - and either a route exists for a session that
+discovers the falsification mid-work and for an item filed and closed on one
+branch, with a test under `subprojects/docket/tests/test_verify.py` driving it,
+or the reasoning for leaving the `REJECT` to carry the conversation is written
+where the next session meeting one will read it.
