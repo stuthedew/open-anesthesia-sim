@@ -146,6 +146,129 @@ def is_assertion_line(path: str, line: str) -> bool:
     return bool(ASSERTION_RE.search(line))
 
 
+#: How a line breaks into the pieces the comparison below aligns. Strings and
+#: numbers stay whole, so that a changed literal is a changed *token* rather
+#: than a run of characters that happens to differ; every other non-space
+#: character is a token of its own. That is all the resolution needed here,
+#: and it keeps a second idea of Python's grammar from growing in this file.
+TOKEN_RE = re.compile(
+    r'"""(?:[^"\\]|\\.|"(?!""))*"""'  # a triple-quoted span opening and closing on one line
+    r"|'''(?:[^'\\]|\\.|'(?!''))*'''"
+    r'|"(?:[^"\\\n]|\\.)*"'
+    r"|'(?:[^'\\\n]|\\.)*'"
+    r"|[A-Za-z_][A-Za-z0-9_]*"  # a name, which is also the `f` of an f-string
+    r"|\d[\d_]*\.?[\d_]*(?:[eE][-+]?\d+)?"  # a number, kept whole
+    r"|\S"
+)
+
+OPENERS, CLOSERS = "([{", ")]}"
+
+
+def tokens_at_depth(line: str) -> list[tuple[str, int]]:
+    """Each token of `line`, with the bracket depth it sits at.
+
+    Unbalanced by construction: these are single lines out of a diff, so a
+    wrapped statement arrives carrying its opening bracket and not its close.
+    Depth relative to the start of the line is the right frame anyway - what
+    the comparison asks is whether an inserted token sits inside a bracket,
+    and a bracket this line opened is one of those.
+    """
+    depth = 0
+    out: list[tuple[str, int]] = []
+    for match in TOKEN_RE.finditer(line):
+        text = match.group(0)
+        if text in CLOSERS:
+            depth = max(0, depth - 1)
+        out.append((text, depth))
+        if text in OPENERS:
+            depth += 1
+    return out
+
+
+def _inserts_into(old: Sequence[str], new: Sequence[tuple[str, int]]) -> bool:
+    """Whether `new` is `old` with tokens inserted, all of them inside a bracket.
+
+    Every token of the original survives, in order, and everything added sits
+    at depth 1 or deeper - which is to say inside an argument list, a
+    subscript, or a literal the line already had. `f(a, b)` to `f(a, b, c)`
+    passes. `approx(2.05)` to `approx(1.05)` does not, because `2.05` is gone.
+    `x == 1` to `x == 1 or True` does not, because `or True` is at depth 0.
+
+    Every alignment is carried rather than the leftmost one, which a greedy
+    scan cannot do and which is not a refinement: `f(a, index)` to `f(a,
+    index, len(runs))` ends in two closing brackets, and a greedy walk spends
+    the original's own `)` on the inner one, then meets the outer at depth 0
+    and refuses. That is 3 of the 11 lines this exists for, so the set of
+    surviving positions is the cheapest implementation that answers the
+    question asked rather than a nearby one.
+    """
+    if not old:
+        return False
+    reached = {0}
+    for text, depth in new:
+        moved = {index + 1 for index in reached if index < len(old) and old[index] == text}
+        if depth >= 1:
+            moved |= reached
+        if not moved:
+            return False
+        reached = moved
+    return len(old) in reached
+
+
+def replacements(removed: Sequence[tuple[str, str]], added: Sequence[tuple[str, str]]) -> list[str]:
+    """For each removed line, the added line that replaced it in place, or "".
+
+    A required parameter added to a function updates every call site that
+    passes it inside an `assert`. Nothing is weakened and nothing is deleted,
+    but each rewritten line reaches `no existing assertion removed` as a
+    removal, because `_net_line_changes` folds only lines that cancel
+    *exactly*. `PL-MN4J` hit this eleven times on one close-out - eleven lines
+    to read past on a green diff, which is how a session learns to skim the
+    block where a real weakening would print (`PL-K1WS`).
+
+    **Not the wider normalisation `PL-K1WS` proposed**, which was to erase
+    argument lists and compare what is left. Measured over 907 commits, that
+    folds 180 of the 1,715 removed assertions and the pairs are not
+    replacements: it reads `format_trace_hover(run, MIXED_VENOUS,
+    0).splitlines()[1]` as replaced by `format_trace_hover(first, ALVEOLAR, 0,
+    1).splitlines()[0]`, and `state_at(case_s - fork_s)` as replaced by
+    `state_at(case_s)`. Arguments are what one assertion differs from another
+    by, so erasing them erases the comparison, and what is left matches the
+    first line of similar shape rather than the rewrite. Requiring every
+    original token to survive folds 57, and pairs each of those two removals
+    with its own rewrite.
+
+    **Nor the tighter rule in the other direction**, which would refuse an
+    inserted *literal* on the argument that a changed constant is a changed
+    expectation. It folds 33 - but only 3 of the 11 lines this exists for,
+    whose inserted argument is the literal `1`. It was measured and rejected
+    rather than assumed.
+
+    **The number that decides it**: of the 57, **none** is an assertion that
+    left the suite, which is what this check is for. Five change what the line
+    asserts - a comprehension gaining an `if`, an expected `2` becoming `2 *
+    len(RULE_LINE)`, `vacuous=()` becoming `vacuous=("PL-K7QX",)`, and one
+    `pytest.raises` gaining a `match=` that tightens it. That residual is why
+    a fold here is not a deletion: the pair is **printed** beside its
+    replacement and only the refusal is withdrawn, so a reader sees all five
+    rather than being told none.
+
+    Per file, never across, on the same reasoning as the exact fold above it.
+    """
+    by_file: dict[str, list[tuple[str, list[tuple[str, int]]]]] = {}
+    for where, line in added:
+        by_file.setdefault(where, []).append((line.strip(), tokens_at_depth(line)))
+    found: list[str] = []
+    for where, line in removed:
+        old = [text for text, _ in tokens_at_depth(line)]
+        found.append(
+            next(
+                (text for text, tokens in by_file.get(where, ()) if _inserts_into(old, tokens)), ""
+            )
+        )
+    return found
+
+
 RESIDUAL = (
     "Not proven: whether a new test asserts the value the model should produce "
     "or merely the value it currently produces. A test can exercise the right "
@@ -1150,23 +1273,38 @@ def verify_item(
     # the four settled by looking at the line rather than at the item
     # (`PL-7TYC`).
     #
-    # The removal stays on the page either way: what changes is that it reads
-    # as a commissioned act rather than an unexplained one, which is the
-    # property the check was defending.
-    removed_assertions = [line.strip() for where, line in removed if is_assertion_line(where, line)]
+    # And a fifth is the second case again, at the resolution the exact fold
+    # gave up: an assertion *edited in place* - a call site updated to a new
+    # signature - whose replacement is in the same diff and differs by an
+    # argument. `replacements` pairs the two (`PL-K1WS`).
+    #
+    # The removal stays on the page in every one of them: what changes is that
+    # it reads as a commissioned or an answered act rather than an unexplained
+    # one, which is the property the check was defending.
+    removed_assertions = [pair for pair in removed if is_assertion_line(*pair)]
     declared, unread = commissioned_falsification(root, base, config.items_dir, item)
-    folded = [line for line in removed_assertions if declared and declared in line]
-    dropped = [line for line in removed_assertions if not (declared and declared in line)]
+    folded = [line.strip() for _, line in removed_assertions if declared and declared in line]
+    rest = [pair for pair in removed_assertions if not (declared and declared in pair[1])]
+    paired = list(zip(rest, replacements(rest, added), strict=True))
+    replaced = [(line.strip(), hit) for (_, line), hit in paired if hit]
+    dropped = [line.strip() for (_, line), hit in paired if not hit]
     detail = f"{len(dropped)} line(s)" if dropped else "none"
     if folded:
         detail += f", {len(folded)} declared falsified"
+    if replaced:
+        detail += f", {len(replaced)} replaced in place"
     report.checks.append(
         Check(
             "no existing assertion removed",
             not dropped,
             detail,
             tuple(dropped[:5])
-            + tuple(f"declared falsified, not counted: {line}" for line in folded[:5]),
+            + tuple(f"declared falsified, not counted: {line}" for line in folded[:5])
+            + tuple(
+                text
+                for was, now in replaced[:3]
+                for text in (f"replaced, not counted: {was}", f"                   by: {now}")
+            ),
         )
     )
 

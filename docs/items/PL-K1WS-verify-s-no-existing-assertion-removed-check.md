@@ -3,11 +3,12 @@ id: PL-K1WS
 title: verify's 'no existing assertion removed' check never asks whether a replacement exists, so any function-signature change REJECTs for every call site it updates in place
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: verify-assertion-check
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-17
+closed: 2026-09-19
 verify: grep -q 'def test_an_assertion_rewritten_in_place_is_not_reported_as_removed' subprojects/docket/tests/test_verify.py
 ---
 

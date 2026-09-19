@@ -2262,6 +2262,17 @@ the code that looks for assertions. The check still errs toward reporting where 
 is the direction that is safe; what it no longer does is refuse a correct
 close-out for rewording its own item's brief (`PL-7TYC`).
 
+Nor does it refuse a call site updated to a new signature. A removed assertion
+is paired with an added line in the same file that is it with tokens inserted,
+all of them inside a bracket: `f(a, b)` to `f(a, b, c)` is a replacement, where
+`approx(2.05)` to `approx(1.05)` is not - the literal is gone - and neither is
+`x == 1` to `x == 1 or True`, appended outside every bracket. Measured over 907
+commits it folds 57 of 1,715 removed assertions, and **none of the 57 is an
+assertion that left the suite**. Five of them do change what the line asserts -
+including a `with pytest.raises(...)` gaining a `match=`, which `PL-QJQL` made
+visible here - so a pair is printed beside its replacement rather than dropped:
+what is withdrawn is the refusal and not the report (`PL-K1WS`).
+
 Two of the four take a **declared** exemption, which is what lets them stay
 absolute rather than a softening of them. Both were checks a correct close-out
 could trip with no passing route at all, leaving a session to game the fold or
