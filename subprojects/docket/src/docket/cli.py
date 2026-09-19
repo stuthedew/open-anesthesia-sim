@@ -29,7 +29,16 @@ from .concurrency import (
 )
 from .config import CONFIG_NAME, Config
 from .config import load as load_config
-from .model import EFFORTS, LANE_CROSSING, LIST_FIELDS, PRIORITIES, SELECTABLE_LANES, STATUSES, Item
+from .model import (
+    EFFORTS,
+    LANE_CROSSING,
+    LIST_FIELDS,
+    PRIORITIES,
+    SELECTABLE_LANES,
+    STATUSES,
+    Item,
+    generators_explaining,
+)
 from .plan import OfferedReport, features, gate, placement_line, recommend, set_aside
 from .release import (
     NOTES_DIR,
@@ -839,6 +848,15 @@ def cmd_show(args: argparse.Namespace) -> int:
     where more than one branch is carrying the item it also says which of them
     continues - the one question every other guard in this package leaves
     open (queue item PL-YHD3).
+
+    **A fourth thing a session cannot learn from the item's own file: that
+    something above it explains it.** `root-cause-of:` is written on the head,
+    so a member carries no trace of the generator that names it and this
+    command printed none. It is the same failure as the marks above - the item
+    read alone looks startable - and it prints in the same place, under the
+    plan line rather than beside the branch marks, because it is a fact about
+    where the item sits in the queue rather than about who is working it
+    (`PL-C97K`).
     """
     _, items, config = _load(args)
     item = find_item(items, args.item)
@@ -857,6 +875,8 @@ def cmd_show(args: argparse.Namespace) -> int:
     placement = placement_line(plan.scope if plan is not None else None, item.identifier)
     if placement:
         print(f"  plan: {placement}")
+    if heads := generators_explaining(item.identifier, items):
+        print(render.format_generators(heads))
     if item.identifier in flight.ids:
         # The whole precedence read only where something is actually carrying
         # the item, which is the rare case. A session starting ordinary work
