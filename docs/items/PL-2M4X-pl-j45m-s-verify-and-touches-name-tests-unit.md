@@ -84,11 +84,16 @@ for the right reason; and the `! grep` half is left exactly as written, it being
 what keeps the item from reading as closeable while `_release_due`'s positional
 classifier stands.
 
-**Dropped 2026-09-19.** `PL-J45M` closed under `PL-2T03` with its `verify:` as
-written - the command was run and watched fail and then pass, and its
-`! grep` half is what proved the workaround gone. A closed item's `verify:` is
-a record of what was run, not a description of what runs today, and `docket
-check` errors on rewriting one; `touches` on a closed item commissions nobody.
-So the correction this asked for has nothing left to apply to. The class it
-belongs to - the same wrong path in four other open items - is `PL-6YL1`'s,
-which is unaffected.
+**Re-pointed by `PL-6TP8`, 2026-09-19.** The `touches` correction stands under
+either answer to `PL-6TP8`'s shape half: `PL-J45M` declares `roadmap.py`,
+`release.py` and `subprojects/docket/tests/test_release.py`. The pytest half is
+the contract's second obligation failing - a clause proving a different tree's
+health - and it is replaced by the release suite if the field keeps
+prerequisite clauses, or removed if it does not, leaving the `! grep` that is
+the specification.
+
+**Decided 2026-09-19, later the same day.** The shape half was ratified: the
+pytest half of `PL-J45M`'s command is removed rather than replaced, leaving
+the `! grep` that is the specification, and the `touches` correction stands.
+This item's own `verify:` still pins `test_release.py` as a `verify:` target,
+which that shape does not produce, so rewrite it first when starting this.

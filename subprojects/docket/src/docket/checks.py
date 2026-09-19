@@ -430,15 +430,16 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
         )
     # An advisory rather than an error, unlike the refusal above: whether a
     # shell line reads a command's output is a judgment, and the exit-status
-    # form beside it is the shape this project recommends.
+    # form beside it is bounded at one level; since `PL-6TP8` the `grep` is
+    # written alone, with no health check ahead of it.
     if item.verify and (shape := reads_check_output(item.verify)):
         report.advisories.append(
             f"{_where(item)}: its `verify:` command runs `docket check` and {shape}. "
             "A nested run is told not to replay the open items' commands, so it never "
             "prints the landed advisory - a `grep` for that answer matches nothing "
             "whether the work is done or not, and an inverted one passes on the "
-            "strength of it. Read the exit status instead, paired with a `grep` for "
-            "what the work adds."
+            "strength of it. Write a `grep` for what the work adds instead, with "
+            "nothing ahead of it."
         )
     # `verify` folds every removed assertion containing this substring, so a
     # fragment short enough to appear in assertions it was never about folds
@@ -767,6 +768,11 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
     case that made it necessary: without a status of its own a killed command
     returned 1, which is what a failing test returns, so the item vanished
     from every finding while the report stayed clean.
+
+    This is the replay's clause of the `verify:` contract (`PL-6TP8`,
+    `subprojects/docket/README.md` § "What a `verify:` exit status proves, and to whom"): exit 0
+    is the finding, the never-evaluated statuses are refusals, and a plain
+    failure is not read as evidence that the item is open.
     """
     if landed is None:  # a caller that did not ask; every command but `check`
         return
@@ -888,6 +894,10 @@ def _check_selects_nothing(
     A declined run says so once, in `_check_landed`: it is one execution of
     one set of commands, and two lines reporting the same refusal would read
     as two checks having failed to run.
+
+    Pytest's 5 is one of the three never-evaluated statuses the `verify:`
+    contract lets a consumer name (`PL-6TP8`); `_check_landed` reports the
+    other two as not checked.
     """
     if landed is None or not landed.known or not landed.vacuous:
         return

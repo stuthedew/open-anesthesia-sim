@@ -48,3 +48,9 @@ spends the signal that would have caught a genuine unclosed closure. It lands on
 the no-op `import_boundary_check.py` clause dropped where it proves nothing -
 and `bin/docket check --verify` reports no open item whose command already
 passes.
+
+**Re-pointed by `PL-6TP8`, 2026-09-19.** This is the contract's first
+obligation on a command - it goes green only for what *this* item's work
+creates - and the work is as briefed whichever way `PL-6TP8`'s shape half is
+answered: each of the four names a clause only its own work satisfies, and the
+no-op `import_boundary_check.py` clause goes.

@@ -656,7 +656,15 @@ def format_flight(report: FlightReport, today: date) -> str:
             "the age is what separates them."
         )
     else:
-        lines.append("No branch carries an item id, in its name or at the front of a commit.")
+        # Stated as the conclusion rather than as a fact about subjects
+        # (`PL-VYSP`): a capture leads with an id and claims nothing, and a
+        # claim the base has since taken or closed is removed above, so "no
+        # commit leads with an id" was false whenever either existed.
+        lines.append(
+            "No branch claims an item. No branch carries an item id in its name, and no "
+            "commit subject claims one that the default branch has not already taken or "
+            "closed."
+        )
 
     if report.unattributed:
         lines.append("")

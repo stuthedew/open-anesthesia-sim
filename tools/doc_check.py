@@ -1661,7 +1661,7 @@ def check_named_tests(root: Path, report: Report) -> None:
     silent-wrong-answer shape `CLAUDE.md` asks to be caught in code. The hazard
     table's right-hand column is the reason this was built (`PL-FDBK`), and it
     is the cheap half of `PL-8LDF`, which keeps the annotation pass over the
-    eighteen required invariants.
+    required invariants.
 
     **Scoped to `docs/MODEL.md`, and the exclusion is the point rather than
     laziness.** Measured 2026-09-13 across every markdown file in the tree: 161

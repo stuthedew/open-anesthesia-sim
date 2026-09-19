@@ -135,6 +135,17 @@ NO_TESTS_COLLECTED = 5
 # found nothing" that the rest of this module exists to refuse (`PL-T940`).
 TIMED_OUT = 1000
 
+# What an exit status may be read to mean is one contract, written where the
+# field is documented - `subprojects/docket/README.md` § "What a `verify:` exit status proves, and
+# to whom" (`PL-6TP8`) - and every reader of a status in this module and in
+# `checks.py` names the clause it applies. In short: 0 says the command's
+# assertion holds, and says nothing about the work being right; any other
+# status says the assertion did not hold *or was never evaluated*, and only
+# three never-evaluated cases are decidable from the run - `TIMED_OUT`, 127,
+# and `NO_TESTS_COLLECTED` above. A red prerequisite clause is not one of them
+# (`a && b` exits 1 either way), and work finished under a different name from
+# the one a `grep` pins is not decidable by anything that reads a status.
+
 # Matched as text because the command is a shell line, not a parsed argv:
 # `pytest`, `uv run pytest`, `python -m pytest` and a compound command whose
 # last clause is one of those all reach here as a string. Word-bounded so that
@@ -220,9 +231,9 @@ def reenters_verify(command: str) -> bool:
 
     `docket check` is deliberately not matched, and the asymmetry is the whole
     of the rule. It executes a `verify:` only under `--verify`, and a nested run
-    is told not to ask, so `bin/docket check && grep -q ...` - the paired shape
-    this project recommends, and what ten open items record - is bounded at one
-    level and proves what it claims.
+    is told not to ask, so `bin/docket check && grep -q ...` - the shape the
+    older commands record, before `PL-6TP8` retired the clause ahead of the
+    `grep` - is bounded at one level and proves what it claims.
     """
     return bool(DOCKET_VERIFY_RE.search(_outside_quotes(command)))
 
@@ -929,6 +940,15 @@ def verify_item(
     non-delegable, "because `docket verify` fails any diff that edits the
     checks, so offering the work would mean refusing it once done". That is a
     defect absorbed into policy, and this is the repair.
+
+    What this reads from the item's own command (`PL-6TP8`): exit 0 is the
+    commission's assertion holding, and every other status is a `REJECT` with
+    the reason on the line where the run can name it - re-entered `docket
+    verify`, selected no test, killed at the limit, or the command's own last
+    lines. Unlike `already_passing` this may not decline: the command is the
+    thing being asked about, so "could not run it" rejects the work rather than
+    abstaining. What exit 0 does not prove is that the work is right;
+    `project_check` and the reviewer's reading of the diff carry that.
     """
     report = Verification(item=item, base=base, base_note=base_note)
     commits = item_commits(root, base, item.identifier)
@@ -1581,6 +1601,14 @@ def already_passing(
     (`PL-VG7G`). The session that writes such a command is the only one placed
     to reconsider it and was the one session told nothing, so a command far
     enough above the typical one is named with what it cost.
+
+    What this reads from a status, and what it does not (`PL-6TP8`): exit 0 is
+    the finding; `TIMED_OUT`, 127 and pytest's 5 are refusals, reported per
+    item; and every other non-zero exit is read as nothing at all - not as
+    "the item is legitimately open", which a red prerequisite clause makes
+    indistinguishable from it. So `considered` counts a command as checked for
+    the one direction this can answer, and a plain failure appears in no
+    finding by design rather than by omission.
     """
     # Built before the guard returns, so a declined run still says what it
     # would have covered. "Nothing was checked" and "nothing was checked, and

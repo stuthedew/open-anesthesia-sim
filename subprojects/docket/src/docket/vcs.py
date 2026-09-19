@@ -597,6 +597,19 @@ class _Walk:
     #: where the edit is still unmerged, which `branches_in_flight` tests
     #: against the base rather than taking on trust (`PL-8MJ3`).
     edited: dict[str, tuple[str, str]]
+    #: Per ref and item id, the newest queue-only commit that both led with the
+    #: id and changed that id's own file, with the item paths it changed - a
+    #: commit *about* an item that wrote *into* it. That is what a decision
+    #: recorded into the item it decides looks like, and also what a capture
+    #: and a note written into a brief look like; the walk cannot tell them
+    #: apart and does not try. `branches_in_flight` and `precedence` read the
+    #: item's status off the base and the commit's parent to decide
+    #: (`PL-VYSP`). Never populated for a commit that reached past the queue,
+    #: whose claim `ids` already carries.
+    own_edits: dict[tuple[str, str], tuple[str, tuple[str, ...]]]
+    #: The earliest such commit per ref and id, dated the way `staked` dates a
+    #: claim, so that two design rounds on one item can be ordered.
+    own_staked: dict[tuple[str, str], Stake]
     staked: dict[tuple[str, str], Stake]
     opened: dict[str, Stake]
     unbounded: set[str]
@@ -655,6 +668,18 @@ def _annotates_only(paths: list[str], prefix: str) -> bool:
     the queue", which is a fact about the commit, and the promotion answers
     "does this item live in the queue", which is a fact about the item. Reading
     them in one place is what made the two path-level refinements fail.
+
+    **The other half is an item at `needs-decision`, recovered the same way**
+    (`PL-VYSP`). Its next step is a decision, and a decision is recorded into
+    the item file - so a design round may never produce a diff outside the
+    queue at all, and this test withheld its claim for the whole life of the
+    work. `bin/docket show PL-BHVM` called that item startable on 2026-09-19
+    while a live session held it with three `PL-BHVM` commits pushed; the mark
+    appeared only when the round happened to edit `ROADMAP.md`. `_unmerged_commits`
+    records the shape - a queue-only commit leading with an id and changing
+    that id's own file - and `branches_in_flight` promotes it where the base's
+    copy of the item is at `needs-decision`. Again nothing changes here, and
+    for the same reason: the status is a fact about the item.
 
     What is left is a session filling in the `touches` of an item whose work is
     elsewhere, which stays unmarked until its first commit outside the queue -
@@ -801,7 +826,7 @@ def _unmerged_commits(
     it apart from the stronger one for exactly that reason.
     """
     if not refs:
-        return _Walk({}, {}, set(), {}, {}, {}, set())
+        return _Walk({}, {}, set(), {}, {}, {}, {}, {}, set())
     # `--name-only` rather than a `git show --stat` per commit, and that is the
     # whole reason the diff can be read at all here. This walk is on the hot
     # path of `next`, `list`, `triage`, `status` and the session-start digest,
@@ -820,6 +845,8 @@ def _unmerged_commits(
     ids: dict[str, str] = {}
     named: set[str] = set()
     edited: dict[str, tuple[str, str]] = {}
+    own_edits: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {}
+    own_staked: dict[tuple[str, str], Stake] = {}
     staked: dict[tuple[str, str], Stake] = {}
     opened: dict[str, Stake] = {}
     unbounded: set[str] = set()
@@ -828,7 +855,7 @@ def _unmerged_commits(
     # be judged until the next commit begins or the output ends. Only the id
     # half is held back: the dates and the parentless-commit guard are
     # properties of the commit itself and are read where they are parsed.
-    pending: tuple[str, Stake | None, str] | None = None
+    pending: tuple[str, Stake | None, str, str] | None = None
     paths: list[str] = []
 
     # Candidate order is what settles a commit two refs share, since `--source`
@@ -844,11 +871,13 @@ def _unmerged_commits(
         """Credit the held commit's leading ids, unless its diff only annotates."""
         if pending is None:
             return
-        ref, stake, subject = pending
+        ref, stake, subject, commit = pending
+        leading = leading_ids(subject)
+        item_files = _item_files(paths, prefix)
         # Credited before the annotation test and never withheld by it: an
         # annotating commit is not work, and it has still written to the file a
         # second session is about to write to.
-        for identifier, path in _item_files(paths, prefix):
+        for identifier, path in item_files:
             held_edit = edited.get(identifier)
             if nearer(ref, None if held_edit is None else held_edit[0]):
                 edited[identifier] = (ref, path)
@@ -856,11 +885,29 @@ def _unmerged_commits(
         # and a `docket record` write all name the item they concern, and a
         # ref that has done one of those is attributable even though it claims
         # nothing. Only a ref that names nothing anywhere is unattributed.
-        if leading_ids(subject):
+        if leading:
             named.add(ref)
         if _annotates_only(paths, prefix):
+            # The one annotation shape a reader can promote: the commit led
+            # with an id and wrote that id's own file. Recorded as a shape
+            # only; whether it is a design round, a capture or a note is for
+            # the callers, who read the item's status off the base and the
+            # path off the commit's parent (`PL-VYSP`). Every path the commit
+            # changed for the id rides along, because a round that renames the
+            # file changes two.
+            for identifier in leading:
+                own_paths = tuple(path for found, path in item_files if found == identifier)
+                if not own_paths:
+                    continue
+                # Newest first is the walk's order, so the first commit seen
+                # per ref and id is the one kept.
+                own_edits.setdefault((ref, identifier), (commit, own_paths))
+                if stake is not None:
+                    held = own_staked.get((ref, identifier))
+                    if held is None or stake < held:
+                        own_staked[(ref, identifier)] = stake
             return
-        for identifier in leading_ids(subject):
+        for identifier in leading:
             if nearer(ref, ids.get(identifier)):
                 ids[identifier] = ref
             if stake is not None:
@@ -898,13 +945,15 @@ def _unmerged_commits(
             first = opened.get(ref)
             if first is None or stake < first:
                 opened[ref] = stake
-        pending = (ref, stake, subject)
+        pending = (ref, stake, subject, commit)
     credit_claims()
     return _Walk(
         last=last,
         ids=ids,
         named=named,
         edited=edited,
+        own_edits=own_edits,
+        own_staked=own_staked,
         staked=staked,
         opened=opened,
         unbounded=unbounded,
@@ -1244,6 +1293,26 @@ def _preferred(name: str, candidates: list[str]) -> str:
     return name
 
 
+def _item_paths_on(base: str, items_dir: str, root: Path, run: Runner) -> dict[str, str]:
+    """Each item id the base holds, mapped to its file's path there, from one tree listing.
+
+    The store names each file for its item - `docs/items/PL-K7QX-do-it.md` -
+    which `store.filename_for` guarantees, so the id is the head of the
+    basename. The three readers of the base's copy of an item share this so
+    that the one question they all open with is spelled once.
+    """
+    prefix = items_dir.strip("/") + "/"
+    names: dict[str, str] = {}
+    for line in run(["ls-tree", "--name-only", base, "--", prefix], root).splitlines():
+        path = line.strip()
+        if not path:
+            continue
+        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
+        if match is not None:
+            names.setdefault(match.group(1).upper(), path)
+    return names
+
+
 def _closed_on_base(
     ids: set[str], items_dir: str, base: str, root: Path, run: Runner
 ) -> frozenset[str]:
@@ -1278,15 +1347,7 @@ def _closed_on_base(
     """
     if not ids:
         return frozenset()
-    prefix = items_dir.strip("/") + "/"
-    names: dict[str, str] = {}
-    for line in run(["ls-tree", "--name-only", base, "--", prefix], root).splitlines():
-        path = line.strip()
-        if not path:
-            continue
-        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
-        if match is not None:
-            names.setdefault(match.group(1).upper(), path)
+    names = _item_paths_on(base, items_dir, root, run)
     closed: set[str] = set()
     for identifier in ids:
         path = names.get(identifier.upper(), "")
@@ -1422,14 +1483,7 @@ def _queue_only_work(
     if not ids:
         return frozenset()
     prefix = items_dir.strip("/")
-    names: dict[str, str] = {}
-    for line in run(["ls-tree", "--name-only", base, "--", prefix + "/"], root).splitlines():
-        path = line.strip()
-        if not path:
-            continue
-        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
-        if match is not None:
-            names.setdefault(match.group(1).upper(), path)
+    names = _item_paths_on(base, items_dir, root, run)
 
     def inside(declared: str) -> bool:
         """Whether one `touches` entry names the queue directory or something in it."""
@@ -1448,6 +1502,89 @@ def _queue_only_work(
         if touches and all(inside(declared) for declared in touches):
             queue_only.add(identifier)
     return frozenset(queue_only)
+
+
+def _deciding_on_base(
+    ids: set[str], items_dir: str, base: str, root: Path, run: Runner
+) -> frozenset[str]:
+    """Of `ids`, those whose item the default branch holds at `needs-decision`.
+
+    **The second reading that separates "filed this item" from "started this
+    item", and like `_queue_only_work` it reads the item rather than the
+    commit** (`PL-VYSP`). An item at `needs-decision` has a decision as its
+    next step, and a decision is recorded into the item file - so a design
+    round's whole output may be queue edits, and `_annotates_only` withheld
+    its claim for the whole life of the work. Observed 2026-09-19 on
+    `PL-BHVM`: three commits pushed, every subject led by the id, a live
+    session on the branch, and `bin/docket show` calling the item startable.
+    The mark appeared only when the round happened to edit `ROADMAP.md`.
+
+    **Counted before it was adopted, against the two rules it was chosen over.**
+    Over the 1,006 commits then on `origin/main`, a rule marking any queue-only
+    commit that led with an id and changed that id's own file - the candidate
+    the item itself proposed - would have marked 316 (commit, id) pairs, 81 of
+    them captures and recoveries creating the file; requiring the base to hold
+    the file already left 235, of which 120 were triage passes moving an item
+    out of `untriaged`. Both readmit `PL-X3WZ`'s false marks wholesale. Adding
+    this status test left 23, and reading their subjects found 21 to be the
+    item's own decision work - the answer, a measurement for it, or its
+    disposition - and two notes written into one item on consecutive days in
+    the project's first week. That is the direction `_annotates_only` already
+    prefers: an item wrongly left marked is one a session picks around.
+
+    **Why the subject has to lead with the id, where `_queue_only_work` does
+    not ask.** A design round re-points its cluster, so one commit edits a
+    dozen other items' files, some of them at `needs-decision` themselves.
+    Promoting those on the file edit alone would mark items the round merely
+    wrote about, under "do not start these again", for sessions that are
+    working them. `_unmerged_commits.own_edits` carries that conjunction.
+
+    Read from the base for the reason `_queue_only_work` is: it is the one
+    tree that cannot be carrying an unmerged session's answer, and a capture
+    creating the file has no copy there to be at any status. A closed item is
+    not at `needs-decision`, so the closedness re-check the other promotion
+    needs is answered here by the status itself. What the base cannot answer
+    is a capture that merged by another route and was triaged there while its
+    own branch lives on; `_modified_by` asks the commit's parent for that.
+    """
+    if not ids:
+        return frozenset()
+    names = _item_paths_on(base, items_dir, root, run)
+    deciding: set[str] = set()
+    for identifier in ids:
+        path = names.get(identifier.upper(), "")
+        if not path:
+            continue
+        text = run(["show", f"{base}:{path}"], root)
+        if text and parse_item(text, path.rsplit("/", 1)[-1]).status == "needs-decision":
+            deciding.add(identifier)
+    return frozenset(deciding)
+
+
+def _modified_by(commit: str, paths: tuple[str, ...], root: Path, run: Runner) -> bool:
+    """Whether `commit` changed a file it inherited, rather than only creating one.
+
+    **What separates a design round from a stale capture once the base holds
+    the item at `needs-decision`.** A capture creates the file; a round writes
+    into one that exists. The base cannot tell them apart when the capture
+    merged by another route and was triaged there, because the capture's
+    branch then leads with the id and changes its own file too - and its ref
+    outlives the merge. Measured live on 2026-09-19, the status test alone
+    promoted three such branches, every one eleven days old, which is the
+    "branch nobody merges, forever" false mark `PL-X3WZ` removed (`PL-VYSP`).
+    The commit's own first parent answers it: a path the parent did not hold
+    was created there.
+
+    Any of the paths is enough, because a round that renames the item's file
+    changes two, and the one it inherited is the evidence. A parent this
+    checkout cannot resolve answers nothing - but a commit with no readable
+    parent already put its ref in `_Walk.unbounded`, so nothing reaches here
+    on that path.
+    """
+    return any(
+        run(["rev-parse", "--verify", "--quiet", f"{commit}^:{path}"], root).strip()
+        for path in paths
+    )
 
 
 def branches_in_flight(
@@ -1520,6 +1657,16 @@ def branches_in_flight(
     `touches` and promotes the ones that never leave the queue. Measured live
     on 2026-09-14: `PL-XR8K` was being closed on `origin/claude/loving-ride-mo6njm`
     and appeared in no reading of this report at all.
+
+    **Or the item is at `needs-decision`, which is read from the item the same
+    way** (`PL-VYSP`). Its next step is a decision and the decision is written
+    into the item file, so a design round can run its whole course without a
+    diff outside the queue - and the path test then withholds the claim for as
+    long as the work lasts, on exactly the items a recorded generator ranks
+    above every band but `P0`. A queue-only commit that leads with the id *and*
+    changes that id's own file is the shape; `_deciding_on_base` asks the base
+    whether the item is at `needs-decision`, and only then is it a claim. The
+    conjunction is what keeps the other items a round re-points out of it.
 
     **And a ref that names nothing is reported rather than dropped**
     (`PL-B73C`). `unattributed` is the third outcome beside a claim and an
@@ -1664,6 +1811,20 @@ def branches_in_flight(
         held = asked_of.setdefault(name, [])
         if path not in held:
             held.append(path)
+    # The own-file edits ride the same diff, so a design round whose copy the
+    # base already holds is found superseded in the one call rather than a
+    # second (`PL-VYSP`).
+    rank = {name: position for position, name in enumerate(candidates)}
+    own: dict[str, tuple[str, str, tuple[str, ...]]] = {}
+    for (name, identifier), (commit, paths) in walk.own_edits.items():
+        if name in walk.unbounded or identifier in in_flight:
+            continue
+        held_own = own.get(identifier)
+        if held_own is not None and rank.get(held_own[0], len(rank)) <= rank.get(name, len(rank)):
+            continue
+        own[identifier] = (name, commit, paths)
+        held = asked_of.setdefault(name, [])
+        held.extend(path for path in paths if path not in held)
     superseded_by_ref = {
         name: _superseded(name, base, tuple(paths), root, run) for name, paths in asked_of.items()
     }
@@ -1690,6 +1851,33 @@ def branches_in_flight(
         carrier = edited.pop(identifier)
         in_flight[identifier] = Branch(
             name=carrier, item_id=identifier, last_commit=last_commit.get(carrier)
+        )
+
+    # **A design round on an item at `needs-decision` is being worked, not
+    # annotated** (`PL-VYSP`). The commit led with the id and wrote the id's
+    # own file, which is also what a note into a brief looks like; the item's
+    # status on the base is what tells them apart, so it is asked of the base
+    # exactly as the promotion above asks after `touches`. The carrier is the
+    # ref that led with the id, not whichever ref `editing` happened to credit
+    # the file to - a batch pass writing the same file must not be named as
+    # the session running the round. A copy the base already holds was found
+    # superseded above and is not a claim.
+    deciding = {
+        identifier: (name, commit, paths)
+        for identifier, (name, commit, paths) in own.items()
+        if identifier not in promoted
+        and any(path not in superseded_by_ref.get(name, set()) for path in paths)
+    }
+    for identifier in sorted(_deciding_on_base(set(deciding), items_dir, base, root, run)):
+        name, commit, paths = deciding[identifier]
+        if not _modified_by(commit, paths, root, run):
+            continue
+        edited.pop(identifier, None)
+        carrier = _preferred(name, candidates)
+        in_flight[identifier] = Branch(
+            name=carrier,
+            item_id=identifier,
+            last_commit=last_commit.get(carrier) or last_commit.get(name),
         )
 
     # **Read, and attributable to nothing.** Confined to refs whose commits the
@@ -1865,6 +2053,14 @@ def precedence(
     walk = _unmerged_commits(refs.unlanded, base, root, run, items_dir=items_dir)
     unreadable = refs.unreadable | walk.unbounded
     readable = {name for name in refs.unlanded if name not in walk.unbounded}
+    # A design round's commits are queue-only and `staked` withholds them; for
+    # an item at `needs-decision` they are the claim, read here from the same
+    # commits `branches_in_flight` promotes, so the two reads keep agreeing
+    # about what is carrying the item (`PL-VYSP`). One `git show` of the base's
+    # copy, asked only where some ref made such a commit.
+    deciding = any(key[1] == identifier for key in walk.own_staked) and bool(
+        _deciding_on_base({identifier}, items_dir, base, root, run)
+    )
 
     # Candidate order, so that the ref a group is *named* by is chosen the same
     # way `branches_in_flight` chooses it: a local branch ahead of its own
@@ -1887,6 +2083,12 @@ def precedence(
                 claims.append(opened)
             if (subject := walk.staked.get((name, identifier))) is not None:
                 claims.append(subject)
+            if (
+                deciding
+                and (own := walk.own_staked.get((name, identifier))) is not None
+                and _modified_by(*walk.own_edits[(name, identifier)], root, run)
+            ):
+                claims.append(own)
         if not claims and not by_name:
             continue
         stake = min(claims) if claims else None

@@ -2855,7 +2855,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 170 entries
+### Declined to Gate 2 on the refilling-queue ground — 173 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3076,11 +3076,37 @@ declined here, and ranked first in the queue. What the gate decides is whether
 v0.5.0 *waits* on them; what the ranking decides is when they are picked up,
 and the answer to the second is already "before nearly everything else".
 
+**A fifth, split out of one of those four on 2026-09-19** (`PL-2T03`).
+Measuring `PL-HWW1`'s eight members against the code found four of them under
+a different mechanism - the release train's *arrangement* is re-derived by
+comparing version numbers, where § "The timeline" already records it as a
+grammar-checked table - so those four moved to a head of their own and
+`PL-HWW1` kept the three that are about membership. `PL-2T03` declines on this
+subsection's own ground: captured after the freeze, `P2`, `defect` rather than
+`safety` or `science`, wholly in the workflow lane, and completing no entry on
+the frozen list. It carries `root-cause-of:` over `PL-Y1L0`, `PL-J45M`,
+`PL-7CSP` and `PL-B5DW`, so the paragraph above applies to it unchanged: the
+ranking already offers it ahead of this gate's own entries, and what is
+declined is only whether v0.5.0 waits on it.
+
+**Two more from the same session, on the project owner's 2026-09-19 request
+that a reply refresh before reporting** (`PL-QSGX`, `PL-CM40`). The resident
+half of that request took effect immediately, in
+`.claude/rules/instruction-writing.md` rule 14; these are the deterministic
+half it should later shrink into - `bin/docket flight` fetching like its
+siblings, and one command printing the whole refreshed picture. Both were
+captured after the freeze, both are workflow-lane apparatus, and neither is
+`safety` or `science`. `PL-CM40` reaches `.claude/rules/instruction-writing.md`
+rather than only `subprojects/docket/`, and is stated here rather than
+stretched: what it changes there is a rule's *length*, by replacing three
+command names with one.
+
 - PL-0M32 (S) Nothing can tell an item finished under a renamed test from one nobody has started
 - PL-0VFF (S) ROADMAP.md's 'Declined to Gate 2' list names PL-483K, PL-69JZ and PL-L09X as deferred, but all three closed done in v0.4.14, and nothing distinguishes a still-open entry from a closed one
 - PL-12P8 (S) PL-JBZK's lane check assumes every file under tests/ is a test file, so a shared non-test helper is told to declare itself apparatus
 - PL-1BS2 (S) The session-start digest's Releasable line reads readiness without the interrupted-cut resume, so during an unfinished cut it reports the short remainder with nothing saying why
 - PL-2GQW (S) PL-L9JS's not-delegable reason rests on the recursion claim PL-20CQ disproved, so the item may be delegable after all
+- PL-2T03 (M) Four items re-derive the release train's arrangement by comparing version numbers, though ROADMAP.md's timeline table already records it
 - PL-316G (M) Convert the 150 possessive-form document citations to the section-mark form, which is the only way doc_check can check them without reading prose as a citation
 - PL-3DN1 (S) bin/docket release accepts a VERSION below the current one, so a typo silently downgrades pyproject.toml's version field
 - PL-3JP0 (S) Decide whether the wash-in section's three paragraphs survive the same test PL-6580 applied to the chart panel above it
@@ -3110,6 +3136,7 @@ and the answer to the second is already "before nearly everything else".
 - PL-BHVM (M) Nineteen items re-decide what evidence proves a ref is done, seventeen of them in vcs.py: one design round rather than nineteen heuristic patches
 - PL-BQ46 (S) MacAwakeReference.fraction_of_mac and formatting.mac_multiple are a third and fourth dimensionless convention beside Fraction, and neither is distinguished from a concentration fraction at the type level
 - PL-C92D (S) PL-YSZN's Flet frame table predates PL-2FM6 and measures a tree that no longer exists in two of its three stages, so the Qt/Flet comparison rests on one row
+- PL-CM40 (S) No single command prints the refreshed picture a closing block needs - main's tip, whether this branch is contained in it, flight and stranded - so the rule has to name three
 - PL-CNCF (M) controller.drawn_window costs 6.2 ms a frame at the shipped 150-column budget - 99% of the frame's read and about eighty times the simulation at 1x
 - PL-DG84 (M) docs/WORKING_NOTES.md asks for resolved threads to be deleted and nothing reads that policy
 - PL-F48B (S) Nothing ever repairs a clone's tags after a history rewrite: fetch_remote runs git fetch without --tags --force, so release tags keep pointing at purged commits
@@ -3117,7 +3144,7 @@ and the answer to the second is already "before nearly everything else".
 - PL-G8TR (S) no-prune-guard is evaded by the form it recommends - git branch -dr driven from a generated list is a prune
 - PL-H9GV (S) PL-01GD shipped as one exported Makefile variable with no test: PYTHONDONTWRITEBYTECODE appears only at Makefile:21, its declared touches names tests/unit/test_tools_portability.py which never changed, and its verify: passes against an untouched suite
 - PL-HKTB (S) The chart gridline and divider grey measures 1.31:1 on the panel and carries no contrast requirement; decide whether it should be darkened or recorded as exempt furniture
-- PL-HWW1 (M) Eight items patch a reading of ROADMAP.md's prose because milestone membership is scraped rather than recorded: decide whether it becomes a recorded fact
+- PL-HWW1 (M) Three items patch a reading of ROADMAP.md's Required scope because membership is cited rather than declared: make the declaration the record
 - PL-HX5C (S) Both in-flight guards passed and two sessions still implemented PL-W8XP independently: the second never renamed and its branch was named after a different item, so neither the ref read nor the session read could see it
 - PL-JBRC (M) docket stranded still calls a branch merged when one of its commits is only docket record output, which converges byte-for-byte with the base
 - PL-JW39 (S) docket next ranks a needs-decision item first, so every fresh session opens on work whose next step is the owner's answer
@@ -3140,6 +3167,7 @@ and the answer to the second is already "before nearly everything else".
 - PL-P757 (S) bin/docket --items pointed at a nested store makes every annotating commit read as work, silently
 - PL-PNW6 (S) A release cut at a version number some withdrawn tag once named leaves every warm checkout pointing v<version> at the old commit, and the handover's own 'git fetch origin main' is the command that leaves it stale silently
 - PL-PQQ2 (S) PL-KBD0 is the workflow lane's top pick but all three live instances its brief names are now closed, and no open item at ready or needs-decision carries a blocked-by field
+- PL-QSGX (S) bin/docket flight never fetches, unlike stranded and branch, so it reports refs as old as the clone - the one command whose whole job is reading other sessions' branches
 - PL-QV5Y (S) Makefile's CI-timing comments quote a 1230-test suite at 78 s serial and 27 s parallel, measured 2026-09-03; the suite is now 2096 tests at about 43 s parallel, so a reader sizing a CI-cost decision from them is reading stale figures
 - PL-SQJ1 (M) Playback delivers 73-91% of the rate the dropdown displays: 300x measured at 220x, 1x at 0.9x, so the clock on screen runs slower than its label
 - PL-T7VS (M) A red doc_check voids the whole-store verify replay for the 29 open items gated behind it, and the replay reports green rather than declining to answer
@@ -4070,12 +4098,12 @@ scope names the id, and nine of the ids below are `defect`-, `safety`- or
 
 ### Required scope
 
-1. **The layout model** (queue item `PL-1FT6`). Pure Python, no Qt import: a
-   tree of splits and Areas with `split`, `join`, `resize`, `swap` and
-   `set_view`, a `borders()` query returning the handles collinear and
+1. **The layout model** (queue items `PL-1FT6` and `PL-HJPY`). Pure Python,
+   no Qt import: a tree of splits and Areas with `split`, `join`, `resize`,
+   `swap` and `set_view`, a `borders()` query returning the handles collinear and
    adjacent to a given one, and versioned JSON serialization. The serialized
-   root holds a *set of windows* from version 1, which `PL-HJPY` is what
-   settles - what owns the set, how an Area is addressed across windows, and
+   root holds a *set of windows* from version 1, which `PL-HJPY` settles -
+   what owns the set, how an Area is addressed across windows, and
    where the border-chain query terminates - because a root that gains a window
    set later is a schema migration against files a learner has already saved
    their own Workspaces into.
