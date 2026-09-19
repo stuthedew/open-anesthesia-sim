@@ -5363,7 +5363,10 @@ specified.
     model has no metabolism and no chemical degradation, per `docs/MODEL.md`
     § "Assumptions" - which is what makes the wrong basis read plausibly. The
     Gas Man reference simulator bills delivered too (Workbook Appendix,
-    printed p. 174: `Cost = DELIVERED Flow x Cost/mL vapor`).
+    printed p. 174: `Cost = DELIVERED Flow x Cost/mL vapor`), and so does
+    this project's own `docs/MODEL.md`, whose "Known limitations" entry on
+    the 20 °C reference already calls the delivered total "the figure that
+    means cost". This sentence was the only document saying otherwise.
 
     *What the wrong basis would have cost.* Measured 2026-09-19 on
     `AgentUptakeSystem.default()` - reference adult, sevoflurane held at a
@@ -5386,17 +5389,27 @@ specified.
     `PL-H4N8` carries the method, and the caveat that a fixed dial is not the
     equal-alveolar-concentration comparison a real low-flow protocol makes.
 
-    *A prerequisite of its own: no data file holds a vapour-to-liquid ratio.*
+    *A prerequisite of its own, and it is narrower than it first looks.*
     `delivered_agent_l` is vapour litres and a bottle is liquid millilitres,
-    so a figure in money or in bottles needs one further cited constant per
-    agent - a density, a molar mass, or the ratio itself - and none of
+    so a figure in money or in bottles needs a vapour-to-liquid ratio - and
+    that constant is already sourced and its reference condition already
+    decided. `docs/MODEL.md` § "Agent amount" carries Biro's 184 mL of vapour
+    per mL of liquid sevoflurane, reproduced to 182.8 mL from Laster, Fang
+    and Eger's 20 °C density and the exact molar mass, and records the
+    project owner's ratification of a 20 °C reference over 37 °C on
+    2026-09-17 - naming this item as the consumer (`PL-S6WW`, shipped in
+    v0.4.28). One litre of vapour is 5.47 mL of liquid sevoflurane here.
+
+    What is left is that those numbers live in prose. None of
     `data/agents/sevoflurane.json`, `data/agents/isoflurane.json` or
-    `data/agents/desflurane.json` carries one. The only such figures anywhere
-    in the tree are Lowe and Ernst's 240, 210 and 206 for halothane,
-    enflurane and isoflurane, quoted inside a `sources` note in
-    `data/patients/reference_adult.json` and adopted for nothing. Sourcing
-    sevoflurane's belongs to this item rather than to an assumption made on
-    the way past; until it exists, the honest readout is vapour volume.
+    `data/agents/desflurane.json` carries a density, a molar mass or the
+    ratio, so `CLAUDE.md`'s rule that model parameters live in validated,
+    versioned data files is unmet for them and `tools/doc_check.py`'s
+    provenance walk is structurally blind to a constant that never entered
+    one - the same gap `PL-4YY1` closed for the circuit's volume and flow.
+    Moving the three into their own agent files, with the Laster and Biro
+    citations already written, is this item's first step. `PL-B396` chooses
+    what the resulting figure looks like.
 
     *The exhausted/stored split keeps its own labels.* It is the uptake curve
     in mass form and is worth drawing; it is simply not the economics, and

@@ -166,3 +166,37 @@ against `AgentUptakeSystem.default()` with `set_fresh_gas_flow()` and
 run again. This one answers a question that is now answered. A cost readout
 built under item 28 owes a reference test of its own, and that is the right
 place for the arithmetic to become permanent.
+
+## What the close-out docs sweep caught, and it was this item's own text
+
+The first version of item 28's new "prerequisite" paragraph said no data file
+holds a vapour-to-liquid ratio and that **sourcing sevoflurane's belonged to
+item 28**. The first half is true and the second is false, and the false half
+is the one a later session would have acted on: `PL-S6WW` settled it and
+shipped in v0.4.28. `docs/MODEL.md` § "Agent amount" carries Biro's 184 mL of
+vapour per mL of liquid sevoflurane, reproduces it to 182.8 mL from Laster,
+Fang and Eger's 20 °C density and the exact molar mass, and records the
+project owner's ratification of a 20 °C reference over 37 °C on 2026-09-17 -
+citing *this very item* as the constant's consumer. Left standing, item 28
+would have sent a session to re-source a constant the project had already
+sourced, decided and shipped.
+
+The same sweep found that `docs/MODEL.md`'s "Known limitations" entry on that
+reference already calls the delivered total "the figure that means cost",
+which means item 28's sentence was the *only* document in the tree naming
+exhausted. That is a stronger statement of the defect than this item's brief
+made, and item 28 now carries it.
+
+**Neither was mechanically findable, which is the point worth recording.**
+`tools/doc_check.py candidates --base origin/main` reported "nothing in the
+documentation mentions anything this diff changed", correctly: the diff
+touches `ROADMAP.md` and two item files and names no code symbol, so the
+mechanical half had nothing to match on. Only reading `docs/MODEL.md` for
+what item 28 *would need* surfaced it. `CLAUDE.md`'s sweep rule asks which
+files were checked rather than whether the tool passed, and this is why.
+
+Corrected in the same branch before the pull request: the paragraph now says
+the constant is sourced and the reference condition decided, and that what
+item 28 owes is moving the three constants out of prose and into
+`data/agents/*.json` - the `PL-4YY1` gap, where `doc_check`'s provenance walk
+cannot see a scientific constant that never entered a data file.
