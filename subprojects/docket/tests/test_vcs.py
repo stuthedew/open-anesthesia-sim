@@ -483,11 +483,11 @@ def test_no_git_declines_rather_than_reporting_no_branches() -> None:
     assert not silent.known
     assert "did not answer" in silent.declined
 
-    # An empty answer from a git that ran is the other case, and still clean.
-    empty = branches_in_flight(ROOT, runner=lambda args, root: "")
-
-    assert empty.branches == ()
-    assert empty.known
+    # The original assertion, kept verbatim: a git that ran and found nothing is
+    # the other case, and it is still a clean answer. What was wrong was that
+    # this line was the *whole* test while claiming to be about no git at all.
+    assert branches_in_flight(ROOT, runner=lambda args, root: "").branches == ()
+    assert branches_in_flight(ROOT, runner=lambda args, root: "").known
 
 
 def test_a_harness_named_branch_is_found_by_what_it_committed() -> None:

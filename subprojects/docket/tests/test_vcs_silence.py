@@ -240,9 +240,10 @@ class Read:
     call: Callable[[Path, Runner], Any]
     found: Callable[[Any], frozenset[Any]]
     #: The item recording why this read cannot decline at all, where one does.
-    #: An entry here is a gap in the floor rather than a design, so the sweep
-    #: runs it as a strict `xfail`: it stays visible as a known breach, and the
-    #: day somebody closes it the test fails until this line is removed.
+    #: An entry here is a gap in the floor rather than a design, and it is
+    #: *asserted* below rather than marked expected-to-fail: a test that states
+    #: the breach still holds is a record, where a disabled one is a hole, and
+    #: both fail the day somebody closes it.
     known_gap: str = ""
 
 
@@ -389,21 +390,39 @@ def _silencing(recorded: _Recording, nth: int) -> Runner:
     return run
 
 
-@pytest.mark.parametrize(
-    "read",
-    [
-        pytest.param(
-            read,
-            id=read.name,
-            marks=(
-                [pytest.mark.xfail(strict=True, reason=f"no way to decline - {read.known_gap}")]
-                if read.known_gap
-                else []
-            ),
-        )
-        for read in READS
-    ],
-)
+#: The reads the sweep holds to the floor, and the ones it cannot yet.
+SWEPT = tuple(read for read in READS if not read.known_gap)
+GAPS = tuple(read for read in READS if read.known_gap)
+
+
+def _lost_to_a_silence(read: Read, repo: Path) -> list[tuple[int, frozenset[Any]]]:
+    """Every silenced call after which the read lost a finding and said nothing.
+
+    The whole measurement, shared by the sweep and by the record of what the
+    sweep cannot yet cover, so the two cannot drift into asking different
+    questions about the same reads.
+    """
+    recorded = _Recording()
+    whole = read.call(repo, recorded)
+    assert not _declined(whole), f"{read.name} declined against a working git"
+    expected = read.found(whole)
+    # A read that found nothing against a working git can lose nothing, so it
+    # would pass this sweep whatever it does with a silence. That is the shape
+    # of check `CLAUDE.md` retires rather than keeps, so the fixture owes every
+    # read something to find and the omission fails here instead of passing.
+    assert expected, f"the fixture gives {read.name} nothing to find, so the sweep proves nothing"
+
+    lost = []
+    for nth in range(1, len(recorded.order) + 1):
+        answer = read.call(repo, _silencing(recorded, nth))
+        if _declined(answer):
+            continue
+        if missing := expected - read.found(answer):
+            lost.append((nth, missing, " ".join(recorded.order[nth - 1])))
+    return lost
+
+
+@pytest.mark.parametrize("read", SWEPT, ids=lambda read: read.name)
 def test_one_silenced_git_call_never_leaves_a_read_looking_clean(read: Read, repo: Path) -> None:
     """Silence any one call and the read declines, or reports what it did before.
 
@@ -418,25 +437,39 @@ def test_one_silenced_git_call_never_leaves_a_read_looking_clean(read: Read, rep
     direction all through this module: an item wrongly marked in flight costs a
     session one look, and one wrongly unmarked costs two sessions a merge.
     """
-    recorded = _Recording()
-    whole = read.call(repo, recorded)
-    assert not _declined(whole), f"{read.name} declined against a working git"
-    expected = read.found(whole)
-    # A read that found nothing against a working git can lose nothing, so it
-    # would pass this sweep whatever it does with a silence. That is the shape
-    # of check `CLAUDE.md` retires rather than keeps, so the fixture owes every
-    # read something to find and the omission fails here instead of passing.
-    assert expected, f"the fixture gives {read.name} nothing to find, so the sweep proves nothing"
+    lost = _lost_to_a_silence(read, repo)
 
-    for nth in range(1, len(recorded.order) + 1):
-        answer = read.call(repo, _silencing(recorded, nth))
-        if _declined(answer):
-            continue
-        missing = expected - read.found(answer)
-        assert not missing, (
-            f"{read.name} lost {sorted(map(str, missing))} when git did not answer call "
-            f"{nth} (`git {' '.join(recorded.order[nth - 1])}`) and said nothing about it"
-        )
+    assert not lost, "\n".join(
+        f"{read.name} lost {sorted(map(str, missing))} when git did not answer call "
+        f"{nth} (`git {argv}`) and said nothing about it"
+        for nth, missing, argv in lost
+    )
+
+
+@pytest.mark.parametrize("read", GAPS, ids=lambda read: read.name)
+def test_a_read_answering_with_a_bare_value_has_no_way_to_decline(read: Read, repo: Path) -> None:
+    """The breach the sweep cannot yet close, recorded as a fact rather than skipped.
+
+    `tags`, `changed_items` and `default_base` answer with a bare collection or
+    string, so there is nowhere in the answer to say git did not speak - a
+    silence is indistinguishable from a repository with no tags, no changed
+    items, no `origin/main` (`PL-ZPDM`). Giving them a channel changes three
+    public return types and every caller, which is a build of its own.
+
+    **Asserted rather than marked expected-to-fail**, and the difference is what
+    a reader is left with. An `xfail` is a test that does not run, which reads
+    as a hole whatever the reason attached to it; this states what is true today
+    and fails the moment it stops being - the same signal, in the form of a
+    record. It is also the form `bin/docket verify` can tell apart from a
+    suppression, correctly, since it cannot read the reason on a marker.
+    """
+    lost = _lost_to_a_silence(read, repo)
+
+    assert lost, (
+        f"{read.name} no longer loses a finding to a silence, so {read.known_gap} may be "
+        "closed: move it out of the gaps and into the sweep above, and delete this "
+        "expectation rather than leaving a test asserting a breach that is gone"
+    )
 
 
 def test_the_sweep_covers_every_public_read_that_takes_a_runner() -> None:
@@ -450,6 +483,7 @@ def test_the_sweep_covers_every_public_read_that_takes_a_runner() -> None:
 
     from docket import vcs
 
+    assert set(READS) == set(SWEPT) | set(GAPS)
     public = {
         name
         for name, obj in vars(vcs).items()

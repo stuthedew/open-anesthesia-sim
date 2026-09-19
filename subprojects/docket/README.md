@@ -421,7 +421,10 @@ code inverted two of them. It runs every public read against a real repository,
 then again with its *n*-th git call silenced, once per call, and holds the
 answer to declining or reporting everything the truthful read reported. A read
 the fixture gives nothing to find fails rather than passing, and a read added
-later that takes a runner fails a registry guard until it says which it is.
+later that takes a runner fails a registry guard until it says which it is. The
+three reads that cannot decline at all are held by a test asserting that they
+still lose a finding, rather than by a marker excusing them: both fail the day
+the gap closes, and only one of them still runs.
 
 ### In flight is read from the commits, not from the branch name
 
