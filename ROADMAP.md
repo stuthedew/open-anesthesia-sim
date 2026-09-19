@@ -1710,7 +1710,11 @@ Four grounds survive:
    again, which moved after item 34 later the same day and is now `v0.7.x`
    (`PL-PHKP`); see the note above for the measurement that reversed it, and for the
    styling-layer question this port deliberately leaves open.
-4. **The two checks that read the theme.** `tools/contrast_check.py` and
+4. **The two checks that read the theme** (queue items `PL-BXB2`, `PL-V53R`
+   and `PL-0PJG`; moved into the slot 2026-09-19, when `PL-HWW1` made a
+   declaration the record of membership - the three are the re-pointings this
+   entry describes and the three the release stamped `v0.4.26`).
+   `tools/contrast_check.py` and
    `tools/agent_identity_check.py` both read `theme.py` and
    `simulation_view.py` by path until 2026-09-14. `PL-JRS3` measured what a
    port does to them (2026-09-14) rather than reasoning it: `contrast_check`
@@ -1738,8 +1742,10 @@ Four grounds survive:
    than after one.
 7. **Deletion** (queue item `PL-7SVX`). The Qt spike tree goes, and so does
    every Flet import. `PL-C92D` retires the Flet frame-cost table that predates the port.
-8. **The queued fixes named below**, on the rule stated there: `PL-3355`,
-   `PL-Q4VH`, `PL-THXF`, `PL-W8DQ`, `PL-TG60` and `PL-005`. Named here and
+8. **The queued fixes named below** (queue items `PL-3355`, `PL-Q4VH`,
+   `PL-THXF`, `PL-W8DQ`, `PL-TG60` and `PL-005`), on the rule stated there.
+   The six moved from this sentence into the declaration slot on 2026-09-19,
+   which is where `PL-HWW1` put membership; they are named here and
    not only under that heading because `MilestoneStates.ships_with` reads
    `Required scope` and nothing else: it is what separates `blocked-by:
    <this milestone's version>` meaning *ships with this milestone* from the same field meaning
@@ -2027,6 +2033,27 @@ much of it names `app/controller.py`, `core/` and `docs/MODEL.md`, which
 re-diagnosing each item against code that had moved. That is the exact cost
 "The debt gate" opens by naming, and it is the reason this list was frozen
 whole rather than narrowed (project owner, 2026-09-06).
+
+**Reconciled 2026-09-19 (`PL-C4RS`).** Three entries sat under headings saying
+the opposite of what the milestone's own scope said of them, and § "Debt inside
+the milestone's own scope" makes `Required scope` the test, so the document
+gave two answers to a question it says has one. After this pass,
+the three ids below now sit under headings that agree with `Required scope`,
+and each placement is stated rather than implied:
+
+- `PL-2FM6` (delete `RunHistory`) and `PL-8LXM` (delete the M4 decimation
+  path) are under "Cleared by the `v0.4.x` track, ahead of this gate", and
+  they have left `Required scope`, which is what the note under that heading
+  already recorded on 2026-09-08: "Required scope below drops to sixteen
+  items". The entries were never removed, so the two structures had disagreed
+  since. What v0.5.0 required of them, and that the patch track shipped it, is
+  recorded in prose under `Required scope` instead, where it places nothing.
+- `PL-GVXP` (separate the six chart traces by more than colour) is under
+  "Cleared before v0.5.0 begins, the product lane" and is not in `Required
+  scope`. It never was an entry there: it was cited inside the `PL-8PSW`
+  entry's prose, and `PL-HWW1` made a declaration rather than a mention the
+  record of membership on 2026-09-19, so the disagreement ended with the
+  parse rather than with an edit.
 
 **Cleared by the `v0.4.x` track, ahead of this gate — 7 entries**
 
@@ -2894,7 +2921,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 173 entries
+### Declined to Gate 2 on the refilling-queue ground — 174 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3198,6 +3225,7 @@ command names with one.
 - PL-LBR6 (S) bin/docket record renames a drifted item file as a side effect of writing a pr number, which conflicts against whoever else is holding that file
 - PL-LF2C (S) PL-VV4D's exact left-behind check rests on refs/pull/<n>/head being permanent, and GitHub is about to unreference 90 of them, so the check needs a third decline condition and one of its two test vectors dies
 - PL-LKGL (S) A verify: command cannot detect a stale item: it tests for the presence of the fix, not the fault, so an item whose problem was solved another way stays red forever and reads as outstanding work
+- PL-LN3T (S) wave does not report a milestone row the version has released whose section's Required scope is still open, so a patch cut at a milestone's own number leaves the plan stepped past it once the hand-off has scrolled by
 - PL-LPWK (S) A release note cites the pull request that closed an item, not the one that carried its code, whenever the two differ
 - PL-LT77 (S) git fetch --tags does not prune, so a tag deleted on origin keeps failing doc_check in every checkout that already fetched it, and nothing distinguishes stale local state from a real repository fault
 - PL-MSFB (S) PL-6194's verify: command still uses [(] and [)] to work around the math check that PL-WTQ1 fixed, and WORKING_NOTES.md:504 still uses backticks to work around PL-KJ63
@@ -3826,9 +3854,35 @@ declining this.
 
 Its two siblings are the same collapse in front of the other two per-ref tests
 in that function - `PL-RY2R` (`walk.edited` before `_superseded`) and `PL-61MD`
-(`own_edits` before `_superseded` and the `needs-decision` promotion). Both are
-untriaged and so are not debt by the rule above; they reach this gate only if a
-triage pass classes them, which is the next gate's question.
+(`own_edits` before `_superseded` and the `needs-decision` promotion). The
+session that started them classed both `defect` the same day, so the forecast
+this paragraph carried - that they reach this gate only if a triage pass classes
+them - is now their recorded disposition, on the same refilling-queue ground as
+their sibling above and on the same three facts: captured after this freeze,
+neither `safety` nor `science`, and wholly in the workflow lane. Both closed in
+the branch that recorded them, so the gate never held either open; the
+disposition is written because the presence rule asks for an answer in writing,
+not because anything is outstanding.
+
+That closes `feature: carrier-collapse`, which was named for what completes:
+no reading in `branches_in_flight` now picks one carrier per id ahead of a guard
+that judges carriers. `precedence`, the fourth reader of the same walk, never
+collapsed - it keeps every candidate and sorts them - so the three are the whole
+of it.
+
+**One more from closing `PL-QJQL`** (`PL-XQGH`, 2026-09-19). Teaching the
+assertion check to see `with pytest.raises(...)` anchored the new alternative on
+the `with` keyword, which is the right anchor for every shape this tree writes
+and gives up one it does not: the parenthesized multi-manager form, where
+`with (` opens the statement and the expectation sits on a line of its own. It
+is declined on the ground the first thirty sit on - found after the 2026-09-06
+freeze, `P3`, neither `safety` nor `science`, and wholly in the workflow lane,
+so it cannot reach a reader of the simulator. One thing this entry can say more
+strongly than most: the hazard is not live. `ast` reports zero multi-manager
+`with` statements of any kind across the tree's 97,687 lines, so there is
+nothing for the blind spot to hide today, and what would make it live is a
+condition on the tree rather than an argument - which the item records, so a
+later session checks it instead of re-deriving it.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
@@ -3839,10 +3893,22 @@ the defect.
 
 ### Required scope
 
-Twenty items, in the order the dependencies allow. The first five are the
+Eighteen items, in the order the dependencies allow. The first three are the
 score architecture the 2026-09-05 design round filed and the project owner
 placed here; the next five are boundary work this milestone's own code moves;
 the last ten are the feature itself.
+
+**Two more were required here and are already done** (`PL-C4RS`, 2026-09-19).
+`PL-2FM6` deleted `RunHistory` so the chart is drawn from the sampler - where
+`PL-011`'s dropped growth debt was actually paid - and `PL-8LXM` deleted the M4
+decimation path with it, including its tests, the cited paper and every
+reference to them: a sampler answering a window in closed form has nothing to
+decimate. Both moved into the `v0.4.x` track on 2026-09-08 and shipped there,
+which is the move whose own note said "Required scope below drops to sixteen
+items", and they sit on the frozen gate under the heading that says so. They
+are named here without a declaration slot deliberately - the milestone required
+them and the patch track cleared them, and neither fact is this section
+placing them.
 
 - **The run becomes a closed-form function of its control-input timeline**
   (queue item PL-T691). Keyframes are held at every control event and any
@@ -3856,14 +3922,6 @@ the last ten are the feature itself.
   a rule saying which route is authoritative, stated in `docs/MODEL.md` and
   gated by test. Safety- and science-classed, and not deferrable within this
   milestone.
-- **`RunHistory` is deleted and the chart drawn from the sampler** (queue item
-  PL-2FM6). This is where `PL-011`'s dropped growth debt is actually paid:
-  the controller holds a score and one keyframe per control event instead of
-  every sample ever recorded.
-- **The M4 decimation path is deleted with it** (queue item PL-8LXM, moved
-  with `PL-2FM6` into the `v0.4.x` track on 2026-09-08 and shipped there),
-  including its tests, the cited paper and every reference to them. A sampler
-  answering a window in closed form has nothing to decimate.
 - **A path-scoped rule against re-introducing a sample store** (queue item
   PL-49R8), so a later session adding a convenience buffer is told why the
   store is absent rather than rediscovering it.

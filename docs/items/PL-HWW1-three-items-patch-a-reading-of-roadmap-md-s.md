@@ -3,11 +3,12 @@ id: PL-HWW1
 title: Three items patch a reading of ROADMAP.md's Required scope because membership is cited rather than declared: make the declaration the record
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: generator-heads
 touches: subprojects/docket/src/docket/roadmap.py, tools/doc_check.py, ROADMAP.md, docs/items
 added: 2026-09-17
+closed: 2026-09-19
 verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_required_scope_places_only_declared_ids' subprojects/docket/tests/test_roadmap.py
 root-cause-of: PL-4PC5, PL-6P9Y, PL-C4RS
 ---
@@ -189,3 +190,67 @@ way to rank one: `root-cause-of:` on the item that causes the cluster, which
 `PL-L4YG`); this item was filed to record that this cluster had none. On
 2026-09-18 it became the head itself rather than a tracker of one. On
 2026-09-19 the membership was measured and the cluster split in two.
+
+---
+
+## Done 2026-09-19
+
+**The grammar, as built.** A `Required scope` entry declares its members in a
+`(queue item ...)` slot; ids anywhere else under the heading are prose. The
+slot is walked to its first token that is neither an id nor a connective, so
+`(queue item PL-8LXM, moved with \`PL-2FM6\` into the \`v0.4.x\` track ...)`
+declares one item and cites another. Declarations are read from the
+subsection's *joined* text rather than line by line, because a pair of ids
+wraps across the break; the entry unit exists beside it for the rule
+`tools/doc_check.py` states per entry, and now reads a numbered list as well as
+a bulleted one, which v0.6.0's section needs.
+
+**What it measured, before and after.** v0.5.0: 26 ids parsed, 20 declared
+across 20 entries, against the section's own stated "Twenty items". v0.6.0: 25
+parsed, 23 declared across 19 entries. v0.4.0: 17 parsed, 13 declared. v0.1.0
+and v0.2.0 declare nothing and place nothing, exactly as before. **No id is
+gained anywhere** - the declaration is always a subset of what the scrape read,
+which is what makes this a narrowing rather than a change of answer.
+
+**The nine ids dropped, and the one that mattered.** Eight are closed and only
+inflated a progress figure. The ninth, `PL-HJPY`, was declared into v0.6.0's
+first entry on this item's own branch before the parser changed, so the
+tightening never had the chance to un-place it - which was the whole finding.
+
+**The two enforcement rules.** `check_scope_declarations` fails an entry that
+declares nothing where the section's *other* entries declare, and a declared id
+the queue does not hold. The first is what holds the rule in place; the second
+is `GateStatus.unknown_ids`'s reading applied to the structure beside it. A
+section whose entries declare nothing at all is exempt, which is what keeps
+v0.1.0's and v0.2.0's shipped scope passing without inventing ids for it.
+
+**One advisory narrowed, and half of it retired.** `check_scope_exclusions`'s
+keyword half said an id in an excluding scope bullet "is read as scope". That
+is now true only of an id in the slot, so it reads the words *introducing* the
+declaration rather than the whole entry. Warning on prose after the slot would
+report a hazard the parse removed, which `CLAUDE.md`'s "a check earns its place
+every run" refuses. The exact half - one id under both headings - is untouched.
+
+**What this item deliberately did not build.** The decision paragraph above
+also says `doc_check` should fail "an entry whose stated ids disagree with the
+section's own count". Read as the section's *prose* count ("Twenty items"),
+that contradicts a recorded decision in `check_gate_counts`, whose docstring
+refuses to read prose counts because a checker cannot tell "the thirty-seven
+entries below are its whole content" from "frozen ... at seventeen entries", a
+dated fact that must never change. The `Done when.` does not ask for it. So the
+two counts are left to agree by construction - 20 entries declaring 20 ids
+against a section that says twenty - rather than by a check that would have to
+guess which sentences are claims.
+
+**The two v0.4.26 entries.** Entry 4 (`The two checks that read the theme`)
+declares `PL-BXB2`, `PL-V53R` and `PL-0PJG` - the three re-pointings the entry
+describes, and the three the release stamped `v0.4.26`. `PL-JRS3` stays prose:
+it is the measurement, and shipped in `v0.4.23`. `PL-NGF7` stays prose because
+the entry names it to say the port *dissolves* it elsewhere. Entry 8's six ids
+moved from its sentence into the slot, which is where `ships_with` now reads
+them.
+
+**The three members.** `PL-4PC5` and `PL-6P9Y` close with this. `PL-C4RS` does
+not: one of its three ids (`PL-GVXP`) left `Required scope` with the narrowing
+and is reconciled, and the other two are unchanged and still want the prose
+judgment that item reserves. Re-briefed rather than closed.

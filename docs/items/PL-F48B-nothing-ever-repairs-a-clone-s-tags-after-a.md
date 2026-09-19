@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/vcs.py, .claude/hooks/docket-digest.sh
 added: 2026-09-06
 closed: 2026-09-19
+pr: 685
 not-delegable: The deliverable this item's own "Done when" permits is a recorded decision not to automate, which no command can prove right. The measurement behind it is reproducible - every local tag reachable from origin/main, every tag object identical to the remote - but it describes the checkout a session happens to be in rather than the tree, so it cannot be pinned as a test.
 ---
 

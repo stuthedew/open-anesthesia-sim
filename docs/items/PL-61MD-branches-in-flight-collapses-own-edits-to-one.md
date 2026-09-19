@@ -1,9 +1,15 @@
 ---
 id: PL-61MD
 title: branches_in_flight collapses own_edits to one ref per id before the superseded and needs-decision tests, so a bystander's landed design-round commit drops a live round on the same item
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect
 feature: carrier-collapse
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, ROADMAP.md
 added: 2026-09-19
+closed: 2026-09-19
+verify: grep -q 'def test_a_landed_design_round_on_a_bystander_branch_does_not_drop_a_live_one' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** branches_in_flight collapses own_edits to one ref per id before the superseded and needs-decision tests, so a bystander's landed design-round commit drops a live round on the same item
@@ -41,3 +47,12 @@ outside the queue, so nothing else marks it.
 `_superseded`, `_deciding_on_base` and `_modified_by` judge each, and the first
 survivor is reported; the id leaves the promotion only where every carrier
 fails. A test pins both directions.
+
+**What it came to: two of the three tests are per carrier, not three.**
+`_superseded` reads one ref's copy of a path and `_modified_by` reads one
+commit's own parent, so both are facts about a carrier and both are asked of
+each. `_deciding_on_base` is not: it reads the item's status off the *base*,
+which is one tree and one answer per id however many refs carry it. So it is
+asked once per id, between the two - which is also what keeps the promotion at
+one `git show` per id rather than one per carrier, and is why the brief's "judge
+each" overstates it by one test.

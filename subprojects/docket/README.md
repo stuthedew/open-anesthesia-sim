@@ -936,10 +936,15 @@ structure is read by its own grammar instead:
 
 - the frozen list, by its entries' heads — an entry is one bullet per problem,
   and an id later in the sentence is prose about another item;
-- `Required scope`, in full — a milestone names what it covers in whatever
-  grammar the sentence wanted, `(queue item PL-DHV7)` mid-bullet or a
-  paragraph, and the heading has already said that everything under it is
-  scope.
+- `Required scope`, by the `(queue item …)` slot its entries declare in —
+  `(queue item PL-DHV7)` after an entry's bold title, `(queue items PL-1FT6
+  and PL-HJPY)` where one entry completes two. Reading that subsection *in
+  full* was the same over-read one level down: citing the id that re-briefed
+  an entry is how the roadmap records provenance, so every correct maintenance
+  edit added a member and the count drifted as the file was kept up to date
+  (`PL-HWW1`);
+- `Explicitly out of scope`, in full — its heading states the claim, so no id
+  under it needs a grammar of its own.
 
 Out-of-scope work is marked, never hidden. Whether an item is *really* out of
 scope is a judgment about the prose around its id, and the command reads
@@ -948,17 +953,21 @@ structure rather than sentences.
 Three things follow, and they are limitations in the same way the concurrency
 answer below is:
 
-- Scope recorded *only* in a section's prose is placed nowhere. Printing the
-  id inside `Required scope` is what places it.
-- An exclusion is invisible rather than reported, a milestone's own
-  `Explicitly out of scope` list included. Silence is the honest answer to a
-  sentence the command cannot read, and the safe one: an unread mention makes
-  no claim, where an over-read one told a session that work a milestone
-  excludes was the work that milestone was waiting on. That list *is* parsed,
-  onto `MilestoneSection.excluded_ids` - `tools/doc_check.py` compares it
-  against `Required scope` and fails a milestone naming one id under both
-  (`PL-NBCS`) - but nothing feeds it into placement, so the ranking still says
-  nothing in either direction. Reporting it there is queue item `PL-6P9Y`.
+- Scope written without a declaration is placed nowhere. Declaring the id in
+  the slot is what places it — and that cost is no longer paid in silence:
+  `tools/doc_check.py` fails an entry declaring none where the section's other
+  entries declare, so a milestone cannot quietly be smaller than it reads.
+- An exclusion written anywhere but under `Explicitly out of scope` is
+  invisible rather than reported. Silence is the honest answer to a sentence
+  the command cannot read, and the safe one: an unread mention makes no claim,
+  where an over-read one told a session that work a milestone excludes was the
+  work that milestone was waiting on. The heading itself *is* read, onto
+  `MilestoneSection.excluded_ids` — `tools/doc_check.py` compares it against
+  `Required scope` and fails a milestone naming one id under both (`PL-NBCS`),
+  and the ranking reports an id under the **anchor's own** exclusion heading as
+  ruled out rather than unplaced (`PL-6P9Y`). Another section's exclusions stay
+  out of it: one the project has passed says what was true then, and one it has
+  not reached is a decision that milestone's own scoping round may revisit.
 - A released milestone's section places nothing. Its narrative records where a
   problem was raised, not what is current work. Released is decided by the
   version the project is on, never by position relative to the anchor: an
@@ -1094,7 +1103,11 @@ version has passed with no release of that number in the version table, and a
 section no row bears — and `wave` prints those under their own heading and
 exits non-zero, the digest's plan line flags them, and the release hand-off
 states a reached-or-passed number beside the table row it already asks for
-(`PL-Y1L0`). The gate block splits the entries it cannot clear into those the
+(`PL-Y1L0`). `wave` adds the one statement the train cannot make because it
+needs the store: a row the table *does* record as released, whose section's own
+`Required scope` still has open ids, which is that same reversal one run later,
+after the cut has written the row the hand-off asked for (`PL-LN3T`). The gate
+block splits the entries it cannot clear into those the
 plan sequences ahead of the gate, named with the row they wait for, and those
 waiting on work placed later or nowhere (`PL-7CSP`).
 
@@ -2237,11 +2250,15 @@ A session may re-scope its own commission; it may not weaken what measures it,
 and it may not skip the test (`PL-69JZ`, `PL-B5YN`, `PL-4LT9`).
 
 What counts as a *removed assertion* is decided by shape rather than by the
-word: a line in a file Python executes, opening an `assert` statement or
-calling a name that begins `assert` — `assertEqual`, `assert_called_once_with`,
-`assert_allclose`. A comment, a docstring, a release note or an item's brief
-carrying the word is not one, and neither is the code that looks for
-assertions. The check still errs toward reporting where it cannot tell, which
+word: a line in a file Python executes, opening an `assert` statement, calling
+a name that begins `assert` — `assertEqual`, `assert_called_once_with`,
+`assert_allclose` — or opening a `with pytest.raises(...)` or
+`with pytest.warns(...)` block, which asserts by expectation and carries the
+word nowhere. That last shape is how this project pins the guards that *reject*
+an input, so while it was unmatched the assertions the check could not see were
+disproportionately the safety ones (`PL-QJQL`). A comment, a docstring, a
+release note or an item's brief carrying the word is not one, and neither is
+the code that looks for assertions. The check still errs toward reporting where it cannot tell, which
 is the direction that is safe; what it no longer does is refuse a correct
 close-out for rewording its own item's brief (`PL-7TYC`).
 
@@ -2249,11 +2266,12 @@ Nor does it refuse a call site updated to a new signature. A removed assertion
 is paired with an added line in the same file that is it with tokens inserted,
 all of them inside a bracket: `f(a, b)` to `f(a, b, c)` is a replacement, where
 `approx(2.05)` to `approx(1.05)` is not - the literal is gone - and neither is
-`x == 1` to `x == 1 or True`, appended outside every bracket. Measured over 905
-commits it folds 56 of 1,655 removed assertions, and **none of the 56 is an
-assertion that left the suite**. Four of them do change what the line asserts,
-so a pair is printed beside its replacement rather than dropped: what is
-withdrawn is the refusal and not the report (`PL-K1WS`).
+`x == 1` to `x == 1 or True`, appended outside every bracket. Measured over 907
+commits it folds 57 of 1,715 removed assertions, and **none of the 57 is an
+assertion that left the suite**. Five of them do change what the line asserts -
+including a `with pytest.raises(...)` gaining a `match=`, which `PL-QJQL` made
+visible here - so a pair is printed beside its replacement rather than dropped:
+what is withdrawn is the refusal and not the report (`PL-K1WS`).
 
 Two of the four take a **declared** exemption, which is what lets them stay
 absolute rather than a softening of them. Both were checks a correct close-out

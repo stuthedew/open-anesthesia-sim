@@ -8,9 +8,10 @@ classes: defect, infra
 feature: generator-heads
 touches: subprojects/docket/src/docket/vcs.py, .claude/skills/docket/SKILL.md, docs/worker.md, docs/items
 added: 2026-09-17
-root-cause-of: PL-LT77, PL-PNW6, PL-YKXQ, PL-90CJ, PL-KFWL, PL-TFWR, PL-XQRK, PL-3V6C, PL-G8TR, PL-F48B
 closed: 2026-09-19
+pr: 685
 verify: python3 tools/doc_check.py check && grep -q 'Ref operations a session cannot perform' docs/worker.md
+root-cause-of: PL-LT77, PL-PNW6, PL-YKXQ, PL-90CJ, PL-KFWL, PL-TFWR, PL-XQRK, PL-3V6C, PL-G8TR, PL-F48B
 ---
 
 **Problem.** Two facts nobody recorded, and ten open items between them. The

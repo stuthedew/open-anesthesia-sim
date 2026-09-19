@@ -434,8 +434,10 @@ pulled, not queued" is what a session does on finding one; `tools/generator_chec
 prints the clusters worth looking at and decides none of them. A suggestion the step has not reached stays in the list, marked with
 the milestone that places it, because hiding it would be a verdict the tool
 cannot support. Placement is read from the frozen list a milestone records and
-its `Required scope`, never from a mention elsewhere in the section, so an id
-a section names only to exclude it is placed by nobody. Lead the reply with its answer. Add judgment the tool cannot
+from the `(queue item …)` slot its `Required scope` entries declare in, never
+from a mention elsewhere in the section, so an id an entry cites in passing is
+placed by nobody and one the anchor's own exclusion heading names is reported
+as ruled out. Lead the reply with its answer. Add judgment the tool cannot
 have: whether the item is still real, whether the marking is right about a
 milestone whose prose it cannot read, and how it fits what the owner said
 they were trying to do.
@@ -490,27 +492,31 @@ the item that had just unblocked it, with nothing said about the gate, which
 reads as *what the project should do next* while sitting outside what the
 project said it was doing (`PL-J790`).
 
-There are three relations, and `docket next` prints the first two in its reason
-line under each item:
+There are four relations, and `docket next` prints all but the last in its
+reason line under each item:
 
 - **On the gate** — "On the debt gate recorded under v0.5.0; v0.4.x — the code
   is the model clears it."
 - **Outside what the anchor names** — the id sits in a later milestone's
   section, which the current step has not reached.
+- **Ruled out** — the anchor's own `Explicitly out of scope` heading names it,
+  so the roadmap has taken a decision rather than not reached one. It sorts
+  below out-of-scope work (`PL-6P9Y`).
 - **Placed nowhere** — neither preferred nor excluded. It ranks on its band
   alone, and nothing prints it.
 
-The third is the one that goes wrong, and in two ways. Nothing states it, so
+The last is the one that goes wrong, and in two ways. Nothing states it, so
 silence is indistinguishable from not having looked; and it means *no milestone
-section places it*, which is narrower than it sounds. `Scope` reads exactly two
-structures — a section's frozen list and its `Required scope` — so a milestone
-recording scope in prose alone records it invisibly, and a **timeline row**
-places nothing at all. A row that *bears* a section places through it,
+section places it*, which is narrower than it sounds. `Scope` reads three
+structures — a section's frozen list, the `(queue item …)` slots its `Required
+scope` entries declare in, and the anchor's own exclusion heading — so a
+milestone recording scope in a sentence that declares nothing records it
+invisibly, and a **timeline row** places nothing at all. A row that *bears* a section places through it,
 numbered or not - the Qt port's `—` row anchors the beat while its scope is
 open (`PL-FWJF`) - but the `v0.4.x` row bears none. `PL-FZ6T` is the worked
 example: `docket next` gives it no gate sentence, while `ROADMAP.md`'s
 `v0.4.x` row names it outright. So
-"placed nowhere" is a fact about the two structures and never a claim that the
+"placed nowhere" is a fact about those structures and never a claim that the
 roadmap is silent — read the row for the step before saying either.
 
 `bin/docket wave` prints the gate's open entries by id and settles membership;
@@ -868,11 +874,25 @@ no section, so nothing resolves it.
 
 **And `needs-decision` says the next step is a decision, never whose.** That is
 the third case, and it is the one taken by mistake, because the status looks
-like an invitation and `bin/docket next` ranks it. Where the answer rests on
-what the project should *want* - whether a feature enters `ROADMAP.md`, which
-of two defensible products this is, what a scope word means - it is the project
-owner's. `CLAUDE.md` divides it in one sentence: "The division of labour is
-theirs to set direction and yours to make it real."
+like an invitation and `bin/docket next` ranks it. The owner's are the
+*consequential* questions - whether a feature enters `ROADMAP.md`, the order
+features come in, which of two defensible products this is, anything a learner
+would see or the safety-critical standard reaches. `CLAUDE.md` divides it in
+one sentence: "The division of labour is theirs to set direction and yours to
+make it real."
+
+**Resting on what the project wants does not by itself make a question
+theirs** (project owner, 2026-09-19). How a milestone records a fact about
+itself, which of two defensible phrasings a section carries, where a note
+lands - each turns on what the project wants and is still a session's, because
+its consequence is one document's wording. `PL-C4RS` is the worked example: two
+ids sat in v0.5.0's `Required scope` under a gate heading saying another track
+had cleared them, and "what does `Required scope` mean for work done elsewhere"
+was put to the owner as a decision when it was a session's to take. Rule 14 of
+`.claude/rules/instruction-writing.md` carries the test in full and is
+resident, so it applies here without being read from this file. Where one
+specific point genuinely needs them, ask that point rather than handing over
+the decision around it.
 
 **Sort by what the answer rests on, not by how hard the item looks.** An item
 answerable by reading the code, running a measurement, or applying a rule this
