@@ -1306,6 +1306,17 @@ def _triage_rules(report: Report, config: Config) -> list[str]:
             "`not-delegable` why no command can prove it. Run the command before "
             "writing it down."
         )
+    if config.payoff_required_from is not None:
+        # Stated here rather than in `_unset`, which is where `verify:` is not
+        # stated either: both gates fire at `ready` rather than at capture, so
+        # listing them beside `priority` would mark as missing a field the item
+        # does not yet owe. What a triage pass needs is the warning before it
+        # writes `--status ready`, which is this list.
+        rules.append(
+            "an item set to `ready` must carry a `payoff:` - one plain-language line of "
+            "what closing it buys, in consequence terms rather than a restatement of the "
+            "title. There is no `not-delegable` equivalent: every item has a consequence."
+        )
     rules.append(
         "a status past `untriaged` needs the full brief: "
         f"{', '.join((*REQUIRED_BRIEF, DONE_WHEN))}. A heading may continue past "
