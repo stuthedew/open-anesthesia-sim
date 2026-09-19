@@ -6428,7 +6428,41 @@ once someone is ready to scope it.
     nothing referenced it. This line is where the intent lives until someone
     scopes it.
 
-None of items 1-38 mix scientific-core and UI/tooling concerns within a
+39. Carry explicit gas-phase conditions per compartment, so that temperature
+    and water content are represented rather than assumed away. Raised
+    2026-09-19 from `PL-MPWP` (project owner, 2026-09-19, ratified, over
+    filing it as a queue item to be worked): this is intent, and scoping it
+    is a later decision.
+
+    *Its own item because two recorded limitations already end here.*
+    `docs/MODEL.md`'s "Known limitations" carries two notes that stop at the
+    same unbuilt change. "One reference condition, where the model physically
+    has two" sizes the temperature half: the alveolar, venous and tissue
+    stores hold 5.8 % fewer moles than their 20 °C label implies. "The
+    modeled alveoli are dry, and real ones are saturated at 47 mmHg" sizes
+    the water half at 47/760. Each says lifting it is outside the current
+    milestone, and neither had anywhere to point for what would lift it - so
+    a reader asking whether it will be fixed got no answer, and the next
+    session to meet either note re-derived the conclusion.
+
+    *It is one change rather than two, and half of it is worse than neither.*
+    Both notes describe a model carrying gas at one declared condition where
+    it physically has several, so the lift is a per-compartment condition -
+    temperature, pressure and water content together. Correcting the water
+    half alone is what that note explicitly warns against: applying 713/760
+    to the inspired term while the partition coefficients keep an unrecorded
+    gas-phase basis moves all four validated wash-in ratios outside their
+    published spread.
+
+    *Nothing displayed today depends on it, which is why this is intent
+    rather than debt.* Every concentration the interface shows is a
+    dimensionless fraction and every partition coefficient a ratio, so the
+    trajectories, the mass-balance identity and the MAC multiples are
+    invariant to the condition the unit names. It reaches a reader only where
+    an amount leaves the unit - the liquid-equivalent consumption figure item
+    28 plans.
+
+None of items 1-39 mix scientific-core and UI/tooling concerns within a
 single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
 on 9, 13 on 12), that dependency is noted inline rather than bundled into
 one item.
