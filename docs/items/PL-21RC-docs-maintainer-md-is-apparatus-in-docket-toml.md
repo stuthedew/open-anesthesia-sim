@@ -8,7 +8,7 @@ classes: docs, infra
 feature: worker-instructions
 touches: CLAUDE.md, .claude/rules/expert-review.md, .claude/rules/apparatus-standard.md, tools/rules_paths_check.py, tests/unit/test_rules_paths_check.py
 added: 2026-09-13
-verify: uv run pytest tests/unit/test_rules_paths_check.py && grep -q 'docs/maintainer.md' .claude/rules/apparatus-standard.md
+verify: uv run pytest tests/unit/test_rules_paths_check.py && grep -q '"/docs/maintainer.md"' .claude/rules/apparatus-standard.md && grep -q 'docs/maintainer.md' .claude/rules/expert-review.md
 ---
 
 **Problem.** docs/maintainer.md is apparatus in docket.toml's workflow_paths but is named in none of the three places that list the apparatus set, and apparatus-standard.md's paths: glob does not load for it
@@ -68,6 +68,23 @@ rule in `tools/rules_paths_check.py`.
 rather than by the work. Not fixed there: all three files are outside
 `PL-GVNS`'s `touches` and two of them are resident instructions, so the fix-now
 door is shut on its second test.
+
+**The `verify:` was rewritten 2026-09-19, because the original did not
+discriminate.** It grepped `.claude/rules/apparatus-standard.md` for the bare
+string `docs/maintainer.md`, and this pull request added a sentence to that file
+naming the path as a *cross-reference* - "that is the owner's lever and
+`docs/maintainer.md` carries it" - which is a correct citation and no part of
+this item's work. `bin/docket check --verify` caught it on the branch: the
+command passed while all three rows above were still unfixed, so `docket verify`
+would have accepted a branch that did none of the work. The replacement greps
+the quoted frontmatter entry `"/docs/maintainer.md"` instead, which is the row
+with teeth and a string only the `paths:` edit can create, and adds
+`.claude/rules/expert-review.md`, which names the file nowhere today. `CLAUDE.md`
+is deliberately left out of the command: it already cites `docs/maintainer.md`
+twice in prose, so no grep of it can tell the enumeration edit from those - that
+row is checked by reading, or by the `tools/rules_paths_check.py` rule this item
+proposes. Both new greps were run on the branch and watched exit 1 before this
+was recorded.
 
 **Done when.** The three enumerations of the apparatus half name
 `docs/maintainer.md`, a session opening that file loads
