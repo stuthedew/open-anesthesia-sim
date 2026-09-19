@@ -350,14 +350,17 @@ load-bearing; the brief is not. `docket check` excuses a `housekeeping` item
 ```bash
 bin/docket new "Triage the 12 untriaged captures standing in the queue on 2026-09-19"
 bin/docket set PL-CSV0 --priority P2 --effort S --classes housekeeping \
-  --touches docs/items --status ready --verify "..."
+  --touches docs/items --status ready --verify "..." --payoff "..."
 ```
 
 `**Problem.**` is what `docket new` writes from the title, and that is the
 brief. The two sections that go are the two such a pass cannot answer without
 restating the category - "why it matters" is the standing rule above, and "done
 when" is the `verify:` command in prose. The command itself still stands: the
-exemption is the argument, never the proof.
+exemption is the argument, never the proof - and `payoff:` stands too, for the
+same reason. It is one line rather than a section, the ranking can still put a
+housekeeping item in front of the owner, and "the queue stops carrying twelve
+captures nobody can read" is not a restatement of the category.
 
 Two limits, both enforced. It may not sit beside a `debt_classes` entry -
 `defect`, `safety`, `science`, `refactor`, `perf` - because debt is the work
@@ -592,8 +595,27 @@ not a paragraph:
 The rule is strictest where the item is **workflow-lane**, because that is the
 offer the owner has no other way to judge: a simulator item's title describes
 something they already have an opinion about, and an apparatus item's does not.
-`bin/docket next` now prints each lane pick's band and gate relation, which is
-the decidable half; what the work *buys* is judgment and stays yours to write.
+`bin/docket next` prints each lane pick's band and gate relation, which is the
+decidable half.
+
+**The sentence itself is now a field, so write it once into the item rather
+than into the reply** (`PL-WYKF`). `payoff:` holds it - one line, required at
+`ready` from 2026-09-20 - and `bin/docket show`, `next` and the digest print it
+wherever they name an item. Composing it is still judgment and still yours;
+what has changed is that composing it again next session is not. So when you
+meet an item that has none, write it as you start the item - the advisory
+`bin/docket check` raises names exactly the ones `next` is about to offer - and
+when an item has one, offer it rather than paraphrasing it:
+
+```bash
+bin/docket set PL-XZD0 --payoff "stops a renamed CI job leaving pull requests \
+  waiting forever on a check that can never arrive"
+```
+
+Presence is all `docket check` can hold it to: whether the line states a
+consequence or restates the title is the judgment this project refuses to
+script. So a payoff that says "faster" passes the checker and fails its reader,
+and the reader is the project owner.
 
 **Never let "it is what `docket next` returned" stand as the reason.** The
 ranking is a sort over bands, placement and feature progress - it is not an
@@ -913,7 +935,7 @@ work already there.
 
 **Write the answers with `bin/docket set`, not into the file.** `bin/docket set
 <id> --priority P2 --effort S --classes defect --touches a.py --status ready
---verify '...'` writes the named fields in canonical order, keeps the file's
+--verify '...' --payoff '...'` writes the named fields in canonical order, keeps the file's
 name, and refuses a value the item already records (`--overwrite` replaces
 one; `status` needs no flag, since moving it is what triage does) and any
 write `docket check` would then fail, in the checker's own words. The brief is

@@ -325,6 +325,28 @@ def test_verify_and_not_delegable_round_trip_through_the_file() -> None:
     assert parse_item(render_item(item)).not_delegable == "needs judgement"
 
 
+def test_a_payoff_round_trips_through_the_file() -> None:
+    """One line of prose, and the commas in it are not a list (`PL-WYKF`)."""
+    payoff = "the queue stops reading as arbitrary, so an offer can be weighed"
+    item = _item(payoff=payoff)
+
+    assert parse_item(render_item(item)).payoff == payoff
+
+
+def test_the_payoff_is_written_with_the_prose_fields_not_the_scan_fields() -> None:
+    """Position is a readability choice, and the diff of a rewrite depends on it.
+
+    `id`, `priority`, `effort`, `status` and the rest are tokens a reader
+    scans; `reason`, `payoff` and `verify` are sentences. Keeping the two
+    groups apart is what stops one long line breaking the block a reader skims.
+    """
+    rendered = render_item(_item(payoff="sessions stop re-deriving the reason", verify="pytest -q"))
+    keys = [line.split(":")[0] for line in rendered.splitlines() if ": " in line]
+
+    assert keys.index("payoff") > keys.index("status")
+    assert keys.index("payoff") < keys.index("verify")
+
+
 def test_a_repeated_front_matter_key_is_reported_not_collapsed_away() -> None:
     """The shape a clean merge of two branches produces.
 

@@ -1386,6 +1386,7 @@ classes: safety, ux
 feature: halted-step
 touches: src/app/simulation_view.py
 added: 2026-08-24
+payoff: a learner who pauses mid-induction stops seeing numbers that look live
 ---
 
 **Problem.** What is wrong or missing, concretely.
@@ -1408,6 +1409,52 @@ startable by a stranger.
 way. It was a bare substring test until `PL-VJ1X`, so the one heading an author
 most wants to qualify — who decides, and by when — was the one heading that
 could not be, and the checker contradicted the rule stated above it.
+
+`payoff` is one plain-language line of what closing the item buys, and it is
+the only field written for the person choosing rather than for the person
+working. A title is written for the session that will implement the item, so it
+names a mechanism - "reconcile the jobs reporting a status check against the
+branch-protection required list" - and offered unchanged to whoever is deciding
+what to fund, that is a string they cannot weigh. The line says what changes
+instead: it gets faster, fewer bugs reach the default branch, a check stops
+lying, a release stops needing a person to remember a step.
+
+It is stored rather than composed on demand because the alternative is
+rebuilding the sentence from the brief, at full context, in every session that
+offers the item - the re-derivation a queue exists to move out of the model.
+Nothing can infer it. The brief argues the case in the same mechanism
+vocabulary as the title, and which consequence a reader cares about is
+judgment, so `check` holds this field to **presence** and stops there: a
+checker guessing at whether a line states a consequence or restates the title
+would be authoritative and wrong, which is worse than no checker. There is no
+length floor either - the twelve-character one `falsifies` carries exists
+because a short fragment folds assertions it was never meant to, a concrete
+harm, where a thin payoff harms only the reader looking straight at it.
+
+The requirement starts at `ready`, from the date `payoff_required_from`
+records, and the dated cutover is `verify_required_from`'s pattern taken whole,
+for the same reason it was adopted there: a store written before a rule holds
+items that predate it, and making every one of them an error at once makes the
+checker useless from its first run rather than making the queue better. Items
+captured before the date raise a grooming advisory instead, and only as each is
+about to be offered - which is also where the sentence is cheapest, since the
+session about to work an item already has its brief open. Nothing already
+closed is asked for one.
+
+Unlike `verify`, it has no exemption. Some work genuinely has no command that
+can run before it; no work has no consequence, and an item nobody can say that
+much about is a finding about the item rather than a case for an escape hatch.
+There is also no close-time counterpart to `verify_required_at_close_from`:
+that rule exists because closing an item is the first moment its command can
+be *run*, and a consequence needs no run, so the requirement is answerable in
+full at `ready` and has nowhere later to reach.
+
+`show`, `next` and the digest print it wherever they name an item - beside the
+band and the item's relation to the debt gate, which are the decidable half of
+the same question. `list` and `delegable` deliberately do not: the first is one
+line per open item and exists for scanning a whole queue, and the second is a
+worker's reading list, which wants the command that proves the work rather than
+the reason somebody wanted it.
 
 Two further fields govern whether the work may be handed to a cheaper model:
 `verify`, a single-line command that proves the item done, and `not-delegable`,
@@ -2502,6 +2549,7 @@ verify_required_from = 2026-08-30   # omit to leave the `verify:` rule off
 verify_prerequisite_refused_from = 2026-09-20   # when a command may no longer
                                    # re-run a tree `check_command` collects
 collected_test_paths = ["tests"]   # the trees it does collect; empty = rule off
+payoff_required_from = 2026-09-20  # omit to leave the `payoff:` rule off
 minor_classes = ["feature"]
 protected_paths = []
 gate_paths = ["Makefile", "pyproject.toml", ".github", ".claude", "docket.toml"]

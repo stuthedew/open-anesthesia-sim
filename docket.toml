@@ -146,6 +146,48 @@ verify_prerequisite_refused_from = 2026-09-20
 # and not here makes the rule refuse *less*, never more.
 collected_test_paths = ["tests", "subprojects/docket/tests"]
 
+# The date an item reaching `ready` must carry one plain-language line of what
+# closing it buys (`PL-WYKF`). The project owner asked for the half of "why this
+# item" that `PL-MN0F` and `PL-Z27P` do not answer: those two print the band and
+# the item's relation to the debt gate, both facts in the store, and neither says
+# what the work is *for* - "I don't know why it's selected ... 'links predicate
+# xyz predicate to runner 267' or whatever" (2026-09-19).
+#
+# A field rather than a rule for sessions to follow, because the sentence would
+# otherwise be rebuilt from the brief at full context in every session that
+# offers the item, which is what "prefer deterministic tooling over repeated
+# model work" exists to stop. `checks.py` holds it to presence alone: whether the
+# line states a consequence or restates the title is judgment, and a checker
+# guessing at it would be authoritative and wrong.
+#
+# Scoped to every item rather than to the workflow lane, which was the session's
+# own recommendation until it counted what the wider rule would cost (project
+# owner, 2026-09-19). Measured that day: (a) every item charges 267 startable
+# open items a sentence and leaves 0 undefined; (b) workflow-lane-only charges
+# 157, leaves **31** items in neither lane with no rule at all - crossing or
+# declaring no `touches`, and disproportionately the large cross-cutting work
+# where the sentence is worth most - and is *more* code, being "every item from
+# date D" plus a condition on a computed lane. The marginal cost is about 110
+# sentences across the open backlog, each written by a session that already has
+# the brief open because it is about to work the item.
+#
+# Dated tomorrow rather than today, the one choice here rather than a reading,
+# exactly as `verify_prerequisite_refused_from` was: the grandfathered set is
+# then closed at precisely what the store held when the rule began working, and
+# no item captured today has to carry a line written away from its work. Nothing
+# already closed is backfilled - that means writing a sentence about work whose
+# context is gone, which is the failure `PL-5YK8` refused at the other end of
+# `verify:`.
+#
+# The precedent says the burn-down works without a campaign. `verify:` is the
+# same shape - required at `ready` from a cutover date, advisory only for the
+# items `bin/docket next` is about to offer - and reached 913 of 1,278 items with
+# 12 of 218 open `ready` items still lacking one, on no pass dedicated to it.
+#
+# Moving this date earlier makes the whole grandfathered set an error at once.
+# Do not, without first giving each of those items a line.
+payoff_required_from = 2026-09-20
+
 # Classes that make a release a minor version bump rather than a patch.
 minor_classes = ["feature"]
 

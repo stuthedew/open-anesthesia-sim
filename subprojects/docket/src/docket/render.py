@@ -308,7 +308,19 @@ def _by_lane(
     named = ", ".join(named_pick(lane) for lane in SELECTABLE_LANES)
     held = set_aside(list(report.items), flight.ids, workflow_paths=workflow_paths)
     spanning = f"; {held.total} in neither lane" if held.total else ""
-    return f"By lane, for a second session: {named}{spanning}."
+    lines = [f"By lane, for a second session: {named}{spanning}."]
+    # Each pick's payoff below the line rather than inside it, and the id
+    # repeated because two picks are named above. This is the offer the
+    # project owner has no other way to judge - a workflow item's title
+    # describes a mechanism they have no opinion about, where a simulator
+    # item's describes something they do - so leaving the field out of the
+    # one place that names the workflow pick would miss the case it was
+    # built for. A pick with no payoff adds no line.
+    for lane in SELECTABLE_LANES:
+        found = picks[lane]
+        if found and found[0].item.payoff:
+            lines.append(f"    {found[0].item.identifier} payoff: {found[0].item.payoff}")
+    return "\n".join(lines)
 
 
 def format_digest(
@@ -418,6 +430,13 @@ def format_digest(
         if top.scoped_to:
             marks += f", scoped to {top.scoped_to}, not this step"
         lines.append(f"  Top: {top.item.identifier} {top.item.title} ({marks})")
+        # The one item every session is shown before it has run anything, so
+        # it is the highest-value place in the store for this line and the
+        # only one worth a second line of resident context. Printed only
+        # where the item carries one, so a store that has not adopted the
+        # field pays nothing.
+        if top.item.payoff:
+            lines.append(f"    payoff: {top.item.payoff}")
 
     if lane_line := _by_lane(report, flight, plan, workflow_paths, generator_paths):
         lines.append(f"  {lane_line}")
