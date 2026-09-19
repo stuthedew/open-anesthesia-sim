@@ -1,9 +1,14 @@
 ---
 id: PL-YS9F
 title: outstanding_roadmap_edits states both edits for a milestone number a cut has exactly reached because it cannot read the beat that decides which; the plan computed before the bump knows
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: timeline-arrangement
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_release.py
 added: 2026-09-19
+verify: grep -q 'def test_the_reached_number_statement_reads_the_plan' subprojects/docket/tests/test_release.py
 ---
 
 **Problem.** outstanding_roadmap_edits states both edits for a milestone number a cut has exactly reached because it cannot read the beat that decides which; the plan computed before the bump knows

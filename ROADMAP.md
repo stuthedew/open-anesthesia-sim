@@ -2974,7 +2974,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 175 entries
+### Declined to Gate 2 on the refilling-queue ground — 192 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3969,6 +3969,36 @@ strongly than most: the hazard is not live. `ast` reports zero multi-manager
 nothing for the blind spot to hide today, and what would make it live is a
 condition on the tree rather than an argument - which the item records, so a
 later session checks it instead of re-deriving it.
+
+**Seventeen from the 2026-09-19 triage pass** (`PL-2P9L`). Twenty-one items
+stood untriaged that morning, every one of them captured that same day, and
+classing an item is what makes it debt - so they reach this gate together and
+are declined together: `PL-245B`, `PL-28HG`, `PL-2DTK`, `PL-4FD2`, `PL-4HKS`,
+`PL-BX1C`, `PL-CNJH`, `PL-CWD4`, `PL-D1NT`, `PL-DK8Y`, `PL-QMC0`, `PL-R77L`,
+`PL-SZJ2`, `PL-WVJ0`, `PL-Y5JX`, `PL-YS9F` and `PL-ZPDM`. One of them,
+`PL-QMC0`, closed in `#708` hours later and is left named here rather than
+removed: what this subsection records is the disposition taken, and an entry
+that was declined and then fixed anyway is still an entry that was declined.
+`PL-0VFF` is the open item for the fact that nothing here distinguishes the
+two. The three facts the
+first thirty rest on hold for all seventeen: captured after the 2026-09-06
+freeze, `P2` or `P3` and neither `safety` nor `science`, and wholly in the
+workflow lane - every `touches` they declare is inside `docket.toml`'s
+`workflow_paths`, so none can reach a reader of the simulator.
+
+**The arithmetic above has reversed since it was written, and it now argues
+the same way harder.** The paragraphs at the head of this subsection defer on
+the ground that this gate "is not draining"; today it stands at 168 cleared of
+175, with four entries left that it can clear. That premise is stale, and the
+conclusion it supported is not: admitting these seventeen would take the
+clearable remainder from four to twenty-one and move a milestone that is one
+beat from starting back behind five times the work it currently waits on. A
+gate one step from opening is the point at which "The gate is a snapshot, not a
+moving target" is doing the most work, not the least - the temptation to fold
+in the day's findings is strongest exactly when the list is nearly empty. Any
+of the seventeen whose *problem* predates the freeze belongs on the list rather
+than here, and `check_gate_reentries` is what decides that rather than this
+paragraph.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first

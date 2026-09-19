@@ -1,8 +1,14 @@
 ---
 id: PL-BX1C
 title: bin/docket verify runs a dropped item's stale verify: command and REJECTs the close-out on it, though the skill says a dropped item has no command to run
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
+feature: verify-false-reject
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-19
+verify: grep -q 'def test_a_dropped_items_verify_command_is_not_run' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** bin/docket verify runs a dropped item's stale verify: command and REJECTs the close-out on it, though the skill says a dropped item has no command to run
@@ -43,3 +49,9 @@ two, and it is the one that would have caught this before the audit ran.
 correctly refuses (`PL-JZ1D`). A `done` item's command is a record of what was
 run and passed; a `dropped` item's never ran against anything and records
 nothing.
+
+**Done when.** Closing a `dropped` item that still carries a `verify:` reaches
+`ACCEPT` without anyone deleting the field - either because `bin/docket verify`
+skips the command at that status, or because `bin/docket check` refuses the
+combination at store-validation time - and a test drives a dropped item whose
+recorded command fails, asserting the audit does not refuse on it.
