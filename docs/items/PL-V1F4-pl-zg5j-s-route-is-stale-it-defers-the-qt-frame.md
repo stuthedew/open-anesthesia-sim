@@ -3,11 +3,13 @@ id: PL-V1F4
 title: PL-ZG5J's route is stale: it defers the Qt frame-cost harness to 'build it once under PL-YCWZ', and PL-YCWZ closed with the port, so the item's first step points at a finished item
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
+feature: frame-cost-harness
 touches: docs/items
 added: 2026-09-16
-verify: bin/docket check && ! grep -q 'rather than landing a Flet one now' docs/items/PL-ZG5J-*.md
+closed: 2026-09-19
+verify: grep -q 'The port is done, so the toolkit question is settled' docs/items/PL-ZG5J-*.md && ! grep -q 'rather than landing a Flet one now' docs/items/PL-ZG5J-*.md
 ---
 
 **Problem.** PL-ZG5J's route is stale: it defers the Qt frame-cost harness to 'build it once under PL-YCWZ', and PL-YCWZ closed with the port, so the item's first step points at a finished item

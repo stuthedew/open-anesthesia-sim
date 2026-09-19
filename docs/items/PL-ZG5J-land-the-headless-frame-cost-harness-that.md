@@ -5,7 +5,7 @@ priority: P3
 effort: M
 status: needs-decision
 classes: infra, perf
-feature: dev-tooling
+feature: frame-cost-harness
 touches: tests/benchmarks, docs/WORKING_NOTES.md
 added: 2026-09-08
 ---
@@ -25,8 +25,8 @@ discarded it; this is the fourth time the same scaffolding has been written.
 
 **What is unresolved is where it goes.** New `tools/` scripts are required to
 be standard-library only, so a hook or a bare checkout can run them without
-the project virtualenv, and this one imports `flet`, `flet_charts`, `msgpack`
-and the package itself. It is also not a check: it produces timings, which are
+the project virtualenv, and this one imports `PySide6`, `pyqtgraph` and the
+package itself - `flet`, `flet_charts` and `msgpack` before the Qt port. It is also not a check: it produces timings, which are
 a judgment rather than a pass/fail, and `CLAUDE.md` is explicit that a check
 which cannot decide is worse than none. So it is a third thing — a measurement
 script — and the project has no home for one.
@@ -52,11 +52,48 @@ the three-stage split intact and a note saying what it measures and what it does
 not, or this is `dropped` and `docs/WORKING_NOTES.md` records that measuring ad
 hoc and keeping the numbers in the item is deliberate.
 
-**Weigh the Qt decision into the answer before building anything.** `PL-QXSB`
-decided to leave Flet and `ROADMAP.md` scopes the port, so a harness built on
-`flet.messaging.session.Session` measures a toolkit this project is removing.
-The *method* may survive the port - a real controller, a real view, a real
-serializing transport, timed in three stages - but the harness as written does
-not, and landing it now buys one milestone's use. That argues for answering the
-"where does a measurement script live" question first and building the Qt
-version of it once, under `PL-YCWZ`, rather than landing a Flet one now.
+**The port is done, so the toolkit question is settled and this is unblocked**
+(`PL-V1F4`, 2026-09-19). This paragraph used to say to defer the harness and
+build the Qt version once under `PL-YCWZ`. `PL-YCWZ` closed on 2026-09-15 with
+the headless Qt rendering tests, `PL-QXSB`'s decision to leave Flet has been
+carried out, and `tools/import_boundary_check.py` now refuses `flet` and
+`flet_charts` in every module under `src/`. So the deferral's premise - do not
+build a Flet harness the port will throw away - was satisfied rather than
+refuted, and what was left behind was a first step pointing at finished work.
+Nothing is waiting on anything: the decision above is the only thing between
+this item and a harness.
+
+**The method survives the port; its third stage now measures the paint.** Under
+Flet the stages were `controller.advance`, `_refresh_view` and `page.update()`,
+and the serializing connection was the subtle part - it put the session into the
+state an incremental patch is computed against. Qt serializes nothing, and what
+sits in that position is the *paint*. `ChartPlot.draw` is `setData`, `setPos`
+and `setTicks` throughout: it schedules a repaint and rasterizes nothing, so
+`_refresh_view` returns before the frame has been drawn and the frame is
+complete only once the event loop dispatches the paint event. The three stages
+under Qt are `controller.advance(SIMULATION_STEP_S)`,
+`SimulationView.present(False)` and `QApplication.processEvents()`, and a
+harness that timed the first two would report the interface 45% low, in the
+flattering direction. Measured 2026-09-19 in the web container, one run warmed
+to an hour of simulated time, 600 steps per frame at 300x against the 200 ms
+`RENDER_INTERVAL_S` budget, medians over 20 frames: `advance` 14.9 ms,
+`present` 18.8 ms, `processEvents` 15.5 ms - so the interface costs 34.3 ms and
+the two-stage reading of it is 18.8 ms. A second `processEvents` immediately
+after the first costs 0.10 ms, which is the control: the 15.5 ms is the paint
+that first call dispatched, not fixed event-loop overhead. Getting this wrong
+is the same class of error the serializing connection existed to prevent, which
+is the argument for writing the method down rather than re-deriving it a fifth
+time.
+
+**What it costs to build now: 42 lines, no new dependency, about 3 seconds to
+run.** The scaffolding is already in the tree.
+`tests/integration/test_qt_rendering.py`'s `dashboard` fixture builds a real
+`SimulationController`, advances it, mounts a real `SimulationView` at a fixed
+size, shows it and presents one frame - every line the harness needs before its
+first `perf_counter` - and `tests/conftest.py` supplies the `offscreen`
+platform. The numbers above came off 42 non-blank, non-comment lines written
+against that fixture's shape. One environment fact belongs with the decision:
+`tests/conftest.py` sets `QT_QPA_PLATFORM` for the test tree only, so a script
+run outside pytest must set it itself or `QApplication([])` aborts on the
+missing `xcb` plugin - measured the same day, and an argument for the test tree
+over a `bench/` one rather than a decision on its own.
