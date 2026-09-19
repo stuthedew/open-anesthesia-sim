@@ -9,6 +9,7 @@ feature: queue-hygiene
 touches: docs/items
 added: 2026-09-12
 closed: 2026-09-19
+pr: 719
 not-delegable: The work is a per-item judgment against the tree for 134 items - does this defect still reproduce, does this brief still describe the code. No command can prove that pass was made, and each drop or merge it produces is proven by the item it closes. What can be checked afterwards is make docket and that every dropped item carries a reason.
 ---
 

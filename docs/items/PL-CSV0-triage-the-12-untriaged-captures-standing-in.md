@@ -8,6 +8,7 @@ classes: infra
 touches: docs/items, ROADMAP.md
 added: 2026-09-19
 closed: 2026-09-19
+pr: 720
 verify: ! grep -l '^status: untriaged' docs/items/PL-04KR-*.md docs/items/PL-3GKR-*.md docs/items/PL-9KSY-*.md docs/items/PL-CSV0-*.md docs/items/PL-G424-*.md docs/items/PL-HCTF-*.md docs/items/PL-R5HK-*.md docs/items/PL-STC4-*.md docs/items/PL-TZ7T-*.md docs/items/PL-VKGJ-*.md docs/items/PL-WPDB-*.md docs/items/PL-X3NY-*.md docs/items/PL-YRYR-*.md
 ---
 
