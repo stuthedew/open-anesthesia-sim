@@ -8,6 +8,7 @@ classes: defect
 touches: .claude/rules/citing-sources.md
 added: 2026-09-19
 closed: 2026-09-19
+pr: 728
 verify: grep -qF 'the indexes opened and the publishers did not' .claude/rules/citing-sources.md
 ---
 

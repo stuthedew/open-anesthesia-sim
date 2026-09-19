@@ -8,6 +8,7 @@ classes: defect
 touches: src/anesthesia_sim/core/matrix_exponential.py
 added: 2026-09-19
 closed: 2026-09-19
+pr: 731
 verify: grep -qF 'doi:10.1137/S00361445024180' src/anesthesia_sim/core/matrix_exponential.py && ! grep -qF 'S0036144502418010' src/anesthesia_sim/core/matrix_exponential.py
 ---
 
