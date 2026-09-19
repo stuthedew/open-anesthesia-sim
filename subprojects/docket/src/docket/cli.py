@@ -335,9 +335,10 @@ def cmd_check(args: argparse.Namespace) -> int:
         #
         # The cost also grew in the wrong direction. Every item triaged to
         # `ready` adds its command's runtime to every future run, so the
-        # healthier the store got the more the gate cost - and the advisory in
-        # `_check_slow_commands` puts the floor at about 19 s even with the
-        # slow commands narrowed, because it is set by the size of the queue.
+        # healthier the store got the more the gate cost - and narrowing the
+        # heaviest commands does not recover it, because the floor is set by
+        # the size of the queue: 1458 s of serial work over eight workers is a
+        # 182 s floor against 204 s elapsed, measured 2026-09-19 (`PL-G6J5`).
         #
         # `None` rather than an empty report, which is the same path `list`,
         # `digest` and `next` take: `checks.py` reads it as "a caller that did

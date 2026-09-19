@@ -1343,8 +1343,6 @@ def _landed(**overrides: object) -> LandedReport:
         timed_out=(),
         unavailable=(),
         considered=4,
-        slow=(),
-        typical=0.5,
         elapsed=10.0,
         serial=42.0,
         slowest=SlowCommand("PL-K7QX", 4.0),
@@ -1507,144 +1505,6 @@ def test_nothing_is_said_about_not_checked_items_when_every_command_answered() -
     assert report.declined == []
 
 
-# What a command cost. The pool's wall clock is its slowest member, so one
-# heavy `verify:` sets the floor for every `make check` from the day it is
-# written, and only the session that wrote it can reconsider it (`PL-VG7G`).
-
-
-def _slow(landed: LandedReport) -> list[str]:
-    return analyze([_item()], TODAY, landed=landed).advisories
-
-
-def test_a_command_that_dominates_the_run_is_named() -> None:
-    messages = _slow(
-        _landed(passing=(), slow=(SlowCommand("PL-K7QX", 59.3),), typical=0.7, elapsed=63.2)
-    )
-
-    assert _has(messages, "PL-K7QX")
-    assert _has(messages, "59s")
-
-
-def test_the_cost_is_given_against_what_normal_looks_like() -> None:
-    # A bare duration cannot be read. The median and the run's own total are
-    # what turn it into a number somebody can act on.
-    messages = _slow(
-        _landed(passing=(), slow=(SlowCommand("PL-K7QX", 59.3),), typical=0.7, elapsed=63.2)
-    )
-
-    assert _has(messages, "0.7s median")
-    assert _has(messages, "63s for the whole run")
-
-
-def test_the_advisory_bounds_what_narrowing_would_leave() -> None:
-    # The claim it replaced - that the named command "sets the floor" - was
-    # true only while the rest of the work fit underneath it, and this store
-    # outgrew that: removing the named command measured 28.6s to 23.7s, a
-    # sixth of what that sentence invites a reader to expect (`PL-FRGP`). So
-    # the run says what narrowing cannot buy, computed rather than asserted.
-    messages = _slow(
-        _landed(
-            passing=(),
-            slow=(SlowCommand("PL-K7QX", 27.0),),
-            considered=78,
-            serial=175.0,
-            workers=8,
-            elapsed=28.6,
-        )
-    )
-
-    # (175.0 - 27.0) / 8 workers = 18.5s of work left whatever happens here.
-    assert _has(messages, "cannot take the run below about 18s")
-    assert _has(messages, "77 commands are 148s of work across 8 workers")
-
-
-def test_the_bound_is_a_lower_bound_rather_than_a_prediction() -> None:
-    # A pool never packs perfectly, so the real run lands above this. Saying
-    # what narrowing cannot buy is honest; predicting what it will is what the
-    # old wording did wrong, and doing it more precisely would repeat it.
-    messages = _slow(
-        _landed(passing=(), slow=(SlowCommand("PL-K7QX", 27.0),), serial=175.0, workers=8)
-    )
-
-    assert _has(messages, "cannot take the run below")
-    assert not _has(messages, "will take")
-
-
-def test_the_bound_removes_every_named_command_not_only_the_worst() -> None:
-    # Narrowing one of two heavy commands leaves the other where it was, so a
-    # bound computed against only the worst would not be a bound at all.
-    messages = _slow(
-        _landed(
-            passing=(),
-            slow=(SlowCommand("PL-K7QX", 30.0), SlowCommand("PL-B1C2", 30.0)),
-            considered=42,
-            serial=100.0,
-            workers=4,
-        )
-    )
-
-    # (100.0 - 60.0) / 4 workers = 10s, not (100.0 - 30.0) / 4 = 17.5s.
-    assert _has(messages, "cannot take the run below about 10s")
-    assert _has(messages, "40 commands are 40s of work")
-
-
-def test_a_run_that_did_not_say_how_wide_it_was_claims_no_bound() -> None:
-    # Dividing by a width nobody recorded would be the invented number this
-    # module refuses everywhere else. The sentence stops early instead.
-    messages = _slow(
-        _landed(passing=(), slow=(SlowCommand("PL-K7QX", 59.3),), serial=175.0, workers=0)
-    )
-
-    assert _has(messages, "PL-K7QX")
-    assert not _has(messages, "cannot take the run below")
-
-
-def test_a_command_that_is_the_whole_run_claims_no_bound() -> None:
-    # Nothing is left once it is removed, so there is no remainder to divide
-    # and "below about 0s" would be a sentence that says nothing.
-    messages = _slow(
-        _landed(passing=(), slow=(SlowCommand("PL-K7QX", 59.3),), serial=59.3, workers=8)
-    )
-
-    assert not _has(messages, "cannot take the run below")
-
-
-def test_the_advisory_offers_both_outcomes_rather_than_demanding_one() -> None:
-    # A coverage item's command is a full-suite run by necessity, so "narrow
-    # it" is not always available and accepting a known cost is a real answer.
-    messages = _slow(_landed(passing=(), slow=(SlowCommand("PL-K7QX", 59.3),)))
-
-    assert _has(messages, "narrow the command")
-    assert _has(messages, "accept the cost")
-
-
-def test_every_dominating_command_is_named_not_only_the_worst() -> None:
-    # Narrowing one of two heavy commands changes nothing: the floor is
-    # wherever the other one is.
-    messages = _slow(
-        _landed(passing=(), slow=(SlowCommand("PL-K7QX", 59.3), SlowCommand("PL-B1C2", 55.0)))
-    )
-
-    assert _has(messages, "PL-K7QX")
-    assert _has(messages, "PL-B1C2")
-
-
-def test_nothing_is_said_when_no_command_dominates() -> None:
-    assert _slow(_landed(passing=(), slow=())) == []
-
-
-def test_a_run_that_could_not_execute_says_nothing_about_cost() -> None:
-    # Durations from a run that declined would be about the machine, not the
-    # store, and the same refusal covers them as covers the findings.
-    report = analyze([_item()], TODAY, landed=LandedReport(declined="no toolchain here"))
-
-    assert report.advisories == []
-
-
-def test_a_caller_that_did_not_ask_is_told_nothing_about_cost() -> None:
-    assert analyze([_item()], TODAY, landed=None).advisories == []
-
-
 # What the run cost, reported every run as a fact rather than as a finding.
 # Two comments in `verify.py` carried these figures by hand and both went stale
 # inside a fortnight; the reason neither was caught is that a healthy store
@@ -1680,16 +1540,17 @@ def test_the_costliest_command_is_given_against_the_limit_that_bounds_it() -> No
     assert "120s limit" in cost
 
 
-def test_the_costliest_command_is_named_where_no_command_is_an_outlier() -> None:
-    # The slow-command advisory fires on a ratio against the median, so it is
-    # silent on a store where everything is uniformly heavy - which is the
-    # store whose margin against the limit is closing fastest.
-    report = analyze(
-        [_item()], TODAY, landed=_landed(slow=(), slowest=SlowCommand("PL-GS5X", 27.4))
-    )
+def test_the_costliest_command_is_named_and_held_to_no_threshold() -> None:
+    # The whole of the retirement in one assertion. An advisory used to name a
+    # command 30x the pool's median and was silent on a store where everything
+    # is uniformly heavy - which is the store whose margin against the limit is
+    # closing fastest, and which this store now is (`PL-G6J5`). This line is
+    # what covers it, so it must name the command without asking how the rest
+    # of the pool compares, and must not put it among the findings.
+    report = analyze([_item()], TODAY, landed=_landed(slowest=SlowCommand("PL-GS5X", 27.4)))
 
     assert "PL-GS5X" in report.cost
-    assert not any("waits for" in message for message in report.advisories)
+    assert report.advisories == []
 
 
 def test_the_cost_is_not_reported_as_something_to_resolve() -> None:

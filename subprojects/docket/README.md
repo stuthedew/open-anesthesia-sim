@@ -1542,7 +1542,7 @@ reads the command and the diff together.
 **Who may conclude what.**
 
 - **The replay** - `already_passing`, reported by `_check_landed`,
-  `_check_selects_nothing` and `_check_slow_commands` - is one-directional. It
+  `_check_selects_nothing` and `_note_cost` - is one-directional. It
   reads exit 0 as its finding, the three never-evaluated statuses as refusals
   (reported per item as not checked, or for the whole run where nothing ran
   to completion), and nothing from any other non-zero exit. It never reads a
@@ -2174,54 +2174,53 @@ them, which is worth knowing before writing a `verify:` — a full-suite `pytest
 costs a fraction of that. Each command is capped at two minutes so one wedged
 run cannot hang the check.
 
-**So a command far enough above the typical one is named, with what it cost.**
-The person who writes a heavy `verify:` is the only one placed to reconsider
-it, and was the one person told nothing — the cost arrived in one step and was
-then paid by every later run. The advisory closes either way: narrow the
-command, or accept a cost you have now seen. It is CI that pays it now rather
-than each session, which lowers the stakes without removing them: the pool is
-still bounded by the size of the queue, and that bound still only ever grows.
+**An advisory beside it named the outlier, and was retired 2026-09-19.** A
+command 30x above the pool's median was named as the one the check waited for,
+on the reasoning that the person who writes a heavy `verify:` is the only one
+placed to reconsider it and was the one person told nothing (`PL-VG7G`). It was
+dropped on a count rather than on taste (`PL-G6J5`), and the numbers are worth
+keeping because they say something about the store rather than about the check:
 
-**And it says what narrowing would leave, rather than that the command sets the
-floor.** Those are different statements and the second was wrong. A pool cannot
-finish before its slowest member — true, but only the *binding* constraint
-while the rest of the work fits underneath it, and this store outgrew that.
-With 49 commands totalling 34 s across eight workers, about 4 s of aggregate
-work sat behind a 6.9 s slowest member and the slowest member really was the
-floor. At 78 commands totalling 175 s the aggregate is ~22 s against a 27 s
-slowest member, and removing the named command measured **28.6 s → 23.7 s** — a
-sixth of what "sets the floor for every `make check`" invites a reader to
-expect (`PL-FRGP`).
+| | 2026-09-02 | 2026-09-19 |
+| --- | --- | --- |
+| commands in the pool | 46 | **179** |
+| median command | 0.65 s | **3.65 s** |
+| serial total | 34 s | **1458 s** |
+| slowest command | 8.95 s | **67.4 s** |
+| the ratio's bar, at 30x | ~20 s | **109.5 s** |
 
-So the bound is computed rather than asserted, from the serial total and the
-pool's width:
+The threshold was calibrated when the typical `verify:` was a `grep`. It is now
+`uv run pytest <file>`, so the median rose with the pool and the bar rose with
+the median — to 109.5 s against a per-command limit of 120 s, and a command over
+that limit is killed and kept out of the median, so **once the median passes
+4.0 s the test cannot fire on anything at all.** It was already firing on
+nothing: zero of thirteen real branch scopes taken from the last twenty-five
+merges, and nothing on the whole store. Widening the denominator to the
+*store's* median, which is what the item was filed to propose, measured the
+same: zero of thirteen.
 
-```
-PL-GS5X (29s) is the costliest `verify:` command this check runs: against a
-0.7s median and 33s for the whole run. Narrowing it cannot take the run below
-about 21s: the other 81 commands are 164s of work across 8 workers, so the
-pool is bounded by the size of the queue as well as by its slowest member —
-narrow the command if it can be narrowed, or accept the cost knowing what it is
-```
+**And the silence is the right answer, not a tuning failure.** 1458 s of serial
+work across eight workers is a 182 s floor against 204 s elapsed, so no single
+command is what the run waits for — the queue is. That is `PL-FRGP`'s
+correction taken to its conclusion: a pool cannot finish before its slowest
+member, but the slowest member is only the *binding* constraint while the rest
+of the work fits underneath it, and this store outgrew that. With 49 commands
+totalling 34 s, about 4 s of aggregate work sat behind a 6.9 s slowest member
+and the slowest member really was the floor; at 78 commands totalling 175 s,
+removing the named command measured **28.6 s → 23.7 s**. At 179 commands
+totalling 1458 s it would measure nothing at all.
 
-It is a **lower bound rather than a prediction**: a pool never packs perfectly,
-so the real run lands above it. That is the honest shape — this can say what
-narrowing cannot buy, and must not promise what it will. Both regimes fall out
-of the one arithmetic: where the queue is small the bound is near zero and
-narrowing genuinely collapses the run; where the queue is large the bound is
-most of the elapsed time, and the reader learns that before spending an
-afternoon on it. Where the run recorded no width, or the named commands are the
-whole of it, the sentence stops early rather than dividing by a number nobody
-measured.
+So the cost line above carries the signal alone, and it is built for it:
+`serial` is where a store that is uniformly heavy shows up, and the margin
+between the costliest command and the limit is where a single command closing
+on the timeout does. Neither needs a threshold, which is why neither went stale
+the way the ratio did.
 
-The line is a ratio against the median command rather than a number of
-seconds, so it needs no re-tuning as the suite grows: measured on this store
-2026-09-02, a healthy store's slowest command was 14x its median, and adding
-one full-suite `--cov` put a command at 88x in the same pool. It sits at 30x,
-with a one-second floor under it so that a store of trivial commands cannot
-turn process-startup jitter into a finding. Durations are measured under the
-pool's own contention, because the wall clock a session waits through is the
-question.
+Where the cost now is, measured the same day and not addressed by any
+per-command test: three test files carry **59% of the 1458 s**, each re-run by
+every item whose command names it — `subprojects/docket/tests/test_cli.py` 415 s
+across 14 items, `tests/unit/test_doc_check.py` 292 s across 12, and
+`subprojects/docket/tests/test_verify.py` 152 s across 4. `PL-FZ58` carries it.
 
 ### Delegation is derived, never granted
 
