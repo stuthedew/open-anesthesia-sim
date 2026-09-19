@@ -37,7 +37,7 @@ passes while the guarantee it stands for is void applies to a test as squarely a
 a linter.
 
 **What is and is not still proved.** The test's other assertions are sound and
-carry the finding it was written for: `"No branch claims an item" in out` and
+carry the finding it was written for: `"No branch carries an item id" in out` and
 `"1 ref cannot be compared with origin/main" in out` both fail if the guard stops
 working, because `PL-K7QX` - a valid id - is on the branch. So the guard is
 genuinely covered; what is not covered is the narrower claim that the *default

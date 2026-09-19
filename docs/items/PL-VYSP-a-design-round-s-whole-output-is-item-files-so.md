@@ -8,7 +8,7 @@ closed: 2026-09-19
 verify: uv run pytest subprojects/docket/tests/test_vcs.py -q && grep -q 'def test_a_design_round_on_a_needs_decision_item_is_in_flight' subprojects/docket/tests/test_vcs.py
 classes: defect
 feature: parallel-sessions
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-19
 ---
 

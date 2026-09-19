@@ -2178,7 +2178,7 @@ def test_flight_does_not_read_a_mentioned_id_as_work_in_progress(
 
     assert main(["--items", str(root / "items"), "flight"]) == 0
 
-    assert "No branch claims an item" in capsys.readouterr().out
+    assert "No branch carries an item id" in capsys.readouterr().out
 
 
 def _squash_merge(root: Path, branch: str, subject: str) -> None:
@@ -2206,7 +2206,7 @@ def test_flight_does_not_report_a_squash_merged_branch_whose_ref_survives(
 
     assert main(["--items", str(root / "items"), "flight"]) == 0
 
-    assert "No branch claims an item" in capsys.readouterr().out
+    assert "No branch carries an item id" in capsys.readouterr().out
 
 
 def test_flight_keeps_a_squash_merged_branch_out_after_the_base_moves_on(
@@ -2226,7 +2226,7 @@ def test_flight_keeps_a_squash_merged_branch_out_after_the_base_moves_on(
 
     assert main(["--items", str(root / "items"), "flight"]) == 0
 
-    assert "No branch claims an item" in capsys.readouterr().out
+    assert "No branch carries an item id" in capsys.readouterr().out
 
 
 def test_flight_names_a_ref_it_could_not_read_rather_than_ignoring_it(
@@ -2667,7 +2667,7 @@ def test_flight_does_not_answer_from_a_walk_the_clone_truncated(
     assert main(["--items", str(work / "items"), "flight"]) == 0
 
     out = capsys.readouterr().out
-    assert "No branch claims an item" in out
+    assert "No branch carries an item id" in out
     assert "PL-M01" not in out
     assert "1 ref cannot be compared with origin/main" in out
     assert f"  origin/{BRANCH}" in out
