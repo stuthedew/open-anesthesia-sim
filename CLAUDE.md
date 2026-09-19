@@ -39,6 +39,17 @@ of it, that the effort belongs on the product instead — is answered here, and
 raising it again spends a reply re-deriving what this section already settles
 (`PL-9J2W`).
 
+**That answers the level, not the trend** (project owner, 2026-09-19). The
+apparatus was effectively the product while it was being built, so the
+refutation above was written about a period that has ended, and it cannot tell
+two claims apart. "There is too much apparatus, the effort belongs on the
+product" stays refused. "Apparatus inflow should be declining now that the
+functionality is settled, and if it is not, something is generating work we
+should go and find" was never asked, is live, and is a diagnostic expectation
+rather than a ratio — no ratio is tracked or enforced. `PL-04KR` (the
+pre-registered apparatus-convergence baseline) holds its numbers and the two
+signals that test it.
+
 ## Working with the project owner
 
 **The outcome is the requirement. An implementation sketched alongside it is
@@ -293,6 +304,22 @@ of them — working out what an idea breaks into, naming the feature and writing
 the briefs is the job being delegated, so propose an answer and invite
 correction rather than handing the question back.
 
+**The trigger for involving them is a real trade-off, not the size of the
+change** (project owner, 2026-09-19). A recurring observed issue, or a cheaper
+route to behavior the project already has, is yours to fix and report —
+including new non-user-facing machinery, and whether or not anyone asked for it.
+It becomes theirs when something genuinely has to be weighed: a major refactor,
+a material risk of breaking what works, an increase in complexity, or a change
+that opens a class of follow-on work. Then put the risk and the reward, and
+stop. Report what the fast path did, in a line, every time — a fast path nobody
+can audit is indistinguishable from a session doing as it likes. A hard count
+on the fast path was considered and refused: any bright line drawn at "adds a
+standing mechanism" would have blocked the convergence check the owner asked
+for three times in the same conversation (`PL-04KR`, the pre-registered
+apparatus-convergence baseline). Nothing was cut to pay for this block; no
+existing sentence grants it, and the ask-gate above turns on a different axis —
+deviating from a described deliverable, not acting without one.
+
 - **Capture, always, and capture cheaply.** Any defect, risk, cleanup,
   optimization, inconsistency, or idea identified in a session and not fixed in
   that same session gets recorded before the session ends — findings the owner
@@ -402,7 +429,15 @@ correction rather than handing the question back.
   failure a check now catches is retired rather than kept, on the test in
   `docs/resident-instructions.md` (`PL-NJTZ`). `make check` reports the resident
   character total, so growth raises this question instead of passing silently;
-  `PL-H7XN` carries the reasoning.
+  `PL-H7XN` carries the reasoning. **And every edit to the resident set names
+  what it replaces, or says why nothing can be cut** (project owner,
+  2026-09-19, ratified, over leaving the growth advisory unthresholded). It ran
+  8,903 characters at inception, 49,991 on 2026-09-13 and 60,199 on 2026-09-19 —
+  20.4% in six days — and `tools/doc_check.py` records the cause: the rule that a
+  behavior change takes effect in the session that asks for it guarantees growth,
+  and `PL-034`'s one-time trim regrew inside a release. Naming the payment is the
+  smallest thing that makes the growth a decision instead of a default; it is not
+  a ceiling, which this file has already refused.
 - **Name the work after the item.** On starting one, rename the session to lead
   with its id, and put that id **at the front of every commit subject** and pull
   request title. This is load-bearing rather than cosmetic: `bin/docket flight`
