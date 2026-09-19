@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: perf, defect
 feature: session-start-cost
+milestone: v0.4.28
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests
 added: 2026-09-16
 closed: 2026-09-17

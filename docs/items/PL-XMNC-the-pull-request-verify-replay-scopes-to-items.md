@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, infra
 feature: verify-invalidation
+milestone: v0.4.28
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .github/workflows/quality.yml, docs/ARCHITECTURE.md
 added: 2026-09-17
 closed: 2026-09-17

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: interface-areas
+milestone: v0.4.28
 touches: docs/items
 added: 2026-09-17
 closed: 2026-09-17

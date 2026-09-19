@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning
 feature: interface-areas
+milestone: v0.4.28
 touches: docs/items, ROADMAP.md, docs/WORKING_NOTES.md, src/anesthesia_sim/app
 added: 2026-09-17
 closed: 2026-09-17

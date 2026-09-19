@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: decision-ownership
+milestone: v0.4.28
 touches: .claude/rules/instruction-writing.md, .claude/skills/docket/SKILL.md, docs/resident-instructions.md
 added: 2026-09-19
 closed: 2026-09-19

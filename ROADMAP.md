@@ -87,7 +87,8 @@ capability-boundary rule above governs.
 | v0.4.24 | Completed | **The release where `core/` settled what its dimensionless numbers are called, and nothing it computes moved.** The second half of that sentence is a tree-object identity rather than a reading of the diff: `tests/reference/` resolves to `42ce3b2` at both `v0.4.23` and here, so every published-reference expected value is byte-identical and still met, and `src/anesthesia_sim/data/` resolves to `6960c78` at both, unmoved now across three releases. Eleven files under `src/` change and **not one numeric literal in executable code does** - every changed line carrying a number is a docstring or a comment. **Six of the ten items complete `core-domain-language` at 16 of 16**, and they are one question rather than six: how many dimensionless kinds `core/` carries, which of them a type may separate, and which names describe a quantity against a range. `PL-6KNM` renames `require_concentration_fraction` to `require_fraction` on the evidence that all eleven call sites in `core/` pass a `..._partial_pressure_fraction`, so not one passes a concentration and a reader met two names for one kind on one line. `PL-BQ46` adds `MacMultiple` beside `Fraction` and `Percent`, and the hazard it refuses is reachable and arithmetic rather than hypothetical: sevoflurane's MAC-awake band is 0.34 +/- 0.05 MAC against a MAC of 2.0%, drawn at **0.58-0.78%**, and a circuit fraction at the vaporizer's own 8% maximum passed into the same call clears every runtime guard - 0.08 - 0.05 is still positive - and draws the band at **0.06-0.26%**, below the awakening concentration, where a falling trace crosses it late or never with nothing on screen saying so. `PL-KL2Q` states at the aliases which vocabulary a new field takes, by layer rather than by quantity, and records the merged `Annotated` form as priced and refused. `PL-BDNB` renames one integral and records four deliberate leaves at their bindings. `PL-XP6W` gives § "Symbols" the f_i row its own § "Tissue groups" already used. **The one change a learner could notice is `PL-1PSX`**, and its own brief did not survive measurement. `SimulationView._refresh_view` regrouped the whole recorded control timeline every frame - 0.88 ms at a thousand entries, 8.8 ms at ten thousand, 94.6 ms at a hundred thousand against a 200 ms frame - for an answer identical to the previous frame's on every frame that recorded nothing. The item blamed the playback multiplier, reasoning that a drag emits at the event rate while simulated time advances at the multiplied rate; it does not. A change is recorded only once per simulation step and a step is a property of the tick, so 600 slider events at 60 Hz record **100 entries at 1x, 5x, 20x, 60x and 300x alike**, and one entry for a drag made while paused. The item also proposed keying the cache on the record's length, which would have displayed a wrong value: `_record_control_change` *replaces* the newest entry when one control moves twice inside a step, leaving the record the same length and a different record, so the panel would have stated a setting the run was never computed under. The key is the record's identity, and both regression tests were confirmed to fail against the length-keyed version. No ceiling was put on the record, and the reason is recorded rather than assumed: a cap would retire the beginning of a case, and it would bound nothing, `RunDefinition._segments` growing one stretch *and one keyframe* per accepted change and being unbounded too. **The plan reader was wrong about the gate in two ways**, both in the commands every session opens with. `PL-WZBX`: `wave` counted debt the milestone itself exists to clear as clearable *before* it, moving Gate 1 from `3 this gate can clear` to `0 ... 2 the milestone clears itself`, and the beat from `clear the gate` to `implement v0.5.0`. `PL-TNB6`: `next` told every session that `v0.4.x` clears Gate 1, where the timeline makes the gate a row of its own that no patch may ship. **And one closure that never landed is the release's sharpest lesson.** `PL-6TQH` asked the owner to tag `v0.4.23`; the tag went up, the session that cut the release ended `failed` before closing the item, and `docket check --verify` on the next push to `main` errored because an open item's command already passed. `main` was red for seven hours and **no pull request could have shown it** - `quality.yml` replays the whole store only on a push to `main`, a pull request getting `--verify --verify-base` scoped to its own diff. Ten items, two of which are the `v0.4.23` cut and its tag. | 10 items |
 | v0.4.25 | Completed | **The release where the run became forkable underneath the interface, and the last Flet build was tagged.** A patch, because a learner cannot reach the first half: `PL-XJ37` records that nothing in the interface lets a learner take a fork or select between runs, so a case runs as it did in v0.4.24 and every displayed value is the same value. Three measurements: `src/anesthesia_sim/data/` resolves to `6960c78` here as at `v0.4.24`, `v0.4.23` and `v0.4.22`, unmoved across four releases; eight files under `src/` change, three in `core/`, and **every numeric constant the diff adds to executable code is a 0, a 1 or a 2** - an index, a count, a lower bound - measured by parsing both revisions with `ast` and diffing the constants; `tests/reference/` changes in one file and the change is the fork-reproduction probe list moving onto the case's own axis, no published-reference expected value with it. **A branch's definition opens at the fork instant on the case's own axis** (`PL-ZMRT`, project owner, 2026-09-14): with a fork at 900 s, `(900.0 + 1e-6) - 900.0` is `9.999999974752427e-07` rather than `1e-6`, so a child asked for its own first microsecond propagated over a different interval from its parent; after the change the branch agrees with its parent at **all 601 shared case instants**, where a definition opened at its own zero differs at **354 of 601**, and `PL-2R2C` dissolved with it - a branch's drawn columns went from 2 of 8 shared with the trunk to 8 of 8. `SimulationController.origin_s` and both subtractions are gone. **`PL-3LZB` is `P1` `safety` and had to land first**: `RunDefinition`'s lower bound was the literal `0.0` and `_segment_index_at` wrapped, so a definition opening after zero answered from its *last* segment instead of refusing - `state_at(0.0)`, `state_at(100.0)` and `state_at(599.9)` all returned 0.005664 alveolar fraction on a definition opening at 600 s, and `evaluate_anchored(0, 500, 100)` drew a varying curve across a span the run did not exist for. A strict no-op on the v0.4.24 tree and reachable the moment a branch opens at 600 s. `PL-TFX5` forks a run at any control-input event, flat rather than as a tree; `PL-J2TD` is what a fork resumes into, a live run opened at a canonical keyframe state guarded by `require_canonical_state` and `resume_at`, advancing by the ordinary path; `PL-B9PY` decomposes `SimulationView` so two runs render, the 211 existing tests unchanged except for reaching the sole run through `view.runs[0]`. Five of the twelve are v0.5.0's own Required-scope ids shipped early in the `v0.4.x` track. **`PL-RKWB` moved the Qt port ahead of v0.5.0's display half**, and this cut takes the number that section held, as its own risk paragraph provided for: the heading moved to `v0.4.26` and nothing else moved with it - because `PL-YVM1` found the earlier renumber had left **51 references in 29 open items, `app/theme.py` and `docs/MODEL.md`** naming the port `v0.5.1`, all six of its build items among them, invisible to `tools/doc_check.py` because none was a section citation, and adopted the rule that outside this file the port is named by what it is, never by a version. `PL-6T4L` stopped the digest offering v0.5.0 with 8 of 22 scope entries open; `PL-H27D` corrected eight statements `PL-ZMRT`'s own sweep never reached; `PL-5328` re-briefed `PL-RD3B` against the tree `PL-2FM6` left; `PL-1V3X` is the v0.4.24 cut. | 12 items |
 | v0.4.26 | Completed | **The release where the interface was rewritten and the model was not.** `app/` moves from Flet to PySide6 and pyqtgraph - 15 files, +7 488/-5 357, seven modules added and the Flet chart-series module deleted - against a definition of done that was *parity* with v0.4.25 rather than improvement, and the runtime dependencies swap with it (`flet[all]` and `flet-charts` out, `PySide6-Essentials` and `pyqtgraph` in). **No stored scientific value moved, and that is a parse of both revisions rather than a reading of the diff:** the three agent files under `src/anesthesia_sim/data/agents/` are byte-identical to v0.4.25, and the two data files that do change carry citation text only - all 15 numeric leaves across both are identical. `core/` changes in one file, in one hunk of two lines, and it is a docstring cross-reference following `app/simulation_view.py`'s split into `app/run_view.py`; `tests/reference/` changes in one file, re-pointing the import allowlist and one assertion at `app/dashboard_frame.py` with no expected value touched. **The patch number survives the one surface that grew.** `PL-8PSW` drew two branches on one axis - v0.5.0's comparison display, landed early at the project owner's direction - and the release still crosses no learner-facing boundary, because `fork_at`, `fork_points_s` and `branches` have no caller outside `app/controller.py`: nothing in the interface creates the second run the overlay draws, and only tests reach it. **Three `P1` `safety` items rode the port** rather than being built twice on a toolkit about to be deleted. `PL-2K1R` put "Model outputs - not measurements." under the readouts, which is the first thing in this interface distinguishing a modelled value from a measured one. `PL-YVHK` implemented the hover readout to the derivation `docs/MODEL.md` already carried. `PL-GS3R` replaced the fixed 150-column drawing budget with a chord-width rule, after re-measuring the worst drawn departure at every rung of `TIME_BASE_LADDER`: 0.53 pp on the alveolar trace (0.26 MAC) at the fastest supported settings, and 3.8 pp (0.64 MAC) for a desflurane overpressure induction. **`PL-2QMK` closed at last**, after the whole of the Flet build: Qt renders offscreen in the container Flet's web renderer could not reach, so `PL-YCWZ`'s headless tests assert on the real interface and a session can look at the chart change it just made. The apparatus half is the larger by count - `PL-9GP1` corrected three values the provenance notes denied were in Appendix C of the Gas Man Workbook, `PL-QSJM` caught `make check`'s ruff passing where CI failed on an mtime-keyed cache, `PL-Y6W9` fixed eight tests red on the owner's own machine and green in CI, and five triage passes cleared 107 captures. | 94 items |
-| v0.4.27 | Completed / current baseline | **The release where the audit every close-out runs stopped refusing the work it prescribes.** No shipped code moves: `src/`, `tests/` and `docs/MODEL.md` are byte-identical to v0.4.26 by tree object, so no equation, parameter, numerical method, unit or displayed value changes. The subject is `bin/docket verify --self`, the audit the `docket` skill's close-out requires. Two of its four absolute integrity checks had no passing route for work that was correct - `PL-K82G` for an item whose own work makes a rendered string false, `PL-L4KX` for a `dropped` or `not-delegable:` item that has no command to run - so a correct close-out returned `REJECT`, which is how a reader is trained to skim the block where a real protected-path failure prints. Both new exemptions are read from the **base's** copy of the item rather than from the working tree, which is the build's own correction to the case that authorised it: in `--self` the front-matter guard is advisory, because the close-out sets `status: done` in the same commit as the work, so a declaration read off the branch would have been a self-grant with no guard at all in the one mode that fires routinely. The cost is filed rather than hidden (`PL-TKFD`). `PL-C6XD` is the same duplicated-logic drift one layer down: `render._release_advice` and `render.format_status` each carried an independent copy of the `RESERVED` verdict's wording, so `bin/docket digest` and `bin/docket status` could disagree about whether a release may be cut, and no surface printed the reserved set at all - both now render from one place, and `bin/docket wave` gained the `Reserved` line this cut read to establish that 0.5.0 through 0.9.0 are spent. The two decisions carry no code by design. `PL-MQHN` settles that a setting's tier is decided by *instance multiplicity* rather than Workspace membership - can a reader sensibly have two of these on screen at once? - which is what `PL-WV9K` reads before the Workspace object exists. `PL-YHWG` re-affirms item 34's placement after v0.5.0 against the modularity argument, on a count the reopening had not run, and writes the ordering principle into this file as a rule binding a new *surface* and not a new *value*, with its expiry named. `PL-06YW`, the v0.4.26 cut, closes here. | 6 items |
+| v0.4.27 | Completed | **The release where the audit every close-out runs stopped refusing the work it prescribes.** No shipped code moves: `src/`, `tests/` and `docs/MODEL.md` are byte-identical to v0.4.26 by tree object, so no equation, parameter, numerical method, unit or displayed value changes. The subject is `bin/docket verify --self`, the audit the `docket` skill's close-out requires. Two of its four absolute integrity checks had no passing route for work that was correct - `PL-K82G` for an item whose own work makes a rendered string false, `PL-L4KX` for a `dropped` or `not-delegable:` item that has no command to run - so a correct close-out returned `REJECT`, which is how a reader is trained to skim the block where a real protected-path failure prints. Both new exemptions are read from the **base's** copy of the item rather than from the working tree, which is the build's own correction to the case that authorised it: in `--self` the front-matter guard is advisory, because the close-out sets `status: done` in the same commit as the work, so a declaration read off the branch would have been a self-grant with no guard at all in the one mode that fires routinely. The cost is filed rather than hidden (`PL-TKFD`). `PL-C6XD` is the same duplicated-logic drift one layer down: `render._release_advice` and `render.format_status` each carried an independent copy of the `RESERVED` verdict's wording, so `bin/docket digest` and `bin/docket status` could disagree about whether a release may be cut, and no surface printed the reserved set at all - both now render from one place, and `bin/docket wave` gained the `Reserved` line this cut read to establish that 0.5.0 through 0.9.0 are spent. The two decisions carry no code by design. `PL-MQHN` settles that a setting's tier is decided by *instance multiplicity* rather than Workspace membership - can a reader sensibly have two of these on screen at once? - which is what `PL-WV9K` reads before the Workspace object exists. `PL-YHWG` re-affirms item 34's placement after v0.5.0 against the modularity argument, on a count the reopening had not run, and writes the ordering principle into this file as a rule binding a new *surface* and not a new *value*, with its expiry named. `PL-06YW`, the v0.4.26 cut, closes here. | 6 items |
+| v0.4.28 | Completed / current baseline | **The release where the queue stopped mistaking a live claim for a spent one, and a `verify:` command stopped being twelve separate promises.** Fifty-eight items, second only to v0.4.26's 94 among the releases that record a count, and two of them are reachable by a learner. Both are presentation fixes rather than new capability, which is why the number is a patch: `PL-DHBX` gives the Start, Pause and Reset buttons an explicit colour, their labels having been illegible under the macOS Dark appearance, and `PL-MN4J` makes the chart hover name which of two drawn runs it is reading - v0.5.0's own `Required scope` entry, shipped early in the `v0.4.x` track as a seventh after v0.4.25's five and v0.4.26's `PL-8PSW`. **No stored scientific value moved, by tree object rather than by reading the diff:** `src/anesthesia_sim/data/` resolves to `d9f9c5b` at both `v0.4.27` and here and `tests/reference/` to `fcb3eca`, so every published-reference expected value is byte-identical and still met, and the three files that change under `src/` are all under `app/`. **`docs/MODEL.md` gains 314 lines** for `PL-S6WW`, the one Gate 1 frozen entry here: the specification asserted agent amounts were gas volumes "at one documented reference temperature and pressure" and documented no temperature anywhere, where a liquid-equivalent conversion moves 5.8% between a 20 C and a 37 C reference. **Six items are one bug seen six ways.** `branches_in_flight` collapsed its carriers to one ref per id *before* the tests that decide whether a ref is spent, so a landed claim on a bystander branch silently dropped a live one and `bin/docket next` offered work another session already held - `PL-2BZY`, `PL-61MD` and `PL-RY2R` are the three collapses, `PL-Q9Z1` is `_superseded` reading a failed `git diff` as the tips agreeing about every path, the one direction its own docstring forbids, `PL-VYSP` is a design round whose whole output is item files and which therefore could never raise the mark at all, and `PL-3CTW` is the opposite error - a capture commit claiming the ids it only filed. `PL-BHVM` is the design round underneath them: nineteen items had been re-deciding what evidence proves a ref done, seventeen of them in `vcs.py`. **And `verify:` became one contract instead of twelve patches** (`PL-6TP8`): what an exit status proves, to whom, and why a health check ahead of the discriminating clause proves nothing twice - it was 99.7% of the pull-request replay's serial cost. `PL-7TYC`, `PL-K1WS` and `PL-QJQL` repair the audit's assertion check, which grepped for the substring `assert` across 90 non-test source lines, never asked whether a removed assertion had a replacement, and could not see `pytest.raises` at all. **Session start lost its fan-out**: `PL-0J9K` replaced 389 `git show` processes with one `git cat-file --batch`, `PL-MMVF` memoized 82 duplicate subprocesses out of 192, `PL-DMDF` stopped asking one `git diff` per item file, and `PL-XD3C` bounded a walk that was O(unmerged refs) and so got slower every month on a long-lived clone. `PL-TM9J`, the v0.4.27 cut, closes here. | 58 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -152,117 +153,169 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.4.27
+## Current baseline: v0.4.28
 
-v0.4.27 is the release in which the audit every close-out runs stopped refusing
-the work it prescribes.
+v0.4.28 is the release in which the queue stopped mistaking a live claim for a
+spent one, and a `verify:` command stopped being twelve separate promises.
 
-No shipped code moves. `src/`, `tests/` and `docs/MODEL.md` are byte-identical
-to v0.4.26 - compared by tree object rather than by reading the diff - so no
-equation, parameter, numerical method, unit or displayed value changes. Six
-items: three defects in `subprojects/docket/`, two decisions that carry no code
-at all, and the v0.4.26 cut itself (`PL-06YW`). It is a patch on the `v0.4.x`
-track because every number above it is spent - v0.5.0 through v0.9.0 are given
-to milestone sections - and because nothing here crosses a capability boundary,
-which is § "Versioning decision"'s test.
+Fifty-eight items, second only to v0.4.26's 94 among the releases that record a
+count. Two are reachable by a learner and both are presentation fixes rather
+than new capability, which is why this is a patch on the `v0.4.x` track:
+§ "Versioning decision"'s test is the capability boundary a release crosses, and
+nothing here crosses one - v0.5.0 through v0.9.0 are in any case spent by
+milestone sections. **No stored scientific value moved, measured by tree object
+rather than read off the diff:** `src/anesthesia_sim/data/` resolves to
+`d9f9c5b` at both `v0.4.27` and here, so no parameter changed;
+`tests/reference/` resolves to `fcb3eca` at both, so every published-reference
+expected value is byte-identical and still met; and the three files that change
+under `src/` are all under `app/`, so no equation, numerical method or unit
+moved either.
 
-### The close-out's own audit refused two correct shapes
+### What a learner can see
 
-`bin/docket verify --self` is step 5 of the `docket` skill's close-out, and its
-four integrity checks are absolute by design: no suppression added, no assertion
-removed, the item's own `verify:` command passes, `make check` passes. Two of
-them had no passing route for work that was right.
+`PL-DHBX` gives the Start, Pause and Reset buttons an explicit colour. They
+declared none, so under the macOS Dark appearance their labels were illegible -
+a reader could not tell which control they were about to press on a running
+case.
 
-`PL-K82G` is the assertion check. It was found while closing `PL-C6XD` below,
-whose whole job was to delete one of two independent copies of a rendered
-string - so doing the work correctly removed an assertion, and the check refused
-it. The answer is a front-matter field, `falsifies:`, naming enough of the
-assertion to identify the one subject the item's work makes untrue; a matching
-removal folds and is printed beside the check.
+`PL-MN4J` makes the chart hover name which run it is reading. It named the agent
+and the instant only, so with two runs drawn a hovered value was unattributed:
+the right number against the wrong patient context, which `CLAUDE.md`'s
+safety-critical standard counts as a presentation failure rather than a cosmetic
+one. It is v0.5.0's own `Required scope` entry "The chart's hover says which run
+it is reading", shipped early in the `v0.4.x` track on the disposition
+§ "The timeline" row 5 records - a seventh, after v0.4.25's five and v0.4.26's
+`PL-8PSW`.
 
-`PL-L4KX` is the command check. It refused an empty `verify:` with no exemption
-for a `dropped` item or one carrying `not-delegable:`, while `docket check`
-accepts both - so the two tools disagreed about the same store, and the
-close-out the skill prescribes could not reach `ACCEPT` on work it also
-prescribes. Both shapes now report as an advisory naming which applies, and the
-remaining checks still run instead of stopping early. A `done` item carrying
-neither still fails hard and still stops.
+### The specification claimed a reference temperature and named none
 
-**Both exemptions are read from the base's copy of the item, not the working
-tree, and that is the build correcting its own authorising case.** The written
-argument said a worker could not simply declare whatever it wanted to delete,
-because `front_matter_check` would catch a line added on the branch. That is
-true of a delegated review and false of the self-audit these were written for:
-in `--self` the front-matter guard is advisory, because the close-out sets
-`status: done` in the same commit as the work, so it prints `NOTE` and refuses
-nothing. Built to the letter of its own case, `falsifies:` would have been a
-self-grant with no guard at all in the one mode that fires routinely. Reading
-the base holds the property the argument wanted - the declaration is the
-reviewer's text, written before the work - in both modes, and a branch-only
-declaration folds nothing and is reported in those words.
+`PL-S6WW` is the one Gate 1 frozen entry in this release, added 2026-09-17 under
+the unconditional safety/science exception and closed the same day.
+`docs/MODEL.md` asserted that agent amounts are gas volumes "at one documented
+reference temperature and pressure" while documenting no temperature anywhere,
+and the gap is arithmetic rather than pedantic: a liquid-equivalent conversion
+moves **5.8% between a 20 C and a 37 C reference**, so two readers could take
+the same displayed millilitre for two different amounts of liquid agent with
+nothing on the page to separate them. The specification gains 314 lines stating
+the conditions and what follows from them.
 
-The cost is filed rather than hidden: a session that discovers mid-work that its
-work falsifies an assertion has no route to a clean `ACCEPT` within that
-session, because it cannot put the declaration on the base - `PL-TKFD` carries
-that gap.
+### One bug seen six ways: a live claim dropped for a spent one
 
-### One verdict, one renderer, and the evidence to argue with it
+`branches_in_flight` is what `bin/docket next`, `show` and the session-start
+digest read to decide whether somebody is already on an item. It collapsed its
+carriers to one ref per id **before** the tests that decide whether a ref is
+spent, so a landed claim on a bystander branch displaced a live one and the
+queue then offered work another session was holding. `PL-2BZY`, `PL-61MD` and
+`PL-RY2R` are the three collapses - the `taken-on-base` guard, the `own_edits`
+set and `walk.edited` respectively. `PL-Q9Z1` is the same failure arriving from
+`git`: `_superseded` read a failed `git diff` as the tips agreeing about every
+path, which drops every mark a ref carries and is the one direction its own
+docstring says it must never fail in. `PL-VYSP` is the case the mark could never
+reach - a design round's whole output is item files, the diff shape the
+in-flight mark deliberately refuses as work, so `bin/docket show` called
+`PL-BHVM` startable while a live session held it with three commits pushed. And
+`PL-3CTW` is the opposite error: a commit that leads with a captured id and also
+reaches outside the queue claimed that id, so a finding filed alongside another
+item's work read "do not start this" for the life of the branch.
 
-`PL-C6XD` is the same duplicated-logic drift one layer down.
-`render._release_advice` and `render.format_status` each held their own branch
-on the `RESERVED` verdict and printed a different sentence, neither reading the
-other - so `bin/docket digest` and `bin/docket status` could disagree about
-whether a release may be cut at all, and a fix would have landed in whichever
-copy the item happened to name.
+`PL-BHVM` is the design round underneath them. Nineteen items had been
+re-deciding what evidence proves a ref done, seventeen of them in `vcs.py`, and
+one round replaced the patches.
 
-The second half is what a session can see. `reserved` did not occur in
-`render.py`, and `bin/docket wave` printed Version, Step, Next, Gate, Scope and
-Beat only: a session could see exactly one reserved version, the one colliding
-with its own bump, and only in prose. `wave` now carries a `Reserved` line, and
-this cut is its first use - it is what established that 0.5.0, 0.6.0, 0.7.0,
-0.8.0 and 0.9.0 are all spent and that `v0.4.x` is where a cut can land.
+### `verify:` is one contract now, not twelve patches
 
-### Two decisions, shipped as decisions
+`PL-6TP8` settles what a `verify:` exit status proves and to whom, which twelve
+items had been re-deciding because the field was specified as a command string
+and nothing else. The sharp consequence is that a health check ahead of the
+discriminating clause proves nothing twice and costs a great deal: the paired
+shape was **99.7% of the pull-request replay's serial cost**, so the rule is now
+a `grep` for what the work adds, alone, with `make check` left to the run that
+already does it.
 
-Neither carries code. Both are what a later session reads before building, which
-is why they are in a release rather than only in a reply.
+Five items are the failure modes that contract names. `PL-6TN8`: a `grep` for a
+test name exits 1 because the name was guessed, not because the work is
+outstanding. `PL-0M32`: nothing could tell an item finished under a renamed test
+from one nobody started. `PL-FXBS`: a command that negates a recursive `grep`
+over `docs/items/` is falsified by the item store itself, since the item's own
+`verify:` line contains the string it greps for. `PL-LKGL`: a command tests for
+the presence of the fix and never the fault, so an entry whose defect was solved
+another way fails forever and reads as outstanding - one measured pass found 12
+of 134 items dead and 31 more overtaken, and a churn advisory was built,
+measured against those verdicts and rejected. `PL-XMNC`: the pull-request replay
+scoped to items whose *file* the branch edited, so a branch that broke some
+other item's command by editing the file that command reads replayed nothing.
+`PL-8T83` and `PL-6YWK` are the two commands that ran whole suites - one killed
+at the 120s limit, so nothing was claimed about its item on any run.
 
-`PL-MQHN` settles the store split for the layout work: **the tier a setting
-belongs to is decided by instance multiplicity, not by Workspace membership**,
-and the Workspace is the container for one tier rather than a peer of the other
-two. Run state is one set of numbers every View draws from; per-View-instance
-state is how *this* View draws them, serialized into the Workspace containing
-it; reader preferences are the settings for which a second simultaneous value is
-incoherent rather than merely unusual. The test is *can a reader sensibly have
-two of these on screen at once?* - yes routes to the View, incoherent routes to
-preferences, and a setting that changes the numbers rather than their drawing
-stays in the versioned data files. The project owner's own case is what settled
-it: three graphs of one run in a single Workspace - the vessel-rich group
-against the MAC-awake band and the 1 MAC line, a smaller one below it with every
-compartment on, and a third in a squarer Area zoomed to the first fifteen
-minutes to read the wash-in. All three are instances of one View kind
-disagreeing about what they show inside one Workspace, which a rule keyed on
-Workspace membership cannot even state. Recorded in § "v0.6.0 - the layout is
-the reader's" -> "Required scope" item 11, where `PL-WV9K`, the item that
-defines the Workspace object, will read it.
+`PL-7TYC`, `PL-K1WS` and `PL-QJQL` repair the audit that reads them.
+`bin/docket verify`'s "no existing assertion removed" check grepped for the
+substring `assert`, which occurs on 90 non-test source lines, never asked
+whether a removed assertion had a replacement - so any function-signature change
+was rejected for every call site it updated in place - and could not see
+`pytest.raises` or `pytest.warns` at all, reporting the deletion of a whole
+raises block as no assertion removed.
 
-`PL-YHWG` re-affirms item 34's placement after v0.5.0. The project owner
-reopened a placement they had ratified the day before, on the argument that
-every UI decision taken before the area model is taken against a layout that is
-going away - and the count cut against the re-order: the monolithic surface it
-would protect has already shipped, so re-ordering would park a small MVP tail
-behind a much larger milestone and strand `PL-7Z84`, the run identity a
-Workspace needs something to pin to. Item 34's entry carries the tally. What
-changed is that the
-ordering principle is now written as a rule instead of being implied by row
-position, with two properties worth naming: it binds a new display *surface* and
-not a new *value*, because `CLAUDE.md`'s safety-critical standard is a floor no
-ordering rule may lower; and its expiry is stated, since the rule ends when
-`PL-TH35` (the common Editor contract every view implements) and `PL-R1WQ` (the
-view registry) ship, at which point a new surface is one registry entry and the
-second build stops existing. Both
-are in item 34's entry under § "Planned milestones", which § "The timeline"
-row 7 points at rather than repeating.
+### Session start stopped paying for its own fan-out
+
+`PL-0J9K` replaced 389 per-blob `git show` processes with one
+`git cat-file --batch`; on the owner's machine that was 5.77s of a 24s start.
+`PL-MMVF` memoized the runner, 82 of 192 subprocesses being exact duplicates -
+17.6s on a machine that charges for `exec`. `PL-DMDF` stopped calling
+`_superseded` with a one-element tuple inside a loop, where the function already
+took the whole set. `PL-XD3C` bounded a walk that was O(unmerged refs), so a
+long-lived clone got slower every month and a fresh container never reproduced
+it. `PL-JH3T` is the measurement that made the rest legible: the only number on
+record was a 20.7s median against a hook that measures 3.0s in a session
+container.
+
+### The machinery that ranks the work, and who decides
+
+A *generator* - a mechanism recorded as the root cause of three or more items -
+now ranks above every band but `P0` (`PL-VX5H`), because `P1` grows as
+development proceeds and a generator promoted only within its own band is never
+reached. `PL-G5ZH` gives a defect in that machinery a way to say so
+(`impairs-generators:`, prose naming the function that broke, refused on an item
+whose `touches` never reaches the generator paths), and `PL-4MPJ` binds it to
+the generator's own two endings: fix it in this session, or end the reply with a
+prompt that starts a fresh one. `PL-C97K` makes `bin/docket show` on a member
+name the head that explains it. `PL-M2SD` makes the self-generation ratio
+decidable and reported, so a cluster handing back an item for every one it
+closes stops sitting unranked in a flat `P2` band.
+
+`PL-HGN6` settles the line the project had been getting wrong in the other
+direction: **what makes a decision the owner's is consequence, not what the
+answer rests on.** A granular editorial choice - one document's phrasing, one
+internal structure, one item's disposition - is a session's even when it turns
+on what the project wants, and handing it back spends the owner's attention on
+exactly what they have said they do not want to spend it on.
+
+### The plan reader, and the rest
+
+Six items had the tooling disagreeing with the file it reads. `PL-Y1L0`: cutting
+a patch at the Qt port's number dropped its section out of `wave`'s unreleased
+set, and `outstanding_roadmap_edits` returned an identical list for three
+different versions so nothing reported it. `PL-J45M`: a gate-only milestone
+whose frozen list had cleared never reached the release beat. `PL-LN3T`: a
+milestone row whose version had shipped with its `Required scope` still open was
+not reported. `PL-4PC5`: ids merely *cited* in a scope section's prose were
+counted as scope entries, so v0.5.0 read 21 with 11 closed against its own
+stated eighteen with 8. `PL-7CSP`: a blocker the plan schedules is now
+distinguished from one nothing schedules. `PL-B5DW`: `status` and `wave` named
+different rows as the step.
+
+`PL-H8YD` is the one that had already cost something: auto-merge landed `#654`
+while `pr-title` was in a failed state, so the check protecting the squash
+subject did not gate the merge at all - the correct subject landed only because
+the rename beat auto-merge by three seconds. `PL-L4YG` replaces hand-edited
+front matter with `bin/docket set`, which refuses any write `docket check` would
+then fail. `PL-GPYV` retires "Editor" as the name for what occupies an Area,
+Blender's editors predominantly editing where ours predominantly display
+modelled values. `PL-4Q9B`, `PL-XQRK`, `PL-3V6C` and `PL-F48B` record what a
+session may and may not do to a git ref - including that it cannot delete a
+remote branch, which every cleanup pass had been discovering at the end. Two
+triage passes cleared 46 captures (`PL-Y4D6`, `PL-X7RZ`), `PL-DN5K` recovered
+two items stranded on a branch nobody would merge, and `PL-TM9J`, the v0.4.27
+cut, closes here.
 
 ## The plan
 
@@ -306,7 +359,7 @@ adds no capability and exists to clear the ground they are built on:
 | — | **v0.4.x — the code is the model** | Planned-milestone item 29, shipping as a patch in the `v0.4.x` track. A patch, not a milestone. "No behavior changes" held until the 2026-09-03 re-scope and no longer does: the exact step moves the displayed value in its last digit. Moved from ahead of v0.4.0 to behind it (project owner, 2026-09-02): the placement's real constraint is that it precede item 6's substance generalization, and v0.4.0 changes no equation, so gating the teachable case on an unscoped pass over `core/` bought nothing. Scoped and then re-scoped 2026-09-03: the owner's bar is that a reviewer follow `core/` without a lookup table, which naming alone cannot reach, so the operator split is replaced by the exact matrix exponential (`PL-GS5X`). Still a patch — it crosses no capability boundary; see item 29 for why, and for why no exception is recorded. (Written `v0.4.1` until 2026-09-06, which contradicted this row's own rule that the track promises no particular patch number; v0.4.1 and v0.4.2 both shipped without the exact step, as that rule predicted.) **It freezes no gate and takes no section of its own (project owner, 2026-09-05).** The cadence's four beats run for *milestones*; Gate 1 is frozen when v0.5.0 is scoped, as row 4 records and as three of v0.4.0's own deferrals assume; and no patch in this project has ever had a section — v0.2.1 through v0.3.9 each took a version-table row and a baseline section at ship time and nothing more. That this was ever in question is a tooling artefact worth recording: `bin/docket wave` read this row as a milestone because it was written `v0.4.1` where item 29 already called it the `v0.4.x` row, and the gate it therefore asked to freeze was 105 entries against Gate 0's 21 — five times the largest gate this project has cleared, and 62% of the open queue. The row is now written `v0.4.x`, which is what makes the beat agree with the plan. **Eight items**, `PL-P0BB` having shipped in v0.3.2: `PL-GS5X` and `PL-X9KD` under `numerical-domain`, and `PL-H46J`, `PL-212V`, `PL-3TLK`, `PL-9SH6`, `PL-VZL0`, `PL-FZ6T` under `core-domain-language` — plus `PL-X2XX`, which `PL-VZL0` requires and which neither list named until `PL-GGCN` taught the checker to read the second half of a compound prerequisite. Swapping `PL-P0BB` out for `PL-X2XX` leaves the effort totals unchanged. `PL-3TLK` leads; the rest of the naming work follows the exact step. `PL-011` was carried here at the v0.4.0 cut and is **not** part of this step: it was dropped 2026-09-05, superseded by `PL-T691` and `PL-2FM6`. Those two, with `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, are the score architecture the 2026-09-05 design round filed into `numerical-domain` behind `PL-GS5X`, and they are **v0.5.0's, not this track's** (project owner, 2026-09-05) — row 5 carries the reasoning. **This track promises no particular patch number,** which is what `v0.4.x` means: patches are cut as work accumulates and the exact step takes whichever number it lands on. Saying "ships as v0.4.1" would be a promise the release path cannot keep — `docket release` offers the next free number to whatever is finished, so any patch cut before the exact step lands would take it — any number that is genuinely *free*, which since 2026-09-16 excludes one this file has given to a milestone section ahead of the current one (project owner, ratified, on `PL-KQHN`). | 1 L, 6 M, 2 S |
 | 4 | **Gate 1** | **Frozen 2026-09-06**, the day v0.5.0 was scoped, and recorded in that milestone's own section below rather than here. Contents were unknown by construction and are now the list: v0.4.0's findings, the queue's own defects, and the model-specification debt. Ships inside v0.5.0, not as its own release — except for the three items "The timeline" had already placed on the `v0.4.x` step, which that patch carries. | — |
 | — | **v0.4.26 — the interface moves to Qt** | **Shipped 2026-09-17**, all 28 Required-scope ids closed (`PL-06YW`). **Scoped 2026-09-10**, on `PL-QXSB`'s decision the same day, and it has its own section below. The port `PL-55DH` spiked and `PL-X9T3` measured: the dashboard, the chart and the theme move to PySide6 + pyqtgraph, and nothing a learner can do is lost. **It absorbed planned-milestone item 33, the interface pass, and that absorption was reversed on 2026-09-16** (project owner, on `PL-L9RD`). The argument was that a restyle of a dashboard about to be rewritten is the same work twice, since porting redecides palette, type scale, spacing and layout regardless. The port that landed did not redecide them: its whole effect on `app/theme.py` is 10 insertions and 29 deletions, and the only constant whose value it touched is `ELAPSED_VALUE_WIDTH`, removed as a Flet layout width with no Qt equivalent - no palette entry, type size, padding or radius has moved since 2026-09-10. The port re-expressed the *widgets* and carried the *visual language* across intact, so the premise of the absorption did not come true and item 33 returns to the interface-pass row it held, which moved after item 34 on 2026-09-16 and is now `v0.7.x` (`PL-PHKP`). What the port keeps is the **reservation** rather than the pass: the layout containers are built once here with their splitter handles inert, which is Required scope item 2 and is unaffected. **Moved ahead of v0.5.0 on 2026-09-14** (project owner, on `PL-RKWB`), from the row it held after MVP. The question put was whether v0.5.0's work would be redone after the port, and **the count says mostly not**: of v0.5.0's eight open Required-scope ids, one is wholly inside the rewritten surface (`PL-8PSW`, the two-branch overlay), two have a slice there, and five never touch it - because `tools/import_boundary_check.py` confines Flet to three modules and the milestone's landed work (`PL-T691`, `PL-J2TD`, `PL-TFX5`, `PL-B9PY`) all sits on the surviving side. **Three other grounds carried it, and they are the reasons of record.** `PL-8PSW` is the most presentation-safety-loaded item in the milestone and on Flet it is built where no session can look at it (`PL-2QMK`), while the spike already screenshots offscreen in that same container and `PL-YCWZ` adds headless rendering tests over the real interface. `PL-GS3R` and `PL-YVHK` are both `P1` and `safety`-classed and both sat blocked behind this port for the whole of a milestone. And this port's definition of done is parity against a **closed** enumeration, which is cheapest to check before compare mode - the largest new visual surface in the project - joins the list. **The operative form of the decision is narrower than the move**: nothing new is built in `app/simulation_view.py` or the Flet chart-series module before the port, and v0.5.0's port-neutral spine (`PL-CTD7`, `PL-B8MK`, `PL-Z3W6`, `PL-W7H9`, `PL-49R8`) is untouched by it. **A patch number for a 5 133-line rewrite** because § "Versioning decision" chooses the number for the capability boundary crossed and this crosses none; v0.2.8 is the precedent for machinery at this scale taking one. **It no longer needs a section for the mechanical reason it had one** - every item that waited on it now names the port item doing the work rather than a version, so `blocked-by` resolves with no placed version - and it keeps one because a rewrite this size is not a patch-track row. **Gate 2's freeze is unchanged**: still when v0.5.0 ships, because that gate holds v0.5.0's findings and this port takes no gate of its own. | 2 L, 2 M, 3 S |
-| 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. The placement argument above stands for what it placed, and is left as written. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 175 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. **Five more shipped early the same way**, in v0.4.25 (2026-09-14, `PL-G7RD`): `PL-TFX5`, `PL-J2TD`, `PL-ZMRT`, `PL-B9PY` and `PL-5328`, ahead of the port; the scope list is unchanged and they are closed against it. **`PL-8PSW` makes a sixth**, in v0.4.26 (2026-09-17, `PL-06YW`): the two-branch overlay, asked for by id and built on the port's own chart rather than twice, on the same disposition - its Required-scope entry below records what shipped and is unchanged. | — |
+| 5 | **v0.5.0 — the case you can branch** | Planned-milestone items 8 (replay half), 26 (bookmarks), 12 (forking), 11 (comparison). **The score architecture belongs here (project owner, 2026-09-05):** `PL-T691` (hold keyframes at every control event and answer any window in closed form), `PL-2FM6` (delete `RunHistory` and draw the chart from the closed-form sampler), `PL-P1Z3`, `PL-8LXM` and `PL-49R8`, filed into `numerical-domain` by the 2026-09-05 design round and chained behind `PL-GS5X`. It is placed here rather than in the v0.4.x track for two reasons that point the same way. It is what forking *is*: item 12's required property — a branch reproduces its parent element-wise at every recorded sample — stops being a property a test has to establish and becomes one the representation cannot violate, because the branch's prefix is the parent's own score rather than a reproduction of it. **That reason was stated wrongly here until 2026-09-06 (`PL-QYPX`)**: the original said the property is "expensive against a recorded sample store", and it is not — v0.4.0's own "Designed for forking" already preserves it, and copying a parent's samples up to the branch point satisfies it trivially. What is expensive against a sample store is holding *two* of them, which is `PL-011`'s dropped growth debt doubled. The placement is unchanged and better supported; only the argument moved. And it is `1 P1 L` plus four more against a patch track whose whole content is otherwise `1 L, 6 M, 2 S`, so admitting it there would roughly double a patch and put a `P1 L` inside one. `PL-011` was dropped on its promise, so this is also where that debt is actually paid: until `PL-T691` and `PL-2FM6` land, the run's sample store grows unbounded. **Four of the five shipped in the `v0.4.x` track instead** - `PL-T691` and `PL-P1Z3` in v0.4.8, and `PL-2FM6` with `PL-8LXM` brought forward on 2026-09-08 when `PL-4RBD` was re-measured at 0.32 MAC and re-banded `P1` `safety`; the debt-gate section carries that decision. The placement argument above stands for what it placed, and is left as written. **Scoped 2026-09-06**, which froze Gate 1 - a list now standing at 175 entries, its post-freeze additions dated in that section; the goal, required scope, definition of done and out-of-scope list are in the "v0.5.0 - the case you can branch" section below, and sixteen items carry it. **Five more shipped early the same way**, in v0.4.25 (2026-09-14, `PL-G7RD`): `PL-TFX5`, `PL-J2TD`, `PL-ZMRT`, `PL-B9PY` and `PL-5328`, ahead of the port; the scope list is unchanged and they are closed against it. **`PL-8PSW` makes a sixth**, in v0.4.26 (2026-09-17, `PL-06YW`): the two-branch overlay, asked for by id and built on the port's own chart rather than twice, on the same disposition - its Required-scope entry below records what shipped and is unchanged. **`PL-MN4J` makes a seventh**, in v0.4.28 (2026-09-19, `PL-T2LH`): the chart hover naming which of two drawn runs it reads, on the same disposition - its Required-scope entry below records what shipped and is unchanged too. | — |
 | — | **MVP complete** | A learner can run, branch, and compare a case. | — |
 | 6 | **Gate 2** | **Frozen when v0.5.0 ships, not when the milestone below is scoped** (project owner, 2026-09-16, ratified - chosen over freezing it on the scoping day as beat 1 says, and over deferring the whole scoping round until v0.5.0 ships). Row 7 was scoped two releases early, so the cadence's own trigger would have frozen this list before v0.5.0 had been implemented — leaving it holding none of v0.5.0's findings, which is the one thing a gate is defined to hold. § "The cadence" records the exception and the item that re-examines the trigger; v0.6.0's own section says where the frozen list goes when the moment comes. Ships inside v0.6.0. | — |
 | 7 | **v0.6.0 — the layout is the reader's** | Planned-milestone item 34's tiled half: the layout model, the View contract, the view registry, workspaces, persistence, the unconditional display region, and every layout operation. **Scoped 2026-09-16** (project owner, ratified on `PL-NMTF` - chosen over inserting item 34 ahead of v0.5.0, and over one undivided milestone with break-out inside it). The serialized layout format carries a multi-window root from v1; nothing in this release creates a second window. Break-out is row 9, deliberately — see that section's "Explicitly out of scope" for why the split costs nothing structural. **The placement was reopened and re-affirmed on 2026-09-17** (project owner, ratified - chosen over moving item 34 ahead of v0.5.0, on the argument that every interface question settled before the area model is settled against a layout that is going away): v0.5.0's Required scope is 13 of 20 `done` and the compare surface is among the closed, so the tail a re-order would protect is 4 M and 3 S against this row's own 4 L, 16 M, 3 S. Planned-milestone item 34's entry carries the count, and the standing rule that round produced - **no new display surface is built before this release**, until item 34's View contract and view registry ship. | 4 L, 16 M, 3 S |

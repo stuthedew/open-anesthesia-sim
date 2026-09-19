@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: science, docs
 feature: liquid-agent-consumption
+milestone: v0.4.28
 touches: docs/MODEL.md, docs/references/README.md, ROADMAP.md
 added: 2026-09-16
 closed: 2026-09-17

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: verify-command-health
+milestone: v0.4.28
 touches: .claude/skills/docket/SKILL.md, docs/items
 added: 2026-09-17
 closed: 2026-09-19

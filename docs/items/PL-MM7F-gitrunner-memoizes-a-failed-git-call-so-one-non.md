@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: evidence-declines
+milestone: v0.4.28
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_git_runner.py, subprojects/docket/tests/test_vcs_silence.py
 added: 2026-09-19
 closed: 2026-09-19

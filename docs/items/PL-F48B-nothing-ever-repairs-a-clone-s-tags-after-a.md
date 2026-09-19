@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: dev-tooling
+milestone: v0.4.28
 touches: subprojects/docket/src/docket/vcs.py, .claude/hooks/docket-digest.sh
 added: 2026-09-06
 closed: 2026-09-19

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost, perf
 feature: session-start-cost
+milestone: v0.4.28
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_git_runner.py
 added: 2026-09-16
 closed: 2026-09-17

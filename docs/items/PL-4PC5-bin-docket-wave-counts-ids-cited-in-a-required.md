@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: planning-cadence
+milestone: v0.4.28
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-14
 closed: 2026-09-19

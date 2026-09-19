@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, defect
 feature: planning-cadence
+milestone: v0.4.28
 touches: ROADMAP.md, tools/doc_check.py
 added: 2026-09-14
 closed: 2026-09-19

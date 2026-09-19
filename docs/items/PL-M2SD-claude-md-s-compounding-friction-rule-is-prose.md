@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra, session-cost
 feature: convergence-visibility
+milestone: v0.4.28
 touches: tools/generator_check.py, tests/unit/test_generator_check.py, Makefile
 added: 2026-09-17
 closed: 2026-09-18

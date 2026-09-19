@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: queue-hygiene
+milestone: v0.4.28
 touches: docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md
 added: 2026-09-16
 closed: 2026-09-19

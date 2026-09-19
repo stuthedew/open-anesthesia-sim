@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: git-silence-channel
+milestone: v0.4.28
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-17
 closed: 2026-09-19

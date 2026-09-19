@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: pr-title-enforcement
+milestone: v0.4.28
 touches: .github/workflows/pr-title.yml
 added: 2026-09-17
 closed: 2026-09-17

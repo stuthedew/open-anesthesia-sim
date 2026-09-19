@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect, refactor
 feature: parallel-sessions
+milestone: v0.4.28
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-12
 closed: 2026-09-19
