@@ -12,7 +12,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from docket.vcs import GitRunner, RefWalk, _run_git
+from docket.vcs import GitRunner, RefWalk, _run_git, answered
 
 
 def _git(root: Path, *args: str) -> str:
@@ -195,3 +195,48 @@ def test_one_runner_asked_about_two_checkouts_does_not_confuse_them(tmp_path: Pa
     with GitRunner() as runner:
         assert runner(["rev-parse", "HEAD"], one) != runner(["rev-parse", "HEAD"], two)
         assert runner(["show", "HEAD:kept.md"], one) != runner(["show", "HEAD:kept.md"], two)
+
+
+def test_a_call_git_did_not_answer_is_put_to_git_again(tmp_path: Path) -> None:
+    """A silence is not an answer, so the memo does not keep one (`PL-MM7F`).
+
+    The memo exists so that the duplicate questions one command asks are paid
+    for once - every `merge-base` this module issues is asked three times, and
+    two of the three are removed by remembering (`PL-MMVF`). Storing a
+    *failure* inverts that trade rather than extending it: the one fault is
+    amortised across the whole command, and the thing that would otherwise make
+    a transient fault self-correcting - the next caller asking git again - is
+    exactly what the memo takes away.
+
+    Asserted as the `ran` column rather than as the answer, because both calls
+    come back a silence either way. Whether git was consulted the second time is
+    the entire difference, and the profile is the only place it shows.
+    """
+    root = _repo(tmp_path)
+    argv = ["diff", "--numstat", "HEAD", "refs/heads/gone", "--", "kept.md"]
+    with GitRunner() as runner:
+        assert not answered(runner(argv, root))
+        assert not answered(runner(argv, root))
+
+    assert _asked_and_ran(runner, "diff") == (2, 2), "the memo served a failure as an answer"
+
+
+def test_a_fault_that_clears_does_not_outlive_itself(tmp_path: Path) -> None:
+    """What the retry buys, driven against a fault that really clears.
+
+    The fault `_superseded` meets is a ref deleted - or not yet written - by
+    another session between the `for-each-ref` that lists it and the `diff` that
+    reads it, so it is transient by nature. The count above pins that git is
+    asked again; this pins that asking again is worth something, which the count
+    on its own cannot say.
+    """
+    root = _repo(tmp_path)
+    (root / "kept.md").write_text("one\ntwo\nthree\n", encoding="utf-8")
+    _git(root, "commit", "-qam", "moved")
+    argv = ["diff", "--numstat", "refs/heads/later", "HEAD", "--", "kept.md"]
+    with GitRunner() as runner:
+        assert not answered(runner(argv, root))
+        _git(root, "branch", "later", "HEAD~1")
+        assert runner(argv, root).split("\t")[:2] == ["1", "0"], (
+            "the memo answered from before the ref existed"
+        )

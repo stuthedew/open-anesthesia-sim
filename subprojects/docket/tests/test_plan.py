@@ -10,7 +10,15 @@ from __future__ import annotations
 from datetime import date
 
 from docket.model import Item
-from docket.plan import effort_total, features, gate, placement_line, recommend, set_aside
+from docket.plan import (
+    effort_total,
+    features,
+    gate,
+    placement_line,
+    placement_mark,
+    recommend,
+    set_aside,
+)
 from docket.roadmap import Scope, milestone_scope, parse_milestones
 
 
@@ -184,6 +192,7 @@ def _scope(
     *,
     current: tuple[str, ...] = (),
     later: dict[str, str] | None = None,
+    excluded: tuple[str, ...] = (),
     step_label: str = "",
     clearing: bool = False,
     anchor: str = STEP,
@@ -192,9 +201,36 @@ def _scope(
         anchor=anchor,
         current=frozenset(current),
         later=later or {},
+        excluded=frozenset(excluded),
         step_label=step_label,
         clearing=clearing,
     )
+
+
+def test_an_id_the_anchor_rules_out_says_so_and_ranks_below_the_undecided() -> None:
+    """The fourth placement, which is `PL-6P9Y`.
+
+    An id under the anchor's own `Explicitly out of scope` heading used to
+    answer `unplaced` - the same answer as an id the roadmap has never
+    considered - so it ranked between in-scope and out-of-scope work with no
+    marking at all, while the section had actually taken a decision about it.
+
+    Ranked *below* out-of-scope work rather than beside it: an out-of-scope id
+    is waiting for its own step to come round, and this one has been ruled out.
+    Both sentences say which, because the out-of-scope wording - "the current
+    step has not reached it" - would be false here.
+    """
+    scope = _scope(current=("PL-2222",), later={"PL-3333": "v0.4.0"}, excluded=("PL-1111",))
+
+    assert placement_line(scope, "PL-1111") == f"explicitly out of scope for {STEP}"
+    assert placement_mark(scope, "PL-1111") == "[ruled out]"
+
+    picks = recommend([_item("PL-1111"), _item("PL-3333")], scope=scope)
+
+    assert [pick.item.identifier for pick in picks] == ["PL-3333", "PL-1111"]
+    assert f"Explicitly out of scope for {STEP}" in picks[1].reason
+    # Nothing *places* it, so the field that names a placing milestone is empty.
+    assert picks[1].scoped_to == ""
 
 
 def test_next_marks_a_suggestion_scoped_to_a_milestone_this_step_has_not_reached() -> None:

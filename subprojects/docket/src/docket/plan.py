@@ -29,7 +29,7 @@ from .model import (
     impairs_generators_soundly,
     is_generator,
 )
-from .roadmap import IN_SCOPE, OUT_OF_SCOPE, UNPLACED, Scope
+from .roadmap import EXCLUDED, IN_SCOPE, OUT_OF_SCOPE, UNPLACED, Scope
 
 
 @dataclass(frozen=True)
@@ -142,8 +142,11 @@ def features(items: list[Item]) -> dict[str, Feature]:
 #: `safety` and `science` items to `P1`, so the top band is product work by
 #: construction and a tie-breaker inside a band would never fire in the case
 #: this exists for. Work the roadmap places nowhere sits between the two - it
-#: is not what the step is for, and nothing says it is excluded either.
-PLACEMENT_ORDER = {IN_SCOPE: 0, UNPLACED: 1, OUT_OF_SCOPE: 2}
+#: is not what the step is for, and nothing says it is excluded either. Work
+#: the anchor has ruled out sorts below all of it: the roadmap has taken a
+#: decision about that id, where an out-of-scope one is only waiting for its
+#: own step to come round (`PL-6P9Y`).
+PLACEMENT_ORDER = {IN_SCOPE: 0, UNPLACED: 1, OUT_OF_SCOPE: 2, EXCLUDED: 3}
 
 
 @dataclass(frozen=True)
@@ -316,6 +319,8 @@ def placement_line(scope: Scope | None, identifier: str, *, ranks_above_bands: b
         if placed_by and scope.anchor.split()[0] == placed_by:
             return f"in the scope of {scope.anchor}, which clearing its gate comes before"
         return f"outside what {scope.anchor} names; placed by {placed_by}"
+    if where == EXCLUDED:
+        return f"explicitly out of scope for {scope.anchor}"
     if ranks_above_bands:
         return f"placed by no section of {scope.anchor} - it ranks above every band but P0"
     return f"placed by no section of {scope.anchor} - it ranks on its band alone"
@@ -329,6 +334,7 @@ PLACEMENT_MARKS = {
     "[gate]": "on its frozen list",
     "[after the gate]": "in its Required scope, which clearing the gate comes before",
     "[in scope]": "in its Required scope",
+    "[ruled out]": "under its Explicitly out of scope heading",
 }
 
 
@@ -361,6 +367,8 @@ def placement_mark(scope: Scope | None, identifier: str) -> str:
         if placed_by and scope.anchor.split()[0] == placed_by:
             return "[after the gate]"
         return f"[{placed_by}]" if placed_by else ""
+    if where == EXCLUDED:
+        return "[ruled out]"
     return ""
 
 
@@ -650,6 +658,15 @@ def recommend(
             reason = (
                 f"{reason} Outside what {scope.anchor} names: this id appears in "
                 f"{scoped_to}'s section, which the current step has not reached."
+            )
+        elif scope is not None and where == EXCLUDED:
+            # A decision rather than a delay, so the sentence says so and the
+            # item sorts below out-of-scope work rather than level with it.
+            # `scoped_to` stays empty: no milestone *places* this id, and
+            # naming the excluding one there would read as one that does.
+            reason = (
+                f"{reason} Explicitly out of scope for {scope.anchor}: its section names "
+                f"this id under that heading, so the roadmap has ruled on it."
             )
         ranked.append(
             Recommendation(

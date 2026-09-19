@@ -3763,6 +3763,125 @@ def test_show_survives_a_notes_file_the_checkout_does_not_have(
     assert "PL-B1B1 A ready item" in out
 
 
+def _clustered(identifier: str, title: str, *, names: str = "", **extra: str) -> str:
+    """One item of a root-cause cluster, carrying `root-cause-of:` only where asked."""
+    fields = {
+        "id": identifier,
+        "title": title,
+        "priority": "P2",
+        "effort": "S",
+        "status": "ready",
+        "classes": "defect",
+        "touches": "a.py",
+        "added": "2026-08-01",
+        **extra,
+    }
+    if names:
+        fields["root-cause-of"] = names
+    front = "".join(f"{key}: {value}\n" for key, value in fields.items())
+    return f"---\n{front}---\n\n**Problem.** x\n**Why it matters.** y\n**Done when.** z\n"
+
+
+def _cluster(tmp_path: Path, **head_fields: str) -> Path:
+    """A three-item cluster under one head, which is what a sound claim needs."""
+    return _store(
+        tmp_path,
+        _clustered("PL-A0A0", "The shared refresh nobody owns", **head_fields),
+        _clustered("PL-B1B1", "A member of the cluster"),
+        _clustered("PL-C2C2", "Another member"),
+        _clustered("PL-D3D3", "A third member"),
+    )
+
+
+def test_show_names_the_generator_that_explains_a_member(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The head, its status and the size of its cluster, on the member's own `show`.
+
+    `root-cause-of:` is recorded on the head alone, so a member's file says
+    nothing about it and this command printed nothing - while `CLAUDE.md`
+    pulls a root cause rather than queueing it, which means the decision above
+    can re-scope or drop the item a session is about to start (`PL-C97K`).
+    """
+    store = _cluster(tmp_path, names="PL-B1B1, PL-C2C2, PL-D3D3", status="needs-decision")
+
+    assert _run("show", "PL-B1B1", "--items", str(store)) == 0
+
+    out = capsys.readouterr().out
+    assert "Explained by a generator - a root cause is fixed at its head, not here:" in out
+    assert "PL-A0A0 (needs-decision) root cause of 3 items - The shared refresh nobody owns" in out
+    assert "Read it before starting: its decision can re-scope or drop this item." in out
+
+
+def test_show_says_nothing_about_a_generator_where_no_head_names_the_item(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Almost every item is explained by nothing, and a line that prints on
+    almost every `show` while changing no decision is a defect in the line
+    rather than thoroughness (`PL-7QKY`)."""
+    store = _store(tmp_path, READY)
+
+    assert _run("show", "PL-B1B1", "--items", str(store)) == 0
+
+    assert "Explained by" not in capsys.readouterr().out
+
+
+def test_show_withholds_a_root_cause_claim_the_checker_refuses(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Two ids are not a generator, and the three readers of the field must agree.
+
+    `plan.recommend` refuses to rank a claim naming fewer than three items and
+    `docket check` reports it as an error, so announcing it here would leave
+    `show` asserting what the other two refuse to - on the one field whose
+    purpose is to lift an item above every band but `P0`.
+    """
+    store = _cluster(tmp_path, names="PL-B1B1, PL-C2C2")
+
+    assert _run("show", "PL-B1B1", "--items", str(store)) == 0
+
+    out = capsys.readouterr().out
+    assert "Explained by" not in out
+    assert "PL-A0A0" not in out
+
+
+def test_show_counts_a_generators_items_as_the_checker_counts_them(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Distinct ids, because three entries spelling one id name one item.
+
+    `root_cause_faults` counts the claim that way, so a count taken over the
+    written entries would print a number the checker holds the same claim to
+    disagree with - a wrong answer from the surface a session reads before
+    starting work.
+    """
+    store = _cluster(tmp_path, names="PL-B1B1, PL-B1B1, PL-C2C2, PL-D3D3")
+
+    assert _run("show", "PL-B1B1", "--items", str(store)) == 0
+
+    assert "root cause of 3 items" in capsys.readouterr().out
+
+
+def test_show_still_names_a_generator_that_has_since_closed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A root cause still explains a member after the head closes.
+
+    `plan.recommend` re-decides soundness against every id including the closed
+    ones, so that a claim does not decay as its cluster is worked; the reverse
+    edge is read from the same set for the same reason. The printed status is
+    what separates the two readings - an open head is a decision pending, a
+    closed one asks whether this member still reproduces at all.
+    """
+    store = _cluster(
+        tmp_path, names="PL-B1B1, PL-C2C2, PL-D3D3", status="done", closed="2026-08-20"
+    )
+
+    assert _run("show", "PL-B1B1", "--items", str(store)) == 0
+
+    assert "PL-A0A0 (done) root cause of 3 items" in capsys.readouterr().out
+
+
 def test_triage_marks_an_item_whose_filing_commit_also_changed_code(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

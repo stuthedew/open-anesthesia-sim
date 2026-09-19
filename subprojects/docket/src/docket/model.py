@@ -518,6 +518,44 @@ def is_generator(item: Item, known: Collection[str]) -> bool:
     return bool(item.root_cause_of) and not root_cause_faults(item, known)
 
 
+def generators_explaining(identifier: str, items: Collection[Item]) -> tuple[Item, ...]:
+    """The items whose sound `root-cause-of:` names this one - the reverse edge.
+
+    The field is recorded on the head alone, so both readers it had asked the
+    forward question: `checks.py` whether a claim is valid, `plan.py` whether
+    to rank one above its band. A session reaching a *member* by name - the way
+    the project owner usually starts an item - asked nothing and was told
+    nothing, and worked it as an ordinary item while the generator above it was
+    still being decided, which is the one-at-a-time patching the field exists
+    to stop (`PL-C97K`).
+
+    Soundness is the same test the other two use, and for the same reason: a
+    claim `plan.py` refuses to rank and `docket check` reports as an error must
+    not be announced anywhere as an explanation. Three readers, one definition
+    of what a claim is. It also settles the self-listing case without a guard
+    of its own - a head naming itself is faulted, so it is not a generator and
+    no item is ever reported as explaining itself.
+
+    `known` spans every item, the closed ones included, exactly as
+    `plan.recommend` builds it: a root cause still explains an item that has
+    since closed, so the edge must not decay as its cluster is worked.
+
+    Ordered by id rather than by the store's iteration order, so that the
+    answer does not depend on how the files happen to be named.
+    """
+    known = {item.identifier for item in items if item.identifier}
+    return tuple(
+        sorted(
+            (
+                head
+                for head in items
+                if identifier in head.root_cause_of and is_generator(head, known)
+            ),
+            key=lambda head: head.identifier,
+        )
+    )
+
+
 def generator_defect_faults(item: Item, generator_paths: tuple[str, ...]) -> tuple[str, ...]:
     """Why an item's `impairs-generators:` is not a machinery claim, or `()`.
 

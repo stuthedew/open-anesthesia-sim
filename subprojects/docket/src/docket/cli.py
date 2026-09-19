@@ -38,6 +38,7 @@ from .model import (
     STATUSES,
     Item,
     generator_defect_faults,
+    generators_explaining,
     impairs_generators_soundly,
     is_generator,
 )
@@ -857,6 +858,15 @@ def cmd_show(args: argparse.Namespace) -> int:
     where more than one branch is carrying the item it also says which of them
     continues - the one question every other guard in this package leaves
     open (queue item PL-YHD3).
+
+    **A fourth thing a session cannot learn from the item's own file: that
+    something above it explains it.** `root-cause-of:` is written on the head,
+    so a member carries no trace of the generator that names it and this
+    command printed none. It is the same failure as the marks above - the item
+    read alone looks startable - and it prints in the same place, under the
+    plan line rather than beside the branch marks, because it is a fact about
+    where the item sits in the queue rather than about who is working it
+    (`PL-C97K`).
     """
     _, items, config = _load(args)
     item = find_item(items, args.item)
@@ -885,6 +895,8 @@ def cmd_show(args: argparse.Namespace) -> int:
     )
     if placement:
         print(f"  plan: {placement}")
+    if heads := generators_explaining(item.identifier, items):
+        print(render.format_generators(heads))
     if item.impairs_generators:
         # The promotion is invisible from the item file alone - `impairs-generators`
         # lifts this above every band but `P0`, and a session reading `P2` at the

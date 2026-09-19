@@ -4,12 +4,13 @@ title: A design round's whole output is item files, so the in-flight mark can ne
 priority: P2
 effort: M
 status: done
-closed: 2026-09-19
-verify: uv run pytest subprojects/docket/tests/test_vcs.py -q && grep -q 'def test_a_design_round_on_a_needs_decision_item_is_in_flight' subprojects/docket/tests/test_vcs.py
 classes: defect
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-19
+closed: 2026-09-19
+pr: 686
+verify: uv run pytest subprojects/docket/tests/test_vcs.py -q && grep -q 'def test_a_design_round_on_a_needs_decision_item_is_in_flight' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** A design round's whole output is item files, so the in-flight mark can never fire for one: bin/docket show called PL-BHVM startable while a live session held it with three PL-BHVM commits pushed

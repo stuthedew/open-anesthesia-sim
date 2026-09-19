@@ -3,11 +3,12 @@ id: PL-C97K
 title: docket show on a member prints nothing about the head whose root-cause-of names it, so a session opening a member cannot see it is explained by a generator
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: generator-heads
-touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/README.md, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
+closed: 2026-09-19
 verify: grep -q 'def test_show_names_the_generator_that_explains_a_member' subprojects/docket/tests/test_cli.py
 ---
 

@@ -3152,7 +3152,7 @@ def test_exclusion_language_in_a_scope_bullet_is_an_advisory(tmp_path: Path) -> 
     roadmap = SCOPED_SECTION_ROADMAP.replace(
         "- **A displayed clinical unit** (queue item PL-MNPQ).",
         "- **A displayed clinical unit** (queue item PL-MNPQ).\n"
-        "- Stage 3 is **not** in scope: it is queue item PL-WXYZ and stays at\n"
+        "- **Stage 3 is not in scope** (queue item PL-WXYZ): it stays at\n"
         "  Gate 1, because only v0.5.0 needs it.",
     )
     root = _repo(tmp_path, roadmap=roadmap)
@@ -3161,6 +3161,91 @@ def test_exclusion_language_in_a_scope_bullet_is_an_advisory(tmp_path: Path) -> 
     assert len(advisories) == 1
     assert "PL-WXYZ" in advisories[0]
     assert not [e for e in _errors(root) if "in scope and out of it" in e]
+
+
+def test_an_exclusion_sentence_naming_no_declared_id_is_left_alone(tmp_path: Path) -> None:
+    """The half of the same rule `PL-HWW1` retired, and why it was retired.
+
+    The advisory says the bullet's ids are read as scope, and that was true of
+    every id under the heading until membership became a declaration. An id in
+    the *sentence* now places nothing, so the same warning on this shape would
+    report a hazard that no longer exists - and an advisory that fires without
+    changing a decision costs attention on every run and trains a reader to
+    skim the line where the real one appears.
+
+    The entry still declares its own member, so it is not the undeclared-entry
+    error either. What is left is a sentence a person may want to move, which
+    is not a thing to fail a run over.
+    """
+    roadmap = SCOPED_SECTION_ROADMAP.replace(
+        "- **A displayed clinical unit** (queue item PL-MNPQ).",
+        "- **A displayed clinical unit** (queue item PL-MNPQ). Stage 3 is\n"
+        "  **not** in scope: it is queue item PL-WXYZ and stays at Gate 1.",
+    )
+    root = _repo(tmp_path, roadmap=roadmap)
+
+    assert not [a for a in _advisories(root) if "reads as scope" in a]
+    assert not [e for e in _errors(root) if "Required scope" in e]
+
+
+def test_a_required_scope_entry_declaring_no_queue_item_is_an_error(tmp_path: Path) -> None:
+    """Membership is declared, so an entry that declares nothing places nothing.
+
+    This is what holds the declaration rule in place. Without it the next entry
+    written without a slot is scope to every reader and to no tool, silently -
+    which is the shape `PL-HWW1` removed from the other direction, where an id
+    cited in prose was scope to the tool and to no reader.
+    """
+    roadmap = SCOPED_SECTION_ROADMAP.replace(
+        "- **A displayed clinical unit** (queue item PL-MNPQ).",
+        "- **A displayed clinical unit** (queue item PL-MNPQ).\n"
+        "- **A second thing this milestone requires**, described at length.",
+    )
+    root = _repo(tmp_path, roadmap=roadmap)
+
+    errors = [e for e in _errors(root) if "declares no queue item" in e]
+    assert len(errors) == 1
+    assert "v0.4.0" in errors[0]
+
+
+def test_a_section_declaring_nothing_at_all_is_not_held_to_the_rule(tmp_path: Path) -> None:
+    """v0.1.0 and v0.2.0 were written before the queue existed.
+
+    Their entries name no ids because there were none to name, and they place
+    nothing under either reading. A rule that failed them would be asking for
+    ids to be invented for a shipped milestone, so the rule holds a section to
+    what that section already does: it fires only where the other entries
+    declare.
+    """
+    roadmap = SCOPED_SECTION_ROADMAP.replace(
+        "- **A displayed clinical unit** (queue item PL-MNPQ).",
+        "- Add an alveolar compartment driven by alveolar ventilation.\n"
+        "- Document the equations, units and assumptions.",
+    )
+    root = _repo(tmp_path, roadmap=roadmap)
+
+    assert not [e for e in _errors(root) if "declares no queue item" in e]
+
+
+def test_a_declared_scope_id_the_store_does_not_hold_is_an_error(tmp_path: Path) -> None:
+    """A declaration places an item, so a typo in one places nothing.
+
+    The same reading `GateStatus.unknown_ids` takes of a frozen list, applied
+    to the structure beside it: an id no item answers to leaves the milestone's
+    scope smaller than the document says, with nothing reporting the gap.
+    """
+    roadmap = SCOPED_SECTION_ROADMAP.replace(
+        "- **A displayed clinical unit** (queue item PL-MNPQ).",
+        "- **A displayed clinical unit** (queue item PL-MNPQ).\n"
+        "- **A unit nobody filed** (queue item PL-ZZZZ).",
+    )
+    root = _repo(tmp_path, roadmap=roadmap)
+    _queue_item(root, "PL-MNPQ", classes="feature")
+
+    errors = [e for e in _errors(root) if "the queue does not hold" in e]
+    assert len(errors) == 1
+    assert "PL-ZZZZ" in errors[0]
+    assert "PL-MNPQ" not in errors[0]
 
 
 def _with_tests(root: Path, *names: str) -> Path:

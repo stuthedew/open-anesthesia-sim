@@ -720,6 +720,46 @@ def format_flight(report: FlightReport, today: date) -> str:
     return "\n".join(lines)
 
 
+def format_generators(heads: Sequence[Item]) -> str:
+    """That a generator above this item explains it, and what a session owes that.
+
+    `root-cause-of:` is recorded on the head alone, so `show` on a *member*
+    said nothing about it: a session handed a member's id - the way the
+    project owner usually starts one - worked it as an ordinary item while the
+    generator above it was still being decided (`PL-C97K`).
+
+    **The consequence is what the line is for, not the edge.** `CLAUDE.md`
+    pulls a root cause rather than queueing it, so the head's decision can
+    re-scope or drop the member underneath it; a pointer that stopped at
+    naming the head would read as provenance - interesting, and not a reason
+    to go and read something before starting.
+
+    How many items each head names is printed because it is the size of the
+    cluster this one belongs to, which is what separates a small regrouping
+    above from a re-scoping of two dozen items. Counted over distinct ids, as
+    `root_cause_faults` counts them, so the number here and the number the
+    checker holds the claim to cannot differ.
+
+    The head's status comes with it for the same reason: a head still open is
+    a decision pending, and a head already `done` or `dropped` asks the
+    opposite question - whether this member still reproduces at all.
+    """
+    head_word = "a generator" if len(heads) == 1 else f"{len(heads)} generators"
+    closing = (
+        "Read it before starting: its decision can re-scope or drop this item."
+        if len(heads) == 1
+        else "Read them before starting: their decisions can re-scope or drop this item."
+    )
+    lines = [f"  Explained by {head_word} - a root cause is fixed at its head, not here:"]
+    for head in heads:
+        named = _plural(len(set(head.root_cause_of)), "item", "items")
+        lines.append(
+            f"    {head.identifier} ({head.status}) root cause of {named} - {_gloss(head.title)}"
+        )
+    lines.append(f"    {closing}")
+    return "\n".join(lines)
+
+
 def format_notes_threads(threads: Sequence[Thread], identifier: str, notes_path: str) -> str:
     """Which notes threads concern this item, as a pointer rather than a summary.
 

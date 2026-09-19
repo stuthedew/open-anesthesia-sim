@@ -9,6 +9,7 @@ feature: queue-hygiene
 touches: docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md
 added: 2026-09-16
 closed: 2026-09-19
+pr: 690
 verify: ! grep -qE '^(touches|verify):.*test_docket_digest_hook' docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md && grep -qE '^touches:.*src/docket/roadmap\.py' docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md && grep -qF 'supported = plan.beat != IMPLEMENT or plan.own_scope is not None' docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md
 ---
 

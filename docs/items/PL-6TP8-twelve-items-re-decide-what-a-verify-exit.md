@@ -8,9 +8,10 @@ classes: defect, infra
 feature: generator-heads
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md, docs/items
 added: 2026-09-17
-root-cause-of: PL-T7VS, PL-0M32, PL-Q8RQ, PL-6TN8, PL-D0K3, PL-3DXV, PL-6YWK, PL-2M4X, PL-6YL1, PL-Y4YX, PL-H9GV, PL-LBW5
 closed: 2026-09-19
+pr: 684
 verify: grep -qF 'what the work adds, alone' .claude/skills/docket/SKILL.md
+root-cause-of: PL-T7VS, PL-0M32, PL-Q8RQ, PL-6TN8, PL-D0K3, PL-3DXV, PL-6YWK, PL-2M4X, PL-6YL1, PL-Y4YX, PL-H9GV, PL-LBW5
 ---
 
 **Problem.** `verify:` was specified as "a command that fails before the work
