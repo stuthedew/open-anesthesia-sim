@@ -14,7 +14,7 @@ from __future__ import annotations
 from collections.abc import Collection, Mapping, Sequence
 from datetime import UTC, date
 
-from .checks import DONE_WHEN, REQUIRED_BRIEF, STATUS_REQUIREMENTS, Report, brief_gaps
+from .checks import DONE_WHEN, HOUSEKEEPING, REQUIRED_BRIEF, STATUS_REQUIREMENTS, Report, brief_gaps
 from .concurrency import undeclared
 from .config import Config
 from .model import (
@@ -1131,7 +1131,7 @@ def format_triage(
         if filing := filings.get(item.identifier):
             lines.extend(_filed_with_work(filing))
         lines.append(f"  unset: {_unset(item)}")
-        missing, empty, stub = brief_gaps(item.body)
+        missing, empty, stub = brief_gaps(item.body, housekeeping=HOUSEKEEPING in item.classes)
         if missing:
             lines.append(f"  brief still missing: {', '.join(missing)}")
         if empty:
@@ -1259,6 +1259,14 @@ def _triage_rules(report: Report, config: Config) -> list[str]:
         "those words - `**Why it matters, and why it is not new.**` is the same "
         "section - but it needs text under it."
     )
+    if HOUSEKEEPING in config.vocabulary():
+        rules.append(
+            f"an item classed `{HOUSEKEEPING}` - a pass whose work *is* the queue "
+            f"edit - needs {REQUIRED_BRIEF[0]} only, and still needs its `verify:`. "
+            "It may not carry a debt class as well. Stated here because this is "
+            "where the cost is paid: the exemption is no use to a session that "
+            "meets it after writing the brief."
+        )
     # Last, and from `checks.py`'s own table rather than restated here: these
     # fire only for the status the pass chooses, so they read as the conditions
     # on the choice just after the rules that apply to every item (`PL-F4JS`).

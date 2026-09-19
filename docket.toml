@@ -21,7 +21,13 @@ notes_file = "docs/WORKING_NOTES.md"
 safety_classes = ["safety", "science"]
 
 # Work on how the project is built rather than on the product it builds.
-process_classes = ["session-cost", "docs", "infra"]
+#
+# `housekeeping` is here as well as in `known_classes` because the top-band
+# rule reads this list: an item counts as process work only when *every* one of
+# its classes is in it, so a `housekeeping`-only item left out of this list
+# would be eligible for the top band, which is the opposite of what the class
+# means.
+process_classes = ["session-cost", "docs", "infra", "housekeeping"]
 
 # ROADMAP.md, "The debt gate" - "What counts": an open item is debt when it
 # carries one of these classes, or when its status is needs-decision. `feature`
@@ -154,6 +160,14 @@ minor_classes = ["feature"]
 # does not itself branch on. `ux`, `test` and `planning` describe work for a
 # reader; `anticipated` is the exception, branched on by the safety pin to let
 # a concern whose feature does not exist yet wait at its blocker's band.
+#
+# `housekeeping` is a fifth and is branched on: `checks.py` reads it to excuse
+# an item whose work *is* the queue edit from the two brief sections that argue
+# for the work rather than describe it, and refuses it beside any
+# `debt_classes` entry so it cannot become the way to file a defect without a
+# brief. Added 2026-09-19 on `PL-TQFB` (project owner, ratified), after 22
+# triage-pass items were measured carrying 1,127 lines of brief of which 2 held
+# a finding.
 # Declaring the list at all replaces the derived default entirely, so every
 # class the tool reads has to be repeated here - that is deliberate, since a
 # vocabulary half-declared elsewhere is how the drift starts.
@@ -166,6 +180,7 @@ known_classes = [
   "defect",
   "docs",
   "feature",
+  "housekeeping",
   "infra",
   "perf",
   "planning",

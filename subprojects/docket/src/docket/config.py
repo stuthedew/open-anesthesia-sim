@@ -30,7 +30,16 @@ class Config:
     #: Classes whose subject matter may not sit in the lower priority bands.
     safety_classes: tuple[str, ...] = ("safety", "science")
     #: Classes describing work on the process rather than on the product.
-    process_classes: tuple[str, ...] = ("session-cost", "docs", "infra")
+    #:
+    #: `housekeeping` is one of them, and is also the class `checks.py` reads
+    #: to excuse an item from the two brief sections that argue for the work
+    #: (see `checks.HOUSEKEEPING`). It is listed here rather than only in a
+    #: project's `known_classes` for two reasons: the derived `vocabulary()`
+    #: below is the union of these lists, so a project that declares nothing
+    #: still gets the class; and the top-band rule counts an item as process
+    #: work only when *every* class it carries is in this list, which a
+    #: housekeeping-only item must satisfy.
+    process_classes: tuple[str, ...] = ("session-cost", "docs", "infra", "housekeeping")
     #: Classes that make an open item recorded debt. Work already recognized
     #: as owed, as against work not yet begun: a project clearing debt before
     #: starting a milestone needs to know which is which, and the class labels
