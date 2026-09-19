@@ -1,13 +1,14 @@
 ---
 id: PL-HWW1
-title: Three items patch a reading of ROADMAP.md's Required scope because membership is cited rather than declared: decide whether it becomes a recorded fact
+title: Three items patch a reading of ROADMAP.md's Required scope because membership is cited rather than declared: make the declaration the record
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: defect, infra
 feature: generator-heads
 touches: subprojects/docket/src/docket/roadmap.py, tools/doc_check.py, ROADMAP.md, docs/items
 added: 2026-09-17
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_required_scope_places_only_declared_ids' subprojects/docket/tests/test_roadmap.py
 root-cause-of: PL-4PC5, PL-6P9Y, PL-C4RS
 ---
 
@@ -87,13 +88,16 @@ put them in the same slot.
 
 ## The decision, and the recommendation
 
-**Decision needed.** Does milestone membership stay a reading of prose, or
-become a declaration with a grammar that the roadmap and the tooling share -
-and if recorded, where, since `ROADMAP.md` is also the document a person
-reads?
+**Decided: membership becomes a declaration in `ROADMAP.md` itself, as a slot
+on each `Required scope` entry, enforced by `tools/doc_check.py`** (project
+owner, 2026-09-19, **ratified** - this was a session's recommendation, chosen
+over leaving the scrape in place, over a head-slot parse with no declaration
+rule, and over a sidecar data file or fenced id block; `CLAUDE.md`'s lower bar
+to reopen therefore applies, and the measurement below is what would have to be
+answered to do it). The reasoning was put in the reply of 2026-09-19 and is
+kept here because that reply is gone.
 
-**Recommended: in `ROADMAP.md` itself, as a declaration slot on each
-`Required scope` entry, enforced by `tools/doc_check.py`.** Concretely: ids
+Concretely: ids
 inside an entry's `(queue item[s] ...)` parenthetical are that milestone's
 membership; every other id under the heading is prose and places nothing;
 `doc_check` fails a declared id the store does not hold, and fails an entry
@@ -120,9 +124,12 @@ Three reasons, in order of weight:
 **What would make this wrong, stated before the count was run:** it is wrong if
 declaring membership suppresses ids that genuinely belong to the milestone. The
 answer is one - `PL-HJPY` - and a declaration does not suppress it, it *asks*
-about it. Answering that one question is the decision's first consequence and
-is one line in v0.6.0's entry 1 either way. A pure parser fix has the same
-count and no way to ask.
+about it. **That question is now answered** (project owner, 2026-09-19,
+ratified - chosen over leaving it placed by the over-read): v0.6.0's
+`Required scope` entry 1 reads `(queue items ` + `PL-1FT6` + ` and ` +
+`PL-HJPY` + `)`, so the multi-window relation is declared scope of that
+milestone rather than inferred from a citation. The edit is on this branch and
+is inert under today's parser, which already counted it.
 
 **Not recommended, and why each:** leaving the scrape (the drift is generated
 by correct maintenance, so it does not stop); a head-slot parse with no
@@ -150,11 +157,29 @@ only in the reader's head), where `PL-B8V1` is already named. The split is
 worth stating: this cluster is what the tooling *reads out of* the roadmap,
 that one is what the roadmap *says*.
 
-**Done when.** The question above is decided; if membership becomes declared,
-the grammar exists, `doc_check` enforces it, `roadmap.py` reads the declaration
-rather than the subsection, `ROADMAP.md` is still readable by a person, and
-v0.6.0 has said in one line whether `PL-HJPY` is in its scope; and the three
-members are re-pointed at the decision or dropped against it.
+**Done when.** `roadmap.py` reads `Required scope` membership from each
+entry's declaration slot rather than from every id under the heading;
+`tools/doc_check.py` fails a declared id the store does not hold and an entry
+in a declaring section that declares none; `Scope.placement` answers
+`out-of-scope` from the anchor's own `excluded_ids`, which is `PL-6P9Y` and is
+one line the parse already supports; v0.4.26's two non-conforming entries move
+their ids into the slot; `ROADMAP.md` is still readable by a person; and the
+three members are closed against it or re-briefed with what is left.
+
+**What a fresh session needs, and where.** The grammar is the existing idiom
+promoted to a rule - `(queue item ` + backtick-id + `)` or
+`(queue items A and B)` after an entry's bold title - and the entry unit is one
+top-level list item, bullet **or** numbered, since v0.6.0's list is numbered
+and v0.5.0's is bulleted. `_gate_entries` already implements that unit for the
+frozen list, with `BULLET_RE` needing the numbered form added.
+`_subsection_ids` and `SECTION_ID_RE` in
+`subprojects/docket/src/docket/roadmap.py` are what change; `SECTION_ID_RE`'s
+long comment states the current rule and is the thing to rewrite rather than
+delete. The two entries needing edits are v0.4.26's `Required scope` entries 6
+(`The two checks that read the theme`) and 8 (`The queued fixes named below`,
+which lists six ids in its body deliberately, so `ships_with` can read them -
+move them into the slot rather than dropping them). v0.1.0's and v0.2.0's
+entries name no ids at all and must stay passing.
 
 **Where this came from.** `PL-6ZQY` found six clusters under one mechanism -
 *the apparatus infers a fact it could have recorded* - and `PL-VX5H` built the
