@@ -1762,17 +1762,24 @@ establishes none.
 **Do not re-propose the path-derived version** without a new argument that
 survives that number.
 
-**Open: does the obligation come with the rank?** `CLAUDE.md`'s two endings for
-a generator - fix it now, or hand off a prompt - were deliberately *not*
-extended, because the owner specified the rank and not the obligation.
-`PL-4MPJ` carries the decision and the recommendation (no, on the grounds that
-a prose claim should not compel an interruption the way a measured three-item
-cluster does). Until it is answered, the clause in `CLAUDE.md` is a holding
-pattern rather than a decision.
+**The obligation comes with the rank** (project owner, 2026-09-19, `PL-4MPJ`).
+`CLAUDE.md`'s two endings for a generator - fix it in this session, or end the
+reply with a prompt starting a fresh one - bind a machinery defect too. The
+session recommended the opposite, on the grounds that a prose claim should not
+compel an interruption the way a measured three-item cluster does; the answer
+was to extend them, which makes this a *specified* decision and raises the bar
+to reopen it from ordinary evidence to a compelling argument.
 
-**Also open:** `PL-C97K` is the store's only machinery defect and carries no
-field, because it was in flight on another branch while this was built;
-`PL-GYRX` is the one-line retrofit, to be done after that branch merges.
+What that recommendation was worth keeping is the asymmetry it named, since
+that is what a reopening would have to answer: a generator's warrant is three
+named, resolvable, checked items, and an `impairs-generators:` claim's warrant
+is one session's prose. The obligation is now the same for both.
+
+**Closed alongside it:** `PL-C97K`, the store's only machinery defect, merged
+in `#693` before the field existed. `PL-GYRX` asked for the retrofit and is
+dropped - a closed item is never ranked, so the field would record a claim
+nothing acts on. No open item carries the field today; the first live use is
+the next machinery defect captured.
 
 ## All six of PL-6ZQY's clusters now have a head - PL-6TP8, PL-HWW1, PL-4FBP, PL-4Q9B became theirs
 

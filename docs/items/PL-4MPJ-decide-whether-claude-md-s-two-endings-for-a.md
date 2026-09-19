@@ -3,11 +3,12 @@ id: PL-4MPJ
 title: Decide whether CLAUDE.md's two endings for a generator - fix it now, or end the reply with a prompt that starts a fresh session on it - extend to a defect in the generator machinery, which now shares the generator's rank but not that obligation
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: planning
 feature: generator-machinery-rank
 touches: CLAUDE.md
 added: 2026-09-19
+closed: 2026-09-19
 not-delegable: the whole item is a decision only the project owner can take; no command can prove it, and the edit it authorizes is one clause
 ---
 
@@ -32,7 +33,15 @@ generator's obligation, because they did not ask for that and it changes what
 every session must do on a finding. Left unanswered, the asymmetry is a rule
 nobody decided.
 
-**Recommendation: do not extend them.** Two reasons, and both are about the
+**Decided: extend them (project owner, 2026-09-19).** Against the
+recommendation below, which is kept in full because the bar to reopen a
+*specified* decision is a compelling argument rather than ordinary evidence -
+so a later session needs to know what was already weighed and rejected.
+`CLAUDE.md`'s clause now reads that the two endings bind a machinery defect
+too, and the `docket` skill says the same at the point a triage pass would
+otherwise band one and move on.
+
+**Recommendation, refused: do not extend them.** Two reasons, and both are about the
 evidence rather than the importance. A generator's warrant is a *measured*
 cluster - three or more items, named, resolvable, checked - and the obligation
 to stop the session is proportionate to that. An `impairs-generators:` claim
@@ -52,3 +61,10 @@ reading wins, the two endings should extend.
 holding pattern, marked `(project owner, DATE)` if specified or
 `(project owner, DATE, ratified)` if taken on this recommendation, naming what
 it was chosen over.
+
+**Worked.** The clause carries the plain `(project owner, 2026-09-19)` form,
+since the answer was the opposite of the recommendation and so was specified
+rather than ratified. Three files say it: `CLAUDE.md` where a session meets it
+before looking anything up, `.claude/skills/docket/SKILL.md` where a triage
+pass would otherwise file one and carry on, and `docs/WORKING_NOTES.md` where
+the thread closes.

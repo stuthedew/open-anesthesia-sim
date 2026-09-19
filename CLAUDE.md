@@ -366,8 +366,11 @@ correction rather than handing the question back.
   ever say one went unfound. Record it as `impairs-generators:` on an item
   whose `touches` reaches `generator_paths`: prose naming the function that
   broke, never `yes`, and `bin/docket check` refuses a claim on code the item
-  never goes near. The two endings above are the generator's own; only the
-  ranking is inherited.
+  never goes near. **The two endings above bind it too** — fix it in this
+  session, or end the reply with a prompt starting a fresh one; filing it and
+  carrying on is not a third. Asked and answered against the recommendation to
+  confine them to a measured cluster, so reopening it needs a compelling
+  argument rather than ordinary evidence (`PL-4MPJ`).
 - **A behavior change takes effect in the session that asks for it.** When the
   owner asks for a change to how sessions work — these instructions,
   `docs/worker.md`, the `docket` skill — record it like any other finding and

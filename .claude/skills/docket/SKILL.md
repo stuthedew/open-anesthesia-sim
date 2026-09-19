@@ -433,7 +433,7 @@ asked about and confirmed. `CLAUDE.md` § "A root cause of more than two items i
 pulled, not queued" is what a session does on finding one; `tools/generator_check.py`
 prints the clusters worth looking at and decides none of them.
 
-**That tier has a second entrance, and filing one is a triage decision.** A
+**That tier has a second entrance, and finding one is not a filing.** A
 defect in the machinery that *finds and ranks* generators ranks at the same
 priority as a generator (project owner, 2026-09-19): while identification is
 broken a generator is never recorded, and an unrecorded generator is ranked by
@@ -443,7 +443,15 @@ the item's `touches` must reach a path in `generator_paths`, which is what
 `docket check` holds it to. `bin/docket set <id> --impairs-generators "..."`
 writes it. The judgment is yours and nothing infers it; the path list can only
 refute a claim, never make one, since 36 of this store's open items touch those
-files for unrelated reasons. A suggestion the step has not reached stays in the list, marked with
+files for unrelated reasons.
+
+**Then take one of the generator's own two endings** — fix it in this session,
+or end the reply with a ready-to-paste prompt starting a fresh one. Recording
+the field and carrying on is not a third (project owner, 2026-09-19, against
+the recommendation to confine the obligation to a measured cluster; `PL-4MPJ`).
+So this is a `docket new` only on the way to one of those two, never instead of
+one — which is the same shape `CLAUDE.md` gives a generator, and the reason a
+triage pass meeting such an item escalates it rather than banding it. A suggestion the step has not reached stays in the list, marked with
 the milestone that places it, because hiding it would be a verdict the tool
 cannot support. Placement is read from the frozen list a milestone records and
 from the `(queue item …)` slot its `Required scope` entries declare in, never
