@@ -95,7 +95,7 @@ def _runner(
     took: tuple[str, ...] = (),
     same_as_base: tuple[str | tuple[str, str], ...] = (),
     statuses: dict[str, str] | None = None,
-    created: tuple[str, ...] = (),
+    created: tuple[str | tuple[str, str], ...] = (),
 ):
     """A git that holds `refs`, with `commits` mapping a ref to (day, subject).
 
@@ -146,7 +146,10 @@ def _runner(
     names it, and one left out is `done` if `closed` names it and `ready`
     otherwise. `created` names the ids whose file a ref's commit created
     rather than changed - the commit's parent has no copy - which is what a
-    capture looks like and a design round does not.
+    capture looks like and a design round does not. An entry spelled
+    `(commit, id)` rather than `id` pins that to one commit, which is what
+    tells a stale capture on a bystander branch from a live round on the same
+    item (`PL-61MD`).
 
     `took` names the ids the base's own commit subjects lead with since the
     fork point, and `same_as_base` the ids whose file the ref holds exactly as
@@ -170,6 +173,10 @@ def _runner(
     same_pairs = {entry for entry in same_as_base if isinstance(entry, tuple)}
     same_ids = {entry for entry in same_as_base if isinstance(entry, str)}
     paired_ids = {identifier for _, identifier in same_pairs}
+    # The same spelling for the parent read: an entry naming a commit answers
+    # for that commit alone, so two refs' rounds on one id can differ.
+    created_pairs = {entry for entry in created if isinstance(entry, tuple)}
+    created_ids = {entry for entry in created if isinstance(entry, str)}
 
     def run(args: list[str], root: Path) -> str:
         if log is not None:
@@ -184,7 +191,9 @@ def _runner(
                 if end.endswith("^"):
                     # `<commit>^:<path>`, whether the commit inherited the
                     # file: a created one has no copy there to name.
-                    return "" if identifier in created else f"blob-{identifier}-parent\n"
+                    if identifier in created_ids or (end[:-1], identifier) in created_pairs:
+                        return ""
+                    return f"blob-{identifier}-parent\n"
                 if identifier in same_ids or (end, identifier) in same_pairs:
                     return f"blob-{identifier}\n"
                 if end == BASE and identifier in paired_ids:
@@ -347,7 +356,7 @@ def _report(
     took: tuple[str, ...] = (),
     same_as_base: tuple[str | tuple[str, str], ...] = (),
     statuses: dict[str, str] | None = None,
-    created: tuple[str, ...] = (),
+    created: tuple[str | tuple[str, str], ...] = (),
 ) -> FlightReport:
     """The whole report, for the tests reading the file edits beside the work.
 
@@ -1279,6 +1288,158 @@ def test_an_id_leaves_the_report_once_every_carrier_s_claim_is_spent() -> None:
     )
 
     assert report.branches == ()
+
+
+def test_a_superseded_file_edit_on_a_bystander_branch_does_not_drop_a_live_one() -> None:
+    """`_superseded` judges a path on one ref, so the walk may not keep one per id.
+
+    `PL-2BZY`'s collapse, one reading over: `_Walk.edited` kept the rank-first
+    ref per id, and `editing` then dropped any mark whose path the base already
+    holds. So where two refs have both edited one item's file and the rank-first
+    ref's copy has landed - a squash merge, a rebase, a cherry-pick - the id
+    left the report entirely, though the other ref's edit is unmerged and is
+    exactly the collision the mark exists to name.
+
+    Losing it is silent, which is what makes it worth a test rather than a
+    warning: `flight` and `triage` print the marks that survived, and nothing
+    says one was collapsed away (`PL-RY2R`).
+    """
+    bystander = "origin/claude/bystander-abcdef"
+    live = "origin/claude/live-session-ghijkl"
+    edits = "docs/items/PL-3JN2-triage-it.md"
+    report = _report(
+        [bystander, live],
+        commits={
+            bystander: [("2026-09-19", "PL-3JN2: triage it", "c1", edits)],
+            live: [("2026-09-19", "PL-3JN2: triage it too", "c2", edits)],
+        },
+        # An empty map for the bystander is how git reports two tips that
+        # agree; the live session's ref is absent from `tips` and so still
+        # carries an addition the base does not have.
+        tips={bystander: {}},
+    )
+
+    assert [(edit.item_id, edit.name) for edit in report.editing] == [("PL-3JN2", live)]
+
+
+def test_an_id_leaves_editing_once_every_carrier_s_edit_is_superseded() -> None:
+    """The supersession test is not weakened by being asked per ref - each is asked.
+
+    The pair above is what separates this from the collapse it replaced: one
+    live carrier keeps the mark, and no live carrier still drops it.
+    """
+    bystander = "origin/claude/bystander-abcdef"
+    other = "origin/claude/also-merged-ghijkl"
+    edits = "docs/items/PL-3JN2-triage-it.md"
+    report = _report(
+        [bystander, other],
+        commits={
+            bystander: [("2026-09-19", "PL-3JN2: triage it", "c1", edits)],
+            other: [("2026-09-19", "PL-3JN2: triage it again", "c2", edits)],
+        },
+        tips={bystander: {}, other: {}},
+    )
+
+    assert report.editing == ()
+
+
+def test_a_file_edit_on_an_unread_ref_does_not_drop_a_readable_carrier_s() -> None:
+    """The unread-ref filter had the same shape as the supersession one above.
+
+    A ref whose walk ran off the end of a truncated history contributes no
+    commits, so its edits are not believed - but collapsing to the rank-first
+    ref first meant an id whose rank-first editor was that ref lost the mark
+    even where a readable ref had edited the same file (`PL-RY2R`).
+    """
+    unread = "origin/claude/truncated-abcdef"
+    live = "origin/claude/live-session-ghijkl"
+    edits = "docs/items/PL-3JN2-triage-it.md"
+    report = _report(
+        [unread, live],
+        commits={
+            unread: [("2026-09-19", "PL-3JN2: triage it", "c1", edits)],
+            live: [("2026-09-19", "PL-3JN2: triage it too", "c2", edits)],
+        },
+        ran_out=(unread,),
+    )
+
+    assert [(edit.item_id, edit.name) for edit in report.editing] == [("PL-3JN2", live)]
+
+
+def test_a_landed_design_round_on_a_bystander_branch_does_not_drop_a_live_one() -> None:
+    """The third instance, and the one nearest the case `PL-VYSP` was built for.
+
+    `own_edits` is keyed `(ref, id)`, so the walk itself keeps every carrier;
+    the collapse was in the caller, which chose one by rank before either of
+    its two per-ref tests ran. A bystander branch whose design-round commit
+    has landed - byte-identical to the base, so `_superseded` finds nothing
+    outstanding - therefore suppressed a live round another ref was running on
+    the same item, and `bin/docket show` called it startable (`PL-61MD`).
+
+    A design round leaves no diff outside the queue, so nothing else marks it.
+    """
+    bystander = "origin/claude/bystander-abcdef"
+    live = "origin/claude/live-session-ghijkl"
+    round_file = "docs/items/PL-3JN2-decide-it.md"
+    report = _report(
+        [bystander, live],
+        commits={
+            bystander: [("2026-09-19", "PL-3JN2: record the round", "c1", round_file)],
+            live: [("2026-09-19", "PL-3JN2: put the case", "c2", round_file)],
+        },
+        statuses={"PL-3JN2": "needs-decision"},
+        tips={bystander: {}},
+    )
+
+    assert [(branch.item_id, branch.name) for branch in report.branches] == [("PL-3JN2", live)]
+
+
+def test_a_stale_capture_on_a_bystander_branch_does_not_drop_a_live_round() -> None:
+    """`_modified_by` is a fact about a commit, so it is the second per-carrier test.
+
+    The other half of `PL-61MD`. A capture creates the item file and a round
+    writes into one that exists, which is what `_modified_by` reads off the
+    commit's own parent - so where the rank-first carrier is a stale capture,
+    collapsing to it failed the test for an id another ref was deciding.
+    """
+    bystander = "origin/claude/bystander-abcdef"
+    live = "origin/claude/live-session-ghijkl"
+    round_file = "docs/items/PL-3JN2-decide-it.md"
+    report = _report(
+        [bystander, live],
+        commits={
+            bystander: [("2026-09-19", "PL-3JN2: file it", "c1", round_file)],
+            live: [("2026-09-19", "PL-3JN2: put the case", "c2", round_file)],
+        },
+        statuses={"PL-3JN2": "needs-decision"},
+        created=(("c1", "PL-3JN2"),),
+    )
+
+    assert [(branch.item_id, branch.name) for branch in report.branches] == [("PL-3JN2", live)]
+
+
+def test_a_design_round_leaves_the_promotion_once_every_carrier_fails() -> None:
+    """Both per-carrier tests, asked of each carrier, still refuse where each fails.
+
+    Two stale captures on one item: neither commit changed a file it
+    inherited, so the promotion is withheld exactly as the collapse withheld
+    it, and the ids stay on the weaker `editing` mark.
+    """
+    bystander = "origin/claude/bystander-abcdef"
+    other = "origin/claude/also-a-capture-ghijkl"
+    round_file = "docs/items/PL-3JN2-decide-it.md"
+    report = _report(
+        [bystander, other],
+        commits={
+            bystander: [("2026-09-19", "PL-3JN2: file it", "c1", round_file)],
+            other: [("2026-09-19", "PL-3JN2: file it again", "c2", round_file)],
+        },
+        statuses={"PL-3JN2": "needs-decision"},
+        created=(("c1", "PL-3JN2"), ("c2", "PL-3JN2")),
+    )
+
+    assert report.branches == ()
+    assert [edit.item_id for edit in report.editing] == ["PL-3JN2"]
 
 
 def test_an_item_closed_only_on_a_branch_is_still_reported_in_flight() -> None:
@@ -3337,7 +3498,7 @@ def _precedence(
     item: str = "PL-K7QX",
     ran_out: tuple[str, ...] = (),
     statuses: dict[str, str] | None = None,
-    created: tuple[str, ...] = (),
+    created: tuple[str | tuple[str, str], ...] = (),
 ):
     runner = _runner(
         refs, commits=commits, head=head, ran_out=ran_out, statuses=statuses, created=created
