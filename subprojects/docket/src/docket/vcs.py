@@ -321,7 +321,18 @@ class GitRunner:
     - **The memo** (`PL-MMVF`). Every `merge-base` this module issues is asked
       exactly three times - `_unlanded_refs` runs once for each of
       `branches_in_flight`, `orphaned` and `cuts_in_flight` - so two of every
-      three are removed by remembering the answer.
+      three are removed by remembering the answer. **An answer, and never a
+      silence** (`PL-MM7F`): a failure stored here would be served to every
+      later caller asking the same question, which turns one transient fault
+      into a permanent wrong answer for the rest of the command and takes away
+      the one thing that would have corrected it - the next caller asking git
+      again. What that costs is bounded by the memo's own saving and paid only
+      where git is failing: measured on this repository 2026-09-19, one digest
+      put 237 questions to git and the memo answered 106 of them, so a command
+      in which *every* call failed would spawn those 106 processes rather than
+      reuse them. A checkout without git fails each in microseconds, and one
+      whose git hangs is already paying the ten-second timeout 131 times before
+      this change, so the memo was never what made that case survivable.
     - **The blob batch** (`PL-0J9K`). `git show <rev>:<path>` is one process
       per blob and the module asks for one per item file edited on an unmerged
       ref; `git cat-file --batch` answers all of them from one.
@@ -359,7 +370,12 @@ class GitRunner:
         text = self._serve(argv, root)
         self._seconds[sub] = self._seconds.get(sub, 0.0) + (time.perf_counter() - started)
         self._ran[sub] += 1
-        if memoizable:
+        if memoizable and answered(text):
+            # Only an answer is worth remembering. A silence memoized is one
+            # transient fault amortised across the whole command - and it
+            # removes the single thing that would otherwise make such a fault
+            # self-correcting, which is that the next caller asks git again
+            # (`PL-MM7F`).
             self._memo[key] = text
         return text
 
@@ -731,7 +747,14 @@ class _Walk:
     """
 
     last: dict[str, date]
-    ids: dict[str, str]
+    #: Per item id, every ref whose commit subjects led with it, ordered by
+    #: candidate rank. **Every carrier rather than the nearest**, because the
+    #: guards that judge a claim judge it per *ref*: collapsing here put a
+    #: spent claim on a bystander branch in front of a live one, and
+    #: `_taken_on_base` finding the bystander's claim spent then deleted the
+    #: id for both (`PL-2BZY`). The first entry is the one a reader is shown,
+    #: which is all the collapse ever decided.
+    ids: dict[str, tuple[str, ...]]
     #: Refs at least one of whose commit subjects opened with an item id, read
     #: before `_annotates_only` has a say. `ids` answers "who is working what";
     #: this answers the weaker question "is this ref attributable to anything
@@ -739,11 +762,21 @@ class _Walk:
     #: name (`PL-B73C`). A ref appears here and contributes no claim whenever
     #: its whole diff sits in the queue.
     named: set[str]
-    #: Per item id, the ref whose commits changed its file and the path they
-    #: changed. The path rides along because the mark is only worth raising
-    #: where the edit is still unmerged, which `branches_in_flight` tests
-    #: against the base rather than taking on trust (`PL-8MJ3`).
-    edited: dict[str, tuple[str, str]]
+    #: Per item id, every ref whose commits changed its file and the path each
+    #: changed, ordered by candidate rank. The path rides along because the
+    #: mark is only worth raising where the edit is still unmerged, which
+    #: `branches_in_flight` tests against the base rather than taking on trust
+    #: (`PL-8MJ3`).
+    #:
+    #: **Every carrier rather than the nearest**, for the reason `ids` keeps
+    #: every claim: the test that decides whether an edit is still worth
+    #: reporting is `_superseded`, which is a fact about one *ref's* copy of
+    #: one path. Collapsing here let a bystander branch whose copy had landed
+    #: take a live edit's mark with it, and the id left `editing` entirely
+    #: (`PL-RY2R`). One path per ref, the newest the walk saw, which is all the
+    #: collapse ever decided within a ref; the head of the list is the carrier
+    #: a reader is shown where nothing removes it.
+    edited: dict[str, tuple[tuple[str, str], ...]]
     #: Per ref and item id, the newest queue-only commit that both led with the
     #: id and changed that id's own file, with the item paths it changed - a
     #: commit *about* an item that wrote *into* it. That is what a decision
@@ -989,9 +1022,9 @@ def _unmerged_commits(
     output = run(["log", "--source", COMMIT_FORMAT, "--name-only", f"^{base}", *refs, "--"], root)
     prefix = items_dir.strip("/") + "/"
     last: dict[str, date] = {}
-    ids: dict[str, str] = {}
+    claimed: dict[str, list[str]] = {}
     named: set[str] = set()
-    edited: dict[str, tuple[str, str]] = {}
+    edited: dict[str, list[tuple[str, str]]] = {}
     own_edits: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {}
     own_staked: dict[tuple[str, str], Stake] = {}
     staked: dict[tuple[str, str], Stake] = {}
@@ -1007,12 +1040,10 @@ def _unmerged_commits(
 
     # Candidate order is what settles a commit two refs share, since `--source`
     # will not: the caller lists local branches before their tracking refs, so
-    # the lower rank is the one a reader wants to be shown.
+    # the lower rank is the one a reader wants to be shown. It orders each id's
+    # carriers now rather than choosing between them, which is what the per-ref
+    # guards downstream need (`PL-2BZY`, `PL-RY2R`).
     rank = {name: position for position, name in enumerate(refs)}
-
-    def nearer(ref: str, held: str | None) -> bool:
-        """Whether `ref` outranks the ref already credited, or there is none."""
-        return held is None or rank.get(ref, len(refs)) < rank.get(held, len(refs))
 
     def credit_claims() -> None:
         """Credit the held commit's leading ids, unless its diff only annotates."""
@@ -1025,9 +1056,15 @@ def _unmerged_commits(
         # annotating commit is not work, and it has still written to the file a
         # second session is about to write to.
         for identifier, path in item_files:
-            held_edit = edited.get(identifier)
-            if nearer(ref, None if held_edit is None else held_edit[0]):
-                edited[identifier] = (ref, path)
+            # Appended rather than compared against a held carrier, for the
+            # reason the claims below are: `_superseded` judges an edit per
+            # ref, so every ref that edited the file has to reach the caller
+            # (`PL-RY2R`). One entry per ref - the first the walk offers, which
+            # is its newest commit - keeps what the comparison decided *within*
+            # a ref, where a round that renames the file changes two paths.
+            editors = edited.setdefault(identifier, [])
+            if all(name != ref for name, _ in editors):
+                editors.append((ref, path))
         # Before the annotation test, deliberately: a capture, a triage pass
         # and a `docket record` write all name the item they concern, and a
         # ref that has done one of those is attributable even though it claims
@@ -1055,8 +1092,12 @@ def _unmerged_commits(
                         own_staked[(ref, identifier)] = stake
             return
         for identifier in leading:
-            if nearer(ref, ids.get(identifier)):
-                ids[identifier] = ref
+            # Appended rather than compared against a held carrier: which ref
+            # is *reported* is settled by rank at the end, and which refs claim
+            # the id at all is what the per-ref guards need (`PL-2BZY`).
+            carriers = claimed.setdefault(identifier, [])
+            if ref not in carriers:
+                carriers.append(ref)
             if stake is not None:
                 held = staked.get((ref, identifier))
                 if held is None or stake < held:
@@ -1096,9 +1137,15 @@ def _unmerged_commits(
     credit_claims()
     return _Walk(
         last=last,
-        ids=ids,
+        ids={
+            identifier: tuple(sorted(carriers, key=lambda name: rank.get(name, len(refs))))
+            for identifier, carriers in claimed.items()
+        },
         named=named,
-        edited=edited,
+        edited={
+            identifier: tuple(sorted(carriers, key=lambda pair: rank.get(pair[0], len(refs))))
+            for identifier, carriers in edited.items()
+        },
         own_edits=own_edits,
         own_staked=own_staked,
         staked=staked,
@@ -1528,14 +1575,14 @@ def _closed_on_base(
 
 
 def _taken_on_base(
-    claims: dict[str, str],
+    claims: dict[str, tuple[str, ...]],
     forks: dict[str, str],
     items_dir: str,
     base: str,
     root: Path,
     run: Runner,
-) -> frozenset[str]:
-    """Of `claims`, the ids whose ref has nothing left to give - without closing them.
+) -> frozenset[tuple[str, str]]:
+    """Of `claims`, the carriers with nothing left to give - without closing the item.
 
     **`_closed_on_base` is the same question asked of the only answer it can
     see, and a triage pass is the gap between them.** That guard drops an id
@@ -1580,6 +1627,17 @@ def _taken_on_base(
     its id already merged from underneath it while the item file stayed
     untouched. That branch is the `PL-3D2M` shape - work its pull request left
     behind - which `orphaned` reports on its own terms.
+
+    **Asked per carrier, and answered per carrier** (`PL-2BZY`). Every fact
+    above is a fact about one *ref* - its copy of the item file, where it
+    forked, what the base took since - so an id two branches carry has two
+    answers, and which of them is spent says nothing about the other. It used
+    to be handed one ref per id, chosen by candidate rank before any guard ran,
+    and to answer in ids: on 2026-09-19 a branch whose pull request had
+    squash-merged sorted first among the remote refs, its was the only claim
+    judged, and dropping the id under "do not start these again" dropped two
+    live design rounds with it. The caller reports the first carrier absent
+    from this set and drops the id only where every one of them is in it.
     """
     if not claims:
         return frozenset()
@@ -1593,27 +1651,36 @@ def _taken_on_base(
         if match is not None:
             names.setdefault(match.group(1).upper(), path)
     # One subject walk per fork point rather than per id: two refs that forked
-    # from the same commit ask git the identical question.
+    # from the same commit ask git the identical question. The base's own copy
+    # of an item file is read once per path for the same reason - it is the
+    # fixed end of every comparison, whichever carrier is being judged, so a
+    # second carrier costs one `rev-parse` rather than two.
     since: dict[str, set[str]] = {}
-    taken: set[str] = set()
-    for identifier, ref in claims.items():
-        fork_point = forks.get(ref, "")
+    held: dict[str, str] = {}
+    taken: set[tuple[str, str]] = set()
+    for identifier, carriers in claims.items():
         path = names.get(identifier.upper(), "")
-        if not fork_point or not path:
+        if not path:
             continue
-        sides = [run(["rev-parse", f"{end}:{path}"], root).strip() for end in (base, ref)]
-        if not all(sides) or sides[0] != sides[1]:
-            continue
-        if fork_point not in since:
-            since[fork_point] = {
-                found
-                for subject in run(
-                    ["log", "--format=%s", f"{fork_point}..{base}"], root
-                ).splitlines()
-                for found in leading_ids(subject)
-            }
-        if identifier.upper() in since[fork_point]:
-            taken.add(identifier)
+        for ref in carriers:
+            fork_point = forks.get(ref, "")
+            if not fork_point:
+                continue
+            if path not in held:
+                held[path] = run(["rev-parse", f"{base}:{path}"], root).strip()
+            theirs = run(["rev-parse", f"{ref}:{path}"], root).strip()
+            if not held[path] or not theirs or held[path] != theirs:
+                continue
+            if fork_point not in since:
+                since[fork_point] = {
+                    found
+                    for subject in run(
+                        ["log", "--format=%s", f"{fork_point}..{base}"], root
+                    ).splitlines()
+                    for found in leading_ids(subject)
+                }
+            if identifier.upper() in since[fork_point]:
+                taken.add((identifier, ref))
     return frozenset(taken)
 
 
@@ -1870,10 +1937,13 @@ def branches_in_flight(
     if walk.unbounded:
         unreadable |= walk.unbounded
         unlanded = [name for name in unlanded if name not in walk.unbounded]
+        # Per carrier rather than per id: an id claimed by an unread ref *and*
+        # by one the walk could read keeps the readable carrier, where dropping
+        # the id wholesale discarded a claim that was never in doubt.
         subject_ids = {
-            identifier: name
-            for identifier, name in subject_ids.items()
-            if name not in walk.unbounded
+            identifier: kept
+            for identifier, names in subject_ids.items()
+            if (kept := tuple(name for name in names if name not in walk.unbounded))
         }
     unlanded_set = set(unlanded)
 
@@ -1899,37 +1969,40 @@ def branches_in_flight(
     # accounts for an id is the one reported for it. Candidate order decides
     # that, which prefers a local branch to its tracking ref and a ref that was
     # read to one that was not.
+    #
+    # **Every carrier is kept, in the order one would be reported in**
+    # (`PL-2BZY`). The guard below judges a claim per ref, so a list is what it
+    # needs; the head of each list is the single name this used to keep, which
+    # is what a reader is shown where nothing removes it.
     named = [name for name in candidates if name in unlanded_set or name in unreadable]
-    in_flight: dict[str, Branch] = {}
+    claimants: dict[str, list[Branch]] = {}
+
+    def claim(identifier: str, name: str, moved: date | None) -> None:
+        """Record `name` as a carrier of `identifier`, behind any already held."""
+        carriers = claimants.setdefault(identifier, [])
+        if all(branch.name != name for branch in carriers):
+            carriers.append(Branch(name=name, item_id=identifier, last_commit=moved))
+
     for name in named:
         match = BRANCH_ID_RE.search(name)
         if match is None:
             continue
-        identifier = match.group(1).upper()
-        in_flight.setdefault(
-            identifier, Branch(name=name, item_id=identifier, last_commit=last_commit.get(name))
-        )
-    for identifier, name in subject_ids.items():
-        # `_preferred` is what keeps a reader from being shown the tracking ref
-        # for work their own local branch is carrying, which git's own
-        # attribution cannot be relied on to avoid (`PL-R6D8`).
-        reported = _preferred(name, candidates)
-        in_flight.setdefault(
-            identifier,
-            Branch(
-                name=reported,
-                item_id=identifier,
-                last_commit=last_commit.get(reported) or last_commit.get(name),
-            ),
-        )
+        claim(match.group(1).upper(), name, last_commit.get(name))
+    for identifier, names in subject_ids.items():
+        for name in names:
+            # `_preferred` is what keeps a reader from being shown the tracking
+            # ref for work their own local branch is carrying, which git's own
+            # attribution cannot be relied on to avoid (`PL-R6D8`).
+            reported = _preferred(name, candidates)
+            claim(identifier, reported, last_commit.get(reported) or last_commit.get(name))
 
     # **An item the base already records as closed leaves the line**, whatever
     # ref still carries its name. Asked here rather than earlier because the set
     # to ask about is exactly what the report was about to name, which keeps the
     # cost to the few entries that exist rather than the whole store
     # (`PL-6BDX`).
-    for identifier in _closed_on_base(set(in_flight), items_dir, base, root, run):
-        del in_flight[identifier]
+    for identifier in _closed_on_base(set(claimants), items_dir, base, root, run):
+        del claimants[identifier]
 
     # **And an item the base took without closing leaves it too** (`PL-LKFP`).
     # `_closed_on_base` above covers a branch that shipped something; a triage
@@ -1937,15 +2010,28 @@ def branches_in_flight(
     # the merge. Asked of what is left rather than of what that guard already
     # removed, and asked per id because the ref-level content test is what a
     # shared file defeats.
-    for identifier in _taken_on_base(
-        {identifier: branch.name for identifier, branch in in_flight.items()},
+    #
+    # **Every carrier is judged, and the id leaves only where every one of them
+    # is spent** (`PL-2BZY`). A claim is a fact about a ref, so the answer is
+    # per `(id, ref)`; the first carrier the guard did not take is the one
+    # reported, which is the same head the collapse used to choose wherever
+    # nothing is spent at all.
+    spent = _taken_on_base(
+        {
+            identifier: tuple(branch.name for branch in carriers)
+            for identifier, carriers in claimants.items()
+        },
         refs.fork,
         items_dir,
         base,
         root,
         run,
-    ):
-        del in_flight[identifier]
+    )
+    in_flight: dict[str, Branch] = {}
+    for identifier, carriers in claimants.items():
+        live = next((branch for branch in carriers if (identifier, branch.name) not in spent), None)
+        if live is not None:
+            in_flight[identifier] = live
 
     # Refs whose commits went unread contribute no paths either, for the reason
     # they contribute no subject ids: the commits are what the checkout is
@@ -1977,36 +2063,62 @@ def branches_in_flight(
     # 792. The marks are collected first because the two cheap filters decide
     # what is worth asking about, and `walk.edited`'s order is kept so the
     # report is assembled in the order the walk found the ids.
+    #
+    # **Every carrier is kept and each is judged** (`PL-RY2R`). `_superseded` is
+    # a fact about one ref's copy of one path, so an id two refs have both
+    # edited has two answers and the spent one says nothing about the other.
+    # Collapsing to the rank-first ref before the test meant a bystander whose
+    # copy had landed - a squash merge, a rebase, a cherry-pick - took a live
+    # edit's mark with it, and the id left `editing` with nothing printing that
+    # it had. The `walk.unbounded` filter is per carrier for the same reason:
+    # an unread ref contributes no paths, and it used to discard the readable
+    # ref's edit along with its own.
     marks: list[tuple[str, str, str]] = []
     asked_of: dict[str, list[str]] = {}
-    for identifier, (name, path) in walk.edited.items():
-        if name in walk.unbounded or identifier in in_flight:
+    for identifier, editors in walk.edited.items():
+        if identifier in in_flight:
             continue
-        marks.append((identifier, name, path))
-        held = asked_of.setdefault(name, [])
-        if path not in held:
-            held.append(path)
+        for name, path in editors:
+            if name in walk.unbounded:
+                continue
+            marks.append((identifier, name, path))
+            held = asked_of.setdefault(name, [])
+            if path not in held:
+                held.append(path)
     # The own-file edits ride the same diff, so a design round whose copy the
     # base already holds is found superseded in the one call rather than a
     # second (`PL-VYSP`).
+    #
+    # **And they are kept per carrier too** (`PL-61MD`). The walk already keys
+    # them `(ref, id)`, so this collapse was the caller's alone: both tests
+    # below it - `_superseded` on the ref's copy and `_modified_by` on the
+    # commit's own parent - are facts about the chosen carrier, so a bystander
+    # branch whose round had landed, or whose commit only ever created the
+    # file, suppressed a live round another ref was running on the same item.
+    # Ordered by rank here rather than chosen, which leaves the carrier a
+    # reader is shown unchanged wherever nothing is spent.
     rank = {name: position for position, name in enumerate(candidates)}
-    own: dict[str, tuple[str, str, tuple[str, ...]]] = {}
+    own: dict[str, list[tuple[str, str, tuple[str, ...]]]] = {}
     for (name, identifier), (commit, paths) in walk.own_edits.items():
         if name in walk.unbounded or identifier in in_flight:
             continue
-        held_own = own.get(identifier)
-        if held_own is not None and rank.get(held_own[0], len(rank)) <= rank.get(name, len(rank)):
-            continue
-        own[identifier] = (name, commit, paths)
+        own.setdefault(identifier, []).append((name, commit, paths))
         held = asked_of.setdefault(name, [])
         held.extend(path for path in paths if path not in held)
+    for rounds in own.values():
+        rounds.sort(key=lambda entry: rank.get(entry[0], len(rank)))
     superseded_by_ref = {
         name: _superseded(name, base, tuple(paths), root, run) for name, paths in asked_of.items()
     }
-    edited = {
-        identifier: name for identifier, name, path in marks if path not in superseded_by_ref[name]
-    }
-    edited = {identifier: _preferred(name, candidates) for identifier, name in edited.items()}
+    # The first carrier whose edit the base has not taken, and the id drops out
+    # only where every one of them is superseded or unread. `marks` is in
+    # `walk.edited`'s order and each id's carriers are in rank order within it,
+    # so the head of a list nothing removes is the ref the collapse chose.
+    edited: dict[str, str] = {}
+    for identifier, name, path in marks:
+        if identifier in edited or path in superseded_by_ref[name]:
+            continue
+        edited[identifier] = _preferred(name, candidates)
 
     # **An item whose whole deliverable is a queue edit is being worked, not
     # annotated** (`PL-7790`). `_annotates_only` withheld the claim because the
@@ -2037,23 +2149,37 @@ def branches_in_flight(
     # the file to - a batch pass writing the same file must not be named as
     # the session running the round. A copy the base already holds was found
     # superseded above and is not a claim.
+    #
+    # **Each carrier is offered to both tests, and the first survivor is the
+    # round** (`PL-61MD`). Supersession is asked here, per carrier; the status
+    # is a fact about the item on the base and so is asked once for the id,
+    # which is also what keeps this one `git show` per id rather than one per
+    # ref. `_modified_by` then reads each surviving carrier's own commit, and
+    # the id leaves the promotion only where every one of them fails.
     deciding = {
-        identifier: (name, commit, paths)
-        for identifier, (name, commit, paths) in own.items()
+        identifier: unspent
+        for identifier, rounds in own.items()
         if identifier not in promoted
-        and any(path not in superseded_by_ref.get(name, set()) for path in paths)
+        and (
+            unspent := [
+                (name, commit, paths)
+                for name, commit, paths in rounds
+                if any(path not in superseded_by_ref.get(name, set()) for path in paths)
+            ]
+        )
     }
     for identifier in sorted(_deciding_on_base(set(deciding), items_dir, base, root, run)):
-        name, commit, paths = deciding[identifier]
-        if not _modified_by(commit, paths, root, run):
-            continue
-        edited.pop(identifier, None)
-        carrier = _preferred(name, candidates)
-        in_flight[identifier] = Branch(
-            name=carrier,
-            item_id=identifier,
-            last_commit=last_commit.get(carrier) or last_commit.get(name),
-        )
+        for name, commit, paths in deciding[identifier]:
+            if not _modified_by(commit, paths, root, run):
+                continue
+            edited.pop(identifier, None)
+            carrier = _preferred(name, candidates)
+            in_flight[identifier] = Branch(
+                name=carrier,
+                item_id=identifier,
+                last_commit=last_commit.get(carrier) or last_commit.get(name),
+            )
+            break
 
     # **Read, and attributable to nothing.** Confined to refs whose commits the
     # walk actually reached: an unread ref contributes no subjects, so calling

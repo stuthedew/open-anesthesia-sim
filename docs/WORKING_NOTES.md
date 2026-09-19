@@ -341,6 +341,28 @@ means exclusion as plainly as `Required scope` means membership. Both are queue
 work rather than gate entries - an improvement to correct behaviour, and
 roadmap content rather than machinery.
 
+**Superseded 2026-09-19 by `PL-HWW1`, on the half of the rule above that says
+how to place an id.** "Print the id inside `Required scope`" is no longer
+enough and is no longer what the parser does: `Required scope` is read from
+each entry's `(queue item ...)` slot rather than whole, so **an id cited in an
+entry's prose places nothing**. The reason is the same over-read one level
+down. Naming the id that re-briefed an entry is how this document records
+provenance, so following its own idiom added a member to the release every
+time, and the count drifted as the file was maintained correctly - v0.5.0 read
+26 ids against its own stated twenty. What a session writing the next milestone
+section needs is therefore one sentence: **declare each entry's members in a
+`(queue item ...)` slot after its title**, and cite whatever else the prose
+wants. `tools/doc_check.py` fails an entry that declares nothing where the
+section's other entries declare, so this is no longer a convention with no
+check behind it - which is the objection that killed the marker candidate two
+paragraphs up. The frozen list is unchanged, still read by its entries' heads.
+
+`PL-6P9Y` closed with it: an id under the **anchor's own** `Explicitly out of
+scope` heading is now reported as ruled out rather than unplaced, and sorts
+below out-of-scope work. Another section's exclusions stay silent - one the
+project has passed says what was true then, and one it has not reached is a
+decision that milestone's own scoping round may revisit.
+
 ## Open thread: playback speed (target: real-time up to ~120x and beyond, "like Gas Man") - PL-009
 
 Not scoped yet. The performance blocker this waited on has landed: render
@@ -1871,9 +1893,13 @@ runs. And the `r_vcs` ratio is not what makes this a generator: the count of
 items each choosing their own answer to one question is.
 
 **Where it goes next.** `PL-Q9Z1` is the head and carries the channel plus the
-test; `PL-MM7F` (the memo caching a failed call) is `blocked-by` it and is an
-amplifier rather than a second defect; `PL-73P0` (`default_base` guessing
-`"main"`) is untriaged and sits upstream of every comparison in the module.
+test; `PL-MM7F` (the memo caching a failed call) closed against that channel on
+2026-09-19 - `GitRunner` stores an answer and never a silence, so a transient
+fault is retried by the next caller instead of being served to every one of
+them for the rest of the command, and the healthy case is unchanged because all
+106 of the digest's memo hits are genuine answers; `PL-73P0` (`default_base`
+guessing `"main"`) is untriaged and sits upstream of every comparison in the
+module.
 `PL-SY1J` may resolve against `PL-Q9Z1` without its own diagnosis, since
 `precedence` returns `carriers=()` *and* `unreadable=()` on failed evidence.
 

@@ -1,14 +1,15 @@
 ---
 id: PL-Q9Z1
 title: _superseded reads a failed git diff as the tips agreeing about every path, so any silence from git drops every in-flight mark a ref carries - the one direction its own docstring says it must never fail in
-status: done
-added: 2026-09-17
-closed: 2026-09-19
 priority: P2
 effort: M
+status: done
 classes: defect
 feature: git-silence-channel
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/tests/test_cli.py
+added: 2026-09-17
+closed: 2026-09-19
+pr: 687
 verify: uv run pytest subprojects/docket/tests/test_vcs_silence.py
 ---
 
