@@ -1,8 +1,14 @@
 ---
 id: PL-0QRP
 title: A verify: clause that counts occurrences of a symbol passes as soon as any unrelated change adds one, so the skill's verify guidance should name counting beside the -k and --cov traps
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs
+feature: verify-command-meaning
+touches: .claude/skills/docket/SKILL.md
 added: 2026-09-19
+verify: grep -qF 'nothing unrelated can drive it there' .claude/skills/docket/SKILL.md
 ---
 
 **Problem.** A verify: clause that counts occurrences of a symbol passes as soon as any unrelated change adds one, so the skill's verify guidance should name counting beside the -k and --cov traps
@@ -13,7 +19,7 @@ it wanted to take the count from one to three. Two *unrelated* new callers
 arrived instead - one merged to `main` from another branch, one added by the
 branch that was running - and the command passed with none of the work done.
 
-**Why it is a shape rather than one bad command.** The `-k` trap and the
+**Why it matters, and why it is a shape rather than one bad command.** The `-k` trap and the
 `--cov=` trap are already in the skill's `verify:` guidance, and both are about
 a command that fails for the wrong reason. This is the mirror: a command that
 *passes* for the wrong reason, and it has a property neither of those has - it
@@ -38,3 +44,10 @@ drive-to-green rule keeps a CI fix minimal rather than widening it.
 **Not a duplicate of `PL-CWD4`**, which is a command that can never pass on any
 tree and so reads like unfinished work. This is a command that starts passing
 without the work.
+
+**Done when.** `.claude/skills/docket/SKILL.md`'s `verify:` section names counting
+as a third trap beside the `-k` and `--cov=` ones, states the asymmetry that makes
+it a trap - a count the work drives to *zero* is safe, because nothing unrelated
+can drive it there, and a count the work drives *up* is not, because anything at
+all can - and says what to write instead: the `grep` for the spelling or the test
+name the work adds, which no unrelated commit satisfies.

@@ -1,8 +1,13 @@
 ---
 id: PL-QMC0
 title: bin/docket release re-derives an item file's slug while stamping milestone:, so PL-5QLP's rename is not confined to bin/docket record: cutting v0.4.28 moved PL-XQRK's file and the fix has to cover every writer
-status: untriaged
+priority: P2
+effort: M
+status: blocked
+classes: defect
 feature: slug-rename-on-write
+touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/store.py, docs/items
+blocked-by: PL-JF5Z
 added: 2026-09-19
 ---
 

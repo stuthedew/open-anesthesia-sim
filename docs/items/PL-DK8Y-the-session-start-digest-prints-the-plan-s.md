@@ -1,9 +1,14 @@
 ---
 id: PL-DK8Y
 title: The session-start digest prints 'The plan's numbering is behind the project' for every Wave.stale statement, which is false for the section-that-no-timeline-row-bears one
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
 feature: timeline-arrangement
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-19
+verify: grep -q 'def test_the_digest_does_not_call_a_rowless_section_a_numbering_lag' subprojects/docket/tests/test_roadmap.py
 ---
 
 **Problem.** The session-start digest prints 'The plan's numbering is behind the project' for every Wave.stale statement, which is false for the section-that-no-timeline-row-bears one

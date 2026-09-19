@@ -1,8 +1,13 @@
 ---
 id: PL-245B
 title: docs/WORKING_NOTES.md cites test_vcs.py:467 as the test asserting _superseded's inverted direction, but that line has never held such a test - PL-Q9Z1's live thread rests on it
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs, defect
+touches: docs/WORKING_NOTES.md, subprojects/docket/src/docket/vcs.py
 added: 2026-09-19
+verify: ! grep -q 'test_vcs\.py:467' docs/WORKING_NOTES.md
 ---
 
 **Problem.** docs/WORKING_NOTES.md cites test_vcs.py:467 as the test asserting _superseded's inverted direction, but that line has never held such a test - PL-Q9Z1's live thread rests on it
@@ -37,3 +42,11 @@ surfaced it; nothing about the defect is `PL-2BZY`'s.
 rather than by line number - the form `tools/doc_check.py` can check and a
 rename cannot silently break - or says plainly that the inverted case has no
 test, whichever the code turns out to support.
+
+**Downgraded at triage, 2026-09-19: the thread it supports has since closed.**
+`bin/docket show PL-Q9Z1` reads `done`, shipped in `v0.4.28`, so the paragraph is
+no longer the standing argument for a live item's shape - it is history, and the
+sentence is wrong about history rather than about work in progress. That is why
+this sits at `P3` and not beside the other `vcs.py` defects. The defect itself is
+unchanged: the citation was wrong when written, so a reader who follows it still
+cannot tell a moved line from a claim that was never true.

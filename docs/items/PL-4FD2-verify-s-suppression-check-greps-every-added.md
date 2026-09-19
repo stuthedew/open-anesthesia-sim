@@ -1,9 +1,14 @@
 ---
 id: PL-4FD2
 title: verify's suppression check greps every added line for the three marker substrings it knows, so prose in a docstring, an item brief or a README explaining why a suppression was not used refuses the branch
-status: untriaged
-feature: git-silence-channel
+priority: P2
+effort: M
+status: ready
+classes: defect
+feature: verify-false-reject
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-19
+verify: grep -q 'def test_prose_naming_a_suppression_is_not_a_suppression' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** verify's suppression check greps every added line for the three marker substrings it knows, so prose in a docstring, an item brief or a README explaining why a suppression was not used refuses the branch
@@ -23,7 +28,7 @@ So a sentence *explaining* why a suppression was not used trips it. On
 an assertion rather than marked expected-to-fail. The branch added no
 suppression at all.
 
-**Why it is worth fixing rather than writing around.** The workaround is to
+**Why it matters, and why writing around it is worse.** The workaround is to
 avoid the word, which is what that branch did - and a check whose remedy is
 "do not name the thing in prose" makes the documentation worse in exactly the
 place a reader most needs it, since the reason a suppression was *refused* is
@@ -50,3 +55,16 @@ so the report of the defect is refused by the defect. Read that as the strongest
 available argument for fixing it: an item nobody can state plainly is one the
 next session restates worse. `subprojects/docket/src/docket/verify.py:51` holds
 the tuple, and reading it there is the substitute for spelling it here.
+
+**Corrected at triage, 2026-09-19: the tuple holds five substrings, not three.**
+`subprojects/docket/src/docket/verify.py:51` now carries five, so the title's
+count is stale in the direction that understates the surface. The title is left
+as captured rather than edited, because retitling renames the file and `PL-Y5JX`
+records what a silent item-file rename costs.
+
+**The precedent for the fix is four lines above the tuple.** The comment
+introducing the *assertion* check already draws exactly the line this check does
+not: "Only a file Python executes can hold an assertion, so a removed line from
+anything else is prose whatever words it uses." The same sentence written for
+suppressions is the narrow fix, and it is already this file's own reasoning
+rather than an import from elsewhere.

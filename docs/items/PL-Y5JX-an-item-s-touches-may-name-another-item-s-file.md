@@ -1,8 +1,14 @@
 ---
 id: PL-Y5JX
 title: An item's touches may name another item's file path, so acting on the stale-slug rename advisory would silently break it - PL-3V6C names two
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
+feature: slug-rename-on-write
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-19
+verify: grep -q 'def test_touches_naming_a_missing_item_file_is_an_error' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** An item's touches may name another item's file path, so acting on the stale-slug rename advisory would silently break it - PL-3V6C names two
@@ -42,3 +48,10 @@ the file it is proposing to rename, so the reader is told before acting.
 slug deliberately; the closing commit records why. Two of the eight files the
 advisory currently names are `PL-TFWR` and `PL-XQRK`, which are exactly the two
 `PL-3V6C` declares.
+
+**Done when.** A `touches` entry naming a path under `docs/items/` that does not
+exist is an error from `bin/docket check`, and the stale-slug advisory names any
+other item whose `touches` declares the file it is proposing to rename. Both are
+decidable from the store, so both are checks rather than prose. A test drives
+`PL-3V6C`'s shape: an item declaring two item files by full path, one of which the
+advisory wants renamed.
