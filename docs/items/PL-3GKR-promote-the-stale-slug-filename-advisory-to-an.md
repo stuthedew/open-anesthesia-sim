@@ -1,9 +1,14 @@
 ---
 id: PL-3GKR
 title: Promote the stale-slug filename advisory to an error now the count is zero, once PL-Y5JX's touches-coupling warning exists to make renaming safe
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: infra
 feature: slug-rename-on-write
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-19
+verify: grep -q 'def test_a_drifted_item_filename_is_an_error' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** Promote the stale-slug filename advisory to an error now the count is zero, once PL-Y5JX's touches-coupling warning exists to make renaming safe
@@ -42,6 +47,26 @@ deliberately - findability by `ls docs/items/ | grep` is the point of the slug,
 and a closed item is what a later session looks up by name - so the default
 answer is yes, but a closed item nobody will edit again is also the cheapest
 possible place to allow drift.
+
+**Why it matters.** `CLAUDE.md` gives a standing advisory exactly two honest
+futures - it earns its place every run, or it is retired - and drifting on as
+unowned noise is neither. This one fired in every session for weeks with
+nobody acting on it, which is what made `PL-YTDN`'s nine-file rename pass
+necessary in the first place. At a count of zero the choice is cheap in one
+direction and only in one direction: an error keeps it at zero for free,
+because a rename is one file at the moment the title is edited, whereas
+letting it drift again means another campaign.
+
+The concrete loss the check stands against is findability. An item file's name
+is how a session finds an item by hand - `ls docs/items/ | grep` - and how
+`bin/docket stranded` prints a recovery line somebody pastes. A file carrying
+the slug of a title it no longer has sends both to the wrong place, and
+`origin/main` has held one before.
+
+**Blocker cleared, checked 2026-09-19.** This brief says "the order is
+`PL-Y5JX` first". `PL-Y5JX` closed on 2026-09-19 and merged as `#714`, so the
+`touches`-coupling warning it asked for exists and a compelled rename is now a
+safe rename. The item is `ready` rather than `blocked`.
 
 **Done when.** The stale-slug drift is a hard failure from `bin/docket check`
 rather than an advisory, `PL-Y5JX`'s coupling warning is in place ahead of it,

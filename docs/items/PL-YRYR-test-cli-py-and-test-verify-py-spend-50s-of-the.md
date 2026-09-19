@@ -1,9 +1,14 @@
 ---
 id: PL-YRYR
 title: test_cli.py and test_verify.py spend ~50s of the suite's 272s serial cost on per-test git fixtures - 304 tests, no test above 1.3s, a git init plus config plus add plus commit in each
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: perf, test
 feature: verify-replay-cost
+touches: subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-19
+verify: grep -q 'repository_template' subprojects/docket/tests/test_cli.py subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** test_cli.py and test_verify.py spend ~50s of the suite's 272s serial cost on per-test git fixtures - 304 tests, no test above 1.3s, a git init plus config plus add plus commit in each
@@ -38,6 +43,24 @@ correct about refs, and `.claude/rules/apparatus-standard.md` sets the bar at
 "its absence would let a real defect through". A shared fixture that leaks
 state between tests would do exactly that, silently — so the fix is worth
 taking only if each test still gets an independent tree.
+
+**Why it matters, and why it is filed at P3.** The honest case is modest and
+the brief above says so: roughly 6 s off a 77.8 s parallel run, on a suite
+already within 11% of its CPU floor. What makes it worth recording rather than
+dropping is the direction of travel - this is per-test cost rather than an
+outlier, so it scales with the number of tests these two files carry, and they
+are the files that grow every time `docket` learns something new about refs.
+`PL-FZ58` measured the whole suite looking for a saving and concluded the
+replay's cost was never here; this is the residue that measurement left, filed
+so the next person to go looking does not re-derive it.
+
+The reason it is `perf` and `test` rather than either alone is that the risk
+and the reward sit in different places. The reward is wall-clock; the risk is
+correctness, because these are the tests that keep `docket` honest about refs
+and a fixture leaking state between them would let a real defect through
+silently. `.claude/rules/apparatus-standard.md` sets that bar - "its absence
+would let a real defect through" - and it is the bar this fix has to clear, not
+the stopwatch.
 
 **Done when** the two files' serial cost is materially down with every test
 still running against a tree no other test has touched, or the item records

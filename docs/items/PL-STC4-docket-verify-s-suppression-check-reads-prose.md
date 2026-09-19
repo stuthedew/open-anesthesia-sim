@@ -1,8 +1,13 @@
 ---
 id: PL-STC4
 title: docket verify's suppression check reads prose, unlike the assertion check beside it: 12 of the 13 lines it flagged on PL-VHVJ's own branch were an item brief, a comment or a docstring naming the thing being fixed
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, infra
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-19
+verify: grep -q 'def test_a_suppression_named_in_an_item_brief_is_not_one' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** docket verify's suppression check reads prose, unlike the assertion check beside it: 12 of the 13 lines it flagged on PL-VHVJ's own branch were an item brief, a comment or a docstring naming the thing being fixed
@@ -51,3 +56,28 @@ round rather than a patch.
 **Done when** an item brief no longer counts as a suppression, and the comment
 half is either narrowed on a rule that cannot swallow `# type: ignore` or
 recorded as undecidable with the reason.
+
+**A second item for this defect was captured independently, three minutes later.**
+`PL-BHBZ` - "bin/docket verify's suppression check reads every added line
+regardless of file type, so prose naming xfail in ROADMAP.md or a release note
+REJECTs a correct close-out" - was filed on 2026-09-19 by the session cutting
+v0.4.29, on `origin/claude/loving-hawking-fyyc98`, and names the same missing
+narrowing: the `.py` restriction the sibling assertion check carries at
+`verify.py:160` and the suppression check at `verify.py:1269` does not. It is
+not in this checkout, so it is cited here by title rather than by a link a
+checker can follow.
+
+The two are worth keeping apart until both land, because they are the same
+defect found from opposite ends and each carries evidence the other does not:
+this item has the 13-line breakdown from `PL-VHVJ`'s own branch and the
+argument that the comment half is not decidable, and `PL-BHBZ` has the
+`ROADMAP.md`-and-release-note failure mode, which is the case that will fire on
+every release. Whichever session lands second should fold `PL-BHBZ`'s evidence
+into this brief and drop it with a `reason`, or the reverse - one item, not
+two.
+
+**It is also a live instance of `PL-TZ7T`**, the item this same triage pass
+seated: `bin/docket new` files a duplicate title without noticing. Two sessions
+running concurrently filed one defect twice inside four minutes - this pass's
+triage commit at 19:39:47 UTC, `PL-BHBZ`'s capture at 19:43:03 - which is the
+third recorded occurrence after `PL-LBR6`/`PL-5QLP`/`PL-QMC0`.

@@ -2946,7 +2946,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 192 entries
+### Declined to Gate 2 on the refilling-queue ground — 201 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3983,6 +3983,50 @@ in the day's findings is strongest exactly when the list is nearly empty. Any
 of the seventeen whose *problem* predates the freeze belongs on the list rather
 than here, and `check_gate_reentries` is what decides that rather than this
 paragraph.
+
+**Eight more from the 2026-09-19 triage pass over the twelve untriaged
+captures** (`PL-CSV0`). `PL-9KSY`, `PL-G424`, `PL-STC4`, `PL-VKGJ`, `PL-X3NY`
+and `PL-YRYR` sit exactly where the first thirty do: captured on 2026-09-19,
+well after the 2026-09-06 freeze, `P2` or `P3`, neither `safety` nor `science`,
+and wholly in the workflow lane - every `touches` they declare is inside
+`docket.toml`'s `workflow_paths`, so none can reach a reader of the simulator.
+The arithmetic that the paragraph above says now argues harder is unchanged and
+argues the same way here: this gate stands at 170 cleared of 175 with two
+entries it can clear, and admitting eight would take that remainder from two to
+ten at the beat where the milestone is one step from starting.
+
+**`PL-G424` is a recorded generator, and that is a statement about its rank
+rather than about this gate.** It carries `root-cause-of:` naming twenty-one
+members, so `CLAUDE.md` ranks it above every band but `P0` and `bin/docket
+next` will offer it ahead of the two entries this gate still holds. Declining
+it here does not park it: a gate decides which findings a milestone waits on,
+and the generator tier decides what a session picks up. Both answers are
+recorded deliberately, and the second is the one that governs what happens
+next.
+
+**Two of the eight are not wholly apparatus, which is stated rather than
+stretched.** `PL-HCTF` declares `ROADMAP.md`, and its subject is this
+subsection's own stated entry count - which `#706` left at `174` while adding an
+entry, and which nothing validates at `174`, `191` or `999`. It is a correction
+to this document's account of its own queue, so it cannot reach a reader of the
+simulator, which is the test `PL-0VFF` and `PL-880Z` were declined on above.
+`PL-WPDB` sits in the product lane on `tests/benchmarks/`, and is declined on
+the narrower ground that a frame-cost measurement is a number about this
+repository's rendering budget rather than a clinical one: no reading of it
+reaches a displayed value, so the safety exception that admitted `PL-DZFJ` does
+not reach it either. It is `v0.5.0`'s own frame cost it leaves unmeasured,
+which is an argument for doing it during that milestone rather than for holding
+the gate open ahead of it.
+
+**One more, raised by the project owner while the pass above was running**
+(`PL-TQFB`). It asks whether a housekeeping item should have to argue for its
+own category, on the measurement that 22 triage-pass items carry 1,127 lines of
+which only 2 hold a finding. It declares `CLAUDE.md`, the `docket` skill and
+`checks.py`, all three wholly inside `docket.toml`'s `workflow_paths`, so it
+cannot reach a reader of the simulator and sits on the same refilling-queue
+ground as the first thirty. It is also a question about whether a mechanism is
+worth changing at all, which is the shape `PL-NF6N` was declined on above -
+least likely to be worth holding a gate open for.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first

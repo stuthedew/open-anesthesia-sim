@@ -1,7 +1,11 @@
 ---
 id: PL-X3NY
 title: bin/docket stranded reports in-flight pull-request work and abandoned-branch work identically because it reasons from refs alone, where the GitHub API can classify the two - so the reader re-derives every session what one API read would settle
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: defect, infra
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
 ---
 
@@ -74,3 +78,65 @@ every session start through the digest, and every session currently pays the sam
 manual lookup. It is a defect in an existing check under
 `.claude/rules/apparatus-standard.md`'s floor — a partial reading handed over as
 a complete one — not a new feature.
+
+**One premise in the brief above is wrong, checked 2026-09-19.** It reads
+"GitHub answers all three, and this project already reads that API - `docket
+record` recovers a `pr` number from a merge commit." The first clause holds;
+the second does not, and it is the one carrying the cost argument. `docket
+record` reads **git**: `merged_pull_requests` in
+`subprojects/docket/src/docket/vcs.py` parses merge-commit subjects on the
+default branch, and no module under `subprojects/docket/src/docket/` imports
+`urllib` or names `api.github` - the single `GITHUB_TOKEN` hit in `checks.py`
+is prose in a docstring. The two scripts in this repository that do read the
+API are `tools/pr_title_check.py` and `tools/main_ci_status.py`, and `bin/docket`
+runs neither.
+
+So the proposal is not a scope change to a command that already talks to
+GitHub. It would make `bin/docket` a network client for the first time, in a
+command the session-start hook runs on every session, and `CLAUDE.md` and
+`docket.toml` both rest on `bin/docket` running "from a bare checkout with no
+virtualenv". That is a larger change than the brief prices, and it is what
+moves this item to `needs-decision` rather than `ready`.
+
+**Why it matters.** The noise is real and is paid every session. The 2026-09-19
+digest listed `PL-PZ8D` and `PL-TPCH` - on open pull request `#715`, behaving
+exactly as intended - beside `PL-GL5P` and `PL-YFXG`, which are genuinely
+behind, with nothing separating them. That is
+`.claude/rules/apparatus-standard.md`'s floor: a partial reading handed over as
+a complete one, where at the point of use the two are indistinguishable. And it
+is `CLAUDE.md`'s second compounding-friction test - an advisory being routed
+around - because the reader who learns to skim this list is the reader who
+skims the genuine stranding in it. `PL-XLQ5` is what acting on the wrong entry
+costs: a `git checkout` that overwrote a newer copy with an older one, eight
+minutes after `#325` merged.
+
+**Decision needed.** Which evidence `stranded` classifies from, given that the
+API is a new dependency for `bin/docket` rather than an existing one:
+
+1. **Read the GitHub API**, from the standard library, with an offline and
+   unauthenticated degradation that says it could not classify. Answers all
+   three categories. Costs `bin/docket` its no-network property in the command
+   the session-start hook runs every session, and needs a token where the
+   repository is private.
+2. **Classify from git alone, and say so.** `merged_pull_requests` already
+   identifies a branch whose work the base has taken, which separates **landed**
+   from the rest - the largest and safest of the three categories, and the one
+   whose recovery advice is actively harmful. **in flight** and **behind** stay
+   merged into one bucket the reader still judges, labelled as such. Cheapest,
+   keeps the tool offline, and removes most of the noise rather than all of it.
+3. **Move the classification into a `tools/` script** that already reads the
+   API, and leave `docket` reporting what refs say. Keeps the boundary that
+   `bin/docket` is git-only, at the cost of a second place a session has to
+   know to look.
+
+Route 2 is the recommendation on the evidence above: it is the only one that
+needs no new dependency, and the category it can decide is the one carrying
+`PL-XLQ5`'s loss. Whether the residual in-flight/behind ambiguity is worth
+route 1's cost is the part that needs an answer.
+
+**Done when.** `bin/docket stranded` separates the branches it can classify
+from the ones it cannot, names which evidence it used, and degrades by saying
+it could not classify rather than by guessing; the recovery advice is printed
+only for the category it is safe for; and `cmd_orphaned`, which has the same
+two-category problem for non-item files, is either covered in the same pass or
+recorded as out of scope with the reason.

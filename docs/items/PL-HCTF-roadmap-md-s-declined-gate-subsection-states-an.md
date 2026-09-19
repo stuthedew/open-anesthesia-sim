@@ -1,7 +1,11 @@
 ---
 id: PL-HCTF
 title: ROADMAP.md's declined-gate subsection states an entry count nothing validates: #706 added PL-ZMGR as an entry and left the heading at 174, and doc_check passes the same section at 174, 191 or 999
-status: untriaged
+priority: P3
+effort: S
+status: needs-decision
+classes: docs, infra
+touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-19
 ---
 
@@ -48,3 +52,28 @@ recording how many of a gate are closed.
 check that fails on a drift of one, or the count is removed from the heading
 with the reason recorded, and `origin/main`'s current off-by-one is reconciled
 either way.
+
+**Decision needed.** Which of the two shapes above governs, since they produce
+different work and a `verify:` command cannot be written until one is picked:
+
+1. **Hold the heading to the entries below.** "Entry" here is not "id
+   mentioned" - the subsection names ids for context as well as for
+   disposition, so a naive count returns 324 against a heading of 191. The
+   decidable reading is the batch sizes the paragraphs state ("Eleven more",
+   "Fourteen more", "One more"), summed. A check in `tools/doc_check.py` fails
+   on a drift of one.
+2. **Drop the number from the heading.** A count in a document goes stale the
+   next time an entry is added, which is the reasoning the v0.4.0 section
+   already gives for not recording how many of a gate are closed.
+
+Either way `origin/main`'s current off-by-one is reconciled. This is a
+granular choice whose blast radius is one heading, so it is a session's to
+take rather than the project owner's; it sits at `needs-decision` because the
+next step is the decision and nothing else can proceed past it.
+
+**Note added by the 2026-09-19 triage pass (`PL-CSV0`).** The heading now
+reads `192 entries` rather than the `191` this brief records, and this pass
+adds further entries and increments it again. The increments preserve whatever
+offset exists rather than repairing it - reconciling the true total is this
+item's work, and doing it in a pass that is also adding entries would leave
+nobody able to say which number was the corrected one.
