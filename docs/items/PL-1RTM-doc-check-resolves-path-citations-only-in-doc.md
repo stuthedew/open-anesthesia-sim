@@ -67,3 +67,13 @@ large stale count is the argument for scoping the check to newly-written items
 rather than failing the whole store at once. `docs/ARCHITECTURE.md:447` is then
 true of both halves of the check, and a test pins a stale path citation in an
 item brief being caught.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation): still real, with stale numbers corrected here rather than in the text above.** The mechanism is unchanged -
+`check_citations` is still handed `read_docs(root)`, which iterates `DOC_GLOBS`
+(`tools/doc_check.py:141-149`), and `docs/items/` is not in it, while
+`_quoting_sources` at `:2812` already reaches those files for
+`check_quoted_sources` alone. Three numbers moved: the comment at `:2807` says
+widening would hand over "687 item files" and the tree holds **1258**; the
+brief's "252 open items" is **317**; and `docs/ARCHITECTURE.md:447` is now
+`:505`. The measurement the brief asks for - how many path citations the queue
+holds, and how many are stale - has still not been taken.

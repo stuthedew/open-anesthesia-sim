@@ -104,3 +104,10 @@ note's field set and the first worked example. `docs/references/` holds exactly
 one file, `README.md`, and no Yasuda et al. 1991 section - while
 `tests/reference/test_published_wash_in_and_elimination.py:18-21` already
 depends on that paper's vectors with no holdable record behind them.
+
+**On promoting it:** `bin/docket set PL-Z3V5 --status ready` is refused, because
+a `ready` item must name the command that proves it done and this one carries
+none. That command is written when the item is started, having been run - not
+in a sweep - so the status is deliberately left at `blocked` here, and
+`bin/docket check`'s standing "every blocker has closed; it is ready to
+promote" advisory is the correct live signal.
