@@ -3,10 +3,12 @@ id: PL-TQFB
 title: A housekeeping item must argue for itself: docket check demands Problem, Why it matters and Done when at any status past untriaged, so 22 triage-pass items carry 1,127 lines of which 12 repeat the same rationale and only 2 carry a finding
 priority: P3
 effort: S
-status: needs-decision
+status: done
 classes: infra, docs
-touches: subprojects/docket/src/docket/checks.py, .claude/skills/docket/SKILL.md, CLAUDE.md
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_checks.py, docket.toml, .claude/skills/docket/SKILL.md, ROADMAP.md
 added: 2026-09-19
+closed: 2026-09-19
+verify: grep -q 'def test_a_housekeeping_item_needs_only_a_problem' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** A housekeeping item must argue for itself: docket check demands Problem, Why it matters and Done when at any status past untriaged, so 22 triage-pass items carry 1,127 lines of which 12 repeat the same rationale and only 2 carry a finding
@@ -91,3 +93,40 @@ brief on an item where the brief was the point.
 **Done when.** A housekeeping pass can file its item without arguing for the
 category, the two mechanisms above still see it, and the existing 22 are left
 alone - rewriting closed items would spend more than the rule saves.
+
+**Decision: route 1** (project owner, 2026-09-19, ratified, over route 2 -
+pointing the requirement at a standing rationale - and route 3, dropping the
+item altogether). Route 3 was the question as originally asked and is the one
+the evidence refused: the id is read by `tools/branch_id_check.py`, which fails
+a branch in the agent namespace that no id names, and by the in-flight mark,
+which for a queue-only diff can only be raised through an item whose `touches`
+stays inside `docs/items/` (`PL-7790`, `PL-X3WZ`). Route 2 was refused for
+leaving the headings present and empty, which `PL-D188` already reports as an
+item with no brief at all.
+
+**What was built.**
+
+- `checks.HOUSEKEEPING` is the class. An item carrying it is asked for
+  `**Problem.**` alone - `docket new` writes that from the title - and is still
+  held to its `verify:` command at `ready`. `brief_gaps` takes the flag so
+  `check` and `triage` cannot drift, which is the property its own docstring
+  says it exists to hold.
+- It may not sit beside a `debt_classes` entry. Debt is the work that most
+  needs the sections, and `classes: housekeeping, defect` has two readings - a
+  pass that also fixed something, which should be two items, and a defect
+  dodging its brief - neither worth leaving standing.
+- It is in `process_classes`, in this repository's `docket.toml` and in the
+  package default, so a housekeeping-only item cannot seat above product work
+  in the top band. Both lists carry it because `vocabulary()` derives from
+  them when a project declares nothing.
+- `bin/docket triage` prints the exemption beside the brief rule it modifies,
+  which is where the cost is paid: an exemption a session meets after writing
+  the brief has saved nothing.
+- `.claude/skills/docket/SKILL.md` § "Mode: housekeeping nobody filed" carries
+  the worked example. `CLAUDE.md` is deliberately unedited - it already routes
+  every queue workflow to that skill, and the resident set grows only for what
+  a session could get wrong before it would think to look anything up.
+
+**The 22 existing items are left as they are.** Rewriting closed briefs would
+spend more than the rule saves, and their `**Why it matters.**` sections are
+now a record of what the requirement used to cost rather than an error.

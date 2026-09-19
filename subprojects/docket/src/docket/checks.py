@@ -53,6 +53,28 @@ from .verify import LandedReport, reads_check_output, reenters_verify
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
 DONE_WHEN = "**Done when.**"
+
+#: The class for an item whose work *is* the queue edit - a triage pass, a
+#: stranded recovery, a docs sweep, a release-tag item. It carries an id, a
+#: `touches` and a `verify:` like any other, and is excused the two brief
+#: sections that argue for the work rather than describe it.
+#:
+#: The exemption is the whole point and the id is not part of it. Two
+#: mechanisms need the id and neither is bookkeeping: `tools/branch_id_check.py`
+#: refuses a branch in the agent namespace that no id names, and a diff
+#: confined to `docs/items/` raises the in-flight mark only through an item
+#: whose own `touches` stays inside it (`PL-7790`), a queue-only commit being
+#: deliberately unreadable as work (`PL-X3WZ`). What the category cannot
+#: justify is making each pass restate why housekeeping is worth doing:
+#: measured 2026-09-19 over the 22 items titled "Triage ...", 1,127 lines of
+#: brief, 12 repeating the same rationale and 2 carrying a finding a later
+#: session needs (`PL-TQFB`, project owner, 2026-09-19, ratified, over
+#: pointing the requirement at a standing rationale and over dropping the
+#: item altogether).
+#:
+#: It may not sit beside a debt class, which is what stops it becoming the way
+#: to file a defect without a brief; `_check_item` refuses that pairing.
+HOUSEKEEPING = "housekeeping"
 DECISION_NEEDED = "**Decision needed.**"
 
 #: What a status demands beyond what every triaged item owes, paired with the
@@ -188,14 +210,17 @@ def stub_error(where: str, marker: str) -> str:
     )
 
 
-def brief_gaps(body: str, *, blocked: bool = False) -> tuple[list[str], list[str], str | None]:
+def brief_gaps(
+    body: str, *, blocked: bool = False, housekeeping: bool = False
+) -> tuple[list[str], list[str], str | None]:
     """The required sections a brief lacks: absent, empty, and a stub left above it.
 
     One author for the rule, because two had already drifted: `check` errored
     on the sections an item was missing while `triage` printed its own reading
     of the same three markers, and the README promises a reader those two
     cannot disagree. A blocked item is not asked for `**Done when.**` - it
-    cannot state its closing condition until its blocker resolves.
+    cannot state its closing condition until its blocker resolves. A `housekeeping`
+    item is asked for `**Problem.**` and nothing else: see `HOUSEKEEPING`.
 
     A stub replaces the empty-heading list rather than adding to it. Both
     describe the same defect and only one of them describes it correctly:
@@ -204,7 +229,16 @@ def brief_gaps(body: str, *, blocked: bool = False) -> tuple[list[str], list[str
     reading it. Reporting one at a time loses nothing - delete the stub, and a
     section the brief genuinely omits is reported on the next run as missing.
     """
-    required = list(REQUIRED_BRIEF) + ([] if blocked else [DONE_WHEN])
+    if housekeeping:
+        # `**Problem.**` alone, which `docket new` writes from the title. The
+        # two that go are the two a housekeeping pass cannot answer without
+        # restating the category: "why it matters" is the standing rule that
+        # made the pass necessary, and "done when" is the `verify:` command in
+        # prose. The command still has to be there - the exemption is the
+        # argument, never the proof.
+        required = [REQUIRED_BRIEF[0]]
+    else:
+        required = list(REQUIRED_BRIEF) + ([] if blocked else [DONE_WHEN])
     found = {marker: _section_text(body, marker) for marker in required}
     stub = _stub_above_brief(body)
     return (
@@ -337,7 +371,9 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             report.errors.append(f"{where}: no priority; expected one of {', '.join(PRIORITIES)}")
         if item.effort not in EFFORTS:
             report.errors.append(f"{where}: no effort; expected one of {', '.join(EFFORTS)}")
-        missing, empty, stub = brief_gaps(item.body, blocked=item.status == "blocked")
+        missing, empty, stub = brief_gaps(
+            item.body, blocked=item.status == "blocked", housekeeping=HOUSEKEEPING in item.classes
+        )
         if missing:
             report.errors.append(f"{where}: brief is missing {', '.join(missing)}")
         if empty:
@@ -443,6 +479,22 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             f"({', '.join(sorted(config.vocabulary()))}); a class the tool does not know "
             "matches no rule, so a misspelled `safety` seats safety-critical work in a "
             "band that is meant to exclude it"
+        )
+    # `housekeeping` buys an exemption from two brief sections, so the one
+    # thing it may never do is carry work that owes a brief. A debt class is
+    # exactly that work - `ROADMAP.md`'s gate counts it, a session picks it up
+    # cold, and "why it matters" is the sentence that tells them whether it is
+    # still real. Refused rather than reported, because the two readings of
+    # `classes: housekeeping, defect` are "a pass that also fixed something",
+    # which should be two items, and "a defect dodging its brief", which is the
+    # abuse; neither is a state to leave standing.
+    dodged = tuple(c for c in item.classes if c in config.debt_classes)
+    if HOUSEKEEPING in item.classes and dodged:
+        report.errors.append(
+            f"{where}: class '{HOUSEKEEPING}' sits beside '{', '.join(dodged)}'; "
+            f"'{HOUSEKEEPING}' excuses an item the brief sections that argue for the "
+            "work, and debt is the work that most needs them. Split the finding out as "
+            "its own item, or drop the `housekeeping` class and write the brief"
         )
     safety = tuple(c for c in item.classes if c in config.safety_classes)
     exempt = item.status == "blocked" and "anticipated" in item.classes

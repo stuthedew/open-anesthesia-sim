@@ -4018,15 +4018,16 @@ not reach it either. It is `v0.5.0`'s own frame cost it leaves unmeasured,
 which is an argument for doing it during that milestone rather than for holding
 the gate open ahead of it.
 
-**One more, raised by the project owner while the pass above was running**
-(`PL-TQFB`). It asks whether a housekeeping item should have to argue for its
-own category, on the measurement that 22 triage-pass items carry 1,127 lines of
-which only 2 hold a finding. It declares `CLAUDE.md`, the `docket` skill and
-`checks.py`, all three wholly inside `docket.toml`'s `workflow_paths`, so it
-cannot reach a reader of the simulator and sits on the same refilling-queue
-ground as the first thirty. It is also a question about whether a mechanism is
-worth changing at all, which is the shape `PL-NF6N` was declined on above -
-least likely to be worth holding a gate open for.
+**One more, raised by the project owner while the pass above was running, and
+answered in the same session** (`PL-TQFB`). It asked whether a housekeeping
+item should have to argue for its own category, on the measurement that 22
+triage-pass items carry 1,127 lines of brief of which only 2 hold a finding.
+The entry stays for the record rather than as a deferral: the owner ratified
+route 1 the same day and the item closed, so this gate never waited on it. Had
+it stayed open it would have sat on the refilling-queue ground as the first
+thirty do - it declares the `docket` skill, `checks.py`, `render.py`,
+`config.py` and `docket.toml`, all wholly inside `docket.toml`'s
+`workflow_paths`, so none of it can reach a reader of the simulator.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first

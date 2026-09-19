@@ -255,6 +255,50 @@ def test_a_blocked_item_needs_no_done_when() -> None:
     assert _errors(blocker, blocked) == []
 
 
+def test_a_housekeeping_item_needs_only_a_problem() -> None:
+    """Its work is the queue edit; the two sections it drops argue for the category.
+
+    `**Why it matters.**` on a triage pass is the standing rule that made the
+    pass necessary, and `**Done when.**` is the `verify:` command in prose -
+    measured at 1,127 lines across 22 such items, of which 2 held a finding
+    (`PL-TQFB`).
+    """
+    pass_item = _item(classes=("housekeeping",), body="**Problem.** Triage the 12 captures\n")
+
+    assert _errors(pass_item) == []
+
+
+def test_a_housekeeping_item_still_needs_a_problem() -> None:
+    """The exemption is the argument, never the statement of what was done."""
+    assert _has(
+        _errors(_item(classes=("housekeeping",), body="Triage the 12 captures\n")),
+        "brief is missing **Problem.**",
+    )
+
+
+def test_an_ordinary_item_is_still_asked_for_the_full_brief() -> None:
+    """The exemption is read off the class and nothing else."""
+    assert _has(_errors(_item(classes=("infra",), body="**Problem.** x\n")), "**Why it matters.**")
+
+
+def test_housekeeping_may_not_sit_beside_a_debt_class() -> None:
+    """Otherwise it is the way to file a defect without a brief.
+
+    Debt is the work that most needs the sections: the gate counts it and a
+    session picks it up cold, so "why it matters" is what tells them whether it
+    is still real.
+    """
+    assert _has(
+        _errors(_item(classes=("housekeeping", "defect"), body="**Problem.** x\n")),
+        "excuses an item the brief sections",
+    )
+
+
+def test_a_housekeeping_item_is_process_work_for_the_top_band() -> None:
+    """A class outside `process_classes` would leave it eligible for the top band."""
+    assert "housekeeping" in Config().process_classes
+
+
 def test_a_blocked_item_must_name_a_blocker() -> None:
     assert _has(
         _errors(_item(status="blocked", body="**Problem.** x\n**Why it matters.** y\n")),

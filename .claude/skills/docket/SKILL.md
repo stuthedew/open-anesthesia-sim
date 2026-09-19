@@ -343,6 +343,36 @@ from every one of them, correctly and uselessly. And unlike a race between two
 sessions starting the same item, which closes the moment one of them pushes,
 this stays invisible after *both* have pushed (`PL-CP74`).
 
+**Class it `housekeeping`, and it owes no argument for itself.** The id is
+load-bearing; the brief is not. `docket check` excuses a `housekeeping` item
+`**Why it matters.**` and `**Done when.**`, so the whole of filing one is:
+
+```bash
+bin/docket new "Triage the 12 untriaged captures standing in the queue on 2026-09-19"
+bin/docket set PL-CSV0 --priority P2 --effort S --classes housekeeping \
+  --touches docs/items --status ready --verify "..."
+```
+
+`**Problem.**` is what `docket new` writes from the title, and that is the
+brief. The two sections that go are the two such a pass cannot answer without
+restating the category - "why it matters" is the standing rule above, and "done
+when" is the `verify:` command in prose. The command itself still stands: the
+exemption is the argument, never the proof.
+
+Two limits, both enforced. It may not sit beside a `debt_classes` entry -
+`defect`, `safety`, `science`, `refactor`, `perf` - because debt is the work
+that most needs a brief, and a pass that also fixed a defect is two items. And
+it is process work for the top-band rule, so a housekeeping item cannot seat
+above product work in `P1`.
+
+Measured before it was built: 22 items titled "Triage ..." carrying 1,127 lines
+of brief, 12 repeating the same rationale and 2 holding a finding a later
+session needs (`PL-TQFB`, project owner, 2026-09-19, ratified, over pointing
+the requirement at a standing rationale and over dropping the item altogether -
+the second was refused because the id is what `tools/branch_id_check.py` and
+the in-flight mark both read). The existing 22 are left as they are; this is
+for the next one.
+
 It buys a record as well as visibility. Housekeeping is obvious enough that two
 sessions recommend it in the same hour; unfiled, it leaves nothing behind
 saying it was already done, so the next session rediscovers it and recommends
