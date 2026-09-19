@@ -2855,7 +2855,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 171 entries
+### Declined to Gate 2 on the refilling-queue ground — 173 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3089,6 +3089,18 @@ the frozen list. It carries `root-cause-of:` over `PL-Y1L0`, `PL-J45M`,
 ranking already offers it ahead of this gate's own entries, and what is
 declined is only whether v0.5.0 waits on it.
 
+**Two more from the same session, on the project owner's 2026-09-19 request
+that a reply refresh before reporting** (`PL-QSGX`, `PL-CM40`). The resident
+half of that request took effect immediately, in
+`.claude/rules/instruction-writing.md` rule 14; these are the deterministic
+half it should later shrink into - `bin/docket flight` fetching like its
+siblings, and one command printing the whole refreshed picture. Both were
+captured after the freeze, both are workflow-lane apparatus, and neither is
+`safety` or `science`. `PL-CM40` reaches `.claude/rules/instruction-writing.md`
+rather than only `subprojects/docket/`, and is stated here rather than
+stretched: what it changes there is a rule's *length*, by replacing three
+command names with one.
+
 - PL-0M32 (S) Nothing can tell an item finished under a renamed test from one nobody has started
 - PL-0VFF (S) ROADMAP.md's 'Declined to Gate 2' list names PL-483K, PL-69JZ and PL-L09X as deferred, but all three closed done in v0.4.14, and nothing distinguishes a still-open entry from a closed one
 - PL-12P8 (S) PL-JBZK's lane check assumes every file under tests/ is a test file, so a shared non-test helper is told to declare itself apparatus
@@ -3124,6 +3136,7 @@ declined is only whether v0.5.0 waits on it.
 - PL-BHVM (M) Nineteen items re-decide what evidence proves a ref is done, seventeen of them in vcs.py: one design round rather than nineteen heuristic patches
 - PL-BQ46 (S) MacAwakeReference.fraction_of_mac and formatting.mac_multiple are a third and fourth dimensionless convention beside Fraction, and neither is distinguished from a concentration fraction at the type level
 - PL-C92D (S) PL-YSZN's Flet frame table predates PL-2FM6 and measures a tree that no longer exists in two of its three stages, so the Qt/Flet comparison rests on one row
+- PL-CM40 (S) No single command prints the refreshed picture a closing block needs - main's tip, whether this branch is contained in it, flight and stranded - so the rule has to name three
 - PL-CNCF (M) controller.drawn_window costs 6.2 ms a frame at the shipped 150-column budget - 99% of the frame's read and about eighty times the simulation at 1x
 - PL-DG84 (M) docs/WORKING_NOTES.md asks for resolved threads to be deleted and nothing reads that policy
 - PL-F48B (S) Nothing ever repairs a clone's tags after a history rewrite: fetch_remote runs git fetch without --tags --force, so release tags keep pointing at purged commits
@@ -3154,6 +3167,7 @@ declined is only whether v0.5.0 waits on it.
 - PL-P757 (S) bin/docket --items pointed at a nested store makes every annotating commit read as work, silently
 - PL-PNW6 (S) A release cut at a version number some withdrawn tag once named leaves every warm checkout pointing v<version> at the old commit, and the handover's own 'git fetch origin main' is the command that leaves it stale silently
 - PL-PQQ2 (S) PL-KBD0 is the workflow lane's top pick but all three live instances its brief names are now closed, and no open item at ready or needs-decision carries a blocked-by field
+- PL-QSGX (S) bin/docket flight never fetches, unlike stranded and branch, so it reports refs as old as the clone - the one command whose whole job is reading other sessions' branches
 - PL-QV5Y (S) Makefile's CI-timing comments quote a 1230-test suite at 78 s serial and 27 s parallel, measured 2026-09-03; the suite is now 2096 tests at about 43 s parallel, so a reader sizing a CI-cost decision from them is reading stale figures
 - PL-SQJ1 (M) Playback delivers 73-91% of the rate the dropdown displays: 300x measured at 220x, 1x at 0.9x, so the clock on screen runs slower than its label
 - PL-T7VS (M) A red doc_check voids the whole-store verify replay for the 29 open items gated behind it, and the replay reports green rather than declining to answer
