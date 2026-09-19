@@ -2954,7 +2954,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 204 entries
+### Declined to Gate 2 on the refilling-queue ground — 205 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -4083,6 +4083,25 @@ safety-critical diff whatever model drafted it, which is the backstop that makes
 this deferrable. The observation that prompted them — `PL-G424` started on a
 weaker model than `PL-LSR0` while both carried the flag — cost nothing that a
 gate entry would have prevented.
+**One more from the v0.4.30 cut, 2026-09-19.** `PL-5MFL` (`bin/docket verify`'s
+suppression check matches the line alone, so a `ROADMAP.md` prose line quoting
+`xfail` is read as an added suppression and every release cut ends `REJECT`).
+It is the one entry declined here whose *problem* squarely predates the freeze
+rather than qualifying by argument: the scan has ignored the path since `docket
+verify` landed on 2026-08-25 (`PL-D7JQ`), twelve days before this gate was
+frozen on 2026-09-06.
+
+It is deferred anyway, on the refilling-queue ground and on the shape of the
+harm. The check is one of the four integrity checks `--self` deliberately does
+not relax, so the failure is loud rather than silent, and what it costs is a
+paragraph of explanation in a close-out rather than any wrong result reaching
+anybody - `PL-SW0D`, the cut that met it, reported it and closed. Nothing it
+touches is reachable by a reader of the simulator: `subprojects/docket/` sits
+wholly inside `docket.toml`'s `workflow_paths`. Against that, this gate stands
+at 170 cleared of 175 with two entries it can clear, and admitting a sixth open
+entry at the beat where the milestone is one step from starting is the refilling
+shape Phase 0 was retired for.
+
 ### Required scope
 
 Eighteen items, in the order the dependencies allow. The first three are the
