@@ -228,7 +228,7 @@ same branch deletion on 2026-09-04 and recorded mutually exclusive causes - a
 deletion ref dropped in transit, and an HTTP 403 from GitHub - and both offered
 an empty `recentRelayFailures` as proof the proxy was uninvolved. It is not
 proof: a request declined on policy is not a relay failure, and the container's
-own `/root/.ccr/README.md` lists 403 among the proxy's own outcomes. Settling it
+own agent-proxy README lists 403 among the proxy's own outcomes. Settling it
 needs a live deletion attempt read against the proxy's diagnostics at the moment
 it fails, which is destructive and outward-facing, so no session has run it
 (`PL-3V6C`). A wrong cause here would be worse than none, because a session told
