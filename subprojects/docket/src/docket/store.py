@@ -106,6 +106,26 @@ def write_item(directory: Path, item: Item, *, replace: Path | None = None) -> P
     return target
 
 
+def rewrite_item(directory: Path, item: Item) -> Path:
+    """Write an item back to the file it was read from, whatever its title now says.
+
+    `write_item` names the file from the title, which is right when the title
+    was the edit and wrong as a side effect of any other one: the rename lands
+    in a diff about something else, where nobody is looking for it, and
+    conflicts against a branch holding the file instead of merging with it
+    (`PL-LBR6`). So a field write keeps the name, and bringing a drifted name
+    back into line stays a pass of its own (`PL-YTDN`).
+
+    The front matter is still rendered in canonical order; the name is the one
+    thing about the file this leaves alone.
+    """
+    if not item.path:
+        raise ValueError(f"{item.identifier or 'the item'} was not read from a file")
+    target = directory / item.path
+    target.write_text(render_item(item), encoding="utf-8")
+    return target
+
+
 def find_item(items: list[Item], reference: str) -> Item | None:
     """Resolve a user-typed reference to one item.
 

@@ -821,8 +821,18 @@ enforces that. Process work — work on how the project is built rather than on
 the product — does not enter the top band when it would outnumber the product
 work already there.
 
-An item that should not be done becomes `status: dropped` with a `reason`.
-Never delete the file: the reason is what stops the finding being re-raised.
+**Write the answers with `bin/docket set`, not into the file.** `bin/docket set
+<id> --priority P2 --effort S --classes defect --touches a.py --status ready
+--verify '...'` writes the named fields in canonical order, keeps the file's
+name, and refuses a value the item already records (`--overwrite` replaces
+one; `status` needs no flag, since moving it is what triage does) and any
+write `docket check` would then fail, in the checker's own words. The brief is
+prose and stays a hand edit; write it first, because `--status ready` is
+refused until the sections it owes exist (`PL-L4YG`).
+
+An item that should not be done becomes `status: dropped` with a `reason` —
+`bin/docket set <id> --status dropped --reason "..." --closed DATE`. Never
+delete the file: the reason is what stops the finding being re-raised.
 
 **Dropping an item closes it.** `dropped` is one of `CLOSED_STATUSES` beside
 `done` in `subprojects/docket/src/docket/model.py`, so a triage pass pushed
@@ -913,38 +923,61 @@ against a scratch file, which is why these are the codes and not a memory:
 | `pytest <file> -k no_such_name` | 5 | a command that correctly fails |
 | `pytest <file>::test_no_such` | 4 | a usage error, same as a typo'd path |
 | `pytest <file>` | 0 | already passing, proves nothing |
-| `pytest <file> && grep -q 'def test_no_such' <file>` | 1 | an ordinary failure |
+| `grep -q 'def test_no_such' <file>` | 1 | an ordinary failure |
 
-So pair the file's whole suite with a `grep` for the test the work adds. That
+So write the `grep` for the test the work adds, and nothing ahead of it. That
 exits 1, the code a failing test gives, so no reader has to know a special
-case; the pytest half proves the file's suite healthy, which `-k` never did;
-and the `grep` names the exact test the work owes, which makes the command a
-specification rather than a bet on a name.
+case, and the `grep` names the exact test the work owes. The file's suite is
+not the command's to prove: `docket verify` runs `make check` as a line of its
+own report, `docs/worker.md`'s loop runs it after the command, and CI runs it
+ahead of the replay - so a `pytest` clause ahead of the `grep` proved nothing
+twice, and it was what made a failure unreadable and 99.7% of the replay's
+serial cost (project owner, 2026-09-19, ratified, chosen over keeping the
+paired shape; `PL-6TP8` has the measurements).
 
 `docket verify` says so on the check line where a command selects nothing, and
 `docket check` reports it — separately from the commands that already pass —
 for the items `next` is about to offer, which is the first moment there is
 anybody to act on it. Reading one about your own item means: replace the
-selector with the paired shape. The sentence carries how many open items across
+selector with a `grep` for the test the work adds. The sentence carries how many open items across
 the store are in the same state, which is context rather than a backlog to
 clear in one pass — a command written away from its work is how every wrong one
 here came to exist, so each is repaired as its item is started.
+
+**What the exit status is read to mean once the command is recorded** is one
+contract - `subprojects/docket/README.md` § "What a `verify:` exit status
+proves, and to whom" - and two of its consequences fall on the author. Exit 0
+says the assertion holds, so the replay reports an open item whose command
+passes as an error whichever way that happened. A non-zero exit says only that
+the assertion did not hold *or was never evaluated*: the tools separate a kill
+at the limit, a command the shell cannot find and pytest's "selected nothing",
+and read nothing from any other failure, since a red prerequisite clause and an
+unstarted item both exit 1. So, first: a `grep` for a test name pins the
+*name*. On an item whose work may already exist under another `def`, check the
+code before writing it - the command fails identically whether the behaviour
+is absent or present under a different name, and no reading of the exit will
+ever say which (`PL-6TN8`, `PL-0M32`). Second: the discriminating clause goes
+green only for *this* item's work and reads a path the item's `touches`
+declares (`PL-3DXV`, `PL-LBW5`); a neighbour's work satisfying it turns the
+replay red against the wrong item.
 
 Copy one of these shapes rather than inventing one:
 
 | The item is | The command |
 | --- | --- |
 | Covering a module's untested paths | `uv run pytest --cov=anesthesia_sim.core.tissue --cov-fail-under=100` |
-| A string, label, or single behavior | `uv run pytest tests/unit/test_simulation_view.py && grep -q 'def test_halted' tests/unit/test_simulation_view.py` |
-| Documentation only | `python3 tools/doc_check.py check && grep -qF 'the sentence the item adds' docs/MODEL.md` |
+| A string, label, or single behavior | `grep -q 'def test_halted' tests/unit/test_simulation_view.py` |
+| Documentation only | `grep -qF 'the sentence the item adds' docs/MODEL.md` |
 
-The last two are the same shape, and it is the one to reach for: something
-that runs and passes today, paired with a `grep` for what the work adds. Each
-half is doing a different job — the first proves the tree is healthy, the
-second is what fails until the work exists — and neither alone is a
-specification. `doc_check.py check` on its own passes whenever the docs are
-internally consistent, which they are before the item is started too; five
-open items shared exactly that command and none of them proved anything.
+The last two are the same shape, and it is the one to reach for: a `grep` for
+what the work adds, alone. It fails until the work exists and nothing else can
+make it fail, which is what keeps its exit readable. Do not put a health check
+ahead of it - `doc_check.py check`, `bin/docket check`, the file's `pytest`
+run - and do not record one on its own: `doc_check.py check` passes whenever
+the docs are internally consistent, which they are before the item is started
+too, and five open items once shared exactly that command with none of them
+proving anything. The commands recorded before 2026-09-19 still carry such a
+clause; each loses it as its item is started, never in a pass.
 
 The first is the one that goes wrong loudly. `--cov=` takes the **dotted module**
 (`anesthesia_sim.core.tissue`), never the path, and the run is the **whole
@@ -1220,8 +1253,9 @@ in the tree reports it; `git ls-remote --tags origin` is what answers.
 
 ## Mode: close out an item
 
-1. Set `status: done` and `closed`, and commit that **with the work, in one
-   commit**, whose subject leads with **every** id it closes, comma-separated -
+1. Set `status: done` and `closed` - `bin/docket set <id> --status done
+   --closed DATE` - and commit that **with the work, in one commit**, whose
+   subject leads with **every** id it closes, comma-separated -
    the recovery below reads the newest subject naming an id, so a rider closed
    under another item's id alone is attributed to its own capture commit
    (`PL-GW37`). **Do not write `commit:`** - the field is retired (`PL-T63T`),
