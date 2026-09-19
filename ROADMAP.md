@@ -3358,6 +3358,17 @@ Required scope.
 The fifth non-apparatus item from that pass, `PL-DJYF`, is **admitted above**
 rather than declined, under the unconditional science exception.
 
+**One more, captured 2026-09-19 — `PL-ZMGR`** (a `needs-decision` item whose
+answer is "retire this" can never carry `falsifies:`, so every session-decided
+retirement rejects its own close-out). It sits exactly where the nine apparatus
+entries above do: found well after the 2026-09-06 freeze, `P2`, neither
+`safety` nor `science`, and apparatus held to
+`.claude/rules/apparatus-standard.md`'s deliberately lower bar. The mechanism it
+describes is itself post-freeze - `PL-7TYC` was still repairing the assertion
+check's matcher on 2026-09-17 - so the snapshot rule places it in the next gate
+on its own terms rather than by exception. The refilling-queue arithmetic above
+is unchanged and is still the reason.
+
 **Two more from the second 2026-09-13 triage pass**, which folded in the two
 the first pass had to defer plus six that merged in from other sessions while it
 ran. `PL-SCB4` (the store has no status for an item whose decision is made but
