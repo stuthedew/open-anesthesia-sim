@@ -4,12 +4,13 @@ title: Nineteen items re-decide what evidence proves a ref is done, seventeen of
 priority: P2
 effort: M
 status: done
-closed: 2026-09-19
-verify: python3 tools/doc_check.py check && grep -q '^root-cause-of: PL-KSCW, PL-LF2C, PL-MBTZ, PL-Q9Z1, PL-R808, PL-SH9Q, PL-SY1J, PL-WNQT$' docs/items/PL-BHVM-nineteen-items-re-decide-what-evidence-proves-a.md
 classes: defect, refactor
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-12
+closed: 2026-09-19
+pr: 677
+verify: python3 tools/doc_check.py check && grep -q '^root-cause-of: PL-KSCW, PL-LF2C, PL-MBTZ, PL-Q9Z1, PL-R808, PL-SH9Q, PL-SY1J, PL-WNQT$' docs/items/PL-BHVM-nineteen-items-re-decide-what-evidence-proves-a.md
 root-cause-of: PL-KSCW, PL-LF2C, PL-MBTZ, PL-Q9Z1, PL-R808, PL-SH9Q, PL-SY1J, PL-WNQT
 ---
 

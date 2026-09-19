@@ -3,11 +3,13 @@ id: PL-2M4X
 title: PL-J45M's verify and touches name tests/unit/test_docket_digest_hook.py, a shell-hook test file that cannot exercise release.py, so its pytest half proves the wrong tree and a worker would edit the wrong file
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: defect, infra
 feature: queue-hygiene
 touches: docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md
 added: 2026-09-16
+closed: 2026-09-19
+reason: PL-J45M closed 2026-09-19 under PL-2T03 with its verify as written, and a closed item's verify is a record docket check refuses to rewrite, so the correction has nothing left to apply to; the wider class is PL-6YL1's
 verify: bin/docket check && ! grep -qE '^(touches|verify):.*test_docket_digest_hook' docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md && grep -qE '^touches:.*src/docket/roadmap\.py' docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md && grep -qE '^verify:.*subprojects/docket/tests/test_release\.py' docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md && grep -qF 'supported = plan.beat != IMPLEMENT or plan.own_scope is not None' docs/items/PL-J45M-release-due-s-second-arrangement-is-positional.md
 ---
 
@@ -81,3 +83,12 @@ that path - rather than the hook one; the command has been run and watched fail
 for the right reason; and the `! grep` half is left exactly as written, it being
 what keeps the item from reading as closeable while `_release_due`'s positional
 classifier stands.
+
+**Dropped 2026-09-19.** `PL-J45M` closed under `PL-2T03` with its `verify:` as
+written - the command was run and watched fail and then pass, and its
+`! grep` half is what proved the workaround gone. A closed item's `verify:` is
+a record of what was run, not a description of what runs today, and `docket
+check` errors on rewriting one; `touches` on a closed item commissions nobody.
+So the correction this asked for has nothing left to apply to. The class it
+belongs to - the same wrong path in four other open items - is `PL-6YL1`'s,
+which is unaffected.

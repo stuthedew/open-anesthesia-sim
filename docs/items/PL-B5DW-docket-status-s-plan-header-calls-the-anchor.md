@@ -3,11 +3,12 @@ id: PL-B5DW
 title: docket status's plan header calls the anchor 'the step the project is on' while wave reports the step as a different row
 priority: P3
 effort: S
-status: ready
+status: done
 classes: defect, infra
-feature: planning-cadence
+feature: timeline-arrangement
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-14
+closed: 2026-09-19
 verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_the_plan_header_names_the_step_apart_from_the_anchor' subprojects/docket/tests/test_roadmap.py
 ---
 
@@ -38,3 +39,11 @@ wrong milestone, which is the one mistake the planning cadence exists to
 prevent; `PL-1J0P` already had to teach `next` the same distinction, so this is
 the third command asked the same question and the only one still answering it
 from the wrong field.
+
+**Closed 2026-09-19 under `PL-2T03`.** `render._plan_header` names the row
+apart from the anchor whenever `Scope.step_label` is set: `Plan: v0.4.26 — the
+interface moves to Qt, the milestone due next; the project stands on v0.4.x —
+the code is the model.` on the implementing beat, and the same `; the project
+stands on ...` clause appended on the clearing beat. Where the two are one row
+the header reads as before. Pinned by
+`test_the_plan_header_names_the_step_apart_from_the_anchor`.

@@ -442,6 +442,8 @@ def format_digest(
             else "between numbered steps"
         )
         unparsed = " Timeline does not parse cleanly - check `wave`." if plan.problems else ""
+        if plan.stale:
+            unparsed += " The plan's numbering is behind the project - check `wave`."
         lines.append(
             f"Plan: {plan.version or 'unknown'}, {position} ({plan.step.label}). "
             f"Beat: {_beat_line(plan)}.{unparsed}"
@@ -1403,11 +1405,19 @@ def _plan_header(scope: Scope | None, used: tuple[str, ...]) -> list[str]:
     """
     if scope is None or not scope.anchor:
         return []
-    beat = (
-        f"clearing the debt gate recorded under {scope.anchor}"
-        if scope.clearing
-        else f"{scope.anchor}, the step the project is on"
-    )
+    # The anchor and the row the project stands on are two facts, and the
+    # header called the anchor "the step the project is on" while `wave` named
+    # another row as the step - the same session read both, minutes apart, and
+    # `docket next` had already been taught the distinction (`PL-B5DW`). So the
+    # row is named apart from the anchor whenever `Scope` carries it.
+    if scope.clearing:
+        beat = f"clearing the debt gate recorded under {scope.anchor}"
+    elif scope.step_label:
+        beat = f"{scope.anchor}, the milestone due next"
+    else:
+        beat = f"{scope.anchor}, the step the project is on"
+    if scope.step_label:
+        beat += f"; the project stands on {scope.step_label}"
     glosses = [
         f"{mark} {PLACEMENT_MARKS.get(mark, 'placed by that later milestone')}" for mark in used
     ]
@@ -1438,8 +1448,9 @@ def format_wave(plan: Wave) -> str:
         # cuttable, and nothing here says otherwise: this reports where the
         # plan has spent its numbers, never whether a cut should take a free
         # one. Stepping over a reservation drops the skipped milestone's
-        # section out of `wave`'s unreleased set with nothing reporting it,
-        # which is a judgment for the reader and `PL-SYG4`'s open question.
+        # section out of the train's unreleased set; whether a cut may do that
+        # is a judgment for the reader and `PL-SYG4`'s open question, and the
+        # stale block at the foot of this output is what reports it done.
         spent = ", ".join("{}.{}.{}".format(*entry.version) for entry in plan.reserved)
         lines.append(f"Reserved  {spent} - spent by ROADMAP.md, nearest first")
 
@@ -1466,8 +1477,15 @@ def format_wave(plan: Wave) -> str:
         aside = []
         if gate.self_cleared:
             aside.append(f"{len(gate.self_cleared)} the milestone clears itself")
-        if gate.blocked_outside:
-            aside.append(f"{len(gate.blocked_outside)} waiting on work outside it")
+        # Two verdicts where there was one, and the wording is the deliverable:
+        # an entry the plan sequences ahead of the gate needs nothing from
+        # anybody, an entry waiting on work placed later or nowhere is excused
+        # until somebody decides otherwise, and printed as one line the second
+        # hid behind the first (`PL-7CSP`). Neither is counted as clearable.
+        if gate.sequenced_ahead:
+            aside.append(f"{len(gate.sequenced_ahead)} sequenced ahead of it")
+        if gate.waiting_outside:
+            aside.append(f"{len(gate.waiting_outside)} waiting on work outside it")
         if aside:
             counted += f" - {len(gate.clearable)} this gate can clear, " + ", ".join(aside)
         lines.append(f"          {counted}")
@@ -1477,8 +1495,15 @@ def format_wave(plan: Wave) -> str:
         if gate.self_cleared:
             own = [identifier for entry in gate.self_cleared for identifier in entry.ids]
             lines.append(f"          cleared by the milestone itself: {', '.join(own)}")
-        if gate.blocked_outside:
-            held = [identifier for entry in gate.blocked_outside for identifier in entry.ids]
+        by_row: dict[str, list[str]] = {}
+        for sequenced in gate.sequenced_ahead:
+            by_row.setdefault(sequenced.row, []).extend(sequenced.entry.ids)
+        for row, waiting_on_row in by_row.items():
+            lines.append(
+                f"          sequenced ahead of the gate, on {row}: {', '.join(waiting_on_row)}"
+            )
+        if gate.waiting_outside:
+            held = [identifier for entry in gate.waiting_outside for identifier in entry.ids]
             lines.append(f"          blocked outside the gate: {', '.join(held)}")
         if gate.unknown_ids:
             lines.append(
@@ -1491,6 +1516,10 @@ def format_wave(plan: Wave) -> str:
         lines.append("")
         lines.append("The timeline table does not parse cleanly, so the step above may be wrong:")
         lines.extend(f"  {problem}" for problem in plan.problems)
+    if plan.stale:
+        lines.append("")
+        lines.append("The plan and the project disagree, so the beat above rests on a stale plan:")
+        lines.extend(f"  {statement}" for statement in plan.stale)
     return "\n".join(lines)
 
 
@@ -1570,8 +1599,10 @@ def _beat_line(plan: Wave) -> str:
         aside = []
         if plan.gate.self_cleared:
             aside.append(f"{len(plan.gate.self_cleared)} the milestone clears itself")
-        if plan.gate.blocked_outside:
-            aside.append(f"{len(plan.gate.blocked_outside)} blocked outside it")
+        if plan.gate.sequenced_ahead:
+            aside.append(f"{len(plan.gate.sequenced_ahead)} sequenced ahead of it")
+        if plan.gate.waiting_outside:
+            aside.append(f"{len(plan.gate.waiting_outside)} blocked outside it")
         if aside:
             line += " here, " + ", ".join(aside)
         return line

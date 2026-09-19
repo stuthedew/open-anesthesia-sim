@@ -1240,3 +1240,219 @@ def test_a_milestone_recording_no_scope_subsection_has_no_split_to_report() -> N
 
     assert plan.own_scope is None
     assert plan.beat == RELEASE
+
+
+# --- the release train, resolved once (`PL-2T03`) ----------------------------
+
+
+def test_the_train_resolves_the_position_once() -> None:
+    """Every arrangement question is put to one object: the row the project
+    stands on, the order of the sections ahead of it, and which row bears which
+    section. Released stays decided by the version; what comes before what is
+    the table's row order, and nothing downstream compares versions to recover
+    it."""
+    from docket.roadmap import release_train
+
+    train = release_train(SCOPED_ROADMAP, "0.3.0")
+
+    assert train.position == 1
+    assert train.step is not None and train.step.kind == "patch-track"
+    assert [section.version for section in train.ahead] == [(0, 4, 0), (0, 5, 0)]
+    assert (train.row(train.ahead[0]), train.row(train.ahead[1])) == (2, 4)
+    assert train.places("PL-MNPQ") is train.ahead[0]
+    assert train.places("PL-WXYZ") is train.ahead[1]
+    assert train.row_placing("PL-WXYZ") == 4
+    # v0.2.0 has shipped, so the id its section names is placed by nobody.
+    assert train.places("PL-PQRS") is None
+    assert train.problems == () and train.stale == ()
+
+
+def test_a_gate_only_milestone_reached_from_another_row_is_a_release() -> None:
+    """`PL-J45M`: the frozen list is the milestone's whole content and it has
+    cleared, but the project stands on the patch track beneath it rather than
+    on the milestone's own row. The second arrangement compared positions, so
+    this fell through to `implement` - a finished milestone told it was
+    unfinished - and `release_offer` carried a guard for exactly that
+    fall-through."""
+    gate_only = ROADMAP.replace(
+        "### Required scope\n\nA displayed clinical unit (queue item PL-MNPQ).",
+        "### What the list is\n\nThe frozen list above is the whole of this milestone.",
+    )
+    plan = _wave("0.3.0", frozenset(GATE_IDS), roadmap=gate_only)
+
+    assert plan.step is not None and plan.step.kind == "patch-track"
+    assert plan.gate is not None and plan.gate.is_clear
+    assert plan.own_scope is None
+    assert plan.beat == RELEASE
+    assert plan.subject == "v0.4.0 — the teachable case"
+    assert (plan.release_version, plan.release_name) == ((0, 4, 0), "the teachable case")
+
+
+def test_implement_is_never_a_fall_through() -> None:
+    """The other half of the same fix: `implement` is returned only where the
+    milestone's own scope counts open work, so there is always a count to print
+    beside the word and nothing downstream has to guess whether the classifier
+    meant "unfinished" or "unrecognised"."""
+    for roadmap in (ROADMAP, _ON_THE_GATES_OWN_ROW, PORT_ROADMAP):
+        plan = _wave("0.3.0", frozenset(GATE_IDS), roadmap=roadmap, known=PORT_KNOWN)
+
+        assert plan.beat == IMPLEMENT
+        assert plan.own_scope is not None and not plan.own_scope.is_complete
+
+
+def test_a_blocker_the_timeline_schedules_ahead_of_the_gate_reads_as_sequenced() -> None:
+    """`PL-7CSP`: two gate entries wait on work off the list. The plan
+    schedules one blocker on the port's row - before the gated milestone - and
+    the other nowhere. Both stay carved out of what the gate can clear; what
+    changes is that the report stops printing them as one case."""
+    blockers = {"PL-001": ("PL-PRT7",), "PL-KLMN": ("PL-ZZZZ",)}
+    plan = _wave("0.3.0", roadmap=PORT_ROADMAP, blockers=blockers, known=PORT_KNOWN | {"PL-ZZZZ"})
+    gate = plan.gate
+
+    assert gate is not None and plan.beat == CLEAR
+    assert [entry.ids for entry in gate.blocked_outside] == [("PL-001",), ("PL-KLMN",)]
+    assert [(held.entry.ids, held.row) for held in gate.sequenced_ahead] == [
+        (("PL-001",), "v0.3.5 — the interface port")
+    ]
+    assert [entry.ids for entry in gate.waiting_outside] == [("PL-KLMN",)]
+    assert [entry.ids for entry in gate.clearable] == [("PL-BCDF", "PL-GHJK")]
+
+    printed = format_wave(plan)
+    assert "1 this gate can clear, 1 sequenced ahead of it, 1 waiting on work outside it" in printed
+    assert "sequenced ahead of the gate, on v0.3.5 — the interface port: PL-001" in printed
+    assert "blocked outside the gate: PL-KLMN" in printed
+    assert (
+        "clear the gate - 1 entry of 3 still open here, 1 sequenced ahead of it, "
+        "1 blocked outside it"
+    ) in printed
+
+
+def test_a_blocker_placed_at_or_after_the_gate_is_not_sequenced_ahead_of_it() -> None:
+    """Placed by the gated milestone's own scope, by a later milestone, or by
+    no section: three placements, one verdict, because none of them clears
+    before the gate does. An entry with one blocker sequenced ahead and one
+    placed nowhere waits outside too - it needs the second regardless."""
+    blockers = {"PL-001": ("PL-MNPQ",), "PL-KLMN": ("PL-WXYZ",), "PL-BCDF": ("PL-PRT7", "PL-ZZZZ")}
+    ported_and_scoped = SCOPED_ROADMAP.replace(
+        "| 2 | **v0.4.0 — the teachable case** |",
+        "| — | **v0.3.5 — the interface port** | Scoped below. | 1 L |\n"
+        "| 2 | **v0.4.0 — the teachable case** |",
+    ).replace(
+        "## Milestone after next: v0.4.0 - the teachable case",
+        PORT_ROADMAP[
+            PORT_ROADMAP.index("## v0.3.5 - the interface port") : PORT_ROADMAP.index(
+                "## Milestone after next: v0.4.0 - the teachable case"
+            )
+        ]
+        + "## Milestone after next: v0.4.0 - the teachable case",
+    )
+    plan = _wave(
+        "0.2.5",
+        roadmap=ported_and_scoped,
+        blockers=blockers,
+        known=PORT_KNOWN | {"PL-WXYZ", "PL-ZZZZ"},
+    )
+    gate = plan.gate
+
+    assert gate is not None
+    assert gate.sequenced_ahead == ()
+    assert len(gate.waiting_outside) == 3 and gate.clearable == ()
+
+
+def test_the_plan_header_names_the_step_apart_from_the_anchor() -> None:
+    """`PL-B5DW`: `format_status`'s header called the anchor "the step the
+    project is on" while `wave`, on the same tree, named the patch-track row as
+    the step. The row is named apart from the anchor whenever `Scope` carries
+    it, on the implementing beat and the clearing beat both."""
+    from docket.render import _plan_header
+
+    implementing = _ported("0.3.0", frozenset(GATE_IDS))
+    assert _plan_header(implementing.scope, ())[0] == (
+        "Plan: v0.3.5 — the interface port, the milestone due next; "
+        "the project stands on v0.3.x — a readability pass."
+    )
+
+    clearing = _wave("0.2.5")
+    assert _plan_header(clearing.scope, ())[0] == (
+        "Plan: clearing the debt gate recorded under v0.4.0 — the teachable case; "
+        "the project stands on v0.3.0 — the foundation."
+    )
+
+    same_row = _wave("0.3.0", frozenset(GATE_IDS), roadmap=_ON_THE_GATES_OWN_ROW)
+    assert same_row.scope.step_label == ""
+    assert _plan_header(same_row.scope, ())[0] == (
+        "Plan: v0.4.0 — the teachable case, the step the project is on."
+    )
+
+
+#: `PORT_ROADMAP` with a version table recording the foundation and a patch cut
+#: past the port's number - the arrangement `PL-Y1L0` measured, where the plan
+#: was stepped past a milestone that never shipped and nothing said so.
+RECORDED_PORT_ROADMAP = PORT_ROADMAP.replace(
+    "## The plan",
+    """## Versioning decision
+
+| Version | Status | Milestone |
+| --- | --- | --- |
+| v0.3.0 | Completed | The foundation. |
+| v0.3.6 | Completed / current baseline | A patch, cut past the port. |
+
+## The plan""",
+)
+
+
+def test_a_milestone_row_the_version_has_passed_without_a_release_is_reported() -> None:
+    """`PL-Y1L0`: released stays decided by the version, so the cut stepped the
+    plan past the port; what is no longer true is that nothing reports it. The
+    version table is the record of what shipped, and a milestone number the
+    project has passed with no row there is a statement about two files."""
+    plan = _wave("0.3.6", frozenset(GATE_IDS), roadmap=RECORDED_PORT_ROADMAP, known=PORT_KNOWN)
+
+    assert plan.step is not None and plan.step.label == "v0.4.0 — the teachable case"
+    assert plan.beat == IMPLEMENT and plan.subject == "v0.4.0 — the teachable case"
+    (statement,) = plan.stale
+    assert statement.startswith("v0.3.5 — the interface port (timeline line ")
+    assert ", section line " in statement
+    assert "which the project has passed with no v0.3.5 release in the version table" in statement
+    assert "The plan and the project disagree" in format_wave(plan)
+    assert "The plan's numbering is behind the project - check `wave`." in _digest(plan)
+
+
+def test_a_milestone_number_the_version_has_just_reached_names_both_edits() -> None:
+    """The cut that took the port's own number: the table lacks the row for the
+    release being cut too, so the statement says which edit each reading owes
+    rather than deciding whether this release is the port."""
+    plan = _wave("0.3.5", frozenset(GATE_IDS), roadmap=RECORDED_PORT_ROADMAP, known=PORT_KNOWN)
+
+    (statement,) = plan.stale
+    assert "which the project has reached with no v0.3.5 release" in statement
+    assert "its table row is owed if this release is that milestone" in statement
+
+
+def test_a_roadmap_recording_no_release_has_nothing_to_compare_the_version_against() -> None:
+    """No version table is no record, and the fixtures above carry none: the
+    step and the beat are computed as before, and nothing is called stale."""
+    plan = _ported("0.3.6", frozenset(GATE_IDS))
+
+    assert plan.step is not None and plan.step.label == "v0.4.0 — the teachable case"
+    assert plan.stale == ()
+    assert "The plan and the project disagree" not in format_wave(plan)
+
+
+def test_a_section_no_row_bears_is_reported_rather_than_placed_by_guess() -> None:
+    """A section the table does not place has no arrangement to read. It still
+    places its ids, after every section a row bears, and the plan says so
+    instead of ordering it by a version comparison nobody wrote down."""
+    rowless = SCOPED_ROADMAP.replace(
+        "| 4 | **v0.5.0 — the case you can branch** | Not yet scoped. | — |\n", ""
+    )
+    plan = _wave("0.2.5", roadmap=rowless, known=KNOWN | {"PL-WXYZ"})
+
+    (statement,) = plan.stale
+    assert statement.startswith("line ")
+    assert statement.endswith(
+        "the v0.5.0 — the case you can branch section has no timeline row, "
+        "so the plan does not say where it comes"
+    )
+    assert plan.scope.placement("PL-WXYZ") == OUT_OF_SCOPE
+    assert plan.scope.milestone("PL-WXYZ") == "v0.5.0"

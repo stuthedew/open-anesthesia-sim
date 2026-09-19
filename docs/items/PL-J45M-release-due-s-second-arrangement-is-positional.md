@@ -3,11 +3,12 @@ id: PL-J45M
 title: _release_due's second arrangement is positional, so a gate-only milestone whose frozen list has cleared never reaches the release beat unless the project stands on its own timeline row
 priority: P3
 effort: M
-status: ready
+status: done
 classes: defect
-feature: release-roadmap-seam
+feature: timeline-arrangement
 touches: subprojects/docket/src/docket/release.py, tests/unit/test_docket_digest_hook.py
 added: 2026-09-14
+closed: 2026-09-19
 verify: uv run pytest tests/unit/test_docket_digest_hook.py && ! grep -q "supported = plan.beat != IMPLEMENT or plan.own_scope is not None" subprojects/docket/src/docket/release.py
 ---
 
@@ -36,3 +37,13 @@ list has cleared is *ready to release* and is told it is unfinished.
 has cleared regardless of which row the project stands on, so `implement` is
 returned only where there is work left rather than as a fall-through, and the
 `supported` workaround at `release.py:551` is removed rather than left standing.
+
+**Closed 2026-09-19 under `PL-2T03`.** `_release_due` reads the row order from
+the release train, and its second arrangement releases a gate-only milestone
+whose frozen list has cleared from whichever row the project stands on;
+`implement` is returned only where the milestone's own scope counts open work,
+and the `supported` workaround in `release.py` is deleted rather than left
+standing. Pinned by
+`test_a_gate_only_milestone_reached_from_another_row_is_a_release`,
+`test_implement_is_never_a_fall_through` and
+`test_a_finished_gate_only_milestone_is_offered_as_the_release_it_is`.
