@@ -2229,11 +2229,15 @@ A session may re-scope its own commission; it may not weaken what measures it,
 and it may not skip the test (`PL-69JZ`, `PL-B5YN`, `PL-4LT9`).
 
 What counts as a *removed assertion* is decided by shape rather than by the
-word: a line in a file Python executes, opening an `assert` statement or
-calling a name that begins `assert` — `assertEqual`, `assert_called_once_with`,
-`assert_allclose`. A comment, a docstring, a release note or an item's brief
-carrying the word is not one, and neither is the code that looks for
-assertions. The check still errs toward reporting where it cannot tell, which
+word: a line in a file Python executes, opening an `assert` statement, calling
+a name that begins `assert` — `assertEqual`, `assert_called_once_with`,
+`assert_allclose` — or opening a `with pytest.raises(...)` or
+`with pytest.warns(...)` block, which asserts by expectation and carries the
+word nowhere. That last shape is how this project pins the guards that *reject*
+an input, so while it was unmatched the assertions the check could not see were
+disproportionately the safety ones (`PL-QJQL`). A comment, a docstring, a
+release note or an item's brief carrying the word is not one, and neither is
+the code that looks for assertions. The check still errs toward reporting where it cannot tell, which
 is the direction that is safe; what it no longer does is refuse a correct
 close-out for rewording its own item's brief (`PL-7TYC`).
 

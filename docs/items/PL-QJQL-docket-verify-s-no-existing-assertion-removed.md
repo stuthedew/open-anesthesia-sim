@@ -3,11 +3,12 @@ id: PL-QJQL
 title: docket verify's no existing assertion removed check cannot see pytest.raises or pytest.warns, so deleting a with pytest.raises block removes an assertion the check reports as none
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: verify-assertion-check
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-17
+closed: 2026-09-19
 verify: grep -q 'def test_a_removed_pytest_raises_block_is_an_assertion_removed' subprojects/docket/tests/test_verify.py
 ---
 

@@ -1849,6 +1849,92 @@ def test_a_genuinely_removed_assertion_is_still_reported(
     assert not check.passed
 
 
+# `PL-QJQL` - the same question, widened. A context manager asserts by
+# *expectation* and carries the word nowhere, so `with pytest.raises(...)`
+# matched neither alternative above and a whole block could be deleted with the
+# check reporting none removed. It is not a random blind spot: `pytest.raises`
+# is how this project pins the guards that *reject* an input, so what was
+# invisible was disproportionately the safety half. Both directions are pinned
+# again here, because a widening and a narrowing are one claim about what an
+# assertion is, and the second group is what stops the next narrowing
+# overshooting into prose.
+
+EXPECTATION_PROSE = (
+    "def test_a() -> None:\n"
+    '    """With a dose of 0 the guard raises (ValueError) before the run starts."""\n'
+    "    with open(PATH) as handle:  # the loader raises(OSError) on a bad path\n"
+    "        handle.read()\n"
+    "    assert 1 == 1\n"
+)
+
+
+@pytest.mark.parametrize(
+    ("shape", "removed"),
+    [
+        ("plain", "    with pytest.raises(ValueError):\n        build(-1.0)\n"),
+        ("match", '    with pytest.raises(ValueError, match="dose"):\n        build(-1.0)\n'),
+        ("bound", "    with pytest.raises(ValueError) as raised:\n        build(-1.0)\n"),
+        ("warns", "    with pytest.warns(DeprecationWarning):\n        build(-1.0)\n"),
+        ("imported", "    with raises(ValueError):\n        build(-1.0)\n"),
+        ("wrapped", "    with pytest.raises(\n        ValueError,\n    ):\n        build(-1.0)\n"),
+    ],
+)
+def test_a_removed_pytest_raises_block_is_an_assertion_removed(
+    tmp_path: Path, shape: str, removed: str
+) -> None:
+    """Every shape this tree writes, plus the two it does not write yet.
+
+    `imported` is `from pytest import raises`, which is why the alternative
+    matches the bare name rather than requiring the `pytest.` prefix; `warns`
+    is the same family and appears nowhere here yet. `wrapped` is the form
+    `ruff format` produces for a long expectation, and it is the reason the
+    anchor is on `with` rather than on the closing colon: the statement opens
+    on the line the deletion shows and closes three lines later.
+    """
+    root = _repo(tmp_path)
+    body = "def test_b(build: object) -> None:\n"
+    _work(
+        root, f"PL-K7QX add the {shape} expectation", "tests/test_thing.py", KEPT + body + removed
+    )
+    _work(
+        root,
+        f"PL-K7QX cut the {shape} expectation",
+        "tests/test_thing.py",
+        KEPT + body + "    pass\n",
+    )
+
+    check = _check(
+        verify(root, _item(), _config(), "HEAD~1", self_audit=True), "no existing assertion removed"
+    )
+    assert check.blocks and not check.advisory
+    assert not check.passed
+
+
+def test_prose_and_comments_mentioning_raises_are_not_assertions(tmp_path: Path) -> None:
+    """The direction the widening could have broken, and the two shapes that break it.
+
+    `raises` and `warns` are ordinary English verbs, unlike `assert`, so the
+    over-report `PL-7TYC` removed is one loosened character away. Line two is a
+    docstring a reflow started with the word `With` and which names the error in
+    parentheses - matched by an unanchored `(?:raises|warns)\\s*\\(` and not by
+    the shipped one, because prose puts a space before a parenthesis where
+    `ruff format` never does. Line three is a real `with` statement whose
+    trailing comment mentions the word, which is what `[^#]*` holds off.
+
+    The assertion itself is untouched across both commits, so it folds out and
+    what reaches the check is those three lines alone.
+    """
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX write the prose", "tests/test_thing.py", EXPECTATION_PROSE)
+    _work(root, "PL-K7QX reword it", "tests/test_thing.py", KEPT)
+
+    check = _check(
+        verify(root, _item(), _config(), "HEAD~1", self_audit=True), "no existing assertion removed"
+    )
+    assert check.passed
+    assert check.detail == "none"
+
+
 # `falsifies:` - the declared exemption to "no existing assertion removed"
 # (`PL-K82G`). The check had no passing route for an item whose own work makes
 # a rendered string false, so a correct close-out could only game the fold or
