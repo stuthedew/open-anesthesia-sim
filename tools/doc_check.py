@@ -18,6 +18,12 @@ checked here, and never left to a session to remember:
   names a key that file actually holds, carrying the value the table states.
 - **Citations.** Every repository path and every section heading cited from
   a documentation file resolves to something that exists.
+- **Line citations.** Every citation that points into a file by line -
+  `core/parameters.py:274` - names a line that file still has. Held over the
+  authoritative documents and over *open* item briefs; a closed brief records
+  the tree as it was and is exempt, which is `PL-G424`'s recorded decision.
+  Whether a line that exists still holds the symbol the prose names is not
+  decided here, and must not be.
 - **Bound families.** Where a heading in `docs/MODEL.md` promises one
   assertion per member - the hazard table's rows, and the annotated lists
   that join it - every member names the entity it asserts, or declares in a
@@ -2763,6 +2769,113 @@ def check_citations(root: Path, documents: dict[Path, str], report: Report) -> N
                 )
 
 
+#: A citation that points into a file by line: `core/parameters.py:274`, or a
+#: span, `app/theme.py:60-72`. The path half is held to `_is_path_citation`'s
+#: own suffix rule after the match, so this only has to be loose enough to
+#: catch what prose writes.
+LINE_CITATION_RE = re.compile(r"`([\w./-]+):(\d+)(?:-(\d+))?`")
+
+#: An item whose `status:` is one of these is a closed brief - a record of what
+#: was true when the work was done, rather than an instruction to a later
+#: session. Its citations are not held to the tree; see `check_line_citations`.
+CLOSED_ITEM_STATUSES = frozenset({"done", "dropped"})
+
+ITEM_STATUS_RE = re.compile(r"^status:\s*(\S+)", re.MULTILINE)
+
+
+def _live_item_briefs(root: Path) -> Iterator[tuple[Path, str]]:
+    """Every open item brief under `docs/items/`, with its text.
+
+    Closed briefs are skipped rather than filtered later, so the reason sits
+    where the decision does: a closed brief describes a tree that no longer
+    exists and is not repaired.
+    """
+    items = root / "docs" / "items"
+    if not items.is_dir():
+        return
+    for path in sorted(items.glob("*.md")):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        status = ITEM_STATUS_RE.search(text)
+        if status is not None and status.group(1) in CLOSED_ITEM_STATUSES:
+            continue
+        yield path.relative_to(root), text
+
+
+def _cited_file(root: Path, basenames: Mapping[str, list[Path]], token: str) -> Path | None:
+    """The one file `token` names, or `None` where it names no single file.
+
+    Ambiguity declines rather than guessing. Four bare filenames in this store
+    match more than one tracked file, and picking one of them would report a
+    line count from a file the sentence was not talking about - a wrong answer
+    stated confidently, which is worse here than no answer at all.
+    """
+    for prefix in PATH_ROOTS:
+        candidate = (root / prefix / token) if prefix else (root / token)
+        if candidate.is_file():
+            return candidate
+    if "/" in token:
+        return None
+    matches = basenames.get(token, [])
+    return matches[0] if len(matches) == 1 else None
+
+
+def check_line_citations(root: Path, documents: dict[Path, str], report: Report) -> None:
+    """Resolve every citation that points into a file by line number.
+
+    `check_citations` above decides whether a cited *path* exists. This is the
+    same question one line finer, and it is the one `PL-38PN` asked in the
+    store on 2026-09-03 and nothing answered: a line number is a promise that a
+    session can go straight to the code, and a wrong one costs a search plus
+    the doubt about whether the rest of the brief describes the current tree.
+
+    **What it decides, and what it must not.** A line past the end of its file
+    cannot be what the sentence says, whatever the sentence says - that is
+    resolvability, and it is this tool's existing contract. Whether a line that
+    *does* exist still holds the symbol the prose names is a different claim,
+    and it stays a reader's. The distinction is not fussiness: measured over
+    this store on 2026-09-19, 644 resolvable line citations carried 232 whose
+    target line had changed since the citation was written (36.0%), but a
+    changed line is not a wrong citation - a reformat moves one without
+    touching what it says. Checking that half would be scripting the judgment,
+    which `CLAUDE.md` refuses, so only the certain half is held here.
+
+    **Closed briefs are exempt, and that is the decision rather than an
+    oversight** (`PL-G424`). The same measurement split the surface by whether
+    a session would ever act on the sentence: closed item briefs carried 48.0%
+    stale line citations (196 of 408), open briefs 15.6% (36 of 231), and the
+    standing documents 0% (0 of 5). Nobody has repaired a closed one, because a
+    closed brief records what was true when the work was done. Holding them to
+    the tree would fire 196 errors that no session should act on, which is the
+    defect `CLAUDE.md` retires a check for.
+
+    Item briefs are read here rather than through `read_docs`, because
+    `DOC_GLOBS` deliberately holds the authoritative documents and `docs/items/`
+    is a queue of 1,227 files.
+    """
+    basenames: dict[str, list[Path]] = {}
+    for path in _walk(root):
+        basenames.setdefault(path.name, []).append(path)
+
+    sources = list(documents.items()) + list(_live_item_briefs(root))
+    for path, raw in sources:
+        for match in LINE_CITATION_RE.finditer(_without_fences(raw)):
+            token, first, last = match.group(1), int(match.group(2)), match.group(3)
+            if not _is_path_citation(token):
+                continue
+            target = _cited_file(root, basenames, token)
+            if target is None:
+                continue
+            highest = int(last) if last else first
+            count = len(target.read_text(encoding="utf-8", errors="replace").splitlines())
+            if highest > count:
+                report.errors.append(
+                    f"{path}:{_line_of(raw, match.start())}: cites `{token}:"
+                    f"{match.group(2)}{'-' + last if last else ''}`, but that file has "
+                    f"{count} lines. Anchor the citation to a symbol rather than "
+                    f"re-pointing it at a line number, which drifts again."
+                )
+
+
 def _without_fences(text: str) -> str:
     """`text` with fenced blocks blanked, offsets and line numbers preserved.
 
@@ -3553,6 +3666,7 @@ def analyze(root: Path) -> Report:
     check_source_tiers(root, report)
     check_prose_provenance(root, report)
     check_citations(root, documents, report)
+    check_line_citations(root, documents, report)
     check_quoted_sources(root, documents, report)
     check_timeline(root, report)
     check_baseline(root, report)

@@ -3545,3 +3545,107 @@ def test_a_not_delegable_count_is_declined_when_an_entry_id_has_no_item(tmp_path
 
     assert _withheld_errors(root) == []
     assert any("not-delegable" in line and "did not answer" in line for line in report.declined)
+
+
+# --- line citations ---------------------------------------------------------
+
+
+def _items(root: Path, **briefs: str) -> Path:
+    """Write item briefs under `docs/items/`, named the way the store names them."""
+    items = root / "docs" / "items"
+    items.mkdir(parents=True, exist_ok=True)
+    for name, body in briefs.items():
+        (items / f"{name.replace('_', '-')}.md").write_text(body, encoding="utf-8")
+    return root
+
+
+def _line_citation_errors(root: Path) -> list[str]:
+    report = doc_check.Report()
+    doc_check.check_line_citations(root, {}, report)
+    return report.errors
+
+
+def _brief(status: str, body: str) -> str:
+    return f"id: PL-TEST\nstatus: {status}\n\n**Problem.** {body}\n"
+
+
+def test_a_line_citation_past_the_end_of_its_file_is_an_error(tmp_path: Path) -> None:
+    """The one thing about a line citation that can be decided without judgment.
+
+    Line 900 of a 1-line file cannot be what the sentence says, whatever the
+    sentence says, so this is resolvability rather than truth - the same
+    question `check_citations` asks of a path, one line finer.
+    """
+    root = _items(_repo(tmp_path), PL_AAAA_open=_brief("ready", "See `core/thing.py:900`."))
+
+    errors = _line_citation_errors(root)
+
+    assert len(errors) == 1
+    assert "core/thing.py:900" in errors[0]
+    assert "has 0 lines" in errors[0]
+
+
+def test_a_line_citation_inside_its_file_stays_quiet(tmp_path: Path) -> None:
+    """Whether the line still holds the symbol is judgment, and is not decided here.
+
+    A checker that fired on a citation it cannot evaluate would be disabled,
+    which is the same as not having it.
+    """
+    root = _repo(tmp_path)
+    (root / "src" / "anesthesia_sim" / "core" / "thing.py").write_text(
+        "one\ntwo\nthree\n", encoding="utf-8"
+    )
+    _items(root, PL_AAAA_open=_brief("ready", "See `core/thing.py:2`."))
+
+    assert _line_citation_errors(root) == []
+
+
+def test_a_closed_brief_is_exempt(tmp_path: Path) -> None:
+    """`PL-G424`'s recorded decision, and the reason this check is worth having.
+
+    A closed brief describes the tree as it was when the work was done. Holding
+    one to today's tree would have raised 196 errors across this store that no
+    session should act on - and a check nobody may act on trains a reader to
+    skim the output where a real failure is printed.
+    """
+    root = _repo(tmp_path)
+    for status in ("done", "dropped"):
+        _items(root, **{f"PL-{status.upper()}": _brief(status, "See `core/thing.py:900`.")})
+
+    assert _line_citation_errors(root) == []
+
+
+def test_an_item_may_quote_the_broken_citation_it_reports(tmp_path: Path) -> None:
+    """An item whose subject is a stale citation must be able to show it.
+
+    Without the escape, reporting the defect *is* the defect, and the only way
+    to file the finding is to write it wrong.
+    """
+    root = _items(
+        _repo(tmp_path),
+        PL_AAAA_open=_brief("ready", "It still says:\n\n```text\ncore/thing.py:900\n```\n"),
+    )
+
+    assert _line_citation_errors(root) == []
+
+
+def test_an_ambiguous_bare_filename_declines(tmp_path: Path) -> None:
+    """Two files of one name cannot say which line count the sentence meant.
+
+    Picking either is a wrong answer stated confidently, which this tool holds
+    to be worse than no answer.
+    """
+    root = _repo(tmp_path, modules=("core/thing.py", "app/thing.py"))
+    _items(root, PL_AAAA_open=_brief("ready", "See `thing.py:900`."))
+
+    assert _line_citation_errors(root) == []
+
+
+def test_this_repository_resolves_every_live_line_citation() -> None:
+    # The rule against the real store rather than a fixture: this is the one
+    # that catches the third generation of a hand-repaired line number.
+    report = doc_check.Report()
+    root = Path(__file__).resolve().parents[2]
+    doc_check.check_line_citations(root, doc_check.read_docs(root), report)
+
+    assert report.errors == []

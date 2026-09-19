@@ -26,7 +26,7 @@ non-colour channel:
   1.48 once each of six traces must also clear 3:1 against the panel, so colour
   cannot separate them and dash pattern was made the redundant channel. Which
   style sits on which trace is derived from the colour distances, not chosen
-  freely — `app/simulation_view.py:686-732` carries that derivation.
+  freely — `app/chart_frame.py`'s `trace_style` carries that derivation.
 - Today only **Circuit** is solid. Alveolar is long dash, mixed venous short
   dash, vessel-rich even dash, fat dash-dot — and **muscle is literally
   `"dotted"`, `[2, 3]`**. So "solid means simulated" would flatten five traces
