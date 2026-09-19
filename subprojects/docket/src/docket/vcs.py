@@ -1710,6 +1710,32 @@ def _taken_on_base(
     return frozenset(taken)
 
 
+def _queue_only_touches(text: str, name: str, items_dir: str) -> bool:
+    """Whether an item's `touches` names the queue directory and nothing outside it.
+
+    **One reading of the field, in one place, because two callers ask it of
+    different trees.** `_queue_only_work` asks it of the base, to tell a session
+    that is *starting* an item whose work is the queue from one merely filing an
+    item (`PL-7790`); `_declares_queue_only` asks it of a closure commit, to tell
+    that same item's work from a closure that landed without its work
+    (`PL-YFXG`). Which tree to read is each caller's question; what the field
+    means is not, and the two readings drifting apart would put `bin/docket
+    record` and `bin/docket next` on opposite sides of one item.
+
+    An item declaring no `touches` at all is not queue-only work: it has said
+    nothing about where its work lives, and both callers default to withholding.
+    """
+    prefix = items_dir.strip("/")
+
+    def inside(declared: str) -> bool:
+        """Whether one `touches` entry names the queue directory or something in it."""
+        declared = declared.strip().rstrip("/")
+        return declared == prefix or declared.startswith(prefix + "/")
+
+    touches = parse_item(text, name).touches
+    return bool(touches) and all(inside(declared) for declared in touches)
+
+
 def _queue_only_work(
     ids: set[str], items_dir: str, base: str, root: Path, run: Runner
 ) -> frozenset[str]:
@@ -1743,24 +1769,14 @@ def _queue_only_work(
     """
     if not ids:
         return frozenset()
-    prefix = items_dir.strip("/")
     names = _item_paths_on(base, items_dir, root, run)
-
-    def inside(declared: str) -> bool:
-        """Whether one `touches` entry names the queue directory or something in it."""
-        declared = declared.strip().rstrip("/")
-        return declared == prefix or declared.startswith(prefix + "/")
-
     queue_only: set[str] = set()
     for identifier in ids:
         path = names.get(identifier.upper(), "")
         if not path:
             continue
         text = run(["show", f"{base}:{path}"], root)
-        if not text:
-            continue
-        touches = parse_item(text, path.rsplit("/", 1)[-1]).touches
-        if touches and all(inside(declared) for declared in touches):
+        if text and _queue_only_touches(text, _basename(path), items_dir):
             queue_only.add(identifier)
     return frozenset(queue_only)
 
@@ -3824,7 +3840,6 @@ def _number_closing(name: str, items_dir: str, base: str, root: Path, run: Runne
     stopping loses nothing that a deeper fetch would not restore.
     """
     path = f"{items_dir}/{name}"
-    prefix = items_dir.strip("/") + "/"
     for revision, subject, here, there in _walk_following_renames(path, base, root, run):
         match = PR_SUBJECT_RE.search(subject.strip())
         if match is None:
@@ -3858,27 +3873,79 @@ def _number_closing(name: str, items_dir: str, base: str, root: Path, run: Runne
             # nothing that was ever right. All three predate the same-commit
             # closure rule (`PL-D2GW`, then `PL-P5S0`), which is what keeps the
             # shape rare rather than impossible.
-            if not _carried_work(revision, prefix, root, run):
+            #
+            # **The diff is not the test for an item whose work *is* the
+            # queue** (`PL-YFXG`). A commit changing nothing outside
+            # `docs/items/` is a closure separated from its work only where the
+            # work was somewhere else to begin with; for a release-tag item, a
+            # triage pass, a stranded recovery or a rename pass it is what
+            # landing correctly looks like, and that is a standing category here
+            # rather than an accident. `_carried_work` therefore falls back to
+            # the item's own `touches`, the same field `branches_in_flight`
+            # already reads to draw the same distinction (`PL-7790`). `PL-YTDN`
+            # is the worked example: its whole deliverable was renaming drifted
+            # item files, so `#712` changed 12 files and every one was an item,
+            # the number was declined, and `origin/main` was left failing
+            # `docket check` with an error no command could clear - the bare
+            # `record` writes only what the base can supply, and this was a
+            # number it decided it could not.
+            if not _carried_work(revision, here, items_dir, root, run):
                 return None
             return int(match.group(1) or match.group(2))
     return None
 
 
-def _carried_work(revision: str, items_prefix: str, root: Path, run: Runner) -> bool:
-    """Whether `revision` changed anything outside the queue directory.
+def _carried_work(revision: str, item_path: str, items_dir: str, root: Path, run: Runner) -> bool:
+    """Whether `revision`'s diff holds the work of the item it closed there.
+
+    Two readings, and the second is the whole of `PL-YFXG`. A diff reaching
+    outside the queue carried work, whatever the item says. A diff wholly
+    inside the queue carried work only where the item's own `touches` says the
+    queue is where its work lives - so the `PL-YDL6` hazard stays refused for
+    every item declaring work outside it, which is the set that hazard was
+    measured on, and the standing category of items whose deliverable is a
+    queue edit stops being unanswerable by construction.
 
     `git diff` against the first parent rather than a bare `diff-tree`, for the
     reason `closed_by` gives beside the same call: a true merge commit shows an
     empty `diff-tree` by default and would read as touching nothing.
 
     Silence reads as "no work", so a commit this checkout cannot diff declines
-    the number rather than supplying it. That is the direction the caller wants:
-    an absent `pr` is a transcription still owed and a wrong one is a false
-    provenance that nothing else will catch.
+    the number rather than supplying it, and no declaration rescues it: an
+    unreadable diff is not evidence that the work was a queue edit. That is the
+    direction the caller wants: an absent `pr` is a transcription still owed and
+    a wrong one is a false provenance that nothing else will catch.
     """
     listing = run(["diff", "--name-only", f"{revision}^", revision], root)
     paths = [line.strip() for line in listing.splitlines() if line.strip()]
-    return bool(paths) and not _annotates_only(paths, items_prefix)
+    if not paths:
+        return False
+    if not _annotates_only(paths, items_dir.strip("/") + "/"):
+        return True
+    return _declares_queue_only(revision, item_path, items_dir, root, run)
+
+
+def _declares_queue_only(
+    revision: str, item_path: str, items_dir: str, root: Path, run: Runner
+) -> bool:
+    """Whether the item at `item_path` declared, in `revision`'s tree, work wholly in the queue.
+
+    **Read from the closure commit, where `_queue_only_work` reads the same
+    field from the base, and the difference is what each is asking.** That one
+    asks whether an *unmerged* branch is working a queue-only item, so the base
+    is the one tree that cannot be carrying the session's own answer. Here the
+    commit is already on the base, and the question is what the item declared
+    when its closure landed - a `touches` repaired afterwards would otherwise
+    change the recorded provenance of a merge that is already history, and
+    repairing one is ordinary work here rather than a hypothetical: it was
+    `PL-YTDN`'s own deliverable. The name to read comes from the walk, so an
+    item renamed since costs no lookup of its own.
+
+    Its silence declines, like every other read in this module: an item file
+    this checkout cannot show has declared nothing.
+    """
+    text = run(["show", f"{revision}:{item_path}"], root)
+    return bool(text) and _queue_only_touches(text, _basename(item_path), items_dir)
 
 
 def _basename(path: str) -> str:
