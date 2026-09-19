@@ -41,10 +41,21 @@ path is counted, because a session closing an item captures whatever else it
 noticed and those captures attribute to the item it was working - counting all
 of them rates any heavily-worked file a generator.
 
-Store paths are excluded from clustering: `docs/items` sits inside
-`workflow_paths`, so every capture made while doing something else would
-otherwise read as one enormous cluster. `docket trend` excludes them from its
-churn share for the same reason.
+**What it can and cannot see.** A cluster is one declared `touches` path, so a
+family whose members share a *kind of claim* rather than a file is visible only
+where the claim concentrates on a path. `PL-G424`'s apparatus-drift family is
+the measured case (2026-09-19, 21 members): 8 declare `docs/WORKING_NOTES.md`
+and 5 `docs/items`, so those two clusters carry it; 6 declare a single item
+file each and 6 more scatter across four apparatus paths under `MIN_OPEN`, and
+nothing here can gather those - a sweep that reads the briefs is the only
+detector for that shape, and `PL-4YJK` records what one costs. The store paths
+used to be excluded from clustering on the ground that every capture would
+otherwise read as one enormous cluster. That is true of `docket trend`'s churn
+share, which counts the files a *commit* changes and so meets `docs/items` in
+every capture, and the exclusion was borrowed from there; on this axis a
+capture declares `touches` on its subject, and 24, 18 and 0 open items declared
+`docs/items`, `docs/WORKING_NOTES.md` and `docs/dead-ends.md` when the
+exclusion was measured and removed (`PL-LSR0`).
 
 Advisory, and it exits 0 whatever it finds. There is no state of this tree that
 this script can call an error, because the thing it looks for is not something
@@ -62,10 +73,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 ITEM_DIR = Path("docs/items")
-STORE_PATHS = {"docs/items", "docs/WORKING_NOTES.md", "docs/dead-ends.md"}
 
 #: A `touches` entry is compared after stripping any trailing separator:
-#: `docs/items/` and `docs/items` are the same cluster and both are the store.
+#: `docs/items/` and `docs/items` are the same cluster.
 OPEN_STATUSES = {"ready", "blocked", "needs-decision", "untriaged"}
 
 #: The floor for showing a cluster, and it is the recorded definition's own:
@@ -266,7 +276,7 @@ def clusters(repo: Path) -> list[Cluster]:
     for identifier, fields in items.items():
         for raw in fields.get("touches", "").split(","):
             touch = raw.strip().rstrip("/")
-            if touch and touch not in STORE_PATHS:
+            if touch:
                 by_path[touch].append(identifier)
 
     found: list[Cluster] = []
@@ -290,13 +300,18 @@ def clusters(repo: Path) -> list[Cluster]:
             )
         )
     # Concentration first - the most open items sharing one `feature`, which is
-    # the project's own name for "these are one problem" - then how much open
-    # work sits on the path, then the path so two runs agree. Deliberately not a
-    # composite of the three signals: a score would rank these against each
-    # other on a number, and a number wins an argument on fluency rather than on
-    # merit, which is the trap `.claude/rules/expert-review.md` names.
+    # the project's own name for "these are one problem" - then how many of them
+    # three or more other open items name, then how much open work sits on the
+    # path, then the path so two runs agree. Size is not a signal, so it breaks
+    # ties only after both readings that are: measured 2026-09-19, the
+    # `docs/WORKING_NOTES.md` cluster carrying 8 of `PL-G424`'s members sat
+    # ninth on size, behind clusters nobody cited, under a display limit of six
+    # (`PL-LSR0`). Deliberately not a composite of the three signals: a score
+    # would rank these against each other on a number, and a number wins an
+    # argument on fluency rather than on merit, which is the trap
+    # `.claude/rules/expert-review.md` names.
     found = [c for c in found if c.signals]
-    found.sort(key=lambda c: (-c.feature_count, -len(c.open_ids), c.path))
+    found.sort(key=lambda c: (-c.feature_count, -len(c.cited), -len(c.open_ids), c.path))
     return found
 
 
