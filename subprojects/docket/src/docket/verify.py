@@ -65,9 +65,25 @@ ASSERTION_BEARING_SUFFIX = ".py"
 #: assumed. The second alternative is the call form, which the keyword anchor
 #: cannot see because the name runs on: `unittest`'s `assertEqual`, `mock`'s
 #: `assert_called_once_with`, `numpy.testing`'s `assert_allclose`.
+#:
+#: The third asserts by *expectation* and carries the word nowhere:
+#: `with pytest.raises(ValueError):` says the block inside must fail, which is
+#: how this project pins every guard that *rejects* an input - so the
+#: assertions the two alternatives above cannot see are disproportionately the
+#: safety ones (`PL-QJQL`). `with` opens its statement exactly as `assert`
+#: does, so the same anchor carries it, and here the anchor is load-bearing
+#: rather than symmetry: `raises` and `warns` are ordinary English verbs which
+#: this tree's own prose uses, so unanchored they reintroduce what `PL-7TYC`
+#: spent a narrowing removing. Two details of that alternative are deliberate
+#: for the same reason. `[^#]*` keeps the match out of a trailing comment, so
+#: an unrelated `with open(path):` whose comment mentions the word is not an
+#: assertion; and the `(` follows the name directly, because `ruff format`
+#: never separates a callable from its parenthesis while prose does - "the
+#: guard raises (ValueError)" is a sentence, not a call.
 ASSERTION_RE = re.compile(
     r"(?:^|[:;])\s*assert\b"  # `assert x`, and the one-liner `if cond: assert x`
     r"|\bassert[A-Za-z0-9_]*\s*\("  # assertEqual(, assert_called_once_with(
+    r"|(?:^|[:;])\s*(?:async\s+)?with\b[^#]*\b(?:raises|warns)\("  # with pytest.raises(...)
 )
 
 #: Positions the word occupies where no assertion is being made. A comment and
@@ -104,6 +120,24 @@ def is_assertion_line(path: str, line: str) -> bool:
     It still errs toward reporting where it cannot tell: three of those four
     are docstring lines that a reflow happened to start with the word
     `assert`, and they stay on the page rather than being guessed at.
+
+    `PL-QJQL` widened it once, in the opposite direction and on the same
+    evidence, because a narrowing and a widening are the same claim about what
+    an assertion is. `with pytest.raises(...)` asserts without carrying the
+    word, so the 227 of them in this tree - every compartment-rejection guard
+    among them - could be deleted whole and reported as none removed. Counted
+    the same way before the alternative was added, with `ast` as the oracle:
+    227 lines in the tree and 60 removed lines across 902 commits of history
+    start being reported, and **every one** of the 287 is a genuine
+    `with raises/warns(...)` statement, so the widening refuses no work this
+    repository has ever done.
+
+    One shape is still missed, deliberately rather than by oversight: the
+    parenthesized multi-manager form, where `with (` opens the statement and
+    the `pytest.raises(...)` item sits on a line of its own carrying no `with`.
+    This tree holds no multi-manager `with` at all, so covering it would be the
+    widest rule the hazard could motivate rather than the narrowest that
+    removes it. It is one alternative away should one ever be written.
     """
     if path and not path.endswith(ASSERTION_BEARING_SUFFIX):
         return False
