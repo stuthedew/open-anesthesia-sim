@@ -3,12 +3,13 @@ id: PL-H4N8
 title: ROADMAP planned-milestone item 28 specifies agent cost 'from the exhausted-agent amount', but cost is what left the bottle, which is the delivered amount - exhausted understates it mid-run by exactly what is still stored
 priority: P1
 effort: S
-status: ready
+status: done
 classes: science, docs
 feature: liquid-agent-consumption
 touches: ROADMAP.md
 added: 2026-09-16
-verify: python3 tools/doc_check.py check && grep -qF 'from the delivered-agent amount' ROADMAP.md
+closed: 2026-09-19
+verify: grep -qF 'from the delivered-agent amount' ROADMAP.md
 ---
 
 **Problem.** The exhausted line invites reading as 'wasted', but this model has no metabolism so nearly all stored agent becomes exhausted by end of case - the figure that means cost is delivered
@@ -86,3 +87,126 @@ exhausted one; the gap between the two is measured at 15, 30 and 60 minutes for 
 reference-adult sevoflurane case and recorded here, so the item carries what the
 wrong basis would have cost; and the exhausted/stored split, if it is displayed
 at all, is labelled as where the agent is now rather than as what it cost.
+
+## The measurement, 2026-09-19
+
+**Method.** `AgentUptakeSystem.default()` - the reference adult from
+`data/patients/reference_adult.json` and the reference circle system from
+`data/machines/reference_circle_system.json`, running sevoflurane at its own
+1 MAC (2.0%) with the dial held there for the whole run - advanced in 0.1 s
+steps, the model's `MAXIMUM_SIMULATION_STEP_S`. `agent_simulation_validation`
+was read at each sample and asserted to pass, so every figure below sits on a
+closed accounting identity rather than on a drifting one. `initial_agent_l` is
+0.0 throughout, which is what lets delivered be read as the whole bill.
+Three fresh gas flows, because the low-flow lesson is a comparison *between*
+runs and a single run cannot show what the wrong basis does to it.
+
+**Delivered, exhausted and stored, in millilitres of vapour.**
+
+| FGF | | 15 min | 30 min | 60 min |
+| --- | --- | --- | --- | --- |
+| 1.0 L/min | delivered | 300.00 | 600.00 | 1200.00 |
+| | exhausted | 108.98 | 277.03 | 651.56 |
+| | stored | 191.02 | 322.97 | 548.44 |
+| | **exhausted reads low by** | **63.7%** | **53.8%** | **45.7%** |
+| 4.0 L/min | delivered | 1200.00 | 2400.00 | 4800.00 |
+| (default) | exhausted | 856.40 | 1885.39 | 3990.61 |
+| | stored | 343.60 | 514.61 | 809.39 |
+| | **exhausted reads low by** | **28.6%** | **21.4%** | **16.9%** |
+| 8.0 L/min | delivered | 2400.00 | 4800.00 | 9600.00 |
+| | exhausted | 2010.63 | 4233.55 | 8723.78 |
+| | stored | 389.37 | 566.45 | 876.22 |
+| | **exhausted reads low by** | **16.2%** | **11.8%** | **9.1%** |
+
+Delivered is exactly $\dot V_F F_D t$ at every sample - 4.0 L/min x 0.02 x
+15 min = 1200 mL - which is the arithmetic check that the quantity being
+called the bill is the one the vaporizer added, and is why the delivered
+column is round.
+
+**The finding the single-run gap understates.** Two things make this worse
+than a uniform under-read:
+
+1. **It is largest early.** 28.6% low at 15 minutes at the default flow
+   against 16.9% at an hour. Wash-in is the phase the low-flow lesson is
+   about, so the error peaks where the teaching point is sharpest.
+2. **It is largest at low flow**, which distorts the comparison rather than
+   shifting both arms of it. At a fixed dial, delivered is proportional to
+   flow, so 1 against 8 L/min is exactly **8:1** at every time shown - the
+   honest saving. On the exhausted basis the same pair reads **18.4:1** at 15
+   minutes, **15.3:1** at 30 and **13.4:1** at 60. A cost readout built on
+   exhausted would therefore have overstated the low-flow saving by up to
+   **2.3x**, in the direction of flattering its own lesson, which is the worst
+   direction available for a teaching display: a learner who later does the
+   arithmetic by hand finds the simulator oversold it.
+
+**The caveat, stated because the item's own brief invites the stronger
+reading.** These runs hold the *dial* fixed, not the alveolar concentration,
+so the three arms do not reach the same depth of anaesthesia - at 15 minutes
+FA is 0.80% at 1 L/min, 1.37% at 4 and 1.51% at 8. The 8:1 figure is therefore
+the fixed-dial ratio, which is the arithmetic a learner checks by hand, and is
+not the equal-alveolar-concentration comparison a real low-flow protocol
+makes (where the dial goes *up* as the flow comes down). Producing that second
+comparison is design work belonging to item 28 itself, not to this correction;
+what it would change is the size of the saving, never which quantity measures
+it.
+
+**The third clause of "Done when" needed no code change, checked 2026-09-19.**
+There is no cost or consumption surface yet. The one place the split is
+displayed is the agent-accounting panel, `accounting()` in
+`app/dashboard_frame.py`, whose five lines read "Delivered", "Exhausted",
+"Stored", "Unaccounted" and "Absolute error" - each naming where the agent is
+or how well it is accounted for, none naming waste or cost. That is already
+what the clause requires, so the requirement now lands on item 28's own
+implementation, where `ROADMAP.md` records it.
+
+**Reproducing it.** No script was committed: the measurement is thirty lines
+against `AgentUptakeSystem.default()` with `set_fresh_gas_flow()` and
+`agent_simulation_validation` read at the three samples, and
+`CLAUDE.md`'s deterministic-tooling gate asks whether a tool will genuinely
+run again. This one answers a question that is now answered. A cost readout
+built under item 28 owes a reference test of its own, and that is the right
+place for the arithmetic to become permanent.
+
+## What the close-out docs sweep caught, and it was this item's own text
+
+The first version of item 28's new "prerequisite" paragraph said no data file
+holds a vapour-to-liquid ratio and that **sourcing sevoflurane's belonged to
+item 28**. The first half is true and the second is false, and the false half
+is the one a later session would have acted on: `PL-S6WW` settled it and
+shipped in v0.4.28. `docs/MODEL.md` § "Agent amount" carries Biro's 184 mL of
+vapour per mL of liquid sevoflurane, reproduces it to 182.8 mL from Laster,
+Fang and Eger's 20 °C density and the exact molar mass, and records the
+project owner's ratification of a 20 °C reference over 37 °C on 2026-09-17 -
+citing *this very item* as the constant's consumer. Left standing, item 28
+would have sent a session to re-source a constant the project had already
+sourced, decided and shipped.
+
+The same sweep found that `docs/MODEL.md`'s "Known limitations" entry on that
+reference already calls the delivered total "the figure that means cost",
+which means item 28's sentence was the *only* document in the tree naming
+exhausted. That is a stronger statement of the defect than this item's brief
+made, and item 28 now carries it.
+
+**Neither was mechanically findable, which is the point worth recording.**
+`tools/doc_check.py candidates --base origin/main` reported "nothing in the
+documentation mentions anything this diff changed", correctly: the diff
+touches `ROADMAP.md` and two item files and names no code symbol, so the
+mechanical half had nothing to match on. Only reading `docs/MODEL.md` for
+what item 28 *would need* surfaced it. `CLAUDE.md`'s sweep rule asks which
+files were checked rather than whether the tool passed, and this is why.
+
+Corrected in the same branch before the pull request: the paragraph now says
+the constant is sourced and the reference condition decided, and that what
+item 28 owes is moving the three constants out of prose and into
+`data/agents/*.json` - the `PL-4YY1` gap, where `doc_check`'s provenance walk
+cannot see a scientific constant that never entered a data file.
+
+**And the work item 28 needs next already exists.** Before writing "moving the
+three constants into their agent files is this item's first step", the queue
+was searched rather than trusted: `PL-KZ99` is exactly that item - store each
+agent's molar mass and liquid density *with the density's measurement
+temperature*, so the conversion derives from Laster's primary measurement
+instead of Biro's composite constant. It was `blocked-by: PL-S6WW`, and
+`PL-S6WW` is now done, so it is ready to promote. Item 28 names it rather than
+describing the work, so a later session finds the item instead of filing a
+second one - which is `PL-TZ7T`'s failure mode arriving through prose.
