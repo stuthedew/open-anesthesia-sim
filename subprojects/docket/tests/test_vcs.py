@@ -14,6 +14,7 @@ from docket.checks import Report
 from docket.vcs import (
     _PATHSPEC_BYTES,
     REWRITTEN,
+    SILENT,
     BaseRelease,
     Branch,
     BranchCut,
@@ -463,8 +464,30 @@ def test_a_random_suffix_is_not_read_as_an_id() -> None:
     assert _in_flight(["claude/queue-redesign-wrqfwj"]) == ()
 
 
-def test_no_git_means_no_claims_about_branches() -> None:
-    assert branches_in_flight(ROOT, runner=lambda args, root: "").branches == ()
+def test_no_git_declines_rather_than_reporting_no_branches() -> None:
+    """A git that does not answer is not a repository with nothing in flight.
+
+    This test used to assert `branches == ()` against a runner returning the
+    empty string, which read as compliance and was not: the empty string is what
+    a *failure* collapsed to as well, so the assertion held whether the read had
+    declined or had quietly reported a clean checkout. It reported a clean
+    checkout. `PL-Q9Z1` is the defect; `test_vcs_silence.py` is the sweep that
+    holds every read in the module to this, one silenced call at a time.
+
+    Silence and emptiness are driven separately here, because the whole of the
+    fix is that they are no longer the same value.
+    """
+    silent = branches_in_flight(ROOT, runner=lambda args, root: SILENT)
+
+    assert silent.branches == ()
+    assert not silent.known
+    assert "did not answer" in silent.declined
+
+    # An empty answer from a git that ran is the other case, and still clean.
+    empty = branches_in_flight(ROOT, runner=lambda args, root: "")
+
+    assert empty.branches == ()
+    assert empty.known
 
 
 def test_a_harness_named_branch_is_found_by_what_it_committed() -> None:
