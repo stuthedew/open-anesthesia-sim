@@ -1,9 +1,14 @@
 ---
 id: PL-4HKS
 title: docs/WORKING_NOTES.md's playback-speed open thread reasons from pre-Qt-port numbers - a 0.011 ms step and 15 ms of chart-point construction - and names PL-010 as unspent headroom, but PL-009 is dropped, PL-010 is done, and the step now costs 0.025 ms
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs, defect
 feature: frame-cost-harness
+touches: docs/WORKING_NOTES.md
 added: 2026-09-19
+verify: ! grep -q '0\.011 ms' docs/WORKING_NOTES.md
 ---
 
 **Problem.** docs/WORKING_NOTES.md's playback-speed open thread reasons from pre-Qt-port numbers - a 0.011 ms step and 15 ms of chart-point construction - and names PL-010 as unspent headroom, but PL-009 is dropped, PL-010 is done, and the step now costs 0.025 ms

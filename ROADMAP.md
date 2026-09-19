@@ -2974,7 +2974,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 175 entries
+### Declined to Gate 2 on the refilling-queue ground — 192 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3241,6 +3241,17 @@ nor `science`. It is stated rather than left silent because the disposition
 rule asks for a sentence either way, and an open debt item the gate neither
 places nor defers is reported as undisposed whatever the reason.
 
+**A second on that same ground, and it is the rule catching itself**
+(`PL-YFXG`, 2026-09-19). `_carried_work` was written on 2026-09-12 under
+`PL-YDL6`, six days after this gate froze, so the mechanism this item describes
+did not exist for a 2026-09-06 list to hold. It is `P2`, `defect`-classed,
+wholly workflow-lane apparatus, and neither `safety` nor `science`. It was
+found while closing `PL-Y5JX` as the reason `main` was red - a closure whose
+work is queue files cannot have its `pr` recovered, and the resulting
+`docket check` error fails `make check` on every branch - and recording it here
+the same day is what the disposition rule exists to force, since the session
+that found it is the one that would otherwise leave it silent.
+
 - PL-09G9 (M) Nothing refuses a new verify: command that re-runs a test file make check already collects, so PL-6TP8's contract is enforced by prose alone and 82 of 180 open commands carry the clause
 - PL-0M32 (S) Nothing can tell an item finished under a renamed test from one nobody has started
 - PL-0VFF (S) ROADMAP.md's 'Declined to Gate 2' list names PL-483K, PL-69JZ and PL-L09X as deferred, but all three closed done in v0.4.14, and nothing distinguishes a still-open entry from a closed one
@@ -3323,6 +3334,7 @@ places nor defers is reported as undisposed whatever the reason.
 - PL-XMNC (M) The pull-request verify replay scopes to items whose item file the branch edited, so a branch that invalidates some other item's verify: command by editing the file that command reads replays nothing, and the break is reported only by the whole-store sweep after the merge
 - PL-Y1LD (M) docket concurrent orders a batch by file, but the lane mechanism separates only two sessions, so the third and fourth simultaneous session have no command that picks for them
 - PL-Y31G (M) bin/docket stranded classes a branch left on pre-rewrite history as one whose pull request merged, because it compares file content and a rewrite leaves content unchanged
+- PL-YFXG (S) bin/docket record can never supply the pr of an item whose work is the queue itself - _carried_work reads a queue-only diff as a closure that landed without its work, so PL-YTDN left main red with an error no command could clear
 - PL-YKXQ (S) This container's initial clone had local main diverged 407 commits into pre-rewrite history, so a session that checks out main gets a stale tree and an old bin/docket
 - PL-YTDN (S) Rename the nine item files whose slug no longer matches their title, now that docket check names them
 - PL-Z5FG (S) The PL-B32L and PL-TCW5 edits to core/parameters.py shifted line numbers cited by PL-0NQ1 and PL-HXKC, which is PL-J7C5's hazard arriving again from an unrelated branch
@@ -3969,6 +3981,36 @@ strongly than most: the hazard is not live. `ast` reports zero multi-manager
 nothing for the blind spot to hide today, and what would make it live is a
 condition on the tree rather than an argument - which the item records, so a
 later session checks it instead of re-deriving it.
+
+**Seventeen from the 2026-09-19 triage pass** (`PL-2P9L`). Twenty-one items
+stood untriaged that morning, every one of them captured that same day, and
+classing an item is what makes it debt - so they reach this gate together and
+are declined together: `PL-245B`, `PL-28HG`, `PL-2DTK`, `PL-4FD2`, `PL-4HKS`,
+`PL-BX1C`, `PL-CNJH`, `PL-CWD4`, `PL-D1NT`, `PL-DK8Y`, `PL-QMC0`, `PL-R77L`,
+`PL-SZJ2`, `PL-WVJ0`, `PL-Y5JX`, `PL-YS9F` and `PL-ZPDM`. One of them,
+`PL-QMC0`, closed in `#708` hours later and is left named here rather than
+removed: what this subsection records is the disposition taken, and an entry
+that was declined and then fixed anyway is still an entry that was declined.
+`PL-0VFF` is the open item for the fact that nothing here distinguishes the
+two. The three facts the
+first thirty rest on hold for all seventeen: captured after the 2026-09-06
+freeze, `P2` or `P3` and neither `safety` nor `science`, and wholly in the
+workflow lane - every `touches` they declare is inside `docket.toml`'s
+`workflow_paths`, so none can reach a reader of the simulator.
+
+**The arithmetic above has reversed since it was written, and it now argues
+the same way harder.** The paragraphs at the head of this subsection defer on
+the ground that this gate "is not draining"; today it stands at 168 cleared of
+175, with four entries left that it can clear. That premise is stale, and the
+conclusion it supported is not: admitting these seventeen would take the
+clearable remainder from four to twenty-one and move a milestone that is one
+beat from starting back behind five times the work it currently waits on. A
+gate one step from opening is the point at which "The gate is a snapshot, not a
+moving target" is doing the most work, not the least - the temptation to fold
+in the day's findings is strongest exactly when the list is nearly empty. Any
+of the seventeen whose *problem* predates the freeze belongs on the list rather
+than here, and `check_gate_reentries` is what decides that rather than this
+paragraph.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first

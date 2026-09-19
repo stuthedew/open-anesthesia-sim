@@ -8,6 +8,7 @@ classes: defect
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-19
 closed: 2026-09-19
+pr: 711
 verify: grep -q 'def test_a_pytest_option_containing_a_suppression_name_is_not_one' subprojects/docket/tests/test_verify.py
 ---
 

@@ -89,6 +89,28 @@ STATUS_REQUIREMENTS: tuple[tuple[str, str], ...] = (
 # paragraph does.
 BRIEF_HEADING = re.compile(r"^\*\*", re.MULTILINE)
 
+# An item file's whole name, as `store.filename_for` writes one: the id, then a
+# slug, then the suffix. This is what tells a `touches` entry that names *an
+# item* from one that names the store directory itself - 48 of this store's 95
+# entries under `docs/items/` on 2026-09-19 are the bare directory, written by
+# release cuts that rewrite many briefs at once, and those claim nothing about
+# any one item.
+#
+# Named apart from `vcs.ITEM_FILE_RE`, which is the same id capture without the
+# suffix anchor: that one pulls an id out of a path git already reported, so it
+# must match a prefix, and this one judges a string a person typed, so it must
+# refuse everything that is not a whole filename. One name over two rules is
+# how a reader imports the wrong one.
+DECLARED_ITEM_RE = re.compile(rf"^({ID_PATTERN})-.+\.md$")
+
+# What a dangling declaration costs, said once because both branches of the
+# rule below end with it, and kept to one clause because it prints per
+# instance: the reasoning is in `_check_touched_items`, where it is read once.
+DANGLING_TOUCHES = (
+    "a path no file holds reads as a path nobody touches to `docket concurrent`, "
+    "the lane split and `docket verify`'s inside-`touches` audit"
+)
+
 
 def _section_text(body: str, marker: str) -> str | None:
     """What a brief holds under `marker`, or `None` when it holds no such heading.
@@ -1249,7 +1271,96 @@ def _check_generator_defects(report: Report, config: Config) -> None:
         )
 
 
-def _check_filenames(report: Report) -> None:
+def _declared_item_file(entry: str, items_dir: str) -> tuple[str, str] | None:
+    """The (id, filename) a `touches` entry names inside the store, or `None`.
+
+    `None` for every entry that is not a claim about one item's file: a path
+    outside the store, the store directory itself, a subdirectory, anything
+    inside it that no id leads. Decided from the name rather than by asking
+    the filesystem, which keeps `analyze` pure - and the id is also the more
+    useful half, since it is what lets the error below say where the item
+    actually lives instead of only that the path is wrong.
+    """
+    prefix = items_dir.strip().strip("/")
+    candidate = entry.strip().strip("/")
+    if not candidate.startswith(f"{prefix}/"):
+        return None
+    name = candidate[len(prefix) + 1 :]
+    match = DECLARED_ITEM_RE.match(name)
+    return None if match is None else (match.group(1), name)
+
+
+def _declarers(report: Report, items_dir: str) -> dict[str, list[str]]:
+    """Which items name each item file in their `touches`, keyed by filename.
+
+    Read by both halves of `PL-Y5JX` - the error that holds a declaration to
+    naming a file some item lives in, and the stale-slug advisory that has to
+    say when the rename it proposes would break one. One function, so the two
+    cannot come to different views of what a declaration is.
+    """
+    declared: dict[str, list[str]] = {}
+    for item in report.items:
+        for entry in item.touches:
+            named = _declared_item_file(entry, items_dir)
+            if named is not None:
+                declared.setdefault(named[1], []).append(item.identifier)
+    return {name: sorted(set(ids)) for name, ids in declared.items()}
+
+
+def _check_touched_items(report: Report, config: Config) -> None:
+    """Hold a `touches` entry naming an item file to naming one that exists.
+
+    Naming another item's file in `touches` is legitimate and correct - an
+    item whose work is editing two briefs has to declare both - and it is the
+    one entry a rename can invalidate from outside the item. The store names a
+    file from its title, so any command that re-renders a retitled brief moves
+    it, and a declaration written when the title was one thing then points at
+    nothing. Two sat on `origin/main` that way on 2026-09-19 with `make check`
+    passing: `PL-3V6C` naming `PL-XQRK`, moved by the `v0.4.28` cut, and
+    `PL-GNXG` naming `PL-J3ZK` (`PL-Y5JX`).
+
+    An error rather than an advisory, on the failure rather than the remedy.
+    Whether a declared item file exists is exactly decidable, which is what
+    `CLAUDE.md` reserves hard failure for, and the repair is a one-line edit to
+    the declaring item with no other branch to check first - unlike the rename
+    in `_check_filenames` below, whose remedy is what keeps it advisory.
+
+    The `PL-YTDN` pass is why this is code and not a line in a skill. That
+    pass renamed the drifted files, searched the store by hand for the
+    declarations naming them, and repaired two - editing the very `touches`
+    line that carried `PL-3V6C`'s already-dangling entry for `PL-XQRK`
+    without seeing it. A hand search run by a session being careful about
+    exactly this missed the instance sitting beside the one it repaired.
+    """
+    lives_in = {item.identifier: item.path for item in report.items if item.identifier}
+    unknown_home: set[str] = set()
+    for item in report.items:
+        for entry in item.touches:
+            named = _declared_item_file(entry, config.items_dir)
+            if named is None:
+                continue
+            identifier, name = named
+            if identifier not in lives_in:
+                report.errors.append(
+                    f"{_where(item)}: `touches` names {entry}, and this store holds no "
+                    f"{identifier}; {DANGLING_TOUCHES}"
+                )
+            elif not lives_in[identifier]:
+                unknown_home.add(identifier)
+            elif lives_in[identifier] != name:
+                report.errors.append(
+                    f"{_where(item)}: `touches` names {entry}, which no item lives in - "
+                    f"{identifier} is in {config.items_dir}/{lives_in[identifier]}; "
+                    f"{DANGLING_TOUCHES}"
+                )
+    if unknown_home:
+        report.declined.append(
+            f"whether the `touches` entries naming {', '.join(sorted(unknown_home))} name "
+            "the file each lives in: those items were built in memory and carry no filename"
+        )
+
+
+def _check_filenames(report: Report, config: Config) -> None:
     """Report an item file whose name no longer matches the slug its title makes.
 
     The store names a file from its title, so the two can only disagree after
@@ -1278,6 +1389,15 @@ def _check_filenames(report: Report) -> None:
 
     Declines on an item carrying no path: those are built in memory rather
     than read from disk, and there is no filename to disagree with.
+
+    **And it says when the rename it proposes would break a declaration.**
+    Another item's `touches` may name the file by full path, which is
+    legitimate - `PL-3V6C`'s whole deliverable was editing two briefs - so
+    without this the advisory is an instruction to break a declaration, issued
+    to a reader with no reason to look (`PL-Y5JX`). `_check_touched_items`
+    above catches the break afterwards; naming it here is what lets a session
+    repair both halves in the one commit, which is the difference between a
+    clean rename and a `make check` that fails on the next branch.
     """
     drifted = [
         item
@@ -1287,12 +1407,25 @@ def _check_filenames(report: Report) -> None:
     if not drifted:
         return
     one = len(drifted) == 1
+    in_order = sorted(drifted, key=lambda i: i.identifier)
+    declared = _declarers(report, config.items_dir)
+    coupled = [
+        f"{item.identifier} (by {', '.join(declared[item.path])})"
+        for item in in_order
+        if item.path in declared
+    ]
     report.advisories.append(
         f"{len(drifted)} item file{'' if one else 's'} carr{'ies' if one else 'y'} a slug "
         f"{'its' if one else 'their'} title no longer generates "
-        f"({', '.join(item.identifier for item in sorted(drifted, key=lambda i: i.identifier))}); "
+        f"({', '.join(item.identifier for item in in_order)}); "
         "rename with `git mv` to the name `docket` would write, and check first that no open "
         "branch is editing the file - a rename against someone else's edit conflicts"
+        + (
+            f". Another item's `touches` declares {'; '.join(coupled)}, so repair those "
+            "entries in the same commit or the rename leaves them naming nothing"
+            if coupled
+            else ""
+        )
     )
 
 
@@ -2070,7 +2203,8 @@ def analyze(
     _check_references(report, milestones)
     _check_generator_defects(report, settings)
     _check_feature_spellings(report)
-    _check_filenames(report)
+    _check_touched_items(report, settings)
+    _check_filenames(report, settings)
     _check_milestones(report, version)
     _check_release_notes(report, notes, version)
     _check_cut_window(report, window, notes)

@@ -1,8 +1,13 @@
 ---
 id: PL-D1NT
 title: doc_check's path-citation resolver crashes the whole run on a path it cannot stat: the glob branch is guarded against exactly this and the .exists() branch is not
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-19
+verify: grep -q 'def test_a_citation_the_process_cannot_stat_is_reported_not_raised' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's path-citation resolver crashes the whole run on a path it cannot stat: the glob branch is guarded against exactly this and the .exists() branch is not
@@ -56,3 +61,9 @@ than raising. That is the shape the guard above must hold.
 `docs/worker.md`, since fixing the resolver is outside that item's `touches`.
 No other absolute-path citation exists in the scanned documentation today, so
 nothing else is currently tripping it - the next one will.
+
+**Done when.** `python3 tools/doc_check.py check` runs to completion and reports an
+ordinary dangling-citation error for a path it is refused permission to stat,
+rather than raising; and a regression test in `tests/unit/test_doc_check.py` drives
+a document citing a path under a directory the test makes unreadable, asserting the
+run finishes and names that one line.

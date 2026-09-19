@@ -1,8 +1,13 @@
 ---
 id: PL-WVJ0
 title: The docket skill says bin/docket show prints no placement at all, but PL-J790 added the plan: line to show in v0.4.18, so a session is sent to look up what the command already prints
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs, defect
+touches: .claude/skills/docket/SKILL.md
 added: 2026-09-19
+verify: ! grep -qF 'prints no placement at all' .claude/skills/docket/SKILL.md
 ---
 
 **Problem.** The docket skill says bin/docket show prints no placement at all, but PL-J790 added the plan: line to show in v0.4.18, so a session is sent to look up what the command already prints

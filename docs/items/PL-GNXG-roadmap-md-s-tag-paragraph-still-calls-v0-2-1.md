@@ -5,7 +5,7 @@ status: dropped
 closed: 2026-08-31
 reason: every statement it names has since been corrected by hand on main - the tag list carries v0.2.1, v0.2.2 and v0.2.7, and the count reads two - and the check that would stop them going stale again is PL-M5FK, which PL-34B4 already widened to cover this paragraph as well as the list above it. Recovered from the branch it was stranded on and recorded as dropped rather than deleted, so the same finding is not raised a third time.
 feature: dev-tooling
-touches: ROADMAP.md, docs/items/PL-J3ZK-tag-releases-so-a-commit-can-be-mapped-to.md
+touches: ROADMAP.md, docs/items/PL-J3ZK-tag-releases-so-a-commit-can-be-mapped-to-the.md
 added: 2026-08-30
 ---
 

@@ -1,8 +1,12 @@
 ---
 id: PL-SZJ2
 title: wave reports nothing for a released milestone row whose own frozen list still has open entries, which is PL-LN3T's case in the other subsection: a gate-only milestone released with its list open drops out of the report entirely
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: defect
 feature: timeline-arrangement
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-19
 ---
 
@@ -40,3 +44,22 @@ narrower `clearable`: an entry blocked outside the list is open and is not
 something the shipped milestone could have closed, which is the distinction
 `ScopeStatus` has no counterpart for and the reason this is not a two-line
 copy of `stale_scopes`.
+
+**Decision needed.** Two questions, and the second only if the first is yes.
+
+1. **Should a released milestone row whose own frozen list still has open entries
+   be reported at all?** Reporting it is consistent with `stale_scopes`, which
+   reports the same fault in a section's *other* placing structure. Against: rows
+   1 and 2 are the only sections here whose whole content is a frozen list, both
+   have shipped, and every scoped milestone since also records a `Required
+   scope` - so the statement may have no live subject and would be a check that
+   fires never.
+2. **If yes, what counts as "open"** - `GateStatus.outstanding`, or the narrower
+   `clearable`? An entry blocked outside the list is outstanding and is not
+   something the shipped milestone could have closed, which is the distinction
+   `ScopeStatus` has no counterpart for. This is why the change is not a two-line
+   copy of `stale_scopes`.
+
+`CLAUDE.md`'s retirement test is the frame for the first: a check that fires every
+run without changing a decision is a defect in the check, and one that can never
+fire is a line of code claiming coverage it does not provide.

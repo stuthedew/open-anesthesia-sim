@@ -9,6 +9,7 @@ feature: slug-rename-on-write
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
 closed: 2026-09-19
+pr: 708
 verify: grep -q 'def test_a_cut_does_not_rename_the_files_it_stamps' subprojects/docket/tests/test_cli.py
 ---
 

@@ -9,6 +9,7 @@ feature: slug-rename-on-write
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/store.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
 closed: 2026-09-19
+pr: 708
 verify: grep -q 'restores the tracked deletion' subprojects/docket/tests/test_cli.py
 ---
 
