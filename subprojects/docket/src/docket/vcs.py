@@ -2047,6 +2047,7 @@ def branches_in_flight(
     # 792. The marks are collected first because the two cheap filters decide
     # what is worth asking about, and `walk.edited`'s order is kept so the
     # report is assembled in the order the walk found the ids.
+    #
     # **Every carrier is kept and each is judged** (`PL-RY2R`). `_superseded` is
     # a fact about one ref's copy of one path, so an id two refs have both
     # edited has two answers and the spent one says nothing about the other.
