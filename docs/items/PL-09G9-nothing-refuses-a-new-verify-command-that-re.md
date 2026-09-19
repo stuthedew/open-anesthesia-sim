@@ -9,6 +9,7 @@ feature: verify-replay-cost
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_config.py, docket.toml, subprojects/docket/README.md
 added: 2026-09-19
 closed: 2026-09-19
+pr: 711
 verify: grep -q 'def test_a_new_command_re_running_a_collected_test_file_is_refused' subprojects/docket/tests/test_checks.py
 ---
 
