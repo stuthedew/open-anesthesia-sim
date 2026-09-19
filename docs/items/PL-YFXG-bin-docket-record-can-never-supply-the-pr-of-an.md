@@ -3,11 +3,12 @@ id: PL-YFXG
 title: bin/docket record can never supply the pr of an item whose work is the queue itself - _carried_work reads a queue-only diff as a closure that landed without its work, so PL-YTDN left main red with an error no command could clear
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: commit-provenance
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-19
+closed: 2026-09-19
 verify: grep -q 'def test_a_queue_only_closure_supplies_its_pr' subprojects/docket/tests/test_vcs.py
 ---
 

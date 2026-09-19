@@ -2611,6 +2611,16 @@ CLOSED = "---\nid: {id}\ntitle: T\nstatus: done\n---\n"
 OPEN_ITEM = "---\nid: {id}\ntitle: T\nstatus: ready\n---\n"
 
 
+#: The same two, declaring where the item's work lives. Only the readings that
+#: ask for `touches` need them - `_declares_queue_only` here, and
+#: `_queue_only_work` a level up - so the bare pair stay the default and a test
+#: that says nothing about `touches` is a test about an item that declares none.
+CLOSED_DECLARING = "---\nid: {id}\ntitle: T\nstatus: done\ntouches: {touches}\n---\n"
+
+
+OPEN_DECLARING = "---\nid: {id}\ntitle: T\nstatus: ready\ntouches: {touches}\n---\n"
+
+
 def _z_name_status(entries: tuple[tuple[str, str, list[str]], ...]) -> str:
     """What git writes for `log --format=%H%x1f%s -z --name-status`.
 
@@ -2732,6 +2742,7 @@ def _recovery_runner(
     done_at: set[str],
     name: str,
     carried: tuple[str, ...] | None = None,
+    declares: str = "",
 ):
     """A git whose base subjects name no id, so only the file's history answers.
 
@@ -2739,6 +2750,11 @@ def _recovery_runner(
     `done_at` names the revisions whose tree has the item closed - written as
     revisions rather than derived, so a test can say exactly where the status
     flipped, including at a parent the walk has to look at.
+
+    `declares` is the `touches` the item carries in every tree read here. It is
+    what tells a closure that landed without its work from the landing of an
+    item whose work *is* the queue, so a test that leaves it empty is a test
+    about an item that has declared nothing (`PL-YFXG`).
     """
 
     def run(args: list[str], root: Path) -> str:
@@ -2754,13 +2770,11 @@ def _recovery_runner(
             return "\n".join(carried) if carried is not None else "src/changed.py\n"
         if args[0] == "show":
             revision, _, _path = args[-1].partition(":")
-            if revision == BASE:
-                return CLOSED.format(id="PL-K7QX")
-            return (
-                CLOSED.format(id="PL-K7QX")
-                if revision in done_at
-                else OPEN_ITEM.format(id="PL-K7QX")
-            )
+            done = revision == BASE or revision in done_at
+            if declares:
+                template = CLOSED_DECLARING if done else OPEN_DECLARING
+                return template.format(id="PL-K7QX", touches=declares)
+            return CLOSED.format(id="PL-K7QX") if done else OPEN_ITEM.format(id="PL-K7QX")
         if args[0] == "log":
             if "--" in args:
                 return _z_name_status(
@@ -2821,6 +2835,90 @@ def test_a_closure_split_from_its_work_records_no_pull_request() -> None:
 
     assert report.landed == frozenset({"PL-K7QX"})
     assert report.numbers == {}
+
+
+def test_a_queue_only_closure_supplies_its_pr() -> None:
+    """An item whose declared work is the queue carried it, whatever its diff looks like.
+
+    The test above is right about the hazard and was wrong about the shape. A
+    commit changing nothing outside `docs/items/` is a closure separated from
+    its work only where the work was somewhere else to begin with; for a
+    release-tag item, a triage pass, a stranded recovery or a rename pass it is
+    what landing correctly looks like, and `.claude/skills/docket/SKILL.md`
+    names that as a standing category under **Mode: start an item**.
+
+    `PL-YTDN` is the worked example and this is its shape: its whole deliverable
+    was renaming drifted item files, so `#712` changed 12 files and every one
+    of them was an item. The number was declined, `docket check` raised its
+    error rather than its recoverable advisory, and `origin/main` failed `make
+    check` on every branch cut from it - with nothing to clear it, since the
+    bare `bin/docket record` writes only what the base can supply and this was
+    a number it had decided it could not (`PL-YFXG`).
+
+    Audited over real history before it was adopted: across the 927 closed
+    items on `origin/main`, this changes 29 answers and every one of the 29
+    matches the `pr` the store already holds, recorded by hand or by the
+    explicit `--merge` escape. No answer that was already right changes, which
+    is the half the `PL-YDL6` guard was built to protect.
+    """
+    run = _recovery_runner(
+        history=(("ddd444", "PL-K7QX: rename the drifted item files (#712)"),),
+        done_at={"ddd444"},
+        name="PL-K7QX-a.md",
+        carried=("docs/items/PL-K7QX-a.md", "docs/items/PL-B1C2-renamed.md"),
+        declares="docs/items/",
+    )
+
+    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
+        "PL-K7QX": 712
+    }
+
+
+def test_an_item_declaring_one_other_item_s_file_is_queue_only_work_too() -> None:
+    # The declaration names a path *inside* the queue rather than the directory
+    # itself, which is how an item whose work is one other item's file writes
+    # it - `PL-GBBZ` declares four of them, `PL-X7VY` one. Both are in the 29.
+    run = _recovery_runner(
+        history=(("ddd444", "PL-K7QX: repair the stale brief (#434)"),),
+        done_at={"ddd444"},
+        name="PL-K7QX-a.md",
+        carried=("docs/items/PL-B1C2-another.md",),
+        declares="docs/items/PL-B1C2-another.md",
+    )
+
+    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {
+        "PL-K7QX": 434
+    }
+
+
+def test_a_declaration_reaching_outside_the_queue_still_records_nothing() -> None:
+    # The exemption is the item's own word for where its work lives, so one
+    # path outside the queue withdraws it and the `PL-YDL6` reading stands.
+    # `PL-21GS` is the shape: `docs/items/, docs/releases/`.
+    run = _recovery_runner(
+        history=(("ccc333", "PL-K7QX: triage the open captures (#129)"),),
+        done_at={"ccc333"},
+        name="PL-K7QX-a.md",
+        carried=("docs/items/PL-K7QX-a.md",),
+        declares="docs/items/, docs/releases/",
+    )
+
+    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {}
+
+
+def test_a_diff_this_checkout_cannot_read_declines_whatever_the_item_declares() -> None:
+    # Silence is not evidence that the work was a queue edit. A commit with no
+    # paths at all is a merge or a read that went wrong, and an absent `pr` is
+    # a transcription still owed where a wrong one is a false provenance.
+    run = _recovery_runner(
+        history=(("ddd444", "PL-K7QX: rename the drifted item files (#712)"),),
+        done_at={"ddd444"},
+        name="PL-K7QX-a.md",
+        carried=(),
+        declares="docs/items/",
+    )
+
+    assert closures_on_base(ROOT, {"PL-K7QX": "PL-K7QX-a.md"}, runner=run).numbers == {}
 
 
 def test_a_later_edit_to_a_closed_item_does_not_steal_the_attribution() -> None:

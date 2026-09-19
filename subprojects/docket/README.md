@@ -1952,12 +1952,27 @@ the fallback walked `git log` without rename detection and the parent does not
 hold the new path at all. The walk now follows renames *and* reads each commit
 at the name the file carried there — the second half being the one that does
 the work, since `--follow` on its own still leaves every commit older than the
-rename reading as "not done" (`PL-S5LB`). The second shape is open: an item
-whose work landed in one pull request but whose `status: done` was written in
-a later one recovers the later number, which carries the closure and none of
-the work (`PL-YDL6`) — the shape `PL-D2GW` closed by requiring the closure to
+rename reading as "not done" (`PL-S5LB`). The second is declined rather than
+answered: an item whose work landed in one pull request but whose `status:
+done` was written in a later one would recover the later number, which carries
+the closure and none of the work, so nothing is recorded and the transcription
+stays owed (`PL-YDL6`) — the shape `PL-D2GW` closed by requiring the closure to
 travel in the same commit as the work, so it exists only in the three items
 predating that rule.
+
+**That decline reads the item's `touches`, not the diff alone** (`PL-YFXG`). A
+commit changing nothing outside the queue directory is a closure separated from
+its work only where the work was somewhere else to begin with; for a
+release-tag item, a triage pass, a stranded recovery or a rename pass it is
+what landing correctly looks like. So a queue-only closure is declined only
+where the item declares work outside the queue — the same field
+`branches_in_flight` reads to draw the same distinction (`PL-7790`). Without
+it, `PL-YTDN` closed correctly in `#712` with all twelve changed files under
+`docs/items/`, the number was declined, and `check` raised the error rather
+than the advisory: `main` failed on every branch cut from it, and nothing
+cleared it, because the bare `record` writes only what the base can supply.
+Measured across the 927 closed items on this project's `main`, the reading
+changes 29 answers and every one matches the `pr` already recorded there.
 
 - **The number is recoverable** → an advisory naming it, and the command that
   writes it. Nothing is lost; the way back exists in git, and the field is a
