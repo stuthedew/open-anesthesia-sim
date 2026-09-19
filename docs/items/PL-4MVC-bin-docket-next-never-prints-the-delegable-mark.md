@@ -9,6 +9,7 @@ feature: model-capability-routing
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_plan.py
 added: 2026-09-19
 closed: 2026-09-19
+pr: 733
 verify: uv run pytest subprojects/docket/tests/test_plan.py -q && bin/docket next workflow | grep 'cheaper model' > /dev/null
 ---
 

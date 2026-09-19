@@ -9,6 +9,7 @@ feature: model-capability-routing
 touches: docs/maintainer.md
 added: 2026-09-19
 closed: 2026-09-19
+pr: 733
 verify: grep -qE 'strongest available model is' docs/maintainer.md
 ---
 

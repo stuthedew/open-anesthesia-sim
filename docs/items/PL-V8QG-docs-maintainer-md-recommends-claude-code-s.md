@@ -9,6 +9,7 @@ feature: model-capability-routing
 touches: docs/maintainer.md
 added: 2026-09-19
 closed: 2026-09-19
+pr: 733
 verify: grep -q 'code.claude.com/docs/en/model-config' docs/maintainer.md && ! grep -qF 'opusplan` mode is a reasonable default' docs/maintainer.md
 ---
 
