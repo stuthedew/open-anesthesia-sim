@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: pr-title-enforcement
-touches: .github, tools/required_checks_check.py, tests/unit/test_required_checks_check.py, docket.toml
+touches: .github, tools/required_checks_check.py, tests/unit/test_required_checks_check.py, docket.toml, docs/ARCHITECTURE.md
 added: 2026-09-17
 closed: 2026-09-19
 payoff: stops a renamed CI job leaving pull requests waiting forever on a check that can never arrive

@@ -78,6 +78,15 @@ from a genuine disagreement - rather than passing on the assumption that
 nothing has changed. `CLAUDE.md`: prefer an obvious failure to a plausible
 answer when correctness cannot be established.
 
+**What agreement here does and does not prove.** It proves that every job
+reporting onto a pull request is in the required list, and that every name in
+that list is reported by a job. It does not prove that the list blocks a merge:
+this repository's protection is set to `non_admins`, so an administrator can
+merge past a red required check - which is how `PL-KPP1`'s orphaned `floor`
+requirement was recovered from at all. That is a deliberate escape hatch on a
+solo project rather than a defect, and it is recorded here so the check is not
+read as a guarantee it does not make.
+
 **The escape hatch is declared in the tree, where a reviewer reads it.** A job
 that reports a check and is deliberately *not* required carries a
 `# not-required: <reason>` line in the comment block above its key. Without one,
