@@ -425,7 +425,10 @@ correction rather than handing the question back.
   commits**, so a branch carrying only captured items is not a pull request; and
   where the **web harness says not to open one unless the owner explicitly
   asks**, this bullet is that ask, standing rather than per pull request, so a
-  session reading both proceeds rather than stalls. Then
+  session reading both proceeds rather than stalls. A session-level
+  auto-pull-request switch set *off* is that same case and not a third: it
+  stops the harness opening one unasked and does not withdraw this ask
+  (project owner, 2026-09-19). Then
   **read the published body back and compare it against what was sent**: the
   server rewrites bodies silently and still returns success, so an
   angle-bracket placeholder — `<branch>`, `<id>` — is taken for an HTML tag and
