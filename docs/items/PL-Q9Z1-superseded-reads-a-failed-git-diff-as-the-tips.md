@@ -1,8 +1,15 @@
 ---
 id: PL-Q9Z1
 title: _superseded reads a failed git diff as the tips agreeing about every path, so any silence from git drops every in-flight mark a ref carries - the one direction its own docstring says it must never fail in
-status: untriaged
+status: done
 added: 2026-09-17
+closed: 2026-09-19
+priority: P2
+effort: M
+classes: defect
+feature: git-silence-channel
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_vcs_silence.py, subprojects/docket/tests/test_cli.py
+verify: uv run pytest subprojects/docket/tests/test_vcs_silence.py
 ---
 
 **Problem.** _superseded reads a failed git diff as the tips agreeing about every path, so any silence from git drops every in-flight mark a ref carries - the one direction its own docstring says it must never fail in
@@ -97,3 +104,98 @@ Three amendments:
 asserts `branches == ()` — it pins the breach. It sits one file away from
 `test_no_git_declines_rather_than_reporting_a_clean_store`, which asserts the
 opposite for `stranded`.
+
+
+---
+
+## Built 2026-09-19
+
+**The channel is a `str` subclass, `GitSilence`, and the choice was between the
+three the brief named.** A second return value or an exception both change
+`Runner`, which is `(args, root) -> str` and is the seam every one of the
+module's fifty-odd call sites and every test fake is written to - so either
+would have meant editing all of them to fix eight of them, and the edit is the
+kind that looks mechanical and is not. A `str` subclass is invisible to a caller
+with no use for it: a silence still reads, strips, splits and compares as the
+`""` a failure has always collapsed to. What it costs is that the marker
+survives no string operation, so it can only be read off the runner's own return
+value, and a reader added later would not know to. `_Silences` is the answer to
+that, below.
+
+**The classification is git's exit codes, measured against git 2.43.0 rather
+than recalled**, one probe per shape this module issues. Exit 1 is git answering
+"no" - `rev-parse --verify --quiet` on a ref that is not there, `merge-base` on
+unrelated histories - and 128 and 129 are git not answering. Treating every
+non-zero exit as a failure was the first design and is wrong: it fires on every
+checkout without an `origin/main`, which is an advisory nobody reads.
+
+**One exception, and it is forced rather than chosen: `show <rev>:<path>`.** Git
+exits 128 for a path a revision does not hold, and every caller of that shape
+reads the empty string as "the base does not carry that file". The deciding fact
+is that `GitRunner`'s other serving path agrees: `cat-file --batch` prints
+`missing` and exits 0 for an absent path *and* for an absent revision alike, so
+classifying the fatal exit as a failure would make the two paths disagree about
+one question. The cost is named in `_asks_for_a_blob` rather than hidden: a
+revision that vanished mid-read is indistinguishable there from a file that was
+never in it, and this layer cannot separate them without a second process per
+blob.
+
+**`_Silences` is what made the breadth affordable.** A public read puts tens of
+questions to git through a dozen helpers, and the floor binds the answer rather
+than any one of them - so the wrapper counts what went unanswered beneath a read
+and hands it a `declined` reason, instead of a flag threaded through every
+signature in the module. Sixteen reads now carry it.
+
+**The number that would have killed it, counted before building on it.** A
+`declined` that fires in the ordinary case is worse than none. Measured on this
+repository 2026-09-19: eight public reads put **174** questions to git and
+**none** went unanswered, so the field is silent in the steady state.
+
+**What the sweep found beyond the four `PL-BHVM` named.** That round measured a
+*total* git failure, under which `stranded`, `lost`, `orphaned` and
+`merged_pull_requests` decline correctly. Under a *single* silenced call they do
+not: `stranded` dropped an item that exists on one branch and nowhere else,
+`lost` dropped a deleted item, and `closed_by`, `closures_on_base`,
+`records_on_base`, `filed_with_work` and `cut_window` each lost a finding with
+`declined` empty. Five more breaches than the design round could see, all found
+by the sweep rather than by reading.
+
+**The sweep refuses a vacuous pass**, which is the part worth keeping. A read the
+fixture gives nothing to find can lose nothing, so it would pass whatever it
+does with a silence - the shape of check `CLAUDE.md` retires rather than keeps.
+It fails instead, which is what drove the fixture from three branches to six and
+is how `orphaned`, `filed_with_work` and `cut_window` came to be covered at all.
+Findings are compared as sets rather than counts, so a silence that swaps one
+finding for another is caught too.
+
+**Three reads cannot decline at all** - `tags` and `changed_items` answer with a
+bare collection, and `default_base` with a bare string - and are held by a test
+that *asserts the breach* rather than left looking covered. The first two are
+`PL-ZPDM`; `default_base` is `PL-73P0`, filed the same day by the design round's
+own session and the more specific of the two, so `PL-ZPDM` was narrowed to the
+other pair rather than both items being kept.
+Asserted rather than marked expected-to-fail, which was the first shape and was
+wrong twice over: a test marked that way does not run, so it reads as a hole
+whatever reason is attached to it, and `bin/docket verify` cannot read that
+reason - it sees a suppression marker and refuses, correctly. A positive assertion is
+the same signal in the form of a record, and fails the same day the gap closes.
+
+**Two consumers refuse rather than proceed on a silence.** `bin/docket release`
+runs both duplicate-release guards by looking for *evidence* that another
+session is cutting, so their clean answer and their unread answer are the same
+shape; before this they were the same value, and cutting on one is the v0.3.7
+collision (`PL-66FP`) arriving through the guard built to stop it.
+`cmd_trend` says when its history has a hole in it, because a missing stretch is
+exactly what changes the shape of a trend.
+
+**Not taken here:** `GitRunner` memoizes a silence as a silence, so the mark
+survives the cache and a second caller sees what the first did. Whether a
+failure should be memoized at all is `PL-MM7F`, which this unblocks.
+
+**Two notes from the merge that brought `origin/main` in, 2026-09-19.** The
+`verify:` command above lost its `pytest ... &&` prerequisite clause: `#684`
+retired the paired shape on the day this closed, and the field now records the
+discriminator alone. And `PL-29HL`, filed here for `cli`'s `verify` passing no
+runner to `default_base`, is dropped into `PL-73P0` rather than kept - that item
+is the same finding with the wider scope, and two items for one fallback is what
+this cluster exists to stop.

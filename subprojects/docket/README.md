@@ -376,6 +376,57 @@ session can read, so the line travels as `additionalContext` in the documented
 JSON form; and the JSON must not carry `permissionDecision`, which would
 auto-approve the very edit it is attached to.
 
+### A git that did not answer is not a git that answered nothing
+
+Every read in `vcs.py` goes through one runner, `(args, root) -> str`, and until
+`PL-Q9Z1` that runner collapsed a non-zero exit, a missing git and a timeout
+alike to the empty string — which is byte-identical to git answering that there
+is nothing to say. So each reader adjudicated the silence for itself, and they
+disagreed: `_superseded` read a failed `git diff --numstat` as the two tips
+agreeing about every path it was handed, and one such call took
+`branches_in_flight` from fourteen `editing` marks to none with
+`FlightReport.unreadable` empty in both cases.
+
+A failure now comes back as `GitSilence`, a `str` subclass. It still reads as
+the `""` every call site has always seen, so the runner's shape is unchanged and
+a caller with no use for the distinction needs no edit; a caller that must not
+conflate the two asks `answered`. What separates them is git's own exit codes,
+measured rather than recalled:
+
+| Call | Exit | Read as |
+| --- | --- | --- |
+| anything git could answer | 0 | the answer |
+| `rev-parse --verify --quiet <no such ref>` | 1 | "no such ref" — an answer |
+| `merge-base` on unrelated histories | 1 | "no merge base" — an answer |
+| `show <rev>:<path the rev lacks>` | 128 | "not there" — an answer |
+| `diff`/`log`/`ls-tree`/`rev-list` on a bad revision | 128 | a silence |
+| a mistyped option | 129 | a silence |
+| git missing, or the ten-second timeout | — | a silence |
+
+The last row but three is the exception and it is forced rather than chosen:
+`cat-file --batch`, which the runner serves the same question from when it can,
+prints `missing` and exits 0 for an absent path *and* an absent revision alike,
+so reading the fatal exit as a failure would make the two paths disagree about
+one question.
+
+A public read wraps its runner in `_Silences` rather than threading a flag out
+of every helper, and reports what went unanswered as `declined`. It over-reports
+rather than withholding: an item wrongly marked in flight costs a session one
+look, and one wrongly unmarked costs two sessions a merge conflict. On a healthy
+checkout eight reads put 174 questions to git and none went unanswered, so the
+field is silent in the ordinary case.
+
+`subprojects/docket/tests/test_vcs_silence.py` is what holds this, because prose did not —
+`_superseded`'s docstring stated the correct direction in three cases while the
+code inverted two of them. It runs every public read against a real repository,
+then again with its *n*-th git call silenced, once per call, and holds the
+answer to declining or reporting everything the truthful read reported. A read
+the fixture gives nothing to find fails rather than passing, and a read added
+later that takes a runner fails a registry guard until it says which it is. The
+three reads that cannot decline at all are held by a test asserting that they
+still lose a finding, rather than by a marker excusing them: both fail the day
+the gap closes, and only one of them still runs.
+
 ### In flight is read from the commits, not from the branch name
 
 Two sessions may be running at once, so neither must start an item the other
@@ -970,9 +1021,10 @@ base...ref`, and it inherits every limit of the in-flight read it is built on.
 A ref whose commits that read could not compare is not diffed either — the
 merge-base a three-dot diff needs is the one that already failed to resolve.
 An empty diff on a ref that holds commits the base does not is named as unread
-rather than reported as a branch that changed nothing, because `_run_git`
-answers a failure with the same empty string a clean branch gives. And the
-answer is bounded by what has been *pushed*, like everything else here.
+rather than reported as a branch that changed nothing — a corroboration that
+predates the failure channel below and is kept, because it also catches the diff
+git answered wrongly rather than not at all. And the answer is bounded by what
+has been *pushed*, like everything else here.
 
 ### A debt gate is computed, not transcribed
 

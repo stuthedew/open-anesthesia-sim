@@ -120,15 +120,24 @@ def format_unread(flight: FlightReport) -> str:
     horizon is the normal state of an agent session's container, and a tool
     that refused to answer there would refuse to answer at all.
     """
-    if not flight.unreadable:
-        return ""
-    base = flight.base or "the default branch"
-    them = "it" if len(flight.unreadable) == 1 else "them"
-    return (
-        f"{_plural(len(flight.unreadable), 'ref', 'refs')} could not be compared with {base} "
-        f"on the history this checkout holds, so any item {'its' if them == 'it' else 'their'} "
-        f"commits carry is missing here; `bin/docket flight` names {them}."
-    )
+    said = []
+    # The whole-read decline first: a ref beyond a truncated clone's horizon is
+    # ordinary, and git failing to answer is not, so the rarer fact leads
+    # (`PL-Q9Z1`).
+    if flight.declined:
+        said.append(
+            f"This reading is partial - {flight.declined} - so an item it does not "
+            "mark may still be in flight."
+        )
+    if flight.unreadable:
+        base = flight.base or "the default branch"
+        them = "it" if len(flight.unreadable) == 1 else "them"
+        said.append(
+            f"{_plural(len(flight.unreadable), 'ref', 'refs')} could not be compared with {base} "
+            f"on the history this checkout holds, so any item {'its' if them == 'it' else 'their'} "
+            f"commits carry is missing here; `bin/docket flight` names {them}."
+        )
+    return " ".join(said)
 
 
 def _marks(
@@ -474,8 +483,14 @@ def format_stranded(report: StrandedReport) -> str:
     2026-09-05 (`PL-KBFN`). A reader who has already read `git checkout` has
     made the decision the caveat exists to inform.
     """
-    if not report.known:
+    if not report.known and not report.items:
         return f"Stranded items not checked: {report.declined}."
+
+    # A partial read that still found something reports both. Printing only the
+    # refusal would throw away a real finding, and printing only the finding
+    # would present a partial reading as a complete one - and here the missing
+    # half is items that exist on a branch and nowhere else (`PL-Q9Z1`).
+    partial = [f"This reading is partial: {report.declined}.", ""] if report.declined else []
 
     refs = _plural(report.refs_read, "branch ref", "branch refs")
     if not report.items:
@@ -488,6 +503,7 @@ def format_stranded(report: StrandedReport) -> str:
         )
 
     lines = [
+        *partial,
         f"{_plural(len(report.items), 'item exists', 'items exist')} only on a branch, "
         f"across the {refs} this checkout holds:",
         "",
@@ -537,8 +553,9 @@ def format_orphaned(report: OrphanedReport) -> str:
     introduced and not the rest, and a reader who cannot see that count cannot
     tell this from an ordinary branch in flight.
     """
-    if not report.known:
+    if not report.known and not report.branches:
         return f"Work left on a merged branch not checked: {report.declined}."
+    partial = [f"This reading is partial: {report.declined}.", ""] if report.declined else []
 
     # The count is of refs the default branch has *not* already taken whole,
     # which is a smaller number than `format_stranded` reports and a different
@@ -550,6 +567,7 @@ def format_orphaned(report: OrphanedReport) -> str:
         return "\n".join([clear, *_rewritten_lines(report)]) if report.rewritten else clear
 
     lines = [
+        *partial,
         f"{_plural(len(report.branches), 'branch carries', 'branches carry')} work the "
         f"default branch does not hold, having already taken the rest of it:",
         "",
@@ -673,6 +691,9 @@ def format_flight(report: FlightReport, today: date) -> str:
         )
         lines.extend(f"  {name}" for name in report.unattributed)
 
+    if report.declined:
+        lines.append("")
+        lines.append(f"This reading is partial: {report.declined}.")
     if report.unreadable:
         lines.append("")
         base = report.base or "the default branch"
@@ -793,6 +814,15 @@ def format_precedence(order: Precedence, today: date) -> str:
         lines.append(f"  This branch holds {item}; the others are the ones that yield.")
     else:
         lines.append(f"  This branch carries none of them - do not start {item} again.")
+    if order.declined:
+        # Louder than the unreadable line below, because this one breaks the
+        # guarantee the order rests on: two sessions can only compute the same
+        # answer from the same evidence, and a silence gives them different
+        # evidence (`PL-Q9Z1`).
+        lines.append(
+            f"  (This ordering is partial - {order.declined} - so the other session "
+            "may be computing a different one. Do not stand down on it.)"
+        )
     if order.unreadable:
         # The order is over the refs that could be read, and a ref beyond a
         # truncated clone's horizon is the normal state of an agent's
