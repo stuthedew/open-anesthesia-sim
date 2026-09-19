@@ -470,8 +470,10 @@ class ReleaseOffer:
 
     This used to read two objects `wave` binds, the step and the beat's
     milestone, and the limit was a *distance* rather than a state: both reach
-    one row, and nothing reached two. The one version ahead that is not
-    reserved is one no beat counts as unfinished (`PL-J45M`).
+    one row, and nothing reached two. Every version ahead is reserved, the
+    beat's own included: an `implement` beat counts an open scope or is not
+    returned at all, so there is no version the guard stands down on
+    (`PL-J45M`).
     """
 
     kind: str
@@ -491,7 +493,7 @@ def release_offer(ready: Readiness, plan: Wave | None) -> ReleaseOffer:
     than guesses, and a project with no roadmap is a legitimate state - and
     the offer then stands, because there is no plan for it to contradict.
     """
-    from .roadmap import IMPLEMENT, RELEASE
+    from .roadmap import RELEASE
 
     suggested = ready.suggested_version.lstrip("v")
     if plan is None:
@@ -544,24 +546,16 @@ def release_offer(ready: Readiness, plan: Wave | None) -> ReleaseOffer:
     # `release_version` whenever it sets that beat - so the version a release
     # is actually due at is still offered.
     #
-    # One exemption, which is a subtraction rather than a carrier: the
-    # milestone the beat is about, on an `implement` beat that counts nothing.
-    # `RESERVED` is printed as the claim "which is unfinished", and `implement`
-    # is also `wave`'s fall-through when `_release_due` matches no arrangement
-    # - one shape it falls through on is a *finished* gate-only milestone whose
-    # frozen list has cleared, reached from a step that is not its own row.
-    # `own_scope` is what counts a milestone's own content, so its absence
-    # there is precisely the case with nothing behind the word. `PL-J45M`
-    # removes this by fixing the classifier that makes it necessary; until
-    # then it stays narrow, naming one version rather than standing the guard
-    # down.
-    supported = plan.beat != IMPLEMENT or plan.own_scope is not None
-    unsupported = (
-        frozenset() if supported or plan.milestone is None else frozenset({plan.milestone.version})
-    )
+    # No exemption for the milestone the beat is about. There was one, for an
+    # `implement` beat counting nothing: `implement` was also `wave`'s
+    # fall-through when `_release_due` matched no arrangement, and one shape it
+    # fell through on was a *finished* gate-only milestone reached from a row
+    # that was not its own - so `RESERVED`'s "which is unfinished" would have
+    # been printed against a milestone that was done. `_release_due` now
+    # releases that shape from whichever row the project stands on, and
+    # `implement` is returned only where an `own_scope` counts open work, so
+    # the word has something behind it wherever it is printed (`PL-J45M`).
     for reserved in plan.reserved:
-        if reserved.version in unsupported:
-            continue
         if "{}.{}.{}".format(*reserved.version) == suggested:
             return ReleaseOffer(RESERVED, suggested, reserved.name)
     return ReleaseOffer(STANDS, suggested, "")
@@ -584,11 +578,22 @@ def outstanding_roadmap_edits(roadmap: str, version: str) -> list[str]:
 
     Each string is one wrong statement, phrased as the state of the file
     rather than as an instruction, so a reader can check it against what they
-    are looking at.
+    are looking at. The milestone statements end by naming the edit owed,
+    because there two readings of one fact owe different edits and the reader
+    is the one who knows which reading holds.
     """
     # Imported here rather than at module scope: `roadmap` reads this module's
     # version grammar, so a top-level import would close the cycle.
-    from .roadmap import BASELINE_MARK, VERSION_TABLE_HEADING, baseline_heading, parse_version_table
+    from .roadmap import (
+        BASELINE_MARK,
+        VERSION_TABLE_HEADING,
+        baseline_heading,
+        parse_milestones,
+        parse_timeline,
+        parse_version_table,
+        stale_milestones,
+        version_tuple,
+    )
 
     name = version.lstrip("v")
     rows = parse_version_table(roadmap)
@@ -612,4 +617,14 @@ def outstanding_roadmap_edits(roadmap: str, version: str) -> list[str]:
         owed.append('there is no "Current baseline: vX.Y.Z" heading')
     elif heading[1] != name:
         owed.append(f"the baseline heading (line {heading[0]}) still names v{heading[1]}")
+
+    # A milestone number the cut has reached or passed is the fourth statement
+    # a release can make wrong, and the one nothing named: a patch cut at or
+    # past the Qt port's number would have stepped the plan past the port while
+    # the hand-off said only that the table lacked a row (`PL-Y1L0`). The table
+    # lacks *this* release's row too at this point, which is why the statement
+    # for a number the cut has exactly reached names the edit each reading owes
+    # rather than deciding between them.
+    steps, _ = parse_timeline(roadmap)
+    owed.extend(stale_milestones(steps, parse_milestones(roadmap), rows, version_tuple(name)))
     return owed

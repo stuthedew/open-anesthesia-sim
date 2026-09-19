@@ -1,8 +1,14 @@
 ---
 id: PL-7DMJ
 title: docs/MODEL.md names water vapour nowhere: alveolar gas is saturated at 47 mmHg, so a dry inspired fraction is diluted 6.2 percent on reaching the alveoli, and neither Assumptions nor Known limitations records the omission
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: science, docs
+feature: model-spec-accuracy
+touches: docs/MODEL.md
 added: 2026-09-17
+verify: grep -qi 'water vapour' docs/MODEL.md
 ---
 
 **Problem.** docs/MODEL.md names water vapour nowhere: alveolar gas is saturated at 47 mmHg, so a dry inspired fraction is diluted 6.2 percent on reaching the alveoli, and neither Assumptions nor Known limitations records the omission
@@ -22,7 +28,8 @@ $`F_I \times (760 - 47)`$ mmHg rather than $`F_I \times 760`$ — a dilution of
 equation carries $`\dot V_A(F_I - F_A)`$ with no such factor, so it treats
 $`F_I`$ as reaching the alveoli undiluted.
 
-**Why it is a documentation finding and not obviously a defect.** Gas Man,
+**Why it matters, and why it is a documentation finding rather than obviously
+a defect.** Gas Man,
 this project's reference implementation, makes the same simplification, and
 the partition coefficients are ratios against a gas phase whose own water
 content the measurements do not carry into this model either — so changing the

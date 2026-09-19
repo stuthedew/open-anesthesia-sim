@@ -376,6 +376,57 @@ session can read, so the line travels as `additionalContext` in the documented
 JSON form; and the JSON must not carry `permissionDecision`, which would
 auto-approve the very edit it is attached to.
 
+### A git that did not answer is not a git that answered nothing
+
+Every read in `vcs.py` goes through one runner, `(args, root) -> str`, and until
+`PL-Q9Z1` that runner collapsed a non-zero exit, a missing git and a timeout
+alike to the empty string — which is byte-identical to git answering that there
+is nothing to say. So each reader adjudicated the silence for itself, and they
+disagreed: `_superseded` read a failed `git diff --numstat` as the two tips
+agreeing about every path it was handed, and one such call took
+`branches_in_flight` from fourteen `editing` marks to none with
+`FlightReport.unreadable` empty in both cases.
+
+A failure now comes back as `GitSilence`, a `str` subclass. It still reads as
+the `""` every call site has always seen, so the runner's shape is unchanged and
+a caller with no use for the distinction needs no edit; a caller that must not
+conflate the two asks `answered`. What separates them is git's own exit codes,
+measured rather than recalled:
+
+| Call | Exit | Read as |
+| --- | --- | --- |
+| anything git could answer | 0 | the answer |
+| `rev-parse --verify --quiet <no such ref>` | 1 | "no such ref" — an answer |
+| `merge-base` on unrelated histories | 1 | "no merge base" — an answer |
+| `show <rev>:<path the rev lacks>` | 128 | "not there" — an answer |
+| `diff`/`log`/`ls-tree`/`rev-list` on a bad revision | 128 | a silence |
+| a mistyped option | 129 | a silence |
+| git missing, or the ten-second timeout | — | a silence |
+
+The last row but three is the exception and it is forced rather than chosen:
+`cat-file --batch`, which the runner serves the same question from when it can,
+prints `missing` and exits 0 for an absent path *and* an absent revision alike,
+so reading the fatal exit as a failure would make the two paths disagree about
+one question.
+
+A public read wraps its runner in `_Silences` rather than threading a flag out
+of every helper, and reports what went unanswered as `declined`. It over-reports
+rather than withholding: an item wrongly marked in flight costs a session one
+look, and one wrongly unmarked costs two sessions a merge conflict. On a healthy
+checkout eight reads put 174 questions to git and none went unanswered, so the
+field is silent in the ordinary case.
+
+`subprojects/docket/tests/test_vcs_silence.py` is what holds this, because prose did not —
+`_superseded`'s docstring stated the correct direction in three cases while the
+code inverted two of them. It runs every public read against a real repository,
+then again with its *n*-th git call silenced, once per call, and holds the
+answer to declining or reporting everything the truthful read reported. A read
+the fixture gives nothing to find fails rather than passing, and a read added
+later that takes a runner fails a registry guard until it says which it is. The
+three reads that cannot decline at all are held by a test asserting that they
+still lose a finding, rather than by a marker excusing them: both fail the day
+the gap closes, and only one of them still runs.
+
 ### In flight is read from the commits, not from the branch name
 
 Two sessions may be running at once, so neither must start an item the other
@@ -970,9 +1021,10 @@ base...ref`, and it inherits every limit of the in-flight read it is built on.
 A ref whose commits that read could not compare is not diffed either — the
 merge-base a three-dot diff needs is the one that already failed to resolve.
 An empty diff on a ref that holds commits the base does not is named as unread
-rather than reported as a branch that changed nothing, because `_run_git`
-answers a failure with the same empty string a clean branch gives. And the
-answer is bounded by what has been *pushed*, like everything else here.
+rather than reported as a branch that changed nothing — a corroboration that
+predates the failure channel below and is kept, because it also catches the diff
+git answered wrongly rather than not at all. And the answer is bounded by what
+has been *pushed*, like everything else here.
 
 ### A debt gate is computed, not transcribed
 
@@ -1030,6 +1082,21 @@ count is strict where the gate's is not: a scope id waiting on work outside the
 milestone still holds the milestone, because it ships when its scope is done and
 not when the remainder is somebody else's fault, and an id the store does not
 hold withholds completeness rather than being guessed either way.
+
+Every arrangement question in that composition — which row the project stands
+on, what comes before what, which section places a blocker — is put to one
+object, `roadmap.ReleaseTrain`, resolved once at the top of `wave` from the
+timeline's row order. Four consumers used to re-derive the order by comparing
+version tuples, and each disagreed with the table somewhere (`PL-2T03`).
+Released stays decided by the version the project is on; the train also
+carries what the plan and the project disagree on — a milestone row the
+version has passed with no release of that number in the version table, and a
+section no row bears — and `wave` prints those under their own heading and
+exits non-zero, the digest's plan line flags them, and the release hand-off
+states a reached-or-passed number beside the table row it already asks for
+(`PL-Y1L0`). The gate block splits the entries it cannot clear into those the
+plan sequences ahead of the gate, named with the row they wait for, and those
+waiting on work placed later or nowhere (`PL-7CSP`).
 
 The milestone the beat is about is read off the timeline row rather than the
 `#` column. A `—` row bearing a section with a `Required scope` of its own,
@@ -1187,11 +1254,15 @@ Two sources for that set, because a milestone spends months holding only one of
 them: a timeline row is written when it is *placed*, a section when it is
 *scoped*. Nothing cuttable is suppressed — every version in the set is ahead of
 the current one and so unreleased by construction, and a `release` beat is
-answered before the comparison is reached. The single exemption is the
-milestone the beat is about where that beat is `implement` and nothing counts
-its content, because withholding an offer prints the words "which is
-unfinished" — a claim that beat alone does not support, since `wave` falls
-through to it for a gate-only milestone that has in fact finished (`PL-J45M`).
+answered before the comparison is reached. There is no exemption for the
+milestone the beat is about, and there was one: `implement` used to be `wave`'s
+fall-through when no release arrangement matched, and a gate-only milestone
+that had in fact finished, reached from the patch track beneath it, fell
+through to it — so withholding an offer would have printed "which is
+unfinished" against a milestone that was done. `_release_due` now reads the
+release train's row order and releases that shape from whichever row the
+project stands on, and `implement` is returned only where the milestone's own
+scope counts open work (`PL-J45M`, under `PL-2T03`).
 
 **What a release deliberately does not write is the roadmap.** A project that
 keeps a version table in a hand-maintained plan will find it left behind by

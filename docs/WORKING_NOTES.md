@@ -1876,3 +1876,43 @@ amplifier rather than a second defect; `PL-73P0` (`default_base` guessing
 `"main"`) is untriaged and sits upstream of every comparison in the module.
 `PL-SY1J` may resolve against `PL-Q9Z1` without its own diagnosis, since
 `precedence` returns `carriers=()` *and* `unreadable=()` on failed evidence.
+
+**Built 2026-09-19, and the sweep out-measured the round.** `PL-Q9Z1` landed the
+channel: `_run_git` returns `GitSilence` for a call git did not answer,
+`_Silences` carries a read's silences into its `declined`, and
+`subprojects/docket/tests/test_vcs_silence.py` holds every public read to
+declining or keeping its marks, one silenced call at a time.
+
+The four-four split above is a measurement of a *total* git failure, and that is
+the least informative test available. Every read here has an early gate - an
+unresolvable base, no refs - that a total failure trips, so it declines for a
+reason that has nothing to do with the silence and the reading looks compliant.
+Failing **one** call at a time reaches the middle of a read, which is where the
+conflation lives, and there **nine** reads were in breach rather than four:
+`stranded` dropped an item existing on one branch and nowhere else, `lost`
+dropped a deleted item, and `closed_by`, `closures_on_base`, `records_on_base`,
+`filed_with_work` and `cut_window` each lost a finding with `declined` empty.
+Any future measurement of this kind should start one call at a time.
+
+Two properties of the sweep are what make it worth its size, and both were
+learned from it failing. It **refuses a vacuous pass** - a read the fixture
+gives nothing to find can lose nothing, so it would pass whatever it does with a
+silence, which is the check `CLAUDE.md` retires rather than keeps; that is what
+drove the fixture to six branches and is how `orphaned`, `filed_with_work` and
+`cut_window` came to be covered at all. And a **registry guard** fails when a
+read taking a runner is added without saying which half it is in, because
+nothing made the last new read answer the question.
+
+`PL-SY1J`'s guess above is confirmed in part: `precedence` now declines on
+failed evidence and prints that its ordering is partial. Whether the
+2026-09-16 observation had a second cause is still its own item.
+
+**`PL-ZPDM` is what the sweep cannot yet cover**: `tags` and `changed_items`
+answer with a bare collection, so a silence is indistinguishable from a
+repository with no tags and a branch that changed nothing. `default_base` is the
+third of that shape and is `PL-73P0`, above, which is the more specific item and
+keeps it. All three are held by a test asserting the breach rather than by a
+marker excusing them - `bin/docket verify` reads a suppression marker and cannot
+read the reason attached to it, so a recorded breach has to be written as an
+assertion to survive its own audit (`PL-4FD2`, which that audit refused three
+times on its own brief).

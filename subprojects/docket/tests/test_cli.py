@@ -1001,6 +1001,36 @@ def test_a_cut_this_checkout_is_carrying_does_not_refuse_it_to_itself(
     assert "already being cut" not in capsys.readouterr().out
 
 
+def test_a_cut_is_refused_where_the_duplicate_guards_could_not_be_read(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A git that does not answer must not read as "nobody else is cutting".
+
+    Both guards above look for *evidence* of a parallel cut, so their clean
+    answer and their unread answer are the same shape - nothing found. Before
+    `PL-Q9Z1` gave the runner a failure channel the two were the same value as
+    well, so a silence passed the guard that exists to stop the v0.3.7
+    collision (`PL-66FP`). The silence here is real rather than an empty
+    string: `answered` is what separates them.
+    """
+    from docket import vcs
+
+    # No parallel cut exists here: the point is that the guard cannot *tell*,
+    # and a real one would be found by the branch above this refusal.
+    root = _release_repo(tmp_path, "v0.2.5")
+    truthful = vcs._run_git
+
+    def mute_the_notes_listing(args: list[str], where: Path) -> str:
+        return vcs.SILENT if "ls-tree" in args else truthful(args, where)
+
+    monkeypatch.setattr(vcs, "_run_git", mute_the_notes_listing)
+
+    assert main(["release", "0.2.6", "--no-fetch", "--items", str(root / "items")]) == 1
+    output = capsys.readouterr().out
+    assert "Cannot check whether another session is already cutting" in output
+    assert 'version = "0.2.5"' in (root / "pyproject.toml").read_text()
+
+
 def test_a_release_refreshes_the_refs_before_deciding(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -407,6 +407,55 @@ def test_a_roadmap_with_no_version_table_says_so_rather_than_listing_nothing() -
     assert owed == ['there is no version table under "Versioning decision"']
 
 
+#: The table above with a release train beside it: a shipped milestone, a
+#: section-bearing `—` row numbered as the next patch, and a milestone ahead.
+PORT_CUT_ROADMAP = ROADMAP.replace(
+    "## Current baseline: v0.2.5",
+    """## The plan
+
+### The timeline
+
+| # | Step | What it is | Size |
+| --- | --- | --- | --- |
+| 1 | **v0.2.4 — the one before** | Shipped. | — |
+| — | **v0.2.6 — the interface port** | Scoped below. | 1 L |
+| 2 | **v0.3.0 — the foundation** | Not yet scoped. | — |
+
+## v0.2.6 - the interface port
+
+### Goal
+
+Move the dashboard.
+
+## Current baseline: v0.2.5""",
+)
+
+
+def test_a_cut_reaching_a_milestone_section_is_named() -> None:
+    """`PL-Y1L0`: a patch cut at the port's own number, and one cut past it.
+    The hand-off named the table row, the baseline mark and the baseline
+    heading, and said nothing about the milestone whose number the cut had
+    taken - so the plan was stepped past the port with no statement to act
+    on. A number the cut has exactly reached is ambiguous from the file alone,
+    and the statement says which edit each reading owes."""
+    reached = outstanding_roadmap_edits(PORT_CUT_ROADMAP, "0.2.6")
+    passed = outstanding_roadmap_edits(PORT_CUT_ROADMAP, "0.2.7")
+
+    (at_number,) = [s for s in reached if s.startswith("v0.2.6 — the interface port (")]
+    assert "timeline line " in at_number and ", section line " in at_number
+    assert "which the project has reached with no v0.2.6 release" in at_number
+    assert "its table row is owed if this release is that milestone" in at_number
+
+    (behind,) = [s for s in passed if s.startswith("v0.2.6 — the interface port (")]
+    assert "which the project has passed with no v0.2.6 release" in behind
+    assert "owe a number the project has not passed" in behind
+
+    # The shipped milestone is in the table and the one ahead is ahead: neither
+    # is named, and a cut the table already records owes nothing at all.
+    assert not any("v0.2.4" in s or "v0.3.0" in s for s in reached + passed)
+    assert outstanding_roadmap_edits(PORT_CUT_ROADMAP, "0.2.5") == []
+
+
 # --- the offer, once the roadmap has had its say -----------------------------
 
 # Two milestones that record a frozen list, and a third step between them whose
@@ -896,9 +945,9 @@ GATED_SCOPE_IDS = frozenset({"PL-GT01", "PL-SC02"})
 
 #: The same roadmap with the milestone's `Required scope` subsection removed,
 #: which is v0.2.8's shape: the frozen list is the whole of the section's
-#: content, so clearing it finishes the milestone. `_release_due` says so only
-#: where the project stands on that milestone's own row, and here it stands on
-#: the patch track beneath the milestone before it.
+#: content, so clearing it finishes the milestone. `_release_due` used to say
+#: so only where the project stood on that milestone's own row, and here it
+#: stands on the patch track beneath the milestone before it (`PL-J45M`).
 GATE_ONLY_ROADMAP = GATED_SCOPE_ROADMAP.replace(
     """### Required scope
 
@@ -1019,21 +1068,25 @@ def test_the_digest_stops_offering_the_version_of_the_milestone_it_says_to_imple
     assert "implement v0.4.0 — the teachable case" in digest
 
 
-def test_no_reservation_is_read_off_a_beat_that_counts_nothing() -> None:
-    """`PL-J45M`: `implement` is also `wave`'s fall-through when `_release_due`
-    matches no arrangement, and one shape it falls through on is a *finished*
-    milestone - a gate-only section whose frozen list has cleared, reached from
-    a step that is not its own row. Withholding the offer there would print
-    "which is unfinished" against a milestone that is done, so the carrier
-    answers only where `own_scope` counts something."""
-    from docket.release import STANDS, release_offer
+def test_a_finished_gate_only_milestone_is_offered_as_the_release_it_is() -> None:
+    """`PL-J45M`: a gate-only section whose frozen list has cleared, reached
+    from the patch track beneath it. `_release_due` compared positions and fell
+    through to `implement`, so this guard carried an exemption for a beat that
+    counted nothing - "which is unfinished" would otherwise have been printed
+    against a milestone that was done. The arrangement is read from the row
+    now and the beat is `release`, which the offer answers on its own terms;
+    the exemption is gone with the fall-through."""
+    from docket.release import PLANNED, STANDS, release_offer
 
     plan = _gated("0.3.0", frozenset({"PL-GT01"}), roadmap=GATE_ONLY_ROADMAP)
-    offer = release_offer(_ready("0.3.9", "0.4.0"), plan)
 
-    assert plan.beat == IMPLEMENT and plan.own_scope is None
+    assert plan.beat == RELEASE and plan.own_scope is None
     assert plan.gate is not None and plan.gate.is_clear
+    assert plan.release_version == (0, 4, 0)
+    offer = release_offer(_ready("0.3.9", "0.4.0"), plan)
     assert (offer.kind, offer.version) == (STANDS, "0.4.0")
+    corrected = release_offer(_ready("0.3.9", "0.3.10"), plan)
+    assert (corrected.kind, corrected.version) == (PLANNED, "0.4.0")
 
 
 #: `GATED_SCOPE_ROADMAP` with a section-bearing `—` row between the patch track

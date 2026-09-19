@@ -1,8 +1,14 @@
 ---
 id: PL-3BYK
 title: docket digest --profile's ref set block counts item-file edits per ref and sums across refs, while the walk holds one entry per identifier, so anyone predicting a diff count from it over-predicts by about 2x on a clone with overlapping long-lived branches
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
+feature: rendered-claim-accuracy
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-17
+verify: grep -q 'def test_the_ref_set_block_names_distinct_item_files' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** docket digest --profile's ref set block counts item-file edits per ref and sums across refs, while the walk holds one entry per identifier, so anyone predicting a diff count from it over-predicts by about 2x on a clone with overlapping long-lived branches
@@ -29,7 +35,7 @@ long-lived branches all editing the same store: `simulation-lag-input-issue`
 (150), two `codex/*` batches (74 and 75). Measured there: 1,284 summed
 per-ref edits, against ~493 identifiers that actually reached `_superseded`.
 
-**What it cost, concretely.** `PL-DMDF` established `diff` at ~0.95 calls per
+**Why it matters, and what it cost concretely.** `PL-DMDF` established `diff` at ~0.95 calls per
 item-file edit. Applied to that clone's 1,284 the law predicts ~1,353 `diff`
 calls; the machine made 654. The law was not wrong - it was measured against a
 scratch clone whose synthetic refs touched disjoint files, where the two counts

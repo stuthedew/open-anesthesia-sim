@@ -29,7 +29,7 @@ import subprocess
 import time
 from collections import Counter
 from collections.abc import Callable, Iterator, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -46,26 +46,154 @@ DEFAULT_BRANCHES = ("origin/main", "origin/master", "main", "master")
 Runner = Callable[[list[str], Path], str]
 
 
+class GitSilence(str):
+    """The empty string, marked as the one git never gave.
+
+    `Runner` is `(args, root) -> str`, and every read in this module, every
+    helper one of them calls and every fake a test injects is written to that
+    shape - so a failure channel has to arrive without changing it. A `str`
+    subclass does: a silence still reads, splits, strips and compares as the
+    `""` this module has always collapsed a failure to, so the call sites with
+    no use for the distinction are untouched, while a reader that must not
+    mistake "git said nothing" for "there is nothing to say" asks `answered`.
+
+    **The marker survives no string operation.** `.strip()` and `.splitlines()`
+    both return plain `str`, so it can be read off the runner's own return
+    value and nowhere else. That is a real hazard for a reader added later, and
+    `_Silences` is the answer to it: a read wraps its runner once and never has
+    to remember again.
+    """
+
+    __slots__ = ()
+
+
+#: The one silence. Every unanswered call returns this object, so a reader may
+#: compare identity as well as type and nothing has to construct one.
+SILENT = GitSilence()
+
+
+def answered(text: str) -> bool:
+    """Whether git answered the question at all, as against answering nothing.
+
+    The distinction `_run_git` used to throw away, and the one this module turns
+    on. An empty answer is a fact about the repository - no such ref, nothing
+    changed, no tags - while a silence is a fact about the run, and a reader
+    that reads the second as the first reports a clean result it never
+    established. `_superseded` did exactly that, in the one direction its own
+    docstring said it must never fail in (`PL-Q9Z1`).
+    """
+    return not isinstance(text, GitSilence)
+
+
+def _asks_for_a_blob(args: list[str]) -> bool:
+    """Whether the call names one path inside one revision, `<rev>:<path>`.
+
+    The one shape where git's fatal exit is an answer rather than a failure.
+    `git show HEAD:docs/items/gone.md` exits 128 for a path the revision does
+    not hold, and every caller of this shape already reads the empty string as
+    "the base does not carry that file". `GitRunner`'s other serving path says
+    the same: `cat-file --batch` prints `missing` and exits 0 for an absent path
+    *and* for an absent revision alike, measured 2026-09-19, so classifying the
+    fatal exit as an answer is what keeps the batch and the subprocess saying
+    the same thing about the same question.
+
+    What it costs is said out loud rather than hidden: a revision that vanished
+    mid-read is indistinguishable here from a file that was never in it, and
+    this layer cannot separate the two without a second process per blob.
+    """
+    return len(args) == 2 and args[0] in {"show", "rev-parse"} and ":" in args[1]
+
+
 def _run_git(args: list[str], root: Path) -> str:
-    """Run git, returning empty output rather than raising.
+    """Run git, returning its answer, or `SILENT` where it did not answer.
 
     A checkout without git, without a remote, or without network is a normal
-    condition for this tool - the session-start digest must not fail because
-    of it - so every failure mode collapses to "nothing known about branches".
+    condition for this tool - the session-start digest must not fail because of
+    it - so no failure raises. What changed is that a failure is no longer
+    *indistinguishable* from an empty answer: it comes back as `GitSilence`, and
+    a caller that cares asks `answered`.
+
+    **The classification is git's own exit codes, measured rather than
+    recalled.** One probe per shape this module issues, against git 2.43.0 on
+    2026-09-19:
+
+    | Call | Exit | Read as |
+    | --- | --- | --- |
+    | anything git could answer | 0 | the answer |
+    | `rev-parse --verify --quiet <no such ref>` | 1 | "no such ref" - an answer |
+    | `merge-base` on unrelated histories | 1 | "no merge base" - an answer |
+    | `show <rev>:<path the rev lacks>` | 128 | "not there" - an answer |
+    | `diff`/`log`/`ls-tree`/`rev-list` on a bad revision | 128 | **silence** |
+    | a mistyped option | 129 | **silence** |
+    | git missing, or the ten-second timeout | - | **silence** |
+
+    So exit 1 is git saying no and exit 128 is git not saying anything, with
+    `_asks_for_a_blob` carrying the single exception and the reason for it. A
+    silence still returns the empty string, so nothing downstream changes shape.
 
     `git` is named rather than given an absolute path on purpose: the path
     differs across the environments this runs in, and resolving it through
     `PATH` is what lets the same code work in all of them. That is also why
     pinning one would not harden anything - a checkout that cannot run `git`
-    is already a case this function answers with "nothing known".
+    is already a case this function answers with a silence.
     """
     try:
         result = subprocess.run(
             ["git", *args], cwd=root, capture_output=True, text=True, timeout=10, check=False
         )
     except (OSError, subprocess.SubprocessError):
+        return SILENT
+    if result.returncode == 0:
+        return result.stdout
+    if result.returncode == 1 or _asks_for_a_blob(args):
         return ""
-    return result.stdout if result.returncode == 0 else ""
+    return SILENT
+
+
+@dataclass
+class _Silences:
+    """A runner that remembers what git did not answer, for the read wrapping it.
+
+    One public read puts tens of questions to git through a dozen helpers, and
+    `.claude/rules/apparatus-standard.md`'s floor binds the answer it returns
+    rather than any one of them. Threading a failure flag back out of every
+    helper would change every signature in the module and would still miss the
+    helper nobody remembered; wrapping the runner once at the top of a read
+    catches every silence raised anywhere beneath it, including in code written
+    after the wrapping.
+
+    **It reports rather than refuses**, which is the same choice the rest of the
+    module makes: the marks a read did collect are kept, and `reason` says the
+    reading was partial. Over-reporting an item as in flight costs a session one
+    look; under-reporting one costs two sessions a merge conflict.
+
+    Measured on this repository 2026-09-19: eight public reads put 174 questions
+    to git and every one was answered, so a `declined` built on this is silent
+    in the ordinary case rather than an advisory nobody reads.
+    """
+
+    run: Runner
+    #: Every call git did not answer, in the order they were put.
+    unanswered: list[tuple[str, ...]] = field(default_factory=list)
+    asked: int = 0
+
+    def __call__(self, args: list[str], root: Path) -> str:
+        self.asked += 1
+        text = self.run(args, root)
+        if not answered(text):
+            self.unanswered.append(tuple(args))
+        return text
+
+    @property
+    def reason(self) -> str:
+        """Why this read is partial, or `""` where git answered everything."""
+        if not self.unanswered:
+            return ""
+        first = " ".join(self.unanswered[0])
+        return (
+            f"git did not answer {len(self.unanswered)} of the {self.asked} questions this "
+            f"read put to it, the first being `git {first}`"
+        )
 
 
 #: The subcommands that cannot change anything, whatever arguments they are
@@ -534,11 +662,30 @@ class FlightReport:
     #: that they mean different branches.
     editing: tuple[QueueEdit, ...] = ()
     base: str = ""
+    #: Why this reading is partial: git was asked something and did not answer.
+    #:
+    #: **Distinct from `unreadable`, and the two are not substitutes.** That
+    #: names a ref whose *history* this checkout does not hold, which is the
+    #: normal state of an agent session's shallow container and says nothing
+    #: about git having worked. This says a call failed - a ref deleted between
+    #: the `for-each-ref` that listed it and the `diff` that read it, a timeout,
+    #: no git at all - so every mark here was collected from an incomplete read
+    #: and the absence of a mark proves nothing.
+    #:
+    #: The marks are kept rather than withheld, because the error that costs
+    #: least is over-reporting: an item wrongly marked costs a session one look,
+    #: and one wrongly unmarked costs two sessions a merge conflict.
+    declined: str = ""
 
     @property
     def ids(self) -> frozenset[str]:
         """The items this checkout proved are in flight, for ranking and marking."""
         return frozenset(branch.item_id for branch in self.branches)
+
+    @property
+    def known(self) -> bool:
+        """Whether git answered every question this reading rests on."""
+        return not self.declined
 
 
 def leading_ids(subject: str) -> list[str]:
@@ -1134,13 +1281,26 @@ def _superseded(ref: str, base: str, paths: tuple[str, ...], root: Path, run: Ru
       tip does not, which is what work left behind looks like.
 
     **The direction of the read is what makes it safe**, and it is the
-    direction the rest of the module takes. Every silence here - a git that
-    failed, a path git answered for in a shape this cannot parse, a binary file
-    git writes as `-` rather than a count - leaves the path outstanding and so
-    leaves the branch reported. A path wrongly called superseded would hide
+    direction the rest of the module takes. Every silence here - a git that did
+    not answer, a path git answered for in a shape this cannot parse, a binary
+    file git writes as `-` rather than a count - leaves the path outstanding and
+    so leaves the branch reported. A path wrongly called superseded would hide
     work nothing merged, which is the loss `orphaned` exists to catch; a path
     wrongly left outstanding costs a reader one two-dot diff, which is what
     they were doing by hand before this.
+
+    **Two of those three used to be inverted, and the sentence above was the
+    only place that said otherwise** (`PL-Q9Z1`). "Absent from the diff" is what
+    a chunk git never answered for looks like, so a failed `git diff` read as
+    the tips agreeing about every path it was handed, and a line git wrote in an
+    unexpected shape read the same way for that one path. Both now stay
+    outstanding, and neither is reachable by argument: the failing direction is
+    driven by a test, because this docstring stating the rule correctly is
+    exactly what did not enforce it. Reachable in this repository rather than in
+    theory - a ref deleted by another session between the `for-each-ref` that
+    lists it and the `diff` that reads it makes git answer `fatal: bad
+    revision`, and one such call took `branches_in_flight` from fourteen
+    `editing` marks to none, with `FlightReport.unreadable` empty in both cases.
 
     `--no-renames` because the paths compared against come from
     `_landing_split`, which also passes it: a rename read on one side and not
@@ -1157,6 +1317,13 @@ def _superseded(ref: str, base: str, paths: tuple[str, ...], root: Path, run: Ru
     superseded: set[str] = set()
     for chunk in _pathspec_chunks(paths):
         output = run(["diff", "--numstat", "--no-renames", base, ref, "--", *chunk], root)
+        if not answered(output):
+            # Git did not answer for this chunk, so nothing in it has been shown
+            # to be anything. Every path it named stays outstanding, which is
+            # the whole safety of the read: the empty string a failure comes
+            # back as is byte-identical to the empty string two agreeing tips
+            # produce, and only `answered` separates them.
+            continue
         differing: dict[str, tuple[str, str]] = {}
         for line in output.splitlines():
             fields = line.split("\t", 2)
@@ -1171,8 +1338,9 @@ def _superseded(ref: str, base: str, paths: tuple[str, ...], root: Path, run: Ru
             if counts is None:
                 # The two tips agree on this path, so the base is missing
                 # nothing. A path git did not report on at all reads the same
-                # way only because it was asked for by name: git names every
-                # path it was given that differs.
+                # way only because it was asked for by name, and only because
+                # the guard above established that git answered at all: git
+                # names every path it was given that differs.
                 superseded.add(path)
                 continue
             added, deleted = counts
@@ -1673,8 +1841,15 @@ def branches_in_flight(
     unreadable ref: read without difficulty, and attributable to no item. It
     fires on nothing in the steady state, because `tools/branch_id_check.py`
     refuses a `claude/*` branch of one's own that names no id.
+
+    **And a git that did not answer is `declined` rather than a clean report**
+    (`PL-Q9Z1`). Every read below collapses a failure to the empty string, and
+    several of them read an empty string as good news - no unmerged refs, no
+    remaining difference, nothing left outstanding. `_Silences` watches the
+    runner rather than each of them, so a silence anywhere beneath this reaches
+    the report whether or not the helper that met it thought to look.
     """
-    run = runner or _run_git
+    run = _Silences(runner or _run_git)
 
     # One base for the whole read: what counts as merged, what a ref is
     # compared against, and what the commit walk excludes have to agree, or the
@@ -1907,6 +2082,7 @@ def branches_in_flight(
             for identifier, name in sorted(edited.items())
         ),
         base=base,
+        declined=run.reason,
     )
 
 
@@ -1976,6 +2152,15 @@ class Precedence:
     unreadable: tuple[str, ...] = ()
     base: str = ""
     branch: str = ""
+    #: Why this ordering is partial: git was asked something and did not answer.
+    #:
+    #: It matters more here than anywhere else in the module, because the whole
+    #: point above is that two sessions compute one order from one set of facts.
+    #: A silence gives them *different* sets - one session's `diff` fails and
+    #: the other's does not - so the guarantee that they cannot both stand down
+    #: rests on both of them knowing when the evidence was incomplete
+    #: (`PL-Q9Z1`).
+    declined: str = ""
 
     @property
     def holder(self) -> Carrier | None:
@@ -1999,6 +2184,11 @@ class Precedence:
         """
         mine = self.mine
         return mine is not None and mine is not self.holder
+
+    @property
+    def known(self) -> bool:
+        """Whether git answered every question this ordering rests on."""
+        return not self.declined
 
 
 def _head_carries(stake: Stake | None, root: Path, run: Runner) -> bool:
@@ -2046,7 +2236,7 @@ def precedence(
     asymmetry it leaves is the benign one: a session whose rival has pushed
     nothing sees no rival and continues, which is where the world already was.
     """
-    run = runner or _run_git
+    run = _Silences(runner or _run_git)
     identifier = item_id.upper()
     base = default_base(root, runner=run)
     refs = _unlanded_refs(base, root, run, include_remote=include_remote)
@@ -2141,6 +2331,7 @@ def precedence(
         unreadable=tuple(name for name in refs.candidates if name in unreadable),
         base=base,
         branch=branch,
+        declined=run.reason,
     )
 
 
@@ -2182,6 +2373,15 @@ class FlightFiles:
     branches: tuple[BranchFiles, ...] = ()
     unreadable: tuple[str, ...] = ()
     base: str = ""
+    #: Why this reading is partial, in the sense `FlightReport.declined` carries
+    #: it: git was asked something and did not answer, so a branch that appears
+    #: to have changed nothing may only have gone unread (`PL-Q9Z1`).
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        """Whether git answered every question this reading rests on."""
+        return not self.declined
 
 
 def files_in_flight(
@@ -2205,10 +2405,10 @@ def files_in_flight(
     branch had changed it, which for a session started a day ago is most of the
     tree. The three-dot form is the branch's own work, which is the question.
     """
-    run = runner or _run_git
+    run = _Silences(runner or _run_git)
     base = report.base
     if not base:
-        return FlightFiles()
+        return FlightFiles(declined=report.declined)
 
     ids: dict[str, list[str]] = {}
     for branch in report.branches:
@@ -2238,6 +2438,10 @@ def files_in_flight(
         found.append(BranchFiles(branch=name, item_ids=tuple(sorted(item_ids)), paths=paths))
 
     return FlightFiles(
+        # The report is half the evidence, so a reading it could not complete is
+        # one this cannot complete either: the branches it never named are
+        # branches whose files are not asked about here (`PL-Q9Z1`).
+        declined=report.declined or run.reason,
         branches=tuple(sorted(found, key=lambda entry: entry.branch)),
         unreadable=tuple(sorted(unread)),
         base=base,
@@ -2269,6 +2473,13 @@ def default_base(root: Path, *, runner: Runner | None = None) -> str:
     Falls back to `main` when nothing resolves, which is a repository this
     tool cannot answer about either way; `verify` then reports finding no
     change rather than reporting a clean scope.
+
+    **It cannot decline in its own type, so its silence travels to its
+    caller's** (`PL-Q9Z1`). The answer is a ref name, and every call site here
+    passes the runner its own read already wraps in `_Silences` - so a probe git
+    failed to answer reaches the report as a `declined` even though `main` came
+    back from here. `cli`'s `verify` is the one caller that passes none, which
+    is recorded as `PL-29HL` rather than fixed under an item about this module.
     """
     run = runner or _run_git
     for candidate in DEFAULT_BRANCHES:
@@ -2588,8 +2799,24 @@ def branch_state(root: Path, *, runner: Runner | None = None, fetched: bool = Fa
     whether the caller did it. What is reported is therefore stale by exactly
     one fetch at worst, which is an acceptable error for a report and would be
     an unacceptable one for a claim.
+
+    **A silence outranks whatever the body concluded while git was quiet**
+    (`PL-Q9Z1`). This declined under a total git failure before the channel
+    existed, which looked like compliance and was not: it declined saying "no
+    branch is checked out here", and no branch being checked out is a claim
+    about the repository that nothing had established. A wrong reason on a
+    correct refusal is still the floor breached, because a reader acts on the
+    reason - here by looking for a branch that is in fact there.
     """
-    run = runner or _run_git
+    run = _Silences(runner or _run_git)
+    state = _branch_state(root, run, fetched=fetched)
+    if run.reason:
+        return replace(state, absent=True, declined=run.reason)
+    return state
+
+
+def _branch_state(root: Path, run: Runner, *, fetched: bool) -> BranchState:
+    """`branch_state`'s reading, against a runner whose silences are watched."""
     branch = run(["rev-parse", "--abbrev-ref", "HEAD"], root).strip()
     if not branch or branch == "HEAD":
         return BranchState(
@@ -2748,8 +2975,13 @@ def released_on_base(
     Costs two `git` calls and no network, so a caller that has just fetched
     gets a current answer and one that cannot fetch still gets a sound one -
     older, and never wrong about what it names.
+
+    **`known` is withheld from a reading git left a hole in** (`PL-Q9Z1`). The
+    notes listing is the half that matters: silenced, it gives an empty set,
+    which is `known=True` saying the base has shipped nothing and is exactly the
+    answer that lets a duplicate release through.
     """
-    run = runner or _run_git
+    run = _Silences(runner or _run_git)
     ref = base or default_base(root, runner=run)
 
     declared = run(["show", f"{ref}:{version_file}"], root)
@@ -2761,7 +2993,9 @@ def released_on_base(
         for line in run(["ls-tree", "--name-only", ref, f"{notes_dir}/"], root).splitlines()
         if line.strip()
     )
-    return BaseRelease(base=ref, version=version_in(declared), notes=names, known=True)
+    return BaseRelease(
+        base=ref, version=version_in(declared), notes=names, known=not run.unanswered
+    )
 
 
 @dataclass(frozen=True)
@@ -2804,6 +3038,16 @@ class CutsInFlight:
     branches: tuple[BranchCut, ...] = ()
     unreadable: tuple[str, ...] = ()
     base: str = ""
+    #: Why this reading is partial, in the sense `FlightReport.declined` carries
+    #: it. It matters more here than in most: this guard is the one stopping two
+    #: sessions cutting one release, and a silence read as "no cut in flight" is
+    #: the answer that lets the second one through (`PL-66FP`, `PL-Q9Z1`).
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        """Whether git answered every question this reading rests on."""
+        return not self.declined
 
 
 @dataclass(frozen=True)
@@ -2861,7 +3105,7 @@ def cut_window(
         every session but one. `declined` where git would not answer, because a
         silent empty answer here would read as "nothing landed in the window".
     """
-    run = runner or _run_git
+    run = _Silences(runner or _run_git)
     base = default_base(root, runner=run)
     if not run(["rev-parse", "--verify", "--quiet", base], root).strip():
         return CutWindow(declined=f"this checkout has no {base} to compare against")
@@ -2874,14 +3118,16 @@ def cut_window(
         if line.strip().startswith(prefix)
     ]
     if not added:
-        return CutWindow()
+        return CutWindow(declined=run.reason)
     versions = sorted({name[len(prefix) :].removesuffix(".md").lstrip("v") for name in added})
     fork = run(["merge-base", "HEAD", base], root).strip()
     if not fork:
         return CutWindow(
             version=versions[-1], declined=f"this clone shares no readable history with {base}"
         )
-    return CutWindow(version=versions[-1], landed=_landed_since(fork, base, root, run))
+    return CutWindow(
+        version=versions[-1], landed=_landed_since(fork, base, root, run), declined=run.reason
+    )
 
 
 def cuts_in_flight(
@@ -2909,7 +3155,7 @@ def cuts_in_flight(
     flaws in it: what it names, it names on evidence a second checkout would
     read identically.
     """
-    run = runner or _run_git
+    run = _Silences(runner or _run_git)
     base = default_base(root, runner=run)
     refs = _unlanded_refs(base, root, run, include_remote=include_remote)
 
@@ -2944,6 +3190,7 @@ def cuts_in_flight(
         branches=tuple(sorted(found, key=lambda entry: entry.ref)),
         unreadable=tuple(sorted(refs.unreadable)),
         base=base,
+        declined=run.reason,
     )
 
 
@@ -3132,7 +3379,7 @@ def filed_with_work(
     that survives the subject test** - typically none. The subject arrives with
     the log, so the expensive call is made only where the annotation will print.
     """
-    run = runner or _run_git
+    run = _Silences(runner or _run_git)
     if not item_ids:
         return FilingReport()
     shallow = is_shallow(root, runner=run)
@@ -3187,7 +3434,7 @@ def filed_with_work(
             found[item_id] = FilingCommit(
                 item_id=item_id, commit=commit, subject=subject, paths=outside
             )
-    return FilingReport(filings=found)
+    return FilingReport(filings=found, declined=run.reason)
 
 
 @dataclass(frozen=True)
@@ -3278,7 +3525,7 @@ def closures_on_base(
     means the commit may simply be outside it, which at `fetch-depth: 1` is
     true of every closure but the newest.
     """
-    run = runner or _run_git
+    run = _Silences(runner or _run_git)
     base = default_base(root, runner=run)
     if not run(["rev-parse", "--verify", "--quiet", base], root).strip():
         return ClosureReport(declined="no default branch this checkout can read")
@@ -3288,6 +3535,7 @@ def closures_on_base(
         if text and parse_item(text, name).status == "done":
             landed.add(identifier)
     return ClosureReport(
+        declined=run.reason,
         base=base,
         landed=frozenset(landed),
         derived=_merges_naming(landed, closures, items_dir, base, root, run),
@@ -3788,13 +4036,13 @@ def records_on_base(
     changed closed item, which is what lets it answer in the shallow clone an
     agent session starts from.
     """
-    run = runner or _run_git
+    run = _Silences(runner or _run_git)
     base = default_base(root, runner=run)
     if not run(["rev-parse", "--verify", "--quiet", base], root).strip():
         return RecordReport(declined="no default branch this checkout can read")
     changed = _changed_items(root, base, items_dir, run) & set(closed)
     if not changed:
-        return RecordReport(base=base)
+        return RecordReport(base=base, declined=run.reason)
     at_base = _items_at(base, root, items_dir, run)
     records: list[BaseRecord] = []
     for identifier in sorted(changed):
@@ -3814,7 +4062,7 @@ def records_on_base(
                     milestone=recorded.milestone,
                 )
             )
-    return RecordReport(base=base, records=tuple(records))
+    return RecordReport(base=base, records=tuple(records), declined=run.reason)
 
 
 @dataclass(frozen=True)
@@ -3879,7 +4127,7 @@ def closed_by(
     without this guard until `PL-KX9N`. `_parent_in_reach` is shared with them
     now, so the three cannot drift apart again.
     """
-    run = runner or _run_git
+    run = _Silences(runner or _run_git)
     if not run(["rev-parse", "--verify", "--quiet", f"{revision}^{{commit}}"], root).strip():
         return ClosedByReport(declined=f"what `{revision}` closed: it names no commit here")
     if not _parent_in_reach(revision, root, run):
@@ -3899,7 +4147,7 @@ def closed_by(
         if match is not None and _done_at(revision, path, name, root, run):
             touched[match.group(1)] = path
     if not touched:
-        return ClosedByReport(revision=revision)
+        return ClosedByReport(revision=revision, declined=run.reason)
 
     before = _items_at(f"{revision}^", root, items_dir, run)
     closed = {
@@ -3907,7 +4155,9 @@ def closed_by(
         for identifier, path in touched.items()
         if not _done_before(before.get(identifier), revision, root, run)
     }
-    return ClosedByReport(revision=revision, closed=tuple(sorted(closed.items())))
+    return ClosedByReport(
+        revision=revision, closed=tuple(sorted(closed.items())), declined=run.reason
+    )
 
 
 def _done_before(path: str | None, revision: str, root: Path, run: Runner) -> bool:
@@ -3963,7 +4213,7 @@ def stranded(
     about what the base does *not* hold, and that claim is only as old as the
     last fetch. `StrandedReport.fetched` carries what happened into the output.
     """
-    run = runner or _run_git
+    run = _Silences(runner or _run_git)
     refs = [
         line.strip()
         for line in run(
@@ -4008,7 +4258,9 @@ def stranded(
         )
         for identifier, (path, branches) in sorted(elsewhere.items())
     ]
-    return StrandedReport(items=tuple(found), refs_read=len(refs), fetched=fetched)
+    return StrandedReport(
+        items=tuple(found), refs_read=len(refs), fetched=fetched, declined=run.reason
+    )
 
 
 @dataclass(frozen=True)
@@ -4078,7 +4330,7 @@ def lost(
     its title changes, which adds one path and removes another. By path that
     reads as a loss; by id it reads as what it is.
     """
-    run = runner or _run_git
+    run = _Silences(runner or _run_git)
     present = _items_at(ref, root, items_dir, run)
     if not present:
         # The same guard `stranded` keeps: an unreadable store makes every id
@@ -4106,7 +4358,12 @@ def lost(
         for identifier, (blob, path) in sorted(ever.items())
         if identifier not in present
     )
-    return LostReport(items=gone, ref=ref, truncated=is_shallow(root, runner=run) is not False)
+    return LostReport(
+        items=gone,
+        ref=ref,
+        truncated=is_shallow(root, runner=run) is not False,
+        declined=run.reason,
+    )
 
 
 @dataclass(frozen=True)
@@ -4415,7 +4672,7 @@ def orphaned(
     deliberately; `_commits_by_landing` says why. The reader decides, the way
     they do for `flight` and `stranded`.
     """
-    run = runner or _run_git
+    run = _Silences(runner or _run_git)
     base = default_base(root, runner=run)
     refs = _unlanded_refs(base, root, run, include_remote=include_remote)
     if not refs.listed:
@@ -4484,6 +4741,7 @@ def orphaned(
                 OrphanedBranch(ref=name, landed=landed, outstanding=carried, commits=left)
             )
     return OrphanedReport(
+        declined=run.reason,
         branches=tuple(branches),
         refs_read=len(refs.candidates),
         unreadable=tuple(sorted(refs.unreadable)),
@@ -4510,9 +4768,18 @@ class Churn:
     """
 
     by_day: Mapping[date, Mapping[str, int]] = field(default_factory=dict)
+    #: Why this reading is partial, in the sense `FlightReport.declined` carries
+    #: it. A silenced `git log` gives no days at all, which reads as a
+    #: repository nobody has committed to (`PL-Q9Z1`).
+    declined: str = ""
 
     def __bool__(self) -> bool:
         return bool(self.by_day)
+
+    @property
+    def known(self) -> bool:
+        """Whether git answered every question this reading rests on."""
+        return not self.declined
 
 
 def _numstat_path(text: str) -> str:
@@ -4546,7 +4813,7 @@ def churn(root: Path, *, runner: Runner | None = None) -> Churn:
     Binary files are skipped rather than counted as zero: git reports them as
     `-`, and a repository's images have no line count to attribute.
     """
-    run = runner or _run_git
+    run = _Silences(runner or _run_git)
     out = run(["log", "--no-merges", "--numstat", CHURN_FORMAT], root)
     by_day: dict[date, Counter[str]] = {}
     when: date | None = None
@@ -4565,7 +4832,7 @@ def churn(root: Path, *, runner: Runner | None = None) -> Churn:
         except ValueError:
             continue
         by_day.setdefault(when, Counter())[_numstat_path(parts[2])] += lines
-    return Churn({day: dict(counts) for day, counts in by_day.items()})
+    return Churn({day: dict(counts) for day, counts in by_day.items()}, declined=run.reason)
 
 
 def ref_walk(root: Path, items_dir: str, *, runner: Runner | None = None) -> RefWalk:
@@ -4591,7 +4858,7 @@ def ref_walk(root: Path, items_dir: str, *, runner: Runner | None = None) -> Ref
     truncated clone is the normal state of a container, and "introduces nothing"
     and "could not be read" are opposite answers.
     """
-    run = runner or _run_git
+    run = _Silences(runner or _run_git)
     base = default_base(root, runner=run)
     if not run(["rev-parse", "--verify", "--quiet", base], root).strip():
         return RefWalk(declined="no default branch this checkout can read")
@@ -4628,4 +4895,5 @@ def ref_walk(root: Path, items_dir: str, *, runner: Runner | None = None) -> Ref
         item_edits=sum(edits for _, _, edits in walked),
         refs=tuple(walked),
         unread=tuple(sorted(unread)),
+        declined=run.reason,
     )
