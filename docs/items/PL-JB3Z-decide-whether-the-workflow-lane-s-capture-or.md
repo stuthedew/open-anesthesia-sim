@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, infra
 feature: apparatus-capture-criteria
+milestone: v0.4.29
 touches: .claude/skills/docket/SKILL.md, docs/items
 added: 2026-09-19
 closed: 2026-09-19

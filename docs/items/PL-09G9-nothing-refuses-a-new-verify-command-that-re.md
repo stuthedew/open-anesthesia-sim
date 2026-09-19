@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: verify-replay-cost
+milestone: v0.4.29
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_config.py, docket.toml, subprojects/docket/README.md
 added: 2026-09-19
 closed: 2026-09-19

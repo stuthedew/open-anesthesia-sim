@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: docs
+milestone: v0.4.29
 touches: CLAUDE.md
 added: 2026-09-19
 closed: 2026-09-19
