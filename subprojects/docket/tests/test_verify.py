@@ -864,83 +864,11 @@ def test_the_limit_the_results_were_produced_under_is_carried(tmp_path: Path) ->
     assert already_passing(root, [_item()], timeout=7.5).limit == 7.5
 
 
-# What a command cost, not only what it returned. The pool's wall clock is its
-# slowest member, so one heavy `verify:` sets the floor for every `make check`
-# from the day it is written, and nothing used to say so (`PL-VG7G`).
-
-
-def test_a_command_far_above_the_typical_one_is_named_with_its_cost(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    items = [_item(identifier=f"PL-000{n}") for n in range(4)]
-    items.append(_item(identifier="PL-SLOW", verify="sleep 2"))
-    report = already_passing(root, items, workers=8)
-
-    assert [command.identifier for command in report.slow] == ["PL-SLOW"]
-    assert report.slow[0].seconds >= 2
-
-
-def test_a_store_of_comparable_commands_names_none(tmp_path: Path) -> None:
-    # The property that keeps this from firing on every run. A healthy store
-    # measured 14x on 2026-09-02, against a threshold of 30x. Here it is the
-    # floor that decides: these commands take milliseconds, where a ratio
-    # against the median would be reading process-startup jitter.
-    root = _repo(tmp_path)
-    items = [_item(identifier=f"PL-000{n}") for n in range(6)]
-
-    assert already_passing(root, items, workers=8).slow == ()
-
-
-def test_two_heavy_commands_are_both_named(tmp_path: Path) -> None:
-    # Narrowing one of them changes nothing: the floor is wherever the other
-    # is, so a report naming only the worst would be advice that does not work.
-    root = _repo(tmp_path)
-    items = [_item(identifier=f"PL-000{n}") for n in range(4)]
-    items += [
-        _item(identifier="PL-SLW1", verify="sleep 2"),
-        _item(identifier="PL-SLW2", verify="sleep 2"),
-    ]
-    report = already_passing(root, items, workers=8)
-
-    assert sorted(command.identifier for command in report.slow) == ["PL-SLW1", "PL-SLW2"]
-
-
-def test_the_named_commands_come_worst_first(tmp_path: Path) -> None:
-    # The gap carries the ordering and nothing else, so it is 1 s rather than
-    # the 2 s it was: both members still clear `SLOW_COMMAND_FLOOR` with the
-    # same margin every other test here uses, and `sleep` cannot return early,
-    # so the measured order can only be wrong if startup jitter exceeds a
-    # second. This was the slowest test in the repository at 4.1 s (`PL-VJ7W`).
-    root = _repo(tmp_path)
-    items = [_item(identifier=f"PL-000{n}") for n in range(4)]
-    items += [
-        _item(identifier="PL-SLW1", verify="sleep 2"),
-        _item(identifier="PL-SLW2", verify="sleep 3"),
-    ]
-    report = already_passing(root, items, workers=8)
-
-    assert [command.identifier for command in report.slow] == ["PL-SLW2", "PL-SLW1"]
-
-
-def test_a_killed_command_does_not_move_the_typical_cost(tmp_path: Path) -> None:
-    # It did not take its duration - it was stopped at the limit - so counting
-    # it would report a median the run never paid.
-    root = _repo(tmp_path)
-    items = [_item(identifier=f"PL-000{n}") for n in range(4)]
-    items.append(_item(identifier="PL-KILL", verify="sleep 30"))
-    report = already_passing(root, items, timeout=0.3, workers=8)
-
-    assert report.timed_out == ("PL-KILL",)
-    assert [command.identifier for command in report.slow] == []
-
-
-def test_the_run_carries_what_normal_looked_like(tmp_path: Path) -> None:
-    # So a report can scale the number it prints rather than showing a bare
-    # duration nobody can read.
-    root = _repo(tmp_path)
-    report = already_passing(root, [_item(identifier=f"PL-000{n}") for n in range(4)], workers=8)
-
-    assert report.typical > 0
-    assert report.elapsed > 0
+# What a command cost, not only what it returned. An outlier test lived here -
+# a command 30x the pool's median was named as the one the check waited for -
+# and it was retired 2026-09-19 once measurement showed it firing on nothing
+# (`PL-G6J5`). What is left reports rather than judges, so what these pin is
+# that each number is the one the run actually paid.
 
 
 def test_the_run_carries_what_it_would_have_cost_serially(tmp_path: Path) -> None:
@@ -957,27 +885,32 @@ def test_the_run_carries_what_it_would_have_cost_serially(tmp_path: Path) -> Non
     report = already_passing(root, items, workers=8)
 
     assert report.serial >= 2
+    # `> 0` as well as the comparison: a pool that reported no wall clock at
+    # all would satisfy `0 < serial` and print `0.0s` from the cost line. This
+    # was pinned by a test that also covered the retired median (`PL-G6J5`).
+    assert report.elapsed > 0
     assert report.elapsed < report.serial
 
 
-def test_the_costliest_command_is_carried_whether_or_not_it_is_an_outlier(tmp_path: Path) -> None:
-    # `slow` answers "did an outlier arrive", which is usually no. This answers
-    # "how close is any one command to the limit", which always has an answer
-    # and is the margin `LANDED_TIMEOUT` is chosen against.
+def test_the_costliest_command_is_carried_on_a_pool_with_no_outlier(tmp_path: Path) -> None:
+    # The property the retirement rests on. "Did an outlier arrive" is answered
+    # no by a store of comparable commands, and by this project's real store
+    # too; "how close is any one command to the limit" always has an answer and
+    # is the margin `LANDED_TIMEOUT` is chosen against, so it is the one
+    # carried (`PL-G6J5`).
     root = _repo(tmp_path)
     items = [_item(identifier=f"PL-000{n}") for n in range(6)]
     report = already_passing(root, items, workers=8)
 
-    assert report.slow == ()
     assert report.slowest is not None
 
 
 def test_the_costliest_command_is_the_one_that_actually_cost_the_most(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     items = [_item(identifier=f"PL-000{n}") for n in range(4)]
-    # 0.3 s, not 1: `slowest` is a maximum and is held to no threshold, unlike
-    # `slow` above, so this only has to beat four commands that take
-    # milliseconds - which it does by about sixty times (`PL-VJ7W`).
+    # 0.3 s, not 1: `slowest` is a maximum and is held to no threshold, so this
+    # only has to beat four commands that take milliseconds - which it does by
+    # about sixty times (`PL-VJ7W`).
     items.append(_item(identifier="PL-SLOW", verify="sleep 0.3"))
     report = already_passing(root, items, workers=8)
 
@@ -986,9 +919,9 @@ def test_the_costliest_command_is_the_one_that_actually_cost_the_most(tmp_path: 
 
 
 def test_a_killed_command_does_not_count_into_the_serial_total(tmp_path: Path) -> None:
-    # The same reason it is kept out of the median: it was stopped at the limit
-    # rather than having cost its duration, so counting it would report a total
-    # the run never paid - and this one is read against the limit itself.
+    # It was stopped at the limit rather than having cost its duration, so
+    # counting it would report a total the run never paid - and this one is
+    # read against the limit itself.
     root = _repo(tmp_path)
     items = [_item(identifier=f"PL-000{n}") for n in range(4)]
     items.append(_item(identifier="PL-KILL", verify="sleep 30"))

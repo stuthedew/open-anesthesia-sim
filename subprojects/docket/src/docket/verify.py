@@ -35,7 +35,6 @@ from collections.abc import Collection, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
-from statistics import median
 
 from . import vcs
 from .config import Config
@@ -1505,38 +1504,36 @@ LANDED_STATUSES = ("ready", "needs-decision")
 # recommending this over both widening the sweep and leaving the rot).
 SCOPED_ONLY_STATUSES = ("blocked",)
 
-# How far above the typical command one has to be before it is worth naming.
+# An outlier test lived here - a command 30x above the pool's median was named
+# as the one the check waited for - and it was retired 2026-09-19 on a count,
+# not on taste (`PL-G6J5`).
 #
-# Measured against this store on 2026-09-02, 46 commands at the configured pool
-# width on four cores: a healthy store's slowest command was 8.95 s against a
-# 0.65 s median, **14x**, and adding one full-suite `pytest --cov` put a 59.3 s
-# command in the same pool at **88x**. So 14x is what a store already looks
-# like when nothing is wrong, and this sits between the two with roughly twice
-# the margin above that - about 20 s on today's median, which is where one
-# command doubles a 9.5 s check rather than merely sitting at its floor. Move
-# it knowing those two numbers; they are why it is 30 and not 10 or 100.
+# The ratio was set against a store whose typical `verify:` was a `grep`: 46
+# commands, 0.65 s median, one full-suite `--cov` run at 88x. The typical
+# command is now `uv run pytest <file>`, and measured on the same store on
+# 2026-09-19 the median is **3.65 s** across 179 commands. At 30x that puts the
+# bar at 109.5 s against a `LANDED_TIMEOUT` of 120 s - and a command over the
+# limit is killed and excluded from the median, so once the median passes 4.0 s
+# the test cannot fire on anything at all. It already fires on nothing: zero of
+# thirteen real branch scopes taken from the last twenty-five merges, and
+# nothing on the whole store, which holds a 67.4 s command.
 #
-# A ratio against the median rather than an absolute number of seconds,
-# because the general cost level rises as the suite grows and an absolute
-# threshold would then fire on everything. The median is the right denominator
-# specifically because it cannot collapse: every command here pays interpreter
-# and `uv run` startup, so the typical one has a floor - it measured 0.65 s and
-# 0.67 s across the two runs above, the second with a 59 s command in it.
-SLOW_COMMAND_RATIO = 30.0
-
-# And a floor under the ratio, because a ratio against a near-zero median is
-# meaningless. Where every command is trivial the median falls to a few
-# milliseconds, ordinary process-startup jitter is then tens of times it, and
-# the rule above would name a command that took 100 ms as the thing the check
-# waits for. That is the false positive this whole advisory exists to avoid
-# becoming: a sentence nobody can act on, printed with the same weight as one
-# they can.
+# Widening the denominator to the store's median, which is what `PL-G6J5` was
+# filed to propose, was measured and refuted: also zero of thirteen.
 #
-# A second is the bar for "long enough that a person waited", and on a real
-# store it decides nothing - the median there is 0.65 s, so the ratio gate
-# stands at ~20 s and is what actually fires. It only bites where the pool is
-# small and fast, which is every test in this suite and no real run.
-SLOW_COMMAND_FLOOR = 1.0
+# The silence is the right answer rather than a tuning failure. 1458 s of
+# serial work across eight workers is a 182 s floor against 204 s elapsed, so
+# no single command is what the run waits for - the queue is. `_note_cost`
+# reports that, every run, and names the costliest command against the limit
+# whether or not it is an outlier.
+#
+# Those are one run of three taken that day, and the container's load moves
+# them: serial 1204-1458 s, slowest 48.9-67.4 s, wall 166-204 s. The figures
+# above are the heaviest run, which is the conservative end for this argument -
+# the floor is 150-182 s against 166-204 s elapsed either way, the slowest
+# command is far under it in all three, and a median falling with the pool only
+# lowers the bar the pool's own maximum then fails to reach. Read them as a
+# scale rather than as constants; `PL-FZ58` is where the total is tracked.
 
 
 @dataclass(frozen=True)
@@ -1617,14 +1614,7 @@ class LandedReport:
     #: The per-command limit these results were produced under, so a report can
     #: name the number a reader would have to change.
     limit: float = LANDED_TIMEOUT
-    #: Commands far enough above the typical one to set this check's floor, and
-    #: what each cost. A pool cannot finish before its slowest member, so these
-    #: are what every `make check` waits through.
-    slow: tuple[SlowCommand, ...] = ()
-    #: The median command's cost, and the pool's own wall clock. Carried so a
-    #: report can say what normal looks like and what the run came to, rather
-    #: than a bare number nobody can scale.
-    typical: float = 0.0
+    #: The pool's own wall clock - what a session actually waited through.
     elapsed: float = 0.0
     #: What the same commands would have cost one after another. `elapsed` is
     #: what a session waits through and this is what the queue actually asks
@@ -1632,11 +1622,11 @@ class LandedReport:
     #: roughly flat while the second climbs with every item triaged to `ready`.
     #: Reported because the flat number is the one that hides the growth.
     serial: float = 0.0
-    #: The costliest command that ran, whether or not it cleared the ratio that
-    #: fills `slow`. Separate from `slow` because the two answer different
-    #: questions: `slow` is "did an outlier arrive", which is usually no, and
-    #: this is "how close is any one command to `limit`", which always has an
-    #: answer and is the margin `LANDED_TIMEOUT` is chosen against.
+    #: The costliest command that ran, held to no threshold. It answers "how
+    #: close is any one command to `limit`", which always has an answer, rather
+    #: than "did an outlier arrive", which the retired ratio test asked and
+    #: which this store answers no to even with a 67 s command in it
+    #: (`PL-G6J5`).
     slowest: SlowCommand | None = None
     #: How wide the pool that produced these numbers was. Carried because
     #: `serial` cannot be read without it: what the remaining commands cost a
@@ -1766,13 +1756,14 @@ def already_passing(
     report unless it says which it was, which is the same rule the declines
     below follow.
 
-    `slow` is the third finding, and the only one about cost rather than
-    correctness. The pool cannot finish before its slowest member, so a single
-    heavy `verify:` sets the floor for every `make check` from the moment it is
-    written - measured at 10 s to 59 s for one full-suite `pytest --cov`
-    (`PL-VG7G`). The session that writes such a command is the only one placed
-    to reconsider it and was the one session told nothing, so a command far
-    enough above the typical one is named with what it cost.
+    Cost is reported rather than judged. `elapsed`, `serial` and `slowest` say
+    what the run came to and which command came closest to `limit`; nothing
+    here decides whether any of it is too much. An outlier test used to - a
+    command 30x the pool's median was named as the one the check waited for -
+    and it was retired 2026-09-19 once measurement showed it firing on nothing:
+    zero of thirteen real branch scopes and nothing on the whole store, whose
+    slowest command is 67.4 s. The constants' own block above carries the
+    numbers and why the silence is the right answer (`PL-G6J5`).
 
     What this reads from a status, and what it does not (`PL-6TP8`): exit 0 is
     the finding; `TIMED_OUT`, 127 and pytest's 5 are refusals, reported per
@@ -1892,29 +1883,16 @@ def already_passing(
 
     # Only the commands that ran to completion. A killed one did not take its
     # duration - it was stopped at the limit - and one the shell could not find
-    # returns instantly, so either would move the median without having cost
-    # what it appears to.
+    # returns instantly, so either would move the totals below without having
+    # cost what it appears to.
     answered = [
         (item, seconds)
         for (item, (_, seconds)) in zip(candidates, results, strict=True)
         if item.identifier not in timed_out and item.identifier not in unavailable
     ]
-    typical = median(seconds for _, seconds in answered) if answered else 0.0
     serial = sum(seconds for _, seconds in answered)
     worst = max(answered, key=lambda pair: pair[1], default=None)
     slowest = SlowCommand(worst[0].identifier, worst[1]) if worst else None
-    slow = (
-        tuple(
-            SlowCommand(item.identifier, seconds)
-            for item, seconds in sorted(answered, key=lambda pair: -pair[1])
-            if seconds >= max(typical * SLOW_COMMAND_RATIO, SLOW_COMMAND_FLOOR)
-        )
-        # A median of zero admits no ratio, and a pool of one or two commands
-        # cannot contain an outlier by this test in any case: with two values
-        # the larger is under twice their median by construction.
-        if typical > 0
-        else ()
-    )
 
     # Reported apart from `passing` because only one of that finding's two
     # readings is available here: an item nobody can start has not had its work
@@ -1939,8 +1917,6 @@ def already_passing(
         unavailable=tuple(unavailable),
         considered=checked,
         limit=timeout,
-        slow=slow,
-        typical=typical,
         elapsed=elapsed,
         serial=serial,
         slowest=slowest,
