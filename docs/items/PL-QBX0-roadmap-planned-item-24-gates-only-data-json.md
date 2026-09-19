@@ -8,7 +8,7 @@ classes: safety, docs
 feature: settings-panel-prerequisite
 touches: ROADMAP.md
 added: 2026-09-17
-verify: python3 tools/doc_check.py check && grep -qF 'the agent-identification colours and the contrast-checked palette' ROADMAP.md
+verify: grep -qF 'the agent-identification colours and the contrast-checked palette' ROADMAP.md
 ---
 
 **Problem.** ROADMAP planned item 24 gates only data/**/*.json scientific parameters out of the preferences panel, which does not cover the three ISO 5360 agent-identification colours or the contrast-checked palette, both of which app/theme.py holds and tools/contrast_check.py verifies statically

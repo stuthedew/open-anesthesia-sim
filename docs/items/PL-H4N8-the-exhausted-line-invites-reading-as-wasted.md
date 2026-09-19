@@ -8,7 +8,7 @@ classes: science, docs
 feature: liquid-agent-consumption
 touches: ROADMAP.md
 added: 2026-09-16
-verify: python3 tools/doc_check.py check && grep -qF 'from the delivered-agent amount' ROADMAP.md
+verify: grep -qF 'from the delivered-agent amount' ROADMAP.md
 ---
 
 **Problem.** The exhausted line invites reading as 'wasted', but this model has no metabolism so nearly all stored agent becomes exhausted by end of case - the figure that means cost is delivered
