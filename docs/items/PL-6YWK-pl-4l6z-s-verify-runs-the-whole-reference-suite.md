@@ -60,3 +60,10 @@ prerequisite clause, `uv run pytest tests/reference/`; the discriminating
 command becomes the `grep` alone; if it keeps them, the clause narrows to the
 one reference file the work adds, as briefed. Either way the command completes
 inside the limit and fails today for the right reason.
+
+**Decided 2026-09-19, later the same day.** The shape half was ratified: the
+repair is the `grep` alone, so `PL-4L6Z`'s command becomes `grep -rq 'def
+test_a_tissue_volume_recovered_from_its_washin_matches_the_stored_value'
+tests/reference/`. This item's own `verify:` still pins a single-file pytest
+target, which that shape does not produce, so rewrite it first when starting
+this - run and watched failing, as the skill asks.

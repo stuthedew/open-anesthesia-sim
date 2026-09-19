@@ -1312,9 +1312,9 @@ the process table rather than at an answer. `check` refuses such an item by
 name, and `verify` itself reports the re-entry as a failed check where it is
 reached on a store nobody has validated yet. `check` is deliberately not
 refused the same way: it replays a `verify` only under `--verify`, and a nested
-run is told not to ask, so `docket check && grep -q ...` — a command that
-passes today paired with a grep for what the work adds — is bounded at one
-level and is the shape to reach for.
+run is told not to ask, so `docket check && grep -q ...`, the shape the older
+commands record, is bounded at one level. Since `PL-6TP8` the `grep` is
+written alone, and `docket check` is not put ahead of it.
 
 What `check` does say about that command is an advisory, and only for the one
 shape that can pass without meaning anything: a `docket check` whose *output*
@@ -1417,9 +1417,13 @@ proves nothing the consumers do not already prove: every such clause in this
 store is a line of `make check`, which `docket verify` runs as a line of its
 own report, which `docs/worker.md`'s loop runs after the command, and whose
 `doc_check`, `bin/docket check` and whole-suite steps CI runs ahead of the
-replay. Whether the field should carry one at all is `PL-6TP8`'s open half.
-Measured 2026-09-19: 162 of 177 open commands do, they are 1,879 of the
-replay's 1,884 serial seconds, and none of them masked a pass.
+replay. So the field does not carry one: the command is the discriminator
+alone (project owner, 2026-09-19, ratified under `PL-6TP8`, chosen over
+keeping the paired shape), and a command recorded before that date loses its
+clause as its item is started rather than in one pass, which was chosen over
+a mechanical strip of all of them. Measured 2026-09-19: 162 of 177 open
+commands carried one, they were 1,879 of the replay's 1,884 serial seconds,
+and none of them masked a pass.
 
 ### A closed item's command is a record, and it is not rewritten
 

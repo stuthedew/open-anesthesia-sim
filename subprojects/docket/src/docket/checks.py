@@ -430,15 +430,16 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
         )
     # An advisory rather than an error, unlike the refusal above: whether a
     # shell line reads a command's output is a judgment, and the exit-status
-    # form beside it is the shape this project recommends.
+    # form beside it is bounded at one level; since `PL-6TP8` the `grep` is
+    # written alone, with no health check ahead of it.
     if item.verify and (shape := reads_check_output(item.verify)):
         report.advisories.append(
             f"{_where(item)}: its `verify:` command runs `docket check` and {shape}. "
             "A nested run is told not to replay the open items' commands, so it never "
             "prints the landed advisory - a `grep` for that answer matches nothing "
             "whether the work is done or not, and an inverted one passes on the "
-            "strength of it. Read the exit status instead, paired with a `grep` for "
-            "what the work adds."
+            "strength of it. Write a `grep` for what the work adds instead, with "
+            "nothing ahead of it."
         )
     # `verify` folds every removed assertion containing this substring, so a
     # fragment short enough to appear in assertions it was never about folds

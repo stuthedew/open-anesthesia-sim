@@ -3,12 +3,13 @@ id: PL-6YL1
 title: Six open items name a shell-hook test suite as their verify pytest target while touching subprojects/docket/src, and the rule that catches exactly that class has zero false positives today
 priority: P2
 effort: M
-status: ready
+status: dropped
 classes: defect, infra
 feature: queue-hygiene
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-16
-verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_verify_target_outside_the_docket_suite' subprojects/docket/tests/test_checks.py
+closed: 2026-09-19
+reason: PL-6TP8 retired the prerequisite clause from the field (project owner, 2026-09-19, ratified), so no new command carries a pytest target for this rule to read; the six legacy commands lose theirs as their items are started
 ---
 
 **Problem.** Six open items name a shell-hook test suite as their verify pytest target while touching subprojects/docket/src, and the rule that catches exactly that class has zero false positives today
@@ -69,3 +70,12 @@ If the field drops prerequisite clauses, no new command carries a pytest target
 for this rule to read, the six legacy ones are repaired as their items are
 started, and the check is not worth building - this item then drops. If the
 field keeps them, build it as briefed. Not started until that is answered.
+
+**Dropped under `PL-6TP8`, 2026-09-19.** The shape half was ratified the same
+day: a `verify:` command is the `grep` alone, so no new command carries a
+pytest target for this rule to read, and the six that do (`PL-4PC5`,
+`PL-FT3M`, `PL-J45M`, `PL-MBTZ`, `PL-WNQT`, `PL-Z85N`) lose it as their items
+are started - `PL-2M4X` carries `PL-J45M`'s. A check with a population that
+can only shrink to zero and no way to grow fails `CLAUDE.md`'s gate for
+building one. The `verify:` this item carried named the check's test and is
+removed with it.
