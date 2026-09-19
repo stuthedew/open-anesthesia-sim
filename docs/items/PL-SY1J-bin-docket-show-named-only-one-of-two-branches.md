@@ -78,3 +78,11 @@ names every carrier in first-commit order as `.claude/skills/docket/SKILL.md`
 describes, or that passage is corrected to say what the command actually
 reports - the two documents agreeing being the property that matters, since a
 session acts on the skill's description of the verdict rather than on the code.
+
+**Re-pointed by `PL-BHVM`'s design round, 2026-09-19.** Question 1 — what a
+silence means. The brief asks whoever takes this to reproduce before believing
+its framing, and the round supplies a mechanism worth testing first: `precedence`
+returns `carriers=()` **and** `unreadable=()` when its evidence fails, so a read
+that could not see a carrier is indistinguishable from one that saw none. That
+is the same defect as `PL-Q9Z1` reaching the verdict this item is about. Take
+`PL-Q9Z1` first; this may resolve against it.

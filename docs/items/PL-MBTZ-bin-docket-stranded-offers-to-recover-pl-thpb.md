@@ -80,3 +80,11 @@ already cost this project the same shape once.
 base's before offering a recovery: an item the base already holds in a *newer*
 state is not offered, or is offered with the difference named and the checkout
 line withheld. `tests/unit/` covers a branch copy that is behind the base.
+
+**Re-pointed by `PL-BHVM`'s design round, 2026-09-19.** Question 3 — is the
+ref's copy ahead of the base's. `PL-SH9Q`, `PL-KSCW` and `PL-MBTZ` are one
+build, not three: `stranded` keys on whether an item *id* is on the base, and
+the predicate it wants is per item file and three-valued — the ref's copy is
+**ahead** (report it, with a diff to read), **behind** (never report, never
+print a checkout line) or **equal** (silent). Ahead-not-equal is `PL-SH9Q` and
+`PL-KSCW`; behind is `PL-MBTZ`. Do them together.

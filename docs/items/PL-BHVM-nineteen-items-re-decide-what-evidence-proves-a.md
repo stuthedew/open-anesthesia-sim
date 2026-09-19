@@ -8,7 +8,7 @@ classes: defect, refactor
 feature: parallel-sessions
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-12
-root-cause-of: PL-99YZ, PL-HX5C, PL-KSCW, PL-LF2C, PL-MBTZ, PL-Q9Z1, PL-R808, PL-SH9Q, PL-SY1J, PL-WNQT
+root-cause-of: PL-KSCW, PL-LF2C, PL-MBTZ, PL-Q9Z1, PL-R808, PL-SH9Q, PL-SY1J, PL-WNQT
 ---
 
 **Problem.** Nineteen items re-decide what evidence proves a ref is done, seventeen of them in vcs.py: one design round rather than nineteen heuristic patches
@@ -97,3 +97,145 @@ hard-coded `PL-` id prefix), `PL-3LLZ` (four test fakes teaching the same git
 question) and `PL-7XNX` (one `git diff` per ref rather than per file, which its
 own brief calls "not a correctness question") are in the same file and are not
 this decision.
+
+---
+
+## The design round, 2026-09-19 — recommended, not yet ratified
+
+**The round's first finding is that this item's own framing is wrong, and it is
+refused by the file it is about.** The brief's decision line offers two options:
+evidence "recorded at the moment a session claims or lands work, or inferred
+afterwards from content and refs". `vcs.py`'s module docstring already decided
+that, in its opening paragraphs, and against recording:
+
+> Storing that in the item file instead would mean a session has to remember to
+> write it when it starts and to clear it when it stops — and a session that
+> crashes, or that is simply abandoned, leaves the item marked in-progress
+> forever with nobody able to tell whether that is true. So it is derived,
+> never stored.
+
+That reasoning still holds, and this project has since paid for it twice in the
+other direction: `PL-HX5C`'s duplicate implementation and `PL-99YZ`'s three pull
+requests are both **sessions failing to write a record they were asked to
+write**, which is the failure mode storing it would make permanent rather than
+transient. Nothing in the nineteen items is new evidence against the docstring's
+argument, so the recorded decision stands and the "record it" half of this
+item's decision line is closed — not re-opened, closed, because re-opening a
+settled question needs a carrier and this round did not find one.
+
+Worse for the framing: for two of the four questions below, **the session cannot
+record the fact at all.** "Did this ref's work land" is authored by the merge,
+which happens on GitHub after the session is gone. The only party that can
+record it already does — `refs/pull/<n>/head` plus the merge commit — which is
+`PL-VV4D`'s decision and `PL-R808`'s build, both of which predate this item.
+
+### The generator is one level down, and it is measured
+
+The nineteen items do share a mechanism, and it is not inference. It is that
+**the evidence layer collapses "git failed" and "git answered nothing" into the
+same value**, so every reader re-decides what the silence means — and they
+disagree.
+
+`_run_git` returns `""` for a non-zero exit, a missing git and a timeout alike.
+Its callers then adjudicate that silence one at a time: the module carries eight
+`known()` properties, 54 references to `declined`, and 67 lines of prose
+adjudicating what an unread or absent answer means for one particular read. Two calls
+**inside `branches_in_flight`** settle it in opposite directions.
+
+Measured against this repository on 2026-09-19, by substituting a runner that
+fails one subcommand and answers everything else truthfully:
+
+| Evidence failure | `editing` marks | `unreadable` |
+| --- | --- | --- |
+| none — git answering normally | 13 | 0 |
+| one `diff --numstat` fails | **0** | **0** |
+| one `diff --raw` fails | 24 (over-reports — safe) | 0 |
+
+So a single failed `git diff --numstat` silently deletes **every** in-flight
+edit warning the session-start digest has, and the report's own `unreadable`
+field stays empty, so nothing says anything went unread. Under a total git
+failure the same split appears across the module's public reads: `stranded`,
+`lost`, `orphaned` and `merged_pull_requests` decline correctly, while
+`branches_in_flight`, `precedence`, `branch_state` and `default_base` each
+return a confident clean answer.
+
+**This is not a new policy question.** `.claude/rules/apparatus-standard.md`'s
+floor already decides it — "What this apparatus tells a session must be true, or
+must say what it could not read" — and cites `FlightReport.unreadable` as an
+instance of the code already holding to it. The measurement above is that same
+field, empty, on the read the floor names. The four reads are in breach of a
+written standard, which makes this a defect with a known fix rather than a
+decision anybody needs to take.
+
+**`test_vcs.py:467` pins the breach.** `test_no_git_means_no_claims_about_branches`
+drives a total git failure and asserts `branches == ()`, one file away from
+`test_no_git_declines_rather_than_reporting_a_clean_store`, which asserts the
+opposite for `stranded`. That test changes under this decision.
+
+### The ten items are four questions, not one
+
+Treating them as one question is what produced a decision line with an answer
+that was already refused. Separated by what evidence each one needs:
+
+1. **What does silence mean?** — `PL-Q9Z1`, `PL-SY1J`. Substrate under the rest.
+2. **Did this ref's work land?** — `PL-WNQT`, `PL-R808`, `PL-LF2C`.
+3. **Is this ref's copy ahead of the base's?** — `PL-SH9Q`, `PL-KSCW`, `PL-MBTZ`.
+4. **Has a session claimed this work?** — `PL-HX5C`, `PL-99YZ`. **Not this
+   question**, and leaving them in is what made the cluster look uniform: they
+   are about a claim that does not exist yet, not about a ref being done.
+
+### The answers
+
+**Q1 — every read declines rather than answering clean, and a test enforces it.**
+The rule is the apparatus floor, already written. What is missing is that
+`_run_git` gives its callers no way to obey it, so the build is a failure
+channel plus a **fault-injection test that fails the Nth git call and asserts
+each public read either declines or keeps the mark**. Prose cannot enforce this:
+`_superseded`'s docstring states the correct direction in three cases and the
+code inverts two of them. Cost: `FlightReport` and `Precedence` gain a declined
+signal, and `test_vcs.py:467` is rewritten. `PL-Q9Z1` is the build and should go
+first — it is the one item here whose defect silently voids the guarantee every
+other read is trusted for.
+
+**Q2 — the merger's record is the evidence; the content comparison is permanent.**
+Already decided by `PL-VV4D` (2026-09-12) and amended by `PL-LF2C`: the exact
+ref test is exact where the ref resolves, `vcs.orphaned` answers everywhere
+else, and because `refs/pull/<n>/head` is deletable on request the exact test is
+**not a superset** of the portable one even in principle. `orphaned` is
+therefore never retired — which answers the third sub-question in this item's
+decision line. `PL-R808`'s open question — what to print when the two disagree —
+is answered by the same ordering: the exact test wins, and the disagreement is
+printed rather than resolved silently.
+
+**Q3 — one directional predicate replaces id-presence, and it closes all three.**
+`stranded` keys on whether an item *id* is on the base. The predicate it wants
+is per item file, three-valued: the ref's copy is **ahead** of the base's
+(report it, with a diff to read), **behind** (never report, never print a
+checkout line), or **equal** (silent). That single change is what `PL-SH9Q`
+asks for (content, not filename), what `PL-KSCW` asks for (a diff to read, not a
+checkout to run) and what `PL-MBTZ` asks for (compare before offering). They are
+one build, not three.
+
+**Q4 — `PL-HX5C` and `PL-99YZ` leave this cluster**, and `root-cause-of:` drops
+from ten ids to eight. Still a recorded generator by `CLAUDE.md`'s definition,
+which needs three.
+
+### What this round retracts, and what it costs
+
+Retracted: the decision line's "recorded … or inferred" framing, refused above;
+and the implication that one round closes ten items. It closes **one question
+across eight items in three builds**, and two items go elsewhere.
+
+`PL-Q9Z1`'s own reachability argument is corrected rather than retracted. Its
+brief rests on `_run_git`'s 10-second timeout; measured on 2026-09-19 the real
+`diff --numstat` calls run in **4.5 ms**, three orders of magnitude clear, so a
+timeout is not the trigger. The trigger is a **non-zero exit**, and the likely
+one in this repository is a ref that vanishes between the `for-each-ref` that
+lists it and the `diff` that reads it — another session's branch deleted, or a
+merged branch cleaned up, while the digest is running. Verified: git answers
+`fatal: bad revision` and `_run_git` returns `""`, so every path in that call
+reads as superseded.
+
+Costs accepted: a failure channel touches the seam every test fake uses, so the
+Q1 build is larger than its item suggests; and the fault-injection test is a
+standing cost on every new public read, which is the point of it.

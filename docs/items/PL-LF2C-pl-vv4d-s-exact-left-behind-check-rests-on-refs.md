@@ -84,3 +84,12 @@ whose head ref no longer resolves - and says what the check reports then; its
 `#312` vector is replaced with one outside `297..386`; and the
 not-a-superset consequence is recorded where a later session proposing to retire
 `vcs.orphaned` will meet it.
+
+**Re-pointed by `PL-BHVM`'s design round, 2026-09-19.** Question 2 — did the
+ref's work land. The ordering is settled and needs no further decision: the
+exact ref test answers where `refs/pull/<n>/head` resolves, `vcs.orphaned`
+answers everywhere else, and because that ref is deletable on request the exact
+test is **not a superset** of the portable one even in principle — so `orphaned`
+is never retired. Where the two disagree, the exact test wins and the
+disagreement is printed rather than resolved silently, which answers the
+question `PL-R808` leaves open.

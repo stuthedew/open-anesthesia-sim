@@ -66,3 +66,11 @@ reports branch-only files and not branch-only content. A test in
 `subprojects/docket/tests/` pins it against exactly the
 `wizardly-maxwell-dyzpjt` shape: one added item file and one existing item file
 closed on the branch.
+
+**Re-pointed by `PL-BHVM`'s design round, 2026-09-19.** Question 3 — is the
+ref's copy ahead of the base's. `PL-SH9Q`, `PL-KSCW` and `PL-MBTZ` are one
+build, not three: `stranded` keys on whether an item *id* is on the base, and
+the predicate it wants is per item file and three-valued — the ref's copy is
+**ahead** (report it, with a diff to read), **behind** (never report, never
+print a checkout line) or **equal** (silent). Ahead-not-equal is `PL-SH9Q` and
+`PL-KSCW`; behind is `PL-MBTZ`. Do them together.

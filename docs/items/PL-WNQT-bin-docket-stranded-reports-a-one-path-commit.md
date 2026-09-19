@@ -75,3 +75,12 @@ the reason these two are worth doing together rather than in queue order.
 base has since superseded from one the base never took, so a path edited by a
 later merge is not reported as left behind, and the recovery it prints cannot
 revert newer work. `tests/unit/` covers a path a later merge edited.
+
+**Re-pointed by `PL-BHVM`'s design round, 2026-09-19.** Question 2 — did the
+ref's work land. The ordering is settled and needs no further decision: the
+exact ref test answers where `refs/pull/<n>/head` resolves, `vcs.orphaned`
+answers everywhere else, and because that ref is deletable on request the exact
+test is **not a superset** of the portable one even in principle — so `orphaned`
+is never retired. Where the two disagree, the exact test wins and the
+disagreement is printed rather than resolved silently, which answers the
+question `PL-R808` leaves open.

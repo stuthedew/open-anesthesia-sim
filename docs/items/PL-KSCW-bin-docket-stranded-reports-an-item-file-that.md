@@ -71,3 +71,11 @@ edits that the base already holds and is ahead on, and prints the **diff to
 read** rather than a `git checkout` to run - the distinction `PL-KBFN` and
 `PL-39B7` record `PL-XLQ5` paying for - with the live-versus-abandoned judgment
 left to the reader, as `stranded` already leaves it.
+
+**Re-pointed by `PL-BHVM`'s design round, 2026-09-19.** Question 3 — is the
+ref's copy ahead of the base's. `PL-SH9Q`, `PL-KSCW` and `PL-MBTZ` are one
+build, not three: `stranded` keys on whether an item *id* is on the base, and
+the predicate it wants is per item file and three-valued — the ref's copy is
+**ahead** (report it, with a diff to read), **behind** (never report, never
+print a checkout line) or **equal** (silent). Ahead-not-equal is `PL-SH9Q` and
+`PL-KSCW`; behind is `PL-MBTZ`. Do them together.
