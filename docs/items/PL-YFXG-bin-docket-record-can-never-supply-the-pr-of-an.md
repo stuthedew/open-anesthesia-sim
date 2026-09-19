@@ -9,6 +9,7 @@ feature: commit-provenance
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/README.md
 added: 2026-09-19
 closed: 2026-09-19
+pr: 717
 verify: grep -q 'def test_a_queue_only_closure_supplies_its_pr' subprojects/docket/tests/test_vcs.py
 ---
 
