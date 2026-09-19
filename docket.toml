@@ -100,6 +100,46 @@ verify_required_from = 2026-08-30
 # which is precisely the failure PL-5YK8 refused at the other end.
 verify_required_at_close_from = 2026-09-03
 
+# What the command may *be*, once it is present - the third of the three dates,
+# and the decidable half of the contract `PL-6TP8` settled on 2026-09-19
+# (project owner, ratified): the field records the discriminator, and proving
+# the tree is `check_command`'s job, which `docket verify`, `docs/worker.md`
+# and CI each already run. Until now that contract was carried by one table in
+# `.claude/skills/docket/SKILL.md` and by nothing a machine reads, against a
+# store recording 82 counter-examples - 23 of them written on 2026-09-14 alone.
+#
+# The rule fires only where the author has already said which clause
+# discriminates, by writing a separate non-pytest one beside the run. A command
+# whose only clause is the pytest run says the opposite and is untouched, as is
+# one whose run carries `-k`, `-m`, `--cov` or a `::`. The other 73 multi-clause
+# commands - `python3 tools/doc_check.py check && ...` and friends - are the
+# same contract and are deliberately not refused here: which clause is the
+# prerequisite there depends on what the item's work is, and scripting that
+# judgment is worse than leaving it prose (`PL-09G9`).
+#
+# Dated tomorrow rather than today, which is the one thing here that is a
+# choice rather than a reading. `PL-QSGX` was captured on 2026-09-19 carrying
+# the shape; repairing another item's command outside the moment that item is
+# started is the one-pass pass the project owner refused on the same day, so it
+# is left to repair-as-started like the other 81 and the cutover starts after
+# it. The grandfathered set is therefore exactly what the store held when the
+# rule began working - closed, since the test is the capture date, and draining
+# at the 48 items/day the queue closed over the fortnight to 2026-09-19.
+verify_prerequisite_refused_from = 2026-09-20
+
+# The test trees `check_command` already collects, mirroring
+# `[tool.pytest.ini_options] testpaths` in `pyproject.toml`. Only a pytest
+# target inside one of these is provably redundant with `make check`; a run
+# over anything else is doing something no other consumer does, and the rule
+# above leaves it alone. Measured 2026-09-19: 0 of the 82 name a target outside
+# these two, which is the count that says the rule refuses nothing real.
+#
+# Kept here rather than read out of `pyproject.toml` because `bin/docket` runs
+# from a bare checkout with no virtualenv and knows nothing about pytest's
+# configuration. Drift is one-directional and safe: a tree added to `testpaths`
+# and not here makes the rule refuse *less*, never more.
+collected_test_paths = ["tests", "subprojects/docket/tests"]
+
 # Classes that make a release a minor version bump rather than a patch.
 minor_classes = ["feature"]
 

@@ -61,6 +61,23 @@ class Config:
     #: - exempt at `ready`, and closing one is the first moment its command
     #: could be run before being written. `None` leaves it off.
     verify_required_at_close_from: date | None = None
+    #: The date from which a `verify:` command may no longer stand a pytest
+    #: run beside a separate discriminating clause. The field records the
+    #: discriminator and nothing else, so a pytest clause with a *different*
+    #: clause beside it proves the tree twice - once here, once in
+    #: `check_command`, which every consumer already runs. Anchored to the
+    #: capture date, so the commands already recorded are a closed set that
+    #: drains as each item is started rather than in one pass. `None` leaves
+    #: it off, and so does an empty `collected_test_paths`, which is what
+    #: says which pytest targets `check_command` already covers.
+    verify_prerequisite_refused_from: date | None = None
+    #: The test trees `check_command` already runs, as the project spells
+    #: them for its own runner. Only a pytest target inside one of these is
+    #: provably redundant with `check_command`; one outside it is running
+    #: something no other consumer does, and is left alone. Empty means "this
+    #: project has not said", which leaves the rule above off rather than
+    #: guessing.
+    collected_test_paths: tuple[str, ...] = ()
     #: Classes that make a release a minor version bump rather than a patch.
     minor_classes: tuple[str, ...] = ("feature",)
     #: Every class an item may carry. Empty means "derive it", and the derived
@@ -231,6 +248,14 @@ def load(root: Path) -> Config:
             section.get("verify_required_at_close_from"),
             defaults.verify_required_at_close_from,
             "verify_required_at_close_from",
+        ),
+        verify_prerequisite_refused_from=_date(
+            section.get("verify_prerequisite_refused_from"),
+            defaults.verify_prerequisite_refused_from,
+            "verify_prerequisite_refused_from",
+        ),
+        collected_test_paths=_tuple(
+            section.get("collected_test_paths"), defaults.collected_test_paths
         ),
         minor_classes=_tuple(section.get("minor_classes"), defaults.minor_classes),
         known_classes=_tuple(section.get("known_classes"), defaults.known_classes),

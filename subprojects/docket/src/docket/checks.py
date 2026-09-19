@@ -20,12 +20,15 @@ should look, and never fail a build.
 from __future__ import annotations
 
 import re
+import shlex
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
 from .config import Config
 from .model import (
+    CLOSED_STATUSES,
     EFFORTS,
     OPEN_STATUSES,
     PRIORITIES,
@@ -364,6 +367,25 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
                 "that proved it, or record in `not-delegable` why no command can"
             )
 
+    # What the command may *be*, once it is present - the decidable half of the
+    # contract `PL-6TP8` settled, which until now was carried only by a table in
+    # the `docket` skill. Open items only: a closed command is a record of what
+    # was run on a tree that no longer exists, and rewriting one replaces the
+    # command that proved the work with one that never ran it.
+    if (
+        item.status not in CLOSED_STATUSES
+        and item.verify
+        and _verify_prerequisite_refused(item, config)
+    ):
+        redundant = _redundant_pytest_clause(item.verify, config.collected_test_paths)
+        if redundant is not None:
+            report.errors.append(
+                f"{where}: its `verify:` runs `{redundant}` beside a separate "
+                "discriminating clause, so it proves the tree twice - "
+                f"`{config.check_command}` already collects that target, and every "
+                "consumer of the field runs it. Record the discriminator alone"
+            )
+
     # A safety class forces the top band, because that is where work able to
     # reach a wrong clinical value belongs. `blocked` earns a narrow exception:
     # a blocked item is not in the set `next` chooses from, so its band is a
@@ -520,6 +542,126 @@ def _verify_required_at_close(item: Item, config: Config) -> bool:
     if config.verify_required_at_close_from is None:
         return False
     return item.closed is not None and item.closed >= config.verify_required_at_close_from
+
+
+#: Options that make a pytest run select something narrower than the files
+#: named on its command line. Any of them, and the clause is discriminating on
+#: its own account rather than proving a file's suite green, so the rule below
+#: leaves it alone. `--cov` is here because a coverage threshold is the one
+#: shape the `docket` skill prescribes pytest for.
+_PYTEST_SELECTORS = ("-k", "-m", "--cov", "--deselect", "--lf", "--ff")
+
+#: Options that consume the token after them, so that token is a value rather
+#: than a path to run. Only the ones that can appear *without* a selector need
+#: listing, since a selector returns early; `--x=y` spellings consume nothing
+#: and need none of this.
+_PYTEST_VALUE_OPTIONS = frozenset(
+    {"-n", "-p", "-o", "-c", "-r", "--dist", "--maxfail", "--durations", "--rootdir", "--ignore"}
+)
+
+
+def _pytest_targets(clause: str) -> list[str] | None:
+    """The paths a pytest clause runs, or `None` if it is not one to read.
+
+    `None` covers three cases that are all "this is not a redundant health
+    check": the clause does not invoke pytest at all, its arguments cannot be
+    split (an unbalanced quote, which the format check elsewhere reports), or
+    it carries a selector, which makes the run itself the discriminator rather
+    than a proof that a file's suite is green.
+
+    An empty list is the meaningful answer rather than a missing one: a bare
+    `pytest` with no path runs the whole suite, which is exactly what
+    `check_command` runs.
+    """
+    try:
+        tokens = shlex.split(clause)
+    except ValueError:
+        return None
+    for index, token in enumerate(tokens):
+        if token == "pytest" or token.endswith("/pytest"):
+            rest = tokens[index + 1 :]
+            break
+    else:
+        return None
+    if any(token.startswith(_PYTEST_SELECTORS) for token in rest) or any(
+        "::" in token for token in rest
+    ):
+        return None
+    targets: list[str] = []
+    skip = False
+    for token in rest:
+        if skip:
+            skip = False
+            continue
+        if token in _PYTEST_VALUE_OPTIONS:
+            skip = True
+            continue
+        if not token.startswith("-"):
+            targets.append(token)
+    return targets
+
+
+def _redundant_pytest_clause(command: str, collected: Sequence[str]) -> str | None:
+    """The clause that re-runs tests `check_command` already collects, if any.
+
+    The shape `PL-6TP8` retired, reduced to the half that needs no judgment.
+    A `verify:` command records the discriminator and nothing else, because
+    every consumer that needs the tree proven runs `check_command` itself -
+    `docket verify` as a line of its own report, `docs/worker.md` after the
+    command, CI ahead of the replay. So a pytest run over a tree that command
+    already collects proves the same thing twice, and `PL-FZ58` measured what
+    the second proof costs: three test files carrying 59% of a whole-store
+    replay's serial time, each re-run once per item whose command named it.
+
+    What makes it decidable is the *other* clause. Which half of a paired
+    command is the prerequisite is normally a question about the item's work -
+    an item whose work is making `doc_check` pass has `doc_check.py check` as
+    its discriminator, not as a preamble - and guessing at that is scripting
+    the judgment. Here the author has already answered it: a separate,
+    non-pytest clause is present, so the pytest run is not what discriminates,
+    whatever the item turns out to be about. A command whose only clause is
+    the pytest run says the opposite and is left alone.
+
+    Split on `&&` alone, which is what every command in this store uses and
+    the only separator that carries the "and then" this reads.
+    """
+    if not collected:
+        return None
+    clauses = [clause.strip() for clause in command.split("&&")]
+    if len(clauses) < 2:
+        return None
+    pytest_clauses = [clause for clause in clauses if _pytest_targets(clause) is not None]
+    if not pytest_clauses or len(pytest_clauses) == len(clauses):
+        return None
+    for clause in pytest_clauses:
+        targets = _pytest_targets(clause) or []
+        if all(
+            any(target == root or target.startswith(f"{root}/") for root in collected)
+            for target in targets
+        ):
+            return clause
+    return None
+
+
+def _verify_prerequisite_refused(item: Item, config: Config) -> bool:
+    """Whether the shape rule applies to this item at all.
+
+    Anchored to the capture date, and grandfathering the commands already
+    recorded, for the reason `PL-6TP8` chose repair-as-started over a
+    one-pass strip: removing a clause from an item nobody has started writes
+    into a file against every branch in flight, and the bill falls as the
+    queue turns over anyway. The set this exempts is closed - nothing can
+    join it, since the test is the capture date - which is the property that
+    makes the grandfathering drain rather than persist.
+
+    It leaks in the same bounded way `_verify_required` does: an item
+    captured before the cutover can still have a command written after it.
+    The alternative is a second date written by hand when the command is
+    recorded, which is a field that can be wrong.
+    """
+    if config.verify_prerequisite_refused_from is None:
+        return False
+    return item.added is not None and item.added >= config.verify_prerequisite_refused_from
 
 
 def _check_milestones(report: Report, version: str | None) -> None:

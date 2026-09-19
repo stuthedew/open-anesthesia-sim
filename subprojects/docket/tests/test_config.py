@@ -89,3 +89,26 @@ def test_workflow_paths_are_read_from_the_config(tmp_path: Path) -> None:
 def test_workflow_paths_default_to_empty_which_disables_the_lanes(tmp_path: Path) -> None:
     """Fail closed: a lane that quietly answers from the whole queue is the bug."""
     assert load(tmp_path).workflow_paths == ()
+
+
+def test_the_command_shape_rule_reads_its_cutover_and_its_trees(tmp_path: Path) -> None:
+    """Both halves are needed before the rule refuses anything, so both are read.
+
+    A cutover with no trees leaves it off rather than guessing which of a
+    project's pytest runs its own check command already performs.
+    """
+    (tmp_path / "docket.toml").write_text(
+        "[docket]\n"
+        "verify_prerequisite_refused_from = 2026-09-20\n"
+        'collected_test_paths = ["tests", "subprojects/docket/tests"]\n',
+        encoding="utf-8",
+    )
+    config = load(tmp_path)
+
+    assert config.verify_prerequisite_refused_from == date(2026, 9, 20)
+    assert config.collected_test_paths == ("tests", "subprojects/docket/tests")
+
+
+def test_the_command_shape_rule_is_off_until_a_project_adopts_it(tmp_path: Path) -> None:
+    assert load(tmp_path).verify_prerequisite_refused_from is None
+    assert load(tmp_path).collected_test_paths == ()

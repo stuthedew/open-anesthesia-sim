@@ -2974,7 +2974,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 174 entries
+### Declined to Gate 2 on the refilling-queue ground — 175 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3229,6 +3229,19 @@ rather than only `subprojects/docket/`, and is stated here rather than
 stretched: what it changes there is a rule's *length*, by replacing three
 command names with one.
 
+**One more on a ground of its own: its problem did not exist at the freeze**
+(`PL-09G9`, 2026-09-19). The other entries above are deferred despite passing
+the presence test; this one fails it outright, and saying so is cheaper than
+stretching the refilling-queue argument over it. The contract it makes
+mechanical - that a `verify:` records the discriminator and not a second proof
+of the tree - was decided on 2026-09-19 under `PL-6TP8`, thirteen days after
+this gate froze, so there was nothing on 2026-09-06 for a gate to hold. It is
+`P2`, `defect`-classed, wholly workflow-lane apparatus, and neither `safety`
+nor `science`. It is stated rather than left silent because the disposition
+rule asks for a sentence either way, and an open debt item the gate neither
+places nor defers is reported as undisposed whatever the reason.
+
+- PL-09G9 (M) Nothing refuses a new verify: command that re-runs a test file make check already collects, so PL-6TP8's contract is enforced by prose alone and 82 of 180 open commands carry the clause
 - PL-0M32 (S) Nothing can tell an item finished under a renamed test from one nobody has started
 - PL-0VFF (S) ROADMAP.md's 'Declined to Gate 2' list names PL-483K, PL-69JZ and PL-L09X as deferred, but all three closed done in v0.4.14, and nothing distinguishes a still-open entry from a closed one
 - PL-12P8 (S) PL-JBZK's lane check assumes every file under tests/ is a test file, so a shared non-test helper is told to declare itself apparatus
