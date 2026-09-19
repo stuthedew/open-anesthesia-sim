@@ -9,6 +9,7 @@ feature: timeline-arrangement
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-15
 closed: 2026-09-19
+pr: 690
 verify: grep -q 'def test_a_blocker_the_timeline_schedules_ahead_of_the_gate_reads_as_sequenced' subprojects/docket/tests/test_roadmap.py
 ---
 
