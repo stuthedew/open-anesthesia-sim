@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: verify-replay-cost
+milestone: v0.4.29
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-09-17
 closed: 2026-09-19

@@ -248,3 +248,31 @@ budget *before starting an item* and hand off rather than start. The decision is
 committed on its own so it reaches `main`: left on a branch, the next session
 would pick this up still reading `needs-decision` with the answer nowhere in the
 store.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Partly overtaken: everything
+around the sentence landed, the sentence did not.** `PL-C6XD` closed
+2026-09-17 (#652), so `format_status`'s second independent copy of the refusal
+is gone - one helper, `_reserved_refusal` at `render.py:1669`, serves both call
+sites and is pinned by
+`test_release.py:630 test_digest_and_status_render_one_reserved_verdict`. A
+surface prints the reserved set (`render.py:1554-1572`; `bin/docket wave` shows
+the `Reserved` line). The roadmap clause landed at `ROADMAP.md:1592`
+("**A patch cut no longer takes this number**", project owner, 2026-09-16,
+ratified). Both decisions are recorded and the item is `ready`.
+
+**What is left is only the sentence and its test.** `render.py:1685-1688` still
+returns "No release to offer: the roadmap gives … which is unfinished - …",
+and both pointers name what is *due* rather than saying a patch-track cut is
+available by naming a version. No test pins it, so the `verify:` fails, and
+`render.py:1569` records the item as open in the code itself. The cut path
+still has no guard (`PL-Z85N`).
+
+**Every measured number in this brief is spent, so do not reason from them.**
+v0.4.26 and v0.4.27 both shipped and v0.4.28 is current; the reserved set is
+`0.5.0, 0.6.0, 0.7.0, 0.8.0, 0.9.0` with no `0.4.x` number in it, so only the
+minor branch can still collide; the free patch number is `0.4.29` and the
+digest *offers* it rather than refusing; nothing was skipped in 46 releases;
+the beat is "step 5 of 14: v0.5.0"; `render.py:1466` is no longer the refusal;
+the `held` branch is `render.py:464-470`; and `PL-Y1L0` closed 2026-09-19.
+The RESERVED branch is dormant rather than dead - which is why the sentence
+still has to be right when it next fires.

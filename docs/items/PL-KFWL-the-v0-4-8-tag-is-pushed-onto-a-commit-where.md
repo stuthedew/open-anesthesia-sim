@@ -61,26 +61,31 @@ than surfacing as a version-table error.
 VERSION=0.4.8`" - so the release half of this belongs to that session. What is
 this item's own is the guard: nothing stopped the tag going first.
 
-**Resolved on the tag side, 2026-09-07, by the second disposition rather than
-the first: `v0.4.8` was deleted from the remote, not cut.** `git ls-remote
---tags origin` no longer returns it, `origin/main` is unmoved at `b03a7d0`,
-`pyproject.toml` still reads `0.4.7`, and `python3 tools/doc_check.py check`
-is back to 0 errors and 0 advisories. So the release was never cut and no
-longer claims to have been; the version table is consistent again because the
-tag withdrew, not because a row was added.
+~~**Resolved on the tag side, 2026-09-07, by the second disposition rather
+than the first: `v0.4.8` was deleted from the remote, not cut.**~~ **That is
+backwards, and the paragraph it led is struck out because acting on it would
+now delete a live release tag.** Corrected 2026-09-19 in `PL-6ZQY`'s
+crossing-lane sweep: v0.4.8 was resolved by the **first** disposition - it was
+*cut*. `git ls-remote --tags origin` returns `refs/tags/v0.4.8` at
+`b340e7f`, whose subject is "PL-BKDP: cut v0.4.8 - the gate that was measuring
+itself ... (#440)"; `docs/releases/v0.4.8.md` exists; `ROADMAP.md:71` carries
+its Completed row; and `pyproject.toml` reads `0.4.28`, not `0.4.7`. So the
+version table is consistent because a row was added, which is the opposite of
+what this said.
 
-**One consequence worth knowing, because it costs a session an hour
-otherwise.** A clone that fetched while the tag existed keeps it: `git fetch`
-does not delete a local tag whose remote is gone, so `doc_check` went on
-reporting the error here after the remote was already clean - the same shape
-as `PL-YGF3` and `PL-F48B`, arrived at by a deleted tag instead of a rewritten
-history. The repair is to delete that one tag by name, never a prune:
+**What was struck, and why it mattered.** The removed paragraph told a later
+session that a clone can keep a tag whose remote is gone, and gave
+`git tag -d v0.4.8` as the repair. The general lesson is sound and is
+`PL-YGF3`'s; the command is not, because the remote still has that tag. Running
+it would leave the clone without a tag `tools/doc_check.py`'s `check_tags`
+expects at `:2505`, turning a correct tree into a reported error - the exact
+cost the paragraph was written to save, inverted.
 
-    git tag -d v0.4.8
-
-`git fetch --tags --force` does not do it either; `--force` updates a tag, it
-does not remove one the remote dropped, and `--prune-tags` implies `--prune`,
-which `.claude/hooks/no-prune-guard.sh` refuses for good reason.
+**How the wrong account survived:** nothing checks a brief's narrative against
+the tree. `python3 tools/doc_check.py check` exits 0 with 0 errors and 0
+advisories over this file, because every path and identifier it cites exists;
+what had gone false was the tense and the outcome, which no check reads. That
+is `PL-6ZQY`'s own argument arriving inside one of its own items.
 
 **What is left of this item is the guard, and it is the whole of it now.**
 Nothing refused the tag going first, and nothing would refuse the next one.
@@ -95,3 +100,17 @@ or reported by name.
 operations), which closed with the finding that its ten members are not one
 mechanism. Its placement on the permissions side is now stale - the rationale was that the v0.4.8 tag was wrong on the remote and no session could move it, and the tag is no longer wrong: remote and this checkout both hold it at `93f1902`, `ROADMAP.md` carries its row, and `doc_check` is green. What is left is this item's own second clause, the guard against a tag pushed ahead of its cut, which is release-process work. Nothing here is blocked on that head; this item stands on
 its own merits at its own band.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Still real, and it was never
+partly overtaken: nothing the `Done when` still asks for has landed.** The
+guard is wholly absent - `grep -rn 'ahead of its own cut\|tag_ahead' tools/
+subprojects/docket/src/docket/` finds nothing, `bin/docket release` still
+checks only the *previous* release's tag (`cli.py:1365`, `is_untagged`), the
+condition still surfaces as the generic version-table error at
+`tools/doc_check.py:2544`, and the item's own `verify:` fails. What was stale
+was the account of how the tag side resolved, corrected above.
+
+**Probable duplicate of `PL-6YYR`** (a release tag can be pushed for a version
+that was never cut), which describes the same guard from the other end and
+whose own test is equally absent. Whoever starts either should read both and
+close them together rather than build the guard twice.

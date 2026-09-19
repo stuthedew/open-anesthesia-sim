@@ -32,3 +32,11 @@ restating the one above it, no clause that adds nothing, no section that could
 be a sentence. Every statement of *why* a boundary exists survives. `make
 check` passes, so no package-map entry, citation or documented make target was
 broken by the edit.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation): still real, with stale numbers corrected here rather than in the text above.** No cut has landed - the only
+commit naming this item is the triage split that created it, and every commit
+touching `docs/ARCHITECTURE.md` since has added content for other items. Its
+own instruction to re-measure is why the numbers are given rather than kept:
+the two files were **576** and **49** lines at the filing commit `8250816`, and
+are **1155** and **83** today. Both have roughly doubled, so the premise moved
+in the direction that makes this item larger rather than smaller.

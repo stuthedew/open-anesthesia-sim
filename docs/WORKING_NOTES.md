@@ -2017,22 +2017,25 @@ for is void:
   A red-`main` digest line that is right a third of the time is the second
   friction test — an advisory being routed around.
 
-**The grouping covers two of the three, deliberately.** `PL-VKGJ` and
-`PL-STC4` carry no `feature:` and should get one, per `CLAUDE.md`'s rule that a
-diagnosis producing more than one item groups them at the moment anybody knows
-they are one problem. `PL-T83R` is **left in `ci-cost`**, which it already
-carries: both groups fit it, an existing group that names four items is worth
-more than a tidier label, and `bin/docket feature` counts what completes rather
-than what a reply grouped. That is a session's call under rule 14 - its blast
-radius is one field on one item - and this note is the record of it.
+**The three are deliberately *not* given one shared `feature:`, and this note
+is the carrier instead.** `PL-CSV0`'s triage pass landed as `#720` while this
+was being written and seated `PL-VKGJ` into `queue-hygiene`; `PL-T83R` already
+carried `ci-cost`; only `PL-STC4` had none, and it went into
+`verify-false-reject` beside `PL-4FD2`, which describes the same defect
+independently. Two of the three therefore sit in existing groups that name real
+completions, and stripping those for a tidier label would cost more than it
+buys - `bin/docket feature` counts what completes, not what a reply grouped.
 
-It was not written here because `PL-VKGJ` and `PL-STC4` were both held by
-`PL-CSV0`'s in-flight triage pass on `origin/claude/serene-maxwell-iji9mx` when
-this was decided, and a second answer in those files is a second resolution of
-them. That session could not be reached to ask - it runs in a separate
-container, and `ListAgents` finds no peer - so the grouping is owed by whichever
-session next touches either item, and this paragraph is the only thing carrying
-that. `PL-T83R` needs nothing: it keeps `ci-cost`.
+So the cross-group sequencing decision has no `feature:` to live in, which is
+what this section is for. A session asking "are the silently-wrong checks dealt
+with" reads this paragraph and then `bin/docket show` on the three ids; there is
+no single command behind it, and that is the accepted cost of leaving three
+good groups intact. That is a session's call under rule 14 - its blast radius is
+one field on each of three items.
+
+**`PL-STC4` is probably a duplicate of `PL-4FD2`**, filed apart because
+`bin/docket new` does not detect a duplicate title (`PL-TZ7T`). Both are now in
+`verify-false-reject`; whether they merge is for whoever works them.
 
 **`PL-G424` was escalated in the same sitting and is not part of this group.**
 It is the one open generator head (apparatus-side citation drift, 21 open

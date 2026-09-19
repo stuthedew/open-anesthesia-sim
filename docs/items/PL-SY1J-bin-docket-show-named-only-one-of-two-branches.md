@@ -86,3 +86,28 @@ returns `carriers=()` **and** `unreadable=()` when its evidence fails, so a read
 that could not see a carrier is indistinguishable from one that saw none. That
 is the same defect as `PL-Q9Z1` reaching the verdict this item is about. Take
 `PL-Q9Z1` first; this may resolve against it.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Partly overtaken: the mechanism
+landed, the reproduction did not.** `PL-Q9Z1` closed 2026-09-19 (#687) and
+gives `precedence` the failure channel this item guessed at -
+`Precedence.declined` at `vcs.py:2327`, set from the runner's reason, and
+`render.py:903-906` now prints "(This ordering is partial - … - so the other
+session may be computing a different one. Do not stand down on it.)".
+`test_vcs_silence.py:280-281` holds `precedence` to it.
+
+Both disjuncts of the `Done when`'s second clause are also already satisfied,
+and were before this item was filed: `render.py:886-890` names every carrier in
+first-commit order, four tests in `test_vcs.py` (`:3509`, `:3517`, `:3596`,
+`:3643`) pin that ordering, and `.claude/skills/docket/SKILL.md:706-708`
+describes it correctly - all from `4c429e8` on 2026-09-04, twelve days before
+the 2026-09-16 observation. So is the open question about
+`branches_in_flight`: `vcs.py:2388` says it reports one branch per item
+"deliberately", same commit.
+
+**What is left is only the first clause: reproduce the behaviour.** Whether the
+2026-09-16 observation had a cause beyond the silence is undiagnosed, and it
+may not be settleable - the session's branch `claude/exciting-dirac-q7iyez` is
+gone and that repository state cannot be reconstructed, so which of
+`_head_carries` or a silenced `diff` dropped the claim cannot be distinguished
+from here. If it cannot be reproduced, say so and close it rather than leaving
+it open against a state nobody can rebuild.

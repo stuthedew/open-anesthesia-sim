@@ -33,3 +33,22 @@ rewrites a cut release's notes, so each instance is permanent once tagged.
 closing pull request its notes do not name is either repaired or recorded as
 knowingly left, with the reason; and a check fails the *next* one rather than
 leaving it to be noticed - which is the half that stops this recurring.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Still real, and the fault
+reproduces at the newest tag.** No check exists
+(`grep -c 'def check_tag_span_covers_its_notes' tools/doc_check.py` → 0); the
+only mechanism is docket's advisory at `checks.py:838,852`, which landed in the
+same commit that filed this item. Re-counted today by docket's own definition:
+**12 closing pull requests across 9 spans**, against the brief's "12 … in 11
+distinct spans" of 2026-09-14 - the pull request count is unchanged and the
+span count should be treated as approximate, since a definitional difference
+behind 9-versus-11 could not be excluded. The v0.4.27..v0.4.28 span covers
+`#702` and `#703` and `docs/releases/v0.4.28.md` names neither `PL-1YT5` nor
+`PL-V1F4`.
+
+One correction: "nothing points a reader from the tag to where that work is
+described" is false at the *class* level - `ROADMAP.md:121-125` says the two
+records answer different questions and that the work is described in the next
+release's notes. That paragraph landed in the same commit as this item, so it
+is not later work; what no individual notes file carries is a pointer of its
+own, which is the narrower claim to make.

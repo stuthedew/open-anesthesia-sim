@@ -39,3 +39,22 @@ item exists to prevent.
 **Done when.** The grey either meets a declared requirement in
 `tools/contrast_check.py` or is recorded there as exempt with the reasoning, and
 `make check` reports it under whichever it is.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Still real, and it has lost the
+pass that was going to pick it up.** The measurement reproduces: `GRIDLINE` is
+still `#D9E2EC` at `src/anesthesia_sim/app/theme.py:519`, serving both the chart
+gridlines (`qt_chart.py:316`, `:346`) and the panel divider
+(`simulation_view.py:365`), and `contrast_ratio("#D9E2EC", "#FFFFFF")` returns
+1.3092 - 1.31:1 as recorded, and 1.22:1 against `BACKGROUND`.
+`tools/contrast_check.py` still names it nowhere: no `GRIDLINE` requirement,
+`KNOWN_SHORTFALLS` empty at `:724`, and the report line reads 24 of 24.
+
+Two corrections. The question has in fact been *argued* once -
+`theme.py:505-513` carries "**It carries no `REQUIREMENTS` entry, and that is a
+judgment rather than an omission.** Measured 1.31:1 on `PANEL` …" since
+`PL-2CS8` on 2026-09-08 - so the item is about recording that judgment where
+`make check` reports it, not about asking an unasked question; `theme.py:518`
+says "`PL-HKTB` carries it" in the same breath. And the sequencing this brief
+rests on has lapsed: `PL-L9RD` closed 2026-09-16 without redeciding the
+visuals, pushing that pass to `v0.7.x`, so no scheduled work will absorb this
+decision and it now has to be taken on its own.

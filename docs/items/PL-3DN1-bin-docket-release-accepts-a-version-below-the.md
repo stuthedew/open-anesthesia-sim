@@ -38,3 +38,23 @@ requested number against the one in `version_file`.
 with the interrupted-cut resume still able to re-cut the version it is
 resuming, and with the equal-to-current case decided explicitly rather than
 falling out of the comparison. A test for each.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Still real, and it was never
+partly overtaken - but one sentence of it was wrong on the day it was
+filed.** The defect reproduces exactly as described where the number has no
+notes file: `bin/docket release 0.2.0 --dry-run --no-fetch` prints
+`0.4.28 -> 0.2.0` and `## v0.2.0 - 2026-09-19` and exits 0, with no refusal.
+Nothing compares the requested number to `version_file`: `version_key` never
+appears in `cli.py`, and none of the five refusal helpers there reads the two
+against each other. No test exists, so the `verify:` still fails.
+
+Two corrections. The brief's own example - `make release VERSION=0.4.8`
+against a tree at 0.4.18 - does **not** get through: `already_released` catches
+it, because v0.4.8 has shipped notes on the base, and the command exits 1. That
+guard landed in `91b60d8` (`PL-66FP`, #323) on 2026-09-04, nine days before this
+item was added, so the illustration was false at filing rather than overtaken.
+And the brief's claim that no existing guard "reads the requested number
+against the one in `version_file`" is not exhaustive: `already_released`
+(`release.py:264-301`) does, for **equality** only. Ordering is the gap, and it
+is a real one - so re-illustrate with a low number that never shipped, such as
+`0.2.0`.

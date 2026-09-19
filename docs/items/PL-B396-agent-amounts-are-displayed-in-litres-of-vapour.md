@@ -239,3 +239,18 @@ and why the accounting Editor keeps litres of vapour.
 **Done when** item 28 is either scoped - at which point the five items above are
 re-pointed at it and this one closes - or explicitly left unscoped with this item
 recorded as the stand-in.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation): still real, with stale numbers corrected here rather than in the text above.** The display facts are unchanged -
+`ACCOUNTING_UNIT_CAPTION` at `dashboard_frame.py:251`,
+`AGENT_VOLUME_DISPLAY_DECIMALS = 1` at `formatting.py:138`, the "bare L invites
+the liquid reading" rationale at `docs/MODEL.md:6626` - and the scope decision
+is still open: `ROADMAP.md:3837` says outright that item 28 is named by no
+release. Three attributions moved. `PL-S6WW` closed 2026-09-17 (#669), so only
+`PL-KZ99` of the two blockers stands - and `PL-KZ99` now names a closed item in
+its own `blocked-by`. `PL-H4N8` closed 2026-09-19 (#709) and **already made the
+correction this brief says it carries**: `ROADMAP.md:5422` now reads "from the
+delivered-agent amount", with the note at `:5429` recording that it read
+"exhausted-agent" until 2026-09-19. So the dependants are four rather than
+five. The reason to keep this open is untouched: `PL-0S0V` and `PL-VJZK` are
+both `safety`-classed and both blocked on it, so closing it promotes two
+anticipated safety items into the gate.

@@ -88,7 +88,8 @@ capability-boundary rule above governs.
 | v0.4.25 | Completed | **The release where the run became forkable underneath the interface, and the last Flet build was tagged.** A patch, because a learner cannot reach the first half: `PL-XJ37` records that nothing in the interface lets a learner take a fork or select between runs, so a case runs as it did in v0.4.24 and every displayed value is the same value. Three measurements: `src/anesthesia_sim/data/` resolves to `6960c78` here as at `v0.4.24`, `v0.4.23` and `v0.4.22`, unmoved across four releases; eight files under `src/` change, three in `core/`, and **every numeric constant the diff adds to executable code is a 0, a 1 or a 2** - an index, a count, a lower bound - measured by parsing both revisions with `ast` and diffing the constants; `tests/reference/` changes in one file and the change is the fork-reproduction probe list moving onto the case's own axis, no published-reference expected value with it. **A branch's definition opens at the fork instant on the case's own axis** (`PL-ZMRT`, project owner, 2026-09-14): with a fork at 900 s, `(900.0 + 1e-6) - 900.0` is `9.999999974752427e-07` rather than `1e-6`, so a child asked for its own first microsecond propagated over a different interval from its parent; after the change the branch agrees with its parent at **all 601 shared case instants**, where a definition opened at its own zero differs at **354 of 601**, and `PL-2R2C` dissolved with it - a branch's drawn columns went from 2 of 8 shared with the trunk to 8 of 8. `SimulationController.origin_s` and both subtractions are gone. **`PL-3LZB` is `P1` `safety` and had to land first**: `RunDefinition`'s lower bound was the literal `0.0` and `_segment_index_at` wrapped, so a definition opening after zero answered from its *last* segment instead of refusing - `state_at(0.0)`, `state_at(100.0)` and `state_at(599.9)` all returned 0.005664 alveolar fraction on a definition opening at 600 s, and `evaluate_anchored(0, 500, 100)` drew a varying curve across a span the run did not exist for. A strict no-op on the v0.4.24 tree and reachable the moment a branch opens at 600 s. `PL-TFX5` forks a run at any control-input event, flat rather than as a tree; `PL-J2TD` is what a fork resumes into, a live run opened at a canonical keyframe state guarded by `require_canonical_state` and `resume_at`, advancing by the ordinary path; `PL-B9PY` decomposes `SimulationView` so two runs render, the 211 existing tests unchanged except for reaching the sole run through `view.runs[0]`. Five of the twelve are v0.5.0's own Required-scope ids shipped early in the `v0.4.x` track. **`PL-RKWB` moved the Qt port ahead of v0.5.0's display half**, and this cut takes the number that section held, as its own risk paragraph provided for: the heading moved to `v0.4.26` and nothing else moved with it - because `PL-YVM1` found the earlier renumber had left **51 references in 29 open items, `app/theme.py` and `docs/MODEL.md`** naming the port `v0.5.1`, all six of its build items among them, invisible to `tools/doc_check.py` because none was a section citation, and adopted the rule that outside this file the port is named by what it is, never by a version. `PL-6T4L` stopped the digest offering v0.5.0 with 8 of 22 scope entries open; `PL-H27D` corrected eight statements `PL-ZMRT`'s own sweep never reached; `PL-5328` re-briefed `PL-RD3B` against the tree `PL-2FM6` left; `PL-1V3X` is the v0.4.24 cut. | 12 items |
 | v0.4.26 | Completed | **The release where the interface was rewritten and the model was not.** `app/` moves from Flet to PySide6 and pyqtgraph - 15 files, +7 488/-5 357, seven modules added and the Flet chart-series module deleted - against a definition of done that was *parity* with v0.4.25 rather than improvement, and the runtime dependencies swap with it (`flet[all]` and `flet-charts` out, `PySide6-Essentials` and `pyqtgraph` in). **No stored scientific value moved, and that is a parse of both revisions rather than a reading of the diff:** the three agent files under `src/anesthesia_sim/data/agents/` are byte-identical to v0.4.25, and the two data files that do change carry citation text only - all 15 numeric leaves across both are identical. `core/` changes in one file, in one hunk of two lines, and it is a docstring cross-reference following `app/simulation_view.py`'s split into `app/run_view.py`; `tests/reference/` changes in one file, re-pointing the import allowlist and one assertion at `app/dashboard_frame.py` with no expected value touched. **The patch number survives the one surface that grew.** `PL-8PSW` drew two branches on one axis - v0.5.0's comparison display, landed early at the project owner's direction - and the release still crosses no learner-facing boundary, because `fork_at`, `fork_points_s` and `branches` have no caller outside `app/controller.py`: nothing in the interface creates the second run the overlay draws, and only tests reach it. **Three `P1` `safety` items rode the port** rather than being built twice on a toolkit about to be deleted. `PL-2K1R` put "Model outputs - not measurements." under the readouts, which is the first thing in this interface distinguishing a modelled value from a measured one. `PL-YVHK` implemented the hover readout to the derivation `docs/MODEL.md` already carried. `PL-GS3R` replaced the fixed 150-column drawing budget with a chord-width rule, after re-measuring the worst drawn departure at every rung of `TIME_BASE_LADDER`: 0.53 pp on the alveolar trace (0.26 MAC) at the fastest supported settings, and 3.8 pp (0.64 MAC) for a desflurane overpressure induction. **`PL-2QMK` closed at last**, after the whole of the Flet build: Qt renders offscreen in the container Flet's web renderer could not reach, so `PL-YCWZ`'s headless tests assert on the real interface and a session can look at the chart change it just made. The apparatus half is the larger by count - `PL-9GP1` corrected three values the provenance notes denied were in Appendix C of the Gas Man Workbook, `PL-QSJM` caught `make check`'s ruff passing where CI failed on an mtime-keyed cache, `PL-Y6W9` fixed eight tests red on the owner's own machine and green in CI, and five triage passes cleared 107 captures. | 94 items |
 | v0.4.27 | Completed | **The release where the audit every close-out runs stopped refusing the work it prescribes.** No shipped code moves: `src/`, `tests/` and `docs/MODEL.md` are byte-identical to v0.4.26 by tree object, so no equation, parameter, numerical method, unit or displayed value changes. The subject is `bin/docket verify --self`, the audit the `docket` skill's close-out requires. Two of its four absolute integrity checks had no passing route for work that was correct - `PL-K82G` for an item whose own work makes a rendered string false, `PL-L4KX` for a `dropped` or `not-delegable:` item that has no command to run - so a correct close-out returned `REJECT`, which is how a reader is trained to skim the block where a real protected-path failure prints. Both new exemptions are read from the **base's** copy of the item rather than from the working tree, which is the build's own correction to the case that authorised it: in `--self` the front-matter guard is advisory, because the close-out sets `status: done` in the same commit as the work, so a declaration read off the branch would have been a self-grant with no guard at all in the one mode that fires routinely. The cost is filed rather than hidden (`PL-TKFD`). `PL-C6XD` is the same duplicated-logic drift one layer down: `render._release_advice` and `render.format_status` each carried an independent copy of the `RESERVED` verdict's wording, so `bin/docket digest` and `bin/docket status` could disagree about whether a release may be cut, and no surface printed the reserved set at all - both now render from one place, and `bin/docket wave` gained the `Reserved` line this cut read to establish that 0.5.0 through 0.9.0 are spent. The two decisions carry no code by design. `PL-MQHN` settles that a setting's tier is decided by *instance multiplicity* rather than Workspace membership - can a reader sensibly have two of these on screen at once? - which is what `PL-WV9K` reads before the Workspace object exists. `PL-YHWG` re-affirms item 34's placement after v0.5.0 against the modularity argument, on a count the reopening had not run, and writes the ordering principle into this file as a rule binding a new *surface* and not a new *value*, with its expiry named. `PL-06YW`, the v0.4.26 cut, closes here. | 6 items |
-| v0.4.28 | Completed / current baseline | **The release where the queue stopped mistaking a live claim for a spent one, and a `verify:` command stopped being twelve separate promises.** Fifty-eight items, second only to v0.4.26's 94 among the releases that record a count, and two of them are reachable by a learner. Both are presentation fixes rather than new capability, which is why the number is a patch: `PL-DHBX` gives the Start, Pause and Reset buttons an explicit colour, their labels having been illegible under the macOS Dark appearance, and `PL-MN4J` makes the chart hover name which of two drawn runs it is reading - v0.5.0's own `Required scope` entry, shipped early in the `v0.4.x` track as a seventh after v0.4.25's five and v0.4.26's `PL-8PSW`. **No stored scientific value moved, by tree object rather than by reading the diff:** `src/anesthesia_sim/data/` resolves to `d9f9c5b` at both `v0.4.27` and here and `tests/reference/` to `fcb3eca`, so every published-reference expected value is byte-identical and still met, and the three files that change under `src/` are all under `app/`. **`docs/MODEL.md` gains 314 lines** for `PL-S6WW`, the one Gate 1 frozen entry here: the specification asserted agent amounts were gas volumes "at one documented reference temperature and pressure" and documented no temperature anywhere, where a liquid-equivalent conversion moves 5.8% between a 20 C and a 37 C reference. **Six items are one bug seen six ways.** `branches_in_flight` collapsed its carriers to one ref per id *before* the tests that decide whether a ref is spent, so a landed claim on a bystander branch silently dropped a live one and `bin/docket next` offered work another session already held - `PL-2BZY`, `PL-61MD` and `PL-RY2R` are the three collapses, `PL-Q9Z1` is `_superseded` reading a failed `git diff` as the tips agreeing about every path, the one direction its own docstring forbids, `PL-VYSP` is a design round whose whole output is item files and which therefore could never raise the mark at all, and `PL-3CTW` is the opposite error - a capture commit claiming the ids it only filed. `PL-BHVM` is the design round underneath them: nineteen items had been re-deciding what evidence proves a ref done, seventeen of them in `vcs.py`. **And `verify:` became one contract instead of twelve patches** (`PL-6TP8`): what an exit status proves, to whom, and why a health check ahead of the discriminating clause proves nothing twice - it was 99.7% of the pull-request replay's serial cost. `PL-7TYC`, `PL-K1WS` and `PL-QJQL` repair the audit's assertion check, which grepped for the substring `assert` across 90 non-test source lines, never asked whether a removed assertion had a replacement, and could not see `pytest.raises` at all. **Session start lost its fan-out**: `PL-0J9K` replaced 389 `git show` processes with one `git cat-file --batch`, `PL-MMVF` memoized 82 duplicate subprocesses out of 192, `PL-DMDF` stopped asking one `git diff` per item file, and `PL-XD3C` bounded a walk that was O(unmerged refs) and so got slower every month on a long-lived clone. `PL-TM9J`, the v0.4.27 cut, closes here. | 58 items |
+| v0.4.28 | Completed | **The release where the queue stopped mistaking a live claim for a spent one, and a `verify:` command stopped being twelve separate promises.** Fifty-eight items, second only to v0.4.26's 94 among the releases that record a count, and two of them are reachable by a learner. Both are presentation fixes rather than new capability, which is why the number is a patch: `PL-DHBX` gives the Start, Pause and Reset buttons an explicit colour, their labels having been illegible under the macOS Dark appearance, and `PL-MN4J` makes the chart hover name which of two drawn runs it is reading - v0.5.0's own `Required scope` entry, shipped early in the `v0.4.x` track as a seventh after v0.4.25's five and v0.4.26's `PL-8PSW`. **No stored scientific value moved, by tree object rather than by reading the diff:** `src/anesthesia_sim/data/` resolves to `d9f9c5b` at both `v0.4.27` and here and `tests/reference/` to `fcb3eca`, so every published-reference expected value is byte-identical and still met, and the three files that change under `src/` are all under `app/`. **`docs/MODEL.md` gains 314 lines** for `PL-S6WW`, the one Gate 1 frozen entry here: the specification asserted agent amounts were gas volumes "at one documented reference temperature and pressure" and documented no temperature anywhere, where a liquid-equivalent conversion moves 5.8% between a 20 C and a 37 C reference. **Six items are one bug seen six ways.** `branches_in_flight` collapsed its carriers to one ref per id *before* the tests that decide whether a ref is spent, so a landed claim on a bystander branch silently dropped a live one and `bin/docket next` offered work another session already held - `PL-2BZY`, `PL-61MD` and `PL-RY2R` are the three collapses, `PL-Q9Z1` is `_superseded` reading a failed `git diff` as the tips agreeing about every path, the one direction its own docstring forbids, `PL-VYSP` is a design round whose whole output is item files and which therefore could never raise the mark at all, and `PL-3CTW` is the opposite error - a capture commit claiming the ids it only filed. `PL-BHVM` is the design round underneath them: nineteen items had been re-deciding what evidence proves a ref done, seventeen of them in `vcs.py`. **And `verify:` became one contract instead of twelve patches** (`PL-6TP8`): what an exit status proves, to whom, and why a health check ahead of the discriminating clause proves nothing twice - it was 99.7% of the pull-request replay's serial cost. `PL-7TYC`, `PL-K1WS` and `PL-QJQL` repair the audit's assertion check, which grepped for the substring `assert` across 90 non-test source lines, never asked whether a removed assertion had a replacement, and could not see `pytest.raises` at all. **Session start lost its fan-out**: `PL-0J9K` replaced 389 `git show` processes with one `git cat-file --batch`, `PL-MMVF` memoized 82 duplicate subprocesses out of 192, `PL-DMDF` stopped asking one `git diff` per item file, and `PL-XD3C` bounded a walk that was O(unmerged refs) and so got slower every month on a long-lived clone. `PL-TM9J`, the v0.4.27 cut, closes here. | 58 items |
+| v0.4.29 | Completed / current baseline | **The release where the queue's own writers stopped moving the files that other items point at.** Twenty items, all apparatus, and a patch because nothing crosses a capability boundary: `git diff --stat v0.4.28..HEAD -- src/` reports no file changed at all, `src/anesthesia_sim/data/` resolves to `d9f9c5b` at both refs so no stored scientific value moved, and `tests/reference/` resolves to `fcb3eca` so every published-reference expected value is byte-identical and still met. **Five are one defect (`slug-rename-on-write`): `bin/docket record` and `bin/docket release` each re-derived an item file's slug from its current title while writing an unrelated field**, so a file whose name predated a retitle was moved by a command nobody asked to move anything - the v0.4.28 cut itself renamed `PL-XQRK`'s file that way, scored `R099` at commit `5901ba4` (`PL-QMC0`), and in `bin/docket record` the same write is a delete-plus-add two sessions are told git will merge, reverting to a duplicate-id error (`PL-5QLP`, `PL-LBR6`). `PL-Y5JX` is why the nine drifted files were not simply renamed first: an item's `touches` may name another item's file path, and `PL-3V6C` names two. `PL-YTDN` then did the renames and `PL-JF5Z` recovered `PL-5QLP` off a branch a prune would have taken; this cut stamped twenty items and renamed nothing. **Three more are the `verify:` replay.** `PL-G6J5` set out to fix the per-command outlier advisory and the measurement retired it instead - a pool of test-suite commands has a high median, so the 30x ratio never clears - while the cost turned out to be three files carrying 59% of the 1 458 s, each re-run once per item naming it (`PL-FZ58`); `PL-09G9` makes `docket set` refuse the shape that causes it, `PL-6TP8`'s contract having been prose alone against 82 of 180 open commands. `PL-VHVJ` stopped `verify`'s suppression list substring-matching `xfail` out of pytest's `--maxfail`. **Two Gate 1 entries correct what the roadmap specifies rather than anything that runs:** `PL-H4N8` (science) moves planned item 28's agent cost from the exhausted amount to the delivered one, which understates mid-run by exactly what is still stored, and `PL-QBX0` (safety) widens item 24's preferences gate past `data/**/*.json` to the three ISO 5360 identification colours and the contrast-checked palette in `app/theme.py`. `PL-PZ8D` and `PL-TPCH` close `owner-decisions-2026-09-19`; `PL-JB3Z` closes `apparatus-capture-criteria` by costing four capture filters and refusing all of them, the five bad items in 166 having been mis-observed rather than over-captured. `PL-ZG5J` lands the headless frame-cost harness and `PL-V1F4` repaired its stale route. `PL-T2LH`, the v0.4.28 cut, closes here. | 20 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -153,169 +154,140 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.4.28
+## Current baseline: v0.4.29
 
-v0.4.28 is the release in which the queue stopped mistaking a live claim for a
-spent one, and a `verify:` command stopped being twelve separate promises.
+v0.4.29 is the release in which the queue's own writers stopped moving the
+files that other items point at.
 
-Fifty-eight items, second only to v0.4.26's 94 among the releases that record a
-count. Two are reachable by a learner and both are presentation fixes rather
-than new capability, which is why this is a patch on the `v0.4.x` track:
-§ "Versioning decision"'s test is the capability boundary a release crosses, and
-nothing here crosses one - v0.5.0 through v0.9.0 are in any case spent by
-milestone sections. **No stored scientific value moved, measured by tree object
-rather than read off the diff:** `src/anesthesia_sim/data/` resolves to
-`d9f9c5b` at both `v0.4.27` and here, so no parameter changed;
-`tests/reference/` resolves to `fcb3eca` at both, so every published-reference
-expected value is byte-identical and still met; and the three files that change
-under `src/` are all under `app/`, so no equation, numerical method or unit
-moved either.
+Twenty items, every one of them apparatus. It is a patch on the `v0.4.x` track
+because nothing here crosses a capability boundary, which is § "Versioning
+decision"'s test, and because every number above it is spent - v0.5.0 through
+v0.9.0 are given to milestone sections. **Nothing a learner can reach moves,
+measured by tree object rather than read off the diff:** `git diff --stat
+v0.4.28..HEAD -- src/` reports no file changed at all, so no equation,
+parameter, numerical method, unit or displayed value is touched;
+`src/anesthesia_sim/data/` resolves to `d9f9c5b` at both `v0.4.28` and here, so
+no stored scientific value moved; and `tests/reference/` resolves to `fcb3eca`
+at both, so every published-reference expected value is byte-identical and
+still met.
 
-### What a learner can see
+### A writer that renamed the file it was writing to
 
-`PL-DHBX` gives the Start, Pause and Reset buttons an explicit colour. They
-declared none, so under the macOS Dark appearance their labels were illegible -
-a reader could not tell which control they were about to press on a running
-case.
+Five items are one defect, grouped as `slug-rename-on-write`. `bin/docket
+record` and `bin/docket release` each re-derive an item file's slug from the
+item's current title while writing an unrelated field - `pr:` in the first
+case, `milestone:` in the second - so any file whose name predates a retitle
+was silently moved by a command nobody had asked to move anything.
 
-`PL-MN4J` makes the chart hover name which run it is reading. It named the agent
-and the instant only, so with two runs drawn a hovered value was unattributed:
-the right number against the wrong patient context, which `CLAUDE.md`'s
-safety-critical standard counts as a presentation failure rather than a cosmetic
-one. It is v0.5.0's own `Required scope` entry "The chart's hover says which run
-it is reading", shipped early in the `v0.4.x` track on the disposition
-§ "The timeline" row 5 records - a seventh, after v0.4.25's five and v0.4.26's
-`PL-8PSW`.
+**The v0.4.28 cut is the worked example, and it is in this repository's history
+rather than in a reconstruction.** Commit `5901ba4` renamed `PL-XQRK`'s item
+file as a side effect of stamping `milestone:` onto the release's items - the
+slug tail moved from `-branch-git` to `-branch-so`, and `git show
+--name-status --find-renames` scores the pair `R099` (`PL-QMC0`). The
+pre-rename name is deliberately not quoted here as a path: it no longer
+exists, and `make doc-check` fails any document that cites one that does
+not. `PL-5QLP` and `PL-LBR6` are the same defect in `bin/docket
+record`, where it costs more: the write two sessions are told git will merge is
+a delete-plus-add rather than an edit, and reverting it with `git checkout`
+leaves a duplicate-id error behind.
 
-### The specification claimed a reference temperature and named none
+`PL-Y5JX` is why the obvious repair - rename the nine drifted files and move on
+- was not taken first. An item's `touches` may name *another item's file
+path*, so a rename breaks a declaration nothing checks: `PL-3V6C` names two,
+`PL-TFWR`'s item file and `PL-XQRK`'s. `PL-YTDN` then performed the nine
+renames, once the writers had stopped competing to perform them unbidden.
+`PL-JF5Z` recovered `PL-5QLP` itself off a branch carrying one capture commit
+and no pull request, which is a ref a prune would have taken.
 
-`PL-S6WW` is the one Gate 1 frozen entry in this release, added 2026-09-17 under
-the unconditional safety/science exception and closed the same day.
-`docs/MODEL.md` asserted that agent amounts are gas volumes "at one documented
-reference temperature and pressure" while documenting no temperature anywhere,
-and the gap is arithmetic rather than pedantic: a liquid-equivalent conversion
-moves **5.8% between a 20 C and a 37 C reference**, so two readers could take
-the same displayed millilitre for two different amounts of liquid agent with
-nothing on the page to separate them. The specification gains 314 lines stating
-the conditions and what follows from them.
+**The cut you are reading is the check.** It stamped twenty items and renamed
+nothing: 23 files modified, zero renames.
 
-### One bug seen six ways: a live claim dropped for a spent one
+### Three test files were 59% of the replay
 
-`branches_in_flight` is what `bin/docket next`, `show` and the session-start
-digest read to decide whether somebody is already on an item. It collapsed its
-carriers to one ref per id **before** the tests that decide whether a ref is
-spent, so a landed claim on a bystander branch displaced a live one and the
-queue then offered work another session was holding. `PL-2BZY`, `PL-61MD` and
-`PL-RY2R` are the three collapses - the `taken-on-base` guard, the `own_edits`
-set and `walk.edited` respectively. `PL-Q9Z1` is the same failure arriving from
-`git`: `_superseded` read a failed `git diff` as the tips agreeing about every
-path, which drops every mark a ref carries and is the one direction its own
-docstring says it must never fail in. `PL-VYSP` is the case the mark could never
-reach - a design round's whole output is item files, the diff shape the
-in-flight mark deliberately refuses as work, so `bin/docket show` called
-`PL-BHVM` startable while a live session held it with three commits pushed. And
-`PL-3CTW` is the opposite error: a commit that leads with a captured id and also
-reaches outside the queue claimed that id, so a finding filed alongside another
-item's work read "do not start this" for the life of the branch.
+`bin/docket check --verify` replays every open item's `verify:` command, and
+`PL-G6J5` set out to make its per-command outlier advisory work on the widened
+pool. The measurement killed the advisory instead. A scope full of test-suite
+commands has a high median, so the 30x ratio never clears; the variants tried
+fired on 5 of 13 pools with at least 2 of those 5 unactionable, and a
+share-of-floor test at 25% fired on 13 of 13. `_check_slow_commands`,
+`LandedReport.slow`, `LandedReport.typical`, `SLOW_COMMAND_RATIO` and
+`SLOW_COMMAND_FLOOR` are gone, and the measured numbers are recorded in
+`verify.py`'s constants block so the next session finds the count rather than
+the retired rule. That is `CLAUDE.md`'s "a check earns its place every run, or
+it is retired", taken as an outcome rather than a loss of coverage.
 
-`PL-BHVM` is the design round underneath them. Nineteen items had been
-re-deciding what evidence proves a ref done, seventeen of them in `vcs.py`, and
-one round replaced the patches.
+What no per-command test could have expressed is where the cost actually sat:
+**three files carry 59% of the 1 458 s**, each re-run once per item whose
+command names it - `subprojects/docket/tests/test_cli.py` at 415 s across 14
+items, `tests/unit/test_doc_check.py` at 292 s across 12, and
+`subprojects/docket/tests/test_verify.py` at 152 s across 4 (`PL-FZ58`).
+`PL-09G9` is the rule that stops it recurring: `docket set` now refuses, and
+`docket check` errors on, a newly captured command that re-runs a test file
+`make check` already collects while another clause stands beside it. `PL-6TP8`'s
+contract had been prose alone, and 82 of 180 open commands carried the clause.
 
-### `verify:` is one contract now, not twelve patches
+`PL-VHVJ` is a smaller defect of the same machinery, and the kind that erodes
+trust in an audit fastest: `bin/docket verify`'s suppression list
+substring-matched `xfail`, so any diff line containing pytest's `--maxfail`
+option read as an added suppression and `REJECT`ed correct work.
 
-`PL-6TP8` settles what a `verify:` exit status proves and to whom, which twelve
-items had been re-deciding because the field was specified as a command string
-and nothing else. The sharp consequence is that a health check ahead of the
-discriminating clause proves nothing twice and costs a great deal: the paired
-shape was **99.7% of the pull-request replay's serial cost**, so the rule is now
-a `grep` for what the work adds, alone, with `make check` left to the run that
-already does it.
+### Two corrections to what the roadmap specifies
 
-Five items are the failure modes that contract names. `PL-6TN8`: a `grep` for a
-test name exits 1 because the name was guessed, not because the work is
-outstanding. `PL-0M32`: nothing could tell an item finished under a renamed test
-from one nobody started. `PL-FXBS`: a command that negates a recursive `grep`
-over `docs/items/` is falsified by the item store itself, since the item's own
-`verify:` line contains the string it greps for. `PL-LKGL`: a command tests for
-the presence of the fix and never the fault, so an entry whose defect was solved
-another way fails forever and reads as outstanding - one measured pass found 12
-of 134 items dead and 31 more overtaken, and a churn advisory was built,
-measured against those verdicts and rejected. `PL-XMNC`: the pull-request replay
-scoped to items whose *file* the branch edited, so a branch that broke some
-other item's command by editing the file that command reads replayed nothing.
-`PL-8T83` and `PL-6YWK` are the two commands that ran whole suites - one killed
-at the 120s limit, so nothing was claimed about its item on any run.
+These are the release's only entries from the simulator's side of the boundary,
+and both are Gate 1 frozen entries added 2026-09-17 under the unconditional
+safety/science exception. Neither changes anything that runs today - both
+declare `touches: ROADMAP.md` alone - because both correct the *specification*
+of a milestone not yet built.
 
-`PL-7TYC`, `PL-K1WS` and `PL-QJQL` repair the audit that reads them.
-`bin/docket verify`'s "no existing assertion removed" check grepped for the
-substring `assert`, which occurs on 90 non-test source lines, never asked
-whether a removed assertion had a replacement - so any function-signature change
-was rejected for every call site it updated in place - and could not see
-`pytest.raises` or `pytest.warns` at all, reporting the deletion of a whole
-raises block as no assertion removed.
+`PL-H4N8` (science) is arithmetic rather than wording. Planned item 28
+specified agent cost "from the exhausted-agent amount", but cost is what left
+the bottle, which is the delivered amount; exhausted understates it mid-run by
+exactly what is still stored in the circuit and the patient. Building to the
+sentence as written would have produced a consumption figure that reads low
+whenever a case is still running, which is every moment a learner would look at
+it.
 
-### Session start stopped paying for its own fan-out
+`PL-QBX0` (safety) widens planned item 24's preferences gate. It excluded
+`data/**/*.json` scientific parameters from the settings panel and nothing
+else, which does not reach the three ISO 5360 agent-identification colours or
+the contrast-checked palette - both held in `app/theme.py` and verified
+statically by `tools/contrast_check.py`. A user-editable agent colour is a
+misidentification hazard that a JSON-path gate would never have caught.
 
-`PL-0J9K` replaced 389 per-blob `git show` processes with one
-`git cat-file --batch`; on the owner's machine that was 5.77s of a 24s start.
-`PL-MMVF` memoized the runner, 82 of 192 subprocesses being exact duplicates -
-17.6s on a machine that charges for `exec`. `PL-DMDF` stopped calling
-`_superseded` with a one-element tuple inside a loop, where the function already
-took the whole set. `PL-XD3C` bounded a walk that was O(unmerged refs), so a
-long-lived clone got slower every month and a fresh container never reproduced
-it. `PL-JH3T` is the measurement that made the rest legible: the only number on
-record was a 20.7s median against a hook that measures 3.0s in a session
-container.
+### Decisions recorded where a session will meet them
 
-### The machinery that ranks the work, and who decides
+`PL-PZ8D` and `PL-TPCH` complete `owner-decisions-2026-09-19`. The first records
+the delegation trigger the project owner set that day - **a real trade-off
+rather than the size of the change** - together with the level-versus-trend
+distinction that stops `PL-9J2W` refusing the owner's own question about
+apparatus convergence. The second sets `subagentPromptCacheTtl` to 1 h and puts
+the effort-per-standard decision in the two carriers that can act on it.
 
-A *generator* - a mechanism recorded as the root cause of three or more items -
-now ranks above every band but `P0` (`PL-VX5H`), because `P1` grows as
-development proceeds and a generator promoted only within its own band is never
-reached. `PL-G5ZH` gives a defect in that machinery a way to say so
-(`impairs-generators:`, prose naming the function that broke, refused on an item
-whose `touches` never reaches the generator paths), and `PL-4MPJ` binds it to
-the generator's own two endings: fix it in this session, or end the reply with a
-prompt that starts a fresh one. `PL-C97K` makes `bin/docket show` on a member
-name the head that explains it. `PL-M2SD` makes the self-generation ratio
-decidable and reported, so a cluster handing back an item for every one it
-closes stops sitting unranked in a flat `P2` band.
+`PL-1YT5` is one word and one clause, and it is the rule about ratified
+decisions applied to itself: `CLAUDE.md`'s auto-pull-request clause was recorded
+as *specified* when it had been *ratified*, so a later session would have held
+it to the compelling-argument bar instead of to ordinary evidence.
 
-`PL-HGN6` settles the line the project had been getting wrong in the other
-direction: **what makes a decision the owner's is consequence, not what the
-answer rests on.** A granular editorial choice - one document's phrasing, one
-internal structure, one item's disposition - is a session's even when it turns
-on what the project wants, and handing it back spends the owner's attention on
-exactly what they have said they do not want to spend it on.
+`PL-JB3Z` completes `apparatus-capture-criteria`. It is the answer to the
+question the 2026-09-19 staleness sweep raised - whether the workflow lane's
+capture or tagging criteria should tighten - and the answer is no, on counts
+rather than on impression. Four candidate filters were costed and every one of
+them killed mostly still-real findings; the five bad items in 166 were
+mis-observed rather than over-captured, which is a triage obligation and not a
+capture bar. Triage gained the obligation instead: reproduce the fault, not
+only the absence of the fix.
 
-### The plan reader, and the rest
+### The harness that lets the next measurement be taken rather than argued
 
-Six items had the tooling disagreeing with the file it reads. `PL-Y1L0`: cutting
-a patch at the Qt port's number dropped its section out of `wave`'s unreleased
-set, and `outstanding_roadmap_edits` returned an identical list for three
-different versions so nothing reported it. `PL-J45M`: a gate-only milestone
-whose frozen list had cleared never reached the release beat. `PL-LN3T`: a
-milestone row whose version had shipped with its `Required scope` still open was
-not reported. `PL-4PC5`: ids merely *cited* in a scope section's prose were
-counted as scope entries, so v0.5.0 read 21 with 11 closed against its own
-stated eighteen with 8. `PL-7CSP`: a blocker the plan schedules is now
-distinguished from one nothing schedules. `PL-B5DW`: `status` and `wave` named
-different rows as the step.
+`PL-ZG5J` lands the headless frame-cost harness under `tests/benchmarks/`, so
+the simulation-versus-UI cost split can be re-measured against the Qt build
+rather than re-derived from memory each time it is questioned. `PL-V1F4`
+repaired its route, which had deferred the work to "build it once under
+`PL-YCWZ`" - an item that had since closed with the port, leaving the first
+step pointing at finished work.
 
-`PL-H8YD` is the one that had already cost something: auto-merge landed `#654`
-while `pr-title` was in a failed state, so the check protecting the squash
-subject did not gate the merge at all - the correct subject landed only because
-the rename beat auto-merge by three seconds. `PL-L4YG` replaces hand-edited
-front matter with `bin/docket set`, which refuses any write `docket check` would
-then fail. `PL-GPYV` retires "Editor" as the name for what occupies an Area,
-Blender's editors predominantly editing where ours predominantly display
-modelled values. `PL-4Q9B`, `PL-XQRK`, `PL-3V6C` and `PL-F48B` record what a
-session may and may not do to a git ref - including that it cannot delete a
-remote branch, which every cleanup pass had been discovering at the end. Two
-triage passes cleared 46 captures (`PL-Y4D6`, `PL-X7RZ`), `PL-DN5K` recovered
-two items stranded on a branch nobody would merge, and `PL-TM9J`, the v0.4.27
-cut, closes here.
+`PL-2P9L` folded the 21 items then standing untriaged into the queue, and
+`PL-T2LH` is the v0.4.28 cut itself.
 
 ## The plan
 
@@ -2974,7 +2946,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 193 entries
+### Declined to Gate 2 on the refilling-queue ground — 202 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -4011,6 +3983,50 @@ in the day's findings is strongest exactly when the list is nearly empty. Any
 of the seventeen whose *problem* predates the freeze belongs on the list rather
 than here, and `check_gate_reentries` is what decides that rather than this
 paragraph.
+
+**Eight more from the 2026-09-19 triage pass over the twelve untriaged
+captures** (`PL-CSV0`). `PL-9KSY`, `PL-G424`, `PL-STC4`, `PL-VKGJ`, `PL-X3NY`
+and `PL-YRYR` sit exactly where the first thirty do: captured on 2026-09-19,
+well after the 2026-09-06 freeze, `P2` or `P3`, neither `safety` nor `science`,
+and wholly in the workflow lane - every `touches` they declare is inside
+`docket.toml`'s `workflow_paths`, so none can reach a reader of the simulator.
+The arithmetic that the paragraph above says now argues harder is unchanged and
+argues the same way here: this gate stands at 170 cleared of 175 with two
+entries it can clear, and admitting eight would take that remainder from two to
+ten at the beat where the milestone is one step from starting.
+
+**`PL-G424` is a recorded generator, and that is a statement about its rank
+rather than about this gate.** It carries `root-cause-of:` naming twenty-one
+members, so `CLAUDE.md` ranks it above every band but `P0` and `bin/docket
+next` will offer it ahead of the two entries this gate still holds. Declining
+it here does not park it: a gate decides which findings a milestone waits on,
+and the generator tier decides what a session picks up. Both answers are
+recorded deliberately, and the second is the one that governs what happens
+next.
+
+**Two of the eight are not wholly apparatus, which is stated rather than
+stretched.** `PL-HCTF` declares `ROADMAP.md`, and its subject is this
+subsection's own stated entry count - which `#706` left at `174` while adding an
+entry, and which nothing validates at `174`, `191` or `999`. It is a correction
+to this document's account of its own queue, so it cannot reach a reader of the
+simulator, which is the test `PL-0VFF` and `PL-880Z` were declined on above.
+`PL-WPDB` sits in the product lane on `tests/benchmarks/`, and is declined on
+the narrower ground that a frame-cost measurement is a number about this
+repository's rendering budget rather than a clinical one: no reading of it
+reaches a displayed value, so the safety exception that admitted `PL-DZFJ` does
+not reach it either. It is `v0.5.0`'s own frame cost it leaves unmeasured,
+which is an argument for doing it during that milestone rather than for holding
+the gate open ahead of it.
+
+**One more, raised by the project owner while the pass above was running**
+(`PL-TQFB`). It asks whether a housekeeping item should have to argue for its
+own category, on the measurement that 22 triage-pass items carry 1,127 lines of
+which only 2 hold a finding. It declares `CLAUDE.md`, the `docket` skill and
+`checks.py`, all three wholly inside `docket.toml`'s `workflow_paths`, so it
+cannot reach a reader of the simulator and sits on the same refilling-queue
+ground as the first thirty. It is also a question about whether a mechanism is
+worth changing at all, which is the shape `PL-NF6N` was declined on above -
+least likely to be worth holding a gate open for.
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first

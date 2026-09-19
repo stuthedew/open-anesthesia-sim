@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra, perf
 feature: frame-cost-harness
+milestone: v0.4.29
 touches: tests/benchmarks/frame_cost.py, tests/benchmarks/test_frame_cost.py, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-08
 closed: 2026-09-19

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: session-cost
 feature: owner-decisions-2026-09-19
+milestone: v0.4.29
 touches: .claude/settings.json, docs/maintainer.md, .claude/rules/apparatus-standard.md
 added: 2026-09-19
 closed: 2026-09-19

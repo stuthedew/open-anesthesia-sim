@@ -80,3 +80,23 @@ that the interface does or does not drop frames needs the project owner's own
 hardware, as `PL-X9T3` did. Either is a legitimate close, provided the item
 says which it did - this is deliberately not a requirement to reach real
 hardware before closing.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Partly overtaken, and one of its
+framings is wrong.** `PL-ZG5J` closed 2026-09-19 and landed
+`tests/benchmarks/frame_cost.py`, which measures a whole frame - assembly and
+paint - at `WINDOW_WIDTH_PX = 1600`, the top of the budget this item said
+nothing had measured: "advance 12.0 ms, present 15.3 ms, paint 13.1 ms, so the
+interface costs 28.4 ms of a 40.4 ms frame". It measures `SimulationView.present`
+rather than `assemble_chart_frame`, and takes no width argument, so it is one
+point rather than the range.
+
+What is left is the write-back: no figure for `assemble_chart_frame` across the
+budget's range, and no margin conclusion, sits beside the fixed-budget thread
+in `docs/WORKING_NOTES.md` - which still reads "150 columns" at `:1450`.
+
+**Correction to the framing.** "15.4 ms is essentially a whole 60 fps frame …
+no margin inside a 16.7 ms frame" does not describe this program:
+`dashboard_frame.py:110` sets `RENDER_INTERVAL_S = 0.2`, a 200 ms render
+budget, and that value landed with the Qt port the day before this was filed.
+The brief disclaims asserting a cadence, so this is framing rather than a
+premise - but re-derive the margin against 200 ms rather than 16.7 ms.

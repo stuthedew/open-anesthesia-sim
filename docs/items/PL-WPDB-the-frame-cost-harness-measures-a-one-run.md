@@ -1,9 +1,14 @@
 ---
 id: PL-WPDB
 title: The frame-cost harness measures a one-run dashboard, but v0.5.0 draws two runs on one chart, so the frame cost the branching milestone will actually pay is unmeasured
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: infra, perf
 feature: frame-cost-harness
+touches: tests/benchmarks/frame_cost.py, tests/benchmarks/test_frame_cost.py
 added: 2026-09-19
+verify: grep -q 'def test_the_harness_measures_a_two_run_dashboard' tests/benchmarks/test_frame_cost.py
 ---
 
 **Problem.** The frame-cost harness measures a one-run dashboard, but v0.5.0 draws two runs on one chart, so the frame cost the branching milestone will actually pay is unmeasured

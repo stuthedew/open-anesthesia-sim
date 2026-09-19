@@ -54,3 +54,10 @@ hook cannot decide, or this item records - on `docs/resident-instructions.md`
 § "When a resident rule is retired" - that the base-recovery case is not
 decidable from the repository and the bullet stays, the hook being an addition
 rather than a routing.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation): still real, with stale numbers corrected here rather than in the text above.** The hook does not exist, is not
+registered in `.claude/settings.json`, and has no test; the precedent
+(`no-prune-guard.sh`, a `PreToolUse` deny on `Bash`) and the routing record in
+`docs/resident-instructions.md:41-45` both stand. Two small drifts: the
+resident bullet is **10** lines (`CLAUDE.md:473-482`), not eleven, and its
+enclosing heading is § "The queue, and how the project owner works".

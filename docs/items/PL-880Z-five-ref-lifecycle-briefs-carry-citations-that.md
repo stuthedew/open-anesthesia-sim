@@ -44,3 +44,13 @@ first. Check `bin/docket show PL-XLQ5` before touching the item file.
 of writing; `PL-XLQ5`'s title names a mechanism `_landing_split` actually has;
 and `ROADMAP.md`'s gate entry says the same thing the corrected title does,
 rather than preserving the old sentence as a frozen record of a wrong diagnosis.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation): still real, with stale numbers corrected here rather than in the text above.** `ROADMAP.md` still repeats
+`PL-XLQ5`'s title verbatim as a frozen gate entry, and the brief's own citation
+of it has gone stale the same way it describes: the line is `ROADMAP.md:2229`,
+not `:1576`. Two of the named briefs are still wrong and still open -
+`PL-38PN:37` ("around line 943") and `PL-JXVD:16` ("`:1149`") both point past
+the end of a 580-line `simulation_view.py`, and `_run_simulation_timer` does
+not exist. The sequencing note has lapsed in this item's favour: `PL-XLQ5`
+closed 2026-09-12 (#504), so correcting the title no longer has to wait.
+`PL-TTMF` is now `dropped`.

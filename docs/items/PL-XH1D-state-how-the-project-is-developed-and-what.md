@@ -98,3 +98,25 @@ case-sensitive match would be a coin-flip that failed a finished item. The
 previous command tested `test -f CONTRIBUTING.md`, which `PL-78JQ` satisfied
 without doing any of this item's work; `PL-X7VY` is where that was found and
 repaired.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Partly overtaken, and the census
+the prescribed wording rests on has inverted.** `CONTRIBUTING.md` now exists
+(`PL-78JQ`) and carries the queue pointer this item wanted: `:6-8` explains
+that changes are made against "an internal development queue in
+[`docs/items/`](docs/items), which is why almost every pull request is titled
+`PL-XXXX: …`", with `README.md:209` saying the same. So a stranger meeting
+`PL-VP7N` in a commit subject can now resolve it.
+
+The disclosure itself is entirely absent, which is the item's real substance:
+`grep -rniE 'AI-written|written by Claude|Author: Claude|Reviewed-by|attribution|large language model' README.md CONTRIBUTING.md CITATION.cff`
+returns nothing, and `co-authored-by` appears nowhere in `CONTRIBUTING.md`.
+
+**Re-measure before writing the wording.** The brief prescribes text on the
+basis that "168 of its 201 commits are authored by `Claude` … and every one of
+the project owner's own commits is a merge". Today, over 1,046 commits:
+**728 Stuart Feichtinger, 300 Claude, 18 claude[bot]**, with 710 bodies
+carrying a co-author trailer and **627 of Stuart's 728 non-merge** - squash
+merges now land as `Author: Stuart Feichtinger` with a `Co-authored-by: Claude`
+trailer. So `git shortlog` and blame no longer say what this brief says they
+say, and the disclosure has to be written from the trailer scheme rather than
+from the author field.
