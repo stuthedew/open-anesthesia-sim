@@ -3,11 +3,13 @@ id: PL-LSR0
 title: tools/generator_check.py cannot see a store-drift generator: clusters() partitions by a single touches path and STORE_PATHS excludes docs/items and docs/WORKING_NOTES.md, where 15 of PL-G424's 21 members sit
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect, infra
 feature: generator-identification
 touches: tools/generator_check.py, tests/unit/test_generator_check.py
 added: 2026-09-19
+closed: 2026-09-19
+verify: grep -q 'def test_the_store_clusters_like_any_other_path' tests/unit/test_generator_check.py
 impairs-generators: clusters() partitions the store by a single touches path and STORE_PATHS excludes docs/items, docs/WORKING_NOTES.md and docs/dead-ends.md; 15 of PL-G424's 21 members sit on those excluded paths and the remaining 6 fall under MIN_OPEN, so no generator whose members share a kind of claim rather than a file can be surfaced by it
 ---
 
@@ -117,3 +119,44 @@ refilling-queue ground` subsection, whose count went 192 to 193, and it records
 the closest call in that section: the *blind spot* predates the 2026-09-06
 freeze, but the `impairs-generators:` field that makes it debt did not exist
 until 2026-09-19 (`PL-G5ZH`). Nothing further is owed to the gate here.
+
+**Decided 2026-09-19, by this session under the delegation above: the
+exclusion is removed and the sort breaks a tie on citations before size.** A
+fourth route, and the cheapest that reaches route 1's end state. Chosen over
+route 1 as written — a second axis clustering store items by what their briefs
+cite — because the constant was the blind spot, not the axis, and a citation
+axis would not have gathered these 21 anyway: each asserts a fact about a
+different subject. Over route 2, because documenting a blind spot a one-line
+change removes is the wrong trade. Over route 3, because 0-for-8 was measured
+with the exclusion in place and says nothing about the tool without it, and
+`PL-4YJK`'s figures (~$95–100 and ~400,000 tokens per manual sweep) are the
+cost of the alternative; a retire-or-keep count is worth running again once
+the corrected tool has had time to be 0-for-N or not.
+
+**The count that decided it.** The exclusion's ground — "every capture made
+while doing something else would otherwise read as one enormous cluster" — is
+true of `docket trend`'s churn share, a commit-diff axis on which `docs/items`
+is in every capture commit, and false of the declared-`touches` axis
+`clusters()` partitions on: 24, 18 and 0 open items declare `docs/items`,
+`docs/WORKING_NOTES.md` and `docs/dead-ends.md`. This brief's own "~300" was
+the same conflation. Un-excluded, both store clusters carry a signal:
+`docs/WORKING_NOTES.md` has 18 open, 5 sharing `dev-tooling`, 6 cited by three
+or more open items and 8 of `PL-G424`'s members; `docs/items` has 24 open, 5
+sharing `queue-hygiene` and 5 members. With the sweep's own products
+(`PL-G424`, `PL-LSR0`, `PL-4YJK`) removed as citing sources, three members were
+already cited by three or more others (`PL-38PN`, `PL-60CQ`, `PL-JXVD`), so the
+citation signal predates the head. Under the old sort the `docs/WORKING_NOTES.md`
+cluster ranked 9th of 43 signalled clusters — behind `docs/items`,
+`tools/doc_check.py` and `subprojects/docket/tests/test_cli.py`, each larger
+and cited less — and `SHOW = 6` hid it. Breaking the feature-count tie on the
+citation count before open count puts it 6th and leaves the top five as they
+were.
+
+**What it still cannot see, now stated in its docstring.** 6 of the 21 declare
+a single item file each and are singleton clusters; 6 more scatter across four
+apparatus paths under `MIN_OPEN`. A family visible only by reading the briefs
+stays a sweep's to find, and `PL-4YJK` records what a sweep costs so the next
+count has both halves. Gathering the single-file declarations into the
+`docs/items` cluster would need a directory-containment rule this tool applies
+nowhere else — `concurrent`'s "same area" reading is the general form — and is
+captured as `PL-FH61` rather than special-cased here.

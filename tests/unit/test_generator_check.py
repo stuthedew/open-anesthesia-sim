@@ -15,6 +15,9 @@ demotion itself. `test_a_busy_cluster_does_not_read_as_reproducing` stays from
 the verdict era: every spawned child is attributed to the item being worked
 when it was captured, so counting all of them rates any heavily-worked file a
 generator, and the ratio column would be wrong in the direction that flatters.
+`test_the_store_clusters_like_any_other_path` pins the removal of the store
+paths' exclusion from clustering, whose ground held on the commit axis and not
+on this one (`PL-LSR0`).
 """
 
 from __future__ import annotations
@@ -178,12 +181,51 @@ def test_a_cluster_with_nothing_open_is_history_not_friction(repo: Path) -> None
     assert generator_check.clusters(repo) == []
 
 
-def test_the_store_is_never_a_cluster(repo: Path) -> None:
-    """`docs/items` sits inside `workflow_paths`, so every capture would count."""
-    _closers(repo, "docs/items", 3, kids_touch="docs/items")
-    _open_trio(repo, "docs/items/", feature="one-problem")
+def test_a_store_path_with_no_signal_is_not_surfaced(repo: Path) -> None:
+    """The store is a path like any other: size alone is not a signal there either."""
+    for identifier in ("PL-AAAA", "PL-BBBB", "PL-CCCC", "PL-DDDD"):
+        _write(repo, identifier, touches="docs/items/", status="ready")
+    _commit(repo, "PL-AAAA, PL-BBBB, PL-CCCC, PL-DDDD: capture four unrelated findings")
 
     assert generator_check.clusters(repo) == []
+
+
+def test_the_store_clusters_like_any_other_path(repo: Path) -> None:
+    """`STORE_PATHS` hid `docs/items` and `docs/WORKING_NOTES.md` from clustering.
+
+    The ground was that every capture would otherwise read as one enormous
+    cluster, which is true of the files a commit changes and false of what an
+    item declares: 24 and 18 open items declared them when it was measured, and
+    13 of `PL-G424`'s 21 members sat there unseen (`PL-LSR0`).
+    """
+    _closers(repo, "docs/items", 3, kids_touch="docs/items")
+    _open_trio(repo, "docs/WORKING_NOTES.md", feature="one-problem")
+
+    found = generator_check.clusters(repo)
+
+    assert sorted(c.path for c in found) == ["docs/WORKING_NOTES.md", "docs/items"]
+    assert next(c for c in found if c.path == "docs/items").ratio == 1.0
+
+
+def test_a_signal_breaks_ties_before_size(repo: Path) -> None:
+    """Two clusters equally named as one problem: the one citing itself more leads.
+
+    Size is not a signal, so it cannot outrank one. Measured 2026-09-19, the
+    `docs/WORKING_NOTES.md` cluster carrying 8 of `PL-G424`'s members ranked
+    ninth on size, behind clusters nobody cited, under a display limit of six.
+    """
+    for identifier in ("PL-BBB0", "PL-BBB1", "PL-BBB2"):
+        _write(repo, identifier, touches="src/big.py", status="ready", feature="one-problem")
+    _write(repo, "PL-BBB3", touches="src/big.py", status="ready")
+    _open_trio(repo, "src/small.py", feature="another-problem")
+    for n in range(3):
+        _write(repo, f"PL-S{n:03d}", touches="elsewhere.py", status="ready", body="about PL-AAAA")
+    _commit(repo, "PL-S000, PL-S001, PL-S002: capture three findings")
+
+    found = generator_check.clusters(repo)
+
+    assert [c.path for c in found] == ["src/small.py", "src/big.py"]
+    assert found[0].cited == ["PL-AAAA"]
 
 
 def test_items_already_inside_a_recorded_root_cause_are_marked(repo: Path) -> None:
