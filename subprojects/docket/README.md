@@ -1305,6 +1305,102 @@ not, and an inverted one passes on the strength of it. An advisory rather than
 an error because "reads the output" is a judgment about a shell line, and hard
 failure is reserved for exact rules.
 
+### What a `verify:` exit status proves, and to whom
+
+A `verify:` command is one shell line and its exit status is one number, and
+four consumers read that number: the replay (`check --verify`, whole-store on
+a push to the default branch and scoped on a pull request), the delegated
+audit (`docket verify`), the close-out (`docket verify --self`), and the person
+writing the command. Until `PL-6TP8` each read its own meaning out of it, so a
+non-zero exit meant all of "not started", "prerequisite broken", "selected
+nothing", "timed out" and "finished under another name" at once, and twelve
+items each re-decided one facet. This is the one reading. Each consumer in
+`verify.py` and `checks.py` names the clause of it that it applies.
+
+**Exit 0 proves that the command's assertion holds on the tree in front of
+it** - and nothing about the work being right. It proves the *work landed*
+only if the command discriminates, which is to say fails on the tree before
+the work, and no exit status can say whether it does. The author establishes
+that once, by running the command and watching it fail before writing it down,
+and the replay holds the contrapositive forever after: an open item whose
+command passes is either finished and unclosed or non-discriminating, and both
+are errors (`_check_landed`).
+
+**A non-zero exit proves only that the assertion does not hold *or was never
+evaluated***, and the number alone cannot tell the two apart. Three
+never-evaluated outcomes are decidable from the run itself, and every consumer
+peels them off before reading anything else: killed at the limit
+(`TIMED_OUT`, a status no process can return), not found by the shell (127),
+and selected no test (pytest's 5, claimed only where the command names
+pytest). A fourth is not decidable at all: a prerequisite clause that is red.
+`python3 tools/doc_check.py check && grep …` exits 1 whether the `grep` failed
+or `doc_check` did, so a command carrying such a clause has made its own
+failure unreadable, and the replay accordingly reads nothing from a plain
+failure (`PL-T7VS`). A fifth is undecidable by construction: work finished
+under a name other than the one the command greps for fails exactly as
+unstarted work does, and nothing that reads an exit status will ever separate
+them (`PL-0M32`, `PL-6TN8`). That one is the author's to prevent - a
+name-pinning `grep` on an item whose work may already exist is checked against
+the code, not against the test names - and the close-out's to read, since it
+reads the command and the diff together.
+
+**Who may conclude what.**
+
+- **The replay** - `already_passing`, reported by `_check_landed`,
+  `_check_selects_nothing` and `_check_slow_commands` - is one-directional. It
+  reads exit 0 as its finding, the three never-evaluated statuses as refusals
+  (reported per item as not checked, or for the whole run where nothing ran
+  to completion), and nothing from any other non-zero exit. It never reads a
+  failure as "the item is legitimately open", because it cannot know that. It
+  may decline, and a declined run says so; an empty result is never a clean
+  one.
+- **The delegated audit and the close-out** - `verify_item` - read exit 0 as
+  the commission's assertion holding and every other status as `REJECT`, with
+  the reason on the line where the run can name it: re-entered `docket
+  verify`, selected no test, killed at the limit. They may not decline. The
+  command is the thing being asked about, so "could not run it" rejects the
+  work rather than abstaining. What they may not conclude from exit 0 is that
+  the work is right; the project's own check and the reviewer's reading of
+  the diff carry that, on their own lines of the same report.
+- **Delegability** - `Item.delegability` - reads whether a command is
+  *recorded*, never whether it would run or discriminate. Both are the
+  author's obligations below.
+- **`docket check`** reads the command as text: one line, not re-entering
+  `docket verify`, not reading `docket check`'s output, `touches` declared
+  beside it. It executes the command only under `--verify`, and then as the
+  replay above.
+- **A closed item's command** is read by nobody as a claim about today's
+  tree. It is the record of what ran, and the next section holds it to that.
+
+**What the command owes its item** - three things the author can decide at
+the moment of writing and no exit status can decide afterwards:
+
+1. **It discriminates on this item's own work.** Its failure before the work
+   is an evaluation - an ordinary exit 1, never pytest's 5 - and it goes green
+   only for what *this* item's work creates. A clause a neighbouring item's
+   work satisfies makes the replay accuse the wrong item the day the neighbour
+   lands (`PL-3DXV`); a bare `-k` is a bet on a name no test may ever carry
+   (`PL-Q8RQ`).
+2. **It reads the tree the item touches.** The paths its discriminating clause
+   reads are declared in `touches`, so `docket concurrent` and the pull
+   request's replay scope both see them (`PL-LBW5`); a `pytest` clause naming
+   a suite that cannot exercise the change proves a different tree's health
+   and sends a delegated worker to the wrong file (`PL-2M4X`, `PL-6YL1`).
+3. **It has been run and watched fail, and the author knows why it failed.**
+   `grep` exits 2 for a file it could not read as well as 1 for a line it did
+   not find, and `docket` exits 2 for a subcommand it does not have; either
+   reads as "not done" forever.
+
+A prerequisite clause - `doc_check`, `bin/docket check`, a file's whole
+`pytest` run ahead of the `grep` - is what makes a failure unreadable, and it
+proves nothing the consumers do not already prove: every such clause in this
+store is a line of `make check`, which `docket verify` runs as a line of its
+own report, which `docs/worker.md`'s loop runs after the command, and whose
+`doc_check`, `bin/docket check` and whole-suite steps CI runs ahead of the
+replay. Whether the field should carry one at all is `PL-6TP8`'s open half.
+Measured 2026-09-19: 162 of 177 open commands do, they are 1,879 of the
+replay's 1,884 serial seconds, and none of them masked a pass.
+
 ### A closed item's command is a record, and it is not rewritten
 
 Once the item is `done`, `verify` stops being a command and becomes the record

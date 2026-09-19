@@ -930,6 +930,23 @@ the store are in the same state, which is context rather than a backlog to
 clear in one pass — a command written away from its work is how every wrong one
 here came to exist, so each is repaired as its item is started.
 
+**What the exit status is read to mean once the command is recorded** is one
+contract - `subprojects/docket/README.md` § "What a `verify:` exit status
+proves, and to whom" - and two of its consequences fall on the author. Exit 0
+says the assertion holds, so the replay reports an open item whose command
+passes as an error whichever way that happened. A non-zero exit says only that
+the assertion did not hold *or was never evaluated*: the tools separate a kill
+at the limit, a command the shell cannot find and pytest's "selected nothing",
+and read nothing from any other failure, since a red prerequisite clause and an
+unstarted item both exit 1. So, first: a `grep` for a test name pins the
+*name*. On an item whose work may already exist under another `def`, check the
+code before writing it - the command fails identically whether the behaviour
+is absent or present under a different name, and no reading of the exit will
+ever say which (`PL-6TN8`, `PL-0M32`). Second: the discriminating clause goes
+green only for *this* item's work and reads a path the item's `touches`
+declares (`PL-3DXV`, `PL-LBW5`); a neighbour's work satisfying it turns the
+replay red against the wrong item.
+
 Copy one of these shapes rather than inventing one:
 
 | The item is | The command |

@@ -52,3 +52,11 @@ log names `PL-4L6Z` immediately before its non-zero exit, and that is the *not
 checked* line, which claims nothing and fails nothing. The error on that run was
 `PL-D1RT`'s command already passing. Fixing this item does not take `main`
 green, and nothing here ever did.
+
+**Re-pointed by `PL-6TP8`, 2026-09-19.** What the limit kills is the
+prerequisite clause, `uv run pytest tests/reference/`; the discriminating
+`grep -rq` behind it runs in under a second. The form of the repair is
+`PL-6TP8`'s shape half: if the field drops prerequisite clauses, `PL-4L6Z`'s
+command becomes the `grep` alone; if it keeps them, the clause narrows to the
+one reference file the work adds, as briefed. Either way the command completes
+inside the limit and fails today for the right reason.

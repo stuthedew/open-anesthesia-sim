@@ -113,3 +113,10 @@ either the composers have moved with the tests to match, or the item records why
 they stay where they are. `PL-NGF7`'s
 `check_disabled_states_are_the_style_s` is unaffected either way: it refuses a
 `:disabled` rule wherever the string is composed.
+
+**Re-pointed by `PL-6TP8`, 2026-09-19.** The half of this item that belonged
+to the `verify:` cluster - a command satisfiable by a comment containing a
+string, demanding what the file forbids - closed with `PL-L9RD`, whose command
+was re-pointed at close. What remains, whether `app/theme.py` keeps its
+no-toolkit rule, is the project owner's decision and outside `PL-6TP8`; the
+recommendation above stands.

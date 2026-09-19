@@ -6,7 +6,7 @@ effort: M
 status: needs-decision
 classes: defect, infra
 feature: generator-heads
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, .claude/skills/docket/SKILL.md, docs/items
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md, docs/items
 added: 2026-09-17
 root-cause-of: PL-T7VS, PL-0M32, PL-Q8RQ, PL-6TN8, PL-D0K3, PL-3DXV, PL-6YWK, PL-2M4X, PL-6YL1, PL-Y4YX, PL-H9GV, PL-LBW5
 ---
@@ -47,17 +47,79 @@ is a policy question about ten specific `doc_check` commands. None settles what
 an exit code may be read to mean, and promoting one of them would rank a narrow
 item above every band but `P0` where nobody could work the cluster from it.
 
-**Decision needed.** What each consumer may conclude from a `verify:`
-command's exit status, and what the field owes beyond a command string:
+**Decided 2026-09-19, the reading half** - a session's decision, taken off the
+code and the measurements below, and written where the consumers read it:
+`subprojects/docket/README.md` § "What a `verify:` exit status proves, and to
+whom", the `docket` skill's `verify:` section, and the docstrings of
+`already_passing`, `verify_item`, `_check_landed` and `_check_selects_nothing`.
 
-- whether a **fault test** is recorded beside the fix test, so a command can
-  distinguish "the problem is gone" from "the fix landed" (`PL-LKGL` refused
-  this once, on a measurement, and the refusal is reopenable on the cluster);
-- what a consumer does where the command **cannot run at all** - red
-  prerequisite (`PL-T7VS`), timeout (`PL-6YWK`), nothing selected (`PL-Q8RQ`);
-- which consumers may **decline to answer** rather than return a verdict;
-- what the command owes its own item - that its halves name the tree the item
-  touches (`PL-2M4X`, `PL-6YL1`, `PL-LBW5`), not a file that cannot exercise it.
+- **No fault test is recorded beside the fix test.** `PL-LKGL`'s refusal
+  stands (project owner, 2026-09-17, ratified): a second command per item,
+  written at the same moment as the first and wrong in the same ways, and the
+  sweep is the mechanism with evidence behind it. The renamed-test case
+  (`PL-0M32`, `PL-6TN8`) is the same undecidability from the other side and is
+  recorded as such: a fix test cannot tell "absent" from "present under
+  another name", so the author checks the code before pinning a name and the
+  close-out reads the command against the diff.
+- **A command that could not run is three decidable refusals and one that is
+  not.** Killed at the limit, not found by the shell, and pytest's "selected
+  nothing" are read off the run and reported under "not checked"; a red
+  prerequisite clause is not decidable from the exit of an `&&` chain, so the
+  replay reads nothing from any plain failure.
+- **The replay may decline; the audit may not.** `already_passing` is
+  one-directional - exit 0 is its finding, everything else is a refusal or
+  nothing - and says so when it declines. `verify_item` reads every non-zero
+  status as `REJECT` with the reason on the line, because the command is the
+  thing being asked about.
+- **The command owes its item three things** an exit status can never check
+  afterwards: it discriminates on this item's own work (`PL-3DXV`, `PL-Q8RQ`),
+  it reads the tree the item's `touches` declares (`PL-LBW5`, `PL-2M4X`,
+  `PL-6YL1`), and it was run and watched fail for a reason the author
+  understood.
+
+**Decision needed - the shape half, the project owner's to ratify because it
+reverses a documented recommendation.** Whether the field carries a
+prerequisite clause at all. The `docket` skill's table prescribes
+`pytest <file> && grep -q 'def test_x' <file>` and `python3
+tools/doc_check.py check && grep -qF '…' docs/MODEL.md`, on the argument that
+the first half "proves the file's suite healthy". Measured 2026-09-19 against
+the open store, that half is what generates the cluster:
+
+| | |
+| --- | --- |
+| open items carrying a `verify:` (`ready`, `needs-decision`) | 177 |
+| ...whose command carries a prerequisite clause | 162 |
+| whole-store replay, commands as recorded | 176 commands, 275.9 s wall, 1,884 s serial, slowest 102.2 s against the 120 s limit, one killed |
+| the same commands with the prerequisite clauses removed | 175 commands, 0.9 s wall, 4.6 s serial, slowest 0.7 s |
+| discriminators exiting 0 once the clause is removed (a pass the clause masked today) | 0 |
+| name-pinning `grep 'def test_…'` clauses | 63, none naming a test that already exists |
+
+**Recommendation: the field records the discriminator only, and the health
+check is the consumers' to run.** Every prerequisite clause in the store is a
+line of `make check`, and every consumer that needs the tree proven already
+proves it there: `docket verify` runs `config.check_command` as its own line
+of the report, `docs/worker.md` runs `make check` after the command, and CI's
+quality job runs `doc_check`, `bin/docket check` and the whole suite as steps
+ahead of the replay. So the clause proves nothing twice and costs three
+things: it makes a non-zero exit unreadable (`PL-T7VS`), it is 99.7% of the
+replay's serial cost and the whole of its timeouts (`PL-6YWK`, `PL-8T83`), and
+it is the half that can name the wrong tree (`PL-2M4X`, `PL-6YL1`). Under it
+the skill's table becomes `grep -q 'def test_halted'
+tests/unit/test_simulation_view.py` and `grep -qF 'the sentence'
+docs/MODEL.md`, with the coverage row unchanged (`--cov` is the discriminator
+there). What it costs: the skill's rationale for the pair is rewritten, and
+162 recorded commands keep their clause until each item is started - the
+repair-as-started policy `PL-D0K3` reaffirms - so the replay's bill falls as
+the queue turns over rather than in one day. A mechanical pass stripping the
+known prerequisite prefixes from the 162 is the alternative: it writes no new
+command, since each discriminator stays as its author ran it, but it touches
+162 item files in one pull request against every branch in flight, so it is
+offered rather than recommended.
+
+What would change the recommendation: a prerequisite clause that proves
+something `make check` does not. None of the 162 does; the nearest is
+`PL-4L6Z`'s whole `tests/reference/` run, and `make check`'s suite collects
+that directory.
 
 **The items this explains (12, confirmed 2026-09-18 against each brief).**
 `PL-T7VS`, `PL-0M32`, `PL-Q8RQ`, `PL-6TN8`, `PL-D0K3`, `PL-3DXV`, `PL-6YWK`,
@@ -98,3 +160,26 @@ way to rank one: `root-cause-of:` on the item that causes the cluster, which
 cheaper of the two endings its own `Done when` offered: the diagnosis, the
 decision and the membership were already written here, and a separate head
 would have been one more item to work.
+
+**The twelve, re-pointed 2026-09-19.** Each brief carries its own note; this
+is the map.
+
+| Item | Disposition |
+| --- | --- |
+| `PL-0M32` renamed test against not started | **done** - recorded in the contract as undecidable by any exit status |
+| `PL-6TN8` a name-pinning `grep` proves less than the rule assumes | **done** - 63 such clauses, none already resolving, the judgment half not countable; the skill carries the sentence |
+| `PL-D0K3` ten non-discriminating `doc_check` commands | **dropped** - population zero today; repair-as-started held |
+| `PL-Q8RQ` a bare `-k` refused by `docket check` | stays `ready` - obligation 1 made mechanical, as briefed |
+| `PL-3DXV` four qt-port commands a neighbour satisfies | stays `ready` - obligation 1, as briefed |
+| `PL-LBW5` commands grep a file `touches` omits | stays `ready` - obligation 2, as briefed |
+| `PL-H9GV` the test `PL-01GD` owed | stays `ready` - a closed command is a record; the test is ordinary work |
+| `PL-Y4YX` `app/theme.py`'s toolkit rule | stays `needs-decision` - its `verify:` half closed with `PL-L9RD`; what remains is not this cluster's |
+| `PL-T7VS` a red prerequisite voids the replay | stays `ready`, **decided by the shape half**: drops if the clause goes, hoists if it stays |
+| `PL-6YWK` `PL-4L6Z`'s command killed at the limit | stays `ready`, form decided by the shape half: the clause is removed or narrowed |
+| `PL-2M4X` `PL-J45M`'s wrong pytest half | stays `ready` - the `touches` correction stands either way; the pytest half is removed or replaced |
+| `PL-6YL1` the docket-suite rule as a check | stays `ready`, **decided by the shape half**: not worth building if new commands carry no pytest target |
+
+**Standing, 2026-09-19.** The reading half is written and the three closures
+ride the same branch. This item stays `needs-decision` until the shape half is
+ratified or refused; either answer re-points `PL-T7VS`, `PL-6YWK`, `PL-2M4X`
+and `PL-6YL1`, rewrites the skill's table, and closes this item.

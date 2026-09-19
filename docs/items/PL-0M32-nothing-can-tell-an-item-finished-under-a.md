@@ -3,11 +3,13 @@ id: PL-0M32
 title: Nothing can tell an item finished under a renamed test from one nobody has started
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect, infra
 feature: dev-tooling
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_checks.py
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-06
+closed: 2026-09-19
+verify: grep -qF 'under a name other than the one the command greps for' subprojects/docket/README.md
 ---
 
 **Problem.** Two separate faults, found together while cutting v0.4.6 and
@@ -97,3 +99,16 @@ and leaving it to the close-out to read the command; or nothing, dropped with
 that reasoning. The first is the only one that would have caught this, and it
 is also what an unstarted item looks like once its test file exists, which is
 the judgment to make.
+
+**Decided by `PL-6TP8`, 2026-09-19, and closed on it.** The case cannot be
+decided by anything that reads an exit status, and that is now written where
+the consumers read it: `subprojects/docket/README.md` § "What a `verify:` exit
+status proves, and to whom" records that work finished under a name other than
+the one the command greps for fails exactly as unstarted work does. The first
+candidate above - an advisory on a passing test-run half beside a failing
+`grep` half - was not built: it is also what every unstarted item looks like
+once its test file exists, and it reads a prerequisite clause the shape half of
+`PL-6TP8` recommends removing from the field. What remains is the author's, at
+writing time, and the close-out's, which reads the command against the diff;
+the `docket` skill's `verify:` section now says so. The command recorded above
+was run before the README edit (exit 1) and after it (exit 0).
