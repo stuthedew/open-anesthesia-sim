@@ -2946,7 +2946,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 202 entries
+### Declined to Gate 2 on the refilling-queue ground — 204 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -4057,6 +4057,24 @@ at 173 of 175 cleared, and admitting an `M`-effort design decision to a gate two
 entries from draining is precisely the refilling shape Phase 0 was retired for.
 The blind spot has stood through eight recorded generators without preventing
 one from being found by hand; it will stand through v0.5.0.
+
+**Two more on the model-capability reference, 2026-09-19.** `PL-13PB`
+(`docs/maintainer.md` names no model behind "the strongest available model", so
+`bin/docket next`'s per-item strongest-model flag cannot be resolved by anyone
+reading it) and `PL-V8QG` (the same file recommends `opusplan` as the default
+strong/cheap split, which names the wrong family if the strongest model is not
+an Opus). Both were captured that day, both are `P2`, neither is `safety` nor
+`science`, and both sit wholly in the workflow lane.
+
+They are deferred rather than admitted even though the flag they undermine
+fires on `safety`- and `science`-classed items, because what they fix is the
+*reference* a human reads when choosing a model, not any code path that
+produces a clinical value: `CLAUDE.md`'s safety-critical standard reaches the
+value and its presentation, and the maintainer still reviews every
+safety-critical diff whatever model drafted it, which is the backstop that makes
+this deferrable. The observation that prompted them — `PL-G424` started on a
+weaker model than `PL-LSR0` while both carried the flag — cost nothing that a
+gate entry would have prevented.
 ### Required scope
 
 Eighteen items, in the order the dependencies allow. The first three are the
