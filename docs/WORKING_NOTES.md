@@ -1983,3 +1983,67 @@ marker excusing them - `bin/docket verify` reads a suppression marker and cannot
 read the reason attached to it, so a recorded breach has to be written as an
 assertion to survive its own audit (`PL-4FD2`, which that audit refused three
 times on its own brief).
+
+## Decided: three silently-wrong checks go ahead of product work - PL-VKGJ, PL-STC4, PL-T83R (2026-09-19)
+
+**(project owner, 2026-09-19, ratified**, over letting the three rank on their
+`P2` band alongside everything else and be picked up whenever `bin/docket next`
+reached them.) The decision came out of a read-only survey of the open workflow
+lane and is a *sequencing* decision only: no priority was changed, because
+`docket check` pins `P1` to `safety` and `science` and `CLAUDE.md` forbids
+promoting process work into that band to move it up the order.
+
+**They are one problem, which is why they move together.** Each is a check or a
+report that answers confidently and wrongly, which is the first of `CLAUDE.md`'s
+three compounding-friction tests — a check passing while the guarantee it stands
+for is void:
+
+- `PL-VKGJ` — the session-start digest under-reports the grooming debt. Filed
+  on a 10-vs-19 measurement; re-measured live on 2026-09-19 at **9 vs 13**
+  (`bin/docket digest | grep -i groom` against `bin/docket check`). The cause is
+  `checks.py`'s `if closures is None: return` guard, which every command but
+  `check` takes, so the `pr`-backfill advisories are structurally invisible to
+  the digest. The guard is deliberate; nothing indicates the printed *count* was
+  meant to exclude them.
+- `PL-STC4` — `docket verify`'s suppression check reads prose. On `PL-VHVJ`'s
+  own branch it reported 13 flagged lines of which 12 were that item's brief,
+  code comments and docstrings. It is one of the four *absolute* integrity
+  checks in `verify --self`, so its false positives train a reader to skim the
+  block where a real protected-path failure prints. The removed-assertion check
+  beside it already took the two narrowings that would fix it.
+- `PL-T83R` — `main`'s quality run failed on **32.7%** of the pushes that
+  reached a verdict (74 of 226) between 2026-09-05 and 2026-09-16, with
+  unbroken red stretches of 50, 9 and 5. The 50-run stretch spanned 37 hours.
+  A red-`main` digest line that is right a third of the time is the second
+  friction test — an advisory being routed around.
+
+**The grouping covers two of the three, deliberately.** `PL-VKGJ` and
+`PL-STC4` carry no `feature:` and should get one, per `CLAUDE.md`'s rule that a
+diagnosis producing more than one item groups them at the moment anybody knows
+they are one problem. `PL-T83R` is **left in `ci-cost`**, which it already
+carries: both groups fit it, an existing group that names four items is worth
+more than a tidier label, and `bin/docket feature` counts what completes rather
+than what a reply grouped. That is a session's call under rule 14 - its blast
+radius is one field on one item - and this note is the record of it.
+
+It was not written here because `PL-VKGJ` and `PL-STC4` were both held by
+`PL-CSV0`'s in-flight triage pass on `origin/claude/serene-maxwell-iji9mx` when
+this was decided, and a second answer in those files is a second resolution of
+them. That session could not be reached to ask - it runs in a separate
+container, and `ListAgents` finds no peer - so the grouping is owed by whichever
+session next touches either item, and this paragraph is the only thing carrying
+that. `PL-T83R` needs nothing: it keeps `ci-cost`.
+
+**`PL-G424` was escalated in the same sitting and is not part of this group.**
+It is the one open generator head (apparatus-side citation drift, 21 open
+members) and it stood at `status: untriaged`, which makes it invisible to
+`bin/docket next` despite ranking above every band but `P0`. It is inside
+`PL-CSV0`'s pass.
+
+**What the survey found that nothing had stated.** Seven of the eight recorded
+generator heads are `done` and **64 of their 87 members are still open** -
+`PL-4FBP` closed with 24 of 24 open, `PL-BHVM` with 7 of 8. That is not a
+defect: `CLAUDE.md` says `root-cause-of:` names the items a head *explains*,
+not the ones it closes, so a head stops the inflow and leaves the stock. It is
+worth writing down because those 64 are the well-organised, safe-to-chip-at
+half of the backlog, and because nothing in the store says so.
