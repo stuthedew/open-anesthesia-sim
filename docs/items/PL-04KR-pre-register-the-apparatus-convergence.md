@@ -1,8 +1,14 @@
 ---
 id: PL-04KR
 title: Pre-register the apparatus-convergence expectation on two causal signals, baselined 2026-09-19, so the owner's expectation that workflow inflow declines can fail loudly rather than be re-argued
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: infra, planning
+feature: convergence-visibility
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/trend.py, subprojects/docket/tests/test_trend.py, docs/items
 added: 2026-09-19
+verify: grep -q 'def test_the_re_entry_rate' subprojects/docket/tests/test_trend.py
 ---
 
 **Problem.** The project owner stated an expectation on 2026-09-19: with the
@@ -81,3 +87,33 @@ re-entry rate for a bookkeeping reason; item-file paths need excluding.
 workflow lane dead or partly overtaken on 2026-09-12. The 151, the cluster sizes
 and both rates are therefore upper bounds. The apparatus backlog review
 commissioned 2026-09-19 will move them.
+
+**Why it matters.** The expectation is currently unfalsifiable, which is the
+worst of both states: it cannot be confirmed, so it gets re-argued from memory
+in every session that notices the apparatus lane is busy, and it cannot fail,
+so an actual unfound generator would go on producing instances with nothing
+saying so. `CLAUDE.md` § "What this project is" settles the *level* question
+("there is too much apparatus" stays refused) and says in the same breath that
+it cannot settle the *trend* one - "Apparatus inflow should be declining now
+that the functionality is settled, and if it is not, something is generating
+work we should go and find" is named there as live, and this item is what it
+points at. A pre-registered prediction with its numbers fixed before the
+outcome is known is the only form that can lose; a measurement chosen
+afterwards will agree with whoever chose it.
+
+The half that is genuinely missing rather than merely unpublished is signal 1.
+Of 623 attributed parent-child links, 100% of children were filed in the commit
+that closed the parent - so the store records filed-while-working and has never
+once recorded fix-did-not-hold. That is not a low reading of re-entry; it is no
+reading at all, and it is the signal that would distinguish "we are patching
+instances" from "we are fixing causes".
+
+**Done when.** A command reports both signals over the store - re-entry rate on
+the 30-day bound, and the largest open cluster carrying no `root-cause-of:`
+head - with generator-campaign filings broken out separately and item-file
+paths excluded from the re-entry surface, which are the two ways the brief
+above says the numbers go wrong. The 2026-09-19 baseline in this item is what
+the command's output is read against, and the prediction is checked at each of
+the next three releases, with the result recorded here. If all four predictions
+hold, this item closes having found nothing, which is the outcome it exists to
+be able to report.

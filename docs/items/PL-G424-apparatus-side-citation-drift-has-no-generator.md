@@ -3,7 +3,7 @@ id: PL-G424
 title: Apparatus-side citation drift has no generator head: 27 open items name a tree fact that moved, and PL-4FBP's adopted scope reaches only docs/MODEL.md and README.md
 priority: P2
 effort: M
-status: untriaged
+status: needs-decision
 classes: docs, infra
 feature: generator-heads
 touches: tools/doc_check.py, docs/items, docs/WORKING_NOTES.md

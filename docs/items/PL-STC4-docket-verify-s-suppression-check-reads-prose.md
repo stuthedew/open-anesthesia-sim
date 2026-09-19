@@ -1,8 +1,13 @@
 ---
 id: PL-STC4
 title: docket verify's suppression check reads prose, unlike the assertion check beside it: 12 of the 13 lines it flagged on PL-VHVJ's own branch were an item brief, a comment or a docstring naming the thing being fixed
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, infra
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-19
+verify: grep -q 'def test_a_suppression_named_in_an_item_brief_is_not_one' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** docket verify's suppression check reads prose, unlike the assertion check beside it: 12 of the 13 lines it flagged on PL-VHVJ's own branch were an item brief, a comment or a docstring naming the thing being fixed

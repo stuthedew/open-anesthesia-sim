@@ -9,6 +9,7 @@ feature: owner-decisions-2026-09-19
 touches: CLAUDE.md
 added: 2026-09-19
 closed: 2026-09-19
+pr: 715
 verify: grep -qF 'The trigger for involving them is a real trade-off' CLAUDE.md && grep -qF 'That answers the level, not the trend' CLAUDE.md && grep -qF 'And every edit to the resident set names' CLAUDE.md && python3 tools/doc_check.py check
 ---
 

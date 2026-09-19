@@ -9,6 +9,7 @@ feature: apparatus-capture-criteria
 touches: .claude/skills/docket/SKILL.md, docs/items
 added: 2026-09-19
 closed: 2026-09-19
+pr: 716
 verify: grep -qF 'reproduce the fault, because the command cannot' .claude/skills/docket/SKILL.md
 ---
 

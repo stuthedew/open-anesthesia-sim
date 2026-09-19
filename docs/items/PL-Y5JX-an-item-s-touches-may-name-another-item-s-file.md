@@ -9,6 +9,7 @@ feature: slug-rename-on-write
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md, docs/items/PL-3V6C-pl-tfwr-and-pl-xqrk-record-incompatible-causes.md, docs/items/PL-GNXG-roadmap-md-s-tag-paragraph-still-calls-v0-2-1.md
 added: 2026-09-19
 closed: 2026-09-19
+pr: 714
 verify: grep -q 'def test_touches_naming_a_missing_item_file_is_an_error' subprojects/docket/tests/test_checks.py
 ---
 

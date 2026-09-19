@@ -1,8 +1,14 @@
 ---
 id: PL-VKGJ
 title: The session-start digest reports 10 grooming advisories where bin/docket check reports 19, so a session is told the grooming debt is half its actual size
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: queue-hygiene
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
+verify: grep -q 'def test_the_digest_grooming_count_matches_check' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** The session-start digest and `bin/docket check` disagree on the
@@ -49,3 +55,19 @@ which would *also* change this count), and `PL-T8PT` concerns
 whether it has already resolved the others; if `PL-XYQW` collapses the nine to
 one, the honest digest figure becomes 11 rather than 19 and this item reduces to
 making the digest say which number it is reporting.
+
+**Done when.** The digest either reports the same grooming total
+`bin/docket check` does, or says which subset it is reporting and why the rest
+is unread - `report.declined` is the vocabulary the check layer already has for
+"what went unread travels with the answer", and the digest path does not use
+it. A test pins the two counts against one store, so the next caller that
+skips closure data cannot reintroduce the gap silently.
+
+**Sequencing against the two adjacent items.** `PL-XYQW` (collapse the nine
+identical `docket record` advisories into one line) changes this count too: if
+it lands first the honest digest figure becomes 11 rather than 19, and this
+item reduces to making the digest say which number it is reporting. `PL-T8PT`
+(`pr_title_check --discover` against committed history) is a different
+mechanism and only shares the word "advisory". Whichever of the three is
+started first should re-read the other two rather than assume this note is
+still current.
