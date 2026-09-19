@@ -3,11 +3,14 @@ id: PL-XZD0
 title: Nothing reconciles the jobs that report a status check on pull_request against the branch-protection required list, in either direction: PL-KPP1 covers removing one by comment alone, and nothing at all covers adding one
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: infra
 feature: pr-title-enforcement
-touches: .github
+touches: .github, tools/required_checks_check.py, tests/unit/test_required_checks_check.py, docket.toml
 added: 2026-09-17
+closed: 2026-09-19
+payoff: stops a renamed CI job leaving pull requests waiting forever on a check that can never arrive
+verify: grep -q 'def test_pl_kpp1_a_deleted_job_orphans_its_requirement' tests/unit/test_required_checks_check.py
 ---
 
 **Problem.** Nothing reconciles the jobs that report a status check on pull_request against the branch-protection required list, in either direction: PL-KPP1 covers removing one by comment alone, and nothing at all covers adding one
@@ -67,3 +70,74 @@ own comments - either naming the check that reconciles the two lists and what
 token it uses, or saying that the comment is the whole remedy and why a check
 is not worth its permission. `PL-KPP1`'s and `PL-H8YD`'s comments point at that
 decision instead of each restating the premise separately.
+
+## Answered 2026-09-19: build it, because the premise the brief rested on is false
+
+**The decision is to reconcile in CI, with no credential at all**, and the case
+that settled it is not the one this brief framed. The brief expected the answer
+to turn on a token: `GET /repos/{owner}/{repo}/branches/{branch}/protection`
+needs the `administration` permission, an Actions `GITHUB_TOKEN` can never hold
+it - `administration` is not one of the keys a workflow's `permissions:` block
+may set - and a guard needing a broadly-scoped secret to protect a two-job list
+would plausibly be worse than the comment. All of that is true, and it is about
+the wrong endpoint.
+
+`GET /repos/{owner}/{repo}/branches/{branch}` carries
+`protection.required_status_checks.contexts`, and on a public repository it
+answers **unauthenticated**. Measured 2026-09-19 against this repository:
+
+| Call | Result |
+| --- | --- |
+| `.../branches/main/protection`, session token | 403 `Resource not accessible by integration` |
+| `.../branches/main`, same token | 200, `contexts: ["checks", "pr-title"]` |
+| `.../branches/main`, **every token stripped from the environment** | 200, same contexts |
+
+So the cost side of the trade this brief set up is zero - no secret, no
+permission grant, nothing widened - and `PL-N5WZ`'s dead end does not reach it:
+that one is about a *push* made with `GITHUB_TOKEN` starting no workflow, which
+is a write, and this is a read of public metadata. Against an event rate of one
+set change per five months, both silent and both costly, a guard that costs
+nothing but the code is worth building. Had the credential been needed, the
+answer here would have been the comment.
+
+**A second fact, found while measuring, changed the design.** This repository
+carries both settings surfaces: one active ruleset (`Base`, id 21260116) whose
+rules are `deletion`, `pull_request` and `non_fast_forward` - and **no**
+`required_status_checks` rule - alongside classic branch protection, which is
+where the two contexts actually live. GitHub's UI steers toward rulesets, so
+moving that setting would empty the surface a naive check reads and fill one it
+does not, and the check would report "nothing required" and pass. That is
+`CLAUDE.md`'s first compounding-friction test exactly - a check passing while
+its guarantee is void - so `tools/required_checks_check.py` reads both surfaces,
+unions them, and **treats an empty union as a hard failure** rather than as
+agreement.
+
+**What was built.** `tools/required_checks_check.py`, stdlib only, run as a
+*step inside* `quality.yml`'s `checks` job. A step rather than a job because a
+new job reports a new status check that would itself need adding to the
+required list - the exact trap `PL-H8YD` records - so as a step it inherits the
+requirement `checks` already carries and adds no entry to the list it guards.
+It is not wired into `make check`: its input is not in the tree, and `make
+check` runs offline in a bare checkout.
+
+It refuses rather than guesses where it must - a matrix job, a reusable
+workflow call, an unreadable `on:` block, an unreachable API - because a job
+silently dropped from the reporting set reads as "nothing to reconcile" and
+passes. A job that reports a check and is deliberately not required declares
+`# not-required: <reason>` above its key, so the first advisory-only job does
+not turn this into a check that fires every run, which `CLAUDE.md` retires.
+
+**Verified end to end against live settings, not only in fixtures.** Renaming
+`checks` to `quality-checks` in a scratch copy of the workflows produced both
+findings at once, read against the repository's real required list:
+
+    FAIL - required but reported by no job: checks
+    FAIL - reports on a pull request but is not required: quality-checks
+
+**The comments converge, as this item asked.** `quality.yml` and
+`pr-title.yml` each kept the load-bearing-name fact and now point at the tool's
+docstring for the rule, the two regressions and the measurement. `pr-title.yml`
+keeps the one thing readable from nowhere else in the tree - that its job
+entered the required set on 2026-09-17 and why it had been outside it. The two
+comments had already drifted: each described the direction its own regression
+had taken, and neither described the other.

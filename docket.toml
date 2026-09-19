@@ -325,6 +325,7 @@ workflow_paths = [
   "tests/unit/test_item_read_log.py",
   "tests/unit/test_no_prune_guard.py",
   "tests/unit/test_pr_title_check.py",
+  "tests/unit/test_required_checks_check.py",
   "tests/unit/test_rules_paths_check.py",
   "tests/unit/test_stop_hook_patch.py",
   "tests/unit/test_tools_portability.py",
