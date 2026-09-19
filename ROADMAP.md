@@ -3680,6 +3680,22 @@ colour that carries meaning is declared, so the decision changes the chrome
 rather than the legibility of anything a reader acts on.
 
 
+**One from `PL-BHVM`'s design round** (`PL-MM7F`, 2026-09-19). That round
+measured `vcs.py`'s evidence layer and found that `GitRunner` stores a failed
+git call in its memo exactly as it stores a real answer, so one non-zero exit
+is served to every later caller in the session. It is declined on this
+subsection's own refilling-queue ground: it was captured after this freeze, it
+is `defect` rather than `safety` or `science`, and it completes no entry on the
+frozen list.
+
+The gate could not clear it in any case. It is `status: blocked` on `PL-Q9Z1`
+(`_superseded` reads a failed git diff as the tips agreeing about every path),
+which is untriaged and on no list here - until the evidence layer can say a
+call failed, nothing can tell a failure from an empty answer worth caching. Its
+sibling `PL-73P0` (`default_base` falls back to a guessed `"main"`) is
+untriaged and so is not debt by the rule above; it reaches this gate only if a
+triage pass classes it, which is the next gate's question.
+
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
 `### Declined to Gate ...` subsection after the gate heading and stops at the
