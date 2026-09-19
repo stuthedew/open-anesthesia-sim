@@ -521,6 +521,77 @@ def test_two_runs_within_the_hover_radius_answer_under_their_own_names() -> None
     assert nearer_second.readout.splitlines()[2] != nearer_first.readout.splitlines()[2]
 
 
+def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers() -> None:
+    """`PL-JVHL`: every run inside the radius answers, so nothing turns on which is marginally nearer.
+
+    The geometry is the one the item measured, reduced to the two fat traces
+    it turns on. Reference adult on sevoflurane, trunk held at 1 MAC, branch
+    forked at 10 min with the vaporizer turned off, a 60-minute axis 900 px
+    wide and `theme.CHART_HEIGHT` tall, so 4.00 s/px and 0.0167 %/px: at
+    3492 s the run still carrying agent reads 0.03% and the one 48 minutes
+    into emergence reads 0.01%, which the percent axis - scaled by the
+    alveolar peak - puts 1.2 px apart. Both points are inside the 12 px
+    radius across the whole hoverable band, and the rule that kept the
+    single globally nearest point flipped which run answered on 75.4-99.9%
+    of the fat axis.
+    """
+
+    reach = dict(seconds_per_pixel=4.0, percent_per_pixel=0.0167, radius_pixels=12.0)
+    times_s = tuple(3400.0 + 4.0 * column for column in range(50))
+    still_carrying = _run_frame(times_s, fat=tuple(0.0003 for _ in times_s))
+    emerging = replace(_run_frame(times_s, fat=tuple(0.0001 for _ in times_s)), label=run_label(1))
+    frame = replace(
+        _frame(still_carrying, visible=(RecordedQuantity.FAT,)), runs=(still_carrying, emerging)
+    )
+    # Pixel offsets from the midpoint of the two traces at 3492 s, two at a
+    # time, which is the hand movement the item measured.
+    offsets = tuple(range(-12, 13, 2))
+
+    def hover(x_px: int, y_px: int) -> tuple[int, ...]:
+        target = nearest_trace_point(
+            frame, 3492.0 + x_px * 4.0, 0.02 + y_px * 0.0167, **reach
+        )
+
+        return () if target is None else tuple(reading.run for reading in target.readings)
+
+    def contending(x_px: int, y_px: int) -> bool:
+        """Whether both runs' fat points are inside the radius of this pointer."""
+
+        return all(
+            nearest_trace_point(
+                replace(frame, runs=(run,)), 3492.0 + x_px * 4.0, 0.02 + y_px * 0.0167, **reach
+            )
+            is not None
+            for run in (still_carrying, emerging)
+        )
+
+    def marginally_nearer(y_px: int) -> int:
+        """Which run the retired rule would have answered for: the nearer point's."""
+
+        return 0 if abs(0.02 + y_px * 0.0167 - 0.03) < abs(0.02 + y_px * 0.0167 - 0.01) else 1
+
+    contended = [(x, y) for x in offsets for y in offsets if contending(x, y)]
+    assert len(contended) > len(offsets) ** 2 // 2, "the geometry must contend to test anything"
+    # The geometry is the ambiguous one: the retired rule does flip across it.
+    assert {marginally_nearer(y) for _, y in contended} == {0, 1}
+
+    for x_px, y_px in contended:
+        assert hover(x_px, y_px) == (0, 1)
+
+        for neighbour in ((x_px + 2, y_px), (x_px, y_px + 2)):
+            if contending(*neighbour):
+                assert hover(*neighbour) == hover(x_px, y_px)
+
+    # Both values are reached, and they differ - which is what made the flip
+    # consequential rather than cosmetic.
+    readout = nearest_trace_point(frame, 3492.0, 0.02, **reach)
+    assert readout is not None
+    assert readout.readout.splitlines()[2:] == [
+        "Run 1 · 58m12s   0.03%   0.02 ×MAC",
+        "Run 2 · 58m12s   0.01%   <0.01 ×MAC",
+    ]
+
+
 def test_the_hover_keeps_the_below_resolution_forms_and_the_readout_row_s_glosses() -> None:
     """`docs/MODEL.md`'s measured table: fat at 48.3 s is `<0.01%`, never `3.52e-05`."""
 
