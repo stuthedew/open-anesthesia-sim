@@ -49,6 +49,25 @@ from .store import ID_PATTERN
 # search, and answering it here would be guessing at the judgment half.
 SUPPRESSIONS = ("# type: ignore", "typing.no_type_check", "xfail", "pytest.skip", "@skip")
 
+#: The same list as something a line can be matched against, anchored on the
+#: left where the entry begins with a word character. Every entry names a
+#: *token*, and a bare substring search finds one inside a longer word:
+#: `xfail` sits inside pytest's own `--maxfail`, so a diff line listing that
+#: option read as a suppression and rejected correct work (`PL-VHVJ`). The
+#: anchor is conditional because two entries open on `#` and `@`, which are
+#: not word characters - `\b` before one of those asserts the opposite of what
+#: is wanted and would match only where a word character precedes it.
+#:
+#: Left only. The right-hand side is deliberately open, so `@skip` still finds
+#: `@skipif` and `pytest.skip` still finds `pytest.skip_module`, both of which
+#: are the thing this looks for rather than a collision with it.
+_SUPPRESSION_RE = re.compile(
+    "|".join(
+        (r"\b" if text[0].isalnum() or text[0] == "_" else "") + re.escape(text)
+        for text in SUPPRESSIONS
+    )
+)
+
 #: Only a file Python executes can hold an assertion, so a removed line from
 #: anything else is prose whatever words it uses. This is the larger half of
 #: the narrowing by count: every close-out edits its own item's `.md`, and
@@ -1247,7 +1266,7 @@ def verify_item(
 
     # One diff read for both checks, where there were two.
     added, removed = _net_line_changes(root, base, commits)
-    suppressed = [line.strip() for _, line in added if any(s in line for s in SUPPRESSIONS)]
+    suppressed = [line.strip() for _, line in added if _SUPPRESSION_RE.search(line)]
     report.checks.append(
         Check(
             "no suppression added",

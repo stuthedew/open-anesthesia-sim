@@ -1,8 +1,14 @@
 ---
 id: PL-2DTK
 title: docket verify --self cancels an added line against its removal only within the commits it selects per id, so an item is charged with removing an assertion a commit that does not name it had added on the same branch
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
+feature: verify-false-reject
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-19
+verify: grep -q 'def test_a_removal_is_not_charged_to_an_id_whose_selection_excludes_the_addition' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** docket verify --self cancels an added line against its removal only within the commits it selects per id, so an item is charged with removing an assertion a commit that does not name it had added on the same branch
@@ -50,3 +56,11 @@ a second diff pass or a branch-wide addition set is the design question.
 **Not confused with `PL-R77L`**, which is the fixture id itself, or with
 `PL-CWD4`, which is a `verify:` command that can never pass. This is the
 audit's own arithmetic.
+
+**Done when.** A branch where one commit adds an assertion and a later commit
+removes it reaches `ACCEPT` for every id the branch names, whichever commit's
+subject names which id - and a test in `subprojects/docket/tests/test_verify.py`
+drives `PL-C4RS`'s shape specifically: the addition in a commit the id's selection
+excludes, the removal in one it includes, asserting the removal is not charged.
+What the audit *reports* stays per id; only what the cancellation can see widens
+to the branch.
