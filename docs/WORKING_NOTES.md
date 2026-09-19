@@ -1782,3 +1782,37 @@ connects the two, so a cluster can be correctly diagnosed, correctly recorded,
 and still have nowhere for the diagnosis to live - which is the same failure the
 map itself names, one level up: the apparatus inferring a fact (which item heads
 this cluster) that it could have recorded.
+
+## PL-BHVM's Q1 is built, and the sweep found five breaches the design round could not - PL-Q9Z1, PL-MM7F, PL-ZPDM
+
+`PL-BHVM`'s design round separated its ten items into four questions and named
+Q1 - *what does silence mean?* - the substrate under the rest, with `PL-Q9Z1` as
+the first build. That landed 2026-09-19: `_run_git` now returns `GitSilence` for
+a call git did not answer, `_Silences` carries a read's silences to its
+`declined`, and `subprojects/docket/tests/test_vcs_silence.py` holds every
+public read to declining or keeping its marks, one silenced call at a time.
+
+**The part worth carrying forward is that the sweep out-measured the design
+round, and by a factor.** `PL-BHVM` measured a *total* git failure and found
+four reads in breach - `branches_in_flight`, `precedence`, `branch_state`,
+`default_base` - noting that `stranded`, `lost`, `orphaned` and
+`merged_pull_requests` "decline correctly". Under a **single** silenced call
+they do not. `stranded` dropped an item existing on one branch and nowhere
+else; `lost` dropped a deleted item; `closed_by`, `closures_on_base`,
+`records_on_base`, `filed_with_work` and `cut_window` each lost a finding with
+`declined` empty. Nine reads in breach rather than four.
+
+The generalisable bit: **a total failure is the easy case and the least
+informative one.** Every read here has some early gate - an unresolvable base,
+no refs - that a total failure trips, so it declines for a reason that has
+nothing to do with the silence, and the reading looks compliant. Only failing
+*one* call at a time reaches the middle of a read, which is where the
+conflation lives. Any future measurement of this kind should start there.
+
+**Two items came out of it**, both filed rather than folded in: `PL-ZPDM`, the
+three reads answering with a bare collection or string, which cannot decline at
+all and are recorded as strict `xfail`s in the sweep; and `PL-29HL`, `cli`'s
+`verify` passing no runner to `default_base`. `PL-MM7F` - the memo serving a
+cached failure forever - is unblocked by this and is the next build in the
+cluster, with Q3's directional predicate (`PL-SH9Q`, `PL-KSCW`, `PL-MBTZ` as one
+build) after it.

@@ -751,6 +751,8 @@ def _print_observed(args: argparse.Namespace, item: Item, flight: FlightReport) 
         print("    nothing - which means no branch has touched these files *yet*,")
         print("    not that none will; and it says nothing about files this item")
         print("    touches without having declared them")
+    if not files.known:
+        print(f"    (this reading is partial: {files.declined})")
     if files.unreadable:
         print(f"    ({len(files.unreadable)} ref(s) unread: {', '.join(files.unreadable)})")
 
@@ -1195,15 +1197,27 @@ def cmd_release(args: argparse.Namespace) -> int:
             if not args.dry_run:
                 return 1
             print()
-        elif holders := [
-            branch
-            for branch in cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes).branches
-            if not branch.mine
-        ]:
-            print(_parallel_cut_warning(holders))
-            if not args.dry_run:
-                return 1
-            print()
+        else:
+            # **Both guards refuse on a read they could not complete**
+            # (`PL-Q9Z1`). Each is looking for evidence that somebody else is
+            # already cutting, and an absence of evidence is what a git that did
+            # not answer produces - so proceeding on one is the v0.3.7
+            # collision arriving through the guard built to stop it. This is the
+            # rarest command here and the most expensive to get wrong, which is
+            # what makes refusing the right side to err on.
+            cuts = cuts_in_flight(root, notes_dir=NOTES_DIR, on_base=base.notes)
+            holders = [branch for branch in cuts.branches if not branch.mine]
+            unread = "" if base.known else _base_unread(base.base)
+            if holders:
+                print(_parallel_cut_warning(holders))
+                if not args.dry_run:
+                    return 1
+                print()
+            elif unread or not cuts.known:
+                print(_unreadable_cut_warning(unread or cuts.declined))
+                if not args.dry_run:
+                    return 1
+                print()
 
     milestone = milestones(stamp(ready.shippable, name))[name]
     notes = release_notes(milestone, args.today or date.today())
@@ -1351,6 +1365,35 @@ def _duplicate_warning(name: str, base: str, evidence: list[str]) -> str:
             "  git fetch origin",
             f"  git merge {base}   # take {base}'s side on the version, lock and roadmap files",
             "  bin/docket release --dry-run",
+        ]
+    )
+
+
+def _base_unread(base: str) -> str:
+    """Why the default branch could not be read, for the release guards to quote."""
+    return f"git would not say what {base or 'the default branch'} has already released"
+
+
+def _unreadable_cut_warning(reason: str) -> str:
+    """Refuse a cut whose duplicate-release guards could not be run.
+
+    The guards above look for *evidence* that another session is already
+    cutting, so their clean answer and their unread answer are the same shape -
+    nothing found - and only the read itself can tell them apart (`PL-Q9Z1`).
+    Cutting anyway is how v0.3.7 was cut twice (`PL-66FP`): the second cut
+    stamps `milestone:` onto items the first already shipped, and the resolution
+    is discarding one of them.
+    """
+    return "\n".join(
+        [
+            f"Cannot check whether another session is already cutting: {reason}.",
+            "",
+            "Both duplicate-release guards read git, and neither can tell a clean answer",
+            "from one it never got - so this refuses rather than cutting on silence.",
+            "",
+            "  git fetch origin",
+            "",
+            "then run this again. `--dry-run` prints the notes without the guard.",
         ]
     )
 
@@ -1527,6 +1570,12 @@ def cmd_trend(args: argparse.Namespace) -> int:
     root = args.items.parent if args.items else find_root()
     history = Churn() if args.no_git else churn(root)
     report = analyze_trend(items, history, config, by=args.by, today=args.today or date.today())
+    if history.declined:
+        # A measurement with an unread stretch of history is not the measurement
+        # it looks like, and the shape of a trend is exactly what a missing
+        # stretch changes (`PL-Q9Z1`).
+        print(f"Lines written: partial - {history.declined}.")
+        print()
     print(render.format_trend(report))
     return 0
 
