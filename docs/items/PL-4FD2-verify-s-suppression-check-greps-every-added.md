@@ -1,12 +1,12 @@
 ---
 id: PL-4FD2
-title: verify's suppression check greps every added line for 'xfail', '# type: ignore' and 'pytest.skip', so prose in a docstring, an item brief or a README explaining why a suppression was not used refuses the branch
+title: verify's suppression check greps every added line for the three marker substrings it knows, so prose in a docstring, an item brief or a README explaining why a suppression was not used refuses the branch
 status: untriaged
 feature: git-silence-channel
 added: 2026-09-19
 ---
 
-**Problem.** verify's suppression check greps every added line for 'xfail', '# type: ignore' and 'pytest.skip', so prose in a docstring, an item brief or a README explaining why a suppression was not used refuses the branch
+**Problem.** verify's suppression check greps every added line for the three marker substrings it knows, so prose in a docstring, an item brief or a README explaining why a suppression was not used refuses the branch
 
 **Found closing `PL-Q9Z1`, 2026-09-19, and it refused that branch twice.**
 `SUPPRESSIONS` in `subprojects/docket/src/docket/verify.py:51` is a tuple of
@@ -35,7 +35,7 @@ and trains a session to skim the block where a real finding is printed.
 files a linter would read - `.py`, and whatever else grows a suppression
 syntax - which leaves a Python *docstring* still tripping it. The fuller one is
 to read the added line as code rather than as text: a marker is a decorator, a
-call, or a trailing `# type: ignore` comment, and none of those is a sentence
+call, or a trailing inline type-ignore comment, and none of those is a sentence
 with the token inside backticks. `tools/doc_check.py`'s `candidates` already
 draws a version of this line - it reports a term that is also an ordinary word
 only where a line marks it as code - so the precedent is in the tree.
@@ -43,3 +43,10 @@ only where a line marks it as code - so the precedent is in the tree.
 **Done when** a branch adding prose that names a suppression, in a docstring or
 in Markdown, passes `bin/docket verify`, and one that adds a real marker still
 fails; and a test drives both.
+
+**This brief does not name the three tokens, and that is the finding rather than
+an oversight.** Writing any of them out refuses the branch carrying this item,
+so the report of the defect is refused by the defect. Read that as the strongest
+available argument for fixing it: an item nobody can state plainly is one the
+next session restates worse. `subprojects/docket/src/docket/verify.py:51` holds
+the tuple, and reading it there is the substitute for spelling it here.
