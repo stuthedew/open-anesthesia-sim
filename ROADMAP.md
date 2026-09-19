@@ -5407,9 +5407,13 @@ specified.
     versioned data files is unmet for them and `tools/doc_check.py`'s
     provenance walk is structurally blind to a constant that never entered
     one - the same gap `PL-4YY1` closed for the circuit's volume and flow.
-    Moving the three into their own agent files, with the Laster and Biro
-    citations already written, is this item's first step. `PL-B396` chooses
-    what the resulting figure looks like.
+    That work is already filed as `PL-KZ99`, which stores each agent's molar
+    mass and liquid density *with the density's measurement temperature* so
+    the conversion is derived from Laster's primary measurement rather than
+    from Biro's composite constant; it was blocked on `PL-S6WW` and is
+    unblocked now that `PL-S6WW` has shipped. So this item's first step is
+    `PL-KZ99` rather than anything new, and `PL-B396` chooses what the
+    resulting figure looks like.
 
     *The exhausted/stored split keeps its own labels.* It is the uptake curve
     in mass form and is worth drawing; it is simply not the economics, and

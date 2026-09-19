@@ -200,3 +200,13 @@ the constant is sourced and the reference condition decided, and that what
 item 28 owes is moving the three constants out of prose and into
 `data/agents/*.json` - the `PL-4YY1` gap, where `doc_check`'s provenance walk
 cannot see a scientific constant that never entered a data file.
+
+**And the work item 28 needs next already exists.** Before writing "moving the
+three constants into their agent files is this item's first step", the queue
+was searched rather than trusted: `PL-KZ99` is exactly that item - store each
+agent's molar mass and liquid density *with the density's measurement
+temperature*, so the conversion derives from Laster's primary measurement
+instead of Biro's composite constant. It was `blocked-by: PL-S6WW`, and
+`PL-S6WW` is now done, so it is ready to promote. Item 28 names it rather than
+describing the work, so a later session finds the item instead of filing a
+second one - which is `PL-TZ7T`'s failure mode arriving through prose.
