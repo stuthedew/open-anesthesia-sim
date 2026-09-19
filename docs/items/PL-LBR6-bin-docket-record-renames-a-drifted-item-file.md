@@ -9,6 +9,7 @@ feature: slug-rename-on-write
 touches: subprojects/docket/src/docket/store.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-13
 closed: 2026-09-19
+pr: 708
 verify: grep -q 'def test_record_keeps_a_drifted_filename' subprojects/docket/tests/test_cli.py
 ---
 

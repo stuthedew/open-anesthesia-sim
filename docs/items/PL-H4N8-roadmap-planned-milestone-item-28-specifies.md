@@ -9,6 +9,7 @@ feature: liquid-agent-consumption
 touches: ROADMAP.md
 added: 2026-09-16
 closed: 2026-09-19
+pr: 709
 verify: grep -qF 'from the delivered-agent amount' ROADMAP.md
 ---
 

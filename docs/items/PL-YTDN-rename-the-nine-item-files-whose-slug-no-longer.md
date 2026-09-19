@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: docs/items/
 added: 2026-09-13
 closed: 2026-09-19
+pr: 712
 verify: uv run pytest -q subprojects/docket/tests/test_store.py && python3 -c "import sys, pathlib; sys.path.insert(0, 'subprojects/docket/src'); from docket.store import read_items, filename_for; items = read_items(pathlib.Path('docs/items')); raise SystemExit(1 if [i for i in items if i.path and i.identifier and i.path != filename_for(i)] else 0)"
 ---
 
