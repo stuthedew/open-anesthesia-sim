@@ -47,7 +47,7 @@ own return type. That cover has exactly one hole, and it is the command whose
 whole job is to certify a branch:
 
 ```python
-base = args.base or default_base(root)   # subprojects/docket/src/docket/cli.py:1455
+base = args.base or default_base(root)  # subprojects/docket/src/docket/cli.py:1455
 ```
 
 No runner, so nothing watches the probe. Under a git that does not answer,
