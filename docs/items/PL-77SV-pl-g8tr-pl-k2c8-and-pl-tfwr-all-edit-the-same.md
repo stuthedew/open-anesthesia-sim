@@ -6,7 +6,7 @@ effort: S
 status: ready
 classes: defect, infra
 feature: parallel-sessions
-touches: docs/items/PL-G8TR-no-prune-guard-is-evaded-by-the-form-it.md, docs/items/PL-K2C8-the-docket-skill-s-stranded-branch-recovery.md, docs/items/PL-TFWR-a-session-cannot-delete-a-remote-branch-the-git.md
+touches: docs/items/PL-G8TR-no-prune-guard-is-evaded-by-the-form-it.md, docs/items/PL-K2C8-the-docket-skill-s-stranded-branch-recovery.md, docs/items/PL-TFWR-a-session-cannot-delete-a-remote-branch-the.md
 added: 2026-09-12
 verify: python3 tools/doc_check.py check && grep -q '^blocked-by: PL-' docs/items/PL-K2C8-the-docket-skill-s-stranded-branch-recovery.md
 ---

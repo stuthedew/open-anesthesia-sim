@@ -49,6 +49,22 @@ slug deliberately; the closing commit records why. Two of the eight files the
 advisory currently names are `PL-TFWR` and `PL-XQRK`, which are exactly the two
 `PL-3V6C` declares.
 
+**Superseded in part, 2026-09-19, by `PL-YTDN`** (rename the item files whose
+slug no longer matches their title). That pass renamed `PL-TFWR` after measuring
+the coupling, and repaired both declarations in the same commit: `PL-3V6C`'s and
+`PL-77SV`'s `touches` now name the new path. So the paragraph above records what
+was found on the day, not what is true now, and the live instance this item was
+discovered through is gone.
+
+**The guard is still owed, and the reason is stronger rather than weaker.**
+`PL-YTDN` only got this right because it went looking - the brief's own re-check
+one-liner scans `verify` and the body and *not* `touches`, so it reported no
+coupling at all, and the two real declarations were found by hand. That is the
+failure this item names, reproduced by the very pass that repaired it. The test
+fixture must now be synthetic: build an item declaring two item files by full
+path, one of which the advisory wants renamed, rather than reaching for a live
+instance.
+
 **Done when.** A `touches` entry naming a path under `docs/items/` that does not
 exist is an error from `bin/docket check`, and the stale-slug advisory names any
 other item whose `touches` declares the file it is proposing to rename. Both are
