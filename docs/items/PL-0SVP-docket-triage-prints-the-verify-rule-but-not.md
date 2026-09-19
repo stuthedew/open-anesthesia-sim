@@ -10,6 +10,7 @@ milestone: v0.4.31
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
 closed: 2026-09-19
+pr: 738
 payoff: a triage pass learns the payoff rule from the rule list instead of from a refusal it could not have predicted
 verify: grep -q 'def test_triage_states_the_payoff_rule_before_a_pass_writes_ready' subprojects/docket/tests/test_cli.py
 ---

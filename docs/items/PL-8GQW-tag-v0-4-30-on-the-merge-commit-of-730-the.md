@@ -10,6 +10,7 @@ milestone: v0.4.31
 touches: docs/items/
 added: 2026-09-19
 closed: 2026-09-19
+pr: 736
 verify: git ls-remote --tags origin v0.4.30 | grep -q 'refs/tags/v0.4.30'
 not-delegable: Proving this means pushing a tag ref to the remote, which no session in this environment can do - PL-N936 measured the failure and found it convincing rather than obvious: git push --dry-run reports [new tag], the real push dies with send-pack: unexpected disconnect, and git ls-remote --tags then shows nothing. There is nothing to run before the work, because the work is the project owner's.
 ---
