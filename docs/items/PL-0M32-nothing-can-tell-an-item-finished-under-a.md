@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-06
 closed: 2026-09-19
+pr: 680
 verify: grep -qF 'under a name other than the one the command greps for' subprojects/docket/README.md
 ---
 

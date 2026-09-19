@@ -3,7 +3,8 @@ id: PL-4FBP
 title: A document sentence's link to the tree lives only in the reader's head, so each drift is repaired by hand: decide whether a live assertion must name what it asserts, and a dated one carry its date
 priority: P2
 effort: M
-status: needs-decision
+status: ready
+verify: python3 tools/doc_check.py check && uv run pytest tests/unit/test_doc_check.py && grep -q 'def check_bound_families' tools/doc_check.py
 classes: docs, infra
 feature: generator-heads
 touches: tools/doc_check.py, docs/MODEL.md, docs/items
@@ -264,7 +265,7 @@ below closes on the day.
 | `PL-2M9N` | family | the annotation pass for "Required tests"; its open "error or advisory" question is answered - error, on a bound family |
 | `PL-036` | family | the annotation pass for "Minimum displayed outputs", mechanism unchanged; the head's first instance rather than its statement |
 | `PL-41YP` | family, second link | unchanged: the test carrying the field-to-widget link; reads `PL-NWTM`'s declaration once it exists |
-| `PL-NWTM` | family, strongest form | unchanged, blocked on `PL-1FT6`: the family becomes a code declaration the document is held to |
+| `PL-NWTM` | family, strongest form | unchanged, and still blocked as its own front matter records: the family becomes a code declaration the document is held to |
 | `PL-5N7T` | family, marked | unchanged: its marker design is clause 2 in `docs/ARCHITECTURE.md`; joins the table |
 | `PL-GTSL` | family, tree-enumerated | re-scoped: the inventory of checks is held complete against `def check_*`; the prose stays judgment |
 | `PL-GQWP` | live claim, README | unchanged: its option 1 (a test holding the README sentence to the constant) is clause 1 by test; option 2 is a marker |
@@ -285,7 +286,7 @@ below closes on the day.
 | `PL-C7XV` | record edited later | confirmed: one placement per dated entry; the 2026-09-16 move gets its own dated sentence |
 | `PL-0R06` | record | re-scoped: append a dated note naming `PL-YVHK` rather than rewriting the 2026-09-08 costing |
 
-**Done in this session, and not.** Done, because none of it depends on the
+**Done on 2026-09-19 before the answer arrived, and not.** Done, because none of it depends on the
 answer: the membership confirmed and the field widened to twenty-four; the
 four families measured and the two partials named; the case above; three
 findings filed under `invariant-test-gaps`; `check_named_tests`'s docstring no
@@ -293,3 +294,32 @@ longer states the drifted count. Not done, because each depends on it: the
 four clauses written into `docs/MODEL.md` and the tool's docstring;
 `check_bound_families`; the member re-pointing; the three annotation passes
 re-scoped.
+
+**Decided 2026-09-19 (project owner, ratified).** Adopted as recommended
+above - the four clauses, the bound documents, the declared-none form and the
+record rule - chosen over refusing the convention, and over marking free prose
+one sentence at a time. The answer was "agree with recs", which `CLAUDE.md`
+reads as: the case looked sound on a read, so the decision reopens on ordinary
+evidence rather than on a compelling argument. The disposition table above is
+in force from this date.
+
+**The build, in order - handed to a fresh session for length, this one having
+stood at 200,000 tokens when the answer came.**
+
+1. Write the four clauses into `docs/MODEL.md`, beside the hazard table's own
+   sentence, as the statement of how that document is held to the tree; and
+   into `tools/doc_check.py`'s module docstring as the check family it now
+   enforces.
+2. Build `check_bound_families` over the hazard table first, so it lands
+   green, with unit tests in `tests/unit/test_doc_check.py` covering a member
+   that names its entity, one carrying the declared-none form naming an open
+   item, one carrying that form naming a closed or absent item, and one that
+   does neither. The name is this item's, not part of the decision: if the
+   check lands under another, update the `verify:` with the work.
+3. Apply the table to the members. `PL-DHJ7`, `PL-B8V1` and `PL-N32Y` are
+   promoted from `needs-decision` to `ready`, each with a `verify:` run and
+   watched to fail; `PL-036`, `PL-8LDF` and `PL-2M9N` are re-scoped as the
+   annotation passes that add their family to the check's table; every other
+   member gets the one-line disposition the table gives it, written under a
+   dated lead in its own brief.
+4. Close this item, with the docs sweep the `docket` skill's close-out names.

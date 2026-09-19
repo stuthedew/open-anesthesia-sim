@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/store.py
 added: 2026-09-02
 closed: 2026-09-19
+pr: 679
 verify: uv run pytest subprojects/docket/tests/test_cli.py -k new_captures && grep -q 'def test_set_writes_fields_in_canonical_order' subprojects/docket/tests/test_cli.py
 root-cause-of: PL-7K8Y, PL-LBR6, PL-NF6N, PL-YTDN, PL-Z9K5
 ---
