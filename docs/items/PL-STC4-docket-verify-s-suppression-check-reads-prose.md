@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: ready
 classes: defect, infra
+feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-19
 verify: grep -q 'def test_a_suppression_named_in_an_item_brief_is_not_one' subprojects/docket/tests/test_verify.py
@@ -81,3 +82,14 @@ seated: `bin/docket new` files a duplicate title without noticing. Two sessions
 running concurrently filed one defect twice inside four minutes - this pass's
 triage commit at 19:39:47 UTC, `PL-BHBZ`'s capture at 19:43:03 - which is the
 third recorded occurrence after `PL-LBR6`/`PL-5QLP`/`PL-QMC0`.
+
+**Probable duplicate of `PL-4FD2`, found 2026-09-19 while grouping this item.**
+`PL-4FD2` reads: "verify's suppression check greps every added line for the
+three marker substrings it knows, so prose in a docstring, an item brief or a
+README explaining why a suppression was not used refuses the branch." That is
+this defect, described independently. Both are now in `verify-false-reject` so a
+session meeting either sees the other. Whether they merge, or one is dropped
+with a reason, is a decision for whoever works them — not something to settle
+from the titles. This is also a live instance of `PL-TZ7T` (`bin/docket new`
+files a duplicate title without noticing): two captures, one mechanism, filed
+apart.

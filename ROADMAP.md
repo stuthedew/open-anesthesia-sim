@@ -2946,7 +2946,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 201 entries
+### Declined to Gate 2 on the refilling-queue ground — 202 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -4035,6 +4035,27 @@ next heading of any level, so a second one silently orphans this section's 66
 dispositions - the gate then reports them all as undisposed. `PL-82B0` carries
 the defect.
 
+
+**One more from the 2026-09-19 workflow-lane survey, on the same ground.**
+`PL-LSR0` (`tools/generator_check.py` cannot see a store-drift generator:
+`clusters()` partitions by a single `touches` path and `STORE_PATHS` excludes
+`docs/items` and `docs/WORKING_NOTES.md`, where 15 of `PL-G424`'s 21 members
+sit) was captured that day and triaged to `needs-decision`, which is what makes
+it debt this gate has to dispose of. It is `P2`, neither `safety` nor `science`,
+and wholly in the workflow lane.
+
+**The predates-the-freeze argument was considered and refused, and it is the
+closest call in this section.** `STORE_PATHS` is long-standing code, so the
+*blind spot* plainly predates 2026-09-06 and `check_gate_reentries`' test is
+the one this entry has to survive rather than assert its way past. What did not
+exist at the freeze is the thing that makes it debt: the `impairs-generators:`
+field was built on 2026-09-19 (`PL-G5ZH`), and before it there was no way to
+say that a defect in the identification machinery ranks with a generator — so
+the *finding* is new even though the code is old. Against that, this gate stands
+at 173 of 175 cleared, and admitting an `M`-effort design decision to a gate two
+entries from draining is precisely the refilling shape Phase 0 was retired for.
+The blind spot has stood through eight recorded generators without preventing
+one from being found by hand; it will stand through v0.5.0.
 ### Required scope
 
 Eighteen items, in the order the dependencies allow. The first three are the
