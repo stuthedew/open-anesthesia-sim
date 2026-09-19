@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: science, docs
 feature: model-spec-accuracy
+milestone: v0.4.31
 touches: docs/MODEL.md
 added: 2026-09-17
 closed: 2026-09-19
+pr: 734
 verify: grep -qF 'The modeled alveoli are dry, and real ones are saturated at 47 mmHg' docs/MODEL.md
 ---
 

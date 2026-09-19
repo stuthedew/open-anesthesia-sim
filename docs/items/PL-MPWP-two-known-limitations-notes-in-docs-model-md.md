@@ -5,9 +5,11 @@ priority: P3
 effort: S
 status: done
 classes: docs, planning
+milestone: v0.4.31
 touches: ROADMAP.md
 added: 2026-09-19
 closed: 2026-09-19
+pr: 735
 verify: grep -qF 'Carry explicit gas-phase conditions per compartment' ROADMAP.md
 ---
 

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, defect
 feature: model-capability-routing
+milestone: v0.4.31
 touches: docs/maintainer.md
 added: 2026-09-19
 closed: 2026-09-19

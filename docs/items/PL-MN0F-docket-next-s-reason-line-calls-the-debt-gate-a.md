@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: recommendation-rationale
+milestone: v0.4.31
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py
 added: 2026-09-19
 closed: 2026-09-19
