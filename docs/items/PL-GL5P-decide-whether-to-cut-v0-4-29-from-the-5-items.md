@@ -42,3 +42,27 @@ the `ROADMAP.md` edits it names, then `make check`, then the tag.
 
 **Done when.** Either v0.4.29 is cut and tagged, or this records the decision
 to hold and what it is waiting for.
+
+**The recommendation above is withdrawn; cut it. Re-measured 2026-09-19 after
+ten more merges** (`PL-2P9L`, `PL-FZ58`, `PL-09G9`, `PL-VHVJ`, `PL-H4N8`,
+`PL-QBX0`, `PL-LBR6`, `PL-QMC0`, `PL-5QLP`, `PL-JF5Z`), both of the grounds
+this item was filed on have gone:
+
+- **It is no longer apparatus-only.** `bin/docket release --dry-run` now
+  reports **15** finished items since v0.4.28, and two of them are the
+  simulator's: `PL-H4N8` (ROADMAP item 28's agent cost basis - the
+  science-classed one, where "exhausted" understated delivered agent) and
+  `PL-QBX0` (ROADMAP item 24's preferences gate, which did not cover the ISO
+  5360 identification colours). Both are Gate 1 entries. "Nothing a reader of
+  the simulator would see" was true of five items and is false of fifteen.
+- **The gate is nearly clear.** `bin/docket wave` reads 170 of 175 cleared,
+  **2** open here (`PL-JVHL`, `PL-7DMJ`) and 3 blocked outside it, against the
+  4-open reading this item was filed on. So "hold for the gate's last four" is
+  holding for two, one of which nobody is on.
+
+Cutting mid-gate is this project's own practice rather than an exception:
+`PL-T2LH` cut v0.4.28 "carrying one Gate 1 entry". The title of this item
+still says five, which is what it was filed on; the number to read is fifteen.
+
+**Recommendation: cut v0.4.29.** `make release VERSION=0.4.29`, then the
+`ROADMAP.md` edits it names, then `make check`, then the tag.
