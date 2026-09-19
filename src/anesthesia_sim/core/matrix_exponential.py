@@ -24,11 +24,15 @@ Moler and Van Loan survey nineteen ways to compute it and recommend none
 without qualification; the three paragraphs below say which one is taken here
 and why, against their analysis (Moler C, Van Loan C. Nineteen dubious ways
 to compute the exponential of a matrix, twenty-five years later. SIAM Review
-2003;45(1):3-49. doi:10.1137/S0036144502418010. Read in full text from the
-PDF supplied by the project owner, 2026-09-06; the publisher and the
-bibliographic indexes are both refused by this environment's egress proxy, so
-the volume, issue, pages and PII above are read off the article's own first
-page rather than from an index).
+2003;45(1):3-49. doi:10.1137/S00361445024180. Read in full text from the
+PDF supplied by the project owner, 2026-09-06; the publisher was refused by
+this environment's egress proxy on that date, so the volume, issue, pages and
+PII above were read off the article's own first page rather than from an
+index. Confirmed 2026-09-19: the publisher (`epubs.siam.org`) is still
+refused, but the bibliographic indexes (`doi.org`, `api.crossref.org`,
+`api.openalex.org`) are now reachable, which is how the identifier above was
+found to have carried a spurious trailing `10` and was corrected against
+Crossref's record for the registered DOI).
 
 ## Scaling and squaring, their Method 3
 
