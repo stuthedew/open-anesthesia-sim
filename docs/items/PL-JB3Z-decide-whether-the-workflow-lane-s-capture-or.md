@@ -3,11 +3,13 @@ id: PL-JB3Z
 title: Decide whether the workflow lane's capture or tagging criteria change, on the never-was-an-issue versus overtaken split the 2026-09-19 staleness sweep measured
 priority: P2
 effort: S
-status: untriaged
+status: done
 classes: docs, infra
 feature: apparatus-capture-criteria
 touches: .claude/skills/docket/SKILL.md, docs/items
 added: 2026-09-19
+closed: 2026-09-19
+verify: grep -qF 'reproduce the fault, because the command cannot' .claude/skills/docket/SKILL.md
 ---
 
 **Problem.** Decide whether the workflow lane's capture or tagging criteria change, on the never-was-an-issue versus overtaken split the 2026-09-19 staleness sweep measured
@@ -91,7 +93,10 @@ the `verify:` command is run and watched fail. Three candidates:
 1. **Add it to the docket skill's triage mode.** One paragraph in a document
    that already loads at exactly that moment, so its resident cost is zero. It
    catches roughly one item in thirty-three triaged, at a cost of about one
-   command each. **This is the recommendation.**
+   command each. **Chosen** (project owner, 2026-09-19, ratified), over
+   candidate 2 - doing nothing and re-sweeping periodically - on the ground
+   that the sweep which found these five read 145,000 tokens of briefs across
+   twelve agents and is not a cheap recurring remedy.
 2. **Do nothing.** Five items in 166 is 3%, and a sweep can drain them. The
    honest case for this is that the sweep found the lane 87% real, so the
    problem is small; the case against is that the sweep cost twelve agents
@@ -118,15 +123,15 @@ suppressed to catch 8 dead. It is not written onto `PL-YVV4` because that item's
 scope is the whole store's 109 open `P3` items, not this lane's, and because
 this sweep was commissioned not to work the items it keeps.
 
-**Note for triage.** Left `untriaged` deliberately, on `PL-G424`'s precedent from
-earlier the same day. `needs-decision` makes this debt under "The debt gate",
-and v0.5.0's gate was frozen 2026-09-06 with two open entries left of 175 — so
-an undispositioned entry fails
-`test_this_repository_records_a_disposition_for_every_open_debt_item`, and
-disposing of it means editing a frozen list in `ROADMAP.md` during a sweep
-commissioned not to widen into the product lane. The disposition is genuinely
-open rather than dodged: the *finding* is from 2026-09-19, which sends it to
-the next gate, but the *problem* has instances back to 2026-08-25 (`PL-RZPX`),
-which under "The gate is a snapshot" would put it on the list instead.
-`check_gate_reentries` decides that, not this note. Whoever triages this seats
-the band and the gate together.
+**Closed 2026-09-19.** The paragraph is in
+`.claude/skills/docket/SKILL.md`'s triage mode, under "The `verify:` command,
+and running it before writing it down", immediately after the rule requiring
+the command be watched failing. `CLAUDE.md`'s behaviour-change rule is why it
+landed in this session rather than as a queued item: an item alone changes
+nothing while every session in the meantime keeps triaging the old way.
+
+The item was `untriaged` up to this point rather than `needs-decision`, on
+`PL-G424`'s precedent, because an open debt item with no gate disposition fails
+`test_this_repository_records_a_disposition_for_every_open_debt_item` and
+disposing of it meant editing v0.5.0's frozen list. Closing it resolves that
+without touching the gate.
