@@ -365,3 +365,26 @@ paragraph and the two resident files are not wrapped alike (`PL-QV1F`). Growth r
 which is what `PL-H7XN` built and what this file is the first application of.
 `PL-BKQW`'s second advisory catches the shape the total cannot see: text added
 and other text trimmed to pay for it, which sums to nothing.
+
+## Rule 14's refresh bullet, added 2026-09-19
+
+**The carrier test.** No check can read a reply, so disposition 1 cannot hold
+this; a skill loads at its own trigger and a closing block is written in every
+reply, so disposition 2 cannot; and a reply is not preceded by a read, which
+rules out a `paths:` scope. Resident is the only disposition left, which is the
+same argument the rest of this file's rules stand on.
+
+**Why the existing bullet was not enough.** "Re-verify every carried-over item"
+already sat beneath it and had been followed by *recalling* rather than by
+refreshing. The project owner's words were that the block "is always out of
+date", and the sitting that produced the rule is the evidence: a pull request
+merged, its branch was deleted, the base moved twice and a third session pushed
+a branch re-adding a file this session had renamed - all inside one turn, none
+of it visible without a fetch.
+
+**What it costs and what should retire it.** About 500 characters. It names
+three commands because no one command answers the question, and `PL-CM40` is
+the item that would collapse it to one - at which point this block shrinks
+rather than growing. `PL-QSGX` removes the sharpest edge separately:
+`bin/docket flight` does not fetch where its siblings do, so the rule currently
+has to say so out loud.

@@ -132,6 +132,15 @@ apply to every reply of any kind. Never mention these rules, "phases," or
       things are always in scope: the next step of the discussion itself,
       and existing work that would fix or unblock what the discussion found
       — name that one, glossed per rule 7, and say which comes first.
+    - Re-verify by refreshing, every time, before writing this block — not
+      only when something looks stale (project owner, 2026-09-19). Three
+      commands: `git fetch origin`, then `bin/docket flight` and `bin/docket
+      stranded`. Cheap, and the default has to be refresh-first because a
+      session cannot feel its own copy going out of date: the session-start
+      digest is written once and resent every turn, `bin/docket flight` does
+      not fetch at all where `stranded` and `branch` do (`PL-QSGX`), and a
+      pull request can merge, a branch be deleted and the base move inside one
+      turn — all three happened in the sitting that produced this rule.
     - Re-verify every carried-over item before repeating it. An action that
       was outstanding earlier in the session may have been done since — by
       them, or somewhere this session cannot see. Repeating it from memory is
