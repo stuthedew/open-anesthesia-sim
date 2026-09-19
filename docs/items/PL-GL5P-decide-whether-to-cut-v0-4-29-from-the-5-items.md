@@ -1,8 +1,15 @@
 ---
 id: PL-GL5P
 title: Decide whether to cut v0.4.29 from the 5 items finished since v0.4.28, or hold for the gate's last 4 entries
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: planning, docs
+feature: release-process
+touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items/
 added: 2026-09-19
+closed: 2026-09-19
+verify: grep -q '^## Current baseline: v0.4.29' ROADMAP.md
 ---
 
 **Problem.** Decide whether to cut v0.4.29 from the 5 items finished since v0.4.28, or hold for the gate's last 4 entries
@@ -66,3 +73,30 @@ still says five, which is what it was filed on; the number to read is fifteen.
 
 **Recommendation: cut v0.4.29.** `make release VERSION=0.4.29`, then the
 `ROADMAP.md` edits it names, then `make check`, then the tag.
+
+**Decided: cut** (project owner, 2026-09-19, "PL-GL5P cut now"). The set had
+grown again by the time this was actioned - `bin/docket release --dry-run`
+reports **20** finished items since v0.4.28, not the 5 in the title or the 15
+in the re-measurement above - and the gate had moved to 2 open entries of 175
+(`PL-JVHL`, `PL-7DMJ`), with 3 more blocked outside it. Both grounds the
+`hold` recommendation rested on had gone before the owner answered.
+
+**Why 0.4.29 rather than another number.** `bin/docket wave` reports
+`Reserved 0.5.0, 0.6.0, 0.7.0, 0.8.0, 0.9.0`, each spent by a `ROADMAP.md`
+milestone section, so the `v0.4.x` patch track is the only place a cut can
+land. § "Versioning decision"'s test is the capability boundary a release
+crosses, and this one crosses none, measured rather than read off the titles:
+`git diff --stat v0.4.28..origin/main -- src/` reports **no file changed at
+all**; `src/anesthesia_sim/data/` resolves to `d9f9c5b` at both refs, so no
+parameter moved; and `tests/reference/` resolves to `fcb3eca` at both, so
+every published-reference expected value is byte-identical and still met. The
+mechanical guess agrees at `0.4.29`.
+
+**Nothing here is visible to a learner, and that is a narrower claim than
+"apparatus-only".** The two simulator-lane entries both declare
+`touches: ROADMAP.md` alone: `PL-H4N8` (science-classed) corrects planned item
+28's agent-cost basis from the exhausted-agent amount to the delivered one,
+and `PL-QBX0` (safety-classed) widens planned item 24's preferences gate to
+cover the three ISO 5360 agent-identification colours and the contrast-checked
+palette. Both change what will be *built*, not what runs today - which is why
+this release ships no behaviour change while still not being workflow-only.

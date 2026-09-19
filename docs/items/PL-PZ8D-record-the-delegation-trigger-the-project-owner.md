@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: owner-decisions-2026-09-19
+milestone: v0.4.29
 touches: CLAUDE.md
 added: 2026-09-19
 closed: 2026-09-19

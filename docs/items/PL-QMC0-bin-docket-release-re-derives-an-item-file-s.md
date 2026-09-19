@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: slug-rename-on-write
+milestone: v0.4.29
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
 closed: 2026-09-19
