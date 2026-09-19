@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: defect, infra
-feature: queue-hygiene
+feature: verify-replay-cost
 touches: docs/items
 added: 2026-09-13
 verify: uv run pytest subprojects/docket/tests/test_verify.py -q && grep -qE '^verify: .*tests/reference/test_[a-z0-9_]+\.py' docs/items/PL-4L6Z-*.md
