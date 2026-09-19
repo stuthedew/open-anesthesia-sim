@@ -55,3 +55,8 @@ is non-canonical today, since that decides how often this can fire.
 in a non-canonical order produces a diff that `sanctioned_queue_edit` classifies
 as `pr`, and a test in `subprojects/docket/tests/` pins it against exactly that
 item shape.
+
+**Measured 2026-09-19, as `PL-L4YG` landed `docket set`.** 96 of 1,189 item
+files carry a key order `render_item` would not write, so `record` reorders
+any of those it reaches. `docket set` writes canonical order at triage, which
+shrinks that population from here on and leaves the existing 96 as they are.
