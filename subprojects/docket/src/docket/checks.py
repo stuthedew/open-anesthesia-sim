@@ -767,6 +767,11 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
     case that made it necessary: without a status of its own a killed command
     returned 1, which is what a failing test returns, so the item vanished
     from every finding while the report stayed clean.
+
+    This is the replay's clause of the `verify:` contract (`PL-6TP8`,
+    `subprojects/docket/README.md` § "What a `verify:` exit status proves, and to whom"): exit 0
+    is the finding, the never-evaluated statuses are refusals, and a plain
+    failure is not read as evidence that the item is open.
     """
     if landed is None:  # a caller that did not ask; every command but `check`
         return
@@ -888,6 +893,10 @@ def _check_selects_nothing(
     A declined run says so once, in `_check_landed`: it is one execution of
     one set of commands, and two lines reporting the same refusal would read
     as two checks having failed to run.
+
+    Pytest's 5 is one of the three never-evaluated statuses the `verify:`
+    contract lets a consumer name (`PL-6TP8`); `_check_landed` reports the
+    other two as not checked.
     """
     if landed is None or not landed.known or not landed.vacuous:
         return

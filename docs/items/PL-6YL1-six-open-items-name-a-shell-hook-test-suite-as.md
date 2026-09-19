@@ -62,3 +62,10 @@ and its zero false positives.
 **Not folded into `PL-2M4X`**, which corrects `PL-J45M` alone and is `S`. This
 is the class and the check, and is `PL-RWBV`'s batch-and-mechanize shape rather
 than a wider hand correction.
+
+**Re-pointed by `PL-6TP8`, 2026-09-19, and decided by its shape half.** The
+rule here is the contract's second obligation made mechanical for one class.
+If the field drops prerequisite clauses, no new command carries a pytest target
+for this rule to read, the six legacy ones are repaired as their items are
+started, and the check is not worth building - this item then drops. If the
+field keeps them, build it as briefed. Not started until that is answered.
