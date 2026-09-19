@@ -3,7 +3,7 @@ id: PL-JVHL
 title: The hover answers for whichever run is marginally nearer, so a 2 px hand movement silently swaps which run's value is read
 priority: P1
 effort: M
-status: needs-decision
+status: ready
 classes: safety, ux
 feature: scenario-branching
 touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit/test_chart_frame.py
@@ -172,3 +172,38 @@ behaviour they were meant to replace. Three answers, with what each costs:
   Removes the cause rather than the symptom, and is the larger change: it
   alters every reading of the chart, so it is a roadmap question rather than
   this item's.
+
+**Decided: (a), every run inside the radius answers** (project owner,
+2026-09-19, ratified, over the stable tie-break in (b) and over deferring to
+the axis-compression fix in (c)). Ratified on this session's recommendation
+rather than specified, so `CLAUDE.md`'s lower bar to reopen applies: ordinary
+evidence - a measurement, a cost the case did not carry - is enough, and the
+case it rests on is the table above.
+
+What that settles, and what it leaves to the session that builds it:
+
+- **Settled.** Where more than one run has a drawn point inside
+  `HOVER_RADIUS_PIXELS` for the hovered compartment, every one of them
+  answers. Nothing is decided by which run is marginally nearer, which is what
+  takes the flip rate to 0.0%.
+- **Open, and a session's own.** How the box lays the runs out - the value
+  lines' order, whether the compartment line is stated once above them or
+  repeated per run, and what the box does at the three-run case the
+  `COMPARED_COMPARTMENT_CAP` era does not yet reach. Those are phrasing and
+  layout inside a decided rule, so they do not come back here.
+
+Two constraints the build inherits rather than re-derives, both from
+`docs/MODEL.md` § "The chart's hover readout":
+
+1. **The qualifiers still precede the numbers.** That order carries the safety
+   argument - a reader reaches a value through "modelled" and through the
+   compartment it belongs to - so a multi-run box may not open with a column
+   of numbers.
+2. **Every number still goes through `app/formatting.py`.** `format_percent`,
+   `format_mac_multiple` and `format_elapsed`, never the chart library's own
+   formatter, with the below-resolution forms intact - the fat values this
+   item turns on are exactly the ones that render `<0.01%`.
+
+And the run must stay named per run, which `PL-MN4J` (the hover naming which
+run it belongs to) decided on 2026-09-17 and this must not undo: with several
+runs in one box the name is what attributes each line.
