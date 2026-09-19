@@ -1,9 +1,14 @@
 ---
 id: PL-RY2R
 title: branches_in_flight collapses walk.edited to one ref per id before the superseded test, so a stale file edit on a bystander branch takes a live edit's mark with it
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
 feature: carrier-collapse
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, ROADMAP.md
 added: 2026-09-19
+verify: grep -q 'def test_a_superseded_file_edit_on_a_bystander_branch_does_not_drop_a_live_one' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** branches_in_flight collapses walk.edited to one ref per id before the superseded test, so a stale file edit on a bystander branch takes a live edit's mark with it
