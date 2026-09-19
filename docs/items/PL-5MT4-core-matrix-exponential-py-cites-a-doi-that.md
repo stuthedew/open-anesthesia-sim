@@ -1,8 +1,14 @@
 ---
 id: PL-5MT4
 title: core/matrix_exponential.py cites a DOI that does not resolve (10.1137/S0036144502418010 has a spurious trailing 10; the real one is 10.1137/S00361445024180) and its provenance note now half-wrongly says the bibliographic indexes are refused by the egress proxy
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect
+touches: src/anesthesia_sim/core/matrix_exponential.py
 added: 2026-09-19
+closed: 2026-09-19
+verify: grep -qF 'doi:10.1137/S00361445024180' src/anesthesia_sim/core/matrix_exponential.py && ! grep -qF 'S0036144502418010' src/anesthesia_sim/core/matrix_exponential.py
 ---
 
 **Problem.** core/matrix_exponential.py cites a DOI that does not resolve (10.1137/S0036144502418010 has a spurious trailing 10; the real one is 10.1137/S00361445024180) and its provenance note now half-wrongly says the bibliographic indexes are refused by the egress proxy
