@@ -3,11 +3,13 @@ id: PL-3DXV
 title: Four qt-port items carry a verify: command another port item satisfies, so each passes while still open once its neighbour lands and reddens the whole-store verify replay on main
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: defect, infra
 feature: queue-hygiene
 touches: docs/items
 added: 2026-09-14
+closed: 2026-09-19
+reason: All four named qt-port items (PL-3SQT, PL-7SVX, PL-L9RD, PL-C92D) are status: done, and the replay exposure they created cannot occur for closed items; re-pointing a closed item's command is separately refused by PL-JZ1D (verified 2026-09-19).
 verify: test -z "$(grep -h '^verify:' docs/items/PL-3SQT-*.md docs/items/PL-7SVX-*.md docs/items/PL-L9RD-*.md | grep import_boundary_check)"
 ---
 

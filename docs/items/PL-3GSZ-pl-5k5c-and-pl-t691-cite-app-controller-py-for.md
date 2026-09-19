@@ -3,11 +3,13 @@ id: PL-3GSZ
 title: PL-5K5C and PL-T691 cite app/controller.py for ControlInput and ControlChange, which PL-RD3B moved to app/control_record.py, and doc_check resolves the path rather than the symbol so nothing caught it
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: docs
 feature: queue-hygiene
 touches: docs/items
 added: 2026-09-15
+closed: 2026-09-19
+reason: Premise false at capture: PL-5K5C and PL-T691 both closed 2026-09-07, eight days before this was filed on 2026-09-15, so the stated harm - a session starting either and being handed a path that no longer exists - was already impossible (verified 2026-09-19).
 verify: python3 tools/doc_check.py check && grep -q 'app/control_record.py' docs/items/PL-5K5C-record-the-model-s-sea-level-assumption-and-the.md && grep -q 'app/control_record.py' docs/items/PL-T691-the-run-is-its-control-input-timeline-hold.md
 ---
 

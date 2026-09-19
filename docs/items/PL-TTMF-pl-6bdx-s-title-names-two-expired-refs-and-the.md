@@ -3,11 +3,13 @@ id: PL-TTMF
 title: PL-6BDX's title names two expired refs and the live instance this item was filed on has cleared too, so the item now reproduces nothing while the defect it describes is unfixed
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect, docs
 feature: parallel-sessions
 touches: docs/items/PL-6BDX-two-shipped-items-are-reported-in-flight-in.md
 added: 2026-09-12
+closed: 2026-09-19
+reason: PL-6BDX closed in #504 sixteen minutes after this was filed, and test_a_closed_item_is_not_reported_in_flight at test_vcs.py:1151 pins the mechanism - which is this item's own stated drop condition (verified 2026-09-19).
 verify: python3 tools/doc_check.py check && ! grep -qF 'PL-GVXP (v0.4.7) and PL-S5LB (v0.4.6)' docs/items/PL-6BDX-two-shipped-items-are-reported-in-flight-in.md
 ---
 

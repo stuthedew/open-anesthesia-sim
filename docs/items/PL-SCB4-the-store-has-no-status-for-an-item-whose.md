@@ -3,11 +3,13 @@ id: PL-SCB4
 title: The store has no status for an item whose decision is made but whose work waits on a measurable condition, so it stays needs-decision and holds a gate open
 priority: P2
 effort: M
-status: needs-decision
+status: dropped
 classes: infra
 feature: docket-store
 touches: subprojects/docket
 added: 2026-09-13
+closed: 2026-09-19
+reason: PL-Z34C now sits at status: blocked with its fifteen blockers declared, is absent from bin/docket gate's 177 open entries and is not offered by bin/docket next, so both stated harms are gone (verified 2026-09-19).
 ---
 
 **Problem.** The store has no status for an item whose decision is made but whose work waits on a measurable condition, so it stays needs-decision and holds a gate open

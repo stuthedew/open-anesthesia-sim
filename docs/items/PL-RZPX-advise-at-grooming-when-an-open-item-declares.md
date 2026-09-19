@@ -3,11 +3,13 @@ id: PL-RZPX
 title: Advise at grooming when an open item declares no touches
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: infra, session-cost
 feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py
 added: 2026-08-25
+closed: 2026-09-19
+reason: Premise false at capture: render.py's undeclared() report - 'items declare no touches, so concurrency cannot be reasoned about for them' - shipped in docket's first commit 4bfa604 on 2026-08-24, one day before this was filed; it printed nothing only because the brief's own measurement found 0 such items (verified 2026-09-19).
 ---
 
 **Problem.** `docket concurrent` reports an item with no declared `touches` as

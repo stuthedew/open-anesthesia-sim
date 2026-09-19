@@ -69,6 +69,46 @@ Defect no longer reproduces - drop candidates:
 
 Partly overtaken, so the brief overstates what is left (31): `PL-0M32`, `PL-4C41`, `PL-CW14`, `PL-KBD0`, `PL-LWMS`, `PL-TFWR`, `PL-WGXJ`, `PL-XQRK`, `PL-YKXQ`, `PL-J7C5`, `PL-JQVB`, `PL-KFWL`, `PL-2GQW`, `PL-38PN`, `PL-C92D`, `PL-SVRW`, `PL-XH1D`, `PL-ZG5J`, `PL-LPWK`, `PL-NBCS`, `PL-40PL`, `PL-GLBF`, `PL-PGZK`, `PL-HKTB`, `PL-MHQK`, `PL-QS9H`, `PL-6BDX`, `PL-B73C`, `PL-F48B`, `PL-XLQ5`, `PL-W6NY`.
 
+## The verification phase, run 2026-09-19
+
+**It ran, over all 166 open workflow-lane items** — a superset of the 105
+workflow items in the 2026-09-12 map, and every one checked against the tree
+rather than against this note. Twelve were dropped. The 29 crossing items in the
+original map were **not** swept and are still owed.
+
+| | 2026-09-12 map (unverified) | 2026-09-19 sweep (verified) |
+| --- | --- | --- |
+| items read | 134 | 166 |
+| defect no longer reproduces | 12 | **7** (overtaken) |
+| never was an issue | not a category | **5** |
+| partly overtaken | 31 | **10** |
+| still fully real | 90 | **144** |
+| dead or overstated | 43 of 134 (32%) | **22 of 166 (13%)** |
+
+**The map was 4-for-6 on the candidates still open when the sweep began.** Six of
+its twelve had already closed under `#499`. Of the remaining six, `PL-RZPX` and
+`PL-YMY7` were confirmed dead and dropped; `PL-7RTN` and `PL-LM8P` were
+**refuted and kept** — `PL-7RTN` still names no cause, which its own `Done when` asks for.
+`PL-LM8P`'s census sentence is still at `.claude/rules/citing-sources.md:160`. `PL-S5YM` and `PL-C8MV` are crossing-lane
+and were out of this sweep's scope. That two of four went the other way is why
+the warning at the top of this item was right.
+
+**Dropped (12).** Overtaken: `PL-0BSC`, `PL-TTMF`, `PL-7XNX`, `PL-YMY7`,
+`PL-PQQ2`, `PL-SCB4`, `PL-3DXV`. Never an issue: `PL-77SV`, `PL-3GSZ`,
+`PL-YNYK`, `PL-RZPX`, `PL-T86P`. Each carries its `reason` and the tree fact
+that settled it.
+
+**Partly overtaken, briefs not yet corrected (10).** `PL-6YYR`, `PL-WXX8`,
+`PL-LF2C`, `PL-SY1J`, `PL-38PN`, `PL-LBW5`, `PL-SYG4`, `PL-KFWL`, `PL-3DN1`,
+and this item. Each has a one-clause note of what landed and what is left in the
+sweep's record; none of the briefs has been rewritten.
+
+**The self-generation figure is not restated here.** It was computed over a set
+a third of which was believed dead; that set is now 13% dead rather than 32%, so
+the figure moves — but recomputing it is `PL-WXKD`'s work (no shipped command
+reports filed-per-closed), not this item's, and doing it by hand would be the
+same unrepeatable measurement this project keeps paying for.
+
 ## What this item still owes
 
 Re-run the verification phase before acting: each drop must be refuted or confirmed
@@ -92,10 +132,9 @@ by each session in turn. It also corrupts the one measurement the project uses
 to judge the lane: the 0.69 self-generation rate is computed over items a third
 of which are not real.
 
-**Done when.** The adversarial verification phase has run over all 134 mapped
-items; every drop candidate above is confirmed against the tree or refuted, and
-the confirmed ones are `status: dropped` with a `reason`; each proposed merge is
-checked for a brief that genuinely covers what it absorbs before either item
-closes; the 31 partly-overtaken briefs say what is actually left; and the map's
-counts are restated against what the pass found, so the self-generation figure is
-computed over the surviving set.
+**Done when.** ~~The adversarial verification phase has run over all 134 mapped
+items~~ (done 2026-09-19, over 166); ~~every drop candidate above is confirmed
+against the tree or refuted~~ (done for the workflow lane; `PL-S5YM` and
+`PL-C8MV` are crossing and still owed); the **29 crossing items** in the original
+map are swept the same way; and the **10 partly-overtaken briefs listed above say
+what is actually left**. No merges were proposed, so that clause is spent.

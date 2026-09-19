@@ -8,6 +8,7 @@ classes: docs, infra
 feature: generator-heads
 touches: tools/doc_check.py, docs/items, docs/WORKING_NOTES.md
 added: 2026-09-19
+root-cause-of: PL-037Y, PL-245B, PL-4HKS, PL-5748, PL-60CQ, PL-75R0, PL-DL4M, PL-MSFB, PL-2GQW, PL-38PN, PL-JXVD, PL-5F26, PL-8T3Z, PL-Z5FG, PL-YZKK, PL-CPLX, PL-WVJ0, PL-21RC, PL-6QZP, PL-QV5Y, PL-880Z
 ---
 
 **Problem.** `PL-4FBP` established that a document sentence's link to the tree
@@ -46,14 +47,42 @@ unknown, and it was invisible to the tooling that should have caught it —
 from a manual sweep, and its own docstring records that it "reported **no**
 cluster on this tree while `PL-6ZQY` had already named **six**".
 
-**What is not yet established, and why this is `untriaged`.** The 27 are a count from a clustering pass, not an enumerated set, so
-no `root-cause-of:` is claimed here. `CLAUDE.md` requires that field to name the
-items it explains "so the claim is a recorded fact rather than the next
-session's inference", and enumerating them means reading 27 briefs and judging
-whether each is the same mechanism. That read is folded into the apparatus
-backlog review the owner commissioned the same day — which will also drop the
-ones that are no longer real, and `PL-LKGL` measured 32% of this lane dead or
-partly overtaken, so the set may be materially smaller than 27 once swept.
+**Enumerated 2026-09-19, against the tree.** The commissioned apparatus backlog
+review read all 166 open workflow-lane items and checked each against the tree.
+`root-cause-of:` now names **21 members**, each one a sentence in an apparatus
+document asserting a tree fact that is wrong — verified individually, not
+inferred from the clustering pass that produced the count of 27:
+
+| Where the wrong sentence sits | Members |
+| --- | --- |
+| `docs/WORKING_NOTES.md` (8) | `PL-037Y`, `PL-245B`, `PL-4HKS`, `PL-5748`, `PL-60CQ`, `PL-75R0`, `PL-DL4M`, `PL-MSFB` |
+| another item's brief (7) | `PL-2GQW`, `PL-38PN`, `PL-JXVD`, `PL-5F26`, `PL-8T3Z`, `PL-Z5FG`, `PL-YZKK` |
+| `.claude/skills/docket/SKILL.md` (2) | `PL-CPLX`, `PL-WVJ0` |
+| `CLAUDE.md` and `.claude/rules/` (2) | `PL-21RC`, `PL-6QZP` |
+| `Makefile` (1) | `PL-QV5Y` |
+| item briefs plus `ROADMAP.md`'s frozen gate (1) | `PL-880Z` |
+
+`PL-880Z` is the one that reaches outside the apparatus, and it is kept because
+it is the same mechanism one level up: `PL-XLQ5`'s wrong title is copied
+verbatim into `ROADMAP.md:2229` as a frozen gate entry, so the wrong description
+carries the standing of a frozen decision. Its own brief independently names
+four of this set — "`PL-38PN`, `PL-JXVD`, `PL-TTMF`, `PL-8T3Z` are all the same
+shape" — which is corroboration written before this enumeration existed.
+
+**Four exclusions, each deliberate.** `PL-BHJW`, `PL-0R06`, `PL-C7XV` and
+`PL-LM8P` are inside `PL-4FBP`'s `root-cause-of:` already and are not claimed
+twice. `PL-038` and `PL-1T6T` were considered and left out: their subject is a
+`CLAUDE.md` sentence asserting a fact about the *Claude Code runtime* that was
+never checked, rather than a tree fact that moved — the same family, but no
+route this head can build reaches it, since `doc_check` cannot resolve a claim
+about the harness. `PL-TTMF` was a member and was **dropped** by the same sweep,
+overtaken.
+
+**The set is 21 rather than 27 because the sweep dropped and re-read.** Of the
+166 open workflow-lane items, 12 were dropped as dead (7 overtaken, 5 never an
+issue); the rest of the gap is the clustering pass having counted items whose
+subject is a missing *check* rather than a drifted *sentence*, which belong to
+whatever route this item chooses rather than to its member list.
 
 **Decision needed.** Which of three routes governs apparatus-side citation
 drift — they differ in where the rule lives:

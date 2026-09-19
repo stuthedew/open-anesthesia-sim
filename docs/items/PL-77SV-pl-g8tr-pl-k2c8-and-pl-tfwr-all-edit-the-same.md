@@ -3,11 +3,13 @@ id: PL-77SV
 title: PL-G8TR, PL-K2C8 and PL-TFWR all edit the same ten lines of the docket skill's recovery block, and PL-G8TR's Done-when is defined against that block's shape, so whoever lands first silently sets the other two's tests
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect, infra
 feature: parallel-sessions
 touches: docs/items/PL-G8TR-no-prune-guard-is-evaded-by-the-form-it.md, docs/items/PL-K2C8-the-docket-skill-s-stranded-branch-recovery.md, docs/items/PL-TFWR-a-session-cannot-delete-a-remote-branch-the.md
 added: 2026-09-12
+closed: 2026-09-19
+reason: Premise false at capture: PL-G8TR's Done-when was byte-identical on the 2026-09-12 filing date and names the guard's behaviour, not the recovery block's shape, so no landing could silently redefine it; PL-K2C8 is done and PL-TFWR dropped, leaving no order to declare (verified 2026-09-19).
 verify: python3 tools/doc_check.py check && grep -q '^blocked-by: PL-' docs/items/PL-K2C8-the-docket-skill-s-stranded-branch-recovery.md
 ---
 

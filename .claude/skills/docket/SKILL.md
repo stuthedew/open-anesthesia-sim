@@ -955,6 +955,23 @@ raises an advisory for the ones that pass, so this is caught — but CI is what
 passes that flag, so it is caught after the item is written *and* after it is
 pushed. The fix is still to see the command fail first.
 
+**Then reproduce the fault, because the command cannot.** Watching the
+`verify:` fail proves the *fix* is absent. It does not prove the *fault* is
+present, and those are different claims - a command tests for the presence of
+the fix, never for the presence of the fault (`PL-LKGL`). So run the one
+command that shows the defect itself, and write what it showed into the brief
+with its date. Measured 2026-09-19 across all 166 open workflow-lane items:
+five rested on a premise already false when they were filed, and **three of
+those five carried a `verify:` that was run and failed correctly** while the
+premise was false - `PL-RZPX` asked for a report that had shipped in docket's
+first commit the day before, `PL-T86P` said an item carried no
+`**Decision needed.**` section when it had one from creation. One `grep` would
+have caught each. It costs one command per triaged item for about one catch in
+thirty-three; the alternative is the sweep that found them, which read 145,000
+tokens of briefs across twelve agents (`PL-JB3Z`, project owner, 2026-09-19,
+ratified, over leaving it to a periodic sweep). Capture is untouched: this is
+triage's obligation, not the capture rule's, which stays unconditional.
+
 **Watch it fail for the right reason, and never a bare `-k`.** `pytest -k
 <name>` where no test yet carries that name does not fail; it *selects
 nothing*, collects nothing and exits 5. Non-zero, so it looks like the command
