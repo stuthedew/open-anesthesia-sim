@@ -1718,7 +1718,7 @@ the main window to *veto its own close* instead; `PL-Y04W` carries it.
 `QDataStream` over a temporary `QByteArray`, which the persistence work will
 meet the first time it decodes a saved blob (`PL-NDKC`).
 
-## Four of PL-6ZQY's six clusters have no head, so four cannot be ranked - PL-6TP8, PL-HWW1, PL-4FBP, PL-4Q9B
+## All six of PL-6ZQY's clusters now have a head - PL-6TP8, PL-HWW1, PL-4FBP, PL-4Q9B became theirs
 
 `PL-VX5H` built the way to rank a generator: `root-cause-of:` on the item that
 causes a cluster, which `docket next` then offers above every band but `P0`.
@@ -1727,6 +1727,14 @@ apparatus infers a fact it could have recorded* - turned up something its own
 description
 does not say - **naming a mechanism is not the same as having an item that
 would settle it**, and on 2026-09-17 only two of the six had one.
+
+**Resolved 2026-09-18**, on the project owner's instruction to close the four.
+Each tracking item *became* the head it was filed to say was missing, rather
+than closing in favour of a new one: the diagnosis, the decision and the
+membership were already written in it, so promoting it cost no new item and
+closing it would have thrown that away. The paragraphs below are kept because
+the reasoning behind each failed candidate is what a session reopening one of
+the four decisions will need.
 
 `PL-BHVM` and `PL-L4YG` carry the field. The other four do not, and the point
 worth keeping is *why the obvious candidate failed in each case*, because the
@@ -1747,12 +1755,26 @@ narrower than the mechanism it sits under.
 - **What a `verify:` command proves** has no candidate: `PL-LKGL` is the
   measurement, is `done`, and explicitly refused the general contract.
 
-So the four are filed under `feature: generator-heads` with their candidate
-members recorded and unverified. **They are deliberately not marked.** The
-field is what lifts an item above a `safety`-classed `P1`, and its worth is
-that it is a recorded fact rather than an inference; four heads composed in one
-session, by the session that also built the ranking, would be inferences
-wearing that authority. Whether to write them is `PL-VX5H`'s open end.
+The four were filed under `feature: generator-heads` with their candidate
+members recorded and **deliberately not marked**: the field is what lifts an
+item above a `safety`-classed `P1`, and its worth is that it is a recorded fact
+rather than an inference, so four heads composed by the session that had just
+built the ranking would have been inferences wearing that authority. That
+reservation was about *who* was writing the claim and on what evidence, not
+about whether it should exist, and `PL-VX5H`'s open end is what the owner
+closed on 2026-09-18.
+
+What was done differently on the second pass is the part worth keeping. Each
+candidate list was re-read against its own item's brief rather than carried
+over, which moved membership in both directions: `PL-6P9Y` and `PL-F48B` were
+named only as *rejected heads* by the first pass and are members; `PL-LBW5`
+joined the `verify:` cluster; and five items whose titles read as `verify:`
+work - `PL-8T83`, `PL-SHTR`, `PL-BGMK`, `PL-PFK1`, `PL-0HPV` - were left out
+on their briefs, each naming a cost or a different consumer rather than a
+reading of an exit status. `PL-4FBP`'s list is recorded as a **confirmed floor
+rather than a census**: the prose-asserts-facts cluster is visibly larger than
+the fifteen it names, and the items left out are named in it so the next
+session does not re-derive them.
 
 **The general finding, which outlives all five items.** `PL-6ZQY`'s map is a
 list of *mechanisms*, and the queue holds *items*. Nothing in the project
