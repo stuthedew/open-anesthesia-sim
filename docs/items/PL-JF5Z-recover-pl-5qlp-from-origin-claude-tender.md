@@ -9,6 +9,7 @@ feature: slug-rename-on-write
 touches: docs/items/
 added: 2026-09-19
 closed: 2026-09-19
+pr: 708
 verify: test -f docs/items/PL-5QLP-bin-docket-record-renames-an-item-file-whose.md
 ---
 

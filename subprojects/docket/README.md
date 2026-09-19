@@ -2436,7 +2436,8 @@ Everything mechanically decidable is decided by code: a duplicate id, a
 blocker that is not an item, a brief section that is missing or that has
 nothing written under its heading, a safety-classed item
 sitting in a band it is not allowed to sit in, a `done` item recording a pull
-request the default branch has never seen. These are errors and they exit non-zero.
+request the default branch has never seen, a `touches` entry naming an item
+file no item lives in. These are errors and they exit non-zero.
 
 Everything requiring judgment is left alone. The tool will tell you the top
 band has grown past what anyone can choose between at a glance — and how much
@@ -2447,7 +2448,10 @@ blocked on decisions nobody has made, or that an item file carries a slug its
 title no longer generates. That last one is an advisory rather than an error
 for a reason worth stating: deriving the slug and comparing it is exactly
 decidable, but renaming the file is not, because whoever does it has to know
-which open branch is holding that file first. But it will not tell you what to
+which open branch is holding that file first. It also names the items whose
+`touches` declare that file, because renaming it without repairing them turns
+an advisory into the error above - `PL-3V6C` and `PL-GNXG` both sat on the
+default branch declaring a path a rename had moved. But it will not tell you what to
 work on instead, and it does not try to decide whether an item is still worth
 doing. A tool that guessed at that would produce output that looks
 authoritative and is not. Where it does fail the run — an open item whose own

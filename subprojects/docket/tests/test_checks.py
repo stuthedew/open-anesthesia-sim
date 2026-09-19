@@ -975,6 +975,104 @@ def test_an_overfull_top_band_still_prescribes_demotion_where_something_can_move
     assert _has(advisories, "demote what is not genuinely next")
 
 
+def test_touches_naming_a_missing_item_file_is_an_error() -> None:
+    """A rename leaves the declaration naming nothing, and nothing said so.
+
+    `PL-3V6C`'s work was editing two briefs, so it declares both by full path.
+    One of them moved when a release cut re-rendered it, and the entry sat on
+    `origin/main` naming a file no item lives in with `make check` passing
+    (`PL-Y5JX`).
+    """
+    declarer = _item(
+        "PL-3V6C",
+        touches=(
+            "docs/items/PL-TFWR-cannot-delete-a-remote-branch-the.md",
+            "docs/items/PL-XQRK-cannot-delete-a-remote-branch-git.md",
+        ),
+    )
+    still_there = _item("PL-TFWR", path="PL-TFWR-cannot-delete-a-remote-branch-the.md")
+    moved = _item("PL-XQRK", path="PL-XQRK-cannot-delete-a-remote-branch-so.md")
+
+    errors = _errors(declarer, still_there, moved)
+
+    assert _has(errors, "`touches` names docs/items/PL-XQRK-cannot-delete-a-remote-branch-git.md")
+    assert _has(errors, "PL-XQRK is in docs/items/PL-XQRK-cannot-delete-a-remote-branch-so.md")
+    assert not _has(errors, "PL-TFWR-cannot-delete-a-remote-branch-the.md, which no item")
+
+
+def test_touches_naming_the_file_an_item_lives_in_is_not_an_error() -> None:
+    """Declaring another item's file is legitimate: some work edits briefs."""
+    declarer = _item("PL-3V6C", touches=("docs/items/PL-TFWR-the-other-one.md",))
+    declared = _item("PL-TFWR", path="PL-TFWR-the-other-one.md")
+
+    assert not _has(_errors(declarer, declared), "`touches` names")
+
+
+def test_touches_naming_the_store_directory_is_not_an_error() -> None:
+    """A release cut rewrites many briefs and declares the directory itself.
+
+    48 of this store's 95 entries under `docs/items/` are the bare directory
+    on 2026-09-19, and none of them claims anything about a particular item.
+    """
+    cut = _item("PL-T2LH", touches=("docs/items/", "ROADMAP.md"))
+
+    assert not _has(_errors(cut), "`touches` names")
+
+
+def test_touches_naming_an_id_the_store_does_not_hold_is_an_error() -> None:
+    """The other way the declaration can be wrong: a deleted or mistyped item."""
+    declarer = _item("PL-3V6C", touches=("docs/items/PL-ZZZZ-never-existed.md",))
+
+    assert _has(_errors(declarer), "this store holds no PL-ZZZZ")
+
+
+def test_a_declared_item_with_no_filename_is_declined_rather_than_failed() -> None:
+    """Built in memory, so where it lives is unknown rather than wrong.
+
+    Answering from the half of the store that carries filenames would report a
+    live declaration as dangling, which is the confident-partial-answer shape
+    the apparatus floor refuses.
+    """
+    declarer = _item("PL-3V6C", touches=("docs/items/PL-TFWR-somewhere.md",))
+    homeless = _item("PL-TFWR")
+
+    report = analyze([declarer, homeless], TODAY)
+
+    assert not _has(report.errors, "`touches` names")
+    assert _has(report.declined, "PL-TFWR")
+
+
+def test_a_drifted_filename_names_the_items_whose_touches_declare_it() -> None:
+    """The advisory must not send a reader to break a declaration.
+
+    Acting on the rename without repairing `PL-3V6C`'s entry leaves it naming
+    a path that no longer exists - silently, because `docket concurrent`, the
+    lane split and `docket verify` all read a missing path as one nobody
+    touches (`PL-Y5JX`).
+    """
+    drifted = _item("PL-TFWR", path="PL-TFWR-a-title-it-no-longer-has.md")
+    declarer = _item(
+        "PL-3V6C",
+        path="PL-3V6C-do-the-thing.md",
+        touches=("docs/items/PL-TFWR-a-title-it-no-longer-has.md",),
+    )
+
+    advisories = analyze([drifted, declarer], TODAY).advisories
+
+    assert _has(advisories, "Another item's `touches` declares PL-TFWR (by PL-3V6C)")
+    assert _has(advisories, "repair those entries in the same commit")
+
+
+def test_a_drifted_filename_nobody_declares_says_nothing_about_declarations() -> None:
+    """No coupling, no sentence: the common case stays one line."""
+    drifted = _item("PL-TFWR", path="PL-TFWR-a-title-it-no-longer-has.md")
+
+    advisories = analyze([drifted], TODAY).advisories
+
+    assert _has(advisories, "no longer generates")
+    assert not _has(advisories, "Another item's `touches` declares")
+
+
 def test_a_filename_that_does_not_match_its_title_is_reported() -> None:
     """A title edited in place leaves the slug behind, and nothing said so.
 

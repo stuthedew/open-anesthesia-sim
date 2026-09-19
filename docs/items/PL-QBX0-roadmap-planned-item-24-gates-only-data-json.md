@@ -9,6 +9,7 @@ feature: settings-panel-prerequisite
 touches: ROADMAP.md
 added: 2026-09-17
 closed: 2026-09-19
+pr: 709
 verify: grep -qF 'the agent-identification colours and the contrast-checked palette' ROADMAP.md
 ---
 

@@ -9,6 +9,7 @@ feature: verify-replay-cost
 touches: docs/items
 added: 2026-09-19
 closed: 2026-09-19
+pr: 711
 verify: grep -qF 'arriving through the tap rather than the bucket' docs/items/PL-FZ58-three-test-files-carry-59-of-the-verify-replay.md
 ---
 

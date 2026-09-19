@@ -9,6 +9,7 @@ feature: frame-cost-harness
 touches: tests/benchmarks/frame_cost.py, tests/benchmarks/test_frame_cost.py, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-08
 closed: 2026-09-19
+pr: 707
 verify: grep -q 'def test_every_stage_is_timed_and_finite' tests/benchmarks/test_frame_cost.py
 ---
 
