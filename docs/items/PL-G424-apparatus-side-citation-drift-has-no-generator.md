@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: docs, infra
 feature: generator-heads
+milestone: v0.4.30
 touches: tools/doc_check.py, docs/items, docs/WORKING_NOTES.md, .claude/rules/citation-drift.md, tests/unit/test_doc_check.py
 added: 2026-09-19
 closed: 2026-09-19
+pr: 725
 verify: grep -q 'def test_a_closed_brief_is_exempt' tests/unit/test_doc_check.py
 root-cause-of: PL-037Y, PL-245B, PL-4HKS, PL-5748, PL-60CQ, PL-75R0, PL-DL4M, PL-MSFB, PL-2GQW, PL-38PN, PL-JXVD, PL-5F26, PL-8T3Z, PL-Z5FG, PL-YZKK, PL-CPLX, PL-WVJ0, PL-21RC, PL-6QZP, PL-QV5Y, PL-880Z
 ---

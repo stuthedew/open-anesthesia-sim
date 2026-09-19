@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: defect, infra
 feature: generator-identification
+milestone: v0.4.30
 touches: tools/generator_check.py, tests/unit/test_generator_check.py
 added: 2026-09-19
 closed: 2026-09-19
+pr: 726
 verify: grep -q 'def test_the_store_clusters_like_any_other_path' tests/unit/test_generator_check.py
 impairs-generators: clusters() partitions the store by a single touches path and STORE_PATHS excludes docs/items, docs/WORKING_NOTES.md and docs/dead-ends.md; 15 of PL-G424's 21 members sit on those excluded paths and the remaining 6 fall under MIN_OPEN, so no generator whose members share a kind of claim rather than a file can be surfaced by it
 ---
