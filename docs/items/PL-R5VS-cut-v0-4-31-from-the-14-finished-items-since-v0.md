@@ -96,6 +96,17 @@ notes exists to be permanently wrong about the same items, which is what the
 refusal protects against.
 
 `PL-Z0C7` is the same work, filed independently four minutes earlier by a
-session that could not see this one and reaching `main` later. It is closed
-`done` here rather than left open: the two share a `verify:` command, and an
-open item whose command passes is a store error on the whole-store replay.
+session that could not see this one and reaching `main` later. Both sessions
+reached the same diagnosis and closed it within minutes of each other, which
+is what the conflict here was: this branch had it `done`, and `#741` landed it
+`dropped` with the reason in the field. **`#741`'s resolution is the one
+kept** - a duplicate is an item that should not be done, which is what
+`dropped` is for, and it leaves the record able to tell the item that cut the
+release from the one that was redundant, where two `done` items would both
+claim to have cut v0.4.31. Its own `reason` was written against a twelve-item
+cut and the release shipped at fourteen; it is left as written, being a record
+of why the item was dropped rather than a description of the release.
+
+Neither session could see the other before committing - every in-flight guard
+matches a `PL-` id, and two ids for one piece of work match both cleanly and
+uselessly. `PL-MFM4` carries that hole.
