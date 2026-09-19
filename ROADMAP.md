@@ -3812,6 +3812,24 @@ if a triage pass classes it, which is the next gate's question" — and the pass
 classed it `defect`, so that sentence is now its recorded disposition rather
 than a forecast, on exactly the same ground as the eleven.
 
+**One from `PL-VYSP`'s design round** (`PL-2BZY`, 2026-09-19). That round found
+that `branches_in_flight` kept one ref per id before `_taken_on_base` judged
+the claim, so a bystander branch whose pull request had squash-merged deleted
+the id from the report's do-not-start line and took two live design rounds'
+claims with it: `PL-HWW1` and `PL-6TP8` read startable while `keen-cannon` and
+`eager-brown` carried them. It is declined on this subsection's own
+refilling-queue ground - captured after this freeze, `defect` rather than
+`safety` or `science`, wholly in the workflow lane, and completing no entry on
+the frozen list. `PL-LKFP`, which added the guard it defeats, was itself
+captured after the freeze and is closed, so nothing here is left half-done by
+declining this.
+
+Its two siblings are the same collapse in front of the other two per-ref tests
+in that function - `PL-RY2R` (`walk.edited` before `_superseded`) and `PL-61MD`
+(`own_edits` before `_superseded` and the `needs-decision` promotion). Both are
+untriaged and so are not debt by the rule above; they reach this gate only if a
+triage pass classes them, which is the next gate's question.
+
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
 `### Declined to Gate ...` subsection after the gate heading and stops at the

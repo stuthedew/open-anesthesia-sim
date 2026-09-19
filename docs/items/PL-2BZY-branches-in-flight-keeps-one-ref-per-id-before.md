@@ -1,9 +1,15 @@
 ---
 id: PL-2BZY
 title: branches_in_flight keeps one ref per id before the taken-on-base guard runs, so a spent claim on a bystander branch drops a live one: PL-HWW1 and PL-6TP8 read startable while keen-cannon and eager-brown carry them
-status: untriaged
-feature: parallel-sessions
+priority: P2
+effort: S
+status: done
+classes: defect
+feature: carrier-collapse
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, ROADMAP.md
 added: 2026-09-19
+closed: 2026-09-19
+verify: grep -q 'def test_a_spent_claim_on_a_bystander_branch_does_not_drop_a_live_one' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** branches_in_flight keeps one ref per id before the taken-on-base guard runs, so a spent claim on a bystander branch drops a live one: PL-HWW1 and PL-6TP8 read startable while keen-cannon and eager-brown carry them
@@ -49,3 +55,13 @@ already reads all carriers from `staked`, so the shape exists one function
 down. Belongs beside `PL-BHVM`'s Q3 items (`PL-SH9Q`, `PL-KSCW`, `PL-MBTZ`),
 which are the same content test applied per file; whether it is one build with
 them is a triage judgment.
+
+**Done when.** `_Walk.ids` maps an id to *every* ref whose subjects led with
+it, in candidate order; `_taken_on_base` judges each `(id, ref)` pair and
+`branches_in_flight` reports the first carrier whose claim is not spent,
+dropping the id only where every carrier's is. Two tests pin the pair: a
+bystander branch whose claim on an id the base has taken leaves a live
+carrier's claim standing and the id is reported against the live branch; and
+an id whose every carrier is spent still leaves the report. The `--source`
+walk stays one `git log`, and the base side of each blob comparison is read
+once per path rather than once per carrier.

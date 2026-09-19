@@ -93,7 +93,7 @@ def _runner(
     closed: tuple[str, ...] = (),
     base_items: dict[str, str] | None = None,
     took: tuple[str, ...] = (),
-    same_as_base: tuple[str, ...] = (),
+    same_as_base: tuple[str | tuple[str, str], ...] = (),
     statuses: dict[str, str] | None = None,
     created: tuple[str, ...] = (),
 ):
@@ -152,7 +152,9 @@ def _runner(
     fork point, and `same_as_base` the ids whose file the ref holds exactly as
     the base does. Together they are what says a ref's claim on an id is spent
     without the item having closed, which is what a triage pass merging leaves
-    behind (`PL-LKFP`).
+    behind (`PL-LKFP`). A `same_as_base` entry spelled `(ref, id)` rather than
+    `id` says only *that* ref's copy is the base's, which is what tells a spent
+    claim on a bystander branch from a live one on the same id (`PL-2BZY`).
 
     `adds` maps a ref to the blobs it introduces since its fork point and
     `on_base` names the blobs the default branch has held at some point, which
@@ -162,6 +164,12 @@ def _runner(
     nothing took. `log`, when passed, collects every command for a test that asserts
     which question was asked rather than what the answer was.
     """
+
+    # An entry naming a ref pins the agreement to that ref; the base is the
+    # other end of every such comparison, so it answers the shared oid too.
+    same_pairs = {entry for entry in same_as_base if isinstance(entry, tuple)}
+    same_ids = {entry for entry in same_as_base if isinstance(entry, str)}
+    paired_ids = {identifier for _, identifier in same_pairs}
 
     def run(args: list[str], root: Path) -> str:
         if log is not None:
@@ -177,7 +185,9 @@ def _runner(
                     # `<commit>^:<path>`, whether the commit inherited the
                     # file: a created one has no copy there to name.
                     return "" if identifier in created else f"blob-{identifier}-parent\n"
-                if identifier in same_as_base:
+                if identifier in same_ids or (end, identifier) in same_pairs:
+                    return f"blob-{identifier}\n"
+                if end == BASE and identifier in paired_ids:
                     return f"blob-{identifier}\n"
                 return f"blob-{identifier}-{end}\n"
             if args[-1] == "HEAD":
@@ -208,7 +218,7 @@ def _runner(
             # base. The store names each file for its item, which is what
             # `filename_for` guarantees and what this relies on.
             prefix = args[-1].rstrip("/")
-            held = [*closed, *(base_items or {}), *same_as_base, *(statuses or {})]
+            held = [*closed, *(base_items or {}), *same_ids, *paired_ids, *(statuses or {})]
             return "\n".join(f"{prefix}/{identifier}-shipped.md" for identifier in held)
         if args[0] == "show":
             # `git show <base>:<path>`, which is how the closure is read off the
@@ -335,7 +345,7 @@ def _report(
     closed: tuple[str, ...] = (),
     base_items: dict[str, str] | None = None,
     took: tuple[str, ...] = (),
-    same_as_base: tuple[str, ...] = (),
+    same_as_base: tuple[str | tuple[str, str], ...] = (),
     statuses: dict[str, str] | None = None,
     created: tuple[str, ...] = (),
 ) -> FlightReport:
@@ -1213,6 +1223,62 @@ def test_a_claim_survives_where_the_branch_holds_its_own_copy_of_the_item() -> N
     )
 
     assert [branch.item_id for branch in report.branches] == ["PL-2M4X"]
+
+
+def test_a_spent_claim_on_a_bystander_branch_does_not_drop_a_live_one() -> None:
+    """The guard judges a claim per ref, so the walk may not keep one ref per id.
+
+    Observed 2026-09-19 on the fetched remote. A branch whose pull request had
+    squash-merged still carried a commit leading with four ids; it sorted first
+    among the remote refs, so the walk credited those ids to it and discarded
+    every other carrier. `_taken_on_base` then correctly found *its* claim on
+    two of them spent - the base's copy of each item file was byte for byte the
+    branch's, and the base had taken a commit leading with the id since the fork
+    - and deleting the ids took two live design rounds with them. `bin/docket
+    show` called both startable while a session held each (`PL-2BZY`).
+
+    So the claim that is spent is the bystander's alone, and the id stays in
+    flight, reported against the branch that still has something to give.
+    """
+    bystander = "origin/claude/bystander-abcdef"
+    live = "origin/claude/live-session-ghijkl"
+    report = _report(
+        [bystander, live],
+        commits={
+            bystander: [
+                ("2026-09-19", "PL-2M4X, PL-K7QX: make the tracking items cluster heads", "c1")
+            ],
+            live: [("2026-09-19", "PL-2M4X: record the ratified decision", "c2", "ROADMAP.md")],
+        },
+        same_as_base=((bystander, "PL-2M4X"),),
+        took=("PL-2M4X",),
+    )
+
+    assert [(branch.item_id, branch.name) for branch in report.branches] == [
+        ("PL-2M4X", live),
+        ("PL-K7QX", bystander),
+    ]
+
+
+def test_an_id_leaves_the_report_once_every_carrier_s_claim_is_spent() -> None:
+    """The guard is not weakened by being asked per ref - it is asked of each.
+
+    The pair above is what separates this from the collapse it replaced: one
+    live carrier keeps the id, and no live carrier still drops it.
+    """
+    bystander = "origin/claude/bystander-abcdef"
+    other = "origin/claude/also-merged-ghijkl"
+    report = _report(
+        [bystander, other],
+        commits={
+            bystander: [("2026-09-19", "PL-2M4X: the work that merged", "c1")],
+            other: [("2026-09-19", "PL-2M4X: the rider that merged with it", "c2")],
+        },
+        same_as_base=((bystander, "PL-2M4X"), (other, "PL-2M4X")),
+        took=("PL-2M4X",),
+    )
+
+    assert report.branches == ()
 
 
 def test_an_item_closed_only_on_a_branch_is_still_reported_in_flight() -> None:
