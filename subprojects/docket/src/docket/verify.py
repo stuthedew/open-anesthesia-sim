@@ -1526,6 +1526,14 @@ SCOPED_ONLY_STATUSES = ("blocked",)
 # no single command is what the run waits for - the queue is. `_note_cost`
 # reports that, every run, and names the costliest command against the limit
 # whether or not it is an outlier.
+#
+# Those are one run of three taken that day, and the container's load moves
+# them: serial 1204-1458 s, slowest 48.9-67.4 s, wall 166-204 s. The figures
+# above are the heaviest run, which is the conservative end for this argument -
+# the floor is 150-182 s against 166-204 s elapsed either way, the slowest
+# command is far under it in all three, and a median falling with the pool only
+# lowers the bar the pool's own maximum then fails to reach. Read them as a
+# scale rather than as constants; `PL-FZ58` is where the total is tracked.
 
 
 @dataclass(frozen=True)

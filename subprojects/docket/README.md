@@ -2201,7 +2201,11 @@ same: zero of thirteen.
 
 **And the silence is the right answer, not a tuning failure.** 1458 s of serial
 work across eight workers is a 182 s floor against 204 s elapsed, so no single
-command is what the run waits for — the queue is. That is `PL-FRGP`'s
+command is what the run waits for — the queue is. That is the heaviest of three
+whole-store runs taken that day; the container's load moves the totals (serial
+1204–1458 s, slowest 48.9–67.4 s, wall 166–204 s) and the conclusion holds at
+both ends, since the floor is 150–182 s against 166–204 s elapsed and the
+slowest command is far under it in all three. That is `PL-FRGP`'s
 correction taken to its conclusion: a pool cannot finish before its slowest
 member, but the slowest member is only the *binding* constraint while the rest
 of the work fits underneath it, and this store outgrew that. With 49 commands

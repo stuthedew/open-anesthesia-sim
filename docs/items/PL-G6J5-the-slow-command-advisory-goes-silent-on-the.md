@@ -94,6 +94,14 @@ of serial work across eight workers is a 182 s floor against 204 s elapsed, so
 no single command is what the run waits for — the queue is. That is `PL-FRGP`'s
 correction taken to its conclusion.
 
+Three whole-store runs were taken that day and the container's load moves the
+totals — serial 1204–1458 s, slowest 48.9–67.4 s, wall 166–204 s. The figures
+quoted throughout are the heaviest, which is the conservative end for every
+claim here: the floor is 150–182 s against 166–204 s elapsed, the slowest
+command is far under it in all three, and a median falling with the pool only
+lowers the bar its own maximum then fails to reach. The median, 3.65 s, is from
+the one dedicated run that recorded per-command durations.
+
 **5. A replacement was measured and refused.** Naming the commands that stand
 above the throughput floor the rest imposes — scope-independent, no median,
 reusing the bound arithmetic already there — fires on 5 of 13 pools, but at
