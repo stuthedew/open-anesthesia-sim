@@ -15,6 +15,8 @@ from docket.model import (
     LANE_UNPLACED,
     LANE_WORKFLOW,
     Item,
+    generator_defect_faults,
+    impairs_generators_soundly,
     is_generator,
     parse_front_matter,
     parse_item,
@@ -479,3 +481,67 @@ def test_an_item_cannot_be_its_own_root_cause() -> None:
 
     (fault,) = root_cause_faults(item, KNOWN)
     assert "lists itself" in fault
+
+
+# `generator_defect_faults` is the tier's other entrance and is shared by the
+# same two readers. What these pin is the same fail-closed direction, plus the
+# one property that makes the design honest: `touches` refutes a claim and
+# never establishes one, because the machinery lives inside files that do many
+# other things (36 of this project's 322 open items touch them, 2026-09-19).
+
+MACHINERY = ("subprojects/docket/src/docket/plan.py", "tools/generator_check.py")
+WHY = "root_cause_faults is never called, so no claim is ever ranked"
+
+
+def test_a_claim_touching_the_machinery_is_sound() -> None:
+    item = _item(touches=("subprojects/docket/src/docket/plan.py",), impairs_generators=WHY)
+
+    assert generator_defect_faults(item, MACHINERY) == ()
+    assert impairs_generators_soundly(item, MACHINERY)
+
+
+def test_a_claim_reaching_the_machinery_by_a_directory_prefix_is_sound() -> None:
+    """`is_under` compares path segments, so a declared directory covers its files."""
+    item = _item(touches=("tools/generator_check.py",), impairs_generators=WHY)
+
+    assert generator_defect_faults(item, ("tools",)) == ()
+
+
+def test_an_item_making_no_claim_has_no_faults_and_is_not_a_machinery_defect() -> None:
+    """No field is silence, not a fault - and silence is not a claim either."""
+    item = _item()
+
+    assert generator_defect_faults(item, MACHINERY) == ()
+    assert not impairs_generators_soundly(item, MACHINERY)
+
+
+def test_a_claim_touching_none_of_the_machinery_is_refuted() -> None:
+    item = _item(touches=("src/anesthesia_sim/core/blood.py",), impairs_generators=WHY)
+    (fault,) = generator_defect_faults(item, MACHINERY)
+
+    assert "none of which is inside" in fault
+    assert not impairs_generators_soundly(item, MACHINERY)
+
+
+def test_a_claim_declaring_no_touches_is_refuted() -> None:
+    """Reported separately: 'declares nothing' and 'declares the wrong thing' repair differently."""
+    item = _item(touches=(), impairs_generators=WHY)
+    (fault,) = generator_defect_faults(item, MACHINERY)
+
+    assert "declares no `touches`" in fault
+
+
+def test_a_boolean_is_not_a_reason() -> None:
+    """The field lifts an item above every band, so a reader is owed which function broke."""
+    item = _item(touches=("subprojects/docket/src/docket/plan.py",), impairs_generators="yes")
+    faults = generator_defect_faults(item, MACHINERY)
+
+    assert any("not a boolean" in fault for fault in faults)
+
+
+def test_a_project_declaring_no_machinery_refutes_every_claim() -> None:
+    """Fail closed, and say which file to repair - the config, not the item."""
+    item = _item(touches=("subprojects/docket/src/docket/plan.py",), impairs_generators=WHY)
+    (fault,) = generator_defect_faults(item, ())
+
+    assert "declares no `generator_paths`" in fault

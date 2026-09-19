@@ -296,3 +296,37 @@ protected_paths = [
   "src/anesthesia_sim/data",
   "docs/MODEL.md",
 ]
+
+# Paths holding the machinery that identifies and ranks *generators*. An item
+# declaring `impairs-generators:` claims to be a defect in that machinery,
+# which puts it on the generator tier - above every band but `P0`, the same
+# priority a generator itself ranks at (project owner, 2026-09-19). This list
+# is what refutes such a claim when the item's `touches` reaches none of it.
+#
+# It can only refute, and the number is why. Measured against this store on
+# 2026-09-19, 36 of 322 open items declare one of these files for reasons
+# having nothing to do with generators. Promoting on the path alone would
+# promote all 36, which is the objection `tools/generator_check.py` already
+# records against citation density at 33 - "promoting all of them would mean
+# nothing". The machinery is a few functions inside files that do many other
+# things, so the claim stays the declaring session's judgment and this is the
+# cheap falsifier: it rejects a claim on an item that never goes near the
+# code, which is 286 of the 322.
+#
+# Code and the candidate-surfacing tool only. The prose that *states* the rule
+# - CLAUDE.md, the `docket` skill, this subproject's README - is deliberately
+# absent: those three are declared by 7, 12 and 3 open items respectively, and
+# admitting them would leave the falsifier refusing almost nothing. A defect
+# that is genuinely only in the rule's wording therefore errors here until
+# this list is widened, which is the right direction for a fail-closed setting
+# - a visible edit with a reason, rather than a silent promotion.
+generator_paths = [
+  "subprojects/docket/src/docket/plan.py",
+  "subprojects/docket/src/docket/model.py",
+  "subprojects/docket/src/docket/checks.py",
+  "subprojects/docket/src/docket/render.py",
+  "subprojects/docket/src/docket/cli.py",
+  "subprojects/docket/src/docket/config.py",
+  "tools/generator_check.py",
+  "tests/unit/test_generator_check.py",
+]

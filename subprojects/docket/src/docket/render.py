@@ -239,7 +239,11 @@ def format_delegable(
 
 
 def _by_lane(
-    report: Report, flight: FlightReport, plan: Wave | None, workflow_paths: tuple[str, ...]
+    report: Report,
+    flight: FlightReport,
+    plan: Wave | None,
+    workflow_paths: tuple[str, ...],
+    generator_paths: tuple[str, ...] = (),
 ) -> str:
     """Each lane's own pick, for the session that is one of a parallel pair.
 
@@ -261,6 +265,7 @@ def _by_lane(
             scope=plan.scope if plan is not None else None,
             lane=lane,
             workflow_paths=workflow_paths,
+            generator_paths=generator_paths,
         )
         for lane in SELECTABLE_LANES
     }
@@ -284,6 +289,7 @@ def format_digest(
     workflow_paths: tuple[str, ...] = (),
     orphaned: OrphanedReport | None = None,
     cuts: CutsInFlight | None = None,
+    generator_paths: tuple[str, ...] = (),
 ) -> str:
     """The few lines injected into session context at startup.
 
@@ -358,7 +364,11 @@ def format_digest(
         )
 
     picks = recommend(
-        list(report.items), flight.ids, limit=1, scope=plan.scope if plan is not None else None
+        list(report.items),
+        flight.ids,
+        limit=1,
+        scope=plan.scope if plan is not None else None,
+        generator_paths=generator_paths,
     )
     top = picks[0] if picks else None
     if top is not None and top.item.priority != "P0":
@@ -369,11 +379,13 @@ def format_digest(
         # saying the ranking meant it - which reads as a bug in `recommend`.
         if top.generator:
             marks += f", root cause of {top.generator} items - ranked above every band but P0"
+        if top.impairs_generators:
+            marks += ", defect in the generator machinery - ranked above every band but P0"
         if top.scoped_to:
             marks += f", scoped to {top.scoped_to}, not this step"
         lines.append(f"  Top: {top.item.identifier} {top.item.title} ({marks})")
 
-    if lane_line := _by_lane(report, flight, plan, workflow_paths):
+    if lane_line := _by_lane(report, flight, plan, workflow_paths, generator_paths):
         lines.append(f"  {lane_line}")
 
     if flight.ids:

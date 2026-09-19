@@ -358,6 +358,16 @@ correction rather than handing the question back.
   below and holds for the same reason — an item alone changes nothing, and a
   weed left standing seeds. Identifying one is judgment and stays a session's;
   what follows from it is not.
+
+  **A defect in the machinery that finds and ranks generators ranks with one**
+  (project owner, 2026-09-19). Same tier, below `P0` and above every band,
+  because while identification is broken a generator is never recorded and an
+  unrecorded generator is ranked by nothing — and nothing in the store would
+  ever say one went unfound. Record it as `impairs-generators:` on an item
+  whose `touches` reaches `generator_paths`: prose naming the function that
+  broke, never `yes`, and `bin/docket check` refuses a claim on code the item
+  never goes near. The two endings above are the generator's own; only the
+  ranking is inherited.
 - **A behavior change takes effect in the session that asks for it.** When the
   owner asks for a change to how sessions work — these instructions,
   `docs/worker.md`, the `docket` skill — record it like any other finding and

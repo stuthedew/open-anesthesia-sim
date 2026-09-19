@@ -802,6 +802,12 @@ for, and `P0` still outranks a generator. The reason line says it was ranked as
 a generator and names the items it explains, so a `P2` leading a queue with
 `P1`s in it reads as the ranking meaning it.
 
+An item carrying a sound `impairs-generators:` sits on that same tier, not
+below it — "the same priority as a generator" is what was asked for, so where
+both are startable the ordinary terms below settle the order rather than a
+sub-order nobody decided. Its reason line quotes the declared prose instead of
+naming items, because that prose is the only evidence the claim has.
+
 ### Two sessions, one queue: the lanes
 
 `docket next product` and `docket next workflow` answer the same question
@@ -1380,6 +1386,29 @@ and citation is not causation — 33 items in this store are cited by more than
 two others. `tools/generator_check.py` prints the clusters carrying those
 signals so a session can look, and claims none of them is a generator; the
 judgment is a session's, and writing the field is how it is recorded.
+
+`impairs-generators` is the same tier's other entrance, and the second field
+that changes a queue position. It holds, in prose, which function of the
+generator machinery a defect breaks — the `root-cause-of:` field itself, the
+predicate deciding a claim is sound, the rank term, or whatever surfaces a
+claim to a reader — and it ranks its item at **the same priority as a
+generator**, below `P0` and above every band (project owner, 2026-09-19). The
+warrant is the generator argument one level up: while identification is broken
+a generator is never recorded, and an unrecorded generator is ranked by
+nothing, so the cost is unbounded in the same way and invisible in a worse one.
+Nothing in a store says a generator went unfound.
+
+Its checkable half is `generator_paths`, the config list naming where that
+machinery lives: an item whose `touches` reaches none of it is making a claim
+about code it never goes near, and `docket check` refuses it. The list can only
+refute. Measured on 2026-09-19, 36 of this project's 322 open items declare one
+of those files for unrelated reasons, so promoting on the path alone would
+promote all 36 and mean nothing — the objection `generator_check.py` already
+records against citation density at 33. The machinery is a few functions inside
+shared files, so the claim stays a session's judgment and the path list is the
+cheap falsifier. A bare `yes` is rejected for the reason `not-delegable`
+rejects one: a field that lifts an item above every band owes its reader the
+function that broke.
 
 An item at `ready` must carry one of them: the command that would prove it
 done, or a recorded reason why no command can. The gate sits at `ready` rather

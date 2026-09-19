@@ -3,11 +3,12 @@ id: PL-G5ZH
 title: A defect in the machinery that identifies and ranks generators has no way to say so, so it ranks on its band alone while every generator it fails to surface keeps running
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra
 feature: generator-machinery-rank
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md, docket.toml, CLAUDE.md, .claude/skills/docket/SKILL.md, docs/items
 added: 2026-09-19
+closed: 2026-09-19
 verify: uv run pytest subprojects/docket/tests/test_plan.py subprojects/docket/tests/test_model.py subprojects/docket/tests/test_checks.py -q && grep -q 'def test_a_generator_machinery_defect_ranks_with_a_generator' subprojects/docket/tests/test_plan.py
 ---
 
@@ -24,7 +25,7 @@ cannot see a generator is deciding its scope - sits at `P2`, below every `P1`,
 while the identification half of the system it breaks is what puts generators
 on the tier at all.
 
-**Why it ranks there.** A generator earns the tier because three items stand on
+**Why it matters.** A generator earns the tier because three items stand on
 it and every session it stands through pays it again. A defect in the machinery
 is that argument one level up: while identification is broken, generators are
 not recorded, and an unrecorded generator is not ranked by anything. The
