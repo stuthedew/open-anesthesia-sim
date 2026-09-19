@@ -44,7 +44,7 @@ once, where the user can see the instant that was taken — rather than by
 loosening a guard whose exactness the branch's clock rests on.
 
 **Reproduced 2026-09-14.** `SimulationController.fork_at`
-(`app/controller.py:1565`) documents the refusal at `:1584` - the instant "is
+(`app/controller.py`) documents the refusal - the instant "is
 not finite, or is not a whole number of" steps. Tested against the shipped
 0.1 s step over the one-decimal times from 0.1 s to 360.0 s: **1 235 of 3 600,
 34.3%**, fail an exact whole-step test, because `12.3 / 0.1` is

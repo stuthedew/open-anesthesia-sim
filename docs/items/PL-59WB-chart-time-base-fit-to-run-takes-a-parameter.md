@@ -40,7 +40,7 @@ would be misled by it, which is the cheapest moment to do it.
 `fit_to_run(run_length_s: float)` and documents it as "How much simulated time
 the run has recorded, in" seconds; `:168-179` treats it as a span, comparing it
 against `time_base.span_s`. Its one production caller is
-`app/simulation_view.py:3850`, `fit_to_run(elapsed_s)`.
+`app/chart_time_base.py`'s `fit_to_run(elapsed_s)`.
 
 **Why it matters, and whether it can draw a wrong chart.** On the trunk the two
 coincide - a run opening at induction has elapsed time equal to its length - so

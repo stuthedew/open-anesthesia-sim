@@ -18,13 +18,24 @@ itself moved, and `PL-QV5Y`'s citations have all moved:
 
 | Brief says | Actually at |
 | --- | --- |
-| `PL-38PN`: `_run_simulation_timer` at `simulation_view.py:1149` | `:3260` |
+| `PL-38PN`: `_run_simulation_timer` in `app/simulation_view.py` | gone; the symbol no longer exists |
 | `PL-38PN`: `AlveolarCompartment` at `alveolar.py:32` | `:38` |
 | `PL-38PN`: `apply_blood_uptake` at `alveolar.py:68` | `:68` (still right) |
 | `PL-QV5Y`: Makefile "lines 29-30" | `:61` |
 | `PL-QV5Y`: Makefile "line 35" | `:67` |
 | `PL-QV5Y`: Makefile "lines 145-146" | `:184` |
 | `PL-QV5Y`: Makefile "line 22" | `:54` |
+
+**Overtaken twice, 2026-09-19, and that is now the item's point rather than a
+correction to make.** The `Actually at` column is itself stale: the Qt port took
+`app/simulation_view.py` from 3,850 lines to 580, so `:3260` resolves to
+nothing and `_run_simulation_timer` no longer exists under that name. Two
+generations of hand-repair, both dead, is the loop `PL-G424` was filed to stop -
+and `PL-G424`'s decision (2026-09-19) governs the disposition: a line number is
+not a citation anchor, so these are re-anchored to symbols rather than
+re-pointed at fresh line numbers. `tools/doc_check.py`'s `check_line_citations`
+now fails `make check` on a citation past its file's end in a live document, so
+the third generation is caught by a script rather than by a reader.
 
 `PL-38PN`'s own `verify:` - `! grep -q 'line 943'` - passes as soon as the
 original stale number goes, whether or not what replaces it is right.

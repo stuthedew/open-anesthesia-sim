@@ -3,11 +3,13 @@ id: PL-G424
 title: Apparatus-side citation drift has no generator head: 27 open items name a tree fact that moved, and PL-4FBP's adopted scope reaches only docs/MODEL.md and README.md
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: docs, infra
 feature: generator-heads
-touches: tools/doc_check.py, docs/items, docs/WORKING_NOTES.md
+touches: tools/doc_check.py, docs/items, docs/WORKING_NOTES.md, .claude/rules/citation-drift.md, tests/unit/test_doc_check.py
 added: 2026-09-19
+closed: 2026-09-19
+verify: grep -q 'def test_a_closed_brief_is_exempt' tests/unit/test_doc_check.py
 root-cause-of: PL-037Y, PL-245B, PL-4HKS, PL-5748, PL-60CQ, PL-75R0, PL-DL4M, PL-MSFB, PL-2GQW, PL-38PN, PL-JXVD, PL-5F26, PL-8T3Z, PL-Z5FG, PL-YZKK, PL-CPLX, PL-WVJ0, PL-21RC, PL-6QZP, PL-QV5Y, PL-880Z
 ---
 
@@ -121,3 +123,81 @@ when triage seats it, it needs either a place on a later gate or a
 `### Declined to Gate ...` entry saying why, per the disposition rule. **Do not
 drop it as stale in the apparatus backlog sweep** — the cluster it names was
 measured on 2026-09-19 and the mechanism is live.
+
+## Decided 2026-09-19 — route 3, sharpened, plus the decidable half of route 1
+
+**Taken by this session on measurement, not by the project owner.** The three
+routes turned on a question the brief called undecided — whether a closed item's
+brief is a historical record or a live assertion — and that question is
+answerable by counting rather than by argument, which `.claude/rules/instruction-writing.md`
+rule 14 and the `docket` skill both make a session's to settle. The counts are
+below; the owner can overturn it on any of them.
+
+**The rule, written where a session reading a brief meets it:**
+`.claude/rules/citation-drift.md`, path-scoped to `docs/items/**`,
+`docs/WORKING_NOTES.md` and the skills. Four clauses — a closed brief is a
+record and its drift is not a finding; a live brief or standing document is
+repaired in place rather than filed; that repair rides the current item's commit
+and does not consume the fix-now cap; and a line number is not a citation
+anchor, so a citation names the symbol.
+
+**Why route 1 was refused.** It aimed the annotation convention at the standing
+documents, which are not drifting: **0 stale line citations of 5**, and every
+distinct dangling id in them (`PL-K7QX`, `PL-A1B2`, `PL-XXXX`) is an
+illustrative placeholder in documentation. Extending the convention across their
+2,286 id mentions would have cost an annotation pass to find nothing — the
+defect `CLAUDE.md` retires a check for, arrived at before the check was built.
+
+**Why route 3 is right, and cheaper than it claimed.** It said it "concedes 14
+of the 27". The concession costs nothing, because the project had already
+decided this in its behavior and only failed to write it down:
+
+| Where a line citation sits | Stale | Total | Rate |
+| --- | --- | --- | --- |
+| Closed item briefs | 196 | 408 | **48.0%** |
+| Open item briefs | 36 | 231 | **15.6%** |
+| Standing documents | 0 | 5 | **0.0%** |
+
+Closed briefs rot at three times the rate of open ones and **not one has been
+repaired**, nor is any of the 21 members about one. They are already treated as
+record. What the missing decision cost was not stale sentences but *filings*: a
+session that finds drift in another item's brief cannot repair it under
+`CLAUDE.md`'s fix-now test 2, so it must capture — and the capture is the cost.
+
+**The generator, stated exactly.** `PL-38PN` corrected two stale line citations
+by hand. `PL-JXVD` was then filed because `PL-38PN`'s corrections had themselves
+gone stale. By today the Qt port had taken `app/simulation_view.py` from 3,850
+lines to 580, so `PL-JXVD`'s own "Actually at" column is dead too. Three
+generations, each a filed, triaged, ranked queue item, none ending the loop.
+That is why the rule bans the anchor rather than asking for more careful repair.
+
+**What was built.** `tools/doc_check.py`'s `check_line_citations` fails `make
+check` on a citation whose line is past its file's end, in a live document only.
+It decides *resolvability* — the line cannot be what the sentence says — and
+never correctness, which is this tool's existing contract. It found exactly the
+four predicted, `PL-JXVD` among them; all four are re-anchored to symbols in
+this commit rather than re-pointed at fresh line numbers.
+
+This also answers `PL-38PN`'s own open question, asked 2026-09-03 and never
+resolved: *"whether that is worth building… `CLAUDE.md`'s gate applies: only if
+the work recurs and the answer is deterministic."* It recurs — 676 citations —
+and the past-EOF half is deterministic. The other half is not, and is refused:
+the blame test for "has the cited line changed" returned 36.0% store-wide, but a
+reformat moves a line without touching what it says, so shipping it would be
+scripting the judgment half. It was run once to size the problem and decide this
+rule, which is the only thing a number that cannot be trusted per-instance is
+good for.
+
+**Disposition of the 21 members.** None is dropped by this decision, and none
+needs re-pointing by hand. Each is now governed by the rule: a member sitting in
+a closed brief is not a finding; one in a live brief is repaired by whichever
+session next opens it, inside that session's own commit. The four whose
+citations were unresolvable are repaired here — `PL-59WB`, `PL-5B1N`, `PL-JXVD`,
+`PL-LLBV`.
+
+**What this does not reach**, and is left open deliberately: prose drift that is
+not a citation — a stale measurement (`PL-4HKS`, `PL-5748`, `PL-60CQ`,
+`PL-QV5Y`), a heading still reading "Open" over a resolved thread (`PL-75R0`,
+`PL-DL4M`), a claim about what a command prints (`PL-WVJ0`, `PL-6QZP`). That is
+judgment and no script here will decide it. The rule covers it only in its
+closed-brief clause.

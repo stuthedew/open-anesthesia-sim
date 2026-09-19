@@ -8,6 +8,7 @@ classes: infra, docs
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_checks.py, docket.toml, .claude/skills/docket/SKILL.md, ROADMAP.md
 added: 2026-09-19
 closed: 2026-09-19
+pr: 722
 verify: grep -q 'def test_a_housekeeping_item_needs_only_a_problem' subprojects/docket/tests/test_checks.py
 ---
 
