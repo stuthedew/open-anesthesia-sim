@@ -125,3 +125,79 @@ its date into `docs/references/README.md`, whose account still ends at
 `PL-SHG5` and records no exposure at all. Neither half is a session's to do
 alone: the first is the project owner's ticket, and the second wants the date
 the first lands.
+
+**Measured exhaustively 2026-09-19, later the same day. The exposure set is
+exactly one ref, and that is now established rather than inferred.** Every
+previous count here, this brief's own commands included, took Support's list of
+90 pull requests as the set to check. That was the set *Support* searched, not
+the set that carries the works, and nothing had tested whether it was complete.
+It is: all **631** pull heads on this repository were fetched and their trees
+read, and `refs/pull/298/head` is the only one serving either work. Two further
+facts fall out of the same scan, and both narrow what is owed:
+
+- **No other ref of any kind reaches the pre-rewrite commit.** `git ls-remote
+  origin` returns exactly one line for
+  `66279b3293728a7d34fd60a64b40ad85ad12c1c1`, that pull head. The branch the
+  pull request was opened from,
+  `claude/unfiled-housekeeping-item-id-a36q1s`, is gone from the remote, and no
+  tag resolves there. There is therefore nothing left for the project owner to
+  delete: the one surviving path is the one kind of ref a repository owner
+  cannot touch, which is why this stays Support's to finish.
+- **Pull request 298 is the pull request that introduced both files** — `#298`,
+  *"PL-JX2T: file the review-article PDFs as cited references, under
+  docs/references/"*, merged 2026-09-04 — so its head commit is not a ref that
+  happened to inherit the sensitive SHA but the commit that created it. That is
+  worth saying in the ticket: it explains why this one is the remainder of
+  Support's own 90 rather than an oversight, and it identifies the ref without
+  ambiguity.
+
+**A second finding from the same scan, recorded so nobody re-raises it as a
+breach.** 101 pull heads, `387` through `487`, still carry
+`docs/references/jugel-2014-m4-visualization-oriented-time-series-aggregation.pdf`.
+That is **not** an exposure and needs no ticket: the M4 paper is CC BY-NC-ND
+3.0 per the statement on its own first page, which permits verbatim
+redistribution with attribution, so a public repository may carry it. Its
+removal from `main` under `PL-8LXM` was a housekeeping decision — a paper
+nothing then founded — never a licence one. Anyone repeating the scan below
+without the name filter will see those 101 and should stop here.
+
+**The commands recorded above this line are superseded.** Both the
+`awk '$1>=297 && $1<=386'` count and the contents-API check have the same two
+defects: they are bound to Support's range, so they cannot see a ref outside it,
+and they test a *ref list* rather than what a ref's tree actually holds. This
+one is range-free, reads trees, needs no token, and downloads no copyrighted
+bytes — `--filter=blob:none` fetches commits and trees and no blobs, which is
+what makes it safe to run from anywhere. Run verbatim 2026-09-19; it printed
+`298`, and 4.2 MB was the whole transfer for all 631 refs:
+
+```sh
+git init -q --bare /tmp/pullscan && cd /tmp/pullscan
+git remote add origin https://github.com/stuthedew/open-anesthesia-sim.git
+git fetch -q --filter=blob:none --depth 1 origin 'refs/pull/*/head:refs/pulls/*'
+for r in $(git for-each-ref --format='%(refname)' refs/pulls); do
+  git ls-tree -r --name-only "$r" -- docs/references/ \
+    | grep -qiE 'baker-farmery|schuttler-schwilden' && echo "${r#refs/pulls/}"
+done
+```
+
+**Read the output, never the exit status** — the loop's status is the last
+`grep`'s and means nothing. Printing nothing is the exposure closed; printing
+`298` is the state on 2026-09-19. It is deliberately not wired into `make
+check`: it needs the network, and once it goes quiet it would fire on nothing
+for the life of the project, which is what `CLAUDE.md` § "A check earns its
+place every run" refuses.
+
+**The README half is done, ahead of the date it was waiting for.** The reasoning
+above — that the sentence in `docs/references/README.md` wants the date Support
+lands — held only for the *closing* sentence. What the section said in the
+meantime was wrong today rather than merely incomplete: it read as though the
+2026-09-06 removal had finished, and sent a reader to `PL-SHG5`, a closed item,
+for "what remains". `docs/references/README.md` § "Redistribution" now records
+the live state — the ticket, Support's undertaking, one ref of 631 as of
+2026-09-19, and that both works are still fetchable by anyone holding the hash —
+and points here for the ref and the closing date. So what is left is one ref and
+one date, and the date replaces a sentence that is accurate in the meantime
+instead of filling a silence.
+
+**Still owed:** Support finishing `refs/pull/298/head`, and the closing date
+written into that section.
