@@ -849,6 +849,23 @@ def test_a_release_proceeds_once_the_previous_one_is_tagged(tmp_path: Path) -> N
     assert 'version = "0.2.6"' in (root / "pyproject.toml").read_text()
 
 
+def test_a_cut_does_not_rename_the_files_it_stamps(tmp_path: Path) -> None:
+    """`milestone:` is a field write like `pr:`, and renamed for the same reason.
+
+    A release stamps a whole batch in one commit, so one drifted name among
+    them put a rename nobody asked for into the commit a release tag points at
+    (`PL-LBR6`). `done.md` is the shape: a file whose name its title no longer
+    generates.
+    """
+    root = _release_repo(tmp_path, "v0.2.5")
+
+    assert main(["release", "0.2.6", "--items", str(root / "items")]) == 0
+
+    stamped = root / "items" / "done.md"
+    assert sorted(path.name for path in (root / "items").glob("*.md")) == ["done.md"]
+    assert "milestone: v0.2.6" in stamped.read_text(encoding="utf-8")
+
+
 def test_a_dry_run_warns_about_the_missing_tag_and_still_shows_the_notes(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -1140,7 +1157,7 @@ def _interruptible_repo(tmp_path: Path, count: int) -> Path:
 
 def _interrupt_after(monkeypatch: pytest.MonkeyPatch, written: int) -> None:
     """Stop `cmd_release`'s stamp loop part way through, as a lost container does."""
-    real = cli.write_item
+    real = cli.rewrite_item
     seen = 0
 
     def stop(*args: object, **kwargs: object) -> Path:
@@ -1150,7 +1167,7 @@ def _interrupt_after(monkeypatch: pytest.MonkeyPatch, written: int) -> None:
         seen += 1
         return real(*args, **kwargs)  # type: ignore[arg-type]
 
-    monkeypatch.setattr(cli, "write_item", stop)
+    monkeypatch.setattr(cli, "rewrite_item", stop)
 
 
 def test_a_cut_interrupted_inside_the_stamp_loop_is_resumed_whole(
@@ -2873,16 +2890,20 @@ added: 2026-08-01
 """
 
 
-def _record_repo(tmp_path: Path, *, closes: bool = True, extra: str = "") -> Path:
+def _record_repo(
+    tmp_path: Path, *, closes: bool = True, extra: str = "", name: str = "PL-K7QX-a-closed-item.md"
+) -> Path:
     """A checkout whose tip commit closes `PL-K7QX`, built with real git.
 
     `record` compares a commit's tree against its parent's, and only a real
     checkout proves those commands are spelled in a way git accepts.
+
+    `name` is the file the item lives in. It defaults to the one its title
+    generates; pass a stale one to stand for a file whose slug has drifted.
     """
     root = tmp_path / "repo"
     items = root / "items"
     items.mkdir(parents=True)
-    name = "PL-K7QX-a-closed-item.md"
     (items / name).write_text(
         RECORD_ITEM.format(id="PL-K7QX", status="ready", extra=""), encoding="utf-8"
     )
@@ -2939,6 +2960,26 @@ def test_record_leaves_the_rest_of_the_item_alone(tmp_path: Path) -> None:
 
     after = (root / "items" / "PL-K7QX-a-closed-item.md").read_text(encoding="utf-8")
     assert after == before.replace("added: 2026-08-01\n", "added: 2026-08-01\npr: 257\n")
+
+
+def test_record_keeps_a_drifted_filename(tmp_path: Path) -> None:
+    """A field write must not rename, however stale the slug it finds.
+
+    The store names a file from its title, so re-rendering a drifted one
+    through `write_item` renames it. That turns the single added line two
+    sessions are told git will merge into a delete-plus-add, which takes a
+    modify/delete conflict against whoever else holds the file (`PL-LBR6`) -
+    and backing it out with `git checkout --` restores the tracked deletion
+    while leaving the untracked new name, so `check` then reports one id used
+    by two files (`PL-5QLP`).
+    """
+    root = _record_repo(tmp_path, name="PL-K7QX-an-older-title.md")
+    items = root / "items"
+
+    assert main(["record", "257", "--items", str(items)]) == 0
+
+    assert sorted(path.name for path in items.glob("*.md")) == ["PL-K7QX-an-older-title.md"]
+    assert "pr: 257" in (items / "PL-K7QX-an-older-title.md").read_text(encoding="utf-8")
 
 
 def test_record_is_idempotent(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
