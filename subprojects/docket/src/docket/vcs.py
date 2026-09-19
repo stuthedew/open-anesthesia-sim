@@ -321,7 +321,18 @@ class GitRunner:
     - **The memo** (`PL-MMVF`). Every `merge-base` this module issues is asked
       exactly three times - `_unlanded_refs` runs once for each of
       `branches_in_flight`, `orphaned` and `cuts_in_flight` - so two of every
-      three are removed by remembering the answer.
+      three are removed by remembering the answer. **An answer, and never a
+      silence** (`PL-MM7F`): a failure stored here would be served to every
+      later caller asking the same question, which turns one transient fault
+      into a permanent wrong answer for the rest of the command and takes away
+      the one thing that would have corrected it - the next caller asking git
+      again. What that costs is bounded by the memo's own saving and paid only
+      where git is failing: measured on this repository 2026-09-19, one digest
+      put 237 questions to git and the memo answered 106 of them, so a command
+      in which *every* call failed would spawn those 106 processes rather than
+      reuse them. A checkout without git fails each in microseconds, and one
+      whose git hangs is already paying the ten-second timeout 131 times before
+      this change, so the memo was never what made that case survivable.
     - **The blob batch** (`PL-0J9K`). `git show <rev>:<path>` is one process
       per blob and the module asks for one per item file edited on an unmerged
       ref; `git cat-file --batch` answers all of them from one.
@@ -359,7 +370,12 @@ class GitRunner:
         text = self._serve(argv, root)
         self._seconds[sub] = self._seconds.get(sub, 0.0) + (time.perf_counter() - started)
         self._ran[sub] += 1
-        if memoizable:
+        if memoizable and answered(text):
+            # Only an answer is worth remembering. A silence memoized is one
+            # transient fault amortised across the whole command - and it
+            # removes the single thing that would otherwise make such a fault
+            # self-correcting, which is that the next caller asks git again
+            # (`PL-MM7F`).
             self._memo[key] = text
         return text
 

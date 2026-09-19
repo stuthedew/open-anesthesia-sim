@@ -1871,9 +1871,13 @@ runs. And the `r_vcs` ratio is not what makes this a generator: the count of
 items each choosing their own answer to one question is.
 
 **Where it goes next.** `PL-Q9Z1` is the head and carries the channel plus the
-test; `PL-MM7F` (the memo caching a failed call) is `blocked-by` it and is an
-amplifier rather than a second defect; `PL-73P0` (`default_base` guessing
-`"main"`) is untriaged and sits upstream of every comparison in the module.
+test; `PL-MM7F` (the memo caching a failed call) closed against that channel on
+2026-09-19 - `GitRunner` stores an answer and never a silence, so a transient
+fault is retried by the next caller instead of being served to every one of
+them for the rest of the command, and the healthy case is unchanged because all
+106 of the digest's memo hits are genuine answers; `PL-73P0` (`default_base`
+guessing `"main"`) is untriaged and sits upstream of every comparison in the
+module.
 `PL-SY1J` may resolve against `PL-Q9Z1` without its own diagnosis, since
 `precedence` returns `carriers=()` *and* `unreadable=()` on failed evidence.
 
