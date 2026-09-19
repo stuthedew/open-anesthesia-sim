@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: ready
 classes: defect, infra
-feature: planning-cadence
+feature: timeline-arrangement
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-15
 verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_a_blocker_the_timeline_schedules_ahead_of_the_gate_reads_as_sequenced' subprojects/docket/tests/test_roadmap.py
