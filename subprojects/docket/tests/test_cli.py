@@ -3779,3 +3779,180 @@ def test_triage_marks_an_item_whose_filing_commit_also_changed_code(
     # capture-in-passing that made the unconditional key match 78% of the store.
     assert out.index("PL-0J9K") < out.index("Filed by") < out.index("PL-QQQQ")
     assert out.count("Filed by") == 1
+
+
+# --- set: triage's answers, written by the tool rather than typed ---------
+
+SCRAMBLED = """---
+id: PL-C3C3
+verify: true
+title: A hand-written item
+status: ready
+added: 2026-08-01
+classes: infra
+touches: a.py
+effort: S
+priority: P3
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+CAPTURED = """---
+id: PL-D4D4
+title: A captured idea
+status: untriaged
+added: 2026-08-20
+---
+
+**Problem.** A captured idea
+**Why it matters.** y
+**Done when.** z
+"""
+
+
+def _item_text(store: Path) -> str:
+    return (store / "item-0.md").read_text(encoding="utf-8")
+
+
+def test_set_writes_fields_in_canonical_order(tmp_path: Path) -> None:
+    """A hand-typed block comes out in the order every tool-written one has.
+
+    The body is untouched and the file keeps its name: a field write that
+    reordered prose or renamed the file would put a change nobody asked for
+    into a diff about something else (`PL-LBR6`).
+    """
+    store = _store(tmp_path, SCRAMBLED)
+
+    assert _run("set", "PL-C3C3", "--feature", "tidy", "--items", str(store)) == 0
+
+    front, body = _item_text(store).split("---\n")[1:]
+    assert front == (
+        "id: PL-C3C3\ntitle: A hand-written item\npriority: P3\neffort: S\n"
+        "status: ready\nclasses: infra\nfeature: tidy\ntouches: a.py\n"
+        "added: 2026-08-01\nverify: true\n"
+    )
+    assert body == "\n**Problem.** x\n**Why it matters.** y\n**Done when.** z\n"
+    assert [p.name for p in store.glob("*.md")] == ["item-0.md"]
+
+
+def test_set_refuses_an_unknown_field(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """A misspelled field is silently ignored by every reader, so it is never written.
+
+    `--pr` is refused the same way rather than read as `--priority`: the field
+    exists, `docket record` is its writer, and an abbreviation that lands on a
+    different field is the silent acceptance this refusal exists to stop.
+    """
+    store = _store(tmp_path, READY)
+    for flag in ("--priorty", "--pr"):
+        with pytest.raises(SystemExit) as stop:
+            _run("set", "PL-B1B1", flag, "2", "--items", str(store))
+        assert stop.value.code == 2
+        assert f"unrecognized arguments: {flag}" in capsys.readouterr().err
+    assert _item_text(store) == READY
+
+
+def test_every_set_flag_is_a_field_set_writes() -> None:
+    """A flag the parser accepts and the table does not name is written nowhere, silently."""
+    args = merge_shared(build_parser().parse_args(["set", "PL-0000"]))
+
+    flags = set(vars(args)) - {"command", "item", "overwrite", "func", "items", "today", "no_git"}
+    assert flags == {attribute for _key, attribute in cli.SET_FIELDS}
+
+
+def test_set_refuses_to_replace_a_recorded_value_unless_told_to(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Replacing a value nobody looked at is the duplicate-key hazard through the front door."""
+    store = _store(tmp_path, READY)
+
+    assert _run("set", "PL-B1B1", "--priority", "P2", "--items", str(store)) == 1
+
+    out = capsys.readouterr().out
+    assert "`priority` already records `P1`" in out
+    assert "--overwrite" in out
+    assert _item_text(store) == READY
+
+    assert _run("set", "PL-B1B1", "--priority", "P2", "--overwrite", "--items", str(store)) == 0
+    assert "priority: P2\n" in _item_text(store)
+
+
+def test_set_moves_a_status_without_being_told_to_overwrite(tmp_path: Path) -> None:
+    """A status is a position in a lifecycle, and moving it is what triage does."""
+    store = _store(tmp_path, CAPTURED)
+
+    assert (
+        _run(
+            "set",
+            "PL-D4D4",
+            "--status",
+            "ready",
+            "--priority",
+            "P2",
+            "--effort",
+            "S",
+            "--classes",
+            "infra",
+            "--items",
+            str(store),
+        )
+        == 0
+    )
+
+    assert "status: ready\n" in _item_text(store)
+    assert "untriaged" not in _item_text(store)
+
+
+def test_set_refuses_a_write_the_checker_would_fail_and_says_why(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The rules arrive from `checks.py` in its own words, at the moment of writing.
+
+    `ready` owes a priority and an effort; a safety class owes the top band.
+    Neither rule is restated by `set`, and either refuses the write whole.
+    """
+    store = _store(tmp_path, CAPTURED)
+
+    assert _run("set", "PL-D4D4", "--status", "ready", "--items", str(store)) == 1
+    out = capsys.readouterr().out
+    assert "nothing was written" in out
+    assert "no priority" in out
+    assert "no effort" in out
+    assert _item_text(store) == CAPTURED
+
+    fields = ("--status", "ready", "--priority", "P3", "--effort", "S", "--classes", "safety")
+    assert _run("set", "PL-D4D4", *fields, "--items", str(store)) == 1
+    assert "safety-critical work starts at P0 or P1" in capsys.readouterr().out
+    assert _item_text(store) == CAPTURED
+
+
+def test_set_refuses_a_file_it_could_not_rewrite_faithfully(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A doubled key would be collapsed to the parser's pick; an unknown one would be dropped.
+
+    Both are what `check` reports, and a writer repairing either on its way
+    past would be choosing a value on nobody's behalf (`PL-BR4G`).
+    """
+    doubled = READY.replace("effort: S\n", "effort: S\neffort: M\n")
+    unknown = READY.replace("touches: a.py\n", "touches: a.py\ncolour: red\n")
+    for name, document in (("a", doubled), ("b", unknown)):
+        (tmp_path / name).mkdir()
+        store = _store(tmp_path / name, document)
+
+        assert _run("set", "PL-B1B1", "--feature", "x", "--items", str(store)) == 1
+
+        assert "nothing was written" in capsys.readouterr().out
+        assert _item_text(store) == document
+
+
+def test_set_removes_a_field_given_an_empty_value(tmp_path: Path) -> None:
+    """The renderer omits what is empty, so an empty value is how a field is unset."""
+    withheld = READY.replace("added:", "not-delegable: wants the strongest model\nadded:")
+    store = _store(tmp_path, withheld)
+
+    assert _run("set", "PL-B1B1", "--not-delegable", "", "--overwrite", "--items", str(store)) == 0
+
+    assert "not-delegable" not in _item_text(store)

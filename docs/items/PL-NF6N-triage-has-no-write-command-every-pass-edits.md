@@ -3,11 +3,13 @@ id: PL-NF6N
 title: Triage has no write command: every pass edits item front matter by hand, which is the decidable half CLAUDE.md asks to be moved into code
 priority: P3
 effort: M
-status: needs-decision
+status: dropped
 classes: infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/store.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-12
+closed: 2026-09-19
+reason: Duplicate of PL-L4YG, which shipped docket set with tests - the first of this item's own two endings
 ---
 
 **Problem.** Triage has no write command: every pass edits item front matter by hand, which is the decidable half CLAUDE.md asks to be moved into code

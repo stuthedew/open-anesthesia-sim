@@ -74,3 +74,8 @@ narrower, does not touch the audit, and also stops `record` producing diff
 noise on files it was asked to add one line to; the first covers any future
 field `record` might add. A test pins whichever is chosen against an item whose
 stored field order is non-canonical.
+
+**Measured 2026-09-19, as `PL-L4YG` landed `docket set`.** 96 of 1,189 item
+files carry a key order `render_item` would not write, so `record` reorders
+any of those it reaches. `docket set` writes canonical order at triage, which
+shrinks that population from here on and leaves the existing 96 as they are.

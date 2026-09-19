@@ -3,13 +3,14 @@ id: PL-L4YG
 title: Triage has no write command, so every triage answer is hand-edited front matter
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/store.py
 added: 2026-09-02
-root-cause-of: PL-7K8Y, PL-LBR6, PL-NF6N, PL-YTDN, PL-Z9K5
+closed: 2026-09-19
 verify: uv run pytest subprojects/docket/tests/test_cli.py -k new_captures && grep -q 'def test_set_writes_fields_in_canonical_order' subprojects/docket/tests/test_cli.py
+root-cause-of: PL-7K8Y, PL-LBR6, PL-NF6N, PL-YTDN, PL-Z9K5
 ---
 
 **Problem.** `bin/docket` has one write command, `new`. Everything triage
@@ -81,3 +82,21 @@ Deliberately not named, though `PL-6ZQY`'s cluster sentence reaches them:
 the writer - a path that does not exist, a `needs-decision` item with no
 `Decision needed` section - and a write command closes none of them. `PL-FX0K`
 is `parse_item` misreading a YAML-list `touches:`, which is the reader.
+
+**Closed 2026-09-19.** `bin/docket set <id> --priority P2 --effort S ...`
+shipped, with `store.rewrite_item` beneath it: the named fields are written in
+`render_item`'s order, the file keeps its name, and the write is refused where
+it would add an error `docket check` did not already report - measured as the
+difference between the store's errors with and without the write, so no rule
+is restated in the command. Two choices worth knowing. `status` is exempt from
+the overwrite refusal, because every valid item carries one and a flag typed
+on every triage guards nothing. A file spelling a key twice or carrying an
+unknown field is refused outright, since a rewrite would collapse or drop it
+on nobody's decision. Measured on the store the day it landed: 144 of 1,189
+item files would change under a rewrite - 96 in key order, a few more in list
+spacing, 39 in the blank line under the front matter, one in a trailing
+newline - and 7 filenames had drifted from their titles. That is the
+population `PL-7K8Y`, `PL-Z9K5` and `PL-YTDN` sit in, which this shrinks as
+items are triaged with it and does not clear. `record` still writes through
+`write_item`; switching it to `rewrite_item` is `PL-LBR6`'s one line, left to
+that item because it owes its own test.

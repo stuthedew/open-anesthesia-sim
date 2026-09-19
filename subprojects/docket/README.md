@@ -27,6 +27,7 @@ docket next workflow         # ...confined to one half of the project, for a sec
 docket wave                  # which beat of the plan's cadence is due
 docket list                  # the queue, one line per item
 docket triage                # what is untriaged, and the rules the answers must satisfy
+docket set PL-K7QX --priority P2 --effort S --classes defect   # write triage's answers; refused where check would fail them
 docket concurrent PL-K7QX    # what can be worked alongside it, and what a live branch is already changing
 docket feature halted-step   # progress on one feature
 docket gate --feature x      # the open debt a milestone has to clear
@@ -665,6 +666,25 @@ What an item is worth, how big it is and what it belongs with are not computed
 and never will be. Triage is the judgment; what the command removes is having
 to recall the rules from memory and find out afterwards whether the recall was
 right.
+
+`docket set` writes the answers. `docket set PL-K7QX --priority P2 --effort S
+--classes defect --touches a.py --status ready --verify '...'` sets the named
+fields, renders the front matter in the order every tool-written file has, and
+keeps the file's name whatever the title now says — a rename arriving as a side
+effect of a field write conflicts against whoever else holds the file. It
+refuses three things and adds no rule of its own: a flag it does not know,
+since a misspelled field is silently ignored by every reader of it (`--pr` is
+refused rather than read as `--priority`, so no abbreviation lands on the wrong
+field); a value the item already records with a different one, unless
+`--overwrite` says so, because replacing a value nobody looked at is the
+duplicate-key hazard arriving through the front door — `status` is exempt,
+since moving it is what triage does; and any write after which `docket check`
+would report an error it did not report before, printed in the checker's own
+words and with nothing written. The brief is prose and stays a hand edit; an
+empty value removes a field. Until the command existed every triage answer was
+typed into the front matter by hand or by a helper the session wrote and threw
+away, and 96 of the 1,189 files in the store this grew in carried a key order
+no tool had written (`PL-L4YG`).
 
 It names, per item, whether a branch already carries that id — and which refs
 it could not read to answer that. Triage is the more exposed of the two entry

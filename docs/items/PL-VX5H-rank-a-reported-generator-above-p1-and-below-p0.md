@@ -1,14 +1,15 @@
 ---
 id: PL-VX5H
 title: Rank a reported generator above P1 and below P0 in docket next, because P1 grows as development proceeds so a generator promoted only within its own band is never reached
-status: done
-feature: convergence-visibility
-added: 2026-09-17
-closed: 2026-09-17
 priority: P2
 effort: M
+status: done
 classes: infra
+feature: convergence-visibility
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_plan.py, subprojects/docket/README.md, tools/generator_check.py, tests/unit/test_generator_check.py, docs/ARCHITECTURE.md, docs/items, .claude/skills/docket/SKILL.md, docs/WORKING_NOTES.md
+added: 2026-09-17
+closed: 2026-09-17
+pr: 672
 verify: uv run pytest subprojects/docket/tests/test_plan.py subprojects/docket/tests/test_model.py tests/unit/test_generator_check.py -q && grep -q 'def test_a_generator_outranks_a_safety_classed_p1' subprojects/docket/tests/test_plan.py
 ---
 

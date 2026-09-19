@@ -821,8 +821,18 @@ enforces that. Process work — work on how the project is built rather than on
 the product — does not enter the top band when it would outnumber the product
 work already there.
 
-An item that should not be done becomes `status: dropped` with a `reason`.
-Never delete the file: the reason is what stops the finding being re-raised.
+**Write the answers with `bin/docket set`, not into the file.** `bin/docket set
+<id> --priority P2 --effort S --classes defect --touches a.py --status ready
+--verify '...'` writes the named fields in canonical order, keeps the file's
+name, and refuses a value the item already records (`--overwrite` replaces
+one; `status` needs no flag, since moving it is what triage does) and any
+write `docket check` would then fail, in the checker's own words. The brief is
+prose and stays a hand edit; write it first, because `--status ready` is
+refused until the sections it owes exist (`PL-L4YG`).
+
+An item that should not be done becomes `status: dropped` with a `reason` —
+`bin/docket set <id> --status dropped --reason "..." --closed DATE`. Never
+delete the file: the reason is what stops the finding being re-raised.
 
 **Dropping an item closes it.** `dropped` is one of `CLOSED_STATUSES` beside
 `done` in `subprojects/docket/src/docket/model.py`, so a triage pass pushed
@@ -1220,8 +1230,9 @@ in the tree reports it; `git ls-remote --tags origin` is what answers.
 
 ## Mode: close out an item
 
-1. Set `status: done` and `closed`, and commit that **with the work, in one
-   commit**, whose subject leads with **every** id it closes, comma-separated -
+1. Set `status: done` and `closed` - `bin/docket set <id> --status done
+   --closed DATE` - and commit that **with the work, in one commit**, whose
+   subject leads with **every** id it closes, comma-separated -
    the recovery below reads the newest subject naming an id, so a rider closed
    under another item's id alone is attributed to its own capture commit
    (`PL-GW37`). **Do not write `commit:`** - the field is retired (`PL-T63T`),
