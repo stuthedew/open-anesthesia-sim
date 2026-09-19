@@ -231,9 +231,9 @@ def reenters_verify(command: str) -> bool:
 
     `docket check` is deliberately not matched, and the asymmetry is the whole
     of the rule. It executes a `verify:` only under `--verify`, and a nested run
-    is told not to ask, so `bin/docket check && grep -q ...` - the paired shape
-    this project recommends, and what ten open items record - is bounded at one
-    level and proves what it claims.
+    is told not to ask, so `bin/docket check && grep -q ...` - the shape the
+    older commands record, before `PL-6TP8` retired the clause ahead of the
+    `grep` - is bounded at one level and proves what it claims.
     """
     return bool(DOCKET_VERIFY_RE.search(_outside_quotes(command)))
 

@@ -3,12 +3,14 @@ id: PL-6TP8
 title: Twelve items re-decide what a verify: exit status proves, because the field was specified as a command string and nothing else: one contract rather than twelve patches
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect, infra
 feature: generator-heads
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md, docs/items
 added: 2026-09-17
 root-cause-of: PL-T7VS, PL-0M32, PL-Q8RQ, PL-6TN8, PL-D0K3, PL-3DXV, PL-6YWK, PL-2M4X, PL-6YL1, PL-Y4YX, PL-H9GV, PL-LBW5
+closed: 2026-09-19
+verify: grep -qF 'what the work adds, alone' .claude/skills/docket/SKILL.md
 ---
 
 **Problem.** `verify:` was specified as "a command that fails before the work
@@ -77,13 +79,19 @@ whom", the `docket` skill's `verify:` section, and the docstrings of
   `PL-6YL1`), and it was run and watched fail for a reason the author
   understood.
 
-**Decision needed - the shape half, the project owner's to ratify because it
-reverses a documented recommendation.** Whether the field carries a
-prerequisite clause at all. The `docket` skill's table prescribes
-`pytest <file> && grep -q 'def test_x' <file>` and `python3
-tools/doc_check.py check && grep -qF '…' docs/MODEL.md`, on the argument that
-the first half "proves the file's suite healthy". Measured 2026-09-19 against
-the open store, that half is what generates the cluster:
+**Decided 2026-09-19, the shape half** (project owner, 2026-09-19, ratified -
+chosen over keeping the paired shape, and repair-as-started chosen over a
+one-pass strip of the 162): the field does not carry a prerequisite clause.
+The question as it was put, and the case, are kept below as the record. The
+`docket` skill's table now prescribes the `grep` alone, the README's contract
+section records the decision, and `PL-T7VS` and `PL-6YL1` dropped against it.
+
+The question was whether the field carries a prerequisite clause at all. The
+`docket` skill's table prescribed `pytest <file> && grep -q 'def test_x'
+<file>` and `python3 tools/doc_check.py check && grep -qF '…' docs/MODEL.md`,
+on the argument that the first half "proves the file's suite healthy".
+Measured 2026-09-19 against the open store, that half is what generated the
+cluster:
 
 | | |
 | --- | --- |
@@ -94,8 +102,8 @@ the open store, that half is what generates the cluster:
 | discriminators exiting 0 once the clause is removed (a pass the clause masked today) | 0 |
 | name-pinning `grep 'def test_…'` clauses | 63, none naming a test that already exists |
 
-**Recommendation: the field records the discriminator only, and the health
-check is the consumers' to run.** Every prerequisite clause in the store is a
+**The recommendation, as ratified: the field records the discriminator only,
+and the health check is the consumers' to run.** Every prerequisite clause in the store is a
 line of `make check`, and every consumer that needs the tree proven already
 proves it there: `docket verify` runs `config.check_command` as its own line
 of the report, `docs/worker.md` runs `make check` after the command, and CI's
@@ -174,12 +182,13 @@ is the map.
 | `PL-LBW5` commands grep a file `touches` omits | stays `ready` - obligation 2, as briefed |
 | `PL-H9GV` the test `PL-01GD` owed | stays `ready` - a closed command is a record; the test is ordinary work |
 | `PL-Y4YX` `app/theme.py`'s toolkit rule | stays `needs-decision` - its `verify:` half closed with `PL-L9RD`; what remains is not this cluster's |
-| `PL-T7VS` a red prerequisite voids the replay | stays `ready`, **decided by the shape half**: drops if the clause goes, hoists if it stays |
-| `PL-6YWK` `PL-4L6Z`'s command killed at the limit | stays `ready`, form decided by the shape half: the clause is removed or narrowed |
-| `PL-2M4X` `PL-J45M`'s wrong pytest half | stays `ready` - the `touches` correction stands either way; the pytest half is removed or replaced |
-| `PL-6YL1` the docket-suite rule as a check | stays `ready`, **decided by the shape half**: not worth building if new commands carry no pytest target |
+| `PL-T7VS` a red prerequisite voids the replay | **dropped** - the clause the hoist was for is retired; the legacy commands lose it as their items start |
+| `PL-6YWK` `PL-4L6Z`'s command killed at the limit | stays `ready` - the repair is fixed: the command becomes the `grep` alone |
+| `PL-2M4X` `PL-J45M`'s wrong pytest half | stays `ready` - the `touches` correction stands; the pytest half is removed, not replaced |
+| `PL-6YL1` the docket-suite rule as a check | **dropped** - no new command carries a pytest target; the six legacy ones lose theirs as their items start |
 
-**Standing, 2026-09-19.** The reading half is written and the three closures
-ride the same branch. This item stays `needs-decision` until the shape half is
-ratified or refused; either answer re-points `PL-T7VS`, `PL-6YWK`, `PL-2M4X`
-and `PL-6YL1`, rewrites the skill's table, and closes this item.
+**Standing, 2026-09-19, closed.** Both halves are decided and written where
+the consumers read them; the skill's table prescribes the `grep` alone;
+`PL-0M32` and `PL-6TN8` closed, `PL-D0K3`, `PL-T7VS` and `PL-6YL1` dropped,
+the other seven re-pointed. The command recorded above was run before the
+skill's table was rewritten (exit 1) and after (exit 0).

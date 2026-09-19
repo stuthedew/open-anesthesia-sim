@@ -3,12 +3,13 @@ id: PL-T7VS
 title: A red doc_check voids the whole-store verify replay for the 29 open items gated behind it, and the replay reports green rather than declining to answer
 priority: P2
 effort: M
-status: ready
+status: dropped
 classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-07
-verify: uv run pytest -q subprojects/docket/tests/test_verify.py && grep -q 'def test_a_command_whose_prerequisite_failed_is_not_checked' subprojects/docket/tests/test_verify.py
+closed: 2026-09-19
+reason: PL-6TP8 retired the prerequisite clause from the field (project owner, 2026-09-19, ratified), so there is nothing left to hoist - the doc_check-first commands lose the clause as their items are started, and the replay reads nothing from their failures meanwhile
 ---
 
 **Problem.** 29 open items carry a `verify:` command beginning
@@ -123,3 +124,12 @@ masked today either. What happens to this item is the shape half of
 drops with it, and the 59 `doc_check`-first commands burn down as their items
 are started; if the field keeps it, the hoist this brief proposes is the work.
 Not started until that is answered.
+
+**Dropped under `PL-6TP8`, 2026-09-19.** The shape half was ratified the same
+day: the field records the discriminator alone, so the clause this brief
+proposed hoisting is no longer written, and the 59 commands that still carry
+it lose it as their items are started rather than in one pass. Until then the
+replay reads nothing from their failures, which the contract now says in as
+many words, and nothing is masked today - measured with every such clause
+stripped, no discriminator exits 0. The `verify:` this item carried named a
+test for the hoist and is removed with the work it specified.

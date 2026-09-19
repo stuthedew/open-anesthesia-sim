@@ -89,3 +89,9 @@ the contract's second obligation failing - a clause proving a different tree's
 health - and it is replaced by the release suite if the field keeps
 prerequisite clauses, or removed if it does not, leaving the `! grep` that is
 the specification.
+
+**Decided 2026-09-19, later the same day.** The shape half was ratified: the
+pytest half of `PL-J45M`'s command is removed rather than replaced, leaving
+the `! grep` that is the specification, and the `touches` correction stands.
+This item's own `verify:` still pins `test_release.py` as a `verify:` target,
+which that shape does not produce, so rewrite it first when starting this.
