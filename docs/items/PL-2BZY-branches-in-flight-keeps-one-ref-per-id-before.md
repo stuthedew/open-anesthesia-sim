@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: defect
-feature: parallel-sessions
+feature: carrier-collapse
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-19
 verify: grep -q 'def test_a_spent_claim_on_a_bystander_branch_does_not_drop_a_live_one' subprojects/docket/tests/test_vcs.py
