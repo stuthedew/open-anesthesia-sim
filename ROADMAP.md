@@ -3962,7 +3962,12 @@ stood untriaged that morning, every one of them captured that same day, and
 classing an item is what makes it debt - so they reach this gate together and
 are declined together: `PL-245B`, `PL-28HG`, `PL-2DTK`, `PL-4FD2`, `PL-4HKS`,
 `PL-BX1C`, `PL-CNJH`, `PL-CWD4`, `PL-D1NT`, `PL-DK8Y`, `PL-QMC0`, `PL-R77L`,
-`PL-SZJ2`, `PL-WVJ0`, `PL-Y5JX`, `PL-YS9F` and `PL-ZPDM`. The three facts the
+`PL-SZJ2`, `PL-WVJ0`, `PL-Y5JX`, `PL-YS9F` and `PL-ZPDM`. One of them,
+`PL-QMC0`, closed in `#708` hours later and is left named here rather than
+removed: what this subsection records is the disposition taken, and an entry
+that was declined and then fixed anyway is still an entry that was declined.
+`PL-0VFF` is the open item for the fact that nothing here distinguishes the
+two. The three facts the
 first thirty rest on hold for all seventeen: captured after the 2026-09-06
 freeze, `P2` or `P3` and neither `safety` nor `science`, and wholly in the
 workflow lane - every `touches` they declare is inside `docket.toml`'s
