@@ -1683,8 +1683,9 @@ def cmd_wave(args: argparse.Namespace) -> int:
     that survives a session with no memory: by reading the files.
 
     Exits non-zero when it cannot compute an answer - no roadmap, no timeline,
-    or a gate naming an item the store does not hold - because a beat the tool
-    is unsure of is worth less than an obvious failure to produce one.
+    a gate naming an item the store does not hold, or a plan whose numbering
+    the project has stepped past - because a beat the tool is unsure of is
+    worth less than an obvious failure to produce one.
     """
     _, items, config = _load(args)
     root = args.items.parent if args.items else find_root()
@@ -1701,7 +1702,12 @@ def cmd_wave(args: argparse.Namespace) -> int:
         {item.identifier: item.blocked_by for item in items},
     )
     print(render.format_wave(plan))
-    if plan.step is None or plan.problems or (plan.gate is not None and plan.gate.unknown_ids):
+    if (
+        plan.step is None
+        or plan.problems
+        or plan.stale
+        or (plan.gate is not None and plan.gate.unknown_ids)
+    ):
         return 1
     return 0
 

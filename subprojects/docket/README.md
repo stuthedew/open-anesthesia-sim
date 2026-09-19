@@ -1083,6 +1083,21 @@ milestone still holds the milestone, because it ships when its scope is done and
 not when the remainder is somebody else's fault, and an id the store does not
 hold withholds completeness rather than being guessed either way.
 
+Every arrangement question in that composition — which row the project stands
+on, what comes before what, which section places a blocker — is put to one
+object, `roadmap.ReleaseTrain`, resolved once at the top of `wave` from the
+timeline's row order. Four consumers used to re-derive the order by comparing
+version tuples, and each disagreed with the table somewhere (`PL-2T03`).
+Released stays decided by the version the project is on; the train also
+carries what the plan and the project disagree on — a milestone row the
+version has passed with no release of that number in the version table, and a
+section no row bears — and `wave` prints those under their own heading and
+exits non-zero, the digest's plan line flags them, and the release hand-off
+states a reached-or-passed number beside the table row it already asks for
+(`PL-Y1L0`). The gate block splits the entries it cannot clear into those the
+plan sequences ahead of the gate, named with the row they wait for, and those
+waiting on work placed later or nowhere (`PL-7CSP`).
+
 The milestone the beat is about is read off the timeline row rather than the
 `#` column. A `—` row bearing a section with a `Required scope` of its own,
 placed between a gate and the milestone that recorded it, comes before that
@@ -1239,11 +1254,15 @@ Two sources for that set, because a milestone spends months holding only one of
 them: a timeline row is written when it is *placed*, a section when it is
 *scoped*. Nothing cuttable is suppressed — every version in the set is ahead of
 the current one and so unreleased by construction, and a `release` beat is
-answered before the comparison is reached. The single exemption is the
-milestone the beat is about where that beat is `implement` and nothing counts
-its content, because withholding an offer prints the words "which is
-unfinished" — a claim that beat alone does not support, since `wave` falls
-through to it for a gate-only milestone that has in fact finished (`PL-J45M`).
+answered before the comparison is reached. There is no exemption for the
+milestone the beat is about, and there was one: `implement` used to be `wave`'s
+fall-through when no release arrangement matched, and a gate-only milestone
+that had in fact finished, reached from the patch track beneath it, fell
+through to it — so withholding an offer would have printed "which is
+unfinished" against a milestone that was done. `_release_due` now reads the
+release train's row order and releases that shape from whichever row the
+project stands on, and `implement` is returned only where the milestone's own
+scope counts open work (`PL-J45M`, under `PL-2T03`).
 
 **What a release deliberately does not write is the roadmap.** A project that
 keeps a version table in a hand-maintained plan will find it left behind by

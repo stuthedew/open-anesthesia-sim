@@ -3,12 +3,13 @@ id: PL-7CSP
 title: bin/docket wave reports 'blocked outside the gate' identically for a blocker the plan schedules before the gate and one nothing schedules at all: PL-W8DQ and PL-NGF7 wait on PL-L9RD, which is in v0.4.26's own Required scope, so they read as stranded when they are merely sequenced
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: timeline-arrangement
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-15
-verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_a_blocker_the_timeline_schedules_ahead_of_the_gate_reads_as_sequenced' subprojects/docket/tests/test_roadmap.py
+closed: 2026-09-19
+verify: grep -q 'def test_a_blocker_the_timeline_schedules_ahead_of_the_gate_reads_as_sequenced' subprojects/docket/tests/test_roadmap.py
 ---
 
 **Problem.** bin/docket wave reports 'blocked outside the gate' identically for a blocker the plan schedules before the gate and one nothing schedules at all: PL-W8DQ and PL-NGF7 wait on PL-L9RD, which is in v0.4.26's own Required scope, so they read as stranded when they are merely sequenced
@@ -67,3 +68,14 @@ the tool's job is to stop hiding that there are two.
 line and the id list, and a test pins the split against a gate holding one of
 each.
 
+**Closed 2026-09-19 under `PL-2T03`.** `_blockers_outside` returns the frontier
+the walk left the list on, and `gate_status`, given the release train, reads
+where the plan places each blocker: an entry every one of whose blockers sits
+on a row before the gate's milestone is `sequenced_ahead`, carrying the row it
+waits for, and the rest are `waiting_outside` - placed later, or by no section.
+`bin/docket wave` prints `N sequenced ahead of it, M waiting on work outside
+it` on the count line, lists the sequenced ids with their row, and the beat
+line splits the same way. Neither is counted as clearable, so the gate closes
+exactly when it did. Pinned by
+`test_a_blocker_the_timeline_schedules_ahead_of_the_gate_reads_as_sequenced`
+and `test_a_blocker_placed_at_or_after_the_gate_is_not_sequenced_ahead_of_it`.

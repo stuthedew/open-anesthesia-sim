@@ -3,12 +3,14 @@ id: PL-2T03
 title: Four items re-derive the release train's arrangement by comparing version numbers, though ROADMAP.md's timeline table already records it
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: defect, infra
 feature: timeline-arrangement
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-19
+closed: 2026-09-19
 root-cause-of: PL-Y1L0, PL-J45M, PL-7CSP, PL-B5DW
+verify: grep -q 'def test_the_train_resolves_the_position_once' subprojects/docket/tests/test_roadmap.py && ! grep -q 'supported = plan.beat' subprojects/docket/src/docket/release.py
 ---
 
 **Problem.** Four items re-derive the release train's arrangement by comparing version numbers, though ROADMAP.md's timeline table already records it
@@ -85,3 +87,37 @@ sequencing, but neither answer constrains the other.
 timeline row rather than from a version comparison; `release.py:558`'s
 `supported` workaround is removed rather than left standing; and the four
 members are closed against it or re-briefed with what is left.
+
+**Decided and closed 2026-09-19, in the session that started it.** The object
+is `ReleaseTrain` in `subprojects/docket/src/docket/roadmap.py`, built once by
+`release_train` at the top of `wave`: the rows in table order, the position -
+the row after the last milestone released, which is still decided by the
+version because that comparison is identity rather than arrangement, per
+`Scope`'s recorded rule - the unreleased sections in row order (`ahead`), and
+`row`, `section`, `places` and `row_placing` for the questions downstream.
+The four call sites read it. `_due_before` walks the rows from the position to
+the gated milestone's own; `_release_due`'s first arrangement is a row
+comparison and its second releases a gate-only milestone from whichever row
+the project stands on, so `implement` is returned only where an `own_scope`
+counts open work; `gate_status` takes the train and splits `blocked_outside`
+into `sequenced_ahead` and `waiting_outside`; `render._plan_header` names the
+row apart from the anchor. `release.py`'s `supported` workaround is deleted.
+
+**What the train does not do, deliberately.** It does not move the position off
+the version. `PL-Y1L0`'s row above blamed `unreleased`'s comparison, and the
+alternative record - the version table - cannot tell a patch cut *at* a
+milestone's number from the milestone itself, so it would not have closed that
+case either, while changing the answer for every roadmap without a table. What
+the train adds instead is the report `PL-Y1L0` asked for: `ReleaseTrain.stale`
+carries a milestone row the project's version has passed with no release of
+that number in the version table, and a section no row bears; `format_wave`
+prints them under their own heading, the digest's plan line flags them,
+`bin/docket wave` exits non-zero on them, and `outstanding_roadmap_edits`
+states the reached-or-passed number at the hand-off. Measured on the live tree
+before building: no statement fires today.
+
+Members closed against it: `PL-Y1L0`, `PL-J45M`, `PL-7CSP`, `PL-B5DW`. Two
+residuals are filed under the same feature: the hand-off cannot tell a
+legitimate milestone release from a patch taking its number without the beat,
+and `wave` does not report a released milestone row whose section's `Required
+scope` is still open - the cut-at case, once the hand-off has scrolled by.

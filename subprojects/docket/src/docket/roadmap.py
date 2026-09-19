@@ -717,6 +717,24 @@ IMPLEMENT = "implement"
 
 
 @dataclass(frozen=True)
+class Sequenced:
+    """A gate entry blocked outside the list whose blockers the plan schedules first.
+
+    The timeline puts the section placing every blocker it waits on *ahead* of
+    the gate's own milestone, so the entry clears in the ordinary course of the
+    plan and needs nothing from anybody. Reported apart from an entry waiting
+    on work placed later or by no section, which is excused for as long as
+    nobody decides otherwise; printed identically, the second hid behind the
+    first (`PL-7CSP`).
+    """
+
+    entry: GateEntry
+    #: The label of the latest row scheduling one of its blockers - the row the
+    #: entry actually waits for.
+    row: str
+
+
+@dataclass(frozen=True)
 class GateStatus:
     """A frozen debt list, counted against the store that holds its items."""
 
@@ -749,10 +767,24 @@ class GateStatus:
     #: clear while one of these stands: the entry may be a typo or a file that
     #: never existed, and either way its state is unknown rather than closed.
     unknown_ids: tuple[str, ...]
+    #: The subset of `blocked_outside` whose off-list blockers the release train
+    #: schedules ahead of this gate's milestone, each with the row it waits for.
+    #: A refinement of the count rather than a fourth partition: what the gate
+    #: can be asked for is unchanged, and `clearable` still reads
+    #: `blocked_outside` whole. Empty where `gate_status` was given no train,
+    #: because the split is then not attempted rather than guessed.
+    sequenced_ahead: tuple[Sequenced, ...] = ()
 
     @property
     def ids(self) -> tuple[str, ...]:
         return tuple(identifier for entry in self.entries for identifier in entry.ids)
+
+    @property
+    def waiting_outside(self) -> tuple[GateEntry, ...]:
+        """`blocked_outside` less the sequenced: entries waiting on work the plan
+        places after this gate's milestone, or places nowhere at all."""
+        sequenced = {sequenced.entry for sequenced in self.sequenced_ahead}
+        return tuple(entry for entry in self.blocked_outside if entry not in sequenced)
 
     @property
     def clearable(self) -> tuple[GateEntry, ...]:
@@ -919,13 +951,15 @@ def milestone_scope(
 
     `sections` are the sections still ahead of the project - `wave` passes the
     unreleased ones, which is what makes a released section place nothing.
-    They are read in version order, which is timeline order for milestone rows
-    numbered or not, since `_timeline_order` fails a row written out of it. So
-    the *earliest* section placing an id is the one reported: an item placed by
-    both v0.3.0 and v0.4.0 is v0.3.0's, and saying so is what stops the marking
-    overstating how far off the work is. That holds for a section below the
-    anchor too, which is where the port sits while the gate above it is being
-    cleared (`PL-FWJF`).
+    They are read in the order given, which for `wave` is the release train's
+    row order (`ReleaseTrain.ahead`) and for a caller reading sections directly
+    is whatever it passed. So the *earliest* section placing an id is the one
+    reported: an item placed by both v0.3.0 and v0.4.0 is v0.3.0's, and saying
+    so is what stops the marking overstating how far off the work is. That
+    holds for a section below the anchor too, which is where the port sits
+    while the gate above it is being cleared (`PL-FWJF`). An anchor the caller
+    left out of `sections` is sorted in by version, which is the grammar's own
+    order for milestone rows and the only one such a caller has stated.
 
     **`clearing_gate` narrows the anchor to its gate.** A section places ids
     through two structures, and while a gate is open only one of them is work
@@ -954,9 +988,12 @@ def milestone_scope(
     # The anchor is read at its own position in the order, so that an id it
     # shares with a section below it is reported as the earlier section's. It
     # contributes only what `current` left out, which is empty unless a gate is
-    # being cleared; added to the set rather than assumed present, so a caller
-    # passing sections without it still has the anchor's own scope placed.
-    for section in sorted({*sections, anchor}, key=lambda candidate: candidate.version):
+    # being cleared; sorted in rather than assumed present, so a caller passing
+    # sections without it still has the anchor's own scope placed.
+    ordered = list(sections)
+    if anchor not in ordered:
+        ordered = sorted([*ordered, anchor], key=lambda candidate: candidate.version)
+    for section in ordered:
         ids = (
             placed - current if section.version == anchor.version else frozenset(section.scope_ids)
         )
@@ -985,7 +1022,8 @@ class Wave:
 
     version: str
     #: The row the project is on: the one after the last milestone it has
-    #: released. `None` when the timeline is unreadable or empty.
+    #: released, as `ReleaseTrain` resolves it. `None` when the timeline is
+    #: unreadable or empty.
     step: TimelineStep | None
     next_step: TimelineStep | None
     #: How many numbered steps the timeline carries, for "step 1 of 9".
@@ -1033,6 +1071,12 @@ class Wave:
     #: `PL-Q2BJ` already cost (`PL-KD98`).
     release_version: tuple[int, int, int] | None = None
     release_name: str = ""
+    #: Statements the plan and the project disagree on - a milestone row the
+    #: version has passed with no release of that number recorded, a section no
+    #: row places - from `ReleaseTrain.stale`. Distinct from `problems`, which
+    #: are breaches of the table's grammar: these rows parse, and the beat above
+    #: them is computed from an arrangement one of two files has made stale.
+    stale: tuple[str, ...] = ()
 
 
 def version_tuple(version: str) -> tuple[int, int, int] | None:
@@ -1044,18 +1088,202 @@ def version_tuple(version: str) -> tuple[int, int, int] | None:
     return major, minor, patch
 
 
-def _blocked_outside(
+# --- the release train, resolved once ---------------------------------------
+
+
+@dataclass(frozen=True)
+class ReleaseTrain:
+    """`ROADMAP.md`'s release train as an arrangement: the rows in table order,
+    the row the project stands on, and the section each milestone row bears.
+
+    Resolved once, by `release_train`, and handed to everything downstream that
+    asks what comes before what. Before it existed each consumer re-derived the
+    arrangement by comparing `(major, minor, patch)` tuples, and the comparison
+    agreed with the table until it did not: a gate-only milestone reached from
+    a row that was not its own fell through to `implement`, a blocker the
+    timeline scheduled ahead of the gate printed like one nothing scheduled,
+    and the plan header called the anchor the step while `wave` named another
+    row - each found separately, each patched at its own site (`PL-2T03`,
+    naming `PL-Y1L0`, `PL-J45M`, `PL-7CSP` and `PL-B5DW`). The table's row
+    order **is** the arrangement - `_timeline_order` fails a milestone row
+    written out of it - so this carries the order, and nothing downstream
+    compares versions to recover it.
+
+    Two things stay by version, deliberately, because they are not arrangement.
+    Which sections are *released* is decided by the version the project is on
+    (`Scope` records why), and a section is bound to its row by the version
+    both carry, which is identity rather than order. Where the two files that
+    state the project's position disagree - a milestone number the version has
+    passed with no release of it recorded, a section the table places nowhere -
+    `stale` says so, and nothing here resolves it.
+    """
+
+    steps: tuple[TimelineStep, ...]
+    #: Every milestone section, in the version order `parse_milestones` returns.
+    sections: tuple[MilestoneSection, ...]
+    current: tuple[int, int, int] | None
+    #: The index of the row the project stands on: the one after the last
+    #: milestone row it has released (`_current_step`). `None` when the
+    #: timeline is empty or the version has run off its end.
+    position: int | None
+    #: The unreleased sections in the train's order: those a row bears, by row,
+    #: then any no row bears, by version among themselves - the plan does not
+    #: say where those come, and `stale` reports each of them.
+    ahead: tuple[MilestoneSection, ...]
+    #: Grammar breaches in the table, from `parse_timeline`.
+    problems: tuple[str, ...]
+    #: Statements the plan and the project disagree on. Each is a fact about
+    #: two files, reported so a reader can go and repair one of them.
+    stale: tuple[str, ...]
+
+    @property
+    def step(self) -> TimelineStep | None:
+        return self.steps[self.position] if self.position is not None else None
+
+    @property
+    def next_step(self) -> TimelineStep | None:
+        if self.position is None or self.position + 1 >= len(self.steps):
+            return None
+        return self.steps[self.position + 1]
+
+    @property
+    def total_steps(self) -> int:
+        """How many numbered steps the timeline carries, for "step 1 of 9"."""
+        return sum(1 for step in self.steps if step.ordinal is not None)
+
+    def row(self, section: MilestoneSection) -> int | None:
+        """The index of the milestone row bearing `section`, or `None`.
+
+        Bound by the version both carry, which is identity rather than
+        arrangement: a section is *about* the release its heading names, and
+        the row is where the plan puts that release.
+        """
+        for index, step in enumerate(self.steps):
+            if step.kind == "milestone" and step.version == section.version:
+                return index
+        return None
+
+    def section(self, step: TimelineStep) -> MilestoneSection | None:
+        """The section a milestone row bears, or `None` for a row bearing none."""
+        if step.kind != "milestone" or step.version is None:
+            return None
+        return next((s for s in self.sections if s.version == step.version), None)
+
+    def places(self, identifier: str) -> MilestoneSection | None:
+        """The first unreleased section, in the train's order, that places the id.
+
+        The same two structures `Scope` reads - the frozen list and `Required
+        scope` - so an id a section merely mentions is placed by nobody here
+        too (`SECTION_ID_RE`).
+        """
+        return next((s for s in self.ahead if identifier in s.scope_ids), None)
+
+    def row_placing(self, identifier: str) -> int | None:
+        """The index of the row whose section places the id.
+
+        `None` when no unreleased section places it, and also when the one
+        that does has no row: the plan then names the work without saying
+        where it comes, which is no arrangement to compare against.
+        """
+        section = self.places(identifier)
+        return self.row(section) if section is not None else None
+
+
+def release_train(roadmap: str, version: str) -> ReleaseTrain:
+    """Read the release train once: the rows, the position, and what is ahead."""
+    steps, problems = parse_timeline(roadmap)
+    sections = parse_milestones(roadmap)
+    current = version_tuple(version)
+    position = _current_step(steps, current)
+
+    rows: dict[tuple[int, int, int], int] = {}
+    for index, step in enumerate(steps):
+        if step.kind == "milestone" and step.version is not None:
+            rows.setdefault(step.version, index)
+    unreleased = [s for s in sections if current is None or s.version > current]
+    placed = sorted((s for s in unreleased if s.version in rows), key=lambda s: rows[s.version])
+    unplaced = [s for s in unreleased if s.version not in rows]
+
+    stale = stale_milestones(steps, sections, parse_version_table(roadmap), current)
+    stale.extend(
+        f"line {section.line}: the {section.label} section has no timeline row, so the plan"
+        " does not say where it comes"
+        for section in unplaced
+    )
+    return ReleaseTrain(
+        steps=tuple(steps),
+        sections=tuple(sections),
+        current=current,
+        position=position,
+        ahead=tuple(placed + unplaced),
+        problems=tuple(problems),
+        stale=tuple(stale),
+    )
+
+
+def stale_milestones(
+    steps: Sequence[TimelineStep],
+    sections: Sequence[MilestoneSection],
+    rows: Sequence[VersionRow],
+    reached: tuple[int, int, int] | None,
+) -> list[str]:
+    """The milestone rows numbered at or below `reached` with no release of that
+    number in the version table, each as a statement of the two files.
+
+    Two files state where the project is - the version it carries and the
+    plan's numbering - and this is where they disagree without either being
+    malformed. A patch cut at or past a milestone's number while that
+    milestone is unshipped leaves its row numbered behind the project, and the
+    train then stands on the row after it: the owner's placement of that
+    milestone is reversed by a release that never touched it, and nothing
+    reported it (`PL-Y1L0`). The version table is the record of what shipped -
+    every release writes a row there - so a milestone number the project has
+    reached with no row is either the release being cut right now or a number
+    the plan needs to give back, and each statement says which edit its case
+    owes. A table recording nothing is no record to compare against and
+    answers nothing here; `outstanding_roadmap_edits` reports that on its own.
+    """
+    recorded = {row.version for row in rows if COMPLETED in row.status}
+    if not recorded or reached is None:
+        return []
+    by_version = {section.version: section for section in sections}
+    statements: list[str] = []
+    for step in steps:
+        if step.kind != "milestone" or step.version is None or step.version > reached:
+            continue
+        number = "{}.{}.{}".format(*step.version)
+        if number in recorded:
+            continue
+        section = by_version.get(step.version)
+        where = f"timeline line {step.line}"
+        where += f", section line {section.line}" if section is not None else ", no section"
+        if step.version == reached:
+            statements.append(
+                f"{step.label} ({where}) is numbered v{number}, which the project has reached"
+                f" with no v{number} release in the version table: its table row is owed if"
+                " this release is that milestone, and a new number if it is not"
+            )
+        else:
+            statements.append(
+                f"{step.label} ({where}) is numbered v{number}, which the project has passed"
+                f" with no v{number} release in the version table: the row and its section"
+                " owe a number the project has not passed"
+            )
+    return statements
+
+
+def _blockers_outside(
     identifier: str,
     blockers: Mapping[str, Sequence[str]],
     gate_ids: frozenset[str],
     closed_ids: frozenset[str],
     seen: set[str],
-) -> bool:
-    """Whether clearing this id needs work the frozen list does not hold.
+) -> frozenset[str]:
+    """The open blockers this id waits on that the frozen list does not hold.
 
     Follows `blocked-by` from the id, skipping blockers that have already
-    closed, and answers True the moment the walk leaves the list. Two kinds of
-    entry leave it, and they are one fact rather than two special cases: a
+    closed, and collects each one at which the walk leaves the list. Two kinds
+    of entry leave it, and they are one fact rather than two special cases: a
     milestone version is never an item on the list, and an item off the list
     is work the gate was not frozen to contain. A blocker that is *itself* a
     gate entry keeps the walk inside, so a list that sequences its own entries
@@ -1066,21 +1294,28 @@ def _blocked_outside(
     this gate guards; one hop would have stopped at a gate entry's blocker
     without asking what that blocker waits on in turn.
 
-    A cycle answers False on its second visit: two entries waiting on each
+    The walk does not continue *past* a blocker off the list: where the plan
+    places that blocker is the plan's business, and what it waits on in turn
+    is that milestone's. Collecting the frontier rather than answering at the
+    first crossing is what lets `gate_status` say *where* each one sits
+    (`PL-7CSP`); an empty answer means the walk never left the list.
+
+    A cycle adds nothing on its second visit: two entries waiting on each
     other are stuck, but they are stuck *inside* the gate, and saying
     otherwise would move a deadlock out of the count that should show it.
     """
     if identifier in seen:
-        return False
+        return frozenset()
     seen.add(identifier)
+    outside: set[str] = set()
     for blocker in blockers.get(identifier, ()):
         if blocker in closed_ids:
             continue
         if blocker not in gate_ids:
-            return True
-        if _blocked_outside(blocker, blockers, gate_ids, closed_ids, seen):
-            return True
-    return False
+            outside.add(blocker)
+            continue
+        outside |= _blockers_outside(blocker, blockers, gate_ids, closed_ids, seen)
+    return frozenset(outside)
 
 
 def gate_status(
@@ -1088,6 +1323,7 @@ def gate_status(
     closed_ids: frozenset[str],
     known_ids: frozenset[str],
     blockers: Mapping[str, Sequence[str]],
+    train: ReleaseTrain | None = None,
 ) -> GateStatus:
     """Count a frozen list against the store, entry by entry.
 
@@ -1109,6 +1345,16 @@ def gate_status(
     subsection alone, which is what the rule names - the union `scope_ids`
     would fold the frozen list back in and make every entry its own excuse.
 
+    `train`, when given, answers one more question about each entry blocked
+    outside: whether the plan schedules the work it waits on *ahead* of this
+    gate's milestone, in which case it clears in the ordinary course and needs
+    nothing from anybody. That is `sequenced_ahead`, and it is a second answer
+    from the walk already happening rather than a new traversal - the frontier
+    the walk stopped on, read against where the train places each id. An entry
+    is sequenced only where *every* blocker it stopped on is placed by a row
+    before the gate's; one placed later, or by no section, leaves it waiting
+    outside. Without a train the split is not attempted (`PL-7CSP`).
+
     **The section's group headings are not read, and are not the test.** Gate 1
     writes the same split in prose - "Cleared by v0.5.0 itself" - and the two
     disagreed on three ids when this was built: `PL-2FM6` and `PL-8LXM` sit
@@ -1129,15 +1375,26 @@ def gate_status(
         else:
             outstanding.append(entry)
     gate_ids = frozenset(identifier for entry in milestone.gate_entries for identifier in entry.ids)
-    blocked_outside = tuple(
-        entry
-        for entry in outstanding
-        if any(
-            identifier not in closed_ids
-            and _blocked_outside(identifier, blockers, gate_ids, closed_ids, set())
-            for identifier in entry.ids
+    outside: dict[GateEntry, frozenset[str]] = {}
+    for entry in outstanding:
+        frontier = frozenset().union(
+            *(
+                _blockers_outside(identifier, blockers, gate_ids, closed_ids, set())
+                for identifier in entry.ids
+                if identifier not in closed_ids
+            )
         )
-    )
+        if frontier:
+            outside[entry] = frontier
+    blocked_outside = tuple(entry for entry in outstanding if entry in outside)
+    sequenced: list[Sequenced] = []
+    gate_row = train.row(milestone) if train is not None else None
+    if train is not None and gate_row is not None:
+        for entry in blocked_outside:
+            rows = [train.row_placing(blocker) for blocker in sorted(outside[entry])]
+            ahead = [row for row in rows if row is not None and row < gate_row]
+            if len(ahead) == len(rows):
+                sequenced.append(Sequenced(entry=entry, row=train.steps[max(ahead)].label))
     held = set(blocked_outside)
     own_scope = frozenset(milestone.own_scope_ids)
     # Every *open* id, rather than every id: an entry holding a closed id and an
@@ -1162,6 +1419,7 @@ def gate_status(
         blocked_outside=blocked_outside,
         self_cleared=self_cleared,
         unknown_ids=tuple(unknown),
+        sequenced_ahead=tuple(sequenced),
     )
 
 
@@ -1192,18 +1450,13 @@ def _current_step(
     return following if following < len(steps) else None
 
 
-def _due_before(
-    steps: Sequence[TimelineStep],
-    sections: Sequence[MilestoneSection],
-    current: tuple[int, int, int] | None,
-    milestone: MilestoneSection,
-) -> MilestoneSection | None:
+def _due_before(train: ReleaseTrain, milestone: MilestoneSection) -> MilestoneSection | None:
     """The section-bearing timeline row the plan puts before `milestone`, if any.
 
-    The rows between the project and the milestone whose gate has just cleared
-    are read in timeline order, numbered or not. The `#` column says whether a
-    row is a step of its own, and the Qt port is not one: it sits on a `—` row
-    between Gate 1 and v0.5.0, takes a patch number, and carries a section with
+    The rows from the one the project stands on up to the gated milestone's
+    own are read in table order, numbered or not. The `#` column says whether a
+    row is a step of its own, and the Qt port was not one: it sat on a `—` row
+    between Gate 1 and v0.5.0, took a patch number, and carried a section with
     a `Required scope`. Anchoring on the next *numbered* milestone read straight
     past it, so `wave` printed `implement v0.5.0` for the whole of the port and
     `docket next` told every session the port's items were placed by no section
@@ -1217,21 +1470,19 @@ def _due_before(
     is passed over the same way, which is what keeps `v0.4.x` the step the
     project stands on while the port is the work.
 
-    "Before" is by version, which the timeline grammar makes agree with row
-    order for milestone rows: `_timeline_order` fails one written out of
-    sequence. A row placed above its gate's row is not told apart from one
-    below it, deliberately - an open gate is the beat whatever else is written,
-    and this is consulted only once the gate is clear.
+    "Before" is the table's row order and nothing else. It used to be a version
+    comparison the grammar made agree with row order for milestone rows
+    (`PL-2T03`); the train carries the order now, so a milestone no row bears
+    has nothing before it here, and `ReleaseTrain.stale` says so rather than
+    this guessing. A row placed above its gate's row is still not told apart
+    from one below it, deliberately: an open gate is the beat whatever else is
+    written, and this is consulted only once the gate is clear.
     """
-    by_version = {section.version: section for section in sections}
-    for step in steps:
-        if step.kind != "milestone" or step.version is None:
-            continue
-        if current is not None and step.version <= current:
-            continue
-        if step.version >= milestone.version:
-            return None
-        section = by_version.get(step.version)
+    end = train.row(milestone)
+    if train.position is None or end is None:
+        return None
+    for step in train.steps[train.position : end]:
+        section = train.section(step)
         if section is not None and section.records_its_own_scope:
             return section
     return None
@@ -1308,7 +1559,7 @@ class ReleaseDue:
 
 
 def _release_due(
-    step: TimelineStep | None, gate: GateStatus, own_scope: ScopeStatus | None
+    train: ReleaseTrain, gate: GateStatus, own_scope: ScopeStatus | None
 ) -> ReleaseDue | None:
     """What a clear gate leaves to release, or `None` when it leaves work.
 
@@ -1316,15 +1567,19 @@ def _release_due(
     implementation, and they are different shapes rather than one comparison
     written loosely:
 
-    - the step is an *earlier* milestone than the section that recorded the
-      gate, so that gate earns a version of its own and ships before the
-      milestone it gates is implemented - Gate 0's exception, where the list
-      frozen under v0.4.0 ships as v0.3.0;
-    - the step *is* that section, and the section records no scope of its
-      own, so its frozen list is the whole of its content - `ROADMAP.md`'s
-      v0.2.8, whose list "is its own scope, recorded under a gate heading
-      because that subsection is what `bin/docket wave` reads". Clearing it
-      finishes the milestone, so the act due is to cut the release;
+    - the row the project stands on is a milestone the table puts *before* the
+      section that recorded the gate, so that gate earns a version of its own
+      and ships before the milestone it gates is implemented - Gate 0's
+      exception, where the list frozen under v0.4.0 ships as v0.3.0;
+    - the section that recorded the gate records no scope of its own, so its
+      frozen list is the whole of its content - `ROADMAP.md`'s v0.2.8, whose
+      list "is its own scope, recorded under a gate heading because that
+      subsection is what `bin/docket wave` reads". Clearing it finishes the
+      milestone, so the act due is to cut the release, **from whichever row
+      the project stands on**. This used to ask that the row be the milestone's
+      own, so a finished gate-only milestone reached from the patch track
+      beneath it fell through to `implement` - and `release_offer` grew a guard
+      for exactly that fall-through, which went with it (`PL-J45M`);
     - the section records a scope of its own **and every id in it has closed**.
       Its gate cleared so that scope could be implemented, which is the
       cadence's ordinary case - and the case ends when the scope does.
@@ -1339,26 +1594,30 @@ def _release_due(
     the cut anyway and was right. The wording is now true because the
     computation is, rather than by being softened around a construction.
 
-    The first arrangement is tested before the third, and the order is
+    The first arrangement is tested before the others, and the order is
     load-bearing: under Gate 0's exception the gate ships as its own earlier
     version *first*, so a gated milestone whose scope happened to be complete
     would otherwise be offered ahead of the release its own gate earned.
 
-    The third arrangement does not consult `step`, and the other two do. That is
-    not an oversight either: `_current_step` puts the project on the row after
-    the last milestone it released, which on this roadmap is the `v0.4.x`
-    patch-track row - not a milestone, and carrying `(0, 4, -1)` rather than a
-    release number, the `-1` marking a track rather than a version anything can
-    be cut at. A third arrangement resting on `step` would therefore never fire
-    on the very project that filed the item.
+    `None` now means exactly one thing: the milestone records a scope of its
+    own and that scope is open. `implement` is a count rather than a
+    fall-through, and `wave` always has an `own_scope` to print beside it.
     """
-    if step is not None and step.kind == "milestone" and step.version is not None:
-        if step.version < gate.milestone.version:
-            return ReleaseDue(step.label, step.version, step.name)
-        if step.version == gate.milestone.version and not gate.milestone.records_its_own_scope:
-            return ReleaseDue(step.label, step.version, step.name)
+    step = train.step
+    gate_row = train.row(gate.milestone)
+    if (
+        step is not None
+        and step.kind == "milestone"
+        and step.version is not None
+        and train.position is not None
+        and gate_row is not None
+        and train.position < gate_row
+    ):
+        return ReleaseDue(step.label, step.version, step.name)
+    section = gate.milestone
+    if not section.records_its_own_scope:
+        return ReleaseDue(section.label, section.version, section.name)
     if own_scope is not None and own_scope.is_complete:
-        section = gate.milestone
         return ReleaseDue(section.label, section.version, section.name)
     return None
 
@@ -1395,19 +1654,22 @@ def wave(
     gate be released as another version - so asking each step's own section
     whether it looks scoped would report v0.3.0, whose whole content is the
     gate recorded under v0.4.0, as unscoped work waiting to be written.
+
+    Every question of arrangement - which section records the next gate, what
+    comes before what, which row the project stands on - is put to one
+    `ReleaseTrain`, resolved first and handed down. The version is compared
+    once, to decide which sections are released; nothing below compares it to
+    recover an order the table already states (`PL-2T03`).
     """
-    steps, problems = parse_timeline(roadmap)
-    sections = parse_milestones(roadmap)
-    current = version_tuple(version)
+    train = release_train(roadmap, version)
+    step = train.step
 
-    index = _current_step(steps, current)
-    step = steps[index] if index is not None else None
-    next_step = steps[index + 1] if index is not None and index + 1 < len(steps) else None
-    total = sum(1 for candidate in steps if candidate.ordinal is not None)
-
-    unreleased = [section for section in sections if current is None or section.version > current]
-    recorded = [section for section in unreleased if section.records_a_gate]
-    gate = gate_status(recorded[0], closed_ids, known_ids, blockers) if recorded else None
+    recorded = next((section for section in train.ahead if section.records_a_gate), None)
+    gate = (
+        gate_status(recorded, closed_ids, known_ids, blockers, train=train)
+        if recorded is not None
+        else None
+    )
     own_scope = (
         scope_status(gate.milestone, closed_ids, known_ids)
         if gate is not None and gate.milestone.records_its_own_scope
@@ -1426,7 +1688,7 @@ def wave(
         beat, milestone, subject = CLEAR, gate.milestone, gate.milestone.label
         clearing = gate
     elif gate is not None:
-        before = _due_before(steps, sections, current, gate.milestone)
+        before = _due_before(train, gate.milestone)
         if before is not None:
             # The cadence reaches the gated milestone only once the row before
             # it has shipped, so that row's own scope is what the beat counts,
@@ -1439,28 +1701,28 @@ def wave(
             else:
                 beat, milestone, subject = IMPLEMENT, before, before.label
         else:
-            due = _release_due(step, gate, own_scope)
+            due = _release_due(train, gate, own_scope)
             if due is not None:
                 beat, milestone, subject = RELEASE, gate.milestone, due.label
             else:
                 beat, milestone, subject = IMPLEMENT, gate.milestone, gate.milestone.label
     else:
-        ahead = [
-            candidate
-            for candidate in steps
-            if candidate.kind == "milestone"
-            and candidate.version is not None
-            and (current is None or candidate.version > current)
-        ]
-        target = ahead[0] if ahead else None
-        milestone = next(
-            (
-                section
-                for section in sections
-                if target is not None and section.version == target.version
-            ),
-            None,
+        # The first milestone row at or after the position, whether or not a
+        # section exists for it yet: a milestone is placed on the train long
+        # before it is scoped, and the beat asks for the scoping.
+        target = (
+            next(
+                (
+                    candidate
+                    for candidate in train.steps[train.position :]
+                    if candidate.kind == "milestone" and candidate.version is not None
+                ),
+                None,
+            )
+            if train.position is not None
+            else None
         )
+        milestone = train.section(target) if target is not None else None
         scoped = milestone is not None and milestone.is_scoped
         beat = FREEZE if scoped else SCOPE
         subject = target.label if target is not None else ""
@@ -1468,27 +1730,32 @@ def wave(
     return Wave(
         version=version,
         step=step,
-        next_step=next_step,
-        total_steps=total,
+        next_step=train.next_step,
+        total_steps=train.total_steps,
         gate=gate,
         own_scope=own_scope,
         milestone=milestone,
         scope=milestone_scope(
-            unreleased,
+            train.ahead,
             milestone,
             clearing_gate=clearing,
             # Only when they differ: naming the step where it *is* the anchor
             # would invite a caller to print a distinction that is not there.
+            # Rows rather than versions, so a section no row bears is always
+            # named apart from the row the project stands on.
             step_label=(
                 step.label
-                if step is not None and milestone is not None and step.version != milestone.version
+                if step is not None
+                and milestone is not None
+                and train.position != train.row(milestone)
                 else ""
             ),
         ),
-        reserved=_reserved_versions(steps, sections, current),
+        reserved=_reserved_versions(train.steps, train.sections, train.current),
         beat=beat,
         subject=subject,
         release_version=due.version if due is not None else None,
         release_name=due.name if due is not None else "",
-        problems=tuple(problems),
+        problems=train.problems,
+        stale=train.stale,
     )
