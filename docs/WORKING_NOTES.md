@@ -1811,9 +1811,10 @@ conflation lives. Any future measurement of this kind should start there.
 
 **Two items came out of it**, both filed rather than folded in: `PL-ZPDM`, the
 three reads answering with a bare collection or string, which cannot decline at
-all and are held by a test asserting the breach rather than by an `xfail` -
-`bin/docket verify` reads a suppression marker and cannot read the reason on it,
-so a recorded breach has to be written as an assertion to survive its own audit;
+all and are held by a test asserting the breach rather than by a marker excusing
+it - `bin/docket verify` reads a suppression marker and cannot read the reason
+attached to it, so a recorded breach has to be written as an assertion to survive
+its own audit;
 and `PL-29HL`, `cli`'s `verify` passing no runner to `default_base`. `PL-MM7F` - the memo serving a
 cached failure forever - is unblocked by this and is the next build in the
 cluster, with Q3's directional predicate (`PL-SH9Q`, `PL-KSCW`, `PL-MBTZ` as one

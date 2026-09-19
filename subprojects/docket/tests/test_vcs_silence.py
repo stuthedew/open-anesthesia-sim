@@ -457,11 +457,11 @@ def test_a_read_answering_with_a_bare_value_has_no_way_to_decline(read: Read, re
     public return types and every caller, which is a build of its own.
 
     **Asserted rather than marked expected-to-fail**, and the difference is what
-    a reader is left with. An `xfail` is a test that does not run, which reads
-    as a hole whatever the reason attached to it; this states what is true today
-    and fails the moment it stops being - the same signal, in the form of a
-    record. It is also the form `bin/docket verify` can tell apart from a
-    suppression, correctly, since it cannot read the reason on a marker.
+    a reader is left with. A test marked that way does not run, which reads as a
+    hole whatever the reason attached to it; this states what is true today and
+    fails the moment it stops being - the same signal, in the form of a record.
+    It is also the form `bin/docket verify` can tell apart from a suppression,
+    correctly, since it cannot read the reason on a marker.
     """
     lost = _lost_to_a_silence(read, repo)
 

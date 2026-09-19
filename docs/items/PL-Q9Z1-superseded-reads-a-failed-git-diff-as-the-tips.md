@@ -172,9 +172,9 @@ finding for another is caught too.
 `default_base` answer with a bare collection or string - and are held by a test
 that *asserts the breach* against `PL-ZPDM` rather than left looking covered.
 Asserted rather than marked expected-to-fail, which was the first shape and was
-wrong twice over: an `xfail` is a test that does not run, so it reads as a hole
+wrong twice over: a test marked that way does not run, so it reads as a hole
 whatever reason is attached to it, and `bin/docket verify` cannot read that
-reason - it sees a suppression and refuses, correctly. A positive assertion is
+reason - it sees a suppression marker and refuses, correctly. A positive assertion is
 the same signal in the form of a record, and fails the same day the gap closes.
 
 **Two consumers refuse rather than proceed on a silence.** `bin/docket release`
