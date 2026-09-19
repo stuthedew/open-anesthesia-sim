@@ -9,6 +9,7 @@ feature: verify-replay-cost
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-09-17
 closed: 2026-09-19
+pr: 705
 verify: grep -q 'def test_the_costliest_command_is_named_and_held_to_no_threshold' subprojects/docket/tests/test_checks.py && ! grep -q '_check_slow_commands' subprojects/docket/src/docket/checks.py
 ---
 

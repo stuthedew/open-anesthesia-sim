@@ -10,6 +10,7 @@ milestone: v0.4.28
 touches: docs/items
 added: 2026-09-19
 closed: 2026-09-19
+pr: 691
 verify: grep -rq '^id: PL-NZC0$' docs/items/ && grep -rq '^id: PL-050P$' docs/items/
 ---
 

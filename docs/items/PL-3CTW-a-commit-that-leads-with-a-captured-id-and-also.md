@@ -9,6 +9,7 @@ milestone: v0.4.28
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-19
 closed: 2026-09-19
+pr: 701
 verify: grep -q 'def test_the_digest_sends_an_unlanded_claim_to_stranded_rather_than_refusing_it' subprojects/docket/tests/test_vcs.py
 ---
 

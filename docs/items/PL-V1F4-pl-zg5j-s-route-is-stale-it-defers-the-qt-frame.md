@@ -9,6 +9,7 @@ feature: frame-cost-harness
 touches: docs/items
 added: 2026-09-16
 closed: 2026-09-19
+pr: 703
 verify: grep -q 'The port is done, so the toolkit question is settled' docs/items/PL-ZG5J-*.md && ! grep -q 'rather than landing a Flet one now' docs/items/PL-ZG5J-*.md
 ---
 

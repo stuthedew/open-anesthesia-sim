@@ -10,6 +10,7 @@ milestone: v0.4.28
 touches: subprojects/docket/README.md, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
 closed: 2026-09-19
+pr: 693
 verify: grep -q 'def test_show_names_the_generator_that_explains_a_member' subprojects/docket/tests/test_cli.py
 ---
 

@@ -3,11 +3,13 @@ id: PL-ZG5J
 title: Land the headless frame-cost harness that measured all of the above, so the simulation-versus-UI split can be re-measured rather than re-derived
 priority: P3
 effort: M
-status: needs-decision
+status: done
 classes: infra, perf
 feature: frame-cost-harness
-touches: tests/benchmarks, docs/WORKING_NOTES.md
+touches: tests/benchmarks/frame_cost.py, tests/benchmarks/test_frame_cost.py, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-08
+closed: 2026-09-19
+verify: grep -q 'def test_every_stage_is_timed_and_finite' tests/benchmarks/test_frame_cost.py
 ---
 
 **Problem.** `PL-YSZN`, `PL-KP7H`, `PL-R2YM` and `PL-SQJ1` were all measured on
@@ -97,3 +99,60 @@ against that fixture's shape. One environment fact belongs with the decision:
 run outside pytest must set it itself or `QApplication([])` aborts on the
 missing `xcb` plugin - measured the same day, and an argument for the test tree
 over a `bench/` one rather than a decision on its own.
+
+**Answered and landed, 2026-09-19: `tests/benchmarks/frame_cost.py`, and the
+standard-library rule is a property of `tools/` rather than of anything
+runnable.**
+
+The second half of the question was already decided in the tree and needed no
+new judgment. `tests/unit/test_tools_portability.py` holds the rule by
+*directory*, and says why in its own docstring: "Two directories qualify, for
+one reason. `tools/` is invoked by `make check` and CI; `.claude/hooks/` is
+invoked by Claude Code ... Neither goes through the project virtualenv." The
+promise is about how a file is invoked, not about its being runnable. A harness
+importing `PySide6` and the package itself can only ever run inside the
+virtualenv, so it is outside that set and needs no exemption from it - and
+nothing in `CLAUDE.md` had to change, its sentence being scoped to "new tools"
+already.
+
+`tests/benchmarks/` over a `bench/` tree, because the test tree already carries
+everything this needs and a new top-level tree would re-declare all of it:
+`tests/conftest.py` selects the `offscreen` platform;
+`tools/workflow_paths_check.py` puts both files on the product side of the lane
+boundary from their imports, with no `docket.toml` edit;
+`tests/integration/test_qt_rendering.py` is the instance the setup copies; and
+pytest collects nothing whose name does not begin `test_`, so the harness
+itself stays out of `make check` while sitting beside the suite that keeps it
+alive. What a `bench/` tree would have bought - "this is not a test" stated by
+the path - the module docstring states in a sentence.
+
+**What landed.** `uv run python tests/benchmarks/frame_cost.py`, about three
+seconds, no new dependency. Steps per frame are derived from
+`SIMULATION_STEP_S`, `SIMULATION_TICK_INTERVAL_S` and `RENDER_INTERVAL_S`
+rather than written in, so a cadence change moves the measurement with it, and
+the rate is validated through `app/playback.py`'s own ladder. Two
+configurations are refused rather than measured: a rate the interface does not
+offer, and a run whose elapsed simulated time does not match the steps asked
+for - which is what a halted or capped controller leaves, since `advance` then
+returns immediately and would report the simulation as free.
+
+Measured on this container at the defaults, medians over three runs: `advance`
+12.0 ms, `present` 15.3 ms, `processEvents` 13.1 ms, so the interface costs
+28.4 ms of a 40.4 ms frame against the 200 ms budget, and a two-stage harness
+would have reported the interface at 15.3 ms - 46% low, in the flattering
+direction. The control, a second `processEvents`, costs 0.08 ms. That
+reproduces the 2026-09-19 throwaway reading above within the spread between
+runs, which is the point: the numbers differ by the container, the split does
+not.
+
+`tests/benchmarks/test_frame_cost.py` is the decidable half - that the harness
+still runs and still reports the stages it names - and asserts nothing about a
+duration, since a threshold would measure the runner rather than the code. It
+runs at 1x over a 30 s warm-up and costs the suite about a second.
+
+`docs/ARCHITECTURE.md` § "Tests (`tests/`)" gains the fourth tree, which is
+where `.claude/rules/where-new-code-goes.md` sends a session that asks the same
+question again. `docs/WORKING_NOTES.md` is deliberately untouched: the stale
+frame-cost prose in it is `PL-4HKS`'s, the other half of `feature:
+frame-cost-harness`, and that item now names the command that supplies its
+numbers.

@@ -10,6 +10,7 @@ milestone: v0.4.28
 touches: .claude/rules/instruction-writing.md, .claude/skills/docket/SKILL.md, docs/resident-instructions.md
 added: 2026-09-19
 closed: 2026-09-19
+pr: 692
 verify: python3 tools/doc_check.py check && grep -qF 'turns on consequence, not on what the' .claude/rules/instruction-writing.md
 ---
 

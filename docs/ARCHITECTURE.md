@@ -1050,6 +1050,23 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   release gate. A reference case here may import the parameter loaders but
   must not reach a solver in `core/`: the value of the case is that it was
   derived independently of the code it checks.
+- **`tests/benchmarks/`** — measurement harnesses, which are not tests and
+  are not collected as any: `frame_cost.py` drives a real dashboard frame by
+  frame under the `offscreen` platform and times each frame's simulation
+  (`controller.advance`), assembly (`SimulationView.present`) and paint
+  (`QApplication.processEvents`), so "is this the simulation or the
+  interface" is re-measured with one command rather than re-derived on a
+  throwaway harness for a fifth time (`PL-ZG5J`). Run it with `uv run python
+  tests/benchmarks/frame_cost.py`; it takes about three seconds and prints
+  timings, which are a judgment rather than a verdict. This is why such a
+  harness is not a `tools/` script: those are invoked by `make check`, CI and
+  the hooks under a bare `python3` outside the project virtualenv, which is
+  what makes them standard-library-only, and a harness that imports PySide6
+  and the package itself can only ever run inside it. What *is* decidable
+  about one — that it still runs, and still reports the stages it names — is
+  a collected test beside it, `test_frame_cost.py`, which asserts nothing
+  about a duration: a threshold here would measure the runner rather than the
+  code.
 
 ## Where new code belongs
 

@@ -10,6 +10,7 @@ milestone: v0.4.28
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-14
 closed: 2026-09-19
+pr: 692
 verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_an_id_a_scope_entry_names_only_in_prose_is_not_claimed' subprojects/docket/tests/test_roadmap.py
 ---
 

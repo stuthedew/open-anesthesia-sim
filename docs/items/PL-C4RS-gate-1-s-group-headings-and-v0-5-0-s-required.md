@@ -10,6 +10,7 @@ milestone: v0.4.28
 touches: ROADMAP.md, tools/doc_check.py
 added: 2026-09-14
 closed: 2026-09-19
+pr: 692
 verify: python3 tools/doc_check.py check && grep -qF 'the three ids below now sit under headings that agree with `Required scope`' ROADMAP.md
 ---
 

@@ -10,6 +10,7 @@ milestone: v0.4.28
 touches: docs/items
 added: 2026-09-13
 closed: 2026-09-19
+pr: 699
 verify: grep -q '^verify: grep' docs/items/PL-4L6Z-verify-the-model-by-making-it-compute-a.md
 ---
 

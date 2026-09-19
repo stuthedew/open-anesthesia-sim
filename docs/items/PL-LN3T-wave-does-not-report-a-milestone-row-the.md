@@ -10,6 +10,7 @@ milestone: v0.4.28
 touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/README.md, ROADMAP.md, docs/items
 added: 2026-09-19
 closed: 2026-09-19
+pr: 697
 verify: grep -q 'def test_a_released_milestone_row_with_its_scope_still_open_is_reported' subprojects/docket/tests/test_roadmap.py
 ---
 

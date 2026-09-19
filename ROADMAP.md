@@ -3028,6 +3028,15 @@ change. `PL-ZG5J` would land a harness built on `flet.messaging.session.Session`
 for one milestone's use. Each is real and each gets a worse answer if it is
 hurried in front of the port.
 
+The port has since landed (`PL-25KS`, § "Completed: v0.4.26 — the interface
+moves to Qt"), so the ground above is spent rather than wrong: it records why
+these four were deferred on 2026-09-12, and whether each is startable now is
+the queue's answer rather than this section's. `PL-ZG5J` closed on 2026-09-19
+with a Qt harness under `tests/benchmarks/`, which is not the Flet one
+described above — the serializing connection that made the Flet method subtle
+is held in Qt by the paint, and the harness is written down rather than
+thrown away so the next session re-measures instead of re-deriving.
+
 **Two are decisions this gate should not force.** `PL-3JP0` and `PL-HKTB` both
 ask whether a piece of the interface should change or be recorded as
 deliberate, and `PL-L9RD` - the port's pass that makes the interface's visual
