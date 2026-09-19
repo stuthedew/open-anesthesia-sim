@@ -18,6 +18,7 @@ from docket.model import parse_item
 from docket.render import format_digest, format_wave
 from docket.roadmap import (
     CLEAR,
+    EXCLUDED,
     FREEZE,
     IMPLEMENT,
     IN_SCOPE,
@@ -138,7 +139,7 @@ SELF_CLEARING = ROADMAP.replace(
     "- PL-SLF9 (M) An entry the milestone's own Required scope names\n- Not an entry at all:",
 ).replace(
     "A displayed clinical unit (queue item PL-MNPQ).",
-    "A displayed clinical unit (queue item PL-MNPQ), and the decomposition PL-SLF9.",
+    "A displayed clinical unit (queue item PL-MNPQ), and the decomposition\n(queue item PL-SLF9).",
 )
 SELF_KNOWN = KNOWN | {"PL-SLF9"}
 
@@ -536,25 +537,36 @@ SCOPE_BULLET_EXCLUSION_ROADMAP = ROADMAP.replace(
 )
 
 
+#: The same excluding bullet with its id in the **declaration slot** rather
+#: than in the sentence - the shape that still claims the id once membership is
+#: declared, because the slot is read and the sentence around it never is.
+SCOPE_DECLARATION_EXCLUSION_ROADMAP = ROADMAP.replace(
+    "A displayed clinical unit (queue item PL-MNPQ).",
+    "- **A displayed clinical unit** (queue item PL-MNPQ).\n"
+    "- **Stage 3, the decomposition proper, is not in scope** (queue item\n"
+    "  PL-WXYZ): it stays at Gate 1, because only v0.5.0 needs it.",
+)
+
+
 def test_an_id_a_scope_bullet_names_only_to_exclude_it() -> None:
     """Reads as scope, and this test exists to say that it still does.
 
-    `Required scope` is read *in full* - a milestone names what it covers in
-    whatever grammar the sentence wanted, so `"(queue item PL-MNPQ)"` mid-bullet
-    has to count - and the price is that a bullet naming an id in order to
-    **exclude** it is read as claiming it. No grammar separates the two: the
-    excluding sentence here says "queue item PL-WXYZ", which is the same phrase
-    the including one uses.
+    The declaration slot is read and the sentence around it is not, so a bullet
+    that *declares* an id while saying it is out of scope claims it exactly as
+    an including bullet would. No grammar separates the two, and none is
+    attempted: the candidate that made the parser guess at the sentence was
+    refused, because a phrasing it missed would print a wrong placement
+    silently - which is the failure being removed rather than a smaller version
+    of it.
 
     `PL-NBCS` is the case, and this is deliberately a *characterisation* test
-    rather than a fix. The candidate that made the parser guess at the sentence
-    was refused - a phrasing it missed would print a wrong placement silently,
-    which is the failure being removed rather than a smaller version of it. The
-    fix is that the exclusion moves under the other heading, where
-    `excluded_ids` parses it apart from scope; `tools/doc_check.py` fails the
-    contradiction that leaves behind and advises on this shape.
+    rather than a fix. The fix is that the exclusion moves under the other
+    heading, where `excluded_ids` parses it apart from scope;
+    `tools/doc_check.py` fails the contradiction that leaves behind and advises
+    on this shape. What `PL-HWW1` changed is the other half, two tests up: the
+    same sentence with the id *outside* the slot now claims nothing.
     """
-    sections = parse_milestones(SCOPE_BULLET_EXCLUSION_ROADMAP)
+    sections = parse_milestones(SCOPE_DECLARATION_EXCLUSION_ROADMAP)
     section = next(one for one in sections if one.version == (0, 4, 0))
 
     assert "PL-WXYZ" in section.own_scope_ids
@@ -581,6 +593,122 @@ def test_the_exclusion_heading_is_parsed_apart_from_required_scope() -> None:
     assert section.excluded_ids == ("PL-Z7LY",)
     assert section.own_scope_ids == ("PL-MNPQ",)
     assert "PL-Z7LY" not in section.own_scope_ids
+
+
+#: v0.4.0's `Required scope` written the way the real file writes an entry: the
+#: member declared in the `(queue item ...)` slot after the bold title, and the
+#: item that re-briefed the entry cited in the prose beside it. Naming the id
+#: that changed an entry is how `ROADMAP.md` records provenance throughout, so
+#: the citation is the shape that has to *not* count (`PL-HWW1`).
+SCOPE_CITATION_ROADMAP = ROADMAP.replace(
+    "A displayed clinical unit (queue item PL-MNPQ).",
+    "- **A displayed clinical unit** (queue item PL-MNPQ). **Re-briefed\n"
+    "  2026-09-14** (`PL-VWXY`): the noun was stale, not the scope.",
+)
+
+#: One entry declaring two items, wrapped across a line break - the arrangement
+#: a pair takes when the title runs long, and the reason a declaration is read
+#: from the subsection's joined text rather than line by line.
+SCOPE_PAIR_ROADMAP = ROADMAP.replace(
+    "A displayed clinical unit (queue item PL-MNPQ).",
+    "- **A displayed clinical unit** (queue item PL-MNPQ).\n"
+    "- **One problem, two items** (queue items `PL-BCDF`\n"
+    "  and `PL-GHJK`).",
+)
+
+#: A *numbered* `Required scope` list, which is what v0.6.0's section carries.
+#: The entry unit has to read both forms or half the file's scope entries are
+#: invisible to the rule that holds each one to a declaration.
+SCOPE_NUMBERED_ROADMAP = ROADMAP.replace(
+    "A displayed clinical unit (queue item PL-MNPQ).",
+    "1. **A displayed clinical unit** (queue item PL-MNPQ).\n"
+    "2. **A second entry** (queue item `PL-RSTW`).",
+)
+
+
+def test_required_scope_places_only_declared_ids() -> None:
+    """The declaration slot is the record; a citation beside it places nothing.
+
+    `Required scope` was read *in full*, so an id cited in an entry's prose
+    became a member of the release - and citing the id that re-briefed an entry
+    is how this document records provenance, so the count drifted every time
+    the file was maintained correctly rather than badly. `PL-HWW1` made the
+    `(queue item ...)` slot the statement and left everything around it prose.
+    """
+    sections = parse_milestones(SCOPE_CITATION_ROADMAP)
+    section = next(one for one in sections if one.version == (0, 4, 0))
+    scope = milestone_scope(sections, section)
+
+    assert section.own_scope_ids == ("PL-MNPQ",)
+    assert "PL-VWXY" not in section.scope_ids
+    assert scope.placement("PL-MNPQ") == IN_SCOPE
+    assert scope.placement("PL-VWXY") == UNPLACED
+
+
+def test_a_declaration_wrapped_across_a_line_break_is_read_whole() -> None:
+    """Both halves of a pair count, and the line break between them is nothing.
+
+    The slot is found in the subsection's joined text for this reason: read
+    line by line, the second id of a wrapped pair would be dropped silently,
+    which is the direction of failure the declaration rule exists to remove.
+    """
+    section = next(one for one in parse_milestones(SCOPE_PAIR_ROADMAP) if one.version == (0, 4, 0))
+
+    assert section.own_scope_ids == ("PL-MNPQ", "PL-BCDF", "PL-GHJK")
+
+
+def test_a_numbered_scope_entry_is_an_entry_like_a_bulleted_one() -> None:
+    """v0.6.0's list is numbered and v0.5.0's is bulleted; both are entries.
+
+    The ids are the same either way, because the slot is read from the whole
+    subsection. What needs the entry unit is the per-entry rule
+    `tools/doc_check.py` applies, which is why the entries are parsed here
+    rather than only their ids.
+    """
+    section = next(
+        one for one in parse_milestones(SCOPE_NUMBERED_ROADMAP) if one.version == (0, 4, 0)
+    )
+
+    assert section.own_scope_ids == ("PL-MNPQ", "PL-RSTW")
+    assert [entry.ids for entry in section.scope_entries] == [("PL-MNPQ",), ("PL-RSTW",)]
+
+
+def test_an_id_a_scope_entry_names_only_in_prose_is_not_claimed() -> None:
+    """The shape `ROADMAP.md` carried for `PL-B9PY`, and what the rule does to it.
+
+    The bullet says "it is queue item PL-WXYZ" in a sentence whose whole point
+    is that the id is *not* in scope, and no grammar could separate that from
+    an including sentence. The declaration rule does not try: the id is outside
+    the `(queue item ...)` slot, so it is prose and places nothing. The test
+    below keeps the other half - a declaration inside an excluding sentence is
+    still read as scope, because the parser reads the slot and never the
+    sentence.
+    """
+    sections = parse_milestones(SCOPE_BULLET_EXCLUSION_ROADMAP)
+    section = next(one for one in sections if one.version == (0, 4, 0))
+
+    assert "PL-WXYZ" not in section.own_scope_ids
+    assert milestone_scope(sections, section).placement("PL-WXYZ") == UNPLACED
+
+
+def test_an_out_of_scope_id_is_reported_excluded() -> None:
+    """The anchor's own exclusions speak, which is `PL-6P9Y`.
+
+    v0.4.0 names `PL-Z7LY` under "Explicitly out of scope for v0.4.0", and that
+    heading's whole meaning is exclusion - as decidable as the ids under
+    `Required scope` and the opposite claim. Reported as `unplaced`, an id the
+    milestone has ruled out ranked level with work nobody has ruled on.
+
+    The *anchor's* exclusions and no others, which is why the test above this
+    one still answers `UNPLACED` for the same id against a v0.3.0 anchor: an
+    exclusion recorded by a milestone the project has passed says what was true
+    then.
+    """
+    sections = parse_milestones(ROADMAP)
+    scope = milestone_scope(sections, _section((0, 4, 0)))
+
+    assert scope.placement("PL-Z7LY") == EXCLUDED
+    assert scope.milestone("PL-Z7LY") == ""
 
 
 def test_the_scope_places_an_id_by_the_milestone_whose_section_names_it() -> None:
@@ -1097,7 +1225,9 @@ def test_a_patch_track_and_a_gate_are_not_milestones() -> None:
 # --- ships with, rather than blocked until scoped (`PL-L09X`) ---------------
 
 SHIPS_WITH_ROADMAP = MILESTONE_STATES_ROADMAP.replace(
-    "### Required scope\n\nr\n", "### Required scope\n\n- PL-GS3R (S) The chord-width rule\n", 1
+    "### Required scope\n\nr\n",
+    "### Required scope\n\n- **The chord-width rule** (queue item PL-GS3R).\n",
+    1,
 )
 
 

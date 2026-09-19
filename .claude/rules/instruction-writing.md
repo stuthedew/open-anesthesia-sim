@@ -105,6 +105,18 @@ apply to every reply of any kind. Never mention these rules, "phases," or
       context to answer in one read; or record it wherever the project
       records such things and say you did. Raising something in order to
       defer it is the one option that is not available.
+      **Which of the first two applies turns on consequence, not on what the
+      answer rests on** (project owner, 2026-09-19). Theirs are the
+      consequential questions: the order features come in, what the project
+      is for, behavior a learner would see, and anything the safety-critical
+      standard reaches. A choice whose options are all defensible and whose
+      blast radius is one document's phrasing, one internal structure or one
+      item's disposition is yours - decide it, say in a line what you decided
+      and why, and carry on. Resting on "what the project wants" does not
+      make a granular choice theirs, and handing one back spends their
+      attention on exactly what they have said they do not want to spend it
+      on. Where one specific point genuinely needs them, ask that point
+      rather than handing over the decision around it.
     - The block is a handover, not a store. It is carried in
       `post_turn_summary.needs_action`, which a later session reads from the
       `RUNNING` and `IDLE` rows alone, so archiving this session deletes every

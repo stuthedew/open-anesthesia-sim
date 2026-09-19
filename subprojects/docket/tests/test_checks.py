@@ -793,7 +793,9 @@ def test_an_item_the_scoped_milestone_places_is_not_ready_to_promote() -> None:
     No field was added: the milestone's own `Required scope` already names the
     item, so this reads what is written.
     """
-    roadmap = ROADMAP.replace("Two branches on one axis.", "- PL-C2C2 (S) The thing", 1)
+    roadmap = ROADMAP.replace(
+        "Two branches on one axis.", "- **The thing** (queue item PL-C2C2)", 1
+    )
 
     report = analyze([_blocked_on("v0.5.0")], TODAY, milestones=milestone_states(roadmap))
 

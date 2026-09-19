@@ -1710,7 +1710,11 @@ Four grounds survive:
    again, which moved after item 34 later the same day and is now `v0.7.x`
    (`PL-PHKP`); see the note above for the measurement that reversed it, and for the
    styling-layer question this port deliberately leaves open.
-4. **The two checks that read the theme.** `tools/contrast_check.py` and
+4. **The two checks that read the theme** (queue items `PL-BXB2`, `PL-V53R`
+   and `PL-0PJG`; moved into the slot 2026-09-19, when `PL-HWW1` made a
+   declaration the record of membership - the three are the re-pointings this
+   entry describes and the three the release stamped `v0.4.26`).
+   `tools/contrast_check.py` and
    `tools/agent_identity_check.py` both read `theme.py` and
    `simulation_view.py` by path until 2026-09-14. `PL-JRS3` measured what a
    port does to them (2026-09-14) rather than reasoning it: `contrast_check`
@@ -1738,8 +1742,10 @@ Four grounds survive:
    than after one.
 7. **Deletion** (queue item `PL-7SVX`). The Qt spike tree goes, and so does
    every Flet import. `PL-C92D` retires the Flet frame-cost table that predates the port.
-8. **The queued fixes named below**, on the rule stated there: `PL-3355`,
-   `PL-Q4VH`, `PL-THXF`, `PL-W8DQ`, `PL-TG60` and `PL-005`. Named here and
+8. **The queued fixes named below** (queue items `PL-3355`, `PL-Q4VH`,
+   `PL-THXF`, `PL-W8DQ`, `PL-TG60` and `PL-005`), on the rule stated there.
+   The six moved from this sentence into the declaration slot on 2026-09-19,
+   which is where `PL-HWW1` put membership; they are named here and
    not only under that heading because `MilestoneStates.ships_with` reads
    `Required scope` and nothing else: it is what separates `blocked-by:
    <this milestone's version>` meaning *ships with this milestone* from the same field meaning
@@ -2027,6 +2033,27 @@ much of it names `app/controller.py`, `core/` and `docs/MODEL.md`, which
 re-diagnosing each item against code that had moved. That is the exact cost
 "The debt gate" opens by naming, and it is the reason this list was frozen
 whole rather than narrowed (project owner, 2026-09-06).
+
+**Reconciled 2026-09-19 (`PL-C4RS`).** Three entries sat under headings saying
+the opposite of what the milestone's own scope said of them, and § "Debt inside
+the milestone's own scope" makes `Required scope` the test, so the document
+gave two answers to a question it says has one. After this pass,
+the three ids below now sit under headings that agree with `Required scope`,
+and each placement is stated rather than implied:
+
+- `PL-2FM6` (delete `RunHistory`) and `PL-8LXM` (delete the M4 decimation
+  path) are under "Cleared by the `v0.4.x` track, ahead of this gate", and
+  they have left `Required scope`, which is what the note under that heading
+  already recorded on 2026-09-08: "Required scope below drops to sixteen
+  items". The entries were never removed, so the two structures had disagreed
+  since. What v0.5.0 required of them, and that the patch track shipped it, is
+  recorded in prose under `Required scope` instead, where it places nothing.
+- `PL-GVXP` (separate the six chart traces by more than colour) is under
+  "Cleared before v0.5.0 begins, the product lane" and is not in `Required
+  scope`. It never was an entry there: it was cited inside the `PL-8PSW`
+  entry's prose, and `PL-HWW1` made a declaration rather than a mention the
+  record of membership on 2026-09-19, so the disagreement ended with the
+  parse rather than with an edit.
 
 **Cleared by the `v0.4.x` track, ahead of this gate — 7 entries**
 
@@ -3852,10 +3879,22 @@ the defect.
 
 ### Required scope
 
-Twenty items, in the order the dependencies allow. The first five are the
+Eighteen items, in the order the dependencies allow. The first three are the
 score architecture the 2026-09-05 design round filed and the project owner
 placed here; the next five are boundary work this milestone's own code moves;
 the last ten are the feature itself.
+
+**Two more were required here and are already done** (`PL-C4RS`, 2026-09-19).
+`PL-2FM6` deleted `RunHistory` so the chart is drawn from the sampler - where
+`PL-011`'s dropped growth debt was actually paid - and `PL-8LXM` deleted the M4
+decimation path with it, including its tests, the cited paper and every
+reference to them: a sampler answering a window in closed form has nothing to
+decimate. Both moved into the `v0.4.x` track on 2026-09-08 and shipped there,
+which is the move whose own note said "Required scope below drops to sixteen
+items", and they sit on the frozen gate under the heading that says so. They
+are named here without a declaration slot deliberately - the milestone required
+them and the patch track cleared them, and neither fact is this section
+placing them.
 
 - **The run becomes a closed-form function of its control-input timeline**
   (queue item PL-T691). Keyframes are held at every control event and any
@@ -3869,14 +3908,6 @@ the last ten are the feature itself.
   a rule saying which route is authoritative, stated in `docs/MODEL.md` and
   gated by test. Safety- and science-classed, and not deferrable within this
   milestone.
-- **`RunHistory` is deleted and the chart drawn from the sampler** (queue item
-  PL-2FM6). This is where `PL-011`'s dropped growth debt is actually paid:
-  the controller holds a score and one keyframe per control event instead of
-  every sample ever recorded.
-- **The M4 decimation path is deleted with it** (queue item PL-8LXM, moved
-  with `PL-2FM6` into the `v0.4.x` track on 2026-09-08 and shipped there),
-  including its tests, the cited paper and every reference to them. A sampler
-  answering a window in closed form has nothing to decimate.
 - **A path-scoped rule against re-introducing a sample store** (queue item
   PL-49R8), so a later session adding a convenience buffer is told why the
   store is absent rather than rediscovering it.

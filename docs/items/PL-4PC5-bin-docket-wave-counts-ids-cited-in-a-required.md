@@ -3,14 +3,14 @@ id: PL-4PC5
 title: bin/docket wave counts ids cited in a Required scope section's prose as scope entries, so v0.5.0 reads 21 ids with 11 closed against the section's own stated eighteen with 8 closed
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: planning-cadence
-touches: subprojects/docket/src/docket/roadmap.py, tests/unit/test_docket_digest_hook.py
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-14
-verify: uv run pytest tests/unit/test_docket_digest_hook.py && bin/docket wave | grep -q 'Scope.*(19 ids)'
+closed: 2026-09-19
+verify: uv run pytest subprojects/docket/tests/test_roadmap.py && grep -q 'def test_an_id_a_scope_entry_names_only_in_prose_is_not_claimed' subprojects/docket/tests/test_roadmap.py
 ---
-
 
 **Problem.** bin/docket wave counts ids cited in a Required scope section's prose as scope entries, so v0.5.0 reads 21 ids with 11 closed against the section's own stated eighteen with 8 closed
 
@@ -88,3 +88,25 @@ with each other. This one is the tool: `scope_status` reads
 *lists* as entries, not ids its prose cites in passing, so the reported count
 matches the section's own - 19 against 19 on v0.5.0 today - and
 `tests/unit/` covers a section whose prose cites an id it does not list.
+
+---
+
+**Done 2026-09-19, by `PL-HWW1`'s declaration rule.** `Required scope` is now
+read from each entry's `(queue item ...)` slot rather than in full, so an id
+cited in an entry's prose places nothing. v0.5.0's section parses at **20 ids
+from 20 entries** against its own stated "Twenty items" - the two numbers this
+item was filed to reconcile - and the six ids the narrowing drops there
+(`PL-011`, `PL-5328`, `PL-ZMRT`, `PL-2R2C`, `PL-HLD5`, `PL-GVXP`) are all
+closed, so no open item changed placement. The other direction this item asked
+to be measured rather than assumed was measured: v0.4.0 drops 4 citations,
+v0.6.0 drops 2, the two frozen gate lists are read by their entries' heads and
+were never affected.
+
+**`verify:` re-pointed 2026-09-19, with the work.** The old command was `... &&
+bin/docket wave | grep -q 'Scope.*(19 ids)'`, and it could not pass on any
+tree: `PL-KD98` had since withheld the `Scope` line from `wave` while a gate is
+open, which is the beat the project is on, so the string it greps for is absent
+whatever the parser says. The count had also moved from 19 to 20 as the section
+grew. The replacement pins the test that states this item's own defect - a
+prose citation is not a member - and `touches` now names the file that test
+lives in, so the discriminating clause reads a path this item declares.
