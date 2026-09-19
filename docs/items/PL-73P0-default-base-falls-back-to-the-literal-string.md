@@ -1,9 +1,14 @@
 ---
 id: PL-73P0
 title: default_base falls back to the literal string main when no candidate ref resolves, so every comparison in vcs.py can be taken against a guessed base with nothing in the answer saying so
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
 feature: evidence-declines
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-19
+verify: grep -q 'def test_default_base_declines_when_no_candidate_resolves' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** default_base falls back to the literal string main when no candidate ref resolves, so every comparison in vcs.py can be taken against a guessed base with nothing in the answer saying so

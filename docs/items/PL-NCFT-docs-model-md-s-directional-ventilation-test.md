@@ -1,9 +1,14 @@
 ---
 id: PL-NCFT
 title: docs/MODEL.md's Directional ventilation test requires a faster approach of F_A toward F_I, but test_higher_ventilation_increases_early_alveolar_fraction asserts only that F_A is higher at 30 s
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: test, docs
 feature: invariant-test-gaps
+touches: docs/MODEL.md, tests/reference/test_sevo_patient.py
 added: 2026-09-19
+verify: grep -q 'def test_higher_ventilation_closes_the_alveolar_to_inspired_gap_faster' tests/reference/test_sevo_patient.py
 ---
 
 **Problem.** docs/MODEL.md's Directional ventilation test requires a faster approach of F_A toward F_I, but test_higher_ventilation_increases_early_alveolar_fraction asserts only that F_A is higher at 30 s

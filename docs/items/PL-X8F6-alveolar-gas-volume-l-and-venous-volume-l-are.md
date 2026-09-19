@@ -1,9 +1,14 @@
 ---
 id: PL-X8F6
 title: Alveolar gas_volume_l and venous volume_l are guarded positive-finite in __post_init__, and no compartment-level test asserts either rejection
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: test
 feature: invariant-test-gaps
+touches: tests/unit/test_alveolar.py, tests/unit/test_blood.py
 added: 2026-09-19
+verify: grep -q 'def test_rejects_invalid_gas_volume' tests/unit/test_alveolar.py && grep -q 'def test_rejects_invalid_venous_volume' tests/unit/test_blood.py
 ---
 
 **Problem.** Alveolar gas_volume_l and venous volume_l are guarded positive-finite in __post_init__, and no compartment-level test asserts either rejection
