@@ -885,6 +885,10 @@ def test_the_run_carries_what_it_would_have_cost_serially(tmp_path: Path) -> Non
     report = already_passing(root, items, workers=8)
 
     assert report.serial >= 2
+    # `> 0` as well as the comparison: a pool that reported no wall clock at
+    # all would satisfy `0 < serial` and print `0.0s` from the cost line. This
+    # was pinned by a test that also covered the retired median (`PL-G6J5`).
+    assert report.elapsed > 0
     assert report.elapsed < report.serial
 
 
