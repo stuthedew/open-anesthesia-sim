@@ -3131,7 +3131,7 @@ declined is only whether v0.5.0 waits on it.
 - PL-G8TR (S) no-prune-guard is evaded by the form it recommends - git branch -dr driven from a generated list is a prune
 - PL-H9GV (S) PL-01GD shipped as one exported Makefile variable with no test: PYTHONDONTWRITEBYTECODE appears only at Makefile:21, its declared touches names tests/unit/test_tools_portability.py which never changed, and its verify: passes against an untouched suite
 - PL-HKTB (S) The chart gridline and divider grey measures 1.31:1 on the panel and carries no contrast requirement; decide whether it should be darkened or recorded as exempt furniture
-- PL-HWW1 (M) Three items patch a reading of ROADMAP.md's Required scope because membership is cited rather than declared: decide whether it becomes a recorded fact
+- PL-HWW1 (M) Three items patch a reading of ROADMAP.md's Required scope because membership is cited rather than declared: make the declaration the record
 - PL-HX5C (S) Both in-flight guards passed and two sessions still implemented PL-W8XP independently: the second never renamed and its branch was named after a different item, so neither the ref read nor the session read could see it
 - PL-JBRC (M) docket stranded still calls a branch merged when one of its commits is only docket record output, which converges byte-for-byte with the base
 - PL-JW39 (S) docket next ranks a needs-decision item first, so every fresh session opens on work whose next step is the owner's answer
@@ -4084,12 +4084,12 @@ scope names the id, and nine of the ids below are `defect`-, `safety`- or
 
 ### Required scope
 
-1. **The layout model** (queue item `PL-1FT6`). Pure Python, no Qt import: a
-   tree of splits and Areas with `split`, `join`, `resize`, `swap` and
-   `set_view`, a `borders()` query returning the handles collinear and
+1. **The layout model** (queue items `PL-1FT6` and `PL-HJPY`). Pure Python,
+   no Qt import: a tree of splits and Areas with `split`, `join`, `resize`,
+   `swap` and `set_view`, a `borders()` query returning the handles collinear and
    adjacent to a given one, and versioned JSON serialization. The serialized
-   root holds a *set of windows* from version 1, which `PL-HJPY` is what
-   settles - what owns the set, how an Area is addressed across windows, and
+   root holds a *set of windows* from version 1, which `PL-HJPY` settles -
+   what owns the set, how an Area is addressed across windows, and
    where the border-chain query terminates - because a root that gains a window
    set later is a schema migration against files a learner has already saved
    their own Workspaces into.
