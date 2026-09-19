@@ -4958,3 +4958,68 @@ def test_no_untriaged_items_asks_git_nothing() -> None:
 
     assert filed_with_work(frozenset(), ROOT, prefix="docs/items", runner=run).known
     assert asked == []
+
+
+def test_a_claim_says_whether_the_base_holds_the_item_at_all() -> None:
+    """Both claims stand; only what a reader is told about them differs (`PL-3CTW`)."""
+    report = branches_in_flight(
+        ROOT,
+        runner=_runner(
+            ["claude/held", "claude/filed"],
+            commits={
+                "claude/held": [("2026-09-19", "PL-K7QX: work the item")],
+                "claude/filed": [("2026-09-19", "PL-3CTW: file it, and work something else")],
+            },
+            statuses={"PL-K7QX": "ready"},
+        ),
+    )
+
+    # Nothing is withdrawn: the measurement on the item refuses that at every
+    # width tried, so the claim stands and only the wording turns on this.
+    assert report.ids == {"PL-K7QX", "PL-3CTW"}
+    assert {branch.item_id: branch.on_base for branch in report.branches} == {
+        "PL-K7QX": True,
+        "PL-3CTW": False,
+    }
+
+
+def test_the_digest_sends_an_unlanded_claim_to_stranded_rather_than_refusing_it() -> None:
+    """The two lines that used to contradict each other about one branch (`PL-3CTW`)."""
+    flight = FlightReport(
+        branches=(
+            Branch(name="origin/claude/held", item_id="PL-K7QX", on_base=True),
+            Branch(name="origin/claude/filed", item_id="PL-3CTW", on_base=False),
+        ),
+        base="origin/main",
+    )
+
+    lines = _digest(flight=flight).splitlines()
+
+    refused = [line for line in lines if "do not start these again" in line]
+    assert len(refused) == 1
+    assert "PL-K7QX" in refused[0]
+    assert "PL-3CTW" not in refused[0]
+
+    named = [line for line in lines if "PL-3CTW" in line]
+    assert named
+    assert all("do not start" not in line for line in named)
+    assert any("bin/docket stranded" in line for line in named)
+
+
+def test_flight_marks_a_claim_whose_item_the_base_does_not_hold() -> None:
+    """`bin/docket flight` is the command the digest sends a reader to (`PL-3CTW`)."""
+    from docket.render import format_flight
+
+    report = FlightReport(
+        branches=(
+            Branch(name="origin/claude/filed", item_id="PL-3CTW", on_base=False),
+            Branch(name="origin/claude/held", item_id="PL-K7QX", on_base=True),
+        ),
+        base="origin/main",
+    )
+
+    lines = format_flight(report, date(2026, 9, 19)).splitlines()
+
+    assert "filed there" in next(line for line in lines if "PL-3CTW" in line)
+    assert "filed there" not in next(line for line in lines if "PL-K7QX" in line)
+    assert any("bin/docket stranded" in line for line in lines)
