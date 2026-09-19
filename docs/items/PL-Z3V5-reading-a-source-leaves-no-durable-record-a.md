@@ -87,3 +87,20 @@ pre-abstract subscription paper has none), which holds both candidate files in
 flight and is deciding the surrounding question. The owner approved this
 obligation in principle on 2026-09-13; what is not settled is which of the two
 files carries it, and that is `PL-XJ5P`'s call rather than a second session's.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Partly overtaken, and the
+blocker has closed.** The half this item posed as undecided - whether reading a
+source obliges an extraction note, and whether that obligation belongs in
+`.claude/rules/citing-sources.md` or `docs/references/README.md` - is settled
+in the tree: `docs/references/README.md:68` states the obligation and `:73`
+says "The obligation and its home are settled here", with
+`.claude/rules/citing-sources.md:130-135` pointing at it. That came in with
+`PL-XJ5P`, which is `status: done`, `closed: 2026-09-13`, `pr: 531` - so this
+item's `blocked-by` names a closed blocker and the brief's "`PL-XJ5P` is in
+flight on `origin/claude/lucid-mendel-6kavwt`" is stale.
+
+What is left is what both files explicitly reserve to this item by id: the
+note's field set and the first worked example. `docs/references/` holds exactly
+one file, `README.md`, and no Yasuda et al. 1991 section - while
+`tests/reference/test_published_wash_in_and_elimination.py:18-21` already
+depends on that paper's vectors with no holdable record behind them.

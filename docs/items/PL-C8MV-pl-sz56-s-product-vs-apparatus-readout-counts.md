@@ -3,11 +3,13 @@ id: PL-C8MV
 title: PL-SZ56's product-vs-apparatus readout counts tests of apparatus under tests/ as product churn
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: docs
 feature: planning-cadence
 touches: docs/items/, docs/releases/
 added: 2026-09-02
+closed: 2026-09-19
+reason: Overtaken seven hours after filing: the brief's second Done-when branch - 'the close-out states the adjustment beside the as-written figure' - is satisfied verbatim at docs/releases/v0.3.0.md:46-51, which gives readout 1 both ways (4,623 vs 2,221 as written; 4,140 vs 2,704 reassigning the three apparatus test files) and names PL-C8MV as the disposition it follows. Confirmed 2026-09-19 with sed -n '42,51p' docs/releases/v0.3.0.md.
 verify: python3 tools/doc_check.py check && grep -q 'counts as apparatus' docs/items/PL-SZ56-assess-the-v0-3-0-loop-trial-against-its-pre.md
 ---
 
