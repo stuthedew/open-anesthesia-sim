@@ -3,12 +3,13 @@ id: PL-Y1L0
 title: Cutting a patch at the Qt port's number drops its section out of wave's unreleased set and moves the beat to v0.5.0, reversing PL-RKWB, and outstanding_roadmap_edits returns an identical list for 0.4.26, 0.4.27 and 0.5.0 so nothing reports it
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: timeline-arrangement
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 added: 2026-09-16
-verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_a_cut_reaching_a_milestone_section_is_named' subprojects/docket/tests/test_release.py
+closed: 2026-09-19
+verify: grep -q 'def test_a_cut_reaching_a_milestone_section_is_named' subprojects/docket/tests/test_release.py
 ---
 
 **Problem.** Cutting a patch at the Qt port's number drops its section out of wave's unreleased set and moves the beat to v0.5.0, reversing PL-RKWB, and outstanding_roadmap_edits returns an identical list for 0.4.26, 0.4.27 and 0.5.0 so nothing reports it
@@ -55,3 +56,15 @@ wrong, so the hand-off says to renumber it; a test in
 **Not blocked on `PL-KQHN`, which decides only the wording.** If the project decides a patch no
 longer takes a reserved number, this fires on the `0.4.27` case alone rather
 than on both. The advisory is owed either way.
+
+**Closed 2026-09-19 under `PL-2T03`.** `outstanding_roadmap_edits` now names a
+milestone row whose number the cut has reached or passed and the version table
+does not record, with the edit each reading owes - the reached case is
+ambiguous from the file alone, since the table lacks the cut's own row at that
+moment. `bin/docket wave` reports the passed case on every run under
+`ReleaseTrain.stale`, exits non-zero on it, and the digest's plan line flags
+it. The beat still moves: released stays decided by the version, per `Scope`,
+and `PL-2T03` records why the version table was not made the position's
+record. So this is the report, not a prevention. Pinned by
+`test_a_cut_reaching_a_milestone_section_is_named` and
+`test_a_milestone_row_the_version_has_passed_without_a_release_is_reported`.

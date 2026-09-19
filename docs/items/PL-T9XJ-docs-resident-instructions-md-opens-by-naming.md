@@ -42,3 +42,8 @@ file's first twelve lines rather than a fixed sentence, so the wording is free.
 
 **Found.** 2026-09-13, reviewing an outside article on long AI projects against
 this repository.
+
+**Confirmed 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+Unchanged one-off: name the three files and state no count. Apparatus prose is
+outside the bound set, so the counts rule is advice here rather than a
+requirement - which is what this item already proposes for itself.

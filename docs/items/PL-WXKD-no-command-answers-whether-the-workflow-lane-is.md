@@ -1,10 +1,14 @@
 ---
 id: PL-WXKD
 title: No command answers whether the workflow lane is converging: docket trend reports the workflow/product balance, so a session asked whether accumulation is slowing re-derives filed-per-closed, surface saturation and severity mix by hand at full context
-status: untriaged
+priority: P3
+effort: M
+status: ready
+classes: infra
 feature: convergence-visibility
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/plan.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-17
+verify: grep -q 'def test_converge_reports_filed_per_closed_and_surface_saturation' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** No command answers whether the workflow lane is converging: docket trend reports the workflow/product balance, so a session asked whether accumulation is slowing re-derives filed-per-closed, surface saturation and severity mix by hand at full context
@@ -77,3 +81,21 @@ same rule applies.
 **Not a health score.** `docs/dead-ends.md` records open-backlog ratio as
 refuted (`PL-03XH`). This reports rates and composition, and must not
 reintroduce a single number standing for the lane's health.
+
+**Why it matters.** "Is the accumulation slowing?" is the question that decides
+whether the apparatus lane is converging or is whack-a-mole, and `CLAUDE.md`
+answers an objection to the *balance* while saying nothing about the *rate*. The
+numbers above cost a throwaway script at full session context, and the next
+session asked the same question pays the same cost from scratch - which is
+exactly `CLAUDE.md`'s "work left to the model is re-derived at full context in
+every session that needs it". The decidable half here is large: filed-per-closed,
+new-paths-per-item and the severity mix of filings are all arithmetic over the
+store. Only reading the result is judgment.
+
+**Done when.** One command reports, for the workflow lane, rolling
+filed-per-closed, new distinct apparatus paths per item filed with store paths
+excluded, the P1/P2/P3 mix of each period's *filings* rather than of the
+backlog, and the count blocked on an owner decision - no single composite score,
+per `docs/dead-ends.md` on the open-backlog ratio - and a test under
+`subprojects/docket/tests/` pins the store-path exclusion and the rate
+normalisation for a short final period.

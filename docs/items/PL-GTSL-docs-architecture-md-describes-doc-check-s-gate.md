@@ -28,3 +28,16 @@ three checks already described.
 **Done when.** `docs/ARCHITECTURE.md` describes `check_resident_instructions` —
 what it measures, that it is an advisory rather than a gate, and what a session
 is expected to do with it — and `make doc-check` passes.
+
+**Re-scoped 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+The inventory of checks is held complete against `def check_*` in
+`tools/doc_check.py` - a family whose membership the tree itself enumerates.
+The prose around it stays judgment and is not marked: clause 2 binds the
+enumeration, not the sentences describing what the tool is for.
+
+**One entry the inventory now owes, found 2026-09-19 in `PL-4FBP`'s close-out
+sweep.** `docs/ARCHITECTURE.md:505` describes what `tools/doc_check.py`
+validates and does not mention `check_bound_families`, which landed that day.
+It is not repaired there, because this item owns that line and holding the
+inventory complete against `def check_*` catches it along with
+`check_resident_instructions` rather than one entry at a time.

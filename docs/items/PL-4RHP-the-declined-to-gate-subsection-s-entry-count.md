@@ -71,3 +71,8 @@ with a reason, which no total carries, and a check built to hold a number nobody
 reads would fire on every run without changing a decision. Reconciling instead
 remains admissible if whoever takes it finds the count load-bearing somewhere
 this reading missed; the command is then repointed, since the item is open.
+
+**Confirmed 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+No change. The heading states no count, which is exactly what the counts rule
+now requires, so triage's choice here *is* the rule rather than an instance
+awaiting one.

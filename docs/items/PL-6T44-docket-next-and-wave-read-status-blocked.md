@@ -1,8 +1,12 @@
 ---
 id: PL-6T44
 title: docket next and wave read status: blocked literally, so an item whose blockers have all closed ranks as unstartable while docket check already prints it as promotable
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect
 feature: docket-store
+touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_plan.py
 added: 2026-09-17
 ---
 
@@ -27,7 +31,7 @@ is not new analysis — it is one reading not reaching the other two. A session
 that runs `next` without also running `check` never learns the item is
 startable, and `next` is the command the workflow prescribes for picking.
 
-**Options, for triage to weigh.**
+**Decision needed.**
 
 1. `next` and `wave` treat a `blocked` item whose `blocked-by` ids have all
    closed as startable, and say so in the reason line ("was blocked; every
@@ -44,3 +48,9 @@ recomputed status should override what an item declares.
 **Found by.** A "what should we do next" session on 2026-09-17, which reached
 the answer only by reading `blocked-by` on all five and resolving each root by
 hand.
+
+**Done when.** `bin/docket next` and `bin/docket wave` account for an item whose
+`blocked-by` ids have all closed in whichever way the decision above settles -
+ranked as startable with the reason line saying so, or named in their own output
+the way `bin/docket check` already names them - and a test under
+`subprojects/docket/tests/` drives an item all of whose blockers are closed.

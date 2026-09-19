@@ -91,3 +91,7 @@ the wrong cause, since the table was not wrong, the tag was. **Done when** is
 therefore the second clause only: a tag with no release behind it is refused
 or reported by name.
 
+**Left standing 2026-09-19 by `PL-4Q9B`** (record clone trust and the permitted ref
+operations), which closed with the finding that its ten members are not one
+mechanism. Its placement on the permissions side is now stale - the rationale was that the v0.4.8 tag was wrong on the remote and no session could move it, and the tag is no longer wrong: remote and this checkout both hold it at `93f1902`, `ROADMAP.md` carries its row, and `doc_check` is green. What is left is this item's own second clause, the guard against a tag pushed ahead of its cut, which is release-process work. Nothing here is blocked on that head; this item stands on
+its own merits at its own band.

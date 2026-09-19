@@ -102,3 +102,8 @@ reading it. The removal case is the one that argues hardest for the check: an
 addition at least leaves the prose *incomplete*, while a removal leaves it
 naming a command that is no longer run, which reads as authoritative and is
 false.
+
+**Confirmed 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+Unchanged. Its marker design *is* clause 2 applied to `docs/ARCHITECTURE.md`:
+a marked enumeration is a bound family, and this one joins `BOUND_FAMILIES` in
+`tools/doc_check.py` when the marker lands.

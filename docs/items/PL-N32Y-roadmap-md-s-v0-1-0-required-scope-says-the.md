@@ -3,11 +3,12 @@ id: PL-N32Y
 title: ROADMAP.md's v0.1.0 Required scope says the release added tissue:blood partition data, where the agent data files store tissue:gas
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: docs
 feature: release-roadmap-seam
 touches: ROADMAP.md
 added: 2026-09-13
+verify: python3 tools/doc_check.py check && grep -qF 'tissue_gas_partition_coefficients' ROADMAP.md
 ---
 
 **Problem.** ROADMAP.md's v0.1.0 Required scope says the release added tissue:blood partition data, where the agent data files store tissue:gas
@@ -52,3 +53,13 @@ the stored coefficients for tissue:blood values - by correction or by
 annotation, on the answer above - and whichever route is chosen is stated in
 `ROADMAP.md`'s own development rules, so the next such line is not reargued
 from scratch.
+
+**Decided 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+The decision is made and it is clause 4: **annotate with a dated note, never
+rewrite the scope line.** A `Required scope` list asserts what a release was
+scoped to do, which is a record; editing it to carry a later fact is the one
+thing clause 4 forbids. The note names the stored form -
+`tissue_gas_partition_coefficients` - so the confusion `PL-212V` was filed on
+cannot survive the annotation. Promoted from `needs-decision` to `ready`, with
+a `verify:` command run on 2026-09-19 and watched to fail (exit 1: `doc_check`
+is green, `ROADMAP.md` names the stored form nowhere).

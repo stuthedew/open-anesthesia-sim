@@ -72,3 +72,8 @@ decidable part in code covers it without a decision round: `git rev-list
 runs once per container. The third candidate - do nothing, on the grounds that
 this was a one-off provisioning artifact - stays available, and taking it means
 rewriting this command before the work rather than after.
+
+**Left standing 2026-09-19 by `PL-4Q9B`** (record clone trust and the permitted ref
+operations), which closed with the finding that its ten members are not one
+mechanism. This item keeps the cheap session-start check it was already `ready` on. Worth knowing for whoever takes it: the pathology is **not** reproduced in the 2026-09-19 container - `git rev-list --count origin/main..main` returns 0, so local `main` is a clean ancestor rather than diverged. That is one more container, not a disproof, and it is the evidence candidate 3 asked for; a second clean one would justify dropping this instead of building the check. Nothing here is blocked on that head; this item stands on
+its own merits at its own band.

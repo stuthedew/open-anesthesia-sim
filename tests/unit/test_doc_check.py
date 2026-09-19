@@ -39,6 +39,11 @@ tools/
 ```
 """
 
+#: The test the default `MODEL` fixture's bound family names. `_repo` defines
+#: it in a suite of its own, so a fixture repository resolves its own citation
+#: and `check_named_tests` has nothing to decline.
+FAMILY_TEST = "test_the_demo_says_it_is_a_demo"
+
 FAT_KEY = "tissue_gas_partition_coefficients.fat"
 ROW = "| {} | {} | dimensionless | `data/agents/demo.json` · `{}` |"
 MARKER = "<!-- provenance: data/agents/demo.json blood_gas_partition_coefficient = {} -->"
@@ -63,6 +68,17 @@ MODEL = "\n".join(
         # documentation that satisfies it.
         "The demo agent's blood:gas coefficient is 0.5.",
         MARKER.format("0.5"),
+        "",
+        # A conforming bound family, for the same reason as the marker above:
+        # `check_bound_families` errors on a family whose heading it cannot
+        # find, so a fixture without one would fail every test that asserts a
+        # clean repository stays clean. Last, so that the provenance table
+        # stays the one thing "## Known limitations" follows.
+        "## Reasonably foreseeable misuse, and the hazards the presentation carries",
+        "",
+        "| A reader could be misled into | What stops it | Held by |",
+        "| --- | --- | --- |",
+        f"| reading a demo value as a real one | it says so | `{FAMILY_TEST}` |",
         "",
     ]
 )
@@ -141,8 +157,13 @@ def _repo(
     roadmap: str = ROADMAP,
     data: dict[str, object] | None = None,
     modules: tuple[str, ...] = ("core/thing.py",),
+    tests: bool = True,
 ) -> Path:
-    """Build a miniature repository with the structure the checker reads."""
+    """Build a miniature repository with the structure the checker reads.
+
+    `tests=False` builds one with no suite at all, which is the shape a bare or
+    truncated checkout has and the only thing `check_named_tests` declines on.
+    """
     root = tmp_path / "repo"
     (root / "docs").mkdir(parents=True, exist_ok=True)
     (root / "tools" / "harness").mkdir(parents=True, exist_ok=True)
@@ -165,6 +186,12 @@ def _repo(
     (root / "docs" / "MODEL.md").write_text(model, encoding="utf-8")
     (root / "README.md").write_text(readme, encoding="utf-8")
     (root / "ROADMAP.md").write_text(roadmap, encoding="utf-8")
+    if tests:
+        suite = root / "tests" / "unit"
+        suite.mkdir(parents=True, exist_ok=True)
+        (suite / "test_family.py").write_text(
+            f"def {FAMILY_TEST}() -> None:\n    pass\n", encoding="utf-8"
+        )
     return root
 
 
@@ -3176,11 +3203,147 @@ def test_no_test_directory_declines_rather_than_failing(tmp_path: Path) -> None:
     "not checked" and "wrong" are different results.
     """
     model = MODEL + "\n\nThe invariant is held by `test_absent_suite`.\n"
-    root = _repo(tmp_path, model=model)
+    root = _repo(tmp_path, model=model, tests=False)
     report = doc_check.analyze(root)
 
     assert not [e for e in report.errors if "test_absent_suite" in e]
     assert any("no test directory was found" in d for d in report.declined)
+
+
+# --- bound families, the question that comes before "does the name resolve" --
+#
+# `check_named_tests` asks whether a name resolves. These cover the prior
+# question - whether the statement named anything at all - which is the one a
+# specification written as prose cannot answer about itself (`PL-4FBP`). Four
+# of them are the whole member rule: names its entity, declares none against an
+# open item, declares none against an item that cannot carry the debt, names
+# nothing. The fifth is the family going missing, which must not read as a pass.
+
+
+def _family_model(held_by: str) -> str:
+    """The fixture document with its one bound-family member's cell replaced."""
+    return MODEL.replace(f"`{FAMILY_TEST}`", held_by)
+
+
+def _family_repo(tmp_path: Path, held_by: str, items: dict[str, str] | None = None) -> Path:
+    """A fixture repository whose bound-family member reads `held_by`.
+
+    `items` maps an id to a status and builds a store when given; without one
+    the checkout has no queue, which is what a declared absence cannot be
+    resolved against.
+    """
+    root = _repo(tmp_path, model=_family_model(held_by))
+    if items is None:
+        return root
+    (root / "docket.toml").write_text('items_dir = "docs/items"\n', encoding="utf-8")
+    store = root / "docs" / "items"
+    store.mkdir(parents=True, exist_ok=True)
+    for identifier, status in items.items():
+        (store / f"{identifier}-demo.md").write_text(
+            f"---\nid: {identifier}\ntitle: Demo\npriority: P2\neffort: S\n"
+            f"status: {status}\nadded: 2026-09-06\n---\n\n"
+            "**Problem.** A thing.\n**Why it matters.** It does.\n**Done when.** Fixed.\n",
+            encoding="utf-8",
+        )
+    return root
+
+
+def _family_errors(root: Path) -> list[str]:
+    return [e for e in _errors(root) if "Reasonably foreseeable misuse" in e]
+
+
+def test_a_family_member_that_names_its_entity_is_quiet(tmp_path: Path) -> None:
+    """The conforming form stays silent, or the check gets disabled."""
+    assert _family_errors(_family_repo(tmp_path, f"`{FAMILY_TEST}`")) == []
+
+
+def test_a_family_member_declaring_no_test_yet_against_an_open_item_is_quiet(
+    tmp_path: Path,
+) -> None:
+    """A declared absence is a forward reference to work, and passes as one.
+
+    This is the half the hazard table's own sentence lacked: it said a row may
+    say plainly that it has none, and left "plainly" to the reader. The fixed
+    parenthesis is what lets a script tell a declared absence from a forgotten
+    link.
+    """
+    root = _family_repo(tmp_path, "no test yet (`PL-AAAA`)", items={"PL-AAAA": "ready"})
+
+    assert _family_errors(root) == []
+
+
+def test_a_family_member_declaring_no_test_yet_against_a_closed_item_is_an_error(
+    tmp_path: Path,
+) -> None:
+    """Closing the item without adding the link turns the exemption into a hole.
+
+    The forward reference was the whole of what made the absence acceptable, so
+    it has to expire with the item rather than outlive it silently.
+    """
+    root = _family_repo(tmp_path, "no test yet (`PL-AAAA`)", items={"PL-AAAA": "done"})
+    errors = _family_errors(root)
+
+    assert len(errors) == 1
+    assert "which is done" in errors[0]
+
+
+def test_a_family_member_declaring_no_test_yet_against_an_absent_item_is_an_error(
+    tmp_path: Path,
+) -> None:
+    """An id the queue never held is a hole with a plausible-looking label."""
+    root = _family_repo(tmp_path, "no test yet (`PL-ZZZZ`)", items={"PL-AAAA": "ready"})
+    errors = _family_errors(root)
+
+    assert len(errors) == 1
+    assert "the queue does not hold" in errors[0]
+
+
+def test_a_family_member_naming_nothing_at_all_is_an_error(tmp_path: Path) -> None:
+    """The case the whole convention exists for: a `must` with no link.
+
+    The sentence reads exactly as it did when something held it up, which is
+    why nothing short of requiring the name catches it.
+    """
+    errors = _family_errors(_family_repo(tmp_path, "the interface is careful about it"))
+
+    assert len(errors) == 1
+    assert "names no test and does not declare that it has none" in errors[0]
+
+
+def test_a_declared_absence_is_declined_rather_than_failed_without_a_store(tmp_path: Path) -> None:
+    """A checkout with no queue has not disproved the forward reference."""
+    root = _family_repo(tmp_path, "no test yet (`PL-AAAA`)")
+    report = doc_check.analyze(root)
+
+    assert _family_errors(root) == []
+    assert any("no queue in this checkout can resolve" in d for d in report.declined)
+
+
+def test_a_bound_family_whose_heading_has_moved_is_an_error(tmp_path: Path) -> None:
+    """A renamed heading must not retire the family quietly.
+
+    `BOUND_FAMILIES` still claims to hold it, so reading no members as "nothing
+    to check" would be the same silent decay the check exists to catch, one
+    level up from the row.
+    """
+    model = MODEL.replace("## Reasonably foreseeable misuse, and the", "## Misuse and the")
+    errors = [e for e in _errors(_repo(tmp_path, model=model)) if "bound family" in e]
+
+    assert len(errors) == 1
+    assert "the heading has moved or its entries are gone" in errors[0]
+
+
+def test_this_repository_holds_every_bound_family_to_its_members() -> None:
+    """The families named in `BOUND_FAMILIES` conform here, not only in fixtures.
+
+    A family joins that tuple only once its annotation pass has landed, so this
+    is the assertion that the tuple never runs ahead of the document.
+    """
+    report = doc_check.Report()
+    doc_check.check_bound_families(Path(__file__).resolve().parents[2], report)
+
+    assert report.errors == []
+    assert report.declined == []
 
 
 # --- the `not-delegable` subset count ----------------------------------------

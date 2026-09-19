@@ -1,13 +1,14 @@
 ---
 id: PL-B8V1
 title: ROADMAP.md's declined-to-Gate-2 argument says 'Gate 1 stands at 132 entries ... with 89 still open' in the present tense, and it is now 159 with 94 open
-status: needs-decision
-added: 2026-09-13
 priority: P2
 effort: S
+status: ready
 classes: defect, docs
 feature: planning-cadence
 touches: ROADMAP.md
+added: 2026-09-13
+verify: python3 tools/doc_check.py check && grep -qF 'stood at 132 entries' ROADMAP.md
 ---
 
 **Problem.** ROADMAP.md's declined-to-Gate-2 argument says 'Gate 1 stands at 132 entries ... with 89 still open' in the present tense, and it is now 159 with 94 open
@@ -59,3 +60,13 @@ which reads better and loses the audit trail to the decision actually taken.
 **Done when.** The paragraph can no longer be read as a current gate count, the
 2026-09-08 decision's own arithmetic is still recoverable from it, and
 `make check` is green.
+
+**Decided 2026-09-19 by `PL-4FBP`'s ratified convention** (a live assertion names what it asserts, a dated one carries its date).
+The decision is made and it is the item's own recommendation: **date the claim
+in place**, which is clause 4 - a dated statement is a record, held to its date
+and never to the tree, and a later fact is appended with its own date rather
+than written over the earlier one. Restating the argument in ratios is refused
+for the reason the item gives: it loses the audit trail to the 2026-09-08
+decision. Promoted from `needs-decision` to `ready`, with a `verify:` command
+run on 2026-09-19 and watched to fail (exit 1: `doc_check` is green, the
+past-tense phrase is absent).

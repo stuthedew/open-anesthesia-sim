@@ -1,10 +1,14 @@
 ---
 id: PL-JVHL
 title: The hover answers for whichever run is marginally nearer, so a 2 px hand movement silently swaps which run's value is read
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: safety, ux
 feature: scenario-branching
-touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit
+touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit/test_chart_frame.py
 added: 2026-09-17
+verify: grep -q 'def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers' tests/unit/test_chart_frame.py
 ---
 
 **Problem.** The hover answers for whichever run is marginally nearer, so a 2 px hand movement silently swaps which run's value is read
@@ -36,7 +40,7 @@ difference available, because the percent axis is scaled by the alveolar peak
 and the slow compartments are compressed near zero. The slow compartments are
 what the chart exists to teach.
 
-**It is consequential rather than cosmetic.** Of the hovers that could answer
+**Why it matters, and why it is consequential rather than cosmetic.** Of the hovers that could answer
 for either run, the share that would print *different* text is 83.3–95.3%
 (alveolar) and 43.8–81.4% (fat). Worked case, vaporizer off, fat at 3492 s:
 `0.03%   0.02 ×MAC` or `0.01%   <0.01 ×MAC` depending on a 2 px movement — a
@@ -58,3 +62,11 @@ taking a global minimum over a set the reader cannot see.
 **Found 2026-09-17** while measuring the case for `PL-MN4J`. Filed rather than
 fixed: the fix is a change to the targeting rule, which that section derives,
 and `CLAUDE.md`'s fix-now door admits neither a new test nor a decision.
+
+**Done when.** A pointer movement of a few pixels cannot change which run the
+hover answers for while both runs' points stay inside `HOVER_RADIUS_PIXELS` -
+by preferring the run whose curve the pointer is nearest along its length, or by
+requiring the pointer to be inside a run's own band, whichever the targeting
+work settles on - a test in `tests/unit/test_chart_frame.py` drives the two-run
+fat-compartment case that measures 100% ambiguous today, and `docs/MODEL.md`
+§ "The chart's hover readout" states the rule the reader can rely on.

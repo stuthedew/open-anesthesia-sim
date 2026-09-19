@@ -1,8 +1,12 @@
 ---
 id: PL-XZD0
 title: Nothing reconciles the jobs that report a status check on pull_request against the branch-protection required list, in either direction: PL-KPP1 covers removing one by comment alone, and nothing at all covers adding one
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: infra
 feature: pr-title-enforcement
+touches: .github
 added: 2026-09-17
 ---
 
@@ -47,6 +51,16 @@ five months, and `CLAUDE.md`'s gate for building a mechanism is whether it will
 genuinely run again. Against that, both changes were silent, both cost real
 damage, and neither was caught by anything. Decide on those two numbers rather
 than on how nice the check would be.
+
+**Decision needed.** Whether CI should reconcile the two lists at all, and if
+so with what credential. Three candidate answers, and the permission is what
+separates them: a workflow reading
+`GET /repos/{owner}/{repo}/branches/{branch}/protection` with a token scoped
+beyond the default `GITHUB_TOKEN` read grant; the same reconciliation run by
+hand at release time and recorded as a step; or the comment in each workflow
+standing as the whole remedy. Decide it on the two numbers this brief already
+carries - one set change per five months, both silent, both costly - and on
+`PL-N5WZ`'s recorded dead end, not on how useful the check would feel.
 
 **Done when.** A decision is recorded - in `ROADMAP.md` or in the workflows'
 own comments - either naming the check that reconciles the two lists and what
