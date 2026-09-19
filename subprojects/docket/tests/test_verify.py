@@ -1849,6 +1849,152 @@ def test_a_genuinely_removed_assertion_is_still_reported(
     assert not check.passed
 
 
+# `PL-K1WS` - an assertion *edited in place*. A required parameter added to a
+# function rewrites every call site that passes it inside an `assert`, and the
+# exact fold in `_net_line_changes` sees each rewrite as a removal. `PL-MN4J`
+# took eleven of these on a diff that removed no coverage at all. The refusing
+# direction is the one that fails silently, so it carries the most cases below:
+# the fold is licensed by the original's tokens surviving, and nothing else.
+
+SIGNATURE = (
+    "def test_hover() -> None:\n"
+    "    assert format_trace_hover(run, ALVEOLAR, 0) == header\n"
+    "    assert readout == format_trace_hover(run, ALVEOLAR, index)\n"
+)
+
+
+def test_an_assertion_rewritten_in_place_is_not_reported_as_removed(tmp_path: Path) -> None:
+    """`PL-MN4J`'s own shape, both ways the new argument was written.
+
+    The second line is the one a greedy alignment gives up: the replacement
+    ends in two closing brackets, and spending the original's `)` on the inner
+    one leaves the outer at depth 0 with nothing to match. Three of `PL-MN4J`'s
+    eleven lines were that shape.
+    """
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX the call sites", "tests/test_thing.py", KEPT + SIGNATURE)
+    _work(
+        root,
+        "PL-K7QX name the run",
+        "tests/test_thing.py",
+        KEPT
+        + (
+            "def test_hover() -> None:\n"
+            "    assert format_trace_hover(run, ALVEOLAR, 0, 1) == header\n"
+            "    assert readout == format_trace_hover(run, ALVEOLAR, index, len(frame.runs))\n"
+        ),
+    )
+
+    check = _check(
+        verify(root, _item(), _config(), "HEAD~1", self_audit=True), "no existing assertion removed"
+    )
+    assert check.passed
+    assert check.detail == "none, 2 replaced in place"
+
+
+def test_a_replacement_is_printed_beside_the_line_it_replaced(tmp_path: Path) -> None:
+    """The fold withdraws the refusal and nothing else.
+
+    An inserted argument can still change what a line asserts, so the pair
+    stays on the page for the reader who would catch that - which is the whole
+    reason folding it is safe.
+    """
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX the call site", "tests/test_thing.py", KEPT + SIGNATURE)
+    _work(
+        root,
+        "PL-K7QX name the run",
+        "tests/test_thing.py",
+        KEPT
+        + (
+            "def test_hover() -> None:\n"
+            "    assert format_trace_hover(run, ALVEOLAR, 0, 1) == header\n"
+            "    assert readout == format_trace_hover(run, ALVEOLAR, index)\n"
+        ),
+    )
+
+    check = _check(
+        verify(root, _item(), _config(), "HEAD~1", self_audit=True), "no existing assertion removed"
+    )
+    assert check.passed
+    assert "replaced, not counted: assert format_trace_hover(run, ALVEOLAR, 0) == header" in (
+        check.lines
+    )
+    assert any(line.strip().startswith("by: assert format_trace_hover") for line in check.lines)
+
+
+@pytest.mark.parametrize(
+    ("shape", "replacement"),
+    [
+        ("a changed literal", "    assert reading == pytest.approx(1.05)\n"),
+        ("a dropped argument", "    assert reading == pytest.approx(2.05, rel=R)\n"),
+        ("a widened condition", "    assert reading == pytest.approx(2.05) or skipped\n"),
+        ("a different subject", "    assert other == pytest.approx(2.05)\n"),
+    ],
+)
+def test_a_rewrite_that_is_not_an_insertion_is_still_reported(
+    tmp_path: Path, shape: str, replacement: str
+) -> None:
+    """The silent direction, so every way the fold could be talked into firing is here.
+
+    `a changed literal` is the one that decides the design: `2.05` to `1.05`
+    is what the wider normalisation `PL-K1WS` proposed - erase the argument
+    lists, compare what is left - would have folded, and it is a weakened
+    assertion. `a dropped argument` removes `rel=R` rather than adding it, and
+    reversing the direction is not the same question. `a widened condition`
+    appends outside every bracket. `a different subject` keeps the shape and
+    changes what is being read.
+    """
+    root = _repo(tmp_path)
+    body = "def test_reading() -> None:\n"
+    original = "    assert reading == pytest.approx(2.05)\n"
+    start, end = (
+        (original, replacement) if shape != "a dropped argument" else (replacement, original)
+    )
+    _work(root, f"PL-K7QX assert {shape}", "tests/test_thing.py", KEPT + body + start)
+    _work(root, f"PL-K7QX rewrite {shape}", "tests/test_thing.py", KEPT + body + end)
+
+    check = _check(
+        verify(root, _item(), _config(), "HEAD~1", self_audit=True), "no existing assertion removed"
+    )
+    assert check.blocks and not check.advisory
+    assert check.detail == "1 line(s)"
+
+
+def test_a_replacement_in_another_file_does_not_fold(tmp_path: Path) -> None:
+    """Per file, never across - the rule the exact fold above it already holds to.
+
+    An assertion cut from one file and a similar one added to another is two
+    facts rather than a move, and the check has no way to know the second was
+    meant as the first. The base holds the assertion, so that what is audited
+    is a removal rather than a line this branch both added and cut - which the
+    exact fold above would settle first.
+    """
+    root = _repo(tmp_path)
+    body = "def test_reading() -> None:\n    assert probe(reading) == 2\n"
+    _work(root, "PL-K7QX the assertion", "tests/test_thing.py", KEPT + body)
+    _work(root, "PL-K7QX cut it", "tests/test_thing.py", KEPT)
+    _work(
+        root,
+        "PL-K7QX a similar one elsewhere",
+        "tests/test_other.py",
+        "def test_reading() -> None:\n    assert probe(reading, scale) == 2\n",
+    )
+
+    check = _check(
+        verify(
+            root,
+            _item(touches=("tests/test_thing.py", "tests/test_other.py")),
+            _config(),
+            "HEAD~2",
+            self_audit=True,
+        ),
+        "no existing assertion removed",
+    )
+    assert check.blocks
+    assert check.detail == "1 line(s)"
+
+
 # `falsifies:` - the declared exemption to "no existing assertion removed"
 # (`PL-K82G`). The check had no passing route for an item whose own work makes
 # a rendered string false, so a correct close-out could only game the fold or
