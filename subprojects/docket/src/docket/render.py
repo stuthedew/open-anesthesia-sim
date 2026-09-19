@@ -290,6 +290,8 @@ def format_digest(
     orphaned: OrphanedReport | None = None,
     cuts: CutsInFlight | None = None,
     generator_paths: tuple[str, ...] = (),
+    protected_paths: tuple[str, ...] = (),
+    gate_paths: tuple[str, ...] = (),
 ) -> str:
     """The few lines injected into session context at startup.
 
@@ -360,7 +362,8 @@ def format_digest(
             continue
         lines.append(
             "  P0 (before feature work): "
-            f"{item.identifier} {item.title} ({_marks(item, flight.ids)})"
+            f"{item.identifier} {item.title} "
+            f"({_marks(item, flight.ids, protected_paths, gate_paths)})"
         )
 
     picks = recommend(
@@ -372,7 +375,7 @@ def format_digest(
     )
     top = picks[0] if picks else None
     if top is not None and top.item.priority != "P0":
-        marks = _marks(top.item, flight.ids)
+        marks = _marks(top.item, flight.ids, protected_paths, gate_paths)
         # The one line every session reads before it has run anything. A
         # generator outranks every band but `P0`, so without this the digest
         # opens with a `P2` leading a queue that has `P1`s in it and nothing

@@ -174,11 +174,26 @@ class Recommendation:
     #: into one count would print "root cause of 0 items" on an item that
     #: outranks every `P1`.
     impairs_generators: bool = False
+    #: Whether a cheaper model may take this item, from `Item.delegability`.
+    #: Carried here for the reason `scoped_to` and `generator` are: the answer
+    #: needs `protected_paths` and `gate_paths`, which `describe` cannot
+    #: reach. Defaults to `False`, so a caller threading no configuration
+    #: offers nothing - the same fail-closed reading `delegability` gives an
+    #: empty `protected_paths`, arrived at from the other end.
+    delegable: bool = False
 
     def describe(self) -> str:
         marks = [m for m in (self.item.effort, self.item.status) if m]
         if self.item.model_guidance:
             marks.append(f"{self.item.model_guidance} - use your strongest model")
+        elif self.delegable:
+            # `elif` rather than a second `if`, mirroring `render._marks`. The
+            # two are already mutually exclusive - `delegability` returns the
+            # guidance string itself whenever `model_guidance` is set - so this
+            # says so where a reader looks, rather than leaving them to check.
+            # Which model is cheaper is deliberately not named here: the answer
+            # dates, and `docs/maintainer.md` is where a dated instance lives.
+            marks.append("delegable - a cheaper model may take this")
         if self.generator:
             marks.append(f"root cause of {self.generator} items")
         if self.impairs_generators:
@@ -410,6 +425,8 @@ def recommend(
     lane: str | None = None,
     workflow_paths: tuple[str, ...] = (),
     generator_paths: tuple[str, ...] = (),
+    protected_paths: tuple[str, ...] = (),
+    gate_paths: tuple[str, ...] = (),
 ) -> list[Recommendation]:
     """Rank the work worth starting now.
 
@@ -675,6 +692,7 @@ def recommend(
                 scoped_to=scoped_to,
                 generator=len(generating.get(item.identifier, ())),
                 impairs_generators=item.identifier in impairing,
+                delegable=item.delegability(protected_paths, gate_paths) is None,
             )
         )
 
