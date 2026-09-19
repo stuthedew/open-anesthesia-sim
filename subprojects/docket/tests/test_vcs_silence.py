@@ -553,12 +553,16 @@ def test_a_path_a_revision_does_not_hold_is_git_answering_absent(repo: Path) -> 
 
 
 def test_a_silence_survives_the_memo_rather_than_being_served_as_an_answer(repo: Path) -> None:
-    """`GitRunner` remembers a silence as a silence.
+    """A second caller meets a silence as a silence, whatever the memo did.
 
-    The memo stores whatever the serving path returned, so a `GitSilence` is
-    handed back to the second caller marked as it reached the first. Whether a
-    failure should be memoized *at all* is `PL-MM7F`; what must not happen
-    either way is the mark being lost on the way through.
+    The memo no longer stores one at all - `PL-MM7F` settled that, and
+    `test_git_runner.py` pins the retry and the count behind it. This holds the
+    property that outlives either decision: whether the second caller is served
+    from the memo or from a fresh subprocess, what reaches it must still be
+    marked as the thing git never gave. Kept as a read from the top, because a
+    `GitSilence` that lost its mark anywhere on the way through would satisfy
+    every test on the storing rule and still tell this module's readers that
+    git had answered.
     """
     argv = ["diff", "--numstat", "origin/main", "refs/heads/deleted", "--", "docs/items"]
     with GitRunner() as runner:

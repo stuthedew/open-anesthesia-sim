@@ -3,8 +3,7 @@ id: PL-28HG
 title: GitRunner._drop marks a root permanently unbatchable, so one transient cat-file fault costs every later blob in the command a separate git show process
 priority: P3
 effort: S
-status: needs-decision
-classes: perf
+status: untriaged
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_git_runner.py
 added: 2026-09-19
 ---
