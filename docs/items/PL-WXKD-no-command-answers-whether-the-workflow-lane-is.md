@@ -1,7 +1,7 @@
 ---
 id: PL-WXKD
 title: No command answers whether the workflow lane is converging: docket trend reports the workflow/product balance, so a session asked whether accumulation is slowing re-derives filed-per-closed, surface saturation and severity mix by hand at full context
-priority: P3
+priority: P2
 effort: M
 status: ready
 classes: infra
@@ -99,3 +99,45 @@ backlog, and the count blocked on an owner decision - no single composite score,
 per `docs/dead-ends.md` on the open-backlog ratio - and a test under
 `subprojects/docket/tests/` pins the store-path exclusion and the rate
 normalisation for a short final period.
+
+## Raised to P2, and what the command should report (project owner, 2026-09-19)
+
+The project owner asked for this three times in one conversation, in their own
+words: "Is there a way to keep track of that at least a little going forward
+primarily as a sanity check to make sure that the trend of new workflow issues is
+decreasing over time as expected ... mostly make sure that we aren't missing
+anything like an unknown generator of bugs that needs to be addressed." An item
+the owner has asked for three times is not a `P3`.
+
+**Two constraints they stated, which narrow this item's original scope.** No
+ratio is to be tracked or enforced, and backlog counts are explicitly not wanted:
+"I don't really care about the backlog so much and it doesn't help me to say that
+we have a bunch open still." So `filed-per-closed` and `severity mix` as this
+brief first framed them are context at most, not the headline.
+
+**What to report instead — two causal signals, with `PL-04KR` holding the
+baseline they are measured against:**
+
+1. **Re-entry rate** — new workflow items landing on a path that a *closed* item
+   also touched, where that closure fell within the preceding 30 days. Rising
+   means fixes are not holding. This is the signal the store currently cannot
+   show at all: of 623 attributed parent-child links, 100% of children were filed
+   in the commit that closed the parent, so the existing attribution sees
+   filed-while-working and never fix-did-not-hold. Exclude item-file paths — 11
+   open items declare another item's file as their `touches` and would inflate it
+   for a bookkeeping reason.
+2. **Largest unexplained cluster** — open items sharing a mechanism with no
+   `root-cause-of:` head above them. 27 on 2026-09-19 (`PL-G424`). Growing means
+   an unfound cause is accumulating instances.
+
+**Report it at release time, silent when the trend matches expectation.** A
+per-session advisory would fire every run and become the noise `CLAUDE.md`
+already says is a defect in a check. And break generator-campaign filings out
+separately, or the next deliberate sweep reads as regression — the 2026-09-17 to
+09-19 window had to be excluded from `PL-04KR`'s baseline by hand for exactly
+that reason.
+
+**Do not re-propose raw path recurrence.** This item already refuted it: 90%
+recurrence on a surface of 117 apparatus files is arithmetic, not regression. The
+30-day bound on signal 1 is what makes it a statement about a fix rather than
+about surface size.
