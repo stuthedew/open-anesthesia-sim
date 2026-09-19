@@ -695,6 +695,7 @@ SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("blocked-by", "blocked_by"),
     ("closed", "closed"),
     ("reason", "reason"),
+    ("payoff", "payoff"),
     ("verify", "verify"),
     ("not-delegable", "not_delegable"),
     ("falsifies", "falsifies"),
@@ -889,6 +890,12 @@ def cmd_show(args: argparse.Namespace) -> int:
     flight = _flight(args)
     print(f"{item.identifier} {item.title}")
     print(f"  {item.priority or '-'} · {item.effort or '-'} · {item.status}")
+    # Directly under the band, above the mechanics. `show` is how an item
+    # named by the project owner is read, and it is the one path that skips
+    # `next` entirely - so without this the surface they reach most carries
+    # the ranking facts and nothing saying what the work is for.
+    if item.payoff:
+        print(f"  payoff: {item.payoff}")
     if item.touches:
         print(f"  touches: {', '.join(item.touches)}")
     if item.milestone:
@@ -1275,8 +1282,15 @@ def _say_answer_lane(
         return f"{item.priority}, {clause}" if clause else item.priority
 
     def name(wanted: str) -> str:
+        # The payoff on its own line rather than inside the parentheses beside
+        # the band: it is a sentence, and the marks in there are tokens. A
+        # pick carrying none prints as it always did, so this costs a line
+        # only where there is something to read on it.
         found = pick_for(wanted)
-        return f"{found.identifier} ({why(found)}): {found.title}" if found else "nothing startable"
+        if found is None:
+            return "nothing startable"
+        named = f"{found.identifier} ({why(found)}): {found.title}"
+        return f"{named}\n  - payoff: {found.payoff}" if found.payoff else named
 
     top_lane = top.lane(config.workflow_paths)
     if top_lane in SELECTABLE_LANES:
@@ -2275,6 +2289,7 @@ def build_parser() -> argparse.ArgumentParser:
     setter.add_argument("--feature")
     setter.add_argument("--closed", type=_closing_date, metavar="YYYY-MM-DD")
     setter.add_argument("--reason")
+    setter.add_argument("--payoff", metavar="LINE")
     setter.add_argument("--verify", metavar="COMMAND")
     setter.add_argument("--not-delegable", metavar="WHY")
     setter.add_argument("--falsifies", metavar="FRAGMENT")

@@ -9,6 +9,7 @@ feature: recommendation-rationale
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
 closed: 2026-09-19
+pr: 729
 verify: grep -qF 'def test_the_clause_names_the_gate_while_a_gate_is_open' subprojects/docket/tests/test_plan.py
 ---
 

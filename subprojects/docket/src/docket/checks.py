@@ -404,6 +404,30 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
                 "that would prove it done, or record in `not-delegable` why no command can"
             )
 
+    # `payoff:` sits at the same status as the gate above, and the placement
+    # carries the same argument: an idea being captured owes nothing, and
+    # `ready` is where the item has become a commitment to do work and "what
+    # does closing this buy?" has an answer.
+    #
+    # No escape hatch, unlike `not-delegable` above. Some work genuinely has
+    # no command that can run beforehand; no work has no consequence, and an
+    # item nobody can say that much about is a finding about the item rather
+    # than a case for an exemption.
+    #
+    # Presence and nothing else. Whether the line states a *consequence* or
+    # merely restates the title is exactly the judgment this project refuses
+    # to script: a checker guessing at it would be authoritative and wrong,
+    # which is worse than no checker. No length floor either - the one
+    # `falsifies` carries exists because a short fragment folds assertions it
+    # was never meant to, a concrete harm, where a thin payoff harms only the
+    # reader who is looking straight at it.
+    if item.status == "ready" and _payoff_required(item, config):
+        if not item.payoff:
+            report.errors.append(
+                f"{where}: is ready but names no `payoff:`; give one plain-language line of "
+                "what closing it buys - the consequence, not a restatement of the title"
+            )
+
     # The same requirement at the other end of the item's life, and this half
     # is what reaches the set the gate above grandfathers. An item captured
     # before `verify_required_from` is exempt at `ready` and stays exempt
@@ -597,6 +621,27 @@ def _verify_required(item: Item, config: Config) -> bool:
     if config.verify_required_from is None:
         return False
     return item.added is not None and item.added >= config.verify_required_from
+
+
+def _payoff_required(item: Item, config: Config) -> bool:
+    """Whether the `payoff:` rule applies to this item at all.
+
+    Anchored to the capture date, and it leaks in the same bounded way
+    `_verify_required` leaks: an item captured before the cutover and triaged
+    after it escapes the rule. The alternative is a second date written by
+    hand at triage, which is a field that can be wrong, and the leak can only
+    ever cover items already in the store when the rule was adopted.
+
+    The set it grandfathers is closed at whatever the store held on the day
+    the rule began working, which is why the date a project records here is
+    the day *after* it is set rather than the same day. Backfilling that set
+    was refused for `verify:` and is refused here for the cheaper half of the
+    same reason: a sentence written for an item nobody has started is written
+    away from the only context that makes it accurate.
+    """
+    if config.payoff_required_from is None:
+        return False
+    return item.added is not None and item.added >= config.payoff_required_from
 
 
 def _verify_required_at_close(item: Item, config: Config) -> bool:
@@ -2016,6 +2061,36 @@ def _groom(
             f"no `verify:` command ({len(due)} of {len(unspecified)} ready item(s) predating "
             f"the requirement, {config.verify_required_from}); give the command when you "
             "start it, having run it first"
+        )
+
+    # The same shape for `payoff:`, and a separate advisory rather than a
+    # clause on the one above: the two ask for different things from whoever
+    # reads them - a command that has been run, and a sentence about
+    # consequence - and an item can owe either without owing both.
+    #
+    # Narrowed to what is about to be offered for the reason the `verify:`
+    # advisory is: naming the whole grandfathered backlog is an advisory that
+    # cannot reach zero without a campaign, and the cost of one of those is
+    # not the items it names but the next advisory, which gets read the same
+    # way. The moment an item is offered is also when the sentence is worth
+    # most, since that is the moment somebody is being asked to weigh it.
+    unstated = [
+        item
+        for item in report.open_items
+        if config.payoff_required_from is not None
+        and item.status == "ready"
+        and not item.payoff
+        and not _payoff_required(item, config)
+    ]
+    owing = [item for item in unstated if item.identifier in (offered or frozenset())]
+    if owing:
+        one = len(owing) == 1
+        report.advisories.append(
+            f"{', '.join(item.identifier for item in owing)} "
+            f"{'is' if one else 'are'} next to be offered and {'names' if one else 'name'} "
+            f"no `payoff:` ({len(owing)} of {len(unstated)} ready item(s) predating the "
+            f"requirement, {config.payoff_required_from}); write the line as you start it - "
+            "one plain-language sentence of what closing it buys"
         )
 
     resolved = {i.identifier for i in report.items if i.status in ("done", "dropped")}

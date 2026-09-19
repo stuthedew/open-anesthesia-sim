@@ -35,6 +35,7 @@ def _item(
     root_cause_of: tuple[str, ...] = (),
     impairs_generators: str = "",
     verify: str = "",
+    payoff: str = "",
 ) -> Item:
     return Item(
         identifier=identifier,
@@ -54,6 +55,7 @@ def _item(
         body="**Problem.** x\n**Why it matters.** y\n**Done when.** z\n",
         root_cause_of=root_cause_of,
         impairs_generators=impairs_generators,
+        payoff=payoff,
         verify=verify,
     )
 
@@ -180,6 +182,29 @@ def test_a_recommendation_says_which_model_the_work_warrants() -> None:
     (pick,) = recommend([_item("PL-1111", classes=("safety",), priority="P1")], limit=1)
 
     assert "strongest model" in pick.describe()
+
+
+def test_a_recommendation_leads_with_what_the_work_buys() -> None:
+    """Consequence above the ranking's own reason (`PL-WYKF`).
+
+    The title names what the work does and `reason` says why it ranked; neither
+    answers "why would I want this", which is the question an offer is read
+    for. So the payoff sits between them rather than at the end.
+    """
+    payoff = "a renamed CI job stops blocking merges on a check that cannot arrive"
+    (pick,) = recommend([_item("PL-1111", payoff=payoff)], limit=1)
+    lines = pick.describe().splitlines()
+
+    assert f"    payoff: {payoff}" in lines
+    assert lines.index(f"    payoff: {payoff}") < len(lines) - 1
+
+
+def test_a_recommendation_with_no_payoff_reads_as_it_always_did() -> None:
+    """The field is adopted item by item, so its absence must cost nothing."""
+    (pick,) = recommend([_item("PL-1111")], limit=1)
+
+    assert "payoff" not in pick.describe()
+    assert len(pick.describe().splitlines()) == 2
 
 
 #: A store position that qualifies under every clause of `Item.delegability`:

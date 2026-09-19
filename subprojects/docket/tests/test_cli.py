@@ -3462,6 +3462,32 @@ def test_the_digest_names_each_lane_s_pick_for_a_parallel_session(
     assert "1 in neither lane" in out
 
 
+def test_the_digest_lane_line_says_what_each_pick_buys(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The offer the project owner has no other way to judge (`PL-WYKF`).
+
+    A simulator item's title describes something they already have an opinion
+    about; an apparatus item's does not, and the lane line is the one place the
+    digest names the workflow pick. So it carries the payoff below it, on its
+    own line, where a pick has one.
+    """
+    store = _laned_store(tmp_path)
+    work = store / "PL-WORK-x.md"
+    work.write_text(
+        work.read_text(encoding="utf-8").replace(
+            "added: 2026-08-01\n", "added: 2026-08-01\npayoff: the doc check stops lying\n"
+        ),
+        encoding="utf-8",
+    )
+
+    assert _run("digest", "--items", str(store)) == 0
+    out = capsys.readouterr().out
+
+    assert "PL-WORK payoff: the doc check stops lying" in out
+    assert "PL-PROD payoff" not in out
+
+
 def test_the_digest_says_nothing_about_lanes_when_no_boundary_is_declared(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -3765,6 +3791,52 @@ def test_show_names_the_notes_threads_that_concern_the_item(
     assert "NOTES.md:3 (about) Open thread: the chart - PL-B1B1" in out
     assert "NOTES.md:7 (mentions) Another thread" in out
     assert "Whether a thread is still true is not something this can tell you." in out
+
+
+def _payoff_store(tmp_path: Path) -> Path:
+    """A ready item carrying one line of what closing it buys."""
+    return _store(
+        tmp_path,
+        READY.replace(
+            "added: 2026-08-01\n",
+            "added: 2026-08-01\npayoff: the induction plot stops implying a measurement\n",
+        ),
+    )
+
+
+def test_show_names_what_the_item_buys_under_its_band(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`show` is the path a named item arrives on, and it skips `next` entirely.
+
+    So without this the surface the project owner reaches most carries the
+    band, the effort and the gate relation - every decidable fact - and nothing
+    saying what the work is for (`PL-WYKF`).
+    """
+    assert _run("show", "PL-B1B1", "--items", str(_payoff_store(tmp_path))) == 0
+    lines = capsys.readouterr().out.splitlines()
+
+    assert "  payoff: the induction plot stops implying a measurement" in lines
+    assert lines.index("  payoff: the induction plot stops implying a measurement") == 2
+
+
+def test_show_says_nothing_where_the_item_carries_no_payoff(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert _run("show", "PL-B1B1", "--items", str(_store(tmp_path, READY))) == 0
+
+    assert "payoff" not in capsys.readouterr().out
+
+
+def test_set_writes_a_payoff(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """The field is written by command, like every other field triage answers."""
+    store = _store(tmp_path, READY)
+    line = "a renamed CI job stops blocking merges forever"
+
+    assert _run("set", "PL-B1B1", "--payoff", line, "--items", str(store)) == 0
+
+    assert f"payoff: {line}\n" in _item_text(store)
+    assert f"PL-B1B1: payoff: {line}" in capsys.readouterr().out
 
 
 def test_show_says_nothing_when_no_thread_names_the_item(

@@ -215,6 +215,20 @@ class Item:
     #: outlives it. Defaulted empty like the fields below, so an item written
     #: before the field existed still parses.
     pr: str = ""
+    #: One plain-language line of what closing this item buys - faster, fewer
+    #: bugs reaching `main`, a check that stops lying, a release that stops
+    #: needing a person to remember a step. The consequence, never a
+    #: restatement of the title: a title is written for the session that will
+    #: implement the item and so names a mechanism, which is a string the
+    #: project owner cannot weigh (2026-09-19).
+    #:
+    #: Stored rather than composed on demand, because a session offering an
+    #: item otherwise rebuilds the sentence from the brief at full context, in
+    #: every session that offers it. Nothing can infer it: the brief argues
+    #: the case in the same mechanism vocabulary the title uses, and which
+    #: consequence matters to a reader is judgment. So `checks.py` holds this
+    #: field to *presence* and nothing else - see `_payoff_required`.
+    payoff: str = ""
     #: The command that proves this item done. Defaulted empty rather than
     #: required, so an item written before the field existed - or captured
     #: without one - is simply not delegable, which is the safe reading.
@@ -673,6 +687,7 @@ def parse_item(text: str, path: str = "") -> Item:
         "commit",
         "pr",
         "reason",
+        "payoff",
         "verify",
         "not-delegable",
         "falsifies",
@@ -695,6 +710,7 @@ def parse_item(text: str, path: str = "") -> Item:
         commit=fields.get("commit", ""),
         pr=fields.get("pr", ""),
         reason=fields.get("reason", ""),
+        payoff=fields.get("payoff", ""),
         verify=fields.get("verify", ""),
         not_delegable=fields.get("not-delegable", ""),
         falsifies=fields.get("falsifies", ""),
@@ -730,6 +746,7 @@ def render_item(item: Item) -> str:
         ("commit", item.commit),
         ("pr", item.pr),
         ("reason", item.reason),
+        ("payoff", item.payoff),
         ("verify", item.verify),
         ("not-delegable", item.not_delegable),
         ("falsifies", item.falsifies),

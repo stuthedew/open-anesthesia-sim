@@ -87,6 +87,23 @@ class Config:
     #: project has not said", which leaves the rule above off rather than
     #: guessing.
     collected_test_paths: tuple[str, ...] = ()
+    #: The date the `payoff:` requirement started applying: an item reaching
+    #: `ready` must carry one plain-language line of what closing it buys.
+    #: Dated for the reason `verify_required_from` is - a store written before
+    #: the rule holds items that predate it, and turning every one of them
+    #: into an error at once makes the checker useless from its first run
+    #: rather than making the queue better. Items captured before it raise a
+    #: grooming advisory only as each is about to be offered, which is also
+    #: where the sentence is cheapest: the session about to work an item
+    #: already has its brief open.
+    #:
+    #: There is deliberately no close-time counterpart to
+    #: `verify_required_at_close_from`. That one exists because closing an
+    #: item is the first moment its command can be *run*, and a consequence
+    #: needs no run - it is answerable in full the moment the item becomes a
+    #: commitment, so the requirement has nowhere later to reach. `None`
+    #: leaves it off.
+    payoff_required_from: date | None = None
     #: Classes that make a release a minor version bump rather than a patch.
     minor_classes: tuple[str, ...] = ("feature",)
     #: Every class an item may carry. Empty means "derive it", and the derived
@@ -265,6 +282,11 @@ def load(root: Path) -> Config:
         ),
         collected_test_paths=_tuple(
             section.get("collected_test_paths"), defaults.collected_test_paths
+        ),
+        payoff_required_from=_date(
+            section.get("payoff_required_from"),
+            defaults.payoff_required_from,
+            "payoff_required_from",
         ),
         minor_classes=_tuple(section.get("minor_classes"), defaults.minor_classes),
         known_classes=_tuple(section.get("known_classes"), defaults.known_classes),

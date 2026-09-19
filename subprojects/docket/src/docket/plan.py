@@ -201,7 +201,16 @@ class Recommendation:
         if self.scoped_to:
             marks.append(f"scoped to {self.scoped_to}, not this step")
         head = f"{self.item.priority} {self.item.identifier} {self.item.title}"
-        return f"{head} ({', '.join(marks)})\n    {self.reason}"
+        # Consequence before mechanism, which is the order the `docket` skill
+        # requires of a reply offering an item: the title above names what the
+        # work does, `reason` below says why it ranked, and neither answers
+        # "why would I want this". A pick carrying no payoff reads exactly as
+        # it did before.
+        lines = [f"{head} ({', '.join(marks)})"]
+        if self.item.payoff:
+            lines.append(f"    payoff: {self.item.payoff}")
+        lines.append(f"    {self.reason}")
+        return "\n".join(lines)
 
 
 @dataclass(frozen=True)

@@ -2164,6 +2164,165 @@ def test_the_closing_gate_is_off_when_a_project_declares_no_cutover() -> None:
     assert not _has(analyze([item], TODAY, off).errors, "is done but names no")
 
 
+# --- `payoff:`: what closing the item buys, in the reader's language ---------
+#
+# `PL-WYKF`'s field, on `verify:`'s dated-cutover pattern. Every test here is
+# about one of two things: that the rule reaches the items captured under it
+# and no others, and that the checker asks for *presence* and never judges the
+# sentence. The second is the easier one to erode, so it is asserted directly
+# rather than left to the comment in `checks.py`.
+PAYOFF = Config(payoff_required_from=date(2026, 8, 1))
+
+
+def test_payoff_is_required_from_its_cutover_date() -> None:
+    """An item captured under the rule and reaching `ready` owes the line.
+
+    The gate sits at `ready` for the reason `verify:`'s does: capture has to
+    stay free, and `ready` is where the item stops being an idea and becomes a
+    commitment to spend a session on it - which is the first moment anybody can
+    say what spending it buys.
+    """
+    report = analyze([_item(added=date(2026, 8, 2))], TODAY, PAYOFF)
+
+    assert _has(report.errors, "is ready but names no `payoff:`")
+
+
+def test_a_ready_item_that_states_what_it_buys_is_accepted() -> None:
+    report = analyze(
+        [_item(added=date(2026, 8, 2), payoff="stops a renamed CI job blocking merges silently")],
+        TODAY,
+        PAYOFF,
+    )
+
+    assert not _has(report.errors, "`payoff:`")
+
+
+def test_the_checker_never_judges_whether_the_line_is_a_consequence() -> None:
+    """Presence only, and deliberately no length floor (`PL-WYKF`).
+
+    Whether a line states a consequence or merely restates the title is the
+    judgment this project refuses to script: a checker guessing at it would be
+    authoritative and wrong, which is worse than no checker. `falsifies` earns
+    its twelve-character floor because a short fragment folds assertions it was
+    never meant to - a concrete harm - where a thin payoff harms only the
+    reader looking straight at it.
+    """
+    report = analyze([_item(added=date(2026, 8, 2), payoff="faster")], TODAY, PAYOFF)
+
+    assert not _has(report.errors, "`payoff:`")
+
+
+def test_an_item_captured_before_the_cutover_owes_no_payoff() -> None:
+    """The grandfathered set, closed at what the store held when the rule began."""
+    report = analyze([_item(added=OLD)], TODAY, PAYOFF)
+
+    assert not _has(report.errors, "`payoff:`")
+
+
+def test_the_payoff_rule_is_off_when_a_project_declares_no_cutover() -> None:
+    """A project that never turned the rule on is not held to it."""
+    report = analyze([_item(added=date(2026, 8, 2))], TODAY, Config())
+
+    assert not _has(report.errors, "`payoff:`")
+    assert report.advisories == []
+
+
+def test_an_untriaged_capture_is_never_asked_what_it_buys() -> None:
+    """Capture costs nothing, which is the whole of why the gate is at `ready`.
+
+    Ideation often happens when usage is nearly spent, and a thought lost to a
+    rate limit is the worst outcome available. A field demanded at capture is
+    the same tax as a priority demanded at capture.
+    """
+    capture = _item(added=date(2026, 8, 2), status="untriaged", priority="", effort="")
+    report = analyze([capture], TODAY, PAYOFF)
+
+    assert not _has(report.errors, "`payoff:`")
+
+
+def test_there_is_no_not_delegable_escape_from_the_payoff() -> None:
+    """Unlike `verify:`, and the asymmetry is the point.
+
+    Some work genuinely has no command that can run before it - proving a
+    release-time fix means cutting a release. No work has no consequence, so an
+    item nobody can say that much about is a finding about the item rather than
+    a case for an exemption.
+    """
+    item = _item(
+        added=date(2026, 8, 2), not_delegable="proving it means cutting a release", verify=""
+    )
+
+    assert _has(analyze([item], TODAY, PAYOFF).errors, "is ready but names no `payoff:`")
+
+
+def test_a_grandfathered_item_about_to_be_offered_is_asked_for_its_payoff() -> None:
+    """An advisory, at the one moment the sentence is both cheap and wanted.
+
+    The session about to work the item already has the brief open, and somebody
+    is being asked to weigh the offer - so this is where the line gets written,
+    rather than in a pass over the backlog.
+    """
+    report = analyze([_item(added=OLD)], TODAY, PAYOFF, offered=_offering("PL-K7QX"))
+
+    assert report.errors == []
+    assert _has(report.advisories, "no `payoff:`")
+
+
+def test_a_grandfathered_item_nobody_is_about_to_offer_raises_no_payoff_advisory() -> None:
+    """Naming the whole backlog is an advisory that cannot reach zero."""
+    report = analyze([_item(added=OLD)], TODAY, PAYOFF, offered=_offering())
+
+    assert report.advisories == []
+
+
+def test_the_payoff_advisory_carries_how_many_are_still_outstanding() -> None:
+    backlog = [_item(f"PL-000{n}", added=OLD) for n in range(1, 4)]
+    report = analyze(backlog, TODAY, PAYOFF, offered=_offering("PL-0001"))
+
+    assert _has(report.advisories, "PL-0001 is next to be offered")
+    assert _has(report.advisories, "1 of 3 ready item(s)")
+
+
+def test_the_payoff_advisory_reaches_zero_once_the_offered_item_states_one() -> None:
+    backlog = [_item(f"PL-000{n}", added=OLD) for n in (2, 3)]
+    started = _item("PL-0001", added=OLD, payoff="the queue stops reading as arbitrary")
+    report = analyze([started, *backlog], TODAY, PAYOFF, offered=_offering("PL-0001"))
+
+    assert not _has(report.advisories, "`payoff:`")
+
+
+def test_the_payoff_and_verify_advisories_are_separate_asks() -> None:
+    """Two fields, two things owed, and an item can owe either without both.
+
+    Folded into one sentence, an item that had written its command but not its
+    payoff would read as having discharged neither, and the reader would go
+    looking for work already done.
+    """
+    both = Config(verify_required_from=date(2026, 8, 1), payoff_required_from=date(2026, 8, 1))
+    item = _item(added=OLD, verify="grep -q 'def test_it' tests/test_it.py")
+    report = analyze([item], TODAY, both, offered=_offering("PL-K7QX"))
+
+    assert _has(report.advisories, "no `payoff:`")
+    assert not _has(report.advisories, "names no `verify:` command")
+
+
+def test_the_digest_names_the_top_item_with_what_it_buys() -> None:
+    """The one line every session reads before it has run anything.
+
+    `PL-Z27P` put the band and the gate relation on it; this is the half
+    neither of those can carry, and the highest-value place in the store for
+    it.
+    """
+    item = _item(payoff="sessions stop re-deriving why an item is worth doing")
+
+    assert "payoff: sessions stop re-deriving" in format_digest(Report(items=[item]))
+
+
+def test_the_digest_says_nothing_where_the_top_item_carries_no_payoff() -> None:
+    """A store that has not adopted the field pays no resident context for it."""
+    assert "payoff:" not in format_digest(Report(items=[_item()]))
+
+
 # --- a closed item's `verify:` is a record, not a live command ---------------
 #
 # The decision `PL-JZ1D` settled. A closed command stops resolving as a matter
