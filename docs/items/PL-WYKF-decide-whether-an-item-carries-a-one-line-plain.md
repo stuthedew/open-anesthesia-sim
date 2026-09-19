@@ -1,16 +1,21 @@
 ---
 id: PL-WYKF
-title: Decide whether an item carries a one-line plain-language statement of what the work buys, so a recommendation can be read in consequence terms rather than mechanism terms
+title: Add a payoff: field carrying one plain-language line of what an item buys, required from a cutover date on the verify: pattern, and printed wherever docket names an item
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: infra
 feature: recommendation-rationale
-touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/README.md, docs/items
+touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md, docket.toml, docs/items
 added: 2026-09-19
+verify: grep -q 'def test_payoff_is_required_from_its_cutover_date' subprojects/docket/tests/test_checks.py
 ---
 
-**Problem.** Decide whether an item carries a one-line plain-language statement of what the work buys, so a recommendation can be read in consequence terms rather than mechanism terms
+**Problem.** Nothing in the store carries a plain-language statement of what
+closing an item buys, so every recommendation reads in mechanism terms and a
+session offering one has to compose the consequence from the brief at full
+context, in every session that offers it. The decision to add `payoff:` is
+taken and recorded below; what is left is building it.
 
 **Why it matters.** `PL-MN0F` and `PL-Z27P` fix the half of "why this item"
 that is decidable - the band, and where the item stands against the debt gate.
@@ -52,6 +57,60 @@ Decide it on whether the sentence is worth writing 163 times, once per open
 workflow item, at the moment each is next offered - not on how good the output
 would look.
 
-**Done when.** The decision is recorded here and, if a field is adopted, in
-`subprojects/docket/README.md`'s item format with its cutover date, with items
-filed for the checker and the renderers.
+**The cost, measured 2026-09-19, because it was asked and the first answer was
+not counted.** The session that wrote this brief recommended **(c)** on the
+strength of one number it had not checked - "halves the writing, ~163 items
+instead of 324". The project owner asked what (a) would actually cost. Counting
+it reversed the recommendation, which is `.claude/rules/expert-review.md`
+§ "Name the number that would change your mind" firing on the session that had
+just invoked it.
+
+| | (a) every item | (c) workflow lane only |
+| --- | --- | --- |
+| Startable open items owing a sentence | 267 | 157 |
+| Open items with no defined answer | 0 | **31** (crossing or no `touches`) |
+| Extra items charged per day, at the 2026-09-04..19 closure rate | +23.6 | baseline |
+| Rule to implement | "every item from date D" | the same, plus a lane condition |
+
+Three things the count says that the estimate did not:
+
+1. **(c) has 31 undefined cases and (a) has none.** An item whose `touches`
+   spans both halves, or declares nothing, is in neither lane - 42 of 325 open
+   items, 31 of them startable. A lane-scoped requirement has no answer for
+   them, and they are disproportionately the large cross-cutting work where the
+   sentence is worth most.
+2. **(c) is more code than (a), not less.** "Every item from date D" is the
+   whole of (a). (c) is that plus a condition on a computed lane, over a
+   `touches` field 10 open items do not declare.
+3. **The precedent is decisive and it is in this store.** `verify:` is the same
+   shape - required at `ready` from a cutover date, advisory only for the items
+   `bin/docket next` is about to offer. 913 of 1,278 items carry one today, and
+   **12 of 218 open `ready` items still lack one**. A required field on every
+   item, charged at the moment the item is started, drained to ~95% with no
+   backfill campaign and no pass dedicated to it.
+
+The marginal cost of (a) over (c) is therefore about 110 sentences across the
+open backlog, each one line written by a session that already has the brief
+open because it is about to work the item. That is not a campaign; it is the
+same per-item charge `verify:` already carries, on an item a session is
+spending an hour on.
+
+**Decision: (a), a `payoff:` field on every item** (project owner, 2026-09-19),
+on the `verify:` pattern above - required from a cutover date, advisory for the
+items `next` is about to offer, no backfill of anything already closed. The
+owner named (a) before the count; the count is why the session's own (c)
+recommendation is withdrawn rather than defended.
+
+**Done when.** `payoff:` is documented in `subprojects/docket/README.md`'s item
+format with its cutover date; `docket set` writes it and `docket check` requires
+it from that date and raises the offer-time advisory before it; `docket next`,
+`docket show` and the digest print it beside the band and gate relation
+`PL-Z27P` added. Nothing already closed is backfilled.
+
+**Two things whoever implements this must not get wrong.** The cutover date is
+tomorrow rather than today, as `verify_prerequisite_refused_from` was, so the
+grandfathered set is closed at exactly what the store held when the rule began
+working. And the field holds a *consequence*, not a restatement of the title -
+`docket check` cannot judge that and must not try, so the checker's job is
+presence only, and the shape to copy is the one in
+`.claude/skills/docket/SKILL.md` § "Say what the work buys".
