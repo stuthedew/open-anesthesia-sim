@@ -1,9 +1,14 @@
 ---
 id: PL-LN3T
 title: wave does not report a milestone row the version has released whose section's Required scope is still open, so a patch cut at a milestone's own number leaves the plan stepped past it once the hand-off has scrolled by
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
 feature: timeline-arrangement
+touches: subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_roadmap.py, docs/items
 added: 2026-09-19
+verify: grep -q 'def test_a_released_milestone_row_with_its_scope_still_open_is_reported' subprojects/docket/tests/test_roadmap.py
 ---
 
 **Problem.** wave does not report a milestone row the version has released whose section's Required scope is still open, so a patch cut at a milestone's own number leaves the plan stepped past it once the hand-off has scrolled by

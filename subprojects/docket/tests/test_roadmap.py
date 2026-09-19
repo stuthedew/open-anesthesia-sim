@@ -1456,3 +1456,45 @@ def test_a_section_no_row_bears_is_reported_rather_than_placed_by_guess() -> Non
     )
     assert plan.scope.placement("PL-WXYZ") == OUT_OF_SCOPE
     assert plan.scope.milestone("PL-WXYZ") == "v0.5.0"
+
+
+#: `RECORDED_PORT_ROADMAP` with the port's own number recorded as shipped - the
+#: state a patch cut at that number leaves behind, one run after the statement
+#: above was printed at the hand-off.
+SHIPPED_PORT_ROADMAP = RECORDED_PORT_ROADMAP.replace(
+    "| v0.3.6 | Completed / current baseline | A patch, cut past the port. |",
+    "| v0.3.5 | Completed | A patch that took the port's own number. |\n"
+    "| v0.3.6 | Completed / current baseline | A patch, cut past the port. |",
+)
+
+
+def test_a_released_milestone_row_with_its_scope_still_open_is_reported() -> None:
+    """`PL-LN3T`: the residual of the case above. Once the cut has written the
+    port's number into the version table the row reads as released, its section
+    leaves `ahead`, and the hand-off's statement is gone - so only the store
+    distinguishes the port shipped from the port skipped, and it says open."""
+    plan = _wave("0.3.6", frozenset(GATE_IDS), roadmap=SHIPPED_PORT_ROADMAP, known=PORT_KNOWN)
+
+    assert plan.step is not None and plan.step.label == "v0.4.0 — the teachable case"
+    (statement,) = plan.stale
+    assert statement.startswith("v0.3.5 — the interface port (timeline line ")
+    assert ", section line " in statement
+    assert "which the version table records as released" in statement
+    assert "1 of 1 ids in its own Required scope are still open (PL-PRT7)" in statement
+    assert "the row owes a number the project has not reached if it was not" in statement
+    assert "The plan and the project disagree" in format_wave(plan)
+
+
+def test_a_released_milestone_whose_scope_has_closed_says_nothing() -> None:
+    """The statement above has to be silent on every milestone that genuinely
+    shipped, or it prints on this repository's own file for every release it
+    has ever made."""
+    plan = _wave(
+        "0.3.6",
+        GATE_IDS | {"PL-PRT7"},
+        roadmap=SHIPPED_PORT_ROADMAP,
+        known=PORT_KNOWN,
+    )
+
+    assert plan.stale == ()
+    assert "The plan and the project disagree" not in format_wave(plan)
