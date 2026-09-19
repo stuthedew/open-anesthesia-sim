@@ -138,8 +138,8 @@ disagree.
 
 `_run_git` returns `""` for a non-zero exit, a missing git and a timeout alike.
 Its callers then adjudicate that silence one at a time: the module carries eight
-`known()` properties, 54 references to `declined`, and about forty docstring
-passages each settling what an absent answer means for one read. Two calls
+`known()` properties, 54 references to `declined`, and 67 lines of prose
+adjudicating what an unread or absent answer means for one particular read. Two calls
 **inside `branches_in_flight`** settle it in opposite directions.
 
 Measured against this repository on 2026-09-19, by substituting a runner that
