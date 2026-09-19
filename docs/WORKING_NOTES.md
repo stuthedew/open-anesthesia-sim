@@ -1802,3 +1802,54 @@ down, the second needs the existing record to be read. A head composed from
 symptoms will mix them, which this one did. The test that separated them was
 cheap: ask whether the document already states the fact somewhere with a
 grammar. For arrangement it does; for membership it does not.
+
+## The evidence layer has no failure channel, so every reader re-decides what silence means — PL-Q9Z1, PL-MM7F, PL-73P0
+
+`PL-BHVM` closed on 2026-09-19 as a design round, and this is the thread that
+outlives it. The item asked whether the apparatus should *record* evidence
+rather than infer it; `vcs.py`'s module docstring had already refused that, in
+its opening paragraphs, because an abandoned session leaves an item marked
+in-progress forever. So the framing was closed rather than answered, and the
+round's finding is one level down.
+
+`_run_git` returns `""` for a non-zero exit, a missing git and a timeout alike,
+so absence-of-evidence and evidence-of-absence are the same value. Every caller
+then adjudicates that silence on its own: eight `known()` properties, 54
+references to `declined`, and 67 lines of prose settling it one read at a time —
+and two calls inside `branches_in_flight` settle it in opposite directions.
+
+**The measurement is the part worth keeping**, because the cost had been argued
+and never counted. Substituting a runner that fails one subcommand and answers
+everything else truthfully, against the real repository: failing `diff
+--numstat` alone takes `branches_in_flight` from 13 `editing` marks to **0**,
+with `unreadable` staying **empty** in both cases, while failing `diff --raw`
+over-reports to 24 and so fails safe. Under a total failure the module splits
+four-four: `stranded`, `lost`, `orphaned` and `merged_pull_requests` decline
+correctly; `branches_in_flight`, `precedence`, `branch_state` and
+`default_base` each return a confident clean answer.
+
+That is `.claude/rules/apparatus-standard.md`'s floor breached on
+`FlightReport.unreadable` — **the field the floor's own text cites as proof the
+code already holds to it**. Which is why this is a defect against a written
+standard rather than a new policy question, and why the fix is an enforcement
+a session cannot forget: a fault-injection test that fails the Nth git call and
+asserts each public read declines or keeps the mark. Prose demonstrably cannot
+do it — `_superseded`'s docstring states the correct direction in three cases
+while the code inverts two of them, and `test_vcs.py:467` asserts the inverted
+one.
+
+**Two corrections this thread should not lose.** `PL-Q9Z1`'s brief argues
+reachability from `_run_git`'s 10-second timeout; the real `diff --numstat`
+calls run in 4.5 ms, so that mechanism is off by three orders of magnitude. The
+conclusion survives on a different one — a non-zero exit, most plausibly a ref
+that vanishes between the `for-each-ref` that lists it and the `diff` that
+reads it, which happens here whenever a branch is deleted while the digest
+runs. And the `r_vcs` ratio is not what makes this a generator: the count of
+items each choosing their own answer to one question is.
+
+**Where it goes next.** `PL-Q9Z1` is the head and carries the channel plus the
+test; `PL-MM7F` (the memo caching a failed call) is `blocked-by` it and is an
+amplifier rather than a second defect; `PL-73P0` (`default_base` guessing
+`"main"`) is untriaged and sits upstream of every comparison in the module.
+`PL-SY1J` may resolve against `PL-Q9Z1` without its own diagnosis, since
+`precedence` returns `carriers=()` *and* `unreadable=()` on failed evidence.
