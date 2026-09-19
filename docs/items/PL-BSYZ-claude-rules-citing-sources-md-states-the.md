@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
+milestone: v0.4.31
 touches: .claude/rules/citing-sources.md
 added: 2026-09-19
 closed: 2026-09-19

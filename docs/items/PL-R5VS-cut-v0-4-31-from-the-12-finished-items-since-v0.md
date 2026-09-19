@@ -3,11 +3,12 @@ id: PL-R5VS
 title: Cut v0.4.31 from the 12 finished items since v0.4.30: the release that completes model-capability-routing and recommendation-rationale
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning, docs
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items/
 added: 2026-09-19
+closed: 2026-09-19
 payoff: the twelve items finished since v0.4.30 stop being twelve unshipped files and get a milestone: stamp saying where they shipped, and the next cut stops being blocked behind this one
 verify: grep -q '^version = "0.4.31"' pyproject.toml && test -f docs/releases/v0.4.31.md && grep -q '^## Current baseline: v0.4.31' ROADMAP.md
 ---

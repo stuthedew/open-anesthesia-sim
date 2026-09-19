@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: infra
 feature: recommendation-rationale
+milestone: v0.4.31
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_plan.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md, docket.toml, docs/items
 added: 2026-09-19
 closed: 2026-09-19
+pr: 737
 payoff: picking work stops needing a read of the brief - what an item buys is written once and printed wherever docket names it
 verify: grep -q 'def test_payoff_is_required_from_its_cutover_date' subprojects/docket/tests/test_checks.py
 ---
