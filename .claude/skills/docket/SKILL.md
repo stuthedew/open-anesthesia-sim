@@ -869,11 +869,25 @@ no section, so nothing resolves it.
 
 **And `needs-decision` says the next step is a decision, never whose.** That is
 the third case, and it is the one taken by mistake, because the status looks
-like an invitation and `bin/docket next` ranks it. Where the answer rests on
-what the project should *want* - whether a feature enters `ROADMAP.md`, which
-of two defensible products this is, what a scope word means - it is the project
-owner's. `CLAUDE.md` divides it in one sentence: "The division of labour is
-theirs to set direction and yours to make it real."
+like an invitation and `bin/docket next` ranks it. The owner's are the
+*consequential* questions - whether a feature enters `ROADMAP.md`, the order
+features come in, which of two defensible products this is, anything a learner
+would see or the safety-critical standard reaches. `CLAUDE.md` divides it in
+one sentence: "The division of labour is theirs to set direction and yours to
+make it real."
+
+**Resting on what the project wants does not by itself make a question
+theirs** (project owner, 2026-09-19). How a milestone records a fact about
+itself, which of two defensible phrasings a section carries, where a note
+lands - each turns on what the project wants and is still a session's, because
+its consequence is one document's wording. `PL-C4RS` is the worked example: two
+ids sat in v0.5.0's `Required scope` under a gate heading saying another track
+had cleared them, and "what does `Required scope` mean for work done elsewhere"
+was put to the owner as a decision when it was a session's to take. Rule 14 of
+`.claude/rules/instruction-writing.md` carries the test in full and is
+resident, so it applies here without being read from this file. Where one
+specific point genuinely needs them, ask that point rather than handing over
+the decision around it.
 
 **Sort by what the answer rests on, not by how hard the item looks.** An item
 answerable by reading the code, running a measurement, or applying a rule this

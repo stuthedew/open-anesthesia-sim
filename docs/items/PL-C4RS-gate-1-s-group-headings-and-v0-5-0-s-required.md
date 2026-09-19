@@ -3,14 +3,14 @@ id: PL-C4RS
 title: Gate 1's group headings and v0.5.0's Required scope disagree on three ids, and ROADMAP.md states Required scope as the test
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs, defect
 feature: planning-cadence
 touches: ROADMAP.md, tools/doc_check.py
 added: 2026-09-14
+closed: 2026-09-19
 verify: python3 tools/doc_check.py check && grep -qF 'the three ids below now sit under headings that agree with `Required scope`' ROADMAP.md
 ---
-
 
 **Problem.** Gate 1's group headings and v0.5.0's Required scope disagree on three ids, and ROADMAP.md states Required scope as the test
 
@@ -124,3 +124,47 @@ strength of a parser change.
 **`verify:` unchanged.** The sentence it pins - "the three ids below now sit
 under headings that agree with \`Required scope\`" - is still exactly what the
 reconciliation must write, and is still absent.
+
+---
+
+## Done 2026-09-19, and the answer was already in the file
+
+**The question this brief reserved as "a judgment on the prose" was settled on
+2026-09-08 by the project owner, in `ROADMAP.md` itself.** The note that moved
+`PL-2FM6` and `PL-8LXM` into "Cleared by the `v0.4.x` track, ahead of this
+gate" ends: "Required scope below drops to sixteen items. The gate total rises
+by two, for `PL-ZX12` and `PL-GS3R`: `PL-2FM6` and `PL-8LXM` moved between
+groups rather than joining." So the two were meant to leave `Required scope`
+on the day they moved. The entries were never removed, which is the whole
+disagreement this item recorded - not two defensible readings, but one
+recorded decision and an edit that did not follow it.
+
+**What landed.**
+
+- The two entries left v0.5.0's `Required scope`. What the milestone required
+  of them, and that the `v0.4.x` track shipped it, is now a prose note under
+  that heading naming both ids **without** a declaration slot, so the record
+  survives and places nothing (`PL-HWW1`'s grammar is what makes that
+  possible - before it, naming an id was placing it).
+- The section's stated size went from "Twenty items" to "Eighteen", and its
+  own arithmetic with it ("the first five" to "the first three"). `bin/docket
+  wave` reads 18 declared across 18 entries, so the count, the entries and the
+  tool now agree.
+- `PL-GVXP` needed no edit: it was cited inside the `PL-8PSW` entry's prose
+  and left `Required scope` when `PL-HWW1` made a declaration rather than a
+  mention the record of membership.
+- The dated reconciliation went into the gate's preamble, beside that list's
+  other whole-list notes, with each of the three placements stated rather than
+  implied.
+
+**§ "Debt inside the milestone's own scope" was left alone, deliberately.** Its
+test - an item in `Required scope` is milestone work and is listed under a
+heading that says so - is not what broke here. Nothing was in `Required scope`
+that should not have been; an edit simply lagged a decision by eleven days.
+Widening the rule to admit a third case would have written a carve-out for a
+situation that, once the edit is made, does not exist.
+
+**Where the finding went.** That this item was put to the project owner as a
+decision at all is `PL-HGN6`: the line between their decisions and a session's
+is consequence, not what the answer rests on, and this question's blast radius
+was one section's phrasing.

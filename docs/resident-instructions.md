@@ -139,6 +139,18 @@ require, with a load failure added. **It is resident by necessity, and the file
 now says so at the top.** Do not re-open this without a new mechanism to point
 at.
 
+Rule 14 grew 199 characters on 2026-09-19, on the project owner's own
+statement of the division of labour: "I'll say what feature order I want or if
+we need to change big picture stuff, but granular stuff, unless it's
+incredibly consequential, I don't care to comment on". It sits in rule 14
+rather than in a skill because the moment it governs is the closing block
+itself - a session choosing between deciding a question and handing it over,
+which happens as the reply is written and after any skill has done its work.
+The `docket` skill's triage section carried the wrong test and was corrected
+to point here rather than to restate it, which is the routing rule's answer to
+one rule wanted in two places. `PL-HGN6` carries the finding, and `PL-C4RS` is
+the instance that produced it.
+
 **Fires when the approach is being decided.** `.claude/rules/expert-review.md`
 — the domains this project's review reaches across and the design principles
 that follow from them. The constraint above names three moments: receiving a
