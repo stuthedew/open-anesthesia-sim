@@ -1387,6 +1387,30 @@ def test_triage_prints_the_body_and_what_is_still_unset(
     assert "**Why it matters.**" in output  # the brief sections still missing
 
 
+def test_triage_states_the_payoff_rule_before_a_pass_writes_ready(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A rule that fires at `ready` has to be stated where `ready` gets written.
+
+    `triage` is the command whose job is to print the rules the answers must
+    satisfy, and a pass that learns about `payoff:` from the refusal instead has
+    been told too late (`PL-WYKF`).
+    """
+    _triage(tmp_path, UNTRIAGED, config="[docket]\npayoff_required_from = 2026-08-01\n")
+    output = capsys.readouterr().out
+
+    assert "must carry a `payoff:`" in output
+    assert "every item has a consequence" in output
+
+
+def test_triage_says_nothing_about_a_payoff_where_the_rule_is_off(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _triage(tmp_path, UNTRIAGED)
+
+    assert "payoff" not in capsys.readouterr().out
+
+
 STUBBED = """---
 id: PL-U2U2
 title: An idea captured over the format's own headings
