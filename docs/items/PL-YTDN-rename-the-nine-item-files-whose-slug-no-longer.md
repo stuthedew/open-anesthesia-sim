@@ -1,13 +1,14 @@
 ---
 id: PL-YTDN
 title: Rename the nine item files whose slug no longer matches their title, now that docket check names them
-status: ready
-added: 2026-09-13
 priority: P2
 effort: S
+status: done
 classes: defect, infra
 feature: dev-tooling
 touches: docs/items/
+added: 2026-09-13
+closed: 2026-09-19
 verify: uv run pytest -q subprojects/docket/tests/test_store.py && python3 -c "import sys, pathlib; sys.path.insert(0, 'subprojects/docket/src'); from docket.store import read_items, filename_for; items = read_items(pathlib.Path('docs/items')); raise SystemExit(1 if [i for i in items if i.path and i.identifier and i.path != filename_for(i)] else 0)"
 ---
 
@@ -120,3 +121,46 @@ It now asks the store directly, through the same `filename_for` comparison
 `docket check` uses and this brief's own one-liner already carried: zero drifted
 files is exit 0, any drift is exit 1. No nesting, no output parsing, and it is
 the condition the work actually has to reach.
+
+## Done, 2026-09-19: seven files, and the count in the title is historical
+
+**The set had moved again, as the brief said it would.** Nine at the 2026-09-13
+measurement, eight in `PL-D4GS`'s recount, **seven** on the tree that closed
+`PL-5QLP` (`record` no longer renaming a drifted file while writing `pr:`):
+`PL-0VFF`, `PL-5N7T`, `PL-68XK`, `PL-H4N8`, `PL-K9HV`, `PL-TFWR`, `PL-TTMF`.
+Four of the original nine had been renamed under other work in the meantime and
+two had drifted in since. The title's "nine" is left as the record of what was
+asked rather than corrected, since correcting it would drift this file's own
+slug.
+
+**All seven were renamed, not six.** No branch held any of them: the one
+candidate, `origin/claude/optimistic-brahmagupta-63pa72` against `PL-H4N8`,
+turned out to be behind `main` on that file rather than carrying an edit of its
+own - `git log origin/main..<branch> -- <path>` reports the merge commit, so the
+test that decides this is `git diff $(git merge-base origin/main <branch>)..<branch> -- <path>`,
+which was empty.
+
+**`PL-TFWR` was the one the brief expected to hold back, and holding it back was
+the weaker option.** `PL-Y5JX` had deliberately skipped it on 2026-09-19 because
+two items name its file by full path in `touches:`, and a rename leaves those
+declarations pointing at nothing - silently, since a `touches` entry naming a
+missing path is not yet an error. That hazard is *a declaration broken without
+anybody noticing*, not the rename itself, so it is removed by repairing the
+declarations rather than by deferring the rename forever:
+`PL-3V6C` (closed) and `PL-77SV` (open, and the one that matters, since a live
+item's `touches` is read by `concurrent`, the lane split and `verify`) were
+updated in the same commit. Leaving it would also have failed this item's own
+`verify:`, which demands zero drift, and left the advisory firing on one file in
+every session indefinitely.
+
+**The brief's own re-check one-liner under-reports, and that is worth knowing
+before the next pass.** It scans `verify` and the body and **not** `touches`,
+which is where both real couplings lived - so it returned "0 of the 9" here too,
+while the true answer was two live declarations. Recorded on `PL-Y5JX`, whose
+guard is still owed.
+
+**Not promoted to an error.** The brief asks whether the advisory should become
+a hard failure now that the count is zero; it should not, yet. Nothing warns a
+session that the file it is about to rename is named by another item's
+`touches`, so a hard error would compel exactly the rename that breaks a
+declaration. `PL-Y5JX` builds that warning; the promotion is filed behind it.
