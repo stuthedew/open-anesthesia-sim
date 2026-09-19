@@ -103,9 +103,14 @@ jobs:
   # orphans the requirement: nothing reports it, and every pull request then
   # waits forever on a check that cannot arrive - pending rather than failing,
   # so it does not look like a break. `PL-D551` deleting the `floor` job did
-  # exactly that (`PL-KPP1`). The required list lives in repository settings,
-  # which no script here can read, so nothing in `make check` or CI will catch
-  # the next one. Change a job name only together with that setting.
+  # exactly that (`PL-KPP1`). Change a job name only together with that setting.
+  #
+  # **This is now checked rather than only written down** (`PL-XZD0`).
+  # `tools/required_checks_check.py` runs as a step in this job and reconciles
+  # the two lists in both directions - a required name nothing reports, and a
+  # reporting job nothing requires. Its docstring carries the decision and the
+  # measurement behind it; the note above `pr-title.yml`'s job key points at
+  # the same place rather than restating any of it.
   checks:
     runs-on: ubuntu-latest
     # The default is 360 minutes. `bin/docket check --verify` shells out to
@@ -315,6 +320,33 @@ jobs:
       - run: uv run python tools/workflow_paths_check.py
       - run: uv run python tools/core_vocabulary_check.py
       - run: uv run python tools/glyph_check.py
+
+      # Deliberately not in the floor section above, and deliberately run once
+      # rather than twice, for a reason about its *input*: it is the only check
+      # here whose answer is not in the tree at all. It reads the required
+      # status checks off the GitHub API and reconciles them against the jobs
+      # this repository's workflows would report, so it proves nothing about
+      # interpreter portability and it costs an HTTP round trip that should not
+      # be paid a second time. `tests/unit/test_tools_portability.py` still
+      # holds the file itself to the 3.11 floor, by directory, as it does every
+      # other script under `tools/`.
+      #
+      # A step rather than a job of its own, which is not a style preference:
+      # a new job reports a new status check, which would itself have to be
+      # added to the required list - the exact trap `PL-H8YD` records. As a
+      # step it inherits the requirement this job already carries, so the check
+      # that guards the list adds no entry to it.
+      #
+      # `GITHUB_TOKEN` buys rate limit and nothing else. Every endpoint it
+      # reads answers unauthenticated on a public repository, which is what
+      # decided `PL-XZD0` in favour of building this at all - the branch
+      # protection endpoint the item expected to need is closed to an Actions
+      # token forever, because `administration` is not a permission a workflow
+      # may request.
+      - name: reconcile the required status checks against the jobs that report them
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 tools/required_checks_check.py
 
       # The pull-request title check lived here and moved to its own workflow,
       # `.github/workflows/pr-title.yml`, under `PL-3V8K`: it has to run on
