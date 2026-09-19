@@ -93,11 +93,13 @@ reading a clean run knows what that silence covers; and if route 1 was taken,
 `python3 tools/generator_check.py` names the citation-drift family on a tree
 where `PL-G424`'s members are still open.
 
-**This item owes v0.5.0's gate a disposition, and it is not yet written.**
-`make doc-check` raises `ROADMAP.md:2036: v0.5.0's gate records no disposition
-for 1 open debt item ... PL-LSR0`. Classing it `defect` and triaging it to
-`needs-decision` is what made it debt, so the capture created the advisory it
-has to answer — the lesson `PL-2P9L` paid for on 2026-09-19.
+**This item's gate disposition is written: declined to Gate 2 on the
+refilling-queue ground.** Classing it `defect` and triaging it to
+`needs-decision` is what made it debt, so the capture created the failure it
+then had to answer — the lesson `PL-2P9L` paid for on 2026-09-19. `make
+doc-check` reported it as an advisory (`ROADMAP.md:2036`); `make check` reported
+it as a **failing test**, `test_this_repository_records_a_disposition_for_every
+_open_debt_item`, which is what forced it to be written rather than deferred.
 
 **Recommended disposition: decline to Gate 2 on the refilling-queue ground**,
 written into `ROADMAP.md`'s `### Declined to Gate 2 on the refilling-queue
@@ -110,7 +112,8 @@ v0.5.0's gate stands at 173 of 175 cleared, and admitting an `M` design
 decision to a gate two entries from draining is the refilling shape Phase 0 was
 retired for.
 
-**Whoever takes this item writes that entry as part of the work**, rather than
-in a pass of its own. It was deliberately not written by the session that filed
-this item: that session was past its context budget, and placing an entry
-wrongly in a 4,700-line roadmap is the same defect class this item is about.
+The entry sits in `ROADMAP.md`'s `### Declined to Gate 2 on the
+refilling-queue ground` subsection, whose count went 192 to 193, and it records
+the closest call in that section: the *blind spot* predates the 2026-09-06
+freeze, but the `impairs-generators:` field that makes it debt did not exist
+until 2026-09-19 (`PL-G5ZH`). Nothing further is owed to the gate here.
