@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: ready
 classes: defect, infra
-feature: release-roadmap-seam
+feature: timeline-arrangement
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 added: 2026-09-16
 verify: uv run pytest subprojects/docket/tests/test_release.py && grep -q 'def test_a_cut_reaching_a_milestone_section_is_named' subprojects/docket/tests/test_release.py
