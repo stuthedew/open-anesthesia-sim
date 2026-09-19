@@ -72,3 +72,18 @@ because a bound family's members are held by `check_bound_families`, which
 gates `make check`. Each subsection names the test that holds it, or carries
 the declared-none form; the family joins the check's table as the pass
 lands.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Partly overtaken: the
+machinery this asked for exists, the annotation pass does not.** What landed is
+generic rather than specific - `check_named_tests` at `tools/doc_check.py:1631`
+resolves every test `docs/MODEL.md` names, so a citation cannot rot, and
+`check_bound_families` with `BOUND_FAMILIES` at `:1766` holds each member of a
+registered family to naming its test. Both gate `make check`.
+
+What is left is this section joining them. `BOUND_FAMILIES` holds exactly one
+entry, the hazard table; § "Required tests" is not in it, so a heading that
+names *nothing* is still unchecked - and 14 of its subsections are in that
+state. Two stale numbers with it: the section carries **17** `###` headings
+rather than fifteen (`awk '/^## Required tests/{f=1;next} /^## /{f=0} f&&/^### /{c++} END{print c}' docs/MODEL.md`),
+its "Where" pointer `docs/MODEL.md:923-1308` is now `:2818-3861`, and `PL-GZP6`
+- named here as the two that will not resolve - closed 2026-09-07 in v0.4.9.

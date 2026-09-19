@@ -3,11 +3,12 @@ id: PL-6ZQY
 title: Consolidate the workflow lane: verify each open item still reproduces, merge duplicates, drop what no longer applies
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs, infra
 feature: queue-hygiene
 touches: docs/items
 added: 2026-09-12
+closed: 2026-09-19
 not-delegable: The work is a per-item judgment against the tree for 134 items - does this defect still reproduce, does this brief still describe the code. No command can prove that pass was made, and each drop or merge it produces is proven by the item it closes. What can be checked afterwards is make docket and that every dropped item carries a reason.
 ---
 
@@ -111,10 +112,8 @@ same unrepeatable measurement this project keeps paying for.
 
 ## What this item still owes
 
-Re-run the verification phase before acting: each drop must be refuted or confirmed
-against the tree, and each merge must be checked for a brief that genuinely covers
-what it absorbs. The workflow script is saved and resumable; the map phase replays
-from cache, so only the verification agents re-run.
+Nothing. The crossing lane was swept 2026-09-19 and the ten partly-overtaken
+briefs were corrected in the same pass; both are recorded below.
 
 **Why it matters.** 43 of 134 items - 32% - are dead or overstated, and nothing
 in the project noticed or can. `PL-LKGL` carries the measurement of why: a
@@ -134,7 +133,100 @@ of which are not real.
 
 **Done when.** ~~The adversarial verification phase has run over all 134 mapped
 items~~ (done 2026-09-19, over 166); ~~every drop candidate above is confirmed
-against the tree or refuted~~ (done for the workflow lane; `PL-S5YM` and
-`PL-C8MV` are crossing and still owed); the **29 crossing items** in the original
-map are swept the same way; and the **10 partly-overtaken briefs listed above say
-what is actually left**. No merges were proposed, so that clause is spent.
+against the tree or refuted~~ (done for the workflow lane 2026-09-19, and for
+the crossing lane later the same day - `PL-C8MV` confirmed and dropped,
+`PL-S5YM` refuted and kept); ~~the **29 crossing items** in the original map are
+swept the same way~~ (done, over today's 32, which is a proven superset - see
+below); and ~~the **10 partly-overtaken briefs listed above say what is actually
+left**~~ (done). No merges were proposed by the map, but the crossing sweep
+found one pair and recorded it on both items rather than merging them.
+
+## The crossing lane, swept 2026-09-19
+
+**The map's 29 crossing items are covered, and that is provable rather than
+asserted.** At `355b604c`, the commit that created this item, the store held
+245 open items of which **26** were crossing (the brief says 29; the difference
+is `workflow_paths` drift since, `docs/maintainer.md` having been added under
+`PL-GVNS`). Of those 26, **12 are still open and still crossing** and the other
+**14 are all closed** - 13 `done`, `PL-7J96` `dropped`. Not one left the
+crossing lane by having its `touches` edited. So today's crossing set is a
+strict superset of the historical backlog, and sweeping it sweeps the map's.
+Re-runnable: reconstruct the store at that commit and call
+`Item.lane(config.workflow_paths)` on each open item.
+
+Today's lane split: **32 crossing, 155 workflow, 117 product, 12 unplaced** -
+11 of the 12 unplaced being untriaged captures, which is expected, leaving only
+`PL-V9L3`, which `bin/docket check` already reports.
+
+| | workflow lane (166) | crossing lane (32) |
+| --- | --- | --- |
+| still fully real | 144 | **24** |
+| partly overtaken | 10 | **7** |
+| defect no longer reproduces | 7 | **1** |
+| never was an issue | 5 | **0** |
+| dead or overstated | 22 of 166 (13%) | **8 of 32 (25%)** |
+
+**The crossing lane is healthier where it counts and staler where it does
+not.** One item of 32 is dead against the workflow lane's 12 of 166 - but seven
+of 32 overstate what is left, against ten of 166. The reason is visible in the
+verdicts: a crossing item declares a path in `src/` or `docs/MODEL.md`, and the
+simulator moves under it. The Qt port alone falsified premises in `PL-XJ37`,
+`PL-QS9H` and `PL-38PN` without closing any of them.
+
+**Dropped (1).** `PL-C8MV` - overtaken seven hours after filing by the v0.3.0
+close-out, which scores readout 1 both ways and names `PL-C8MV` as the
+disposition it follows. Its `reason` carries the command.
+
+**Refuted and kept (1).** `PL-S5YM`, which the 2026-09-12 map listed as a drop
+candidate on the claim that both halves of it were false. Replaying
+`doc_check`'s own parser and suppression loop over the live tree: the covered
+set is non-empty, one direction is tested and the other is not, and the prose
+at `docs/ARCHITECTURE.md:523` is untouched. **That makes the map 5-for-8 across
+both lanes** - `PL-RZPX` and `PL-YMY7` confirmed dead, `PL-7RTN`, `PL-LM8P` and
+`PL-S5YM` refuted and kept, `PL-C8MV` confirmed - which is why the warning at
+the top of this item was right and why no drop here was taken on the map's
+word.
+
+**The most expensive single find was not a dead item.** `PL-KFWL` recorded the
+v0.4.8 resolution backwards - "`v0.4.8` was deleted from the remote, not cut" -
+and told a later session to run `git tag -d v0.4.8` to repair a clone. The tag
+is live on the remote at `b340e7f`, `docs/releases/v0.4.8.md` exists, and
+`ROADMAP.md:71` marks it Completed, so following that paragraph would have
+removed a tag `check_tags` expects and turned a correct tree into a reported
+error. `python3 tools/doc_check.py check` exits clean over that file, because
+every path and identifier it cites exists; what had gone false was the tense
+and the outcome, which no check reads.
+
+**One merge candidate, recorded rather than merged.** `PL-KFWL` and `PL-6YYR`
+describe the same missing guard - a release tag that has no cut behind it -
+from the instance and from the rule. Both are open, neither has any of its work
+done, and each carries a note naming the other. Merging them is a judgment for
+whoever starts either, and it is cheaper made with the code open than in a
+sweep.
+
+**Four items were wrong on the day they were filed**, which is the pattern
+`PL-JB3Z` closed for the future by making triage reproduce the fault: `PL-3DN1`
+(its illustration was already caught by `already_released`, landed nine days
+earlier), `PL-6YYR` ("nothing in `make check` reads tags", false since
+2026-08-31), `PL-316G` (the simulator scope it recommends held 4 occurrences at
+filing and 5 today, with `docs/MODEL.md`, `docs/ARCHITECTURE.md` and
+`README.md` at zero), and `PL-SY1J` (both disjuncts of its second `Done when`
+clause were satisfied twelve days before the observation). None of the four is
+dead; each has a real remainder, and each now says which half was never true.
+
+**The ten partly-overtaken briefs are corrected**, and two of the ten were
+misclassified: `PL-KFWL` and `PL-3DN1` are **still real** rather than partly
+overtaken - nothing either asks for has landed - while what was stale in them
+was the account of how a neighbouring thing resolved. `PL-6YYR` went the same
+way. The rest hold: `PL-WXX8`, `PL-LF2C`, `PL-SY1J`, `PL-38PN`, `PL-LBW5`,
+`PL-SYG4` and this item.
+
+## What the sweep cost, and the one thing worth changing
+
+Eleven read-only agents over 41 items, about 1.09 million subagent tokens, with
+every drop and every number re-checked in the main session before it was
+written. The verdicts are in the items rather than in this reply, which is the
+correction: the 2026-09-19 workflow sweep left its "what landed, what is left"
+notes for ten items in its reply alone, that session was archived, and this
+session had to re-derive all ten from the tree. A sweep verdict that is not
+written into the item it judges has not been recorded.

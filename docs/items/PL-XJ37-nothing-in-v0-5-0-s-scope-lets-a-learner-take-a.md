@@ -98,3 +98,20 @@ is inside v0.5.0, and if it is, the work is named - either folded into `PL-8PSW`
 with that entry's scope widened to say so, or filed as its own item and added to
 the `Required scope` list. The agent-dropdown edge above is disposed of in the
 same answer rather than left to be rediscovered.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Still real, and the reason it
+gave for deferring has expired.** The gap is unchanged:
+`SimulationView.__init__` still takes `controllers: Sequence[...]` and freezes
+`self._runs` at `simulation_view.py:181` with no `add_run` or `set_runs` path,
+`MAX_DISPLAYED_RUNS` is 2 at `dashboard_frame.py:120`, v0.5.0's eighteen
+`Required scope` entries contain neither act, and `ROADMAP.md:88` still cites
+this item as live fact. `status: needs-decision` is correct.
+
+Three corrections. The brief defers on "the Qt port now runs *ahead* of
+v0.5.0 … building the selection on Flet first would be building it where the
+port deletes it" - the port **shipped** in v0.4.26, so that reason is spent and
+the item is stronger rather than weaker for it. `main.build_app` no longer
+exists; the equivalent is `main.py:32-33`, `SimulationView((controller,))`
+inside `main()`. And `resumed_at` does have a production caller now,
+`controller.py:1261` inside `BranchedCase` - though nothing in `src/`
+constructs a `BranchedCase`, so the gap one level up is exactly as described.

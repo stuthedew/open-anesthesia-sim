@@ -31,3 +31,14 @@ that were plainly recommendations agreed to are marked `ratified` with what each
 was chosen over, the ones that were plainly specified are left as they are, and
 the ones that cannot be told apart are listed rather than guessed. `ROADMAP.md`
 records that the sweep happened and on what date.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Still real, and here is the
+population it never counted.** Over `\(project owner[^)]*\)`: `ROADMAP.md` holds
+81 attributions of which 20 carry `ratified`, leaving **47 unmarked and dated
+before 2026-09-16**; `docs/MODEL.md` holds 9 of which 2 carry `ratified`,
+leaving **5**. **52 outstanding in total.** Every `ratified` mark in either file
+is dated 2026-09-16 or later, so nothing predating `PL-XWH4`'s rule has been
+swept, and `grep -qF 'swept for ratified-versus-specified' ROADMAP.md` finds
+nothing. The conversions that have happened (`PL-1YT5`, `PL-YTDN`, `PL-ZMGR`)
+are one at a time and outside these two files. `PL-7RYB` is the same question
+for closed items and is still `needs-decision`.

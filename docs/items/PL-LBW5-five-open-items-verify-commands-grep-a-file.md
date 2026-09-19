@@ -56,3 +56,25 @@ declared; `PL-RCQM`'s is whether the command can run at all.
 obligation on a command - the paths its discriminating clause reads are
 declared in `touches` - and the work is as briefed: the four declare the test
 files their commands name.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Partly overtaken by attrition
+rather than by work: none of the remediation landed, and the population shrank
+because an item closed.** `PL-L4YG` closed 2026-09-19 (#679) with its
+`touches` still omitting `subprojects/docket/tests/test_cli.py`, and
+`bin/docket concurrent` ranks only open items, so it is out of the harm this
+describes. The title's "five" and the problem statement are therefore four,
+three of them live findings: `PL-QS9H`, `PL-RWBV` and `PL-TCKV`, each still
+`ready` and each still undeclaring the path its own command greps. One
+correction to the brief's characterisation: `PL-TCKV`'s undeclared path is
+`pyproject.toml`, not a test file.
+
+The enabling work is done and unconsumed: `PL-XMNC` closed 2026-09-17 (#666)
+and `verify.py` carries `command_paths` at `:527` and `reads_any` at `:571` -
+but `checks.py` never calls either, and `concurrency.py:60-61` still reads
+`touches` and nothing else. `PL-RCQM`, the pairing named under
+`feature: verify-command-health`, is `dropped`.
+
+**This item's own `verify:` is now unsatisfiable as written**: its second clause
+greps `PL-L4YG`'s `touches`, and satisfying it would mean editing a shipped
+item's declaration. Re-point it at one of the three open items as part of
+starting this.

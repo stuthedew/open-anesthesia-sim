@@ -39,3 +39,26 @@ whether to make line citations checkable is recorded either way.
 
 **Found.** Session auditing which open items the v0.4.1 `core/` pass would
 invalidate, 2026-09-03.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Partly overtaken, and the
+correction it offers can no longer be copied.** The decision half of the
+`Done when` is recorded: `PL-J7C5` closed 2026-09-14 (#552) and answers **no** -
+a line citation in an item brief is a dated measurement rather than a live
+specification, so it is not made checkable and it stays. Both cited items have
+also closed (`PL-VM40`, `PL-L2F2`), so no session will follow these pointers to
+code; the problem statement's "two **open** items" is stale.
+
+Neither citation has been corrected, so the remainder is real - but **this
+brief's own replacement numbers are now wrong**, and re-deriving them is the
+work rather than transcribing them:
+
+- `_run_simulation_timer` at `:1149` - the function does not exist in `src/` at
+  all, and `simulation_view.py` is 580 lines. The loop moved to
+  `run_view.py` (`:901`, `:906`) through the `PL-B9PY` decomposition and the
+  PySide6 port.
+- `core/alveolar.py` `:32` and `:68` - `AlveolarCompartment` is at `:39`, and
+  `apply_blood_uptake` no longer exists: `PL-GS5X` removed it when the operator
+  split became the exact matrix exponential, which `alveolar.py:7-8` records.
+
+`PL-JXVD` is the open item recording exactly this second-order staleness, and
+its own table has gone stale the same way.

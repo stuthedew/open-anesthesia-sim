@@ -107,3 +107,19 @@ false.
 Unchanged. Its marker design *is* clause 2 applied to `docs/ARCHITECTURE.md`:
 a marked enumeration is a bound family, and this one joins `BOUND_FAMILIES` in
 `tools/doc_check.py` when the marker lands.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Still real, and the drift it
+predicts is live in the tree right now - a fourth recurrence, unrepaired.**
+`docs/ARCHITECTURE.md:970-971` lists four bare-interpreter commands
+(`doc_check.py check`, `branch_id_check.py`, `rules_paths_check.py`,
+`bin/docket check`), `.github/workflows/quality.yml:189-199` runs those same
+four, and `docs/ARCHITECTURE.md:979` nine lines below the list says "reach what
+those **five** commands never do". `python3 tools/doc_check.py check` exits 0
+over that contradiction, which is the whole argument of this item standing in
+one file.
+
+Two dated premises have since moved, neither load-bearing: `tools/readme_hold_check.py`
+is gone (`PL-N092`, closed 2026-09-06), which is the fifth command the brief
+expected to be there; and `README.md` exists again after `PL-WB5K` deleted it,
+but carries none of these commands, so this item's `docs/ARCHITECTURE.md`-only
+scope is still right.

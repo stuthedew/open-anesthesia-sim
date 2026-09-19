@@ -89,3 +89,27 @@ untagged, and the inverse - a tag naming a version no release cut - is equally
 decidable and currently guarded by nothing at the moment somebody tags."*
 `PL-LT77` is the withdrawal of such a tag and `PL-PNW6` is a later release
 re-using its number; this item is the guard none of them carry.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Still real, and it was never
+partly overtaken - but one of its four bullets was false on the day it was
+filed.** Nothing has landed: `release.py`'s only tag rule is `is_untagged` at
+`:135`, which judges the *previous* release; no code anywhere dereferences a
+tag and reads the commit's `version` or its notes file
+(`grep -rn 'refs/tags\|rev-parse.*\^{}\|describe --contains' tools/ subprojects/docket/src/ .github/workflows/`
+returns nothing); the skill's tag block still carries the ordering as
+surrounding prose; and the item's own `verify:` test does not exist.
+
+**The false bullet is "it cannot be discovered from the tree. Nothing in
+`make check` reads tags".** `make check` runs `tools/doc_check.py check`
+(`Makefile:191`), which reads `git tag` through `docket.vcs.tags` and errors on
+any `vX.Y.Z` tag with no completed row in the version table - and that code was
+present at the observed commit `b03a7d0`, having landed in `c57f1ea` on
+2026-08-31. The residue is real but narrower, and should be restated as such:
+`tags()` reads `git tag --list`, so an **unfetched** tag is invisible, and the
+check matches the tag name against the roadmap table rather than against the
+commit's own `version` and notes file - which is the miss this item is actually
+about.
+
+**Probable duplicate of `PL-KFWL`** (the v0.4.8 tag pushed onto a commit where
+no release was cut), which reaches the same guard from the instance rather than
+the rule. Read both before starting either.

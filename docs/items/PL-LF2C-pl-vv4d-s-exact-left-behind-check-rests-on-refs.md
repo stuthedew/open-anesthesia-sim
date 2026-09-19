@@ -93,3 +93,23 @@ test is **not a superset** of the portable one even in principle — so `orphane
 is never retired. Where the two disagree, the exact test wins and the
 disagreement is printed rather than resolved silently, which answers the
 question `PL-R808` leaves open.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Partly overtaken: the purge this
+item anticipated has run, so its measurement block is history rather than a
+present tense.** "GitHub is about to unreference 90 of them" and "Confirmation
+to follow" are both spent: 89 of `297..386` no longer resolve, and
+`refs/pull/312/head` - the vector this item was filed to protect - returns
+nothing. The totals moved too: 628 pull heads rather than 500, and one survivor
+in the range rather than 90. `PL-0SCG` carries the full re-measurement.
+
+Its own accounting is otherwise accurate. Two of the three `Done when` clauses
+are satisfied in `PL-R808`: the third decline condition at `PL-R808:71`, and
+the `#312` vector replaced by `#499` at `:61` (`refs/pull/499/head` still
+resolves to `a8c9ead1`). What is left is the third clause alone - the
+not-a-superset consequence is still not where a retiring session meets it.
+`vcs.py:4804`'s `orphaned` docstring still says only that GitHub freezes
+`refs/pull/<n>/head` when the pull request closes, with nothing about the ref
+being deletable, so the consequence lives only in item files.
+
+**Restate the argument as fact, which strengthens it:** these refs are not
+merely deletable on request, they have been deleted here.

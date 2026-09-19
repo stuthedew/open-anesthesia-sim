@@ -10,6 +10,7 @@ milestone: v0.4.29
 touches: .claude/settings.json, docs/maintainer.md, .claude/rules/apparatus-standard.md
 added: 2026-09-19
 closed: 2026-09-19
+pr: 715
 verify: grep -qF '"subagentPromptCacheTtl": "1h"' .claude/settings.json && grep -qF 'Match effort to the standard the work is held to' docs/maintainer.md && grep -qF 'Effort follows this standard too' .claude/rules/apparatus-standard.md
 ---
 

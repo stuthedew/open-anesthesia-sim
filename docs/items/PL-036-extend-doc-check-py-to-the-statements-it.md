@@ -71,3 +71,12 @@ than an exception to anything. What changes is only the altitude: this list is
 one bound family among several rather than the whole of the idea, so the
 bullets are annotated here and the general rule lives in `docs/MODEL.md` §
 "How this document is held to the tree".
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation): still real, with stale numbers corrected here rather than in the text above.** § "Minimum displayed outputs"
+carries **21** bullets, not fifteen; none names a `SimulationSnapshot` field,
+`SimulationSnapshot` appears nowhere in `tools/doc_check.py` or its tests, and
+`BOUND_FAMILIES` at `:1766` still holds only the hazard table, so the
+annotation pass is untouched. One illustration has expired:
+`circuit_time_constant_s` no longer exists in `src/`, so the "standing proof"
+of the doc-to-field-to-widget limit needs a live example when the pass is
+written.

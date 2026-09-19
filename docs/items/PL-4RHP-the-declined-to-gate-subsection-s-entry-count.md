@@ -76,3 +76,13 @@ this reading missed; the command is then repointed, since the item is open.
 No change. The heading states no count, which is exactly what the counts rule
 now requires, so triage's choice here *is* the rule rather than an instance
 awaiting one.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation): still real, with stale numbers corrected here rather than in the text above.** The heading still states a count
+and no check reads it: `ROADMAP.md:2977` is
+`### Declined to Gate 2 on the refilling-queue ground — 192 entries`, outside
+`_subsection_end`'s range and unmatchable by `GATE_GROUP_RE`, which requires a
+line opening `*` or `**`. The count has kept moving since the brief recorded
+151 then 152 - `git log -L 2977,2977:ROADMAP.md` shows 174 → 175 → **192** in
+the two most recent commits touching the file, which is the item's argument
+running while nobody watches. Note that the brief's closing "The heading states
+no count" is the end state being asked for, not a description of the tree.

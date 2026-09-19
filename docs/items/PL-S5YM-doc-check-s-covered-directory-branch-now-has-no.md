@@ -83,3 +83,26 @@ before this landed; the first is what this carries:
   test from nothing.
 - The `verify:` command was a bare `-k`, and `PL-B5VM` replaced it in `#598`.
   That half is landed; only the correction above arrives here.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Still real - and the 2026-09-12
+map was wrong to list it as a drop candidate.** The map claimed both halves of
+this item ("untested" and "unused") were false. Re-checked by replaying
+`doc_check`'s own parser and suppression loop over the live tree, they are not:
+
+- **The covered set is non-empty**, which the map got right and the brief's
+  title gets wrong: `docs/ARCHITECTURE.md`'s `src/anesthesia_sim` tree parses to
+  `covered_dirs == {'src/anesthesia_sim/data'}`, because `data/` is drawn with
+  compound children at `docs/ARCHITECTURE.md:89` so `parents` never collects it.
+  The *decision* branch at `tools/doc_check.py:746` still fires for zero real
+  files, since every mapped file under `data/` is listed explicitly.
+- **One direction is tested and the other is not.**
+  `tests/unit/test_doc_check.py:235 test_childless_directory_covers_its_whole_subtree`
+  exercises `:746` positively. Nothing places a file under `tools/` outside
+  `harness/` and asserts it is still reported, and `covered_dirs` appears
+  nowhere in the test file.
+- **The prose is untouched**: `docs/ARCHITECTURE.md:523` still reads "is not
+  expanded — no tree draws one today".
+
+So the title is stale and the body is not; the 2026-09-15 `PL-Y1W6` correction
+already records the tested half. Line drift in "Where": the three paths are
+`tools/doc_check.py:598`, `:702` and `:746`, and the cited test is now `:235`.

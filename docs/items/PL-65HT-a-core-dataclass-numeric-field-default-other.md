@@ -82,3 +82,19 @@ mapping this one would need is an allowlist with upkeep. That is why it is a
 decision rather than a build, and the counting above is what the decision reads.
 
 **Decision needed.** Is the screen worth building at a governed population of four - and if so, does it live in `tools/core_vocabulary_check.py` (where provenance is off-topic), in `tools/doc_check.py` (which would gain an interpreter dependency it was built to avoid), or in a third tool?
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Partly overtaken: the cost side
+of the argument has gone, the decision has not.** The brief counts two of the
+four governed constants as unpinned, on `PL-DJYF` - which closed 2026-09-13 in
+v0.4.22, and `tests/unit/test_alveolar.py:92-94` now asserts
+`alveoli.gas_volume_l == patient.alveolar_gas_volume_l` and
+`alveoli.alveolar_ventilation_l_min == patient.default_alveolar_ventilation_l_min`.
+So all four are held by a named test today, at no tool surface.
+
+The population is unchanged and re-counted: 15 numeric field defaults across
+`core/`, 11 of them 0, 0.0 or `Fraction(1.0)`, and the same four otherwise -
+`alveolar.py:65`, `:66`, `circuit.py:107`, `:108` - all four appearing in
+`docs/MODEL.md`'s Selected-value column. What is left is only the decision:
+whether a screen is worth building over a population of four that is already
+pinned by test, and if so which of the three homes it takes. Nothing in
+`tools/` implements it and no declining closure is written.

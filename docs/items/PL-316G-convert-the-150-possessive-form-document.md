@@ -50,3 +50,27 @@ a section citation reads in the section-mark form:
 
 every one that quotes prose is left alone and is recognisable as prose, any
 staleness the conversion surfaces is repaired, and `make check` is green.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Still real, and its count has
+grown - but the recommendation's scope was already false when it was written.**
+Re-measured today over `*.py` and `*.md`: **211** possessive-form citations
+against 782 section-mark ones, where the comment at `tools/doc_check.py:354`
+recorded 150 against 353 on 2026-09-13.
+
+The scope this brief recommends - convert the simulator half, "`src/`,
+`tests/`, `docs/MODEL.md`, `docs/ARCHITECTURE.md` and `README.md` … that is
+where a stale pointer reaches a reader of clinical output" - is **five
+occurrences**: `src/anesthesia_sim/app/formatting.py:210`,
+`src/anesthesia_sim/core/uptake_system.py:473`,
+`src/anesthesia_sim/core/governing_equations.py:66`,
+`tests/unit/test_governing_equations.py:8` and
+`tests/benchmarks/test_frame_cost.py:17`. `docs/MODEL.md`,
+`docs/ARCHITECTURE.md` and `README.md` hold **zero** between them. At the
+pre-filing commit `438808b` the same buckets read 3 / 1 / 0 / 0 / 0, because
+`PL-VZL0` had already converted `src/core` - see
+`src/anesthesia_sim/core/governing_equations.py:317-319`.
+
+So the safety argument for the recommended scope does not hold: 184 of the 211
+are in `docs/items/`, which no reader of clinical output opens. The decision
+this item still owes should be taken on the queue, not on the simulator - and
+whoever takes it should re-measure rather than reuse either number above.

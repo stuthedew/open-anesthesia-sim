@@ -77,7 +77,8 @@ all 90 of `297..386` still had a `refs/pull/<n>/head` on the remote, out of 500
 pull heads in total.
 
 **Still owed before this can close:** a re-check that the 90 head refs no longer
-resolve, and Support's confirmation.
+resolve, and Support's confirmation. (Re-checked 2026-09-19: 89 of the 90 are
+gone and `refs/pull/298/head` is not - see the closing section.)
 
 **`status: ready` is now correct, and earlier sessions arguing otherwise were
 right about the old state rather than this one.** While the ticket was an
@@ -102,3 +103,25 @@ worked.
 it here: the purge takes `refs/pull/312/head`, which `PL-VV4D` had recorded as
 a test vector for the exact left-behind check. `PL-LF2C` carries that, and
 `PL-R808` has been amended.
+
+**Re-checked 2026-09-19, in `PL-6ZQY`'s crossing-lane sweep. The purge has
+almost run, and the count above is stale: it reads 1, not 90.** The brief's own
+command returns a single survivor, `refs/pull/298/head` →
+`66279b3293728a7d34fd60a64b40ad85ad12c1c1`; refs `297` and `299..386` no longer
+resolve. The total is now 628 pull heads rather than 500.
+
+**That one ref still serves both works**, so the exposure is narrowed rather
+than closed - confirmed against GitHub's contents API at `ref=refs/pull/298/head`,
+path `docs/references`, which still lists
+`baker-farmery-2011-inert-gas-transport-in-blood-and-tissues.pdf` (1,449,838
+bytes) and `schuttler-schwilden-2008-modern-anesthetics-hep-182.pdf` (5,232,436
+bytes). The local `git ls-remote` half is reproducible from any checkout; the
+API half needs a token that can read the repository.
+
+**So what is left is one ref and one sentence**, which is smaller than this
+brief reads: ask Support to finish `298` - naming it, since their own list of 90
+was worked through and this is the remainder - and then write the outcome and
+its date into `docs/references/README.md`, whose account still ends at
+`PL-SHG5` and records no exposure at all. Neither half is a session's to do
+alone: the first is the project owner's ticket, and the second wants the date
+the first lands.

@@ -37,3 +37,11 @@ that does not need re-editing for the next check of either kind, and
 Unchanged one-off: describe the tool without enumerating what the tree
 enumerates. That is the same move `PL-GTSL` makes from the other side - the
 enumeration is bound, the description is not.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation): still real, with stale numbers corrected here rather than in the text above.** Both descriptions still omit the
+two Makefile-invariant checks: `check_coverage_gate` at `tools/doc_check.py:3041`
+("Hold the Makefile's coverage run and CI's to the same command") and
+`check_ruff_cache` at `:3117`, neither of which is documentation validation, and
+`grep -n 'coverage_gate\|ruff cache\|--no-cache' docs/ARCHITECTURE.md` returns
+nothing. Both cited lines have drifted: `docs/ARCHITECTURE.md:447` is now
+`:505`, and `CONTRIBUTING.md:52` is now `:53`.

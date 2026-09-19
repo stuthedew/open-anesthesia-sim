@@ -106,3 +106,20 @@ requires it to be wired into `make check` and covered by a unit test. The
 filename is this session's naming call rather than the owner's decision, and is
 the one part of the command a later session may change freely - the shape it
 checks was settled on 2026-09-08 and is not.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Partly overtaken: the measurement
+is wholly unbuilt, and the thing it was going to measure has moved.** Nothing
+landed - no `tools/standing_text_check.py`, no `make check` wiring, no
+`tests/unit/test_standing_text_check.py`, and `.claude/rules/ui-reader.md`
+still names no tool where `.claude/rules/ui-color.md:14` names
+`tools/contrast_check.py`. Both `blocked-by` edges are closed.
+
+**But the shape this brief proposes is keyed on Flet, which is gone.**
+`grep -rn "ft\.Text\|import flet" src/anesthesia_sim/app/` returns nothing; the
+dashboard is PySide6. And the seven standing paragraphs the brief counts are
+no longer in `app/simulation_view.py`: an `ast` walk finds two non-docstring
+string literals over 30 characters there, both exception messages, because the
+MAC reference labels are now computed captions (`:458`,
+`mac_reference_caption(frame)`). So shape 1's allowlist has to be re-keyed onto
+the Qt label builders, and whoever starts this has to find which module now
+carries the screen's standing text before writing the check.

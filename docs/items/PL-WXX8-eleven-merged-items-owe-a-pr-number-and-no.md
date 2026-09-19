@@ -76,3 +76,24 @@ a session noticing it is owed - candidate 2 above, folding `docket record` into
 the release cut, unless a cheaper one is found - and `docket check`'s advisory
 reports zero owed on a base where a release has since been cut. The eleven named
 above are backfilled as part of it.
+
+**Swept 2026-09-19 under `PL-6ZQY` (crossing-lane consolidation). Partly overtaken, and the
+backlog it describes has already regrown - twice over.** All eleven ids named
+in the problem statement carry a `pr` on `origin/main` today (PL-5D2R 622,
+PL-H253 622, PL-L9RD 621, PL-NGF7 621, PL-W8DQ 621, PL-LKFP 620, PL-8PSW 618,
+PL-LH18 618, PL-C92D 617, PL-Q0J1 617, PL-SMN4 615), so the title, the problem
+statement and the "the eleven named above are backfilled as part of it" clause
+of the `Done when` are all spent. That backfill rode ordinary commits using the
+pre-existing remedy, not a new mechanism.
+
+**Nothing of the mechanism landed.** `cmd_release` never calls `cmd_record`;
+`make release` is `bin/docket release` then `uv lock`; there is no CI route;
+and the `verify:` test does not exist. `make fix` still ends in
+`bin/docket record`, which is the remedy the brief calls "precisely wrong at
+the moment the backlog grows", and `_record_owed` predates the item.
+
+**Re-date the problem statement to today's population rather than deleting
+it.** On `origin/main` at the time of this sweep, four closures owed a number -
+PL-JB3Z (#716), PL-PZ8D (#715), PL-TPCH (#715), PL-Y5JX (#714) - and they were
+cleared by this very sweep's session running `bin/docket record` on the way
+past, which is the brief's own argument demonstrating itself.
