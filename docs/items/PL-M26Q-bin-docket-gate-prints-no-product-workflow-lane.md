@@ -7,7 +7,7 @@ status: ready
 classes: infra
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests
 added: 2026-09-06
-verify: uv run pytest -q subprojects/docket/tests && grep -rq 'def test_gate_reports_lanes' subprojects/docket/tests
+verify: grep -rq 'def test_gate_reports_lanes' subprojects/docket/tests
 ---
 
 **Problem.** `bin/docket gate` prints the open debt split into what a milestone

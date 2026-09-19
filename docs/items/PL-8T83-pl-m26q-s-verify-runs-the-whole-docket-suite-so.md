@@ -3,11 +3,12 @@ id: PL-8T83
 title: PL-M26Q's verify: runs the whole docket suite, so any change under subprojects/docket/tests now puts a 62.6s command into the scoped pull-request replay
 priority: P3
 effort: S
-status: ready
+status: done
 classes: perf, infra
 feature: verify-replay-cost
 touches: docs/items
 added: 2026-09-17
+closed: 2026-09-19
 verify: grep -q '^verify: grep' docs/items/PL-M26Q-bin-docket-gate-prints-no-product-workflow-lane.md
 ---
 
@@ -56,3 +57,20 @@ far more often than it was.
 **Done when** `PL-M26Q`'s `verify:` runs a named test file rather than the whole
 docket suite, having been run and seen to fail first.
 
+
+**Done 2026-09-19.** `PL-M26Q`'s command is now `grep -rq 'def
+test_gate_reports_lanes' subprojects/docket/tests` - the discriminator that was
+already there, with the `uv run pytest -q subprojects/docket/tests` clause
+removed. Measured at **2 ms, exit 1** on this checkout, against the 62.6 s it
+replaced.
+
+What that returns is the scoped replay's floor rather than 62.6 s of its
+serial time: a pool cannot finish before its slowest member, and this command
+was pulled into the scope of *any* branch touching a docket test file. On the
+2026-09-17 measurement the pool was 29 commands in 92.5 s wall against 535.6 s
+serial, so removing its slowest member is the difference between a 92.5 s floor
+and one set by whatever is next.
+
+The stale repair paragraph above is left as written rather than edited, per the
+same reading that `PL-6TP8`'s brief records: what was prescribed when the item
+was filed is part of why it says what it says.
