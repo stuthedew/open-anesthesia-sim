@@ -18,32 +18,137 @@ question, decided by `docs/MODEL.md` § "Source hierarchy: what may be cited as
 the authority for a value". That one is about whether a document counts; this
 one is about how you reached it. Both have to be answered.
 
-## Direct HTTP to publishers and indexes is refused
+## Direct HTTP reaches an allowlist, and the list has a date on it
 
-The egress proxy rejects the tunnel itself, so every route that opens a socket
-to a journal fails the same way. Measured 2026-09-04 against `doi.org`,
+The environment's **Network access** setting decides this, and it is a property
+of the cloud environment rather than of this project. It takes four levels —
+`None`, `Trusted` (the default), `Full` (any domain) and `Custom` (an
+allowlist, optionally including the `Trusted` defaults) — set from the
+environment dialog at `claude.ai/code`. This environment is on `Custom`
+(project owner, 2026-09-19, ratified, over `Full` — chosen because this
+repository is public, its copyright exposure is not yet closed, and an
+allowlist is a record of what a session could reach where `Full` is not).
+
+So "can I fetch this?" has no standing answer, only a measured one.
+**Re-measure rather than trusting the snapshot below**, substituting the hosts
+you actually need:
+
+```sh
+for h in doi.org api.crossref.org pubmed.ncbi.nlm.nih.gov www.nejm.org; do
+  printf '%-28s %s\n' "$h" \
+    "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "https://$h/" 2>&1 | tail -1)"
+done
+```
+
+`000` is the gateway refusing the CONNECT; any HTTP status means the host
+answered. `curl -sS "$HTTPS_PROXY/__agentproxy/status"` names the reason under
+`recentRelayFailures`.
+
+**Measured 2026-09-19: the indexes opened and the publishers did not.**
+
+- **Reached** — `doi.org` 301, `api.crossref.org` 302, `api.openalex.org` 429,
+  `link.springer.com` 303, `arxiv.org` 200, `pubmed.ncbi.nlm.nih.gov` 200,
+  `eutils.ncbi.nlm.nih.gov` 301, `search.worldcat.org` 200, and
+  `www.sciencedirect.com` 403 (which is the trap below, not a refusal).
+- **Refused at the CONNECT** — `www.nejm.org`, `epubs.siam.org`,
+  `journals.sagepub.com`, `www.w3.org`, `www.icrp.org`, `en.wikipedia.org`,
+  `www.google.com`, `example.com`.
+
+That split is the thing to carry, and it is more useful than either half on its
+own: **an identifier can now be checked at the source, and a paywalled full
+text still cannot be fetched from the publisher.** Resolving a DOI, confirming
+a volume and page range, or pulling a Crossref or OpenAlex record is a direct
+call now, so `CLAUDE.md`'s requirement to consult the source rather than memory
+reaches those outright and there is no excuse left for an unverified
+identifier. Reading the article is still the PubMed route and the private
+corpus below.
+
+It earned its keep immediately: the first session able to resolve a DOI from
+here found that `core/matrix_exponential.py` had been citing one that does not
+exist (`PL-5MT4`).
+
+`pypi.org`, `files.pythonhosted.org`, `registry.npmjs.org` and
+`api.anthropic.com` sit in the proxy's own `noProxy` list, so they bypass the
+gateway entirely and prove nothing about the allowlist. Do not read one of them
+answering as evidence that egress is open.
+
+**A bare `403` now means two opposite things.** Before the change every host
+failed identically, so `403` was unambiguous; now the same three digits appear
+on both sides of the line:
+
+| What you see | What happened |
+| --- | --- |
+| `curl: (56) CONNECT tunnel failed, response 403`, and `%{http_code}` is `000` | the gateway refused — the host was never contacted |
+| `HTTP/1.1 200 Connection Established`, then `HTTP/2 403` | the tunnel opened and the **publisher** refused the client |
+
+`www.sciencedirect.com` is the live instance of the second: it is reachable and
+answers `403` to an unattended client, which is the publisher's bot block
+rather than an egress refusal. Reading that as "still blocked" sends a
+reachable source to memory; reading a real refusal as a bot block sends a
+session hunting for a user agent that will never work.
+
+**`WebFetch` tells them apart where `curl` does not**, and is the cheaper
+check: it returns a structured `EGRESS_BLOCKED` naming the domain for a refused
+host, and the page itself for an allowed one. Verified 2026-09-19 — it returned
+`{"error_type":"EGRESS_BLOCKED","domain":"www.nejm.org", ...}` for NEJM and
+resolved `api.crossref.org/works/10.1073/pnas.2400215121` to its title,
+journal, volume and DOI.
+
+**What has not changed is the inference a refusal licenses, which is none.** A
+refused host is still not evidence that the literature is unreachable, and the
+step taken from that conclusion is still memory, which both rules above forbid.
+What has changed is the advice that used to follow it. *Do* check the host
+before concluding anything about a source, because the answer is now per-host
+and dated rather than uniform. Do **not** try to route around the gateway — no
+alternate proxy, no disabling TLS verification, no unsetting `HTTPS_PROXY`. The
+allowlist is a decision the project owner took about what a public repository's
+sessions may reach, and evading it is not a workaround but a reversal of it.
+Where a host is genuinely refused, there is still a route.
+
+Read "there is a route" as "the block is not the end of it", never as "keep
+hunting until something turns up" — the second reading is what produces a
+search summary dressed as a reading. Whether that route carries what a given
+citation needs is a separate question, and the fourth limit below is the case
+where the honest answer is no.
+
+**The 2026-09-04 measurement, kept because it is why the routes below exist.**
+On that date the environment was on `Trusted` and every literature host failed
+alike: `curl` returned `CONNECT tunnel failed, response 403` for `doi.org`,
 `api.crossref.org`, `api.openalex.org`, `www.sciencedirect.com`,
-`link.springer.com`, `arxiv.org`, and NCBI's own `pubmed.ncbi.nlm.nih.gov` and
-`eutils.ncbi.nlm.nih.gov`: `curl` returned `CONNECT tunnel failed, response
-403` for all eight, and `WebFetch` returned `EGRESS_BLOCKED`.
+`link.springer.com`, `arxiv.org`, `pubmed.ncbi.nlm.nih.gov` and
+`eutils.ncbi.nlm.nih.gov` — all eight — and `WebFetch` returned
+`EGRESS_BLOCKED` for each. The PubMed MCP server and the private reference
+corpus were adopted under those conditions. They are **not** obsolete now:
+PubMed remains the route to a structured record and an abstract, and the corpus
+the route to a full text the publishers still will not serve. What has gone is
+the reason they were the *only* routes.
 
-**A refusal is not evidence that the literature is unreachable**, and the next
-step from that conclusion is memory, which both rules above forbid. Do not
-retry, do not look for a proxy around it, and do not treat it as the
-environment misbehaving. There is a route *around the network refusal*.
-
-Whether that route carries what a given citation needs is a separate question,
-and the fourth limit below is the case where the honest answer is no. Read
-"there is a route" as "the block is not the end of it", never as "keep hunting
-until something turns up" — the second reading is what produces a search
-summary dressed as a reading.
+**No check in this repository can replace the dated sentence above, and that is
+structural rather than a gap in the tooling.** The allowlist is enforced at the
+gateway, outside the sandbox; nothing in the tree can read it, set it, or scope
+it per repository. Only `remote.defaultEnvironmentId` is settable from
+`.claude/settings.json`, and it binds `claude --cloud` alone rather than the
+Desktop and web surfaces this project is worked from — so a committed setting
+would be a guarantee that silently does not hold (project owner, 2026-09-19,
+ratified, over a second environment selected per session). `CLAUDE.md` §
+"Prefer deterministic tooling over repeated model work" does not reach this
+one, because the decidable part sits outside the tree. What is owed instead is
+the date, the command that re-measures, and no claim that outlives the next
+environment edit.
 
 ## The PubMed MCP server is that route
 
-Verified the same day: search returned 23 hits for `"MAC-awake" AND
-sevoflurane`; metadata returned PMID, PMCID, DOI, journal, volume, pages,
-authors and abstract; and full text came back for an open-access article given
-its PMC id.
+Verified 2026-09-04, the day of the historical measurement above: search
+returned 23 hits for `"MAC-awake" AND sevoflurane`; metadata returned PMID,
+PMCID, DOI, journal, volume, pages, authors and abstract; and full text came
+back for an open-access article given its PMC id.
+
+**Still the route even though `pubmed.ncbi.nlm.nih.gov` is now reachable
+directly.** The MCP server returns a structured record — identifiers, the
+bibliographic fields and the abstract as data — where the host returns a page
+to be parsed, and a field read out of scraped HTML is the kind of provenance
+this file exists to prevent. Use the direct call to *check* an identifier;
+use the server to *read* a record.
 
 Four limits decide what a citation may claim:
 

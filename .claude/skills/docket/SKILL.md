@@ -573,6 +573,35 @@ roadmap is silent — read the row for the step before saying either.
 `bin/docket show` prints no placement at all, so an item reached by name — the
 way the owner usually starts one — carries no relation until you go and look.
 
+**Say what the work buys, in consequence terms, before naming what it does**
+(project owner, 2026-09-19). An item's title is written for the session that
+will implement it, so it names a mechanism - "reconcile the jobs reporting a
+status check against the branch-protection required list". Offered to the
+project owner unchanged, that is a string they cannot weigh: *"I don't know why
+it's selected ... 'links predicate xyz predicate to runner 267' or whatever."*
+
+So each item you offer leads with what closing it changes for them - it gets
+faster, fewer bugs reach `main`, a check stops lying, a release stops needing a
+person to remember a step - and names the mechanism second. One clause each,
+not a paragraph:
+
+> `PL-XZD0` (nothing reconciles CI's checks against the required list) - stops
+> a renamed CI job silently leaving pull requests waiting forever on a check
+> that can never arrive. It has happened twice. P2, not on the gate.
+
+The rule is strictest where the item is **workflow-lane**, because that is the
+offer the owner has no other way to judge: a simulator item's title describes
+something they already have an opinion about, and an apparatus item's does not.
+`bin/docket next` now prints each lane pick's band and gate relation, which is
+the decidable half; what the work *buys* is judgment and stays yours to write.
+
+**Never let "it is what `docket next` returned" stand as the reason.** The
+ranking is a sort over bands, placement and feature progress - it is not an
+argument that this work is worth doing now, and reporting the sort as though it
+were is what makes a queue feel arbitrary from outside. If you cannot say what
+an item buys, that is a finding about the item rather than a licence to offer it
+unexplained: say so, and offer the next one.
+
 **Recommending off-gate work is allowed, and is never silent about being
 off-gate.** Say what the gate says, then say why this goes first anyway. The
 grounds are the ones this project already states, not a new list: a `P0`, which

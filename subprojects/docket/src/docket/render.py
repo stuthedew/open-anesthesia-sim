@@ -27,7 +27,16 @@ from .model import (
     Item,
 )
 from .notes import Thread
-from .plan import PLACEMENT_MARKS, Feature, Gate, effort_total, placement_mark, recommend, set_aside
+from .plan import (
+    PLACEMENT_MARKS,
+    Feature,
+    Gate,
+    effort_total,
+    placement_clause,
+    placement_mark,
+    recommend,
+    set_aside,
+)
 from .release import PLANNED, RESERVED, Readiness, ReleaseOffer, release_offer
 from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Scope, Wave
 from .trend import APPARATUS, BY_DAY, EFFORT_POINTS, LANES, PRODUCT_BUCKETS, QUEUE, Trend
@@ -271,10 +280,32 @@ def _by_lane(
     }
     if not any(picks.values()):
         return ""
-    named = ", ".join(
-        f"{lane} {found[0].item.identifier}" if (found := picks[lane]) else f"{lane} none"
-        for lane in SELECTABLE_LANES
-    )
+    scope = plan.scope if plan is not None else None
+
+    def named_pick(lane: str) -> str:
+        """`workflow PL-XZD0 (P2, not on the gate)` - the id, and why it ranked.
+
+        The band and the gate relation, and deliberately not the title: this
+        line is resident in every session's context, and two titles written
+        for the session that will implement them would cost that context
+        without answering the question the line is read for. The `Top:` line
+        above already carries one title in full.
+
+        A bare id was what this printed until `PL-Z27P`, which made the digest
+        the first of two places naming a workflow item to the project owner
+        with nothing saying why - "I don't know why it's selected"
+        (2026-09-19). The id alone cannot distinguish a `P1` on the debt gate
+        from a `P3` the roadmap places nowhere.
+        """
+        found = picks[lane]
+        if not found:
+            return f"{lane} none"
+        item = found[0].item
+        clause = placement_clause(scope, item.identifier)
+        marks = f"{item.priority}, {clause}" if clause else item.priority
+        return f"{lane} {item.identifier} ({marks})"
+
+    named = ", ".join(named_pick(lane) for lane in SELECTABLE_LANES)
     held = set_aside(list(report.items), flight.ids, workflow_paths=workflow_paths)
     spanning = f"; {held.total} in neither lane" if held.total else ""
     return f"By lane, for a second session: {named}{spanning}."

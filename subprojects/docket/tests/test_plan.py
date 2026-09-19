@@ -14,6 +14,7 @@ from docket.plan import (
     effort_total,
     features,
     gate,
+    placement_clause,
     placement_line,
     placement_mark,
     recommend,
@@ -377,7 +378,14 @@ def test_a_milestone_clearing_its_own_gate_still_reads_as_the_current_step() -> 
 
     (pick,) = recommend([_item("PL-1111")], scope=scope, limit=1)
 
-    assert f"On {STEP}'s frozen list, the step the project is on" in pick.reason
+    assert f"On the debt gate recorded under {STEP}, the step the project is on" in pick.reason
+    # The regression `PL-MN0F` records: this is the branch that fires for a
+    # milestone clearing its own gate, which is the ordinary arrangement, and
+    # it used to be the only placement wording in the project that never said
+    # "gate". Pinned here rather than left to the phrase above, so a reword
+    # that drops the noun fails on the sentence that says why it matters.
+    assert "debt gate" in pick.reason
+    assert "frozen list" not in pick.reason
 
 
 def test_in_scope_work_outside_a_gate_never_claims_a_step_it_is_not() -> None:
@@ -934,3 +942,67 @@ def test_the_plan_line_does_not_tell_a_tier_item_it_ranks_on_its_band() -> None:
     above = placement_line(unplaced, "PL-1111", ranks_above_bands=True)
     assert "ranks on its band alone" not in above
     assert "ranks above every band but P0" in above
+
+
+# --- placement_clause: the relation in the fewest plain words ---------------
+#
+# `PL-Z27P`. The two lines that name an item with no room for a sentence -
+# `docket next`'s `Lane of this answer:` and the digest's `By lane:` - printed
+# a bare id, so the project owner met the workflow lane once per command and
+# once per session with nothing saying why anything ranked. These pin the
+# clause that replaced it, and in particular that it agrees with the sentence
+# `placement_line` prints for the same item.
+
+
+def test_the_clause_names_the_gate_while_a_gate_is_open() -> None:
+    scope = _scope(current=("PL-1111",), clearing=True)
+
+    assert placement_clause(scope, "PL-1111") == "on the debt gate"
+    assert placement_clause(scope, "PL-2222") == "not on the gate"
+
+
+def test_the_clause_never_names_a_gate_once_the_gate_is_clear() -> None:
+    """With nothing frozen there is no gate to be off, so "not on the gate"
+    would be true of every item in the store and informative about none."""
+    scope = _scope(current=("PL-1111",))
+
+    assert placement_clause(scope, "PL-1111") == f"in scope for {STEP}"
+    assert "gate" not in placement_clause(scope, "PL-2222")
+
+
+def test_the_clause_separates_the_anchor_s_own_scope_from_a_later_release() -> None:
+    """While a gate is open the anchor's own `Required scope` is mapped to the
+    anchor, and that says "this is what the gate clears the way for" rather
+    than "a later release owns this" - the distinction `placement_line` draws
+    on the same test."""
+    anchor_version = STEP.split()[0]
+    scope = _scope(later={"PL-1111": anchor_version, "PL-2222": "v0.9.0"}, clearing=True)
+
+    assert (
+        placement_clause(scope, "PL-1111")
+        == "not on the gate; it is what the gate clears the way for"
+    )
+    assert placement_clause(scope, "PL-2222") == "not on the gate; placed by v0.9.0"
+
+
+def test_the_clause_reports_a_ruled_out_id_as_a_decision_taken() -> None:
+    scope = _scope(excluded=("PL-1111",), clearing=True)
+
+    assert placement_clause(scope, "PL-1111") == f"ruled out of {STEP}"
+
+
+def test_the_clause_is_empty_without_a_roadmap_so_the_band_stands_alone() -> None:
+    """Fail quiet rather than asserting a relation nothing established."""
+    assert placement_clause(None, "PL-1111") == ""
+    assert placement_clause(_scope(anchor=""), "PL-1111") == ""
+
+
+def test_the_clause_and_the_sentence_agree_about_gate_membership() -> None:
+    """Three renderers of one relation, and the risk is that they drift: the
+    defect this feature started from was `docket next` alone calling the debt
+    gate a "frozen list" (`PL-MN0F`)."""
+    scope = _scope(current=("PL-1111",), clearing=True)
+
+    assert "debt gate" in placement_clause(scope, "PL-1111")
+    assert "debt gate" in placement_line(scope, "PL-1111")
+    assert placement_mark(scope, "PL-1111") == "[gate]"

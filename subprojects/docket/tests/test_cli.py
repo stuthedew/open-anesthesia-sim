@@ -3383,9 +3383,15 @@ def test_next_without_a_lane_names_the_lane_of_its_answer(
     assert _run("next", "--items", str(store)) == 0
     out = capsys.readouterr().out
 
-    assert "Lane of this answer: PL-PROD is product work." in out
-    assert "The workflow lane's own pick is PL-WORK (Item PL-WORK)" in out
+    assert "Lane of this answer: PL-PROD is product work (P1)." in out
+    assert "The workflow lane's own pick is PL-WORK (P2): Item PL-WORK" in out
     assert "`docket next workflow`" in out
+    # `PL-Z27P`: the band rides along even with no roadmap to read, because it
+    # is the half of "why this one" that needs no plan. A bare id and title
+    # here could not tell a `P1` on the gate from a `P3` placed nowhere, and
+    # this line is one of the two places the project owner meets the other
+    # lane at all.
+    assert "PL-WORK)" not in out
 
 
 def test_the_lane_line_names_both_lanes_when_the_answer_is_in_neither(
@@ -3401,7 +3407,8 @@ def test_the_lane_line_names_both_lanes_when_the_answer_is_in_neither(
     out = capsys.readouterr().out
 
     assert "PL-BOTH reaches both halves, so no lane places it." in out
-    assert "By lane: product PL-PROD (Item PL-PROD); workflow PL-WORK (Item PL-WORK)" in out
+    assert "product: PL-PROD (P2): Item PL-PROD" in out
+    assert "workflow: PL-WORK (P2): Item PL-WORK" in out
 
 
 def test_the_lane_line_is_silent_when_no_boundary_is_declared(
@@ -3451,7 +3458,7 @@ def test_the_digest_names_each_lane_s_pick_for_a_parallel_session(
     assert _run("digest", "--items", str(_laned_store(tmp_path))) == 0
     out = capsys.readouterr().out
 
-    assert "By lane, for a second session: product PL-PROD, workflow PL-WORK" in out
+    assert "By lane, for a second session: product PL-PROD (P2), workflow PL-WORK (P2)" in out
     assert "1 in neither lane" in out
 
 
@@ -3485,7 +3492,7 @@ def test_the_digest_lane_line_names_an_empty_lane_rather_than_omitting_it(
     assert _run("digest", "--items", str(items)) == 0
     out = capsys.readouterr().out
 
-    assert "product PL-PROD, workflow none" in out
+    assert "product PL-PROD (P2), workflow none" in out
     assert "in neither lane" not in out
 
 

@@ -2954,7 +2954,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 205 entries
+### Declined to Gate 2 on the refilling-queue ground — 206 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -4083,6 +4083,33 @@ safety-critical diff whatever model drafted it, which is the backstop that makes
 this deferrable. The observation that prompted them — `PL-G424` started on a
 weaker model than `PL-LSR0` while both carried the flag — cost nothing that a
 gate entry would have prevented.
+**One more on how a recommendation explains itself, 2026-09-19.** `PL-WYKF`
+(whether an item carries a one-line plain-language statement of what the work
+buys, so a recommendation reads in consequence terms rather than mechanism
+terms) is the open third of the `recommendation-rationale` feature; its two
+defects, `PL-MN0F` and `PL-Z27P`, were found and closed in the same session and
+never reached this list. It was captured that day, is `P2`, is neither `safety`
+nor `science`, and sits wholly in the workflow lane — `docket next`'s own
+output and the item format it reads from.
+
+It is `needs-decision` and so qualifies on status alone rather than on class,
+which is stated rather than blurred: "What counts" makes an unanswered decision
+debt whatever it is about. The ground is the arithmetic the groups above run on,
+and it is at its sharpest here — this gate stands at 173 of 175 cleared, two
+entries from draining, and both remaining entries are `P1` simulator work
+(`PL-7DMJ` on water vapour, `PL-JVHL` on the hover's nearest-run ambiguity).
+Admitting an `M`-effort decision about the queue's own file format to a gate in
+that state is exactly the refilling shape Phase 0 was retired for.
+
+What makes it deferrable rather than merely deferred: the half that was costing
+the project owner something real is already fixed. `docket next` now names the
+debt gate in the words the rest of the project uses and prints each lane pick's
+band and gate relation, and the `docket` skill now requires a recommendation to
+be reported in consequence terms. What `PL-WYKF` decides is whether that
+sentence is *stored* rather than recomposed per session — a session-cost
+question, and one that gets a better answer after a few releases of sessions
+writing the sentence by hand.
+
 **One more from the v0.4.30 cut, 2026-09-19.** `PL-5MFL` (`bin/docket verify`'s
 suppression check matches the line alone, so a `ROADMAP.md` prose line quoting
 `xfail` is read as an added suppression and every release cut ends `REJECT`).
@@ -4097,10 +4124,11 @@ not relax, so the failure is loud rather than silent, and what it costs is a
 paragraph of explanation in a close-out rather than any wrong result reaching
 anybody - `PL-SW0D`, the cut that met it, reported it and closed. Nothing it
 touches is reachable by a reader of the simulator: `subprojects/docket/` sits
-wholly inside `docket.toml`'s `workflow_paths`. Against that, this gate stands
-at 170 cleared of 175 with two entries it can clear, and admitting a sixth open
-entry at the beat where the milestone is one step from starting is the refilling
-shape Phase 0 was retired for.
+wholly inside `docket.toml`'s `workflow_paths`. Against that, and on the same arithmetic as the
+entry above, this gate stands two entries from draining - 170 of 175 closed,
+with three of the five still open blocked on work outside it - and admitting
+one more at the beat where the milestone is one step from starting is the
+refilling shape Phase 0 was retired for.
 
 ### Required scope
 

@@ -372,6 +372,49 @@ def placement_mark(scope: Scope | None, identifier: str) -> str:
     return ""
 
 
+def placement_clause(scope: Scope | None, identifier: str) -> str:
+    """The same relation again, in the fewest plain words, or `""`.
+
+    The third renderer of `scope.placement`, and the one written for a reader
+    who is not inside the ranking. `placement_line` puts the relation in a
+    sentence for `docket show`; `placement_mark` compresses it to a tag for a
+    `docket status` row; this is for the two places that name an item with no
+    room for either - the `Lane of this answer:` line and the digest's
+    `By lane:` line, which until `PL-Z27P` printed a bare id and title.
+
+    Those two are where the project owner meets the workflow lane, once per
+    `docket next` and once per session, and a bare id there is the whole of
+    what they had to go on: "I don't know why it's selected" (2026-09-19). A
+    title is written for the session that will implement the item, so it names
+    a mechanism rather than a consequence, and nothing beside it said whether
+    the item was gate work, a band below the gate, or unplaced.
+
+    The gate is named only while one is open, which is what `scope.clearing`
+    says. With the gate clear there is no gate to be off, and "not on the gate"
+    would be true of every item in the store and informative about none.
+    """
+    if scope is None or not scope.anchor:
+        return ""
+    where = scope.placement(identifier)
+    if where == IN_SCOPE:
+        return "on the debt gate" if scope.clearing else f"in scope for {scope.anchor}"
+    if where == EXCLUDED:
+        return f"ruled out of {scope.anchor}"
+    if where == OUT_OF_SCOPE:
+        placed_by = scope.milestone(identifier)
+        # The anchor's own `Required scope` is mapped to the anchor while its
+        # gate is open, and that is the commonest reading there is - it says
+        # "this is the milestone's own work, which the gate comes before",
+        # never "a later release owns this". `placement_line` draws the same
+        # distinction on the same test, the anchor's first token.
+        if placed_by and scope.anchor.split()[0] == placed_by:
+            return "not on the gate; it is what the gate clears the way for"
+        if not placed_by:
+            return "not on the gate"
+        return f"not on the gate; placed by {placed_by}"
+    return "not on the gate" if scope.clearing else "placed by no section"
+
+
 def _named_ids(identifiers: tuple[str, ...], limit: int = 3) -> str:
     """A few ids in full, then a count of the rest.
 
@@ -618,7 +661,25 @@ def recommend(
                     f"{scope.step_label}. {reason}"
                 )
             elif scope.clearing:
-                reason = f"On {scope.anchor}'s frozen list, the step the project is on. {reason}"
+                # "debt gate", in those words, because this is the branch that
+                # fires on the ordinary arrangement - a milestone clearing its
+                # own gate - and it was the one wording in the project that
+                # never said "gate" at all. `placement_line` says "on the debt
+                # gate recorded under", `placement_mark` draws `[gate]`, and
+                # `ROADMAP.md` calls it the debt gate; only `docket next` - the
+                # command that actually hands over the work - called it "the
+                # frozen list", which is the store's internal name for the
+                # recorded list rather than the thing the project owner is
+                # tracking. So every gate item this project has ever offered
+                # was offered without being announced as gate work, and the
+                # owner reported exactly that: `next` "hasn't recommended a
+                # gate item in a while, or at least hasn't called something a
+                # gate item if it was" (2026-09-19). The relation was right
+                # throughout; only the noun was unreadable (`PL-MN0F`).
+                reason = (
+                    f"On the debt gate recorded under {scope.anchor}, "
+                    f"the step the project is on. {reason}"
+                )
             elif scope.step_label:
                 reason = (
                     f"In scope for {scope.anchor}, which the step the project is on "
