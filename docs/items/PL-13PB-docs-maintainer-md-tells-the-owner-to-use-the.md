@@ -3,11 +3,13 @@ id: PL-13PB
 title: docs/maintainer.md tells the owner to use 'the strongest available model' and names no model, so bin/docket next's per-item strongest-model flag cannot be resolved by anyone reading it
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, defect
 feature: model-capability-routing
 touches: docs/maintainer.md
 added: 2026-09-19
+closed: 2026-09-19
+pr: 733
 verify: grep -qE 'strongest available model is' docs/maintainer.md
 ---
 

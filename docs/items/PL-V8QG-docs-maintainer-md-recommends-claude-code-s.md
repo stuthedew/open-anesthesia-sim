@@ -3,12 +3,14 @@ id: PL-V8QG
 title: docs/maintainer.md recommends Claude Code's opusplan mode as the default split for strong-model work, which names the wrong family if the strongest model is not an Opus
 priority: P2
 effort: S
-status: blocked
+status: done
 classes: docs, defect
 feature: model-capability-routing
 touches: docs/maintainer.md
-blocked-by: PL-13PB
 added: 2026-09-19
+closed: 2026-09-19
+pr: 733
+verify: grep -q 'code.claude.com/docs/en/model-config' docs/maintainer.md && ! grep -qF 'opusplan` mode is a reasonable default' docs/maintainer.md
 ---
 
 **Problem.** docs/maintainer.md recommends Claude Code's opusplan mode as the default split for strong-model work, which names the wrong family if the strongest model is not an Opus

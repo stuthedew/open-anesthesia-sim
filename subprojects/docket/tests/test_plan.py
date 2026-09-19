@@ -34,6 +34,7 @@ def _item(
     touches: tuple[str, ...] = ("a.py",),
     root_cause_of: tuple[str, ...] = (),
     impairs_generators: str = "",
+    verify: str = "",
 ) -> Item:
     return Item(
         identifier=identifier,
@@ -53,6 +54,7 @@ def _item(
         body="**Problem.** x\n**Why it matters.** y\n**Done when.** z\n",
         root_cause_of=root_cause_of,
         impairs_generators=impairs_generators,
+        verify=verify,
     )
 
 
@@ -178,6 +180,73 @@ def test_a_recommendation_says_which_model_the_work_warrants() -> None:
     (pick,) = recommend([_item("PL-1111", classes=("safety",), priority="P1")], limit=1)
 
     assert "strongest model" in pick.describe()
+
+
+#: A store position that qualifies under every clause of `Item.delegability`:
+#: `ready`, no safety or science class, a command that proves it, `S` effort,
+#: and one declared path outside both lists below.
+_DELEGABLE = {"verify": "pytest -q", "touches": ("tools/x.py",)}
+_PROTECTED = ("src/core",)
+_GATES = ("Makefile",)
+
+
+def test_a_recommendation_offers_a_cheaper_model_when_the_item_qualifies() -> None:
+    """The offer `docket list` already prints, on the command that recommends.
+
+    `delegable` was derivable from the store the whole time and `docket next`
+    said nothing about it, so the queue answered "what should I work on" and
+    "what may a cheaper model work" in two different places (`PL-4MVC`).
+    """
+    (pick,) = recommend(
+        [_item("PL-1111", **_DELEGABLE)], limit=1, protected_paths=_PROTECTED, gate_paths=_GATES
+    )
+
+    assert pick.delegable
+    assert "cheaper model" in pick.describe()
+
+
+def test_a_recommendation_offers_no_cheaper_model_where_nothing_is_protected() -> None:
+    """Fail closed, and from the caller's end as well as `delegability`'s.
+
+    A caller that threads no configuration has not said which of its files
+    produce consequential output, and the safe reading of that silence is to
+    offer nothing rather than to offer everything.
+    """
+    (pick,) = recommend([_item("PL-1111", **_DELEGABLE)], limit=1)
+
+    assert not pick.delegable
+    assert "cheaper model" not in pick.describe()
+
+
+def test_the_strongest_model_mark_wins_over_the_cheaper_one() -> None:
+    """One model answer per item, and the safety-classed answer is the one.
+
+    `delegability` already returns the guidance string for a `safety`-classed
+    item, so the two can never both be true; this is the regression test for a
+    describe() that grew a second `if` and printed both.
+    """
+    (pick,) = recommend(
+        [_item("PL-1111", classes=("safety",), priority="P1", **_DELEGABLE)],
+        limit=1,
+        protected_paths=_PROTECTED,
+        gate_paths=_GATES,
+    )
+
+    said = pick.describe()
+    assert "strongest model" in said
+    assert "cheaper model" not in said
+
+
+def test_an_item_touching_a_protected_path_is_not_offered_cheaply() -> None:
+    """The partition that keeps clinical values off a delegated diff."""
+    (pick,) = recommend(
+        [_item("PL-1111", verify="pytest -q", touches=("src/core/pk.py",))],
+        limit=1,
+        protected_paths=_PROTECTED,
+        gate_paths=_GATES,
+    )
+
+    assert not pick.delegable
 
 
 def test_nothing_startable_yields_no_recommendations() -> None:

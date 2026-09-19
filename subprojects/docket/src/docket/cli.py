@@ -445,6 +445,8 @@ def _offered(
         flight.ids,
         scope=plan.scope if plan is not None else None,
         generator_paths=config.generator_paths,
+        protected_paths=config.protected_paths,
+        gate_paths=config.gate_paths,
     )
     return OfferedReport(
         ids=frozenset(pick.item.identifier for pick in picks), declined=render.format_unread(flight)
@@ -527,6 +529,8 @@ def cmd_digest(args: argparse.Namespace) -> int:
         _orphaned(root, args),
         _cuts(root, config, args) if ready.is_worth_cutting else None,
         generator_paths=config.generator_paths,
+        protected_paths=config.protected_paths,
+        gate_paths=config.gate_paths,
     )
     if rendered:
         print(rendered)
@@ -1148,6 +1152,8 @@ def cmd_next(args: argparse.Namespace) -> int:
         lane=lane,
         workflow_paths=config.workflow_paths,
         generator_paths=config.generator_paths,
+        protected_paths=config.protected_paths,
+        gate_paths=config.gate_paths,
     )
     where = f" in the {lane} lane" if lane else ""
     if not picks:
@@ -1248,6 +1254,8 @@ def _say_answer_lane(
             lane=wanted,
             workflow_paths=config.workflow_paths,
             generator_paths=config.generator_paths,
+            protected_paths=config.protected_paths,
+            gate_paths=config.gate_paths,
         )
         return found[0].item if found else None
 
