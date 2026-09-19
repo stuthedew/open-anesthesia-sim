@@ -126,8 +126,14 @@ measured on 2026-09-19 and the mechanism is live.
 
 ## Decided 2026-09-19 — route 3, sharpened, plus the decidable half of route 1
 
-**Taken by this session on measurement, not by the project owner.** The three
-routes turned on a question the brief called undecided — whether a closed item's
+**Ratified by the project owner, 2026-09-19**, over route 1 (extending the
+live-versus-dated-assertion convention across the apparatus documents) - so the
+bar to reopen it is ordinary evidence rather than a compelling argument, per
+`CLAUDE.md` § "Working with the project owner". It was proposed by this session
+on the measurement below and agreed on one read, which is not the same as a
+decision the owner authored.
+
+The three routes turned on a question the brief called undecided — whether a closed item's
 brief is a historical record or a live assertion — and that question is
 answerable by counting rather than by argument, which `.claude/rules/instruction-writing.md`
 rule 14 and the `docket` skill both make a session's to settle. The counts are

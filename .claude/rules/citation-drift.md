@@ -17,8 +17,17 @@ at a time, and each one becomes a queue item.
 `docs/MODEL.md` and `README.md`, deliberately leaving the apparatus out.
 `PL-G424` is the apparatus half: 21 open items, each a sentence in an apparatus
 document asserting a tree fact that is wrong. This file is its recorded
-decision (project owner's session, 2026-09-19) and loads on the files it
-governs.
+decision (project owner, 2026-09-19, ratified, over extending the
+live-versus-dated-assertion convention across the apparatus documents) and
+loads on the files it governs.
+
+**Ratified, not specified, so the bar to reopen it is ordinary evidence.** It
+was a session's recommendation that the project owner agreed with on one read -
+`CLAUDE.md` § "Working with the project owner" is explicit that this is not the
+same as a decision they authored, and that "it is what the owner decided" does
+not defend it. A measurement, a cost the case did not carry, or a constraint
+that has since appeared is enough to put it back to them. The table below is
+the case; the closed-brief row is the load-bearing one.
 
 ## The decision
 
