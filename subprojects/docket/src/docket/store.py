@@ -97,6 +97,11 @@ def write_item(directory: Path, item: Item, *, replace: Path | None = None) -> P
     name without removing the old one would leave two files claiming the same
     id, which `checks.py` reports as a duplicate - correctly, but confusingly,
     since the cause is a rename rather than a collision.
+
+    So this is for creating an item and for a pass whose *subject* is the
+    rename. A command writing a field reaches for `rewrite_item` instead,
+    whatever it finds the name to be: see there for why a rename arriving as a
+    side effect is worse than a stale slug.
     """
     directory.mkdir(parents=True, exist_ok=True)
     target = directory / filename_for(item)

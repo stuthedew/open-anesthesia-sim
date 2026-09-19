@@ -1,14 +1,15 @@
 ---
 id: PL-LBR6
 title: bin/docket record renames a drifted item file as a side effect of writing a pr number, which conflicts against whoever else is holding that file
-status: ready
-added: 2026-09-13
 priority: P2
 effort: S
+status: done
 classes: defect, infra
-feature: dev-tooling
+feature: slug-rename-on-write
 touches: subprojects/docket/src/docket/store.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
-verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_record_keeps_a_drifted_filename' subprojects/docket/tests/test_cli.py
+added: 2026-09-13
+closed: 2026-09-19
+verify: grep -q 'def test_record_keeps_a_drifted_filename' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** bin/docket record renames a drifted item file as a side effect of writing a pr number, which conflicts against whoever else is holding that file
@@ -56,3 +57,19 @@ and writes to `directory / filename_for(item)`, so any caller that re-renders a
 drifted file renames it. `record` is the caller that should not. The `verify:`
 command was run first and exits 1 - the `test_cli.py` suite passes and the test
 this item owes does not yet exist.
+
+**Fixed 2026-09-19.** `_write_pr` in `subprojects/docket/src/docket/cli.py`
+now calls `store.rewrite_item` instead of `store.write_item(replace=...)`, so
+the `pr:` write keeps whatever name it finds. The helper already existed:
+`PL-L4YG` built it for `docket set` and its docstring names this item as the
+reason, but only `set` was wired to it, which is why `record` was still
+renaming six days later and why `PL-5QLP` re-discovered the same defect
+independently.
+
+`test_record_keeps_a_drifted_filename` pins it, against a real git checkout
+whose item file carries a slug its title no longer generates. It failed before
+the change with the file renamed out from under the assertion.
+
+Closed with `PL-QMC0` (the same defect in `bin/docket release`), `PL-5QLP`
+(the re-discovery, which also recorded the revert trap) and `PL-JF5Z` (the
+recovery of `PL-5QLP` from its branch). One mechanism, one branch.
