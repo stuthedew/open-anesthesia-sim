@@ -1,0 +1,40 @@
+---
+id: PL-73P0
+title: default_base falls back to the literal string main when no candidate ref resolves, so every comparison in vcs.py can be taken against a guessed base with nothing in the answer saying so
+status: untriaged
+feature: evidence-declines
+added: 2026-09-19
+---
+
+**Problem.** default_base falls back to the literal string main when no candidate ref resolves, so every comparison in vcs.py can be taken against a guessed base with nothing in the answer saying so
+
+**Found in `PL-BHVM`'s design round, 2026-09-19**, which carries the wider
+diagnosis. `default_base` tries each of `DEFAULT_BRANCHES` and ends:
+
+```python
+return "main"
+```
+
+Its docstring calls this "a repository this tool cannot answer about either
+way", and for `verify` that is true — it reports finding no change rather than
+a clean scope. But `default_base` is the base every other read in the module
+compares against, so the fallback is not confined to that caller: a checkout
+where no candidate resolves still gets a string that looks like an answer, and
+`stranded`, `orphaned`, `branches_in_flight` and `branch_state` then compare
+against a branch nobody established exists.
+
+Measured 2026-09-19: under a runner that fails every call, `default_base`
+returns `'main'` and `branch_state` returns `behind=0, ahead=0` — "you are
+current with the base" — from a base that was guessed.
+
+**Why it matters.** `.claude/rules/apparatus-standard.md`'s floor is that what
+the apparatus tells a session must be true or must say what it could not read.
+A guessed base is the one input whose wrongness cannot be seen in any answer
+downstream of it, because every downstream answer is *about* that base.
+
+**Done when** a checkout where no candidate default branch resolves is
+distinguishable from one where `main` resolved — a sentinel, an optional
+return, or a declined flag on the reports that consume it — and the reads that
+compare against it decline rather than answering. Sits with `PL-Q9Z1` and
+`PL-MM7F`: all three are the evidence layer having no way to say it could not
+answer.
