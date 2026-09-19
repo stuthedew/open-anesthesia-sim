@@ -2855,7 +2855,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 170 entries
+### Declined to Gate 2 on the refilling-queue ground — 171 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3076,11 +3076,25 @@ declined here, and ranked first in the queue. What the gate decides is whether
 v0.5.0 *waits* on them; what the ranking decides is when they are picked up,
 and the answer to the second is already "before nearly everything else".
 
+**A fifth, split out of one of those four on 2026-09-19** (`PL-2T03`).
+Measuring `PL-HWW1`'s eight members against the code found four of them under
+a different mechanism - the release train's *arrangement* is re-derived by
+comparing version numbers, where § "The timeline" already records it as a
+grammar-checked table - so those four moved to a head of their own and
+`PL-HWW1` kept the three that are about membership. `PL-2T03` declines on this
+subsection's own ground: captured after the freeze, `P2`, `defect` rather than
+`safety` or `science`, wholly in the workflow lane, and completing no entry on
+the frozen list. It carries `root-cause-of:` over `PL-Y1L0`, `PL-J45M`,
+`PL-7CSP` and `PL-B5DW`, so the paragraph above applies to it unchanged: the
+ranking already offers it ahead of this gate's own entries, and what is
+declined is only whether v0.5.0 waits on it.
+
 - PL-0M32 (S) Nothing can tell an item finished under a renamed test from one nobody has started
 - PL-0VFF (S) ROADMAP.md's 'Declined to Gate 2' list names PL-483K, PL-69JZ and PL-L09X as deferred, but all three closed done in v0.4.14, and nothing distinguishes a still-open entry from a closed one
 - PL-12P8 (S) PL-JBZK's lane check assumes every file under tests/ is a test file, so a shared non-test helper is told to declare itself apparatus
 - PL-1BS2 (S) The session-start digest's Releasable line reads readiness without the interrupted-cut resume, so during an unfinished cut it reports the short remainder with nothing saying why
 - PL-2GQW (S) PL-L9JS's not-delegable reason rests on the recursion claim PL-20CQ disproved, so the item may be delegable after all
+- PL-2T03 (M) Four items re-derive the release train's arrangement by comparing version numbers, though ROADMAP.md's timeline table already records it
 - PL-316G (M) Convert the 150 possessive-form document citations to the section-mark form, which is the only way doc_check can check them without reading prose as a citation
 - PL-3DN1 (S) bin/docket release accepts a VERSION below the current one, so a typo silently downgrades pyproject.toml's version field
 - PL-3JP0 (S) Decide whether the wash-in section's three paragraphs survive the same test PL-6580 applied to the chart panel above it
@@ -3117,7 +3131,7 @@ and the answer to the second is already "before nearly everything else".
 - PL-G8TR (S) no-prune-guard is evaded by the form it recommends - git branch -dr driven from a generated list is a prune
 - PL-H9GV (S) PL-01GD shipped as one exported Makefile variable with no test: PYTHONDONTWRITEBYTECODE appears only at Makefile:21, its declared touches names tests/unit/test_tools_portability.py which never changed, and its verify: passes against an untouched suite
 - PL-HKTB (S) The chart gridline and divider grey measures 1.31:1 on the panel and carries no contrast requirement; decide whether it should be darkened or recorded as exempt furniture
-- PL-HWW1 (M) Eight items patch a reading of ROADMAP.md's prose because milestone membership is scraped rather than recorded: decide whether it becomes a recorded fact
+- PL-HWW1 (M) Three items patch a reading of ROADMAP.md's Required scope because membership is cited rather than declared: decide whether it becomes a recorded fact
 - PL-HX5C (S) Both in-flight guards passed and two sessions still implemented PL-W8XP independently: the second never renamed and its branch was named after a different item, so neither the ref read nor the session read could see it
 - PL-JBRC (M) docket stranded still calls a branch merged when one of its commits is only docket record output, which converges byte-for-byte with the base
 - PL-JW39 (S) docket next ranks a needs-decision item first, so every fresh session opens on work whose next step is the owner's answer

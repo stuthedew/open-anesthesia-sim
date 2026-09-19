@@ -1782,3 +1782,23 @@ connects the two, so a cluster can be correctly diagnosed, correctly recorded,
 and still have nowhere for the diagnosis to live - which is the same failure the
 map itself names, one level up: the apparatus inferring a fact (which item heads
 this cluster) that it could have recorded.
+
+**One of the four heads split on 2026-09-19, and the reason generalizes.**
+`PL-HWW1` was filed holding eight members under one diagnosis - milestone
+membership is scraped rather than recorded. Measured against the code, three
+are that - `PL-4PC5`, `PL-6P9Y`, `PL-C4RS`, all about `### Required scope`
+having no grammar - and four are a *different* mechanism: `PL-Y1L0`,
+`PL-J45M`, `PL-7CSP` and `PL-B5DW` re-derive the release train's arrangement
+by comparing version numbers, where § "The timeline" is already a parsed,
+grammar-checked table whose row order *is* the arrangement. They are now
+`PL-2T03`, under `feature: timeline-arrangement`. `PL-SVRW` left the list
+entirely as an ordinary consolidation.
+
+The distinction is worth carrying because `PL-6ZQY`'s map names only the first
+half of it. *Infers a fact it could have recorded* and *re-derives a fact it
+already has* look identical from the symptom - a heuristic patched at one call
+site - and want opposite fixes: the first needs a place to write the fact
+down, the second needs the existing record to be read. A head composed from
+symptoms will mix them, which this one did. The test that separated them was
+cheap: ask whether the document already states the fact somewhere with a
+grammar. For arrangement it does; for membership it does not.
