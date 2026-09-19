@@ -377,9 +377,26 @@ def format_digest(
         lines.append(f"  {lane_line}")
 
     if flight.ids:
-        lines.append(
-            f"  In flight on a branch: {', '.join(sorted(flight.ids))} - do not start these again."
-        )
+        # **Split on whether the default branch holds the item, because the
+        # two halves want opposite advice** (`PL-3CTW`). A claim on an item the
+        # base has no copy of is a capture commit's, nine times in ten, and the
+        # item is in no session's store to be started - so refusing it refuses
+        # work nobody was offered, about the branch the `stranded` line
+        # directly below is telling the reader to recover it from. Neither
+        # claim is withdrawn: that was measured at three widths and refused at
+        # every one, per `Branch.on_base`.
+        landed = sorted(branch.item_id for branch in flight.branches if branch.on_base)
+        filed = sorted(branch.item_id for branch in flight.branches if not branch.on_base)
+        if landed:
+            lines.append(
+                f"  In flight on a branch: {', '.join(landed)} - do not start these again."
+            )
+        if filed:
+            lines.append(
+                f"  Filed on a branch, not yet on {flight.base or 'the default branch'}: "
+                f"{', '.join(filed)} - no copy here to start from; `bin/docket stranded` "
+                "recovers it from the branch that claims it."
+            )
     if unread := format_unread(flight):
         lines.append(f"  {unread}")
     if flight.unattributed:
@@ -665,14 +682,24 @@ def format_flight(report: FlightReport, today: date) -> str:
         lines.append("")
         width = max(len(branch.name) for branch in report.branches)
         for branch in report.branches:
+            # `filed there` rather than a second table: the fact belongs to the
+            # row it qualifies, and a reader scanning for their own id meets it
+            # without being sent anywhere (`PL-3CTW`).
+            mark = "" if branch.on_base else "  filed there"
             lines.append(
-                f"{branch.item_id}  {branch.name:<{width}}  {_since(branch.last_commit, today)}"
+                f"{branch.item_id}  {branch.name:<{width}}  "
+                f"{_since(branch.last_commit, today)}{mark}"
             )
         lines.append("")
         lines.append(
             "A live session and a branch nobody will merge look the same here; "
             "the age is what separates them."
         )
+        if any(not branch.on_base for branch in report.branches):
+            lines.append(
+                "An item marked `filed there` is not in this checkout's queue at all: that "
+                "branch holds the only copy, and `bin/docket stranded` recovers it."
+            )
     else:
         # Stated as the conclusion rather than as a fact about subjects
         # (`PL-VYSP`): a capture leads with an id and claims nothing, and a

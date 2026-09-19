@@ -3,10 +3,12 @@ id: PL-3CTW
 title: A commit that leads with a captured id and also reaches outside the queue claims that id, so a finding filed alongside another item's work reads 'do not start these again' for the life of the branch
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect
 touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-19
+closed: 2026-09-19
+verify: grep -q 'def test_the_digest_sends_an_unlanded_claim_to_stranded_rather_than_refusing_it' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** A commit that leads with a captured id and also reaches outside the queue claims that id, so a finding filed alongside another item's work reads 'do not start these again' for the life of the branch
@@ -117,12 +119,13 @@ chose. That is a different mechanism at a different layer from the one this
 item describes, so it is the project owner's to approve under `CLAUDE.md`'s
 gate rather than a session's to substitute.
 
-**Decision needed.** Whether to keep every claim and re-word the report for an
-id the base has no copy of - "filed on this branch, not yet merged; `bin/docket
-stranded` recovers it" in place of "do not start these again" - instead of the
-withdrawal this item was filed to propose, which three widths of measurement
-have now refused. The alternative on the table is to drop the item with the
-refutation as its reason and leave the digest contradicting `stranded`.
+**Decided: keep every claim, and re-word the report for an id the base has no
+copy of** (project owner, 2026-09-19, ratified) - chosen over dropping this item
+with the refutation as its reason and leaving the digest contradicting
+`bin/docket stranded`. The withdrawal this item was filed to propose is refused
+at all three widths measured above; nothing is taken away, so the mark keeps
+failing in the direction `_annotates_only` and `PL-PRHN` chose, and what changes
+is only what the reader is told about an id whose item is not in their store.
 
 **Why it matters.** The mark exists to stop two sessions landing on one item,
 and on a base-absent id it cannot do that job: no other session's store holds

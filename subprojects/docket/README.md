@@ -498,6 +498,34 @@ creates one. Three such branches, all eleven days old, were promoted the first
 time the status test ran live. `precedence` reads the same commits under the
 same two tests, so two design rounds on one item get a verdict.
 
+**A claim on an item the default branch has no copy of is kept, and worded
+differently.** This is the opposite direction from the two exceptions above,
+and the only one measurement refused outright. A capture commit that also
+reaches past the queue claims the ids it merely filed — `CLAUDE.md` requires
+the leading id and requires the capture, so the collision comes of keeping the
+rules, and it fires on exactly the commits whose purpose is to hand work to a
+later session. Withdrawing that claim was measured at three widths against the
+913 `(commit, id)` claims in this project's history, and refused at all three.
+The rule the item proposed — an id the base does not hold is one this commit is
+filing — takes 263, of which 221 create the item at `done`, `dropped`, `ready`,
+`needs-decision` or `blocked`: an item filed *and finished* on one branch,
+which is the housekeeping rule, the behavior-change rule and the fix-now door
+each being kept. Narrowing it to ids the branch still calls `untriaged` takes
+22, and 12 of those did the item's own work — `PL-M2SD` shipped
+`tools/generator_check.py` beside the file that filed it. No `touches` test
+separates them either: the motivating commit carries `vcs.py`, the first path
+its captured item declares. What separates a capture from an item filed and
+worked is intent, and nothing in the repository records it.
+
+So nothing is withdrawn, and what changed is what the reader is told. An item
+the base has no copy of is in no other session's store, so nothing can offer it
+and refusing it refuses work that was never on offer — about the very branch
+the `stranded` line beneath it names as the place to recover the item from.
+`Branch.on_base` carries the fact; the digest sends those ids to `Filed on a
+branch, not yet on <base>` and to `bin/docket stranded`, and `docket flight`
+marks their rows `filed there` (`PL-3CTW`). `PL-G5ZH` sat in both readings at
+once on 2026-09-19, told to be left alone and to be recovered.
+
 **A ref naming nothing at all is the third outcome, and it is reported rather
 than dropped.** `unreadable` says the commits could not be read; `unattributed`
 says they were read and named no item — no id in the branch name, none at the

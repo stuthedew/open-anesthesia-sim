@@ -586,11 +586,37 @@ class Branch:
     default branch does not, or `None` when this checkout could read none of
     them - a branch created but not yet committed on, or one whose commits sit
     beyond a truncated clone's horizon.
+
+    **`on_base` changes what a reader is told, never whether the claim is
+    made** (`PL-3CTW`). A capture commit that also reaches outside the queue
+    claims the ids it merely filed, because `CLAUDE.md` requires both the
+    leading id and the capture - so the collision is produced by following the
+    rules. Withdrawing such a claim was measured at three widths against the
+    913 `(commit, id)` claims in `origin/main`'s history and refused at every
+    one: the widest takes 263, of which 221 create the item at `done`,
+    `dropped`, `ready`, `needs-decision` or `blocked` - an item filed *and
+    finished* on one branch, which is the housekeeping rule, the
+    behavior-change rule and the fix-now door each being kept. Narrowing it to
+    ids the branch still calls `untriaged` takes 22, and 12 of those did the
+    item's own work. No `touches` test separates them either: the motivating
+    commit carries `vcs.py`, which is the first path its captured item
+    declares. So nothing is taken away, and the mark goes on failing toward
+    itself the way `_annotates_only` and `PL-PRHN` chose.
+
+    What was wrong is only the wording. An item the default branch has no copy
+    of is in no other session's store, so nothing can offer it and "do not
+    start these again" refuses work that was never on offer - about the very
+    branch `bin/docket stranded` is telling the reader to recover it from.
+    `PL-G5ZH` sat in both readings at once on 2026-09-19.
     """
 
     name: str
     item_id: str
     last_commit: date | None = None
+    #: Whether the default branch holds this item's file at all. `True` for an
+    #: item a reader could actually start, which is every claim the older
+    #: reading was right about.
+    on_base: bool = True
 
 
 @dataclass(frozen=True)
@@ -2199,8 +2225,20 @@ def branches_in_flight(
         )
         if preferred not in attributed and BRANCH_ID_RE.search(preferred) is None
     }
+    # **The base's own copy decides the wording, and only the wording**
+    # (`PL-3CTW`). One tree listing, which the two promotions above have
+    # usually already paid for - the runner memoizes, so asking again is free.
+    landed = set(_item_paths_on(base, items_dir, root, run))
     return FlightReport(
-        branches=tuple(sorted(in_flight.values(), key=lambda branch: branch.item_id)),
+        branches=tuple(
+            sorted(
+                (
+                    replace(branch, on_base=branch.item_id.upper() in landed)
+                    for branch in in_flight.values()
+                ),
+                key=lambda branch: branch.item_id,
+            )
+        ),
         unreadable=tuple(name for name in candidates if name in unreadable),
         unattributed=tuple(name for name in candidates if name in unattributed),
         editing=tuple(
