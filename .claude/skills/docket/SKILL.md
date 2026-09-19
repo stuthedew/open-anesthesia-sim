@@ -629,13 +629,18 @@ the web harness before the session starts and cannot be renamed, so "name the
 branch after it" is advice a session can almost never take, and the first
 commit outside the queue is what actually raises the mark.
 
-**One exception, and it needs nothing from you: an item whose own `touches`
-never leaves `docs/items/`.** A release tag item, a triage pass, a stranded
-recovery — for those the queue edit *is* the work, and `branches_in_flight`
-reads that off the item rather than off the commit, so the first push claims
-the item whatever the branch is called (`PL-7790`). It is read from the default
-branch's copy, so an item you have only just captured is not covered: the base
-has no copy of it to declare anything.
+**Two exceptions, and neither needs anything from you.** An item whose own
+`touches` never leaves `docs/items/` — a release tag item, a triage pass, a
+stranded recovery — for those the queue edit *is* the work, and
+`branches_in_flight` reads that off the item rather than off the commit, so the
+first push claims the item whatever the branch is called (`PL-7790`). And an
+item at `needs-decision`, whose next step is a decision and whose deliverable
+is therefore the item file: a queue-only commit that leads with its id and
+writes its own file is the design round, and the mark is read off the item's
+status (`PL-VYSP`) — `PL-BHVM` sat at the top of `docket next` with three such
+commits pushed and a live session on them before this was so. Both are read
+from the default branch's copy, so an item you have only just captured is not
+covered: the base has no copy of it to declare anything.
 
 That is a weaker cover rather than none, since `PL-N1JK`. `bin/docket show`
 prints `Its file is already edited on <branch>` underneath the in-flight mark,

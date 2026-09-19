@@ -1,8 +1,14 @@
 ---
 id: PL-VYSP
 title: A design round's whole output is item files, so the in-flight mark can never fire for one: bin/docket show called PL-BHVM startable while a live session held it with three PL-BHVM commits pushed
-status: untriaged
+priority: P2
+effort: M
+status: done
+closed: 2026-09-19
+verify: uv run pytest subprojects/docket/tests/test_vcs.py -q && grep -q 'def test_a_design_round_on_a_needs_decision_item_is_in_flight' subprojects/docket/tests/test_vcs.py
+classes: defect
 feature: parallel-sessions
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md
 added: 2026-09-19
 ---
 
@@ -96,3 +102,81 @@ here should not outrun what was checked.
 It is also the cleanest case for the candidate fix above: one commit, one file,
 and that file is the item's own. A capture commit writes somebody else's item;
 this writes its own, which is exactly the distinction available for free.
+
+**Why it matters.** The suppression is not a window that closes as a session
+proceeds. For an item whose deliverable is a decision it holds for the whole
+life of the work, and it lands on exactly the items a recorded generator ranks
+above every band but `P0` - so the guard reads "startable" precisely where a
+second session costs most. Measured live at 04:40 on 2026-09-19, after
+fetching every branch: five design rounds were running on the five generator
+heads, and `bin/docket flight` named one of them (`PL-4FBP`, whose round had
+touched a file outside the queue) while `show` called `PL-HWW1` and `PL-6TP8`
+startable with live sessions on both.
+
+**Done when.** `bin/docket show` and `bin/docket next` mark an item at
+`needs-decision` in flight from a queue-only commit that leads with its id and
+writes its own file, while a stale capture branch of such an item is not a
+claim; `precedence` orders two such rounds on one item; and `flight`'s
+empty-report sentence says only what was checked.
+
+**Decided against the candidate above, on a count (2026-09-19).** The rule
+adopted reads the item's *status* off the default branch, the way `PL-7790`
+reads its `touches`: a queue-only commit that leads with an id and changes that
+id's own file is a claim where the base holds the item at `needs-decision`, and
+annotation everywhere else. The candidate rule fails `PL-X3WZ`'s test as soon
+as it is counted, and so does the obvious repair to it. Over the 1,006 commits
+on `origin/main` at the time:
+
+| Rule | (commit, id) pairs it would have marked | What they were |
+| --- | --- | --- |
+| Candidate: queue-only, leads with the id, changes its own file | 316 | 81 captures and recoveries creating the file; the rest below |
+| ...and the parent commit already holds the file | 235 | 120 triage passes out of `untriaged`, 51 on `ready` items (24 of them pure notes), 36 `docket record` writes, 23 on `needs-decision` items |
+| ...and the item was at `needs-decision` | 23 | 21 the item's own decision work - the answer, a measurement for it, or its disposition; 2 notes written into `PL-2XTF` on 2026-09-02 |
+
+What would have changed the answer: a material share of the 23 being notes by
+sessions not working the item, which is the false mark `PL-X3WZ` removed. Two
+of twenty-three, both on one item in the project's first week, against the
+current rule's miss rate of every design round ever run.
+
+The conjunction - the subject must *lead* with the id whose file it writes -
+is not decoration. A design round re-points its cluster, so one commit edits a
+dozen other items' files, some of them at `needs-decision` and being worked by
+other sessions; `PL-BHVM`'s `#676` edited fourteen. Promoting on the file edit
+alone would have marked those items "do not start again" against the sessions
+holding them.
+
+The same commits now reach `precedence`, so two rounds on one item get the
+yield verdict the skill tells a session to read rather than reason out - the
+step that failed for the two `PL-BHVM` sessions.
+
+**Where it sits relative to `PL-BHVM`, and why it is not folded in.** The
+paragraph above asked for this to join that item's `root-cause-of:` once its
+branch landed. It landed (`#676`, `#677`) with a ratified decision that splits
+the cluster into four questions and removes "has a session claimed this work?"
+from it as Q4 - not a question about what proves a ref *done* - moving
+`PL-HX5C` and `PL-99YZ` out on that ground. This item is Q4's third instance
+and belongs beside those two, so `PL-BHVM`'s eight ids are left as ratified.
+
+**Two findings from running the rule live before closing (2026-09-19 ~04:45).**
+
+1. **The status test alone produced three false marks, so the fix carries a
+   second test.** With every remote branch fetched, `bin/docket flight` gained
+   `PL-4ZK8` and `PL-NJ9M` on `origin/claude/gate-items-zyfl0o` and `PL-V67Q` on
+   `origin/claude/graph-y-scale-mac-percent-v-6ohg70`, all eleven days old:
+   captures whose items merged by another route and were triaged to
+   `needs-decision` on `main`, leaving a stale branch that leads with the id and
+   changes its own file too - the "branch nobody merges, forever" false mark
+   `PL-X3WZ` removed. The commit's own parent tells them from a round: a
+   capture creates the file, a round writes into one that exists. So
+   `_modified_by` asks `git rev-parse <commit>^:<path>` for the ids the status
+   test passes, in both readers, and the fake runner and tests cover the stale
+   capture and the rename that changes two paths. With it, `flight` named
+   eight items, every one on a branch a live session was working.
+
+2. **Two of the five live design rounds stay invisible for a different reason,
+   filed as `PL-2BZY`.** `PL-4FBP` is now marked; `PL-HWW1` and `PL-6TP8` are
+   not, because `origin/claude/clever-fermat-qp7s60` carries the commit `#675`
+   squash-merged, the walk keeps one ref per id and that ref sorts first, and
+   `_taken_on_base` then correctly finds *its* claim spent and deletes the id -
+   discarding keen-cannon's and eager-brown's live claims with it. Not this
+   item's mechanism: those two claims pass the annotation rule on their own.

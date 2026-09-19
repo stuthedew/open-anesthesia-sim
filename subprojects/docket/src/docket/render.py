@@ -654,7 +654,13 @@ def format_flight(report: FlightReport, today: date) -> str:
             "the age is what separates them."
         )
     else:
-        lines.append("No branch carries an item id, in its name or at the front of a commit.")
+        # Says what was checked and no more (`PL-VYSP`): a commit that only
+        # wrote to the queue leads with an id and claims nothing, so "no
+        # branch carries an id" was false whenever such a commit existed.
+        lines.append(
+            "No branch claims an item: none names one in its branch name, and no commit "
+            "that changed anything outside the queue leads with one."
+        )
 
     if report.unattributed:
         lines.append("")

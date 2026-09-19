@@ -420,6 +420,32 @@ the eight false marks above, not one declares `touches` inside the queue alone,
 so the fix costs none of them back. Measured live on 2026-09-14, `PL-XR8K` was
 being closed on a branch and appeared in no reading of the report.
 
+**An item at `needs-decision` is the second exception, read the same way.**
+Its next step is a decision, and a decision is recorded into the item file, so
+a design round can run its whole course without a diff outside the queue — and
+on this project it often does, because implementing the decision is separate
+work. Observed 2026-09-19: `PL-BHVM`, the top of the whole queue, had three
+commits pushed with every subject led by the id and a live session on the
+branch, and `show` called it startable; the mark appeared only when the round
+happened to edit `ROADMAP.md`. So the walk records a queue-only commit that
+leads with an id *and* changes that id's own file, and `_deciding_on_base`
+promotes it where the default branch holds the item at `needs-decision`
+(`PL-VYSP`). The conjunction is deliberate: a round re-points its cluster,
+writing a dozen other items' files, and those stay file edits rather than
+becoming claims on items other sessions may be working. Counted before it was
+adopted, over the 1,006 commits then on `origin/main`: the rule the item itself
+proposed — any queue-only commit changing the leading id's own file — would
+have marked 316 (commit, id) pairs, 81 of them captures creating the file and
+120 more triage passes; the status test left 23, of which 21 were the item's
+own decision work and two were notes written into one item on consecutive
+days. One more read keeps a stale capture out: a capture that merged by another
+route and was triaged to `needs-decision` there leaves a branch that also leads
+with the id and changes its own file, so the commit's own parent is asked
+whether it held the file — a round writes into a file that exists, a capture
+creates one. Three such branches, all eleven days old, were promoted the first
+time the status test ran live. `precedence` reads the same commits under the
+same two tests, so two design rounds on one item get a verdict.
+
 **A ref naming nothing at all is the third outcome, and it is reported rather
 than dropped.** `unreadable` says the commits could not be read; `unattributed`
 says they were read and named no item — no id in the branch name, none at the
