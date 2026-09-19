@@ -497,7 +497,12 @@ $$
 
 ### Agent amount
 
-Every compartment stores the agent as an equivalent gas volume at one documented reference temperature and pressure.
+Every compartment stores the agent as an equivalent gas volume at one
+documented reference temperature and pressure, and that condition is **20 °C
+and 760 mmHg, dry**, where the ideal-gas molar volume is 24.055 L/mol. It
+defines the *unit*; it is not a claim about where any of the gas physically
+is, and "Known limitations" records what carrying the whole model at one
+condition costs.
 
 The implementation must use the same reference conditions everywhere. It must not add gas fractions, dissolved blood concentrations, and tissue concentrations directly.
 
@@ -505,6 +510,116 @@ Let $`M_x`$ denote the equivalent gas volume of the agent stored in
 compartment $`x`$.
 
 The unit used in code is liters of equivalent pure agent gas unless the implementation document explicitly selects another consistent unit.
+
+**Nothing the model computes reads the condition, and one thing that will.**
+Every governing equation moves dimensionless fractions and physical volumes,
+and every partition coefficient is a ratio, so the trajectories, the
+mass-balance identity and every displayed concentration are invariant to which
+condition the unit names: change it and no number under "Governing equations",
+"Conservation of agent mass" or "Minimum displayed outputs" moves. It is read
+at one kind of operation only — a conversion *out* of the unit, into moles,
+mass, or the millilitres of liquid a vaporizer is filled from. There the two
+candidate conditions differ by a factor of 1.058, because the ideal-gas molar
+volume is 24.055 L/mol at 20 °C and 25.450 L/mol at 37 °C.
+
+**Why 20 °C, and what it was chosen over** (project owner, 2026-09-17,
+ratified — over 37 °C, the condition at which the stored amounts are
+natively exact; `PL-S6WW`). Three grounds, and the first is checkable
+rather than conventional.
+
+1. **The published vapour-to-liquid constants are 20 °C constants.** The
+   consumption literature quotes one composite number per agent — the vapour
+   volume obtained from 1 mL of liquid — and Biro gives isoflurane 195 mL,
+   sevoflurane 184 mL and desflurane 210 mL. Deriving that number instead from
+   the primary density measurement and the molar volume above reproduces all
+   three within 0.7 % at 20 °C, and none of them at 37 °C, where the same
+   derivation runs 5.1–6.3 % high:
+
+   | Agent | Liquid density at 20 °C, g/mL | Molar mass, g/mol | Derived mL vapour per mL liquid, 20 °C | Biro's constant | At 37 °C |
+   | --- | --- | --- | --- | --- | --- |
+   | Sevoflurane | 1.5203 | 200.055 | 182.8 | 184 | 193.4 |
+   | Isoflurane | 1.5019 | 184.492 | 195.8 | 195 | 207.2 |
+   | Desflurane | 1.4651 | 168.038 | 209.7 | 210 | 221.9 |
+
+   The densities are Laster, Fang and Eger's, measured in four 50-mL
+   volumetric flasks at 20 °C, with a temperature coefficient of
+   −0.00250 ± 0.00014 g/mL per °C over 0–25 °C; the molar masses are exact
+   from formula. So the field's constants are referenced at 20 °C as a matter
+   of arithmetic rather than of convention, and a model declaring 37 °C would
+   either mix two conditions or print consumption figures 5.5 % below the
+   numbers a reader can look up — that being $`1 - 1/1.058`$, the same factor
+   for every agent. Inverted for display, 1 L of vapour is
+   5.47 mL of liquid sevoflurane here and would be 5.17 mL on a 37 °C
+   reference.
+
+2. **The terms a consumption figure converts are fresh gas, and fresh gas is
+   at ambient temperature.** $`M_{\mathrm{delivered}}`$ and
+   $`M_{\mathrm{exhausted}}`$ both integrate $`\dot V_F`$, the flow at the
+   common gas outlet — carrier gas plus the vapour the vaporizer added, on the
+   machine side of the patient and at operating-room temperature rather than
+   at 37 °C. Those two amounts are what a cost or waste figure is computed
+   from ("Planned milestones" item 28). Declaring 20 °C makes them exact.
+   Declaring 37 °C would leave them the approximated terms *and* would call
+   for an ambient-to-body correction on $`\dot V_F`$ that no equation here
+   carries, which is a change to the governing equations rather than to a
+   label.
+
+3. **The reference implementation's own constants are 20 °C constants, and
+   its litres carry no condition at all.** Gas Man states a condition in one
+   place only — the `GASMAN.INI` parameter written `Volatility=209
+   Vapor/Liquid volume ratio (20'C)` — and never on the litres of uptake and
+   delivered it displays. That is the same structure as this model's: the
+   condition is read at the vapour-to-liquid boundary and nowhere else. Its
+   five printed expansion constants settle which condition that is, because
+   the 20 °C derivation reproduces every one of them and the 37 °C derivation
+   reproduces none:
+
+   | Agent | Gas Man | Derived, 20 °C | Derived, 37 °C |
+   | --- | --- | --- | --- |
+   | Halothane | 228 | 227.7 (−0.15 %) | 240.9 (+5.6 %) |
+   | Enflurane | 198 | 198.6 (+0.29 %) | 210.1 (+6.1 %) |
+   | Isoflurane | 196 | 195.8 (−0.09 %) | 207.2 (+5.7 %) |
+   | Sevoflurane | 183 | 182.8 (−0.11 %) | 193.4 (+5.7 %) |
+   | Desflurane | 209 | 209.7 (+0.35 %) | 221.9 (+6.2 %) |
+
+   Within 0.35 % on all five at 20 °C, against 5.6–6.2 % at 37 °C — two
+   agents wider than the set this model carries, and the two whose densities
+   Laster, Fang and Eger measured in the same experiment. This project's
+   partition coefficients, MAC divisors and reference patient are the Gas Man
+   set ("Source hierarchy"), so the trajectories these amounts come out of are
+   that program's arithmetic; adopting a different reference for the same
+   volumes would make this model's litre and Gas Man's litre different
+   quantities while every parameter feeding them is shared.
+
+**37 °C was the alternative, and it is not a poor one.** It is where this
+model's partition coefficients were measured and where the alveolar, venous
+and tissue compartments physically are, so it is the condition at which the
+*stored* amounts are natively exact. It was not chosen because the amounts
+that leave the unit are the fresh-gas terms rather than the stores, and
+because the published constants any figure will be read against are 20 °C
+constants. What choosing it costs is under "Known limitations".
+
+Sources for this section, by the route each was read:
+
+- Laster MJ, Fang Z, Eger EI II. *Specific gravities of desflurane, enflurane,
+  halothane, isoflurane, and sevoflurane.* Anesth Analg 1994;78(6):1152-3.
+  PMID 8198275, doi:10.1213/00000539-199406000-00022. Retrieved from PubMed
+  and verified against the abstract 2026-09-17.
+- Biro P. *Calculation of volatile anaesthetics consumption from agent
+  concentration and fresh gas flow.* Acta Anaesthesiol Scand
+  2014;58(8):968-72. PMID 25060161, doi:10.1111/aas.12374. Retrieved from
+  PubMed and verified against the abstract 2026-09-17; the abstract carries
+  the four constants and does not itself state their temperature, which is why
+  the reproduction above is the evidence and not the citation.
+- Philip JH. *Workbook for Gas Man*, Appendix C's `GASMAN.INI` listing for
+  the `Volatility` parameter, and chapter 10's closed-circuit liquid-injection
+  section (printed pp. 103-105) for the five expansion constants, where they
+  are the unit of an *input* — the volume injected — rather than of a
+  readout. Both read from the private reference corpus on 2026-09-16 and
+  recorded in `PL-S6WW` and `PL-B396`; `docs/references/README.md`
+  § "Philip — *Workbook for Gas Man*" carries the extraction note. Tier 3
+  under "Source hierarchy": it fixes what the reference implementation does,
+  and measures nothing.
 
 ## Symbols
 
@@ -6789,7 +6904,10 @@ Version v0.1.0 assumes:
   dead space and no separate limbs (see "Model boundary");
 - tissue venous blood equilibrates with its tissue group;
 - carrier gases do not affect agent kinetics;
-- temperature is constant;
+- temperature is constant, and every gas volume the model stores is carried
+  at the one reference condition "Agent amount" states — 20 °C and
+  760 mmHg, dry. No equation here converts between ambient and body
+  conditions; "Known limitations" sizes what that costs;
 - ambient pressure is constant, and it is one atmosphere — 760 mmHg. Every
   concentration in this model is a fraction of that pressure, so the model is
   specified at sea level and nowhere else; the note below this list is what
@@ -6851,6 +6969,10 @@ This model does not model:
 - cardiopulmonary bypass;
 - ECMO;
 - hypothermia;
+- the difference between ambient and body conditions — every gas volume is
+  carried at the single reference condition "Agent amount" fixes, and no
+  ambient-to-body correction is applied anywhere (the note below this list
+  sizes it);
 - altitude, or any ambient pressure other than the 760 mmHg fixed under "Assumptions" — the notes below this list are what that excludes;
 - age-dependent MAC;
 - individual variation in awakening concentration (the chart's MAC-awake band is a population value at one standard deviation, never a threshold for the simulated patient — see "MAC-awake as a chart reference");
@@ -7120,6 +7242,40 @@ that adult's run whatever the reference weight reads. Weight-varying physiology
 is `ROADMAP.md`'s planned-milestone item 30, and it is a package: compartment
 volumes, alveolar volume, alveolar ventilation, the perfusion fractions and MAC
 by age move together or none of them should.
+
+**One reference condition, where the model physically has two.** "Agent
+amount" fixes the amount unit at 20 °C and 760 mmHg, dry, and nothing here
+converts between conditions: a litre in the circuit and a litre in the alveoli
+are added as equals. As volumes of gas they are not the same quantity of
+agent. $`V_C`$ is a circuit volume at ambient temperature and $`\dot V_F`$ is
+a flow at the common gas outlet, so $`M_C`$, $`M_{\mathrm{delivered}}`$ and
+$`M_{\mathrm{exhausted}}`$ sit at the stated condition and are exact there.
+$`V_A`$ is an alveolar gas volume at body temperature, and the partition
+coefficients that build $`M_v`$ and $`M_i`$ were measured at 37 °C, so those
+three are natively 37 °C quantities carried under a 20 °C label. The
+ventilation term is where the two meet: it moves $`\dot V_A`$ litres out of
+the circuit and the same $`\dot V_A`$ litres into the alveoli, where warming
+ambient gas to body temperature would expand it by the molar-volume ratio.
+
+**The size of it is 5.8 %, and it applies to the stores rather than to
+conservation.** Every term is exact in the model's own arithmetic — the
+mass-balance identity closes to 1e-13 L whatever condition the unit names — so
+this is a statement about what the litres *mean*, not about agent going
+missing. Read as amounts of substance, the alveolar, venous and tissue stores
+hold 5.8 % fewer moles than their 20 °C label implies, that being
+25.450/24.055; the fresh-gas terms are unaffected.
+
+**It is invisible in everything the simulator shows today, which is why it has
+cost nothing so far.** A partial-pressure fraction is dimensionless and
+carries no condition, so $`F_A`$, $`F_A/F_I`$, the MAC multiple and every
+trace on the chart are untouched by it, and so is the release gate's relative
+residual. It reaches a reader only where an amount leaves the unit — the
+liquid-equivalent consumption figure planned under "Planned milestones"
+item 28 — and there it biases the stored and exhausted split, not the
+delivered total, which is the figure that means cost. Lifting it means a
+gas-phase model carrying explicit conditions per compartment, which is well
+outside the current milestone and is recorded here so that a reader sizing the
+model does not have to reconstruct it.
 
 **Ambient pressure is not modelled, and away from one atmosphere the
 delivered-concentration dial stops meaning one partial pressure.**

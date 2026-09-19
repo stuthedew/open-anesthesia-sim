@@ -9,6 +9,7 @@ feature: session-start-cost
 touches: docs/items
 added: 2026-09-16
 closed: 2026-09-17
+pr: 663
 not-delegable: the deliverable was a measurement taken on the project owner's own machine, which is the only place the 20.7s reproduces; no command in this checkout can re-run it
 ---
 

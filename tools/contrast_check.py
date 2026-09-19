@@ -120,20 +120,54 @@ interface component" from any contrast requirement
 `agent_identity_check` declines to claim for identity controls and which applies
 squarely here.
 
+*What that paragraph did not say, and PL-DHBX cost - twice.* "The start, pause
+and reset buttons" were undeclared in **both** states, not only the disabled one.
+The enabled half went first: a button with no foreground takes the platform's
+`ButtonText`, which follows the *host appearance*, so under macOS Dark the three
+labels drew white on this interface's white. That is squarely inside SC 1.4.3,
+and `transport_button_stylesheet` now declares it.
+
+The disabled half went for the same reason, and the exemption did not save it.
+Declaring only `:enabled` left the *unavailable* button whole to the platform -
+Start while running, Pause while paused - and the project owner's screenshots of
+`0.4.26+g22bc6d82` showed that one still absent. **That is the cost PL-NGF7's
+case did not carry**: its argument was that these labels are exempt and that the
+platform's number, whatever it is, is somebody else's to choose. Under a dark
+host appearance the platform's number does not merely fall below a minimum, it
+renders the control invisible, and an exemption from a contrast *minimum* is not
+a licence for a control to disappear. So the disabled label is declared too, at
+`MUTED` (project owner, 2026-09-17, ratified - chosen over leaving the
+disabled label to the platform on SC 1.4.3's exemption, which is what `PL-NGF7`
+had decided).
+
+*Which means this tool now measures exactly one authored disabled colour, and
+claims no exemption for it.* `MUTED` on `PANEL` is 5.00:1, above SC 1.4.3's
+4.5:1 for normal text, so the disabled transport label is held to the full
+minimum rather than excused from it. That is deliberate and it is what keeps the
+paragraph below honest: nothing in this file rests on an exemption whose wording
+could not be read.
+
+*The rest of the scope decision stands.* Every other disabled colour under
+`app/` is still the platform style's, still `#BEBEBE` under Fusion, still
+undeclared and unreachable to the `ast` extraction above, and still covered the
+way PL-NGF7 said - by `tools/agent_identity_check.py` for anything carrying
+agent identity, and by SC 1.4.3's exemption for the splitter handle, which has
+no label at all.
+
 *What is deliberately not claimed.* SC 1.4.11's own exception wording for
-inactive components was **not** read at the source for this decision: `w3.org`
-returns `EGRESS_BLOCKED` from this container, as PL-JX0Z recorded across five
-routes. So nothing here rests on it. The argument above stands on SC 1.4.3,
-which this repository already quotes verbatim, and on the measurement that
-there is no author-chosen colour to check.
+inactive components was **not** read at the source: `w3.org` returns
+`EGRESS_BLOCKED` from this container, as PL-JX0Z recorded across five routes. So
+nothing here rests on it - which is why the transport button's *edge* keeps
+`MUTED` in both states and meets 1.4.11's 3:1 outright, rather than being
+softened for the disabled state on an exception nobody here has read.
 
 *And the scope note cannot rot silently*, which is the half a docstring alone
-would not buy. `check_disabled_states_are_the_style_s` fails the build the
-moment a `:disabled` rule or a `setPalette` call appears under `app/`, because
-at that moment the colour *is* author-controlled, *is* measurable, and the two
-paragraphs above stop being true. The correct response to that error is to
-declare the colour in the theme and add a requirement - not to delete the
-check.
+would not buy. `check_authored_disabled_colours_are_measured` fails the build on
+a `:disabled` rule written anywhere a requirement does not cite, and on any
+`setPalette` call. It used to refuse the first form outright; it now enforces
+what PL-NGF7 said was owed the moment the premise changed - declare the colour
+in the theme and give it a requirement - which is what this file did rather than
+delete the check.
 """
 
 from __future__ import annotations
@@ -141,7 +175,7 @@ from __future__ import annotations
 import argparse
 import ast
 import re
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from itertools import combinations
 from pathlib import Path
@@ -408,7 +442,14 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "names the rate the clock is advancing at, which docs/MODEL.md requires "
         "displayed, so it is read rather than merely operated (PL-SN2C); and "
         "the chart's time base (`_time_base_dropdown`), which names how much of "
-        "the run is on screen and is read the same way",
+        "the run is on screen and is read the same way. Also the labels of the "
+        "three transport buttons while they are usable "
+        "(`transport_button_stylesheet`, applied in `RunView`): they set no "
+        "foreground until PL-DHBX and so took Qt's palette ButtonText role, which "
+        "is the host appearance's value rather than this interface's - near-white "
+        "under macOS Dark, which put Start, Pause and Reset to white-on-white "
+        "while every surface around them stayed this light theme's. The pair is "
+        "measured here only because the stylesheet writes it",
     ),
     Requirement(
         "MUTED",
@@ -423,7 +464,10 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "the playback-rate dropdown drawn beside them "
         "(`_playback_rate_dropdown`), which is a user-interface component "
         "and so needs only SC 1.4.11's 3:1 - met with room to spare by the text "
-        "minimum this pair already carries (PL-SN2C)",
+        "minimum this pair already carries (PL-SN2C), and the border of each "
+        "usable transport button in the same row (`transport_button_stylesheet`), "
+        "which is the edge that locates the control once its fill is PANEL "
+        "rather than the platform's bevel (PL-DHBX)",
     ),
     Requirement(
         "MUTED",
@@ -453,7 +497,16 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "needing only SC 1.4.11's 3:1. Also the gloss under a setting's name "
         "in the controls row (`ParameterSlider`, PL-71CF), which is the "
         "readout gloss one panel row up: the same colour on the same surface "
-        "at the same size, so it too adds no pair.",
+        "at the same size, so it too adds no pair. Also the label of a "
+        "transport button while it is *unavailable* "
+        "(`transport_button_stylesheet`) - Start while the run is going, Pause "
+        "while it is not. That is the one authored disabled colour in this "
+        "interface, and it is measured at the full 4.5:1 rather than under SC "
+        "1.4.3's exemption for text in an inactive component: 5.00:1 here, so "
+        "no exemption is claimed and none has to be (PL-DHBX). The enabled "
+        "label is INK on the same surface, and the 11.50:1 against this "
+        "5.00:1 is what separates the two states; `_status_text` beside them "
+        "says which in words.",
     ),
     Requirement(
         "ACCENT_TEXT",
@@ -1031,48 +1084,87 @@ def check_colors_live_in_the_theme(root: Path) -> tuple[str, ...]:
     return tuple(offenders)
 
 
-def check_disabled_states_are_the_style_s(root: Path) -> tuple[str, ...]:
-    """Refuse author-controlled disabled styling, which this tool does not measure.
+def check_authored_disabled_colours_are_measured(root: Path) -> tuple[str, ...]:
+    """Refuse a disabled colour this project chose and did not measure.
 
-    The module docstring records the decision that disabled states are out of
-    scope, and the whole of that decision rests on one fact: the colours belong
-    to `QPalette`'s `Disabled` group, which the platform style fills in and no
-    module here chooses. A `:disabled` rule in a stylesheet, or a `setPalette`
-    call, takes that choice back - and at that moment the colour is a value
-    this project picked, is measurable, and is covered by nothing.
+    Until `PL-DHBX` this refused *any* authored disabled styling, because the
+    scope decision it guards rested on there being no such colour to measure
+    (`PL-NGF7`). The project owner's macOS Dark screenshots ended that premise
+    for the transport row: the platform's disabled grey did not merely fall
+    below a minimum there, it rendered the button's label absent. So the
+    decision's own stated remedy was taken - declare the colour in
+    `app/theme.py` and give it a requirement - and this check now enforces that
+    remedy instead of forbidding the move.
 
-    So this is the guard that stops the scope note becoming a false green. It
-    is a hard error rather than an advisory because the rule is exact: either a
-    module under `app/` writes one of these two forms or it does not. The fix
-    is never to delete the check - it is to declare the colour in
-    `app/theme.py` and give it a requirement, which is what the scope note says
-    is owed the moment the premise changes (PL-NGF7).
+    The rule stays exact, which is why it stays a hard error. A `:disabled`
+    rule is admitted only from a function some requirement *cites by name*, so
+    the colour it writes is measured above; anywhere else it is refused with
+    what is owed. That is decidable by reading the tree: the enclosing
+    definition's name either appears in a `why` or it does not, and whether
+    that requirement names the right pair stays a reader's judgment exactly as
+    `check_citations` leaves it.
+
+    `setPalette` is still refused outright, and for a reason the admission does
+    not reach: it replaces the whole `Disabled` colour group at once, for every
+    role and every widget under it, so there is no pair a requirement could
+    name. A stylesheet rule writes one colour onto one selector.
 
     Returns:
-        One message per offending site, empty while every disabled colour is
-        still the style's.
+        One message per offending site, empty when every authored disabled
+        colour is one a requirement covers.
     """
+    cited = {
+        name for requirement in REQUIREMENTS for name in SYMBOL_SPAN_RE.findall(requirement.why)
+    }
     offenders: list[str] = []
     for relative in app_modules(root):
         path = root / relative
         module = relative.as_posix()
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for node in ast.walk(tree):
+        for holder, node in _named_holders(tree):
             if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                if ":disabled" in node.value:
+                if ":disabled" in node.value and holder not in cited:
+                    owner = f"`{holder}`" if holder else "module level"
                     offenders.append(
-                        f"  {module}:{node.lineno}: a ':disabled' rule makes a disabled "
-                        "colour author-controlled, so it is measurable and owes a "
-                        "constant in app/theme.py and a requirement here (PL-NGF7)"
+                        f"  {module}:{node.lineno}: a ':disabled' rule at {owner}, which no "
+                        "requirement cites. An authored disabled colour is this project's "
+                        "value rather than the style's, so it owes a constant in "
+                        "app/theme.py and a requirement here naming the pair it is drawn "
+                        "against (PL-NGF7, PL-DHBX)"
                     )
             elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
                 if node.func.attr == "setPalette":
                     offenders.append(
-                        f"  {module}:{node.lineno}: setPalette takes the disabled colours "
-                        "from the platform style, so they are measurable and owe a "
-                        "constant in app/theme.py and a requirement here (PL-NGF7)"
+                        f"  {module}:{node.lineno}: setPalette replaces the whole Disabled "
+                        "colour group, so there is no single pair a requirement could name. "
+                        "Write the colour onto the selector that needs it instead (PL-NGF7)"
                     )
     return tuple(offenders)
+
+
+def _named_holders(tree: ast.AST) -> Iterator[tuple[str, ast.AST]]:
+    """Every node, paired with the name of the definition or assignment holding it.
+
+    The enclosing name is what a requirement can cite, so it is what decides
+    whether an authored disabled colour is measured. Nested definitions resolve
+    to the innermost, which is the symbol `check_citations` resolves too; a node
+    under no name at all yields the empty string and is never cited.
+    """
+
+    def walk(node: ast.AST, holder: str) -> Iterator[tuple[str, ast.AST]]:
+        yield holder, node
+        for child in ast.iter_child_nodes(node):
+            inner = holder
+            if isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+                inner = child.name
+            elif isinstance(child, ast.Assign):
+                targets = [t.id for t in child.targets if isinstance(t, ast.Name)]
+                inner = targets[0] if targets else holder
+            elif isinstance(child, ast.AnnAssign) and isinstance(child.target, ast.Name):
+                inner = child.target.id
+            yield from walk(child, inner)
+
+    yield from walk(tree, "")
 
 
 def check_citations(root: Path) -> tuple[str, ...]:
@@ -1226,7 +1318,7 @@ def analyze(root: Path) -> Report:
         repaired=repaired,
         citations=check_citations(root),
         misplaced_colors=check_colors_live_in_the_theme(root),
-        author_styled_disabled=check_disabled_states_are_the_style_s(root),
+        author_styled_disabled=check_authored_disabled_colours_are_measured(root),
         trace_pairs=trace_pairs,
         below_trace_floor=below_trace_floor,
         modules_read=len(app_modules(root)),

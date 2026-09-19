@@ -344,6 +344,20 @@ correction rather than handing the question back.
   whether the work takes a commit of its own (`PL-CP74`) — and not for one the
   fix-now rule admits, whose own commit still leads with the current item's id,
   so every guard that matches a `PL-` id still sees it.
+- **A root cause of more than two items is pulled, not queued** (project owner,
+  2026-09-17). A mechanism a session identifies as the cause of three or more
+  items is a *generator*, and the capture rule above does not apply to it: every
+  session it stands through pays it again, so it ranks **above everything but
+  `P0`** — including a `safety`-classed `P1`, which was asked and answered
+  rather than overlooked. Record it on the causing item as `root-cause-of:`
+  naming the items it explains — three or more, or it is an ordinary item — so
+  the claim is a recorded fact rather than the next session's inference. Then
+  one of exactly two endings: **fix it in this session, or end the reply with a
+  ready-to-paste prompt that starts a fresh session on it.** Filing it and
+  carrying on is not a third. This is the shape of the behavior-change rule
+  below and holds for the same reason — an item alone changes nothing, and a
+  weed left standing seeds. Identifying one is judgment and stays a session's;
+  what follows from it is not.
 - **A behavior change takes effect in the session that asks for it.** When the
   owner asks for a change to how sessions work — these instructions,
   `docs/worker.md`, the `docket` skill — record it like any other finding and

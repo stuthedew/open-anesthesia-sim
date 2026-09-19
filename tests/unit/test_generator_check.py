@@ -1,0 +1,250 @@
+"""Tests for `tools/generator_check.py`, the root-cause candidate advisory.
+
+The script used to return a verdict: a self-generation ratio of `r >= 1.0`,
+behind a floor of eight closures, reported as a generator. `PL-VX5H` replaced
+the definition - a generator is now the recorded root cause of three or more
+items, written on the causing item as `root-cause-of:` - and the ratio does not
+measure that. On 2026-09-17 it reported no cluster on this tree while `PL-6ZQY`
+had already named six under one root cause.
+
+So what is under test here is mostly what the script *refuses to say*. The
+load-bearing tests are `test_a_cluster_below_the_old_closure_gate_is_surfaced`,
+which pins the removal of the gate that reported the weed only once it had
+seeded, and `test_no_output_calls_anything_a_generator`, which pins the
+demotion itself. `test_a_busy_cluster_does_not_read_as_reproducing` stays from
+the verdict era: every spawned child is attributed to the item being worked
+when it was captured, so counting all of them rates any heavily-worked file a
+generator, and the ratio column would be wrong in the direction that flatters.
+"""
+
+from __future__ import annotations
+
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
+
+import generator_check
+
+
+def _git(repo: Path, *args: str) -> None:
+    subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        env={
+            "GIT_AUTHOR_NAME": "t",
+            "GIT_AUTHOR_EMAIL": "t@t",
+            "GIT_COMMITTER_NAME": "t",
+            "GIT_COMMITTER_EMAIL": "t@t",
+            "PATH": "/usr/bin:/bin",
+        },
+    )
+
+
+@pytest.fixture
+def repo(tmp_path: Path) -> Path:
+    _git(tmp_path, "init", "-q", "-b", "main")
+    (tmp_path / "docs" / "items").mkdir(parents=True)
+    return tmp_path
+
+
+def _write(
+    repo: Path,
+    identifier: str,
+    *,
+    touches: str,
+    status: str,
+    priority: str = "P2",
+    feature: str = "",
+    root_cause_of: str = "",
+    body: str = "body",
+) -> Path:
+    path = repo / "docs" / "items" / f"{identifier}-x.md"
+    front = [
+        f"id: {identifier}",
+        f"title: {identifier} title",
+        f"priority: {priority}",
+        f"status: {status}",
+        f"touches: {touches}",
+    ]
+    if feature:
+        front.append(f"feature: {feature}")
+    if root_cause_of:
+        front.append(f"root-cause-of: {root_cause_of}")
+    path.write_text("---\n" + "\n".join(front) + f"\n---\n\n{body}\n", encoding="utf-8")
+    return path
+
+
+def _commit(repo: Path, subject: str) -> None:
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", subject)
+
+
+def _closers(repo: Path, path: str, count: int, *, kids_touch: str) -> None:
+    """Close `count` items on `path`, each spawning one child touching `kids_touch`."""
+    for n in range(count):
+        parent = f"PL-C{n:03d}"
+        _write(repo, parent, touches=path, status="done")
+        _commit(repo, f"{parent}: capture")
+        _write(repo, f"PL-K{n:03d}", touches=kids_touch, status="ready", feature="same")
+        _commit(repo, f"{parent}: work that spawned a finding")
+
+
+def _open_trio(repo: Path, path: str, *, feature: str = "") -> None:
+    for identifier in ("PL-AAAA", "PL-BBBB", "PL-CCCC"):
+        _write(repo, identifier, touches=path, status="ready", feature=feature)
+    _commit(repo, "PL-AAAA, PL-BBBB, PL-CCCC: capture three findings")
+
+
+def test_a_cluster_below_the_old_closure_gate_is_surfaced(repo: Path) -> None:
+    """`MIN_CLOSED = 8` reported the weed once it had seeded, so it is gone.
+
+    Three open items sharing a feature and two closures behind them: under the
+    old rule this was invisible, which is the failure `PL-VX5H` names.
+    """
+    _closers(repo, "src/thing.py", 2, kids_touch="docs/other.md")
+    _open_trio(repo, "src/thing.py", feature="one-problem")
+
+    found = generator_check.clusters(repo)
+
+    assert [c.path for c in found] == ["src/thing.py"]
+    assert found[0].closed == 2
+    assert found[0].feature_count == 3
+
+
+def test_a_cluster_with_no_signal_is_not_surfaced(repo: Path) -> None:
+    """Size alone is not a signal: a big file honestly attracts many items."""
+    for identifier in ("PL-AAAA", "PL-BBBB", "PL-CCCC", "PL-DDDD"):
+        _write(repo, identifier, touches="src/thing.py", status="ready")
+    _commit(repo, "PL-AAAA, PL-BBBB, PL-CCCC, PL-DDDD: capture four unrelated findings")
+
+    assert generator_check.clusters(repo) == []
+
+
+def test_a_cluster_under_three_open_items_cannot_host_a_root_cause(repo: Path) -> None:
+    for identifier in ("PL-AAAA", "PL-BBBB"):
+        _write(repo, identifier, touches="src/thing.py", status="ready", feature="one-problem")
+    _commit(repo, "PL-AAAA, PL-BBBB: capture two findings")
+
+    assert generator_check.clusters(repo) == []
+
+
+def test_a_cluster_with_no_closures_declines_the_ratio(repo: Path) -> None:
+    """`None`, never `0.00`: a zero would say it was measured and came back clean."""
+    _open_trio(repo, "src/thing.py", feature="one-problem")
+
+    found = generator_check.clusters(repo)
+
+    assert found[0].ratio is None
+    assert "no closures yet" in generator_check._line(found[0])
+    assert not any("r = " in signal for signal in found[0].signals)
+
+
+def test_a_busy_cluster_does_not_read_as_reproducing(repo: Path) -> None:
+    """Children landing elsewhere are captures, not reproduction."""
+    _closers(repo, "src/thing.py", 10, kids_touch="docs/other.md")
+    _open_trio(repo, "src/thing.py", feature="one-problem")
+
+    found = next(c for c in generator_check.clusters(repo) if c.path == "src/thing.py")
+
+    assert found.ratio == 0.0
+    assert not any("not shrinking" in signal for signal in found.signals)
+
+
+def test_a_cluster_reproducing_into_itself_says_so(repo: Path) -> None:
+    _closers(repo, "src/thing.py", 3, kids_touch="src/thing.py")
+
+    found = next(c for c in generator_check.clusters(repo) if c.path == "src/thing.py")
+
+    assert found.ratio == 1.0
+    assert any("not shrinking" in signal for signal in found.signals)
+    # Two runs against one tree print the same rows in the same order, or the
+    # advisory is noise in every diff that touches the store.
+    assert found.open_ids == sorted(found.open_ids)
+
+
+def test_a_cluster_with_nothing_open_is_history_not_friction(repo: Path) -> None:
+    """A cluster already closed out is not work anyone can act on."""
+    _closers(repo, "src/thing.py", 3, kids_touch="src/thing.py")
+    for path in (repo / "docs" / "items").glob("PL-K*.md"):
+        path.write_text(path.read_text().replace("status: ready", "status: done"), encoding="utf-8")
+    _commit(repo, "PL-C000: close the children")
+
+    assert generator_check.clusters(repo) == []
+
+
+def test_the_store_is_never_a_cluster(repo: Path) -> None:
+    """`docs/items` sits inside `workflow_paths`, so every capture would count."""
+    _closers(repo, "docs/items", 3, kids_touch="docs/items")
+    _open_trio(repo, "docs/items/", feature="one-problem")
+
+    assert generator_check.clusters(repo) == []
+
+
+def test_items_already_inside_a_recorded_root_cause_are_marked(repo: Path) -> None:
+    """Marked rather than dropped: a recorded claim can be wrong."""
+    _write(repo, "PL-AAAA", touches="src/thing.py", status="ready", feature="one-problem")
+    _write(repo, "PL-BBBB", touches="src/thing.py", status="ready", feature="one-problem")
+    _write(
+        repo,
+        "PL-CCCC",
+        touches="src/thing.py",
+        status="needs-decision",
+        feature="one-problem",
+        root_cause_of="PL-AAAA, PL-BBBB, PL-DDDD",
+    )
+    _write(repo, "PL-DDDD", touches="elsewhere.py", status="ready")
+    _commit(repo, "PL-AAAA, PL-BBBB, PL-CCCC, PL-DDDD: capture")
+
+    found = next(c for c in generator_check.clusters(repo) if c.path == "src/thing.py")
+
+    assert found.recorded == ["PL-AAAA", "PL-BBBB", "PL-CCCC"]
+    assert "3 already inside a recorded root cause" in generator_check._line(found)
+
+
+def test_only_open_items_cite(repo: Path) -> None:
+    """A closed item's citation is history, not evidence a mechanism still stands."""
+    for n, status in enumerate(("done", "done", "done", "ready")):
+        _write(
+            repo,
+            f"PL-S{n:03d}",
+            touches="elsewhere.py",
+            status=status,
+            body="this is about PL-AAAA",
+        )
+    _open_trio(repo, "src/thing.py")
+
+    counts = generator_check.citations(repo, {"PL-AAAA", "PL-BBBB", "PL-CCCC", "PL-S003"})
+
+    assert counts["PL-AAAA"] == 1
+
+
+def test_a_capture_commit_spawns_nothing(repo: Path) -> None:
+    """A commit leading with the ids it creates is a capture with no parent."""
+    _write(repo, "PL-AAAA", touches="src/thing.py", status="done")
+    _write(repo, "PL-BBBB", touches="src/thing.py", status="ready")
+    _commit(repo, "PL-AAAA, PL-BBBB: capture two findings")
+
+    parents = generator_check.creation_parents(repo)
+    assert parents["PL-AAAA"] == set()
+    assert parents["PL-BBBB"] == set()
+
+
+def test_no_output_calls_anything_a_generator(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The demotion itself: it surfaces candidates and claims none of them."""
+    _closers(repo, "src/thing.py", 3, kids_touch="src/thing.py")
+    _open_trio(repo, "src/thing.py", feature="one-problem")
+
+    assert generator_check.main(["--repo", str(repo)]) == 0
+
+    out = capsys.readouterr().out
+    assert "None of these is a generator" in out
+    assert "evidence, not causation" in out
+    assert "root-cause-of:" in out

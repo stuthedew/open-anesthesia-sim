@@ -2613,18 +2613,17 @@ whatever their presence answer, under the second of "The gate is a snapshot"'s
 two unconditional exceptions. None is inside this milestone's Required scope, so
 all three clear before implementation begins. Each is `S`.
 
-- PL-S6WW (S) — **added 2026-09-17.** `docs/MODEL.md` § "Agent amount" states
-  that every compartment stores agent as an equivalent gas volume "at one
-  documented reference temperature and pressure", documents the pressure, and
-  documents no temperature anywhere — not in that file, not in `core/`, not in
-  `data/`. `science`, and its presence answer is yes as well: the sentence has
-  been wrong since long before this freeze. It is `needs-decision`, and the
-  recommendation is recorded in the item rather than only here (`PL-M21Q`'s rule,
-  applied to the item that prompted noticing it): 20 °C, on the Gas Man lineage
-  this project's parameter set comes from — `GASMAN.INI`'s own `Volatility=209
-  Vapor/Liquid volume ratio (20'C)` — with § "Known limitations" recording what
-  one condition costs for a circuit at ambient and tissues at 37 °C. Which
-  temperature it is remains the project owner's.
+- PL-S6WW (S) — **added 2026-09-17, closed 2026-09-17.** `docs/MODEL.md`
+  § "Agent amount" stated that every compartment stores agent as an equivalent
+  gas volume "at one documented reference temperature and pressure", documented
+  the pressure, and documented no temperature anywhere — not in that file, not
+  in `core/`, not in `data/`. `science`, and its presence answer was yes as
+  well: the sentence had been wrong since long before this freeze. Resolved at
+  **20 °C and 760 mmHg, dry** (project owner, 2026-09-17, ratified — over
+  37 °C), on the reference implementation's own five expansion constants, which
+  the 20 °C derivation reproduces within 0.35 % and the 37 °C derivation misses
+  by 5.6–6.2 %. § "Known limitations" now records what one condition costs for a
+  circuit at ambient and tissues at 37 °C, and sizes it.
 - PL-H4N8 (S) — **added 2026-09-17.** Planned-milestone item 28 specifies agent
   cost "from the exhausted-agent amount", and cost is what left the bottle, which
   is the delivered amount. `science`. By the accounting identity `initial +
@@ -2856,7 +2855,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 163 entries
+### Declined to Gate 2 on the refilling-queue ground — 166 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3069,6 +3068,7 @@ the concrete defects it generalises do not reach it at all.
 - PL-69JZ (S) docket verify's 'the checks themselves are unedited' audit REJECTs every item whose declared work is editing a .claude rules file, since gate_paths includes .claude and touches is not consulted
 - PL-6BDX (S) Two shipped items are reported in flight in every session's digest, because their branch refs outlived their merges: PL-GVXP (v0.4.7) and PL-S5LB (v0.4.6)
 - PL-6G8T (S) _section_text reads a required heading quoted at a line break as the section itself, so a wrapped quotation above an empty real heading masks the empty one
+- PL-6TN8 (S) A verify: command whose discriminating half greps for a test name can exit 1 because the name was guessed, not because the work is outstanding, so watching it fail proves less than the rule assumes
 - PL-6YWK (S) PL-4L6Z's verify: runs the whole reference suite, so it is killed at docket check's 120s limit and nothing is claimed about the item on any run
 - PL-6YYR (M) A release tag can be pushed for a version that was never cut, and nothing detects it: v0.4.8 tags main at version 0.4.7 with no release notes and no ROADMAP row
 - PL-77SV (S) PL-G8TR, PL-K2C8 and PL-TFWR all edit the same ten lines of the docket skill's recovery block, and PL-G8TR's Done-when is defined against that block's shape, so whoever lands first silently sets the other two's tests
@@ -3649,6 +3649,36 @@ while an in-flight verdict naming one carrier costs the sessions that collide an
 `digest`'s growth costs every session equally whether this gate is open or shut.
 No per-entry saving can be named, so both wait, which is what "work that is
 merely valuable makes no remaining entry cheaper" says to do.
+
+**Two more from the macOS Dark appearance defect** (`PL-DHBX`, 2026-09-17,
+closed with the fix). The project owner found the Start, Pause and Reset labels
+missing in Dark appearance; diagnosing it produced two findings that the fix
+itself does not settle, filed under `feature: platform-palette`. Each needs its
+own ground, because neither is wholly in the workflow lane.
+
+`PL-4L49` — that `tools/contrast_check.py` measures only *declared* pairs, so a
+control declaring no colour reads as covered — passes the presence test: the
+check has had that limitation since long before this freeze, and it is why
+`PL-DHBX` could ship. It is declined on the refilling-queue arithmetic above
+rather than on its lane: it is `defect` and `infra` rather than `safety` or
+`science`, the one instance it would have caught is closed, and the gate is
+already the largest this project has held and is not draining. `PL-BXB2` is the
+nearest admitted precedent and is unlike it in the way that matters — a colour
+measured by nothing there could be an ISO 5360 agent colour, which is why that
+one was `safety`; an *undeclared* control cannot be, since every
+identity-carrying control is written by `_apply_agent_color_scheme` and guarded
+by `tools/agent_identity_check.py`.
+
+`PL-KRZW` — whether the application declares a Light colour scheme to Qt, leaves
+the host appearance alone, or grows a second palette — is a decision this gate
+should not force, on the same ground as `PL-3JP0` and `PL-HKTB` above. Its
+Qt-specific form arrived *with* the port on 2026-09-14, after this freeze, so it
+does not pass the presence test in the first place; and the `v0.5.x` interface
+pass is where the interface's visual decisions are made once, which is where
+answering it is cheapest. What the fix already guarantees is unaffected: every
+colour that carries meaning is declared, so the decision changes the chrome
+rather than the legibility of anything a reader acts on.
+
 
 **It is inside this section rather than beside it because the checker reads
 only one.** `tools/doc_check.py`'s `_declined_ids` takes the first

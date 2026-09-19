@@ -424,9 +424,14 @@ homework. Drop to specific items once a direction is picked, or when
 something individually urgent outranks the grouping.
 
 `docket next` gives the ranking and the reason, already honoring `P0` first,
-then what the roadmap's current step places, then work in a feature already
-underway — the one nearest finishing first — then priority, and it excludes
-what is in flight on a branch. A suggestion the step has not reached stays in the list, marked with
+then a recorded *generator*, then what the roadmap's current step places, then
+work in a feature already underway — the one nearest finishing first — then
+priority, and it excludes what is in flight on a branch. A generator is an item
+carrying `root-cause-of:`, naming three or more items it causes; it ranks above
+every other band, a `safety`-classed `P1` included, which the project owner was
+asked about and confirmed. `CLAUDE.md` § "A root cause of more than two items is
+pulled, not queued" is what a session does on finding one; `tools/generator_check.py`
+prints the clusters worth looking at and decides none of them. A suggestion the step has not reached stays in the list, marked with
 the milestone that places it, because hiding it would be a verdict the tool
 cannot support. Placement is read from the frozen list a milestone records and
 its `Required scope`, never from a mention elsewhere in the section, so an id

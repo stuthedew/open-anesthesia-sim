@@ -20,7 +20,7 @@ from __future__ import annotations
 from collections.abc import Collection
 from dataclasses import dataclass, field
 
-from .model import EFFORTS, LANE_CROSSING, LANE_UNPLACED, PRIORITIES, Item
+from .model import EFFORTS, LANE_CROSSING, LANE_UNPLACED, PRIORITIES, Item, is_generator
 from .roadmap import IN_SCOPE, OUT_OF_SCOPE, UNPLACED, Scope
 
 
@@ -148,11 +148,20 @@ class Recommendation:
     #: work it places in the current step or nowhere at all, and the milestone
     #: naming it otherwise.
     scoped_to: str = ""
+    #: How many items this one is the recorded root cause of, or `0`. Carried
+    #: here rather than re-derived by each reader, for the reason `scoped_to`
+    #: is: resolving the claim needs the whole store, and `format_digest`'s
+    #: `Top:` line has only the `Recommendation`. Without it that line shows a
+    #: `P2` leading a queue with `P1`s in it and nothing saying why, which is
+    #: the first thing every session reads.
+    generator: int = 0
 
     def describe(self) -> str:
         marks = [m for m in (self.item.effort, self.item.status) if m]
         if self.item.model_guidance:
             marks.append(f"{self.item.model_guidance} - use your strongest model")
+        if self.generator:
+            marks.append(f"root cause of {self.generator} items")
         if self.scoped_to:
             marks.append(f"scoped to {self.scoped_to}, not this step")
         head = f"{self.item.priority} {self.item.identifier} {self.item.title}"
@@ -326,6 +335,18 @@ def placement_mark(scope: Scope | None, identifier: str) -> str:
     return ""
 
 
+def _named_ids(identifiers: tuple[str, ...], limit: int = 3) -> str:
+    """A few ids in full, then a count of the rest.
+
+    A generator naming nineteen items would otherwise put nineteen ids in a
+    `docket next` reason line. The first few are what a reader checks the
+    claim against; the count is what tells them how much more there is.
+    """
+    shown = ", ".join(identifiers[:limit])
+    rest = len(identifiers) - limit
+    return f"{shown} and {rest} more" if rest > 0 else shown
+
+
 def recommend(
     items: list[Item],
     in_flight: Collection[str] | None = None,
@@ -339,11 +360,12 @@ def recommend(
     """Rank the work worth starting now.
 
     Order of precedence, highest first: anything at `P0`, because that is what
-    `P0` means; then what the roadmap's current step includes, when a `scope`
-    is supplied; then work in a feature already underway, nearest to finished
-    first; then the highest-priority item that is ready to start. Items already
-    in flight on a branch are excluded outright rather than ranked low -
-    recommending work somebody is doing is worse than recommending nothing.
+    `P0` means; then a recorded *generator*; then what the roadmap's current
+    step includes, when a `scope` is supplied; then work in a feature already
+    underway, nearest to finished first; then the highest-priority item that is
+    ready to start. Items already in flight on a branch are excluded outright
+    rather than ranked low - recommending work somebody is doing is worse than
+    recommending nothing.
 
     A `P0` outranks the phase, unchanged: a hotfix is not deferred because the
     milestone is about something else. Everything below it is reordered by
@@ -351,6 +373,23 @@ def recommend(
     carrying the milestone that names it, because "is this really out of
     scope?" is a judgment and hiding the item would be a verdict this cannot
     support - where saying which milestone names its id is a fact it can.
+
+    A generator - an item carrying a sound `root-cause-of:` - sits directly
+    below `P0` and above everything else, including a `safety`- or
+    `science`-classed `P1`. That placement was asked of the project owner and
+    confirmed twice (2026-09-17): *"We constantly add more P1 as we develop, so
+    these never get done and the bugs pile up."* Promotion inside a band was
+    the alternative and is refused, because the band a generator would be
+    promoted within is itself growing, so its position in absolute terms never
+    moves. The safety floor is not weakened by this - a clinical defect that
+    has to be fixed now is what `P0` is for, and `P0` still outranks a
+    generator.
+
+    Soundness is re-decided here rather than assumed from the field's presence,
+    against every id in `items` including closed ones: a root cause still
+    explains an item that has since closed, so a claim must not decay as its
+    cluster is worked. `model.is_generator` is the shared test, so this and
+    `docket check` cannot disagree about what a claim is.
 
     A `lane` narrows the candidates to one half of the project before any of
     that runs, so two sessions can rank simultaneously without arriving at the
@@ -368,6 +407,10 @@ def recommend(
         for item in _startable(items, in_flight, effort=effort)
         if lane is None or item.lane(workflow_paths) == lane
     ]
+    known = {item.identifier for item in items if item.identifier}
+    generating = {
+        item.identifier: item.root_cause_of for item in startable if is_generator(item, known)
+    }
     underway = {
         item.identifier: feature
         for feature in features(items).values()
@@ -378,14 +421,21 @@ def recommend(
     def placement(item: Item) -> str:
         return scope.placement(item.identifier) if scope is not None else UNPLACED
 
-    def rank(item: Item) -> tuple[int, int, int, int, int, int, str]:
-        """Hotfix, then the plan, then band, then how near its feature is to done.
+    def rank(item: Item) -> tuple[int, int, int, int, int, int, int, str]:
+        """Hotfix, then a generator, then the plan, then band, then the feature.
 
         `P0` is lifted out of the band comparison so that the phase cannot
         reorder a hotfix; below it, what the current step includes comes ahead
         of what it does not, because the band cannot express the phase. The
         feature preference stays a tie-breaker inside a band, never across
         bands: a P1 defect does not wait because a P3 feature is half built.
+
+        `generator` sits between the two for the same reason `hotfix` is
+        lifted out: the band cannot express "this is why three other items
+        exist". It is above `PLACEMENT_ORDER` as well as above `band`, so a
+        generator the roadmap places nowhere still outranks in-scope work -
+        which is what "above everything but P0" means, and the whole of what
+        was decided.
 
         Two terms carry that preference, not one. `finishes` is the binary
         question - is this item in a feature already underway - and `remaining`
@@ -398,12 +448,14 @@ def recommend(
         separated them.
         """
         hotfix = 0 if item.priority == "P0" else 1
+        generator = 0 if item.identifier in generating else 1
         band = PRIORITIES.index(item.priority) if item.priority in PRIORITIES else len(PRIORITIES)
         feature = underway.get(item.identifier)
         finishes = 1 if feature is None else 0
         remaining = 0 if feature is None else len(feature.open_items)
         return (
             hotfix,
+            generator,
             PLACEMENT_ORDER[placement(item)],
             band,
             finishes,
@@ -416,6 +468,20 @@ def recommend(
     for item in sorted(startable, key=rank):
         if item.priority == "P0":
             reason = "P0: this comes before feature work."
+        elif item.identifier in generating:
+            explains = generating[item.identifier]
+            # Says "ranked as a generator" in those words, because a reader
+            # meeting a `P2` at the top of a list with `P1`s below it needs to
+            # know the ranking meant it. Naming the ids it explains is the
+            # other half: the claim is a recorded fact, so the line that acts
+            # on it shows the record rather than asserting the conclusion.
+            reason = (
+                f"Ranked as a generator: the recorded root cause of {len(explains)} "
+                f"items ({_named_ids(explains)}). This is above every band but P0 - "
+                f"a mechanism three items stand on is paid again by every session it "
+                f"stands through, and patching them one at a time closes items while "
+                f"leaving it running."
+            )
         elif item.identifier in underway:
             feature = underway[item.identifier]
             left = len(feature.open_items)
@@ -485,18 +551,36 @@ def recommend(
             # is unplaced by this test while `ROADMAP.md`'s `v0.4.x` row names
             # it outright. Saying "the roadmap places this nowhere" would have
             # every session assert that falsehood.
-            reason = (
-                f"{reason} Placed by no section of {scope.anchor}: neither its frozen "
-                f"list nor its `Required scope` names this id, so it is neither "
-                f"preferred nor excluded and ranks on its band alone. A timeline row "
-                f"or prose may still place it."
+            placed_nowhere = (
+                f"Placed by no section of {scope.anchor}: neither its frozen list nor "
+                f"its `Required scope` names this id. A timeline row or prose may still "
+                f"place it."
             )
+            # The tail states how the item ranked, and for a generator that
+            # sentence is false - it did not rank on its band, it ranked above
+            # every band. Two claims about one ranking, in one reason line,
+            # is the apparatus floor broken where a reader can see both.
+            if item.identifier not in generating:
+                placed_nowhere = (
+                    f"Placed by no section of {scope.anchor}: neither its frozen "
+                    f"list nor its `Required scope` names this id, so it is neither "
+                    f"preferred nor excluded and ranks on its band alone. A timeline "
+                    f"row or prose may still place it."
+                )
+            reason = f"{reason} {placed_nowhere}"
         elif scope is not None and where == OUT_OF_SCOPE:
             scoped_to = scope.milestone(item.identifier)
             reason = (
                 f"{reason} Outside what {scope.anchor} names: this id appears in "
                 f"{scoped_to}'s section, which the current step has not reached."
             )
-        ranked.append(Recommendation(item, reason, scoped_to))
+        ranked.append(
+            Recommendation(
+                item,
+                reason,
+                scoped_to=scoped_to,
+                generator=len(generating.get(item.identifier, ())),
+            )
+        )
 
     return ranked[:limit]

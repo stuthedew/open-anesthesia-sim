@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from .config import Config
-from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item
+from .model import EFFORTS, OPEN_STATUSES, PRIORITIES, STATUSES, Item, root_cause_faults
 from .plan import OfferedReport
 from .release import NOTES_DIR, SEMVER_RE, notes_name, unrecorded_milestones, version_key
 from .roadmap import MilestoneStates
@@ -1080,6 +1080,8 @@ def _check_references(report: Report, milestones: MilestoneStates | None = None)
                     "with a section of its own"
                 )
 
+    _check_root_causes(report, known)
+
     known_items = {i.identifier: i for i in report.items}
     _outranks_its_blocker(report, known_items)
     _ready_with_an_open_blocker(report, known_items)
@@ -1095,6 +1097,37 @@ def _check_references(report: Report, milestones: MilestoneStates | None = None)
     for identifier in sorted(duplicates):
         paths = ", ".join(sorted(i.path for i in report.items if i.identifier == identifier))
         report.errors.append(f"{identifier}: used by more than one file ({paths})")
+
+
+def _check_root_causes(report: Report, known: set[str]) -> None:
+    """Hold a `root-cause-of:` to naming real items, and enough of them.
+
+    This is the one field in the store where a typo buys a promotion: a sound
+    claim ranks its item above every band but `P0`, ahead of a `safety`-classed
+    `P1`, which the project owner was asked about and confirmed. So the ids it
+    names are held to existing, exactly as `blocked-by`'s are.
+
+    The failure this catches is quiet rather than loud. `plan.py` refuses to
+    rank an unsound claim - it reads the same `root_cause_faults`, so the two
+    cannot drift - which means a mistyped id does not mis-rank anything. It
+    does something worse: the session that recorded the generator believes the
+    mechanism is now ranked, and nothing else in the project would ever say it
+    is not. This is what says it.
+
+    Errors rather than advisories, on both halves. Whether a mechanism really
+    causes three items is judgment and is not checked anywhere; whether the ids
+    exist and whether there are three of them are exact rules, which is what
+    `CLAUDE.md` reserves hard failure for.
+    """
+    for item in report.items:
+        faults = root_cause_faults(item, known)
+        if not faults:
+            continue
+        report.errors.append(
+            f"{_where(item)}: `root-cause-of:` {'; '.join(faults)}. `docket next` "
+            f"ranks a sound claim above every band but P0 and ignores an unsound one, "
+            f"so this generator is recorded and unranked until the field is repaired"
+        )
 
 
 def _check_filenames(report: Report) -> None:

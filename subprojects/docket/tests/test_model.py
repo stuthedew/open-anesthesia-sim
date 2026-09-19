@@ -15,10 +15,12 @@ from docket.model import (
     LANE_UNPLACED,
     LANE_WORKFLOW,
     Item,
+    is_generator,
     parse_front_matter,
     parse_item,
     render_item,
     repeated_front_matter_keys,
+    root_cause_faults,
 )
 
 BRIEF = "**Problem.** It is wrong.\n**Why it matters.** It has a cost.\n**Done when.** Fixed.\n"
@@ -397,3 +399,83 @@ def test_a_declared_path_is_placed_whatever_its_classes_say() -> None:
 
     assert tooling.lane(WORKFLOW) == LANE_WORKFLOW
     assert simulator.lane(WORKFLOW) == LANE_PRODUCT
+
+
+# `root-cause-of:`: the one field in the store that buys a queue position.
+#
+# `root_cause_faults` is deliberately shared with `checks.py` and `plan.py`, so
+# these tests are the contract both of them read. What they pin is the
+# fail-closed direction: a claim that is short, mistyped or self-referential is
+# not a claim, because `docket check` runs separately and the ranking would
+# otherwise act on it first.
+
+KNOWN = {"PL-K7QX", "PL-E1E1", "PL-E2E2", "PL-E3E3"}
+EXPLAINS = ("PL-E1E1", "PL-E2E2", "PL-E3E3")
+
+
+def test_a_root_cause_round_trips_through_the_file() -> None:
+    written = render_item(_item(root_cause_of=EXPLAINS))
+
+    assert "root-cause-of: PL-E1E1, PL-E2E2, PL-E3E3" in written
+    assert parse_item(written).root_cause_of == EXPLAINS
+
+
+def test_a_sound_root_cause_has_no_faults() -> None:
+    item = _item(root_cause_of=EXPLAINS)
+
+    assert root_cause_faults(item, KNOWN) == ()
+    assert is_generator(item, KNOWN)
+
+
+def test_an_item_making_no_claim_is_not_a_generator() -> None:
+    """No field is silence, not a fault - and silence is not a claim either."""
+    item = _item()
+
+    assert root_cause_faults(item, KNOWN) == ()
+    assert not is_generator(item, KNOWN)
+
+
+def test_a_root_cause_naming_fewer_than_three_items_is_an_ordinary_item() -> None:
+    item = _item(root_cause_of=EXPLAINS[:2])
+
+    (fault,) = root_cause_faults(item, KNOWN)
+    assert "names 2 item(s)" in fault
+    assert not is_generator(item, KNOWN)
+
+
+def test_repeating_one_id_does_not_reach_the_floor() -> None:
+    """Counted over distinct ids: a floor a repetition defeats is not a floor."""
+    item = _item(root_cause_of=("PL-E1E1", "PL-E1E1", "PL-E1E1"))
+
+    (fault,) = root_cause_faults(item, KNOWN)
+    assert "names 1 item(s)" in fault
+
+
+def test_a_root_cause_naming_an_id_no_item_carries_is_refused() -> None:
+    item = _item(root_cause_of=(*EXPLAINS, "PL-NOPE"))
+
+    (fault,) = root_cause_faults(item, KNOWN)
+    assert "PL-NOPE" in fault
+    assert not is_generator(item, KNOWN)
+
+
+def test_a_typo_and_a_short_list_stay_two_findings() -> None:
+    """Two repairs, so two messages.
+
+    The count reads over what is *written* rather than over what resolved, so
+    a field naming two ids one of which is a typo says both things. Counting
+    resolved ids instead would report "names 1 item(s)" and hide the typo
+    behind a number.
+    """
+    faults = root_cause_faults(_item(root_cause_of=("PL-E1E1", "PL-NOPE")), KNOWN)
+
+    assert len(faults) == 2
+    assert "PL-NOPE" in faults[0]
+    assert "names 2 item(s)" in faults[1]
+
+
+def test_an_item_cannot_be_its_own_root_cause() -> None:
+    item = _item(root_cause_of=("PL-K7QX", *EXPLAINS))
+
+    (fault,) = root_cause_faults(item, KNOWN)
+    assert "lists itself" in fault
