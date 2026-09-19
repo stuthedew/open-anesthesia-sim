@@ -3,11 +3,12 @@ id: PL-Z0C7
 title: Cut v0.4.31 from the 10 items finished since v0.4.30: the release that completes model-capability-routing
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning, docs
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 added: 2026-09-19
+closed: 2026-09-19
 verify: grep -q '^version = "0.4.31"' pyproject.toml && test -f docs/releases/v0.4.31.md && grep -q '^## Current baseline: v0.4.31' ROADMAP.md
 ---
 
@@ -51,3 +52,20 @@ origin` shows it.
 
 **Done when** `pyproject.toml` reads 0.4.31, `docs/releases/v0.4.31.md`
 exists, and `ROADMAP.md`'s current-baseline heading names v0.4.31.
+
+**Resolution, 2026-09-19: carried out under `PL-R5VS`, which is the same
+work.** Two sessions filed a cut item for v0.4.31 within four minutes of each
+other and neither could see the other: this one was filed first but reached
+`main` later, riding `#736`'s merge, while `PL-R5VS` was filed and pushed on
+its own branch in between. Nothing in the store reports that case - every
+in-flight guard matches a `PL-` id, and two ids for one piece of work match
+cleanly and uselessly.
+
+It is closed `done` rather than `dropped` because the work it describes was
+carried out in full, and because the two share a `verify:` command: leaving
+this one open with a passing command would be a store error on the
+whole-store replay, which is precisely what `PL-8GQW` had just cost `main`.
+
+Its own count is superseded. It names ten items, of which `PL-8GQW` was still
+open when it was written; the release as cut carries fourteen, `PL-8GQW` and
+`PL-0SVP` having closed while the cut was in flight.

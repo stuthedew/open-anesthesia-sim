@@ -1,6 +1,6 @@
 ---
 id: PL-R5VS
-title: Cut v0.4.31 from the 12 finished items since v0.4.30: the release that completes model-capability-routing and recommendation-rationale
+title: Cut v0.4.31 from the 14 finished items since v0.4.30: the release that completes model-capability-routing and recommendation-rationale
 priority: P2
 effort: S
 status: done
@@ -13,7 +13,7 @@ payoff: the twelve items finished since v0.4.30 stop being twelve unshipped file
 verify: grep -q '^version = "0.4.31"' pyproject.toml && test -f docs/releases/v0.4.31.md && grep -q '^## Current baseline: v0.4.31' ROADMAP.md
 ---
 
-**Problem.** Cut v0.4.31 from the 12 finished items since v0.4.30: the release that completes model-capability-routing and recommendation-rationale
+**Problem.** Cut v0.4.31 from the 14 finished items since v0.4.30: the release that completes model-capability-routing and recommendation-rationale
 
 **Asked for by the project owner, 2026-09-19** ("cut new version"). Twelve
 finished items stand unshipped since `v0.4.30` (`bin/docket release --dry-run`),
@@ -82,3 +82,20 @@ twelve files.
 version-table row with the `current baseline` mark moved onto it and a baseline
 section saying what the release was for, and `make check` passes. The tag itself
 is the project owner's to push and is outstanding until they confirm it.
+
+**Re-cut at fourteen, 2026-09-19.** The draft cut stood at twelve when `#736`
+and `#738` merged in quick succession, closing `PL-8GQW` and `PL-0SVP`. The
+second matters: `PL-0SVP` is a `recommendation-rationale` member, so the notes'
+"completes `recommendation-rationale`, 3 of 3" would have shipped false the
+moment it landed. `bin/docket release` refuses to extend a completed cut - it
+reads `v0.4.31` as shipped and untagged and stops there - so the draft was
+unwound (version reverted, notes removed, the twelve stamps deleted) and cut
+again over all fourteen. That is only safe because nothing had shipped: the
+branch was unmerged and `main` had never seen `v0.4.31`, so no second set of
+notes exists to be permanently wrong about the same items, which is what the
+refusal protects against.
+
+`PL-Z0C7` is the same work, filed independently four minutes earlier by a
+session that could not see this one and reaching `main` later. It is closed
+`done` here rather than left open: the two share a `verify:` command, and an
+open item whose command passes is a store error on the whole-store replay.
