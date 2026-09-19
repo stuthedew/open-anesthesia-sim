@@ -6977,6 +6977,13 @@ Version v0.1.0 assumes:
 - inspired gas is circuit gas — one gas-phase state $`F_I`$ between the
   vaporizer and the alveoli, there being one perfectly mixed circuit with no
   dead space and no separate limbs (see "Model boundary");
+- inspired gas reaches the alveoli undiluted by water vapour — real alveolar
+  gas is saturated at body temperature and nothing here represents that, so
+  the circuit's dry gas enters the alveolar compartment unchanged. This is the
+  third gas-phase condition, beside the temperature and pressure bullets
+  below, and the one the reference condition names — "dry" — without the
+  model examining it anywhere; "Known limitations" sizes it at 47/760 and
+  measures what correcting it would cost;
 - tissue venous blood equilibrates with its tissue group;
 - carrier gases do not affect agent kinetics;
 - temperature is constant, and every gas volume the model stores is carried
@@ -7044,6 +7051,10 @@ This model does not model:
 - cardiopulmonary bypass;
 - ECMO;
 - hypothermia;
+- alveolar humidification — real alveolar gas is saturated with water vapour
+  at 47 mmHg and the modeled alveolus holds none, so no inspired fraction is
+  diluted on reaching it (the note below this list sizes it, and measures what
+  correcting it would cost);
 - the difference between ambient and body conditions — every gas volume is
   carried at the single reference condition "Agent amount" fixes, and no
   ambient-to-body correction is applied anywhere (the note below this list
@@ -7351,6 +7362,76 @@ delivered total, which is the figure that means cost. Lifting it means a
 gas-phase model carrying explicit conditions per compartment, which is well
 outside the current milestone and is recorded here so that a reader sizing the
 model does not have to reconstruct it.
+
+**The modeled alveoli are dry, and real ones are saturated at 47 mmHg.** This
+is the third gas-phase condition and the only one the document fixed without
+examining. "Agent amount" states the reference condition as 20 °C and
+760 mmHg, *dry*; the note above works through the temperature half; the water
+that the word *dry* excludes is this note. Alveolar gas is fully saturated at
+body temperature, so of the 760 mmHg available, 47 mmHg is water and 713 mmHg
+is left to everything else. Agent leaving the circuit is dry. Warmed and
+humidified on reaching the alveoli, a dry inspired fraction $`F_I`$ therefore
+occupies $`F_I \times 713`$ mmHg rather than $`F_I \times 760`$ — a dilution
+of 47/760, or 6.2 % of an atmosphere, before any uptake has occurred.
+Equivalently, the undiluted figure is 6.6 % above the humidified one, that
+being 47/713. The alveolar equation carries $`\dot V_A(F_I - F_A)`$ with no
+such factor, so $`F_I`$ arrives undiluted.
+
+**The 47 mmHg is computed rather than quoted.** The saturation pressure of
+water at 37.0 °C is 47.12 mmHg on the IAPWS-95 formulation (Wagner W,
+Pruß A. *The IAPWS Formulation 1995 for the Thermodynamic Properties of
+Ordinary Water Substance for General and Scientific Use.* J Phys Chem Ref Data
+2002;31(2):387–535, doi:10.1063/1.1461829), whose saturation equation
+reproduces both the triple-point pressure and the normal boiling point to
+better than one part in a million. The conventional 47 of the alveolar gas
+equation is that value rounded, and the two agree to 0.3 %. Computed
+2026-09-19; nothing in the tree stores it, because no equation here reads it.
+
+**Why the factor is not applied, measured rather than argued.** The governing
+equations are linear in $`F_I`$ — "Published wash-in and elimination
+validation test" rests on the same property — so introducing the factor on the
+inspired term multiplies every computed $`F_A/F_I`$ by 713/760 exactly.
+$`F_A/F_I`$ is the one quantity this model is validated against, and it does
+not survive it. At the shipped defaults the four published wash-in cohorts sit
+comfortably inside their spread; with the factor, three of the four fall
+outside it:
+
+| Cohort | Modeled $`F_A/F_I`$ | Now | With the factor | Then |
+| --- | --- | --- | --- | --- |
+| Sevoflurane, Anesth Analg 1991;72:316-24 | 0.8528 | +0.16 SD | 0.7999 | −2.78 SD |
+| Isoflurane, Anesth Analg 1991;72:316-24 | 0.7414 | +0.31 SD | 0.6954 | −1.39 SD |
+| Desflurane, Anesthesiology 1991;74:489-98 | 0.9079 | +0.79 SD | 0.8516 | −4.84 SD |
+| Isoflurane, Anesthesiology 1991;74:489-98 | 0.7414 | +0.38 SD | 0.6954 | −1.15 SD |
+
+Measured 2026-09-19 through `_wash_in_ratio` in
+`tests/reference/test_published_wash_in_and_elimination.py`, against that
+module's own published means and standard deviations.
+
+**What fails there is double counting, not the physics.** $`F_A/F_I`$ in those
+studies is a ratio of two analyser readings taken from real airways, so
+whatever humidification does to alveolar agent is already inside the measured
+0.850, and a model reproducing that number has already absorbed it. The same
+holds one level down: the stored coefficients are tissue:gas and blood:gas
+ratios equilibrated at 37 °C, and what the gas phase in those determinations
+held of water is recorded nowhere this project has read. A factor applied to
+$`F_I`$ alone, against coefficients whose own gas-phase basis is unknown here,
+could not be shown to move the model toward the phenomenon rather than away
+from it. Correcting this properly means re-referencing the coefficients and
+the inspired term together, which is the same per-compartment gas-phase model
+the note above names and is well outside the current milestone. A later reader
+should not "fix" it by inserting 713/760.
+
+**What it costs a reader, and what it does not.** It does not reach the
+displayed percent or the MAC multiple, and for one reason covering both:
+$`F_A`$ here is anchored to a measured end-tidal quantity rather than to a
+computed dry-gas fraction. The rows above are end-tidal measurements, and MAC
+is defined on the end-tidal concentration too ("MAC multiples as a display
+unit"), so a model fitted to the first and divided by the second is comparing
+like with like whatever the sampled gas held of water. What it does cost is
+mechanistic, and it is a boundary on what the simulator can be asked: there is
+no water anywhere in this model, so nothing here distinguishes a dry circuit
+from a humidified one, and no question about airway humidification — an HME, a
+heated humidifier, the difference between them — has an answer in it.
 
 **Ambient pressure is not modelled, and away from one atmosphere the
 delivered-concentration dial stops meaning one partial pressure.**

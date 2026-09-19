@@ -3,12 +3,13 @@ id: PL-7DMJ
 title: docs/MODEL.md names water vapour nowhere: alveolar gas is saturated at 47 mmHg, so a dry inspired fraction is diluted 6.2 percent on reaching the alveoli, and neither Assumptions nor Known limitations records the omission
 priority: P1
 effort: S
-status: ready
+status: done
 classes: science, docs
 feature: model-spec-accuracy
 touches: docs/MODEL.md
 added: 2026-09-17
-verify: grep -qi 'water vapour' docs/MODEL.md
+closed: 2026-09-19
+verify: grep -qF 'The modeled alveoli are dry, and real ones are saturated at 47 mmHg' docs/MODEL.md
 ---
 
 **Problem.** docs/MODEL.md names water vapour nowhere: alveolar gas is saturated at 47 mmHg, so a dry inspired fraction is diluted 6.2 percent on reaching the alveoli, and neither Assumptions nor Known limitations records the omission

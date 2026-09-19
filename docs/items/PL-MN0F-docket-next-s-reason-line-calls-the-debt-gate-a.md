@@ -9,6 +9,7 @@ feature: recommendation-rationale
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_plan.py
 added: 2026-09-19
 closed: 2026-09-19
+pr: 729
 verify: grep -qF 'assert "frozen list" not in pick.reason' subprojects/docket/tests/test_plan.py
 ---
 
