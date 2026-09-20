@@ -280,8 +280,10 @@ represent as a small exhaust instead of as a different conservation statement.
 178.** Its one open entry, `PL-WZVZ`, is blocked on three items that are not
 themselves in the gate - `PL-1FT6`, `PL-R1WQ` and `PL-TH35` - so there is
 nothing left that working the gate can clear, and v0.5.0 is implementable.
-Recording that deferral in this document is its own open item rather than part
-of this release.
+*Where* that entry lands is recorded separately and is not part of this
+release: `PL-S5Q9` names Gate 2, which freezes when v0.5.0 ships and carries
+`PL-TH35` and `PL-R1WQ` with it, so it is the first gate at which the entry is
+workable at all.
 
 ### The gate lists and the store had drifted apart
 
