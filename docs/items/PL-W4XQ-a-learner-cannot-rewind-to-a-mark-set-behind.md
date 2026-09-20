@@ -43,15 +43,37 @@ model.
 **What it runs into.** `_resume_point_at`'s keyframe restriction is not
 arbitrary: opening between two keyframes restarts from two propagations where
 the run took one, which is the element-wise reproduction `ROADMAP.md` item 12
-asks for. `PL-B8MK` bought the bookmark-halt fork by
-having the run *be* at the fork with live state; a mark behind the clock has no
-such state, so the honest routes are to re-propagate from the nearest keyframe
-and declare what that costs, to record a keyframe when a mark is added behind
-the clock (which moves the run's own later answers - the failure `PL-B8MK`
-measured at 48 of 54 elements and rejected), or to refuse the act at entry and
-say so rather than accepting a mark nothing can use.
+asks for. `PL-B8MK` bought the bookmark-halt fork by having the run *be* at the
+fork with live state; a mark behind the clock has no such state.
+
+**The reference implementation does not open at the mark at all, and that is
+the route this item should take.** Philip JH, *Workbook for Gas Man®*
+(Med Man Simulations, title page 2012-05-16), chapter 2 § "Using Bookmarks",
+printed pages 22-23, and appendix E § "Replaying Simulations", printed pages
+186-87: a Gas Man bookmark is a pause point rather than a record, `Rewind`
+returns to time zero "keeping all the settings as they were throughout the
+simulation", `Fast Fwd` "takes you immediately forward to the next Bookmark or
+the end of the simulation", and "play and fast-forward are interrupted by
+bookmarks, which cause an automatic pause". So the way a learner returns to a
+mark behind the clock is to rewind to the opening and run forward until the
+mark stops them.
+
+That sidesteps the keyframe restriction entirely rather than paying it.
+Replaying from this run's own opening is the identical propagation the run
+already took, so it reproduces element-wise by construction - which is what
+`_branch_from` already relies on when it replays a segment's settings and
+refuses the branch if they do not reproduce. It is also cheap: 1 h of case at
+the interface's 0.1 s step is 36,000 steps, and a 3 h run completes in seconds
+in this engine.
+
+So the routes are, best first: **replay from the opening to the marked
+instant**; re-propagate from the nearest keyframe and declare what that costs;
+record a keyframe when a mark is added behind the clock, which moves the run's
+own later answers and is the failure `PL-B8MK` measured at 48 of 54 elements and
+rejected; or refuse the act at entry rather than accepting a mark nothing can
+use.
 
 **Done when.** A learner who marks an instant the run has already passed can
-either branch there, or is told at the moment of marking that they cannot and
-why; and whichever is chosen, `docs/MODEL.md` states what a fork at a
-non-keyframe instant does and does not reproduce.
+return to it, or is told at the moment of marking that they cannot and why; and
+`docs/MODEL.md` states what returning to a marked instant reproduces and what it
+does not.

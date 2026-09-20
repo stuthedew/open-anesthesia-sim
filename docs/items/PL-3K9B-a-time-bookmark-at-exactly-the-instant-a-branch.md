@@ -196,6 +196,54 @@ read as the fork rather than as history - and costs a new member, its
 rendering, and the argument `MarkStanding`'s docstring makes for each of the
 four it has; it is a display feature rather than a correction, and can follow.
 
+**What the reference implementation does, read 2026-09-20** (project owner,
+who named it as the workflow to follow). Philip JH, *Workbook for Gas Man®*
+(Med Man Simulations, title page 2012-05-16), chapter 2 § "Using Bookmarks",
+printed pages 22-23; the Edit menu, printed pages 14-15; appendix E
+§§ "Bookmarks" and "Replaying Simulations", printed pages 183 and 186-87:
+
+- **A Gas Man bookmark is a pause point, not a record.** It "marks a particular
+  point in time in the evolution of a simulation where one wishes to pause, or a
+  point to which to return". It has no reached state at all - the program never
+  displays one - and it pauses the run "whenever the simulation is run", on the
+  original pass and on every replay alike.
+- **A mark may be set behind the clock, and that is the designed case.** "You
+  can pick any time earlier or later than the moment of the simulation you have
+  paused", and set mid-experiment the dialog *defaults* to "that moment in the
+  simulation minus one second", for the stated purpose: "Clicking Add will cause
+  the playback to pause before any changes you make, allowing you to try
+  different options on playback."
+- **Returning to one is rewind-then-run, not opening at it.** `Rewind` goes to
+  time zero "keeping all the settings as they were throughout the simulation";
+  `Fast Fwd` "takes you immediately forward to the next Bookmark or the end".
+- **A change made on the way back truncates the run**, after the program
+  confirms intent, and "continuing to run the simulation beyond the change point
+  extends the simulation with new, alternate results". The saved `.GAS` file is
+  never touched - only the working copy.
+
+**It is decisive for the word, not for the rule.** A standing that survives a
+rewind as a historical claim would be false the moment the run is replayed: the
+mark is ahead again and will stop the learner again. Gas Man avoids this by
+having no such claim to make. So the rule recommended above stands - the answer
+is the mark's position relative to this run's clock - and `REACHED` is the wrong
+name for it, because "this run has halted on this mark at least once" is exactly
+the historical reading a rewind falsifies.
+
+**Revised recommendation: a distinct positional standing for a time bookmark,
+and `REACHED` left alone.** Add one `MarkStanding` member - `PASSED`, rendered
+"passed" - carrying the at-or-behind case, tested in this order: the seeded halt
+set, then `began_at_s <= instant_s <= elapsed_s`, then `BEFORE_THIS_BRANCH` at
+its strict `<`, then the cap, then blank. `REACHED` keeps its present meaning and
+its present word, and serves MAC targets, where a height crossed is a genuine
+fact about the trajectory and no clock can order it. The `MarkStanding` docstring
+then says which members answer for which kind, as it already does for
+`BEFORE_THIS_BRANCH`.
+
+This is the fifth member the section above called a display feature that could
+follow. It is not one: without it, adopting any rewind makes every passed row a
+false claim, and the cost of the member is one enum entry and one string in
+`MARK_STANDING_TEXT`.
+
 **Done when.** No mark at or behind a run's own clock reads as still
 reachable, on a trunk and on a branch alike and whichever door the branch came
 through; the answer does not depend on whether the marked instant is exactly
