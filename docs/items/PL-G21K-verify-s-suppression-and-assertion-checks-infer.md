@@ -3,12 +3,14 @@ id: PL-G21K
 title: verify's suppression and assertion checks infer intent from diff text, so every fix adds a special case and uncovers the next: across 564 commits four of the five suppression markers fired zero times on a real directive while half of all hits were prose
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: defect, infra
 feature: verify-false-reject
-root-cause-of: PL-4FD2, PL-STC4, PL-BHBZ, PL-5MFL, PL-XQGH, PL-CNJH, PL-2DTK
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-20
+payoff: retires the half of the suppression check that never once caught what it exists to catch - 33 of 33 real hits were legitimate type-ignores, none a disabled test - so a close-out touching verify.py stops REJECTing on the file's own docstrings, and the four items left behind it stop being patched one case at a time
+verify: grep -q 'def test_a_type_ignore_is_not_a_suppression' subprojects/docket/tests/test_verify.py
+root-cause-of: PL-4FD2, PL-STC4, PL-BHBZ, PL-5MFL, PL-XQGH, PL-CNJH, PL-2DTK
 ---
 
 **Problem.** `verify.py`'s two integrity checks — "no suppression added" and
@@ -135,8 +137,40 @@ closed or dropped against it rather than patched one at a time.
 `.md` narrowing is free and correct — a Markdown file suppresses nothing. This
 item is about the altitude the *next* six are worked at.
 
-**Decision needed.** Which of the three resolutions above to take - route
-`# type: ignore` to mypy and keep the four never-firing markers (recommended),
-narrow the matcher to code only, or retire the suppression check outright. The
-recommendation rests on a count that cannot falsify the deterrence reading, so
-this is the project owner's call rather than a session's.
+**Decision (project owner, 2026-09-20, ratified, over retiring the suppression
+check outright and over any change to the mypy configuration).** Take
+resolutions 1 and 2 together, which are independent:
+
+1. **Drop `# type: ignore` from `SUPPRESSIONS`.** It is the only marker that
+   fired on a real directive across 564 commits - 33 of 33 - and not one of
+   those was a disabled test, which is what the check exists to catch. Where
+   mypy already reaches, everything under `[tool.mypy] files`, `strict = true`
+   enables `--warn-unused-ignores` and the check adds nothing. In `tests/` the
+   marker goes unpoliced, and that is the accepted cost rather than an
+   oversight.
+2. **Strip non-code context before matching.** A marker inside backticks, a
+   string literal, or a prose comment is not a suppression.
+
+**Resolution 3 was refused** on the ground the item itself states: it is the
+one most likely to be wrong if the deterrence reading holds, and the zero
+counts cannot falsify that reading. The four never-firing markers stay, at
+zero observed cost.
+
+**No mypy change, and the phrasing above is corrected here.** The
+`**Decision needed.**` block this replaces offered resolution 1 as "route
+`# type: ignore` to mypy", which reads as a configuration change. It is not
+what the body recommends and not what was decided: nothing under
+`[tool.mypy]` moves. Widening `files` to `tests/` stays refused by
+`PL-CMCB`'s standing decision, re-measured 2026-09-20 at 427 errors under
+`strict` and 255 with `strict` off and only `warn_unused_ignores`.
+
+**What pull request 783 already landed, so this item does not redo it.**
+`PL-5MFL`, `PL-BHBZ`, `PL-4FD2` and `PL-0KQP` closed on 2026-09-20 with
+`SUPPRESSION_BEARING_SUFFIXES` in `verify.py` - the *file-suffix* half of
+resolution 2, which removes the 22 `.md` lines of the 66. What is left of
+resolution 2 is the 11 `.py` lines whose marker sits inside backticks, a
+string literal or a comment. `verify.py`'s own docstrings are in that set:
+they name the tokens they match, so editing the file that defines the check
+trips the check. That is why 783's own close-out REJECTed on 6 added lines,
+none of them a suppression, and why it could not be cleared from inside that
+branch.
