@@ -3,10 +3,11 @@ id: PL-XQGH
 title: verify's assertion check anchors on with, so the parenthesized multi-manager form leaves pytest.raises on a line of its own that matches nothing
 priority: P3
 effort: S
-status: ready
+status: blocked
 classes: defect, infra
 feature: verify-assertion-check
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
+blocked-by: PL-4W2L
 added: 2026-09-19
 verify: grep -q 'def test_a_parenthesized_multi_manager_with_is_an_assertion_removed' subprojects/docket/tests/test_verify.py
 ---

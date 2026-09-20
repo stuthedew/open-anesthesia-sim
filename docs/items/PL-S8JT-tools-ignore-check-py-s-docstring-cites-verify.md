@@ -1,11 +1,25 @@
 ---
 id: PL-S8JT
 title: tools/ignore_check.py's docstring cites verify.py's SUPPRESSIONS tuple as its worked example of a type: ignore that is not a directive, and PL-G21K removed it from that tuple - the file now holds the marker in comments, which is the one carrier the tool does count
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
+touches: tools/ignore_check.py
 added: 2026-09-20
+payoff: stops the tokenize-over-grep argument citing an example the tree no longer holds
+verify: true
 ---
 
 **Problem.** tools/ignore_check.py's docstring cites verify.py's SUPPRESSIONS tuple as its worked example of a type: ignore that is not a directive, and PL-G21K removed it from that tuple - the file now holds the marker in comments, which is the one carrier the tool does count
+
+**Why it matters.** `tools/ignore_check.py` is what stops an inert
+`type: ignore` going unread in the two trees the mypy gate excludes, and the
+docstring in question is the argument for why it tokenizes rather than greps -
+the distinction the whole tool rests on. An example that no longer holds
+invites the next reader to conclude the distinction was over-thought and
+replace the tokenizer with a grep, which would count this same file's prose as
+directives.
 
 **Where it comes from.** `PL-G21K`'s close-out, 2026-09-20. `tools/ignore_check.py`'s
 `directives()` docstring justifies tokenizing over grepping with three worked

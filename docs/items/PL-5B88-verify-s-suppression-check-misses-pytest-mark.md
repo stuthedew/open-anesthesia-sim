@@ -1,8 +1,15 @@
 ---
 id: PL-5B88
 title: verify's suppression check misses @pytest.mark.skip and @pytest.mark.skipif, the two commonest ways a pytest test is disabled: @skip needs its @ against the name and pytest.skip needs its halves adjacent, so the check reports none while a disabled test sits in the diff
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: verify-false-reject
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-20
+payoff: makes the check able to fail on the two decorators that actually disable a pytest test, which it has never been able to report
+verify: grep -q 'def test_a_pytest_mark_skip_is_a_suppression' subprojects/docket/tests/test_verify.py
 ---
 
 **Problem.** verify's suppression check misses @pytest.mark.skip and @pytest.mark.skipif, the two commonest ways a pytest test is disabled: @skip needs its @ against the name and pytest.skip needs its halves adjacent, so the check reports none while a disabled test sits in the diff
