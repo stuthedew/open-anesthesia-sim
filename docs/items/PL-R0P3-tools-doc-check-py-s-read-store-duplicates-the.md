@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: refactor
 feature: doc-consistency-checks
+milestone: v0.4.35
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-14
 closed: 2026-09-20
+pr: 774
 verify: uv run pytest tests/unit/test_doc_check.py && [ "$(grep -c 'read_items(root / config.items_dir)' tools/doc_check.py)" = 0 ]
 ---
 

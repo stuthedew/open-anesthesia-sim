@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect
 feature: gate-list-integrity
+milestone: v0.4.35
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-19
 closed: 2026-09-20
+pr: 774
 payoff: stops a triage pass reading 'advisory' as optional and pushing a branch that fails CI on an assertion it never saw
 verify: grep -q 'def test_a_missing_disposition_is_reported_as_an_error' tests/unit/test_doc_check.py
 ---
