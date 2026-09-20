@@ -2421,3 +2421,285 @@ def test_a_mark_changes_nothing_the_run_computes() -> None:
         assert [state.values[position] for state in window.states] == [
             state.values[position] for state in same.states
         ]
+
+
+def _advance_until_halted(controller: SimulationController, limit_s: float) -> None:
+    """Step a running controller until a mark halts it, or say it never did.
+
+    The halt is what a bookmark fork is taken at, so a test that silently ran
+    past one would go on to fork at whatever instant it happened to stop at
+    and assert nothing about the case it meant to.
+    """
+
+    for _ in range(round(limit_s / MAXIMUM_SIMULATION_STEP_S)):
+        controller.advance(MAXIMUM_SIMULATION_STEP_S)
+
+        if controller.snapshot().bookmark_halt is not None:
+            return
+
+    raise AssertionError(f"no mark halted this run within {limit_s} s of stepping")
+
+
+def _trunk_halted_on_a_bookmark() -> SimulationController:
+    """A run stopped where a mark lies between two of its keyframes.
+
+    One setting change, at 30 s, so the run holds keyframes at 0 s and 30 s
+    and at nothing else; the mark is at 45.3 s, which is neither of them. That
+    is the ordinary case rather than a contrived one - on the 120 s run the
+    other fork tests use, 3 of the 1 201 instants a halt could land on are
+    keyframes.
+    """
+
+    controller = SimulationController()
+    controller.add_time_bookmark(TimeBookmark(45.3, "the decision point"))
+    controller.start()
+    _advance_for(controller, duration_s=30.0)
+    controller.set_delivered_partial_pressure_fraction(0.04)
+    _advance_until_halted(controller, limit_s=60.0)
+
+    return controller
+
+
+def _the_same_case_never_marked(steps: int) -> SimulationController:
+    """`_trunk_halted_on_a_bookmark`'s case without the mark, run the same distance.
+
+    Driven by step count rather than by duration, because the marked run stops
+    part-way through a step budget and a second run told to advance "45.3 s"
+    would take a different number of steps and so stand at a different float.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance_for(controller, duration_s=30.0)
+    controller.set_delivered_partial_pressure_fraction(0.04)
+
+    for _ in range(steps - controller._state.step_count):
+        controller.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    return controller
+
+
+def test_a_branch_taken_at_a_bookmark_reproduces_its_parent_without_changing_it() -> None:
+    """`PL-B8MK`'s deliverable, and both halves of it.
+
+    Either half alone is satisfiable by a design this project refused.
+    Recording a keyframe where the run halts makes the branch exact against
+    the trunk it forked from - and displaces that trunk's own later answers,
+    48 of 54 elements against the same case built unmarked, so marking a run
+    would change it. Doing nothing at all leaves the trunk untouched and
+    refuses the fork. So the two are asserted together: the branch reproduces
+    its parent element-wise from the fork onwards, *and* the trunk is
+    element-for-element the case it would have been had nobody marked it.
+    """
+
+    marked = _trunk_halted_on_a_bookmark()
+    fork_s = marked.snapshot().elapsed_s
+    fork_steps = marked._state.step_count
+
+    branch = marked.resumed_at_halt()
+
+    marked.start()
+    _advance_for(marked, duration_s=30.0)
+    marked.pause()
+
+    branch.start()
+    _advance_for(branch, duration_s=30.0)
+    branch.pause()
+
+    unmarked = _the_same_case_never_marked(steps=marked._state.step_count)
+    unmarked.pause()
+
+    # The trunk is the case it would have been unmarked: the same keyframes,
+    # at the same instants, holding the same states. A keyframe recorded where
+    # the run halted would show up here as a fourth opening the unmarked run
+    # does not have.
+    assert marked._state.step_count == unmarked._state.step_count
+    assert marked.snapshot().elapsed_s == unmarked.snapshot().elapsed_s
+    assert [segment.opening.instant_s for segment in marked.run_segments] == [
+        segment.opening.instant_s for segment in unmarked.run_segments
+    ]
+    assert [segment.opening.state for segment in marked.run_segments] == [
+        segment.opening.state for segment in unmarked.run_segments
+    ]
+
+    for steps in range(0, marked._state.step_count + 1):
+        case_s = steps * MAXIMUM_SIMULATION_STEP_S
+
+        assert marked._run_definition.state_at(case_s) == unmarked._run_definition.state_at(
+            case_s
+        ), f"marking the run moved what it says at {case_s} s"
+
+    # And the branch reproduces the parent it forked from, element for element,
+    # at every instant the two share.
+    for steps_past_fork in range(0, 301):
+        case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
+
+        assert branch._run_definition.state_at(case_s) == marked._run_definition.state_at(
+            case_s
+        ), f"the branch and its parent differ at {case_s} s"
+
+
+def test_a_bookmark_fork_opens_its_definition_at_the_keyframe_before_it() -> None:
+    """The route this project chose, stated as the structure it produces.
+
+    The branch stands at the bookmark - its clock, its live system - while its
+    run definition opens at the keyframe *at or before* that instant, carrying
+    that keyframe's own state. Every instant after the fork is then one
+    propagation from the same keyframe the trunk propagates from, which is
+    what `docs/MODEL.md` § "What this requires of a branch" relaxes the second
+    of its two conditions to.
+    """
+
+    marked = _trunk_halted_on_a_bookmark()
+    fork_s = marked.snapshot().elapsed_s
+
+    branch = marked.resumed_at_halt()
+
+    assert branch.snapshot().elapsed_s == fork_s
+    assert branch.opened_from is not None
+    assert branch.opened_from.elapsed_s == fork_s
+
+    # The definition opens earlier, at the trunk's own keyframe rather than at
+    # the fork, and nothing was recorded on the trunk to make one there.
+    assert branch.run_segments[0].opening.instant_s == 30.0
+    assert branch.run_segments[0].opening.instant_s < fork_s
+    assert branch.run_segments[0].opening.state == marked.run_segments[-1].opening.state
+    assert [segment.opening.instant_s for segment in marked.run_segments] == [0.0, 30.0]
+
+
+def test_a_branch_taken_at_a_bookmark_is_not_drawn_before_its_fork() -> None:
+    """The clip is read from the fork rather than from the definition's opening.
+
+    The definition can answer for the stretch between the keyframe it opens at
+    and the fork, because that stretch is the parent's. The branch did not
+    live it. Drawing it would put the trunk's trajectory on screen under the
+    branch's identity - the right numbers in the wrong patient context, which
+    `CLAUDE.md`'s safety-critical standard counts as a failure in its own
+    right.
+    """
+
+    marked = _trunk_halted_on_a_bookmark()
+    fork_s = marked.snapshot().elapsed_s
+    branch = marked.resumed_at_halt()
+
+    # An axis ending inside the interval the definition can answer for and the
+    # branch never lived draws nothing at all.
+    assert 30.0 < fork_s - 5.0 < fork_s
+    window = branch.drawn_window(0.0, fork_s - 5.0, 150)
+
+    assert window.times_s == ()
+    assert window.states == ()
+
+    # An axis reaching the fork draws from the fork, not from the keyframe.
+    spanning = branch.drawn_window(0.0, fork_s, 150)
+
+    assert spanning.times_s == (fork_s,)
+
+    # And the trunk, on the same axis, draws the stretch the branch declines
+    # to: the two differ because the branch did not exist yet.
+    assert marked.drawn_window(0.0, fork_s - 5.0, 150).times_s != ()
+
+
+def test_a_run_not_standing_on_a_bookmark_has_no_instant_to_fork_at() -> None:
+    """A fork at a bookmark is reached from the halt, so there is no float to get wrong.
+
+    Route two needs the run's state at the fork instant, and a halt is where a
+    run has it. Offering the fork as an instant a caller names instead would
+    let a branch be asked for at a bookmark the run has not reached.
+    """
+
+    controller = _trunk_with_two_changes()
+
+    with pytest.raises(SimulationConfigurationError, match="not standing on"):
+        controller.resumed_at_halt()
+
+
+def test_resuming_past_a_bookmark_withdraws_the_fork_it_offered() -> None:
+    """The halt is the permission, so taking a step spends it."""
+
+    marked = _trunk_halted_on_a_bookmark()
+    marked.start()
+    marked.advance(MAXIMUM_SIMULATION_STEP_S)
+
+    with pytest.raises(SimulationConfigurationError, match="not standing on"):
+        marked.resumed_at_halt()
+
+
+def test_an_instant_between_keyframes_is_refused_even_where_the_run_stands_on_it() -> None:
+    """`resumed_at` keeps its keyframe rule unchanged, halt or no halt.
+
+    Widening it to any instant a run holds live state for is `PL-Z3W6`'s to
+    ask for. What this item adds is a second door, not a wider one.
+    """
+
+    marked = _trunk_halted_on_a_bookmark()
+
+    with pytest.raises(SimulationConfigurationError, match="holds no keyframe"):
+        marked.resumed_at(marked.snapshot().elapsed_s)
+
+
+def test_resetting_a_branch_taken_at_a_bookmark_returns_it_to_the_bookmark() -> None:
+    """A branch's beginning is its fork, and a bookmark fork is no exception."""
+
+    marked = _trunk_halted_on_a_bookmark()
+    fork_s = marked.snapshot().elapsed_s
+    fork_state = marked._run_definition.state_at(fork_s)
+    branch = marked.resumed_at_halt()
+
+    branch.start()
+    _advance_for(branch, duration_s=10.0)
+    branch.reset()
+
+    assert branch.snapshot().elapsed_s == fork_s
+    assert branch._run_definition.state_at(fork_s) == fork_state
+
+
+def test_a_branch_reset_under_new_settings_is_drawn_from_where_it_stands() -> None:
+    """`reset()` preserves settings, and the definition has to follow.
+
+    A branch reset after its learner has dialled something new stands at the
+    fork state under the new settings. A definition still opening at the
+    parent's earlier keyframe would propagate that keyframe forward under
+    settings the parent never used and draw the branch from a state it is not
+    in - the readouts saying one thing and the trace another, about one run.
+    """
+
+    marked = _trunk_halted_on_a_bookmark()
+    fork_s = marked.snapshot().elapsed_s
+    fork_state = marked._run_definition.state_at(fork_s)
+    branch = marked.resumed_at_halt()
+
+    branch.set_delivered_partial_pressure_fraction(0.06)
+    branch.reset()
+
+    assert branch.snapshot().elapsed_s == fork_s
+    assert branch._run_definition.state_at(fork_s) == fork_state
+
+
+def test_a_branch_of_a_bookmark_fork_is_refused_rather_than_silently_flattened() -> None:
+    """The flat shape is the whole of the structure, by whichever door a branch arrived."""
+
+    marked = _trunk_halted_on_a_bookmark()
+    branch = marked.resumed_at_halt()
+    branch.add_time_bookmark(TimeBookmark(600.0))
+
+    with pytest.raises(SimulationConfigurationError, match="branch of a branch"):
+        branch.resumed_at(branch.run_segments[0].opening.instant_s)
+
+
+def test_a_case_forks_at_the_bookmark_its_trunk_is_standing_on() -> None:
+    """The case-level door, which keeps the branch rather than handing it out loose."""
+
+    marked = _trunk_halted_on_a_bookmark()
+    fork_s = marked.snapshot().elapsed_s
+    case = BranchedCase(marked)
+
+    branch = case.fork_at_halt()
+
+    assert case.branches == (branch,)
+    assert case.runs == (marked, branch)
+    assert branch.opened_from is not None
+    assert branch.opened_from.elapsed_s == fork_s
+    # The trunk is left standing where it was, still on its halt.
+    assert marked.snapshot().elapsed_s == fork_s
+    assert marked.snapshot().bookmark_halt is not None
