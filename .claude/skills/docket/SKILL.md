@@ -1459,6 +1459,27 @@ in the tree reports it; `git ls-remote --tags origin` is what answers.
    at all **and** the checkout says it is complete, which is provenance
    genuinely lost; a truncated checkout declines instead, because the commit
    may be outside it (`PL-99Y4`).
+
+   **Act on what that command prints about the items you just unblocked.** It
+   names the items whose last recorded blocker this closure clears - the
+   reverse of `blocked-by`, derived rather than stored. Do not defer them to a
+   grooming pass: you are holding the context the judgment needs, and the pass
+   is what this replaced. Read each against the tree and either `bin/docket set
+   <id> --status ready` or write what is really holding it into `blocked-by`,
+   in this branch's commit. Of 13 items reached this way across the two passes
+   that preceded the print, 6 were genuinely startable and the rest were
+   already done inside another item, held by a condition nobody had declared,
+   or carrying a user-facing question written in since triage - so the reading
+   is a candidate list and never a verdict, which is why nothing promotes them
+   for you (`PL-PQC7`, `PL-6T44`).
+
+   **Two of them are worth more than the rest, and neither is visible from the
+   id.** An item classed `safety` or `science` that also carries `anticipated`
+   is exempt from the debt gate only while `status: blocked` holds with it, so
+   promoting one is the event that returns a finding to the gate built to catch
+   it - say in the reply which way you called it and why (`PL-ZF2G`, `PL-JFQ3`).
+   And where the closure releases several, say so as one group rather than as a
+   list of ids: `PL-1FT6` holds eight.
 2. **Sweep the docs.** `make doc-check` decides the package-map,
    provenance-table, marked-prose-value, dangling-citation, math-rendering and
    release-train questions outright, and
