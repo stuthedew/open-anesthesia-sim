@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: docs, defect
-feature: interface-pass-narrative
+feature: gate-list-integrity
 touches: ROADMAP.md
 added: 2026-09-16
 verify: python3 tools/doc_check.py check && ! grep -qF 'All three are debt and reach the gate on' ROADMAP.md
