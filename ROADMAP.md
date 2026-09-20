@@ -194,7 +194,7 @@ and nothing in the box said which one had won.
 
 Measured 2026-09-17 on the reference adult on sevoflurane, trunk held at 1 MAC,
 branch forked at 10 min, on a 60-minute axis 900 px wide: both runs' fat points
-are inside the radius over **100%** of the hoverable axis in every branch case
+are inside the radius on **100%** of the hoverable axis in every branch case
 tested, including against the widest management difference available, because
 the percent axis is scaled by the alveolar peak and the slow compartments are
 compressed near zero. The slow compartments are what the chart exists to teach.
