@@ -361,7 +361,7 @@ cascade and the symbols $`F_D`$, $`F_I`$ and $`F_A`$ are set out on pp. 161-162,
 the $`F_D - F_I`$ gradient attributed to rebreathing on p. 169 and $`F_I - F_A`$
 to uptake on p. 171, and the didactic role of the $`F_A/F_I`$ curve on p. 167
 (Hendrickx JFA, De Wolf A. Special aspects of pharmacokinetics of inhalation
-anesthesia. In: Schuttler J, Schwilden H, eds. Modern Anesthetics. Handbook of
+anesthesia. In: Schüttler J, Schwilden H, eds. Modern Anesthetics. Handbook of
 Experimental Pharmacology 182. Springer, 2008:159-186). Supplied by the project
 owner and recorded at that depth; the pages above are what the citation is
 being used for, and no page beyond them is relied on here.
