@@ -9,6 +9,7 @@ feature: gate-list-integrity
 touches: docs/items, ROADMAP.md
 added: 2026-09-12
 closed: 2026-09-20
+pr: 774
 verify: python3 tools/doc_check.py check && ! grep -qF 'superseded intermediate blob' ROADMAP.md
 ---
 

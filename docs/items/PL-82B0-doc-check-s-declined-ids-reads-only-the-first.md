@@ -9,6 +9,7 @@ feature: gate-list-integrity
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-13
 closed: 2026-09-20
+pr: 774
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_second_declined_subsection_is_read' tests/unit/test_doc_check.py
 ---
 

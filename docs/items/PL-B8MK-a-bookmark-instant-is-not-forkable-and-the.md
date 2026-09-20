@@ -1,14 +1,15 @@
 ---
 id: PL-B8MK
 title: A bookmark instant is not forkable, and the obvious route to making one changes the case it marks
-priority: P2
+priority: P1
 effort: M
-status: blocked
-blocked-by: PL-LPLD, PL-CTD7
+status: ready
 classes: science, feature, anticipated
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/run_definition.py, tests/unit, tests/integration, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-09-14
+payoff: lets a learner branch the case at the instant they marked and halted on, not only at a dial change - and keeps marking a case from moving the curve it marks
+verify: grep -q 'def test_a_fork_at_a_bookmark_halt_reproduces_its_parent_element_wise' tests/integration/test_controller.py
 ---
 
 **Problem.** A bookmark instant is not forkable, and the obvious route to making one changes the case it marks
@@ -116,3 +117,54 @@ guarantee about a displayed comparison, not a capability. Route one moves the
 trunk's own curve, which is a run changing because it was observed; route two
 does not. Nothing is reachable today - no bookmark exists - which is why this
 sits at `P2` beside `PL-Z3W6` rather than in the top band.
+**Both blockers closed 2026-09-20, and neither took the choice.** `PL-LPLD`
+(the two mark collections) shipped in v0.4.33; `PL-CTD7` (per-step crossing
+detection and the halt) merged as `#775`, and its own close-out records forking
+at a halt as "not built here, and not in scope". So the "Not decided here"
+paragraph above named two items the choice would reach, both are now closed,
+and the choice reached neither. Read that paragraph as history.
+
+**Taken here: route two** (session, 2026-09-20). It rests on the measurements
+this item already records and on a rule the repository already states, which is
+what makes it a session's call rather than the project owner's. Route one makes
+a run change because it was *observed* - 48 of 54 elements displaced against the
+same case built without the bookmark - which `CLAUDE.md`'s "Preserve
+deterministic results for identical inputs" refuses outright, and which the
+safety-critical standard reaches the moment the two curves are drawn beside each
+other: a learner comparing a branch against its trunk would be reading a
+difference the branch's management did not cause. Route two displaces nothing,
+needs no new `core/` API, breaks no invariant, and now costs two named edits
+rather than four.
+
+**The fault, reproduced 2026-09-20 on `b2b3ffe`**, now that `PL-CTD7`'s halt
+exists to produce it. A default run carrying `TimeBookmark(30.0)`, started and
+stepped at 0.1 s, halts at exactly 30.0 s on `BookmarkCrossing(instant_s=30.0,
+time_bookmarks=(TimeBookmark(instant_s=30.0, label=None),), mac_targets=())`.
+`run_segments` then holds a single keyframe, at 0.0 s, and
+`resumed_at(30.0)` raises `SimulationConfigurationError: this run holds no
+keyframe at 30.0 s, so opening there would restart from two propagations where
+the run took one and would not reproduce it element-wise; it holds keyframes at
+[0.0] s`. That is the whole item in one run: the learner is standing on the
+instant they marked, and it is the one instant the fork refuses.
+
+**Done when.** A run halted on a time bookmark forks at that instant -
+`resumed_at` returns a paused branch where it raised above - the branch
+reproduces its parent element-wise at every sampled point up to the fork, and
+the trunk stays byte-identical to the same case built without the bookmark.
+Concretely, route two: the branch's `RunDefinition` opens at the keyframe
+*before* the fork while the clock stands at the fork instant, `_open_at`
+restores the fork state rather than the segment's opening state, no keyframe is
+recorded and no `core/` API is added. Proven by
+`test_a_fork_at_a_bookmark_halt_reproduces_its_parent_element_wise` in
+`tests/integration/test_controller.py`, carrying the unmarked-trunk comparison
+as its second assertion.
+
+**One question left to the implementing session, with a default rather than an
+open end.** Whether the fork is offered at *any* instant the run holds live
+state for, or only at the halt the run is standing on. Route two needs the state
+at the fork instant, and a halt is where the run has it, so the default is the
+halt:
+`test_an_instant_between_keyframes_is_refused_rather_than_approximated` keeps
+its refusal unchanged for an instant the run is not standing on, and the fork
+is reached from `snapshot().bookmark_halt` rather than from an arbitrary float.
+Widening it past that is `PL-Z3W6`'s to ask for, not this item's.

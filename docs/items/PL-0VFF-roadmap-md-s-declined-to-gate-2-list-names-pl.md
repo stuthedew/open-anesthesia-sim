@@ -9,6 +9,7 @@ feature: gate-list-integrity
 touches: ROADMAP.md
 added: 2026-09-12
 closed: 2026-09-20
+pr: 774
 verify: python3 tools/doc_check.py check && grep -qE '^- PL-483K .*v0\.4\.14' ROADMAP.md
 ---
 

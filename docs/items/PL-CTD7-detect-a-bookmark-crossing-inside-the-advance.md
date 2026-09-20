@@ -9,6 +9,7 @@ feature: scenario-branching
 touches: src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/simulation_view.py, tests/unit, tests/integration, docs/MODEL.md, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-06
 closed: 2026-09-20
+pr: 775
 payoff: stops a threshold halt landing up to 30 simulated seconds past the value the learner asked for, silently and differently depending on how fast they were running
 verify: grep -q 'def test_a_target_halts_on_every_crossing_in_either_direction' tests/unit/test_bookmarks.py
 ---

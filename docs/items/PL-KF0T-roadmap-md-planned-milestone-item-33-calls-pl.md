@@ -9,6 +9,7 @@ feature: gate-list-integrity
 touches: ROADMAP.md
 added: 2026-09-16
 closed: 2026-09-20
+pr: 774
 verify: python3 tools/doc_check.py check && ! grep -qF 'All three are debt and reach the gate on' ROADMAP.md
 ---
 

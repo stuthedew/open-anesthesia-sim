@@ -9,6 +9,7 @@ feature: settings-panel-prerequisite
 touches: ROADMAP.md
 added: 2026-09-17
 closed: 2026-09-20
+pr: 774
 payoff: a session scoping the preferences panel stops reading a met prerequisite as work still owed, and is pointed at the writable settings store that is the real one
 verify: python3 tools/doc_check.py check && ! grep -qF 'Pre-requisite: consolidate the' ROADMAP.md
 ---
