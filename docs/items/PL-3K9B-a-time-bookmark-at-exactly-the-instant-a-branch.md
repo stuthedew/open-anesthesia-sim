@@ -244,6 +244,15 @@ follow. It is not one: without it, adopting any rewind makes every passed row a
 false claim, and the cost of the member is one enum entry and one string in
 `MARK_STANDING_TEXT`.
 
+**The owner is leaning to truncate-with-confirm** (2026-09-20, provisionally,
+to be revisited after use; `PL-ZW0J`). That strengthens this recommendation
+rather than complicating it. Truncation takes one run's clock *backwards in
+place*, so a mark beyond the truncation point goes from passed back to
+reachable and will stop the learner again - which is precisely the revocation a
+historical `REACHED` cannot survive, and it happens on a single run rather than
+between two. Whichever of the two meanings of "returning to a mark" the project
+takes, the standing has to be positional; under truncation it has to be, sooner.
+
 **Done when.** No mark at or behind a run's own clock reads as still
 reachable, on a trunk and on a branch alike and whichever door the branch came
 through; the answer does not depend on whether the marked instant is exactly
