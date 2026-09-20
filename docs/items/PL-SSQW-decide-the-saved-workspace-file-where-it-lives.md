@@ -9,6 +9,7 @@ feature: interface-areas
 blocked-by: PL-1FT6
 touches: docs/ARCHITECTURE.md
 added: 2026-09-16
+recurrences: 2026-09-20 PL-ZW0J
 ---
 
 **Problem.** Decide the saved-workspace file - where it lives, how it is written, what a first run with no file does, and what a build does with a schema_version it does not support
