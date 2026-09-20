@@ -3010,7 +3010,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 208 entries
+### Declined to Gate 2 on the refilling-queue ground — 209 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3377,6 +3377,7 @@ that found it is the one that would otherwise leave it silent.
 - PL-ZG5J (M) Land the headless frame-cost harness that measured all of the above, so the simulation-versus-UI split can be re-measured rather than re-derived
 - PL-FCM3 (S) `bin/docket wave` reports how many gate entries wait on work outside the gate and never names or counts those items, so the beat understates what clearing the gate costs - measured 2026-09-20 as 1 startable entry plus 13 off-gate prerequisites
 - PL-TGFY (S) `PL-Z34C` reached this gate as `needs-decision`, has since moved to `blocked` and carries no debt class, so the frozen list holds an entry `bin/docket gate` no longer counts as debt and no session can clear by working it
+- PL-ZM48 (S) `docs/worker.md` records a remote-branch deletion as exiting 0, and `PL-3V6C` as two incompatible causes, where one 2026-09-20 transcript carries the 403 and the `Everything up-to-date` line together at exit 1
 
 **One entry on a second ground, recorded here rather than under a heading of
 its own — `PL-VV6N` (decide a retention rule for items captured but never
