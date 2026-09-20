@@ -4570,6 +4570,17 @@ starting is the refilling shape Phase 0 was retired for.
 
 - PL-G21K (M) `verify`'s suppression and assertion checks infer intent from diff text, so every fix adds a special case and uncovers the next: four of the five suppression markers fired zero times on a real directive across 564 commits
 
+**Four more from that item's close-out, 2026-09-20, on the same ground.** Its
+work landed in #797 and its own audit turned up three findings plus the design
+round its decision did not reach; all four are apparatus, none is `safety`- or
+`science`-classed, and admitting them would grow a gate standing at 177 of 178
+done at the beat where the milestone is one step from starting.
+
+- PL-4W2L (M) design round: pick the altitude for `verify`'s assertion check before the next of its three open items is worked, since six fixes have each uncovered the next
+- PL-5B88 (S) `verify`'s suppression check misses `@pytest.mark.skip` and `@pytest.mark.skipif`, the two commonest ways a pytest test is disabled, so it reports none while a disabled test sits in the diff
+- PL-34BG (S) a false `recurrences:` entry cannot be withdrawn by any command, so a wrong write onto an item is permanent whatever caused it
+- PL-S8JT (S) `tools/ignore_check.py`'s docstring cites a `SUPPRESSIONS` entry that #797 removed as its worked example of a `type: ignore` that is not a directive
+
 ### Required scope
 
 Nineteen items, in the order the dependencies allow. The first three are the
