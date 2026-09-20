@@ -1,14 +1,15 @@
 ---
 id: PL-4JHS
 title: Backfill the recurrences the store has already paid for onto the items that absorbed them, so the counter starts from the nine known duplicate pairs rather than from zero
-status: blocked
-feature: recurrence-signal
-touches: docs/items
-added: 2026-09-20
 priority: P3
 effort: S
+status: done
 classes: infra
+feature: recurrence-signal
+touches: docs/items
 blocked-by: PL-X5JR
+added: 2026-09-20
+closed: 2026-09-20
 payoff: starts the counter from what the store has already paid for, so the first promotion candidates appear at once rather than after three more defects have each been re-found
 verify: grep -c 'recurrences:' docs/items/PL-STC4-docket-verify-s-suppression-check-reads-prose.md
 ---
@@ -97,3 +98,58 @@ item than `payoff:` currently claims.
 The record is still worth having on a closed item: `bin/docket show` prints the
 filings whatever the status, so the next session to reopen or cite one of these
 can see that the defect was found five times rather than once.
+
+## What was written, 2026-09-20
+
+Thirteen entries across nine anchors, every one a duplicate a session had
+already confirmed by reading both briefs - `PL-JKML`'s nine same-finding rows,
+the chain it names for `PL-W7WL`, and the drop reasons the store itself
+carries. Written through `store.insert_field(..., append=...)`, so the diff is
+nine added lines and no removals, which is what
+`verify.sanctioned_queue_edit` classifies as a `recurrence`.
+
+| anchor | status | filings recorded | count |
+| --- | --- | --- | --- |
+| `PL-W7WL` | ready | `PL-66X4` 09-13, `PL-2M5T` 09-14, `PL-3HMQ` 09-20 | 3 |
+| `PL-STC4` | done | `PL-4FD2` 09-19, `PL-0KQP` 09-20 | 2 |
+| `PL-LBR6` | done | `PL-5QLP` 09-19, `PL-QMC0` 09-19 | 2 |
+| `PL-TZ7T` | done | `PL-TH7P` 08-30 | 1 |
+| `PL-4HKS` | ready | `PL-5748` 09-07 | 1 |
+| `PL-4RHP` | ready | `PL-HCTF` 09-19 | 1 |
+| `PL-GXPP` | ready | `PL-R77L` 09-19 | 1 |
+| `PL-KSCW` | ready | `PL-SH9Q` 09-16 | 1 |
+| `PL-YRYR` | ready | `PL-W6NY` 09-05 | 1 |
+
+**How many of these can surface anything: one.** `PL-W7WL` crosses
+`MIN_RECURRENCES` at three filings and `bin/docket next` now names it under
+"Filed more than once, and never promoted for it", beside `PL-SHTR`. Nothing
+else can: `plan.recurring` names open items only, and the two anchors that
+also reach the threshold - `PL-STC4` and `PL-LBR6` - are both closed. So the
+`payoff:` line above overstates what landed, exactly as the paragraph before
+this one predicted it would. The honest statement is that **the record is the
+deliverable and one promotion candidate is the by-product**: five open anchors
+now sit at one filing rather than zero, so the *next* re-filing of any of them
+crosses instead of the third.
+
+**Anchoring, and the two clusters that are already generators.** Entries went
+onto one member per cluster rather than pair-by-pair, for the reason
+`duplicates.anchor` exists - a five-item cluster spread over three items is a
+cluster nothing surfaces. Two anchors carry a `root-cause-of:` already
+(`PL-G21K` over the `verify-false-reject` cluster, `PL-TZ7T` over
+`slug-rename-on-write`), so `plan.recurring` excludes them by construction and
+the entries there are pure record. They were written anyway: this item's own
+`verify:` command asks for a `recurrences:` line on `PL-STC4`, and
+`MIN_RECURRENCES`'s docstring calibrates the threshold on the slug-rename
+cluster "peaking at two" - which is now true in the store rather than only in
+the comment.
+
+**What was not written, and why.** No entry rests on a similarity score. The
+sweep's complementary-halves rows are not duplicates and got none - two halves
+of one feature are already recorded by `feature:`. The 131 dropped items whose
+`reason:` names another id were not swept: most are "superseded", "premise
+false" or "already fixed" rather than re-filings, and separating them is a
+fresh judgment pass, which this item's brief forbids.
+
+**Done when, checked.** Every confirmed duplicate pair the sweep left in the
+store now carries a dated entry on its survivor, and the one anchor that both
+crosses three filings and is still open is visible as a promotion candidate.

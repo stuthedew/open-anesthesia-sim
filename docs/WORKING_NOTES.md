@@ -2116,13 +2116,24 @@ mattered and the pair-recall argument that chose 0.10 was sound on its own
 terms. Correcting the threshold is what made the higher floor free. Neither
 constant should be moved without re-measuring the other.
 
-**Still open, and not this feature's:** a backward sweep for clusters filed
-before any detection existed. 21 ungrouped candidate pairs over 342 open items
-on 2026-09-20, of which `PL-4HKS`/`PL-5748` and `PL-2M5T`/`PL-W7WL` are
-confirmed duplicates and `PL-BYMX`/`PL-SH9Q`/`PL-KSCW` is a three-way that would
-meet the generator threshold if it is one mechanism. The project owner is
-starting a separate session on it; `PL-4JHS` takes that session's confirmed
-pairs as its input.
+**The backward sweep ran, and the backfill it fed is done (2026-09-20).**
+`PL-JKML` read 400 pairs in full over the open store, put all 42 non-distinct
+verdicts to an independent reviewer told to refute them, and **17 stood - a 60%
+refutation rate**, which is the number to carry: reading two briefs and finding
+one defect is not a reliable verdict on its own. `PL-BYMX`/`PL-SH9Q` was one of
+the casualties, so the three-way this paragraph used to predict is not one;
+what survives there is `PL-KSCW` absorbing `PL-SH9Q`, with `PL-MBTZ` grouped
+beside it as a complementary half rather than a duplicate.
+
+`PL-4JHS` then wrote those confirmed pairs into `recurrences:` - thirteen
+entries on nine anchors - and the honest result is smaller than its `payoff:`
+line claimed. **Exactly one anchor surfaces**: `PL-W7WL`, at three filings
+(`PL-66X4`, `PL-2M5T`, `PL-3HMQ`). `plan.recurring` names open items only, and
+the two other anchors reaching the threshold - `PL-STC4` and `PL-LBR6` - are
+both closed, so their entries are record rather than signal. The backfill's
+real deliverable is that five open anchors now sit at one filing instead of
+zero, so the *next* re-filing of any of them crosses the threshold rather than
+the third. `PL-4JHS`'s own brief carries the table.
 
 
 ## main's red is the queue, not the tree - PL-T83R's 109 failures attributed by failing step (2026-09-20)

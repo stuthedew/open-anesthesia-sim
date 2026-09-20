@@ -9,6 +9,7 @@ feature: scenario-branching
 touches: src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_bookmarks.py, tests/unit/test_dashboard_frame.py, tests/integration/test_controller.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-09-20
 closed: 2026-09-20
+pr: 805
 payoff: stops the bookmark panel telling a learner to wait for a mark their branch is standing on and can never reach
 verify: grep -q 'PASSED = ' src/anesthesia_sim/app/bookmarks.py && grep -q 'def test_a_mark_the_run_has_passed_does_not_read_as_still_reachable' tests/unit/test_bookmarks.py
 ---

@@ -12,6 +12,7 @@ added: 2026-09-13
 closed: 2026-09-19
 pr: 708
 verify: grep -q 'def test_record_keeps_a_drifted_filename' subprojects/docket/tests/test_cli.py
+recurrences: 2026-09-19 PL-5QLP, 2026-09-19 PL-QMC0
 ---
 
 **Problem.** bin/docket record renames a drifted item file as a side effect of writing a pr number, which conflicts against whoever else is holding that file
