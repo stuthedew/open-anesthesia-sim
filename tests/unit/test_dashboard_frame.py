@@ -57,6 +57,8 @@ from anesthesia_sim.app.dashboard_frame import (
     MAC_TARGET_HEADING,
     MARK_STANDING_TEXT,
     MAX_DISPLAYED_RUNS,
+    MARK_STANDING_COMPARED_TEXT,
+    MARK_STILL_RUNNING_TEXT,
     MAX_LISTED_ADJUSTMENTS,
     NEW_CASE_CARRYOVER_TEMPLATE,
     NEW_CASE_IS_NOT_A_VIEW_TEXT,
@@ -77,6 +79,7 @@ from anesthesia_sim.app.dashboard_frame import (
     BookmarkPanel,
     Emphasis,
     HaltDisposition,
+    RunMarks,
     accounting,
     bookmark_panel,
     delivered_fraction,
@@ -214,9 +217,32 @@ def _state_of(sample: _Sample, substance_id: str) -> tuple[float, ...]:
 
 
 def _panel(marks: BookmarkSet) -> BookmarkPanel:
-    """That set's panel, with every mark standing as still reachable."""
+    """That set's panel on one run, with every mark standing as still reachable."""
 
-    return bookmark_panel(marks, _unreached(marks))
+    return bookmark_panel(marks, _one_run(_unreached(marks)))
+
+
+def _one_run(standings: BookmarkStandings) -> tuple[RunMarks, ...]:
+    """A lone run's marks, which is what a panel test wants unless it is comparing.
+
+    A lone run is given no name - `SimulationView._rename_runs` states the
+    rule and `run_label` is where the word comes from when there is one - so
+    the label here is the one the dashboard would pass and no row draws it.
+    """
+
+    return (RunMarks(run_label(0), standings),)
+
+
+def _two_runs(
+    trunk: BookmarkStandings, branch: BookmarkStandings
+) -> tuple[RunMarks, ...]:
+    """A trunk and a branch drawn together, in the order the dashboard adds them.
+
+    `SimulationView.add_run` appends, and Reset truncates back to the first
+    run, so the trunk is always run 1 and a branch is always run 2.
+    """
+
+    return (RunMarks(run_label(0), trunk), RunMarks(run_label(1), branch))
 
 
 def _unreached(marks: BookmarkSet) -> BookmarkStandings:
@@ -226,13 +252,32 @@ def _unreached(marks: BookmarkSet) -> BookmarkStandings:
     value, and the standing is the one that adds no words to them.
     """
 
+    return _standings(marks)
+
+
+def _standings(
+    marks: BookmarkSet,
+    *,
+    reached_instants_s: frozenset[float] = frozenset(),
+    reached_crossings: frozenset[tuple[RecordedQuantity, float]] = frozenset(),
+    opened_at_s: float = 0.0,
+    elapsed_s: float = 0.0,
+    stopped_at_cap: bool = False,
+) -> BookmarkStandings:
+    """One run's standings on that set, defaulting to a run that has just opened.
+
+    The cap is the model's own rather than a number written here, so a test
+    that means "not at the cap" cannot come to disagree with the run length
+    `core/supported_ranges.py` supports.
+    """
+
     return marks.standings(
-        reached_instants_s=frozenset(),
-        reached_crossings=frozenset(),
-        opened_at_s=0.0,
-        elapsed_s=0.0,
+        reached_instants_s=reached_instants_s,
+        reached_crossings=reached_crossings,
+        opened_at_s=opened_at_s,
+        elapsed_s=elapsed_s,
         run_length_cap_s=MAXIMUM_ELAPSED_SIMULATION_TIME_S,
-        stopped_at_cap=False,
+        stopped_at_cap=stopped_at_cap,
     )
 
 
@@ -1733,7 +1778,7 @@ def _marks() -> BookmarkSet:
 
 
 def test_an_unmarked_run_lists_each_collection_as_empty_in_its_own_words() -> None:
-    panel = bookmark_panel(BookmarkSet(), _unreached(BookmarkSet()))
+    panel = bookmark_panel(BookmarkSet(), _one_run(_unreached(BookmarkSet())))
 
     assert panel.times.rows == ()
     assert panel.targets.rows == ()
@@ -1741,14 +1786,14 @@ def test_an_unmarked_run_lists_each_collection_as_empty_in_its_own_words() -> No
 
 
 def test_the_two_collections_carry_their_own_headings() -> None:
-    panel = bookmark_panel(BookmarkSet(), _unreached(BookmarkSet()))
+    panel = bookmark_panel(BookmarkSet(), _one_run(_unreached(BookmarkSet())))
 
     assert panel.times.heading == TIME_BOOKMARK_HEADING
     assert panel.targets.heading == MAC_TARGET_HEADING
 
 
 def test_a_marked_instant_is_listed_at_the_clock_the_run_states() -> None:
-    panel = bookmark_panel(_marks(), _unreached(_marks()))
+    panel = bookmark_panel(_marks(), _one_run(_unreached(_marks())))
 
     assert panel.times.rows == (f"{format_elapsed(600.0)} – intubation",)
 
@@ -1760,7 +1805,7 @@ def test_an_unnamed_instant_is_listed_under_its_own_time() -> None:
 
 
 def test_a_target_names_its_compartment_and_its_height() -> None:
-    row = bookmark_panel(_marks(), _unreached(_marks())).targets.rows[0]
+    row = bookmark_panel(_marks(), _one_run(_unreached(_marks()))).targets.rows[0]
 
     assert row.startswith("Vessel-rich 0.80 ×MAC")
 
@@ -1812,7 +1857,7 @@ def test_marks_are_listed_oldest_first() -> None:
         .with_time_bookmark(TimeBookmark(600.0, "second"))
     )
 
-    rows = bookmark_panel(marks, _unreached(marks)).times.rows
+    rows = bookmark_panel(marks, _one_run(_unreached(marks))).times.rows
 
     assert rows[0].endswith("first")
     assert rows[1].endswith("second")
@@ -1823,7 +1868,7 @@ def test_a_mark_the_run_can_still_reach_adds_no_words_to_its_row() -> None:
     # (`.claude/rules/ui-reader.md`): a standing repeated on every row would
     # be chrome, and the rows whose state a reader has to know are the ones
     # where something has happened.
-    panel = bookmark_panel(_marks(), _unreached(_marks()))
+    panel = bookmark_panel(_marks(), _one_run(_unreached(_marks())))
     everything = " ".join((*panel.times.rows, *panel.targets.rows)).lower()
 
     for claim in ("reached", "crossed", "halted", "stopped", "still running"):
@@ -1887,10 +1932,138 @@ def test_the_panel_reads_the_marks_the_snapshot_carries() -> None:
     controller.add_time_bookmark(TimeBookmark(600.0, "intubation"))
 
     panel = bookmark_panel(
-        controller.snapshot().bookmarks, controller.snapshot().bookmark_standings
+        controller.snapshot().bookmarks, _one_run(controller.snapshot().bookmark_standings)
     )
 
     assert panel.times.rows == (f"{format_elapsed(600.0)} – intubation",)
+
+
+# ---------------------------------- one mark, two runs, and whose answer it is
+
+
+def test_two_runs_that_answer_a_mark_alike_state_it_once_and_name_no_run() -> None:
+    """`PL-LHBY`, `PL-4KZD`: an unattributed clause is a claim about the case.
+
+    So it may be drawn only where it holds of every run on screen. That is
+    what makes a lone run's row the degenerate case of the compared one
+    rather than a second path through the panel - a lone run agrees with
+    itself - and it is why a quiet row does not grow a run name per run it is
+    quiet on.
+    """
+
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(30.0, "check"))
+    passed = _standings(marks, elapsed_s=120.0)
+
+    (row,) = bookmark_panel(marks, _two_runs(passed, passed)).times.rows
+
+    assert MARK_STANDING_TEXT[MarkStanding.PASSED] in row
+    assert run_label(0) not in row
+    assert run_label(1) not in row
+
+
+def test_two_runs_still_running_for_a_mark_add_no_words_to_its_row() -> None:
+    # The same rule at the standing that draws as silence: a comparison whose
+    # runs have both yet to reach a mark has nothing to report about it, and
+    # a run name on every quiet row would be the standing chrome
+    # `.claude/rules/ui-reader.md` rules out.
+    marks = _marks()
+    unreached = _unreached(marks)
+
+    panel = bookmark_panel(marks, _two_runs(unreached, unreached))
+    everything = " ".join((*panel.times.rows, *panel.targets.rows))
+
+    assert run_label(0) not in everything
+    assert MARK_STILL_RUNNING_TEXT not in everything
+
+
+def test_a_branch_that_halted_on_a_target_the_trunk_is_still_running_for_says_so() -> None:
+    """`PL-LHBY`, the silent negative, reproduced offscreen against `4c282700`.
+
+    A MAC target the branch halts on while the trunk is still running for it.
+    Drawn from the reference run the row said nothing at all, so a branch
+    stopping at a mark the learner set was indistinguishable on screen from a
+    Pause - the one indication that a run stopped where it was asked to
+    existed for a lone run and vanished as soon as a second was drawn.
+    """
+
+    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5))
+    marks = BookmarkSet().with_mac_target(target)
+    trunk = _standings(marks, elapsed_s=60.0)
+    branch = _standings(
+        marks,
+        opened_at_s=60.0,
+        elapsed_s=174.7,
+        reached_crossings=frozenset({target.crossing_key}),
+    )
+
+    (row,) = bookmark_panel(marks, _two_runs(trunk, branch)).targets.rows
+
+    assert f"{run_label(1)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.REACHED]}" in row
+    assert f"{run_label(0)} {MARK_STILL_RUNNING_TEXT}" in row
+
+
+def test_a_bookmark_the_branch_opened_after_is_not_drawn_as_the_trunk_left_it() -> None:
+    """`PL-LHBY`, the false positive, and the worse half of the pair.
+
+    An inherited instant the branch provably cannot reach read as the trunk's
+    `passed`, so the screen asserted of the displayed branch something the
+    model can decide is false - which `CLAUDE.md`'s safety-critical standard
+    treats as a failure of the displayed value, the correct standing under
+    the wrong run being the wrong standing.
+    """
+
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(30.0, "check"))
+    trunk = _standings(marks, elapsed_s=60.0)
+    branch = _standings(marks, opened_at_s=60.0, elapsed_s=60.0)
+
+    (row,) = bookmark_panel(marks, _two_runs(trunk, branch)).times.rows
+
+    assert f"{run_label(0)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.PASSED]}" in row
+    assert row.endswith(
+        f"{run_label(1)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.BEFORE_THIS_BRANCH]}"
+    )
+
+
+def test_the_inherited_standing_can_reach_a_drawn_row() -> None:
+    """`PL-LHBY`: `BEFORE_THIS_BRANCH` had no screen it could appear on.
+
+    It exists so a learner is not told something false about a mark a branch
+    carries but cannot reach, and the panel read the reference run - which is
+    the trunk, opened at zero, and no instant stands before that. The
+    vocabulary was unreachable by construction rather than by accident, so
+    this asserts the word itself rather than only the row that carries it.
+    """
+
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(30.0))
+    trunk = _standings(marks, elapsed_s=60.0)
+    branch = _standings(marks, opened_at_s=60.0, elapsed_s=60.0)
+
+    (row,) = bookmark_panel(marks, _two_runs(trunk, branch)).times.rows
+
+    assert MARK_STANDING_TEXT[MarkStanding.BEFORE_THIS_BRANCH] in row
+
+
+def test_every_standing_a_run_can_report_has_a_word_on_an_attributed_row() -> None:
+    """The compared table's own walk, and it asks for more than the plain one.
+
+    `MARK_STANDING_TEXT` may draw a standing as silence, because an
+    unattributed row states one answer and silence is unambiguous there.
+    Beside a named run it is not: a clause that rendered as a bare run name
+    would leave the reader to decide whether that run had no answer or had
+    not been asked. So every member owes a word here, which is what a new
+    member added without one would fail on.
+    """
+
+    for standing in MarkStanding:
+        assert MARK_STANDING_COMPARED_TEXT[standing]
+
+
+def test_a_panel_drawn_for_no_run_is_refused() -> None:
+    # An obvious failure rather than a plausible-looking panel: the case's
+    # marks listed under standings nobody had answered would be rows a reader
+    # could read a standing off.
+    with pytest.raises(ValueError, match="at least one run"):
+        bookmark_panel(_marks(), ())
 
 
 # ------------------------------------- the branch control and its three locks

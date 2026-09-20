@@ -271,6 +271,33 @@ MARK_STANDING_TEXT: Final[Mapping[MarkStanding, str]] = MappingProxyType(
     }
 )
 
+# The same answers, attributed, for a row whose displayed runs disagree
+# (`PL-LHBY`, `PL-4KZD`). A mark's *set* is shared across the runs on screen -
+# `SimulationView._apply_to_every_run` is the only thing that writes one - but
+# its *standing* is computed from each run's own clock, its own opening
+# instant and its own halts, so two managements of one case answer the same
+# mark differently and both answers are the case's news.
+#
+# **`STILL_RUNNING` is the one entry that gains a word here, and only here.**
+# On an unattributed row silence is unambiguous: nothing has happened to a
+# mark on the one run whose answer the row states. Beside a named run that has
+# something to say, silence would read as the second run having no answer
+# rather than as its answer being "not yet", so the row would leave a reader
+# to infer from an absence exactly what `.claude/rules/ui-reader.md` keeps
+# conditional text for. The word costs nothing on the rows that stay
+# unattributed, because those rows never reach this table.
+#
+# Derived from `MARK_STANDING_TEXT` rather than written out again, so the four
+# words the two tables share cannot come to disagree about what a standing is
+# called on one row and on the row beside it.
+MARK_STILL_RUNNING_TEXT: Final = "still running"
+MARK_STANDING_COMPARED_TEXT: Final[Mapping[MarkStanding, str]] = MappingProxyType(
+    {**MARK_STANDING_TEXT, MarkStanding.STILL_RUNNING: MARK_STILL_RUNNING_TEXT}
+)
+# One run's answer, named by the run it belongs to. The run's own word comes
+# first, because a row that disagrees is scanned down its run names.
+MARK_ATTRIBUTION_TEMPLATE: Final = "{run} {said}"
+
 # The editor's own words. Field labels rather than sentences, which is the
 # form `.claude/rules/ui-reader.md` asks a specialist reader's screen to carry
 # its meaning in: "Compartment" and "Height" say what the control sets, and
@@ -1241,21 +1268,100 @@ class BookmarkPanel:
     targets: MarkListing
 
 
-def _with_standing(stated: str, standing: MarkStanding) -> str:
-    """One row, with what the run has done about it where that is worth saying.
+@dataclass(frozen=True, slots=True)
+class RunMarks:
+    """One displayed run's answers about the marks the case carries.
 
-    Args:
-        stated: The mark's own value and name, which every row carries.
-        standing: Where the mark stands on this run.
+    The panel is drawn from one of these per run rather than from a single
+    run's snapshot (`PL-LHBY`, `PL-4KZD`). A standing is computed from the
+    run's own clock, its own opening instant and its own halt set, so reading
+    one run's standings for every run's rows stated one management's answer
+    as the case's while two were on screen - and a learner comparing two
+    managements is reading exactly the quantity that differs.
 
-    Returns:
-        The row unchanged for a mark the run can still reach, and the row
-        followed by the standing otherwise.
+    Attributes:
+        label: What this run is called in text, from `run_label`. The
+            caller's, for the reason `chart_frame.RunInput.label` gives: the
+            same word has to appear on the run's own panel beside the
+            settings that produced it, and a name this module invented would
+            be this module's alone. It is drawn only on a row whose runs
+            disagree, so a lone run's panel never states it.
+        standings: This run's standing on each of the case's marks, from
+            `SimulationSnapshot.bookmark_standings` - the same snapshot the
+            run's readouts and traces were drawn from, so a row and the
+            trace it is read against are one instant of one run.
     """
 
-    said = MARK_STANDING_TEXT[standing]
+    label: str
+    standings: BookmarkStandings
 
-    return f"{stated}{MARK_STANDING_JOINER}{said}" if said else stated
+
+def _with_standings(stated: str, said: Sequence[str]) -> str:
+    """One row: the mark's own value, then what the displayed runs say about it.
+
+    Args:
+        stated: The mark's own value and name, which every row carries. It is
+            stated once however many runs are shown, because the marks are
+            shared across them by construction; it is the answers that differ.
+        said: What each clause of the row says, in drawing order, from
+            `_standing_clauses`. A clause that says nothing is dropped rather
+            than drawn as an empty tail.
+
+    Returns:
+        The row, with each clause that has something to say joined onto it.
+    """
+
+    return stated + "".join(f"{MARK_STANDING_JOINER}{clause}" for clause in said if clause)
+
+
+def _standing_clauses(
+    runs: Sequence[RunMarks], standings: Sequence[MarkStanding]
+) -> tuple[str, ...]:
+    """What one mark's row says about it, attributed where the runs disagree.
+
+    **Agreement is what decides attribution, not the number of runs**
+    (`PL-LHBY`, `PL-4KZD`). An unattributed clause is a claim about the case,
+    so it may be drawn only where it is true of every run on screen - which is
+    always so for a lone run, and so for two runs that answer alike. That
+    makes the single-run row the degenerate case of this rule rather than a
+    second path through it, which is what keeps the two from drifting apart:
+    the panel had no way to draw a branch's own answer at all while it read
+    one run's standings for every run's marks, and `MarkStanding`'s
+    `BEFORE_THIS_BRANCH` could not reach the screen, the reference run being
+    the trunk and no mark standing before a trunk.
+
+    Where they disagree the clause is no longer the case's, so every run is
+    named - including a run whose answer is "not yet", which unattributed
+    silence would hide behind the run that did have something to say.
+
+    Args:
+        runs: The displayed runs, in drawing order.
+        standings: Each of those runs' standing on this one mark, in the same
+            order.
+
+    Returns:
+        One clause for the case where the runs agree, and one clause per run
+        where they do not.
+
+    Raises:
+        ValueError: If a standing is not given for each run, which would
+            silently attribute one run's answer to another - the failure this
+            function exists to make impossible.
+    """
+
+    if len(runs) != len(standings):
+        raise ValueError(
+            f"a mark stands somewhere on each displayed run; {len(runs)} run(s) were given "
+            f"with {len(standings)} standing(s)"
+        )
+
+    if len(set(standings)) == 1:
+        return (MARK_STANDING_TEXT[standings[0]],)
+
+    return tuple(
+        MARK_ATTRIBUTION_TEMPLATE.format(run=run.label, said=MARK_STANDING_COMPARED_TEXT[standing])
+        for run, standing in zip(runs, standings, strict=True)
+    )
 
 
 def format_time_bookmark(bookmark: TimeBookmark, standing: MarkStanding) -> str:
@@ -1276,12 +1382,18 @@ def format_time_bookmark(bookmark: TimeBookmark, standing: MarkStanding) -> str:
             still reachable without anybody having asked the run.
     """
 
+    return _with_standings(_stated_time_bookmark(bookmark), (MARK_STANDING_TEXT[standing],))
+
+
+def _stated_time_bookmark(bookmark: TimeBookmark) -> str:
+    """A marked instant's own words: the time, and the name if it was given one."""
+
     rendered = format_elapsed(bookmark.instant_s)
 
-    if bookmark.label is not None:
-        rendered = f"{rendered}{MARK_LABEL_JOINER}{bookmark.label}"
+    if bookmark.label is None:
+        return rendered
 
-    return _with_standing(rendered, standing)
+    return f"{rendered}{MARK_LABEL_JOINER}{bookmark.label}"
 
 
 def format_mac_target(target: MacTarget, standing: MarkStanding) -> str:
@@ -1303,45 +1415,75 @@ def format_mac_target(target: MacTarget, standing: MarkStanding) -> str:
             `format_time_bookmark` gives.
     """
 
+    return _with_standings(_stated_mac_target(target), (MARK_STANDING_TEXT[standing],))
+
+
+def _stated_mac_target(target: MacTarget) -> str:
+    """A marked height's own words: the compartment, the height, and any name."""
+
     compartment = trace_style(target.quantity).label
     height = render_mac_multiple(target.mac_multiple)
     stated = f"{compartment} {height}"
 
-    if target.label is not None:
-        stated = f"{stated}{MARK_LABEL_JOINER}{target.label}"
+    if target.label is None:
+        return stated
 
-    return _with_standing(stated, standing)
+    return f"{stated}{MARK_LABEL_JOINER}{target.label}"
 
 
-def bookmark_panel(bookmarks: BookmarkSet, standings: BookmarkStandings) -> BookmarkPanel:
-    """The two collections a run is marked at, as two listings.
+def bookmark_panel(bookmarks: BookmarkSet, runs: Sequence[RunMarks]) -> BookmarkPanel:
+    """The two collections the case is marked at, as two listings.
 
-    It states what is marked *and* where the run has got with each of them
+    It states what is marked *and* where each displayed run has got with it
     (`PL-CTD7`). Still nothing here reads a compartment: the standings are
     computed in the advance loop, one per completed simulation step, and
     arrive through `SimulationSnapshot.bookmark_standings` — which is what
     keeps a drawn row from implying a detection this module performed.
 
+    **Every displayed run, not the reference run** (`PL-LHBY`, `PL-4KZD`). The
+    marks are the case's and are shared across the runs by construction, so
+    one row per mark is right; their standings are each run's own, so a row
+    states the answer unattributed only where the runs agree and names them
+    where they do not. Reading `snapshots[0]` for every row instead put one
+    management's answer on the other's mark in both directions: a branch that
+    halted on a learner's mark reported nothing, because the trunk was still
+    running for it, and an inherited bookmark the branch could never reach
+    read as the trunk had left it.
+
     Args:
-        bookmarks: The run's marks, from `SimulationSnapshot.bookmarks`.
-        standings: Their standings, from the same snapshot. Two arguments off
-            one snapshot rather than one derived from the other, so a panel
-            cannot be drawn from one run's marks and another run's answers.
+        bookmarks: The case's marks, from `SimulationSnapshot.bookmarks`.
+        runs: Every run on screen, in drawing order, each with the standings
+            read from the same snapshot its traces were drawn from. Marks and
+            standings arrive as separate arguments rather than one derived
+            from the other, so a panel cannot be drawn from one run's marks
+            and another run's answers.
 
     Returns:
         Both listings, each with its heading, its rows and its empty line.
 
     Raises:
-        SimulationConfigurationError: If `standings` was computed for a set
-            that does not hold one of these marks, which `BookmarkStandings`
-            refuses rather than defaulting.
+        ValueError: If no run is given. A panel drawn for no run would list
+            the case's marks under standings nobody had answered, which is
+            the plausible-looking row `CLAUDE.md`'s safety-critical standard
+            prefers an obvious failure to.
+        SimulationConfigurationError: If a run's standings were computed for a
+            set that does not hold one of these marks, which
+            `BookmarkStandings` refuses rather than defaulting.
     """
+
+    if not runs:
+        raise ValueError("a marks panel states at least one run's standings; none was given")
 
     return BookmarkPanel(
         times=MarkListing(
             TIME_BOOKMARK_HEADING,
             tuple(
-                format_time_bookmark(bookmark, standings.of_time_bookmark(bookmark))
+                _with_standings(
+                    _stated_time_bookmark(bookmark),
+                    _standing_clauses(
+                        runs, tuple(run.standings.of_time_bookmark(bookmark) for run in runs)
+                    ),
+                )
                 for bookmark in bookmarks.time_bookmarks
             ),
             NO_TIME_BOOKMARKS_TEXT,
@@ -1349,7 +1491,12 @@ def bookmark_panel(bookmarks: BookmarkSet, standings: BookmarkStandings) -> Book
         targets=MarkListing(
             MAC_TARGET_HEADING,
             tuple(
-                format_mac_target(target, standings.of_mac_target(target))
+                _with_standings(
+                    _stated_mac_target(target),
+                    _standing_clauses(
+                        runs, tuple(run.standings.of_mac_target(target) for run in runs)
+                    ),
+                )
                 for target in bookmarks.mac_targets
             ),
             NO_MAC_TARGETS_TEXT,

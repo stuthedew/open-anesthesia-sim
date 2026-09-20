@@ -71,6 +71,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WASH_IN_DENOMINATOR_TEXT,
     WASH_IN_HEADING,
     WASH_IN_MODELLED_TEXT,
+    RunMarks,
     bookmark_panel,
     compartment_cap_notice,
     fork_offer,
@@ -904,27 +905,45 @@ class SimulationView(QWidget):
         for index, (run, snapshot) in enumerate(zip(self._runs, snapshots, strict=True)):
             run.refresh(snapshot, frame, index)
 
-        self._refresh_bookmarks(snapshots[0])
+        self._refresh_bookmarks(snapshots)
         self._refresh_fork_panel()
         self._frame = frame
         self.presented_frames += 1
 
     # -------------------------------------------------------------- bookmarks
 
-    def _refresh_bookmarks(self, snapshot: SimulationSnapshot) -> None:
-        """Redraw both collections, and rebound the height control to this agent.
+    def _refresh_bookmarks(self, snapshots: Sequence[SimulationSnapshot]) -> None:
+        """Redraw both collections from every run, and rebound the height control.
 
-        Read from the reference run, which is the run every other reading on
-        this panel is taken from. Reading one run is correct rather than a
-        simplification: `_apply_to_every_run` is the only thing that writes a
-        mark, so every displayed run carries the same set, and
-        `test_every_displayed_run_carries_the_same_marks` is what holds that.
+        The *set* of marks is the reference run's, and reading one run for it
+        is correct rather than a simplification: `_apply_to_every_run` is the
+        only thing that writes a mark, so every displayed run carries the same
+        set, and `test_every_displayed_run_carries_the_same_marks` is what
+        holds that.
+
+        **Their standings are not, and are read from every run** (`PL-LHBY`,
+        `PL-4KZD`). A standing is computed from the run's own clock, its own
+        opening instant and its own halts, so the runs answer one mark
+        differently as soon as a branch is drawn. Passing the whole tick's
+        snapshots rather than a chosen one is what keeps the choice from
+        being made here at all: there is no reference run to pick.
+
+        The height control stays bound to the reference run's ceiling, which
+        is `PL-GHMB` rather than this method's business.
 
         Args:
-            snapshot: The reference run's snapshot for this tick.
+            snapshots: Every displayed run's snapshot for this tick, in
+                drawing order - the same reads the frame was assembled from.
         """
 
-        panel = bookmark_panel(snapshot.bookmarks, snapshot.bookmark_standings)
+        reference = snapshots[0]
+        panel = bookmark_panel(
+            reference.bookmarks,
+            tuple(
+                RunMarks(run_label(index), snapshot.bookmark_standings)
+                for index, snapshot in enumerate(snapshots)
+            ),
+        )
         self._bookmarks_panel.set_panel(panel)
 
         if self._bookmark_dialog is None:
@@ -933,8 +952,8 @@ class SimulationView(QWidget):
         self._bookmark_dialog.set_panel(panel)
         self._bookmark_dialog.set_reachable_height(
             mac_multiple(
-                fraction_from_percent(snapshot.max_delivered_concentration_percent),
-                snapshot.agent_mac_percent,
+                fraction_from_percent(reference.max_delivered_concentration_percent),
+                reference.agent_mac_percent,
             )
         )
 
