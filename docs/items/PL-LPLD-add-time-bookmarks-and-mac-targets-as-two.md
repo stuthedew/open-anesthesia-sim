@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/controller.
 blocked-by: PL-25KS
 added: 2026-09-06
 closed: 2026-09-20
+pr: 758
 payoff: lets a learner run fast to the moment they care about and return to it by name, instead of watching the clock and overshooting by minutes of simulated time at 300x
 verify: grep -rq 'class TimeBookmark' src/anesthesia_sim/ && grep -rq 'class MacTarget' src/anesthesia_sim/
 ---
