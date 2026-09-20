@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: remote-ref-deletion
+milestone: v0.4.33
 touches: ROADMAP.md, docs/items
 added: 2026-09-20
 closed: 2026-09-20
