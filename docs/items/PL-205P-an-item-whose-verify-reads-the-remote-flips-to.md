@@ -121,6 +121,15 @@ exact rule a script can state and a reviewer can read. Then:
   where sessions already look - instead of only on `main`'s run, which by this
   item's own account is watched by nobody.
 
+**One trap for whoever builds it.** The classifier must read the command
+*being run*, not any text inside it. `PL-K2C8`'s `verify:` is `grep -q 'git
+push origin --delete' .claude/skills/docket/SKILL.md && …` - it contains a
+network verb as a **search string** and is perfectly hermetic, touching nothing
+but a file in the tree. A naive substring scan for the verbs above calls it
+non-hermetic and silently downgrades a finding that should stay a hard error.
+It is the only such case in the store today and it is the one a first
+implementation will get wrong, so it is the regression test to write first.
+
 **Done when.** An item whose `verify:` reads the remote, and which has flipped
 to passing, is reported where a session will act on it and does not fail
 `main`; an item whose `verify:` is a function of the tree still fails as it
