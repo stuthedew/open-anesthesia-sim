@@ -532,17 +532,28 @@ def test_the_hover_answers_for_every_run_in_reach_on_a_real_branched_case(
     assert [line.split("\u00b7")[0].strip() for line in lines[2:]] == [first.label, second.label]
     assert lines[2] != lines[3], "the two runs must read differently for this to matter"
 
-    # Two pixels of hand movement, which is what used to swap the answer. The
-    # fat lines are what must not move; the box may still gain a line, because
-    # `PL-0RZ0` made every compartment in reach answer too and the branch's
-    # alveolar trace has washed down to within the radius of fat by this
-    # instant - which is the axis compression `PL-QYBW` names, now displayed
-    # rather than resolved by arithmetic the reader cannot see.
-    for moved in (2.0, -2.0):
-        nudged = chart.readout_at(time_s, on_trunk + moved * percent_per_pixel)
+    # Two pixels of hand movement, which is what used to swap the answer. Down
+    # the axis nothing changes at all.
+    assert chart.readout_at(time_s, on_trunk - 2.0 * percent_per_pixel) == readout
 
-        assert nudged is not None
-        assert _fat_lines(nudged) == lines[2:]
+    # Up it the box gains a line, because `PL-0RZ0` made every compartment in
+    # reach answer too and the branch's alveolar trace - its vaporizer off for
+    # ten minutes by this instant - has washed down to within the radius of
+    # fat. That is the compression `PL-QYBW` names, now displayed rather than
+    # resolved by arithmetic the reader cannot see. What the box says about fat
+    # is unchanged, which is the property `PL-JVHL` put here.
+    above = chart.readout_at(time_s, on_trunk + 2.0 * percent_per_pixel)
+
+    assert above is not None
+    assert _fat_lines(above) == lines[2:]
+    assert above == format_compared_trace_hover(
+        (
+            (second, RecordedQuantity.ALVEOLAR, len(second.times_s) - 1),
+            (first, RecordedQuantity.FAT, len(first.times_s) - 1),
+            (second, RecordedQuantity.FAT, len(second.times_s) - 1),
+        ),
+        len(frame.runs),
+    )
 
 
 def test_the_references_answer_no_hover_and_clear_space_answers_none(
