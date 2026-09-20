@@ -8,6 +8,7 @@ classes: defect
 feature: docket-store
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_plan.py
 added: 2026-09-17
+root-cause-of: PL-JFQ3, PL-8G48, PL-CHQY
 ---
 
 **Problem.** docket next and wave read status: blocked literally, so an item whose blockers have all closed ranks as unstartable while docket check already prints it as promotable
@@ -54,3 +55,44 @@ hand.
 ranked as startable with the reason line saying so, or named in their own output
 the way `bin/docket check` already names them - and a test under
 `subprojects/docket/tests/` drives an item all of whose blockers are closed.
+
+## Evidence for the decision above, measured by the `PL-8G48` pass (2026-09-20)
+
+**The decision is not answered here.** What follows is the count option 1 rests
+on, produced by working a whole batch of the advisory by hand.
+
+`bin/docket check` named four items as "every blocker has closed; it is ready to
+promote". Read against the tree, **one of the four was promotable**:
+
+| item | what the tree said | disposition |
+| --- | --- | --- |
+| `PL-8PS6` | carrier exists, slot specified and empty | `ready`, `P1` |
+| `PL-439V` | the work had already landed inside `PL-FG9D` | `done` |
+| `PL-WZVZ` | no second machine, and its surface is deferred by a standing rule to `PL-TH35`/`PL-R1WQ` | stays `blocked`, re-pointed |
+| `PL-CTD7` | a user-facing question was written into it after its last triage | `needs-decision`, `P1` |
+
+`PL-JFQ3`'s nine, measured the same way four days earlier, came to five
+startable, three blocked on something nobody had written down, and one already
+done by another item. **Across both passes: 13 items, 6 genuinely startable.**
+
+**What that number is evidence about.** Option 1 makes `next` and `wave` rank a
+`blocked` item whose blockers have all closed *as startable*. On this evidence
+that ranks roughly half of them wrongly - and the three failure modes are not
+symmetrical. An item that is already `done` or that needs a decision is a wasted
+pick a session recovers from in minutes. `PL-WZVZ` is the expensive one: it
+would have been ranked startable **and** pulled to `P1`, because leaving
+`blocked` is what ends the `anticipated` exemption - so a recomputed status
+would have put an unbuildable item into the top band and the debt gate without
+anybody deciding to. That is the specific cost of "a recomputed status
+overriding what an item declares", which the `Decision needed.` above names as
+the axis to weigh 1 against 2 on.
+
+**It is not evidence that the advisory is wrong**, and the distinction matters.
+"Every blocker has closed" was true for all four; what it cannot see is whether
+anything *else* holds the item, which is the judgment three of these four
+needed. Option 2 - name the promotable ids in `next` and `wave` without
+re-ranking them - is the option this measurement does not argue against.
+
+**One `blocked-by` edge that would have survived any of the three options:**
+`PL-WZVZ` now names `PL-TH35` and `PL-R1WQ`, and `PL-CTD7`'s closed edge is
+cleared. Both were written by hand, by the session that read the tree.

@@ -3,12 +3,14 @@ id: PL-439V
 title: Make the Tec 6 the concrete second device class the machine abstraction is designed against
 priority: P2
 effort: S
-status: blocked
+status: done
 classes: docs, anticipated
 feature: anesthesia-machine
-blocked-by: PL-FG9D
-touches: docs/MODEL.md, ROADMAP.md
+touches: docs/MODEL.md, ROADMAP.md, docs/machine-abstraction.md
 added: 2026-09-06
+closed: 2026-09-20
+payoff: closes the design question the machine abstraction had to answer before a second machine could be added - the Tec 6 is named as its own device class rather than flattened into a variable-bypass vaporizer with an 18 in the maximum field
+verify: grep -q 'fixed_volume_percent.*dial is volumes percent' docs/machine-abstraction.md
 ---
 
 **Problem.** `PL-FG9D` (design the base anesthesia-machine abstraction so a
@@ -67,3 +69,35 @@ supplies rather than inherits, and shows how each of the two classes is
 expressed under it — or records, with reasons, that delivery-device class is
 deliberately outside the abstraction and what a machine module may therefore
 not claim.
+
+## Satisfied by `PL-FG9D`'s specification, 2026-09-20 (`PL-8G48`)
+
+Read against the tree after `PL-FG9D` (design the base anesthesia-machine
+abstraction) closed as `#748`. `docs/machine-abstraction.md` § "Dial mapping"
+answers all three clauses of the first disjunct in "Done when" above, so this item is `done`
+rather than promotable:
+
+- **Names the Tec 6 as a device class distinct from variable bypass.** The dial
+  mapping table carries two members, `variable_bypass` ("dial is a
+  partial-pressure fraction", from today's model) and `fixed_volume_percent`
+  ("dial is volumes percent"), the second sourced to survey section (b1) and
+  named as the Tec 6.
+- **States which behaviour a module supplies rather than inherits.** `dial_mapping`
+  is one of the fields in that document's "fields the survey's evidence admits"
+  table, whose consumer is the model and whose effect is "which strategy runs" -
+  so a profile supplies its mapping by name and inherits the rest.
+- **Shows how each class is expressed under it.** The same table, plus the
+  paragraph stating that the two mappings differ by
+  $`P_{\mathrm{ambient}}/P_{\mathrm{reference}}`$.
+
+**And it records the part this item most wanted recorded**, which is that the
+distinction is currently a declared coincidence rather than a working one: the
+model has no ambient pressure, so in its present domain the two functions agree
+everywhere, and `PL-5K5C` (record the model's sea-level assumption) is what
+separates them. That is the discriminating test this item asked for, answered
+honestly rather than by a principle any design could claim to meet.
+
+**The `ROADMAP.md` half was never this item's to do.** The brief already says
+the possible line in § "Planned milestones" item 1 "is the project owner's call,
+not this item's", so nothing is outstanding here. Item 1 now names `PL-FG9D` and
+`PL-4DCG` outright, which `PL-Z4WL` added.

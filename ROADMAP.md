@@ -2940,10 +2940,11 @@ what makes the beat satisfiable; it was not the reason the port moved, but it is
 the structural debt the move happens to pay.
 
 **The two that do not move are the two that never depended on the toolkit.**
-`PL-8PS6` and `PL-WZVZ` wait on `PL-FG9D`, the base anesthesia-machine
-abstraction, which no milestone section names. Nothing forbids clearing them
-before v0.5.0; doing it means scoping that design round first, which is a
-milestone decision rather than gate work.
+`PL-8PS6` and `PL-WZVZ` waited on `PL-FG9D`, the base anesthesia-machine
+abstraction, which no milestone section names. **`PL-FG9D` closed on 2026-09-20
+(`#748`) and the two have since diverged** - `PL-8PS6` is startable and
+`PL-WZVZ` is not. § "Behind a design round no milestone section places" below
+carries what each now waits on; they are no longer one case.
 
 **The re-point that carries this is in the items, not here.** All nine named a
 version in `blocked-by` or in prose; each now names the port item that does the
@@ -3044,9 +3045,39 @@ planned-milestone line of its own") until `PL-Z4WL` corrected it;
 `PL-FG9D`'s own brief opens by quoting item 1, so the two documents had
 disagreed about whether the intent was recorded at all. What is true is the
 narrower claim: intent is not scope, no section places it, and so nothing
-schedules it. These two are unlike the seven above: nothing forbids clearing
-them before v0.5.0, but doing it means scoping that design round first, which
+schedules it. These two were unlike the seven above: nothing forbade clearing
+them before v0.5.0, but doing it meant scoping that design round first, which
 is a milestone decision rather than gate work.
+
+**That design round has happened, and the two entries have separated**
+(`PL-8G48`, 2026-09-20). `PL-FG9D` closed as `#748` and `PL-4DCG` as `#742`, so
+neither entry waits on a design any more. Read against the tree, one is now
+ordinary gate work and the other is a deferral this section has to record:
+
+- **`PL-8PS6` clears inside this gate.** The carrier exists -
+  `src/anesthesia_sim/data/machines/reference_circle_system.json` - and
+  `docs/machine-abstraction.md` slots `deliverable_flow_range_l_min` against
+  survey section (b8) while keeping `core/supported_ranges.py`'s bounds as the
+  model's own envelope. Separating the two claims is buildable over the single
+  profile that exists, so the entry is `ready`, and at `P1` because leaving
+  `blocked` ends the `anticipated` exemption. Nothing about it is deferred.
+- **`PL-WZVZ` is deferred, on a ground that is not the machine milestone.** Its
+  static half is a comparison table - machines as columns - and § "Planned
+  milestones" item 34 carries the standing rule that **no new display surface is
+  built before that item** (project owner, 2026-09-17, ratified). The rule names
+  its own condition rather than a version, so the entry now names it:
+  `blocked-by: PL-TH35, PL-R1WQ`, the View contract and the view registry, both
+  placed by v0.6.0. Its second half - a machine appearing as a labelled input
+  expanded into the parameters that differ - is a requirement on planned-milestone
+  items 11 and 12 rather than a surface, and the display rule does not reach it;
+  what holds that half is simply that one machine profile exists and there is
+  nothing to compare.
+
+  **Recorded here because the deferral is real and the frontmatter alone may not
+  carry it.** § "The gate is a snapshot, not a moving target" permits a deferral
+  only where this section says so and says why, and `PL-9S30` is what an entry
+  sequenced past its milestone in a `blocked-by:` field and nowhere else already
+  cost. This is that sentence for `PL-WZVZ`.
 
 **What reads this, and what reads past it.** `bin/docket wave` reaches the same
 eleven from the items rather than from this prose - an open entry whose

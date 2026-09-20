@@ -9,6 +9,7 @@ feature: platform-palette
 touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_dark_appearance.py
 added: 2026-09-20
 closed: 2026-09-20
+pr: 762
 payoff: the box that says whether a compartment is on the chart stops reading the same checked and unchecked under a dark host
 verify: grep -q 'def test_a_legend_checkbox_draws_its_indicator_in_the_theme' tests/integration/test_dark_appearance.py
 ---

@@ -8,6 +8,7 @@ classes: housekeeping
 touches: docs/items
 added: 2026-09-20
 closed: 2026-09-20
+pr: 759
 payoff: the two captures the machine session left behind enter the ranking, one of which is the only thing standing between the v0.5.0 gate's last two entries and being startable
 verify: grep -q '^priority: ' docs/items/PL-8G48-*.md && grep -q '^priority: ' docs/items/PL-KZ60-*.md
 ---
