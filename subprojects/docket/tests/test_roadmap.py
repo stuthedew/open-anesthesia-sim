@@ -1448,13 +1448,20 @@ def test_a_blocker_the_timeline_schedules_ahead_of_the_gate_reads_as_sequenced()
     assert [entry.ids for entry in gate.clearable] == [("PL-BCDF", "PL-GHJK")]
 
     printed = format_wave(plan)
-    assert "1 this gate can clear, 1 sequenced ahead of it, 1 waiting on work outside it" in printed
+    assert (
+        "1 this gate can clear, 1 sequenced ahead of it, 1 waiting on 1 open item outside it"
+    ) in printed
     assert "sequenced ahead of the gate, on v0.3.5 — the interface port: PL-001" in printed
     assert "blocked outside the gate: PL-KLMN" in printed
+    assert "what they wait on: PL-ZZZZ" in printed
     assert (
         "clear the gate - 1 entry of 3 still open here, 1 sequenced ahead of it, "
-        "1 blocked outside it"
+        "1 blocked outside it by 1 open item"
     ) in printed
+    # One open item, not two: `PL-001` waits on `PL-PRT7` off the list as well,
+    # and the plan already pays for it on an earlier row. Charging the gate for
+    # it would price the plan's own ordering as unbudgeted work (`PL-FCM3`).
+    assert gate.outside_items == ("PL-ZZZZ",)
 
 
 def test_a_blocker_placed_at_or_after_the_gate_is_not_sequenced_ahead_of_it() -> None:
@@ -1487,6 +1494,83 @@ def test_a_blocker_placed_at_or_after_the_gate_is_not_sequenced_ahead_of_it() ->
     assert gate is not None
     assert gate.sequenced_ahead == ()
     assert len(gate.waiting_outside) == 3 and gate.clearable == ()
+
+
+def test_the_gate_sizes_the_work_its_entries_wait_on_outside_it() -> None:
+    """`PL-FCM3`: the count line named the hole and never sized it, so `4 open -
+    1 this gate can clear, 3 waiting on work outside it` read as four items of
+    work where it was one plus thirteen. Distinct across entries and open only:
+    two entries waiting on one item are one piece of work, and a blocker that
+    has already closed is not remaining cost."""
+    blockers = {"PL-KLMN": ("PL-AAAA", "PL-BBBB", "PL-CLSD"), "PL-001": ("PL-BBBB",)}
+    plan = _wave(
+        "0.3.0",
+        frozenset({"PL-CLSD"}),
+        blockers=blockers,
+        known=KNOWN | {"PL-AAAA", "PL-BBBB", "PL-CLSD"},
+    )
+    gate = plan.gate
+
+    assert gate is not None and plan.beat == CLEAR
+    assert [entry.ids for entry in gate.waiting_outside] == [("PL-001",), ("PL-KLMN",)]
+    assert gate.outside_items == ("PL-AAAA", "PL-BBBB")
+
+    printed = format_wave(plan)
+    assert "1 this gate can clear, 2 waiting on 2 open items outside it" in printed
+    assert "blocked outside the gate: PL-001, PL-KLMN" in printed
+    assert "what they wait on: PL-AAAA, PL-BBBB" in printed
+    assert (
+        "clear the gate - 1 entry of 3 still open here, 2 blocked outside it by 2 open items"
+    ) in printed
+
+
+def test_a_prerequisite_standing_behind_another_prerequisite_is_counted() -> None:
+    """The half a frontier cannot answer. `_blockers_outside` stops where the
+    walk first leaves the list, which is the right answer to *where* the work
+    sits and the wrong one to *how much* of it there is: 38% of the open items
+    carrying a blocker on 2026-09-20 waited on something their own blockers
+    waited on in turn, so stopping at the crossing would have restated this
+    item's defect one level down (`PL-FCM3`)."""
+    blockers = {"PL-KLMN": ("PL-AAAA",), "PL-AAAA": ("PL-BBBB",), "PL-BBBB": ("PL-CCCC",)}
+    plan = _wave("0.3.0", blockers=blockers, known=KNOWN | {"PL-AAAA", "PL-BBBB", "PL-CCCC"})
+    gate = plan.gate
+
+    assert gate is not None
+    assert [entry.ids for entry in gate.waiting_outside] == [("PL-KLMN",)]
+    assert gate.outside_items == ("PL-AAAA", "PL-BBBB", "PL-CCCC")
+    assert "1 waiting on 3 open items outside it" in format_wave(plan)
+
+
+def test_a_cycle_among_prerequisites_is_counted_once_rather_than_forever() -> None:
+    """Two items waiting on each other. The walk has to stop, and stopping is
+    not a nicety: `_plan` declines on `OSError`, `ValueError` and `KeyError`,
+    so a `RecursionError` would take the session-start digest down rather than
+    degrade it."""
+    blockers = {"PL-KLMN": ("PL-AAAA",), "PL-AAAA": ("PL-BBBB",), "PL-BBBB": ("PL-AAAA",)}
+    plan = _wave("0.3.0", blockers=blockers, known=KNOWN | {"PL-AAAA", "PL-BBBB"})
+
+    assert plan.gate is not None
+    assert plan.gate.outside_items == ("PL-AAAA", "PL-BBBB")
+
+
+def test_a_milestone_a_gate_entry_waits_on_is_not_counted_as_an_open_item() -> None:
+    """A `blocked-by` may name a milestone, and two of the store's do. It is a
+    real prerequisite and is not an item anybody can pick up, so it is named
+    and counted apart - folding it into the item count would overstate the
+    work by exactly the argument this item made for understating it."""
+    blockers = {"PL-KLMN": ("PL-AAAA", "v0.9.0")}
+    plan = _wave("0.3.0", blockers=blockers, known=KNOWN | {"PL-AAAA"})
+    gate = plan.gate
+
+    assert gate is not None
+    assert gate.outside_items == ("PL-AAAA",)
+    assert gate.outside_milestones == ("v0.9.0",)
+
+    printed = format_wave(plan)
+    assert "1 waiting on v0.9.0 and 1 open item outside it" in printed
+    # Named in the count above and not repeated here: this line is what a
+    # reader can go and open, and a version is not a file.
+    assert "what they wait on: PL-AAAA" in printed
 
 
 def test_the_plan_header_names_the_step_apart_from_the_anchor() -> None:
