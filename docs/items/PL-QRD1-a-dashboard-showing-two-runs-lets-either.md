@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: scenario-branching
-touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, ROADMAP.md, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
 blocked-by: PL-8PSW, PL-VKJW
 added: 2026-09-15
 closed: 2026-09-20

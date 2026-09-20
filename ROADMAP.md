@@ -3723,9 +3723,20 @@ why they are recorded here rather than left to look deferred:
 a hover box nobody has looked at rendered, and a hover readout that answers the
 pointer's previous position and never re-answers a resting pointer while paused
 - so both are seated `P2` and belong to the v0.4.26 port beat, ahead of this
-gate on the timeline rather than behind it. `PL-QRD1` is `blocked` on
-`PL-8PSW`, which decides whether a two-run dashboard needs a selector lock at
-all, and no shipped entry point reaches the defect today.
+gate on the timeline rather than behind it. `PL-QRD1` was `blocked` on
+`PL-8PSW`, which was expected to decide whether a two-run dashboard needs a
+selector lock at all, and no shipped entry point reached the defect.
+
+**`PL-QRD1` closed 2026-09-20**, and the expectation in the sentence above was
+wrong about which item would settle it. `PL-8PSW` landed the drawing rather
+than the route, so neither disposition was taken; `PL-VKJW` is the entry point
+that builds a two-run dashboard, so it is what made the defect reachable and
+what closed it. The answer taken was to lock the trunk's selector while two
+runs are shown - `.claude/rules/expert-review.md`'s preference for an
+interface that prevents the error over one that reports it afterwards - with a
+branch's selector replaced by the agent chip, since `set_agent` refuses a
+branch outright. The two-*trunk* case the item's title names is still
+unreachable and is still the stronger statement of the guard.
 
 **One more from 2026-09-15, on the same ground and worth naming rather than
 listing** — `PL-SMN4` (a push run on `main` can be cancelled by a later merge,
