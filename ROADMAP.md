@@ -5334,23 +5334,40 @@ specified.
 
 1. Add a modular anesthesia-machine abstraction with normal
    single-halogenated-agent interlock behavior — the safety baseline every
-   later machine feature below builds on. The default fresh gas flow belongs
-   to it: today a literal in `core/circuit.py` that `docs/MODEL.md` restates
-   without provenance, and the one number in that document's accuracy table
-   tracing to no cited file. Scoping this milestone gives it a versioned data
-   file and a provenance row (`PL-8DJ7`).
+   later machine feature below builds on. **What "modular" is for: a real
+   commercial machine is added as a data file, not as code.** That is the goal
+   the three scoping items below serve, and it is a fidelity claim as much as
+   an architectural one — name a machine in the interface and a learner
+   attributes to it the behavior of the machine in their own operating room,
+   so what the module may carry and what the interface may say are the same
+   question. `PL-4DCG` surveyed the variation that reaches a number, `PL-FG9D`
+   designed the abstraction against it, and `PL-WZVZ` is the surface that keeps
+   a machine's effect on a curve attributable to a named parameter.
 
-   **Two queue items scope this one, and they are sequential.** `PL-4DCG`
-   surveys the machines in current clinical use for the variables that change
-   a simulated result; `PL-FG9D` then designs the base abstraction — what a
-   module is, what the base type owns against what each machine supplies, and
-   where the parameter/strategy line falls — and it depends on the survey,
-   because the extension points are the axes of real variation that reach a
-   number and designing them first is guessing. Named here because until one
-   of them is started nothing schedules this item, and two gate entries wait
-   behind it: `PL-8PS6` (fresh gas flow range is a machine property) and
-   `PL-WZVZ` (make an inter-machine difference attributable) are both carved
-   out of Gate 1 for that reason.
+   **The default fresh gas flow is no longer this item's to place, and the
+   sentence that said otherwise was stale.** It was a literal in
+   `core/circuit.py` with no provenance until `PL-4YY1` moved it into
+   `src/anesthesia_sim/data/machines/reference_circle_system.json`, where it
+   has a cited file and a stated `provenance_gap`; `PL-8DJ7`'s deferral of its
+   *home* to this abstraction is answered in `docs/machine-abstraction.md`,
+   which places it among a run's opening conditions rather than among a
+   machine's specifications, because no surveyed machine publishes a startup
+   flow and a per-machine field would force every profile to invent one. Its
+   *value* is `PL-NM7X`'s and is open.
+
+   **Two queue items scoped this one, they were sequential, and both are
+   done.** `PL-4DCG` surveyed the machines in current clinical use for the
+   variables that change a simulated result; `PL-FG9D` then designed the base
+   abstraction — what a module is, what the base type owns against what each
+   machine supplies, and where the parameter/strategy line falls — and it
+   depended on the survey, because the extension points are the axes of real
+   variation that reach a number and designing them first is guessing. Three
+   items wait behind them rather than behind this prose: `PL-8PS6` (fresh gas
+   flow range is a machine property) and `PL-WZVZ` (make an inter-machine
+   difference attributable) are carved out of Gate 1 for that reason, and
+   `PL-439V` (make the Tec 6 the concrete second device class) is answered in
+   the design's dial-mapping slot. All three now wait on this milestone being
+   implemented rather than on a design that does not exist.
 
    **The survey is done and is `docs/machine-survey.md`.** It records which
    variables reach a number, which are per-machine data and which are genuinely
@@ -5364,6 +5381,30 @@ specified.
    represent internal topology, to state that machines differing only in it are
    indistinguishable here, or to route it into the per-compartment gas-phase
    model at item 39.
+
+   **The design is done and is `docs/machine-abstraction.md`.** Four of its
+   results bear on scoping this milestone. **The seam already exists in the
+   tree**: a machine's whole reach into the model is two rates and one volume
+   in the breathing circuit's row of `core/governing_equations.py`'s system
+   matrix, so adding machines cannot touch a patient row, and the reference
+   machine's strategies reproduce today's matrix entry for entry — the
+   abstraction lands with no change to any computed value. **The set of machine
+   behaviors is closed by two properties of the existing solver** rather than
+   by taste: a strategy must be constant across a step and must keep the matrix
+   Metzler, which is why item 5 (automated end-tidal control) is a milestone
+   and not a slot. **The inlet-position question above is answered**: decline to
+   represent internal topology and say so where a machine is chosen, with
+   folding it into an effective volume refused outright and item 39 named as
+   the condition that reverses the decline. **What a machine may be called is
+   the one open question**, and it is the project owner's: the design
+   recommends an archetype label in the running interface with the trade name
+   attached to the parameter set, its sources and its `not_modelled` list.
+
+   Scoping this milestone therefore starts from a design rather than from a
+   blank page, and the scope statement's own test is the design's stated cost
+   target: a machine whose delivery and removal are already in the closed set
+   is one data file under `src/anesthesia_sim/data/machines/`, with no change
+   to `core/` and no new test of the physics.
 2. Add agent switching with residual washout accounting, after item 1.
    Requires the multi-substance patient state described in "Development
    pathway" — residual washout means holding two agents at once.

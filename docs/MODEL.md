@@ -2538,6 +2538,11 @@ a real machine changed it through a property this model has no place to put.
 The survey carries the consequence for the planned machine abstraction; what it
 means here is that a future per-machine `circuit_volume_l` reproduces part of
 an inter-machine difference and must not be described as reproducing all of it.
+`docs/machine-abstraction.md` is where that consequence was decided (`PL-FG9D`):
+internal topology is not represented, folding it into an effective volume is
+refused because it would attribute to volume a difference volume did not cause,
+and `ROADMAP.md`'s planned-milestone item 39 is the condition under which the
+decline is revisited.
 
 There is no "arterial blood-pool volume" row: arterial blood is flow-limited
 and holds no independent state (see "Model boundary"). Tissue:blood
