@@ -3,11 +3,13 @@ id: PL-KRZW
 title: Decide what the interface does under a dark system appearance, now that every colour it declares is a light-theme value
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: defect, ux
 feature: platform-palette
-touches: src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/theme.py, docs/MODEL.md
+touches: src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_dark_appearance.py, docs/MODEL.md
 added: 2026-09-17
+payoff: the window stops mixing a light interface with the host's dark scroll bars and splitter handles, and a widget added later inherits the theme rather than the host
+verify: grep -q 'def test_the_chrome_draws_the_theme_rather_than_the_host_palette' tests/integration/test_dark_appearance.py
 ---
 
 **Problem.** Decide what the interface does under a dark system appearance, now
@@ -140,3 +142,54 @@ measuring surfaces that are not on screen.
 whose closing paragraph now names this item as the open question; and - for
 option 1 - `app/main.py` applies the palette and a test holds the chrome the
 way `test_dark_appearance.py` holds the content widgets.
+
+## Decided: option 1, as an application palette
+
+**"Agree with krzw recs" (project owner, 2026-09-20, ratified)** - chosen over
+leaving the host appearance alone (option 2, today's state) and over growing a
+second palette for dark support (option 3, interface-pass scale). Ratified
+rather than specified: it was this session's recommendation, given with the two
+measured findings above, so ordinary evidence reopens it.
+
+**The mechanism is `QApplication.setPalette`, not
+`styleHints().setColorScheme`.** The hint was observed being ignored outright
+on 2026-09-20 (`colorScheme()` still reporting `Unknown` after it was set), and
+Qt documents it as unsupported on some platforms, so nothing may rest on it. An
+application palette is authoritative, and it is the only thing that reaches a
+widget under a stylesheet ancestor - a stylesheet makes everything beneath it
+resolve from the *application* palette rather than from the styled widget.
+
+**What to build.**
+
+1. `declare_application_colours(application)` in `app/qt_widgets.py`, beside
+   `declare_interface_colours` and sharing its `_DECLARED_ROLES`. It writes the
+   `Active` and `Inactive` colour groups only, leaving `Disabled` as the
+   platform supplied it, for the reason that function's docstring gives.
+2. `main()` calls it immediately after the `QApplication` is constructed and
+   before any widget exists, so nothing is built under the host's palette.
+   **The call goes in that function rather than as a bare
+   `app.setPalette(...)` in `main.py`**: `check_authored_disabled_colours_are_measured`
+   admits a `setPalette` only from a function some requirement cites by name,
+   and `main` is not where a colour is drawn. Cite the new function in the same
+   `why` entries that already cite `declare_interface_colours`.
+3. **Keep the per-widget declarations.** They are not made redundant by this:
+   `tests/integration/test_dark_appearance.py` asserts that a widget's own
+   declaration survives a *hostile* application palette, which is the property
+   that fails if the only declaration is global - and a view is built by tests,
+   and could be embedded, without `main()` ever running. The application
+   palette covers the chrome and anything that declares nothing; the per-widget
+   call is what a view carries with it.
+
+**Done when** `app/main.py` applies the palette through that function;
+`tests/integration/test_dark_appearance.py` holds the chrome with a vacuity
+guard - a scroll bar or splitter handle resolving to the host's palette before
+the call and to the theme's after - and mirrors the existing `Disabled`-group
+assertion for the application; `docs/MODEL.md` § "Color contrast, and the
+standard this interface is held to" records the choice and its reasoning in
+place of the closing paragraph that currently calls this an open question; and
+the test module's own docstring stops saying the chrome is deliberately not
+asserted.
+
+**`theme.py` needs no change**, despite being in `touches` from before this
+decision: the ten roles map onto constants that already exist, and no new
+colour or pair is introduced.
