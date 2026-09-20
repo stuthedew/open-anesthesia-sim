@@ -184,3 +184,52 @@ page and decides which file a session reads.
 
    Run the bare `bin/docket verify <id>` only when reviewing a branch somebody
    else was commissioned to write.
+
+6. **Review the diff adversarially before the pull request opens, where the
+   change earns it** (project owner, 2026-09-20, ratified, over leaving it to
+   a session's judgment case by case). The trigger is size and location, so
+   that it is decidable rather than a mood: the diff touches
+   `src/anesthesia_sim/` and changes roughly **200 lines or more**. Below
+   that, `make check` and your own adversarial re-read of the diff are the
+   whole of the bar and this step does not apply.
+
+   **`make check` passing is not this step.** The suite proves that what has a
+   test still holds, which is exactly what a defect nobody wrote a test for
+   survives. `#784` was opened green and merged on that; a review run
+   afterwards found three real defects in it, one `safety`-classed - a Reset
+   that deleted another run, `add_run` admitting a run the case never
+   sanctioned, and a vanished fork instant silently re-pointed at induction
+   (`PL-LQ19`, `PL-K5NY`, `PL-J12Z`). Found an hour earlier they were one
+   commit. Found after the merge they were three items, a second pull request,
+   and a permanent record of `PL-VKJW` and `PL-QRD1` closing against work that
+   was incomplete.
+
+   **What counts.** Independent passes over the change, each looking for a
+   different class of defect rather than all re-reading it the same way -
+   lifecycle and state, the domain invariants, what a displayed value could
+   mislead a reader into, whether the new tests would fail if the behaviour
+   were inverted, the rules this repository states, dead code. Then attack
+   what they return: a finding nobody tried to refute is a suspicion, not a
+   finding. The `Workflow` tool is one way to run this and not the only one;
+   what matters is that the finding and the scepticism come from different
+   passes.
+
+   **Make one of the sceptics run the claim rather than reason about it.**
+   Both refutations that mattered on `#784` were empirical. A fourth candidate
+   - that per-run holder widgets cost the plots 18 px of layout spacing -
+   read as obviously true and measured **0 px** at two window sizes, and would
+   have been filed on argument alone. Conversely the three that were real were
+   each reproduced with a scratch script under the offscreen platform before
+   being written down.
+
+   **Then distrust a high uphold rate.** On `#784`'s first pass, refutation
+   killed 1 of 4. On its second, 3 of 18 verdicts - and that is the number to
+   be suspicious of, not the first. Sceptics pointed at a named method tend to
+   agree with it; when almost nothing is being killed, the refutation has
+   become a second opinion and the tail of `should-fix` and `nit` findings is
+   yours to check by hand before any of it reaches the queue.
+
+   **A confirmed finding does not stop the close-out; it joins it.** Fix it on
+   this branch if it is in scope and the item's `touches` already reach it.
+   Otherwise file it - grouped under one `feature:` where the findings are one
+   problem - and say in the reply what you found and what you left.
