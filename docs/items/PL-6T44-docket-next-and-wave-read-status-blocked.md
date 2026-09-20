@@ -8,6 +8,7 @@ classes: defect
 feature: docket-store
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_plan.py
 added: 2026-09-17
+root-cause-of: PL-JFQ3, PL-8G48, PL-CHQY
 ---
 
 **Problem.** docket next and wave read status: blocked literally, so an item whose blockers have all closed ranks as unstartable while docket check already prints it as promotable
