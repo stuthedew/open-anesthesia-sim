@@ -4453,6 +4453,30 @@ vertex is the case's own state there - which both runs hold - so what the extra
 column marks is the instant they stop being the same run rather than a
 disagreement about it.
 
+**The drawn values at the columns they do share are equal to floating-point
+composition rather than bit for bit, where a control-event fork's are exact.**
+`evaluate_anchored` chains one propagator across consecutive grid columns and
+breaks the chain at a bound or an event column, so a branch restarts from its
+keyframe at its own left bound. For a control-event fork that instant is a
+segment opening on the trunk too and both walks break there; a bookmark fork's
+is not, so the trunk chains straight through it while the branch restarts - the
+same exact solution composed in a different order. Measured 2026-09-20 on the
+3 600 s case above, forked at the 655.3 s bookmark, both runs advanced 1 200 s
+and both asked for a 601-column axis from zero to 1 800 s: **2 977 of 3 438
+shared column elements differ, worst 7.70e-16 as a fraction and 8.17e-14 L on
+an accumulator** - eleven and seven orders below § "Displayed precision"'s 1e-4
+and 1e-6. A branch forked at the 600 s control event instead differs at none of
+the columns it shares.
+
+The guarantee above is unaffected, because it rests on `state_at` and not on
+`evaluate`: asked for those same 382 instants canonically, the two agree
+element for element, 0 differing. § "The canonical evaluation rule" is what
+separates the two paths, and this is an instance of the separation rather than
+an exception to it. It is recorded because a difference trace between two runs
+would read a few units in the last place here where two identical runs should
+read zero, and a reader meeting that without this paragraph would take it for a
+disagreement about the case.
+
 ### Supported input ranges
 
 Each control is supported over a closed interval, endpoints included, and a

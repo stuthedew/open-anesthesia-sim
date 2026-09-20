@@ -36,6 +36,13 @@ branch's first `before_s` *is* the fork, and `before_s` only increases, so no
 step the branch ever takes can cross it. Stepped 50 times after the fork, the
 standing does not move.
 
+**A is the common case rather than a coincidence.** A halt lands on the step
+that crossed the mark, so the fork instant is `step_count x simulation_step_s`,
+and every whole-second instant is exactly representable as a multiple of the
+0.1 s step - **3 600 of 3 600** over 1 s to 3 600 s. A learner marking "45
+seconds" or "five minutes" gets this row every time; the off-grid rows below
+are what a typed tenth or hundredth gives.
+
 **B - the same act, off the step grid, answered differently.** Mark at 45.3 s
 or 12.7 s; the halt lands on the step that crossed it, at
 45.300000000000004 s or 12.700000000000001 s; `instant_s < opened_at_s` is now
@@ -78,6 +85,16 @@ recommendation rather than one the project owner specified, and the
 measurements are ordinary evidence against it: standing *on* a mark and being
 able to *reach* it are different claims, and only the second is what the row
 asserts.
+
+**The same comparison is wrong on a trunk, without any branch at all.** A
+`TimeBookmark(0.0)` on an ordinary run reads `still_running` forever, for the
+identical arithmetic: the run opens at 0.0, `crossed_between` needs
+`before_s < 0.0`, and no run's clock is ever negative. Measured 2026-09-20 on a
+trunk stepped to 60 s. It is reachable by a learner marking induction, which is
+a strange thing to mark and not an impossible one - and it means the fix is not
+confined to branches, and that `BEFORE_THIS_BRANCH`'s displayed wording needs a
+word that is true on a trunk. That wording is the one judgment inside the
+recommended answer.
 
 **It is `PL-B8MK`'s consequence rather than its defect.** The strict `<`, the
 empty reached-sets and the test above all predate it. What changed is reach:

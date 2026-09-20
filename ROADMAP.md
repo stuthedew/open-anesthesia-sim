@@ -2899,9 +2899,11 @@ control-event instant by coincidence.
   measured 2026-09-20, one root: a time bookmark on the step grid reads
   `still_running` — "the run can still reach this mark" — which no step can
   make true, since `crossed_between` is `before_s < instant_s <= after_s` and
-  the branch's first `before_s` is the fork; the same act with an instant off
-  the grid reads `before this branch opened` instead, so which row a learner
-  gets turns on whether the number they typed is a multiple of 0.1 in binary;
+  the branch's first `before_s` is the fork, and every whole-second mark is on
+  that grid (3 600 of 3 600 over 1 s to 3 600 s); the same act with an instant
+  off the grid reads `before this branch opened` instead, so which row a
+  learner gets turns on whether the number they typed is a multiple of 0.1 in
+  binary;
   and a MAC target reads `still_running` on the branch while reading `reached`
   on its trunk, about the one crossing the two runs share by construction, on a
   branch whose identity is the management taken at that height. The item
