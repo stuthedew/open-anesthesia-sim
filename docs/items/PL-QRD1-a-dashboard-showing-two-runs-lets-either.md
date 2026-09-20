@@ -7,7 +7,7 @@ status: blocked
 classes: defect, ux
 feature: scenario-branching
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py
-blocked-by: PL-8PSW, PL-XJ37
+blocked-by: PL-8PSW, PL-VKJW
 added: 2026-09-15
 ---
 
@@ -73,3 +73,45 @@ fixed at construction), `needs-decision`, written into `blocked-by` beside
 `PL-8PSW`. The question the brief poses is unchanged and is `PL-XJ37`'s to
 settle for the same reason it was `PL-8PSW`'s: working it before then designs
 against an interface that does not exist yet.
+
+## Re-pointed 2026-09-20 under `PL-XJ37`: the blocker is `PL-VKJW`, and half the question is answered
+
+`PL-XJ37` was a decision item and the project owner answered it on 2026-09-20:
+forking is what v0.5.0 is, and the run selector is deferred. The
+implementation that answer names is `PL-VKJW` (a learner takes a fork from the
+dashboard), which is what `blocked-by` now carries in `PL-XJ37`'s place -
+`PL-8PSW` is kept beside it for the same reason the last pass kept it, that the
+sequence is the record.
+
+**The branch half is answered, and neither of the two dispositions this brief
+offered is what was chosen.** The triage left "lock the selectors while two
+runs are shown, or rely on the branch refusal and say so". The answer is
+neither: **a branch's `RunView` shows the running-agent chip in place of the
+agent dropdown**, in the same `setDisabled(locked)`-beside-`setHidden(locked)`
+form `RunView._write_transport` already writes, with
+`dashboard_frame.transport` gaining a branch test beside
+`selector_locked=snapshot.is_running`. A control that always refuses is not
+locked and not relied on - it is not shown. `PL-VKJW`'s brief carries it.
+
+**The trunk half is what is left, and it is this item's title.** `set_agent`
+refuses a branch and *succeeds* on a trunk, so the disposition above removes
+the control that cannot work and leaves the one that works destructively:
+with a branch displayed and the trunk paused, the trunk's dropdown is live,
+`RunView._confirm_new_case` asks about the control changes it would discard
+and says nothing about the branch, and after the switch
+`assemble_chart_frame` refuses the frame over the shared MAC axis and
+`_halt_every_run` fails both runs. That is the ordering this item was filed
+about, reached through a trunk and a branch rather than through two trunks.
+
+**It also stops being unreachable the moment `PL-VKJW` lands**, which is the
+change since the 2026-09-15 triage: no shipped entry point built a two-run
+dashboard then, and `PL-VKJW` is the entry point. So this is not deferrable
+past it. `PL-VKJW`'s brief puts the choice - lock the trunk's selector too, or
+keep it live and grow the confirmation dialog a clause about the branches it
+orphans - to the project owner, and recommends locking. Under that answer this
+item closes against `PL-VKJW`; under the other it stays open and wants a place
+in v0.5.0's scope.
+
+**The two-*trunk* case in the title is untouched either way.** `PL-VKJW` builds
+a trunk-and-branch dashboard only, so a dashboard of two trunks stays
+unreachable and stays the stronger statement of the guard.

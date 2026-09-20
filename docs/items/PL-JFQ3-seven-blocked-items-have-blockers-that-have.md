@@ -9,6 +9,7 @@ feature: debt-gate
 touches: docs/items
 added: 2026-09-16
 closed: 2026-09-20
+pr: 746
 payoff: puts five startable items in front of bin/docket next that nobody was ever offered, and settles whether PL-ZF2G's carve-out is holding a live safety finding outside the gate built to catch it
 not-delegable: the deliverable is a per-item judgment recorded in seven item files - whether each was blocked on something nobody wrote into `blocked-by` - and no command can tell a promotion that was reasoned from one that was typed
 ---

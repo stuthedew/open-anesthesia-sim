@@ -4163,10 +4163,14 @@ refilling shape Phase 0 was retired for.
 
 ### Required scope
 
-Eighteen items, in the order the dependencies allow. The first three are the
+Nineteen items, in the order the dependencies allow. The first three are the
 score architecture the 2026-09-05 design round filed and the project owner
 placed here; the next five are boundary work this milestone's own code moves;
-the last ten are the feature itself.
+the last eleven are the feature itself. The nineteenth was added 2026-09-20
+(`PL-XJ37`), when the project owner settled that forking is what v0.5.0 is:
+every mechanism under the Goal sentence had shipped and no shipped entry point
+called any of it, so the milestone could have closed with every other entry
+done and a learner still unable to take a branch.
 
 **Two more were required here and are already done** (`PL-C4RS`, 2026-09-19).
 `PL-2FM6` deleted `RunHistory` so the chart is drawn from the sampler - where
@@ -4340,6 +4344,28 @@ placing them.
   the run moved to direct labelling at each curve's end — position being the
   strongest channel available and the one that survives every colour-vision
   deficiency — but that is a change to test rather than to assume.
+- **A learner takes the fork, and the dashboard comes to hold the branch**
+  (queue item PL-VKJW). `main()` builds a `BranchedCase` rather than a bare
+  controller, `SimulationView` gains a path that adds a `RunView` after
+  construction, and one control offers `BranchedCase.fork_points_s` and calls
+  `fork_at`. This is the entry the milestone was missing: the four entries
+  above build every part of a branch and none of them is reachable, because
+  nothing in `src/` constructs a `BranchedCase` and `SimulationView` freezes
+  its run set at construction. Added 2026-09-20 (project owner, `PL-XJ37`),
+  and what it delivers is this milestone's Goal sentence verbatim.
+
+  **Two dispositions are settled in that item's brief rather than left to its
+  pull request.** A **second fork is refused while a comparison is shown** -
+  with the selector out of scope, a learner who forks twice has no way to say
+  which branch is displayed, and quietly swapping it while the first lives on
+  in the `BranchedCase` is the hidden state this project refuses; one
+  comparison at a time, and Reset is how the next one starts. And **a branch's
+  `RunView` shows the running-agent chip in place of the agent dropdown**,
+  because `SimulationController.set_agent` already refuses on a branch
+  (`PL-TFX5`) and a control that always refuses is a control presenting itself
+  as working. The second is also `PL-QRD1`'s answer, which is why that item
+  asked for the two to be decided together.
+
 - **What the readouts show while two branches are displayed** (queue item
   PL-1XPX). A decision rather than an implementation: a numeric readout that
   does not say which run it describes is the safety-critical failure this
@@ -4396,8 +4422,29 @@ v0.5.0 is complete only when:
   (item 10). Only the resimulation driver replay needs is in scope.
 - Sub-forks of forks, and any branch structure other than one trunk with N
   branches (project owner, 2026-08-25).
-- More than two runs displayed at once. The comparison is specified for a
-  trunk and one branch; N branches may exist and be selected between.
+- More than two runs displayed at once, **and the selector that would choose
+  which two** (project owner, 2026-09-20, `PL-XJ37`). The comparison is
+  specified for a trunk and one branch, and `MAX_DISPLAYED_RUNS` stays 2. N
+  branches may exist - `BranchedCase.branches` returns them in a stable order
+  chosen so that a later selector does not renumber the branch a learner is
+  looking at - but **Selecting which two runs are displayed** is not built
+  here. This milestone therefore does not compare one branch directly against
+  another rather than each against the trunk, and does not return to a branch
+  the learner has left.
+
+  Declined on the educational question rather than the technical one: the
+  display is capped at two runs under either answer, so a selector buys the
+  *choice* of pair rather than more curves, and branch-against-branch was
+  judged not to be a first-release teaching case. The sentence this bullet
+  replaced read "N branches may exist and be selected between", which stated a
+  permitted future as though it were scope; adding the selector later is
+  additive rather than a rework, which is the part worth keeping.
+
+  **What that defers is a consequence the fork-control entry in Required
+  scope settles rather than discovers**: with no selector, a learner who forks
+  twice has no way to say which branch is shown, so a second fork is refused
+  while a comparison is displayed rather than silently replacing the branch on
+  the chart.
 - Persisting bookmarks or branches across a restart, which is item 9's.
 - A schematic compartment view (item 27) and agent cost (item 28).
 - Nitrous oxide, coadministered gases and the concentration and second-gas
