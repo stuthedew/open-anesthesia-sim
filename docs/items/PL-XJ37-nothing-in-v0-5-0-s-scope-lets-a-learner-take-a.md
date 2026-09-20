@@ -3,11 +3,12 @@ id: PL-XJ37
 title: Nothing in v0.5.0's scope lets a learner take a fork or select between runs, and SimulationView's run set is fixed at construction
 priority: P2
 effort: M
-status: ready
+status: done
 classes: planning, ux
 feature: scenario-branching
 touches: ROADMAP.md, docs/items
 added: 2026-09-14
+closed: 2026-09-20
 payoff: turns v0.5.0 from a milestone a learner cannot reach into one they can, by naming the fork control as scope instead of leaving branching as machinery with no caller
 verify: grep -qF 'Selecting which two runs are displayed' ROADMAP.md
 ---
@@ -213,3 +214,45 @@ Its rule for a design round past the budget is to externalize and hand off
 rather than to spend the remaining edit at low attention on the document that
 governs the milestone. Everything above is the externalization; nothing in the
 three steps needs the conversation that produced it.
+
+## Executed 2026-09-20: all three steps landed
+
+1. **`ROADMAP.md` § "Explicitly out of scope for v0.5.0" names the deferral.**
+   The third bullet read "More than two runs displayed at once. The comparison
+   is specified for a trunk and one branch; N branches may exist and be
+   selected between", which stated a permitted future as though it were scope.
+   It now defers the selector outright, says what that defers with it
+   (branch-against-branch comparison, and returning to a branch the learner has
+   left), records that it was declined on the educational question rather than
+   the technical one, and keeps the one part worth keeping - that adding the
+   selector later is additive, because `BranchedCase.branches` returns a stable
+   order chosen so a later selector does not renumber the branch a learner is
+   looking at.
+2. **The fork-control work is `PL-VKJW`** (a learner takes a fork from the
+   dashboard: `main()` builds a `BranchedCase`, `SimulationView` gains a run
+   added after construction, and a control offers `fork_points_s`), `P2`, `M`,
+   `feature, ux`, `scenario-branching`, `ready`. It is the nineteenth entry of
+   v0.5.0's `Required scope`, placed after `PL-8PSW`'s overlay entry, which is
+   where the dependencies put it - every part of a branch is built by the four
+   entries above it and none of them is reachable. The `Required scope` lead
+   paragraph's arithmetic moved with it: eighteen to nineteen, and the feature
+   group from ten to eleven.
+3. **`PL-QRD1` and `PL-W7H9` are re-pointed** at `PL-VKJW`, in place of this
+   item, with `PL-8PSW` kept beside it as `PL-JFQ3` left it. Both briefs carry
+   a section saying what moved and why.
+
+**The agent-dropdown edge is disposed of** in `PL-VKJW`'s brief and in
+`PL-QRD1`'s, per this item's `Done when`: a branch's `RunView` shows the
+running-agent chip in place of the dropdown.
+
+**One finding this execution made, recorded rather than fixed here.** The chip
+answers the *branch's* selector, where `set_agent` refuses. It does not answer
+the *trunk's*, where `set_agent` succeeds: with a branch displayed and the
+trunk paused, the trunk's dropdown is live, `RunView._confirm_new_case` asks
+only about the control changes it would discard, and after the switch
+`assemble_chart_frame` refuses the frame over the shared MAC axis and
+`_halt_every_run` fails both runs. `PL-VKJW` is what makes that reachable, so
+it cannot be deferred past it. The choice - lock the trunk's selector too, or
+keep it live and grow the confirmation dialog a clause about the branches it
+orphans - is in `PL-VKJW`'s brief with a recommendation to lock, and is the
+project owner's.

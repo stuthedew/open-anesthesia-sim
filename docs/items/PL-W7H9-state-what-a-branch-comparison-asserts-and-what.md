@@ -7,7 +7,7 @@ status: blocked
 classes: docs, safety, anticipated
 feature: scenario-branching
 touches: docs/MODEL.md, docs/ARCHITECTURE.md
-blocked-by: PL-8PSW, PL-XJ37
+blocked-by: PL-8PSW, PL-VKJW
 added: 2026-09-06
 ---
 
@@ -90,3 +90,34 @@ a different claim; `docs/ARCHITECTURE.md` § "What a branch is" describes the
 structure in full and states what a branch *guarantees* without stating what a
 comparison of two of them does not. Nothing here is overtaken, so the work is
 intact and waiting.
+
+## Re-pointed 2026-09-20 under `PL-XJ37`: the blocker is `PL-VKJW`
+
+`PL-XJ37` was a decision item, and the project owner answered it on
+2026-09-20: forking is v0.5.0's scope and the run selector is deferred. The
+implementation that answer names is `PL-VKJW` (a learner takes a fork from the
+dashboard), and that is what `blocked-by` now carries in `PL-XJ37`'s place.
+`PL-8PSW` is kept beside it for the reason the last pass kept it - the
+sequence is the record.
+
+**Nothing in the grooming above changes.** The finding it made is unaltered:
+`PL-8PSW` made a comparison drawable and not reachable, and a statement about
+what a comparison asserts has no reader until a learner can take one.
+`PL-VKJW` is the item that makes one, so the edge now points at the work
+rather than at the decision about the work.
+
+**The accepted cost it recorded is unchanged too, and is worth restating
+because the window has moved rather than closed.** The `anticipated` carve-out
+in `tools/doc_check.py`'s `check_gate_reentries` holds only while
+`anticipated` and `status: blocked` hold together, so this item becomes a live
+`safety` finding pinned to `P1` when its blocker clears - which is now
+`PL-VKJW` closing rather than `PL-XJ37` closing. That is `PL-ZF2G`'s own
+accepted cost and needs no action here; what the re-point buys is that the
+edge names something that can actually be worked.
+
+**One thing `PL-VKJW` adds to what this item has to state.** Under the shape
+the owner chose there is exactly one comparison at a time - the trunk and one
+branch - and a second fork is refused rather than replacing the displayed
+branch. So what a comparison asserts is a claim about *two* managements of one
+case, never about N, and the documents should say that rather than leaving the
+reader to infer a general facility from a capped one.
