@@ -9,6 +9,7 @@ feature: platform-palette
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, tests/integration/test_dark_appearance.py
 added: 2026-09-20
 closed: 2026-09-20
+pr: 762
 payoff: the three lists a reader picks an agent, a time base and a playback rate from draw the interface's surface rather than the host's
 verify: grep -q 'def test_a_selector_popup_draws_the_theme_rather_than_the_host_palette' tests/integration/test_dark_appearance.py
 ---
