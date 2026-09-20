@@ -2785,7 +2785,7 @@ all three clear before implementation begins. Each is `S`.
 a judgment.** "The gate is a snapshot" ends by making `safety` and `science` not
 deferrable, and `tools/doc_check.py` says so where a session would otherwise
 reach for the declined subsection: a `### Declined to Gate ...` entry answers the
-disposition advisory and leaves the re-entry one standing. The one carve-out —
+disposition error and leaves the re-entry advisory standing. The one carve-out —
 an `anticipated` finding whose hazard a later milestone creates — needs `status:
 blocked` with it, and `PL-KZ99` is the entry from this triage that takes it, so
 it is recorded in the declined subsection with `PL-0S0V` and `PL-VJZK` instead.
