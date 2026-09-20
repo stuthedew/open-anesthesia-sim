@@ -7,7 +7,6 @@ status: ready
 classes: science, feature, anticipated
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/run_definition.py, tests/unit, tests/integration, docs/MODEL.md, docs/ARCHITECTURE.md
-blocked-by: PL-LPLD, PL-CTD7
 added: 2026-09-14
 payoff: makes v0.5.0's Definition of done reachable - a learner can branch at a bookmark, which the roadmap asks for and the tree still refuses - without the act of marking a run changing the run
 verify: grep -q 'def test_a_branch_taken_at_a_bookmark_reproduces_its_parent_without_changing_it' tests/integration/test_controller.py
@@ -118,6 +117,7 @@ guarantee about a displayed comparison, not a capability. Route one moves the
 trunk's own curve, which is a run changing because it was observed; route two
 does not. Nothing is reachable today - no bookmark exists - which is why this
 sits at `P2` beside `PL-Z3W6` rather than in the top band.
+
 ## Promoted 2026-09-20 (`PL-D9K3`), and why the hazard is not live
 
 **Both blockers closed on 2026-09-20** - `PL-LPLD` and `PL-CTD7` - and
@@ -165,3 +165,66 @@ restores the fork state rather than the segment's opening state, which is this
 route's remaining substantive edit. `docs/ARCHITECTURE.md` § "What a branch
 is, and what it shares with its parent" stops saying a bookmark is not yet a
 fork point, and `docs/MODEL.md` records that marking a run does not change it.
+
+**Two sessions promoted this within four minutes of each other, and this file
+is the reconciliation** (2026-09-20). `PL-D9K3` on
+`claude/amazing-wozniak-yz3dgv` wrote the promotion at 17:26 and this branch
+wrote a second one at 17:29; they agreed on every field that matters - `ready`,
+`P1`, route two - which is worth recording, since the two reached it from
+different directions and neither could see the other. The first commit holds
+the item, so the section above, `payoff:` and `verify:` are `PL-D9K3`'s
+unchanged. What follows is what only the second pass had, kept because it is
+evidence rather than wording. The `blocked-by: PL-LPLD, PL-CTD7` line both
+copies inherited is gone: both are closed, and a `ready` item naming them makes
+`bin/docket concurrent` report this item as unable to run alongside two items
+nobody can start.
+
+**The fault, reproduced 2026-09-20 on `b2b3ffe`** through the shipped path,
+now that `PL-CTD7`'s halt exists to produce it. Watching a `verify:` command
+fail proves the fix is absent; it does not prove the fault is present, and
+these are different claims. A default `SimulationController` carrying
+`TimeBookmark(30.0)`, started and stepped at 0.1 s, halts at exactly 30.0 s on
+`BookmarkCrossing(instant_s=30.0, time_bookmarks=(TimeBookmark(instant_s=30.0,
+label=None),), mac_targets=())`. `run_segments` then holds a single keyframe,
+at 0.0 s, and `resumed_at(30.0)` raises `SimulationConfigurationError: this run
+holds no keyframe at 30.0 s, so opening there would restart from two
+propagations where the run took one and would not reproduce it element-wise; it
+holds keyframes at [0.0] s`. That is the whole item in one run: the learner is
+standing on the instant they marked, and it is the one instant the fork
+refuses.
+
+**One question left to the implementing session, with a default rather than an
+open end.** Whether the fork is offered at *any* instant the run holds live
+state for, or only at the halt the run is standing on. Route two needs the
+state at the fork instant, and a halt is where the run has it, so the default
+is the halt: the fork is reached from `snapshot().bookmark_halt` rather than
+from an arbitrary float, and
+`test_an_instant_between_keyframes_is_refused_rather_than_approximated` keeps
+its refusal unchanged for an instant the run is not standing on. Widening it
+past that is `PL-Z3W6`'s to ask for, not this item's.
+
+**The re-pricing above is wrong on `drawn_window`, and the cost is three named
+edits rather than two** (project owner, 2026-09-20). Its second bullet reads
+the shipped clip - `first_s = max(start_s, self._run_definition.opened_at_s)`
+in `app/controller.py` - as already refusing to draw a branch back past its own
+beginning. That is true only while `opened_at_s` *is* the fork instant, which
+is exactly the identity this route gives up: the definition opens at the
+keyframe before the fork, so the clip lands at that keyframe and the branch
+becomes drawable across an interval it never lived, showing the trunk's
+trajectory under the branch's identity. The comment on those lines says "a
+branch opens at its fork" and would stop being true with it. So the fork
+instant has to be carried explicitly and the clip read from it - not the
+`origin_s` subtraction `PL-ZMRT` deleted, which converted between two frames,
+but a second case instant on the one frame, beside `opened_at_s`. The three
+edits are: `_open_at` restoring the fork state rather than the segment's
+opening state, the fork instant carried on the controller, and `drawn_window`
+clipping at it.
+
+`docs/MODEL.md` § "What this requires of a branch" now records which of its two
+conditions this route relaxes and why the element-wise guarantee survives it,
+and `docs/ARCHITECTURE.md` records that the route is chosen and not yet built.
+Both were amended ahead of the implementation deliberately: the section states
+two conditions a branch satisfies, a bookmark fork cannot satisfy both, and a
+reader meeting the unqualified pair would conclude a bookmark fork is
+impossible rather than that one condition was always the special case of a
+weaker one.

@@ -412,7 +412,10 @@ trunk it forked from, but it moves that trunk's own later answers away from
 what the case would have said unmarked, so marking a run changes it. Opening
 the branch's *definition* at the keyframe before the bookmark, while its clock
 and its live system stand at the bookmark, costs the trunk nothing and is exact
-too. Neither is built or chosen here.
+too. That second route is the one chosen (`PL-B8MK`, 2026-09-20); neither is
+built here, and `docs/MODEL.md` § "What this requires of a branch" records
+which of that section's two conditions the choice relaxes and what the
+relaxation costs.
 
 What a comparison between two branches *asserts* — what a difference between
 them may be attributed to, and that neither is a prediction for a patient — is
