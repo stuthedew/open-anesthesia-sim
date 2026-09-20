@@ -217,7 +217,7 @@ def require_supported_fresh_gas_flow(fresh_gas_flow_l_min: float) -> None:
 
 
 def require_supported_alveolar_ventilation(alveolar_ventilation_l_min: float) -> None:
-    """Require an alveolar ventilation the model has a measured bound for."""
+    """Require an alveolar ventilation inside the range the model is claimed over."""
 
     _require_supported(
         "alveolar_ventilation_l_min",
@@ -228,7 +228,7 @@ def require_supported_alveolar_ventilation(alveolar_ventilation_l_min: float) ->
 
 
 def require_supported_cardiac_output(cardiac_output_l_min: float) -> None:
-    """Require a cardiac output the model has a measured error bound for."""
+    """Require a cardiac output inside the range the model is claimed over."""
 
     _require_supported(
         "cardiac_output_l_min",
