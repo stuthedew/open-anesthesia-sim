@@ -36,8 +36,12 @@ narrowing just fixed, on the same check `--self` may never relax - a `REJECT`
 on correct work trains a reader to skim the block where a real weakening is
 printed (`PL-69JZ`, `PL-7XTS`). It is narrower now: it fires only on work that
 writes *about* suppressions in code, which is essentially work on this check.
-Measured on the branch that closed `PL-5MFL`: 9 added `.py` lines reported,
-every one of them a docstring or a test fixture, and none a suppression.
+Measured on the branch that closed `PL-5MFL` and `PL-BHBZ`, which is the
+REJECT that branch reported rather than an estimate: **6** added `.py` lines,
+none of them a suppression - two docstring lines naming `xfail_strict` to
+explain the suffix list, three test fixture strings that must write a literal
+suppression into a scratch repository, and one assertion pinning the tuple the
+check reports.
 
 **Done when.** A decision is recorded on whether the position test is worth
 its cost - and if it is, an added `.py` line whose suppression token sits
