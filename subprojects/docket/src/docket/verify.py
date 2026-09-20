@@ -39,7 +39,7 @@ from pathlib import Path
 
 from . import vcs
 from .config import Config
-from .model import Item, parse_front_matter
+from .model import CLOSED_STATUSES, Item, parse_front_matter
 from .store import ID_PATTERN
 
 # Suppressions matched as text. `noqa` is deliberately absent: a project whose
@@ -1119,16 +1119,35 @@ def _recurrences_grew(added: list[str], removed: list[str]) -> bool:
     return after.startswith(before) and len(after) > len(before)
 
 
-def commissioned_falsification(
-    root: Path, base: str, items_dir: str, item: Item
-) -> tuple[str, str]:
-    """The `falsifies:` declaration the *base* holds for this item, or why none could be read.
+@dataclass(frozen=True)
+class Commission:
+    """What the *base* holds for an item - the work as it was commissioned.
 
-    Exactly one of the two is ever non-empty, and an empty pair means the
-    commission was read and declares nothing. Keeping "could not look" apart
-    from "looked, found nothing" is the same distinction `front_matter_check`
-    makes below, for the same reason: folding is suppressed identically by
-    both, and only one of them is a finding.
+    Two readings and a reason neither could be taken. `falsifies` is the
+    declared exemption to "no existing assertion removed"; `status` rides
+    beside it because it is what says whose the decision was, and it is read
+    from the same place for the same reason - a session can set its own item's
+    status on its branch, and cannot set the base's (`PL-ZMGR`).
+    """
+
+    falsifies: str = ""
+    status: str = ""
+    #: Why nothing could be read. Non-empty only where the two above are empty
+    #: *because nothing was looked at*, which is the distinction a caller
+    #: needs: an empty `falsifies` otherwise means "read it, it declares
+    #: nothing".
+    unread: str = ""
+
+
+def commissioned_falsification(root: Path, base: str, items_dir: str, item: Item) -> Commission:
+    """The `falsifies:` declaration the *base* holds for this item, and the status beside it.
+
+    `unread` is non-empty only where nothing could be looked at, so an empty
+    `Commission` carrying no `unread` means the commission was read and
+    declares nothing. Keeping "could not look" apart from "looked, found
+    nothing" is the same distinction `front_matter_check` makes below, for the
+    same reason: folding is suppressed identically by both, and only one of
+    them is a finding.
 
     **Read from the base rather than from the working tree**, which is the
     whole of what makes the field worth having. `PL-K82G` argued the field was
@@ -1145,20 +1164,75 @@ def commissioned_falsification(
     A base holding no copy of this item is not a failure to read - the item is
     new on the branch, which is what every capture looks like. It declares
     nothing, and the caller says so only where the branch claims otherwise.
+    Its `status` comes back empty for the same reason, which is also what stops
+    an item captured *and* closed on one branch from reaching the exemption
+    `self_declared_falsification` grants: there is no base copy to have left
+    the decision to it.
     """
     if not item.path:
-        return "", "the item names no file, so no commission could be read"
+        return Commission(unread="the item names no file, so no commission could be read")
     held = _store_at(root, base, items_dir)
     if held is None:
-        return "", f"no item store at {base}:{items_dir} to read the commission from"
+        return Commission(unread=f"no item store at {base}:{items_dir} to read the commission from")
     was = next((held_name for held_name in held if held_name.startswith(f"{item.identifier}-")), "")
     if not was:
-        return "", ""
+        return Commission()
     status, before = _run(["git", "show", f"{base}:{items_dir}/{was}"], root)
     if status != 0:
-        return "", f"{base}:{items_dir}/{was} could not be read"
+        return Commission(unread=f"{base}:{items_dir}/{was} could not be read")
     fields, _ = parse_front_matter(before)
-    return fields.get("falsifies", "").strip(), ""
+    return Commission(
+        falsifies=fields.get("falsifies", "").strip(), status=fields.get("status", "").strip()
+    )
+
+
+def self_declared_falsification(commission: Commission, item: Item) -> str:
+    """The branch's own `falsifies:`, where the commission left the answer to it.
+
+    Empty in every other case, and the emptiness is the point: a `falsifies:`
+    line a branch writes beside the deletion it excuses is the worker's own
+    word for it, which is why `commissioned_falsification` reads the base at
+    all.
+
+    **The one commission that cannot declare in advance.** A `ready` item's
+    work is settled before the branch opens, so a reviewer can write the field
+    first and `PL-K82G`'s rule holds without exception. A `needs-decision`
+    item's cannot: the answer is the session's to make, and which assertions
+    become false depends on which answer it makes. `PL-G6J5` asked whether an
+    advisory should be re-based or retired, the count said retire, and the
+    close-out that deleted the advisory and its 29 assertions printed `FAIL no
+    existing assertion removed` with every other guard green. The guard fired
+    by construction on a whole class of correct close-outs, which is the shape
+    `CLAUDE.md` calls a check being routed around.
+
+    **The gate is the base's status, never the branch's**, and that is what
+    stops the exemption being self-granted. The base's copy reading
+    `status: needs-decision` *is* the standing statement that the question is
+    open and the answer is the session's; a session cannot write that on its
+    own branch and walk through, because it is read from the same base copy the
+    field would otherwise be. A `ready` item is untouched, so a delegated
+    worker still cannot add `falsifies:` to excuse deleting tests - which is
+    the property relaxing the check for every self-audited branch would have
+    given away (project owner, 2026-09-19, ratified, over adding the assertion
+    check to the four guards `--self` already relaxes).
+
+    Two further conditions, each narrowing it to the case that has no other
+    route:
+
+    - **The branch must be closing the item.** A `needs-decision` item still
+      open is mid-decision, and a declaration written then is not yet an
+      answer. Both closed statuses count, `dropped` as well as `done`: the
+      store has no third word for a closure, and neither is self-grantable
+      while the base's status is what opens the door.
+    - **The base must declare nothing.** Where it does, the commission already
+      said what becomes untrue and the ordinary path applies unchanged - there
+      is nothing this exemption exists to repair.
+    """
+    if not item.falsifies or commission.unread or commission.falsifies:
+        return ""
+    if commission.status != "needs-decision" or item.status not in CLOSED_STATUSES:
+        return ""
+    return item.falsifies
 
 
 def front_matter_check(
@@ -1312,13 +1386,19 @@ def verify_item(
     the thing that measures it, and it may not skip the test.
 
     Two of the four have a **declared** exemption, which is not a relaxation
-    of that line but the reason it can stay absolute. Each is read off the
-    item as the *base* holds it - the commission - rather than off the branch,
-    so neither is anything a session can grant itself mid-work:
+    of that line but the reason it can stay absolute. Each turns on the item
+    as the *base* holds it - the commission - rather than on the branch, so
+    neither is anything a session can grant itself mid-work:
 
     - `falsifies:` names an assertion the item was commissioned to make
       untrue, and a matching removal folds out of the assertion check and is
-      printed beside it (`PL-K82G`).
+      printed beside it (`PL-K82G`). One commission cannot write the field in
+      advance and takes it from the branch instead: a `needs-decision` item's
+      answer is the session's to make, so which assertions it falsifies is not
+      known until it is made. There the *base's status* is the gate, which a
+      branch can no more set than it can the field -
+      `self_declared_falsification` holds the line and says on the page that it
+      did (`PL-ZMGR`).
     - A `dropped` item, or one carrying `not-delegable:`, has no command to
       run by construction, and the command check reports which applies
       (`PL-L4KX`).
@@ -1527,7 +1607,14 @@ def verify_item(
     # it reads as a commissioned or an answered act rather than an unexplained
     # one, which is the property the check was defending.
     removed_assertions = [pair for pair in removed if is_assertion_line(*pair)]
-    declared, unread = commissioned_falsification(root, base, config.items_dir, item)
+    commission = commissioned_falsification(root, base, config.items_dir, item)
+    unread = commission.unread
+    # The one declaration read from the branch rather than from the base, and
+    # only where the base's own copy left the answer to this session
+    # (`PL-ZMGR`). Empty on every other branch, so `declared` is the base's
+    # word in the ordinary case exactly as before.
+    self_declared = self_declared_falsification(commission, item)
+    declared = commission.falsifies or self_declared
     folded = [line.strip() for _, line in removed_assertions if declared and declared in line]
     rest = [pair for pair in removed_assertions if not (declared and declared in pair[1])]
     paired = list(zip(rest, replacements(rest, added), strict=True))
@@ -1542,6 +1629,8 @@ def verify_item(
     detail = f"{len(dropped)} line(s)" if dropped else "none"
     if folded:
         detail += f", {len(folded)} declared falsified"
+        if self_declared:
+            detail += " by this closure"
     if replaced:
         detail += f", {len(replaced)} replaced in place"
     if swapped:
@@ -1579,6 +1668,19 @@ def verify_item(
                 )
                 if swapped
                 else ()
+            )
+            # Said rather than folded silently: the whole worth of `falsifies:`
+            # is that the base declared it, so the one case where the branch's
+            # own line is honoured has to name itself on the page it is
+            # honoured on.
+            + (
+                (
+                    f"the declaration above is this closure's own: {base} holds the item at "
+                    "`status: needs-decision`, so which assertions the answer falsifies was "
+                    "this branch's to say",
+                )
+                if self_declared and folded
+                else ()
             ),
         )
     )
@@ -1601,8 +1703,9 @@ def verify_item(
             "own word for it"
         )
     elif declared and not folded:
+        source = "this closure declares" if self_declared else f"{base} declares"
         claim = (
-            f"{base} declares `{declared}` falsified, but no assertion matching it was "
+            f"{source} `{declared}` falsified, but no assertion matching it was "
             "removed - the item is describing work this branch did not do"
         )
     else:

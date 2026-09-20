@@ -3,10 +3,11 @@ id: PL-ZMGR
 title: A needs-decision item whose answer is 'retire this' can never carry falsifies:, because the field must predate the branch and the decision is the work, so every session-decided retirement REJECTs its own close-out
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, .claude/skills/docket/modes/close-out.md
 added: 2026-09-19
+closed: 2026-09-20
 verify: grep -q 'def test_a_needs_decision_closure_may_declare_what_it_falsifies' subprojects/docket/tests/test_verify.py
 ---
 
@@ -95,3 +96,26 @@ declares the retired advisory's assertions and reaches `ACCEPT`.
 **Done when** a session-decided retirement can reach `ACCEPT` without weakening
 what the assertion check refuses on delegated work, or this item records why it
 must keep reporting `REJECT`.
+
+## Built 2026-09-20
+
+`commissioned_falsification` now returns a `Commission` — the base's
+`falsifies:`, the base's `status`, and why neither could be read — and
+`self_declared_falsification` decides the one case in which the branch's own
+declaration is honoured: the base's copy reads `status: needs-decision`, the
+base declares nothing, and this branch's item is at a closed status. The fold
+says so on its own page rather than happening quietly: the detail reads
+`N declared falsified by this closure` and a line underneath names the base as
+what let it be.
+
+Four tests hold the gate from both sides. The granted case reproduces
+`PL-G6J5`'s failure exactly against the unpatched module — `FAIL no existing
+assertion removed - 1 line(s)` — and the three refusals are a `ready` base
+closed with the identical declaration, a `needs-decision` item this branch
+leaves open, and an item captured *and* closed on one branch, which is the only
+route by which a session could otherwise write both halves of the gate itself.
+
+`.claude/skills/docket/modes/close-out.md` carried the instruction not to do
+this — "do not add the declaration to the item on this branch to clear it" —
+so it is edited here and `touches` widened to name it. Without that edit the
+mechanism is unreachable by the session it exists for.

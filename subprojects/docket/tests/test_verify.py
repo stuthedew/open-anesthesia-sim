@@ -2461,6 +2461,146 @@ def test_an_unreadable_commission_says_so_rather_than_folding_nothing_silently(
     assert not report.passed
 
 
+# The one commission that cannot declare in advance (`PL-ZMGR`). A
+# `needs-decision` item's answer is the session's to make, so which assertions
+# it falsifies is not known until it is made - and `falsifies:` is read from
+# the base precisely so that it predates the branch. `PL-G6J5`'s close-out
+# retired an advisory on a count and printed `FAIL no existing assertion
+# removed - 29 line(s)`, every line an assertion about the advisory the item
+# had sanctioned retiring, with every other guard green.
+
+
+def _close(root: Path, message: str, **fields: str) -> None:
+    """Close PL-K7QX and delete the pinned assertion in one commit, as a close-out does."""
+    (root / "docs" / "items" / "PL-K7QX-do-the-thing.md").write_text(
+        _stored("PL-K7QX", "Do the thing", **fields)
+    )
+    _work(root, message, "tests/test_thing.py", KEPT)
+
+
+def test_a_needs_decision_closure_may_declare_what_it_falsifies(tmp_path: Path) -> None:
+    """The base left the answer to this session, so this session is who can name it.
+
+    The gate is the base's `status`, which a branch can no more set than it can
+    the field - so the fold is granted here and refused on the `ready` item
+    below, from the same branch-side declaration.
+    """
+    root = _repo(tmp_path)
+    (root / "tests" / "test_thing.py").write_text(PINNED)
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "base: the assertion that pins the string")
+    _commission(root, "PL-K7QX-do-the-thing.md", status="needs-decision")
+    _close(root, "PL-K7QX retire it - the count said retire", status="done", falsifies=FALSIFIES)
+
+    report = verify(
+        root, _item(falsifies=FALSIFIES, status="done"), _config(), "HEAD~1", self_audit=True
+    )
+
+    check = _check(report, "no existing assertion removed")
+    assert check.passed
+    assert check.detail == "none, 1 declared falsified by this closure"
+    assert any("declared falsified, not counted" in line for line in check.lines)
+    # Said on the page it is honoured on, rather than folded silently.
+    assert any("this closure's own" in line for line in check.lines)
+    assert report.passed
+
+
+def test_a_ready_commission_is_still_the_only_word_on_what_it_falsifies(tmp_path: Path) -> None:
+    """The same close-out, from a `ready` base: refused.
+
+    This is the property relaxing the check for every self-audited branch would
+    have given away. A delegated worker cannot reach the fold by closing the
+    item, because `ready` is the commission saying the work was settled before
+    the branch opened. `_repo`'s base already holds the item at `ready`, so
+    there is no commission to rewrite here - which is the whole difference from
+    the test above.
+    """
+    root = _repo(tmp_path)
+    (root / "tests" / "test_thing.py").write_text(PINNED)
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "base: the assertion that pins the string")
+    _close(root, "PL-K7QX delete it and close", status="done", falsifies=FALSIFIES)
+
+    report = verify(
+        root, _item(falsifies=FALSIFIES, status="done"), _config(), "HEAD~1", self_audit=True
+    )
+
+    check = _check(report, "no existing assertion removed")
+    assert check.blocks and not check.advisory
+    assert check.detail == "1 line(s)"
+    assert (
+        "declared on this branch and not in"
+        in _check(report, "the `falsifies:` declaration holds").detail
+    )
+    assert not report.passed
+
+
+def test_a_needs_decision_item_this_branch_leaves_open_declares_nothing(tmp_path: Path) -> None:
+    """Still mid-decision, so the declaration is not yet an answer.
+
+    The exemption is for the commit that records the decision, which is what
+    makes the branch-side field a closure's word rather than a worker's.
+    """
+    root = _repo(tmp_path)
+    (root / "tests" / "test_thing.py").write_text(PINNED)
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "base: the assertion that pins the string")
+    _commission(root, "PL-K7QX-do-the-thing.md", status="needs-decision")
+    _close(root, "PL-K7QX delete it while deciding", status="needs-decision", falsifies=FALSIFIES)
+
+    report = verify(
+        root,
+        _item(falsifies=FALSIFIES, status="needs-decision"),
+        _config(),
+        "HEAD~1",
+        self_audit=True,
+    )
+
+    check = _check(report, "no existing assertion removed")
+    assert check.blocks and not check.advisory
+    assert not report.passed
+
+
+def test_an_item_captured_and_closed_on_one_branch_declares_nothing(tmp_path: Path) -> None:
+    """The self-grant route the base read closes, tested where the base holds no copy.
+
+    A session that writes its own `needs-decision` item and closes it in the
+    same branch has written both halves of the gate. `commissioned_falsification`
+    reports an empty status for an item the base does not hold, so the
+    exemption is never reached.
+    """
+    root = _repo(tmp_path)
+    (root / "tests" / "test_thing.py").write_text(PINNED)
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "base: the assertion that pins the string")
+    (root / "docs" / "items" / "PL-N3WQ-decide-it.md").write_text(
+        _stored("PL-N3WQ", "Decide it", status="done", falsifies=FALSIFIES)
+    )
+    _work(root, "PL-N3WQ file it, decide it, delete it", "tests/test_thing.py", KEPT)
+
+    report = verify(
+        root,
+        _item(
+            identifier="PL-N3WQ",
+            title="Decide it",
+            path="PL-N3WQ-decide-it.md",
+            falsifies=FALSIFIES,
+            status="done",
+        ),
+        _config(),
+        "HEAD~1",
+        self_audit=True,
+    )
+
+    check = _check(report, "no existing assertion removed")
+    assert check.blocks and not check.advisory
+    assert (
+        "declared on this branch and not in"
+        in _check(report, "the `falsifies:` declaration holds").detail
+    )
+    assert not report.passed
+
+
 # The command check's two declared exemptions (`PL-L4KX`). `docket check`
 # accepts both states and `verify` refused both, so the close-out the skill
 # prescribes had no passing state at all.

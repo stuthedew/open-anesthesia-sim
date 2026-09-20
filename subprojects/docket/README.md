@@ -2572,7 +2572,19 @@ exists to prevent.
   the check names every same-file line differing from the removal by exactly one
   string, with the true count and none chosen - 15 of the 20 such close-outs in
   this history carry more than one candidate, so choosing would print a guess as
-  fact (`PL-K4R5`).
+  fact (`PL-K4R5`). **One commission cannot write the field in advance**, and
+  takes it from the branch instead. A `needs-decision` item's answer is the
+  session's to make, so which assertions it falsifies is not known until it is
+  made: `PL-G6J5` asked whether an advisory should be re-based on a different
+  denominator or retired, the count said retire, and the close-out that deleted
+  the advisory and its 29 assertions printed `FAIL no existing assertion
+  removed` with `make check` green and every other guard passing. There the
+  gate is the base's **status** rather than the base's field — `status:
+  needs-decision` on the base's copy *is* the standing statement that the
+  answer is this session's to make — and the branch must be the one closing the
+  item. The fold names itself on the page rather than happening quietly: the
+  check says the declaration is the closure's own, and that the base is what
+  let it be (`PL-ZMGR`).
 - **A `dropped` item, or one carrying `not-delegable:`**, has no `verify:`
   command by construction — the first built nothing, and the second is what
   `docket check` accepts *instead of* a command. The check names which applies
@@ -2581,14 +2593,19 @@ exists to prevent.
   such item, so the close-out the `docket` skill prescribes had no passing
   state (`PL-L4KX`).
 
-Neither is anything a session can grant itself. Both are read off the item as
-the **base** holds it — the commission — rather than off the branch, so a
+Neither is anything a session can grant itself, because each turns on the item
+as the **base** holds it — the commission — rather than on the branch. A
 `falsifies:` line added beside the deletion it excuses folds nothing and is
-reported as the worker's own word for it. That matters most in `--self`, where
-`front_matter_check` is an advisory by design and so catches nothing; reading
-the base holds the property in both modes and needs no second guard. Where the
-base's copy cannot be read at all, the report says so rather than folding
-nothing silently.
+reported as the worker's own word for it, and the one declaration that is read
+from the branch is gated on a base `status: needs-decision`, which a session
+can no more write on its own branch than it can the field. That matters most in
+`--self`, where `front_matter_check` is an advisory by design and so catches
+nothing; reading the base holds the property in both modes and needs no second
+guard. Where the base's copy cannot be read at all, the report says so rather
+than folding nothing silently. Where the base holds no copy — an item captured
+on this branch, which is also the one route by which a session could write both
+halves of the `needs-decision` gate itself — the commission declares nothing
+and carries no status, so neither exemption is reached.
 
 `--self` also adds one line when the audited commits name other items' ids.
 `item_commits` selects by id so a batch can be judged per item, and a commit
