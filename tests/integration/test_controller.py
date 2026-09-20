@@ -2910,3 +2910,85 @@ def test_a_setting_changed_while_halted_makes_the_bookmark_fork_a_keyframe_fork(
         case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
 
         assert branch._run_definition.state_at(case_s) == marked._run_definition.state_at(case_s)
+
+
+def test_two_reversible_acts_in_either_order_leave_one_branch() -> None:
+    """Where a branch's definition opens cannot depend on the order of a dial and a reset.
+
+    Dial, dial back, reset and dial, reset, dial back end at one branch: the
+    same settings, the same live state, the same snapshot. Deciding where the
+    definition opens from the settings standing at the moment of the reset
+    gives the second of them the fork rather than the parent's keyframe, so it
+    restarts from two propagations where the parent took one and quietly stops
+    reproducing - 40 of 45 elements, with nothing on screen to say so.
+    `_open_at` records the dialled settings as a change at the fork instead,
+    and `record_change`'s own collapse rule notices the dial-back.
+    """
+
+    marked = _trunk_halted_on_a_bookmark()
+    fork_s = marked.snapshot().elapsed_s
+    original = marked.snapshot().cardiac_output_l_min
+
+    untouched = marked.resumed_at_halt()
+    dialled_back_first = marked.resumed_at_halt()
+    reset_first = marked.resumed_at_halt()
+
+    marked.start()
+    _advance_for(marked, duration_s=60.0)
+    marked.pause()
+
+    dialled_back_first.set_cardiac_output(4.0)
+    dialled_back_first.set_cardiac_output(original)
+    dialled_back_first.reset()
+
+    reset_first.set_cardiac_output(4.0)
+    reset_first.reset()
+    reset_first.set_cardiac_output(original)
+
+    for branch in (untouched, dialled_back_first, reset_first):
+        assert branch.snapshot().cardiac_output_l_min == original
+        assert branch.run_segments[0].opening.instant_s == 30.0
+        assert len(branch.run_segments) == 1
+
+        branch.start()
+        _advance_for(branch, duration_s=60.0)
+        branch.pause()
+
+    fork_steps = round(fork_s / MAXIMUM_SIMULATION_STEP_S)
+
+    for steps_past_fork in range(0, 601):
+        case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
+        expected = marked._run_definition.state_at(case_s)
+
+        for name, branch in (
+            ("untouched", untouched),
+            ("dialled back before the reset", dialled_back_first),
+            ("dialled back after the reset", reset_first),
+        ):
+            assert branch._run_definition.state_at(case_s) == expected, (
+                f"the branch {name} differs from its parent at {case_s} s"
+            )
+
+
+def test_a_branch_reset_under_new_settings_records_them_at_its_fork() -> None:
+    """The structure the reset leaves, which is what makes the order not matter.
+
+    The parent's stretch stays the parent's - its keyframe, its settings - and
+    what the learner has dialled is a change the branch made at its own
+    beginning. The keyframe that opens is the fork's own state, so the trace
+    starts where the readouts say the branch is standing.
+    """
+
+    marked = _trunk_halted_on_a_bookmark()
+    fork_s = marked.snapshot().elapsed_s
+    fork_state = marked._run_definition.state_at(fork_s)
+    branch = marked.resumed_at_halt()
+
+    branch.set_cardiac_output(4.0)
+    branch.reset()
+
+    assert [segment.opening.instant_s for segment in branch.run_segments] == [30.0, fork_s]
+    assert branch.run_segments[0].settings == marked.run_segments[-1].settings
+    assert branch.run_segments[1].opening.state == fork_state
+    assert branch._run_definition.state_at(fork_s) == fork_state
+    assert branch.drawn_window(0.0, fork_s, 150).times_s == (fork_s,)

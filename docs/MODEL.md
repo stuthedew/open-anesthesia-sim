@@ -4369,13 +4369,25 @@ relaxation moves.
 **One thing more follows from the relaxation, and it is `reset()`'s.** Reset
 preserves settings and restores state, so a branch reset after its learner has
 dialled something new stands at the fork state under settings its parent never
-used. There is then nothing to reproduce - it is a second management from the
-fork onwards rather than a continuation of the parent's stretch - and its
-definition opens *at* the fork carrying the fork's own state, exactly as a
-reset trunk opens at its own initial state. Keeping the parent's earlier
-keyframe there would propagate that keyframe forward under the new settings and
-draw the branch from a state it is not standing in, so the trace and the
-readouts beside it would disagree about one run.
+used. Its definition still opens at the parent's keyframe under the parent's
+settings; what the learner has dialled is recorded as a *change at the fork*.
+The keyframe that opens is the fork's own state, so the trace starts where the
+readouts say the branch is standing, and the parent's stretch stays the
+parent's.
+
+**Deciding that from the settings instead makes it depend on the order of two
+reversible acts**, which is why it is recorded rather than written into the
+opening. Dial, dial back, reset and dial, reset, dial back leave one branch -
+the same settings, the same live state, the same displayed values. Choosing the
+definition's opening at the moment of the reset gives the second of them the
+fork rather than the keyframe, so it restarts from two propagations where the
+parent took one and silently stops reproducing: measured 2026-09-20 at 40 of 45
+elements differing across five probes, worst 1.21e-15. Recorded as a change,
+the dial-back is collapsed by the rule a run definition already applies to a
+dial moved and moved back before a step ran, and the branch is where it
+started. What still differs after a reset that *kept* the new setting differs
+by 2.49e-04 on the same probes - a second management rather than a rounding,
+which is the distinction this arrangement preserves.
 
 **What is not relaxed is the one frame.** The definition still opens at a case
 instant on the case's own axis, the clock still continues the parent's, and

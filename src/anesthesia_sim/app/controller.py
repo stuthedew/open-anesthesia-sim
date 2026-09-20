@@ -975,23 +975,28 @@ class SimulationController:
         against the segment, because that check is about the *replay* and
         there is no replay here.
 
-        **Where the definition opens is the fork's own question** (`PL-B8MK`),
-        and it has two answers because a branch has two jobs. Under the
-        settings its parent's stretch was computed with, the branch is
-        reproducing that parent, and it does so by propagating from the same
-        keyframe the parent propagates from - which is the stretch's opening,
-        at or before the fork. Under any other settings it is a second
-        management rather than a reproduction, and there is nothing to
-        reproduce: it opens at the fork carrying the fork's own state, exactly
-        as a reset trunk opens at its own initial state. That second case is
-        `reset()`'s alone, and leaving it out would draw such a branch from
-        the parent's keyframe propagated forward under settings the parent
-        never used - a trace disagreeing with the readouts beside it, about
-        one run.
+        **The definition always opens at the parent's stretch, under the
+        parent's settings** (`PL-B8MK`), and whatever the learner has dialled
+        since is recorded as a change at the fork rather than written into the
+        opening. That is what keeps the branch propagating from the same
+        keyframe its parent propagates from, which is the whole of the
+        element-wise guarantee; and `record_change` already drops a call whose
+        settings are the ones in force, so the reproducing case - every fork,
+        and every reset that changed nothing - records nothing and opens
+        exactly as it did before this item.
 
-        The two coincide for every fork at a control event, where the fork
-        *is* the stretch's opening and the choice is between one keyframe and
-        itself.
+        **Deciding it from the settings instead makes the answer depend on the
+        order of two reversible acts**, which is why it is not done that way.
+        Dial, dial back, reset and dial, reset, dial back leave one branch: the
+        same settings, the same live state, the same snapshot. Choosing the
+        opening at reset time gives the second of them the fork rather than the
+        keyframe, so it restarts from two propagations where the parent took
+        one and stops reproducing - measured 2026-09-20 at 40 of 45 elements
+        differing across five probes, worst 1.21e-15, with nothing on screen
+        to say so. Recording the change instead leaves `record_change`'s own
+        collapse rule to notice the dial-back: the fork segment lands back on
+        the settings the stretch before it already had, so it goes entirely and
+        the branch is where it started.
         """
 
         segment = resume_point.segment
@@ -1013,17 +1018,11 @@ class SimulationController:
             step_count=resume_point.step_count,
             simulation_step_s=resume_point.simulation_step_s,
         )
-        # The definition opens under the settings the system actually holds,
-        # which on a fork are the segment's - checked in `_branch_from` before
-        # anything was written - and on `reset` are whatever the learner has
-        # dialled since, because reset preserves settings and restores state.
-        # It opens *at* a keyframe's own instant, on the case's axis, which is
+        # The definition opens on the parent's own stretch - its keyframe, its
+        # settings - at a keyframe's own instant on the case's axis, which is
         # what leaves the clock and the definition's reach one quantity.
-        opens_at = (
-            segment.opening if system.equation_settings() == segment.settings else resume_point.fork
-        )
         self._run_definition = RunDefinition(
-            system.equation_settings(), opens_at.state, opened_at_s=opens_at.instant_s
+            segment.settings, segment.opening.state, opened_at_s=segment.opening.instant_s
         )
         # The branch has reached the fork: it is standing there. Where the
         # definition opened earlier, the stretch between is the *parent's* and
@@ -1031,6 +1030,13 @@ class SimulationController:
         # reach is what the branch may be evaluated to, not what it may be
         # drawn from.
         self._run_definition.advance_to(resume_point.fork.instant_s)
+        # And then whatever the learner has dialled since, which is nothing on
+        # a fork and may be anything on a reset. Recorded at the fork rather
+        # than written into the opening, so the parent's stretch stays the
+        # parent's: the keyframe this lays carries `_canonical_state_at(fork)`,
+        # which is the identical expression `resume_point.fork.state` came
+        # from.
+        self._run_definition.record_change(system.equation_settings())
         self._opened_from = resume_point
         self._clear_control_timeline()
 
