@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, ux
 feature: scenario-branching
+milestone: v0.4.32
 touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit/test_chart_frame.py
 added: 2026-09-17
 closed: 2026-09-20

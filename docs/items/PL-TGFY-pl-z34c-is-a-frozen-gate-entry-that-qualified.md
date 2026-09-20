@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: planning
 feature: gate-remaining-cost
+milestone: v0.4.32
 touches: ROADMAP.md, docs/items
 added: 2026-09-20
 closed: 2026-09-20
+pr: 745
 payoff: stops the gate holding an entry nobody can clear, which is 12 of the 13 prerequisites standing between the project and the milestone
 verify: grep -qF 'makes a thirteenth, on a different ground' ROADMAP.md
 ---
