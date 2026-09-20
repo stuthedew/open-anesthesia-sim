@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: defect, docs
-feature: parallel-sessions
+feature: gate-list-integrity
 touches: docs/items, ROADMAP.md
 added: 2026-09-12
 verify: python3 tools/doc_check.py check && ! grep -qF 'superseded intermediate blob' ROADMAP.md

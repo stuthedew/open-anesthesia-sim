@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: defect, docs
-feature: planning-cadence
+feature: gate-list-integrity
 touches: ROADMAP.md
 added: 2026-09-13
 verify: python3 tools/doc_check.py check && grep -qF 'stood at 132 entries' ROADMAP.md
