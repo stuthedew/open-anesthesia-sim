@@ -3,8 +3,7 @@ id: PL-694Q
 title: ROADMAP.md's v0.5.0 section claims wave 'still prints all thirteen as waiting on work outside it', which it no longer does
 priority: P3
 effort: S
-status: ready
-classes: defect
+status: untriaged
 touches: ROADMAP.md
 added: 2026-09-20
 payoff: stops the v0.5.0 section telling a session to expect output the command does not produce
