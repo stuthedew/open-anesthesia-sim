@@ -1,4 +1,4 @@
-"""The application entry point: one run, one window, two timers.
+"""The application entry point: one case, one window, two timers.
 
 `uv run anesthesia-sim` runs `main()` below. The window opens on a fraction
 of the screen's available area and centred (`PL-005`), never full-screen and
@@ -7,13 +7,19 @@ the screen the application is given. The first frame is drawn after the
 window is shown, because a frame is assembled from the plot's laid-out
 width, and the timers start after that so the first thing a reader sees is
 a drawn, paused run.
+
+**What is opened is a case, not a run** (`PL-VKJW`). `BranchedCase` is what
+makes two runs on one axis one patient under two managements rather than two
+unrelated sessions (`docs/ARCHITECTURE.md` § "What a branch is"), so it is
+built here, at the entry point, and the dashboard is opened over its trunk.
+The learner adds the second run themselves, by taking a branch.
 """
 
 import sys
 
 from PySide6.QtWidgets import QApplication, QMainWindow
 
-from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.qt_widgets import WINDOW_SCREEN_FRACTION, initial_window_geometry
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
@@ -29,8 +35,8 @@ def main() -> None:
     """
 
     app = QApplication(sys.argv[:1])
-    controller = SimulationController()
-    view = SimulationView((controller,))
+    case = BranchedCase(SimulationController())
+    view = SimulationView((case.trunk,), case=case)
     window = QMainWindow()
     window.setWindowTitle(APP_DISPLAY_NAME)
     window.setCentralWidget(view)

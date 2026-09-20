@@ -30,12 +30,14 @@ nothing to it.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Sequence
+from dataclasses import dataclass
 from typing import Final
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QResizeEvent
 from PySide6.QtWidgets import (
     QAbstractButton,
+    QBoxLayout,
     QComboBox,
     QDialog,
     QFrame,
@@ -54,10 +56,12 @@ from anesthesia_sim.app.chart_time_base import (
     ChartTimeBase,
     time_base_for_span,
 )
-from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
+from anesthesia_sim.app.controller import BranchedCase, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
     CHART_HEADING,
+    COMPARING_FORK_LOCK_TEXT,
     FIT_RUN_LABEL,
+    FORK_NOTHING_SELECTED_TEXT,
     MAX_DISPLAYED_RUNS,
     NO_TRACES_SHOWN_TEXT,
     REMOVE_NOTHING_SELECTED_TEXT,
@@ -69,6 +73,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WASH_IN_MODELLED_TEXT,
     bookmark_panel,
     compartment_cap_notice,
+    fork_offer,
     mac_awake_caption,
     mac_reference_caption,
     no_traces_shown,
@@ -81,6 +86,8 @@ from anesthesia_sim.app.qt_chart import ConcentrationChart, TraceLegend, WashInC
 from anesthesia_sim.app.qt_widgets import (
     BookmarkDialog,
     BookmarksPanel,
+    ForkPanel,
+    freeze_splitter_handles,
     inert_splitter,
     selector_stylesheet,
     styled_label,
@@ -126,6 +133,14 @@ _PAGE_NAME: Final = "dashboardPage"
 _CHART_COLUMN_NAME: Final = "chartColumn"
 
 
+def _fixed_height(section: QWidget) -> QWidget:
+    """Hold a splitter section to its own height, so spare height goes to the plots."""
+
+    section.setSizePolicy(section.sizePolicy().horizontalPolicy(), _FIXED_SECTION_POLICY)
+
+    return section
+
+
 def _spaced_column(widget: QWidget, spacing: int) -> QVBoxLayout:
     """A vertical layout on `widget` with no margins and the given spacing."""
 
@@ -134,6 +149,66 @@ def _spaced_column(widget: QWidget, spacing: int) -> QVBoxLayout:
     column.setSpacing(spacing)
 
     return column
+
+
+def _holder(
+    layout: QBoxLayout, widgets: Sequence[QWidget], *, before_stretch: bool = False
+) -> QWidget:
+    """One run's contribution to a shared layout, wrapped so it can be taken out again.
+
+    A holder rather than the widgets themselves, because the dashboard's run
+    set changes while it is alive: a run added after construction has to land
+    in the same place in each of these layouts that it would have had at
+    construction, and a run taken off has to leave nothing behind. One holder
+    per run per layout makes both of those a single insertion and a single
+    deletion. Its own layout has no margins, so it is invisible.
+
+    Args:
+        layout: The shared layout to add it to.
+        widgets: This run's widgets for that layout, in order.
+        before_stretch: True where the layout ends in a stretch the run's
+            widgets must stay in front of - the header row and the sidebar.
+
+    Returns:
+        The holder, already placed.
+    """
+
+    holder = QWidget()
+    # The holder's own spacing is the shared layout's, so a run whose widgets
+    # sit inside one is laid out exactly as it would have been laid out
+    # directly: the two sidebar panels keep the gap the column gives them.
+    column = _spaced_column(holder, layout.spacing())
+
+    for widget in widgets:
+        column.addWidget(widget)
+
+    if before_stretch:
+        layout.insertWidget(layout.count() - 1, holder)
+    else:
+        layout.addWidget(holder)
+
+    return holder
+
+
+@dataclass(frozen=True, slots=True)
+class _RunSlots:
+    """Where one displayed run's widgets sit among the layouts every run shares.
+
+    Attributes:
+        readouts: The run's readout section, which is a section of the
+            vertical splitter in its own right rather than a holder inside
+            one - `PL-25KS` makes every surface an independent splitter
+            section so that a later item can let a reader resize them, and
+            merging two runs' readouts into one section would take a
+            boundary away.
+        parameters: Its setting controls, the same.
+        placed: Every widget this run put into a shared layout, the two
+            sections included. Removing the run is deleting these.
+    """
+
+    readouts: QWidget
+    parameters: QWidget
+    placed: tuple[QWidget, ...]
 
 
 class SimulationView(QWidget):
@@ -146,7 +221,11 @@ class SimulationView(QWidget):
     """
 
     def __init__(
-        self, controllers: Sequence[SimulationController], parent: QWidget | None = None
+        self,
+        controllers: Sequence[SimulationController],
+        parent: QWidget | None = None,
+        *,
+        case: BranchedCase | None = None,
     ) -> None:
         """Build the dashboard over `controllers`, one `RunView` each, drawing nothing yet.
 
@@ -158,17 +237,26 @@ class SimulationView(QWidget):
             controllers: The runs, in drawing order; the first is the
                 reference run for the MAC ruler and the clinical references.
             parent: The Qt parent.
+            case: The case the first run is the trunk of, where there is one.
+                It is what the branch control offers instants from and takes
+                branches through, and without it that control is not shown -
+                a dashboard handed loose controllers has no case to branch,
+                and a control that could only refuse is one presenting itself
+                as working. Given, it must be the case rooted in
+                `controllers[0]`: two runs drawn on one axis assert they are
+                one patient under two managements, and a case naming some
+                other trunk would put that assertion on the wrong run.
 
         Raises:
             ValueError: If no run is given, if more than
-                `MAX_DISPLAYED_RUNS` are, or if the runs are not all on one
-                agent. One ×MAC ruler, one MAC-awake band and one 1 MAC line
-                are drawn across a chart every run shares, and all three are
-                the agent's own published values; two agents on one axis
-                would have one run's traces read against the other's
-                divisor - a correct number under the wrong label, which
-                `CLAUDE.md`'s safety-critical standard treats as a failure
-                of the value.
+                `MAX_DISPLAYED_RUNS` are, if the runs are not all on one
+                agent, or if `case` is not rooted in the first of them. One
+                ×MAC ruler, one MAC-awake band and one 1 MAC line are drawn
+                across a chart every run shares, and all three are the
+                agent's own published values; two agents on one axis would
+                have one run's traces read against the other's divisor - a
+                correct number under the wrong label, which `CLAUDE.md`'s
+                safety-critical standard treats as a failure of the value.
         """
 
         if not controllers:
@@ -188,8 +276,21 @@ class SimulationView(QWidget):
                 f"axis and one set of clinical references; given {', '.join(sorted(agent_ids))}"
             )
 
+        if case is not None and case.trunk is not controllers[0]:
+            raise ValueError(
+                "a dashboard's case must be the one rooted in its first run, which is the "
+                "trunk every branch of it is taken from"
+            )
+
         super().__init__(parent)
-        self._runs = tuple(RunView(controller, self) for controller in controllers)
+        self._case = case
+        self._runs: tuple[RunView, ...] = ()
+        self._slots: tuple[_RunSlots, ...] = ()
+        # Why the branch last asked for was not taken, or None. Held across
+        # ticks for the reason `RunView._rejected_setting_notice` is: a
+        # refusal written into the panel and then overwritten by the next
+        # render tick would be gone before a reader could read it.
+        self._fork_refusal: str | None = None
         self._time_base: ChartTimeBase | None = None
         self._frame: ChartFrame | None = None
         self._render_pending = False
@@ -225,16 +326,6 @@ class SimulationView(QWidget):
         )
         self._capped_traces_text.setHidden(True)
 
-        # Said once, at construction, because the count cannot change while a
-        # dashboard is alive - `controllers` is what it was built over. Both
-        # legends need it to name the runs and the chart legend needs it to
-        # hold the compartment selection to `COMPARED_COMPARTMENT_CAP`.
-        self._legend.set_run_count(len(self._runs))
-        self._wash_in_legend.set_run_count(len(self._runs))
-
-        for index, run in enumerate(self._runs):
-            run.set_run_name(run_label(index) if len(self._runs) > 1 else None)
-
         # The marks are the *case's* and not any one run's, which is why they
         # are built here beside the chart rather than in `RunView`
         # (`docs/ARCHITECTURE.md` § "Where new code belongs": a control shared
@@ -247,11 +338,17 @@ class SimulationView(QWidget):
         self._bookmark_dialog: BookmarkDialog | None = None
         self._bookmarks_panel.edit_button.clicked.connect(self._open_bookmark_dialog)
 
+        # Where a branch is taken. Beside the marks for the reason they are
+        # here at all: both offer instants of the *case*, so neither belongs
+        # inside a `RunView`.
+        self._fork_panel = ForkPanel()
+        self._fork_panel.take_button.clicked.connect(self._handle_fork)
+
         self._chart_column = self._build_chart_column()
         self._build_page()
 
-        for run in self._runs:
-            run.presentation_requested.connect(self.present)
+        for controller in controllers:
+            self._place_run(controller)
 
         self._time_base_dropdown.currentIndexChanged.connect(self._handle_time_base_change)
         self._legend.visibility_changed.connect(self._handle_trace_visibility_change)
@@ -267,6 +364,18 @@ class SimulationView(QWidget):
 
         return self._runs
 
+    @property
+    def case(self) -> BranchedCase | None:
+        """The case being displayed, or None where the dashboard was handed loose runs.
+
+        Its trunk is always `runs[0]`'s controller. It is replaced rather
+        than mutated when the trunk starts over, so a reader of this
+        property holds the case the dashboard is showing rather than one it
+        used to show.
+        """
+
+        return self._case
+
     # -------------------------------------------------------------- layout
 
     def _build_page(self) -> None:
@@ -274,9 +383,15 @@ class SimulationView(QWidget):
 
         The notice banners sit under the transport rows and above every
         displayed value, so a halted run is read before the values it
-        explains. The three sections below them - readouts, settings, and
-        the charts beside the sidebar - are splitter sections, and only the
-        last of them takes spare height.
+        explains. The sections below them - one readout section and one
+        settings section per run, then the charts beside the sidebar - are
+        splitter sections, and only the last of them takes spare height.
+
+        No run is placed here. Every layout a run contributes to is kept, so
+        that `_place_run` can fill them in the same order whether it is
+        called at construction or when a learner takes a branch: a page laid
+        out over the run set it happened to be built with could not gain a
+        run without being rebuilt.
         """
 
         page = QWidget()
@@ -294,42 +409,30 @@ class SimulationView(QWidget):
         header_row.addWidget(
             styled_label(APP_DISPLAY_NAME, color=INK, size_px=APP_TITLE_SIZE, bold=True)
         )
-
-        for run in self._runs:
-            header_row.addWidget(run.build_header_badge())
-
         header_row.addStretch(1)
+        self._header_row = header_row
         column.addWidget(header)
 
-        for run in self._runs:
-            column.addWidget(run.build_transport_row())
+        transport_rows = QWidget()
+        self._transport_column = _spaced_column(transport_rows, 12)
+        column.addWidget(transport_rows)
 
-        for run in self._runs:
-            column.addWidget(run.build_notice())
+        notices = QWidget()
+        self._notice_column = _spaced_column(notices, 12)
+        column.addWidget(notices)
 
         sidebar = QWidget()
-        sidebar_column = _spaced_column(sidebar, 12)
+        self._sidebar_column = _spaced_column(sidebar, 12)
+        self._sidebar_column.addStretch(1)
 
-        for run in self._runs:
-            for panel in run.build_sidebar_panels():
-                sidebar_column.addWidget(panel)
-
-        sidebar_column.addStretch(1)
-
-        charts_and_sidebar = inert_splitter(
+        self._charts_and_sidebar = inert_splitter(
             Qt.Orientation.Horizontal, (self._chart_column, sidebar)
         )
-        charts_and_sidebar.setStretchFactor(0, _CHART_COLUMN_STRETCH)
-        charts_and_sidebar.setStretchFactor(1, _SIDEBAR_STRETCH)
+        self._charts_and_sidebar.setStretchFactor(0, _CHART_COLUMN_STRETCH)
+        self._charts_and_sidebar.setStretchFactor(1, _SIDEBAR_STRETCH)
 
-        sections: list[QWidget] = [run.build_readout_section() for run in self._runs]
-        sections.extend(run.build_parameter_controls() for run in self._runs)
-
-        for section in sections:
-            section.setSizePolicy(section.sizePolicy().horizontalPolicy(), _FIXED_SECTION_POLICY)
-
-        sections.append(charts_and_sidebar)
-        column.addWidget(inert_splitter(Qt.Orientation.Vertical, sections), 1)
+        self._sections = inert_splitter(Qt.Orientation.Vertical, (self._charts_and_sidebar,))
+        column.addWidget(self._sections, 1)
         column.addWidget(styled_label(USE_DISCLAIMER_TEXT, color=WARNING, bold=True, wrap=True))
 
         scroll = QScrollArea()
@@ -376,10 +479,9 @@ class SimulationView(QWidget):
         column.addWidget(self._legend)
         column.addWidget(self._hidden_traces_text)
         column.addWidget(self._capped_traces_text)
-
-        for run in self._runs:
-            column.addWidget(run.build_off_scale_notice())
-
+        off_scale_notices = QWidget()
+        self._off_scale_column = _spaced_column(off_scale_notices, column.spacing())
+        column.addWidget(off_scale_notices)
         column.addWidget(self._concentration_chart)
         column.addWidget(self._section_divider())
 
@@ -387,10 +489,9 @@ class SimulationView(QWidget):
         column.addWidget(styled_label(WASH_IN_DENOMINATOR_TEXT, color=MUTED, wrap=True))
         column.addWidget(styled_label(WASH_IN_MODELLED_TEXT, color=MUTED))
         column.addWidget(self._wash_in_legend)
-
-        for run in self._runs:
-            column.addWidget(run.build_wash_in_state())
-
+        wash_in_states = QWidget()
+        self._wash_in_state_column = _spaced_column(wash_in_states, column.spacing())
+        column.addWidget(wash_in_states)
         column.addWidget(self._wash_in_chart)
 
         # A section of its own, below both plots, rather than under the
@@ -403,7 +504,268 @@ class SimulationView(QWidget):
         column.addWidget(self._section_divider())
         column.addWidget(self._bookmarks_panel)
 
+        # And the branch control below them, for the same reason and one
+        # more: a learner marks the decision point and then forks there, so
+        # the two controls are read in that order. Hidden as a whole where
+        # the dashboard holds no case, divider included, so a dashboard that
+        # cannot branch shows no seam where the control would have been.
+        self._fork_section = QWidget()
+        fork_column = _spaced_column(self._fork_section, column.spacing())
+        fork_column.addWidget(self._section_divider())
+        fork_column.addWidget(self._fork_panel)
+        self._fork_section.setHidden(self._case is None)
+        column.addWidget(self._fork_section)
+
         return panel
+
+    # ------------------------------------------------------------ the runs
+
+    def _place_run(self, controller: SimulationController) -> RunView:
+        """Build a view for `controller` and put its widgets in each shared layout.
+
+        The one path a run reaches the dashboard by, whether it is one of
+        the runs the dashboard was built over or a branch taken from it an
+        hour later. Everything that depends on how many runs there are -
+        both legends' run counts, the names the runs are called by, and
+        whether an agent selector may be used - is rewritten afterwards from
+        the new set rather than assumed from the old one.
+
+        Args:
+            controller: The run to display, already checked against the
+                runs already shown.
+
+        Returns:
+            The view built for it.
+        """
+
+        run = RunView(controller, self)
+
+        if not self._runs:
+            # Only the first run's restart is a new case: a branch's Reset
+            # returns it to the fork it opened at, which leaves the case and
+            # every other run of it standing.
+            run.case_restarted.connect(self._handle_case_restarted)
+
+        run.presentation_requested.connect(self.present)
+        readouts = _fixed_height(run.build_readout_section())
+        parameters = _fixed_height(run.build_parameter_controls())
+        placed = (
+            _holder(self._header_row, (run.build_header_badge(),), before_stretch=True),
+            _holder(self._transport_column, (run.build_transport_row(),)),
+            _holder(self._notice_column, (run.build_notice(),)),
+            _holder(self._sidebar_column, run.build_sidebar_panels(), before_stretch=True),
+            _holder(self._off_scale_column, (run.build_off_scale_notice(),)),
+            _holder(self._wash_in_state_column, (run.build_wash_in_state(),)),
+            readouts,
+            parameters,
+        )
+        self._runs = (*self._runs, run)
+        self._slots = (*self._slots, _RunSlots(readouts, parameters, placed))
+        self._restack_sections()
+        self._rename_runs()
+
+        return run
+
+    def add_run(self, controller: SimulationController) -> RunView:
+        """Draw a second run beside the one already shown, from the next frame on.
+
+        What a fork opens into, and the reason the dashboard's run set is not
+        fixed at construction. The new run is drawn last, so the run that
+        happened keeps the first position and every reference the chart takes
+        from the reference run - the ×MAC ruler, the MAC-awake band - goes on
+        being taken from it.
+
+        Args:
+            controller: The run to add, on the agent already displayed.
+
+        Returns:
+            The view built for it.
+
+        Raises:
+            ValueError: If the dashboard already displays `MAX_DISPLAYED_RUNS`
+                runs, or if `controller` is on another agent. A branch carries
+                the agent of the case it continues, so neither is reachable
+                through the branch control; both are reachable through this
+                method, which is public.
+        """
+
+        if len(self._runs) >= MAX_DISPLAYED_RUNS:
+            raise ValueError(
+                f"{len(self._runs)} runs are already displayed; at most {MAX_DISPLAYED_RUNS} "
+                "may be displayed at once"
+            )
+
+        agent_id = controller.snapshot().agent_id
+        displayed = self._runs[0].snapshot().agent_id
+
+        if agent_id != displayed:
+            raise ValueError(
+                "every displayed run must be on the same agent, because they share one MAC "
+                f"axis and one set of clinical references; the dashboard is showing "
+                f"{displayed} and this run is on {agent_id}"
+            )
+
+        run = self._place_run(controller)
+
+        if self._render_timer.isActive():
+            # The dashboard is already running its cadences, so this run owes
+            # its own step timer; `start_simulation_timer` started the timers
+            # of the runs that were there at the time and cannot start one
+            # that did not exist. A timer on a paused run takes no step.
+            run.start_simulation_timer()
+
+        return run
+
+    def _handle_case_restarted(self) -> None:
+        """Take every branch off the dashboard, because the run they were taken from has ended.
+
+        A branch is a second management of a case from an instant the trunk
+        passed through. Once the trunk has started over it never passed
+        through that instant, so a branch drawn beside it is two curves
+        asserting one patient under two managements while no longer being
+        one - and `BranchedCase` would go on listing a branch of a run that
+        no longer exists. The case is rebuilt on the restarted trunk, which
+        is exactly what it now is: a case with no branches.
+        """
+
+        if len(self._runs) == 1:
+            return
+
+        dropped = tuple(zip(self._runs[1:], self._slots[1:], strict=True))
+        self._runs = self._runs[:1]
+        self._slots = self._slots[:1]
+
+        for run, slots in dropped:
+            self._remove_run(run, slots)
+
+        if self._case is not None:
+            self._case = BranchedCase(self._runs[0].controller)
+
+        self._fork_refusal = None
+        self._restack_sections()
+        self._rename_runs()
+
+    def _remove_run(self, run: RunView, slots: _RunSlots) -> None:
+        """Stop a run's timer, take its widgets out of every shared layout, and delete both.
+
+        The caller has already taken `run` out of `self._runs`, because the
+        widgets deleted here are ones the view would write on its next
+        refresh.
+
+        Args:
+            run: The view to remove.
+            slots: Where its widgets were placed.
+        """
+
+        run.stop_timers()
+        run.presentation_requested.disconnect(self.present)
+
+        for widget in slots.placed:
+            widget.setParent(None)
+            widget.deleteLater()
+
+        run.setParent(None)
+        run.deleteLater()
+
+    def _restack_sections(self) -> None:
+        """Order the vertical splitter: every run's readouts, every run's settings, the charts.
+
+        Both runs' readouts stand together and both runs' settings stand
+        together, so a reader compares like against like down one column.
+        `QSplitter.addWidget` moves a section it already holds, so re-adding
+        every section in order is the whole of the reordering; the handles
+        are frozen again because Qt enables the one it creates with a new
+        section.
+        """
+
+        for slots in self._slots:
+            self._sections.addWidget(slots.readouts)
+
+        for slots in self._slots:
+            self._sections.addWidget(slots.parameters)
+
+        self._sections.addWidget(self._charts_and_sidebar)
+        freeze_splitter_handles(self._sections)
+
+    def _rename_runs(self) -> None:
+        """Tell both legends and every run how many runs there now are.
+
+        Said on every change to the run set rather than once at
+        construction. A lone run is given no name, having nothing to be told
+        apart from; two runs are named by `run_label`, which is what the
+        legend entries call them. The same count decides whether an agent
+        selector may be used at all, because two runs share one MAC axis.
+        """
+
+        comparing = len(self._runs) > 1
+        self._legend.set_run_count(len(self._runs))
+        self._wash_in_legend.set_run_count(len(self._runs))
+
+        for index, run in enumerate(self._runs):
+            run.set_run_name(run_label(index) if comparing else None)
+            run.set_comparing(comparing)
+
+    # ----------------------------------------------------------- branching
+
+    def _handle_fork(self) -> None:
+        """Take the branch the panel is set to, and draw it beside the trunk.
+
+        Refused rather than obeyed while a comparison is already shown. The
+        display is capped at two runs and no run selector exists yet, so a
+        second branch could only replace the one on screen while the first
+        went on living inside `BranchedCase` - hidden state of exactly the
+        kind this interface refuses elsewhere. The control is not offered
+        then; this check is what makes that a property of the dashboard
+        rather than of the widget that happens to be hidden.
+        """
+
+        case = self._case
+
+        if case is None:
+            return
+
+        if len(self._runs) >= MAX_DISPLAYED_RUNS:
+            self._fork_refusal = COMPARING_FORK_LOCK_TEXT
+            self.present(False)
+
+            return
+
+        instant_s = self._fork_panel.selected_instant_s()
+
+        if instant_s is None:
+            self._fork_refusal = FORK_NOTHING_SELECTED_TEXT
+            self.present(False)
+
+            return
+
+        try:
+            branch = case.fork_at(instant_s)
+        except SimulationConfigurationError as error:
+            self._fork_refusal = refused_setting_notice(error)
+            self.present(False)
+
+            return
+
+        self._fork_refusal = None
+        self.add_run(branch)
+        self.present(False)
+
+    def _refresh_fork_panel(self) -> None:
+        """Redraw the branch control from the trunk's keyframes this tick.
+
+        The instants offered are the trunk's own, so a running case adds one
+        every time a setting changes and the panel has to follow; it keeps
+        the reader's selection where that instant still exists.
+        """
+
+        if self._case is None:
+            return
+
+        self._fork_panel.set_offer(
+            fork_offer(
+                self._case.fork_points_s, comparing=len(self._runs) > 1, refusal=self._fork_refusal
+            )
+        )
 
     def _section_divider(self) -> QFrame:
         """The rule between two sections of the chart column."""
@@ -504,6 +866,7 @@ class SimulationView(QWidget):
             run.refresh(snapshot, frame, index)
 
         self._refresh_bookmarks(snapshots[0])
+        self._refresh_fork_panel()
         self._frame = frame
         self.presented_frames += 1
 

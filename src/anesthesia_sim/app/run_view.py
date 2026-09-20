@@ -75,7 +75,6 @@ from anesthesia_sim.app.dashboard_frame import (
     READOUT_PANELS,
     READOUT_RESERVATIONS,
     RESET_LABEL,
-    RUNNING_AGENT_LOCK_TEXT,
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
     START_LABEL,
@@ -259,9 +258,15 @@ class RunView(QWidget):
             run's action owes the dashboard a frame. `True` leaves the frame
             to the render tick - a slider drag - and `False` asks for one
             now; `SimulationView.present` is what answers (`PL-R2YM`).
+        case_restarted: Emitted when this run has started over from
+            induction. On a trunk that is a new case, so every branch taken
+            from the run that no longer exists stops being a comparison of
+            anything; the dashboard is what acts on it, because which other
+            runs are on screen is not this view's to know.
     """
 
     presentation_requested = Signal(bool)
+    case_restarted = Signal()
 
     def __init__(self, controller: SimulationController, parent: QWidget | None = None) -> None:
         """Build one run's controls and readouts from its first snapshot.
@@ -293,6 +298,11 @@ class RunView(QWidget):
         # once against the picture still on screen.
         self._frame: ChartFrame | None = None
         self._run_index = 0
+        # Whether a second run is on the chart. The dashboard writes it
+        # through `set_comparing`, because how many runs are displayed is its
+        # fact and not this view's; it reaches the transport as the third
+        # reason an agent selector may be replaced by the chip.
+        self._comparing = False
 
         # What this run is called, where the chart's legend calls it that.
         # Its own label rather than a word inside the agent badge, because the
@@ -349,9 +359,11 @@ class RunView(QWidget):
         # selector stood, at the selector's width, so the transport controls
         # beside it do not move when a run starts (`PL-61WW`).
         self._running_agent_text = styled_label(snapshot.agent_display_name, color=INK, bold=True)
-        self._running_agent_lock_text = styled_label(
-            RUNNING_AGENT_LOCK_TEXT, color=INK, size_px=METRIC_QUALIFIER_SIZE
-        )
+        # Blank until something locks the selector. `_write_transport` is
+        # the only writer of this line and it writes the reason in the same
+        # call that reveals the chip, so the caption a reader sees is always
+        # the lock actually in force rather than whichever came first.
+        self._running_agent_lock_text = styled_label("", color=INK, size_px=METRIC_QUALIFIER_SIZE)
         self._running_agent_display = QFrame(self)
         self._running_agent_display.setObjectName(_RUNNING_AGENT_DISPLAY_NAME)
         self._running_agent_display.setFixedWidth(AGENT_SELECTOR_WIDTH)
@@ -375,7 +387,7 @@ class RunView(QWidget):
         for button in (self._start_button, self._pause_button, self._reset_button):
             button.setStyleSheet(transport_button_stylesheet())
 
-        self._write_transport(transport(snapshot))
+        self._write_transport(self._transport_lock(snapshot))
         self._start_button.clicked.connect(self._handle_start)
         self._pause_button.clicked.connect(self._handle_pause)
         self._reset_button.clicked.connect(self._handle_reset)
@@ -525,7 +537,7 @@ class RunView(QWidget):
         self._frame = frame
         self._run_index = run_index
         run_frame = frame.runs[run_index]
-        lock = transport(snapshot)
+        lock = self._transport_lock(snapshot)
 
         self._apply_agent_color_scheme(snapshot.agent_id)
         self._write_transport(lock)
@@ -590,8 +602,40 @@ class RunView(QWidget):
 
         snapshot = self.snapshot()
         _emphasised(self._status_text, status_word(snapshot))
-        self._write_transport(transport(snapshot))
+        self._write_transport(self._transport_lock(snapshot))
         self._notice_text.set_notice(notice(snapshot, self._rejected_setting_notice))
+
+    def _transport_lock(self, snapshot: SimulationSnapshot) -> Transport:
+        """This run's transport enablement, with both facts `dashboard_frame` cannot read.
+
+        `opened_from` is read live rather than cached at construction,
+        because a run's kind is the controller's to state and nothing here
+        would learn of a change to it.
+
+        Args:
+            snapshot: The run's state this tick.
+
+        Returns:
+            `dashboard_frame.transport`'s answer for this run.
+        """
+
+        return transport(
+            snapshot, is_branch=self.controller.opened_from is not None, comparing=self._comparing
+        )
+
+    def set_comparing(self, comparing: bool) -> None:
+        """Say whether a second run is on the chart, and rewrite the transport at once.
+
+        Called by the dashboard whenever its run set changes, so a selector
+        locked by a fork is locked from the frame the branch appears rather
+        than from the next tick.
+
+        Args:
+            comparing: Whether more than one run is displayed.
+        """
+
+        self._comparing = comparing
+        self._write_transport(self._transport_lock(self.snapshot()))
 
     def _write_transport(self, lock: Transport) -> None:
         """Write the transport's enablement and which of the selector and the chip is shown.
@@ -607,6 +651,7 @@ class RunView(QWidget):
         self._agent_dropdown.setDisabled(lock.selector_locked)
         self._agent_dropdown.setHidden(lock.selector_locked)
         self._running_agent_display.setVisible(lock.selector_locked)
+        self._running_agent_lock_text.setText(lock.selector_lock_reason)
         self._start_button.setEnabled(lock.start_enabled)
         self._pause_button.setEnabled(lock.pause_enabled)
         self._reset_button.setEnabled(lock.reset_enabled)
@@ -727,10 +772,18 @@ class RunView(QWidget):
         self.presentation_requested.emit(False)
 
     def _handle_reset(self) -> None:
-        """Start over: clears the run and a standing refusal, and leaves the playback rate alone."""
+        """Start over: clears the run and a standing refusal, and leaves the playback rate alone.
+
+        `case_restarted` is emitted before the frame is asked for, so the
+        dashboard has already dropped any branch of the run that just ended
+        by the time the frame is assembled - a branch drawn beside a trunk
+        standing back at induction would be two curves asserting one case
+        while no longer being one.
+        """
 
         self.controller.reset()
         self._rejected_setting_notice = None
+        self.case_restarted.emit()
         self.presentation_requested.emit(False)
 
     def _handle_playback_rate_change(self, index: int) -> None:

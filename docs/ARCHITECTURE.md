@@ -71,7 +71,7 @@ src/anesthesia_sim/
 │   ├── bookmarks.py                # what a learner marks a case at, held in two collections: TimeBookmark (an instant), MacTarget (a height on one compartment), BookmarkSet; toolkit-independent, and it detects nothing
 │   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the charts, the legend, the time base, the captions, the wash-in section, the render tick, the splitter layout; no domain logic
 │   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
-│   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, inert_splitter, initial_window_geometry
+│   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, BookmarksPanel, ForkPanel, inert_splitter, initial_window_geometry
 │   ├── formatting.py               # modeled value -> displayed string; toolkit-independent
 │   ├── playback.py                 # playback rate -> whole simulation steps per tick; toolkit-independent
 │   ├── dashboard_frame.py          # what the dashboard claims about one run at one instant, as plain values: the status word, the notice and its precedence, the readouts and their glosses, the setting controls, the transport enablement, the accounting panel, the control-change list, the captions and the new-case question; toolkit-independent
@@ -81,7 +81,7 @@ src/anesthesia_sim/
 │   ├── control_timeline.py         # recorded control changes -> the acts a reader sees; toolkit-independent
 │   ├── wash_in.py                  # F_A/F_I and the domain it holds on; toolkit-independent
 │   ├── theme.py                    # every display token: palette, cited ISO 5360 agent colors, type sizes, spacing, dash patterns; toolkit-independent
-│   └── main.py                     # PySide6 entry point; sized, centred window per PL-005
+│   └── main.py                     # PySide6 entry point; builds the BranchedCase and opens the dashboard over its trunk; sized, centred window per PL-005
 └── data/                 # versioned, cited parameter files
     ├── agents/{sevoflurane,isoflurane,desflurane}.json
     ├── machines/reference_circle_system.json
@@ -416,6 +416,54 @@ too. That second route is the one chosen (`PL-B8MK`, 2026-09-20); neither is
 built here, and `docs/MODEL.md` § "What this requires of a branch" records
 which of that section's two conditions the choice relaxes and what the
 relaxation costs.
+
+### How a learner takes one, and how a comparison ends
+
+`app/main.py` builds the `BranchedCase` and opens the dashboard over its
+trunk, so the application is a *case* from its first frame rather than a run
+that might later be made into one (`PL-VKJW`). Three things follow, and each
+is a property of the display rather than of the model:
+
+- **The branch control is the case's**, so it stands beside the bookmark
+  panel in `SimulationView` rather than in either `RunView`. It offers
+  `BranchedCase.fork_points_s` and takes the branch through `fork_at`;
+  `dashboard_frame.fork_offer` decides what it shows and
+  `qt_widgets.ForkPanel` draws it. A learner marks the decision point and
+  then forks there, which is the order the two panels are read in.
+- **`SimulationView.add_run` is how a run reaches the dashboard after
+  construction.** Its run set was fixed at construction until `PL-VKJW` —
+  "the count cannot change while a dashboard is alive" — so a branch taken
+  during a session had nowhere to be drawn. Both legends' run counts, the
+  names the runs carry, the splitter sections and the agent locks are now
+  written from the run set on every change to it. The cap is still
+  `MAX_DISPLAYED_RUNS`, which is two.
+- **One comparison at a time, and Reset is the way out.** There is no run
+  selector — `ROADMAP.md` § "Explicitly out of scope for v0.5.0" defers it —
+  so a second branch could only replace the displayed one while the first
+  went on living inside `BranchedCase`. The control is refused while two runs
+  are shown, visibly and with the reason readable. Resetting the *trunk*
+  takes every branch off the dashboard and rebuilds the case on the restarted
+  run, because a trunk that has started over never passed through the instant
+  a branch was taken at; resetting a *branch* returns it to its own fork and
+  leaves the comparison standing.
+
+**No agent may be chosen while two runs are shown** (`PL-QRD1`). A branch's
+`set_agent` refuses outright, so its `RunView` shows the agent chip in place
+of the selector. The trunk's `set_agent` *succeeds*, which is the worse case:
+the switch restarted the trunk, `BranchedCase` went on listing a branch of a
+run that no longer existed, and `assemble_chart_frame` then refused the frame
+over the shared MAC axis — so `_halt_every_run` failed both runs over an
+input to one of them. The trunk's selector is therefore locked while a
+comparison is shown too (project owner, 2026-09-20, ratified, over keeping the
+selector live and growing `RunView._confirm_new_case`'s dialog a clause about
+the branches it would orphan), which is `.claude/rules/expert-review.md`'s
+preference for an interface that prevents the error over one that reports it
+afterwards. Ratified rather than specified: the case put to the owner was a
+session's own recommendation, so ordinary evidence — a learner who wants to
+change agent mid-comparison, a measurement, a cost the case did not carry —
+is enough to put it back to them. `dashboard_frame.transport` carries all three locks and names the
+longest-lasting one that holds, so the chip never sends a reader to Pause for
+a lock Pause cannot lift.
 
 What a comparison between two branches *asserts* — what a difference between
 them may be attributed to, and that neither is a prediction for a patient — is
@@ -1109,7 +1157,10 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   selection - belongs to `SimulationView`, and so does a control asking one
   question of the whole case rather than of either run: the bookmark editor
   is the worked example (`PL-LPLD`), and it writes each mark to every
-  displayed run so the copies the controllers hold stay equal. Getting this the wrong way round
+  displayed run so the copies the controllers hold stay equal. The branch
+  control is the second (`PL-VKJW`): the instants it offers are the trunk's
+  keyframes, so duplicating it into each run would give a branch a control
+  that could only refuse. Getting this the wrong way round
   is not a tidiness matter: a run's panel put on the dashboard would state one
   branch's numbers over both, and a shared control duplicated into each run
   would let a comparison be read under two different settings. Either way,
