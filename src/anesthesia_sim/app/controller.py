@@ -42,7 +42,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationExecutionError,
 )
 from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
-from anesthesia_sim.core.run_definition import RunDefinition, RunSegment
+from anesthesia_sim.core.run_definition import Keyframe, RunDefinition, RunSegment
 from anesthesia_sim.core.simulation import SimulationState
 from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
@@ -232,21 +232,38 @@ class SimulationSnapshot:
 class ResumePoint:
     """Everything a branch needs in order to have opened where it did.
 
-    Four things that only mean anything together, so they travel together
-    rather than as four attributes a later edit could set one of - the
+    Five things that only mean anything together, so they travel together
+    rather than as five attributes a later edit could set one of - the
     argument `RunSegment` already makes about its own two halves. A branch
-    rebuilt from three of these and a stale fourth would open at a state its
+    rebuilt from four of these and a stale fifth would open at a state its
     settings never produced, or on an accounting period that never happened.
 
     It is also what `SimulationController.reset()` reads. Reset returns a run
     to its own beginning, and a branch's beginning is the fork rather than the
     case's induction, which the branch does not hold and cannot recover.
 
+    **`fork` and `segment.opening` are two instants, not one** (`PL-B8MK`).
+    They coincide for a fork taken at a control event, which is the only fork
+    that existed before bookmarks could halt a run: a control event *is* a
+    keyframe, so the stretch the branch opened inside begins exactly where the
+    branch does. A bookmark's instant has no reason to be a keyframe, and
+    recording one there would move the trunk's own later answers - so a
+    bookmark fork opens its definition at the keyframe the parent's stretch
+    begins at while standing at the fork itself. Both are the case's own
+    instants, on the one axis `PL-ZMRT` left; what is no longer true is that
+    they are equal.
+
     Attributes:
         segment: The parent stretch this branch opened inside, carrying both
-            the settings in force and the keyframe they start from. The
-            keyframe's `elapsed_s` is the fork instant in the case's own time.
-        step_count: How many steps the case had completed at that instant, so
+            the settings in force and the keyframe they start from. That
+            keyframe is where the branch's own run definition opens, which is
+            at or before the fork.
+        fork: The instant the branch was taken at and the canonical state the
+            parent held there - the parent's own keyframe for a fork at a
+            control event, and one propagation from it for a fork at a
+            bookmark. It is where the branch's clock and its live system
+            stand.
+        step_count: How many steps the case had completed at the fork, so
             the branch's clock continues the case's rather than restarting.
             `docs/MODEL.md` § "Supported run length" is measured against this.
         simulation_step_s: The step the case has been taken at, or `None` for
@@ -258,15 +275,22 @@ class ResumePoint:
     """
 
     segment: RunSegment
+    fork: Keyframe
     step_count: int
     simulation_step_s: float | None
     accounting_anchor_l: float
 
     @property
     def elapsed_s(self) -> float:
-        """The fork instant, in the case's own time."""
+        """The fork instant, in the case's own time.
 
-        return self.segment.opening.instant_s
+        The instant the branch *began*, which is what every reader of this
+        wants: where the clock stands, what a reset returns to, and where
+        `drawn_window` stops drawing to the left. It is not in general the
+        instant the branch's run definition opens at - see `fork` above.
+        """
+
+        return self.fork.instant_s
 
 
 class SimulationController:
@@ -713,6 +737,27 @@ class SimulationController:
 
         return self._opened_from
 
+    @property
+    def began_at_s(self) -> float:
+        """The case instant this run itself began at: induction, or its fork.
+
+        Zero on a trunk and the fork instant on a branch, on the case's own
+        axis like everything else this class hands out. It is what bounds a
+        run to the left - what `drawn_window` clips at, and what
+        `app/bookmarks.py` reads to call a mark unreachable.
+
+        **It is not `run_segments[0].opening.instant_s`, and inferring it from
+        there is the mistake this property exists to remove** (`PL-B8MK`). A
+        branch taken at a control event opens its definition at the fork, so
+        the two agree; a branch taken at a bookmark opens its definition at
+        the keyframe *before* the fork, because recording one at the fork
+        would move the trunk's own later answers. A reader taking the first
+        segment's opening for the run's beginning would place such a branch
+        earlier than it exists and draw it across an interval it never lived.
+        """
+
+        return 0.0 if self._opened_from is None else self._opened_from.elapsed_s
+
     def resumed_at(self, elapsed_s: float) -> SimulationController:
         """Open a second live run at this run's canonical state at `elapsed_s`.
 
@@ -790,7 +835,65 @@ class SimulationController:
                 reproduce the segment's.
         """
 
-        resume_point = self._resume_point_at(elapsed_s)
+        return self._branch_from(self._resume_point_at(elapsed_s))
+
+    def resumed_at_halt(self) -> SimulationController:
+        """Open a second live run at the bookmark crossing this run is standing on.
+
+        The other door to a branch, and the one `ROADMAP.md`'s v0.5.0
+        Definition of done asks for when it says "a branch taken at any
+        recorded control event **or bookmark**" (`PL-B8MK`). Everything a
+        branch is - a paused controller carrying this run's agent, patient and
+        circuit, advancing by the path every run takes - is what `resumed_at`
+        describes; what differs is only where it may be taken.
+
+        **It takes no instant, so there is none for a caller to get wrong.**
+        Route two needs the run's state at the fork, and a halt is where a run
+        has it: the run is standing on the crossing step with nothing computed
+        past it. Offering this as a float instead would let a branch be asked
+        for at a bookmark the run has not reached, or at the instant a learner
+        *marked* rather than the step instant the run actually stopped on -
+        which are not the same number, since a mark lying inside a step halts
+        the run at the step's end. Preventing that is worth more than the
+        flexibility, and widening the fork to any instant a run holds live
+        state for is `PL-Z3W6`'s to ask for rather than this one's.
+
+        **The trunk is not touched, which is the whole point of route two.**
+        No keyframe is recorded where the run halted: the branch's run
+        definition opens at the keyframe the parent's own stretch opens at,
+        while the branch's clock and its live system stand at the fork. See
+        `_open_at`, and `docs/MODEL.md` § "What this requires of a branch"
+        for which of that section's two conditions this relaxes and why the
+        element-wise guarantee survives it. Recording the keyframe instead -
+        the obvious route - leaves the branch exact against its parent and
+        displaces that parent's own later answers, 48 of 54 elements against
+        the same case built unmarked, so marking a run would change it.
+
+        Returns:
+            A paused `SimulationController` standing at the halted instant,
+            carrying this run's agent, patient and circuit, with an empty
+            control timeline of its own and a copy of this run's bookmarks.
+
+        Raises:
+            SimulationConfigurationError: this run is not standing on a
+                bookmark crossing, so there is no fork to take; this run is
+                itself a branch, since a branch of a branch is refused rather
+                than silently flattened; the halted instant is not a whole
+                number of this run's steps; or the replayed settings do not
+                reproduce the segment's.
+        """
+
+        return self._branch_from(self._resume_point_at_halt())
+
+    def _branch_from(self, resume_point: ResumePoint) -> SimulationController:
+        """Build the branch `resume_point` describes, leaving this run untouched.
+
+        Shared by both doors to a fork - `resumed_at` and `resumed_at_halt` -
+        because where a branch may be taken is the only thing that separates
+        them. What a branch *is* is stated once, here.
+        """
+
+        elapsed_s = resume_point.elapsed_s
         circuit = self._state.uptake_system.circuit
         alveoli = self._state.uptake_system.alveoli
         patient = self._state.uptake_system.patient
@@ -856,22 +959,42 @@ class SimulationController:
         reset preserves settings by contract, so a branch reset after its
         learner has dialled something new stands at the fork state under the
         new settings - the same thing a reset trunk does with its own initial
-        state. `resumed_at` is where the replayed settings are checked against
-        the segment, because that check is about the *replay* and there is no
-        replay here.
+        state. `_branch_from` is where the replayed settings are checked
+        against the segment, because that check is about the *replay* and
+        there is no replay here.
+
+        **Where the definition opens is the fork's own question** (`PL-B8MK`),
+        and it has two answers because a branch has two jobs. Under the
+        settings its parent's stretch was computed with, the branch is
+        reproducing that parent, and it does so by propagating from the same
+        keyframe the parent propagates from - which is the stretch's opening,
+        at or before the fork. Under any other settings it is a second
+        management rather than a reproduction, and there is nothing to
+        reproduce: it opens at the fork carrying the fork's own state, exactly
+        as a reset trunk opens at its own initial state. That second case is
+        `reset()`'s alone, and leaving it out would draw such a branch from
+        the parent's keyframe propagated forward under settings the parent
+        never used - a trace disagreeing with the readouts beside it, about
+        one run.
+
+        The two coincide for every fork at a control event, where the fork
+        *is* the stretch's opening and the choice is between one keyframe and
+        itself.
         """
 
         segment = resume_point.segment
         system = self._state.uptake_system
 
-        # The state comes from the parent's keyframe and never from the seeded
+        # The state comes from the canonical path and never from the seeded
         # system read back: a compartment stores an amount and derives its
         # fraction from its own capacity, so the round trip is not the identity
         # - 11.7% of alveolar fractions over the range a case occupies come
         # back one unit in the last place away - and the element-wise
         # reproduction `ROADMAP.md` item 12 requires would fail on exactly
-        # those entries.
-        system.resume_at(segment.opening.state, initial_agent_l=resume_point.accounting_anchor_l)
+        # those entries. It is the parent's keyframe for a fork at a control
+        # event and one propagation from that keyframe for a fork at a
+        # bookmark, which `ResumePoint.fork` holds either way.
+        system.resume_at(resume_point.fork.state, initial_agent_l=resume_point.accounting_anchor_l)
 
         self._state = SimulationState(
             uptake_system=system,
@@ -879,14 +1002,23 @@ class SimulationController:
             simulation_step_s=resume_point.simulation_step_s,
         )
         # The definition opens under the settings the system actually holds,
-        # which on `resumed_at` are the segment's - checked there before
+        # which on a fork are the segment's - checked in `_branch_from` before
         # anything was written - and on `reset` are whatever the learner has
         # dialled since, because reset preserves settings and restores state.
-        # It opens *at* the keyframe's own instant, on the case's axis, which
-        # is what leaves the clock and the definition's reach one quantity.
-        self._run_definition = RunDefinition(
-            system.equation_settings(), segment.opening.state, opened_at_s=segment.opening.instant_s
+        # It opens *at* a keyframe's own instant, on the case's axis, which is
+        # what leaves the clock and the definition's reach one quantity.
+        opens_at = (
+            segment.opening if system.equation_settings() == segment.settings else resume_point.fork
         )
+        self._run_definition = RunDefinition(
+            system.equation_settings(), opens_at.state, opened_at_s=opens_at.instant_s
+        )
+        # The branch has reached the fork: it is standing there. Where the
+        # definition opened earlier, the stretch between is the *parent's* and
+        # the branch never lived it, so `drawn_window` clips it away - the
+        # reach is what the branch may be evaluated to, not what it may be
+        # drawn from.
+        self._run_definition.advance_to(resume_point.fork.instant_s)
         self._opened_from = resume_point
         self._clear_control_timeline()
 
@@ -899,12 +1031,7 @@ class SimulationController:
                 instant is not a whole number of this run's steps.
         """
 
-        if self._opened_from is not None:
-            raise SimulationConfigurationError(
-                f"this run is itself a branch opened at {self._opened_from.elapsed_s} s, and a "
-                "branch of a branch is refused rather than silently flattened; branch from "
-                "the trunk instead"
-            )
+        self._require_forkable()
 
         if not isfinite(elapsed_s):
             raise SimulationConfigurationError(
@@ -923,21 +1050,91 @@ class SimulationController:
                 f"element-wise; it holds keyframes at {openings} s"
             )
 
+        # The fork *is* the stretch's opening here, which is what makes a
+        # control event the simple case: one instant doing both jobs.
+        return self._resume_point(segment, segment.opening)
+
+    def _resume_point_at_halt(self) -> ResumePoint:
+        """Everything a branch opening at this run's halt needs, or a refusal saying why.
+
+        The fork instant is read from the clock rather than from the crossing,
+        because the clock is where the state is. They are the same number -
+        `BookmarkMarks.crossings_between` stamps a crossing with the instant
+        the crossing step ended at, which is the instant the run then stands
+        at - and taking it from the clock is what makes that agreement
+        something this method does not have to rely on.
+
+        Raises:
+            SimulationConfigurationError: this run is a branch; it is not
+                standing on a bookmark crossing; or the halted instant is not
+                a whole number of this run's steps.
+        """
+
+        self._require_forkable()
+
+        if self._bookmark_halt is None:
+            raise SimulationConfigurationError(
+                "this run is not standing on a bookmark crossing, so there is no marked "
+                "instant to branch at; a fork at a mark is taken on the step that crossed "
+                "it, which is where the run holds the state a branch opens from"
+            )
+
+        fork_at_s = self._state.elapsed_s
+
+        return self._resume_point(
+            self._run_definition.segment_at(fork_at_s),
+            Keyframe(fork_at_s, self._run_definition.state_at(fork_at_s)),
+        )
+
+    def _require_forkable(self) -> None:
+        """Refuse a fork from a run that is itself a branch.
+
+        Raises:
+            SimulationConfigurationError: this run is a branch. A branch of a
+                branch is excluded rather than unimplemented (`PL-TFX5`), and
+                refusing it here covers the caller holding a branch directly,
+                which `BranchedCase` cannot reach.
+        """
+
+        if self._opened_from is not None:
+            raise SimulationConfigurationError(
+                f"this run is itself a branch opened at {self._opened_from.elapsed_s} s, and a "
+                "branch of a branch is refused rather than silently flattened; branch from "
+                "the trunk instead"
+            )
+
+    def _resume_point(self, segment: RunSegment, fork: Keyframe) -> ResumePoint:
+        """A branch's whole provenance: the stretch it opens inside and where it stands.
+
+        Args:
+            segment: The stretch of this run holding `fork`, whose opening is
+                the keyframe the branch's own definition opens at.
+            fork: The instant the branch is taken at and this run's canonical
+                state there.
+
+        Raises:
+            SimulationConfigurationError: the fork instant is not a whole
+                number of this run's steps, so a branch could not continue the
+                case's step count exactly.
+        """
+
         simulation_step_s = self._state.simulation_step_s
 
         if simulation_step_s is None:
             step_count = 0
         else:
-            step_count = round(elapsed_s / simulation_step_s)
+            step_count = round(fork.instant_s / simulation_step_s)
 
-            if step_count * simulation_step_s != elapsed_s:
+            if step_count * simulation_step_s != fork.instant_s:
                 raise SimulationConfigurationError(
-                    f"{elapsed_s} s is not a whole number of this run's {simulation_step_s} s "
-                    "steps, so a branch could not continue the case's step count exactly"
+                    f"{fork.instant_s} s is not a whole number of this run's "
+                    f"{simulation_step_s} s steps, so a branch could not continue the case's "
+                    "step count exactly"
                 )
 
         return ResumePoint(
             segment=segment,
+            fork=fork,
             step_count=step_count,
             simulation_step_s=simulation_step_s,
             accounting_anchor_l=(
@@ -1033,11 +1230,11 @@ class SimulationController:
         spacing_s = (stop_s - start_s) / (columns - 1)
         # The axis and the definition are on one clock, so nothing is
         # converted here - only clipped to the span the run actually holds. The
-        # lower clip is the run's *opening* rather than zero: a branch opens at
-        # its fork, the axis legitimately reaches to the left of that, and
-        # `RunDefinition` refuses an instant before a run existed rather than
-        # answering from the nearest keyframe it has.
-        first_s = max(start_s, self._run_definition.opened_at_s)
+        # lower clip is where this run *began* rather than zero: a branch
+        # begins at its fork, the axis legitimately reaches to the left of
+        # that, and `RunDefinition` refuses an instant before a run existed
+        # rather than answering from the nearest keyframe it has.
+        first_s = max(start_s, self.began_at_s)
         last_s = min(stop_s, self._run_definition.reached_s)
 
         if last_s < first_s:
@@ -1334,7 +1531,7 @@ class SimulationController:
         return self._bookmarks.standings(
             reached_instants_s=self._reached_instants_s,
             reached_crossings=self._reached_crossings,
-            opened_at_s=(0.0 if self._opened_from is None else self._opened_from.elapsed_s),
+            opened_at_s=self.began_at_s,
             run_length_cap_s=MAXIMUM_ELAPSED_SIMULATION_TIME_S,
             stopped_at_cap=self._supported_limit_reason is not None,
         )
@@ -1537,11 +1734,12 @@ class BranchedCase:
         labelled "branch here", but that is the interface's judgment to make
         and not this list's to pre-empt.
 
-        A **bookmark** becomes one of these by the run halting at it: a halt
-        leaves the run standing at that instant with nothing computed past it,
-        so a keyframe recorded there moves no value the run has already
-        produced. `docs/ARCHITECTURE.md` § "What a branch is" carries the
-        measurement, and `PL-CTD7` is where the halt records it.
+        A **bookmark** is not one of these and does not become one
+        (`PL-B8MK`). Making it one would mean recording a keyframe where the
+        run halted, which leaves the branch exact against its parent and
+        displaces that parent's own later answers - marking a run would change
+        it. A fork at a mark is taken through `fork_at_halt` instead, which
+        needs no keyframe and so adds no instant to this list.
         """
 
         return tuple(segment.opening.instant_s for segment in self._trunk.run_segments)
@@ -1569,7 +1767,35 @@ class BranchedCase:
                 the trunk's steps. `resumed_at` raises these and names which.
         """
 
-        branch = self._trunk.resumed_at(elapsed_s)
+        return self._kept(self._trunk.resumed_at(elapsed_s))
+
+    def fork_at_halt(self) -> SimulationController:
+        """Take a branch from the trunk where a bookmark has halted it, and keep it.
+
+        The other half of `ROADMAP.md`'s v0.5.0 Definition of done - "a branch
+        taken at any recorded control event **or bookmark**" - where
+        `fork_at` is the first half. It takes no instant, because the fork is
+        the one the trunk is standing on; `SimulationController.resumed_at_halt`
+        says why that is the interface rather than a widened `fork_at`.
+
+        Returns:
+            The new branch, paused at the trunk's state at the halted instant,
+            carrying the trunk's agent and patient. It is also appended to
+            `branches`, so a caller that discards the return value has not
+            lost it. The trunk is left standing on its halt.
+
+        Raises:
+            SimulationConfigurationError: the trunk is not standing on a
+                bookmark crossing, or the halted instant is not a whole number
+                of the trunk's steps. `resumed_at_halt` raises these and names
+                which.
+        """
+
+        return self._kept(self._trunk.resumed_at_halt())
+
+    def _kept(self, branch: SimulationController) -> SimulationController:
+        """Add `branch` to this case and hand it back."""
+
         self._branches = (*self._branches, branch)
 
         return branch

@@ -4322,7 +4322,7 @@ longer describes a hazard this program can express: with one frame there is no
 offset for a caller to name and no conversion to get right.
 
 **A fork at a bookmark cannot satisfy both, and it is the second that gives
-way** (`PL-B8MK`, decided 2026-09-20; not built at the time of writing). The
+way** (`PL-B8MK`, decided and built 2026-09-20). The
 two conditions above coincide for every fork the program takes today, because
 those forks are taken *at* control events and a control event is a keyframe -
 so "opens at a keyframe" and "opens at the fork instant" name one instant and
@@ -4357,9 +4357,25 @@ definition opens at the earlier keyframe that stops being true, and the clip
 would let a branch be drawn back across an interval it never lived, showing the
 trunk's trajectory under the branch's identity. That is a presentation failure
 of the kind the safety-critical standard names - the right numbers in the wrong
-patient context - rather than a cosmetic one, so a bookmark fork owes the fork
-instant carried explicitly and the clip read from it rather than from
-`opened_at_s`.
+patient context - rather than a cosmetic one, so a bookmark fork carries the
+fork instant explicitly and the clip is read from it. `ResumePoint.fork` is
+where it is carried and `SimulationController.began_at_s` is what reads it -
+zero on a trunk, the fork instant on a branch - which is also what
+`app/bookmarks.py` is given to call a mark unreachable. Inferring the number
+from `run_segments[0].opening.instant_s` instead is what `began_at_s` exists to
+stop: that is where the *definition* opens, which is the instant this
+relaxation moves.
+
+**One thing more follows from the relaxation, and it is `reset()`'s.** Reset
+preserves settings and restores state, so a branch reset after its learner has
+dialled something new stands at the fork state under settings its parent never
+used. There is then nothing to reproduce - it is a second management from the
+fork onwards rather than a continuation of the parent's stretch - and its
+definition opens *at* the fork carrying the fork's own state, exactly as a
+reset trunk opens at its own initial state. Keeping the parent's earlier
+keyframe there would propagate that keyframe forward under the new settings and
+draw the branch from a state it is not standing in, so the trace and the
+readouts beside it would disagree about one run.
 
 **What is not relaxed is the one frame.** The definition still opens at a case
 instant on the case's own axis, the clock still continues the parent's, and
@@ -4374,9 +4390,10 @@ what rules the chart's axis, what the supported run length is measured
 against, and what its run definition's segments and keyframes are stamped in —
 is the case's, measured from induction, and continues the parent's rather than
 restarting at the fork. `SimulationController.resumed_at()` opens the branch's
-definition at the fork instant; `advance()` and `drawn_window()` pass case time
-straight through to it. Nothing converts between frames anywhere, because there
-is only the one.
+definition at the fork instant, and `resumed_at_halt()` opens it at the
+keyframe at or before one — both on the case's own axis; `advance()` and
+`drawn_window()` pass case time straight through to it. Nothing converts
+between frames anywhere, because there is only the one.
 
 Continuing the case's time is not a presentation preference. Uptake and
 distribution is a function of time since induction, so a branch counting from

@@ -399,6 +399,29 @@ class RunDefinition:
 
         return self._canonical_state_at(instant_s)
 
+    def segment_at(self, instant_s: float) -> RunSegment:
+        """The stretch of constant settings this run was under at `instant_s`.
+
+        The settings the equations were assembled from there, travelling with
+        the keyframe they start from - which is the keyframe a state at
+        `instant_s` is one propagation from, and so the one a branch taken
+        there opens its own definition at (`app/controller.py`,
+        `SimulationController._resume_point_at_halt`).
+
+        Handing out the segment rather than its index, because an index is
+        only meaningful beside the tuple it came from and a caller holding one
+        across a `record_change` would be reading a different stretch than it
+        asked for.
+
+        Raises:
+            SimulationConfigurationError: `instant_s` is not finite, precedes
+                `opened_at_s`, or is past the time the run has reached.
+        """
+
+        self._require_within_run(instant_s)
+
+        return self._segments[self._segment_index_at(instant_s)]
+
     def evaluate(self, start_s: float, stop_s: float, columns: int) -> SampledWindow:
         """`columns` states evenly spaced across `[start_s, stop_s]`, for drawing.
 

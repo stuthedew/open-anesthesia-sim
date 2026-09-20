@@ -2496,6 +2496,10 @@ def test_a_branch_taken_at_a_bookmark_reproduces_its_parent_without_changing_it(
     fork_s = marked.snapshot().elapsed_s
     fork_steps = marked._state.step_count
 
+    # The premise this rests on: the fork is an instant the trunk holds no
+    # keyframe for, so the refused route would have had to record one there.
+    assert fork_s not in [segment.opening.instant_s for segment in marked.run_segments]
+
     branch = marked.resumed_at_halt()
 
     marked.start()
@@ -2534,9 +2538,9 @@ def test_a_branch_taken_at_a_bookmark_reproduces_its_parent_without_changing_it(
     for steps_past_fork in range(0, 301):
         case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
 
-        assert branch._run_definition.state_at(case_s) == marked._run_definition.state_at(
-            case_s
-        ), f"the branch and its parent differ at {case_s} s"
+        assert branch._run_definition.state_at(case_s) == marked._run_definition.state_at(case_s), (
+            f"the branch and its parent differ at {case_s} s"
+        )
 
 
 def test_a_bookmark_fork_opens_its_definition_at_the_keyframe_before_it() -> None:
