@@ -1,9 +1,16 @@
 ---
 id: PL-NDQD
 title: Record why this repository has no pull request template, so the harness's per-filing search stops being re-derived by every session that files one
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: docs, session-cost
 feature: pr-body-integrity
+touches: docs/dead-ends.md, docs/items/PL-NDQD-record-why-this-repository-has-no-pull-request.md
 added: 2026-09-20
+closed: 2026-09-20
+payoff: stops every session that meets the empty pull-request-template search from re-deriving why there is none
+verify: grep -qF 'A pull request template to make filing more reliable' docs/dead-ends.md
 ---
 
 **Problem.** Every session that files a pull request is told by its harness to
@@ -89,3 +96,29 @@ parameter, there is still no native picker UI for pull requests (unlike
 issues), and the harness's four search paths do not include the directory form -
 so a directory-only arrangement would be invisible to the sessions it exists
 for, and a human wanting the other template would hand-build a compare URL.
+
+**Closed 2026-09-20 as one line in `docs/dead-ends.md`** (project owner,
+2026-09-20, ratified, over adding a `.github/pull_request_template.md` that
+sessions would read and imitate). "Agree with recs" on the case above, so this
+is a session's recommendation the owner agreed with on one read, not a design
+they authored - ordinary evidence reopens it, and re-running the 30-pull-request
+count is what that evidence would look like.
+
+The dead-ends file is the cheapest carrier and the right one on its own test:
+an entry earns its line "only while a session could plausibly propose the
+approach again *without first reading the code that refutes it*". Nothing
+refutes this in code, and the harness makes **every** session search the four
+template paths before opening a pull request - so the trigger fires on every
+filing, and the refutation is in context at that moment rather than at the
+greeting. It is not one of the outcomes that file excludes: the premise was
+tested and failed, rather than the item being a duplicate or out of scope.
+
+The entry costs 343 bytes against a 4,000-byte budget, taking the emitted set
+to 2,304 bytes over 11 entries - 58% of the budget, below the 80% warn band.
+Nothing was removed to pay for it.
+
+Not routed to the resident set, and not to a path-scoped rule: a template is
+searched for before any file in this repository is opened, so no read precedes
+the moment, and `CLAUDE.md`'s fourth disposition would have been the only one
+left. A dead-end line is resident in the same way at a fraction of the size,
+and is retired by its own budget rather than by anybody remembering to.
