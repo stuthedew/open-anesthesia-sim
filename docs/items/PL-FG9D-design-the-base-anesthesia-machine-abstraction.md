@@ -3,12 +3,13 @@ id: PL-FG9D
 title: Design the base anesthesia-machine abstraction so a real commercial machine is a data-plus-plugin addition
 priority: P2
 effort: M
+status: ready
 classes: docs
-blocked-by: PL-4DCG
-status: blocked
 feature: anesthesia-machine
-touches: docs/MODEL.md, ROADMAP.md
+touches: docs/machine-abstraction.md, docs/MODEL.md, ROADMAP.md
 added: 2026-09-02
+payoff: settles what a machine module is before two machines are in the tree, so adding a real commercial machine is a data file rather than a second calculation path nobody can check
+verify: grep -qF 'contributes exactly two rates and one volume to the breathing circuit' docs/machine-abstraction.md
 ---
 
 **Problem.** `ROADMAP.md` planned-milestone item 1 says "a modular
