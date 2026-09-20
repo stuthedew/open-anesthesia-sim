@@ -239,9 +239,11 @@ class RunDefinition:
                 run's starting totals, which is zero for a run that has
                 delivered nothing and the parent's running totals for a fork.
             opened_at_s: The case instant this run opens at, in seconds. Zero
-                for a run beginning at induction; the fork instant for a
-                branch, which carries the parent's keyframe as its
-                `initial_state`.
+                for a run beginning at induction; for a branch, the instant of
+                the parent keyframe it carries as its `initial_state`, which
+                is the fork for a branch taken at a control event and the
+                keyframe before it for one taken at a bookmark
+                (`app/controller.py`, `SimulationController._open_at`).
 
         Raises:
             SimulationConfigurationError: `opened_at_s` is not finite or is
@@ -274,13 +276,21 @@ class RunDefinition:
 
     @property
     def opened_at_s(self) -> float:
-        """The case instant this run opens at: zero at induction, the fork for a branch.
+        """The case instant this run opens at: zero at induction, a parent keyframe for a branch.
 
         Read off the first segment rather than stored beside it, so there is
         one place the run's opening is recorded and no second copy to fall out
         of step with it. `_require_within_run` reads the same field, which is
         what makes this the instant a caller may clip an axis to and be sure
         of not being refused.
+
+        **It is where this definition may be evaluated from, which on a branch
+        is at or before where the branch itself began.** A branch taken at a
+        bookmark opens here at the keyframe before its fork, so that it
+        propagates from the same keyframe its parent does; the stretch between
+        is the parent's and the branch never lived it, which is why the app
+        layer clips a drawn axis at the fork rather than here
+        (`SimulationController.began_at_s`).
         """
 
         return self._segments[0].opening.instant_s
@@ -398,6 +408,29 @@ class RunDefinition:
         self._require_within_run(instant_s)
 
         return self._canonical_state_at(instant_s)
+
+    def segment_at(self, instant_s: float) -> RunSegment:
+        """The stretch of constant settings this run was under at `instant_s`.
+
+        The settings the equations were assembled from there, travelling with
+        the keyframe they start from - which is the keyframe a state at
+        `instant_s` is one propagation from, and so the one a branch taken
+        there opens its own definition at (`app/controller.py`,
+        `SimulationController._resume_point_at_halt`).
+
+        Handing out the segment rather than its index, because an index is
+        only meaningful beside the tuple it came from and a caller holding one
+        across a `record_change` would be reading a different stretch than it
+        asked for.
+
+        Raises:
+            SimulationConfigurationError: `instant_s` is not finite, precedes
+                `opened_at_s`, or is past the time the run has reached.
+        """
+
+        self._require_within_run(instant_s)
+
+        return self._segments[self._segment_index_at(instant_s)]
 
     def evaluate(self, start_s: float, stop_s: float, columns: int) -> SampledWindow:
         """`columns` states evenly spaced across `[start_s, stop_s]`, for drawing.

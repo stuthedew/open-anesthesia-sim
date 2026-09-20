@@ -4322,7 +4322,7 @@ longer describes a hazard this program can express: with one frame there is no
 offset for a caller to name and no conversion to get right.
 
 **A fork at a bookmark cannot satisfy both, and it is the second that gives
-way** (`PL-B8MK`, decided 2026-09-20; not built at the time of writing). The
+way** (`PL-B8MK`, decided and built 2026-09-20). The
 two conditions above coincide for every fork the program takes today, because
 those forks are taken *at* control events and a control event is a keyframe -
 so "opens at a keyframe" and "opens at the fork instant" name one instant and
@@ -4357,9 +4357,37 @@ definition opens at the earlier keyframe that stops being true, and the clip
 would let a branch be drawn back across an interval it never lived, showing the
 trunk's trajectory under the branch's identity. That is a presentation failure
 of the kind the safety-critical standard names - the right numbers in the wrong
-patient context - rather than a cosmetic one, so a bookmark fork owes the fork
-instant carried explicitly and the clip read from it rather than from
-`opened_at_s`.
+patient context - rather than a cosmetic one, so a bookmark fork carries the
+fork instant explicitly and the clip is read from it. `ResumePoint.fork` is
+where it is carried and `SimulationController.began_at_s` is what reads it -
+zero on a trunk, the fork instant on a branch - which is also what
+`app/bookmarks.py` is given to call a mark unreachable. Inferring the number
+from `run_segments[0].opening.instant_s` instead is what `began_at_s` exists to
+stop: that is where the *definition* opens, which is the instant this
+relaxation moves.
+
+**One thing more follows from the relaxation, and it is `reset()`'s.** Reset
+preserves settings and restores state, so a branch reset after its learner has
+dialled something new stands at the fork state under settings its parent never
+used. Its definition still opens at the parent's keyframe under the parent's
+settings; what the learner has dialled is recorded as a *change at the fork*.
+The keyframe that opens is the fork's own state, so the trace starts where the
+readouts say the branch is standing, and the parent's stretch stays the
+parent's.
+
+**Deciding that from the settings instead makes it depend on the order of two
+reversible acts**, which is why it is recorded rather than written into the
+opening. Dial, dial back, reset and dial, reset, dial back leave one branch -
+the same settings, the same live state, the same displayed values. Choosing the
+definition's opening at the moment of the reset gives the second of them the
+fork rather than the keyframe, so it restarts from two propagations where the
+parent took one and silently stops reproducing: measured 2026-09-20 at 40 of 45
+elements differing across five probes, worst 1.21e-15. Recorded as a change,
+the dial-back is collapsed by the rule a run definition already applies to a
+dial moved and moved back before a step ran, and the branch is where it
+started. What still differs after a reset that *kept* the new setting differs
+by 2.49e-04 on the same probes - a second management rather than a rounding,
+which is the distinction this arrangement preserves.
 
 **What is not relaxed is the one frame.** The definition still opens at a case
 instant on the case's own axis, the clock still continues the parent's, and
@@ -4374,9 +4402,10 @@ what rules the chart's axis, what the supported run length is measured
 against, and what its run definition's segments and keyframes are stamped in —
 is the case's, measured from induction, and continues the parent's rather than
 restarting at the fork. `SimulationController.resumed_at()` opens the branch's
-definition at the fork instant; `advance()` and `drawn_window()` pass case time
-straight through to it. Nothing converts between frames anywhere, because there
-is only the one.
+definition at the fork instant, and `resumed_at_halt()` opens it at the
+keyframe at or before one — both on the case's own axis; `advance()` and
+`drawn_window()` pass case time straight through to it. Nothing converts
+between frames anywhere, because there is only the one.
 
 Continuing the case's time is not a presentation preference. Uptake and
 distribution is a function of time since induction, so a branch counting from
@@ -4412,6 +4441,41 @@ anchored to its own zero it drew 55.3, 65.3, 75.3 … and shared **2 of 8**, so
 the two traces could not be read against each other at matched points.
 `tests/integration/test_controller.py` and
 `tests/reference/test_canonical_evaluation.py` hold both.
+
+**A fork at a bookmark adds exactly one column to that, and it is the fork
+itself** (`PL-B8MK`, measured 2026-09-20 on a 120 s axis at 150 columns). The
+fork above lands on the trunk's own columns because a control event is drawn
+on every run that has one; a bookmark's instant is not a control event, so the
+trunk draws it only if it happens to fall on the grid. The branch always draws
+it, being the left end of the branch's own clipped range. The two traces are
+still read against each other everywhere else, and the value at that one
+vertex is the case's own state there - which both runs hold - so what the extra
+column marks is the instant they stop being the same run rather than a
+disagreement about it.
+
+**The drawn values at the columns they do share are equal to floating-point
+composition rather than bit for bit, where a control-event fork's are exact.**
+`evaluate_anchored` chains one propagator across consecutive grid columns and
+breaks the chain at a bound or an event column, so a branch restarts from its
+keyframe at its own left bound. For a control-event fork that instant is a
+segment opening on the trunk too and both walks break there; a bookmark fork's
+is not, so the trunk chains straight through it while the branch restarts - the
+same exact solution composed in a different order. Measured 2026-09-20 on the
+3 600 s case above, forked at the 655.3 s bookmark, both runs advanced 1 200 s
+and both asked for a 601-column axis from zero to 1 800 s: **2 977 of 3 438
+shared column elements differ, worst 7.70e-16 as a fraction and 8.17e-14 L on
+an accumulator** - eleven and seven orders below § "Displayed precision"'s 1e-4
+and 1e-6. A branch forked at the 600 s control event instead differs at none of
+the columns it shares.
+
+The guarantee above is unaffected, because it rests on `state_at` and not on
+`evaluate`: asked for those same 382 instants canonically, the two agree
+element for element, 0 differing. § "The canonical evaluation rule" is what
+separates the two paths, and this is an instance of the separation rather than
+an exception to it. It is recorded because a difference trace between two runs
+would read a few units in the last place here where two identical runs should
+read zero, and a reader meeting that without this paragraph would take it for a
+disagreement about the case.
 
 ### Supported input ranges
 

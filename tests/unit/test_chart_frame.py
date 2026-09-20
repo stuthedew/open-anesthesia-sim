@@ -11,6 +11,7 @@ from types import MappingProxyType
 
 import pytest
 
+from anesthesia_sim.app.bookmarks import TimeBookmark
 from anesthesia_sim.app.chart_frame import (
     CHART_COLUMN_BUDGET_PER_SERIES,
     COMPARED_COMPARTMENT_CAP,
@@ -1073,6 +1074,47 @@ def test_a_branch_carries_its_fork_and_a_trunk_carries_none() -> None:
 
     assert frame.runs[0].branch_point_s is None
     assert frame.runs[1].branch_point_s == pytest.approx(60.0)
+
+
+def test_a_bookmark_branch_is_marked_at_its_fork_and_not_at_its_definition_s_opening() -> None:
+    """The one instant two runs stop being the same run, when it is not a keyframe.
+
+    A bookmark branch's run definition opens at the keyframe *before* the
+    fork, so a frame taking the definition's own opening for the branch point
+    would draw the line where the trunk was still the only run - the fork at a
+    time it did not happen, which is what the assembly's own comment guards
+    against. `opened_from.elapsed_s` is the fork whichever door the branch
+    came through.
+    """
+
+    trunk = SimulationController()
+    trunk.add_time_bookmark(TimeBookmark(45.3, "the decision point"))
+    trunk.start()
+    _advance(trunk, 30.0)
+    trunk.begin_control_adjustment()
+    trunk.set_fresh_gas_flow(3.0)
+
+    for _ in range(round(60.0 / _STEP_S)):
+        trunk.advance(_STEP_S)
+
+        if trunk.snapshot().bookmark_halt is not None:
+            break
+
+    fork_s = trunk.snapshot().elapsed_s
+    case = BranchedCase(trunk)
+    branch = case.fork_at_halt()
+
+    assert branch.run_segments[0].opening.instant_s == 30.0 < fork_s
+
+    frame = assemble_chart_frame(
+        (_input(trunk), _input(branch, run_index=1)),
+        None,
+        COMPARTMENT_QUANTITIES,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+
+    assert frame.runs[0].branch_point_s is None
+    assert frame.runs[1].branch_point_s == fork_s
 
 
 def test_a_fork_outside_the_drawn_window_is_not_marked_at_its_edge() -> None:

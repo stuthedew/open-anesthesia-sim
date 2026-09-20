@@ -502,6 +502,35 @@ def _opening_after_zero() -> RunDefinition:
     return definition
 
 
+def test_a_run_definition_reports_the_instant_it_opens_at() -> None:
+    """The one place a definition's own opening is named, and it is not the reach.
+
+    Read directly rather than through a caller, because since `PL-B8MK` the
+    app layer has one of its own: a branch's *beginning* is its fork, which a
+    bookmark fork puts after the keyframe its definition opens at, so
+    `SimulationController.began_at_s` is what clips a drawn axis and this is
+    what says where the definition may be evaluated from. The two were one
+    number until a bookmark became forkable, and a test reaching this through
+    the app layer could not tell them apart.
+    """
+
+    trunk_shaped = RunDefinition(
+        AgentUptakeSystem.for_agent("sevoflurane").equation_settings(),
+        AgentUptakeSystem.for_agent("sevoflurane").state_vector(),
+        opened_at_s=0.0,
+    )
+
+    assert trunk_shaped.opened_at_s == 0.0
+
+    branch_shaped = _opening_after_zero()
+
+    # It is the first segment's own instant, and recording changes and
+    # advancing the reach past them leaves it where it was.
+    assert branch_shaped.opened_at_s == 600.0
+    assert branch_shaped.segments[0].opening.instant_s == 600.0
+    assert branch_shaped.reached_s == 1200.0
+
+
 def test_a_run_definition_that_opens_after_zero_refuses_the_span_before_it() -> None:
     """The lower bound is the run's own opening, never the literal zero.
 

@@ -9,6 +9,7 @@ feature: branch-run-set-integrity
 touches: src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_simulation_view.py
 added: 2026-09-20
 closed: 2026-09-20
+pr: 788
 payoff: stops Branch here opening a branch at induction when the learner chose a decision point that has since collapsed
 verify: grep -q 'def test_a_vanished_fork_instant_leaves_nothing_selected' tests/integration/test_simulation_view.py
 ---

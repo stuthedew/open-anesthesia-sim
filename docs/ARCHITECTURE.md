@@ -328,13 +328,15 @@ trunk with N branches is the whole of the structure — sub-forks of forks are
 excluded rather than unimplemented (project owner, 2026-08-25): they multiply
 without bound and buy little over branching from the trunk again.
 
-This is the object map. What a branch *guarantees* — that it opens at a
-keyframe and why, that its run definition opens at that keyframe's own case
-instant so no clock is re-based and no conversion is performed, and what both
-are worth in floating point — is `docs/MODEL.md` § "The canonical evaluation
-rule", which is the one place those are stated and measured.
+This is the object map. What a branch *guarantees* — that its run definition
+opens at a keyframe of the case and why, that it opens at that keyframe's own
+case instant so no clock is re-based and no conversion is performed, and what
+both are worth in floating point — is `docs/MODEL.md` § "The canonical
+evaluation rule", which is the one place those are stated and measured. Which
+keyframe, and how it relates to the instant the branch itself began at, is the
+same section's "What this requires of a branch".
 
-Three objects in `app/controller.py` carry it:
+Four things in `app/controller.py` carry it:
 
 - `SimulationController.resumed_at(elapsed_s)` makes one. It builds a second
   controller through the ordinary constructor, replays the trunk's settings
@@ -342,10 +344,20 @@ Three objects in `app/controller.py` carry it:
   trunk's canonical state at `elapsed_s`, and hands it back paused. The trunk
   is read and never written, so the two runs share no compartment, no
   accounting and no clock — which is what lets both be advanced.
+- `SimulationController.resumed_at_halt()` makes one at the bookmark crossing
+  the trunk is standing on. What a branch *is* is the bullet above — the two
+  share `_branch_from` — and what differs is only where the fork may be
+  taken. It takes no instant, deliberately: the fork is the halt, so there is
+  no float for a caller to name a mark the run has not reached with, and no
+  way to confuse the instant a learner *marked* with the step instant the run
+  actually stopped on.
 - `ResumePoint` is where the branch came from: the trunk stretch it opened
-  inside, the case's step count there, the step it was taken at, and the
-  agent its accounting period started from. `opened_from` is `None` on a
-  trunk and this on a branch, so every run knows which it is.
+  inside, the fork — the instant it was taken at and the canonical state
+  there — the case's step count at the fork, the step it was taken at, and
+  the agent its accounting period started from. `opened_from` is `None` on a
+  trunk and this on a branch, so every run knows which it is. The stretch's
+  opening and the fork are one instant for a fork at a control event and two
+  for a fork at a bookmark, which is the whole of what `PL-B8MK` changed.
 - `BranchedCase` holds a trunk and the branches taken from it. It is what
   makes two controllers one case rather than two unrelated sessions, and it
   is where the flat shape stops being a refusal: the trunk is the only run it
@@ -365,19 +377,22 @@ the opposite case to the timeline below and settles by the same test: a mark is
 a question about what is still to come, and a comparison is two managements
 answering one question, so a learner made to re-enter the marks could compare
 two branches at two different heights with nothing saying so. What it does not
-inherit is
-the trunk's control timeline, which starts empty: the branch's record is of
-what the learner does to *it*, and `opened_from` is what records where the
-fork was taken — the definition's own first segment stands at the same instant,
-so `opened_from` carries the provenance rather than being the only copy of the
-number.
+inherit is the trunk's control timeline, which starts empty: the branch's
+record is of what the learner does to *it*, and `opened_from` is what records
+where the fork was taken. `began_at_s` is the one number to read for it — zero
+on a trunk, the fork instant on a branch. The definition's own first segment
+used to stand at the same instant and no longer always does, which is why that
+property exists rather than the inference (`PL-B8MK`).
 
 **One time frame, and every reader is in it.** A branch continues the case's
 step count, so `snapshot().elapsed_s`, every control-change stamp,
 `drawn_window`'s instants *and* the instants `run_segments` hands out are all
-case time. Its `RunDefinition` opens at the fork rather than at a zero of its
-own, so a keyframe read from a branch needs no conversion to be placed on the
-case's axis and no reader has to know which kind of run it is holding.
+case time. Its `RunDefinition` opens at a keyframe of the case rather than at
+a zero of its own, so a keyframe read from a branch needs no conversion to be
+placed on the case's axis and no reader has to know which kind of run it is
+holding. *Which* keyframe is the fork's own question: the fork itself for a
+branch taken at a control event, and the keyframe at or before it for one
+taken at a bookmark.
 
 Until 2026-09-14 there were two frames and a `SimulationController.origin_s`
 holding the difference, which `advance` and `drawn_window` subtracted and
@@ -387,35 +402,40 @@ branch's drawn columns anchored to its own zero, landing at case instants the
 trunk never draws — was dissolved by it rather than fixed separately.
 `docs/MODEL.md` § "The canonical evaluation rule" measures what that is worth.
 
-**Where a branch may be taken.** At any keyframe the trunk holds —
-`BranchedCase.fork_points_s` — which is its opening at induction and every
-setting change the model was actually stepped under. Anywhere else is refused
-rather than approximated, for the arithmetic reason `docs/MODEL.md` measures.
-`tests/unit/test_run_definition.py` holds the other side of that refusal: that
-a branch opened off a keyframe really does stop reproducing the run it claims
-to continue, rather than the refusal guarding against nothing.
+**Where a branch may be taken.** Two places, reached by two methods rather
+than by one list.
 
-A **bookmark is not yet one of those instants**, and how it becomes one is
-open. `app/bookmarks.py` is what a learner may mark — `PL-LPLD`, built — and
-`PL-CTD7` is the halt that stops a run on the step crossing one, built too:
-`SimulationController.advance` reads every compartment either side of each
-step and pauses the run where a mark lies between the two readings, so a mark
-is now read against a state on every step. What is still open is the *fork*:
-being stopped at a mark is not the same as being able to branch there. A
-bookmark's instant is not in
-general a setting change, so the trunk holds no keyframe there and `resumed_at`
-refuses it like any other — on a 120 s run with two control changes, 3 of the
-1 201 instants a halt could land on are keyframes. Two routes to a forkable
-bookmark are measured in `PL-B8MK`, and the obvious one is the worse of them:
-recording a keyframe where the run halts makes the branch exact against the
-trunk it forked from, but it moves that trunk's own later answers away from
-what the case would have said unmarked, so marking a run changes it. Opening
-the branch's *definition* at the keyframe before the bookmark, while its clock
-and its live system stand at the bookmark, costs the trunk nothing and is exact
-too. That second route is the one chosen (`PL-B8MK`, 2026-09-20); neither is
-built here, and `docs/MODEL.md` § "What this requires of a branch" records
-which of that section's two conditions the choice relaxes and what the
+At any keyframe the trunk holds — `BranchedCase.fork_points_s`, taken with
+`fork_at` — which is its opening at induction and every setting change the
+model was actually stepped under. Any *other* instant a caller names is
+refused rather than approximated, for the arithmetic reason `docs/MODEL.md`
+measures. `tests/unit/test_run_definition.py` holds the other side of that
+refusal: that a branch opened off a keyframe really does stop reproducing the
+run it claims to continue, rather than the refusal guarding against nothing.
+
+And at the **bookmark crossing the trunk is standing on**, taken with
+`fork_at_halt`. `app/bookmarks.py` is what a learner may mark (`PL-LPLD`), and
+`SimulationController.advance` is what halts a run on the step crossing one
+(`PL-CTD7`): it reads every compartment either side of each step and pauses
+the run where a mark lies between the two readings. A bookmark's instant is
+not in general a setting change — on a 120 s run with two control changes, 3
+of the 1 201 instants a halt could land on are keyframes — so the trunk holds
+no keyframe there, and nothing records one. The branch's *definition* opens at
+the keyframe at or before the bookmark while its clock and its live system
+stand at the bookmark, which costs the trunk nothing and reproduces it
+element-wise. The obvious route was measured and refused: recording a keyframe
+where the run halts makes the branch exact against the trunk it forked from,
+and it moves that trunk's own later answers away from what the case would have
+said unmarked, so marking a run would change it. `PL-B8MK` carries both
+measurements, and `docs/MODEL.md` § "What this requires of a branch" records
+which of that section's two conditions the chosen route relaxes and what the
 relaxation costs.
+
+The halt is a permission rather than a standing offer: taking a step clears
+it, so a run that has resumed has no bookmark fork until the next crossing.
+That is why it is not a widened `fork_points_s` — such a list would change
+membership as the run moved, and a caller holding an instant from it could ask
+for a fork at a mark the run is no longer standing on.
 
 ### How a learner takes one, and how a comparison ends
 
@@ -429,7 +449,12 @@ is a property of the display rather than of the model:
   `BranchedCase.fork_points_s` and takes the branch through `fork_at`;
   `dashboard_frame.fork_offer` decides what it shows and
   `qt_widgets.ForkPanel` draws it. A learner marks the decision point and
-  then forks there, which is the order the two panels are read in.
+  then forks there, which is the order the two panels are read in — **but the
+  mark itself is not yet one of the instants the panel offers.** `PL-B8MK`
+  made a bookmark halt forkable through `fork_at_halt`, which records no
+  keyframe and so adds nothing to `fork_points_s`; wiring the panel to it is
+  `PL-TYWQ`. Until then a learner may mark a decision point, be stopped at
+  it, and still have to fork at the nearest control event.
 - **`SimulationView.add_run` is how a run reaches the dashboard after
   construction.** Its run set was fixed at construction until `PL-VKJW` —
   "the count cannot change while a dashboard is alive" — so a branch taken

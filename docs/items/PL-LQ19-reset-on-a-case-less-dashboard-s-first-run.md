@@ -9,6 +9,7 @@ feature: branch-run-set-integrity
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py
 added: 2026-09-20
 closed: 2026-09-20
+pr: 788
 payoff: stops Reset on one run silently destroying another run's recorded history on any dashboard the case does not own
 verify: grep -q 'def test_resetting_a_case_less_dashboards_first_run_keeps_the_others' tests/integration/test_simulation_view.py
 ---

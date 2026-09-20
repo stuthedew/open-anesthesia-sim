@@ -9,6 +9,7 @@ feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-19
 closed: 2026-09-20
+pr: 783
 payoff: stops a correct close-out being REJECTed for writing the word xfail in a release note, on the one check bin/docket verify may never relax
 verify: grep -q 'def test_a_roadmap_line_naming_xfail_is_not_a_suppression' subprojects/docket/tests/test_verify.py
 ---

@@ -3,11 +3,12 @@ id: PL-B8MK
 title: A bookmark instant is not forkable, and the obvious route to making one changes the case it marks
 priority: P1
 effort: M
-status: ready
+status: done
 classes: science, feature, anticipated
 feature: scenario-branching
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/run_definition.py, tests/unit, tests/integration, docs/MODEL.md, docs/ARCHITECTURE.md
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/core/run_definition.py, tests/unit, tests/integration, docs/MODEL.md, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-14
+closed: 2026-09-20
 payoff: makes v0.5.0's Definition of done reachable - a learner can branch at a bookmark, which the roadmap asks for and the tree still refuses - without the act of marking a run changing the run
 verify: grep -q 'def test_a_branch_taken_at_a_bookmark_reproduces_its_parent_without_changing_it' tests/integration/test_controller.py
 ---
