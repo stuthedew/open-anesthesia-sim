@@ -1,14 +1,16 @@
 ---
 id: PL-B8MK
 title: A bookmark instant is not forkable, and the obvious route to making one changes the case it marks
-priority: P2
+priority: P1
 effort: M
-status: blocked
-blocked-by: PL-LPLD, PL-CTD7
+status: ready
 classes: science, feature, anticipated
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/run_definition.py, tests/unit, tests/integration, docs/MODEL.md, docs/ARCHITECTURE.md
+blocked-by: PL-LPLD, PL-CTD7
 added: 2026-09-14
+payoff: makes v0.5.0's Definition of done reachable - a learner can branch at a bookmark, which the roadmap asks for and the tree still refuses - without the act of marking a run changing the run
+verify: grep -q 'def test_a_branch_taken_at_a_bookmark_reproduces_its_parent_without_changing_it' tests/integration/test_controller.py
 ---
 
 **Problem.** A bookmark instant is not forkable, and the obvious route to making one changes the case it marks
@@ -116,3 +118,50 @@ guarantee about a displayed comparison, not a capability. Route one moves the
 trunk's own curve, which is a run changing because it was observed; route two
 does not. Nothing is reachable today - no bookmark exists - which is why this
 sits at `P2` beside `PL-Z3W6` rather than in the top band.
+## Promoted 2026-09-20 (`PL-D9K3`), and why the hazard is not live
+
+**Both blockers closed on 2026-09-20** - `PL-LPLD` and `PL-CTD7` - and
+`PL-CTD7` closed naming this item outright: "Not built here, and not in scope:
+forking *at* a halt is `PL-B8MK`, which this unblocks." So the promotion is
+what its own blocker asked for rather than an inference from the `blocked-by`
+field having gone stale.
+
+**Read against the tree, nothing else holds it.** The two things this item
+said it waited on are both present. `PL-CTD7` landed the crossing detection in
+`app/bookmarks.py` as pure functions over two readings, with the halt and
+`bookmark_halt` / `bookmark_standings` on the controller's snapshot, so there
+is a halt instant to fork *at*. And the route question this item deferred to
+`PL-LPLD` and `PL-CTD7` is answered by the measurement already in the brief
+above rather than by anything either of them decided: route 2 leaves 0 of 54
+elements differing and the trunk byte-identical to an unmarked case, where
+route 1 displaces 48 of 54. That is an engineering choice settled by a
+measurement this repository has already run, not a question about what the
+project is for, so it does not hold the item at `needs-decision`.
+
+**`science, anticipated`, and leaving `blocked` returns it to the debt gate**
+(`PL-ZF2G`) - so this is the judgment `PL-JFQ3` and `PL-8G48` each had to make,
+and it goes the same way `PL-8PS6` did. **The hazard is not live.** Forking at
+a bookmark is *refused* today by the keyframe rule `PL-J2TD` landed, so the
+application raises rather than computing a branch from a keyframe it has no
+right to - which is the safety-critical standard's own preference for an
+obvious failure over a plausible-looking number. Nothing displayed is wrong
+and nothing is misattributed. What changed is **startability**, not liveness:
+the work is buildable now and was not before. That is the same distinction
+`PL-8G48` drew between `PL-8PS6` and `PL-WZVZ`.
+
+**Banded `P1` because the `science` class requires it** once the item is
+startable, which is what `docket check` holds every `science`-classed item to
+outside `blocked`. It is also v0.5.0 `Required scope` - `ROADMAP.md`'s
+Definition of done asks for "a branch taken at any recorded control event **or
+bookmark**", and the control-event half shipped with `PL-TFX5` - so the
+milestone cannot close without it either way.
+
+**Done when.** A branch can be taken at a bookmark instant, by opening the
+branch's `RunDefinition` at the keyframe before the bookmark while its clock
+and uptake system stand at the bookmark - route 2 above - so that the branch
+reproduces its parent at every instant they share **and** the trunk is
+byte-identical to the same case built without the bookmark. `_open_at`
+restores the fork state rather than the segment's opening state, which is this
+route's remaining substantive edit. `docs/ARCHITECTURE.md` § "What a branch
+is, and what it shares with its parent" stops saying a bookmark is not yet a
+fork point, and `docs/MODEL.md` records that marking a run does not change it.

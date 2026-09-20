@@ -3,11 +3,12 @@ id: PL-PQC7
 title: Closing an item does not ask what it unblocks, so every promotable item waits for someone to run a deliberate grooming pass
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: stale-blocked-routing
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md, .claude/skills/docket/SKILL.md, docs/items
 added: 2026-09-20
+closed: 2026-09-20
 payoff: a blocker closing says what it just unblocked, instead of the reading waiting for somebody to notice and run a grooming pass - two sessions ran two over the same four items on one day
 verify: grep -q 'def test_closing_an_item_names_what_it_just_unblocked' subprojects/docket/tests/test_cli.py
 ---
