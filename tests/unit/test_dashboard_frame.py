@@ -26,7 +26,7 @@ from typing import Any
 
 import pytest
 
-from anesthesia_sim.app.bookmarks import BookmarkSet, CrossingDirection, MacTarget, TimeBookmark
+from anesthesia_sim.app.bookmarks import BookmarkSet, MacTarget, TimeBookmark
 from anesthesia_sim.app.chart_frame import (
     MAX_CHART_CONTROL_MARKS,
     ChartFrame,
@@ -1689,11 +1689,7 @@ def _marks() -> BookmarkSet:
     return (
         BookmarkSet()
         .with_time_bookmark(TimeBookmark(600.0, "intubation"))
-        .with_mac_target(
-            MacTarget(
-                RecordedQuantity.VESSEL_RICH, MacMultiple(0.8), CrossingDirection.RISING, "wash-in"
-            )
-        )
+        .with_mac_target(MacTarget(RecordedQuantity.VESSEL_RICH, MacMultiple(0.8), "wash-in"))
     )
 
 
@@ -1724,17 +1720,17 @@ def test_an_unnamed_instant_is_listed_under_its_own_time() -> None:
     assert panel.times.rows == (format_elapsed(600.0),)
 
 
-def test_a_target_names_its_compartment_its_height_and_its_direction() -> None:
+def test_a_target_names_its_compartment_and_its_height() -> None:
     row = bookmark_panel(_marks()).targets.rows[0]
 
-    assert row.startswith("Vessel-rich 0.80 ×MAC rising")
+    assert row.startswith("Vessel-rich 0.80 ×MAC")
 
 
 def test_a_target_is_named_by_the_table_that_names_its_trace() -> None:
     # One table rather than a second list of compartment words, so a row and
     # the curve it is read against cannot come to disagree.
     for quantity in COMPARTMENT_QUANTITIES:
-        target = MacTarget(quantity, MacMultiple(0.8), CrossingDirection.RISING)
+        target = MacTarget(quantity, MacMultiple(0.8))
 
         assert format_mac_target(target).startswith(trace_style(quantity).label)
 
@@ -1744,36 +1740,23 @@ def test_a_target_is_rendered_by_the_renderer_the_readouts_use() -> None:
     # would read as two quantities where there is one, so both go through
     # `render_mac_multiple` rather than through two spellings of one rule.
     height = MacMultiple(0.8)
-    target = MacTarget(RecordedQuantity.ALVEOLAR, height, CrossingDirection.RISING)
+    target = MacTarget(RecordedQuantity.ALVEOLAR, height)
 
     assert render_mac_multiple(height) == "0.80 ×MAC"
     assert render_mac_multiple(height) in format_mac_target(target)
 
 
-@pytest.mark.parametrize(
-    ("direction", "word"),
-    [
-        (CrossingDirection.RISING, "rising"),
-        (CrossingDirection.FALLING, "falling"),
-        (CrossingDirection.EITHER, "rising or falling"),
-    ],
-)
-def test_each_crossing_direction_is_stated_in_words(
-    direction: CrossingDirection, word: str
-) -> None:
-    # Words rather than an arrow: no arrow is in `tools/glyph_check.py`'s
-    # confirmed table, and the direction is the one thing these rows exist to
-    # disambiguate.
-    target = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5), direction)
+def test_a_target_row_is_the_compartment_then_the_height() -> None:
+    target = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
 
-    assert format_mac_target(target) == f"Fat 0.50 ×MAC {word}"
+    assert format_mac_target(target) == "Fat 0.50 \u00d7MAC"
 
 
-def test_the_two_directions_of_one_height_are_told_apart_on_the_row() -> None:
-    rising = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5), CrossingDirection.RISING)
-    falling = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5), CrossingDirection.FALLING)
+def test_two_heights_on_one_compartment_are_told_apart_on_the_row() -> None:
+    lower = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
+    higher = MacTarget(RecordedQuantity.FAT, MacMultiple(0.8))
 
-    assert format_mac_target(rising) != format_mac_target(falling)
+    assert format_mac_target(lower) != format_mac_target(higher)
 
 
 def test_marks_are_listed_oldest_first() -> None:

@@ -25,12 +25,12 @@ requirements rather than wording: the "Alveolar" readout glossed
 (`PL-71CF`), each stated in `docs/MODEL.md` and held by an exact-string test.
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Final
 
-from anesthesia_sim.app.bookmarks import BookmarkSet, CrossingDirection, MacTarget, TimeBookmark
+from anesthesia_sim.app.bookmarks import BookmarkSet, MacTarget, TimeBookmark
 from anesthesia_sim.app.chart_frame import (
     COMPARED_COMPARTMENT_CAP,
     ChartFrame,
@@ -226,12 +226,8 @@ MAC_TARGET_HEADING: Final = "MAC targets"
 NO_TIME_BOOKMARKS_TEXT: Final = "None marked"
 NO_MAC_TARGETS_TEXT: Final = "None set"
 
-# What a row says, and the separator between a mark's value and the name the
-# learner gave it. An en dash, which `tools/glyph_check.py` records as
-# rendered; an arrow for the crossing direction was the obvious alternative
-# and is refused, because no arrow is in that table and the direction is the
-# one thing these rows exist to disambiguate (`PL-8XPQ` is what an unrendered
-# arrow cost the control-change list).
+# The separator between a mark's value and the name the learner gave it. An
+# en dash, which `tools/glyph_check.py` records as rendered.
 MARK_LABEL_JOINER: Final = " – "
 
 # The editor's own words. Field labels rather than sentences, which is the
@@ -248,7 +244,6 @@ REMOVE_MARK_LABEL: Final = "Remove selected"
 INSTANT_FIELD_LABEL: Final = "Instant"
 COMPARTMENT_FIELD_LABEL: Final = "Compartment"
 HEIGHT_FIELD_LABEL: Final = "Height"
-DIRECTION_FIELD_LABEL: Final = "Crossing"
 MARK_NAME_FIELD_LABEL: Final = "Name"
 MARK_NAME_PLACEHOLDER: Final = "Optional"
 # The entry unit for an instant, and the resolution it is entered at. Seconds
@@ -271,12 +266,6 @@ REMOVE_NOTHING_SELECTED_TEXT: Final = "Select a mark to remove it."
 press that did nothing and costs nothing when it does not
 (`.claude/rules/ui-reader.md`). The two empty lines above are standing text
 and are labels for that reason."""
-CROSSING_DIRECTION_WORDS: Final[Mapping[CrossingDirection, str]] = {
-    CrossingDirection.RISING: "rising",
-    CrossingDirection.FALLING: "falling",
-    CrossingDirection.EITHER: "rising or falling",
-}
-
 # Names the substance the six readouts belong to (`PL-TCD1`). Label rather
 # than sentence, and "Modelled" rather than a bare agent name, because the
 # row's own hazard is a reader setting these beside a monitor.
@@ -1167,14 +1156,12 @@ def format_time_bookmark(bookmark: TimeBookmark) -> str:
 def format_mac_target(target: MacTarget) -> str:
     """One marked height, as a reader meets it.
 
-    Compartment, height, direction, then the name. All four are on the row
-    rather than in a heading above it, because a target means a different
-    thing on each compartment and in each direction: `docs/MODEL.md`
-    § "MAC multiples as a display unit" states that a multiple of 1 MAC is the
-    conventional reading only on the alveolar compartment and is a
-    partial-pressure ratio everywhere else, and the same height is a wash-in
-    milestone rising and an emergence milestone falling. A row that named the
-    height alone would be the same number standing for six different claims.
+    Compartment, then height, then the name. The compartment is on the row
+    rather than in a heading above it because a target means a different thing
+    on each one: `docs/MODEL.md` § "MAC multiples as a display unit" states
+    that a multiple of 1 MAC is the conventional reading only on the alveolar
+    compartment and is a partial-pressure ratio everywhere else, so a row
+    naming the height alone would be one number standing for six claims.
 
     The compartment's name comes from `chart_frame.trace_style`, so the row
     and the trace it is read against are named by one table.
@@ -1182,8 +1169,7 @@ def format_mac_target(target: MacTarget) -> str:
 
     compartment = trace_style(target.quantity).label
     height = render_mac_multiple(target.mac_multiple)
-    direction = CROSSING_DIRECTION_WORDS[target.direction]
-    stated = f"{compartment} {height} {direction}"
+    stated = f"{compartment} {height}"
 
     if target.label is None:
         return stated

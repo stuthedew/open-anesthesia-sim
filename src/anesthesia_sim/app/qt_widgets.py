@@ -64,16 +64,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from anesthesia_sim.app.bookmarks import CrossingDirection, MacTarget, TimeBookmark
+from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
 from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.dashboard_frame import (
     ADD_MARK_LABEL,
     BOOKMARK_DIALOG_TITLE,
     CLOSE_BOOKMARKS_LABEL,
     COMPARTMENT_FIELD_LABEL,
-    CROSSING_DIRECTION_WORDS,
     DEFAULT_MAXIMUM_TARGET_MAC,
-    DIRECTION_FIELD_LABEL,
     EDIT_BOOKMARKS_LABEL,
     HEIGHT_FIELD_LABEL,
     INSTANT_ENTRY_DECIMALS,
@@ -984,7 +982,6 @@ class BookmarkDialog(QDialog):
         remove_time_button: Removes the selected instant.
         compartment_combo: Which compartment a target is read against.
         height_spin: The height, in multiples of the running agent's 1 MAC.
-        direction_combo: Which crossing counts.
         target_label_edit: The optional name for a target.
         add_target_button: Adds the target.
         target_list: The marked heights, selectable for removal.
@@ -1022,11 +1019,6 @@ class BookmarkDialog(QDialog):
         self.height_spin.setDecimals(MAC_DISPLAY_DECIMALS)
         self.height_spin.setSingleStep(MAC_DISPLAY_RESOLUTION_MAC)
         self.height_spin.setSuffix(MAC_UNIT_SUFFIX)
-        self.direction_combo = QComboBox()
-
-        for direction, word in CROSSING_DIRECTION_WORDS.items():
-            self.direction_combo.addItem(word, userData=direction.value)
-
         self.target_label_edit = QLineEdit()
         self.target_label_edit.setPlaceholderText(MARK_NAME_PLACEHOLDER)
         self.add_target_button = QPushButton(ADD_MARK_LABEL)
@@ -1078,13 +1070,11 @@ class BookmarkDialog(QDialog):
         targets.addWidget(self.compartment_combo, 1, 1, 1, 2)
         targets.addWidget(styled_label(HEIGHT_FIELD_LABEL, color=MUTED), 2, 0)
         targets.addWidget(self.height_spin, 2, 1)
-        targets.addWidget(styled_label(DIRECTION_FIELD_LABEL, color=MUTED), 3, 0)
-        targets.addWidget(self.direction_combo, 3, 1, 1, 2)
-        targets.addWidget(styled_label(MARK_NAME_FIELD_LABEL, color=MUTED), 4, 0)
-        targets.addWidget(self.target_label_edit, 4, 1, 1, 2)
-        targets.addWidget(self.add_target_button, 5, 1)
-        targets.addWidget(self.target_list, 6, 0, 1, 3)
-        targets.addWidget(self.remove_target_button, 7, 1)
+        targets.addWidget(styled_label(MARK_NAME_FIELD_LABEL, color=MUTED), 3, 0)
+        targets.addWidget(self.target_label_edit, 3, 1, 1, 2)
+        targets.addWidget(self.add_target_button, 4, 1)
+        targets.addWidget(self.target_list, 5, 0, 1, 3)
+        targets.addWidget(self.remove_target_button, 6, 1)
         column.addLayout(targets)
 
         column.addWidget(self.notice)
@@ -1155,16 +1145,15 @@ class BookmarkDialog(QDialog):
         return MacTarget(
             RecordedQuantity(self.compartment_combo.currentData()),
             MacMultiple(self.height_spin.value()),
-            CrossingDirection(self.direction_combo.currentData()),
             _entered_label(self.target_label_edit),
         )
 
     def clear_entry(self) -> None:
         """Empty the two name fields, for a mark that has just been added.
 
-        The instant, compartment, height and direction are left where they
-        are: adding a second mark near the first is the common case, and a
-        control that reset itself would make the second entry the longer one.
+        The instant, compartment and height are left where they are: adding
+        a second mark near the first is the common case, and a control that
+        reset itself would make the second entry the longer one.
         A name is cleared because reusing one would name two marks alike.
         """
 

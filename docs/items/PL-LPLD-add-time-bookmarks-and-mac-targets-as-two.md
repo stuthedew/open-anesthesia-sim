@@ -116,3 +116,22 @@ rather than the mark's.
 Detection is still `PL-CTD7` and is still not built: nothing here compares a
 mark against a state, and `test_the_panel_says_nothing_about_whether_a_mark_has_been_reached`
 is what keeps a drawn row from implying otherwise.
+
+## Crossing direction removed (project owner, 2026-09-20)
+
+"Don't need falling or rising for target". So **neither kind carries a
+crossing direction**, and the `Done when` clause above - "each carries its
+crossing direction where it is shown" - is withdrawn rather than met. The
+scope floor took the field from the reference simulator; it is not wanted.
+
+What it changes, beyond deleting a control: a height is now a height, so a run
+taken up and back down through 0.8 x MAC has reached what the learner marked
+**both times**, and `MacTarget.crossing_key` - what makes two targets the same
+question - is a compartment and a height alone. Whether a target re-arms after
+a halt, or fires once, is `PL-CTD7`'s and is noted in that item: removing the
+direction makes that question sharper rather than softer, because there is no
+longer a way for a learner to say "only on the way up".
+
+The section above this one argued the direction belonged on `MacTarget` and
+not on `TimeBookmark`. That argument is now moot in the cleanest direction and
+is left standing as the record of what was asked and answered.

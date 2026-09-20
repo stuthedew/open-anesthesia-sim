@@ -14,7 +14,7 @@ import math
 
 import pytest
 
-from anesthesia_sim.app.bookmarks import BookmarkSet, CrossingDirection, MacTarget, TimeBookmark
+from anesthesia_sim.app.bookmarks import BookmarkSet, MacTarget, TimeBookmark
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
@@ -23,12 +23,11 @@ from anesthesia_sim.core.exceptions import SimulationConfigurationError
 def _target(
     quantity: RecordedQuantity = RecordedQuantity.VESSEL_RICH,
     multiple: float = 0.8,
-    direction: CrossingDirection = CrossingDirection.RISING,
     label: str | None = None,
 ) -> MacTarget:
     """A MAC target, so a test states only the field it is about."""
 
-    return MacTarget(quantity, MacMultiple(multiple), direction, label)
+    return MacTarget(quantity, MacMultiple(multiple), label)
 
 
 # ------------------------------------------------------------ time bookmarks
@@ -67,11 +66,13 @@ def test_a_blank_name_is_refused_rather_than_read_as_no_name() -> None:
         TimeBookmark(600.0, "   ")
 
 
-def test_a_time_bookmark_carries_no_crossing_direction() -> None:
-    # Simulated time only advances, so an instant has exactly one crossing.
-    # A direction on it would be a control offering a choice that does not
-    # exist.
+def test_no_mark_of_either_kind_carries_a_crossing_direction() -> None:
+    # The scope floor took one from the reference simulator and the project
+    # owner removed it on 2026-09-20: a height is a height, and a run that
+    # passes through it going up and again coming down has reached what was
+    # marked both times.
     assert not hasattr(TimeBookmark(600.0), "direction")
+    assert not hasattr(_target(), "direction")
 
 
 # --------------------------------------------------------------- MAC targets
@@ -82,7 +83,6 @@ def test_a_mac_target_names_the_compartment_it_is_read_against() -> None:
 
     assert target.quantity is RecordedQuantity.MUSCLE
     assert target.mac_multiple == 0.8
-    assert target.direction is CrossingDirection.RISING
 
 
 @pytest.mark.parametrize("quantity", COMPARTMENT_QUANTITIES)
@@ -120,11 +120,8 @@ def test_two_targets_differing_only_in_label_name_one_crossing() -> None:
     assert _target(label="wash-in").crossing_key == _target(label="emergence").crossing_key
 
 
-def test_direction_is_part_of_what_makes_a_crossing() -> None:
-    rising = _target(direction=CrossingDirection.RISING)
-    falling = _target(direction=CrossingDirection.FALLING)
-
-    assert rising.crossing_key != falling.crossing_key
+def test_a_different_height_on_one_compartment_is_a_different_crossing() -> None:
+    assert _target(multiple=0.8).crossing_key != _target(multiple=0.5).crossing_key
 
 
 # ------------------------------------------------------------- the two sets
@@ -178,9 +175,9 @@ def test_a_crossing_already_marked_may_not_be_marked_again() -> None:
         marks.with_mac_target(_target(label="again"))
 
 
-def test_the_same_height_in_the_other_direction_is_a_different_crossing() -> None:
-    marks = BookmarkSet().with_mac_target(_target(direction=CrossingDirection.RISING))
-    both = marks.with_mac_target(_target(direction=CrossingDirection.FALLING))
+def test_two_heights_on_one_compartment_are_two_crossings() -> None:
+    marks = BookmarkSet().with_mac_target(_target(multiple=0.8))
+    both = marks.with_mac_target(_target(multiple=0.5))
 
     assert len(both.mac_targets) == 2
 

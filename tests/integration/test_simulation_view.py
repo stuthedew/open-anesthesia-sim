@@ -44,7 +44,6 @@ from PySide6.QtWidgets import (
 from anesthesia_sim.app import control_timeline as control_timeline_module
 from anesthesia_sim.app import run_view as run_view_module
 from anesthesia_sim.app import theme
-from anesthesia_sim.app.bookmarks import CrossingDirection
 from anesthesia_sim.app.chart_frame import (
     COMPARED_COMPARTMENT_CAP,
     HOVER_INSTANT_RESOLUTION_S,
@@ -3006,7 +3005,7 @@ def test_the_entered_instant_is_restated_in_the_form_the_clock_uses(
     assert dialog.instant_preview.text() == format_elapsed(600.0)
 
 
-def test_a_target_entered_in_the_dialog_names_its_compartment_and_direction(
+def test_a_target_entered_in_the_dialog_names_its_compartment_and_height(
     application: QApplication,
 ) -> None:
     view = _shown_view(application, SimulationController())
@@ -3015,14 +3014,11 @@ def test_a_target_entered_in_the_dialog_names_its_compartment_and_direction(
         dialog.compartment_combo.findData(RecordedQuantity.VESSEL_RICH.value)
     )
     dialog.height_spin.setValue(0.8)
-    dialog.direction_combo.setCurrentIndex(
-        dialog.direction_combo.findData(CrossingDirection.FALLING.value)
-    )
     dialog.add_target_button.click()
 
     listed = view._bookmarks_panel.targets.rows_label.text()
 
-    assert listed == "Vessel-rich 0.80 ×MAC falling"
+    assert listed == "Vessel-rich 0.80 ×MAC"
 
 
 def test_the_compartment_picker_offers_the_six_drawn_compartments_and_no_ratio(

@@ -14,8 +14,8 @@ a named compartment. They are held in two collections because they are two
 different questions, and a single list with a discriminant would make every
 reader of it — this module, the panel, and the detection `PL-CTD7` builds —
 re-derive which kind each entry is before it could do anything with it. The
-fields differ too: a threshold has a crossing direction and a compartment, and
-an instant has neither.
+fields differ too: a threshold names a compartment and a height, and an
+instant names neither.
 
 **What these are not.** A mark is a question the learner asks of the case, not
 a record of what happened in it: `control_record.ControlChange` is the record,
@@ -36,39 +36,13 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from enum import StrEnum
 from math import isfinite
 
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.core.concentration import MacMultiple
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
-__all__ = ["BookmarkSet", "CrossingDirection", "MacTarget", "TimeBookmark"]
-
-
-class CrossingDirection(StrEnum):
-    """Which way a compartment must be moving for a target to count as crossed.
-
-    Explicit rather than inferred, because the same height means opposite
-    things at the two ends of a case: 0.8 ×MAC in the vessel-rich group is a
-    wash-in milestone on the way up and an emergence milestone on the way down,
-    and a run that is taken up and then back down crosses it twice. A learner
-    who marked one of those and was stopped at the other would be stopped
-    somewhere they did not ask for, with nothing on screen saying which
-    crossing they got.
-
-    It is on `MacTarget` and not on `TimeBookmark`, deliberately. Simulated
-    time only advances: `SimulationController.advance` moves it forward and
-    nothing moves it back within a run, and `reset()` returns a run to its own
-    beginning rather than running it backwards. So an instant has exactly one
-    crossing and a direction beside it would be a control offering a choice
-    that does not exist — the hidden mode `.claude/rules/expert-review.md` asks
-    to be designed out rather than warned about.
-    """
-
-    RISING = "rising"
-    FALLING = "falling"
-    EITHER = "either"
+__all__ = ["BookmarkSet", "MacTarget", "TimeBookmark"]
 
 
 def _checked_label(label: str | None) -> str | None:
@@ -157,11 +131,19 @@ class MacTarget:
     for, and it is why `SimulationController.set_agent` keeps the marks it
     keeps the other settings.
 
+    **A target carries no crossing direction** (project owner, 2026-09-20).
+    `PL-LPLD`'s scope floor took one from the reference simulator — rising,
+    falling or either — and it is not wanted: a height is a height, and a run
+    that passes through it on the way up and again on the way down has reached
+    what the learner marked both times. So a target names a compartment and a
+    height and nothing else, which is also what makes two of them the same
+    question (`crossing_key`). Recorded here because the reference has the
+    field and a later reading of it would otherwise put the field back.
+
     Attributes:
         quantity: The compartment the height is read against, in the same
             vocabulary the chart traces and the readouts are addressed by.
         mac_multiple: The height, as a multiple of the running agent's 1 MAC.
-        direction: Which crossing counts.
         label: What to call it in a list, or `None` to list it under its own
             compartment and height.
 
@@ -179,7 +161,6 @@ class MacTarget:
 
     quantity: RecordedQuantity
     mac_multiple: MacMultiple
-    direction: CrossingDirection
     label: str | None = None
 
     def __post_init__(self) -> None:
@@ -198,16 +179,16 @@ class MacTarget:
         object.__setattr__(self, "label", _checked_label(self.label))
 
     @property
-    def crossing_key(self) -> tuple[RecordedQuantity, float, CrossingDirection]:
+    def crossing_key(self) -> tuple[RecordedQuantity, float]:
         """What makes two targets the same question, label aside.
 
-        A compartment, a height and a direction. Two targets agreeing on all
-        three name one crossing, so a run would stop once however many entries
-        the list held — which is why `BookmarkSet` refuses the second rather
-        than listing a row that can never be reached on its own account.
+        A compartment and a height. Two targets agreeing on both name one
+        height, so a run would stop at the same place however many entries the
+        list held — which is why `BookmarkSet` refuses the second rather than
+        listing a row that adds nothing to the one above it.
         """
 
-        return (self.quantity, self.mac_multiple, self.direction)
+        return (self.quantity, self.mac_multiple)
 
 
 @dataclass(frozen=True, slots=True)
@@ -240,7 +221,7 @@ class BookmarkSet:
         _refuse_repeats(
             (target.crossing_key for target in self.mac_targets),
             what="MAC target",
-            named="a compartment, height and direction",
+            named="a compartment and a height",
         )
 
     @property
@@ -288,8 +269,8 @@ class BookmarkSet:
 
         Raises:
             SimulationConfigurationError: If the same compartment, height and
-                direction is already marked, for the reason
-                `with_time_bookmark` gives.
+                is already marked, for the reason `with_time_bookmark`
+                gives.
         """
 
         return BookmarkSet(self.time_bookmarks, (*self.mac_targets, target))
@@ -307,9 +288,8 @@ class BookmarkSet:
 
         if len(kept) == len(self.mac_targets):
             raise SimulationConfigurationError(
-                f"no MAC target stands at {target.mac_multiple} ×MAC "
-                f"{target.direction.value} on the {target.quantity.value} compartment, so "
-                "there is none to remove"
+                f"no MAC target stands at {target.mac_multiple} ×MAC on the "
+                f"{target.quantity.value} compartment, so there is none to remove"
             )
 
         return BookmarkSet(self.time_bookmarks, kept)

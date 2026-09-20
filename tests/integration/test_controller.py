@@ -2,7 +2,7 @@ import dataclasses
 
 import pytest
 
-from anesthesia_sim.app.bookmarks import CrossingDirection, MacTarget, TimeBookmark
+from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlInput
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
@@ -2267,11 +2267,7 @@ def test_a_fresh_run_is_marked_at_nothing() -> None:
 def test_a_mark_reaches_a_reader_through_the_snapshot() -> None:
     controller = SimulationController()
     controller.add_time_bookmark(TimeBookmark(600.0, "intubation"))
-    controller.add_mac_target(
-        MacTarget(
-            RecordedQuantity.VESSEL_RICH, MacMultiple(0.8), CrossingDirection.RISING, "wash-in"
-        )
-    )
+    controller.add_mac_target(MacTarget(RecordedQuantity.VESSEL_RICH, MacMultiple(0.8), "wash-in"))
 
     marks = controller.snapshot().bookmarks
 
@@ -2282,9 +2278,7 @@ def test_a_mark_reaches_a_reader_through_the_snapshot() -> None:
 def test_the_two_collections_are_added_to_and_removed_from_independently() -> None:
     controller = SimulationController()
     controller.add_time_bookmark(TimeBookmark(600.0))
-    controller.add_mac_target(
-        MacTarget(RecordedQuantity.FAT, MacMultiple(0.5), CrossingDirection.EITHER)
-    )
+    controller.add_mac_target(MacTarget(RecordedQuantity.FAT, MacMultiple(0.5)))
     controller.remove_time_bookmark(TimeBookmark(600.0))
 
     marks = controller.snapshot().bookmarks
@@ -2333,7 +2327,7 @@ def test_changing_agent_keeps_the_marks_although_it_destroys_the_run() -> None:
     # absolute concentration under a new divisor. Reaching the same multiple at
     # a different time is what a learner changing agent is there to see.
     controller = SimulationController()
-    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.8), CrossingDirection.RISING)
+    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.8))
     controller.add_mac_target(target)
     controller.start()
     _advance_for(controller, duration_s=30.0)
@@ -2353,7 +2347,7 @@ def test_a_branch_opens_carrying_the_marks_of_the_case_it_continues() -> None:
     # answering one question, so a learner made to re-enter the marks could
     # compare two branches at two different heights with nothing saying so.
     trunk = _trunk_with_two_changes()
-    target = MacTarget(RecordedQuantity.MUSCLE, MacMultiple(0.3), CrossingDirection.FALLING)
+    target = MacTarget(RecordedQuantity.MUSCLE, MacMultiple(0.3))
     trunk.add_time_bookmark(TimeBookmark(45.0, "the decision point"))
     trunk.add_mac_target(target)
 
@@ -2386,9 +2380,7 @@ def test_a_mark_changes_nothing_the_run_computes() -> None:
     # within a tolerance, because that is the claim.
     marked = SimulationController()
     marked.add_time_bookmark(TimeBookmark(45.0))
-    marked.add_mac_target(
-        MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.8), CrossingDirection.RISING)
-    )
+    marked.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.8)))
     unmarked = SimulationController()
 
     for controller in (marked, unmarked):

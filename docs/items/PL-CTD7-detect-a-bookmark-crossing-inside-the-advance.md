@@ -85,3 +85,17 @@ is decidable statically from `ResumePoint.elapsed_s` rather than by running.
 
 A MAC target has no equivalent case: a height is reachable from either side, so
 a branch may cross one its trunk never did.
+
+## No crossing direction, so one target can halt a run twice (2026-09-20)
+
+The project owner removed the crossing direction from `MacTarget` on
+2026-09-20 - "Don't need falling or rising for target" - so a target names a
+compartment and a height and nothing else. A case taken up and back down
+through 0.8 x MAC therefore crosses it twice, and a learner has no way to say
+"only on the way up".
+
+That makes **re-arming this item's question rather than a detail of it**: does
+a target halt the run on every crossing, or once until it is re-armed? Both are
+defensible and the choice is user-facing, so it belongs with the rest of this
+item's outcome set rather than being settled by whichever loop is written
+first. Nothing is broken today: nothing detects a crossing yet.
