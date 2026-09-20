@@ -52,3 +52,24 @@ which run's snapshot was chosen.
 **Done when.** While more than one run is displayed, a mark's row either states
 which run its standing belongs to or states both; and no row can be drawn that
 attributes one run's answer to the set every run carries.
+
+**Folded into `PL-LHBY`** (project owner, 2026-09-20, ratified, over working
+this item alone). `PL-LHBY` - a branch halted on a learner's mark reports
+nothing, because the marks panel draws standings from the reference run only -
+is the same root, the same classes and the same priority, and is the carrier:
+it reproduces offscreen against the merged tree and its `touches` reach
+`app/qt_widgets.py`, which this item's do not. `PL-25DD` is the third of the
+family. All three carry `feature: two-run-attribution`.
+
+`PL-LHBY` and `PL-25DD` exist only on
+`origin/claude/vigilant-albattani-3lkcb3` and are not in this store;
+`PL-HZ1B` recovers them and settles the gate, which this item currently sits
+on as v0.5.0's one clearable open entry. Do not drop this item before
+`PL-LHBY` is on the gate in its place - the gate would read clear while the
+defect stands.
+
+**`PL-3K9B` made this live rather than masked** (merged 2026-09-20, `#805`). A
+time bookmark's standing is now positional - read from each run's own clock -
+which is exactly the quantity two runs differ in, so the single row drawn from
+`snapshots[0]` is now wrong for one of the two runs most of the time a
+comparison is on screen, where before the two answers usually agreed.
