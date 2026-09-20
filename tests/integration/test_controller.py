@@ -14,7 +14,7 @@ from anesthesia_sim.app.run_series import (
 )
 from anesthesia_sim.app.wash_in import is_wash_in
 from anesthesia_sim.core import uptake_system
-from anesthesia_sim.core.concentration import MacMultiple
+from anesthesia_sim.core.concentration import Fraction, MacMultiple
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -2869,3 +2869,44 @@ def test_a_branch_standing_on_its_own_halt_cannot_be_forked_either() -> None:
 
     with pytest.raises(SimulationConfigurationError, match="branch of a branch"):
         branch.resumed_at_halt()
+
+
+def test_a_setting_changed_while_halted_makes_the_bookmark_fork_a_keyframe_fork() -> None:
+    """Where the two doors meet, and the arithmetic does not notice.
+
+    A halt is an ordinary pause and the setters apply unconditionally, so a
+    learner may stop on a mark and dial something before branching. That opens
+    a segment at the halt instant, which makes the fork a keyframe after all -
+    the definition opens *at* the fork, and the two answers `_open_at` chooses
+    between are one keyframe and itself. Pinned because it is the one path
+    where a bookmark fork and a control-event fork are the same fork, and a
+    later change that special-cased the halt would have to keep it so.
+    """
+
+    marked = SimulationController()
+    marked.add_time_bookmark(TimeBookmark(45.3, "the decision point"))
+    marked.start()
+    _advance_until_halted(marked, limit_s=60.0)
+
+    fork_s = marked.snapshot().elapsed_s
+    marked.set_delivered_partial_pressure_fraction(Fraction(0.04))
+
+    assert [segment.opening.instant_s for segment in marked.run_segments] == [0.0, fork_s]
+    assert marked.snapshot().bookmark_halt is not None
+
+    branch = marked.resumed_at_halt()
+
+    assert branch.run_segments[0].opening.instant_s == branch.began_at_s == fork_s
+    assert branch.run_segments[0].opening.state == marked._run_definition.state_at(fork_s)
+
+    marked.start()
+    _advance_for(marked, duration_s=30.0)
+    branch.start()
+    _advance_for(branch, duration_s=30.0)
+
+    fork_steps = round(fork_s / MAXIMUM_SIMULATION_STEP_S)
+
+    for steps_past_fork in range(0, 301):
+        case_s = (fork_steps + steps_past_fork) * MAXIMUM_SIMULATION_STEP_S
+
+        assert branch._run_definition.state_at(case_s) == marked._run_definition.state_at(case_s)
