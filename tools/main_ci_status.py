@@ -131,10 +131,25 @@ VERDICTS = ("success", "failure", "timed_out", "startup_failure", "action_requir
 # there fails a test rather than silently dropping this back to the plain line.
 REPLAY_STEP = "verify replay, the whole store"
 
+# The name GitHub derives from the bare `- run: bin/docket check` line, which
+# has no `name:` of its own. It is the same store validation without `--verify`,
+# and it runs earlier in the same job on the same tree, so its *passing* is what
+# narrows a replay failure to the one report `--verify` adds. Held to the
+# workflow by a test alongside `REPLAY_STEP`.
+BARE_CHECK_STEP = "Run bin/docket check"
+
 # `skipped` is every step after the failure, and `cancelled` is a job that lost
 # its runner. Neither names a cause, and printing them would bury the one that
-# does.
+# does. `timed_out` is a failure but not an answer - a step the 15-minute job
+# timeout killed says nothing about what it would have found - so it is read as
+# a failure and never as grounds for the queue reading below.
 STEP_FAILURES = ("failure", "timed_out")
+
+# What a step whose name the payload does not carry is called. A name that is
+# not a string would otherwise be dropped, and dropping one *failing* step turns
+# two failures into the single failure the queue reading is conditioned on -
+# manufacturing the one shape that licenses the strongest sentence here.
+UNNAMED_STEP = "(a step whose name could not be read)"
 
 # A step with no `name:` is named by GitHub after its whole `run:` line, and
 # `quality.yml`'s pytest line is 180 characters of shell. Printed whole at the
@@ -178,16 +193,20 @@ def pick_run(runs: list[object]) -> dict[str, object] | None:
     return None
 
 
-def failing_steps(jobs: list[object]) -> tuple[str, ...]:
-    """Return the names of the steps that failed, in the order CI ran them.
+def step_conclusions(jobs: list[object]) -> tuple[tuple[str, str], ...]:
+    """Every step's (name, conclusion), in the order CI ran them.
 
     Empty for a payload this cannot read - a run whose jobs were never created,
     a shape the API has promised nothing about, a job that was cancelled. The
     caller degrades to the unattributed line rather than guessing, because the
     fact that `main` is red is already established by the time this is asked and
     must not be lost to a failure of the enrichment.
+
+    A step carrying no readable name still takes a row, under `UNNAMED_STEP`.
+    Leaving it out would shorten the failing set, and the length of that set is
+    exactly what `advisory` conditions its strongest sentence on.
     """
-    names: list[str] = []
+    out: list[tuple[str, str]] = []
     for job in jobs:
         if not isinstance(job, dict):
             continue
@@ -195,11 +214,35 @@ def failing_steps(jobs: list[object]) -> tuple[str, ...]:
         if not isinstance(steps, list):
             continue
         for step in steps:
-            if isinstance(step, dict) and step.get("conclusion") in STEP_FAILURES:
-                name = step.get("name")
-                if isinstance(name, str):
-                    names.append(name)
-    return tuple(names)
+            if not isinstance(step, dict):
+                continue
+            conclusion = step.get("conclusion")
+            if not isinstance(conclusion, str):
+                continue
+            name = step.get("name")
+            out.append((name if isinstance(name, str) else UNNAMED_STEP, conclusion))
+    return tuple(out)
+
+
+def failing_steps(steps: tuple[tuple[str, str], ...]) -> tuple[str, ...]:
+    """The names of the steps that did not pass, in run order."""
+    return tuple(name for name, conclusion in steps if conclusion in STEP_FAILURES)
+
+
+def unrun_after(steps: tuple[tuple[str, str], ...], name: str) -> int:
+    """How many steps after `name` never ran, because its failure skipped them.
+
+    Load-bearing rather than decoration. `quality.yml` puts six to eleven checks
+    *below* the replay - `contrast_check`, `import_boundary_check`,
+    `core_vocabulary_check` and `glyph_check` among them, all of which read
+    `src/` and `app/` - and a failing step skips every one. So a replay failure
+    leaves those unrun, and a line that called the tree clean on the strength of
+    the steps above it would be claiming a guarantee nobody checked.
+    """
+    for index, (step, _) in enumerate(steps):
+        if step == name:
+            return sum(1 for _, c in steps[index + 1 :] if c == "skipped")
+    return 0
 
 
 def _quoted(step: str) -> str:
@@ -209,7 +252,35 @@ def _quoted(step: str) -> str:
     return f'"{step[: STEP_WIDTH - 1].rstrip()}..." (cut)'
 
 
-def advisory(run: dict[str, object], steps: tuple[str, ...] = ()) -> str | None:
+def _is_queue_failure(run: dict[str, object], steps: tuple[tuple[str, str], ...]) -> bool:
+    """Whether the replay failing is attributable to an item's own `verify:` command.
+
+    Three conditions, and every one is read from this run rather than assumed
+    from the base rate:
+
+    1. the run itself concluded `failure`, not `timed_out` or anything else;
+    2. the replay is the *only* step that did not pass, and it `failure`d rather
+       than being killed by the job timeout - a hung command says nothing about
+       what it would have found;
+    3. `bin/docket check` ran earlier in the same job, on the same tree, and
+       passed. That is the whole of the argument: the bare run is the same store
+       validation without `--verify`, so it has already ruled out every store
+       error that does not need the flag, and what is left is the one report the
+       flag adds.
+
+    Any of the three missing and the caller names the steps and interprets
+    nothing.
+    """
+    if run.get("conclusion") != "failure":
+        return False
+    if failing_steps(steps) != (REPLAY_STEP,):
+        return False
+    if any(name == REPLAY_STEP and conclusion != "failure" for name, conclusion in steps):
+        return False
+    return any(name == BARE_CHECK_STEP and conclusion == "success" for name, conclusion in steps)
+
+
+def advisory(run: dict[str, object], steps: tuple[tuple[str, str], ...] = ()) -> str | None:
     """Return the line to print for a run, or None when it says nothing useful.
 
     Only a non-`success` verdict earns a line. The head sha is included because
@@ -217,13 +288,12 @@ def advisory(run: dict[str, object], steps: tuple[str, ...] = ()) -> str | None:
     something already pushed past; `steps` answers the second, which is whether
     this is the tree or the queue.
 
-    **The queue reading is claimed only when the replay failed alone**, and that
-    condition is the whole of its soundness rather than a caution around it. The
-    bare `bin/docket check` runs earlier in the same job on the same tree, so it
-    has already ruled out every store error that does not need `--verify`; if it
-    and every other step passed, what is left is the one report `--verify` adds.
-    A second failing step anywhere breaks that inference, so the line falls back
-    to naming the steps and interpreting nothing.
+    **The queue reading never claims the tree is clean**, and that distinction is
+    the point rather than a hedge. What can be said is that the replay was the
+    only step that failed and that the checks above it passed. What cannot is
+    that the tree is sound, because the replay's own failure skipped every check
+    below it - `unrun_after` counts them and the line says so, so a reader is
+    never handed a green they did not get.
     """
     conclusion = run.get("conclusion")
     if conclusion == "success":
@@ -232,13 +302,21 @@ def advisory(run: dict[str, object], steps: tuple[str, ...] = ()) -> str | None:
     sha = str(run.get("head_sha", ""))[:8] or "?"
     url = run.get("html_url", "")
     head = f"main's quality run #{number} on {sha} concluded {conclusion}"
-    if steps == (REPLAY_STEP,):
-        return (
-            f'{head} at "{REPLAY_STEP}", and nothing else in that job failed - so `main` is '
-            "red on the queue rather than on the tree: an open item's `verify:` command has "
-            f"flipped to passing. `bin/docket check --verify` reproduces it here. {url}"
+    if _is_queue_failure(run, steps):
+        unrun = unrun_after(steps, REPLAY_STEP)
+        tail = (
+            f" The {unrun} step(s) below it were skipped, so they are unrun rather than green."
+            if unrun
+            else ""
         )
-    where = f" at {', '.join(_quoted(s) for s in steps)}" if steps else ""
+        return (
+            f'{head} at "{REPLAY_STEP}", the only step that failed; `bin/docket check` passed '
+            "above it on the same tree, so this is an open item's `verify:` command that has "
+            "flipped to passing rather than the tree. `bin/docket check --verify` reproduces "
+            f"it here.{tail} {url}"
+        )
+    failed = failing_steps(steps)
+    where = f" at {', '.join(_quoted(name) for name in failed)}" if failed else ""
     return f"{head}{where} - main is red and no pull request will show it. {url}"
 
 
@@ -309,10 +387,10 @@ def main() -> int:
     # Asked only once the verdict is known to be a failure, and swallowed
     # separately from the fetch above: by this point `main` is red and the
     # reader is owed that whether or not the attribution can be read.
-    steps: tuple[str, ...] = ()
+    steps: tuple[tuple[str, str], ...] = ()
     if run.get("conclusion") != "success":
         try:
-            steps = failing_steps(fetch_jobs(slug, run.get("id")))
+            steps = step_conclusions(fetch_jobs(slug, run.get("id")))
         except NETWORK_FAILURES:
             steps = ()
 

@@ -595,7 +595,7 @@ tools/
 ├── import_boundary_check.py  # fails the build on any import its `BOUNDARIES` table confines elsewhere: `pydantic` anywhere under `src/anesthesia_sim/` other than `core/parameters.py`; `time`, `datetime`, `random`, `secrets` or `uuid` in any module under `core/`; `flet` and `flet_charts` anywhere under `src/anesthesia_sim/`, the port being complete; and `PySide6`, `pyqtgraph` or `numpy` in any module under `core/` - so the payload/dataclass boundary, the never-wall-clock rule and the toolkit-independence rule are measured rather than asserted
 ├── ignore_check.py       # evaluates warn_unused_ignores over the two test trees `[tool.mypy] files` excludes, so an inert `type: ignore` fails the build
 ├── item_reads.py         # reports, from the local untracked `.docket-reads.log` that `.claude/hooks/item_read_log.py` writes, how many distinct items sessions actually open, what share of those are closed, and how many citation edges are traversed within a session - the read-side measurements every argument about the store's shape had been assuming; states the sample size first and chooses between none of the readings a low count admits
-├── main_ci_status.py     # reports the default branch's last quality verdict, and nothing at all when it was a success, because the whole-store `verify:` replay runs only on push to `main` and its failures therefore land on a run no pull request shows; the session-start hook calls it, it gates nothing, and it is one of the two tools here that read the network - `required_checks_check.py` is the other, and unlike this one it does gate
+├── main_ci_status.py     # reports the default branch's last quality verdict, and nothing at all when it was a success, because the whole-store `verify:` replay runs only on push to `main` and its failures therefore land on a run no pull request shows; on a failure it makes a second request for the run's jobs and names the step that failed, because 93 of the 109 failures on record are the whole-store replay alone and a line naming no step cannot separate those from a broken tree (`PL-T83R`); the session-start hook calls it, it gates nothing, and it is one of the two tools here that read the network - `required_checks_check.py` is the other, and unlike this one it does gate
 ├── pr_title_check.py     # refuses a pull request whose title does not lead with the ids its branch closes, because the squash-merge subject is taken from that title and is what `docket check` reads to recover which pull request closed an item
 ├── required_checks_check.py  # reconciles the jobs that report a status check on `pull_request`, parsed from `.github/workflows/`, against the status checks branch protection requires, read from the GitHub API - in both directions, because a required name nothing reports leaves every pull request pending forever on a check that cannot arrive (`PL-KPP1`, `#377`) and a reporting job nothing requires can go red without blocking a merge (`PL-H8YD`, `#654`); it needs no credential at all, since on a public repository `GET /repos/{owner}/{repo}/branches/{branch}` answers unauthenticated where the `.../protection` endpoint the question was first asked of needs an `administration` grant a workflow token can never hold; it reads both settings surfaces, classic branch protection and rulesets, and treats an empty union as a failure rather than as agreement, because a migration between them would otherwise leave it passing while requiring nothing; and it refuses rather than guesses a matrix job, a reusable workflow call or an unreachable API, a job silently dropped from the reporting set being indistinguishable from nothing to reconcile. It runs as a step inside `quality.yml`'s `checks` job rather than as a job of its own, so the check that guards the required list adds no entry to it, and it is one of the two tools here that read the network, `main_ci_status.py` being the other
 ├── rules_paths_check.py  # refuses a `.claude/rules/*.md` `paths:` entry that does not begin with `/`, or whose literal prefix resolves to nothing, because an unanchored glob also matches its name at any depth while `./` and a typo'd prefix match nothing at all — so a rule's real scope can differ silently from the one it declares, in either direction
@@ -861,8 +861,11 @@ Flet chart module imported `flet_charts` without `flet`, so one boundary on
 unused-entry error: each module the port freed of either package dropped its
 entry in the same commit, and the last took the allowances with it.
 
-`tools/main_ci_status.py` is the one tool here that gates nothing, and the only
-one that reads the network. `.github/workflows/quality.yml` runs the whole-store
+`tools/main_ci_status.py` is the one tool here that gates nothing. It is one of
+the two that read the network - `required_checks_check.py` is the other, and
+that one does gate. (This said it was the only one until `PL-T83R`'s docs sweep;
+the tree comment above it had named both since `required_checks_check.py`
+landed.) `.github/workflows/quality.yml` runs the whole-store
 `verify:` replay only on push to `main` — `PL-SDHR`'s decision, because a pull
 request cannot have changed whether some *other* item's work merged, and
 replaying the store on every branch costs more than it buys. A pull request
@@ -875,6 +878,26 @@ was clean (`PL-0ZGK`). So the loop is closed from the reading end rather than by
 making every branch pay to prevent it: `.claude/hooks/docket-digest.sh` calls
 this at session start, and it prints one line when `main`'s last verdict was not
 a success.
+
+**The line names the step that failed, which is what makes it actionable.** All
+819 completed `main` push runs of `quality.yml` from 2026-08-22 to 2026-09-20
+were attributed by failing step (`PL-T83R`): 93 of the 109 failures are the
+whole-store replay, 14 the bare `bin/docket check`, one a pytest failure
+asserting on `ROADMAP.md` and one a startup failure - **not one of them a defect
+in `src/`**. In all 93 the bare `bin/docket check` step passed earlier in the
+same job on the same tree, which isolates the cause to the one report `--verify`
+adds: an open item whose own `verify:` command has flipped to passing. So where
+the replay is the *only* failing step the line says the red is the queue rather
+than the tree and hands over `bin/docket check --verify`; where anything else
+failed it names the steps and interprets nothing, because the bare check passing
+first is the whole of what makes that reading sound.
+
+The failure *rate* was left alone in the same pass, and the reasoning is worth
+keeping: 32.7% of pushes reads like a check nobody could act on, but the 74
+failures behind it are 8 episodes - merges keep arriving while `main` is red, so
+the per-push rate counts one outage once per merge. Two episodes hold 87% of the
+red time and each ended in one cheap commit. Suppressing the class would have
+cost 93 findings, every one of them real.
 
 Two properties are what make it safe to run unconditionally, and both are held
 by tests. **It is silent unless there is something to act on** — a green `main`,

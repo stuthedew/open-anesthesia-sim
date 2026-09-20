@@ -32,6 +32,22 @@ import main_ci_status
 import pytest
 
 
+def _workflow() -> str:
+    return (
+        pathlib.Path(__file__).resolve().parents[2] / ".github/workflows/quality.yml"
+    ).read_text()
+
+
+def _workflow_step_names() -> list[str]:
+    names = [
+        line.split("- name:", 1)[1].strip()
+        for line in _workflow().splitlines()
+        if line.strip().startswith("- name:")
+    ]
+    assert names, "the workflow should name at least one step"
+    return names
+
+
 def _run(conclusion: str | None, number: int = 1550, sha: str = "abcdef1234") -> dict:
     return {
         "conclusion": conclusion,
@@ -124,20 +140,30 @@ def _job(steps: list[tuple[str, str]]) -> dict:
     }
 
 
+def _pairs(steps: list[tuple[str, str]]) -> tuple[tuple[str, str], ...]:
+    """The same steps as `advisory` receives them."""
+    return main_ci_status.step_conclusions([_job(steps)])
+
+
+# `quality.yml`'s real shape on a replay failure: the bare `bin/docket check`,
+# ruff, mypy and the suite pass above it, and six to eleven checks below it -
+# among them the four that read `src/` and `app/` - never run at all.
+_REPLAY_STEPS = [
+    ("Set up job", "success"),
+    (main_ci_status.BARE_CHECK_STEP, "success"),
+    ("Run uv run ruff check .", "success"),
+    ("Run uv run mypy", "success"),
+    ("Run uv run pytest", "success"),
+    ("verify replay, scoped to what this branch changed", "skipped"),
+    (main_ci_status.REPLAY_STEP, "failure"),
+    ("Run uv run python tools/import_boundary_check.py", "skipped"),
+    ("Run uv run python tools/glyph_check.py", "skipped"),
+]
+
+
 # The shape of a red `main` as it actually occurs: the whole-store replay is the
 # only failing step, and every check that reads the tree passed above it.
-_REPLAY_ONLY = _job(
-    [
-        ("Set up job", "success"),
-        ("Run bin/docket check", "success"),
-        ("Run uv run ruff check .", "success"),
-        ("Run uv run mypy", "success"),
-        ("Run uv run pytest", "success"),
-        ("verify replay, scoped to what this branch changed", "skipped"),
-        (main_ci_status.REPLAY_STEP, "failure"),
-        ("Run uv run python tools/doc_check.py check", "skipped"),
-    ]
-)
+_REPLAY_ONLY = _job(_REPLAY_STEPS)
 
 
 class TestMain:
@@ -256,49 +282,117 @@ class TestMain:
         assert "main is red and no pull request will show it" in out
 
 
-class TestFailingStep:
-    """Which step failed, read from the run's jobs.
+class TestStepConclusions:
+    """Which steps ran and how they ended, read from the run's jobs.
 
-    Measured over every completed `main` push run from 2026-09-05 to 2026-09-20
-    (`PL-T83R`): 93 of the 109 failures were this one step, with the bare
-    `bin/docket check`, `ruff`, `mypy` and the full suite passing above it in
-    the same job. The old line named no step, so a reader could not tell those
-    93 from the 1 that was a real test failure without opening the run.
+    Measured over every completed `main` push run from 2026-08-22 to 2026-09-20
+    (`PL-T83R`): 93 of the 109 failures were the replay step alone, with the
+    bare `bin/docket check`, `ruff`, `mypy` and the full suite passing above it
+    in the same job. The old line named no step, so a reader could not tell
+    those 93 from the 16 that were something else without opening the run.
     """
 
+    def test_reads_every_step_in_run_order(self) -> None:
+        got = _pairs([("a", "success"), ("b", "failure"), ("c", "skipped")])
+        assert got == (("a", "success"), ("b", "failure"), ("c", "skipped"))
+
     def test_names_the_step_that_failed(self) -> None:
-        assert main_ci_status.failing_steps([_REPLAY_ONLY]) == (main_ci_status.REPLAY_STEP,)
+        assert main_ci_status.failing_steps(_pairs(_REPLAY_STEPS)) == (main_ci_status.REPLAY_STEP,)
 
     def test_reports_every_failing_step_in_run_order(self) -> None:
-        job = _job([("a", "failure"), ("b", "success"), ("c", "failure")])
-        assert main_ci_status.failing_steps([job]) == ("a", "c")
+        pairs = _pairs([("a", "failure"), ("b", "success"), ("c", "failure")])
+        assert main_ci_status.failing_steps(pairs) == ("a", "c")
 
     def test_a_skipped_or_cancelled_step_is_not_a_failure(self) -> None:
         """Steps after the failure are `skipped`; reporting them would bury the cause."""
-        job = _job([("a", "failure"), ("b", "skipped"), ("c", "cancelled")])
-        assert main_ci_status.failing_steps([job]) == ("a",)
+        pairs = _pairs([("a", "failure"), ("b", "skipped"), ("c", "cancelled")])
+        assert main_ci_status.failing_steps(pairs) == ("a",)
 
-    @pytest.mark.parametrize("jobs", [[], ["not a dict"], [{"steps": "not a list"}], [{}]])
+    def test_a_failing_step_with_no_readable_name_still_takes_a_row(self) -> None:
+        """Dropping it would turn two failures into the one that licenses the strong line."""
+        jobs = [{"steps": [{"name": 7, "conclusion": "failure"}, {"conclusion": "failure"}]}]
+        assert main_ci_status.failing_steps(main_ci_status.step_conclusions(jobs)) == (
+            main_ci_status.UNNAMED_STEP,
+            main_ci_status.UNNAMED_STEP,
+        )
+
+    @pytest.mark.parametrize(
+        "jobs", [[], ["not a dict"], [{"steps": "not a list"}], [{}], [{"steps": ["x", 3]}]]
+    )
     def test_returns_nothing_from_a_malformed_or_empty_payload(self, jobs: list) -> None:
         """Parsed JSON the API has promised nothing about; the caller degrades."""
-        assert main_ci_status.failing_steps(jobs) == ()
+        assert main_ci_status.step_conclusions(jobs) == ()
+
+    def test_counts_the_steps_a_failure_left_unrun(self) -> None:
+        assert main_ci_status.unrun_after(_pairs(_REPLAY_STEPS), main_ci_status.REPLAY_STEP) == 2
+
+    def test_counts_nothing_for_a_step_that_is_not_there(self) -> None:
+        assert main_ci_status.unrun_after(_pairs(_REPLAY_STEPS), "no such step") == 0
 
 
 class TestAdvisoryNamesTheCause:
     def test_says_the_failure_is_the_queue_when_the_replay_failed_alone(self) -> None:
-        line = main_ci_status.advisory(_run("failure", 1553), (main_ci_status.REPLAY_STEP,))
+        line = main_ci_status.advisory(_run("failure", 1553), _pairs(_REPLAY_STEPS))
         assert main_ci_status.REPLAY_STEP in line
-        assert "nothing else in that job failed" in line
+        assert "the only step that failed" in line
         assert "bin/docket check --verify" in line, "the reader needs the command, not the cause"
 
-    def test_does_not_claim_the_tree_is_clean_when_another_step_failed_too(self) -> None:
+    def test_never_calls_the_tree_clean_on_steps_the_failure_skipped(self) -> None:
+        """The blocking half. `quality.yml` runs six to eleven checks *below* the
+        replay - `import_boundary_check`, `core_vocabulary_check`, `glyph_check`
+        and `contrast_check` among them, all reading `src/` and `app/` - and a
+        failing step skips every one. A line calling the tree clean would be
+        handing the reader a guarantee nobody checked.
+        """
+        line = main_ci_status.advisory(_run("failure", 1553), _pairs(_REPLAY_STEPS))
+        assert "unrun rather than green" in line
+        assert "2 step(s) below it were skipped" in line
+
+    def test_does_not_claim_the_queue_when_another_step_failed_too(self) -> None:
         """The whole claim rests on the replay being the only failure."""
-        line = main_ci_status.advisory(
-            _run("failure", 1553), ("Run uv run mypy", main_ci_status.REPLAY_STEP)
-        )
-        assert "nothing else in that job failed" not in line
+        steps = [*_REPLAY_STEPS[:4], ("Run uv run mypy", "failure"), *_REPLAY_STEPS[5:]]
+        line = main_ci_status.advisory(_run("failure", 1553), _pairs(steps))
         assert "bin/docket check --verify" not in line
         assert "Run uv run mypy" in line
+
+    def test_does_not_claim_the_queue_when_the_bare_check_never_passed(self) -> None:
+        """The dangerous direction, and the one nothing else here would catch.
+
+        Without the bare run's verdict the replay's failure is not narrowed to
+        the `--verify` report at all: every store error the bare run rules out
+        is back in scope. A missing step is not a passing one.
+        """
+        without = [s for s in _REPLAY_STEPS if s[0] != main_ci_status.BARE_CHECK_STEP]
+        line = main_ci_status.advisory(_run("failure", 1553), _pairs(without))
+        assert "bin/docket check --verify" not in line
+        skipped = [
+            (main_ci_status.BARE_CHECK_STEP, "skipped")
+            if s[0] == main_ci_status.BARE_CHECK_STEP
+            else s
+            for s in _REPLAY_STEPS
+        ]
+        assert "bin/docket check --verify" not in main_ci_status.advisory(
+            _run("failure", 1553), _pairs(skipped)
+        )
+
+    def test_does_not_claim_the_queue_when_the_replay_was_killed_by_the_timeout(self) -> None:
+        """A hung command says nothing about what it would have found.
+
+        `quality.yml` sets `timeout-minutes: 15` precisely because one item's
+        `verify:` command can hang. Reading that kill as "already passing" would
+        invert it.
+        """
+        killed = [
+            (main_ci_status.REPLAY_STEP, "timed_out") if s[0] == main_ci_status.REPLAY_STEP else s
+            for s in _REPLAY_STEPS
+        ]
+        line = main_ci_status.advisory(_run("failure", 1553), _pairs(killed))
+        assert "bin/docket check --verify" not in line
+        assert main_ci_status.REPLAY_STEP in line
+
+    def test_does_not_claim_the_queue_when_the_run_itself_did_not_conclude_failure(self) -> None:
+        line = main_ci_status.advisory(_run("timed_out", 1553), _pairs(_REPLAY_STEPS))
+        assert "bin/docket check --verify" not in line
 
     def test_cuts_a_long_unnamed_step_and_says_that_it_cut_it(self) -> None:
         """`quality.yml`'s pytest step has no `name:`, so GitHub names it after 180
@@ -308,28 +402,22 @@ class TestAdvisoryNamesTheCause:
             "Run uv run pytest -n $(python3 -c 'import os; print(os.cpu_count() * 2)') "
             "--dist worksteal --cov=anesthesia_sim.core --cov-branch --cov-fail-under=100"
         )
-        line = main_ci_status.advisory(_run("failure", 1553), (long_step,))
+        line = main_ci_status.advisory(_run("failure", 1553), _pairs([(long_step, "failure")]))
         assert "Run uv run pytest" in line
         assert "(cut)" in line, "a command cut to look complete is worse than one that says so"
         assert long_step not in line
         assert line.endswith("https://github.com/o/r/actions/runs/1553")
 
     def test_leaves_every_named_step_in_the_workflow_whole(self) -> None:
-        workflow = (
-            pathlib.Path(__file__).resolve().parents[2] / ".github/workflows/quality.yml"
-        ).read_text()
-        named = [
-            line.split("- name:", 1)[1].strip()
-            for line in workflow.splitlines()
-            if line.strip().startswith("- name:")
-        ]
-        assert named, "the workflow should name at least one step"
-        for step in named:
+        for step in _workflow_step_names():
             assert len(step) <= main_ci_status.STEP_WIDTH, step
-            assert "(cut)" not in main_ci_status.advisory(_run("failure"), (step,))
+            line = main_ci_status.advisory(_run("failure"), _pairs([(step, "failure")]))
+            assert "(cut)" not in line
 
     def test_names_an_ordinary_failing_step_without_interpreting_it(self) -> None:
-        line = main_ci_status.advisory(_run("failure", 1553), ("Run uv run mypy",))
+        line = main_ci_status.advisory(
+            _run("failure", 1553), _pairs([("Run uv run mypy", "failure")])
+        )
         assert "Run uv run mypy" in line
         assert "main is red and no pull request will show it" in line
 
@@ -341,7 +429,7 @@ class TestAdvisoryNamesTheCause:
         assert "1553" in line
 
     def test_still_says_nothing_when_main_is_green(self) -> None:
-        assert main_ci_status.advisory(_run("success"), (main_ci_status.REPLAY_STEP,)) is None
+        assert main_ci_status.advisory(_run("success"), _pairs(_REPLAY_STEPS)) is None
 
 
 class TestStepNamesMatchTheWorkflow:
@@ -353,7 +441,9 @@ class TestStepNamesMatchTheWorkflow:
     """
 
     def test_the_replay_step_is_named_in_quality_yml(self) -> None:
-        workflow = (
-            pathlib.Path(__file__).resolve().parents[2] / ".github/workflows/quality.yml"
-        ).read_text()
-        assert f"name: {main_ci_status.REPLAY_STEP}" in workflow
+        assert f"name: {main_ci_status.REPLAY_STEP}" in _workflow()
+
+    def test_the_bare_check_step_is_the_run_line_github_names_it_after(self) -> None:
+        """It has no `name:`, so GitHub calls it `Run ` plus the `run:` line verbatim."""
+        command = main_ci_status.BARE_CHECK_STEP.removeprefix("Run ")
+        assert f"- run: {command}\n" in _workflow()

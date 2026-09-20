@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: infra, session-cost
 feature: ci-cost
-touches: tools/main_ci_status.py, tests/unit/test_main_ci_status.py, docs/WORKING_NOTES.md
+touches: tools/main_ci_status.py, tests/unit/test_main_ci_status.py, docs/ARCHITECTURE.md, docs/WORKING_NOTES.md
 added: 2026-09-16
 verify: python3 tools/doc_check.py check && grep -qF 'attributed by failing step' docs/WORKING_NOTES.md
 ---
