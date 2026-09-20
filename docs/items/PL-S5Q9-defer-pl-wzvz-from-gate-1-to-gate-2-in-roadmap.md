@@ -8,6 +8,7 @@ classes: docs
 touches: ROADMAP.md
 added: 2026-09-20
 closed: 2026-09-20
+pr: 777
 payoff: stops the v0.5.0 cut meeting an open safety-classed gate entry with no recorded destination and having to decide what to do with it at release time
 verify: grep -qF 'It clears in Gate 2, and v0.5.0 ships without it' ROADMAP.md
 ---

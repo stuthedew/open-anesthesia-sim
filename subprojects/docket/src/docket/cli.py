@@ -70,7 +70,7 @@ from .release import (
     unrecorded_milestones,
 )
 from .roadmap import MilestoneStates, Wave, milestone_states, wave
-from .store import find_item, new_id, read_items, rewrite_item, write_item
+from .store import find_item, insert_field, new_id, read_items, rewrite_item, write_item
 from .trend import BY_DAY, BY_WEEK
 from .trend import analyze as analyze_trend
 from .vcs import (
@@ -2203,17 +2203,27 @@ def _record_owed(
 
 
 def _write_pr(directory: Path, item: Item, number: str, dry_run: bool) -> None:
-    """Set one item's `pr`, leaving every other field - and its filename - as it was.
+    """Set one item's `pr`, leaving every other byte of the file as it was.
 
-    `rewrite_item` rather than `write_item`, because the name is derived from
-    the title and this command was asked for a number. On a file whose slug has
-    drifted the two differ, and re-deriving it turns one added line into a
-    delete-plus-add: the skill grants `record` its standing exemption from the
-    in-flight guard on the grounds that two sessions running it write the same
-    line and git merges them, which a rename defeats (`PL-LBR6`, `PL-5QLP`).
+    `insert_field` rather than either of the writers that render from the
+    parsed item, and the two reasons are the two defects this line has had.
+    `write_item` derives the filename from the title, so on a file whose slug
+    has drifted it turns one added line into a delete-plus-add - and the skill
+    grants `record` its standing exemption from the in-flight guard on the
+    grounds that two sessions running it write the same line and git merges
+    them, which a rename defeats (`PL-LBR6`, `PL-5QLP`). `rewrite_item` keeps
+    the name and still re-renders the block, so on a file whose keys are in
+    some other order, or whose value runs over continuation lines, it removes
+    lines as well as adding one - and `verify.sanctioned_queue_edit` reads a
+    removal as an ordinary content edit, so the close-out that ran `record`
+    exactly as instructed came back `REJECT` (`PL-7K8Y`).
+
+    Both callers establish that the item records no `pr` before reaching here,
+    which is what makes an insert the right operation: `cmd_record` sorts a
+    conflicting number into its own report rather than overwriting it.
     """
     if not dry_run:
-        rewrite_item(directory, with_fields(item, pr=number))
+        insert_field(directory, item, "pr", number)
 
 
 def build_parser() -> argparse.ArgumentParser:

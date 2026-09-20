@@ -2986,6 +2986,33 @@ def test_record_leaves_the_rest_of_the_item_alone(tmp_path: Path) -> None:
     assert after == before.replace("added: 2026-08-01\n", "added: 2026-08-01\npr: 257\n")
 
 
+def test_record_leaves_a_hand_written_block_alone(tmp_path: Path) -> None:
+    """`PL-7K8Y`: the test above passes on a file the tool itself wrote.
+
+    On a hand-typed one it did not. `record` rendered from the parsed item, so
+    keys in any other order came back canonical and a value continued over an
+    indented line came back on one - removals, in a diff about the close-out's
+    own work. `verify.sanctioned_queue_edit` grants the backfill its exemption
+    only where the diff removes nothing, so the close-out that ran the command
+    exactly as the skill instructs was reported as editing a file outside its
+    commission, and the per-commit reading meant a later fixup commit could
+    not clear it. Both shapes are here because both were live: 118 of the
+    store's item files carried a non-canonical order on 2026-09-20 and 12
+    carried a multi-line value.
+    """
+    scrambled = (
+        "verify: true\nreason: two problems, and the second one\n  is PL-B1C2\nclosed: 2026-09-01\n"
+    )
+    root = _record_repo(tmp_path, extra=scrambled)
+    before = (root / "items" / "PL-K7QX-a-closed-item.md").read_text(encoding="utf-8")
+
+    assert main(["record", "257", "--items", str(root / "items")]) == 0
+
+    after = (root / "items" / "PL-K7QX-a-closed-item.md").read_text(encoding="utf-8")
+    assert after == before.replace("closed: 2026-09-01\n", "closed: 2026-09-01\npr: 257\n")
+    assert set(before.splitlines()) <= set(after.splitlines()), "a line was removed"
+
+
 def test_record_keeps_a_drifted_filename(tmp_path: Path) -> None:
     """A field write must not rename, however stale the slug it finds.
 
