@@ -522,7 +522,7 @@ class SimulationView(QWidget):
             snapshot: The reference run's snapshot for this tick.
         """
 
-        panel = bookmark_panel(snapshot.bookmarks)
+        panel = bookmark_panel(snapshot.bookmarks, snapshot.bookmark_standings)
         self._bookmarks_panel.set_panel(panel)
 
         if self._bookmark_dialog is None:

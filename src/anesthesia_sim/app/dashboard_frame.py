@@ -25,12 +25,19 @@ requirements rather than wording: the "Alveolar" readout glossed
 (`PL-71CF`), each stated in `docs/MODEL.md` and held by an exact-string test.
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
+from types import MappingProxyType
 from typing import Final
 
-from anesthesia_sim.app.bookmarks import BookmarkSet, MacTarget, TimeBookmark
+from anesthesia_sim.app.bookmarks import (
+    BookmarkSet,
+    BookmarkStandings,
+    MacTarget,
+    MarkStanding,
+    TimeBookmark,
+)
 from anesthesia_sim.app.chart_frame import (
     COMPARED_COMPARTMENT_CAP,
     ChartFrame,
@@ -229,6 +236,30 @@ NO_MAC_TARGETS_TEXT: Final = "None set"
 # The separator between a mark's value and the name the learner gave it. An
 # en dash, which `tools/glyph_check.py` records as rendered.
 MARK_LABEL_JOINER: Final = " – "
+
+# What a row says about how far the run has got with the mark it lists
+# (`PL-CTD7`). Conditional text rather than standing text, which is the
+# distinction `.claude/rules/ui-reader.md` draws: a mark the run can still
+# reach says nothing at all, so the words appear on exactly the rows whose
+# state a reader would otherwise have to infer from silence.
+#
+# **The two negative answers are worded apart deliberately.** "Not reached"
+# alone would be true of both and would tell a learner that a bookmark before
+# this branch's fork might arrive if they kept running, which it cannot -
+# `bookmarks.MarkStanding` carries the argument, and `CLAUDE.md`'s
+# safety-critical standard is what rules out the plausible-looking answer.
+# `NOT_REACHED_WITHIN_CAP` names the run length rather than a number of hours,
+# so the figure lives once, in `core/supported_ranges.py` and
+# `docs/MODEL.md` § "Supported run length".
+MARK_STANDING_JOINER: Final = " · "
+MARK_STANDING_TEXT: Final[Mapping[MarkStanding, str]] = MappingProxyType(
+    {
+        MarkStanding.STILL_RUNNING: "",
+        MarkStanding.REACHED: "reached",
+        MarkStanding.NOT_REACHED_WITHIN_CAP: "not reached within the supported run length",
+        MarkStanding.BEFORE_THIS_BRANCH: "before this branch opened",
+    }
+)
 
 # The editor's own words. Field labels rather than sentences, which is the
 # form `.claude/rules/ui-reader.md` asks a specialist reader's screen to carry
@@ -1135,25 +1166,50 @@ class BookmarkPanel:
     targets: MarkListing
 
 
-def format_time_bookmark(bookmark: TimeBookmark) -> str:
+def _with_standing(stated: str, standing: MarkStanding) -> str:
+    """One row, with what the run has done about it where that is worth saying.
+
+    Args:
+        stated: The mark's own value and name, which every row carries.
+        standing: Where the mark stands on this run.
+
+    Returns:
+        The row unchanged for a mark the run can still reach, and the row
+        followed by the standing otherwise.
+    """
+
+    said = MARK_STANDING_TEXT[standing]
+
+    return f"{stated}{MARK_STANDING_JOINER}{said}" if said else stated
+
+
+def format_time_bookmark(bookmark: TimeBookmark, standing: MarkStanding) -> str:
     """One marked instant, as a reader meets it.
 
     The time first and the name after it, because the time is what the row
     asserts and the name is what the learner chose to call it — and because
     two rows read against each other are read down their first column.
     `format_elapsed` renders it, so a bookmark and the run clock beside it
-    state one quantity one way.
+    state one quantity one way. Where the run has something to say about the
+    mark, it comes last, after both.
+
+    Args:
+        bookmark: The marked instant.
+        standing: Its standing on the run being drawn, from
+            `SimulationSnapshot.bookmark_standings`. Required rather than
+            defaulted, so no row can be drawn that quietly asserts a mark is
+            still reachable without anybody having asked the run.
     """
 
     rendered = format_elapsed(bookmark.instant_s)
 
-    if bookmark.label is None:
-        return rendered
+    if bookmark.label is not None:
+        rendered = f"{rendered}{MARK_LABEL_JOINER}{bookmark.label}"
 
-    return f"{rendered}{MARK_LABEL_JOINER}{bookmark.label}"
+    return _with_standing(rendered, standing)
 
 
-def format_mac_target(target: MacTarget) -> str:
+def format_mac_target(target: MacTarget, standing: MarkStanding) -> str:
     """One marked height, as a reader meets it.
 
     Compartment, then height, then the name. The compartment is on the row
@@ -1165,43 +1221,62 @@ def format_mac_target(target: MacTarget) -> str:
 
     The compartment's name comes from `chart_frame.trace_style`, so the row
     and the trace it is read against are named by one table.
+
+    Args:
+        target: The marked height.
+        standing: Its standing on the run being drawn, required for the reason
+            `format_time_bookmark` gives.
     """
 
     compartment = trace_style(target.quantity).label
     height = render_mac_multiple(target.mac_multiple)
     stated = f"{compartment} {height}"
 
-    if target.label is None:
-        return stated
+    if target.label is not None:
+        stated = f"{stated}{MARK_LABEL_JOINER}{target.label}"
 
-    return f"{stated}{MARK_LABEL_JOINER}{target.label}"
+    return _with_standing(stated, standing)
 
 
-def bookmark_panel(bookmarks: BookmarkSet) -> BookmarkPanel:
+def bookmark_panel(bookmarks: BookmarkSet, standings: BookmarkStandings) -> BookmarkPanel:
     """The two collections a run is marked at, as two listings.
 
-    It states what is *marked* and never what has been *reached*: nothing here
-    reads a compartment, so a listed target says a learner asked for it and
-    says nothing about whether the run has crossed it. The reached /
-    not-reached / still-running outcome is `PL-CTD7`, and keeping it out of
-    this panel is what stops an unbuilt detection being implied by a drawn row.
+    It states what is marked *and* where the run has got with each of them
+    (`PL-CTD7`). Still nothing here reads a compartment: the standings are
+    computed in the advance loop, one per completed simulation step, and
+    arrive through `SimulationSnapshot.bookmark_standings` — which is what
+    keeps a drawn row from implying a detection this module performed.
 
     Args:
         bookmarks: The run's marks, from `SimulationSnapshot.bookmarks`.
+        standings: Their standings, from the same snapshot. Two arguments off
+            one snapshot rather than one derived from the other, so a panel
+            cannot be drawn from one run's marks and another run's answers.
 
     Returns:
         Both listings, each with its heading, its rows and its empty line.
+
+    Raises:
+        SimulationConfigurationError: If `standings` was computed for a set
+            that does not hold one of these marks, which `BookmarkStandings`
+            refuses rather than defaulting.
     """
 
     return BookmarkPanel(
         times=MarkListing(
             TIME_BOOKMARK_HEADING,
-            tuple(format_time_bookmark(bookmark) for bookmark in bookmarks.time_bookmarks),
+            tuple(
+                format_time_bookmark(bookmark, standings.of_time_bookmark(bookmark))
+                for bookmark in bookmarks.time_bookmarks
+            ),
             NO_TIME_BOOKMARKS_TEXT,
         ),
         targets=MarkListing(
             MAC_TARGET_HEADING,
-            tuple(format_mac_target(target) for target in bookmarks.mac_targets),
+            tuple(
+                format_mac_target(target, standings.of_mac_target(target))
+                for target in bookmarks.mac_targets
+            ),
             NO_MAC_TARGETS_TEXT,
         ),
     )

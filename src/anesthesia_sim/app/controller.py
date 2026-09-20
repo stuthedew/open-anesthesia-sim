@@ -12,13 +12,30 @@ what one drawn frame reads (`PL-RD3B`). Neither imports this module, so a
 reader of either is not reading the boundary as well.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from math import isfinite
 
-from anesthesia_sim.app.bookmarks import BookmarkSet, MacTarget, TimeBookmark
+from anesthesia_sim.app.bookmarks import (
+    BookmarkCrossing,
+    BookmarkSet,
+    BookmarkStandings,
+    MacTarget,
+    TimeBookmark,
+)
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
-from anesthesia_sim.app.run_series import DrawnWindow
-from anesthesia_sim.core.concentration import Fraction, Percent
+
+# `mac_multiple` rather than an inverse transform written here, and the import
+# is the point: it is the whole arithmetic of the second display unit in one
+# place, so a target held in multiples of MAC is compared against a compartment
+# through the same divisor the readout beside it is drawn through. Converting
+# the *target* down into a partial-pressure fraction here would be a second
+# copy of that arithmetic, and `CLAUDE.md` treats a correct number reached
+# through the wrong divisor as a safety failure rather than a rounding one.
+# Nothing else about `app/formatting.py` is reached: no string is built here.
+from anesthesia_sim.app.formatting import mac_multiple
+from anesthesia_sim.app.run_series import COMPARTMENT_STATE_INDEX, DrawnWindow, RecordedQuantity
+from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -27,6 +44,7 @@ from anesthesia_sim.core.exceptions import (
 from anesthesia_sim.core.parameters import MacAwakeReference, load_agent_parameters
 from anesthesia_sim.core.run_definition import RunDefinition, RunSegment
 from anesthesia_sim.core.simulation import SimulationState
+from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 
@@ -130,6 +148,30 @@ class SimulationSnapshot:
     carrying its trunk's copy. `app/bookmarks.py` holds the argument for each,
     and whether a run has *reached* a mark is `PL-CTD7` rather than anything
     this snapshot answers.
+    """
+    bookmark_halt: BookmarkCrossing | None
+    """The marks the run is halted on, or `None` if it is not halted on any.
+
+    Set on the step that crossed them and cleared by the next step the run
+    takes, so a reader meets it exactly while the run stands on the crossing.
+    `is_running` is `False` alongside it and this is an ordinary pause: Start
+    resumes, and the crossing just halted on is not crossed again by doing so
+    (`MacTarget.crossed_between`).
+
+    `instant_s` is the completed step's own instant, so it sits on the run's
+    `simulation_step_s` grid rather than on the coarser grid a tick boundary
+    can reach — which is the whole of what `PL-CTD7` buys, and what
+    `docs/MODEL.md` § "Halting on a marked crossing" states.
+    """
+    bookmark_standings: BookmarkStandings
+    """Where each mark in `bookmarks` stands on this run, keyed by the mark.
+
+    The other half of the same question `bookmarks` asks: that field is what
+    the learner marked, and this is how far the run has got with each of them.
+    Four answers rather than two, because "not reached" and "not reached yet"
+    are different claims and a row that conflates them tells a learner to wait
+    for something that cannot arrive — `bookmarks.MarkStanding` carries the
+    argument for each.
     """
     supported_limit_reason: str | None
     """Why the run stopped at a declared limit of the model's domain, or
@@ -252,6 +294,14 @@ class SimulationController:
         self._is_running = False
         self._failure_reason: str | None = None
         self._supported_limit_reason: str | None = None
+        # What this run has done with the marks, as opposed to what is marked.
+        # Both are the run's product rather than the learner's question, so
+        # both are cleared wherever a new run begins - `_build_state`, which
+        # `set_agent` comes back through, and `reset()` - while `_bookmarks`
+        # below survives all of it.
+        self._bookmark_halt: BookmarkCrossing | None = None
+        self._reached_instants_s: frozenset[float] = frozenset()
+        self._reached_crossings: frozenset[tuple[RecordedQuantity, float]] = frozenset()
         # Set here and not in `_build_state`, which is deliberate rather than
         # incidental: `_build_state` is also what `set_agent` comes back
         # through, and a mark is the learner's question rather than the run's
@@ -268,6 +318,19 @@ class SimulationController:
             alveolar_ventilation_l_min=alveolar_ventilation_l_min,
             cardiac_output_l_min=cardiac_output_l_min,
         )
+
+    def _forget_reached_marks(self) -> None:
+        """Clear what *this run* did with the marks, keeping the marks themselves.
+
+        Called wherever a new run begins. A mark is the learner's question and
+        survives; whether a run halted on one is that run's product and does
+        not, because a standing carried across a reset would report a crossing
+        that the run now on screen never took.
+        """
+
+        self._bookmark_halt = None
+        self._reached_instants_s = frozenset()
+        self._reached_crossings = frozenset()
 
     def _build_state(
         self,
@@ -467,6 +530,7 @@ class SimulationController:
         self.pause()
         current = self.snapshot()
 
+        self._forget_reached_marks()
         self._build_state(
             agent_id=agent_id,
             circuit_volume_l=current.circuit_volume_l,
@@ -516,6 +580,8 @@ class SimulationController:
             agent_accounting_passes_validation=accounting.passes_validation,
             control_timeline=self._control_timeline,
             bookmarks=self._bookmarks,
+            bookmark_halt=self._bookmark_halt,
+            bookmark_standings=self._bookmark_standings(),
             supported_limit_reason=self._supported_limit_reason,
             failure_reason=self._failure_reason,
         )
@@ -550,6 +616,7 @@ class SimulationController:
         """
 
         self._bookmarks = self._bookmarks.without_time_bookmark(bookmark)
+        self._forget_unmarked()
 
     def add_mac_target(self, target: MacTarget) -> None:
         """Mark a height on one compartment.
@@ -569,6 +636,43 @@ class SimulationController:
         """
 
         self._bookmarks = self._bookmarks.without_mac_target(target)
+        self._forget_unmarked()
+
+    def _forget_unmarked(self) -> None:
+        """Drop what the run did with marks the learner has since removed.
+
+        An unmarked question has no row to draw a standing beside and no place
+        in a halt the interface is reporting, so leaving either behind would
+        name a mark that is no longer listed — the stale state
+        `.claude/rules/expert-review.md` asks to be designed out rather than
+        warned about. A halt that crossed two marks keeps the one still
+        marked; a halt left naming nothing is cleared outright, because
+        `BookmarkCrossing` refuses to describe a step that crossed nothing.
+        """
+
+        instants = {bookmark.instant_s for bookmark in self._bookmarks.time_bookmarks}
+        crossings = {target.crossing_key for target in self._bookmarks.mac_targets}
+
+        self._reached_instants_s &= frozenset(instants)
+        self._reached_crossings &= frozenset(crossings)
+
+        if self._bookmark_halt is None:
+            return
+
+        kept_times = tuple(
+            bookmark
+            for bookmark in self._bookmark_halt.time_bookmarks
+            if bookmark.instant_s in instants
+        )
+        kept_targets = tuple(
+            target for target in self._bookmark_halt.mac_targets if target.crossing_key in crossings
+        )
+
+        self._bookmark_halt = (
+            BookmarkCrossing(self._bookmark_halt.instant_s, kept_times, kept_targets)
+            if kept_times or kept_targets
+            else None
+        )
 
     @property
     def run_segments(self) -> tuple[RunSegment, ...]:
@@ -1012,6 +1116,7 @@ class SimulationController:
         self.pause()
         self._failure_reason = None
         self._supported_limit_reason = None
+        self._forget_reached_marks()
         self._state.reset()
         uptake_system = self._state.uptake_system
 
@@ -1200,18 +1305,98 @@ class SimulationController:
             ),
         )
 
+    def _compartment_mac_multiples(self) -> Mapping[RecordedQuantity, MacMultiple]:
+        """Every compartment a target could name, in the unit a target is held in.
+
+        One read of the state vector and one conversion per compartment,
+        through `formatting.mac_multiple` and this run's own
+        `agent_mac_percent` — the same divisor the readout for that
+        compartment is drawn through, so a target and the number the learner
+        is looking at cannot come to mean different things.
+
+        `COMPARTMENT_STATE_INDEX` is what pairs each quantity with its
+        position, rather than a second list written here: it is already the
+        one place a trace could come to carry another compartment's values,
+        and a crossing tested against the wrong compartment is the same defect
+        as a trace drawn from one.
+        """
+
+        state = self._state.uptake_system.state_vector()
+
+        return {
+            quantity: mac_multiple(Fraction(state[index]), self._agent_mac_percent)
+            for quantity, index in COMPARTMENT_STATE_INDEX.items()
+        }
+
+    def _bookmark_standings(self) -> BookmarkStandings:
+        """Where each of this run's marks stands, for the snapshot to carry."""
+
+        return self._bookmarks.standings(
+            reached_instants_s=self._reached_instants_s,
+            reached_crossings=self._reached_crossings,
+            opened_at_s=(0.0 if self._opened_from is None else self._opened_from.elapsed_s),
+            run_length_cap_s=MAXIMUM_ELAPSED_SIMULATION_TIME_S,
+            stopped_at_cap=self._supported_limit_reason is not None,
+        )
+
     def advance(self, simulation_step_s: float) -> None:
-        """No-op while paused; otherwise advance state and record history.
+        """No-op while paused; otherwise advance state, record history, and halt on a crossing.
 
         The run definition's reach is moved after the step rather than before it, so a
         step the core refuses - a domain limit, a numerical failure - leaves
         the run definition describing a run that stopped where the state did. Its
         `advance_to` records no state: the states are already implied by the
         settings, and are recovered from them on demand.
+
+        **The crossing test is here because here is one step** (`PL-CTD7`).
+        The interface advances a whole tick's worth of steps between frames -
+        `multiplier x tick_interval_s / simulation_step_s` of them, 300 at
+        300x - so a test applied once per frame would place the halt up to
+        `multiplier x simulation_step_s` past the value the learner marked:
+        30 simulated seconds at 300x, and 0.1 s at 1x, against a `docs/MODEL.md`
+        tolerance stated in hundredths of a percentage point. The same
+        bookmark would then stop the run at a different concentration
+        depending on how fast it was being played, silently, which is the
+        presentation-correctness failure `CLAUDE.md` treats as safety-critical
+        - and it would put two branches nominally taken "at 0.8 xMAC" at two
+        different states. Called per step, the halt lands on the crossing step
+        itself, which is finer than any instant a live control change can
+        reach (`app/playback.py`, `PL-NBWP`).
+
+        **A crossing pauses the run**, and that is what makes the halt worth
+        having rather than a courtesy. No step is taken while paused and the
+        setters apply unconditionally, so "halt at 0.8 xMAC, then turn the
+        vaporizer off" acts at the instant the learner was looking at instead
+        of at the next tick boundary up to 30 simulated seconds later. The
+        pause is an ordinary one: `start()` resumes, and the crossing just
+        halted on is not crossed again by resuming, because the next step's
+        `before` reading is the halting step's own
+        (`MacTarget.crossed_between`). Nothing is armed and nothing is
+        disarmed; there is no per-target state for a learner to get wrong.
+
+        The remaining steps of the tick that halted are no-ops, through the
+        guard at the top of this method, so the burst stops on the crossing
+        step rather than running on to the frame boundary.
+
+        The readings are taken only where something is marked, so an unmarked
+        run pays nothing: a marked one pays two `state_vector()` reads and six
+        divisions per step.
         """
 
         if not self._is_running:
             return
+
+        # Taking a step means the run is no longer standing on the crossing it
+        # last halted at, whether or not this step then completes.
+        self._bookmark_halt = None
+
+        if self._bookmarks.is_empty:
+            self._state.advance(simulation_step_s)
+            self._run_definition.advance_to(self._state.elapsed_s)
+            return
+
+        before_s = self._state.elapsed_s
+        before = self._compartment_mac_multiples()
 
         self._state.advance(simulation_step_s)
         # The clock and the definition's reach are one quantity on one axis, on
@@ -1221,6 +1406,30 @@ class SimulationController:
         # instant of the case computes its interval from the same two floats
         # its parent did, rather than from a difference that may not round-trip.
         self._run_definition.advance_to(self._state.elapsed_s)
+
+        crossing = self._bookmarks.crossings_between(
+            before_s=before_s,
+            after_s=self._state.elapsed_s,
+            before=before,
+            after=self._compartment_mac_multiples(),
+        )
+
+        if crossing is None:
+            return
+
+        self._halt_on(crossing)
+
+    def _halt_on(self, crossing: BookmarkCrossing) -> None:
+        """Pause the run on the step that crossed these marks, and record it.
+
+        Args:
+            crossing: What the step just taken passed through.
+        """
+
+        self._is_running = False
+        self._bookmark_halt = crossing
+        self._reached_instants_s |= {bookmark.instant_s for bookmark in crossing.time_bookmarks}
+        self._reached_crossings |= {target.crossing_key for target in crossing.mac_targets}
 
 
 class BranchedCase:
