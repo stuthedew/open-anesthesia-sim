@@ -1703,7 +1703,10 @@ below the three.
    cohorts. **It is still not a source.** A parameter set is assembled to make
    a program behave; which measurement any individual number descends from,
    and what was adjusted to make the set cohere, are not recoverable from the
-   program.
+   program. **And the behavior it fixes has itself been measured against
+   patients**, with an agreement materially worse through wash-in than through
+   maintenance; see "Known limitations", which carries the figures and says
+   what they bound.
 
 **A lower tier may be adopted, but never silently.** The ranking above says
 which tier a reader may trust unexamined. It does not say that a tier-2 or
@@ -3730,6 +3733,9 @@ transfers to whatever `PL-N092` writes in its place.
    shows that this implementation reproduces its parameter set's intent, not
    that the parameter set is independently right. It is weaker than
    "validated against a human measurement" and must not be described as more.
+   The intent itself is worth least where this comparison's wash-in direction
+   looks: Gas Man's own published agreement with patients is materially worse
+   through wash-in than through maintenance (see "Known limitations").
 3. *The breathing systems differ, and by more than the measurement's own
    spread.* The paragraphs above measure it, at 3.5 to 4.2 published standard
    deviations per cohort. Any statement that this model eliminates more slowly
@@ -7878,6 +7884,89 @@ can re-open either. So the passage quoted from Datex-Ohmeda, the 1–18% range
 beside it, and the worked example attributed to Boumphrey and Marshall rest on
 that reading alone. Nothing stored depends on any of them; a reader wanting to
 verify one has to reach the document itself.
+
+**Gas Man's own agreement with patients is phase-dependent, and wash-in is its
+worst phase.** Both this model's parameter set and its compartment structure
+descend from Gas Man, a lineage ranked tier 3 under "Source hierarchy", which
+rests its worth on fixing the behavior of a widely taught teaching tool as
+something this implementation can be compared against. A prospective in-patient
+study has since measured how closely that behavior tracks real end-expired
+sevoflurane, and the answer depends on where in the case it is asked.
+Twenty-eight ASA I–II adults undergoing gynecologic or urologic surgery were
+maintained on sevoflurane in O₂/air, fourteen on a Dräger Zeus and fourteen on a
+Getinge FLOW-i, with fresh gas flow re-randomised every fifteen minutes over 0.2
+to 6 L/min and the vaporizer setting left to the anesthesiologist. Each case was
+then re-run in Gas Man on that patient's weight and the same flows, vaporizer
+settings and minute ventilation, with cardiac output left at the Gas Man
+default — Brody's formula, which is the same 1945 interspecies relation the
+cardiac-output note above records this model as carrying. Over the whole hour
+Gas Man tracked both workstations to within 10% on the median signed and the
+median absolute percentage error of measured against predicted, drifting by
+−0.96%/h [−1.14, −0.88] on the FLOW-i and −0.57%/h [−0.85, −0.16] on the Zeus.
+Split into the study's two phases it does not:
+
+| Workstation | Phase | Median performance error | Median absolute performance error |
+| --- | --- | --- | --- |
+| FLOW-i (n = 14) | wash-in, 0–15 min | 18% [1, 51] | 21% [8, 51] |
+| FLOW-i (n = 14) | maintenance, 15–60 min | 0% [−7, 5] | 6% [2, 10] |
+| Zeus (n = 14) | wash-in, 0–15 min | 7% [−6, 28] | 13% [6, 32] |
+| Zeus (n = 14) | maintenance, 15–60 min | −1% [−5, 5] | 5% [2, 9] |
+
+Brackets are the published interquartile ranges, and they carry more of the
+finding than the medians do: a quarter of FLOW-i patients were tracked worse
+than 51% through the first fifteen minutes, against worse than 10% over the last
+forty-five. The two metrics are Varvel's, which this project has not read at
+source — they are taken as the study states them. The authors' own conclusion is
+that Gas Man predicts end-expired sevoflurane "with better relative performance
+for simulating maintenance than wash-in", and their stated warrant is the
+wash-in and maintenance periods *combined* rather than the wash-in alone.
+
+**What that bounds here, and what it does not.** It is not a measurement of this
+implementation. Nothing in this project has ever been compared against a Gas Man
+trajectory — the comparisons under "Required tests" are against published human
+data — and no figure in the table above is a tolerance anything here is held to.
+What it bounds is what the lineage is worth. Where caveat 2 under "Published
+wash-in and elimination validation test" says that passing shows this
+implementation reproducing its parameter set's *intent* rather than showing that
+the set is independently right, this is how much that intent has been shown to
+be worth in patients — and it is worth least in the phase the simulator most
+displays, the first minutes of the $`F_A/F_I`$ rise, which is the canonical
+teaching curve of inhaled-anesthetic uptake (see "Model boundary"). So
+"agrees with Gas Man" may not be read as "agrees with a patient" anywhere in a
+case, and least of all in the first fifteen minutes.
+
+**Nor is the gap necessarily the patient model's.** The two workstations ran the
+same protocol, the same simulator and the same cardiac-output default, and
+differ in how they deliver agent into the circle; their wash-in median absolute
+errors differ by a factor of about 1.6. That is suggestive and no more. The
+fourteen patients on each workstation are different patients, so the contrast is
+between groups rather than within one, and the interquartile ranges behind it —
+[8, 51] against [6, 32] — overlap across most of their length. The study does
+not decompose the error and this document does not claim it can be decomposed;
+nor is the phase split itself free of the metric, a percentage error being at
+its most sensitive when the denominator is small and rising, which is the
+wash-in's own condition. With the Methods unread here, how much either accounts
+for is unestablished. The direction is nonetheless the one
+this project's own circuit already predicts: the apparatus lag
+$`\tau_C = V_C/\dot V_F`$ is "the part of the inspired curve a learner is most
+likely to attribute to uptake" (see "Parameter provenance"), and
+`docs/machine-survey.md` reaches the same place from the machine side. One
+perfectly mixed circuit is least like a real workstation exactly where Gas Man's
+published agreement with patients is weakest.
+
+- Candries E, De Wolf AM, Hendrickx JFA. Prospective validation of Gas Man
+  simulations of sevoflurane in O2/air over a wide fresh gas flow range. *J Clin
+  Monit Comput* 2022;36(6):1881–1890. PMID 35318567;
+  [DOI 10.1007/s10877-022-00842-0](https://doi.org/10.1007/s10877-022-00842-0).
+  **Abstract read**, through the PubMed record on 2026-09-19 and re-read there
+  on 2026-09-20, which is where every figure above is stated. PubMed returns no
+  PMC identifier for it, so there is no PubMed Central full text, and
+  `docs/machine-survey.md` records that a check of the project owner's private
+  reference corpus on 2026-09-20 did not find it either. Its Methods, its
+  Varvel definitions and its per-patient data are therefore unread here, which
+  is why this note quotes the study's phase split and does not restate its
+  metrics' definitions. It is the authority for nothing stored in this project.
+
 
 ## Release gate
 

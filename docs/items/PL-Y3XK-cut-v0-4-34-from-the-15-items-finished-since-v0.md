@@ -9,6 +9,7 @@ feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 added: 2026-09-20
 closed: 2026-09-20
+pr: 770
 payoff: clears the release the session-start digest re-raises in every session, and unblocks the next cut, which docket refuses while a release is untagged
 verify: grep -q '^version = "0.4.34"' pyproject.toml
 ---

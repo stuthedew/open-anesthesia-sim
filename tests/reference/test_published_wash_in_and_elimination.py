@@ -158,6 +158,10 @@ fourth are the elimination's own.
    intent — not that the parameter set is independently right. The test could
    still have failed, which is what makes it worth running; it is weaker than
    "validated against a human measurement" and must not be described as more.
+   The intent itself is worth least where this module's wash-in direction
+   looks: Gas Man's own published agreement with patients is materially worse
+   through wash-in than through maintenance (docs/MODEL.md, "Known
+   limitations").
 3. *The breathing systems differ, and by more than the measurement's own
    spread.* The paragraphs above measure it, at 3.5 to 4.2 published standard
    deviations per cohort. Any statement that this model eliminates more slowly
