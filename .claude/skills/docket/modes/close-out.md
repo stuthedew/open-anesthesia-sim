@@ -138,14 +138,16 @@ page and decides which file a session reads.
    test.
 
    **Two of the four take an exemption the *item* declares, and a session
-   cannot declare one for itself mid-work.** Both are read from the base's
-   copy of the item rather than from your branch, so adding either beside the
-   work it would excuse folds nothing and is reported as your own word for it.
+   cannot declare one for itself mid-work.** Both turn on the base's copy of
+   the item rather than on your branch, so adding either beside the work it
+   would excuse folds nothing and is reported as your own word for it.
 
    - `falsifies:` names enough of an assertion to identify the one subject the
      item's work makes untrue - the string it pins is what the item was asked
      to delete, so no arrangement of the tests keeps it. A matching removal
-     folds and is printed beside the check (`PL-K82G`).
+     folds and is printed beside the check (`PL-K82G`). **One item cannot
+     declare it in advance, and declares it in the closure instead** - see the
+     `needs-decision` exception below (`PL-ZMGR`).
    - A `dropped` item, or one carrying `not-delegable:`, has no command to run,
      and the check says which applies rather than stopping the audit dead
      (`PL-L4KX`).
@@ -155,6 +157,21 @@ page and decides which file a session reads.
    owner with the check's own words, and do not add the declaration to the item
    on this branch to clear it. The whole worth of the field is that a reviewer
    wrote it first.
+
+   **One exception, and it is the only one: a `needs-decision` item whose
+   answer turned out to be "delete this".** A reviewer could not have written
+   `falsifies:` first, because which assertions the answer makes untrue depends
+   on the answer and the answer was yours to make. So where the *base's* copy
+   reads `status: needs-decision` and this branch is the one closing the item,
+   the closure's own declaration is honoured: `bin/docket set <id> --falsifies
+   '<enough of the assertion to identify it>'` in the same commit that sets
+   `status: done`. The check prints that the declaration is the closure's own
+   and that the base is what let it be, so nothing folds quietly, and the gate
+   is not yours to set - on a `ready` item the identical line folds nothing and
+   is reported as your own word for it, exactly as above. `PL-G6J5` is the
+   instance: an advisory retired on a count, whose close-out printed `FAIL no
+   existing assertion removed - 29 line(s)` with `make check` green and every
+   other guard passing (`PL-ZMGR`).
 
    **One class of item reaches that `REJECT` every time, and the case is
    settled - do not re-derive it** (`PL-K4R5`). Where the deliverable *is* a
