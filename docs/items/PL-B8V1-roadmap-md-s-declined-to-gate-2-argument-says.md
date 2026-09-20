@@ -3,11 +3,12 @@ id: PL-B8V1
 title: ROADMAP.md's declined-to-Gate-2 argument says 'Gate 1 stands at 132 entries ... with 89 still open' in the present tense, and it is now 159 with 94 open
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: gate-list-integrity
 touches: ROADMAP.md
 added: 2026-09-13
+closed: 2026-09-20
 verify: python3 tools/doc_check.py check && grep -qF 'stood at 132 entries' ROADMAP.md
 ---
 

@@ -3,11 +3,12 @@ id: PL-0VFF
 title: ROADMAP.md's 'Declined to Gate 2' list names PL-483K, PL-69JZ and PL-L09X as deferred, but all three closed done in v0.4.14, and nothing distinguishes a still-open entry from a closed one
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: gate-list-integrity
 touches: ROADMAP.md
 added: 2026-09-12
+closed: 2026-09-20
 verify: python3 tools/doc_check.py check && grep -qE '^- PL-483K .*v0\.4\.14' ROADMAP.md
 ---
 
