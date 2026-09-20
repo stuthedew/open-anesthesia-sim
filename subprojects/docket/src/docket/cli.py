@@ -29,6 +29,7 @@ from .concurrency import (
 )
 from .config import CONFIG_NAME, Config
 from .config import load as load_config
+from .duplicates import near_duplicates
 from .model import (
     CLOSED_STATUSES,
     EFFORTS,
@@ -624,9 +625,47 @@ def cmd_new(args: argparse.Namespace) -> int:
         )
         return 1
     taken = {item.identifier for item in items}
+    paths = _comma_separated(args.touches)
     for title in args.title:
         taken.add(_capture(directory, title, taken, args))
+        _report_near_duplicates(title, paths, items)
     return 0
+
+
+#: How much of a candidate's title a warning prints. Long enough to tell two
+#: briefs about one file apart, short enough that three of them stay a glance
+#: rather than a read.
+_TITLE_WIDTH = 66
+
+
+def _report_near_duplicates(title: str, paths: tuple[str, ...], items: list[Item]) -> None:
+    """Name the open items this capture may be a second diagnosis of.
+
+    Printed after the filing and never instead of it: `CLAUDE.md`'s capture
+    rule is unconditional, and a near-duplicate that is genuinely a second
+    instance is a legitimate filing. The reader decides; the tool only makes
+    the decision possible at the one moment it is cheap, which is here
+    (`PL-TZ7T`).
+    """
+    matches = near_duplicates(title, paths, items)
+    if not matches:
+        return
+    shared = sorted({path for match in matches for path in match.paths})
+    counted = (
+        f"{len(matches)} open items already declare"
+        if len(matches) > 1
+        else "1 open item already declares"
+    )
+    print(f"  Possible duplicate: {counted} {', '.join(shared)} - closest wording first.")
+    for match in matches:
+        heading = match.item.title
+        if len(heading) > _TITLE_WIDTH:
+            heading = heading[: _TITLE_WIDTH - 1].rstrip() + "\u2026"
+        print(f"    {match.item.identifier}  {match.item.status:<14}  {heading}")
+    print(
+        "  Filed anyway; if one is the same defect, group them with "
+        "`bin/docket set <id> --feature <name>`."
+    )
 
 
 def _comma_separated(values: list[str] | None) -> tuple[str, ...]:

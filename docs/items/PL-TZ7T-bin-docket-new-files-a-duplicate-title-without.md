@@ -3,14 +3,15 @@ id: PL-TZ7T
 title: bin/docket new files a duplicate title without noticing: PL-LBR6 sat ready for six days with the record rename diagnosed and a verify command written while PL-5QLP and PL-QMC0 were filed as fresh discoveries of the same mechanism
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
-feature: slug-rename-on-write
-root-cause-of: PL-BHBZ, PL-4FD2, PL-5QLP, PL-QMC0
+feature: recurrence-signal
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-19
+closed: 2026-09-20
 payoff: stops one defect being diagnosed three times - it has happened five times now, and each duplicate costs a full brief written by a session that could not know the first existed
-verify: grep -q 'def test_new_names_an_existing_item_with_a_near_identical_title' subprojects/docket/tests/test_cli.py
+verify: grep -q 'def test_the_shared_path_selects_and_the_title_only_ranks' subprojects/docket/tests/test_duplicates.py
+root-cause-of: PL-BHBZ, PL-4FD2, PL-5QLP, PL-QMC0
 ---
 
 **Problem.** bin/docket new files a duplicate title without noticing: PL-LBR6 sat ready for six days with the record rename diagnosed and a verify command written while PL-5QLP and PL-QMC0 were filed as fresh discoveries of the same mechanism
@@ -104,3 +105,53 @@ on 2026-09-20 whether repeat filing attempts should be counted and used to raise
 priority. That is a live design question above this item rather than inside it,
 and the measurement here only fixes the key.
 
+**Built 2026-09-20, and the two constants the brief left open are measured.**
+`subprojects/docket/src/docket/duplicates.py` holds the search:
+`near_duplicates(title, paths, items)` selects the open items sharing a
+declared path - directory coverage counting, on the `concurrency.covers` rule
+`bin/docket concurrent` already applies - then ranks by Jaccard overlap of
+title content words and returns the top few. `cmd_new` prints them with their
+status and files the item regardless.
+
+Counting a declared directory as covering the files beneath it, all twelve of
+the recorded duplicate pairs share a path rather than nine of thirteen, and the
+true partner ranks in the top three for eight of them.
+
+The floor and the limit were set against a per-cluster count rather than a
+per-pair one, over the six recorded clusters and all 321 open items declaring a
+path:
+
+| floor | limit | clusters caught at the 2nd filing | fires on | lines/firing |
+| --- | --- | --- | --- | --- |
+| 0.10 | 5 | 5 of 6 | 61% of filings | 3.0 |
+| 0.15 | 3 | 5 of 6 | 26% of filings | 1.8 |
+| 0.20 | 3 | 5 of 6 | 10% of filings | 1.4 |
+
+**0.15 and 3 are chosen, over 0.10 and 5.** Loosening buys exactly one extra
+flagged filing - `PL-QMC0`, the *third* member of a cluster whose second member
+the tighter setting already flagged - and pays 2.3 times the fire rate for it.
+Wrong twice: by the third filing the cluster is already surfaced and grouped,
+and an advisory firing on three filings in five is one a session learns to
+skim, which `CLAUDE.md` calls a defect in the check rather than coverage. So
+recall is counted per cluster at its *second* filing - the moment a duplicate
+diagnosis is still unpaid for - and not per pair, which would count a cluster's
+later members as worth the same as its first catch.
+
+The one cluster missed at every setting is `PL-BYMX`/`PL-SH9Q` (rank 6,
+similarity 0.200), which is also the only one of the six never confirmed to be
+a single mechanism.
+
+Regrouped from `feature: slug-rename-on-write` to `recurrence-signal`, which
+the 2026-09-20 decision names as this item's group and which had been reporting
+0/3 without the item the other three build on. `slug-rename-on-write` keeps
+`PL-3GKR` and `PL-9KSY` open, so nothing reads complete that is not.
+
+**The `verify:` command was repointed, and that is a finding rather than
+bookkeeping.** It pinned `test_new_names_an_existing_item_with_a_near_identical_title`
+- a test name encoding the *title-only* key that this brief's own 2026-09-20
+measurement refutes. Writing that test would have meant building the refuted
+design. The line survived the key correction because a corrected key updates
+the prose and nothing re-reads the `verify:` written against the old one. It
+now pins `test_the_shared_path_selects_and_the_title_only_ranks`, which asserts
+the property the correction turns on: a title that matches perfectly but
+declares a different file scores nothing.

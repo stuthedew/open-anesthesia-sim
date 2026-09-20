@@ -70,6 +70,39 @@ do not reach. The exemption is not weakened by it: the rule demands nothing
 capture chose to leave out, and writing less can never trigger it. Only
 writing a brief and leaving a template above it can.
 
+### Capture warns when the store may already carry the idea
+
+The rule behind `docket new` is deliberately unconditional — record it, do not
+ask — because the alternative is losing findings. The cost that accepts is one
+defect diagnosed more than once by sessions that cannot know the first
+diagnosis exists: `PL-LBR6` sat `ready` for six days with a rename diagnosed
+and a `verify:` command written against it while two more items were filed as
+fresh discoveries of the same mechanism.
+
+So a capture declaring `--touches` is checked against the open store and the
+close ones are named, with their status, closest wording first:
+
+```
+PL-W0MH  docs/items/PL-W0MH-verify-s-suppression-check-reads-every.md
+  Possible duplicate: 1 open item already declares src/docket/verify.py - closest wording first.
+    PL-STC4  ready           docket verify's suppression check reads prose as code, so a brief…
+  Filed anyway; if one is the same defect, group them with `bin/docket set <id> --feature <name>`.
+```
+
+**It warns and never refuses.** The capture rule may not be made conditional
+on a similarity score, and a near-duplicate that is genuinely a second
+instance is a legitimate filing, so the item is written either way and the
+reader decides.
+
+**The shared path is the key; the title only ranks.** Title similarity alone
+was measured over the 1,362-item store and refused: it caught none of the
+known duplicate pairs at any threshold that flagged fewer than 768 pairs,
+because each session describes one defect from the angle that bit it. Worse,
+the clusters it *does* find at a usable threshold are the items meant to
+recur — sixteen "Triage the N captures on DATE", plus release cuts and tags.
+Scoring only *open* items drops those for free, since a triage pass is `done`
+within hours. A capture with no `--touches` has no key and is not searched.
+
 ### Capture is only unloseable if a lost branch is noticed
 
 An item is committed on whatever branch the capturing session was on. If that

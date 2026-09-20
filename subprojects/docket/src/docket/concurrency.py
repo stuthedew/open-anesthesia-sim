@@ -35,7 +35,7 @@ from .model import Item
 from .vcs import FlightFiles
 
 
-def _covers(one: str, other: str) -> bool:
+def covers(one: str, other: str) -> bool:
     """Whether two declared paths can touch the same file.
 
     A directory covers everything beneath it, so an item declaring
@@ -59,7 +59,7 @@ def _overlaps(one: Item, other: Item) -> tuple[tuple[str, ...], tuple[str, ...]]
     covering: set[str] = set()
     for left in one.touches:
         for right in other.touches:
-            if not _covers(left, right):
+            if not covers(left, right):
                 continue
             if PurePosixPath(left.strip("/")) == PurePosixPath(right.strip("/")):
                 identical.add(left)
@@ -220,7 +220,7 @@ def observed_conflicts(item: Item, files: FlightFiles) -> list[Observed]:
                     changed
                     for declared in item.touches
                     for changed in entry.paths
-                    if _covers(declared, changed)
+                    if covers(declared, changed)
                 }
             )
         )

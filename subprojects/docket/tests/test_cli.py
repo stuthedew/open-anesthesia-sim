@@ -71,6 +71,123 @@ def test_new_captures_several_ideas_in_one_call(
     assert len({p.name.split("-")[1] for p in written}) == 2
 
 
+NEAR_DUPLICATE = """---
+id: PL-C4C4
+title: docket verify's suppression check reads prose as code, so a brief is flagged
+priority: P2
+effort: S
+status: ready
+touches: subprojects/docket/src/docket/verify.py
+added: 2026-09-19
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+
+def test_new_names_an_open_item_the_capture_may_duplicate(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The one moment a duplicate is cheap to catch (`PL-TZ7T`).
+
+    `PL-LBR6` sat `ready` for six days with the `docket record` rename
+    diagnosed while `PL-5QLP` and `PL-QMC0` were filed as fresh discoveries of
+    the same mechanism, each by a session that had no way to know the first
+    existed. `new` had the title, the store and a session's attention, and said
+    nothing.
+    """
+    store = _store(tmp_path, NEAR_DUPLICATE)
+
+    exit_code = _run(
+        "new",
+        "--touches",
+        "subprojects/docket/src/docket/verify.py",
+        "verify's suppression check reads every added line as code, prose included",
+        "--items",
+        str(store),
+    )
+
+    assert exit_code == 0
+    printed = capsys.readouterr().out
+    assert "Possible duplicate" in printed
+    assert "PL-C4C4" in printed
+    assert "ready" in printed
+
+
+def test_a_near_duplicate_is_warned_about_and_filed_anyway(tmp_path: Path) -> None:
+    """The capture rule may not be made conditional on a similarity score.
+
+    `CLAUDE.md` is deliberately unconditional - "Do not ask whether to record
+    it" - because the alternative is losing findings, and a near-duplicate that
+    is genuinely a second instance is a legitimate filing. So this warns and
+    never refuses.
+    """
+    store = _store(tmp_path, NEAR_DUPLICATE)
+
+    assert (
+        _run(
+            "new",
+            "--touches",
+            "subprojects/docket/src/docket/verify.py",
+            "verify's suppression check reads every added line as code, prose included",
+            "--items",
+            str(store),
+        )
+        == 0
+    )
+
+    written = sorted(store.glob("PL-*.md"))
+    assert len(written) == 1
+    assert "title: verify's suppression check reads" in written[0].read_text()
+
+
+def test_an_unrelated_capture_prints_no_warning(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Capture is the one path this project keeps frictionless."""
+    store = _store(tmp_path, NEAR_DUPLICATE)
+
+    assert (
+        _run(
+            "new",
+            "--touches",
+            "src/anesthesia_sim/app/view.py",
+            "The vaporizer dial should move in real increments",
+            "--items",
+            str(store),
+        )
+        == 0
+    )
+
+    assert "Possible duplicate" not in capsys.readouterr().out
+
+
+def test_a_capture_with_no_touches_prints_no_warning(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Ideation has to stay cheap, and title similarity alone was refused.
+
+    A bare `docket new "..."` is the capture-rule path taken when usage is
+    nearly spent; it declares no path, so there is no key to search on.
+    `PL-THLT` is the item that infers candidate paths from the working tree.
+    """
+    store = _store(tmp_path, NEAR_DUPLICATE)
+
+    assert (
+        _run(
+            "new",
+            "docket verify's suppression check reads prose as code, so a brief is flagged",
+            "--items",
+            str(store),
+        )
+        == 0
+    )
+
+    assert "Possible duplicate" not in capsys.readouterr().out
+
+
 def test_touches_before_the_title_no_longer_swallows_it(tmp_path: Path) -> None:
     """The capture path is the one place in this project meant to be frictionless.
 

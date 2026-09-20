@@ -10,6 +10,7 @@ touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_v
 blocked-by: PL-8PSW, PL-VKJW
 added: 2026-09-15
 closed: 2026-09-20
+pr: 784
 payoff: no control on a compared dashboard can destroy the case the comparison is of - the agent switch that halted both runs is refused before it reaches the controller
 verify: grep -q 'def test_the_trunks_selector_is_locked_while_two_runs_are_shown' tests/integration/test_simulation_view.py
 ---
