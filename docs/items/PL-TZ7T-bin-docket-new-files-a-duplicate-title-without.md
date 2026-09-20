@@ -1,7 +1,7 @@
 ---
 id: PL-TZ7T
 title: bin/docket new files a duplicate title without noticing: PL-LBR6 sat ready for six days with the record rename diagnosed and a verify command written while PL-5QLP and PL-QMC0 were filed as fresh discoveries of the same mechanism
-priority: P3
+priority: P2
 effort: S
 status: ready
 classes: infra
@@ -36,7 +36,9 @@ sweep that found this cluster read 145,000 tokens across twelve agents.
 This is the last of `feature: slug-rename-on-write`'s three open items, so it
 is also what closes a group at 5/8 rather than adding to a standing theme.
 
-**Done when.** `bin/docket new` names the existing items whose titles are close
+**Done when** (key corrected 2026-09-20 - the measurement below refutes the
+title-only version this line first carried, so read it before building). `bin/docket new` names the existing **open** items sharing a declared
+`touches` path, ranked by title similarity and printed top-first
 to the one being filed, prints them with their status, and files the item
 anyway - a warning rather than a refusal, because the capture rule may not be
 made conditional on a similarity score, and a near-duplicate that is genuinely
