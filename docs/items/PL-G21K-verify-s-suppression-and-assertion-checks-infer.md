@@ -9,6 +9,7 @@ feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-20
 closed: 2026-09-20
+pr: 797
 payoff: retires the half of the suppression check that never once caught what it exists to catch - 33 of 33 real hits were legitimate type-ignores, none a disabled test - so a close-out touching verify.py stops REJECTing on the file's own docstrings, and the four items left behind it stop being patched one case at a time
 verify: grep -q 'def test_a_type_ignore_is_not_a_suppression' subprojects/docket/tests/test_verify.py
 root-cause-of: PL-4FD2, PL-STC4, PL-BHBZ, PL-5MFL, PL-XQGH, PL-CNJH, PL-2DTK

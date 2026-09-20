@@ -9,6 +9,7 @@ feature: recurrence-signal
 touches: subprojects/docket/src/docket/duplicates.py, subprojects/docket/tests/test_duplicates.py
 added: 2026-09-20
 closed: 2026-09-20
+pr: 794
 payoff: cuts the near-duplicate warning from firing on 55% of filings to 22% with no cluster lost, so it stays an advisory a session reads instead of one it learns to skim
 verify: grep -q 'DISPLAY_FLOOR = 0.15' subprojects/docket/src/docket/duplicates.py
 ---
