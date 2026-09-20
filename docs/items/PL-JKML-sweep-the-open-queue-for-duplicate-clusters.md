@@ -3,10 +3,11 @@ id: PL-JKML
 title: Sweep the open queue for duplicate clusters filed before bin/docket new could warn on a near-duplicate
 priority: P2
 effort: M
-status: ready
+status: done
 classes: housekeeping
 touches: docs/items
 added: 2026-09-20
+closed: 2026-09-20
 payoff: stops the queue offering one defect as two or three separate items, so a session no longer picks up work another session has already diagnosed and written a verify command for
 verify: grep -q '^status: dropped' docs/items/PL-5748-*.md
 ---
