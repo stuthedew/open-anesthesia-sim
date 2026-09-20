@@ -3,11 +3,12 @@ id: PL-880Z
 title: Five ref-lifecycle briefs carry citations that have moved, and PL-XLQ5's title names a mechanism _landing_split cannot have - which ROADMAP.md repeats verbatim as a frozen gate entry
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: gate-list-integrity
 touches: docs/items, ROADMAP.md
 added: 2026-09-12
+closed: 2026-09-20
 verify: python3 tools/doc_check.py check && ! grep -qF 'superseded intermediate blob' ROADMAP.md
 ---
 
@@ -54,3 +55,41 @@ the end of a 580-line `simulation_view.py`, and `_run_simulation_timer` does
 not exist. The sequencing note has lapsed in this item's favour: `PL-XLQ5`
 closed 2026-09-12 (#504), so correcting the title no longer has to wait.
 `PL-TTMF` is now `dropped`.
+
+## Closed 2026-09-20: the title half done, the briefs half already owned elsewhere
+
+**The title half, which is what the `verify:` measures.** Confirmed against the
+tree rather than taken from the brief: `_landing_split` diffs the fork point
+against the ref's tip, so it cannot see a blob superseded by a later commit on
+the same branch, and `git log -S` puts that shape in `#121` (`PL-CPSY`) - three
+weeks before `PL-XLQ5` was filed. So the title was impossible when written,
+not merely overtaken. `PL-XLQ5` is retitled to name the mechanism the code has
+(the `base_blobs` membership test: no commit on the base ever carried that
+exact blob), which is the one `_superseded`'s own docstring cites this item's
+id for, and `ROADMAP.md`'s frozen entry now says the same. The item file is
+renamed to match its new slug, per the drift advisory; `PL-KBFN`'s `verify:`
+names the old path and is a closed record, so nothing replays it.
+
+**This brief's own citation had drifted again**, exactly as it describes: the
+gate entry was `:1576` at triage, `:2229` at the 2026-09-19 sweep, and `:2293`
+when this was worked. It is deliberately not restated here - a line number in
+a file this size is stale on the next edit, and `grep -n 'PL-XLQ5' ROADMAP.md`
+is what answers it.
+
+**The five-briefs half is not work this item can do, and dropping it silently
+would lose why.** Checked one by one on 2026-09-20:
+
+- `PL-38PN` (open) still carries `_run_simulation_timer`, "around line 943" and
+  `:1149` against a 580-line `app/simulation_view.py`. Those are **`PL-JXVD`'s**
+  deliverable, not this one's: that item exists for exactly them and its
+  `verify:` greps `PL-38PN`'s file for `:1149`. Fixing them here would satisfy
+  another open item's command from outside it.
+- `PL-TTMF` is `dropped` (2026-09-19).
+- `PL-8T3Z` carries no line citation at all now; what remains of it is a
+  `touches` omission and a `Where` pointing at a dropped item, which is that
+  item's own open work.
+- `PL-XLQ5` carries none, and is handled above.
+
+So the count in the title was true when written and names no work left here.
+`PL-JXVD` is the live half and is open on the gate list.
+

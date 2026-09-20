@@ -9,6 +9,7 @@ feature: model-boundary-statements
 touches: docs/MODEL.md, tests/reference/test_published_wash_in_and_elimination.py
 added: 2026-09-19
 closed: 2026-09-20
+pr: 771
 payoff: tells a reader what a wash-in comparison against Gas Man is worth, in the phase this simulator most displays and its reference is least accurate
 verify: grep -qF '10.1007/s10877-022-00842-0' docs/MODEL.md
 ---

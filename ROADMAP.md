@@ -2290,7 +2290,7 @@ total stays at 132.
 - PL-8M8H (M) docket branch tells a session whose pull request already merged to merge the base in, not to restart, so the push that loses work looks correct
 - PL-NBCS (M) docket next reads an exclusion written inside a Required scope bullet as membership, so PL-B9PY is ranked in scope for v0.4.0 when ROADMAP.md sends it to Gate 1
 - PL-PGZK (M) docket concurrent's answer is dominated by docs/MODEL.md, which nearly every item touches, so it rules out almost everything and cannot discriminate between real and nominal contention
-- PL-XLQ5 (M) The orphaned report counts a branch's superseded intermediate blob as work the squash left behind
+- PL-XLQ5 (M) The orphaned report asks whether the base ever held the branch's exact blob, so a path superseded on either side reads as work the squash left behind
 - PL-20CQ (S) "docket check runs every open item's verify: command, so a verify: that invokes docket check recurses without bound"
 - PL-39B7 (S) Make docket stranded distinguish a merged-and-deleted branch from an abandoned one, and say when its main is stale
 - PL-4WQS (S) The docket summary and session digest label a count 'open' that excludes untriaged items, understating the queue by exactly the number beside it
@@ -2785,7 +2785,7 @@ all three clear before implementation begins. Each is `S`.
 a judgment.** "The gate is a snapshot" ends by making `safety` and `science` not
 deferrable, and `tools/doc_check.py` says so where a session would otherwise
 reach for the declined subsection: a `### Declined to Gate ...` entry answers the
-disposition advisory and leaves the re-entry one standing. The one carve-out —
+disposition error and leaves the re-entry advisory standing. The one carve-out —
 an `anticipated` finding whose hazard a later milestone creates — needs `status:
 blocked` with it, and `PL-KZ99` is the entry from this triage that takes it, so
 it is recorded in the declined subsection with `PL-0S0V` and `PL-VJZK` instead.
@@ -3170,12 +3170,18 @@ and they are deferred anyway on the second ground the rule states: pulling them
 in "would recreate the refilling-queue problem the debt gate replaced Phase 0
 to solve".
 
-The arithmetic is the argument. Gate 1 stands at 132 entries against Gate 0's
-21 — already by a wide margin the largest this project has held — with 89 still
-open. Admitting all forty-two would take it to 173 and grow it 31% at a point
-where it is not draining, which is the shape Phase 0 was retired for: a gate
-that refills faster than it drains is abandoned rather than followed, and that
-is worse than not having one.
+The arithmetic is the argument. On that date Gate 1 stood at 132 entries
+against Gate 0's 21 — already by a wide margin the largest this project had
+held — with 89 still open. Admitting all forty-two would have taken it to 173
+and grown it 31% at a point where it was not draining, which is the shape
+Phase 0 was retired for: a gate that refills faster than it drains is abandoned
+rather than followed, and that is worse than not having one.
+
+Those four numbers are the recorded arithmetic of the 2026-09-08 decision, held
+to that date and not to the tree, so they are never recomputed: rewriting them
+to today's figures would restate the reasoning in numbers the decision was not
+taken on. They are not a current gate count and must not be read as one —
+`bin/docket wave` is what says where the gate stands now.
 
 Every one of the twenty-nine sits wholly in the workflow lane, which is why
 this group and not another. They are apparatus, held to
@@ -3184,6 +3190,18 @@ them can reach a reader of the simulator — so deferring them costs the gate
 nothing it exists to protect, while the thirteen with a product-lane half are
 admitted above precisely because they can. Where the two standards compete,
 the simulator wins; this is that rule applied to the gate's own membership.
+
+**A closed entry carries the release that took it, and the open count is not
+recorded here** (`PL-0VFF`). No entry is ever removed from this list — that
+permanence is what "the gate is a snapshot" means, and deleting one would
+destroy the record of what was declined and why — so without a mark, nothing
+separated an entry still outstanding from one that shipped. The heading's total
+was then the only number a reader could take from the section, and it overstates
+the deferral by however many have closed since. A release name is a record fact
+and cannot go stale, so each closed entry now carries one, and an entry dropped
+rather than shipped carries the date it was dropped. How many are *still open*
+is deliberately not written down: that number changes every time one closes, and
+`bin/docket wave` answers it.
 
 **The thirtieth arrived after the audit, on the same ground** (`PL-33WM`,
 2026-09-08). `PL-HX5C` was captured hours after this subsection was written and
@@ -3437,95 +3455,95 @@ work is queue files cannot have its `pr` recovered, and the resulting
 the same day is what the disposition rule exists to force, since the session
 that found it is the one that would otherwise leave it silent.
 
-- PL-09G9 (M) Nothing refuses a new verify: command that re-runs a test file make check already collects, so PL-6TP8's contract is enforced by prose alone and 82 of 180 open commands carry the clause
-- PL-0M32 (S) Nothing can tell an item finished under a renamed test from one nobody has started
+- PL-09G9 (M) Nothing refuses a new verify: command that re-runs a test file make check already collects, so PL-6TP8's contract is enforced by prose alone and 82 of 180 open commands carry the clause — closed in v0.4.29
+- PL-0M32 (S) Nothing can tell an item finished under a renamed test from one nobody has started — closed in v0.4.28
 - PL-0VFF (S) ROADMAP.md's 'Declined to Gate 2' list names PL-483K, PL-69JZ and PL-L09X as deferred, but all three closed done in v0.4.14, and nothing distinguishes a still-open entry from a closed one
 - PL-12P8 (S) PL-JBZK's lane check assumes every file under tests/ is a test file, so a shared non-test helper is told to declare itself apparatus
 - PL-1BS2 (S) The session-start digest's Releasable line reads readiness without the interrupted-cut resume, so during an unfinished cut it reports the short remainder with nothing saying why
 - PL-2GQW (S) PL-L9JS's not-delegable reason rests on the recursion claim PL-20CQ disproved, so the item may be delegable after all
-- PL-2T03 (M) Four items re-derive the release train's arrangement by comparing version numbers, though ROADMAP.md's timeline table already records it
+- PL-2T03 (M) Four items re-derive the release train's arrangement by comparing version numbers, though ROADMAP.md's timeline table already records it — closed in v0.4.28
 - PL-316G (M) Convert the 150 possessive-form document citations to the section-mark form, which is the only way doc_check can check them without reading prose as a citation
 - PL-3DN1 (S) bin/docket release accepts a VERSION below the current one, so a typo silently downgrades pyproject.toml's version field
 - PL-3JP0 (S) Decide whether the wash-in section's three paragraphs survive the same test PL-6580 applied to the chart panel above it
-- PL-3V6C (S) PL-TFWR and PL-XQRK record incompatible causes for the same remote-deletion failure and both ruled out the git proxy on a field that does not record policy denials, so whichever lands first writes an unproven cause into the instructions
-- PL-483K (S) The stop hook demands a push for work already pushed after a branch is restarted per the merged-PR recovery, because checkout -B from origin/main leaves the upstream pointing at main
-- PL-4FBP (M) Fifteen items repair a document sentence whose link to the tree lives only in the reader's head: decide whether an assertion must name what it asserts
-- PL-4Q9B (M) Ten items work around the clone being trusted as the remote and around an unrecorded set of permitted ref operations: record both
-- PL-69JZ (S) docket verify's 'the checks themselves are unedited' audit REJECTs every item whose declared work is editing a .claude rules file, since gate_paths includes .claude and touches is not consulted
-- PL-6BDX (S) Two shipped items are reported in flight in every session's digest, because their branch refs outlived their merges: PL-GVXP (v0.4.7) and PL-S5LB (v0.4.6)
+- PL-3V6C (S) PL-TFWR and PL-XQRK record incompatible causes for the same remote-deletion failure and both ruled out the git proxy on a field that does not record policy denials, so whichever lands first writes an unproven cause into the instructions — closed in v0.4.28
+- PL-483K (S) The stop hook demands a push for work already pushed after a branch is restarted per the merged-PR recovery, because checkout -B from origin/main leaves the upstream pointing at main — closed in v0.4.14
+- PL-4FBP (M) Fifteen items repair a document sentence whose link to the tree lives only in the reader's head: decide whether an assertion must name what it asserts — closed in v0.4.28
+- PL-4Q9B (M) Ten items work around the clone being trusted as the remote and around an unrecorded set of permitted ref operations: record both — closed in v0.4.28
+- PL-69JZ (S) docket verify's 'the checks themselves are unedited' audit REJECTs every item whose declared work is editing a .claude rules file, since gate_paths includes .claude and touches is not consulted — closed in v0.4.14
+- PL-6BDX (S) Two shipped items are reported in flight in every session's digest, because their branch refs outlived their merges: PL-GVXP (v0.4.7) and PL-S5LB (v0.4.6) — closed in v0.4.15
 - PL-6G8T (S) _section_text reads a required heading quoted at a line break as the section itself, so a wrapped quotation above an empty real heading masks the empty one
-- PL-6TN8 (S) A verify: command whose discriminating half greps for a test name can exit 1 because the name was guessed, not because the work is outstanding, so watching it fail proves less than the rule assumes
-- PL-6TP8 (M) Twelve items re-decide what a verify: exit status proves, because the field was specified as a command string and nothing else: one contract rather than twelve patches
-- PL-6YWK (S) PL-4L6Z's verify: runs the whole reference suite, so it is killed at docket check's 120s limit and nothing is claimed about the item on any run
+- PL-6TN8 (S) A verify: command whose discriminating half greps for a test name can exit 1 because the name was guessed, not because the work is outstanding, so watching it fail proves less than the rule assumes — closed in v0.4.28
+- PL-6TP8 (M) Twelve items re-decide what a verify: exit status proves, because the field was specified as a command string and nothing else: one contract rather than twelve patches — closed in v0.4.28
+- PL-6YWK (S) PL-4L6Z's verify: runs the whole reference suite, so it is killed at docket check's 120s limit and nothing is claimed about the item on any run — closed in v0.4.28
 - PL-6YYR (M) A release tag can be pushed for a version that was never cut, and nothing detects it: v0.4.8 tags main at version 0.4.7 with no release notes and no ROADMAP row
-- PL-77SV (S) PL-G8TR, PL-K2C8 and PL-TFWR all edit the same ten lines of the docket skill's recovery block, and PL-G8TR's Done-when is defined against that block's shape, so whoever lands first silently sets the other two's tests
+- PL-77SV (S) PL-G8TR, PL-K2C8 and PL-TFWR all edit the same ten lines of the docket skill's recovery block, and PL-G8TR's Done-when is defined against that block's shape, so whoever lands first silently sets the other two's tests — dropped 2026-09-19
 - PL-7RTN (M) An open pull request can carry no check runs at all, so a branch merges with nothing having gated it
-- PL-7SVX (S) Delete spikes/ and the last Flet import once the port is complete
-- PL-7XTS (S) Nothing routes a close-out to bin/docket verify --self, so a session auditing its own branch runs the delegated mode PL-69JZ fixed and still gets a REJECT on correct work
-- PL-879R (S) docket check advises on a verify: command's outcome but never its shape, so a grep for an id, or for a file another item is known to create, is only reported once it has already started passing
+- PL-7SVX (S) Delete spikes/ and the last Flet import once the port is complete — closed in v0.4.26
+- PL-7XTS (S) Nothing routes a close-out to bin/docket verify --self, so a session auditing its own branch runs the delegated mode PL-69JZ fixed and still gets a REJECT on correct work — closed in v0.4.26
+- PL-879R (S) docket check advises on a verify: command's outcome but never its shape, so a grep for an id, or for a file another item is known to create, is only reported once it has already started passing — dropped 2026-09-17
 - PL-880Z (S) Five ref-lifecycle briefs carry citations that have moved, and PL-XLQ5's title names a mechanism _landing_split cannot have - which ROADMAP.md repeats verbatim as a frozen gate entry
-- PL-8MJ3 (M) bin/docket triage's 'already edited on a branch' mark reads the merge base, so it keeps firing after that branch's edit has merged - it told one pass to skip four of its five items, every one a false positive
-- PL-8P6D (S) Checks refuse a pull request whose branch carries no item id, so the owner's own web edits and any contributor's pull request fail CI
+- PL-8MJ3 (M) bin/docket triage's 'already edited on a branch' mark reads the merge base, so it keeps firing after that branch's edit has merged - it told one pass to skip four of its five items, every one a false positive — closed in v0.4.15
+- PL-8P6D (S) Checks refuse a pull request whose branch carries no item id, so the owner's own web edits and any contributor's pull request fail CI — closed in v0.4.12
 - PL-8T3Z (S) PL-K2C8's touches omits .claude/hooks/no-prune-guard.sh, which carries the same incomplete recovery recipe, and its Where sends a fix at PL-CPLD which is now dropped
 - PL-9LXK (M) Nothing checks a prose claim about the tier or adoption of a stored value's source, though PL-1JDD made both machine-readable and three such claims went stale within a day
 - PL-B8V1 (S) ROADMAP.md's declined-to-Gate-2 argument says 'Gate 1 stands at 132 entries ... with 89 still open' in the present tense, and it is now 159 with 94 open
 - PL-BGMK (M) Two open items whose touches and verify: command overlap are never compared, so PL-1YDK and PL-8PT6 were filed and worked as one finding twice and only docket check --verify on main caught it
-- PL-BHVM (M) Nineteen items re-decide what evidence proves a ref is done, seventeen of them in vcs.py: one design round rather than nineteen heuristic patches
-- PL-BQ46 (S) MacAwakeReference.fraction_of_mac and formatting.mac_multiple are a third and fourth dimensionless convention beside Fraction, and neither is distinguished from a concentration fraction at the type level
-- PL-C92D (S) PL-YSZN's Flet frame table predates PL-2FM6 and measures a tree that no longer exists in two of its three stages, so the Qt/Flet comparison rests on one row
+- PL-BHVM (M) Nineteen items re-decide what evidence proves a ref is done, seventeen of them in vcs.py: one design round rather than nineteen heuristic patches — closed in v0.4.28
+- PL-BQ46 (S) MacAwakeReference.fraction_of_mac and formatting.mac_multiple are a third and fourth dimensionless convention beside Fraction, and neither is distinguished from a concentration fraction at the type level — closed in v0.4.24
+- PL-C92D (S) PL-YSZN's Flet frame table predates PL-2FM6 and measures a tree that no longer exists in two of its three stages, so the Qt/Flet comparison rests on one row — closed in v0.4.26
 - PL-CM40 (S) No single command prints the refreshed picture a closing block needs - main's tip, whether this branch is contained in it, flight and stranded - so the rule has to name three
 - PL-CNCF (M) controller.drawn_window costs 6.2 ms a frame at the shipped 150-column budget - 99% of the frame's read and about eighty times the simulation at 1x
 - PL-DG84 (M) docs/WORKING_NOTES.md asks for resolved threads to be deleted and nothing reads that policy
-- PL-F48B (S) Nothing ever repairs a clone's tags after a history rewrite: fetch_remote runs git fetch without --tags --force, so release tags keep pointing at purged commits
-- PL-F933 (S) doc_check resolves a path citation against the working tree, so a citation to a gitignored path passes locally and reddens CI
+- PL-F48B (S) Nothing ever repairs a clone's tags after a history rewrite: fetch_remote runs git fetch without --tags --force, so release tags keep pointing at purged commits — closed in v0.4.28
+- PL-F933 (S) doc_check resolves a path citation against the working tree, so a citation to a gitignored path passes locally and reddens CI — closed in v0.4.26
 - PL-G8TR (S) no-prune-guard is evaded by the form it recommends - git branch -dr driven from a generated list is a prune
 - PL-H9GV (S) PL-01GD shipped as one exported Makefile variable with no test: PYTHONDONTWRITEBYTECODE appears only at Makefile:21, its declared touches names tests/unit/test_tools_portability.py which never changed, and its verify: passes against an untouched suite
 - PL-HKTB (S) The chart gridline and divider grey measures 1.31:1 on the panel and carries no contrast requirement; decide whether it should be darkened or recorded as exempt furniture
-- PL-HWW1 (M) Three items patch a reading of ROADMAP.md's Required scope because membership is cited rather than declared: make the declaration the record
+- PL-HWW1 (M) Three items patch a reading of ROADMAP.md's Required scope because membership is cited rather than declared: make the declaration the record — closed in v0.4.28
 - PL-HX5C (S) Both in-flight guards passed and two sessions still implemented PL-W8XP independently: the second never renamed and its branch was named after a different item, so neither the ref read nor the session read could see it
-- PL-JBRC (M) docket stranded still calls a branch merged when one of its commits is only docket record output, which converges byte-for-byte with the base
+- PL-JBRC (M) docket stranded still calls a branch merged when one of its commits is only docket record output, which converges byte-for-byte with the base — closed in v0.4.15
 - PL-JW39 (S) docket next ranks a needs-decision item first, so every fresh session opens on work whose next step is the owner's answer
 - PL-JXVD (S) PL-38PN's own line-number corrections are stale, so working it as written writes a second generation of wrong citations; PL-QV5Y has the same defect
 - PL-K5PW (S) bin/docket check --items docs/items resolves config from docs/ rather than the repo root, so it reports a clean store as 112 errors
-- PL-K82G (M) bin/docket verify's absolute 'no existing assertion removed' check has no passing route for an item whose own work makes a rendered string false, so a correct close-out REJECTs
+- PL-K82G (M) bin/docket verify's absolute 'no existing assertion removed' check has no passing route for an item whose own work makes a rendered string false, so a correct close-out REJECTs — closed in v0.4.27
 - PL-KFWL (S) The v0.4.8 tag is pushed onto a commit where the release was never cut, so doc_check errors on main for every session
-- PL-KL2Q (S) core/parameters.py now holds two overlapping percent/fraction vocabularies - Pydantic's PositivePercent which validates but does not type-check, and concentration.py's Percent which type-checks but does not validate - and nothing says which a new field takes
+- PL-KL2Q (S) core/parameters.py now holds two overlapping percent/fraction vocabularies - Pydantic's PositivePercent which validates but does not type-check, and concentration.py's Percent which type-checks but does not validate - and nothing says which a new field takes — closed in v0.4.24
 - PL-KNHX (S) contrast_check's KNOWN_SHORTFALLS entries are never checked against the requirements they excuse, so a stale one lingers and inflates the reported shortfall count
 - PL-KRS6 (S) bin/docket release counts the previous release's own cut item as releasable work, so every session after a release is offered an empty one
-- PL-L09X (M) An item blocked on a milestone that is decided but not yet named has no honest status: bare blocked errors, and blocked-by only accepts a version the roadmap already places
-- PL-LBR6 (S) bin/docket record renames a drifted item file as a side effect of writing a pr number, which conflicts against whoever else is holding that file
+- PL-L09X (M) An item blocked on a milestone that is decided but not yet named has no honest status: bare blocked errors, and blocked-by only accepts a version the roadmap already places — closed in v0.4.14
+- PL-LBR6 (S) bin/docket record renames a drifted item file as a side effect of writing a pr number, which conflicts against whoever else is holding that file — closed in v0.4.29
 - PL-LF2C (S) PL-VV4D's exact left-behind check rests on refs/pull/<n>/head being permanent, and GitHub is about to unreference 90 of them, so the check needs a third decline condition and one of its two test vectors dies
-- PL-LKGL (S) A verify: command cannot detect a stale item: it tests for the presence of the fix, not the fault, so an item whose problem was solved another way stays red forever and reads as outstanding work
-- PL-LN3T (S) wave does not report a milestone row the version has released whose section's Required scope is still open, so a patch cut at a milestone's own number leaves the plan stepped past it once the hand-off has scrolled by
+- PL-LKGL (S) A verify: command cannot detect a stale item: it tests for the presence of the fix, not the fault, so an item whose problem was solved another way stays red forever and reads as outstanding work — closed in v0.4.28
+- PL-LN3T (S) wave does not report a milestone row the version has released whose section's Required scope is still open, so a patch cut at a milestone's own number leaves the plan stepped past it once the hand-off has scrolled by — closed in v0.4.28
 - PL-LPWK (S) A release note cites the pull request that closed an item, not the one that carried its code, whenever the two differ
 - PL-LT77 (S) git fetch --tags does not prune, so a tag deleted on origin keeps failing doc_check in every checkout that already fetched it, and nothing distinguishes stale local state from a real repository fault
 - PL-MSFB (S) PL-6194's verify: command still uses [(] and [)] to work around the math check that PL-WTQ1 fixed, and WORKING_NOTES.md:504 still uses backticks to work around PL-KJ63
 - PL-N32Y (S) ROADMAP.md's v0.1.0 Required scope says the release added tissue:blood partition data, where the agent data files store tissue:gas
-- PL-NF6N (M) Triage has no write command: every pass edits item front matter by hand, which is the decidable half CLAUDE.md asks to be moved into code
+- PL-NF6N (M) Triage has no write command: every pass edits item front matter by hand, which is the decidable half CLAUDE.md asks to be moved into code — dropped 2026-09-19
 - PL-P757 (S) bin/docket --items pointed at a nested store makes every annotating commit read as work, silently
 - PL-PNW6 (S) A release cut at a version number some withdrawn tag once named leaves every warm checkout pointing v<version> at the old commit, and the handover's own 'git fetch origin main' is the command that leaves it stale silently
-- PL-PQQ2 (S) PL-KBD0 is the workflow lane's top pick but all three live instances its brief names are now closed, and no open item at ready or needs-decision carries a blocked-by field
+- PL-PQQ2 (S) PL-KBD0 is the workflow lane's top pick but all three live instances its brief names are now closed, and no open item at ready or needs-decision carries a blocked-by field — dropped 2026-09-19
 - PL-QSGX (S) bin/docket flight never fetches, unlike stranded and branch, so it reports refs as old as the clone - the one command whose whole job is reading other sessions' branches
 - PL-QV5Y (S) Makefile's CI-timing comments quote a 1230-test suite at 78 s serial and 27 s parallel, measured 2026-09-03; the suite is now 2096 tests at about 43 s parallel, so a reader sizing a CI-cost decision from them is reading stale figures
 - PL-SQJ1 (M) Playback delivers 73-91% of the rate the dropdown displays: 300x measured at 220x, 1x at 0.9x, so the clock on screen runs slower than its label
-- PL-T7VS (M) A red doc_check voids the whole-store verify replay for the 29 open items gated behind it, and the replay reports green rather than declining to answer
+- PL-T7VS (M) A red doc_check voids the whole-store verify replay for the 29 open items gated behind it, and the replay reports green rather than declining to answer — dropped 2026-09-19
 - PL-T8PT (S) make check runs pr_title_check --discover against committed history, so a session that runs it before committing the closure sees a HEAD without it, passes locally, and goes red in CI anyway
-- PL-TNB6 (S) docket next attributes the whole of Gate 1 to the v0.4.x step, where the plan makes Gate 1 its own row that no patch may ship
+- PL-TNB6 (S) docket next attributes the whole of Gate 1 to the v0.4.x step, where the plan makes Gate 1 its own row that no patch may ship — closed in v0.4.24
 - PL-TP5M (S) PL-ZBRB's advisory names blocked-by to work around a checker that did not read it, and PL-KBD0's check now does
-- PL-TTMF (S) PL-6BDX's title names two expired refs and the live instance this item was filed on has cleared too, so the item now reproduces nothing while the defect it describes is unfixed
+- PL-TTMF (S) PL-6BDX's title names two expired refs and the live instance this item was filed on has cleared too, so the item now reproduces nothing while the defect it describes is unfixed — dropped 2026-09-19
 - PL-VJFQ (S) Nothing enforces that KNOWN_SHORTFALLS only shrinks, so the contrast ledger could become the suppression list ui-color.md forbids in prose
 - PL-VYK1 (S) The docket skill's release handover tags at origin/main rather than at the cut's own merge commit, so a re-run of the three commands tags whatever merged next
-- PL-WZBX (M) bin/docket wave counts the four entries ROADMAP.md's gate places under 'Cleared by v0.5.0 itself' as clearable before the milestone begins, where the gate rule says the milestone clears them
-- PL-XMNC (M) The pull-request verify replay scopes to items whose item file the branch edited, so a branch that invalidates some other item's verify: command by editing the file that command reads replays nothing, and the break is reported only by the whole-store sweep after the merge
+- PL-WZBX (M) bin/docket wave counts the four entries ROADMAP.md's gate places under 'Cleared by v0.5.0 itself' as clearable before the milestone begins, where the gate rule says the milestone clears them — closed in v0.4.24
+- PL-XMNC (M) The pull-request verify replay scopes to items whose item file the branch edited, so a branch that invalidates some other item's verify: command by editing the file that command reads replays nothing, and the break is reported only by the whole-store sweep after the merge — closed in v0.4.28
 - PL-Y1LD (M) docket concurrent orders a batch by file, but the lane mechanism separates only two sessions, so the third and fourth simultaneous session have no command that picks for them
-- PL-Y31G (M) bin/docket stranded classes a branch left on pre-rewrite history as one whose pull request merged, because it compares file content and a rewrite leaves content unchanged
-- PL-YFXG (S) bin/docket record can never supply the pr of an item whose work is the queue itself - _carried_work reads a queue-only diff as a closure that landed without its work, so PL-YTDN left main red with an error no command could clear
+- PL-Y31G (M) bin/docket stranded classes a branch left on pre-rewrite history as one whose pull request merged, because it compares file content and a rewrite leaves content unchanged — closed in v0.4.15
+- PL-YFXG (S) bin/docket record can never supply the pr of an item whose work is the queue itself - _carried_work reads a queue-only diff as a closure that landed without its work, so PL-YTDN left main red with an error no command could clear — closed in v0.4.30
 - PL-YKXQ (S) This container's initial clone had local main diverged 407 commits into pre-rewrite history, so a session that checks out main gets a stale tree and an old bin/docket
-- PL-YTDN (S) Rename the nine item files whose slug no longer matches their title, now that docket check names them
+- PL-YTDN (S) Rename the nine item files whose slug no longer matches their title, now that docket check names them — closed in v0.4.29
 - PL-Z5FG (S) The PL-B32L and PL-TCW5 edits to core/parameters.py shifted line numbers cited by PL-0NQ1 and PL-HXKC, which is PL-J7C5's hazard arriving again from an unrelated branch
-- PL-ZG5J (M) Land the headless frame-cost harness that measured all of the above, so the simulation-versus-UI split can be re-measured rather than re-derived
-- PL-FCM3 (S) `bin/docket wave` reports how many gate entries wait on work outside the gate and never names or counts those items, so the beat understates what clearing the gate costs - measured 2026-09-20 as 1 startable entry plus 13 off-gate prerequisites
-- PL-TGFY (S) `PL-Z34C` reached this gate as `needs-decision`, has since moved to `blocked` and carries no debt class, so the frozen list holds an entry `bin/docket gate` no longer counts as debt and no session can clear by working it
+- PL-ZG5J (M) Land the headless frame-cost harness that measured all of the above, so the simulation-versus-UI split can be re-measured rather than re-derived — closed in v0.4.29
+- PL-FCM3 (S) `bin/docket wave` reports how many gate entries wait on work outside the gate and never names or counts those items, so the beat understates what clearing the gate costs - measured 2026-09-20 as 1 startable entry plus 13 off-gate prerequisites — closed in v0.4.34
+- PL-TGFY (S) `PL-Z34C` reached this gate as `needs-decision`, has since moved to `blocked` and carries no debt class, so the frozen list holds an entry `bin/docket gate` no longer counts as debt and no session can clear by working it — closed in v0.4.32
 - PL-ZM48 (S) `docs/worker.md` records a remote-branch deletion as exiting 0, and `PL-3V6C` as two incompatible causes, where one 2026-09-20 transcript carries the 403 and the `Everything up-to-date` line together at exit 1
 
 **One entry on a second ground, recorded here rather than under a heading of
@@ -4245,12 +4263,23 @@ thirty do - it declares the `docket` skill, `checks.py`, `render.py`,
 `config.py` and `docket.toml`, all wholly inside `docket.toml`'s
 `workflow_paths`, so none of it can reach a reader of the simulator.
 
-**It is inside this section rather than beside it because the checker reads
-only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
-`### Declined to Gate ...` subsection after the gate heading and stops at the
-next heading of any level, so a second one silently orphans this section's 66
-dispositions - the gate then reports them all as undisposed. `PL-82B0` carries
-the defect.
+**It is inside this section rather than beside it because the checker used to
+read only one.** `tools/doc_check.py`'s `_declined_ids` took the first
+`### Declined to Gate ...` subsection after the gate heading and stopped at the
+next heading of any level, so a second one silently orphaned every disposition
+recorded in this one, and the gate reported them all as undisposed. `PL-82B0`
+closed that on 2026-09-20: `_declined_ids` reads every such subsection of the
+gate's own section and stops at the next `##`, so writing a second one costs
+nothing and the placement above is a convention rather than a constraint.
+
+How many dispositions this section holds is deliberately not written down. The
+sentence above carried the figure 66 while the subsection named 132 open debt
+items on the day that was measured, 2026-09-16, and nothing reconciles the two:
+`check_gate_counts` holds a frozen list's count-carrying group headings and its
+`not-delegable` claims to the list, and this is a body paragraph. The entries
+below are the record. A number restating them is wrong on the next closure and
+tells nobody it has become so, which is the same reason the open count is not
+recorded here either.
 
 
 **One more from the 2026-09-19 workflow-lane survey, on the same ground.**
@@ -5853,12 +5882,24 @@ specified.
 22. Continue documentation work.
 23. Add packaging, signing, and distribution work for shipping the app.
 24. Add a user-facing preferences/settings panel (theme, chart window, slider
-    ranges, and similar display settings). Pre-requisite: consolidate the
-    UI/display constants currently scattered across `app/theme.py`,
-    `app/simulation_view.py`'s module-level constants, and the default
-    values duplicated between `core/*.py` dataclasses and
-    `app/controller.py`, into one settings module the panel can read from
-    and write to, rather than adding a fourth scattered location.
+    ranges, and similar display settings).
+
+    *The consolidation this item named as its prerequisite has landed, and what
+    replaces it is a different shape of work* (`PL-YD6X`). The prerequisite
+    read: fold the UI/display constants then scattered across `app/theme.py`,
+    `app/simulation_view.py`'s module-level constants and the defaults
+    duplicated between `core/*.py` dataclasses and `app/controller.py` into one
+    module, rather than adding a fourth scattered location. `PL-2CS8` did that
+    in `v0.4.11`: `app/theme.py` is the one location, `app/controller.py`
+    declares no module-level constant and no `core/` default of its own, and
+    what `app/simulation_view.py` still declares is Qt layout policy — stretch
+    factors and object names — rather than anything a reader would set.
+
+    What genuinely remains is not a fourth location to fold in. `app/theme.py`
+    is a module of constants bound at import, so a panel that *writes* a
+    setting needs something that can be written and persisted, and this
+    repository has no such store yet. That is the prerequisite to scope, and it
+    is a build rather than a consolidation.
 
     *What the panel must never make editable, and the test that decides it*
     (`PL-QBX0`, 2026-09-19). This gate named `data/**/*.json` and nothing
@@ -6456,16 +6497,19 @@ once someone is ready to scope it.
     read before scoping this is that a port is not a design round - re-expressing
     widgets in a new toolkit does not decide anything about how they should look.
 
-    *The structural half is not part of this item, and lands ahead of v0.5.0.*
-    Most of what an overhaul looks like from outside is not polish and is
-    already owed: `PL-2CS8` consolidates the display constants item 24 names as
-    its own prerequisite and "Development pathway" Phase 2 orders first;
-    `PL-NGF7` decides whether an explicit theme object replaces the Material
-    defaults that supply colours no tool in this repository can measure; and
-    `PL-B9PY` is the decomposition, which is also the component seam that makes
-    the six repeated panel recipes one. All three are debt and reach the gate on
-    their own class. What is left for this item is the part that is genuinely
-    taste.
+    *The structural half is not part of this item, and it has landed.* Most of
+    what an overhaul looks like from outside is not polish, and all three
+    pieces of it are now closed. `PL-2CS8` consolidated the display constants
+    item 24 named as its own prerequisite and "Development pathway" Phase 2
+    orders first, in `v0.4.11`. `PL-B9PY` is the decomposition, which is also
+    the component seam that makes the six repeated panel recipes one, in
+    `v0.4.25`. `PL-NGF7` settled the theme-object question in `v0.4.26` — not
+    by the Qt port dissolving it, which is what the deferral predicted and what
+    the item then measured and found false, but by scoping what the stylesheet
+    owns and adding the check that fails the build the moment a module under
+    `app/` writes a colour outside that scope. None of the three is debt any
+    gate still has to clear. What is left for this item is the part that is
+    genuinely taste.
 
     *Two hard prerequisites, and they are the reason this cannot simply be
     started.* Nothing in this repository draws the interface. `PL-7J96` records

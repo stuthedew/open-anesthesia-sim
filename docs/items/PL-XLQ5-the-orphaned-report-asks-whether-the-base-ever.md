@@ -1,6 +1,6 @@
 ---
 id: PL-XLQ5
-title: The orphaned report counts a branch's superseded intermediate blob as work the squash left behind
+title: The orphaned report asks whether the base ever held the branch's exact blob, so a path superseded on either side reads as work the squash left behind
 priority: P2
 effort: M
 status: done
@@ -110,3 +110,29 @@ addressed: the run above was made against a freshly fetched `origin`, so
 refreshing first does not help. A fix that only handles a blob superseded on
 the branch will leave this case reporting, so the `verify:` command's single
 test likely needs a sibling covering supersession on the base.
+
+## Retitled 2026-09-20 under `PL-880Z`, because the old title named a mechanism this code never had
+
+It read *"the orphaned report counts a branch's superseded intermediate blob as
+work the squash left behind"*, and `ROADMAP.md`'s frozen list repeated it
+verbatim, so the wrong description carried the standing of a frozen decision
+and a session starting from either document would go looking in
+`_landing_split` for behaviour it does not have.
+
+`_landing_split` diffs the fork point against the ref's *tip*
+(`git diff --raw fork_point ref`), so an intermediate blob superseded by a
+later commit on the same branch never appears in its output at all. That shape
+landed in `#121` (`PL-CPSY`), three weeks before this item was filed, so the
+title was already impossible when it was written - the branch-side reading the
+brief proposed as a fix was in fact what the code was doing.
+
+What the code does have is the `base_blobs` membership test on the other side
+of that diff: a path is outstanding when no commit on the default branch ever
+carried that *exact* blob. That is what both observed false positives were, and
+`_superseded` names them as the two shapes it now excludes - superseded on the
+branch, and superseded on the base, the second being the expensive one whose
+`recover:` line would have deleted `PL-1VFK`'s note. The title now says that.
+
+The brief above is left as written. It is the record of the diagnosis as it
+stood, and `_superseded`'s docstring is where the settled reading lives.
+
