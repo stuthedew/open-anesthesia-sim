@@ -124,3 +124,16 @@ for two reasons:
 it, or the project owner deciding that a design-input document's sourcing is
 inside the safety-critical standard's reach. Either makes `science`/`P1`
 correct and puts this on a gate.
+
+**A second session drew the same line independently, 2026-09-20.** Pull request
+#759 and #757 were written in the same hour without sight of each other. #757
+triages the other 22 captures and proposes moving v0.5.0's frozen list from 175
+to 178, adding three entries under the unconditional safety/science exception -
+`PL-D126` and `PL-WJNS`, both `science, docs` at `P1`, and `PL-0RZ0`, `safety`
+at `P1`. **All three declare `docs/MODEL.md` or `src/` in `touches`**, and the
+two `science` ones are findings from this same machine survey that reach the
+model specification. This item declares `docs/machine-survey.md` alone. So the
+boundary both passes landed on is the same one: a survey finding that reaches a
+computed path is `science`/`P1` and goes on the gate, and the survey document's
+own sourcing is not. Stated as what #757 proposes rather than as settled fact,
+since those three are still untriaged on the default branch.
