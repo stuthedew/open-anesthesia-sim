@@ -9,6 +9,7 @@ feature: ci-cost
 touches: tools/main_ci_status.py, tests/unit/test_main_ci_status.py, docs/ARCHITECTURE.md, docs/WORKING_NOTES.md
 added: 2026-09-16
 closed: 2026-09-20
+pr: 804
 verify: python3 tools/doc_check.py check && grep -qF 'attributed by failing step' docs/WORKING_NOTES.md
 ---
 
