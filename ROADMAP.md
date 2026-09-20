@@ -5396,9 +5396,13 @@ specified.
    represent internal topology and say so where a machine is chosen, with
    folding it into an effective volume refused outright and item 39 named as
    the condition that reverses the decline. **What a machine may be called is
-   the one open question**, and it is the project owner's: the design
-   recommends an archetype label in the running interface with the trade name
-   attached to the parameter set, its sources and its `not_modelled` list.
+   decided** (project owner, 2026-09-20, ratified, over naming the machine by
+   its trade name in the running interface): an archetype label wherever a
+   machine is running or chosen, with the trade name confined to the panel
+   holding that machine's parameter set, its sources and its `not_modelled`
+   list. That is a scope constraint on this milestone and on `PL-WZVZ` rather
+   than a preference — the trade name is admissible only where what the model
+   does *not* claim about that machine is on screen beside it.
 
    Scoping this milestone therefore starts from a design rather than from a
    blank page, and the scope statement's own test is the design's stated cost

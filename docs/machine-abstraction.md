@@ -463,8 +463,13 @@ own evidence and be obeyed by sessions that were not here.
 
 ## Question 5: naming a real machine in the interface
 
-**Recommendation, for the project owner to confirm** — this is what a learner
-sees, so the decision is theirs; what follows is the case for one answer.
+**Decided (project owner, 2026-09-20, ratified)**, on this session's
+recommendation and over naming the machine by its trade name in the running
+interface. It is what a learner sees, so the decision was theirs; the case
+below is the one they ratified rather than one they authored, which is the
+distinction `CLAUDE.md` asks to be recorded — **ordinary evidence reopens it**:
+a measurement, a cost this case did not carry, or a constraint that appears
+later.
 
 **Show the archetype in the running interface; attach the trade name to the
 parameter set.** The machine chooser and the dashboard name a machine by what
@@ -495,9 +500,17 @@ name everywhere** is what makes the feature feel real and is what a user will
 ask for; it claims the most and is supported the least, and it is the option
 the survey's measurement argues directly against. **Archetype only, no trade
 name anywhere** is safe and throws away the provenance: a reader cannot check a
-parameter against a manual for a machine nobody names. The recommendation is
-the middle one because it keeps the trade name exactly where the evidence for
-it is on screen.
+parameter against a manual for a machine nobody names. The decision is the
+middle one because it keeps the trade name exactly where the evidence for it is
+on screen.
+
+**What this binds.** `PL-WZVZ` builds the panel this puts the trade name in, so
+its comparison table and the machine's own parameter set are the same surface:
+a trade name may appear there and may not appear on a curve, a chooser entry or
+a dashboard readout. Planned-milestone item 1 inherits that as a scope
+constraint rather than a preference, and the `not_modelled` list stops being a
+provenance record only — it is what has to be on screen beside the trade name
+for the trade name to be admissible at all.
 
 ## Question 7: what the second machine costs
 
