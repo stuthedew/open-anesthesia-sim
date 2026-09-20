@@ -928,8 +928,15 @@ class SimulationView(QWidget):
         snapshots rather than a chosen one is what keeps the choice from
         being made here at all: there is no reference run to pick.
 
-        The height control stays bound to the reference run's ceiling, which
-        is `PL-GHMB` rather than this method's business.
+        The height control keeps reading the reference run, and that read is
+        sound where the rows' was not: it is bounded by the *agent's*
+        published maximum delivered concentration over the agent's MAC, both
+        settled at construction, and two displayed runs are locked to one
+        agent (`COMPARING_AGENT_LOCK_TEXT`, `BRANCH_AGENT_LOCK_TEXT`, and
+        `assemble_chart_frame` refusing a frame whose runs disagree). A run's
+        own delivered setting moves what it will reach, not what it may be
+        asked to reach. `PL-GHMB` is the item that assumed otherwise, and it
+        was dropped on the measurement.
 
         Args:
             snapshots: Every displayed run's snapshot for this tick, in
