@@ -21,6 +21,7 @@ from collections.abc import Collection
 from dataclasses import dataclass, field
 
 from .model import (
+    CLOSED_STATUSES,
     EFFORTS,
     LANE_CROSSING,
     LANE_UNPLACED,
@@ -297,6 +298,54 @@ def _startable(
         and item.identifier not in flight
         and (effort is None or item.effort == effort)
     ]
+
+
+def promotable(items: list[Item]) -> list[Item]:
+    """Blocked items whose every recorded item blocker has closed.
+
+    `_startable` filters on `status` alone and never opens `blocked_by`, so an
+    item stays out of the ranking until somebody grooms the status by hand -
+    however long ago the thing it waited for closed. `docket check` has derived
+    this same set all along and says so in an advisory. This exports the
+    reading so `docket next` can name the ids at the moment a session is
+    choosing, rather than leaving them to a command it has no reason to run:
+    on 2026-09-17 the head of the chain holding three more of v0.5.0's own
+    scope was invisible that way (`PL-6T44`).
+
+    **Candidates, never a verdict.** That every blocker has closed is a fact
+    about the field; that nothing *else* holds the item is not, and the
+    difference is most of the answer. Of 13 items reached this way across two
+    grooming passes (`PL-JFQ3`, 2026-09-16; `PL-8G48`, 2026-09-20), 6 were
+    genuinely startable - the rest were already done inside another item, or
+    had a user-facing question written into them since triage, or waited on
+    something nobody had declared. So callers name these and must not rank
+    them: a recomputed status would have put an unbuildable item into `P1` and
+    onto the debt gate, because leaving `blocked` is what ends the
+    `anticipated` exemption.
+
+    Item blockers only. A milestone blocker clears when a scoping round
+    happens, which takes the roadmap to answer and is a different question
+    from this one; `checks.py` keeps that branch, and `PL-162Y` is whether
+    `next` should name those too.
+
+    An id the store cannot place counts as unresolved, which is the
+    fail-closed half: a `blocked-by` naming nothing is not evidence that the
+    blocker closed.
+    """
+    resolved = {
+        item.identifier for item in items if item.identifier and item.status in CLOSED_STATUSES
+    }
+    return sorted(
+        (
+            item
+            for item in items
+            if item.status == "blocked"
+            and item.blocked_by
+            and not item.blocking_milestones
+            and set(item.blocking_items) <= resolved
+        ),
+        key=lambda item: item.identifier,
+    )
 
 
 def placement_line(scope: Scope | None, identifier: str, *, ranks_above_bands: bool = False) -> str:

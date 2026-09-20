@@ -37,7 +37,7 @@ from .model import (
     generator_defect_faults,
     root_cause_faults,
 )
-from .plan import OfferedReport
+from .plan import OfferedReport, promotable
 from .release import NOTES_DIR, SEMVER_RE, notes_name, unrecorded_milestones, version_key
 from .roadmap import MilestoneStates
 from .store import ID_PATTERN, ID_RE, filename_for
@@ -2130,17 +2130,25 @@ def _groom(
             "one plain-language sentence of what closing it buys"
         )
 
+    # The item-blocker half is `plan.promotable`, which `docket next` also
+    # reads so that it can name these ids at the moment a session is choosing.
+    # Derived once and shared rather than computed twice: an advisory saying an
+    # item may now be started, beside a ranking that disagrees, is the silent
+    # wrong answer `.claude/rules/apparatus-standard.md` makes the floor
+    # (`PL-6T44`). Membership is tested inside the existing walk so the
+    # advisories still appear in store order.
+    ready_now = {item.identifier for item in promotable(report.items)}
     resolved = {i.identifier for i in report.items if i.status in ("done", "dropped")}
     for item in report.items:
-        if item.status != "blocked" or not item.blocked_by:
-            continue
-        if not set(item.blocking_items) <= resolved:
-            continue
-        versions = item.blocking_milestones
-        if not versions:
+        if item.identifier in ready_now:
             report.advisories.append(
                 f"{item.identifier}: every blocker has closed; it is ready to promote"
             )
+            continue
+        versions = item.blocking_milestones
+        if item.status != "blocked" or not versions:
+            continue
+        if not set(item.blocking_items) <= resolved:
             continue
         # A milestone blocker needs the roadmap to answer, and an unreadable
         # one declines: this advisory says an item may now be started, and
