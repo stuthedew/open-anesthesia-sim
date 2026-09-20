@@ -585,8 +585,12 @@ below is re-derived from scratch.
 - **Every `unknown` in the survey.** Apparatus volumes, flow floors, agent
   lists and sample flows for the GE and Getinge machines, and for three of the
   five Dräger ones. The survey's last section names the manuals and the route.
-  Until they are reachable, this abstraction has one profile to run on, which
-  is a statement about the evidence rather than about the design.
+  **That is a condition on each profile, not on this abstraction.** A machine
+  whose fields are `unknown` is a machine that cannot be added yet, and its
+  manual is sought when that machine's profile is built rather than in advance
+  (project owner, 2026-09-20). The design is complete without any of them: the
+  reference profile is what it runs on meanwhile by construction, not for want
+  of evidence.
 
 ## Sources
 

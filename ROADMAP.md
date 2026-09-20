@@ -3288,6 +3288,36 @@ because the port rewrites the chart on pyqtgraph and redecides dash pattern, alp
 and stroke width along with it, so answering against the Flet chart would mean
 answering twice - the same reason those two wait for `PL-L9RD`.
 
+**Three from the 2026-09-20 machine-profile re-scope** (`PL-77G2`). `PL-HGB6`,
+`PL-QW19` and `PL-HNWX` were filed the day planned-milestone item 1 was split
+(project owner, 2026-09-20), and all three postdate the 2026-09-06 freeze by two
+weeks, so § "The gate is a snapshot, not a moving target" defers them on its own
+terms rather than on the refilling-queue ground. None is `safety` or `science`,
+so the unconditional exception does not reach them either.
+
+What makes the disposition easy is that none of the three can reach a reader of
+the simulator today, and each says so in its own brief. `PL-HNWX` is a
+`refactor` wholly inside `core/parameters.py`'s schema-version constant and
+changes no value. `PL-QW19` makes a required field optional so that a machine
+profile which does not yet exist can be written without inventing a startup
+flow; with one profile shipped and that profile declaring the field, nothing
+changes. `PL-HGB6` is a contradiction between `docs/machine-abstraction.md` and
+the shipped profile's own provenance note about what `circuit_volume_l` means -
+a design document that governs a milestone nobody has started, against a stored
+value that is correct under the data file's reading. All three are `anticipated`
+in substance: they bite when a second machine profile is written, which item 40
+enables and does not schedule.
+
+**One of them is the residue of a finding this gate should not inherit.**
+`PL-HGB6` replaces `PL-TBMX`, which was filed the same day asserting that
+`circuit_volume_l` meant apparatus-plus-circuit and that a real profile would
+therefore understate the circuit time constant by about 40%. The re-scoping
+audit's own adversarial verifier refuted it against the source - the profile
+states "This file's `circuit_volume_l` is the apparatus alone" - and `PL-TBMX`
+is `dropped` carrying that refutation. Recorded here because a `safety`-classed
+`P1` briefly existed on the strength of it, and a later reader meeting the
+dropped item is owed the reason it never reached this list.
+
 Nothing is misleading anybody meanwhile, which is what makes the deferral safe
 rather than merely convenient: no preview is drawn today, so the safety obligation
 the item records binds whoever builds it rather than describing a live defect. Had

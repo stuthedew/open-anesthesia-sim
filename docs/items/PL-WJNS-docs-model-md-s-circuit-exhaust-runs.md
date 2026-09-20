@@ -9,6 +9,7 @@ feature: model-boundary-statements
 touches: docs/MODEL.md
 added: 2026-09-19
 closed: 2026-09-20
+pr: 773
 payoff: tells a reader whether closed-circuit machines were excluded from the model deliberately or overlooked, where today the document is silent
 verify: grep -qF 'surplus gas valve' docs/MODEL.md
 ---
