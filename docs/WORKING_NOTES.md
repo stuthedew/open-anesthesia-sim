@@ -2124,3 +2124,54 @@ meet the generator threshold if it is one mechanism. The project owner is
 starting a separate session on it; `PL-4JHS` takes that session's confirmed
 pairs as its input.
 
+
+## main's red is the queue, not the tree - PL-T83R's 109 failures attributed by failing step (2026-09-20)
+
+**Closes the middle third of the "three silently-wrong checks" thread above.**
+`PL-T83R` was filed on a rate - 32.7% of `main` pushes reaching a verdict
+failed - and asked for the 74 to be attributed before anything was designed,
+because "if most of the 74 are that class, the answer is different". They were.
+
+**All 819 completed `main` push runs of `quality.yml` from 2026-08-22 to
+2026-09-20**, with the failing step of each of the 109 failures read from
+`/repos/.../actions/runs/{id}/jobs`:
+
+| first failing step | all 109 | the item's 74 |
+| --- | --- | --- |
+| `verify replay, the whole store` | 93 (85.3%) | 73 (98.6%) |
+| the bare `bin/docket check` | 14 (12.8%) | 0 |
+| the pytest/coverage line | 1 | 1 |
+| no job ran (startup failure) | 1 | 0 |
+
+**Not one of the 109 was a defect in `src/`** - the single pytest failure is
+`test_this_repository_records_a_disposition_for_every_open_debt_item`, which
+asserts on `ROADMAP.md`. In all 93, the bare `bin/docket check` step passed
+*earlier in the same job on the same tree*, along with `ruff`, `mypy` and the
+suite at 100% branch coverage; the bare run is the same validation without
+`--verify`, so the cause is isolated to the one report `--verify` adds without
+reading a log at all.
+
+**The rate turned out to be the wrong statistic, and that is worth carrying
+past the item.** 74 failures are **8 episodes**: merges keep arriving while
+`main` is red, so the per-push rate counts the outage once per merge. Two
+episodes - 37.7 h and 44.3 h - hold 87% of the window's red time, and each
+ended in one cheap commit (`#432` closed two items whose work had landed,
+`#493` rewrote one command that did not discriminate). Measured as wall clock
+instead, `main` was red **39.0%** of the window and **6.1%** of 2026-09-16 →
+2026-09-20, with episode length down to about an hour. The defect was time to
+green, not frequency - and it was shrinking on its own before anything changed.
+
+**So the class was not suppressed.** Per `.claude/rules/expert-review.md`,
+making `already_passing` an advisory on `main` is right only if enough of what
+it hides would not have mattered: the count is **93 of 93 real**, every one a
+store defect somebody later fixed. The line was made precise instead - it now
+names the failing step, and where the replay failed alone it says the red is
+the queue and hands over `bin/docket check --verify`.
+
+**What is still open here.** `PL-JTHW` (the same file: a `cancelled` `main` run
+is passed over in silence, so a commit with no verdict looks like one nobody
+asked about) is the remaining hole in the same line, and is untouched by this.
+Whether a *second* consecutive red should read differently from the first was
+not designed: at 8 episodes over 10 days there is no evidence it would change a
+decision, and inventing a rule for it now would be the altitude error
+`.claude/rules/expert-review.md` warns about.
