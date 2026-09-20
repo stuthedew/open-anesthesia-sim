@@ -166,3 +166,41 @@ not this session's to decide.
 **Still open, and unchanged:** whether to narrow within `.py` at all, and on
 what rule. `docs/WORKING_NOTES.md:1987` records the decision that this item
 goes ahead of product work.
+
+## Superseded as the place the decision lives, 2026-09-20 — read this first
+
+A generator item was recorded the same day and declares this item one of its
+causes. It is **not in this checkout**: it sits only on
+`origin/claude/busy-einstein-8bmtwd`, a live branch, so it is cited by title
+rather than by a link a checker can follow, exactly as this item cites
+`PL-BHBZ` above.
+
+> `PL-G21K` — "verify's suppression and assertion checks infer intent from
+> diff text, so every fix adds a special case and uncovers the next: across
+> 564 commits four of the five suppression markers fired zero times on a real
+> directive while half of all hits were prose". `status: needs-decision`,
+> `feature: verify-false-reject`, and
+> `root-cause-of: PL-4FD2, PL-STC4, PL-BHBZ, PL-5MFL, PL-XQGH, PL-CNJH, PL-2DTK`.
+
+**Do not build this item's remaining half without reading it.** Its count over
+564 commits of `main` splits `_SUPPRESSION_RE`'s 66 flagged lines three ways:
+22 (33.3%) `.md` prose, 11 (16.7%) `.py` where the marker sits in backticks, a
+string literal or a prose comment, and 33 (50.0%) real directives - **every one
+of the 33 a `# type: ignore[<code>]` in a test file, and not one a test being
+disabled**. `typing.no_type_check`, `xfail`, `pytest.skip` and `@skip` fired on
+a real directive **zero** times.
+
+Two consequences for this item:
+
+- The 33.3% row is what `#783` landed, so that part is done rather than
+  pending.
+- The 16.7% row is this item's own backtick candidate, already measured. So
+  the remaining half is not a patch this item should specify - on `PL-G21K`'s
+  evidence the question is whether the check should be asking this at all, and
+  that is a decision rather than a narrowing.
+
+This item's value from here is its evidence, not its disposition: the 13-line
+breakdown, the `PL-Q9Z1` finding folded from `PL-4FD2`, and
+`tools/doc_check.py`'s `candidates` as the in-tree precedent. Whether it
+closes as part of `PL-G21K` or survives it belongs to whoever answers
+`PL-G21K`, not to this brief.
