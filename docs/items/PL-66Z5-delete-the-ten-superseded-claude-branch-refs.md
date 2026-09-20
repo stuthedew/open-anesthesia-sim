@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: housekeeping
 feature: remote-ref-deletion
+milestone: v0.4.33
 touches: docs/items
 added: 2026-09-20
 closed: 2026-09-20
