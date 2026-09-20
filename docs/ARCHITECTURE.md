@@ -68,6 +68,7 @@ src/anesthesia_sim/
 │   ├── controller.py               # SimulationController: run controls, read-only snapshots; ResumePoint and BranchedCase: where a branch opened, and the trunk it belongs to
 │   ├── run_series.py               # the vocabulary a run's drawn values are addressed by, and the window one frame reads them from: RecordedQuantity, RecordedSeries, DrawnWindow; toolkit-independent
 │   ├── control_record.py           # what a run's settings are addressed by and the change a run records: ControlInput, CONTROL_INPUT_UNITS, ControlChange; toolkit-independent
+│   ├── bookmarks.py                # what a learner marks a case at, held in two collections: TimeBookmark (an instant), MacTarget (a height on one compartment, with its crossing direction), BookmarkSet; toolkit-independent, and it detects nothing
 │   ├── simulation_view.py          # SimulationView on PySide6: what runs share - the charts, the legend, the time base, the captions, the wash-in section, the render tick, the splitter layout; no domain logic
 │   ├── run_view.py                 # one run's widgets, controller, handlers, refresh and halt; RunView, instantiated once per run (the seam PL-B9PY drew)
 │   ├── qt_widgets.py               # PySide6 leaf widgets that decide nothing: MetricPanel, ReadoutRow, ParameterSlider, NoticeLabel, NewCaseDialog, inert_splitter, initial_window_geometry
@@ -359,7 +360,12 @@ is, because `BreathingCircuit.set_circuit_volume` conserves agent by rewriting
 the inspired fraction and a volume set afterwards would move the branch off the
 state it opened at. The four live controls, replayed from the recorded timeline
 in the units the compartments hold, and then checked against the settings the
-trunk's own stretch carries rather than trusted. What it does not inherit is
+trunk's own stretch carries rather than trusted. And the bookmarks, which is
+the opposite case to the timeline below and settles by the same test: a mark is
+a question about what is still to come, and a comparison is two managements
+answering one question, so a learner made to re-enter the marks could compare
+two branches at two different heights with nothing saying so. What it does not
+inherit is
 the trunk's control timeline, which starts empty: the branch's record is of
 what the learner does to *it*, and `opened_from` is what records where the
 fork was taken — the definition's own first segment stands at the same instant,
@@ -390,8 +396,10 @@ a branch opened off a keyframe really does stop reproducing the run it claims
 to continue, rather than the refusal guarding against nothing.
 
 A **bookmark is not yet one of those instants**, and how it becomes one is
-open. Bookmarks are `PL-LPLD` and the halt that stops a run on the step
-crossing one is `PL-CTD7`; neither is built. A bookmark's instant is not in
+open. `app/bookmarks.py` is what a learner may mark — `PL-LPLD`, built — and
+the halt that stops a run on the step crossing one is `PL-CTD7`, which is not.
+So a mark is currently a question the interface holds and nothing reads it
+against a state. A bookmark's instant is not in
 general a setting change, so the trunk holds no keyframe there and `resumed_at`
 refuses it like any other — on a 120 s run with two control changes, 3 of the
 1 201 instants a halt could land on are keyframes. Two routes to a forkable

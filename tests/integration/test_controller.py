@@ -2,6 +2,7 @@ import dataclasses
 
 import pytest
 
+from anesthesia_sim.app.bookmarks import CrossingDirection, MacTarget, TimeBookmark
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlInput
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
@@ -13,6 +14,7 @@ from anesthesia_sim.app.run_series import (
 )
 from anesthesia_sim.app.wash_in import is_wash_in
 from anesthesia_sim.core import uptake_system
+from anesthesia_sim.core.concentration import MacMultiple
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -2246,3 +2248,160 @@ def test_every_recorded_control_event_is_an_instant_the_run_can_be_forked_at() -
         assert case.fork_at(change.elapsed_s).run_segments[0].opening.instant_s == (
             change.elapsed_s
         )
+
+
+# --------------------------------------------------------------- bookmarks
+#
+# `tests/unit/test_bookmarks.py` holds what a mark refuses. What is here is
+# the controller's half: that the collections reach a reader through the
+# snapshot, and what happens to them at the three points a run starts over -
+# `reset`, `set_agent` and a fork. Each of those three is a decision rather
+# than a consequence, so each has a test saying which way it went and why
+# (`PL-LPLD`).
+
+
+def test_a_fresh_run_is_marked_at_nothing() -> None:
+    assert SimulationController().snapshot().bookmarks.is_empty
+
+
+def test_a_mark_reaches_a_reader_through_the_snapshot() -> None:
+    controller = SimulationController()
+    controller.add_time_bookmark(TimeBookmark(600.0, "intubation"))
+    controller.add_mac_target(
+        MacTarget(
+            RecordedQuantity.VESSEL_RICH, MacMultiple(0.8), CrossingDirection.RISING, "wash-in"
+        )
+    )
+
+    marks = controller.snapshot().bookmarks
+
+    assert [bookmark.label for bookmark in marks.time_bookmarks] == ["intubation"]
+    assert [target.label for target in marks.mac_targets] == ["wash-in"]
+
+
+def test_the_two_collections_are_added_to_and_removed_from_independently() -> None:
+    controller = SimulationController()
+    controller.add_time_bookmark(TimeBookmark(600.0))
+    controller.add_mac_target(
+        MacTarget(RecordedQuantity.FAT, MacMultiple(0.5), CrossingDirection.EITHER)
+    )
+    controller.remove_time_bookmark(TimeBookmark(600.0))
+
+    marks = controller.snapshot().bookmarks
+
+    assert marks.time_bookmarks == ()
+    assert len(marks.mac_targets) == 1
+
+
+def test_a_snapshot_taken_before_a_mark_was_added_does_not_acquire_it() -> None:
+    # The snapshot is a read-only view of one instant, so a panel holding one
+    # from an earlier tick must not come to describe a later run.
+    controller = SimulationController()
+    before = controller.snapshot()
+    controller.add_time_bookmark(TimeBookmark(600.0))
+
+    assert before.bookmarks.is_empty
+    assert not controller.snapshot().bookmarks.is_empty
+
+
+def test_a_marked_instant_cannot_be_marked_twice_through_the_controller() -> None:
+    controller = SimulationController()
+    controller.add_time_bookmark(TimeBookmark(600.0))
+
+    with pytest.raises(SimulationConfigurationError, match="marked once"):
+        controller.add_time_bookmark(TimeBookmark(600.0, "and again"))
+
+    assert len(controller.snapshot().bookmarks.time_bookmarks) == 1
+
+
+def test_resetting_a_run_keeps_its_marks() -> None:
+    # A reset is for taking the same case again, and it is the same case the
+    # learner was asking about - so the marks go with the settings rather than
+    # with the state.
+    controller = SimulationController()
+    controller.add_time_bookmark(TimeBookmark(600.0))
+    controller.start()
+    _advance_for(controller, duration_s=30.0)
+    controller.reset()
+
+    assert controller.snapshot().bookmarks.time_bookmarks == (TimeBookmark(600.0),)
+
+
+def test_changing_agent_keeps_the_marks_although_it_destroys_the_run() -> None:
+    # A MAC target is a multiple of whichever agent is running, so 0.8 x MAC
+    # stays 0.8 x MAC of the new agent rather than becoming the old agent's
+    # absolute concentration under a new divisor. Reaching the same multiple at
+    # a different time is what a learner changing agent is there to see.
+    controller = SimulationController()
+    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.8), CrossingDirection.RISING)
+    controller.add_mac_target(target)
+    controller.start()
+    _advance_for(controller, duration_s=30.0)
+    controller.set_agent("desflurane")
+
+    after = controller.snapshot()
+
+    assert after.agent_id == "desflurane"
+    assert after.control_timeline == ()
+    assert after.bookmarks.mac_targets == (target,)
+
+
+def test_a_branch_opens_carrying_the_marks_of_the_case_it_continues() -> None:
+    # The opposite of the control timeline, and for the opposite reason: the
+    # timeline is the record of what was done to a run, and a mark is a
+    # question about what is still to come. A comparison is two managements
+    # answering one question, so a learner made to re-enter the marks could
+    # compare two branches at two different heights with nothing saying so.
+    trunk = _trunk_with_two_changes()
+    target = MacTarget(RecordedQuantity.MUSCLE, MacMultiple(0.3), CrossingDirection.FALLING)
+    trunk.add_time_bookmark(TimeBookmark(45.0, "the decision point"))
+    trunk.add_mac_target(target)
+
+    branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
+    marks = branch.snapshot().bookmarks
+
+    assert marks.time_bookmarks == (TimeBookmark(45.0, "the decision point"),)
+    assert marks.mac_targets == (target,)
+    # And the timeline still starts empty, which is the half that does not
+    # come across.
+    assert branch.snapshot().control_timeline == ()
+
+
+def test_marking_a_branch_does_not_mark_the_trunk_it_came_from() -> None:
+    # Inherited at the fork and not shared afterwards: the two runs are two
+    # managements, and a mark added to one is a question asked of that one.
+    trunk = _trunk_with_two_changes()
+    branch = trunk.resumed_at(trunk.run_segments[-1].opening.instant_s)
+    branch.add_time_bookmark(TimeBookmark(600.0))
+
+    assert trunk.snapshot().bookmarks.is_empty
+    assert len(branch.snapshot().bookmarks.time_bookmarks) == 1
+
+
+def test_a_mark_changes_nothing_the_run_computes() -> None:
+    # The property that lets a mark be carried across a fork at all, and the
+    # one `PL-B8MK` measured the alternative against: recording a keyframe
+    # where a run halts moves the trunk's own later answers, and holding a mark
+    # in a collection beside the run moves nothing. Element-wise rather than
+    # within a tolerance, because that is the claim.
+    marked = SimulationController()
+    marked.add_time_bookmark(TimeBookmark(45.0))
+    marked.add_mac_target(
+        MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.8), CrossingDirection.RISING)
+    )
+    unmarked = SimulationController()
+
+    for controller in (marked, unmarked):
+        _run_with_two_changes(controller)
+        controller.pause()
+
+    assert marked.snapshot().elapsed_s == unmarked.snapshot().elapsed_s
+
+    for quantity in COMPARTMENT_QUANTITIES:
+        position = COMPARTMENT_STATE_INDEX[quantity]
+        window = marked.drawn_window(0.0, marked.snapshot().elapsed_s, 50)
+        same = unmarked.drawn_window(0.0, unmarked.snapshot().elapsed_s, 50)
+
+        assert [state.values[position] for state in window.states] == [
+            state.values[position] for state in same.states
+        ]

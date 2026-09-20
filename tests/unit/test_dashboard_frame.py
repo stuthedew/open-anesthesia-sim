@@ -26,6 +26,7 @@ from typing import Any
 
 import pytest
 
+from anesthesia_sim.app.bookmarks import BookmarkSet
 from anesthesia_sim.app.chart_frame import (
     MAX_CHART_CONTROL_MARKS,
     ChartFrame,
@@ -202,6 +203,7 @@ def _snapshot(
     agent_mac_percent: float | None = None,
     agent_mac_awake: MacAwakeReference | None = None,
     control_timeline: tuple[ControlChange, ...] = (),
+    bookmarks: BookmarkSet | None = None,
     failure_reason: str | None = None,
     supported_limit_reason: str | None = None,
     delivered_agent_l: float = 0.012345,
@@ -257,6 +259,7 @@ def _snapshot(
         agent_accounting_absolute_error_l=1.5e-13,
         agent_accounting_passes_validation=passes_validation,
         control_timeline=control_timeline,
+        bookmarks=BookmarkSet() if bookmarks is None else bookmarks,
         supported_limit_reason=supported_limit_reason,
         failure_reason=failure_reason,
     )
