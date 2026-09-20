@@ -22,7 +22,7 @@ from __future__ import annotations
 import re
 import shlex
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -92,7 +92,10 @@ STATUS_REQUIREMENTS: tuple[tuple[str, str], ...] = (
     (
         "needs-decision",
         f"an item set to `needs-decision` needs a `{DECISION_NEEDED}` section saying "
-        "what has to be decided, so a later session can answer it.",
+        "what has to be decided, so a later session can answer it, and should mark a "
+        "recommendation beside it - the question survives in the item, the reasoning "
+        "behind an answer dies with the session that had it. Where none is owed, say "
+        "so and why. `docket check` advises on a brief that marks neither.",
     ),
     (
         "blocked",
@@ -133,6 +136,55 @@ DANGLING_TOUCHES = (
     "a path no file holds reads as a path nobody touches to `docket concurrent`, "
     "the lane split and `docket verify`'s inside-`touches` audit"
 )
+
+
+def _emphasised(flat: str) -> Iterator[str]:
+    """Every run of text under `**bold**` or `*italic*` emphasis, flattened text in.
+
+    Tokenised by splitting rather than matched by a regex, because the obvious
+    pattern - emphasis, anything, the word, anything, emphasis - matches the
+    *gap between two emphasised spans* just as happily as it matches one span,
+    so a brief saying "before recommending it" between two bold headings reads
+    as having recommended. Splitting on the delimiter cannot do that: odd
+    chunks are inside, even chunks are outside, and there is no third reading.
+    """
+    bold = flat.split("**")
+    for index, chunk in enumerate(bold):
+        if index % 2:
+            yield chunk
+            continue
+        italic = chunk.split("*")
+        for position, part in enumerate(italic):
+            if position % 2:
+                yield part
+
+
+def _marks_recommendation(body: str) -> bool:
+    """Whether a brief marks a recommendation where a reader can find one.
+
+    Presence of a *marker*, never a judgment about the prose: whether the
+    recommendation is any good, or whether one is owed at all, is the half
+    `CLAUDE.md` forbids scripting. What this decides is the half that is
+    decidable - did the author label it, so that somebody meeting the item
+    cold can find the answer without reading the whole brief and inferring
+    one. That is the failure this came from: `PL-KQHN`'s recommendation was
+    reconstructed from a summary line naming two options and marking neither.
+
+    Marked means the token under emphasis - `**Recommended**`, `**This is the
+    recommendation.**`, `*Recommendation: not yet.*` - or the labelled form
+    `Recommendation:`. One pattern serves both endings a brief may honestly
+    reach, because `**No recommendation**, because the deciding number cannot
+    be measured` marks the declination in the same breath as the word.
+
+    Matched on the brief with its wrapping flattened. A marker falling across
+    a line break is the same marker to a reader and a different string to a
+    regex, and four of the eight briefs carrying one in this store wrap
+    somewhere inside it.
+    """
+    flat = " ".join(body.split())
+    if re.search(r"recommendation:", flat, re.IGNORECASE):
+        return True
+    return any(re.search(r"recommend", span, re.IGNORECASE) for span in _emphasised(flat))
 
 
 def _section_text(body: str, marker: str) -> str | None:
@@ -643,6 +695,27 @@ def _payoff_required(item: Item, config: Config) -> bool:
     if config.payoff_required_from is None:
         return False
     return item.added is not None and item.added >= config.payoff_required_from
+
+
+def _recommendation_required(item: Item, config: Config) -> bool:
+    """Whether the marked-recommendation rule reaches this item by date.
+
+    Anchored to the capture date, and it leaks the way `_payoff_required`
+    leaks - an item captured before the cutover and triaged to
+    `needs-decision` after it escapes this half. Here the leak costs less than
+    it does there, because the offered set in `_groom` covers the same items
+    from the other end: what the date misses, the moment somebody is about to
+    act on the question catches.
+
+    The two halves are not redundant, though, and neither substitutes for the
+    other. The date reaches the session *writing* the item, which is the only
+    session that still holds the reasoning and therefore the only one that can
+    record it rather than reconstruct it. The offered set reaches a session
+    that can, at best, say the recommendation was never written down.
+    """
+    if config.recommendation_required_from is None:
+        return False
+    return item.added is not None and item.added >= config.recommendation_required_from
 
 
 def _verify_required_at_close(item: Item, config: Config) -> bool:
@@ -2156,6 +2229,56 @@ def _groom(
             f"no `payoff:` ({len(owing)} of {len(unstated)} ready item(s) predating the "
             f"requirement, {config.payoff_required_from}); write the line as you start it - "
             "one plain-language sentence of what closing it buys"
+        )
+
+    # The other half of a `needs-decision` item, and the half that does not
+    # survive on its own. The question is written into the store; the
+    # recommendation that would let the owner answer it in one read is written
+    # into the reply that posed it, and a reply dies with its session while the
+    # item persists. So the longer an item waits the likelier the
+    # recommendation is gone when the answer arrives, which is backwards -
+    # waiting is what the status is for. `PL-KQHN`'s answer had to be
+    # reconstructed from a harness-written summary line naming two options and
+    # marking neither, and a decision of record about the release train rested
+    # on a reading of another model's compressed prose.
+    #
+    # Two populations, because they reach different sessions and only the
+    # first is prevention. Captured on or after the cutover means a session is
+    # writing the item now, and the advisory reaches it while it still holds
+    # the reasoning. Predating the cutover, it is reached only as it is about
+    # to be offered - the `verify:` and `payoff:` narrowing, taken for the
+    # reason those two take it: 37 of the 45 open `needs-decision` items
+    # marked nothing on 2026-09-20, and naming all of them would be an
+    # advisory that cannot reach zero without a campaign, whose cost is not
+    # the items it names but the next advisory, which gets read the same way.
+    #
+    # An advisory and never an error. A brief may honestly decline to
+    # recommend - `PL-PFK1` declines because the deciding number cannot be
+    # measured retroactively - and a check that refuses correct content is the
+    # defect `CLAUDE.md` retires a check for.
+    unmarked = [
+        item
+        for item in report.open_items
+        if config.recommendation_required_from is not None
+        and item.status == "needs-decision"
+        and not _marks_recommendation(item.body)
+    ]
+    reached = [
+        item
+        for item in unmarked
+        if _recommendation_required(item, config) or item.identifier in (offered or frozenset())
+    ]
+    if reached:
+        one = len(reached) == 1
+        report.advisories.append(
+            f"{', '.join(item.identifier for item in reached)} "
+            f"{'is at' if one else 'are at'} `needs-decision` and "
+            f"{'marks' if one else 'mark'} no recommendation "
+            f"({len(reached)} of {len(unmarked)} such item(s)); write the one you would "
+            "give into the brief, not only into the reply - the question outlives the "
+            "session that posed it and the reasoning behind an answer does not. Where a "
+            "recommendation is already in the prose, mark it so it can be found; where "
+            "none is owed, say that and why"
         )
 
     # The item-blocker half is `plan.promotable`, which `docket next` also

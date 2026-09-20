@@ -2934,3 +2934,175 @@ def test_reaching_outside_the_tree_also_softens_the_blocked_wording() -> None:
 
     assert not _has(_landed_errors(landed), "is blocked but")
     assert _has(_advisories(landed), "reads past the tree")
+
+
+# `PL-M21Q`'s advisory: a `needs-decision` item that marks no recommendation.
+#
+# The question is written into the store and the recommendation into the reply
+# that posed it, so the item outlives the reasoning behind its own answer. Every
+# test here pins one of three things: that the marker test cannot be fooled by
+# prose *about* recommending, that the two populations reach the sessions they
+# are each aimed at, and that presence is the whole of what is judged.
+RECOMMEND = Config(recommendation_required_from=date(2026, 8, 1))
+
+#: A brief posing a decision and marking no answer to it - the shape 37 of the
+#: store's 45 open `needs-decision` items had on 2026-09-20.
+UNMARKED = BRIEF + "**Decision needed.** Which of the two, and why?\n"
+
+
+def _decision(**overrides: object) -> Item:
+    base: dict[str, object] = dict(status="needs-decision", body=UNMARKED)
+    base.update(overrides)
+    return _item(**base)
+
+
+def test_a_needs_decision_item_captured_under_the_rule_is_asked_to_mark_one() -> None:
+    """The prevention half, and the only one that reaches a session that can act.
+
+    An item captured on or after the cutover is one somebody is writing now, so
+    the advisory arrives while the reasoning behind the recommendation is still
+    in the session that has it. Every other moment can only report the loss.
+    """
+    report = analyze([_decision(added=date(2026, 8, 2))], TODAY, RECOMMEND)
+
+    assert _has(report.advisories, "marks no recommendation")
+
+
+def test_a_marked_recommendation_satisfies_the_rule() -> None:
+    body = UNMARKED + "**Recommended.** Take the second, since it needs no new dependency.\n"
+    report = analyze([_decision(body=body)], TODAY, RECOMMEND)
+
+    assert not _has(report.advisories, "marks no recommendation")
+
+
+def test_a_marked_declination_satisfies_the_rule() -> None:
+    """One pattern serves both honest endings a brief may reach.
+
+    A brief may decline to recommend and be right to - `PL-PFK1` declines
+    because the deciding number cannot be measured retroactively. Marking the
+    declination carries the word, so nothing extra is needed to admit it, and
+    the advisory stays reachable-to-zero on an item that will never carry a
+    recommendation.
+    """
+    body = UNMARKED + "**No recommendation**, because the deciding number cannot be measured.\n"
+    report = analyze([_decision(body=body)], TODAY, RECOMMEND)
+
+    assert not _has(report.advisories, "marks no recommendation")
+
+
+def test_a_recommendation_left_unmarked_in_the_prose_is_still_reported() -> None:
+    """Findability is the property, not presence, and the message says so.
+
+    `PL-X3NY` carries a real recommendation - "Route 2 is the recommendation on
+    the evidence above" - in the ninth paragraph of a long brief, marked by
+    nothing. A reader skimming for the answer does not find it, which is the
+    `PL-KQHN` failure exactly. So this reports, and the wording it reports is
+    `marks no recommendation` rather than carries none, because the apparatus
+    floor is that what it tells a session has to be true.
+    """
+    body = UNMARKED + "Route 2 is the recommendation on the evidence above.\n"
+    report = analyze([_decision(body=body)], TODAY, RECOMMEND)
+
+    assert _has(report.advisories, "marks no recommendation")
+    assert _has(report.advisories, "mark it so it can be found")
+
+
+def test_prose_about_recommending_does_not_pass_the_rule() -> None:
+    """The regression test for the pattern this was nearly written with.
+
+    Emphasis, anything, the word, anything, emphasis matches the *gap between*
+    two emphasised spans as readily as it matches one span - so `**Problem.**
+    ... before recommending it ... **Why it matters.**` reads as a marked
+    recommendation under it. Two of the store's ten `needs-decision` items
+    using the word use it this way, talking about when a recommendation should
+    be formed rather than giving one (`PL-0HPV`, `PL-V67Q`), so the wrong
+    pattern would have passed both while reporting the honest silences.
+    """
+    body = (
+        "**Problem.** x\n**Why it matters.** y\n**Done when.** z\n"
+        "**Decision needed.** Which of the two?\n"
+        "Count the red runs before recommending it, and only then decide.\n"
+        "**Not decided here.** Whether the advisory is worth building.\n"
+    )
+    report = analyze([_decision(body=body)], TODAY, RECOMMEND)
+
+    assert _has(report.advisories, "marks no recommendation")
+
+
+def test_a_marker_wrapped_across_a_line_break_is_still_a_marker() -> None:
+    """Four of the eight briefs carrying one in this store wrap inside it.
+
+    `**This is the\\nrecommendation.**` is one marker to a reader and two
+    strings to a regex, so the brief is flattened before it is matched. Left
+    unflattened, the rule reports the items that followed the convention most
+    carefully, which is the worst population to be wrong about.
+    """
+    body = UNMARKED + "Smaller diff, and nothing else changes. **This is the\nrecommendation.**\n"
+    report = analyze([_decision(body=body)], TODAY, RECOMMEND)
+
+    assert not _has(report.advisories, "marks no recommendation")
+
+
+def test_the_checker_never_judges_whether_the_recommendation_is_any_good() -> None:
+    """Presence, and it stops there - `CLAUDE.md`'s line on what a tool may decide.
+
+    Whether the sentence is a sound recommendation is the judgment half, and a
+    checker guessing at it would be authoritative and wrong. A thin one passes
+    for the same reason a thin `payoff:` does.
+    """
+    body = UNMARKED + "**Recommendation:** the first.\n"
+    report = analyze([_decision(body=body)], TODAY, RECOMMEND)
+
+    assert not _has(report.advisories, "marks no recommendation")
+
+
+def test_a_grandfathered_item_is_reached_only_as_it_is_offered() -> None:
+    """The detection half, narrowed for the reason `verify:` and `payoff:` are.
+
+    37 of the store's 45 open `needs-decision` items marked nothing on
+    2026-09-20. Naming all of them every run is an advisory that cannot reach
+    zero without a campaign, and the cost of one of those is not the items it
+    names but the next advisory, which gets read the same way.
+    """
+    old = _decision(added=OLD)
+
+    assert _has(
+        analyze([old], TODAY, RECOMMEND, offered=_offering("PL-K7QX")).advisories,
+        "marks no recommendation",
+    )
+    assert not _has(
+        analyze([old], TODAY, RECOMMEND, offered=_offering()).advisories, "marks no recommendation"
+    )
+
+
+def test_the_advisory_counts_the_backlog_it_is_not_naming() -> None:
+    """Narrowed, not softened: the scale stays visible without being listed."""
+    backlog = [_decision(identifier=f"PL-000{n}", added=OLD) for n in range(1, 4)]
+    report = analyze(backlog, TODAY, RECOMMEND, offered=_offering("PL-0001"))
+
+    assert _has(report.advisories, "PL-0001 is at `needs-decision`")
+    assert _has(report.advisories, "(1 of 3 such item(s))")
+
+
+def test_only_a_needs_decision_item_is_asked_for_a_recommendation() -> None:
+    """An item at `ready` has no question in it for a recommendation to answer."""
+    report = analyze([_item(added=date(2026, 8, 2))], TODAY, RECOMMEND)
+
+    assert not _has(report.advisories, "marks no recommendation")
+
+
+def test_the_recommendation_rule_is_off_when_a_project_declares_no_cutover() -> None:
+    report = analyze([_decision(added=date(2026, 8, 2))], TODAY, Config())
+
+    assert not _has(report.advisories, "marks no recommendation")
+
+
+def test_the_missing_recommendation_is_never_an_error() -> None:
+    """A brief may honestly decline, so a refusal here would refuse correct content.
+
+    `CLAUDE.md` retires a check that fires on work that is right, and reserves
+    hard failure for exact rules. Whether a recommendation is *owed* is not one.
+    """
+    report = analyze([_decision(added=date(2026, 8, 2))], TODAY, RECOMMEND)
+
+    assert not _has(report.errors, "recommendation")
