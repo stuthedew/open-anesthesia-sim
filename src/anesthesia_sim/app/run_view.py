@@ -110,6 +110,7 @@ from anesthesia_sim.app.qt_widgets import (
     NoticeLabel,
     ParameterSlider,
     ReadoutRow,
+    popup_stylesheet,
     selector_stylesheet,
     styled_label,
     transport_button_stylesheet,
@@ -201,12 +202,20 @@ def _text_stylesheet(scheme: AgentColorScheme) -> str:
 
 
 def _selector_stylesheet(scheme: AgentColorScheme) -> str:
-    """The agent selector in the running agent's pair, edged in its foreground."""
+    """The agent selector in the running agent's pair, edged in its foreground.
+
+    The popup it opens is not in the agent's colours and does not vary with
+    the agent: it lists all three, each row carrying its own ISO 5360 fill
+    as item data, so the list's own surface is the interface's
+    (`popup_stylesheet`). Appending it here rather than setting it once at
+    construction is what makes it survive the selector being laid out
+    (`PL-0NVN`).
+    """
 
     return (
         f"QComboBox {{ background-color: {scheme.fill}; color: {scheme.foreground}; "
         f"border: 1px solid {scheme.foreground}; border-radius: {PANEL_RADIUS}px; "
-        f"padding: 4px 8px; font-weight: bold; }}"
+        f"padding: 4px 8px; font-weight: bold; }} " + popup_stylesheet()
     )
 
 

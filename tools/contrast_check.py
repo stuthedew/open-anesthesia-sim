@@ -449,7 +449,19 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "is the host appearance's value rather than this interface's - near-white "
         "under macOS Dark, which put Start, Pause and Reset to white-on-white "
         "while every surface around them stayed this light theme's. The pair is "
-        "measured here only because the stylesheet writes it",
+        "measured here only because the stylesheet writes it. Also everything "
+        "drawn from palette Text on palette Base, which `declare_interface_colours` "
+        "declares as this pair for the same reason: the instant and the height a "
+        "reader types into the bookmark editor and the rows its two lists state "
+        "(`BookmarkDialog`), and the tick of each compartment check box, whose "
+        "*label* the legend declares and whose indicator it did not "
+        "(`TraceLegend`). A palette rather than a stylesheet because an entry's "
+        "fill, a spin box's stepper and a check box's indicator are painted from "
+        "a role no stylesheet reaches, and styling them as one costs the native "
+        "stepper and the drop-down arrow (PL-RKRY, PL-7W9N). Also the rows of the "
+        "list a selector opens (`popup_stylesheet`), which a stylesheet on the "
+        "selector had left resolving from the application palette - the host "
+        "appearance's - however the selector itself was declared (PL-0NVN)",
     ),
     Requirement(
         "MUTED",
@@ -506,7 +518,13 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "no exemption is claimed and none has to be (PL-DHBX). The enabled "
         "label is INK on the same surface, and the 11.50:1 against this "
         "5.00:1 is what separates the two states; `_status_text` beside them "
-        "says which in words.",
+        "says which in words. Also the placeholder in the bookmark editor's two "
+        'name entries - the word "Optional" standing where a mark\'s name would '
+        "be - which `declare_interface_colours` declares as palette PlaceholderText "
+        "(`BookmarkDialog`). It is the role a half-fix makes worse rather than "
+        "better: declaring a light fill and leaving this one the host's puts a "
+        "near-white hint on PANEL, so the pair has to be declared with the fill "
+        "(PL-RKRY).",
     ),
     Requirement(
         "ACCENT_TEXT",
@@ -570,7 +588,13 @@ REQUIREMENTS: tuple[AnyRequirement, ...] = (
         "interface, filled so that the safe action reads as the default and "
         "filled-versus-outlined is a second channel beside its trailing "
         "position. The text is at the application default size, so the "
-        "normal-text minimum applies; 6.02:1 when declared (PL-25KS)",
+        "normal-text minimum applies; 6.02:1 when declared (PL-25KS). Also the "
+        "selected row of either list in the bookmark editor and of the list a "
+        "selector opens, declared as palette HighlightedText on Highlight by "
+        "`declare_interface_colours` and as `selection-color` on "
+        "`selection-background-color` by `popup_stylesheet`. The selection is "
+        'what "Remove selected" acts on, so which row is selected is a claim a '
+        "reader acts on rather than decoration (PL-RKRY, PL-0NVN)",
     ),
     Requirement(
         "sevoflurane.foreground",
@@ -1104,10 +1128,25 @@ def check_authored_disabled_colours_are_measured(root: Path) -> tuple[str, ...]:
     that requirement names the right pair stays a reader's judgment exactly as
     `check_citations` leaves it.
 
-    `setPalette` is still refused outright, and for a reason the admission does
-    not reach: it replaces the whole `Disabled` colour group at once, for every
-    role and every widget under it, so there is no pair a requirement could
-    name. A stylesheet rule writes one colour onto one selector.
+    `setPalette` is admitted on the same terms and refused everywhere else,
+    which is narrower than it was. It used to be refused outright, because a
+    palette assigned wholesale replaces the `Disabled` colour group too - for
+    every role at once, so there is no pair a requirement could name - and the
+    only known case was a colour a stylesheet could have written instead. That
+    premise does not cover the controls `PL-RKRY` and `PL-7W9N` found: an
+    entry's fill, a spin box's stepper and a check box's indicator are painted
+    from palette roles that no stylesheet reaches, and styling them as one
+    costs the native stepper and the tick. So a palette is the only mechanism
+    available there, and refusing it outright would have meant leaving those
+    controls painting the host appearance's near-black surfaces.
+
+    What the refusal was protecting is now held where it can be checked
+    exactly: `qt_widgets.declare_interface_colours` writes the `Active` and
+    `Inactive` groups only, leaving `Disabled` as the platform supplied it, and
+    `tests/integration/test_dark_appearance.py` holds that role by role. This
+    check keeps the part that stays decidable by reading the tree - that the
+    function doing it is one a requirement names - exactly as it does for a
+    `:disabled` rule.
 
     Returns:
         One message per offending site, empty when every authored disabled
@@ -1133,11 +1172,15 @@ def check_authored_disabled_colours_are_measured(root: Path) -> tuple[str, ...]:
                         "against (PL-NGF7, PL-DHBX)"
                     )
             elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-                if node.func.attr == "setPalette":
+                if node.func.attr == "setPalette" and holder not in cited:
+                    owner = f"`{holder}`" if holder else "module level"
                     offenders.append(
-                        f"  {module}:{node.lineno}: setPalette replaces the whole Disabled "
-                        "colour group, so there is no single pair a requirement could name. "
-                        "Write the colour onto the selector that needs it instead (PL-NGF7)"
+                        f"  {module}:{node.lineno}: a setPalette at {owner}, which no "
+                        "requirement cites. A palette assigned wholesale carries the "
+                        "Disabled colour group with it, so it owes a requirement naming "
+                        "the pairs it writes and a guarantee that it leaves that group to "
+                        "the platform - `declare_interface_colours` is the worked example "
+                        "(PL-NGF7, PL-RKRY)"
                     )
     return tuple(offenders)
 

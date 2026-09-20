@@ -44,7 +44,7 @@ from math import ceil
 from typing import Final
 
 from PySide6.QtCore import QPoint, QRect, QSignalBlocker, QSize, Qt, Signal
-from PySide6.QtGui import QFont, QFontMetrics, QResizeEvent
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPalette, QResizeEvent
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -206,6 +206,38 @@ def _slider_stylesheet() -> str:
     )
 
 
+def popup_stylesheet() -> str:
+    """The list a selector opens: PANEL fill, INK rows, a PRIMARY selection.
+
+    A combo box declares its *closed* surface in a stylesheet -
+    `selector_stylesheet` for the two view controls, the running agent's
+    ISO 5360 pair in `run_view` for the agent selector - and a stylesheet on
+    a widget makes everything inside it resolve from the application palette
+    rather than from the widget. The popup is a child item view, so it drew
+    the host appearance's surface however the selector itself was styled,
+    which is `PL-0NVN`.
+
+    **A rule rather than a palette on the view, because a palette there does
+    not survive the widget being laid out.** Setting one on
+    `QComboBox.view()` where the selector is built reads back correctly
+    until the selector is added to a layout, at which point the popup is
+    reparented, its palette re-resolves from the application's, and the
+    declaration is silently gone - measured, having first shipped that way.
+    A rule cannot be undone by reparenting, and this is Qt's own documented
+    idiom for the popup.
+
+    Per-item colour is untouched by it: the three agent rows carry their
+    ISO 5360 fill and foreground as `BackgroundRole` and `ForegroundRole`,
+    which the item delegate paints from the model over whatever the view's
+    own background is.
+    """
+
+    return (
+        f"QComboBox QAbstractItemView {{ background-color: {PANEL}; color: {INK}; "
+        f"selection-background-color: {PRIMARY}; selection-color: {PANEL}; }}"
+    )
+
+
 def selector_stylesheet() -> str:
     """A combo box a reader reads rather than merely operates: PANEL fill, MUTED edge, INK text.
 
@@ -220,7 +252,7 @@ def selector_stylesheet() -> str:
 
     return (
         f"QComboBox {{ background-color: {PANEL}; color: {INK}; border: 1px solid {MUTED}; "
-        f"border-radius: {PANEL_RADIUS}px; padding: 4px 8px; }}"
+        f"border-radius: {PANEL_RADIUS}px; padding: 4px 8px; }} " + popup_stylesheet()
     )
 
 
@@ -274,6 +306,82 @@ def transport_button_stylesheet() -> str:
         f"QPushButton:enabled {{ color: {INK}; }} "
         f"QPushButton:disabled {{ color: {MUTED}; }}"
     )
+
+
+#: The palette roles this interface declares, and the `app/theme.py` colour
+#: each is declared as. `Base` and `Text` are an entry's fill and the text
+#: typed into it, a list's rows, and a check box's indicator and its tick;
+#: `Button` and `ButtonText` are a spin box's steppers and their arrows;
+#: `PlaceholderText` is the word standing where a name has not been typed;
+#: `Highlight` and `HighlightedText` are a selected row. `Window` and
+#: `WindowText` are the surface a dialog paints and anything on it that
+#: declares nothing.
+_DECLARED_ROLES: Final = (
+    (QPalette.ColorRole.Window, PANEL),
+    (QPalette.ColorRole.WindowText, INK),
+    (QPalette.ColorRole.Base, PANEL),
+    (QPalette.ColorRole.AlternateBase, PANEL),
+    (QPalette.ColorRole.Text, INK),
+    (QPalette.ColorRole.Button, PANEL),
+    (QPalette.ColorRole.ButtonText, INK),
+    (QPalette.ColorRole.PlaceholderText, MUTED),
+    (QPalette.ColorRole.Highlight, PRIMARY),
+    (QPalette.ColorRole.HighlightedText, PANEL),
+)
+
+
+def declare_interface_colours(widget: QWidget) -> None:
+    """Draw one widget's palette-painted parts in this interface's colours.
+
+    Every surface this interface draws is declared - a panel, a badge, a
+    button, a slider - and a widget that declares nothing paints from Qt's
+    palette instead, which follows the *host appearance* rather than this
+    interface. `PL-DHBX` was that on the transport buttons' labels. The
+    controls here are the half no stylesheet reaches: an entry's fill, a spin
+    box's stepper, a list's rows and its scroll bar, a check box's indicator
+    and a dialog's own surface are each painted from a palette role, so under
+    a dark host appearance they arrived near-black inside a light dialog
+    (`PL-RKRY`, `PL-7W9N`).
+
+    **A palette rather than a stylesheet, measured rather than assumed.**
+    Styling `QAbstractSpinBox` with `setStyleSheet` moves the widget onto
+    `QStyleSheetStyle`, which rendered both spin boxes without their up/down
+    steppers - and the stepper is the only way to change the value with a
+    mouse. A styled `QCheckBox::indicator` loses its tick entirely unless an
+    image is supplied for it, which would leave drawn and hidden identical.
+    Declaring the roles keeps every native sub-control and recolours it.
+    `popup_stylesheet` is the one place the opposite holds, and says why.
+
+    **The `Disabled` colour group is left exactly as the platform supplied
+    it**, which is what makes this admissible at all:
+    `.claude/rules/ui-color.md` keeps a disabled colour the platform's with
+    one declared exception - `transport_button_stylesheet`'s MUTED label -
+    and `tools/contrast_check.py` refuses a second. Only the `Active` and
+    `Inactive` groups are written here, from the widget's own palette
+    outwards, so nothing in this interface chooses a disabled colour that no
+    requirement measures. `test_dark_appearance.py` holds it. Nothing this is
+    applied to is disabled today: the whole disabled set is the inert
+    splitter handle, the agent selector, which is hidden by the same
+    expression, and the three transport buttons.
+
+    The colours are `app/theme.py`'s, and every pair they make is already
+    measured: `tools/contrast_check.py` holds INK on PANEL for the text a
+    reader types and the rows a list states, MUTED on PANEL for the
+    placeholder, and PANEL on PRIMARY for a selected row.
+
+    Args:
+        widget: The widget to declare. Its own palette is the starting
+            point, so a role this interface does not name keeps whatever it
+            already resolved to - and the `Disabled` group keeps all of it.
+    """
+
+    palette = QPalette(widget.palette())
+
+    for role, color in _DECLARED_ROLES:
+        for group in (QPalette.ColorGroup.Active, QPalette.ColorGroup.Inactive):
+            palette.setColor(group, role, QColor(color))
+
+    widget.setPalette(palette)
 
 
 class FlowLayout(QLayout):
@@ -807,7 +915,11 @@ class NewCaseDialog(QDialog):
     The surface is `theme.PANEL`, set rather than left to the platform, so
     the title's INK, the discard line's WARNING and the carry-over line's
     MUTED stand on the surface `tools/contrast_check.py` measures them
-    against (`PL-R3KB`).
+    against (`PL-R3KB`). It is declared as a palette rather than as a
+    one-rule stylesheet since `PL-RKRY`: a stylesheet on a dialog is what
+    stops everything inside it inheriting the dialog's own colours, so a
+    control added here later would paint the host appearance's however this
+    surface was set.
 
     Attributes:
         title_label: Names the agent the reader would start.
@@ -830,7 +942,7 @@ class NewCaseDialog(QDialog):
         super().__init__(parent)
         self.setModal(True)
         self.setWindowTitle(question.title)
-        self.setStyleSheet(f"QDialog {{ background-color: {PANEL}; }}")
+        declare_interface_colours(self)
         self.title_label = styled_label(question.title, color=INK, bold=True, wrap=True)
         opening, discard_warning, carry_over = question.body
         self.body_labels = (
@@ -962,6 +1074,14 @@ class BookmarkDialog(QDialog):
     window over a moving chart is a reader locked out of the transport
     controls by a window about something else.
 
+    **The surface is declared as a palette**, which is also what the six
+    input controls are drawn from (`PL-RKRY`). Their fills, the spin boxes'
+    steppers, the lists' rows and scrollbars and the compartment popup all
+    paint from palette roles, so under a dark host appearance they arrived
+    near-black inside this light dialog; a one-rule stylesheet on the dialog
+    is what stopped them inheriting it. `declare_interface_colours` carries the
+    reasoning and the roles.
+
     **The height a target may be set to is bounded by the running agent**,
     and the bound is here rather than on `MacTarget` because it is the
     agent's rather than the mark's. No compartment can exceed the delivered
@@ -992,7 +1112,7 @@ class BookmarkDialog(QDialog):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle(BOOKMARK_DIALOG_TITLE)
-        self.setStyleSheet(f"QDialog {{ background-color: {PANEL}; }}")
+        declare_interface_colours(self)
         self.setMinimumWidth(BOOKMARK_DIALOG_WIDTH)
 
         self.instant_spin = QDoubleSpinBox()

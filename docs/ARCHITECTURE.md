@@ -1046,7 +1046,11 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   enablement and visibility back, and the whole dashboard rendered headless
   at one fixed size (`test_qt_rendering.py`), which reads the painted pixels
   and the laid-out geometry back and writes the screenshot `docs/worker.md`
-  shows a session how to take (`PL-YCWZ`). `tests/conftest.py` selects Qt's
+  shows a session how to take (`PL-YCWZ`), and what the interface draws when
+  the *host* is set to a dark appearance (`test_dark_appearance.py`), which
+  sets the palette such a host supplies on the `QApplication` - where the
+  others set it on one widget - because the declarations it tests are
+  themselves palettes (`PL-RKRY`). `tests/conftest.py` selects Qt's
   `offscreen` platform plugin before any `PySide6` import, so the suite renders
   on a runner with no display; on Linux that plugin needs `libegl1` from the
   OS, which `.github/workflows/quality.yml` installs and the PySide6 wheels
