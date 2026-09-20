@@ -3,11 +3,12 @@ id: PL-8G48
 title: The v0.5.0 gate's last two entries and PL-439V became promotable when PL-FG9D and PL-4DCG closed today, and all three still read as blocked
 priority: P2
 effort: S
-status: ready
+status: done
 classes: planning, docs
 feature: debt-gate
-touches: docs/items
+touches: docs/items, ROADMAP.md
 added: 2026-09-20
+closed: 2026-09-20
 payoff: gets three blocked-but-promotable items back in front of bin/docket next, including two of v0.5.0's five open gate entries that no session is currently offered
 verify: ! grep -lE '^blocked-by:.*(PL-FG9D|PL-4DCG)' docs/items/PL-WZVZ-*.md docs/items/PL-8PS6-*.md docs/items/PL-439V-*.md
 not-delegable: The deliverable is a per-item judgment recorded in three item files - whether each is genuinely startable now that PL-FG9D and PL-4DCG have closed, and for PL-WZVZ whether an anticipated safety concern keeps its P3 band once its hazard is live. No command can tell a promotion that was reasoned from one that was typed, and the verify: only proves no closed blocker is still named.
@@ -94,3 +95,42 @@ Three consequences, all of them corrections to text above rather than new work:
 **The pass itself is unchanged.** The three items needing a disposition are the
 same three, for the same reason, and the `verify:` command does not read the
 gate. What changed is only what closing this item buys.
+
+## The pass, 2026-09-20
+
+**Four items, not three.** `bin/docket check` named `PL-CTD7` (detect a bookmark
+crossing inside the advance loop) as a fourth promotable item after `PL-LPLD`
+merged as `#758`, which this brief predates. It is worked here on the same
+reasoning and by the same test.
+
+**One of the four was promotable.** Each was read against the tree as it now
+stands, and the reasoning lives in the item rather than here:
+
+| item | disposition | why |
+| --- | --- | --- |
+| `PL-8PS6` | `ready`, `P1` | the machine profile carrier exists and the abstraction slots the field; the split is buildable over one profile |
+| `PL-439V` | `done` | `docs/machine-abstraction.md` § "Dial mapping" already answers all three clauses of its `Done when.` |
+| `PL-WZVZ` | stays `blocked`, now `PL-TH35, PL-R1WQ` | one machine profile, no selection surface; and its table is a new display surface, deferred by item 34's standing rule |
+| `PL-CTD7` | `needs-decision`, `P1` | two user-facing questions were written into it on 2026-09-20, after its last triage |
+
+**Both band moves are the `anticipated` exemption lapsing, not a re-rating.**
+`check_gate_reentries` exempts a `safety` item from the `P1` floor only while
+`anticipated` and `status: blocked` hold together, so leaving `blocked` is the
+event that returns the finding to the debt gate. `docket set` refused both moves
+at `P2` in those words. Neither hazard is live; `anticipated` stays on both.
+
+**`ROADMAP.md` was edited, which widened this item's `touches`.** Re-pointing
+`PL-WZVZ` at two v0.6.0-placed items is a gate deferral, and § "The gate is a
+snapshot, not a moving target" permits one only where the deferral section "says
+so and says why" - a `blocked-by:` field alone is the `PL-9S30` defect. Two
+paragraphs in § "Declined to Gate 2 on the refilling-queue ground" said the two
+entries both wait on `PL-FG9D`; both now say what is true.
+
+**`PL-CHQY` closes with this.** It was filed the same day from the same
+advisory over the same three items - two sessions, one finding - and its
+`Done when.` is satisfied in full by this pass.
+
+**The measurement went to `PL-6T44`**, the recorded generator behind the
+appearance, which is at `needs-decision` and weighing exactly this: across this
+pass and `PL-JFQ3`'s, 13 items the advisory called promotable, 6 genuinely
+startable. The decision is not answered there; the count it rests on is.

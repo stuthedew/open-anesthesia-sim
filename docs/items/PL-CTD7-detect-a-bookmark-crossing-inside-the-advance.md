@@ -1,14 +1,14 @@
 ---
 id: PL-CTD7
 title: Detect a bookmark crossing inside the advance loop, with an explicit not-reached outcome
-priority: P2
+priority: P1
 effort: M
-status: blocked
-blocked-by: PL-LPLD
+status: needs-decision
 classes: safety, feature, anticipated
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/simulation.py, tests/unit, docs/MODEL.md
 added: 2026-09-06
+payoff: stops a threshold halt landing up to 30 simulated seconds past the value the learner asked for, silently and differently depending on how fast they were running
 ---
 
 **Problem.** A threshold bookmark ("stop when the vessel-rich group reaches 0.8
@@ -99,3 +99,61 @@ a target halt the run on every crossing, or once until it is re-armed? Both are
 defensible and the choice is user-facing, so it belongs with the rest of this
 item's outcome set rather than being settled by whichever loop is written
 first. Nothing is broken today: nothing detects a crossing yet.
+
+## Unblocked but not startable, 2026-09-20 (`PL-8G48`)
+
+`PL-LPLD` (add time bookmarks and MAC targets as two separately listed
+collections) closed as `#758`, so the blocker is gone and `bin/docket check`
+reported this item as ready to promote. It goes to `needs-decision` instead,
+because the two sections above - both written on 2026-09-20, after this item
+was last triaged - put a user-facing question in front of the loop. The item
+itself says the re-arming question "belongs with the rest of this item's outcome
+set rather than being settled by whichever loop is written first", and writing
+the detection loop is exactly what would settle it by accident.
+
+**Decision needed.**
+
+1. **Does a MAC target halt the run on every crossing, or once until it is
+   re-armed?** With the crossing direction removed from `MacTarget` on
+   2026-09-20, a target names a compartment and a height and nothing else, so a
+   case taken up through 0.8 x MAC and back down crosses it twice. A halt leaves
+   the run paused (established above, from `PL-NBWP`), so "every crossing" means
+   a wash-out interrupts the learner a second time at a value they have already
+   seen and acted on; "once until re-armed" means a learner who *wants* the
+   downward crossing has to ask for it.
+
+   **Recommendation: once until re-armed.** It keeps the simplification that
+   removing the direction field bought - the learner never classifies a target
+   as rising or falling - while putting the second halt behind a deliberate act
+   rather than making it the default. Re-arming is also discoverable at no cost,
+   because the run is already paused at that target's own row when the choice
+   arises. The cost is one extra control and one extra state per target, and it
+   is reversible: "every crossing" is the same loop with the re-arm flag pinned
+   on.
+
+**Decided in-session, under rule 14 of `.claude/rules/instruction-writing.md`:
+the inherited-bookmark case gets its own outcome, rather than folding into
+"not reached".** The section above leaves it open as the fourth member of the
+set; it is recorded here as settled because the safety-critical standard
+determines it rather than taste. A time bookmark lying before a branch's own
+fork instant is unreachable **by construction** and is decidable statically from
+`ResumePoint.elapsed_s`, without running anything. Reporting it as "not reached
+within the run-time cap" would tell a learner that running longer might reach
+it, which is false - a plausible-looking outcome that misrepresents what the
+model can do, which `CLAUDE.md` forbids for a displayed value. So the outcome
+set is four-valued: **reached**, **not reached within the cap**, **still
+running**, and **unreachable from this branch's fork instant**. If the project
+owner would rather it read differently, that is display copy and costs one line;
+the requirement that it not read as the cap case is not a preference.
+
+**The band moves to `P1`, and that is the status change rather than a
+re-rating.** `check_gate_reentries` exempts a `safety` item from the P1 floor
+only while `anticipated` **and** `status: blocked` hold together, so leaving
+`blocked` is what returns this finding to the debt gate - the settled behavior
+`PL-ZF2G` installed and `PL-JFQ3` applied, not a judgment made here. `docket
+set` refused the move at `P2` in those words.
+
+**Nothing is broken today** - nothing detects a crossing yet - so this is not a
+live safety defect, and `anticipated` stays on the item to say so. The `safety`
+class describes the overshoot hazard the detection loop is built to prevent, and
+what has changed is that the question in front of it is now answerable.

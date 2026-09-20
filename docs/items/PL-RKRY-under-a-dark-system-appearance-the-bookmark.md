@@ -9,6 +9,7 @@ feature: platform-palette
 touches: src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_dark_appearance.py, tools/contrast_check.py, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/ui-color.md
 added: 2026-09-20
 closed: 2026-09-20
+pr: 762
 payoff: the dialog a learner types an instant and a MAC height into stops rendering black boxes on a light dialog under a dark host
 verify: grep -q 'def test_the_bookmark_dialog_draws_the_theme_rather_than_the_host_palette' tests/integration/test_dark_appearance.py
 ---
