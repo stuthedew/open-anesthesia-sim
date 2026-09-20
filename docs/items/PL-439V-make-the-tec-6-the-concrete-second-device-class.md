@@ -9,6 +9,7 @@ feature: anesthesia-machine
 touches: docs/MODEL.md, ROADMAP.md, docs/machine-abstraction.md
 added: 2026-09-06
 closed: 2026-09-20
+pr: 765
 payoff: closes the design question the machine abstraction had to answer before a second machine could be added - the Tec 6 is named as its own device class rather than flattened into a variable-bypass vaporizer with an 18 in the maximum field
 verify: grep -q 'fixed_volume_percent.*dial is volumes percent' docs/machine-abstraction.md
 ---

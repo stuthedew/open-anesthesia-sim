@@ -3,12 +3,13 @@ id: PL-CTD7
 title: Detect a bookmark crossing inside the advance loop, with an explicit not-reached outcome
 priority: P1
 effort: M
-status: needs-decision
+status: ready
 classes: safety, feature, anticipated
 feature: scenario-branching
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/core/simulation.py, tests/unit, docs/MODEL.md
+touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/core/simulation.py, tests/unit, docs/MODEL.md
 added: 2026-09-06
 payoff: stops a threshold halt landing up to 30 simulated seconds past the value the learner asked for, silently and differently depending on how fast they were running
+verify: grep -q 'def test_a_target_halts_on_every_crossing_in_either_direction' tests/unit/test_bookmarks.py
 ---
 
 **Problem.** A threshold bookmark ("stop when the vessel-rich group reaches 0.8
@@ -100,7 +101,11 @@ defensible and the choice is user-facing, so it belongs with the rest of this
 item's outcome set rather than being settled by whichever loop is written
 first. Nothing is broken today: nothing detects a crossing yet.
 
-## Unblocked but not startable, 2026-09-20 (`PL-8G48`)
+**Answered: every crossing** (project owner, 2026-09-20). See § "Decided: a MAC
+target halts on every crossing" below, which also carries the two detector
+properties that follow from it.
+
+## Held at `needs-decision` for one sitting, 2026-09-20 (`PL-8G48`)
 
 `PL-LPLD` (add time bookmarks and MAC targets as two separately listed
 collections) closed as `#758`, so the blocker is gone and `bin/docket check`
@@ -111,7 +116,58 @@ itself says the re-arming question "belongs with the rest of this item's outcome
 set rather than being settled by whichever loop is written first", and writing
 the detection loop is exactly what would settle it by accident.
 
-**Decision needed.**
+**The project owner answered the same day and the item is `ready`.** This
+section is the record of why it waited, not a live state.
+
+## Decided: a MAC target halts on every crossing (project owner, 2026-09-20)
+
+**Chosen over "once until re-armed", which is what this session recommended.**
+The recommendation is left below rather than deleted, so a later reading finds
+the decision and not only its outcome.
+
+**The reason the recommendation was wrong** is that a re-arm flag is a hidden
+mode: two targets identical in the list, behaving differently because one has
+fired and one has not, with nothing on screen distinguishing them.
+`.claude/rules/expert-review.md` asks that hidden modes and context-dependent
+behavior be minimized, and the re-arm proposal added one to save an interruption
+the learner could simply resume through. The cost side was also overstated -
+resuming a paused run is one control, and the learner is already looking at it.
+
+**It also matches what the store already said.** `MacTarget`'s own docstring
+records the 2026-09-20 decision to carry no crossing direction, in these words:
+*"a height is a height, and a run that passes through it on the way up and again
+on the way down has reached what the learner marked both times."* Halting only
+once would have made that sentence false for the second crossing.
+
+### Two consequences to pin down, both of which follow from the decision
+
+Neither reopens it, and neither is the re-arm mode in disguise - both are
+properties of the detector rather than states a target carries or a learner
+sets.
+
+1. **A crossing is a transition between steps, not a comparison at one step.**
+   Tested as "the value is at or above the height", a run that settles exactly
+   at `0.8 x MAC` satisfies it on every subsequent step and the run can never
+   advance. The test is that the value was on one side at the previous step and
+   is on the other at this one, which is also the only form that can report
+   *which* step crossed - the thing this item exists to get right.
+2. **The crossing just halted on is not a new crossing when the run resumes.**
+   The halt leaves the run paused *on* the crossing step. If the detector
+   re-evaluated from nothing on resume it would halt again immediately and the
+   run could never pass a target at all. Carrying the side the value was on at
+   the previous step is what prevents that, and it is the same state clause 1
+   already requires - not a per-target armed flag, and nothing a learner can see
+   or set.
+
+**Done when, extended by this decision.** In addition to the clauses above: a
+run taken up through a target and back down halts twice, asserted by test; a run
+that settles exactly on a target's height halts once and then advances,
+asserted by test; and `docs/MODEL.md` states that a target halts on every
+crossing in either direction.
+
+---
+
+**The decision this replaced, kept as the record of what was weighed.**
 
 1. **Does a MAC target halt the run on every crossing, or once until it is
    re-armed?** With the crossing direction removed from `MacTarget` on

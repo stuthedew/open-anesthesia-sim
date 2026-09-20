@@ -8,6 +8,7 @@ classes: housekeeping
 touches: docs/items
 added: 2026-09-20
 closed: 2026-09-20
+pr: 765
 payoff: puts PL-7TVT's finding back where every session can read it, instead of only on an archived session's branch ref that the next prune would have taken
 verify: grep -q '^id: PL-7TVT' docs/items/PL-7TVT-bin-docket-flight-separates-a-live-session-from.md
 ---

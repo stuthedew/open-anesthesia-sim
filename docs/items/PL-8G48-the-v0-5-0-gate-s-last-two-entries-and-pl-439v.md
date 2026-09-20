@@ -9,6 +9,7 @@ feature: debt-gate
 touches: docs/items, ROADMAP.md
 added: 2026-09-20
 closed: 2026-09-20
+pr: 765
 payoff: gets three blocked-but-promotable items back in front of bin/docket next, including two of v0.5.0's five open gate entries that no session is currently offered
 verify: ! grep -lE '^blocked-by:.*(PL-FG9D|PL-4DCG)' docs/items/PL-WZVZ-*.md docs/items/PL-8PS6-*.md docs/items/PL-439V-*.md
 not-delegable: The deliverable is a per-item judgment recorded in three item files - whether each is genuinely startable now that PL-FG9D and PL-4DCG have closed, and for PL-WZVZ whether an anticipated safety concern keeps its P3 band once its hazard is live. No command can tell a promotion that was reasoned from one that was typed, and the verify: only proves no closed blocker is still named.
