@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: feature, ux
 feature: scenario-branching
-touches: src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, docs/ARCHITECTURE.md, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, docs/ARCHITECTURE.md, tests/integration/test_simulation_view.py
 added: 2026-09-20
 payoff: makes v0.5.0's Goal reachable - a learner can actually take the branch, instead of forking staying machinery no shipped entry point calls
 verify: grep -q 'def test_taking_a_fork_adds_the_branch_to_the_dashboard' tests/integration/test_simulation_view.py
