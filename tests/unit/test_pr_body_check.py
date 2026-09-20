@@ -164,3 +164,42 @@ def test_says_nothing_when_the_default_branch_cannot_be_read(
 
     assert pr_body_check.default_branch_ref() is None
     assert pr_body_check.main([]) == 0
+
+
+def test_a_pull_request_with_no_body_is_tombstoned_rather_than_reported_forever(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """A body that cannot exist must stop being reported, without being called recovered.
+
+    `#325` is the live case: `body` is null on GitHub, and its squash commit
+    escaped this check only because GitHub left the 46-character
+    `Co-authored-by` trailer behind. Without a tombstone the advisory would
+    report a loss that no run could ever repair, which is the shape of an
+    advisory nobody can act on.
+    """
+    recovery = tmp_path / "pr-bodies"
+    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", recovery)
+    _install(monkeypatch, [("abc1234", "PL-8PS6: a title (#768)", "")])
+    monkeypatch.setattr(pr_body_check, "fetch_body", lambda slug, pr: pr_body_check.NO_BODY)
+    monkeypatch.setattr(pr_body_check, "queue_backlinks", dict)
+
+    assert pr_body_check.recover("origin/main") == 1
+    written = (recovery / "768.md").read_text(encoding="utf-8")
+    assert "nothing to recover" in written
+    assert pr_body_check.missing("origin/main") == []
+
+
+def test_the_advisory_is_one_line(monkeypatch: pytest.MonkeyPatch, tmp_path, capsys) -> None:
+    """Session-start output is resent on every turn, so the budget is a line.
+
+    `tools/dead_ends.py` caps its emitted half for the same reason. A
+    multi-line advisory here is paid by every turn of every session for as long
+    as one loss stays unrecovered, which at the measured recurrence is always.
+    """
+    monkeypatch.setattr(pr_body_check, "RECOVERY_DIR", tmp_path / "pr-bodies")
+    _install(monkeypatch, [(f"abc123{n}", f"PL-8PS6: a title (#{760 + n})", "") for n in range(9)])
+
+    assert pr_body_check.main([]) == 0
+    printed = capsys.readouterr().out.strip()
+    assert printed.count("\n") == 0
+    assert "--recover" in printed
