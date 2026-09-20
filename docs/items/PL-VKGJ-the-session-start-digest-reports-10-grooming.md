@@ -6,7 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: queue-hygiene
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 added: 2026-09-19
 closed: 2026-09-20
 verify: grep -q 'def test_the_digest_and_next_count_the_grooming_debt_check_counts' subprojects/docket/tests/test_cli.py
