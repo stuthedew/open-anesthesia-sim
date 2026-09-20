@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: docs, planning
 feature: machine-profile-framework
+milestone: v0.4.35
 touches: ROADMAP.md, docs/items
 added: 2026-09-20
 closed: 2026-09-20
+pr: 776
 payoff: stops the machine-profile framework staying scheduled after v0.9.0 behind a multi-substance generalization no config file needs, and stops the next machine item being scoped against the fleet of machines item 1 never asked for
 verify: grep -qF 'The framework half is item 40, and it is not gated behind Phase 1.' ROADMAP.md
 ---

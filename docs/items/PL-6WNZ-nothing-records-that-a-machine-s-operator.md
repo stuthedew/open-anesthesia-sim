@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: docs
 feature: anesthesia-machine
+milestone: v0.4.35
 touches: docs/machine-survey.md, docs/machine-abstraction.md, docs/items
 added: 2026-09-20
 closed: 2026-09-20
+pr: 776
 payoff: stops a later session reading the machine survey as eight profiles to build, and stops the milestone blocking on manuals nobody needs yet
 verify: grep -qF 'sought as that machine' docs/machine-survey.md
 ---

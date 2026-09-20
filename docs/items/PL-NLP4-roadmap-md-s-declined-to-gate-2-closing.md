@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, docs
 feature: planning-cadence
+milestone: v0.4.35
 touches: ROADMAP.md
 added: 2026-09-16
 closed: 2026-09-20
+pr: 774
 payoff: a reader sizing what a second Declined-to-Gate heading would cost stops being told it orphans the first one's dispositions, which PL-82B0 fixed
 verify: grep -qF 'a convention rather than a constraint' ROADMAP.md
 ---

@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, docs
 feature: gate-list-integrity
+milestone: v0.4.35
 touches: ROADMAP.md
 added: 2026-09-13
 closed: 2026-09-20
+pr: 774
 verify: python3 tools/doc_check.py check && grep -qF 'stood at 132 entries' ROADMAP.md
 ---
 

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: science, docs
 feature: model-boundary-statements
+milestone: v0.4.35
 touches: docs/MODEL.md, tests/reference/test_published_wash_in_and_elimination.py
 added: 2026-09-19
 closed: 2026-09-20
