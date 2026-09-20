@@ -9,6 +9,7 @@ feature: slug-rename-on-write
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/duplicates.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/concurrency.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_duplicates.py
 added: 2026-09-19
 closed: 2026-09-20
+pr: 793
 payoff: stops one defect being diagnosed three times - it has happened five times now, and each duplicate costs a full brief written by a session that could not know the first existed
 verify: grep -q 'def test_new_names_an_existing_item_with_a_near_identical_title' subprojects/docket/tests/test_cli.py
 root-cause-of: PL-BHBZ, PL-4FD2, PL-5QLP, PL-QMC0

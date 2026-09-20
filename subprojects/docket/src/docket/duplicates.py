@@ -46,20 +46,40 @@ STOP_WORDS = frozenset(
 MIN_WORD = 3
 
 #: How similar two titles must be for a candidate to be worth printing, after
-#: the shared path has already selected it. Measured against this store on
-#: 2026-09-20 rather than chosen: the nine known duplicate pairs that share a
-#: path score 0.133 to 0.244 against each other, so this floor suppresses none
-#: of them, and it cuts the captures that print anything at all from 323 of 325
-#: to 179 and the lines printed from 2.89 to 1.07.
+#: the shared path has already selected it. Measured rather than chosen, and
+#: re-measured once: `PL-DGP0`, filed by the branch that yielded `PL-TZ7T`, is
+#: why it is 0.15 and not the 0.10 this shipped with.
 #:
-#: **The number that would make it wrong, and the count.** Raising it to 0.15
-#: would cut firing further - to 74 of 325 - and is refused because it
-#: suppresses 2 of the 9 measured true pairs, at 0.133 and 0.143. Lowering it
-#: to zero is not the conservative choice it looks like: at that setting 323 of
-#: 325 captures print three items each, which is a warning that fires every run
-#: without changing a decision, and `CLAUDE.md` calls that a defect in the
-#: check rather than coverage.
-DISPLAY_FLOOR = 0.10
+#: **The number that would make it wrong, and the count** (2026-09-20, through
+#: this function at `LIMIT`, over the 18 pairs of the five recorded duplicate
+#: clusters and all 321 open items declaring a path, each probed as a simulated
+#: capture):
+#:
+#: | floor | pairs caught | clusters reaching the threshold | fires on |
+#: | --- | --- | --- | --- |
+#: | 0.10 | 13 of 18 | 2 of 5 | 178/321 (55%) |
+#: | 0.15 | 11 of 18 | 2 of 5 | 70/321 (22%) |
+#: | 0.20 | 7 of 18 | 2 of 5 | 24/321 (7%) |
+#:
+#: 0.15 loses two *pairs* - `PL-5MFL`/`PL-4FD2` at 0.147 and
+#: `PL-5QLP`/`PL-QMC0` at 0.143 - and loses no *cluster*: every one is still
+#: caught at its second filing, and the same two still reach `MIN_RECURRENCES`.
+#: Pair recall is the wrong measure of this mechanism, which is what made 0.10
+#: look necessary. What it exists to do is surface a cluster, and a cluster's
+#: later pairs are redundant once `anchor` has one member accumulating.
+#:
+#: The 60% cut in firing is the whole of what is bought, and it is not cosmetic:
+#: `CLAUDE.md` calls a check that fires every run without changing a decision a
+#: defect in the check, because it trains a session to skim the output where a
+#: real advisory also appears. 0.20 is refused - it still holds those two
+#: clusters, and `PL-BYMX`/`PL-KSCW` at 0.184 is the next thing to go.
+#:
+#: **This is threshold-dependent, which is the trap.** At the literal three the
+#: design first specified, 0.15 surfaced *nothing* and 0.10 surfaced one
+#: cluster, so the floor genuinely mattered. Deriving `MIN_RECURRENCES` from the
+#: generator floor is what made the higher floor free. Re-measure both together
+#: if either moves.
+DISPLAY_FLOOR = 0.15
 
 #: How many candidates to print. The measurement above is a top-3 measurement -
 #: 8 of 9 - so printing fewer discards recall this key was chosen for, and

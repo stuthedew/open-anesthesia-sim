@@ -35,7 +35,7 @@ from .model import (
     EFFORTS,
     LANE_CROSSING,
     LIST_FIELDS,
-    MIN_ROOT_CAUSE_ITEMS,
+    MIN_RECURRENCES,
     PRIORITIES,
     SELECTABLE_LANES,
     STATUSES,
@@ -720,7 +720,7 @@ def _record_recurrence(
     count = recurrence_count(updated)
     reached = (
         " - `bin/docket next` now names it as a generator-tier promotion candidate"
-        if count == MIN_ROOT_CAUSE_ITEMS
+        if count == MIN_RECURRENCES
         else ""
     )
     plural = "filing" if count == 1 else "filings"

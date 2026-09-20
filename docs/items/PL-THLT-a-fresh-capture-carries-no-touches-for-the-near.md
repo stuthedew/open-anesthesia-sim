@@ -9,6 +9,7 @@ feature: recurrence-signal
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, subprojects/docket/tests
 added: 2026-09-20
 closed: 2026-09-20
+pr: 793
 payoff: closes the hole the fifth capture of the suppression defect fell through - a fresh capture has no touches, so the only key that works reads nothing
 verify: grep -q 'def test_new_infers_candidate_paths_from_the_working_tree' subprojects/docket/tests/test_cli.py
 ---

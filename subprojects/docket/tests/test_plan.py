@@ -71,15 +71,37 @@ def test_a_third_recurrence_surfaces_a_promotion_candidate() -> None:
     `CLAUDE.md` pulls a root cause rather than queueing it because "every
     session it stands through pays it again", and a re-filing is that sentence
     happening once: a session hit the defect, had no idea an item existed, and
-    paid the diagnosis again. The threshold is the generator rule's own three,
-    so at two the store says nothing and at three it names the cluster.
+    paid the diagnosis again.
+
+    An item at three recurrences is past the floor rather than at it - the
+    boundary itself is `test_the_floor_is_two_recurrences_because_the_item_is_
+    the_first_filing` below. Both are kept: this one is what `PL-X5JR`'s
+    `verify:` was run against and its claim is still true, and a closed
+    command is a record of what was run rather than a statement about today.
     """
-    at_two = _item("PL-1111", recurrences=("2026-09-18 PL-AAAA", "2026-09-19 PL-BBBB"))
     at_three = _item(
         "PL-2222", recurrences=("2026-09-18 PL-CCCC", "2026-09-19 PL-DDDD", "2026-09-20 PL-EEEE")
     )
 
-    assert [item.identifier for item in recurring([at_two, at_three])] == ["PL-2222"]
+    assert [item.identifier for item in recurring([at_three])] == ["PL-2222"]
+
+
+def test_the_floor_is_two_recurrences_because_the_item_is_the_first_filing() -> None:
+    """The generator rule's own number, counted in filings rather than in items.
+
+    A generator is the root cause of three or more *items*. The item carrying
+    the recurrences is itself the first filing, so two recurrences is three
+    filings of one defect - the same cluster size. Written as a literal three,
+    the counter would have demanded a fourth filing, which is a stricter bar
+    than the rule it borrows its number from: measured over the five recorded
+    clusters, the slug-rename one (`PL-LBR6` with `PL-5QLP` and `PL-QMC0`,
+    recorded as a generator by hand) peaks at two and would never have
+    surfaced (project owner, 2026-09-20, ratified).
+    """
+    at_one = _item("PL-1111", recurrences=("2026-09-18 PL-AAAA",))
+    at_two = _item("PL-2222", recurrences=("2026-09-18 PL-BBBB", "2026-09-19 PL-CCCC"))
+
+    assert [item.identifier for item in recurring([at_one, at_two])] == ["PL-2222"]
 
 
 def test_a_repeated_capture_id_does_not_reach_the_threshold() -> None:

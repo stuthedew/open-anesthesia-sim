@@ -2093,6 +2093,29 @@ three), `PL-THLT` (infer candidate paths from the working tree, the gap
 `PL-0KQP` fell through), `PL-4JHS` (backfill what the store already paid for).
 `PL-G21K` is the separate defect underneath the cluster that started this.
 
+**Amended 2026-09-20 on build, both halves measured** (project owner, ratified).
+Two constants moved from what this section specified, and they turned out to be
+one question:
+
+- **The threshold is two recurrences, not three.** "Three keeps one threshold in
+  the project" was right about the principle and wrong about the arithmetic: a
+  generator is the root cause of three or more *items*, and the item carrying
+  the recurrences is itself the first filing, so two recurrences is the same
+  cluster size. At a literal three the slug-rename cluster - `PL-LBR6` with
+  `PL-5QLP` and `PL-QMC0`, recorded as a generator by hand - could never have
+  surfaced. `MIN_RECURRENCES` is now derived as `MIN_ROOT_CAUSE_ITEMS - 1`.
+- **The similarity floor is 0.15, not the 0.10 it shipped with** (`PL-DGP0`,
+  filed by `claude/practical-cerf-nx84jg`, the branch that yielded `PL-TZ7T`).
+  Measured through the shipped function over 18 pairs in five recorded clusters:
+  0.15 loses two *pairs* and no *cluster*, while cutting the captures that print
+  anything from 55% to 22%.
+
+**They interact, which is the part worth remembering.** At the literal three,
+0.15 surfaced nothing and 0.10 surfaced one cluster, so the floor genuinely
+mattered and the pair-recall argument that chose 0.10 was sound on its own
+terms. Correcting the threshold is what made the higher floor free. Neither
+constant should be moved without re-measuring the other.
+
 **Still open, and not this feature's:** a backward sweep for clusters filed
 before any detection existed. 21 ungrouped candidate pairs over 342 open items
 on 2026-09-20, of which `PL-4HKS`/`PL-5748` and `PL-2M5T`/`PL-W7WL` are
