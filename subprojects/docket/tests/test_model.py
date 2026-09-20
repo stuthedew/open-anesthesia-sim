@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from datetime import date
 
+import pytest
+
 from docket.model import (
     LANE_CROSSING,
     LANE_PRODUCT,
@@ -23,6 +25,7 @@ from docket.model import (
     render_item,
     repeated_front_matter_keys,
     root_cause_faults,
+    with_front_matter_field,
 )
 
 BRIEF = "**Problem.** It is wrong.\n**Why it matters.** It has a cost.\n**Done when.** Fixed.\n"
@@ -128,6 +131,102 @@ def test_rendering_is_stable_so_rewriting_produces_no_diff() -> None:
     once = render_item(_item(milestone="v0.3.0"))
 
     assert render_item(parse_item(once)) == once
+
+
+# --- adding a field without rewriting the block (PL-7K8Y)
+#
+# `render_item` normalises a whole file, which is right when the caller
+# changed a field and wrong when it added one: the normalisation lands as
+# removed lines in a diff about something else, and `sanctioned_queue_edit`
+# reads any removal as an ordinary content edit. These pin the other writer.
+
+#: Everything `render_item` would normalise, in one file: `verify:` and
+#: `status:` sit ahead of keys `FIELD_ORDER` puts before them, `reason:` runs
+#: over a continuation line, and `notes:` is not a field at all. Written the
+#: way the 118 hand-typed blocks in this store were.
+SCRAMBLED = (
+    "---\n"
+    "id: PL-C3C3\n"
+    "title: A hand-written item\n"
+    "verify: true\n"
+    "status: done\n"
+    "touches: a.py\n"
+    "reason: it turned out to be two problems, and the second one\n"
+    "  is already covered by PL-B2B2\n"
+    "closed: 2026-09-01\n"
+    "---\n"
+    "\n"
+    "**Problem.** x\n"
+)
+
+
+def test_a_field_added_to_a_hand_written_block_removes_nothing() -> None:
+    """The defect: `record` re-rendered the file, and a removal is a content edit.
+
+    `verify.sanctioned_queue_edit` exempts the backfill the close-out is told
+    to make only where the diff removes nothing at all, so a reorder or a
+    reflowed value turned a correct close-out into a `REJECT` - and because it
+    reads the per-commit diffs rather than the net tree, putting the order
+    back in a later commit left both the removal and its undo on the branch.
+    """
+    written = with_front_matter_field(SCRAMBLED, "pr", "495")
+
+    assert written == SCRAMBLED.replace("closed: 2026-09-01\n", "closed: 2026-09-01\npr: 495\n")
+    assert set(SCRAMBLED.splitlines()) <= set(written.splitlines()), "a line was removed"
+
+
+def test_a_continuation_line_survives_a_field_being_added() -> None:
+    """The half the item's own framing did not reach, and it comes free.
+
+    `_front_matter_pairs` matches `key: value` lines and passes over the
+    indented lines that continue one, so a round trip through `parse_item` and
+    `render_item` deletes them - 12 files in this store carry 3 to 15 such
+    lines. Inserting a line cannot, because nothing has to know they are there.
+    """
+    written = with_front_matter_field(SCRAMBLED, "pr", "495")
+
+    assert "  is already covered by PL-B2B2\n" in written
+
+
+def test_the_added_field_lands_where_render_item_would_have_put_it() -> None:
+    """The guard against the two writers drifting apart.
+
+    `FIELD_ORDER` is the single source both read, and this is what says so:
+    on a block `render_item` already agrees with, adding a field by insertion
+    and adding it by re-rendering produce the same bytes. Measured across the
+    store on 2026-09-20 - all 377 canonical files of the 495 not yet recording
+    a `pr`, and a pure insertion on the other 118.
+    """
+    canonical = render_item(_item(status="done", closed=date(2026, 9, 1)))
+
+    inserted = with_front_matter_field(canonical, "pr", "495")
+
+    assert inserted == render_item(_item(status="done", closed=date(2026, 9, 1), pr="495"))
+
+
+def test_a_field_already_present_is_refused_rather_than_doubled() -> None:
+    """Two `pr:` lines is the exact shape `repeated_front_matter_keys` exists to report.
+
+    An insert has no way to express a replacement, so it says so instead of
+    guessing. Both callers in `cmd_record` establish the field is absent
+    first - a number that disagrees is sorted into its own report - so
+    reaching this is a bug rather than a state to paper over.
+    """
+    once = with_front_matter_field(SCRAMBLED, "pr", "495")
+
+    with pytest.raises(ValueError, match="already records"):
+        with_front_matter_field(once, "pr", "496")
+
+
+def test_a_file_with_no_front_matter_is_refused_rather_than_given_some() -> None:
+    with pytest.raises(ValueError, match="no front matter"):
+        with_front_matter_field("**Problem.** x\n", "pr", "495")
+
+
+def test_an_unknown_field_name_is_refused() -> None:
+    """The same rule `docket set` holds a typed field to: no reader would see it."""
+    with pytest.raises(ValueError, match="not a front-matter field"):
+        with_front_matter_field(SCRAMBLED, "prr", "495")
 
 
 def test_safety_classes_are_recognized() -> None:

@@ -20,7 +20,8 @@ from pathlib import Path
 import pytest
 
 from docket.config import Config
-from docket.model import Item
+from docket.model import Item, parse_item
+from docket.store import insert_field
 from docket.verify import (
     LANDED_GUARD,
     TIMED_OUT,
@@ -34,6 +35,7 @@ from docket.verify import (
     items_reading,
     landed_workers,
     reaches_outside_tree,
+    sanctioned_queue_edit,
     selects_no_test,
     verify,
     verify_batch,
@@ -1487,6 +1489,44 @@ def test_a_pr_only_addition_to_another_items_file_is_not_outside_touches(tmp_pat
     _git(root, "commit", "-qm", "PL-K7QX close it out, and record the pr the base was owed")
     report = verify(root, _item(), _config(), "HEAD~1")
     check = _check(report, TOUCHES)
+    assert check.passed, check
+    assert any("pr" in line for line in check.lines), check.lines
+
+
+def test_record_on_non_canonical_key_order_classifies_as_pr(tmp_path: Path) -> None:
+    """`PL-7K8Y`: the exemption above held only for a block a tool had written.
+
+    `record` used to re-render the item it was adding `pr:` to, so on a file
+    whose keys were hand-typed in some other order the write moved them as
+    well - a removal plus an addition, which `sanctioned_queue_edit` reads as
+    an ordinary content edit. The close-out that ran the command exactly as
+    the skill instructs came back `REJECT` naming the item file, so the reader
+    saw an out-of-commission edit and had to diff it to learn a tool wrote it.
+    And because the classifier reads the per-commit diffs rather than the net
+    tree, restoring the order in a later commit left both the removal and its
+    undo on the branch: rebuilding the history was the only way to clear it.
+
+    Goes through `insert_field`, which is what `cmd_record` calls, so this
+    fails again if that call site is changed back to a writer that re-renders.
+    """
+    root = _repo(tmp_path)
+    items = root / "docs" / "items"
+    neighbour = items / "PL-B2B2-do-the-other.md"
+    neighbour.write_text(
+        "---\nid: PL-B2B2\ntitle: Do the other\nstatus: done\n"
+        "verify: true\ntouches: src/core.py\nclosed: 2026-09-01\n---\n\n" + BRIEF
+    )
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "base: a neighbour whose keys are not in canonical order")
+
+    insert_field(items, parse_item(neighbour.read_text(), neighbour.name), "pr", "495")
+    (root / "tests" / "test_thing.py").write_text(KEPT + "\ndef test_more():\n    pass\n")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "PL-K7QX close it out, and record the pr the base was owed")
+
+    path = "docs/items/PL-B2B2-do-the-other.md"
+    assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == "pr"
+    check = _check(verify(root, _item(), _config(), "HEAD~1"), TOUCHES)
     assert check.passed, check
     assert any("pr" in line for line in check.lines), check.lines
 
