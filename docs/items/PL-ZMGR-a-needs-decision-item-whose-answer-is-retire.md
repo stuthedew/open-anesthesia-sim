@@ -9,6 +9,7 @@ feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, .claude/skills/docket/modes/close-out.md
 added: 2026-09-19
 closed: 2026-09-20
+pr: 798
 verify: grep -q 'def test_a_needs_decision_closure_may_declare_what_it_falsifies' subprojects/docket/tests/test_verify.py
 ---
 

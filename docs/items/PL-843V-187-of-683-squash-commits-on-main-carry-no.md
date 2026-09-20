@@ -9,6 +9,7 @@ feature: pr-body-integrity
 touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py, Makefile, docs/ARCHITECTURE.md, docket.toml, docs/pr-bodies
 added: 2026-09-20
 closed: 2026-09-20
+pr: 800
 payoff: recovers 763,224 characters of design reasoning that 187 squash merges dropped from main's permanent history, and reports the next one while its pull request body is still retrievable
 verify: grep -q 'def test_silent_on_the_old_merge_commit_shape' tests/unit/test_pr_body_check.py
 recurrences: 2026-09-20 PL-WFFX
