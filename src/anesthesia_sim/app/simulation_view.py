@@ -941,6 +941,22 @@ class SimulationView(QWidget):
         Args:
             snapshots: Every displayed run's snapshot for this tick, in
                 drawing order - the same reads the frame was assembled from.
+
+        Raises:
+            ValueError: If no run is given, which `bookmark_panel` refuses
+                rather than drawing the case's marks under standings nobody
+                answered. Unreachable from here - the constructor refuses an
+                empty run set and `_handle_case_restarted` truncates to the
+                trunk - so it is the contract rather than a live path.
+            SimulationConfigurationError: If a displayed run's standings were
+                computed for a mark set that does not hold one of the
+                reference run's marks. `_apply_to_every_run` writes a mark to
+                every displayed run and `_branch_from` copies the trunk's set
+                at the fork, so the sets agree by construction; reading every
+                run makes that invariant load-bearing, and a divergence now
+                halts the dashboard through `present` rather than quietly
+                drawing the reference run's answer, which is the direction
+                `CLAUDE.md`'s safety-critical standard asks for.
         """
 
         reference = snapshots[0]

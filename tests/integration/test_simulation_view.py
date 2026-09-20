@@ -3166,6 +3166,55 @@ def test_marking_one_instant_twice_is_refused_and_says_why(application: QApplica
     assert len(controller.snapshot().bookmarks.time_bookmarks) == 1
 
 
+def test_a_mark_edited_after_a_fork_reaches_the_branch_too(application: QApplication) -> None:
+    """The invariant the marks panel now rests on, in the one shape `main` produces.
+
+    `bookmark_panel` reads the reference run's mark *set* and every run's
+    standings against it, so a branch whose set had drifted from the trunk's
+    no longer draws the trunk's answer quietly - `BookmarkStandings` refuses
+    the lookup, `present` catches it and the whole dashboard halts. That is
+    the right direction under `CLAUDE.md`'s safety-critical standard, and it
+    makes the invariant load-bearing in a way it was not.
+
+    The three tests that hold it build two loose trunks, which is a
+    configuration `main()` cannot produce: it opens one trunk and a
+    `BranchedCase`. This walks the real one - fork, then add and remove from
+    the dashboard - because `_branch_from` copies the set at the fork and
+    `_apply_to_every_run` is what has to keep the two in step afterwards.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    _take_fork(view, 60.0)
+    trunk, branch = (run.controller for run in view.runs)
+
+    dialog = _opened_bookmark_dialog(view)
+    dialog.instant_spin.setValue(600.0)
+    dialog.add_time_button.click()
+
+    assert trunk.snapshot().bookmarks == branch.snapshot().bookmarks
+    assert len(branch.snapshot().bookmarks.time_bookmarks) == 1
+
+    dialog.compartment_combo.setCurrentIndex(
+        dialog.compartment_combo.findData(RecordedQuantity.VESSEL_RICH.value)
+    )
+    dialog.height_spin.setValue(0.8)
+    dialog.add_target_button.click()
+
+    assert trunk.snapshot().bookmarks == branch.snapshot().bookmarks
+
+    dialog.time_list.setCurrentRow(0)
+    dialog.remove_time_button.click()
+
+    assert trunk.snapshot().bookmarks == branch.snapshot().bookmarks
+    assert branch.snapshot().bookmarks.time_bookmarks == ()
+
+    # And the panel still draws, which is what the refusal above would stop.
+    view.present(False)
+
+    assert view._bookmarks_panel.targets.rows_label.text().startswith("Vessel-rich")
+
+
 def test_a_refusal_leaves_every_run_carrying_the_same_marks(application: QApplication) -> None:
     # The refusal fires on the second run rather than the first only if the
     # two have drifted; this asserts they have not, which is the invariant
