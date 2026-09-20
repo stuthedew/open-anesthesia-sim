@@ -68,3 +68,84 @@ what it does need is the separate hand sweep for the items declaring no
 The one thing the modality returned was a by-product rather than a duplicate:
 `PL-RFSL`, `PL-38PN`'s remainder being refused by
 `.claude/rules/citation-drift.md`'s closed-brief clause.
+
+## The sweep's candidate table, externalized
+
+**Read this as candidates, not verdicts, except where the row says otherwise.**
+394 of the 400 pairs were read in full; 42 came back non-distinct. Each was
+then put to an independent reviewer told to refute it, and *that stage had not
+finished when this was written* - the reads and the refutations share a
+two-agent concurrency cap, so every read ran before any refutation could start.
+`PL-JKML` is written down rather than held in a session precisely so the
+refutation stage can be picked up by whoever gets there next.
+
+**Five rows are settled and already applied** (both briefs read by the session
+itself, and independently corroborated): `PL-4HKS`/`PL-5748`,
+`PL-2M5T`/`PL-W7WL`, `PL-3HMQ`/`PL-W7WL`, `PL-4RHP`/`PL-HCTF` - all dropped
+into their survivors above - and `PL-SH9Q`/`PL-KSCW`/`PL-MBTZ`, grouped.
+
+**One row is settled elsewhere and needs nothing**: `PL-5MFL`/`PL-BHBZ` and the
+`verify-false-reject` rows around them closed together under `#783` with
+`PL-4FD2` and `PL-0KQP`, already carrying that feature.
+
+**Two rows name an item another session holds** and were deliberately not
+acted on: `PL-TH7P`/`PL-TZ7T` (the two open items *both* asking for the
+near-duplicate warning - a high-confidence same-finding, and the neatest
+demonstration in the store of what its absence costs) and anything naming
+`PL-X5JR`, `PL-THLT` or `PL-4JHS`, which are live on
+`origin/claude/recurrence-signal-feature-3hnynt`.
+
+**Everything else below is unrefuted.** A same-finding row must survive
+refutation before anything is dropped on it: a false same-finding destroys a
+real finding, which is the one failure this pass cannot take back. A
+complementary row is safe to act on sooner, since grouping loses nothing.
+
+| pair | verdict | survivor / feature | conf |
+| --- | --- | --- | --- |
+| `PL-037Y` / `PL-C7XV` | complementary-halves | `interface-pass-decision-record` | medium |
+| `PL-038` / `PL-1T6T` | complementary-halves | `claude-md-context-claims` | medium |
+| `PL-1BS2` / `PL-VKGJ` | complementary-halves | `honest-digest-counts` | medium |
+| `PL-2M9N` / `PL-8LDF` | complementary-halves | `model-spec-test-binding` | high |
+| `PL-3DN1` / `PL-Z85N` | complementary-halves | `unchecked-cut-version` | medium |
+| `PL-4FD2` / `PL-5MFL` | complementary-halves | `verify-false-reject` | medium |
+| `PL-4FD2` / `PL-BHBZ` | complementary-halves | `verify-false-reject` | medium |
+| `PL-4L49` / `PL-HKTB` | complementary-halves | `unmeasured-contrast` | medium |
+| `PL-4RHP` / `PL-DHJ7` | complementary-halves | `unchecked-roadmap-counts` | medium |
+| `PL-5GBV` / `PL-BGMK` | complementary-halves | `duplicate-item-detection` | medium |
+| `PL-5GBV` / `PL-TZ7T` | complementary-halves | `duplicate-title-warning` | high |
+| `PL-5MFL` / `PL-STC4` | complementary-halves | `verify-false-reject` | medium |
+| `PL-5MFL` / `PL-7K8Y` | complementary-halves | `verify-false-reject` | medium |
+| `PL-5N7T` / `PL-WQT0` | complementary-halves | `floor-command-enumeration` | medium |
+| `PL-73P0` / `PL-ZPDM` | complementary-halves | `evidence-declines` | medium |
+| `PL-BHBZ` / `PL-STC4` | complementary-halves | `verify-false-reject` | medium |
+| `PL-BHBZ` / `PL-BX1C` | complementary-halves | `verify-false-reject` | medium |
+| `PL-BHBZ` / `PL-ZMGR` | complementary-halves | `verify-false-reject` | medium |
+| `PL-BX1C` / `PL-ZMGR` | complementary-halves | `verify-false-reject` | high |
+| `PL-BYMX` / `PL-SH9Q` | complementary-halves | `stranded-ahead-or-behind` | medium |
+| `PL-CPLX` / `PL-KKRP` | complementary-halves | `freeze-trigger-accuracy` | medium |
+| `PL-GJPD` / `PL-QNYF` | complementary-halves | `closure-pr-attribution` | medium |
+| `PL-K5PW` / `PL-P757` | complementary-halves | `items-flag-nested-store` | high |
+| `PL-KFWL` / `PL-LT77` | complementary-halves | `release-tag-mismatch` | medium |
+| `PL-KNHX` / `PL-VJFQ` | complementary-halves | `known-shortfalls-unchecked` | medium |
+| `PL-KSCW` / `PL-MBTZ` | complementary-halves | `stranded-ahead-behind` | high |
+| `PL-LPWK` / `PL-W7WL` | complementary-halves | `release-note-pr-link` | medium |
+| `PL-M21Q` / `PL-NGLM` | complementary-halves | `record-in-item-not-reply` | medium |
+| `PL-QNYF` / `PL-WG7Q` | complementary-halves | `carried-work-guard` | medium |
+| `PL-R5HK` / `PL-WQT0` | complementary-halves | `architecture-prose-counts` | medium |
+| `PL-TKFD` / `PL-ZMGR` | complementary-halves | `falsifies-declaration-route` | medium |
+| `PL-W7WL` / `PL-WXX8` | complementary-halves | `cut-backfills-pr-numbers` | high |
+| `PL-WNQT` / `PL-X3NY` | complementary-halves | `stranded-false-positive` | medium |
+| `PL-1RTM` / `PL-3NKZ` | same-finding | `PL-3NKZ` | high |
+| `PL-2M5T` / `PL-W7WL` | same-finding | `PL-2M5T` | high |
+| `PL-4HKS` / `PL-5748` | same-finding | `PL-4HKS` | high |
+| `PL-4RHP` / `PL-HCTF` | same-finding | `PL-4RHP` | high |
+| `PL-5MFL` / `PL-BHBZ` | same-finding | `PL-BHBZ` | high |
+| `PL-GXPP` / `PL-R77L` | same-finding | `PL-GXPP` | high |
+| `PL-KSCW` / `PL-SH9Q` | same-finding | `PL-KSCW` | high |
+| `PL-TH7P` / `PL-TZ7T` | same-finding | `PL-TZ7T` | high |
+| `PL-W6NY` / `PL-YRYR` | same-finding | `PL-YRYR` | high |
+
+**What the numbers say about the key itself.** 337 of 378 pairs the key
+surfaced were judged distinct on reading, so it runs at roughly one real
+signal in ten - which is the right side of the trade for a sweep whose false
+negatives are silent and whose false positives cost one brief read.
