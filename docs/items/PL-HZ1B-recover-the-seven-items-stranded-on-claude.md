@@ -59,10 +59,24 @@ recovered debt item has a v0.5.0 gate disposition; `PL-LHBY` is on the frozen
 list and `PL-4KZD` records the fold against it; `make check` is green; and
 `bin/docket stranded` reports nothing on that branch.
 
-**One finding to pass on, not to act on here.** `PL-8JQQ` claims
-`bin/docket flight` goes blind to a branch once an earlier pull request from it
-squash-merged, and names `PL-3K9B`'s implementation as the instance. This
-session observed the opposite - after the restarted branch was pushed, `flight`
-did report `PL-3K9B claude/lucid-dijkstra-i1qy6x last commit today`. Not
-adjudicated here; whoever picks `PL-8JQQ` up should know the claim is at least
-not universal.
+**One measurement to pass to `PL-8JQQ`, from the other side of it.** That item
+is the implementing session's own record of the same events, and this is the
+half it could not see. `PL-8JQQ` reports `flight` silent on branch head
+`6b2008c8`; it later reported the branch correctly on head `d9f81cc4`. What
+changed between the two is not time and not a fetch:
+
+- At `6b2008c8` the branch carried **three** commits absent from `main` -
+  `b94ba164` and `78c8336c`, whose *content* had landed as `#801`'s squash
+  `1531a8bc` but whose commit objects had not, plus the implementation commit.
+  `flight` was silent.
+- The branch was then restarted from `origin/main` and the implementation
+  cherry-picked onto it, so it carried **one** commit absent from `main`.
+  `flight` reported `PL-3K9B claude/lucid-dijkstra-i1qy6x last commit today`
+  immediately, with no other change.
+
+So the trigger looks like a branch carrying already-squash-merged commits
+*alongside* the new one, rather than a squash from the branch having happened
+at all - which is a narrower and more testable claim than "goes blind after a
+squash-merge", and it points at how the commit range `flight` parses is
+chosen rather than at ref staleness. Offered as a lead; `PL-8JQQ` is the item
+and its session is live on it.
