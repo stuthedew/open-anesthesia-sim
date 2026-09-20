@@ -82,3 +82,61 @@ answerable now and options 1 and 2 are both one line or none.
 `docs/MODEL.md` § "Color contrast, and the standard this interface is held to"
 with the reasoning, and - for option 1 - `app/main.py` declares the scheme and
 a test holds it.
+
+## Reopened by the project owner's own screen, 2026-09-20
+
+**The paragraph above saying "nothing in the interface is waiting on it" was
+false when it was written, and is only true again by repair.** The owner
+reported the bookmark editor rendering six near-black boxes inside a white
+dialog under a dark host appearance. `PL-DHBX` declared every colour that
+carried meaning *in the controls that existed then*; `PL-LPLD` added six input
+controls that declare none, the legend's six check-box indicators had never
+declared theirs, and the three selector popups drew the host's surface. Those
+are `PL-RKRY`, `PL-7W9N` and `PL-0NVN`, all fixed - so the interface is no
+longer waiting on this decision, and this item is once again about the chrome.
+What is different is that the sentence is now held by a test rather than by an
+argument: `tests/integration/test_dark_appearance.py` walks the rendered tree
+under a dark host palette and fails on any content widget resolving to it.
+
+**Option 1 has a stronger form than the one set out above, and the difference
+is measured.** The three options were framed with
+`QGuiApplication.styleHints().setColorScheme(Qt.ColorScheme.Light)` as the
+mechanism, correctly noting that Qt documents it as a hint that "is not
+supported on all platforms" - and it was observed being ignored outright on
+2026-09-20: after setting it, `styleHints().colorScheme()` still reported
+`Unknown` under the `offscreen` plugin. So it remains no basis for a
+legibility guarantee.
+
+`QApplication.setPalette` is not a hint. It is authoritative for every widget
+at any depth, and it is the *only* mechanism that reaches a widget under a
+stylesheet ancestor: a stylesheet makes everything beneath it resolve from the
+**application** palette rather than from the styled widget, which is what made
+three popups and a list's scroll bar unreachable from the widget that contained
+them. So option 1's real form is one line in `app/main.py` applying the same
+role set `qt_widgets.declare_interface_colours` already declares.
+
+**What that would buy, and what it would cost.** It would cover the chrome this
+item is about, and it would close the class structurally - a content widget
+added later could not arrive undeclared, where today a test catches it after
+the fact. Against that: the cost already recorded here, a light-appearing window
+on a machine set to Dark, and one new one. An application palette assigned
+wholesale replaces the `Disabled` colour group too, and
+`.claude/rules/ui-color.md` makes a second declared disabled colour a decision
+rather than a style choice. It would therefore have to be written the way
+`declare_interface_colours` is - `Active` and `Inactive` groups only, leaving
+`Disabled` to the platform - which is a constraint on the implementation rather
+than an argument against it.
+
+**Recommendation, unchanged in direction and firmer in mechanism: option 1, as
+an application palette rather than as a colour-scheme hint.** The apparatus
+reason given above is the strong one and is untouched: 24 contrast requirements,
+`docs/MODEL.md` § "Color contrast, and the standard this interface is held to",
+and the dichromacy floors the six traces were re-picked against are all measured
+on PANEL and BACKGROUND, and an interface that renders anything else is
+measuring surfaces that are not on screen.
+
+**Done when** the project owner has chosen; the choice is recorded in
+`docs/MODEL.md` § "Color contrast, and the standard this interface is held to",
+whose closing paragraph now names this item as the open question; and - for
+option 1 - `app/main.py` applies the palette and a test holds the chrome the
+way `test_dark_appearance.py` holds the content widgets.

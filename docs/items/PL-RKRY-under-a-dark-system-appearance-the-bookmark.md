@@ -3,11 +3,12 @@ id: PL-RKRY
 title: Under a dark system appearance the bookmark dialog's entries, spin boxes and lists render the host's near-black surfaces, because no widget in either dialog declares a palette
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: platform-palette
-touches: src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_dark_appearance.py, tools/contrast_check.py, docs/MODEL.md, .claude/rules/ui-color.md
+touches: src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_dark_appearance.py, tools/contrast_check.py, docs/MODEL.md, docs/ARCHITECTURE.md, .claude/rules/ui-color.md
 added: 2026-09-20
+closed: 2026-09-20
 payoff: the dialog a learner types an instant and a MAC height into stops rendering black boxes on a light dialog under a dark host
 verify: grep -q 'def test_the_bookmark_dialog_draws_the_theme_rather_than_the_host_palette' tests/integration/test_dark_appearance.py
 ---
@@ -42,11 +43,25 @@ Styling `QAbstractSpinBox` and `QComboBox` through `setStyleSheet` moves them
 onto `QStyleSheetStyle`, which drew both spin boxes without their up/down
 steppers and the combo without its drop-down arrow - the stepper is the only
 way to change the value with a mouse. A `QPalette` keeps the native
-sub-controls and recolours them. `QPalette(QColor(PANEL))` is the baseline
-because it derives every role Qt's styles read - including the bevel roles
-`Mid`, `Dark` and `Shadow`, which no theme constant declares - from one colour
-rather than from the host, so the result is deterministic under either
-appearance.
+sub-controls and recolours them.
+
+**One measured correction, recorded because it was believed for an hour and is
+the kind of thing a later session re-derives.** A first attempt built the
+palette with a default-constructed `QPalette()` and overrode the roles that
+carry meaning, and an *unchecked* check box then rendered as a solid dark
+square. That was read as the bevel roles - `Mid`, `Dark`, `Shadow` - coming
+from the host, and it is not: bisecting them one at a time changes nothing, and
+a palette built from the widget's *own* palette with only the ten meaning roles
+written renders the indicator correctly. PySide6's `QPalette()` is not the
+application's palette, which is where the dark square came from.
+
+That is what makes the fix admissible under the disabled-colour rule.
+`declare_interface_colours` starts from the widget's palette and writes the
+`Active` and `Inactive` colour groups only, so the `Disabled` group stays
+exactly as the platform supplied it - no second declared disabled colour, which
+`.claude/rules/ui-color.md` makes a decision rather than a style choice, and
+`tests/integration/test_dark_appearance.py` holds it role by role on a widget
+that is actually disabled.
 
 **Why the dialog's own stylesheet goes.** `QDialog { background-color: PANEL }`
 is what severs palette inheritance: with a stylesheet set on the parent, every
@@ -61,3 +76,18 @@ palette instead of a one-rule stylesheet, `tools/contrast_check.py` names the
 palette as a place its measured pairs are drawn, and a test renders the dialog
 under a dark host palette and holds the entries, lists and placeholder to the
 theme's colours.
+
+
+**What the work changed in the check, and why that is a narrowing rather than a
+hole.** `check_authored_disabled_colours_are_measured` refused `setPalette`
+outright, on the reasoning that a palette assigned wholesale carries the
+`Disabled` group with it and leaves no pair a requirement could name. That
+premise does not cover these controls: a spin box's stepper and a check box's
+indicator are painted from palette roles no stylesheet reaches, so refusing the
+mechanism outright would have meant leaving them the host's near-black. The
+refusal is now on the same terms as the `:disabled` admission beside it - a
+`setPalette` is admitted only from a function some requirement cites by name,
+and refused everywhere else - and the part that is not decidable by reading the
+tree moved to a test that checks the property directly. The check's own unit
+tests still pass unchanged, including the one holding an uncited `setPalette`
+to an error.

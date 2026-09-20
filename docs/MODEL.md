@@ -6137,6 +6137,31 @@ their minimum today are listed there against the item that closes each one,
 and a listed shortfall that starts passing is reported as an error, so a fix
 cannot leave its excuse behind.
 
+**A declared colour reaches the screen by one of two mechanisms, and what
+neither reaches is the host's.** Most of this interface is drawn by a
+stylesheet composed from `app/theme.py`'s constants, which is what
+`tools/contrast_check.py` reads. Some widgets cannot be: an entry's fill, a
+spin box's stepper, a list's rows and its scroll bar, a check box's indicator
+and a dialog's own surface are painted from Qt palette roles, and styling them
+as a stylesheet instead costs the native stepper and the check box's tick. For
+those, `qt_widgets.declare_interface_colours` declares the same theme colours
+as palette roles - PANEL and INK as `Base` and `Text`, MUTED as
+`PlaceholderText`, PRIMARY and PANEL as `Highlight` and `HighlightedText` - so
+the pairs on screen are pairs the requirement table already measures. It writes
+the `Active` and `Inactive` colour groups only: a disabled colour stays the
+platform's, with the single declared exception recorded above.
+
+Whatever neither mechanism reaches follows the **host appearance**, which is
+Qt's default and is a light theme's opposite on a machine set to Dark. That is
+visible rather than hidden: `tests/integration/test_dark_appearance.py` renders
+the dashboard and both dialogs under the palette such a host supplies and fails
+on any content widget resolving to it, which is what caught six controls that
+had declared nothing (`PL-RKRY`, `PL-7W9N`, `PL-0NVN`). What remains the host's
+by decision rather than by omission is the **chrome** - the page's scroll bars,
+the splitter handles, tooltips - and whether the application should declare a
+light colour scheme for those too is an open question recorded in the queue as
+`PL-KRZW`.
+
 ### The six compartment traces: what separates them
 
 Six curves share one plot, and taking a value off the wrong one is a misreading

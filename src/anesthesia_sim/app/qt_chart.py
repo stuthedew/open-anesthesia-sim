@@ -78,7 +78,7 @@ from anesthesia_sim.app.dashboard_frame import (
     trace_legend_label,
 )
 from anesthesia_sim.app.formatting import format_chart_time_label
-from anesthesia_sim.app.qt_widgets import FlowLayout
+from anesthesia_sim.app.qt_widgets import FlowLayout, declare_interface_colours
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.theme import (
     BAND_SWATCH_HEIGHT,
@@ -1428,6 +1428,11 @@ class TraceLegend(QWidget):
             box.setAccessibleName(TRACE_TOGGLE_ACCESSIBLE_NAME_TEMPLATE.format(label=style.label))
             box.setChecked(True)
             box.setStyleSheet(f"color: {INK};")
+            # The label's colour is the stylesheet's; the *indicator* is drawn
+            # from palette `Base` and `Text`, which the stylesheet does not
+            # reach - so under a dark host appearance the box was a dark square
+            # and its tick was INK on near-black at 1.35:1 (`PL-7W9N`).
+            declare_interface_colours(box)
             box.toggled.connect(
                 lambda checked, quantity=style.quantity: self._on_toggled(quantity, checked)
             )

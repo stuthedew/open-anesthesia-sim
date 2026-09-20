@@ -51,6 +51,30 @@ compensate: the edge is what identifies the control's boundary, it needs SC
 1.4.11's 3:1, and that criterion's own inactive-component wording has never
 been read at source from this container (`PL-JX0Z`).
 
+**A widget that paints from a palette role is declared too, and not with a
+stylesheet.** The rule above is about a *disabled* colour; this is about the
+roles a stylesheet cannot reach at all. An entry's fill, a spin box's stepper,
+a list's rows and its scroll bar, a check box's indicator and a dialog's own
+surface come from Qt palette roles, so a control that sets only a `color:`
+declares its label and leaves its surface to the host appearance - which is how
+six controls reached a reader as near-black boxes inside a light dialog
+(`PL-RKRY`, `PL-7W9N`, `PL-0NVN`). Call
+`qt_widgets.declare_interface_colours` on such a widget. Do **not** reach for a
+stylesheet instead: styling a `QAbstractSpinBox` loses its up/down stepper, and
+a styled `QCheckBox::indicator` loses its tick unless an image is supplied, so
+the control ends up worse than the colour it fixed. The one place the opposite
+holds is a combo box's popup, where a palette does not survive the selector
+being laid out and `popup_stylesheet` is the declaration instead.
+
+Two consequences worth knowing before adding a control. A stylesheet on a
+*parent* makes everything under it resolve from the application palette rather
+than from the parent, so declaring a container's surface as a stylesheet
+silently disinherits its children - which is why both dialogs declare theirs as
+a palette. And `tests/integration/test_dark_appearance.py` walks the whole
+rendered tree under a dark host palette and fails on any content widget that
+resolves to it, so a new control that declares nothing fails `make check`
+rather than reaching a screen.
+
 ## The four judgments the tool leaves to you
 
 1. **A new color is added to `REQUIREMENTS` in the same change that introduces

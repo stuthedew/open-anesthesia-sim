@@ -3,11 +3,12 @@ id: PL-7W9N
 title: The six legend checkboxes draw their indicator from the host palette, so under a dark appearance the tick is INK on near-black at 1.3:1 and an unchecked box reads as a filled one
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, ux
 feature: platform-palette
 touches: src/anesthesia_sim/app/qt_chart.py, tests/integration/test_dark_appearance.py
 added: 2026-09-20
+closed: 2026-09-20
 payoff: the box that says whether a compartment is on the chart stops reading the same checked and unchecked under a dark host
 verify: grep -q 'def test_a_legend_checkbox_draws_its_indicator_in_the_theme' tests/integration/test_dark_appearance.py
 ---
