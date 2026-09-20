@@ -54,3 +54,17 @@ generator rule covers one mechanism causing three or more *distinct* items.
 Three filings of one defect is a duplicate cluster, and the remedy is two drops
 rather than a `root-cause-of:`. Both shapes occur in this store and they are
 recorded differently.
+
+**Third-modality result, 2026-09-20: the primary key's blind spot is small.**
+The rare-term sweep - pairs sharing three or more rare brief-body terms while
+sharing *no* declared `touches:` path, which the primary key cannot reach by
+construction - produced 49 pairs. **47 were judged distinct on reading both
+briefs, and both of the two non-distinct verdicts were refuted** on independent
+adversarial review. Zero confirmed duplicates. So a duplicate pair in this store
+reliably declares a shared path, and the `touches` key does not need widening;
+what it does need is the separate hand sweep for the items declaring no
+`touches` at all, which is where `PL-3HMQ` was found.
+
+The one thing the modality returned was a by-product rather than a duplicate:
+`PL-RFSL`, `PL-38PN`'s remainder being refused by
+`.claude/rules/citation-drift.md`'s closed-brief clause.
