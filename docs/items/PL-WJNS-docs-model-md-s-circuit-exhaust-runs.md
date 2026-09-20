@@ -3,11 +3,12 @@ id: PL-WJNS
 title: docs/MODEL.md's circuit exhaust runs unconditionally, but a machine in closed-circuit mode shuts the surplus gas valve
 priority: P1
 effort: S
-status: ready
+status: done
 classes: science, docs
 feature: model-boundary-statements
 touches: docs/MODEL.md
 added: 2026-09-19
+closed: 2026-09-20
 payoff: tells a reader whether closed-circuit machines were excluded from the model deliberately or overlooked, where today the document is silent
 verify: grep -qF 'surplus gas valve' docs/MODEL.md
 ---

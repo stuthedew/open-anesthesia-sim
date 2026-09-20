@@ -382,6 +382,14 @@ The external inputs and outputs are:
 
 The circuit and patient form a closed recirculating exchange path except for fresh-gas inflow and circuit exhaust.
 
+**That circle is semi-closed, and this document says so rather than leaving
+it to be inferred.** The exhaust above is unconditional: it runs whenever
+fresh gas runs, at exactly the fresh-gas rate. Closed-circuit operation — a
+fresh gas flow titrated down to the patient's uptake, or a machine mode that
+shuts the surplus gas valve outright — is a different conservation statement
+and is outside what these equations describe. "Breathing circuit" is where
+that boundary is argued and sized, and "Known limitations" lists it.
+
 ## Conventions
 
 ### Time
@@ -953,6 +961,89 @@ $$
 
 The existing v0.0.2 analytic reference tests must continue to pass unchanged.
 
+**The exhaust is a semi-closed circle's, and it runs whenever fresh gas
+runs.** $`\dot V_F`$ appears twice in the balance above and does two
+different jobs: it is the rate agent arrives at, and it is the rate mixed
+circuit gas leaves at. The two are one symbol because the outflow is not an
+independent quantity here — it is fixed equal to the inflow, which is what a
+circle system does while its surplus gas valve is passing. Two of this
+model's own assumptions put it there: both gas compartments are fixed
+volumes, and the modeled patient takes up no net volume, since "Alveolar
+gas" removes agent from a constant $`V_A`$ without removing gas from it.
+Every litre admitted therefore has to leave, and the exhaust is the only
+door.
+
+**A real circle spills less than it is given**, by the volume the patient
+removes — oxygen consumed, the vapour taken up, and any nitrous oxide. Carbon
+dioxide is not a fourth term: it returns to the circuit the volume the blood
+took from it and the absorbent then removes it again, so it nets to nothing
+here. That gap is an absolute rate rather than a share of the flow, so it is
+small where the flow is large and is the whole of the spill where the flow is
+small. For
+the reference adult it is on the order of 0.3 L/min early in a case: about
+240 ml/min of oxygen on the $`10M^{3/4}`$ allometry "Parameter provenance"
+reads off Lowe and Ernst's page 17 — Brody's interspecies metabolic relation
+rather than a measured anaesthetised adult, and carrying that section's
+caution with it — plus the 65 ml/min of sevoflurane vapour "Alveolar gas"
+computes at the early induction gradient, which falls away as uptake does.
+Against the 4.0 L/min this project ships as its opening fresh gas flow that
+is 6 to 8%; against the 0.5 L/min the supported range also admits, it is half
+or more.
+<!-- provenance: data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
+<!-- derived: 6 to 8 percent from data/machines/reference_circle_system.json default_fresh_gas_flow_l_min = 4.0 -->
+
+**At the bottom of that range the valve shuts**, which is closed-circuit
+technique: fresh gas titrated down to uptake, with no surplus left to vent. A
+machine may also shut it as a mode of its own — Meyer et al., writing for the
+manufacturer of one of the machines this project has surveyed: *"In the
+automatic controlled mode of the Zeus anesthesia machine, the surplus gas
+valve can be closed to prevent any loss of gas volume"* (Meyer J-U, Kullik G,
+Wruck N, Kück K, Manigel J. Advanced technologies and devices for
+inhalational anesthetic drug dosing. In: Schüttler J, Schwilden H, eds.
+*Modern Anesthetics.* Handbook of Experimental Pharmacology vol. 182. Berlin:
+Springer; 2008:451–470; read at full text 2026-09-19 from the project owner's
+private reference corpus, with `docs/machine-survey.md` § "Sources" holding
+the bibliographic record, the route and the depth).
+
+**Neither is modeled here, and the reason is not the exhaust term.** The
+circuit equation is the part that survives a shut valve: gas the patient's
+uptake pulls out of the circuit leaves at $`F_I`$ exactly as spilled gas
+does, so $`\dot V_F(F_D-F_I)`$ is the same balance either way and $`F_I`$ is
+not what changes. Two other things are.
+
+- **Where that agent goes.** "Circuit exhaust" books the whole of
+  $`\dot V_FF_I`$ as leaving the system. With the valve shut it is carried
+  into the alveolus and retained instead, which needs the inspired make-up
+  term "Alveolar gas" writes as
+  $`\dot V_A + \sum_k \dot M_{\mathrm{uptake},k}`$ and this model does not
+  carry.
+- **What sets the flow.** A closed circuit's fresh gas flow *is* the
+  patient's total uptake, so $`\dot V_F`$ stops being a free input and
+  becomes an output. This model computes no part of that sum: it holds no
+  oxygen, which is the largest of the three streams, and its fixed alveolar
+  volume declares the agent it does compute to remove no volume at all.
+
+So closed-circuit operation is blocked twice over, and it is **not** a fourth
+member of the three "Known limitations" entries that the fixed alveolar
+volume blocks by itself. Lifting that constraint is necessary here and not
+sufficient; an oxygen-consuming patient is the other half, and nothing in
+this model is one.
+
+**What this is recorded against is an implementation that sets the removal
+rate to zero and leaves the rest alone.** It integrates, and it produces a
+plausible trajectory: the circuit settles at
+$`F_I = F_A + \dot V_FF_D/\dot V_A`$, which at the shipped 4.0 L/min fresh
+gas flow, the reference adult's 4 L/min alveolar ventilation and a 2% dial is
+two percentage points above alveolar, and in the steady state every litre of
+delivered agent reaches the patient — which is what a closed circuit does.
+What it is not is a closed circuit, because the fresh gas is still arriving
+at a flow nobody has pinned to uptake: at 4.0 L/min the vaporizer adds agent
+about thirteen times faster, for the same dial, than it would at the
+0.3 L/min this patient's uptake would set. A conditional coefficient is the
+wrong shape for this machine property, and `docs/machine-abstraction.md`
+names the slot such a mode would occupy — a `closed_circuit` removal
+strategy, recorded there as not implemented.
+
 ### Alveolar gas
 
 Ventilation moves gas between the circuit and alveolar compartment.
@@ -1152,6 +1243,10 @@ $$
 M_{\mathrm{exhausted}}(t) = \int_0^t \dot V_FF_I\,dt
 $$
 
+This term is the semi-closed circle's. For a machine running with its
+surplus gas valve shut it is zero, and that is a different model rather than
+this one with a coefficient turned down — see "Breathing circuit".
+
 ### Stored amount
 
 The total stored amount is:
@@ -1171,6 +1266,12 @@ M_{\mathrm{initial}} + M_{\mathrm{delivered}} = M_{\mathrm{stored}} + M_{\mathrm
 $$
 
 where $`\varepsilon_M`$ is the numerical mass-balance residual.
+
+The identity is a bookkeeping statement over whatever terms the model
+carries, so it would survive $`M_{\mathrm{exhausted}} \equiv 0`$ unchanged.
+What would not survive is the reading of that term as agent lost from the
+system; "Breathing circuit" is why a shut surplus gas valve is not this
+model with its exhaust switched off.
 
 Equivalently:
 
@@ -7307,6 +7408,10 @@ Version v0.1.0 assumes:
 - inspired gas is circuit gas — one gas-phase state $`F_I`$ between the
   vaporizer and the alveoli, there being one perfectly mixed circuit with no
   dead space and no separate limbs (see "Model boundary");
+- the breathing system is a semi-closed circle whose surplus gas valve is
+  passing — fresh-gas inflow is matched by an equal exhaust outflow at every
+  instant, which is what lets one $`\dot V_F`$ be both the delivery and the
+  removal rate (see "Breathing circuit");
 - inspired gas reaches the alveoli undiluted by water vapour — real alveolar
   gas is saturated at body temperature and nothing here represents that, so
   the circuit's dry gas enters the alveolar compartment unchanged. This is the
@@ -7369,6 +7474,10 @@ This model does not model:
 - switching between volatile agents;
 - direct anesthetic injection;
 - automated end-tidal control;
+- closed-circuit operation, or any machine mode that shuts the surplus gas
+  valve — the exhaust here runs whenever fresh gas runs, and a closed circuit
+  is a different conservation statement rather than this one with the exhaust
+  turned down ("Breathing circuit" argues it and sizes the gap);
 - dead space;
 - airway sampling delay;
 - multiple alveolar units;
