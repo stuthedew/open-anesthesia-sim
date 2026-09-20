@@ -3,12 +3,14 @@ id: PL-NLP4
 title: ROADMAP.md's Declined-to-Gate-2 closing paragraph says the subsection holds 66 dispositions and it now names 132 open debt items, which is PL-B8V1's stale-present-tense defect in a paragraph that item does not reach
 priority: P2
 effort: S
-status: blocked
+status: done
 classes: defect, docs
 feature: planning-cadence
 touches: ROADMAP.md
-blocked-by: PL-B8V1
 added: 2026-09-16
+closed: 2026-09-20
+payoff: a reader sizing what a second Declined-to-Gate heading would cost stops being told it orphans the first one's dispositions, which PL-82B0 fixed
+verify: grep -qF 'a convention rather than a constraint' ROADMAP.md
 ---
 
 **Problem.** ROADMAP.md's Declined-to-Gate-2 closing paragraph says the subsection holds 66 dispositions and it now names 132 open debt items, which is PL-B8V1's stale-present-tense defect in a paragraph that item does not reach
@@ -48,3 +50,25 @@ Follows `PL-B8V1` (date the gate arithmetic in place), and stays `blocked` on
 it. The same clause 4 reading applies once that lands: this closing sentence is
 a record of what the 2026-09-08 argument concluded, so it is dated rather than
 recomputed.
+
+## Closed 2026-09-20, in the same branch as `PL-B8V1` and `PL-82B0`
+
+Unblocked by `PL-B8V1` landing, and overtaken in its own favour by `PL-82B0`
+landing beside it: the paragraph did not only carry a stale figure, it also
+described `_declined_ids`' single-subsection read in the present tense, and
+that read is gone. So the paragraph now records the hazard as closed and says
+what a second heading costs today, which is nothing.
+
+**The count is expressed without a live figure rather than dated in place**,
+which is the second branch `PL-B8V1`'s recommendation allows and the honest one
+here. Dating 66 in place would have minted a false dated claim: the measurement
+on 2026-09-16 found 132 and found that it had been 132 before that pass as well,
+so there is no date at which 66 is known to have been right. `PL-0VFF` takes the
+same branch for the open count in the same section, so one rule now covers both
+numbers in it.
+
+`verify:` written and run on 2026-09-20, watched to fail first (exit 1, the
+phrase absent), and it is a bare `grep` for what the work adds - no
+`doc_check.py check` clause ahead of it, per the skill's rule that a health
+check passing before the work proves nothing.
+

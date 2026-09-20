@@ -4263,12 +4263,23 @@ thirty do - it declares the `docket` skill, `checks.py`, `render.py`,
 `config.py` and `docket.toml`, all wholly inside `docket.toml`'s
 `workflow_paths`, so none of it can reach a reader of the simulator.
 
-**It is inside this section rather than beside it because the checker reads
-only one.** `tools/doc_check.py`'s `_declined_ids` takes the first
-`### Declined to Gate ...` subsection after the gate heading and stops at the
-next heading of any level, so a second one silently orphans this section's 66
-dispositions - the gate then reports them all as undisposed. `PL-82B0` carries
-the defect.
+**It is inside this section rather than beside it because the checker used to
+read only one.** `tools/doc_check.py`'s `_declined_ids` took the first
+`### Declined to Gate ...` subsection after the gate heading and stopped at the
+next heading of any level, so a second one silently orphaned every disposition
+recorded in this one, and the gate reported them all as undisposed. `PL-82B0`
+closed that on 2026-09-20: `_declined_ids` reads every such subsection of the
+gate's own section and stops at the next `##`, so writing a second one costs
+nothing and the placement above is a convention rather than a constraint.
+
+How many dispositions this section holds is deliberately not written down. The
+sentence above carried the figure 66 while the subsection named 132 open debt
+items on the day that was measured, 2026-09-16, and nothing reconciles the two:
+`check_gate_counts` holds a frozen list's count-carrying group headings and its
+`not-delegable` claims to the list, and this is a body paragraph. The entries
+below are the record. A number restating them is wrong on the next closure and
+tells nobody it has become so, which is the same reason the open count is not
+recorded here either.
 
 
 **One more from the 2026-09-19 workflow-lane survey, on the same ground.**
