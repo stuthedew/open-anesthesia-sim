@@ -9,6 +9,7 @@ feature: recurrence-signal
 touches: subprojects/docket/src/docket/plan.py
 added: 2026-09-20
 closed: 2026-09-20
+pr: 794
 payoff: makes the generator-candidate signal fire on a three-item cluster, which is what the rule it borrows its threshold from means - the slug-rename cluster was invisible to it
 verify: grep -q 'def test_the_floor_is_two_recurrences_because_the_item_is_the_first_filing' subprojects/docket/tests/test_plan.py
 ---

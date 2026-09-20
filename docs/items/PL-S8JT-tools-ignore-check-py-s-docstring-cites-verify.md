@@ -8,7 +8,7 @@ classes: defect
 touches: tools/ignore_check.py
 added: 2026-09-20
 payoff: stops the tokenize-over-grep argument citing an example the tree no longer holds
-verify: true
+verify: ! grep -q 'a tuple of suppression markers' tools/ignore_check.py
 ---
 
 **Problem.** tools/ignore_check.py's docstring cites verify.py's SUPPRESSIONS tuple as its worked example of a type: ignore that is not a directive, and PL-G21K removed it from that tuple - the file now holds the marker in comments, which is the one carrier the tool does count
@@ -41,3 +41,8 @@ the check.
 
 **Done when** the example names a file that still holds a `type: ignore` in a
 tuple or a string, or is replaced by one that does.
+
+The `verify:` command asserts the phrase `a tuple of suppression markers` is
+gone from `tools/ignore_check.py`, which is the clause that went stale. It is
+a negative grep because the replacement wording cannot be predicted, and the
+stale clause is the one thing the fix must remove.

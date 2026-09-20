@@ -9,7 +9,7 @@ feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-20
 payoff: settles the assertion check's altitude once instead of paying a seventh special case, which is what the same decision bought for the suppression check beside it
-verify: true
+verify: grep -q '^## Decision: the assertion check' docs/items/PL-4W2L-design-round-pick-the-altitude-for-verify-s.md
 ---
 
 **Problem.** design round: pick the altitude for verify's assertion check before the next of its three open items is worked, since six fixes have each uncovered the next and PL-G21K's ratified decision reached only the suppression check beside it
@@ -66,3 +66,8 @@ dropped, or re-scoped against it. That is the shape `PL-G21K` used.
 **Done when** a decision is recorded here naming what the assertion check is
 for and what it deliberately does not decide, and `PL-XQGH`, `PL-CNJH` and
 `PL-2DTK` are each resolved against it rather than individually patched.
+
+The `verify:` command greps this file for a `## Decision: the assertion check`
+heading, so the round's outcome is written here under that exact heading.
+A design round's deliverable is prose, and prose is the only thing a command
+can discriminate on: `true` would pass on a branch that held no round at all.

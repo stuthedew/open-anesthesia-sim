@@ -8,7 +8,7 @@ classes: defect, infra
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, docs/items/PL-SHTR-docket-verify-does-not-set-landed-guard-so-an.md
 added: 2026-09-20
 payoff: gives the one queue field a session cannot correct a correction path, and clears two entries now measured false
-verify: true
+verify: grep -q 'def test_a_recurrence_entry_can_be_withdrawn' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** the recurrence signal's first observed false positive: bin/docket new matched a stale-docstring finding to PL-SHTR's LANDED_GUARD recursion on shared tokens alone, wrote recurrences: onto it, and no command can unwrite one
@@ -94,3 +94,9 @@ undo one when it does, and the next cause need not be similarity at all.
 **Done when** a false `recurrences:` entry can be withdrawn by command, with
 the withdrawal as auditable as the write, and the two on `PL-SHTR` are gone.
 Do not re-litigate the floor: `#794` decided it and the numbers above agree.
+
+The `verify:` command greps `subprojects/docket/tests/test_cli.py` for
+`test_a_recurrence_entry_can_be_withdrawn`, so the withdrawal path arrives
+with a test under that name. Naming the test rather than the two `PL-SHTR`
+lines is deliberate: deleting those by hand would satisfy a grep over that
+file while leaving the next false entry just as permanent.

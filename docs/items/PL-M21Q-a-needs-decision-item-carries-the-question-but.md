@@ -8,6 +8,7 @@ classes: defect, docs
 touches: .claude/skills/docket/SKILL.md, .claude/rules/instruction-writing.md, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-16
 closed: 2026-09-20
+pr: 799
 verify: python3 tools/doc_check.py check && grep -rqF 'record the recommendation in the item, not only in the reply' .claude/skills/docket/
 ---
 
