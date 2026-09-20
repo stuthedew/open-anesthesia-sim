@@ -450,6 +450,25 @@ def test_the_hover_reports_the_drawn_state_through_the_formatters(
     assert "%" in readout.splitlines()[2]
 
 
+def _fat_lines(readout: str) -> list[str]:
+    """The fat values a box reports, normalised across the readout's two forms.
+
+    Where every reading is of one compartment the box names it once, as a
+    heading; where the readings span compartments each value line opens with
+    its own. Both say the same thing about fat, and this is what lets a test
+    assert that a hand movement left fat alone while the box gained a line for
+    a compartment that came into reach.
+    """
+
+    lines = readout.splitlines()
+    marker = "Fat \u00b7 "
+
+    if lines[1] == "Fat":
+        return lines[2:]
+
+    return [line.removeprefix(marker) for line in lines[1:] if line.startswith(marker)]
+
+
 def test_the_hover_answers_for_every_run_in_reach_on_a_real_branched_case(
     application: QApplication,
 ) -> None:
@@ -502,16 +521,28 @@ def test_the_hover_answers_for_every_run_in_reach_on_a_real_branched_case(
     assert readout is not None
     assert readout == chart.readout_at(time_s, on_branch)
     assert readout == format_compared_trace_hover(
-        ((first, len(first.times_s) - 1), (second, len(second.times_s) - 1)), RecordedQuantity.FAT
+        (
+            (first, RecordedQuantity.FAT, len(first.times_s) - 1),
+            (second, RecordedQuantity.FAT, len(second.times_s) - 1),
+        ),
+        len(frame.runs),
     )
     lines = readout.splitlines()
     assert lines[:2] == ["Modelled sevoflurane", "Fat"]
     assert [line.split("\u00b7")[0].strip() for line in lines[2:]] == [first.label, second.label]
     assert lines[2] != lines[3], "the two runs must read differently for this to matter"
 
-    # Two pixels of hand movement, which is what used to swap the answer.
-    assert chart.readout_at(time_s, on_trunk + 2.0 * percent_per_pixel) == readout
-    assert chart.readout_at(time_s, on_trunk - 2.0 * percent_per_pixel) == readout
+    # Two pixels of hand movement, which is what used to swap the answer. The
+    # fat lines are what must not move; the box may still gain a line, because
+    # `PL-0RZ0` made every compartment in reach answer too and the branch's
+    # alveolar trace has washed down to within the radius of fat by this
+    # instant - which is the axis compression `PL-QYBW` names, now displayed
+    # rather than resolved by arithmetic the reader cannot see.
+    for moved in (2.0, -2.0):
+        nudged = chart.readout_at(time_s, on_trunk + moved * percent_per_pixel)
+
+        assert nudged is not None
+        assert _fat_lines(nudged) == lines[2:]
 
 
 def test_the_references_answer_no_hover_and_clear_space_answers_none(

@@ -3,11 +3,12 @@ id: PL-0RZ0
 title: The hover still lets a 2 px movement flip which *compartment* answers where two compressed traces contend, which PL-JVHL fixed only for runs
 priority: P1
 effort: S
-status: needs-decision
+status: done
 classes: safety, ux
 feature: compartment-trace-legibility
 touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit/test_chart_frame.py
 added: 2026-09-20
+closed: 2026-09-20
 payoff: stops the hover box naming fat's value under muscle's label when the reader's hand moves 2 px, where the two can differ severalfold
 verify: grep -q 'def test_two_compartments_within_one_hover_radius' tests/unit/test_chart_frame.py
 ---
@@ -47,7 +48,7 @@ nearest *along its length*, prefer the one the reader most recently hovered, or
 leave it and fix the axis.
 
 **Where.** `src/anesthesia_sim/app/chart_frame.py` (`nearest_trace_point`, the
-`aimed_at` selection); `docs/MODEL.md` § "Where more than one run answers"
+`aimed_at` selection); `docs/MODEL.md` § "Where more than one trace answers"
 states the current rule.
 
 **Why it matters.** The same failure as `PL-JVHL`'s, one axis over: the box
@@ -156,6 +157,10 @@ higher in the trace table**, is worse than either: it would make fat
 unreachable wherever muscle is inside the radius - up to 45.7% of the fat
 trace - which is the failure `docs/MODEL.md` has already refused.
 
+**Decided 2026-09-20: generalise it** (project owner, ratified, over
+recording the measurement and dropping this in favour of `PL-QYBW`). What
+follows is the case as it was put.
+
 **Decision needed.** Whether to generalise the ratified run rule to
 compartments, or to record the measurement above and drop this in favour of
 `PL-QYBW` (the shared percent axis compressing the slow compartments).
@@ -175,3 +180,44 @@ Against it: this changes what a learner sees on a safety-relevant display, and
 the cheaper reading is that a 12.7%-of-contended-pairs flip on a visible label
 is tolerable until the axis is fixed. That reading is what the table above is
 for.
+
+
+## Landed 2026-09-20
+
+`nearest_trace_point` stops choosing: every `(run, compartment)` whose drawn
+point is inside the radius answers, at that trace's own nearest such point, in
+the frame's drawing order - compartment by `ChartFrame.visible`, run by
+`ChartFrame.runs`. `HoverTarget.quantity` became `quantities` and
+`HoverReading` gained one, so every reading carries the trace it belongs to
+rather than the box carrying one for all of them.
+
+`format_compared_trace_hover` now takes the compartment per reading and the
+chart's run count, and keeps two forms. Where the readings share a compartment
+the output is byte-identical to what it was - the agent, the compartment, a
+value line per run - which is 54.3-99.5% of hovers. Where they span
+compartments the heading cannot stand for them all, so each value line opens
+with its own compartment, gloss included, then its run while more than one is
+drawn.
+
+Two things the work turned up that the measurement had not:
+
+1. **Two compartments of one run do not share an instant.** A run draws all six
+   traces at one set of times, but each keeps its own nearest point and nearest
+   is measured in two dimensions, so the pointer's height decides which column
+   a trace answers at where two are near-equidistant in time. The per-line
+   instant is therefore required rather than merely consistent, and
+   `docs/MODEL.md` now says so. `PL-1K9G` carries the question of whether the
+   column should be chosen by time alone.
+2. **The branch's alveolar trace contends with fat on the real case.**
+   `tests/integration/test_qt_chart.py`'s branched case moved a pointer 2 px
+   and the box gained an alveolar line, because by 20 minutes the branch's
+   vaporizer has been off for ten and its alveolar has washed down to within
+   the radius of fat. That is the compression `PL-QYBW` names, now displayed
+   rather than resolved by arithmetic a reader cannot see; the test asserts the
+   fat lines are unchanged instead of the whole box.
+
+**Documentation swept:** `docs/MODEL.md` (the hover rule, its heading, and a
+new hazard-table row for reading one compartment's concentration as another's),
+`src/anesthesia_sim/app/chart_frame.py` and `src/anesthesia_sim/app/qt_chart.py`
+docstrings. `make check` is green, including `doc_check`, which caught the
+heading rename leaving a dangling citation in this file.

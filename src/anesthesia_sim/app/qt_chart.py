@@ -397,10 +397,13 @@ class _HoverReadout:
         """Put a dot on every point that answered and the text beside them.
 
         One dot per reading rather than one for the box, because every run
-        inside the radius answers (`chart_frame.HoverTarget`) and a single
-        dot would put a mark on one run's curve while the box read for
-        several - the attribution failure `PL-MN4J` closed, arriving through
-        the marker instead of through the text.
+        *and* every compartment inside the radius answers
+        (`chart_frame.HoverTarget`) and a single dot would put a mark on one
+        curve while the box read for several - the attribution failure
+        `PL-MN4J` closed, arriving through the marker instead of through the
+        text. The dots span compartments since `PL-0RZ0`, so a reader whose
+        pointer is between two compressed traces sees both marked rather than
+        being told which one the arithmetic preferred.
         """
 
         self._dot.setData(
