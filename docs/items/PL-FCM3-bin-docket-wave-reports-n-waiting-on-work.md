@@ -9,6 +9,7 @@ feature: gate-remaining-cost
 touches: subprojects/docket/src/docket, subprojects/docket/tests
 added: 2026-09-20
 closed: 2026-09-20
+pr: 761
 payoff: makes the beat say what clearing the gate actually costs, instead of reporting 4 items when it is 1 plus 13 prerequisites
 verify: grep -q 'def test_the_gate_sizes_the_work_its_entries_wait_on_outside_it' subprojects/docket/tests/test_roadmap.py
 ---
