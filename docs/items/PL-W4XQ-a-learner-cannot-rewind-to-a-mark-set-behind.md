@@ -1,10 +1,15 @@
 ---
 id: PL-W4XQ
 title: A learner cannot rewind to a mark set behind the clock: resumed_at refuses any instant that is not a keyframe and resumed_at_halt needs the run to be standing on the crossing, so marking 1 h while paused at 3 h gives a mark nothing can return to
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: feature
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, docs/MODEL.md, tests/integration/test_controller.py
 added: 2026-09-20
+payoff: makes a mark set behind the clock something a learner can return to, which is the act the owner described the feature for
+verify: uv run pytest tests/integration/test_controller.py -k returning_to_a_mark && grep -q 'def test_a_mark_set_behind_the_clock_can_be_returned_to' tests/integration/test_controller.py
 ---
 
 **Problem.** A learner cannot rewind to a mark set behind the clock: resumed_at refuses any instant that is not a keyframe and resumed_at_halt needs the run to be standing on the crossing, so marking 1 h while paused at 3 h gives a mark nothing can return to

@@ -1,10 +1,15 @@
 ---
 id: PL-4KZD
 title: The bookmark panel draws every run's marks with the reference run's standings, so while two runs are shown the row states one run's answer with nothing saying which
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: defect, safety
 feature: scenario-branching
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_simulation_view.py
 added: 2026-09-20
+payoff: stops a mark's row attributing one run's answer to the other while two managements are being compared
+verify: grep -q 'def test_a_mark_s_row_names_the_run_its_standing_belongs_to' tests/unit/test_simulation_view.py
 ---
 
 **Problem.** The bookmark panel draws every run's marks with the reference run's standings, so while two runs are shown the row states one run's answer with nothing saying which
