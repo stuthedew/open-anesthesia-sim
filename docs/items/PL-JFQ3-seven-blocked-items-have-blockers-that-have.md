@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: planning, docs
 feature: debt-gate
+milestone: v0.4.33
 touches: docs/items
 added: 2026-09-16
 closed: 2026-09-20

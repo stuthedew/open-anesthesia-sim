@@ -1,9 +1,14 @@
 ---
 id: PL-NWSK
 title: required_checks_check.py treats a paths-filtered pull_request job as reporting, but GitHub leaves such a check pending forever on a pull request the filter excludes, so the reconciliation would read agreement while merges hang
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
 touches: tools/required_checks_check.py, tests/unit/test_required_checks_check.py
 added: 2026-09-19
+payoff: stops a path-filtered CI job reading as agreement while pull requests wait forever on a required check that can never arrive
+verify: grep -q 'def test_a_paths_filtered_pull_request_job_is_undecidable' tests/unit/test_required_checks_check.py
 ---
 
 **Problem.** required_checks_check.py treats a paths-filtered pull_request job as reporting, but GitHub leaves such a check pending forever on a pull request the filter excludes, so the reconciliation would read agreement while merges hang

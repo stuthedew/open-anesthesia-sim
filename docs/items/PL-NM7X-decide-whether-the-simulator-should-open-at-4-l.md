@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: science
 feature: anesthesia-machine
+milestone: v0.4.33
 touches: src/anesthesia_sim/data/machines/reference_circle_system.json, docs/MODEL.md, docs/machine-survey.md
 added: 2026-09-19
 closed: 2026-09-20

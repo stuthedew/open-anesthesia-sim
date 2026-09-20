@@ -1,8 +1,15 @@
 ---
 id: PL-0RZ0
 title: The hover still lets a 2 px movement flip which *compartment* answers where two compressed traces contend, which PL-JVHL fixed only for runs
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: safety, ux
+feature: compartment-trace-legibility
+touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit/test_chart_frame.py
 added: 2026-09-20
+payoff: stops the hover box naming fat's value under muscle's label when the reader's hand moves 2 px, where the two can differ severalfold
+verify: grep -q 'def test_two_compartments_within_one_hover_radius' tests/unit/test_chart_frame.py
 ---
 
 **Problem.** The hover still lets a 2 px movement flip which *compartment* answers where two compressed traces contend, which PL-JVHL fixed only for runs
