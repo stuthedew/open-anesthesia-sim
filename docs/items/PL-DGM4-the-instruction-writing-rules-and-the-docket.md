@@ -21,7 +21,7 @@ the same message, and a session cannot satisfy both.
 decide opens with the question(s) and the recommendation, one line each.
 Supporting detail follows; **nothing precedes the questions**."
 
-`.claude/skills/docket/SKILL.md`, "Mode: recommend what to work on": "**Open
+`.claude/skills/docket/modes/picking.md`, "Mode: recommend what to work on": "**Open
 with where the release stands - two or three sentences, before any item.**
 `docket wave` prints the facts; state them as prose, because a row of counts
 is not an answer to 'where are we'."
@@ -45,7 +45,7 @@ paid on every "what next" reply, which is one of the most frequent messages
 this project produces.
 
 **Where.** `.claude/rules/instruction-writing.md` (rule 10) and
-`.claude/skills/docket/SKILL.md` ("Mode: recommend what to work on").
+`.claude/skills/docket/modes/picking.md` ("Mode: recommend what to work on").
 `CLAUDE.md`'s "Answer 'what should we work on next?' at feature altitude"
 bullet is the third statement of the same thing and should be checked for
 consistency with whatever is decided. Note `PL-019F` already proposes

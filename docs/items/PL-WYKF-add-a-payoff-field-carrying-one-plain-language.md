@@ -117,4 +117,4 @@ grandfathered set is closed at exactly what the store held when the rule began
 working. And the field holds a *consequence*, not a restatement of the title -
 `docket check` cannot judge that and must not try, so the checker's job is
 presence only, and the shape to copy is the one in
-`.claude/skills/docket/SKILL.md` § "Say what the work buys".
+`.claude/skills/docket/modes/picking.md` § "Say what the work buys".

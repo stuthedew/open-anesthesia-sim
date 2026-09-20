@@ -39,7 +39,7 @@ decision to put the port ahead of v0.5.0 - until somebody hand-edits
 advisory, returns a byte-identical three-statement list for `0.4.26`, `0.4.27`
 and `0.5.0` - the missing version-table row, the stale baseline mark, the stale
 baseline heading - and never mentions a milestone section whose number the cut
-has passed. `wave().problems` is empty at all three. `.claude/skills/docket/SKILL.md`
+has passed. `wave().problems` is empty at all three. `.claude/skills/docket/modes/release.md`
 § "Mode: ship a release" names the same three edits and no fourth.
 
 **Why it matters.** The renumber `ROADMAP.md` provides for is load-bearing for
