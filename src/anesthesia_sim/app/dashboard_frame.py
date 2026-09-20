@@ -1355,7 +1355,7 @@ def _standing_clauses(
             f"with {len(standings)} standing(s)"
         )
 
-    if len(runs) == 1:
+    if len(set(standings)) == 1:
         return (MARK_STANDING_TEXT[standings[0]],)
 
     return tuple(
