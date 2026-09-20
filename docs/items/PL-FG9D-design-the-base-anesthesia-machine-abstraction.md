@@ -3,14 +3,15 @@ id: PL-FG9D
 title: Design the base anesthesia-machine abstraction so a real commercial machine is a data-plus-plugin addition
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs
 feature: anesthesia-machine
-touches: docs/MODEL.md, ROADMAP.md
-blocked-by: PL-4DCG
+touches: docs/machine-abstraction.md, docs/MODEL.md, ROADMAP.md
 added: 2026-09-02
-payoff: stops the first real machine module settling the abstraction by accident, which is what would let a trade name on screen stand for behaviour that machine does not have
-verify: grep -qF 'a row, not a column' docs/MODEL.md ROADMAP.md
+closed: 2026-09-20
+pr: 748
+payoff: settles what a machine module is before two machines are in the tree, so adding a real commercial machine is a data file rather than a second calculation path nobody can check
+verify: grep -qF 'a machine contributes exactly two rates and one volume' docs/machine-abstraction.md
 ---
 
 **Problem.** `ROADMAP.md` planned-milestone item 1 says "a modular
@@ -138,3 +139,12 @@ questions are answerable against evidence.
 Nothing else about the item changes. It stays design-only: no machine class, no
 interlocks, no `src/` change, and planned-milestone item 1 remains gated behind
 Phase 1's multi-substance generalization.
+
+**Closed the same day, by a second session.** The promotion above is what made
+it visible to `bin/docket next`; `#748` then answered the seven questions in
+`docs/machine-abstraction.md` and closed this item. The `verify:` and `payoff:`
+recorded here are that session's, written against the document that exists,
+rather than the placeholder pair the promotion carried — which pinned a phrase
+guessed at before the design was written. Recorded on the `PL-JFQ3` branch when
+the two met at merge, so that this note is not left reading as though the item
+were still open.

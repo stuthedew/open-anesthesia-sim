@@ -3,11 +3,13 @@ id: PL-V3GD
 title: Cut v0.4.32 from the 4 items finished since v0.4.31: the release that completes pr-title-enforcement
 priority: P2
 effort: S
-status: ready
+status: done
 classes: housekeeping
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 added: 2026-09-20
+closed: 2026-09-20
+pr: 747
 payoff: clears the release the session-start digest re-raises in every session, and unblocks the next cut, which docket refuses while a release is untagged
 verify: grep -q '^version = "0.4.32"' pyproject.toml
 ---

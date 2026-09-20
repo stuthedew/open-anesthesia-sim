@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: docs
 feature: anesthesia-machine
+milestone: v0.4.32
 touches: docs/machine-survey.md, docs/MODEL.md, ROADMAP.md
 added: 2026-09-02
 closed: 2026-09-19
