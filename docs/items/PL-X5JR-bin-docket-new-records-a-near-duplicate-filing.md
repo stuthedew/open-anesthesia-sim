@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/mod
 blocked-by: PL-TZ7T
 added: 2026-09-20
 closed: 2026-09-20
+pr: 793
 payoff: turns a cost the store already pays - one defect diagnosed five times - into the evidence that ranks it, without a session having to notice and assert the claim by hand
 verify: grep -q 'def test_a_third_recurrence_surfaces_a_promotion_candidate' subprojects/docket/tests/test_plan.py
 ---
