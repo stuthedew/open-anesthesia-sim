@@ -27,9 +27,11 @@ This is the same advisory firing on a new batch, not a missed one.
 again.** These two *are* the remainder of the gate. While they read as blocked,
 the beat says "clear the gate — 2 entries still open" and `bin/docket next`
 offers neither, so the gate looks stuck when it is two promotions from clear.
-`PL-6T44` is the standing tool defect behind the appearance (`next` and `wave`
-read `status: blocked` literally where `check` computes it); this item is the
-grooming that clears the instance, and does not depend on `PL-6T44` landing.
+`PL-6T44` is the standing tool defect behind the appearance: `bin/docket next`
+and `bin/docket wave` read `status: blocked` literally where `bin/docket check`
+computes it. The two are independent work and can land in either order — fixing
+the tool stops the *next* batch reading as stuck, while this grooming clears the
+batch standing today.
 
 **Done when.** Each of `PL-WZVZ`, `PL-8PS6` and `PL-439V` has been read against
 the tree as it now stands — `docs/machine-abstraction.md` and

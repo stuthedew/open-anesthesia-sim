@@ -9,6 +9,7 @@ feature: replay-hermeticity
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests, docs/items
 added: 2026-09-20
 closed: 2026-09-20
+pr: 753
 payoff: stops main going red - through a release cut, twice - for a finding no commit caused and no branch could have shown, while keeping the error on the case a commit does cause
 verify: uv run pytest subprojects/docket/tests/test_verify.py subprojects/docket/tests/test_checks.py -q -k 'outside_the_tree or reported_apart or reads_the_remote or only_reads_the_tree_is_still' | grep -q '8 passed'
 ---

@@ -9,6 +9,7 @@ feature: anesthesia-machine
 touches: src/anesthesia_sim/data/machines/reference_circle_system.json, docs/MODEL.md, docs/machine-survey.md
 added: 2026-09-19
 closed: 2026-09-20
+pr: 755
 payoff: stops the simulator's opening fresh gas flow teaching 4 L/min as routine practice when its own survey found the field has moved below it
 verify: grep -q 'teaching default, not a clinical recommendation' src/anesthesia_sim/data/machines/reference_circle_system.json
 ---
