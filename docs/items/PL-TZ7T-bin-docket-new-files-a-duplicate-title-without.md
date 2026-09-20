@@ -58,3 +58,47 @@ The cost is now measurable rather than anecdotal. `PL-STC4` and `PL-4FD2` each
 carry an independent analysis of the same check, written hours apart, and
 `PL-BHBZ` a third. Whoever works `verify-false-reject` reads three briefs to
 recover one defect.
+
+**Measured 2026-09-20, and it refutes the key this brief names.** "Done when"
+above says `bin/docket new` should name "the existing items whose titles are
+close to the one being filed". Title closeness does not work. Over the 1,362
+items in the store, scoring pairs by Jaccard overlap of title content words:
+
+| threshold | known duplicate pairs caught (of 13) | pairs flagged store-wide |
+| --- | --- | --- |
+| 0.45 | 0 | 58 |
+| 0.30 | 0 | 168 |
+| 0.20 | 8 | 768 |
+| 0.15 | 11 | 2,234 |
+
+There is no usable setting. The known duplicates score 0.121-0.276 against each
+other, because each session describes the same defect from the angle that bit
+it - "reads prose as code", "reads every added line regardless of file type",
+"greps every added line for the three marker substrings". Meanwhile the only
+clusters title similarity *does* find at a usable threshold are the items meant
+to recur: sixteen "Triage the N captures on DATE", and three groups of release
+cuts and tags. It fires on exactly the wrong set.
+
+**`touches` is the key that works.** Nine of the thirteen known duplicate pairs
+share a declared `touches` path. Narrowing candidates to items sharing one and
+*then* ranking by title similarity puts the true duplicate in the **top 3 for 8
+of 9** pairs, against candidate sets of 55-111. So the shape is: shared path
+selects, title ranks, and `new` prints the top few rather than the whole set.
+
+**Two wrinkles the design has to answer.**
+
+- **A fresh capture has no `touches`.** `PL-0KQP` is the miss: `bin/docket new`
+  writes no `touches`, so all four of its pairs score no shared path. The
+  session filing it was on a branch whose commits touch
+  `subprojects/docket/src/docket/verify.py`, so the working tree can supply
+  candidate paths where the item does not.
+- **Only open items should count.** A triage pass or a release cut is `done`
+  within hours, so scoring against open items alone drops the recurring-by-design
+  clusters for free - and what it still catches there is real, `PL-Z0C7` being a
+  second session cutting `v0.4.31` while `PL-R5VS` was open.
+
+**This does not settle what happens after detection.** The project owner asked
+on 2026-09-20 whether repeat filing attempts should be counted and used to raise
+priority. That is a live design question above this item rather than inside it,
+and the measurement here only fixes the key.
+
