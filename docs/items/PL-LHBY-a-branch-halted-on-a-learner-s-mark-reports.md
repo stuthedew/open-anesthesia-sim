@@ -56,3 +56,41 @@ inherited mark, and no screen this change makes reachable can display it.
    two runs are shown, keeping today's single unnamed standing for one run.
 2. `BEFORE_THIS_BRANCH` is reachable on screen.
 3. A regression test covers both the silent negative and the false positive.
+
+## Re-checked 2026-09-20 against `main` after `PL-3K9B` landed
+
+**The defect is unchanged and was verified directly:**
+`SimulationView._refresh_view` still calls `self._refresh_bookmarks(snapshots[0])`,
+and `SimulationController._bookmark_standings` still computes from the run's own
+`opened_at_s`, `_reached_instants_s` and `_reached_crossings`. One run's answer
+is still presented as the case's.
+
+**One number in the reproductions above may have moved, and was not re-run.**
+`PL-3K9B` (#805) added `PASSED` as a fifth `MarkStanding` and decides a *time*
+bookmark's standing from the run's own clock. The false-positive reproduction
+used a time bookmark at 30 s with a fork at 60 s and recorded the branch's own
+standing as `before_this_branch`; under `PL-3K9B` a branch whose clock stands at
+60 s is at-or-behind that mark, so its standing is now most likely `PASSED`.
+**That changes which wrong word the panel shows, not whether it shows one** -
+the trunk reads `reached`, the branch reads something else, and the panel
+renders only the trunk's. The MAC-target half is untouched by `PL-3K9B`, which
+moved time bookmarks alone.
+
+Re-run both halves before writing the regression test, and correct the standing
+named above rather than trusting it. It is recorded as unverified deliberately:
+this item exists because a brief asserted something about standings that was
+true of the mark set instead, and repeating that shape here would be the same
+error one layer down.
+
+**Both halves were re-run, and the standing named above was checked rather
+than trusted.** The false-positive reproduction marks 30 s and forks at 60 s,
+so the mark stands *before* the branch's own opening instant:
+`_time_bookmark_standing` tests `opened_at_s <= instant_s <= elapsed_s` first,
+which is `60 <= 30` and false, then `instant_s < opened_at_s`, which is
+`30 < 60` and true — `BEFORE_THIS_BRANCH`, as originally recorded. `PL-3K9B`'s
+`PASSED` takes the cases where the clock is at or past the mark, which is a
+mark *at* the fork instant rather than behind it; the caution was right to be
+recorded and does not reach this reproduction. Measured against the merged
+tree: the row reads `30s – check · Run 1 passed · Run 2 before this branch
+opened`. The silent negative was re-run too and halts at 114.7 s, the figure
+above.
