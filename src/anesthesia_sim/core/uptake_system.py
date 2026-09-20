@@ -234,6 +234,14 @@ class AgentUptakeSystem:
         `BreathingCircuit`'s field defaults, so that every scientific constant
         a run uses comes from a cited data file (`PL-4YY1`). The alveolar
         compartment's two are passed the same way and for the same reason.
+
+        That file's deliverable fresh gas flow range travels the same route,
+        and today it is `None`: the shipped profile declares no range, because
+        none was reachable for any surveyed machine, so the model's envelope
+        in `core/supported_ranges.py` remains the only bound on the flow. What
+        the route buys is that a profile which *does* declare one narrows the
+        flow this system will accept without touching that envelope
+        (`PL-8PS6`).
         """
 
         agent = load_agent_parameters(agent_id)
@@ -247,6 +255,9 @@ class AgentUptakeSystem:
                 delivered_partial_pressure_fraction=(fraction_from_percent(agent.mac_percent)),
                 max_delivered_partial_pressure_fraction=(
                     fraction_from_percent(agent.max_delivered_concentration_percent)
+                ),
+                deliverable_fresh_gas_flow_range=(
+                    circuit_parameters.deliverable_fresh_gas_flow_range
                 ),
             ),
             alveoli=AlveolarCompartment(

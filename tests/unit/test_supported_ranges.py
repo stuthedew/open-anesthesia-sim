@@ -286,12 +286,9 @@ def test_machine_deliverable_flow_range_is_separate_from_model_envelope() -> Non
     assert "machine" in str(below_the_machine.value)
     assert "0.5 to 15.0 L/min" in str(below_the_machine.value)
 
-    assert "compartment model is claimed to represent a patient over" in str(
+    assert "compartment model is claimed to represent a patient over" in str(above_the_model.value)
+    assert f"{MINIMUM_FRESH_GAS_FLOW_L_MIN} to {MAXIMUM_FRESH_GAS_FLOW_L_MIN} L/min" in str(
         above_the_model.value
-    )
-    assert (
-        f"{MINIMUM_FRESH_GAS_FLOW_L_MIN} to {MAXIMUM_FRESH_GAS_FLOW_L_MIN} L/min"
-        in str(above_the_model.value)
     )
 
     assert circuit.fresh_gas_flow_l_min == 4.0

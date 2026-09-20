@@ -4188,6 +4188,10 @@ setting outside it is refused rather than simulated:
 | Alveolar ventilation | 0 to 12 L/min | `core/supported_ranges.py` |
 | Cardiac output | 0 to 10 L/min | `core/supported_ranges.py` |
 
+Fresh gas flow carries a **second** bound that is not in this table and is
+not the model's: what the anesthesia machine in front of the patient can
+actually deliver. The subsection below separates the two claims.
+
 **The ranges are the model's, not the interface's** (PL-0MLQ). Until v0.2.10
 the first three were declared only as slider limits in
 `app/simulation_view.py` and enforced nowhere:
@@ -4279,6 +4283,76 @@ re-measured: the argument above is complete, but the table is history and the
 displayed-resolution claims it refers to have not yet been re-derived for the
 exact step. That is queue item `PL-X9KD`, together with "Displayed precision"
 and the supported step bound.
+
+#### The model's envelope and a machine's deliverable range are two claims
+
+Until `PL-8PS6` one pair of constants stood for both, and they are different
+statements about different things:
+
+| Claim | What it says | Declared in | Refused by |
+| --- | --- | --- | --- |
+| The model's envelope | The range the lumped compartment structure, the reference adult's fixed volumes and the constant-coefficient partition model are claimed to represent a patient over | `MINIMUM_FRESH_GAS_FLOW_L_MIN` and `MAXIMUM_FRESH_GAS_FLOW_L_MIN` in `core/supported_ranges.py` | `require_supported_fresh_gas_flow` |
+| A machine's deliverable range | What that machine's flowmeters, minimum-flow floor and fresh gas delivery can physically set | `deliverable_fresh_gas_flow_range` in that machine's `data/machines/*.json` profile | `BreathingCircuit._require_deliverable_flow` |
+
+**The effective limit on the control is the intersection**, and each side
+refuses in its own words, so a reader of a refusal can tell which claim it
+violated: the model's names the domain the model is claimed over, the
+machine's names the device and says in the same sentence that the envelope is
+*not* what refused it. `test_machine_deliverable_flow_range_is_separate_from_model_envelope`
+in `tests/unit/test_supported_ranges.py` holds both directions.
+
+**The hazard is a machine widening the envelope, and it is why this is a
+split rather than a tidying.** A profile whose flowmeter reaches 15 L/min,
+merged into one pair of constants, would extend the domain every reference
+gate was driven over without a single statement in `core/supported_ranges.py`
+changing — an arithmetically exact number produced outside everything that was
+verified, presented on screen exactly like one inside it. The converse fails
+the same way from the other end: a machine with no true off position at its
+common gas outlet, floored at 0.5 L/min, would under one constant either be
+unrepresentable or would move the model's floor for every other machine.
+Separating them means a machine profile can narrow what a run will accept and
+can never widen it.
+
+**A machine that overlaps the envelope nowhere is refused when the circuit is
+built**, by `BreathingCircuit.__post_init__`, rather than discovered one
+refused setting at a time: every flow such a profile can deliver is outside
+the envelope and every flow the model supports is outside its range, so each
+individual refusal would be correct while none of them said that the pair is
+what cannot be simulated
+(`test_a_machine_that_overlaps_the_envelope_nowhere_is_refused_when_built`
+in `tests/unit/test_circuit.py`).
+
+**The shipped profile declares no range, and nothing displayed changes.**
+`data/machines/reference_circle_system.json` records
+`deliverable_fresh_gas_flow_range` as `null`, because no operator's manual or
+manufacturer specification giving a deliverable range was reachable for any
+machine surveyed — `docs/machine-survey.md` § "(b8) Flow bounds, minimum
+oxygen flow, and the hypoxic guard" reports it unknown for all eight, and
+names ISO 80601-2-13:2022 as the governing standard while stating that its
+text was not reached and that no claim about its requirements is made. A
+`null` is an **absence of claim and not a machine known to be unlimited**: the
+table above is then the only bound on the flow, which is precisely the
+behavior that shipped before the field existed. The profile's
+`provenance_gap` carries that reasoning, and
+`test_the_shipped_machine_declares_no_deliverable_flow_range_and_says_why` in
+`tests/unit/test_parameters.py` holds the file to it.
+
+**What is not stored beside it.** `docs/machine-abstraction.md`'s field table
+also names `minimum_total_flow_l_min` and `minimum_oxygen_flow_l_min` under
+the same survey section. Neither is a field here, on that document's own rule
+that a field exists only if something consumes it: a minimum total fresh gas
+flow *is* the deliverable range's floor, and two names for one number in a
+safety-critical data file is the conflation this subsection exists to remove;
+a minimum oxygen flow reaches nothing this model computes, which carries one
+volatile agent in a single gas phase and no oxygen at all. The second becomes
+admissible the day a hypoxic guard needs it, which is a model extension rather
+than a data question.
+
+**The interface's sliders still read the envelope alone**, which is correct
+while every shipped profile declares no range and wrong the moment one does:
+a slider offering a flow the mounted machine cannot set would invite a
+refusal instead of preventing one. Narrowing the controls to the intersection
+is `PL-7CRY` (narrow the fresh gas flow control to the intersection) — no test yet (`PL-7CRY`).
 
 #### Supported run length
 

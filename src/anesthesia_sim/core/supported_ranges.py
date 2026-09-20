@@ -44,6 +44,27 @@ The fourth control, delivered concentration, is bounded here only by the
 calibrated maximum, which is agent-specific and therefore lives on
 `BreathingCircuit` as instance state rather than as a constant here.
 
+**Fresh gas flow has a second bound of the same shape, and it is not here**
+(`PL-8PS6`). What a *machine* can deliver - its flowmeters, its minimum-flow
+floor, whether it supports minimal- or closed-circuit flow - differs between
+machines and is read from a validated machine profile under `data/machines/`
+into `BreathingCircuit.deliverable_fresh_gas_flow_range`, for the reason the
+vaporizer maximum lives there. The interval below is the model's and only the
+model's: the range the lumped compartment structure is claimed to represent a
+patient over. The effective limit on the control is the intersection of the
+two, and each refuses in its own words.
+
+Keeping them apart is a safety property rather than a tidiness one. Merged,
+a second profile whose flowmeter reaches 15 L/min would widen the domain the
+reference gates were driven over without any statement in this module
+changing - a number produced outside everything that was verified, and
+indistinguishable on screen from one inside it. The converse fails the same
+way: a machine with no true off position, floored at 0.5 L/min, would either
+be unrepresentable or would move the model's floor for every other machine.
+The shipped `reference_circle_system` profile declares no range at all, so
+this interval is the only bound today; `docs/MODEL.md` § "Supported input
+ranges" carries both claims and what separates them.
+
 The run-length bound is enforced on `SimulationState`, which is the only
 object that knows how far a run has gone, rather than on a compartment: a
 compartment advanced alone has no run length to be past the end of. It
@@ -175,7 +196,17 @@ def _require_supported(name: str, value: float, minimum: float, maximum: float) 
 
 
 def require_supported_fresh_gas_flow(fresh_gas_flow_l_min: float) -> None:
-    """Require a fresh gas flow the model has a measured error bound for."""
+    """Require a fresh gas flow inside the range the model is claimed over.
+
+    This is the *model's* claim and the whole of what it checks. What the
+    machine in front of the patient can actually deliver is a separate
+    statement, held on `BreathingCircuit` and refused separately, so a caller
+    reaching this guard directly is bounded by the envelope alone (`PL-8PS6`).
+
+    Raises:
+        SimulationConfigurationError: the flow is not finite, or is outside
+            `MINIMUM_FRESH_GAS_FLOW_L_MIN` to `MAXIMUM_FRESH_GAS_FLOW_L_MIN`.
+    """
 
     _require_supported(
         "fresh_gas_flow_l_min",
