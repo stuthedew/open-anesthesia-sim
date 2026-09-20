@@ -63,3 +63,26 @@ figures: the pre-port thread treats chart-point construction as the cost to
 attack, and under Qt the interface's 28.4 ms is split roughly evenly between
 assembling the frame and painting it, so headroom found in one half buys half
 of what the old reasoning assumed.
+
+**`PL-5748` is this same finding and is dropped in its favour** (`PL-JKML`'s
+duplicate sweep, 2026-09-20). Filed 2026-09-07 against the same `PL-009`
+playback-speed thread in the same file, from the other angle: it names the
+`~17 ms` frame and the `~15 ms` of chart-point construction as stated-current,
+and `PL-010`'s point reuse as headroom still to spend. Two of its three
+arguments are carried here rather than lost:
+
+- **The entry breaks `docs/WORKING_NOTES.md`'s own preamble**, which asks that
+  an entry be written so a reader with no memory of the originating
+  conversation can act on it. This one tells that reader to go looking for an
+  optimization that is already spent, which is the preamble's failure case
+  exactly.
+- **It was the second stale `WORKING_NOTES` entry found in one sweep**, beside
+  `PL-60CQ` - which is the argument for closing a resolved thread rather than
+  amending it, and is `PL-DG84`'s subject.
+
+**And the duplicate is its own best evidence.** `PL-5748` states the frame
+"now costs 2.6 ms" as the correction to `~17 ms`. That figure was itself
+overtaken by the Qt port: the measurement above puts the frame at 40.4 ms at
+300x. So the store held two open items correcting one stale paragraph, and the
+younger correction had gone stale too - which is what a thread that is amended
+rather than closed does over three revisions.

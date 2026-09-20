@@ -86,3 +86,39 @@ line opening `*` or `**`. The count has kept moving since the brief recorded
 the two most recent commits touching the file, which is the item's argument
 running while nobody watches. Note that the brief's closing "The heading states
 no count" is the end state being asked for, not a description of the tree.
+
+**`PL-HCTF` is this same finding and is dropped in its favour** (`PL-JKML`'s
+duplicate sweep, 2026-09-20). Filed 2026-09-19 against the same heading, the
+same `check_gate_counts` gap and the same two candidate remedies, by a session
+that could not see this item. It sat at `needs-decision` asking which remedy
+governs - which triage here had already answered, and which `PL-HCTF`'s own
+brief agrees is a session's call rather than the project owner's. So the store
+held an open decision whose answer was already recorded two items away. Its
+evidence is stronger than this brief's and is carried here:
+
+- **The proof that nothing reads the number, measured 2026-09-19.** `python3
+  tools/doc_check.py check` was run against one tree with the heading reading
+  `174 entries`, `191 entries` and `999 entries` in turn. All three report
+  `0 errors, 0 advisories`. That is a sharper demonstration than this brief's
+  own 151 → 150 edit, because 999 is not a plausible drift.
+- **The drift has a named instance.** `#706` (`PL-ZMGR`) added a declined entry
+  to the subsection on 2026-09-19 and left the heading at `174`. Nothing said
+  so, and the session that wrote it had no way to be told. `PL-2P9L` then added
+  seventeen and bumped to `191`, which preserves the off-by-one rather than
+  repairing it - so the true total has been one higher than the stated one
+  since `#706`, whatever the heading currently says.
+- **Why the count cannot simply be checked as written.** "Entry" here is not
+  "id mentioned": the subsection names ids for context as well as for
+  disposition, so a naive count returns **324** against a heading of 191. Any
+  check holding the heading to the entries below has to sum the batch sizes the
+  paragraphs state ("Eleven more", "Fourteen more", "One more") instead. That
+  is what makes remedy 1 more expensive than it looks, and it is the reason
+  triage chose remedy 2.
+- **Not `PL-0VFF`**, which is that the list does not distinguish a still-open
+  declined entry from a closed one. This item is the stated total, and it is
+  wrong before the open/closed question is asked.
+
+**The reconciliation is part of this item either way.** Removing the number
+from the heading disposes of the drift going forward; `origin/main`'s existing
+off-by-one is disposed of by the same edit, since a heading that states no
+count cannot be wrong by one.

@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: defect, infra
-feature: dev-tooling
+feature: tag-error-names-its-cause
 touches: tools/doc_check.py, .claude/hooks
 added: 2026-09-07
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_stale_local_tag_names_its_own_remedy' tests/unit/test_doc_check.py
@@ -129,3 +129,13 @@ tag and cannot remove one the remote has dropped (`PL-KFWL` records both).
 **The `verify:` command was run 2026-09-19 and fails for the right reason**: the
 240-test `doc_check` suite passes and the `grep` half exits 1, so the pair exits
 1 today and the test it names is what the work owes.
+
+**Grouped as `feature: tag-error-names-its-cause`** (`PL-JKML`'s duplicate
+sweep, 2026-09-20, confirmed on independent refutation). `PL-KFWL` and
+`PL-LT77` are two causes of one symptom: `doc_check` erroring on `main` in
+every session over a release tag, with nothing in the message saying which
+cause it is. `PL-KFWL` is a tag pushed onto a commit where the release was
+never cut - a real fault in the remote. `PL-LT77` is a tag deleted on the
+remote that a warm checkout keeps, because `git fetch --tags` does not prune -
+a fault in local state only. The two demand opposite actions from the reader,
+and today the error cannot tell them apart. The group closes when it can.

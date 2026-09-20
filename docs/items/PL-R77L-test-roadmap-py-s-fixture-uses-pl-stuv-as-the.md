@@ -3,10 +3,12 @@ id: PL-R77L
 title: test_roadmap.py's fixture uses PL-STUV as the id a section mentions in prose, but U is outside ID_ALPHABET so it is not an id at all and two assertions pass for the wrong reason
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect, test
 touches: subprojects/docket/tests/test_roadmap.py
 added: 2026-09-19
+closed: 2026-09-20
+reason: Same finding as PL-GXPP, which supersedes it and named the same PL-STUV occurrences in test_roadmap.py seventeen days earlier. Containment is mechanical: PL-GXPP's verify grep for an out-of-alphabet id matches PL-STUV, so no tree state satisfies PL-GXPP while PL-R77L's '! grep -q PL-STUV' still fails - one cannot be finished without the other. PL-R77L's line numbers (test_roadmap.py:105 and :508-509) and its mutation-proof acceptance bar for the rename are carried into PL-GXPP. Found by PL-JKML's duplicate sweep and confirmed on independent refutation, 2026-09-20.
 verify: ! grep -q 'PL-STUV' subprojects/docket/tests/test_roadmap.py
 ---
 

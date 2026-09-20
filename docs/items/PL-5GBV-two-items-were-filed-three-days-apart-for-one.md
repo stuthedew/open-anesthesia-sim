@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: infra
-feature: dev-tooling
+feature: open-item-overlap-detection
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-07
 verify: uv run pytest -q subprojects/docket/tests/test_cli.py && grep -q 'def test_triage_names_an_open_item_with_a_near_identical_title' subprojects/docket/tests/test_cli.py
@@ -75,3 +75,19 @@ right, not only a shared phrase.
 **Done when.** Two open items describing the same defect are surfaced to a
 reader before both are triaged to `ready`, without the tool claiming to decide
 that they are the same.
+
+**Grouped as `feature: open-item-overlap-detection`** (`PL-JKML`'s duplicate
+sweep, 2026-09-20, confirmed on independent refutation). `PL-5GBV` and
+`PL-BGMK` are two halves of one problem: nothing in this project ever compares
+**two items that are already open**. `PL-5GBV` is what that costs downstream -
+two items for one defect both reaching `ready` and both entering the frozen
+v0.5.0 gate, so the gate counted the same work twice - and `PL-BGMK` is the
+comparison that would have caught it, over overlapping `touches` and `verify:`.
+Fixing either alone leaves the other standing: a comparison nobody runs at gate
+freeze does not stop double-counting, and a gate that de-duplicates does not
+stop two sessions working one finding.
+
+**Deliberately not named for the filing-time warning.** `PL-TZ7T` and
+`PL-X5JR` cover a *new capture* checked against the store as it is filed. This
+group is the other direction - two items already in the store, neither of them
+new - which nothing in the recurrence-signal design reaches.

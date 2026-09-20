@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: defect
-feature: release-process
+feature: cut-backfills-pr-numbers
 touches: subprojects/docket/src/docket/release.py, .claude/skills/docket/SKILL.md, subprojects/docket/tests
 added: 2026-09-16
 verify: uv run pytest -q subprojects/docket/tests/test_release.py && grep -q 'def test_release_writes_the_pr_numbers_the_base_is_owed' subprojects/docket/tests/test_release.py
@@ -97,3 +97,17 @@ it.** On `origin/main` at the time of this sweep, four closures owed a number -
 PL-JB3Z (#716), PL-PZ8D (#715), PL-TPCH (#715), PL-Y5JX (#714) - and they were
 cleared by this very sweep's session running `bin/docket record` on the way
 past, which is the brief's own argument demonstrating itself.
+
+**Grouped as `feature: cut-backfills-pr-numbers`** (`PL-JKML`'s duplicate
+sweep, 2026-09-20, confirmed on independent refutation). `PL-W7WL` and
+`PL-WXX8` are the two halves of a pull request number never reaching the place
+that needs it. `PL-WXX8` is the number never landing on the item at all, because
+`bin/docket record`'s advisory addresses a session that has already finished;
+`PL-W7WL` is the number existing but arriving after the notes are rendered.
+Both are answered by the same move - the cut performing `record`'s backfill
+itself, rather than a rule a session has to remember - and neither is finished
+while the other stands.
+
+Named for what completes rather than for the theme: `commit-provenance` is
+eleven items and answers no question about whether anything finished, which is
+the test `.claude/skills/docket/SKILL.md` sets for a feature name.
