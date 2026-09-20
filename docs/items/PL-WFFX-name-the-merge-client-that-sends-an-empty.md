@@ -57,6 +57,42 @@ And when you enable auto-merge, is it from that same client? If the answer is
 the mobile app, the remedy is one habit: merge from the desktop web UI, or
 check the squash body before confirming.
 
-**Done when** the client is named and either a habit or a tooling change
-prevents the next empty body - or it is recorded that no prevention is
-available and detection via `tools/pr_body_check.py` is the whole remedy.
+**The client is named** (project owner, 2026-09-20): "I use github app to
+merge when away and do use auto merge at times." That closes the timing half -
+the away-from-desk hours the affected merges cluster in are the hours the
+GitHub mobile app is being used - and leaves only the direct observation.
+
+**Auto-merge is not the cause, and is the safer of the two routes.**
+Cross-tabulated over all 683 squash merges, every pull request fetched
+individually rather than sampled:
+
+| `auto_merge` shape | body lost | body kept |
+| --- | --- | --- |
+| `commit_message: ""` | **9** | 0 |
+| `commit_message: null` | 0 | 49 |
+| `commit_message: text` | 0 | 24 |
+| no `auto_merge` object (merged directly) | 178 | 423 |
+
+An empty string loses the body every time and a null never does, which is the
+mechanism. But auto-merge as a *route* loses 9 of 82 (11.0%) against 178 of
+601 (29.6%) for a direct merge - so stopping auto-merge would move merges onto
+the worse path. Six of the nine empty-string cases fall in the away-from-desk
+hour band against 11 of the 73 safe ones.
+
+`#800`, whose auto-merge the owner enabled at 2026-09-20T20:17Z, carries
+`commit_message: null` - the safe shape - so the pull request that recovered
+the 187 will not join them.
+
+**What is still not observed directly.** No client is recorded on any merge, so
+the chain is circumstantial: an empty string always loses the body (9 of 9),
+the affected merges cluster in away-from-desk hours, and the owner uses the
+mobile app when away. The 178 direct merges carry no `auto_merge` object at
+all, so for those the field cannot be read either way. **The decisive test is
+one merge**: enable auto-merge from the mobile app on any open pull request and
+read `auto_merge.commit_message` before it merges - `""` confirms the app,
+`null` exonerates it and moves the suspicion to the direct-merge path.
+
+**Done when** the mobile app is confirmed or exonerated by the one-merge test
+above, and either a habit or a tooling change prevents the next empty body - or
+it is recorded that no prevention is available and detection via
+`tools/pr_body_check.py` is the whole remedy.
