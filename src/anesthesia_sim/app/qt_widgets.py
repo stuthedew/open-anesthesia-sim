@@ -73,6 +73,8 @@ from anesthesia_sim.app.dashboard_frame import (
     COMPARTMENT_FIELD_LABEL,
     DEFAULT_MAXIMUM_TARGET_MAC,
     EDIT_BOOKMARKS_LABEL,
+    FORK_HEADING,
+    FORK_POINT_LABEL,
     HEIGHT_FIELD_LABEL,
     INSTANT_ENTRY_DECIMALS,
     INSTANT_ENTRY_STEP_S,
@@ -82,8 +84,10 @@ from anesthesia_sim.app.dashboard_frame import (
     MARK_NAME_FIELD_LABEL,
     MARK_NAME_PLACEHOLDER,
     REMOVE_MARK_LABEL,
+    TAKE_FORK_LABEL,
     TIME_BOOKMARK_HEADING,
     BookmarkPanel,
+    ForkOffer,
     MarkListing,
     NewCaseQuestion,
     Readout,
@@ -106,6 +110,7 @@ from anesthesia_sim.app.theme import (
     BOOKMARK_LIST_MAX_HEIGHT,
     BOOKMARK_ROW_SPACING,
     BOOKMARK_SECTION_SPACING,
+    FORK_POINT_SELECTOR_WIDTH,
     GRIDLINE,
     INK,
     METRIC_NAME_SIZE,
@@ -1059,6 +1064,130 @@ class BookmarksPanel(QWidget):
         self.targets.set_listing(panel.targets)
 
 
+class ForkPanel(QWidget):
+    """Where a learner takes a branch: which instant to open it at, and the button.
+
+    Beside the marks rather than inside a `RunView`, for the reason the marks
+    are there: the instants it offers are the *case's* - the trunk's
+    keyframes - and a control duplicated into each displayed run would give a
+    branch one that can only refuse (`docs/ARCHITECTURE.md` § "Where new code
+    belongs").
+
+    It decides nothing. Which instants are offered, how they are rendered and
+    whether the control is shown at all are settled in
+    `dashboard_frame.fork_offer`, where a test reads them without a display;
+    this writes the answer into widgets. The selector carries the instant as
+    `userData`, so the caller acts on the number the panel was given rather
+    than on the string a reader sees.
+
+    **Refused the way the transport refuses** (`PL-61WW`): `setDisabled`
+    beside `setHidden` with one operand, and the reason standing where the
+    control stood, so a control that cannot be used draws nothing and a
+    reader is never left guessing what a greyed button wanted.
+
+    **Two lines, because they are two different things.** A lock is a mode
+    the reader can leave, and it is written as an ordinary caption where the
+    control was; a refusal is the case rejecting what was asked for, and it
+    is a `NoticeLabel` like every other refusal on this dashboard. Writing
+    the lock in the notice's colour would spend this interface's one alarm
+    on a state that is working as intended.
+
+    Attributes:
+        heading_label: What the section is called.
+        point_selector: The instants a branch may be opened at.
+        take_button: Takes the branch; `clicked` is connected by the view.
+        lock_text: Why the control is not being offered, where it stood.
+        notice: Why the branch last asked for was refused.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.heading_label = styled_label(FORK_HEADING, color=INK, bold=True)
+        self.point_selector = QComboBox()
+        self.point_selector.setFixedWidth(FORK_POINT_SELECTOR_WIDTH)
+        self.point_selector.setStyleSheet(selector_stylesheet())
+        self.take_button = QPushButton(TAKE_FORK_LABEL)
+        self.take_button.setStyleSheet(_outlined_button_stylesheet())
+        self.lock_text = styled_label("", color=MUTED, wrap=True)
+        self.lock_text.setHidden(True)
+        self.notice = NoticeLabel(self)
+        self._point_label = styled_label(FORK_POINT_LABEL, color=MUTED)
+
+        column = QVBoxLayout(self)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(BOOKMARK_ROW_SPACING)
+        column.addWidget(self.heading_label)
+        controls = QHBoxLayout()
+        controls.setSpacing(8)
+        controls.addWidget(self._point_label)
+        controls.addWidget(self.point_selector)
+        controls.addWidget(self.take_button)
+        controls.addWidget(self.lock_text)
+        controls.addStretch(1)
+        column.addLayout(controls)
+        column.addWidget(self.notice)
+
+    def selected_instant_s(self) -> float | None:
+        """The instant the selector stands on, or None while it offers none."""
+
+        instant_s = self.point_selector.currentData()
+
+        return None if instant_s is None else float(instant_s)
+
+    def set_offer(self, offer: ForkOffer) -> None:
+        """Draw one tick's offer, keeping the reader's selection where it still exists.
+
+        The entries are rebuilt only when they have changed, because a
+        running trunk records a keyframe on every setting change and a
+        selector rebuilt every frame would drop a reader's choice mid-click.
+        The rebuild is made under a `QSignalBlocker` so that repopulating the
+        control cannot be mistaken for a reader operating it.
+
+        **A selection whose instant is no longer offered is cleared rather
+        than moved** (`PL-J12Z`). `findData` answers -1 for an instant that
+        has gone, and `setCurrentIndex(-1)` leaves nothing selected, so
+        `selected_instant_s` answers None and the button says so. Falling
+        back to the first entry would put *induction* under a reader who had
+        chosen a later decision point, and branch there on the next press -
+        a silently substituted default of exactly the kind `CLAUDE.md`'s
+        safety-critical standard refuses, and reachable without a reset: a
+        keyframe collapses when a dial is returned to its previous value at
+        the same instant, which is a learner changing their mind.
+
+        Args:
+            offer: `dashboard_frame.fork_offer`'s result this tick.
+        """
+
+        if offer.points_s != self._offered_points_s():
+            selected_s = self.selected_instant_s()
+
+            with QSignalBlocker(self.point_selector):
+                self.point_selector.clear()
+
+                for label, instant_s in zip(offer.labels, offer.points_s, strict=True):
+                    self.point_selector.addItem(label, userData=instant_s)
+
+                if selected_s is not None:
+                    self.point_selector.setCurrentIndex(self.point_selector.findData(selected_s))
+
+        self.point_selector.setDisabled(offer.locked)
+        self.point_selector.setHidden(offer.locked)
+        self.take_button.setDisabled(offer.locked)
+        self.take_button.setHidden(offer.locked)
+        self._point_label.setHidden(offer.locked)
+        self.lock_text.setText(offer.lock_reason)
+        self.lock_text.setHidden(not offer.locked)
+        self.notice.set_notice(offer.refusal)
+
+    def _offered_points_s(self) -> tuple[float, ...]:
+        """The instants the selector currently holds, in the order it holds them."""
+
+        return tuple(
+            float(self.point_selector.itemData(index))
+            for index in range(self.point_selector.count())
+        )
+
+
 class BookmarkDialog(QDialog):
     """Where the two kinds of mark are created, listed and removed.
 
@@ -1360,12 +1489,27 @@ def inert_splitter(orientation: Qt.Orientation, widgets: Sequence[QWidget]) -> Q
     for widget in widgets:
         splitter.addWidget(widget)
 
+    freeze_splitter_handles(splitter)
+
+    return splitter
+
+
+def freeze_splitter_handles(splitter: QSplitter) -> None:
+    """Disable every handle of `splitter`, including ones added since it was built.
+
+    Qt creates a handle with each section and enables it, so a splitter that
+    gains a section after construction - the dashboard, when a learner takes
+    a branch - would come to hold one draggable handle among inert ones.
+    Called again after any restacking, which is cheap and idempotent.
+
+    Args:
+        splitter: The splitter whose handles are to be inert.
+    """
+
     for index in range(1, splitter.count()):
         handle = splitter.handle(index)
         handle.setEnabled(False)
         handle.setCursor(Qt.CursorShape.ArrowCursor)
-
-    return splitter
 
 
 def initial_window_geometry(available: QRect, minimum: QSize, fraction: float) -> QRect:

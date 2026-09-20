@@ -7,12 +7,12 @@ status: ready
 classes: docs, defect
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-19
-verify: ! grep -qF 'prints no placement at all' .claude/skills/docket/SKILL.md
+verify: ! grep -rqF 'prints no placement at all' .claude/skills/docket/
 ---
 
 **Problem.** The docket skill says bin/docket show prints no placement at all, but PL-J790 added the plan: line to show in v0.4.18, so a session is sent to look up what the command already prints
 
-**Where.** `.claude/skills/docket/SKILL.md:517`, closing the "Every item you
+**Where.** `.claude/skills/docket/modes/picking.md`, closing the "Every item you
 offer carries its relation to the gate" section: *"`bin/docket wave` prints the
 gate's open entries by id and settles membership; `bin/docket show` prints no
 placement at all, so an item reached by name — the way the owner usually starts

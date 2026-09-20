@@ -723,6 +723,70 @@ def parse_item(text: str, path: str = "") -> Item:
     )
 
 
+#: Every front-matter key, in the order a writer emits them. Data rather than
+#: a literal inside `render_item`, because two writers now depend on it: that
+#: one, which rewrites a whole file, and `with_front_matter_field`, which puts
+#: a single line into a file it otherwise leaves byte-for-byte alone. A second
+#: copy of this sequence would be a second chance for the two to disagree
+#: about where a field belongs, and the disagreement would surface as a diff
+#: rather than as an error (`PL-7K8Y`).
+FIELD_ORDER = (
+    "id",
+    "title",
+    "priority",
+    "effort",
+    "status",
+    "classes",
+    "feature",
+    "milestone",
+    "touches",
+    "blocked-by",
+    "added",
+    "closed",
+    "commit",
+    "pr",
+    "reason",
+    "payoff",
+    "verify",
+    "not-delegable",
+    "falsifies",
+    "root-cause-of",
+    "impairs-generators",
+)
+
+#: Written even when empty. A file carrying neither is not an item, and one
+#: rendered without them reads back as a different, emptier item rather than
+#: as a malformed file anything would report.
+ALWAYS_RENDERED = ("id", "title")
+
+
+def _front_matter_values(item: Item) -> dict[str, str]:
+    """Each front-matter key's value as a string, ready to be written."""
+    return {
+        "id": item.identifier,
+        "title": item.title,
+        "priority": item.priority,
+        "effort": item.effort,
+        "status": item.status,
+        "classes": ", ".join(item.classes),
+        "feature": item.feature,
+        "milestone": item.milestone,
+        "touches": ", ".join(item.touches),
+        "blocked-by": ", ".join(item.blocked_by),
+        "added": item.added.isoformat() if item.added else "",
+        "closed": item.closed.isoformat() if item.closed else "",
+        "commit": item.commit,
+        "pr": item.pr,
+        "reason": item.reason,
+        "payoff": item.payoff,
+        "verify": item.verify,
+        "not-delegable": item.not_delegable,
+        "falsifies": item.falsifies,
+        "root-cause-of": ", ".join(item.root_cause_of),
+        "impairs-generators": item.impairs_generators,
+    }
+
+
 def render_item(item: Item) -> str:
     """Write one item file.
 
@@ -730,30 +794,86 @@ def render_item(item: Item) -> str:
     rewriting a file the tool has already written is a no-op. A round trip
     that reorders keys would put noise in every diff and make review harder,
     which is the opposite of why the state is kept in git at all.
+
+    That no-op holds only for a file this function wrote. A hand-typed one
+    whose keys are in some other order comes back reordered, and a value
+    spread over continuation lines comes back on one line - both correct
+    renderings, and both a removal in the diff. Where the caller is adding a
+    field rather than rewriting the item, `with_front_matter_field` is the
+    writer that has no such effect.
     """
-    lines = [f"id: {item.identifier}", f"title: {item.title}"]
-    for name, value in (
-        ("priority", item.priority),
-        ("effort", item.effort),
-        ("status", item.status),
-        ("classes", ", ".join(item.classes)),
-        ("feature", item.feature),
-        ("milestone", item.milestone),
-        ("touches", ", ".join(item.touches)),
-        ("blocked-by", ", ".join(item.blocked_by)),
-        ("added", item.added.isoformat() if item.added else ""),
-        ("closed", item.closed.isoformat() if item.closed else ""),
-        ("commit", item.commit),
-        ("pr", item.pr),
-        ("reason", item.reason),
-        ("payoff", item.payoff),
-        ("verify", item.verify),
-        ("not-delegable", item.not_delegable),
-        ("falsifies", item.falsifies),
-        ("root-cause-of", ", ".join(item.root_cause_of)),
-        ("impairs-generators", item.impairs_generators),
-    ):
-        if value:
-            lines.append(f"{name}: {value}")
+    values = _front_matter_values(item)
+    lines = [
+        f"{name}: {values[name]}" for name in FIELD_ORDER if values[name] or name in ALWAYS_RENDERED
+    ]
     body = item.body if item.body.endswith("\n") else item.body + "\n"
     return "---\n" + "\n".join(lines) + "\n---\n\n" + body.lstrip("\n")
+
+
+def with_front_matter_field(text: str, name: str, value: str) -> str:
+    """Add one front-matter field to an item file, changing nothing else in it.
+
+    `render_item` is the wrong writer for this, and the reason is what
+    `PL-7K8Y` cost. It renders from the parsed `Item`, so it normalises the
+    whole block on the way past: a hand-typed key order comes back canonical,
+    and a value continued over indented lines comes back on one. Both are
+    removals in the diff, and `verify.sanctioned_queue_edit` classifies a
+    queue edit as the `pr` backfill the close-out is told to make only when
+    the diff removes nothing at all. So `bin/docket record`, following the
+    skill exactly, produced a `REJECT` on any item whose block was not already
+    canonical - and because the classifier reads the per-commit diffs rather
+    than the net tree, putting the order back in a later commit left both the
+    removal and its undo on the branch. Rebuilding the history was the only
+    remedy.
+
+    Inserting a line settles it at the source instead of teaching the
+    classifier to forgive a removal, which is the narrower of the two fixes
+    the item weighed: "no removed lines" stays exact, and exact is what makes
+    the exemption safe to grant. It also reaches further than key order for
+    free - the continuation lines of a multi-line value survive an insert
+    without anything having to know they are there, and 12 item files in this
+    store carry one.
+
+    The field goes after the last key already present that `FIELD_ORDER` puts
+    before it, so on a file this package wrote the result is byte-identical to
+    `render_item`'s and on any other one it is a pure addition. A key the
+    order does not name, and the continuation lines of a value, are passed
+    over rather than inserted between.
+
+    Raises `ValueError` where the field is already present, or where there is
+    no front matter to add it to. Both mean the caller asked for something
+    this cannot express, and both are bugs rather than states to paper over:
+    `cmd_record` establishes that the field is absent before it writes.
+    """
+    if name not in FIELD_ORDER:
+        raise ValueError(f"`{name}` is not a front-matter field")
+    match = FRONT_MATTER_RE.match(text)
+    if match is None:
+        raise ValueError("the file has no front matter to add a field to")
+    # `split("\n")` rather than `splitlines()`, which is the exact inverse of
+    # the join the offset below assumes. `splitlines()` also breaks on `\x0b`
+    # and `\u2028`, either of which would put the insertion point somewhere
+    # other than where the line index says - and the whole worth of this
+    # function is that every other byte is left where it was.
+    lines = match.group(1).split("\n")
+    if any((field := FIELD_RE.match(line)) and field.group(1) == name for line in lines):
+        raise ValueError(f"the item already records `{name}`")
+
+    rank = FIELD_ORDER.index(name)
+    insert_at, precedes = 0, False
+    for index, line in enumerate(lines):
+        field = FIELD_RE.match(line)
+        if field is not None:
+            key = field.group(1)
+            precedes = key in FIELD_ORDER and FIELD_ORDER.index(key) < rank
+        if precedes:
+            insert_at = index + 1
+
+    # Spliced at an offset into the original text rather than rebuilt from the
+    # parts, so that "changes nothing else" is a property of the operation
+    # instead of a claim about the reconstruction. Rebuilding has to restate
+    # the fence and the separator, and a file whose `---` carries no trailing
+    # newline comes back with one - a removal, which is the whole defect.
+    head = "\n".join(lines[:insert_at])
+    at = match.start(1) + (len(head) + 1 if insert_at else 0)
+    return text[:at] + f"{name}: {value}\n" + text[at:]

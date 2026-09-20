@@ -7,14 +7,14 @@ status: ready
 classes: docs
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-17
-verify: python3 tools/doc_check.py check && ! grep -qF 'v0.4.26 and v0.6.0 are both in that state' .claude/skills/docket/SKILL.md
+verify: python3 tools/doc_check.py check && ! grep -rqF 'v0.4.26 and v0.6.0 are both in that state' .claude/skills/docket/
 ---
 
 **Problem.** .claude/skills/docket/SKILL.md says v0.4.26 and v0.6.0 are both milestones scoped out of turn whose gate freezes when the milestone before them ships, but v0.4.26 shipped on 2026-09-17 and took no gate of its own, so the example names a release that can no longer be waiting for anything
 
 **Found 2026-09-17**, by `python3 tools/doc_check.py candidates --base origin/main`
-during the `PL-06YW` release cut, which named `SKILL.md:1038` as documentation
-touching the diff.
+during the `PL-06YW` release cut, which named the skill's
+debt-gate section as documentation touching the diff.
 
 **The sentence.** § "Mode: freeze a milestone's debt gate" states the
 out-of-turn exception - a milestone scoped before its turn freezes its gate

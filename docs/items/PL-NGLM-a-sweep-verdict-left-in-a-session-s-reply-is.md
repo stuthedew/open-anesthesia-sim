@@ -8,7 +8,7 @@ classes: infra
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-19
 payoff: stops the next sweep re-deriving at full context the verdicts an earlier sweep already reached and lost with its session
-verify: grep -qF 'sweep verdict' .claude/skills/docket/SKILL.md
+verify: grep -rqF 'sweep verdict' .claude/skills/docket/
 ---
 
 **Problem.** A sweep verdict left in a session's reply is not recorded: the 2026-09-19 workflow sweep's what-landed notes for ten items died with the archived session and PL-6ZQY had to re-derive all ten from the tree

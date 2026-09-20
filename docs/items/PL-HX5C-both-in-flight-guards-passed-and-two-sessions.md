@@ -46,7 +46,7 @@ says finding nothing there means nothing. This adds the case that is worse
 than "not renamed": a session correctly named after item A that picks up item
 B mid-session, where the name is not merely missing but actively wrong.
 
-**Where.** `.claude/skills/docket/SKILL.md`, "Mode: start an item" — the
+**Where.** `.claude/skills/docket/modes/start.md`, "Mode: start an item" — the
 session-list read and the branch-name cover. Possibly also
 `subprojects/docket/src/docket/vcs.py`, if the answer turns out to be a check
 rather than an instruction.

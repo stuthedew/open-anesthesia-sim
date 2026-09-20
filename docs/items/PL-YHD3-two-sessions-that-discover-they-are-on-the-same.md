@@ -36,7 +36,7 @@ tiebreak, both sessions reason the same way from the same evidence and either
 both continue — the collision proceeds — or both stand down, which is worse,
 because the work is now unstarted and each session believes the other has it.
 
-**Where.** `.claude/skills/docket/SKILL.md`, "Mode: start an item", after the
+**Where.** `.claude/skills/docket/modes/start.md`, "Mode: start an item", after the
 existing `git fetch origin` / `docket show` / session-list guard. Two pieces:
 
 - **A tiebreak that both sessions compute identically** from evidence both can

@@ -124,7 +124,7 @@ item with no brief at all.
 - `bin/docket triage` prints the exemption beside the brief rule it modifies,
   which is where the cost is paid: an exemption a session meets after writing
   the brief has saved nothing.
-- `.claude/skills/docket/SKILL.md` § "Mode: housekeeping nobody filed" carries
+- `.claude/skills/docket/modes/capture.md` § "Mode: housekeeping nobody filed" carries
   the worked example. `CLAUDE.md` is deliberately unedited - it already routes
   every queue workflow to that skill, and the resident set grows only for what
   a session could get wrong before it would think to look anything up.

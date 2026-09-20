@@ -2465,6 +2465,21 @@ assertion removed, the item's own command passes, the project's own checks pass.
 A session may re-scope its own commission; it may not weaken what measures it,
 and it may not skip the test (`PL-69JZ`, `PL-B5YN`, `PL-4LT9`).
 
+What counts as an *added suppression* is narrowed by file rather than by shape,
+and to a wider set of files than the assertion check below. An assertion is a
+statement, so only a file Python executes holds one; a suppression is also
+*configured*, and `xfail_strict = false` under `[tool.pytest.ini_options]` turns
+every expected failure back into a pass without a line of Python changing - so
+`.py`, `.pyi`, `.toml`, `.cfg` and `.ini` are read and nothing else is. Prose is
+what that removes: a release note recording that a suppression was deleted, an
+item's brief explaining why one is wrong, or the `ROADMAP.md` version row a
+release cut re-adds whole when it drops the `current baseline` mark from one
+cell. The real v0.4.30 cut reported seven such lines and REJECTed on them.
+Counted before the narrowing was written, because the safe direction here is
+reporting: across 1,109 commits the added lines the matcher finds are 69 `.py`
+and 41 `.md`, with no other suffix carrying one at all (`PL-5MFL`, `PL-BHBZ`).
+Prose *inside* a file Python executes is still read as code, which is `PL-0KQP`.
+
 What counts as a *removed assertion* is decided by shape rather than by the
 word: a line in a file Python executes, opening an `assert` statement, calling
 a name that begins `assert` — `assertEqual`, `assert_called_once_with`,

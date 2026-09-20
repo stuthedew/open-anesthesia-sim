@@ -111,7 +111,7 @@ that has worked depending on somebody remembering to ask for it.
 
 The beat is written in two places a session running the release train will meet
 it, rather than here: `ROADMAP.md` § "The cadence", beat 3, which now opens the
-clear with the sweep; and `.claude/skills/docket/SKILL.md` § "Mode: freeze a
+clear with the sweep; and `.claude/skills/docket/modes/release.md` § "Mode: freeze a
 milestone's debt gate", which is where a session holds the frozen list. Both
 name `PL-6ZQY` as the standing item for the pass and `PL-LKGL` as the
 measurement behind it.

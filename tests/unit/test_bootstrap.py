@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 
 import anesthesia_sim
 import anesthesia_sim.app.main as app_main
+from anesthesia_sim.app.controller import BranchedCase
 from anesthesia_sim.app.qt_widgets import WINDOW_SCREEN_FRACTION, initial_window_geometry
 from anesthesia_sim.app.simulation_view import SimulationView
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
@@ -52,6 +53,13 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
     event loop `main()` ends in is recorded instead of run (`PL-005`,
     `PL-25KS`). The window is closed and its timers stopped afterwards, so a
     later test's event processing never meets a tick from this one.
+
+    **What it opens is a case** (`PL-VKJW`). `BranchedCase` and everything
+    under it had shipped while nothing in `src/` constructed one, so the
+    branching v0.5.0 is named for was unreachable from the entry point the
+    console script runs. This is the assertion that the shipped path builds
+    one, rather than a dashboard that can only be handed a second run by a
+    test.
     """
 
     application = QApplication.instance() or QApplication([])
@@ -88,6 +96,10 @@ def test_application_launcher_opens_a_sized_window_and_runs_the_event_loop(
         assert isinstance(view, SimulationView)
         assert window.windowTitle() == APP_DISPLAY_NAME
         assert view.presented_frames == 1
+        assert isinstance(view.case, BranchedCase)
+        assert view.case.trunk is view.runs[0].controller
+        assert view.case.branches == ()
+        assert view.case.fork_points_s == (0.0,)
 
         available = QApplication.primaryScreen().availableGeometry()
         assert window.geometry() == initial_window_geometry(

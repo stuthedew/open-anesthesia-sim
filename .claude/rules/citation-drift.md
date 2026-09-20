@@ -2,7 +2,7 @@
 paths:
   - "/docs/items/**"
   - "/docs/WORKING_NOTES.md"
-  - "/.claude/skills/*/SKILL.md"
+  - "/.claude/skills/**"
 ---
 
 # When a citation that has drifted is a finding, and when it is not
@@ -20,6 +20,14 @@ document asserting a tree fact that is wrong. This file is its recorded
 decision (project owner, 2026-09-19, ratified, over extending the
 live-versus-dated-assertion convention across the apparatus documents) and
 loads on the files it governs.
+
+**The skills glob reaches past `SKILL.md` on purpose.** A skill whose body
+outgrows compaction's 5,000-token re-attachment cap is split into a front page
+and the mode files it points at, and `.claude/skills/docket/` is now seven such
+files carrying most of that skill's prose and nearly all of its tree facts.
+Scoped to `SKILL.md` alone, this rule would have stopped loading for exactly the
+files it governs, and `tools/rules_paths_check.py` could not have said so - the
+glob still resolves, because `SKILL.md` still exists (`PL-2XM2`).
 
 **Ratified, not specified, so the bar to reopen it is ordinary evidence.** It
 was a session's recommendation that the project owner agreed with on one read -

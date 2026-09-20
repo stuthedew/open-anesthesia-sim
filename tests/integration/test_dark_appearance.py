@@ -339,11 +339,14 @@ def test_a_legend_checkbox_draws_its_indicator_in_the_theme(
 def test_a_selector_popup_draws_the_theme_rather_than_the_host_palette(
     dark_host: QApplication,
 ) -> None:
-    """The lists an agent, a time base and a playback rate are picked from.
+    """The lists an agent, a time base, a playback rate and a branch point come from.
 
     `PL-0NVN`'s regression test. A stylesheet on a combo box makes everything
-    inside it resolve from the application palette, so all three popups drew
-    the host's surface however their selector was styled.
+    inside it resolve from the application palette, so every one of these
+    popups drew the host's surface however its selector was styled. The count
+    is asserted rather than the walk left open, so a selector added without a
+    popup declaration fails here rather than reaching a reader - which is what
+    the branch point's selector was checked by when `PL-VKJW` added it.
 
     The declaration is a rule inside each selector's own stylesheet rather
     than a palette on the view, and this test is laid out for the reason that
@@ -362,7 +365,7 @@ def test_a_selector_popup_draws_the_theme_rather_than_the_host_palette(
 
     popups = [box.view() for box in view.findChildren(QComboBox)]
 
-    assert len(popups) == 3
+    assert len(popups) == 4
 
     for popup in popups:
         palette = popup.palette()

@@ -98,8 +98,8 @@ session may be computing a different one. Do not stand down on it.)".
 Both disjuncts of the `Done when`'s second clause are also already satisfied,
 and were before this item was filed: `render.py:886-890` names every carrier in
 first-commit order, four tests in `test_vcs.py` (`:3509`, `:3517`, `:3596`,
-`:3643`) pin that ordering, and `.claude/skills/docket/SKILL.md:706-708`
-describes it correctly - all from `4c429e8` on 2026-09-04, twelve days before
+`:3643`) pin that ordering, and `.claude/skills/docket/modes/start.md` §
+"Mode: start an item" describes it correctly - all from `4c429e8` on 2026-09-04, twelve days before
 the 2026-09-16 observation. So is the open question about
 `branches_in_flight`: `vcs.py:2388` says it reports one branch per item
 "deliberately", same commit.
