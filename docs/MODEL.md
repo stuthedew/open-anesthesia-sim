@@ -4136,15 +4136,20 @@ already fired, with nothing on screen distinguishing them, which is the hidden
 mode this interface is built to avoid. Resuming a paused run is one control,
 and the learner is already looking at it.
 
-**Where a mark stands is reported as one of four outcomes, not two.** The
-distinctions are required rather than stylistic: each of the last two would be
-misread as one of the others.
+**Where a mark stands is reported as one of five outcomes, not two.** The
+distinctions are required rather than stylistic: each of the last three would
+be misread as one of the others.
 
-- **Reached** — the run has halted on this mark at least once. It is a
-  property of the run rather than of the mark, so it is cleared by a reset and
-  by a change of agent, which begin a new run, and a mark inherited by a
-  branch arrives unreached.
 - **Still running** — nothing yet, and the run can still reach it.
+- **Passed** — a time bookmark at or behind the run's own clock. Positional,
+  and true however the clock came to be there: a step took the run past it, or
+  the run was forked at the mark and opened standing on it, or the learner
+  marked an instant the case had already run past.
+- **Reached** — a MAC target the run has halted on at least once. Historical,
+  and a property of the run rather than of the mark, so it is cleared by a
+  reset and by a change of agent, which begin a new run. A branch is the one
+  exception and not a carry-over: it opens *standing on* the crossing it was
+  forked at, which is where the branch is rather than something its trunk did.
 - **Not reached within the supported run length** — the run has stopped at the
   limit § "Supported run length" declares, with this mark outstanding. A
   height above a compartment's asymptote is never reached, so this is an
@@ -4160,6 +4165,34 @@ misread as one of the others.
   learner that running longer might reach it, which is false. A MAC target has
   no equivalent: a height is reachable from either side, so a branch may cross
   one its trunk never did.
+
+**The two kinds are answered in two vocabularies, and the split is the clock**
+(project owner, 2026-09-20, ratified, over reusing "reached" for both kinds).
+A run's clock only increases and never returns below the instant the run
+began, so where a *time bookmark* stands is a position — ahead of the clock or
+at or behind it — and no history is needed to decide it. A *MAC target* names a
+height, which no clock orders: a compartment may arrive at one, leave it and
+arrive again, so what the run did is the only thing that can be said of one.
+So "passed" and "before this branch opened" answer for time bookmarks and
+never for targets, "reached" answers for targets and never for bookmarks, and
+the remaining two answer for both.
+
+**Reporting a passed bookmark as "reached" was measured wrong seven ways and
+is refused** (`PL-3K9B`, measured 2026-09-20). Deciding a bookmark from the
+halt set alone leaves every instant the run is at or behind but never *stopped
+on* reading "still running", which says the run can still reach it — and in
+none of the seven cases could any step make that true. Four involve a branch
+opening on or at a mark, one a mark added behind a running trunk, one a mark
+removed and re-added, one a branch reset. The word is "passed" rather than
+"reached" because the two claims come apart the moment a clock moves
+backwards: the reference simulator's bookmark is a pause point that fires on
+the original pass and on every replay alike (Philip JH, *Workbook for Gas
+Man®*, Med Man Simulations, chapter 2 § "Using Bookmarks"), so a rewind — or
+truncating at a mark and running on — leaves a mark that will stop the learner
+again while any historical claim about it has been revoked. A positional word
+is re-read from the clock every time the row is drawn and survives that; a
+historical one would have to be withdrawn, which is a displayed value going
+quietly wrong.
 
 ### The control-input record
 

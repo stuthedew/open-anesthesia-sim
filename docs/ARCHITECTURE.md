@@ -353,11 +353,16 @@ Four things in `app/controller.py` carry it:
   actually stopped on.
 - `ResumePoint` is where the branch came from: the trunk stretch it opened
   inside, the fork — the instant it was taken at and the canonical state
-  there — the case's step count at the fork, the step it was taken at, and
-  the agent its accounting period started from. `opened_from` is `None` on a
-  trunk and this on a branch, so every run knows which it is. The stretch's
-  opening and the fork are one instant for a fork at a control event and two
-  for a fork at a bookmark, which is the whole of what `PL-B8MK` changed.
+  there — the case's step count at the fork, the step it was taken at, the
+  agent its accounting period started from, and the marked crossing it was
+  forked at, which is `None` for a fork at a control event. `opened_from` is
+  `None` on a trunk and this on a branch, so every run knows which it is. The
+  stretch's opening and the fork are one instant for a fork at a control event
+  and two for a fork at a bookmark, which is the whole of what `PL-B8MK`
+  changed. The crossing is carried here rather than read from the trunk so
+  that a reset seeds from the same value a fork did — `reset()` goes back
+  through the same `_open_at`, and a branch that lost its crossing there would
+  stand on its own fork reporting that it had crossed nothing (`PL-3K9B`).
 - `BranchedCase` holds a trunk and the branches taken from it. It is what
   makes two controllers one case rather than two unrelated sessions, and it
   is where the flat shape stops being a refusal: the trunk is the only run it

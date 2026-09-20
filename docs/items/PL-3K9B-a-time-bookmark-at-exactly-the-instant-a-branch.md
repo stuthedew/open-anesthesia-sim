@@ -3,11 +3,12 @@ id: PL-3K9B
 title: A time bookmark at exactly the instant a branch forked at reads still_running, which no step can make true
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, safety
 feature: scenario-branching
-touches: src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/controller.py, tests/unit/test_bookmarks.py, tests/integration/test_controller.py
+touches: src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_bookmarks.py, tests/unit/test_dashboard_frame.py, tests/integration/test_controller.py, docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-09-20
+closed: 2026-09-20
 payoff: stops the bookmark panel telling a learner to wait for a mark their branch is standing on and can never reach
 verify: grep -q 'PASSED = ' src/anesthesia_sim/app/bookmarks.py && grep -q 'def test_a_mark_the_run_has_passed_does_not_read_as_still_reachable' tests/unit/test_bookmarks.py
 ---

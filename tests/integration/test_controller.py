@@ -2743,6 +2743,214 @@ def test_a_mark_between_a_bookmark_branch_s_definition_and_its_fork_is_unreachab
     )
 
 
+# ------------------------------------------- a mark the run is at or behind
+#
+# `PL-3K9B`'s seven measured cases, run end to end rather than asserted
+# against `BookmarkSet.standings` directly, because the defect was never in
+# that function: it was in what the controller handed it. Each is the same
+# claim - `STILL_RUNNING` says the run can still reach the mark, and in none
+# of these could any step ever make that true.
+
+
+def test_a_branch_forked_at_a_mark_on_the_step_grid_reads_it_as_passed() -> None:
+    """Case A, and the common one: every whole second is on the 0.1 s grid.
+
+    The branch's first `before_s` is the fork itself and `before_s` only
+    increases, so `crossed_between`'s strict `<` means no step the branch ever
+    takes can cross this instant. Stepped well past it to say so.
+    """
+
+    marked = SimulationController()
+    on_the_grid = TimeBookmark(30.0, "induction complete")
+    marked.add_time_bookmark(on_the_grid)
+    marked.start()
+    _advance_until_halted(marked, limit_s=60.0)
+
+    assert marked.snapshot().elapsed_s == 30.0
+
+    branch = marked.resumed_at_halt()
+    branch.start()
+    _advance_for(branch, duration_s=60.0)
+
+    assert branch.snapshot().bookmark_standings.of_time_bookmark(on_the_grid) is (
+        MarkStanding.PASSED
+    )
+
+
+def test_one_act_off_the_step_grid_reads_the_same_as_on_it() -> None:
+    """Case B, and the whole of what it is about.
+
+    A halt lands on the step that crossed the mark, so an instant that is not
+    a multiple of the step in binary is halted at a few parts in 1e16 past
+    itself - and both rows render as `45.3s`. Two branches taken by the
+    identical act must not give a reader two different accounts of it on the
+    strength of that.
+    """
+
+    on_the_grid = TimeBookmark(30.0)
+    off_the_grid = TimeBookmark(45.3)
+    standings = []
+
+    for mark in (on_the_grid, off_the_grid):
+        marked = SimulationController()
+        marked.add_time_bookmark(mark)
+        marked.start()
+        _advance_until_halted(marked, limit_s=60.0)
+        branch = marked.resumed_at_halt()
+        standings.append(branch.snapshot().bookmark_standings.of_time_bookmark(mark))
+
+    assert marked.snapshot().elapsed_s > 45.3, "the premise: the halt lands past the mark"
+    assert standings == [MarkStanding.PASSED, MarkStanding.PASSED]
+
+
+def test_a_trunk_and_its_branch_agree_about_the_height_that_separated_them() -> None:
+    """Case C, the worst of the seven by consequence.
+
+    The branch's whole identity is *the management taken at this height*, so a
+    panel on which the trunk's row reads reached and the branch's reads still
+    running has the two runs disagreeing about the one instant they share by
+    construction. A target has no clock to be placed against, so this is the
+    case the seeded crossing is carried for.
+    """
+
+    marked = SimulationController()
+    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.4), "the decision point")
+    marked.add_mac_target(target)
+    marked.start()
+    _advance_until_halted(marked, limit_s=400.0)
+
+    branch = marked.resumed_at_halt()
+    branch.start()
+    _advance_for(branch, duration_s=300.0)
+
+    assert marked.snapshot().bookmark_standings.of_mac_target(target) is MarkStanding.REACHED
+    assert branch.snapshot().bookmark_standings.of_mac_target(target) is MarkStanding.REACHED
+
+
+def test_a_mark_added_behind_a_running_trunk_is_not_called_still_reachable() -> None:
+    """Case D, with no branch in it at all.
+
+    Marking an instant the case has just run past is what a learner does when
+    something interesting has already happened, and nothing refuses the act.
+    The instant can never enter the halt set - the clock is already past it -
+    so the halt set is not what can answer it.
+    """
+
+    run = SimulationController()
+    run.start()
+    _advance_for(run, duration_s=60.0)
+
+    behind_the_clock = TimeBookmark(30.0, "when the pressure dropped")
+    run.add_time_bookmark(behind_the_clock)
+
+    assert run.snapshot().bookmark_standings.of_time_bookmark(behind_the_clock) is (
+        MarkStanding.PASSED
+    )
+
+    _advance_for(run, duration_s=120.0)
+
+    assert run.snapshot().bookmark_standings.of_time_bookmark(behind_the_clock) is (
+        MarkStanding.PASSED
+    )
+
+
+def test_a_branch_taken_at_a_control_event_agrees_with_its_trunk_about_a_mark_there() -> None:
+    """Case E, at the door that predates bookmark forks entirely.
+
+    `resumed_at` opens at a keyframe rather than at a crossing, so there is no
+    crossing to seed from and the clock is the only thing that can answer it.
+    """
+
+    marked = SimulationController()
+    at_the_keyframe = TimeBookmark(30.0, "the decision point")
+    marked.add_time_bookmark(at_the_keyframe)
+    marked.start()
+    _advance_until_halted(marked, limit_s=60.0)
+    marked.set_fresh_gas_flow(3.0)
+
+    branch = marked.resumed_at(30.0)
+
+    assert branch.opened_from is not None
+    assert branch.opened_from.crossing is None, "the premise: a keyframe carries no crossing"
+    assert marked.snapshot().bookmark_standings.of_time_bookmark(at_the_keyframe) is (
+        MarkStanding.PASSED
+    )
+    assert branch.snapshot().bookmark_standings.of_time_bookmark(at_the_keyframe) is (
+        MarkStanding.PASSED
+    )
+
+
+def test_a_mark_removed_and_re_added_at_a_branch_s_fork_instant_still_reads_passed() -> None:
+    """Case F: `_forget_unmarked` drops the seeded entry, and the clock still answers.
+
+    Removing a mark clears what the run did with it, which is right - the row
+    is gone. An equal mark added afterwards is a new question about the same
+    instant, and the run's clock is still standing on it.
+    """
+
+    marked = SimulationController()
+    at_the_fork = TimeBookmark(30.0)
+    marked.add_time_bookmark(at_the_fork)
+    marked.start()
+    _advance_until_halted(marked, limit_s=60.0)
+
+    branch = marked.resumed_at_halt()
+    branch.remove_time_bookmark(at_the_fork)
+    re_added = TimeBookmark(30.0, "asked again")
+    branch.add_time_bookmark(re_added)
+
+    assert branch.snapshot().bookmark_standings.of_time_bookmark(re_added) is MarkStanding.PASSED
+
+
+def test_resetting_a_branch_leaves_it_standing_on_the_crossing_it_opened_at() -> None:
+    """Case G: seeding done at fork time has to survive a reset, or it returns.
+
+    A branch's reset returns it to its fork, which is the crossing it opens
+    on - so the halt it is standing at and what it has crossed are part of
+    where it is rather than of what an earlier run did. `_open_at` is reset's
+    path as well as the fork's, which is what makes the two seed identically.
+    """
+
+    marked = SimulationController()
+    at_the_fork = TimeBookmark(30.0)
+    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.15))
+    marked.add_time_bookmark(at_the_fork)
+    marked.add_mac_target(target)
+    marked.start()
+    _advance_until_halted(marked, limit_s=60.0)
+
+    branch = marked.resumed_at_halt()
+    branch.start()
+    _advance_for(branch, duration_s=30.0)
+    branch.reset()
+    after = branch.snapshot()
+
+    assert after.elapsed_s == branch.began_at_s
+    assert after.bookmark_halt is not None
+    assert after.bookmark_standings.of_time_bookmark(at_the_fork) is MarkStanding.PASSED
+
+
+def test_a_mark_unmarked_on_a_branch_does_not_come_back_with_its_reset() -> None:
+    """The seeding is filtered by what is marked *now*, not by what was.
+
+    A halt naming a row the panel no longer draws is the stale state
+    `_forget_unmarked` exists to prevent, and a reset re-seeding from the fork
+    is the one place it could have been reintroduced.
+    """
+
+    marked = SimulationController()
+    at_the_fork = TimeBookmark(30.0)
+    marked.add_time_bookmark(at_the_fork)
+    marked.start()
+    _advance_until_halted(marked, limit_s=60.0)
+
+    branch = marked.resumed_at_halt()
+    branch.remove_time_bookmark(at_the_fork)
+    branch.reset()
+
+    assert branch.snapshot().bookmark_halt is None
+
+
 def test_a_control_moved_before_a_bookmark_branch_steps_opens_a_segment_at_the_fork() -> None:
     """The bookmark analogue of reopening a branch's first segment in place.
 
