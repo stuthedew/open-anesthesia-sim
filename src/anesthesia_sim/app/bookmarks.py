@@ -393,15 +393,19 @@ class BookmarkStandings:
         return _looked_up(self.mac_targets, target, "MAC target")
 
 
-def _looked_up(
-    standings: Mapping[TimeBookmark, MarkStanding] | Mapping[MacTarget, MarkStanding],
-    mark: object,
-    what: str,
+def _looked_up[Mark: (TimeBookmark, MacTarget)](
+    standings: Mapping[Mark, MarkStanding], mark: Mark, what: str
 ) -> MarkStanding:
-    """One mark's standing, or a refusal naming the mark that was not evaluated."""
+    """One mark's standing, or a refusal naming the mark that was not evaluated.
+
+    Constrained to the two kinds rather than taking a union of the two mapping
+    types, because a union leaves the key type unrelated to the mark handed in
+    and the index unprovable - a real gap in the signature rather than
+    something to silence at the call.
+    """
 
     try:
-        return standings[mark]  # type: ignore[index]
+        return standings[mark]
     except KeyError:
         raise SimulationConfigurationError(
             f"these standings were computed for a set that does not hold the {what} {mark!r}, "
