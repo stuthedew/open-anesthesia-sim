@@ -8,6 +8,7 @@ classes: infra
 touches: .claude/skills/docket/modes/close-out.md
 added: 2026-09-20
 closed: 2026-09-20
+pr: 795
 payoff: stops a defect a passing suite cannot see reaching main and turning one commit into three items and a second pull request
 verify: grep -q 'Review the diff adversarially before the pull request opens' .claude/skills/docket/modes/close-out.md
 ---
