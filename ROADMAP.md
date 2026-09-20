@@ -4503,6 +4503,31 @@ planned-milestone item 1's work rather than this gate's.
 
 - PL-7CRY (S) The fresh gas flow slider reads the model envelope alone, so a machine profile declaring a narrower deliverable range would offer settings the circuit refuses
 
+**One more from the 2026-09-20 verify-inflow review** (`PL-G21K`), which is the
+altitude item over four entries already declined in this subsection. `PL-5MFL`
+and `PL-BHBZ` are declined above; `PL-STC4` and `PL-4FD2` are the same defect
+from inside `.py`; `PL-0KQP` was captured on 2026-09-20 as a fifth. `PL-G21K`
+names the mechanism under all of them - `verify`'s suppression and assertion
+checks infer *intent* from diff text, so each fix is a new special case that
+uncovers the next - and carries a `root-cause-of:`, so it ranks above every
+band but `P0` wherever it is worked.
+
+It is declined here on the refilling-queue ground, and the count is what makes
+that safe rather than merely consistent. Measured over the 564 commits on
+`main` since 2026-09-01, the check flags 66 added lines: 33 are prose and 33
+are real directives, and **every one of the 33 is `# type: ignore[<code>]` in a
+test file**. The four markers that would name a *disabled test* - `xfail`,
+`pytest.skip`, `@skip`, `typing.no_type_check` - fired zero times. So nothing
+the gate would buy by admitting this is a wrong result reaching anybody: the
+failure is loud, `--self` reports it rather than relaxing it, and
+`subprojects/docket/` sits wholly inside `docket.toml`'s `workflow_paths` and
+so cannot reach a reader of the simulator. Against that, this gate stands at
+177 of 178 with its one open entry blocked on work outside it, and admitting an
+`M`-effort design decision at the beat where the milestone is one step from
+starting is the refilling shape Phase 0 was retired for.
+
+- PL-G21K (M) `verify`'s suppression and assertion checks infer intent from diff text, so every fix adds a special case and uncovers the next: four of the five suppression markers fired zero times on a real directive across 564 commits
+
 ### Required scope
 
 Nineteen items, in the order the dependencies allow. The first three are the
