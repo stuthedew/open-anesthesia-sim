@@ -394,20 +394,31 @@ class _HoverReadout:
         return self._scene_position
 
     def show(self, target: HoverTarget, x_range: tuple[float, float], y_top: float) -> None:
-        """Put the dot on the target and the text beside it, inside the plot."""
+        """Put a dot on every point that answered and the text beside them.
 
-        self._dot.setData([target.time_s], [target.value])
+        One dot per reading rather than one for the box, because every run
+        inside the radius answers (`chart_frame.HoverTarget`) and a single
+        dot would put a mark on one run's curve while the box read for
+        several - the attribution failure `PL-MN4J` closed, arriving through
+        the marker instead of through the text.
+        """
+
+        self._dot.setData(
+            [reading.time_s for reading in target.readings],
+            [reading.value for reading in target.readings],
+        )
         self._text.setText(target.readout)
-        # The box sits to the right of the point and above it, unless that
+        # The box sits to the right of the anchor and above it, unless that
         # would run it off the plot: past the middle of the window it goes to
         # the left, and in the top quarter of the axis it goes below. The
         # newest point of a following window is at the right edge, which is
         # where a reader most often hovers, so the flip is the common case
         # rather than an edge one.
-        past_middle = target.time_s > (x_range[0] + x_range[1]) / 2.0
-        near_top = target.value > 0.75 * y_top
+        anchor = target.anchor
+        past_middle = anchor.time_s > (x_range[0] + x_range[1]) / 2.0
+        near_top = anchor.value > 0.75 * y_top
         self._text.setAnchor((1 if past_middle else 0, 0 if near_top else 1))
-        self._text.setPos(target.time_s, target.value)
+        self._text.setPos(anchor.time_s, anchor.value)
         self._dot.show()
         self._text.show()
 
