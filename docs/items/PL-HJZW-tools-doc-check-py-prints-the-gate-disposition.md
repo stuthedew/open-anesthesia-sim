@@ -3,11 +3,12 @@ id: PL-HJZW
 title: tools/doc_check.py prints the gate-disposition failure under 'Advisories (judgment needed)' while tests/unit/test_doc_check.py makes it a hard make check failure, so a session that reads the advisory label as optional pushes a red branch
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: gate-list-integrity
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-19
+closed: 2026-09-20
 payoff: stops a triage pass reading 'advisory' as optional and pushing a branch that fails CI on an assertion it never saw
 verify: grep -q 'def test_a_missing_disposition_is_reported_as_an_error' tests/unit/test_doc_check.py
 ---

@@ -3,11 +3,12 @@ id: PL-R0P3
 title: tools/doc_check.py's _read_store duplicates the config-and-store read that check_gate_reentries and check_gate_dispositions each spell inline, so three spellings of one question can disagree
 priority: P3
 effort: S
-status: ready
+status: done
 classes: refactor
 feature: doc-consistency-checks
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-14
+closed: 2026-09-20
 verify: uv run pytest tests/unit/test_doc_check.py && [ "$(grep -c 'read_items(root / config.items_dir)' tools/doc_check.py)" = 0 ]
 ---
 

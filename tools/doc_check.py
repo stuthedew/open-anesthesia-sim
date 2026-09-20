@@ -103,6 +103,7 @@ try:
     # `status` from. A second copy of either grammar would drift from the one
     # `bin/docket check` enforces, and the drift would be in the documents that
     # say which milestone is current and what it still owes.
+    from docket.config import Config
     from docket.config import load as load_docket_config
     from docket.model import CLOSED_STATUSES, Item
     from docket.roadmap import (
@@ -1442,17 +1443,39 @@ def _table_counts(text: str, section: MilestoneSection) -> Iterator[tuple[int, s
                         yield line, where, stated
 
 
-def _read_store(root: Path) -> Mapping[str, Item] | None:
-    """Every item in the queue by id, or `None` where the store cannot answer.
+@dataclass(frozen=True)
+class _Store:
+    """The queue read once: its configuration, and its items by id.
+
+    Both halves, because a caller wanting one wants the other: an item's
+    `classes` decide nothing without the `debt_classes` or `safety_classes`
+    list that says which of them count as debt.
+    """
+
+    config: Config
+    items: Mapping[str, Item]
+
+
+def _read_store(root: Path) -> _Store | None:
+    """The queue, or `None` where the store cannot answer.
 
     `None` rather than an empty mapping, because the two mean opposite things
-    to a count that fails hard: an absent store can decide nothing, where an
-    empty one would make every stated count wrong by exactly its own size.
-    `read_items` returns `[]` for a directory that is not there, which is right
-    for the advisory that already reads it and would be a confident wrong
-    answer here, so the directory is asked about rather than inferred from the
-    result. The caller turns the `None` into a `declined` line naming what went
-    unchecked.
+    to a check that reads the store to decide what a gate owes: an absent store
+    can decide nothing, where an empty one would answer confidently that the
+    gate owes nothing at all. `read_items` returns `[]` for a directory that is
+    not there, so the directory is asked about rather than inferred from the
+    result, and every caller turns the `None` into a `declined` line naming
+    what went unchecked in its own terms - `_store_or_decline` below writes
+    that line for the two gate rules, which want the same one.
+
+    **It is the only spelling of this read, since `PL-R0P3`.** The gate's
+    re-entry and disposition rules each spelled it inline, and the two that
+    bypassed this helper were the two deciding gate membership. They disagreed
+    with it silently and in the one direction that matters: on a checkout with
+    no store, `read_items`' `[]` made both go quiet, reporting a gate that owes
+    nothing where nothing had been read at all. That is the distinction
+    `Report.declined` exists to keep, so unifying the read resolves it this
+    way rather than the other.
     """
     try:
         config = load_docket_config(root)
@@ -1462,9 +1485,25 @@ def _read_store(root: Path) -> Mapping[str, Item] | None:
     if not store.is_dir():
         return None
     try:
-        return {item.identifier: item for item in read_items(store)}
+        return _Store(config, {item.identifier: item for item in read_items(store)})
     except (OSError, ValueError):  # pragma: no cover - a store that will not parse
         return None
+
+
+def _store_or_decline(root: Path, report: Report, rule: str) -> _Store | None:
+    """The queue for a check that cannot run without it, or `None` having said so.
+
+    One spelling of the decline beside the one spelling of the read. The two
+    gate rules below each wrote their own, and whatever reads the store next
+    would have written a third.
+    """
+    store = _read_store(root)
+    if store is None:
+        report.declined.append(
+            f"{ROADMAP}: {rule}, because the item store would not read; "
+            "`bin/docket check` is what reports why"
+        )
+    return store
 
 
 def _withheld_counts(lines: Sequence[str], section: MilestoneSection) -> Iterator[tuple[int, int]]:
@@ -1536,7 +1575,8 @@ def check_gate_counts(root: Path, report: Report) -> None:
         return
     text = roadmap.read_text(encoding="utf-8")
     lines = text.splitlines()
-    items = _read_store(root)
+    store = _read_store(root)
+    items = None if store is None else store.items
 
     for section in parse_milestones(text):
         if not section.records_a_gate:
@@ -1844,7 +1884,8 @@ def check_bound_families(root: Path, report: Report) -> None:
                 )
                 continue
             if not store_read:
-                items, store_read = _read_store(root), True
+                store = _read_store(root)
+                items, store_read = (None if store is None else store.items), True
             if items is None:
                 report.declined.append(
                     f"{where} declares no {family.kind.noun} yet against "
@@ -1963,7 +2004,8 @@ def check_scope_declarations(root: Path, report: Report) -> None:
         report.declined.append(f"{ROADMAP} is absent, so its scope declarations were not read")
         return
     text = roadmap.read_text(encoding="utf-8")
-    items = _read_store(root)
+    store = _read_store(root)
+    items = None if store is None else store.items
     scope_heading = SCOPE_SUBSECTION.capitalize()
     declaring = False
 
@@ -2180,20 +2222,15 @@ def check_gate_reentries(root: Path, report: Report) -> None:
     if gate is None:
         return
 
-    try:
-        config = load_docket_config(root)
-        items = read_items(root / config.items_dir)
-    except (OSError, ValueError) as error:  # pragma: no cover - a store that will not parse
-        report.declined.append(
-            f"{ROADMAP}: the gate's re-entry rule, because the item store would not "
-            f"read ({error}); `bin/docket check` is what reports why"
-        )
+    store = _store_or_decline(root, report, "the gate's re-entry rule")
+    if store is None:
         return
+    config = store.config
 
     placed = set(gate.scope_ids)
     owed = [
         item
-        for item in items
+        for item in store.items.values()
         if item.status not in CLOSED_STATUSES
         and item.identifier not in placed
         and not (item.status == BLOCKED_STATUS and ANTICIPATED_CLASS in item.classes)
@@ -2227,6 +2264,20 @@ def check_gate_reentries(root: Path, report: Report) -> None:
 DECLINED_HEADING_RE = re.compile(r"^###\s+Declined to Gate\b", re.IGNORECASE)
 
 
+def _section_end(lines: Sequence[str], start: int) -> int:
+    """Where a milestone's own `##` section stops.
+
+    `_subsection_end` above stops at the next `###` too, which is what a frozen
+    list's own extent wants and the wrong bound for a sweep across the sibling
+    subsections beside it.
+    """
+    for index in range(start, len(lines)):
+        heading = HEADING_RE.match(lines[index])
+        if heading is not None and len(heading.group("hashes")) <= 2:
+            return index
+    return len(lines)
+
+
 def _declined_ids(text: str, gate: MilestoneSection) -> frozenset[str]:
     """The ids the current gate's section defers with a reason written down.
 
@@ -2236,23 +2287,30 @@ def _declined_ids(text: str, gate: MilestoneSection) -> frozenset[str]:
     `### Declined to Gate ...` subsection of its own and is read here instead.
     Its ids are excluded from the gate's counts for the same reason: they are
     not entries the gate has to clear.
+
+    **Every such subsection of the gate's own section is read, not the first**
+    (`PL-82B0`). Nothing says one subsection is where a deferral goes, and a
+    deferral is written by whoever takes it: a second subsection - recording a
+    later round, or a different ground - made the first one's ids stop being
+    read at all, so items the gate had explicitly deferred came back as
+    dispositions it owed. Nothing announced that, because writing the second
+    heading is what caused it.
+
+    The sweep stops at the next `##`, which the single-subsection reader did
+    not: unbounded, it would take the *next* milestone's deferrals for this
+    gate's on any roadmap where this one defers nothing.
     """
     lines = text.splitlines()
-    start = next(
-        (
-            index
-            for index in range(gate.line, len(lines))
-            if DECLINED_HEADING_RE.match(lines[index])
-        ),
-        None,
-    )
-    if start is None:
-        return frozenset()
-    end = next(
-        (index for index in range(start + 1, len(lines)) if HEADING_RE.match(lines[index])),
-        len(lines),
-    )
-    return frozenset(re.findall(r"PL-[A-Z0-9]{4}", "\n".join(lines[start:end])))
+    end = _section_end(lines, gate.line)
+    identifiers: set[str] = set()
+    for start in range(gate.line, end):
+        if not DECLINED_HEADING_RE.match(lines[start]):
+            continue
+        stop = next(
+            (index for index in range(start + 1, end) if HEADING_RE.match(lines[index])), end
+        )
+        identifiers.update(re.findall(r"PL-[A-Z0-9]{4}", "\n".join(lines[start:stop])))
+    return frozenset(identifiers)
 
 
 def check_gate_dispositions(root: Path, report: Report) -> None:
@@ -2272,10 +2330,21 @@ def check_gate_dispositions(root: Path, report: Report) -> None:
     judgment - so on 2026-09-08 forty-two items had gone without one
     (`PL-36R4`).
 
-    So this reports the silence and decides nothing, which is why it is an
-    advisory rather than an error. Whether a given item's problem predates the
-    freeze is not decidable here and must not be scripted; whether *some*
-    disposition has been recorded is, and is all this asks.
+    So this reports the silence and decides nothing about *which* disposition
+    is right. Whether a given item's problem predates the freeze is not
+    decidable here and must not be scripted; whether *some* disposition has
+    been recorded is, and is all this asks.
+
+    **That second question is exact, so it is an error** (`PL-HJZW`). It was
+    printed as an advisory while
+    `tests/unit/test_doc_check.py::test_this_repository_records_a_disposition_for_every_open_debt_item`
+    ran the same read over the real tree and asserted it clean - so `make
+    check` failed hard on a line this file labelled "judgment needed", and a
+    session that read the label and deferred the judgment had followed the
+    documentation exactly and pushed a red branch. `CLAUDE.md` reserves hard
+    failure for exact rules, which is what settles it in this direction: the
+    test was right about the severity and the label was wrong. Both now say
+    error.
 
     It is quiet once every item carries one, which is what keeps it worth
     running. An advisory that named the same backlog every run would be the
@@ -2306,20 +2375,15 @@ def check_gate_dispositions(root: Path, report: Report) -> None:
     if gate is None:
         return
 
-    try:
-        config = load_docket_config(root)
-        items = read_items(root / config.items_dir)
-    except (OSError, ValueError) as error:  # pragma: no cover - a store that will not parse
-        report.declined.append(
-            f"{ROADMAP}: the gate's disposition rule, because the item store would not "
-            f"read ({error}); `bin/docket check` is what reports why"
-        )
+    store = _store_or_decline(root, report, "the gate's disposition rule")
+    if store is None:
         return
+    config = store.config
 
     disposed = set(gate.scope_ids) | _declined_ids(text, gate)
     owed = [
         item
-        for item in items
+        for item in store.items.values()
         if item.status not in CLOSED_STATUSES
         and item.identifier not in disposed
         and (
@@ -2332,7 +2396,7 @@ def check_gate_dispositions(root: Path, report: Report) -> None:
 
     rendered = "v{}.{}.{}".format(*gate.version)
     listed = ", ".join(item.identifier for item in owed)
-    report.advisories.append(
+    report.errors.append(
         f"{ROADMAP}:{gate.gate_line}: {rendered}'s gate records no disposition for "
         f"{_plural(len(owed), 'open debt item', 'open debt items')} - neither placed on "
         f"the frozen list or in Required scope, nor deferred with a reason: {listed}. "

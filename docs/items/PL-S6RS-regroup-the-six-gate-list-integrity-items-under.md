@@ -8,6 +8,7 @@ classes: housekeeping
 touches: docs/items
 added: 2026-09-20
 closed: 2026-09-20
+pr: 772
 payoff: one command answers whether the gate bookkeeping is dealt with, where today the six items read as five unrelated obligations across two standing themes
 verify: grep -q '^feature: gate-list-integrity' docs/items/PL-0VFF-roadmap-md-s-declined-to-gate-2-list-names-pl.md
 ---

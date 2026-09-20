@@ -3,11 +3,12 @@ id: PL-82B0
 title: doc_check's _declined_ids reads only the first Declined to Gate subsection, so a second one silently orphans the first's dispositions
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: gate-list-integrity
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-13
+closed: 2026-09-20
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_second_declined_subsection_is_read' tests/unit/test_doc_check.py
 ---
 

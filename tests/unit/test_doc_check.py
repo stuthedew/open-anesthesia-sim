@@ -2943,10 +2943,11 @@ def _disposition_repo(
 
 
 def _dispositions(tmp_path: Path, items: dict[str, str], roadmap: str | None = None) -> list[str]:
+    """The missing-disposition findings, read from `errors` since `PL-HJZW`."""
     root = _disposition_repo(
         tmp_path, items, **({"roadmap": roadmap} if roadmap is not None else {})
     )
-    return [a for a in doc_check.analyze(root).advisories if "records no disposition" in a]
+    return [e for e in doc_check.analyze(root).errors if "records no disposition" in e]
 
 
 DEBT = "priority: P2\neffort: S\nstatus: ready\nclasses: defect\n"
@@ -2980,6 +2981,51 @@ def test_an_item_deferred_with_a_recorded_reason_is_not_reported(tmp_path: Path)
     )
 
     assert _dispositions(tmp_path, {"PL-ZZZZ": DEBT}, roadmap) == []
+
+
+def test_a_second_declined_subsection_is_read(tmp_path: Path) -> None:
+    """`PL-82B0`: a second subsection must not orphan the first one's ids.
+
+    `_declined_ids` took the *first* `### Declined to Gate ...` heading and
+    stopped, so writing a second one - a later round, or a different ground -
+    silently stopped every id in the first being read as deferred. They came
+    back as dispositions the gate owed, and nothing said why, because writing
+    the new heading is what caused it.
+
+    Both ids are asserted, not only the orphaned one: reading the second alone
+    would be the same defect pointing the other way.
+    """
+    roadmap = VERSIONED_GATE_ROADMAP.replace(
+        "### Definition of done",
+        "### Declined to Gate 2 on the refilling-queue ground — 1 entry\n\n"
+        "Deferred because pulling it in would refill the gate.\n\n"
+        "- PL-ZZZZ (S) The deferred thing\n\n"
+        "### Declined to Gate 2 on the predates-the-freeze ground — 1 entry\n\n"
+        "Deferred because the problem postdates the freeze.\n\n"
+        "- PL-YYYY (S) The other deferred thing\n\n### Definition of done",
+        1,
+    )
+
+    assert _dispositions(tmp_path, {"PL-ZZZZ": DEBT, "PL-YYYY": DEBT}, roadmap) == []
+
+
+def test_a_declined_subsection_of_the_next_milestone_is_not_this_gate_s(tmp_path: Path) -> None:
+    """The sweep stops at the next `##`, which the single-subsection reader did not.
+
+    Unbounded, the old reader searched to the end of the file, so a gate
+    deferring nothing would have taken a later milestone's deferrals for its
+    own. Nothing exercised it, because this roadmap has one such subsection.
+    """
+    roadmap = VERSIONED_GATE_ROADMAP + (
+        "\n## v9.9.9 - a later milestone\n\n"
+        "### Declined to Gate 3 on some ground — 1 entry\n\n"
+        "Deferred by a milestone that is not the current gate.\n\n"
+        "- PL-ZZZZ (S) The deferred thing\n"
+    )
+
+    advisories = _dispositions(tmp_path, {"PL-ZZZZ": DEBT}, roadmap)
+
+    assert any("PL-ZZZZ" in advisory for advisory in advisories)
 
 
 def test_a_needs_decision_item_is_owed_a_disposition_whatever_its_classes(tmp_path: Path) -> None:
@@ -3023,7 +3069,31 @@ def test_this_repository_records_a_disposition_for_every_open_debt_item() -> Non
     """
     root = Path(doc_check.__file__).resolve().parent.parent
 
-    assert [a for a in doc_check.analyze(root).advisories if "records no disposition" in a] == []
+    assert [e for e in doc_check.analyze(root).errors if "records no disposition" in e] == []
+
+
+def test_a_missing_disposition_is_reported_as_an_error(tmp_path: Path) -> None:
+    """`PL-HJZW`: the printed severity and `make check`'s severity are one.
+
+    The test above has always made this a hard failure, while
+    `check_gate_dispositions` printed the same finding under "Advisories
+    (judgment needed)". A session that triaged a debt item, ran
+    `python3 tools/doc_check.py check`, read one advisory and left the
+    judgment for later had followed this project's own convention - `CLAUDE.md`
+    reserves hard failure for exact rules - and pushed a branch that failed CI
+    on an assertion it never saw.
+
+    Whether *some* disposition is recorded is exact, so this pins the error
+    side and the absence of an advisory together: naming one severity is the
+    whole of the fix, and either half alone would leave the two disagreeing
+    again.
+    """
+    root = _disposition_repo(tmp_path, {"PL-ZZZZ": DEBT})
+
+    report = doc_check.analyze(root)
+
+    assert any("records no disposition" in e and "PL-ZZZZ" in e for e in report.errors)
+    assert not any("records no disposition" in a for a in report.advisories)
 
 
 # --- reading the right table, and surviving a token glob cannot parse --------
