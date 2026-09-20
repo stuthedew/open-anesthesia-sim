@@ -109,6 +109,7 @@ from .vcs import (
     released_on_base,
     stranded,
     tags,
+    working_paths,
 )
 from .verify import already_passing, changed_paths, items_reading, verify_batch
 
@@ -630,20 +631,49 @@ def cmd_new(args: argparse.Namespace) -> int:
         return 1
     taken = {item.identifier for item in items}
     declared = _comma_separated(args.touches)
+    # A fresh capture declares nothing, which is exactly when the search has
+    # nothing to key on - and `PL-0KQP`, the fifth filing of the suppression
+    # defect, is what fell through that hole. Read once for the whole call,
+    # since every title in it was captured from the same working tree.
+    inferred = () if declared else _inferred_paths(args)
     for title in args.title:
         # Searched before the write so that the capture cannot match itself, and
         # printed after it so that the id and path stay the first line: a session
         # that reads no further has still recorded its finding, which is the half
         # of this command that may not be made conditional on anything.
-        found = near_duplicates(title, declared, items)
+        found = near_duplicates(title, declared or inferred, items)
         identifier = _capture(directory, title, taken, args)
         taken.add(identifier)
         if found:
-            print(render.format_near_duplicates(found, identifier))
+            print(render.format_near_duplicates(found, identifier, declared=bool(declared)))
             onto = anchor(found)
             if onto is not None:
                 items = _record_recurrence(directory, items, onto.item, identifier, args)
     return 0
+
+
+def _inferred_paths(args: argparse.Namespace) -> tuple[str, ...]:
+    """What the working tree says this session is changing, as a stand-in for `touches`.
+
+    A capture is made *while* working on the thing that produced it, so what
+    the checkout is changing is the best available guess at what the capture is
+    about - and the only one, since `bin/docket new` writes no `touches` and the
+    capture rule forbids asking for any. `PL-0KQP` is the miss this closes: the
+    session that filed it was on a branch whose commits touch
+    `subprojects/docket/src/docket/verify.py`, the exact path all four items it
+    duplicated declare, and nothing read it.
+
+    **It may not prompt, refuse, or cost the session anything it can notice.**
+    Capture is the one path in this project meant to be frictionless, so a
+    reading git declines is simply an empty answer: the search then has no key,
+    finds nothing, and the command behaves as it did before any of this existed.
+    That is not a title-only fallback, and deliberately so - see
+    `duplicates.near_duplicates`.
+    """
+    if getattr(args, "no_git", False):
+        return ()
+    root, _ = _tracked(args)
+    return working_paths(root, runner=_runner(args)).paths
 
 
 def _record_recurrence(

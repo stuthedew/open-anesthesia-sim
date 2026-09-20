@@ -5128,3 +5128,71 @@ def ref_walk(root: Path, items_dir: str, *, runner: Runner | None = None) -> Ref
         unread=tuple(sorted(unread)),
         declined=run.reason,
     )
+
+
+@dataclass(frozen=True)
+class WorkingPaths:
+    """What this checkout is changing, and whether git answered in full.
+
+    The proxy `bin/docket new` uses for a `touches` a fresh capture does not
+    have. A capture is made *while* working on the thing that produced it, so
+    what the working tree is changing is a good guess at what the capture is
+    about - and it is the only guess available, since capture writes no
+    `touches` and may not start asking for one.
+
+    `declined` carries the same obligation it does on `FlightReport` and
+    `FlightFiles`: an empty `paths` means "nothing changed" or "git did not
+    answer", and the two must not be conflated. Here the consequence of
+    conflating them is mild - the near-duplicate search finds nothing and the
+    command behaves as it did before it existed - which is why the field is
+    read rather than printed. It is still recorded, because a caller that
+    wants to distinguish the two must be able to.
+    """
+
+    paths: tuple[str, ...] = ()
+    base: str = ""
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        """Whether git answered every question this reading rests on."""
+        return not self.declined
+
+
+def working_paths(root: Path, *, runner: Runner | None = None) -> WorkingPaths:
+    """The files this checkout has changed: committed on the branch, and not yet.
+
+    Both halves, because a session captures a finding at any point in its work.
+    The branch-local commits are what it has finished, and the uncommitted
+    changes are what it is in the middle of - and the middle is where a finding
+    is usually made, since it is what the session is looking at.
+
+    Three reads rather than one `status --porcelain`, deliberately: the
+    porcelain format carries status codes, rename arrows and shell-quoted paths
+    with spaces, so parsing it is three chances to get a path wrong. Each of
+    these prints one path per line and nothing else.
+
+    The branch diff is `base...HEAD` rather than `base..HEAD` for the reason
+    `files_in_flight` gives: the two-dot form re-reports every file the default
+    branch changed since the fork as though this branch had changed it, which
+    for a session started a day ago is most of the tree - and here that would
+    make every capture match everything.
+
+    **The store is not excluded, which was considered and refused.** Every
+    session edits `docs/items/`, so it is tempting to read it as noise - but 28
+    of this store's 341 open items declare a path under it, and they are the
+    triage passes, backfills and queue-shape decisions that a capture *about*
+    the queue genuinely duplicates. Two open triage items is exactly the warning
+    worth having, and the recurring-by-design clusters are already dropped by
+    scoring open items alone, which is where that job belongs.
+    """
+    run = _Silences(runner or _run_git)
+    base = default_base(root, runner=run)
+    found: set[str] = set()
+    for args in (
+        ["diff", "--name-only", f"{base}...HEAD"],
+        ["diff", "--name-only", "HEAD"],
+        ["ls-files", "--others", "--exclude-standard"],
+    ):
+        found.update(line.strip() for line in run(args, root).splitlines() if line.strip())
+    return WorkingPaths(paths=tuple(sorted(found)), base=base, declined=run.reason)

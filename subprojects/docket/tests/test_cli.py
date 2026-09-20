@@ -253,6 +253,74 @@ def test_a_second_filing_extends_the_line_the_first_one_wrote(tmp_path: Path) ->
     assert len(entries.split(", ")) == 2
 
 
+def test_new_infers_candidate_paths_from_the_working_tree(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The hole the fifth filing of the suppression defect fell straight through.
+
+    Nine of thirteen known duplicate pairs share a declared `touches` path and
+    the shared-path key finds them; **all four misses are `PL-0KQP`**, which
+    `bin/docket new` wrote with no `touches` at all. The session that filed it
+    was on a branch whose commits touch
+    `subprojects/docket/src/docket/verify.py` - the exact path all four items it
+    duplicates declare. The information was there and nothing read it.
+
+    No new argument, no prompt, no refusal: the capture is written exactly as it
+    would have been, and the warning is the only difference.
+    """
+    root = tmp_path / "repo"
+    store = root / "items"
+    store.mkdir(parents=True)
+    (store / "existing.md").write_text(SUPPRESSION, encoding="utf-8")
+    target = root / "subprojects" / "docket" / "src" / "docket"
+    target.mkdir(parents=True)
+    (target / "verify.py").write_text("# the module this session is changing\n", encoding="utf-8")
+    for command in (
+        ["git", "init", "-q", str(root)],
+        ["git", "-C", str(root), "config", "user.email", "t@example.com"],
+        ["git", "-C", str(root), "config", "user.name", "T"],
+        ["git", "-C", str(root), "add", "-A"],
+        ["git", "-C", str(root), "commit", "-qm", "base"],
+    ):
+        subprocess.run(command, check=True, capture_output=True)
+    # Uncommitted, which is where a session usually is when it notices something.
+    (target / "verify.py").write_text("# now being changed\n", encoding="utf-8")
+
+    exit_code = main(
+        [
+            "new",
+            "verify's suppression check reads every added line as code",
+            "--items",
+            str(store),
+            "--today",
+            "2026-08-24",
+        ]
+    )
+
+    assert exit_code == 0
+    printed = capsys.readouterr().out
+    assert "PL-C1C1" in printed
+    assert "a path this branch is changing" in printed, "the key's source is named"
+
+
+def test_a_capture_with_no_git_to_read_is_written_exactly_as_before(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Capture is frictionless or it is not capture.
+
+    A reading git cannot answer leaves the search with no key, so it finds
+    nothing and says nothing - rather than falling back to scoring titles
+    across the store, which is the refuted key and would fire on the sixteen
+    recurring triage passes.
+    """
+    store = _store(tmp_path, SUPPRESSION)
+
+    assert _run("new", "verify's suppression check reads prose as code", "--items", str(store)) == 0
+
+    assert "PL-C1C1" not in capsys.readouterr().out
+    assert len(sorted(store.glob("*.md"))) == 2
+
+
 def test_new_says_nothing_about_an_item_declaring_a_different_path(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

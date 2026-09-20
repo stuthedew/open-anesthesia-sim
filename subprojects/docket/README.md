@@ -61,8 +61,18 @@ declared path, with the title only ordering what the path selected — title
 closeness on its own catches none of the known duplicate pairs and finds the
 items *meant* to recur, the triage passes and release cuts, instead (`PL-TZ7T`
 carries the table; `duplicates.py` carries the floor and what it was measured
-against). A capture declaring no path searches nothing rather than falling back
-to that refuted key.
+against). A capture declaring no path — which is
+every capture, since `docket new` writes no `touches` — keys on what the
+working tree is changing instead: the branch's own commits and its uncommitted
+edits. A capture is made *while* working on the thing that produced it, so that
+is the best available guess, and it is the only one, since asking the session
+for a path is friction capture may not have. `PL-0KQP` is the miss it closes —
+nine of thirteen known duplicate pairs share a declared path and the key finds
+them, and all four misses are that one item, filed from a branch whose commits
+touched the exact path the four items it duplicated declare. Where git answers
+nothing the search has no key, finds nothing, and the command behaves as it did
+before any of this existed; it does not fall back to that refuted title-only
+key.
 
 **It writes one line into the body and no headings to fill in:** the title,
 under a `**Problem.**` of its own. A brief appended below it composes — the

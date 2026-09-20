@@ -857,7 +857,9 @@ def format_generators(heads: Sequence[Item]) -> str:
     return "\n".join(lines)
 
 
-def format_near_duplicates(candidates: Sequence[Candidate], identifier: str) -> str:
+def format_near_duplicates(
+    candidates: Sequence[Candidate], identifier: str, *, declared: bool = True
+) -> str:
     """The open items a capture may be a second filing of, under the capture's own line.
 
     Printed after the item is written rather than instead of writing it. The
@@ -882,7 +884,13 @@ def format_near_duplicates(candidates: Sequence[Candidate], identifier: str) -> 
     if not candidates:
         return ""
     named = _plural(len(candidates), "open item declares", "open items declare")
-    lines = [f"  Possibly filed already - {named} a path this capture reaches:"]
+    # Where the paths came from, because the two are different claims. A
+    # `--touches` is what the session said this capture is about; the working
+    # tree is what it happened to be changing, which is a good guess and is not
+    # the same thing - and a reader who is not told cannot weigh a wrong match
+    # (`PL-THLT`).
+    key = "a path this capture reaches" if declared else "a path this branch is changing"
+    lines = [f"  Possibly filed already - {named} {key}:"]
     for candidate in candidates:
         item = candidate.item
         lines.append(f"    {item.identifier} ({item.status}) - {_gloss(item.title)}")
