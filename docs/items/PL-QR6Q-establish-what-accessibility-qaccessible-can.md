@@ -1,14 +1,16 @@
 ---
 id: PL-QR6Q
 title: Establish what accessibility QAccessible can deliver, and settle ROADMAP item 20 against it
-status: blocked
-blocked-by: PL-25KS
 priority: P3
 effort: M
+status: ready
 classes: planning
 feature: presentation-safety
 touches: ROADMAP.md, src/anesthesia_sim/app
+blocked-by: PL-25KS
 added: 2026-09-13
+payoff: stops ROADMAP item 20 promising screen-reader support nobody has checked the shipped toolkit can deliver, before Phase 2 builds controls on top of it
+verify: grep -A6 '^20\. ' ROADMAP.md | grep -qF 'QAccessible'
 ---
 
 **Problem.** Establish what accessibility QAccessible can deliver, and settle
@@ -83,3 +85,19 @@ recorded, which is a disposition the gate's definition of done allows outright.
 **Done when.** `ROADMAP.md` item 20 states what is achievable on the shipped
 toolkit rather than what would be ideal, and the reasoning is recorded where a
 later session finds it before re-asking.
+
+## Promoted 2026-09-20 under `PL-JFQ3`: the stated reason for the edge has lapsed
+
+The brief held the block open on one fact: "`PL-25KS` ... is the item whose
+completion actually makes the three questions answerable, and it is `ready`
+rather than done, so the edge holds." `PL-25KS` (port the dashboard to PySide6)
+is `done`, `closed: 2026-09-15`, `milestone: v0.4.26`, `pr: 588`. The ported
+readouts, controls, transport and dialogs exist to be asked the three questions,
+and `PL-YCWZ` (`done`, same release) added headless rendering over the real Qt
+interface, so they can be asked in a session rather than only on the owner's
+desk.
+
+The reasoning that put both halves in `blocked-by` rather than the version alone
+was right and is why this did not promote early: `blocked-by: <version>`
+resolves as soon as a milestone is scoped, and the port was scoped long before
+it was built.

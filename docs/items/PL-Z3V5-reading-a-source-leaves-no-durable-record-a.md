@@ -3,12 +3,14 @@ id: PL-Z3V5
 title: Reading a source leaves no durable record a later session can use: the extracted values, units and page locators are not written back to the public repository, so the same PDF is re-read per session
 priority: P2
 effort: S
-status: blocked
-blocked-by: PL-XJ5P
+status: ready
 classes: docs
 feature: provenance
 touches: .claude/rules/citing-sources.md, docs/references/README.md
+blocked-by: PL-XJ5P
 added: 2026-09-13
+payoff: stops every session re-reading the same PDF at full context, by making the numbers taken from a source survive in the repository instead of only in the item that prompted the reading
+verify: grep -rqF '1994760' docs/references/ --include='*.md' --exclude=README.md
 ---
 
 **Problem.** When a session reads an owner-supplied full text, what survives is
@@ -111,3 +113,21 @@ none. That command is written when the item is started, having been run - not
 in a sweep - so the status is deliberately left at `blocked` here, and
 `bin/docket check`'s standing "every blocker has closed; it is ready to
 promote" advisory is the correct live signal.
+
+## Promoted 2026-09-20 under `PL-JFQ3`, with the command the sweep could not write
+
+The 2026-09-19 sweep left this `blocked` for one reason only: `--status ready`
+needs a command that proves the item done, "and that command is written when the
+item is started, having been run - not in a sweep". `PL-JFQ3` is the pass that
+starts it, so the command is written here having been run:
+`grep -rqF '1994760' docs/references/ --include='*.md' --exclude=README.md`
+exits 1 on this tree. It pins Yasuda et al. 1991's PMID in a file under
+`docs/references/` that is not the index, which is exactly this item's "Done
+when" — the one worked example. `README.md` is excluded because it already
+mentions Yasuda in passing (line 323, inside another work's bibliography), so an
+unexcluded command would have passed today and proved nothing.
+
+Everything the sweep established stands: the obligation and its home are settled
+at `docs/references/README.md:68` and `:73`, `PL-XJ5P` is closed, and what is
+left is the note's field set and the first worked example, which both files
+reserve to this item by id.

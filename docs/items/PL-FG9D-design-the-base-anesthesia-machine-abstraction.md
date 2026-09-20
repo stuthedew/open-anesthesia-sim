@@ -3,12 +3,14 @@ id: PL-FG9D
 title: Design the base anesthesia-machine abstraction so a real commercial machine is a data-plus-plugin addition
 priority: P2
 effort: M
+status: ready
 classes: docs
-blocked-by: PL-4DCG
-status: blocked
 feature: anesthesia-machine
 touches: docs/MODEL.md, ROADMAP.md
+blocked-by: PL-4DCG
 added: 2026-09-02
+payoff: stops the first real machine module settling the abstraction by accident, which is what would let a trade name on screen stand for behaviour that machine does not have
+verify: grep -qF 'a row, not a column' docs/MODEL.md ROADMAP.md
 ---
 
 **Problem.** `ROADMAP.md` planned-milestone item 1 says "a modular
@@ -123,3 +125,16 @@ is answered here.
 with reasoning, states the second-machine cost as a concrete target, is
 consistent with `docs/MODEL.md`'s existing provenance discipline, and leaves
 planned-milestone item 1 scopeable without reopening any of them.
+
+## Promoted 2026-09-20 under `PL-JFQ3`
+
+`PL-4DCG` (survey the anesthesia machines in current clinical use for the
+variables that change a simulated result) is `done`, `closed: 2026-09-19`,
+merged as #742. The survey this item said it could not be designed without —
+"the extension points are the axes of real variation that reach a number;
+designing them before the survey is guessing" — now exists, so the seven
+questions are answerable against evidence.
+
+Nothing else about the item changes. It stays design-only: no machine class, no
+interlocks, no `src/` change, and planned-milestone item 1 remains gated behind
+Phase 1's multi-substance generalization.

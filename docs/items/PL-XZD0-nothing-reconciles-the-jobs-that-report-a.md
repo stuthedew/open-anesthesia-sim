@@ -9,6 +9,7 @@ feature: pr-title-enforcement
 touches: .github, tools/required_checks_check.py, tests/unit/test_required_checks_check.py, docket.toml, docs/ARCHITECTURE.md
 added: 2026-09-17
 closed: 2026-09-19
+pr: 740
 payoff: stops a renamed CI job leaving pull requests waiting forever on a check that can never arrive
 verify: grep -q 'def test_pl_kpp1_a_deleted_job_orphans_its_requirement' tests/unit/test_required_checks_check.py
 ---
