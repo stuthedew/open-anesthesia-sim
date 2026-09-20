@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: planning-cadence
+milestone: v0.4.35
 touches: ROADMAP.md
 added: 2026-09-16
 closed: 2026-09-20

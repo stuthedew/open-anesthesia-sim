@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: gate-list-integrity
+milestone: v0.4.35
 touches: ROADMAP.md
 added: 2026-09-13
 closed: 2026-09-20

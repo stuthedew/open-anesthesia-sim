@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: safety, feature, anticipated
 feature: scenario-branching
+milestone: v0.4.35
 touches: src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/simulation_view.py, tests/unit, tests/integration, docs/MODEL.md, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-06
 closed: 2026-09-20

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: anesthesia-machine
+milestone: v0.4.35
 touches: docs/machine-survey.md, docs/machine-abstraction.md, docs/items
 added: 2026-09-20
 closed: 2026-09-20

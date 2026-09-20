@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, defect
 feature: settings-panel-prerequisite
+milestone: v0.4.35
 touches: ROADMAP.md
 added: 2026-09-17
 closed: 2026-09-20
