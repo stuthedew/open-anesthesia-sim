@@ -3,11 +3,12 @@ id: PL-4KZD
 title: The bookmark panel draws every run's marks with the reference run's standings, so while two runs are shown the row states one run's answer with nothing saying which
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, safety
 feature: scenario-branching
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_simulation_view.py
 added: 2026-09-20
+closed: 2026-09-20
 payoff: stops a mark's row attributing one run's answer to the other while two managements are being compared
 verify: grep -q 'def test_a_branch_that_halted_on_a_target_the_trunk_is_still_running_for_says_so' tests/unit/test_dashboard_frame.py
 recurrences: 2026-09-20 PL-GHMB
@@ -53,3 +54,19 @@ which run's snapshot was chosen.
 **Done when.** While more than one run is displayed, a mark's row either states
 which run its standing belongs to or states both; and no row can be drawn that
 attributes one run's answer to the set every run carries.
+
+**Closed with `PL-LHBY`, which is the same defect filed twice.** Both name
+`_refresh_view` passing `snapshots[0]` to the marks panel; `PL-LHBY` adds the
+two consequences it reproduced offscreen (a branch halting on a mark and
+reporting nothing, and an inherited instant reading as the trunk left it) and
+the requirement that `MarkStanding.BEFORE_THIS_BRANCH` become reachable on
+screen. This item's "done when" is contained in that one, so the single change
+answers both and they close together.
+
+The `verify:` command was rewritten on closing. It named
+`tests/unit/test_simulation_view.py`, a file that has never existed in this
+repository — there is no unit test module for that view, its tests being in
+`tests/integration/test_simulation_view.py` and `tests/unit/test_dashboard_frame.py` —
+so as written it could not have passed on any tree. It now names the unit test
+that holds this item's own "done when": a row whose runs disagree names each
+one.
