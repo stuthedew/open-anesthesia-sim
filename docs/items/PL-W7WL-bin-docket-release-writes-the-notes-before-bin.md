@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: defect
+feature: cut-backfills-pr-numbers
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 added: 2026-09-20
 payoff: stops an item that merged just before a cut shipping a release note with no route back to the change that made it
@@ -51,3 +52,46 @@ preference for deterministic tooling over a rule a session has to hold.
 **Done when.** A cut whose finished set includes an item that merged without a
 `pr:` still writes that item's pull request number into the release notes, with
 a test driving that case.
+
+**This mechanism has now been filed four times, and the other three are closed
+into this one** (`PL-JKML`'s duplicate sweep, 2026-09-20). `PL-66X4` was
+dropped into `PL-2M5T` before this item existed; `PL-2M5T` and `PL-3HMQ` are
+dropped here. Four sessions diagnosed one defect from four cuts, none of them
+able to see the others, which is the cost `PL-TZ7T` names for `bin/docket new`
+filing a near-duplicate without noticing. The evidence each of them paid for is
+carried below rather than lost with the item.
+
+**How much of a release it takes, from `PL-2M5T` (measured 2026-09-14).**
+`docs/releases/v0.4.22.md` carries fifteen item bullets and **nine of them name
+no pull request at all**. So this is not an edge case that catches the
+occasional late merge: it took the majority of one release's notes, and the
+items it takes are systematically the most recently finished - the ones a
+reader is most likely to be looking up.
+
+**Two more releases, from `PL-3HMQ` (2026-09-20).** `v0.4.33` shipped without
+`PL-LPLD`'s `#758`, and `v0.4.34` would have lost three more had they not been
+caught by hand at the cut.
+
+**The second half `PL-2M5T` carried, and it is a decision rather than code.**
+A cut release's notes are never regenerated - `bin/docket release --dry-run`
+answers `Nothing to release` once the version is cut, correctly, because
+re-cutting a shipped release is what leaves two sets of notes disagreeing
+(`PL-1MKQ`'s territory). So the numbers already missing from `v0.4.22`,
+`v0.4.32` and `v0.4.33` do not come back when this is fixed. Either those files
+are repaired by hand as part of this item, or the item records why a shipped
+release's notes are left standing as they were published. Decide it here; do
+not leave it to be rediscovered a fifth time.
+
+**Grouped as `feature: cut-backfills-pr-numbers`** (`PL-JKML`'s duplicate
+sweep, 2026-09-20, confirmed on independent refutation). `PL-W7WL` and
+`PL-WXX8` are the two halves of a pull request number never reaching the place
+that needs it. `PL-WXX8` is the number never landing on the item at all, because
+`bin/docket record`'s advisory addresses a session that has already finished;
+`PL-W7WL` is the number existing but arriving after the notes are rendered.
+Both are answered by the same move - the cut performing `record`'s backfill
+itself, rather than a rule a session has to remember - and neither is finished
+while the other stands.
+
+Named for what completes rather than for the theme: `commit-provenance` is
+eleven items and answers no question about whether anything finished, which is
+the test `.claude/skills/docket/SKILL.md` sets for a feature name.

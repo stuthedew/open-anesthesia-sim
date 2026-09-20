@@ -5,12 +5,11 @@ priority: P2
 effort: M
 status: ready
 classes: defect
-feature: parallel-sessions
+feature: stranded-ahead-or-behind
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, tests/unit/test_docket_branch_guard.py
 added: 2026-09-14
 verify: uv run pytest tests/unit/test_docket_branch_guard.py && grep -q 'def test_a_branch_copy_older_than_the_base_is_not_offered' tests/unit/test_docket_branch_guard.py
 ---
-
 
 **Problem.** bin/docket stranded offers to recover PL-THPB from origin/claude/next-version-release-o2zzaf, where the branch's copy is older than main's: the recover line would overwrite a done item with an untriaged one
 
@@ -88,3 +87,16 @@ the predicate it wants is per item file and three-valued — the ref's copy is
 **ahead** (report it, with a diff to read), **behind** (never report, never
 print a checkout line) or **equal** (silent). Ahead-not-equal is `PL-SH9Q` and
 `PL-KSCW`; behind is `PL-MBTZ`. Do them together.
+
+**Grouped as `feature: stranded-ahead-or-behind`** (`PL-JKML`'s duplicate sweep,
+2026-09-20). `PL-BHVM`'s design round settled on 2026-09-19 that `PL-SH9Q`,
+`PL-KSCW` and `PL-MBTZ` are one build rather than three - one three-valued
+per-item-file predicate, where the ref's copy is **ahead** (report it, with a
+diff to read), **behind** (never report, never print a checkout line) or
+**equal** (silent). That conclusion was written into two of the three briefs as
+prose and into the store's only grouping field nowhere, so `bin/docket status`,
+`bin/docket feature` and `recommend`'s finish-a-feature preference all read the
+three as unrelated work, and they sat in two different features
+(`parallel-sessions` and `stranded-item-edits`). They are ranked together by
+`PL-BHVM`'s `root-cause-of:` and now grouped together as well; the group closes
+when `stranded` makes that comparison.

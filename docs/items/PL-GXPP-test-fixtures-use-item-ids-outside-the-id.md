@@ -60,3 +60,32 @@ of and `PL-PRHN` records. The suite itself is already gated: `make check` runs
 
 **Done when.** No test fixture that is meant to read as a valid item id fails
 `store.ID_RE`, and the deliberately-invalid ones are still there.
+
+**`PL-R77L` is this same finding and is dropped in its favour** (`PL-JKML`'s
+duplicate sweep, 2026-09-20, confirmed on independent refutation against the
+tree). This item named the literal `PL-STUV` in `test_roadmap.py` among its
+offenders on 2026-09-02, seventeen days before `PL-R77L` re-found the same
+fixture string at the same location with line numbers.
+
+**Containment here is mechanical rather than argued.** `ID_ALPHABET` at
+`subprojects/docket/src/docket/store.py:31` is
+`0123456789BCDFGHJKLMNPQRSTVWXYZ` - vowels excluded - so `PL-STUV` is an id the
+store could never mint. This item's `verify:` grep for `PL-[A-Z0-9]*[AEIOU]`
+over `subprojects/docket/tests/*.py` matches `PL-STUV`, so **no tree state
+satisfies this item's command while `PL-R77L`'s `! grep -q PL-STUV` still
+fails**. One cannot be finished without the other.
+
+**Two things from `PL-R77L` carried here.** Its occurrences, so whoever takes
+this does not re-find them: `subprojects/docket/tests/test_roadmap.py:105` (a
+prose mention inside a frozen-list entry) and `:508-509` (the two assertions in
+`test_an_id_named_for_exclusion_or_for_reference_is_placed_nowhere`). And its
+stronger acceptance method: renaming to an in-alphabet id turns
+`scope.placement(...) == UNPLACED` into a real assertion by construction - if
+the placement rule did place prose mentions, the renamed test goes red and
+`make check` blocks the branch. That is a mutation-proof bar for the rename,
+and it is the one to meet.
+
+**Not superseded by `PL-2DTK`**: it corrected the same fixture id to `PL-RSTW`
+at `:625` and `:672-673` on the `PL-HWW1` branch and records that `:105` and
+`:508-509` were not reached, so both items are live on the occurrences that
+remain.

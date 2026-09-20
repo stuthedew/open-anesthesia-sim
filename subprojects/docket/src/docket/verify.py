@@ -48,16 +48,42 @@ from .store import ID_PATTERN
 # still miss one written against a rule that *is* enabled. Whether a `noqa`
 # matters is a question for the linter's own `RUF100`, not for a substring
 # search, and answering it here would be guessing at the judgment half.
-SUPPRESSIONS = ("# type: ignore", "typing.no_type_check", "xfail", "pytest.skip", "@skip")
+#
+# `# type: ignore` was dropped for a measured form of that same argument
+# (`PL-G21K`). Replayed over `main`'s 1,004 non-merge commits - the ones a
+# diff replay reads, out of 1,121 - it is the only entry that has ever matched
+# a real directive: 56 of them, every one carrying an explicit error code, and
+# not one a disabled test, which is the hazard this check names. The other
+# four matched a real directive zero times in that history.
+#
+# Whether an ignore is load-bearing is the only question worth asking about
+# one; a substring search cannot answer it, and the tool that can already
+# does. `strict = true` enables `warn_unused_ignores` over `[tool.mypy]
+# files`, which covered 11 of the 56, and `tools/ignore_check.py` runs the
+# same setting over the two test trees `files` excludes, which covers the
+# other 45 (`PL-J5NN`). What no tool polices is a *live* ignore added to
+# silence an error the work itself introduced - and this check did not police
+# it either, having flagged all 56 alike when 56 were legitimate.
+#
+# The four that remain cost nothing at that zero rate, so they stay: a count
+# of zero cannot tell deterrence from absence, which is why retiring the check
+# outright was refused. What that zero does not mean is coverage of the
+# hazard. `@pytest.mark.skip` and `@pytest.mark.skipif` - the two commonest
+# ways a pytest test is disabled - match neither `@skip`, whose `@` must sit
+# against the name, nor `pytest.skip`, whose halves `.mark.` separates, and
+# `@unittest.skip` matches nothing here either. Measured on this module either
+# side of the edit above, so it is a standing gap rather than one that edit
+# made, and it is `PL-5B88` rather than a widening taken on the way past.
+SUPPRESSIONS = ("typing.no_type_check", "xfail", "pytest.skip", "@skip")
 
 #: The same list as something a line can be matched against, anchored on the
 #: left where the entry begins with a word character. Every entry names a
 #: *token*, and a bare substring search finds one inside a longer word:
 #: `xfail` sits inside pytest's own `--maxfail`, so a diff line listing that
 #: option read as a suppression and rejected correct work (`PL-VHVJ`). The
-#: anchor is conditional because two entries open on `#` and `@`, which are
-#: not word characters - `\b` before one of those asserts the opposite of what
-#: is wanted and would match only where a word character precedes it.
+#: anchor is conditional because `@skip` opens on a character that is not a
+#: word character - `\b` before one of those asserts the opposite of what is
+#: wanted and would match only where a word character precedes it.
 #:
 #: Left only. The right-hand side is deliberately open, so `@skip` still finds
 #: `@skipif` and `pytest.skip` still finds `pytest.skip_module`, both of which
@@ -90,6 +116,59 @@ _SUPPRESSION_RE = re.compile(
 SUPPRESSION_BEARING_SUFFIXES = (".py", ".pyi", ".toml", ".cfg", ".ini")
 
 
+#: The suffixes whose non-code spans are stripped below - narrower than
+#: `SUPPRESSION_BEARING_SUFFIXES`, and deliberately so. In a `.cfg` or `.ini`
+#: a quote is an ordinary character in a value and an inline `#` is part of
+#: that value under `configparser`'s defaults, so the same strip would delete
+#: configuration rather than prose. Counted rather than assumed: across 1,004
+#: non-merge commits every line the pattern has ever matched is `.py`, and no
+#: `.toml`, `.cfg` or `.ini` line has matched it in either direction - so a
+#: rule for them would be the widest one the hazard could motivate rather than
+#: the narrowest that removes it.
+QUOTING_SUFFIXES = (".py", ".pyi")
+
+#: The spans of a Python line that carry text rather than code. Alternation is
+#: ordered and the scan runs left to right, so a `#` inside a string is taken
+#: as part of the string and a quote inside a comment as part of the comment;
+#: neither can open the other.
+#:
+#: The backtick alternative is not redundant with the string one, which is the
+#: detail that makes this work on the file it was written for. Python 3 has no
+#: backtick syntax, so a backtick is always inside a string or a comment
+#: already - but a diff hands this *one line* of a multi-line docstring, whose
+#: delimiters are on other lines, so the string alternative cannot see it and
+#: the markup is the only evidence left on the line.
+#:
+#: **The comment alternative is safe only because `SUPPRESSIONS` now holds no
+#: comment-form marker**, and that coupling is why `PL-G21K`'s two halves were
+#: worked together. `PL-STC4` called this half undecidable, correctly, while
+#: `# type: ignore` was on the list: ignoring comments would have deleted the
+#: only marker that ever fired. `test_no_suppression_marker_is_comment_shaped`
+#: fails if one is put back.
+#:
+#: An unterminated span - the opening line of a wrapped string, which is what
+#: a diff supplies - matches nothing and is left whole, so the line is
+#: reported rather than guessed at.
+NON_CODE_RE = re.compile(
+    r'"""(?:[^"\\]|\\.|"(?!""))*"""'  # a triple-quoted span opening and closing on one line
+    r"|'''(?:[^'\\]|\\.|'(?!''))*'''"
+    r'|"(?:[^"\\\n]|\\.)*"'
+    r"|'(?:[^'\\\n]|\\.)*'"
+    r"|`[^`]*`"  # a backtick span: prose markup, and never Python
+    r"|#.*"  # a comment, which the alternatives above keep out of a string
+)
+
+
+def strip_non_code(line: str) -> str:
+    """`line` with its quoted, backtick and comment spans blanked out.
+
+    Blanked rather than deleted, so that removing a span cannot join what sits
+    either side of it into one token: `mark("xfail")` becomes `mark( )` and
+    never `mark()`.
+    """
+    return NON_CODE_RE.sub(" ", line)
+
+
 def is_suppression_line(path: str, line: str) -> bool:
     """Whether an added line could suppress anything, for `no suppression added`.
 
@@ -106,12 +185,26 @@ def is_suppression_line(path: str, line: str) -> bool:
     departing row edits one cell, and a whole-line diff re-adds the whole row
     (`PL-5MFL`).
 
+    Prose *inside* a file Python executes is the half no suffix list can
+    reach, and this module is where it bites hardest: a file that names the
+    tokens it matches trips its own check, so the close-out that added the
+    suffix list `REJECT`ed on six of its own docstring lines and could not be
+    cleared from inside its branch (`PL-0KQP`, `PL-STC4`). `strip_non_code`
+    removes the three carriers that were counted - a quoted span, a backtick
+    span, a comment - and across 1,004 non-merge commits those three hold every
+    one of the 19 non-directive lines the pattern has ever matched, while
+    matching no line it did not match before. Replayed on `#783` itself, the
+    six lines it `REJECT`ed on go to none.
+
     An unreadable diff header yields `""`, which stays on the reporting side
     exactly as `is_assertion_line` keeps it: where the file cannot be
-    identified, the line is printed rather than guessed at.
+    identified, the line is printed rather than guessed at - and unstripped
+    for the same reason, since the strip is what a known Python file earns.
     """
     if path and not path.endswith(SUPPRESSION_BEARING_SUFFIXES):
         return False
+    if path.endswith(QUOTING_SUFFIXES):
+        line = strip_non_code(line)
     return bool(_SUPPRESSION_RE.search(line))
 
 

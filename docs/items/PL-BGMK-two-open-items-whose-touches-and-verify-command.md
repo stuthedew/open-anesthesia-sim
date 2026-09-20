@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: needs-decision
 classes: defect, infra
-feature: queue-hygiene
+feature: open-item-overlap-detection
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-13
 ---
@@ -44,3 +44,19 @@ failed regardless of how sound it looks.
 **Done when.** The question is answered against that count, and either a check
 lands carrying the rule that survived it, or the item closes recording that no
 rule was specific enough and what the count was.
+
+**Grouped as `feature: open-item-overlap-detection`** (`PL-JKML`'s duplicate
+sweep, 2026-09-20, confirmed on independent refutation). `PL-5GBV` and
+`PL-BGMK` are two halves of one problem: nothing in this project ever compares
+**two items that are already open**. `PL-5GBV` is what that costs downstream -
+two items for one defect both reaching `ready` and both entering the frozen
+v0.5.0 gate, so the gate counted the same work twice - and `PL-BGMK` is the
+comparison that would have caught it, over overlapping `touches` and `verify:`.
+Fixing either alone leaves the other standing: a comparison nobody runs at gate
+freeze does not stop double-counting, and a gate that de-duplicates does not
+stop two sessions working one finding.
+
+**Deliberately not named for the filing-time warning.** `PL-TZ7T` and
+`PL-X5JR` cover a *new capture* checked against the store as it is filed. This
+group is the other direction - two items already in the store, neither of them
+new - which nothing in the recurrence-signal design reaches.

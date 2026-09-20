@@ -3,11 +3,13 @@ id: PL-5748
 title: docs/WORKING_NOTES.md's PL-009 playback-speed thread still states the pre-PL-010 frame cost (~17 ms, of which ~15 ms chart-point construction) as current, and describes PL-010's point reuse as headroom still to spend, though it landed 2026-09-02 and the frame now costs 2.6 ms
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: docs
 feature: dev-tooling
 touches: docs/WORKING_NOTES.md
 added: 2026-09-07
+closed: 2026-09-20
+reason: Same finding as PL-4HKS, which supersedes it: both describe docs/WORKING_NOTES.md's PL-009 playback-speed thread stating a pre-Qt-port frame cost as current and PL-010's point reuse as unspent headroom. PL-4HKS carries the current measurements (40.4 ms at 300x, 0.020 ms a step, from tests/benchmarks/frame_cost.py), names all four stale statements, and is the later diagnosis; this item's own correction - a 2.6 ms frame - was itself overtaken by the port. Its two surviving arguments, the WORKING_NOTES preamble and the PL-60CQ pairing, are carried into PL-4HKS. Found by PL-JKML's duplicate sweep, 2026-09-20.
 verify: python3 tools/doc_check.py check && ! grep -qF 'frame currently costs ~17 ms' docs/WORKING_NOTES.md
 ---
 

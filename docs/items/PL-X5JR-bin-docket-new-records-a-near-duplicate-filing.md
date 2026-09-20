@@ -10,6 +10,7 @@ touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/mod
 blocked-by: PL-TZ7T
 added: 2026-09-20
 closed: 2026-09-20
+pr: 793
 payoff: turns a cost the store already pays - one defect diagnosed five times - into the evidence that ranks it, without a session having to notice and assert the claim by hand
 verify: grep -q 'def test_a_third_recurrence_surfaces_a_promotion_candidate' subprojects/docket/tests/test_plan.py
 ---
@@ -111,3 +112,13 @@ textbook generator and was recorded as one - peaks at two and never fires. Two
 recurrences is what the generator rule's own number actually translates to. The
 threshold is one constant, `MIN_ROOT_CAUSE_ITEMS` in `plan.recurring`; the item
 is built and closed at three, as ratified.
+
+**The open threshold question above is answered: two, not three** (project
+owner, 2026-09-20, ratified, over the literal three this item's design
+specified). `MIN_RECURRENCES` is now derived as `MIN_ROOT_CAUSE_ITEMS - 1`
+rather than written down, so the reasoning the design gave - one threshold in
+the project rather than two - is what the code actually expresses. The
+arithmetic it missed is that the item carrying the recurrences is itself the
+first filing, so two recurrences is three filings of one defect, which is the
+three items a generator is the root cause of. Landed in the same branch, before
+this item's work merged.

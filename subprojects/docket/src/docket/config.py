@@ -104,6 +104,29 @@ class Config:
     #: commitment, so the requirement has nowhere later to reach. `None`
     #: leaves it off.
     payoff_required_from: date | None = None
+    #: The date from which an item at `needs-decision` must *mark* a
+    #: recommendation in its brief - give one, or say in so many words that
+    #: none is being made and why.
+    #:
+    #: The question survives in the item; the recommendation that would let it
+    #: be answered in one read survives only in the reply that posed it, and a
+    #: reply dies with its session. So the longer an item waits, the likelier
+    #: the recommendation is gone when the answer arrives - backwards, because
+    #: waiting is what the status is for. Measured over the 45 open
+    #: `needs-decision` items on 2026-09-20: 8 marked one, 37 did not.
+    #:
+    #: An advisory and never an error, because a brief may honestly decline to
+    #: recommend - `PL-PFK1` declines and says the deciding number cannot be
+    #: measured retroactively. Marking the declination satisfies it, which is
+    #: what keeps one pattern serving both endings.
+    #:
+    #: Anchored to the capture date, and paired in `checks.py` with the set
+    #: `bin/docket next` is about to offer, because the two reach different
+    #: sessions: the date reaches the session *writing* the item, while it
+    #: still holds the reasoning, and the offered set reaches the session
+    #: about to act on a question the store already holds. `None` leaves the
+    #: requirement off.
+    recommendation_required_from: date | None = None
     #: Classes that make a release a minor version bump rather than a patch.
     minor_classes: tuple[str, ...] = ("feature",)
     #: Every class an item may carry. Empty means "derive it", and the derived
@@ -287,6 +310,11 @@ def load(root: Path) -> Config:
             section.get("payoff_required_from"),
             defaults.payoff_required_from,
             "payoff_required_from",
+        ),
+        recommendation_required_from=_date(
+            section.get("recommendation_required_from"),
+            defaults.recommendation_required_from,
+            "recommendation_required_from",
         ),
         minor_classes=_tuple(section.get("minor_classes"), defaults.minor_classes),
         known_classes=_tuple(section.get("known_classes"), defaults.known_classes),

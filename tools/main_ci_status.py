@@ -70,12 +70,15 @@ is one extra request, paid only on the runs that were already going to print a
 line, and it separates "stop, the tree is broken" from "an item wants closing".
 It is about 330 ms in practice, and its worst case is a second `TIMEOUT_S` -
 so a session start reading a red `main` can wait 16 s rather than 8 s before the
-line appears. That is the deliberate trade: the ceiling is paid only in the case
-the reader most needs the answer, and never on a green `main`.
+line appears, and spends two of the 60 requests an hour an unauthenticated
+caller gets rather than one. Both ceilings are paid only in the case the reader
+most needs the answer, and never on a green `main`, which is every session start
+but a few.
 
-**Why the rate itself is left alone.** `main` failed on 32.7% of the pushes
-that reached a verdict in that window, which reads like a check firing so often
-that nobody could act on it. It is an artifact of counting merges: the 74
+**Why the rate itself is left alone.** Over the narrower window `PL-T83R` was
+filed on - 2026-09-05 to 2026-09-16, holding 74 of the 109 failures above -
+`main` failed on 32.7% of the pushes that reached a verdict, which reads like a
+check firing so often that nobody could act on it. It is an artifact of counting merges: the 74
 failures are 8 episodes, and 2 of them - 37.7 h and 44.3 h - hold 87% of the
 red time, because merges keep arriving while `main` is red. Each of those two
 ended in a single cheap commit (`#432` closed two items whose work had landed;

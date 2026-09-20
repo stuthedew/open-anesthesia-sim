@@ -189,6 +189,30 @@ collected_test_paths = ["tests", "subprojects/docket/tests"]
 # Do not, without first giving each of those items a line.
 payoff_required_from = 2026-09-20
 
+# The date from which an item at `needs-decision` must *mark* a recommendation
+# in its brief - give one, or say in so many words that none is being made and
+# why.
+#
+# The question survives in the item. The recommendation that would let the
+# owner answer it in one read survives only in the reply that posed it, and a
+# reply dies with its session - so the longer an item waits, the likelier the
+# recommendation is gone when the answer arrives. That is backwards, because
+# waiting is what the status is for. `PL-KQHN` is the instance: its answer was
+# reconstructed from a harness-written summary line naming two options and
+# marking neither, and a decision about the release train rested on a reading
+# of another model's compressed prose.
+#
+# Counted before it was built, per `.claude/rules/expert-review.md`: of the 45
+# open `needs-decision` items on 2026-09-20, 8 marked a recommendation and 37
+# did not. Two of the 37 use the word only to talk *about* recommending, which
+# is why the test is the marker rather than the word.
+#
+# Dated the day after it was set, so the set it grandfathers is closed at what
+# the store held when the rule began working. Advisory on both sides and never
+# an error: a brief may honestly decline to recommend, and a check that
+# refuses correct content is one `CLAUDE.md` retires.
+recommendation_required_from = 2026-09-21
+
 # Classes that make a release a minor version bump rather than a patch.
 minor_classes = ["feature"]
 
@@ -323,6 +347,7 @@ workflow_paths = [
   "tests/unit/test_ignore_check.py",
   "tests/unit/test_main_ci_status.py",
   "tests/unit/test_import_boundary_check.py",
+  "tests/unit/test_pr_body_check.py",
   "tests/unit/test_item_read_log.py",
   "tests/unit/test_no_prune_guard.py",
   "tests/unit/test_pr_title_check.py",

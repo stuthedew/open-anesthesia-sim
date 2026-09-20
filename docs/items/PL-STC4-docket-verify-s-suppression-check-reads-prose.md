@@ -3,11 +3,12 @@ id: PL-STC4
 title: docket verify's suppression check reads prose, unlike the assertion check beside it: 12 of the 13 lines it flagged on PL-VHVJ's own branch were an item brief, a comment or a docstring naming the thing being fixed
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-19
+closed: 2026-09-20
 verify: grep -q 'def test_a_suppression_named_in_an_item_brief_is_not_one' subprojects/docket/tests/test_verify.py
 ---
 
@@ -203,3 +204,24 @@ breakdown, the `PL-Q9Z1` finding folded from `PL-4FD2`, and
 `tools/doc_check.py`'s `candidates` as the in-tree precedent. Whether it
 closes as part of `PL-G21K` or survives it belongs to whoever answers
 `PL-G21K`, not to this brief.
+
+## Worked 2026-09-20, with `PL-G21K`
+
+The comment half is narrowed on a rule that cannot swallow `# type: ignore`,
+which is the disposition this item asked for and the one it could not reach
+alone. `is_suppression_line` now blanks a `.py` or `.pyi` line's quoted spans,
+backtick spans and trailing comment before matching; the rule is safe because
+`PL-G21K` dropped `# type: ignore` from `SUPPRESSIONS` in the same change, so
+no marker is comment-shaped, and a test fails if one is added back.
+
+All thirteen of this item's own breakdown are now quiet: the seven item-brief
+lines by `#783`'s suffix rule, and the five comment-and-docstring lines and the
+one fixture string by the strip. Four tests pin them - an item brief, a
+docstring reached by its backticks with its opening quotes on another line, a
+prose comment, and a fixture string that *is* a `@pytest.mark.xfail` - beside
+one that pins a real marker still reported when strings and a comment sit on
+its line.
+
+`PL-4FD2`, the probable duplicate named above, was dropped against `#783`. The
+open question this item left - whether the comment half was decidable at all -
+is answered by the coupling rather than by a better matcher.

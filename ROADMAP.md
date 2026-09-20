@@ -3187,7 +3187,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 221 entries
+### Declined to Gate 2 on the refilling-queue ground — 222 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -4569,6 +4569,25 @@ so cannot reach a reader of the simulator. Against that, this gate stands at
 starting is the refilling shape Phase 0 was retired for.
 
 - PL-G21K (M) `verify`'s suppression and assertion checks infer intent from diff text, so every fix adds a special case and uncovers the next: four of the five suppression markers fired zero times on a real directive across 564 commits
+
+**One more whose problem did not exist at the freeze, and whose answer is not
+the tree's to give** (`PL-WFFX`, 2026-09-20). It joins `PL-09G9` and `PL-YFXG`
+on that ground rather than on the refilling-queue one: what it asks about was
+measured on 2026-09-20, fourteen days after this gate froze, so there was
+nothing on 2026-09-06 for a list to hold. `PL-843V` established that 187 of
+683 squash commits reached `main` with no body because the merge is submitted
+with an explicitly empty `commit_message`, and that what sends it is a
+per-sitting property - merges under 60 seconds apart agree 98.3% of the time,
+owner-local hour separates at permutation p = 5e-5 - which is the signature of
+a merge client. GitHub records no client identity, so no script, session or
+API call can close it; only the project owner can say which client they merge
+from when away from their desk. It is `P2`, `defect`-classed, wholly
+workflow-lane apparatus, and neither `safety` nor `science`. The loss it
+concerns is already detected and repaired by `tools/pr_body_check.py`, so what
+waits here is prevention rather than harm, and holding the milestone for a
+question only a person can answer would be the refilling shape twice over.
+
+- PL-WFFX (S) Name the merge client that sends an empty commit_message, which only the project owner can do: affected merges cluster by sitting at 98.3% and by owner-local hour at p=5e-5, but GitHub records no client identity
 
 ### Required scope
 

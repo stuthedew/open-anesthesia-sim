@@ -24,6 +24,7 @@ from docket.model import Item, parse_item
 from docket.store import insert_field
 from docket.verify import (
     LANDED_GUARD,
+    SUPPRESSIONS,
     TIMED_OUT,
     VERIFY_GUARD,
     Check,
@@ -37,6 +38,7 @@ from docket.verify import (
     reaches_outside_tree,
     sanctioned_queue_edit,
     selects_no_test,
+    strip_non_code,
     verify,
     verify_batch,
 )
@@ -218,7 +220,7 @@ def test_an_added_suppression_is_rejected(tmp_path: Path) -> None:
         root,
         "PL-K7QX silence it",
         "tests/test_thing.py",
-        KEPT + "\n\ndef test_b() -> None:  # type: ignore[misc]\n    assert 2 == 2\n",
+        KEPT + "\n\n@pytest.mark.xfail\ndef test_b() -> None:\n    assert 2 == 2\n",
     )
     report = verify(root, _item(), _config(), "HEAD~1")
     assert not report.passed
@@ -329,6 +331,176 @@ def test_a_pytest_configuration_key_is_still_a_suppression(tmp_path: Path) -> No
     assert not _check(report, "no suppression added").passed
 
 
+def test_a_type_ignore_is_not_a_suppression(tmp_path: Path) -> None:
+    """The one marker that ever fired, dropped because mypy answers it better.
+
+    Replayed over `main`'s 1,004 non-merge commits, `# type: ignore` is the
+    only entry of `SUPPRESSIONS` that has ever matched a real directive - 56 of
+    them, every one carrying an explicit error code, and not one a disabled
+    test, which is what this check exists to catch. Whether an ignore is load-bearing is a
+    mypy question, and mypy is asked it everywhere: `strict = true` runs
+    `warn_unused_ignores` over `[tool.mypy] files`, and `tools/ignore_check.py`
+    runs the same setting over the two test trees that list excludes
+    (`PL-G21K`, `PL-J5NN`).
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX narrow the argument",
+        "tests/test_thing.py",
+        KEPT + '\n\nVALUE: int = _get("x")  # type: ignore[arg-type]\n',
+    )
+    report = verify(root, _item(), _config(), "HEAD~1")
+
+    assert _check(report, "no suppression added").passed
+
+
+def test_a_suppression_named_in_an_item_brief_is_not_one(tmp_path: Path) -> None:
+    """The case that fires on every close-out, because every close-out edits one.
+
+    `PL-VHVJ`'s branch was refused for thirteen lines, seven of them its own
+    item's brief - and an item whose subject *is* the suppression detector
+    cannot have a brief that does not name suppressions, so this is structural
+    for every future item on this check rather than an unlucky wording
+    (`PL-STC4`). A `.md` file suppresses nothing whatever it says, which is
+    what `SUPPRESSION_BEARING_SUFFIXES` settles; this pins the shape the
+    suffix rule exists for, beside the `ROADMAP.md` row above that pins the
+    release cut.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX file the finding",
+        "docs/items/PL-N3WQ-the-check-reads-prose.md",
+        "**Problem.** The matcher reads `xfail` in prose, and `@pytest.mark.xfail`\n"
+        "in a fixture string, as directives it is not.\n",
+    )
+    report = verify(root, _item(touches=("docs/items",)), _config(), "HEAD~1")
+
+    assert _check(report, "no suppression added").passed
+
+
+def test_a_docstring_naming_a_suppression_is_not_one(tmp_path: Path) -> None:
+    """Prose inside a file Python executes is the half no suffix list reaches.
+
+    A module that documents the tokens it matches trips its own check, so the
+    close-out that added the suffix narrowing `REJECT`ed on six of its own
+    docstring lines and could not be cleared from inside its branch
+    (`PL-0KQP`, `PL-STC4`). The line is the hard case rather than a convenient
+    one: a diff hands over a single line of a multi-line docstring, so the
+    quotes that opened the span are on another line and the markup is the only
+    evidence left that this is prose.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX document the guard",
+        "tests/test_thing.py",
+        KEPT
+        + '\n\ndef helper() -> None:\n    """Run the guard.\n\n'
+        + "    Never `pytest.skip` or `@skipif` here: the guard has to run on\n"
+        + '    every platform, which is the whole point of it.\n    """\n',
+    )
+    report = verify(root, _item(), _config(), "HEAD~1")
+
+    assert _check(report, "no suppression added").passed
+
+
+def test_a_comment_naming_a_suppression_is_not_one(tmp_path: Path) -> None:
+    """A comment explaining why a suppression was *not* used refused the branch.
+
+    `PL-STC4` recorded this half as undecidable, and while `# type: ignore` was
+    on the list it was: a rule that ignores comments deletes the only marker
+    that ever fired. Dropping that marker is what makes the rule decidable,
+    which is why the two halves of `PL-G21K` landed together rather than one at
+    a time (`PL-4FD2`).
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX explain the choice",
+        "tests/test_thing.py",
+        KEPT + "\n\nVALUE = 1  # not pytest.skip: the guard runs everywhere\n",
+    )
+    report = verify(root, _item(), _config(), "HEAD~1")
+
+    assert _check(report, "no suppression added").passed
+
+
+def test_a_suppression_inside_a_string_literal_is_not_one(tmp_path: Path) -> None:
+    """The subject under test is not the thing itself.
+
+    A test for this detector writes a suppression into a fixture file as a
+    string, and a string suppresses nothing - it is data the suite reads. One
+    of the thirteen lines `PL-VHVJ`'s own branch was refused for was exactly
+    this, and it is the shape every future item on this check will carry
+    (`PL-STC4`).
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX test the detector",
+        "tests/test_thing.py",
+        KEPT + '\n\nFIXTURE = "@pytest.mark.xfail\\ndef test_c(): ...\\n"\n',
+    )
+    report = verify(root, _item(), _config(), "HEAD~1")
+
+    assert _check(report, "no suppression added").passed
+
+
+def test_a_suppression_beside_a_string_is_still_found(tmp_path: Path) -> None:
+    """The strip is one line away from gutting the check, so the pair is pinned.
+
+    A real marker holds its arguments in strings and can carry a trailing
+    comment, which is every span the strip removes, on the line that is exactly
+    what the check exists to report.
+
+    `@pytest.mark.xfail` rather than `@pytest.mark.skipif` because the second
+    is not a form this check detects at all - `@skip` wants its `@` against the
+    name and `pytest.skip` wants its halves adjacent, and `.mark.` separates
+    both. That is `PL-5B88`, found while writing this test and left to it: a
+    widening is not what `PL-G21K` was ratified for.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX silence it while the fix lands",
+        "tests/test_thing.py",
+        KEPT
+        + '\n\n@pytest.mark.xfail(reason="flaky", strict=False)  # for now\n'
+        + "def test_b() -> None:\n    assert 2 == 2\n",
+    )
+    report = verify(root, _item(), _config(), "HEAD~1")
+
+    suppression = _check(report, "no suppression added")
+    assert not suppression.passed
+    assert any("xfail" in line for line in suppression.lines)
+
+
+def test_strip_non_code_leaves_an_unterminated_span_whole() -> None:
+    """Where the strip cannot tell, the line stays on the page.
+
+    A diff supplies one line of a wrapped statement, so the quote that closes a
+    span is often on another line. Consuming to the end of the line instead
+    would read everything after a stray quote as text, which is the direction
+    that loses a finding; leaving it whole is the direction that reports one.
+    """
+    assert "xfail" in strip_non_code('MESSAGE = "an @pytest.mark.xfail marker')
+    assert "xfail" not in strip_non_code('MESSAGE = "an @pytest.mark.xfail marker"')
+
+
+def test_no_suppression_marker_is_comment_shaped() -> None:
+    """`is_suppression_line` blanks comments, so a comment-form marker is dead.
+
+    The two are coupled and the failure is silent: `SUPPRESSIONS` would name
+    the marker, the diff would hold the directive, and the report would say
+    `none`. Putting `# type: ignore` back, or adding `# mypy: ignore-errors`,
+    needs `NON_CODE_RE`'s comment alternative reconsidered in the same edit,
+    and this is what says so (`PL-G21K`).
+    """
+    assert [marker for marker in SUPPRESSIONS if marker.lstrip().startswith("#")] == []
+
+
 def test_a_removed_assertion_is_rejected(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     _work(root, "PL-K7QX drop it", "tests/test_thing.py", "def test_a() -> None:\n    pass\n")
@@ -351,11 +523,11 @@ def test_a_suppression_added_and_then_removed_is_not_reported(tmp_path: Path) ->
         root,
         "PL-K7QX silence it while iterating",
         "tests/test_thing.py",
-        KEPT + "\n\ndef test_b() -> None:  # type: ignore[misc]\n    assert 2 == 2\n",
+        KEPT + "\n\n@pytest.mark.xfail\ndef test_b() -> None:\n    assert 2 == 2\n",
     )
     _work(
         root,
-        "PL-K7QX take the ignore back out",
+        "PL-K7QX take the marker back out",
         "tests/test_thing.py",
         KEPT + "\n\ndef test_b() -> None:\n    assert 2 == 2\n",
     )
@@ -390,17 +562,17 @@ def test_a_suppression_re_added_after_removal_is_still_reported(tmp_path: Path) 
     dangerous one.
     """
     root = _repo(tmp_path)
-    ignored = KEPT + "\n\nSTRAY = 1  # type: ignore[misc]\n"
-    _work(root, "PL-K7QX silence it", "tests/test_thing.py", ignored)
+    silenced = KEPT + "\n\n@pytest.mark.xfail\ndef test_b() -> None:\n    assert 2 == 2\n"
+    _work(root, "PL-K7QX silence it", "tests/test_thing.py", silenced)
     _work(root, "PL-K7QX take it out", "tests/test_thing.py", KEPT)
-    _work(root, "PL-K7QX put it back after all", "tests/test_thing.py", ignored)
+    _work(root, "PL-K7QX put it back after all", "tests/test_thing.py", silenced)
 
     report = verify(root, _item(), _config(), "HEAD~3")
 
     suppression = _check(report, "no suppression added")
     assert not suppression.passed
     assert suppression.detail == "1 line(s)"
-    assert any("STRAY = 1" in line for line in suppression.lines)
+    assert any("@pytest.mark.xfail" in line for line in suppression.lines)
 
 
 def test_the_scope_detail_claims_no_commit_when_the_branch_has_none(tmp_path: Path) -> None:

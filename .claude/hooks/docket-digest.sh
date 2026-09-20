@@ -103,3 +103,26 @@ python3 "$root/tools/dead_ends.py" emit 2>/dev/null || true
 # line: on a normal session start it contributes nothing at all, and on a bad
 # one it is the last thing read before the conversation.
 python3 "$root/tools/main_ci_status.py" 2>/dev/null || true
+
+# Beside the line above, and the same exception shape one step further out:
+# that one reports a `main` whose checks went red, this a `main` whose history
+# lost its reasoning. This repository's squash commit message *is* the pull
+# request body, and 187 of 683 squash commits landed without one - 763,224
+# characters that survive only on GitHub (`PL-843V`).
+#
+# Here rather than in `make check`, which was where it first went, for a reason
+# about *when a session may act* rather than about cost. The remedy is a
+# network fetch and a commit of files outside the current item's declared
+# `touches`, which `CLAUDE.md`'s fix-now rule forbids inline and its
+# housekeeping rule says must be filed first and worked under its own id. A
+# `make check` advisory therefore fires at the one moment a session is not
+# allowed to do anything about it, and an advisory nobody can act on trains a
+# reader to skim the region a real one appears in. Session start is before an
+# item is picked, which is when filing or starting one is exactly the right
+# move. It is also the only place the answer is fresh: this reads `origin/main`
+# and does no fetch of its own, and `bin/docket branch` above has just done one.
+#
+# One line, and silent when every loss is already recorded under
+# `docs/pr-bodies/`. Detection reads `git log` and one directory listing, so
+# unlike its neighbour it touches no network at all.
+python3 "$root/tools/pr_body_check.py" 2>/dev/null || true

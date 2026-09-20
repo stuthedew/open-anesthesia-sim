@@ -3,10 +3,12 @@ id: PL-HCTF
 title: ROADMAP.md's declined-gate subsection states an entry count nothing validates: #706 added PL-ZMGR as an entry and left the heading at 174, and doc_check passes the same section at 174, 191 or 999
 priority: P3
 effort: S
-status: needs-decision
+status: dropped
 classes: docs, infra
 touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-19
+closed: 2026-09-20
+reason: Same finding as PL-4RHP, which supersedes it: both are ROADMAP.md's Declined-to-Gate heading stating an entry count that check_gate_counts cannot reach, and both propose the same two remedies. PL-4RHP is the earlier filing (2026-09-16), is already ready rather than needs-decision, and its triage already chose the remedy this item sat at needs-decision to ask about - a choice PL-HCTF's own brief agrees is a session's to take. Its three pieces of stronger evidence are carried into PL-4RHP: the 174/191/999 measurement showing doc_check passes all three, #706's off-by-one instance, and the 324-vs-191 naive count that makes remedy 1 expensive. Found by PL-JKML's duplicate sweep, 2026-09-20.
 ---
 
 **Problem.** ROADMAP.md's declined-gate subsection states an entry count nothing validates: #706 added PL-ZMGR as an entry and left the heading at 174, and doc_check passes the same section at 174, 191 or 999

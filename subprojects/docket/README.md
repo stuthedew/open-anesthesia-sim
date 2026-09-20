@@ -1453,6 +1453,48 @@ way. It was a bare substring test until `PL-VJ1X`, so the one heading an author
 most wants to qualify — who decides, and by when — was the one heading that
 could not be, and the checker contradicted the rule stated above it.
 
+**The recommendation is the other half of that status, and the half that does
+not survive on its own.** The question is written into the item; the
+recommendation that would let the owner answer it in one read is written into
+the reply that posed it, and a reply dies with its session while the item
+waits. So the longer an item sits at `needs-decision` - which is what the
+status is *for* - the likelier the recommendation is gone by the time the
+answer arrives. `PL-KQHN` is the instance: its answer was reconstructed from a
+harness-written summary line naming two options and marking neither, and a
+decision of record about the release train rested on a reading of another
+model's compressed prose.
+
+So from `recommendation_required_from`, `check` advises on a `needs-decision`
+brief that marks no recommendation. Three things about the rule:
+
+- **The test is the marker, not the word.** A marked recommendation is the
+  token under emphasis - `**Recommended.**`, `**This is the
+  recommendation.**`, `*Recommendation: not yet.*` - or the labelled
+  `Recommendation:`. Presence of the word decides nothing: of the ten open
+  `needs-decision` items using it on 2026-09-20, two used it only to say when
+  a recommendation should be *formed*. Findability is the property being
+  asked for rather than presence, because a recommendation in the ninth
+  paragraph of a long brief buys a reader nothing, and the brief is matched
+  with its line wrapping flattened - four of the eight carrying a marker wrap
+  somewhere inside it.
+- **Declining is a marked answer too.** A brief may honestly have no
+  recommendation to give, and `**No recommendation**, because the deciding
+  number cannot be measured` carries the word under emphasis, so one pattern
+  serves both endings. That is what keeps the advisory reachable-to-zero on an
+  item that will never carry one.
+- **Two populations, reaching two different sessions.** An item captured on or
+  after the cutover is one somebody is writing now, and the advisory reaches
+  it while the session still holds the reasoning - the only moment anything
+  can be *prevented*. One predating the cutover is reached as it is about to
+  be offered, which is `verify:`'s and `payoff:`'s narrowing taken for their
+  reason: 37 of the 45 open `needs-decision` items marked nothing on
+  2026-09-20, and naming all of them every run is an advisory that cannot
+  reach zero without a campaign.
+
+An advisory and never an error, because whether a recommendation is *owed* is
+not an exact rule - and a check that refuses correct content is one `CLAUDE.md`
+retires.
+
 `payoff` is one plain-language line of what closing the item buys, and it is
 the only field written for the person choosing rather than for the person
 working. A title is written for the session that will implement the item, so it
@@ -1570,10 +1612,14 @@ session having to notice it — and it is deliberately not a third field that
 changes a queue position. Each entry is a date and the id of a capture that
 `docket new` matched to this item: the filing happened, so the defect fired
 again, and `CLAUDE.md`'s reason for pulling a root cause is that every session
-it stands through pays it again. At three distinct filings — the generator
-rule's own number, so the project carries one threshold rather than two —
-`docket next` and the session-start digest name the item as a promotion
-candidate and stop there. A reader opens the briefs and writes `root-cause-of:`
+it stands through pays it again. At two distinct recurrences — which is
+three filings, the item itself being the first, and so the generator rule's own
+number counted in filings rather than in items — `docket next` and the
+session-start digest name the item as a promotion candidate and stop there.
+`MIN_RECURRENCES` is derived from `MIN_ROOT_CAUSE_ITEMS` rather than written
+down, so the project carries one threshold rather than two; written as a
+literal three it would have demanded a *fourth* filing, and the slug-rename
+cluster that was recorded as a generator by hand would never have surfaced. A reader opens the briefs and writes `root-cause-of:`
 by hand, or does not.
 
 **It surfaces; it never promotes**, and that is the whole restraint of the
@@ -2527,7 +2573,23 @@ cell. The real v0.4.30 cut reported seven such lines and REJECTed on them.
 Counted before the narrowing was written, because the safe direction here is
 reporting: across 1,109 commits the added lines the matcher finds are 69 `.py`
 and 41 `.md`, with no other suffix carrying one at all (`PL-5MFL`, `PL-BHBZ`).
-Prose *inside* a file Python executes is still read as code, which is `PL-0KQP`.
+Prose *inside* a file Python executes is narrowed the same way, by blanking a
+line's quoted spans, backtick spans and trailing comment before matching what
+is left - so a docstring naming the tokens, a fixture writing a suppression
+into a test file as a string, and a comment explaining why one was *not* used
+are each read as what they are. Only `.py` and `.pyi` are stripped: in a `.cfg`
+or `.ini` a quote is an ordinary character in a value and an inline `#` is part
+of that value, so the same strip would delete configuration rather than prose.
+
+`# type: ignore` is deliberately not one of the markers. Replayed over `main`'s
+1,004 non-merge commits it is the only one that has ever matched a real
+directive - 56 of them, all carrying an explicit error code, and none of them a
+disabled test - and whether an ignore is load-bearing is a question for mypy,
+which `warn_unused_ignores` asks of every directive in the repository:
+`strict = true` over `[tool.mypy] files`, and `tools/ignore_check.py` over the
+two test trees that list excludes. The four markers that remain have matched a
+real directive zero times; they stay at that price because a count of zero
+cannot tell deterrence from absence (`PL-G21K`, `PL-J5NN`).
 
 What counts as a *removed assertion* is decided by shape rather than by the
 word: a line in a file Python executes, opening an `assert` statement, calling
@@ -2672,6 +2734,8 @@ verify_prerequisite_refused_from = 2026-09-20   # when a command may no longer
                                    # re-run a tree `check_command` collects
 collected_test_paths = ["tests"]   # the trees it does collect; empty = rule off
 payoff_required_from = 2026-09-20  # omit to leave the `payoff:` rule off
+recommendation_required_from = 2026-09-21   # a `needs-decision` brief
+                                   # marks a recommendation; omit for off
 minor_classes = ["feature"]
 protected_paths = []
 gate_paths = ["Makefile", "pyproject.toml", ".github", ".claude", "docket.toml"]

@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: defect, infra
-feature: release-process
+feature: tag-error-names-its-cause
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-07
 verify: python3 tools/doc_check.py check && grep -q 'def test_a_tag_ahead_of_its_own_cut_is_named' tests/unit/test_doc_check.py
@@ -114,3 +114,13 @@ was the account of how the tag side resolved, corrected above.
 that was never cut), which describes the same guard from the other end and
 whose own test is equally absent. Whoever starts either should read both and
 close them together rather than build the guard twice.
+
+**Grouped as `feature: tag-error-names-its-cause`** (`PL-JKML`'s duplicate
+sweep, 2026-09-20, confirmed on independent refutation). `PL-KFWL` and
+`PL-LT77` are two causes of one symptom: `doc_check` erroring on `main` in
+every session over a release tag, with nothing in the message saying which
+cause it is. `PL-KFWL` is a tag pushed onto a commit where the release was
+never cut - a real fault in the remote. `PL-LT77` is a tag deleted on the
+remote that a warm checkout keeps, because `git fetch --tags` does not prune -
+a fault in local state only. The two demand opposite actions from the reader,
+and today the error cannot tell them apart. The group closes when it can.
