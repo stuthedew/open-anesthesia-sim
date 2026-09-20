@@ -3,12 +3,15 @@ id: PL-QRD1
 title: A dashboard showing two runs lets either selector switch its own agent, which the shared MAC axis then refuses only after the controller has switched: lock the selectors while two runs are shown, with PL-8PSW
 priority: P3
 effort: S
-status: blocked
+status: done
 classes: defect, ux
 feature: scenario-branching
-touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, ROADMAP.md, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
 blocked-by: PL-8PSW, PL-VKJW
 added: 2026-09-15
+closed: 2026-09-20
+payoff: no control on a compared dashboard can destroy the case the comparison is of - the agent switch that halted both runs is refused before it reaches the controller
+verify: grep -q 'def test_the_trunks_selector_is_locked_while_two_runs_are_shown' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** A dashboard showing two runs lets either selector switch its own agent, which the shared MAC axis then refuses only after the controller has switched: lock the selectors while two runs are shown, with PL-8PSW
@@ -115,3 +118,47 @@ in v0.5.0's scope.
 **The two-*trunk* case in the title is untouched either way.** `PL-VKJW` builds
 a trunk-and-branch dashboard only, so a dashboard of two trunks stays
 unreachable and stays the stronger statement of the guard.
+
+## Closed 2026-09-20 under `PL-VKJW`: **prevent** was taken, over **warn**
+
+**Both halves are answered, and the second is the one this item's title is
+about.** `PL-VKJW` made the defect reachable for the first time - it is the
+entry point that builds a two-run dashboard - so this closed against it rather
+than after it, which is the disposition its brief named under the answer taken.
+
+- **The branch half**, as `PL-VKJW`'s brief settled it: a branch's `RunView`
+  shows the agent chip in place of the selector, `setDisabled(locked)` beside
+  `setHidden(locked)`, because `set_agent` refuses a branch outright and a
+  control that refuses every input it accepts is one presenting itself as
+  working.
+- **The trunk half**, which is this item: the trunk's selector is locked while
+  two runs are shown, and Reset is the way back to one run (project owner,
+  2026-09-20, ratified, over keeping the selector live and growing
+  `RunView._confirm_new_case`'s dialog a clause about the branches it would
+  orphan). On `CLAUDE.md`'s expert-review standard - an interface that
+  prevents the error over one that reports it afterwards - and because it adds
+  no mode: the same gesture already refuses a second fork, so the rule on
+  screen is simply that nothing about the case may be changed while a
+  comparison is shown.
+
+  **Ratified rather than specified**, which is the bar to reopen it. The case
+  put to the owner was a session's own recommendation wearing their signature,
+  so ordinary evidence puts it back to them: a learner who wants to change
+  agent mid-comparison, a measurement, or a cost the case did not carry. "It
+  is what the owner decided" does not defend it.
+
+**`dashboard_frame.transport` carries all three locks rather than the widget
+choosing between them**, and names the longest-lasting one that holds: a
+branch's never returns, a comparison's returns on Reset, a running run's
+returns on Pause. A chip naming the shortest lock that happened to hold would
+send a reader to Pause for something Pause cannot lift.
+
+**The two-*trunk* case in the title is untouched**, as the last pass said it
+would be: `PL-VKJW` builds a trunk-and-branch dashboard only, and `comparing`
+is read from the run count rather than from either run's kind, so a dashboard
+of two trunks is covered by the same lock without anything having been written
+for it.
+
+**Reversing it is small and local**, which is why it was implemented rather
+than asked about: `dashboard_frame.transport`'s `comparing` branch and the one
+line in `SimulationView._rename_runs` that writes it are the whole of it.

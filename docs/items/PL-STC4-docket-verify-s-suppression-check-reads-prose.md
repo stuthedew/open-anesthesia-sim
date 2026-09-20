@@ -170,10 +170,9 @@ goes ahead of product work.
 ## Superseded as the place the decision lives, 2026-09-20 — read this first
 
 A generator item was recorded the same day and declares this item one of its
-causes. It is **not in this checkout**: it sits only on
-`origin/claude/busy-einstein-8bmtwd`, a live branch, so it is cited by title
-rather than by a link a checker can follow, exactly as this item cites
-`PL-BHBZ` above.
+causes. It merged to `main` in `#787` as `PL-G21K`, so it is in the store and
+citable directly - this paragraph was written while it was still stranded on
+`origin/claude/busy-einstein-8bmtwd` and said it was not.
 
 > `PL-G21K` — "verify's suppression and assertion checks infer intent from
 > diff text, so every fix adds a special case and uncovers the next: across

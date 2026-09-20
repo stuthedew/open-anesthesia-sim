@@ -4321,6 +4321,53 @@ the last place away. The measurement is still arithmetically true and it no
 longer describes a hazard this program can express: with one frame there is no
 offset for a caller to name and no conversion to get right.
 
+**A fork at a bookmark cannot satisfy both, and it is the second that gives
+way** (`PL-B8MK`, decided 2026-09-20; not built at the time of writing). The
+two conditions above coincide for every fork the program takes today, because
+those forks are taken *at* control events and a control event is a keyframe -
+so "opens at a keyframe" and "opens at the fork instant" name one instant and
+nothing distinguishes them. A bookmark's instant is not in general a keyframe:
+on a 120 s run with two control changes, 3 of the 1 201 instants a halt could
+land on are. Holding both conditions there would mean *recording* a keyframe
+where the run halts, and that is the route this project measured and refused -
+it makes the branch exact against its parent while displacing the parent's own
+later answers, 48 of 54 elements against the same case built unmarked. Marking
+a run would change it, which `CLAUDE.md`'s determinism requirement refuses
+outright.
+
+So a bookmark fork keeps the first condition and relaxes the second to: **the
+branch's run definition opens at the keyframe at or before the fork instant,
+on the case's own axis**, while the branch's clock and its live uptake system
+stand at the fork. The element-wise guarantee is untouched, because the
+guarantee never rested on the definition opening *at* the fork. It rests on
+parent and child forming each propagation interval from the *same keyframe* by
+the *same subtraction*, and opening at the keyframe the parent's own segment
+opens at is that property stated directly rather than through the special case
+where the two coincide. Measured 2026-09-14 on a 3 600 s sevoflurane run with
+changes at 300 s and 600 s, forked at a bookmark of 655.3 s: 0 of 54 elements
+differ across the nine state entries at six probes out to an hour, and the
+trunk stays byte-identical to the same case built without the bookmark.
+
+**What the relaxation costs is a second job the second condition was doing
+silently.** With the definition opening at the fork, `opened_at_s` *is* where
+the branch began, and `drawn_window` clips its lower bound there -
+`first_s = max(start_s, self._run_definition.opened_at_s)` in
+`app/controller.py`, whose comment reads "a branch opens at its fork". Once the
+definition opens at the earlier keyframe that stops being true, and the clip
+would let a branch be drawn back across an interval it never lived, showing the
+trunk's trajectory under the branch's identity. That is a presentation failure
+of the kind the safety-critical standard names - the right numbers in the wrong
+patient context - rather than a cosmetic one, so a bookmark fork owes the fork
+instant carried explicitly and the clip read from it rather than from
+`opened_at_s`.
+
+**What is not relaxed is the one frame.** The definition still opens at a case
+instant on the case's own axis, the clock still continues the parent's, and
+nothing converts between frames - so the hazard `PL-ZMRT` removed, a
+caller-side subtraction that does not round-trip, does not return by this door.
+What changes is only that the definition's opening is no longer equal to the
+fork instant; it is earlier than it, on the same axis.
+
 **One simulated-time frame, and every reader is in it.** A branch's *simulated
 time* — what the clock displays, what stamps every recorded control change,
 what rules the chart's axis, what the supported run length is measured

@@ -7,7 +7,7 @@ status: blocked
 classes: docs, safety, anticipated
 feature: scenario-branching
 touches: docs/MODEL.md, docs/ARCHITECTURE.md
-blocked-by: PL-8PSW, PL-VKJW
+blocked-by: PL-Z3W6
 added: 2026-09-06
 ---
 
@@ -121,3 +121,17 @@ branch - and a second fork is refused rather than replacing the displayed
 branch. So what a comparison asserts is a claim about *two* managements of one
 case, never about N, and the documents should say that rather than leaving the
 reader to infer a general facility from a capped one.
+
+## Re-pointed 2026-09-20 under `PL-VKJW`: both recorded blockers are closed, and it is still blocked
+
+`PL-8PSW` drew the overlay and `PL-VKJW` made it reachable, so the two ids this
+item carried are both `done`. It was not promoted on that, because the field
+could not see what actually holds it: the fourth thing this item has to state
+is "any divergence bound `PL-Z3W6` could not eliminate", and `PL-Z3W6` is open.
+Writing this section before that measurement exists means either stating a
+bound nobody has measured or leaving the one clause a reader most needs.
+
+`blocked-by` now names `PL-Z3W6` alone. The chain behind it is `PL-B8MK` (make
+a bookmark's instant forkable) → `PL-Z3W6` (assert a branch reproduces its
+parent element-wise up to the fork) → this item, and all three are in v0.5.0's
+Required scope.
