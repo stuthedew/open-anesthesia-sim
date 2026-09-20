@@ -55,10 +55,10 @@ from anesthesia_sim.app.dashboard_frame import (
     EMPTY_METRIC_SECONDARY_VALUE,
     INTERPRETATION_DISCLAIMER_TEXT,
     MAC_TARGET_HEADING,
-    MARK_STANDING_TEXT,
-    MAX_DISPLAYED_RUNS,
     MARK_STANDING_COMPARED_TEXT,
+    MARK_STANDING_TEXT,
     MARK_STILL_RUNNING_TEXT,
+    MAX_DISPLAYED_RUNS,
     MAX_LISTED_ADJUSTMENTS,
     NEW_CASE_CARRYOVER_TEMPLATE,
     NEW_CASE_IS_NOT_A_VIEW_TEXT,
@@ -233,9 +233,7 @@ def _one_run(standings: BookmarkStandings) -> tuple[RunMarks, ...]:
     return (RunMarks(run_label(0), standings),)
 
 
-def _two_runs(
-    trunk: BookmarkStandings, branch: BookmarkStandings
-) -> tuple[RunMarks, ...]:
+def _two_runs(trunk: BookmarkStandings, branch: BookmarkStandings) -> tuple[RunMarks, ...]:
     """A trunk and a branch drawn together, in the order the dashboard adds them.
 
     `SimulationView.add_run` appends, and Reset truncates back to the first
@@ -1990,10 +1988,7 @@ def test_a_branch_that_halted_on_a_target_the_trunk_is_still_running_for_says_so
     marks = BookmarkSet().with_mac_target(target)
     trunk = _standings(marks, elapsed_s=60.0)
     branch = _standings(
-        marks,
-        opened_at_s=60.0,
-        elapsed_s=174.7,
-        reached_crossings=frozenset({target.crossing_key}),
+        marks, opened_at_s=60.0, elapsed_s=174.7, reached_crossings=frozenset({target.crossing_key})
     )
 
     (row,) = bookmark_panel(marks, _two_runs(trunk, branch)).targets.rows
