@@ -74,9 +74,10 @@ def test_an_unrelated_title_sharing_a_path_is_not_offered() -> None:
 
     Most of this store's open items declare `cli.py` or `verify.py`, so the
     shared-path key alone selects 34 to 83 candidates for a typical capture.
-    Measured 2026-09-20, a floor of zero prints three of them on 323 of 325
-    captures - a warning that fires every run without changing a decision,
-    which `CLAUDE.md` calls a defect in the check rather than coverage.
+    Measured 2026-09-20, a floor of zero prints candidates on every one of the
+    321 open items probed as a simulated capture - a warning that fires every
+    run without changing a decision, which `CLAUDE.md` calls a defect in the
+    check rather than coverage.
     """
     store = [
         _item(
@@ -235,3 +236,33 @@ def test_the_recurrence_anchors_on_the_item_already_carrying_one() -> None:
 def test_anchoring_an_empty_shortlist_names_nothing() -> None:
     """No candidates means no recurrence, rather than a guess at which item."""
     assert anchor(()) is None
+
+
+def test_a_cluster_is_still_caught_at_its_second_filing() -> None:
+    """The property `DISPLAY_FLOOR` was chosen to preserve, rather than its value.
+
+    `PL-DGP0` raised the floor from 0.10 to 0.15 on the finding that the
+    candidates between them are all false. That is true of *clusters* and not
+    of *pairs*: 0.15 drops two real pairs, `PL-5MFL`/`PL-4FD2` at 0.147 and
+    `PL-5QLP`/`PL-QMC0` at 0.143, and drops no cluster, because every one is
+    still caught when it first repeats and `anchor` accumulates from there.
+
+    So this pins the thing that would be a real defect if it broke - the second
+    filing of a cluster finding the first - using the slug-rename cluster's own
+    titles, which score 0.200 against each other. A floor raised past that
+    would pass `test_an_unrelated_title_sharing_a_path_is_not_offered` and
+    silently stop the mechanism working.
+    """
+    first = _item(
+        "PL-AAAA",
+        "docket record renames an item file as a side effect of writing a field",
+        touches=("subprojects/docket/src/docket/store.py",),
+    )
+
+    found = near_duplicates(
+        "A field write renames the item file, so the rename lands in a diff about something else",
+        ("subprojects/docket/src/docket/store.py",),
+        [first],
+    )
+
+    assert [candidate.item.identifier for candidate in found] == ["PL-AAAA"]

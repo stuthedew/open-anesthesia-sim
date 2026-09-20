@@ -3,11 +3,12 @@ id: PL-G21K
 title: verify's suppression and assertion checks infer intent from diff text, so every fix adds a special case and uncovers the next: across 564 commits four of the five suppression markers fired zero times on a real directive while half of all hits were prose
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-20
+closed: 2026-09-20
 payoff: retires the half of the suppression check that never once caught what it exists to catch - 33 of 33 real hits were legitimate type-ignores, none a disabled test - so a close-out touching verify.py stops REJECTing on the file's own docstrings, and the four items left behind it stop being patched one case at a time
 verify: grep -q 'def test_a_type_ignore_is_not_a_suppression' subprojects/docket/tests/test_verify.py
 root-cause-of: PL-4FD2, PL-STC4, PL-BHBZ, PL-5MFL, PL-XQGH, PL-CNJH, PL-2DTK
@@ -174,3 +175,64 @@ they name the tokens they match, so editing the file that defines the check
 trips the check. That is why 783's own close-out REJECTed on 6 added lines,
 none of them a suppression, and why it could not be cleared from inside that
 branch.
+
+## Worked 2026-09-20
+
+**Both halves of the decision, in one change, because the first is what makes
+the second decidable.** `# type: ignore` left `SUPPRESSIONS`, and a line's
+quoted spans, backtick spans and trailing comment are blanked before matching
+what is left, for `.py` and `.pyi`. `PL-STC4` had recorded the comment half as
+undecidable and it was: a `# type: ignore` *is* a comment, so a rule that
+ignores comments deletes the only marker that ever fired. With that marker gone
+no entry is comment-shaped, and `test_no_suppression_marker_is_comment_shaped`
+fails if one is put back - the coupling is silent otherwise, since
+`SUPPRESSIONS` would name a marker the matcher could never see.
+
+**Re-measured against the shipped module rather than a reimplementation**, by
+importing `verify.py` from `HEAD` and from this branch and replaying every
+added line of `main`. Over its 1,004 non-merge commits (1,121 including
+merges, which carry no diff of their own):
+
+| | lines |
+| --- | --- |
+| flagged by the check as it stood | 75 |
+| flagged by the check as it now stands | 0 |
+| newly flagged - matches the old check did not make | 0 |
+
+Of the 75: **56 are real `# type: ignore` directives**, every one carrying an
+explicit error code and not one of them a disabled test; the other **19 carry
+their marker only inside a quote or backticks**. No marker but `# type:
+ignore` has ever matched a real directive. Every one of the 75 is in a `.py`
+file - no `.toml`, `.cfg` or `.ini` line has ever matched in either direction,
+which is why the strip is applied to Python only, where a quote and a `#` mean
+what this assumes. Replayed on `#783`'s own squash commit, the six lines that
+`REJECT`ed it go to none.
+
+**The item's `tests/` claim was out of date and the correction favours the
+decision.** The brief says a dropped marker leaves `tests/` unpoliced as an
+accepted cost. `tools/ignore_check.py` (`PL-J5NN`) has since run
+`warn_unused_ignores` over `tests/` and `subprojects/docket/tests/` on every
+`make check`, so all 56 are read by mypy: 11 inside `[tool.mypy] files` under
+`strict`, 45 by that tool. What no tool polices is a *live* ignore added to
+silence an error the work itself introduced - and neither did this check,
+which flagged all 56 alike when all 56 were legitimate.
+
+**A gap found while pinning the strip, filed rather than fixed: `PL-5B88`.**
+`@pytest.mark.skip` and `@pytest.mark.skipif` match neither `@skip`, whose `@`
+must sit against the name, nor `pytest.skip`, whose halves `.mark.` separates;
+`@unittest.skip` matches nothing either. Measured on the module either side of
+this edit, so it is standing rather than introduced. It matters twice: the
+check reports `none` with a disabled test in the diff, which is the first
+compounding-friction test; and it weakens the deterrence reading that kept the
+check, since a deterrent that misses the common form deters less than the zero
+count suggests. Widening `SUPPRESSIONS` is a different deliverable from the
+one ratified here, so it is an item.
+
+**What this decision did not reach.** The ratified decision and its three
+candidate resolutions are about the suppression check. `PL-XQGH`, `PL-CNJH`
+and `PL-2DTK` are the assertion check's, and nothing here re-scopes or drops
+them: they stand as ordinary items. The altitude argument in the body applies
+to them in the same words - six fixes so far, each uncovering the next - but
+it has no ratified decision behind it, so a session picking the first of the
+three should put one before working it rather than adding the seventh special
+case.

@@ -23,7 +23,7 @@ from .model import (
     LANE_PRODUCT,
     LANE_UNPLACED,
     LANE_WORKFLOW,
-    MIN_ROOT_CAUSE_ITEMS,
+    MIN_RECURRENCES,
     PRIORITIES,
     SELECTABLE_LANES,
     Item,
@@ -923,7 +923,7 @@ def format_recurrences(item: Item) -> str:
     for found in filings:
         when = found.when.isoformat() if found.when else "an unreadable date"
         lines.append(f"    {found.identifier} on {when}")
-    if recurrence_count(item) >= MIN_ROOT_CAUSE_ITEMS:
+    if recurrence_count(item) >= MIN_RECURRENCES:
         lines.append(
             "    That is the generator threshold. Read them against this brief: one "
             "mechanism means `docket set <id> --root-cause-of <ids>`, which is a "

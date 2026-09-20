@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect, infra
+feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, .claude/skills/docket/modes/close-out.md
 added: 2026-09-19
 closed: 2026-09-20
@@ -96,6 +97,16 @@ declares the retired advisory's assertions and reaches `ACCEPT`.
 **Done when** a session-decided retirement can reach `ACCEPT` without weakening
 what the assertion check refuses on delegated work, or this item records why it
 must keep reporting `REJECT`.
+
+**Grouped as `feature: verify-false-reject`** (`PL-JKML`'s duplicate sweep,
+2026-09-20, confirmed on independent refutation). This and `PL-BX1C` are the
+same failure from two directions: `bin/docket verify` REJECTing a close-out
+that is correct. `PL-BX1C` is a *dropped* item's stale `verify:` still being
+run; this is a `needs-decision` item whose answer is "retire this" being unable
+to carry `falsifies:` at all, because the field must predate the branch and the
+decision *is* the work. Both leave a session reporting a REJECT on work nobody
+can fix, which is what trains a reader to skim the block where a real
+protected-path failure prints.
 
 ## Built 2026-09-20
 

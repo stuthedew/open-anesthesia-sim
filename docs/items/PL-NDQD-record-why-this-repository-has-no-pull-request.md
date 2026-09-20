@@ -9,6 +9,7 @@ feature: pr-body-integrity
 touches: docs/dead-ends.md, docs/items/PL-NDQD-record-why-this-repository-has-no-pull-request.md
 added: 2026-09-20
 closed: 2026-09-20
+pr: 792
 payoff: stops every session that meets the empty pull-request-template search from re-deriving why there is none
 verify: grep -qF 'A pull request template to make filing more reliable' docs/dead-ends.md
 ---

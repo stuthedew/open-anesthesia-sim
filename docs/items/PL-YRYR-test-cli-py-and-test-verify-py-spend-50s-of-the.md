@@ -65,3 +65,22 @@ the stopwatch.
 **Done when** the two files' serial cost is materially down with every test
 still running against a tree no other test has touched, or the item records
 that the sharing cannot be made safe.
+
+**`PL-W6NY` is this same finding and is dropped in its favour** (`PL-JKML`'s
+duplicate sweep, 2026-09-20, confirmed on independent refutation). It measured
+`test_verify.py`'s `_repo` fixture on 2026-09-05 - 22.5 s for the file, about
+12 s of it non-sleep, across what were then 64 call sites and are 113 today -
+and filed it as `PL-VJ7W`'s residue. This item reaches the same fixture from
+`PL-FZ58`'s whole-suite serial run and additionally carries `test_cli.py`, so
+containment runs one way: finishing this leaves nothing of `PL-W6NY` standing,
+while finishing `PL-W6NY` would leave `test_cli.py`'s 21.2 s untouched. That
+asymmetry is what makes it a drop rather than a grouping.
+
+**Two things from `PL-W6NY` that are carried rather than lost.** Its fallback
+is stricter than this item's: where the fixture cannot be made cheaper safely,
+`PL-W6NY` requires the negative result to land **as a comment on `_repo` in the
+code**, not only in the item - so the next session to open the fixture reads
+why it is shaped as it is, rather than re-deriving it. And its framing of the
+constraint is the one to keep: the fixture leaks state between tests that
+commit into their own repository, so correctness, not speed, sets the ceiling
+on any rework.

@@ -66,6 +66,17 @@ LIST_FIELDS = ("classes", "touches", "blocked-by", "root-cause-of", "recurrences
 # session it stands through.
 MIN_ROOT_CAUSE_ITEMS = 3
 
+# How many recorded recurrences make a cluster the size that floor describes.
+# Derived rather than chosen, because the item is itself the first filing: an
+# item carrying two recurrences has been filed three times, which is the three
+# items a generator is the root cause of. Written as three, the counter would
+# have demanded a *fourth* filing - a stricter bar than the generator rule
+# wearing its number, and the slug-rename cluster (`PL-LBR6` with `PL-5QLP` and
+# `PL-QMC0`, recorded as a generator by hand) would never have surfaced
+# (project owner, 2026-09-20, ratified, over the literal three the design first
+# specified).
+MIN_RECURRENCES = MIN_ROOT_CAUSE_ITEMS - 1
+
 # The second kind of entry `blocked-by` accepts: a milestone version, written
 # exactly as the roadmap's timeline writes it.
 #

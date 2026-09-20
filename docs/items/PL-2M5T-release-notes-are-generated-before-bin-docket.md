@@ -3,14 +3,15 @@ id: PL-2M5T
 title: Release notes are generated before bin/docket record runs, so every item whose pr was written by the cut's own commit appears in its own release notes with no pull request link - eight of v0.4.22's fifteen
 priority: P2
 effort: M
-status: ready
+status: dropped
 classes: defect
 feature: commit-provenance
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/cli.py, tests/unit/test_docket_digest_hook.py
 added: 2026-09-14
+closed: 2026-09-20
+reason: Same finding as PL-W7WL, which supersedes it: both are bin/docket release writing the notes from items' pr: fields before bin/docket record can supply them. PL-W7WL is the better-specified half - it names the fix (release runs record's backfill before generating notes, rather than swapping the documented order), carries a payoff and a verify command pinning the test, and declares test_release.py where this item declares test_docket_digest_hook.py. Its v0.4.22 measurement (nine of fifteen bullets naming no pull request) and its open question about repairing already-shipped notes are both carried into PL-W7WL. This is the same mechanism PL-66X4 was dropped into this item for, making PL-W7WL the fourth filing. Found by PL-JKML's duplicate sweep, 2026-09-20.
 verify: python3 -c "import pathlib,re; t=pathlib.Path('docs/releases/v0.4.22.md').read_text(); b=[l for l in t.splitlines() if l.startswith('- ')]; raise SystemExit(1 if [l for l in b if not re.search(r'#[0-9]+', l)] else 0)"
 ---
-
 
 **Problem.** Release notes are generated before bin/docket record runs, so every item whose pr was written by the cut's own commit appears in its own release notes with no pull request link - eight of v0.4.22's fifteen
 
