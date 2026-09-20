@@ -136,8 +136,9 @@ class TimeBookmark:
 
     The instant is in the **case's** own simulated time, which is the axis a
     branch shares with its trunk — `ResumePoint.elapsed_s` is on it and
-    `RunDefinition` opens a branch at the fork instant rather than re-basing to
-    zero, so one number means the same thing on every run of a case.
+    `RunDefinition` opens a branch at a keyframe of the case rather than
+    re-basing to zero, so one number means the same thing on every run of a
+    case.
 
     Attributes:
         instant_s: The simulated time, in seconds from the case's opening.

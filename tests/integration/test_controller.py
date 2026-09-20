@@ -2,7 +2,7 @@ import dataclasses
 
 import pytest
 
-from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
+from anesthesia_sim.app.bookmarks import MacTarget, MarkStanding, TimeBookmark
 from anesthesia_sim.app.chart_time_base import TIME_BASE_LADDER
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlInput
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
@@ -2707,3 +2707,165 @@ def test_a_case_forks_at_the_bookmark_its_trunk_is_standing_on() -> None:
     # The trunk is left standing where it was, still on its halt.
     assert marked.snapshot().elapsed_s == fork_s
     assert marked.snapshot().bookmark_halt is not None
+
+
+def test_a_mark_between_a_bookmark_branch_s_definition_and_its_fork_is_unreachable() -> None:
+    """The standings read where the branch *began*, not where its definition opens.
+
+    A bookmark branch's definition opens at the keyframe at or before the
+    fork, and the stretch between is the parent's. A mark lying in it can
+    never be reached going forward, so the row has to say so. Reading the
+    definition's own opening instead - which was the same number for every
+    branch until `PL-B8MK` - would tell a learner to wait for something no
+    step can arrive at.
+    """
+
+    marked = SimulationController()
+    marked.add_time_bookmark(TimeBookmark(40.0, "passed on the way"))
+    marked.add_time_bookmark(TimeBookmark(45.3, "the decision point"))
+    marked.start()
+    _advance_until_halted(marked, limit_s=60.0)
+    marked.start()
+    _advance_until_halted(marked, limit_s=60.0)
+
+    fork_s = marked.snapshot().elapsed_s
+    branch = marked.resumed_at_halt()
+
+    # The premise: the definition reaches back past the mark, and the branch
+    # does not.
+    assert branch.run_segments[0].opening.instant_s < 40.0 < fork_s
+    assert branch.began_at_s == fork_s
+
+    standings = branch.snapshot().bookmark_standings
+
+    assert standings.of_time_bookmark(TimeBookmark(40.0, "passed on the way")) is (
+        MarkStanding.BEFORE_THIS_BRANCH
+    )
+
+
+def test_a_control_moved_before_a_bookmark_branch_steps_opens_a_segment_at_the_fork() -> None:
+    """The bookmark analogue of reopening a branch's first segment in place.
+
+    A branch forked at a control event opens its definition at the fork, so a
+    dial turned before it steps rewrites that one segment and the branch still
+    holds one. A bookmark branch has already reached past its definition's
+    opening, so the change opens a second segment at the fork instead -
+    carrying the fork's own state, which is what keeps the branch from
+    propagating its parent's keyframe forward under settings the parent never
+    used. The record the two keep of themselves still agree: the control
+    timeline's stamps are exactly the segment openings after the first.
+    """
+
+    marked = _trunk_halted_on_a_bookmark()
+    fork_s = marked.snapshot().elapsed_s
+    fork_state = marked._run_definition.state_at(fork_s)
+    branch = marked.resumed_at_halt()
+
+    branch.set_alveolar_ventilation(6.0)
+
+    assert [segment.opening.instant_s for segment in branch.run_segments] == [30.0, fork_s]
+    assert branch.run_segments[1].opening.state == fork_state
+    assert [change.elapsed_s for change in branch.snapshot().control_timeline] == [
+        segment.opening.instant_s for segment in branch.run_segments
+    ][1:]
+    # And it is still drawn from the fork rather than from the earlier keyframe.
+    assert branch.drawn_window(0.0, fork_s, 150).times_s == (fork_s,)
+
+
+def test_a_bookmark_branch_draws_one_column_its_parent_does_not_and_it_is_the_fork() -> None:
+    """`PL-2R2C`'s comparison property, and the one instant a bookmark fork adds to it.
+
+    A branch is drawn on the trunk's own columns so the two traces can be read
+    against each other. A fork at a control event adds nothing, because a
+    control event is already a drawn instant on both. A bookmark's instant is
+    not, so the branch draws its own first point there and the trunk does not
+    - one vertex, at the instant the two runs stop being the same run, holding
+    the value both of them hold. Pinned rather than left implicit, so that a
+    later change widening it is a failure rather than a surprise.
+    """
+
+    marked = _trunk_halted_on_a_bookmark()
+    fork_s = marked.snapshot().elapsed_s
+    branch = marked.resumed_at_halt()
+
+    marked.start()
+    _advance_for(marked, duration_s=30.0)
+    branch.start()
+    _advance_for(branch, duration_s=30.0)
+
+    trunk_columns = set(marked.drawn_window(0.0, 120.0, 150).times_s)
+    branch_columns = set(branch.drawn_window(0.0, 120.0, 150).times_s)
+
+    assert branch_columns - trunk_columns == {fork_s}
+
+
+def test_a_case_refuses_a_bookmark_fork_where_its_trunk_is_not_standing_on_one() -> None:
+    """The refusal reaches through `BranchedCase` as the keyframe one does."""
+
+    case = BranchedCase(_trunk_with_two_changes())
+
+    with pytest.raises(SimulationConfigurationError, match="not standing on"):
+        case.fork_at_halt()
+
+    assert case.branches == ()
+
+
+def test_a_bookmark_halt_is_not_one_of_the_fork_points_the_case_offers() -> None:
+    """The two doors stay separate, which is what keeps that list stable.
+
+    `fork_points_s` is the trunk's keyframes, and a halt records none - so the
+    list does not change membership as the run halts and resumes, and a caller
+    holding an instant from it cannot ask for a fork at a mark the run has
+    since stepped past.
+    """
+
+    marked = _trunk_halted_on_a_bookmark()
+    case = BranchedCase(marked)
+    fork_s = marked.snapshot().elapsed_s
+
+    assert case.fork_points_s == (0.0, 30.0)
+    assert fork_s not in case.fork_points_s
+
+    # And it is forkable all the same, by the other door.
+    assert case.fork_at_halt().began_at_s == fork_s
+
+
+def test_two_branches_may_be_taken_at_one_bookmark() -> None:
+    """The comparison the milestone is named for: one decision point, two managements.
+
+    A learner marks the instant they want to decide at, the run stops there,
+    and both managements are taken from that one state. Nothing about a
+    bookmark fork makes it unique, exactly as nothing about a control-event
+    fork does.
+    """
+
+    marked = _trunk_halted_on_a_bookmark()
+    fork_s = marked.snapshot().elapsed_s
+    case = BranchedCase(marked)
+
+    first = case.fork_at_halt()
+    second = case.fork_at_halt()
+
+    assert first is not second
+    assert case.branches == (first, second)
+    assert first.began_at_s == second.began_at_s == fork_s
+    assert first.run_segments[0].opening.state == second.run_segments[0].opening.state
+    # The trunk is still standing on its halt, having been read twice and
+    # written neither time.
+    assert marked.snapshot().elapsed_s == fork_s
+    assert marked.snapshot().bookmark_halt is not None
+
+
+def test_a_branch_standing_on_its_own_halt_cannot_be_forked_either() -> None:
+    """The flat shape holds at the new door too, and it says the same thing."""
+
+    marked = _trunk_halted_on_a_bookmark()
+    branch = marked.resumed_at_halt()
+    branch.add_time_bookmark(TimeBookmark(branch.began_at_s + 5.0))
+    branch.start()
+    _advance_until_halted(branch, limit_s=30.0)
+
+    assert branch.snapshot().bookmark_halt is not None
+
+    with pytest.raises(SimulationConfigurationError, match="branch of a branch"):
+        branch.resumed_at_halt()

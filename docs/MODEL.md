@@ -4430,6 +4430,17 @@ the two traces could not be read against each other at matched points.
 `tests/integration/test_controller.py` and
 `tests/reference/test_canonical_evaluation.py` hold both.
 
+**A fork at a bookmark adds exactly one column to that, and it is the fork
+itself** (`PL-B8MK`, measured 2026-09-20 on a 120 s axis at 150 columns). The
+fork above lands on the trunk's own columns because a control event is drawn
+on every run that has one; a bookmark's instant is not a control event, so the
+trunk draws it only if it happens to fall on the grid. The branch always draws
+it, being the left end of the branch's own clipped range. The two traces are
+still read against each other everywhere else, and the value at that one
+vertex is the case's own state there - which both runs hold - so what the extra
+column marks is the instant they stop being the same run rather than a
+disagreement about it.
+
 ### Supported input ranges
 
 Each control is supported over a closed interval, endpoints included, and a

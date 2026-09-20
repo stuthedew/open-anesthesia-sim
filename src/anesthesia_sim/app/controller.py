@@ -716,11 +716,19 @@ class SimulationController:
 
         **These instants are the case's**, as is everything else this class
         exposes - `snapshot().elapsed_s`, the control timeline's stamps,
-        `drawn_window`'s instants. A branch's definition opens *at* the fork
-        rather than at a zero of its own, so a keyframe read here needs no
-        conversion to be placed on the case's axis and there is no offset for
-        a caller to add. `PL-ZMRT` is where that was decided; before it, this
-        was the one reader handing out instants in a second frame.
+        `drawn_window`'s instants. A branch's definition opens at a keyframe
+        of the case rather than at a zero of its own, so a keyframe read here
+        needs no conversion to be placed on the case's axis and there is no
+        offset for a caller to add. `PL-ZMRT` is where that was decided;
+        before it, this was the one reader handing out instants in a second
+        frame.
+
+        **The first of these is not in general where the branch began**
+        (`PL-B8MK`). A branch taken at a control event opens its definition at
+        the fork; one taken at a bookmark opens it at the keyframe before the
+        fork, because recording one at the fork would move the trunk's own
+        later answers. `began_at_s` is what a reader wanting the run's own
+        beginning asks - this tuple answers what the *definition* holds.
         """
 
         return self._run_definition.segments
@@ -800,7 +808,11 @@ class SimulationController:
         § "The canonical evaluation rule" requires: asked for a case instant,
         the branch forms its interval from the same two floats its parent did,
         where a definition re-based to its own zero would depend on a
-        subtraction that does not always round-trip.
+        subtraction that does not always round-trip. Opening *at the fork* is
+        this door's own property rather than every branch's: `resumed_at_halt`
+        opens at the keyframe before the fork, on the same axis and with the
+        same guarantee, which `_open_at` and `docs/MODEL.md` § "What this
+        requires of a branch" set out.
 
         **The settings are replayed from the control timeline, and then
         checked.** A branch is built through the ordinary constructor so that
