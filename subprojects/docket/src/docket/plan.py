@@ -25,7 +25,7 @@ from .model import (
     EFFORTS,
     LANE_CROSSING,
     LANE_UNPLACED,
-    MIN_ROOT_CAUSE_ITEMS,
+    MIN_RECURRENCES,
     PRIORITIES,
     Item,
     impairs_generators_soundly,
@@ -362,10 +362,16 @@ def recurring(items: list[Item]) -> list[Item]:
     duplication three times and nothing was promoted until a session read the
     cluster by hand, five captures in.
 
-    **Three, and it is deliberately the generator rule's own number**
-    (`MIN_ROOT_CAUSE_ITEMS`). A second threshold would be a second thing to
-    argue about and a second place for the project to disagree with itself
-    about what "keeps happening" means.
+    **The generator rule's own number, counted in filings rather than in
+    items** (`MIN_RECURRENCES`, which is `MIN_ROOT_CAUSE_ITEMS - 1`). The item
+    is itself the first filing, so two recurrences is three filings of one
+    defect - the three items a generator is the root cause of. Written as a
+    literal three this would have demanded a fourth filing, which is a stricter
+    bar than the generator rule wearing its number: measured over the five
+    recorded clusters, the slug-rename one (`PL-LBR6` with `PL-5QLP` and
+    `PL-QMC0`, recorded as a generator by hand) peaks at two and would never
+    have surfaced. Deriving it keeps the project arguing about one threshold
+    rather than two.
 
     **Candidates, never a verdict, and this one may not even rank.**
     `promotable` above is named-but-not-ranked because a closed blocker is not
@@ -386,7 +392,7 @@ def recurring(items: list[Item]) -> list[Item]:
             item
             for item in items
             if item.status not in CLOSED_STATUSES
-            and recurrence_count(item) >= MIN_ROOT_CAUSE_ITEMS
+            and recurrence_count(item) >= MIN_RECURRENCES
             and not is_generator(item, {i.identifier for i in items if i.identifier})
         ),
         key=lambda item: (-recurrence_count(item), item.identifier),

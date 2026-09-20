@@ -1570,10 +1570,14 @@ session having to notice it — and it is deliberately not a third field that
 changes a queue position. Each entry is a date and the id of a capture that
 `docket new` matched to this item: the filing happened, so the defect fired
 again, and `CLAUDE.md`'s reason for pulling a root cause is that every session
-it stands through pays it again. At three distinct filings — the generator
-rule's own number, so the project carries one threshold rather than two —
-`docket next` and the session-start digest name the item as a promotion
-candidate and stop there. A reader opens the briefs and writes `root-cause-of:`
+it stands through pays it again. At two distinct recurrences — which is
+three filings, the item itself being the first, and so the generator rule's own
+number counted in filings rather than in items — `docket next` and the
+session-start digest name the item as a promotion candidate and stop there.
+`MIN_RECURRENCES` is derived from `MIN_ROOT_CAUSE_ITEMS` rather than written
+down, so the project carries one threshold rather than two; written as a
+literal three it would have demanded a *fourth* filing, and the slug-rename
+cluster that was recorded as a generator by hand would never have surfaced. A reader opens the briefs and writes `root-cause-of:`
 by hand, or does not.
 
 **It surfaces; it never promotes**, and that is the whole restraint of the
