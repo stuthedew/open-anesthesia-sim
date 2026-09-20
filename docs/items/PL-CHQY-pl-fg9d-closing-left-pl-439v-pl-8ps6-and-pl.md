@@ -8,6 +8,7 @@ classes: docs
 touches: docs/items
 added: 2026-09-20
 closed: 2026-09-20
+pr: 765
 payoff: returns two safety findings to the debt gate built to catch them, or records why their hazards are not live yet, instead of leaving them held outside it by a stale blocked status
 not-delegable: the deliverable is a per-item judgment recorded in three item files - whether each was blocked on something nobody wrote into blocked-by, and for the two safety/anticipated ones whether the design document landing made the hazard live - and no command can tell a promotion that was reasoned from one that was typed
 ---

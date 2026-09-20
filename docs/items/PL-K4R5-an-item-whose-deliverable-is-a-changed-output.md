@@ -9,6 +9,7 @@ feature: verify-assertion-check
 touches: subprojects/docket/src/docket, subprojects/docket/tests, subprojects/docket/README.md, .claude/skills/docket
 added: 2026-09-20
 closed: 2026-09-20
+pr: 764
 payoff: stops a correct close-out spending the owner's attention on an explained-away REJECT, every time an item changes what a command prints
 verify: grep -q 'def test_a_changed_string_names_its_candidates_and_still_counts' subprojects/docket/tests/test_verify.py
 ---
