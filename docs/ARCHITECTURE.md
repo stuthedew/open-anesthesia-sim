@@ -895,7 +895,9 @@ failed it names the steps and interprets nothing, because the bare check passing
 first is the whole of what makes that reading sound.
 
 The failure *rate* was left alone in the same pass, and the reasoning is worth
-keeping: 32.7% of pushes reads like a check nobody could act on, but the 74
+keeping: over the narrower window `PL-T83R` was filed on - 2026-09-05 to
+2026-09-16, holding 74 of those 109 failures - 32.7% of pushes reaching a
+verdict failed, which reads like a check nobody could act on. But the 74
 failures behind it are 8 episodes - merges keep arriving while `main` is red, so
 the per-push rate counts one outage once per merge. Two episodes hold 87% of the
 red time and each ended in one cheap commit. Suppressing the class would have

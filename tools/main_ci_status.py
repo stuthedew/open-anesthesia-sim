@@ -100,7 +100,6 @@ import json
 import re
 import subprocess
 import sys
-import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -146,6 +145,13 @@ BARE_CHECK_STEP = "Run bin/docket check"
 # does. `timed_out` is a failure but not an answer - a step the 15-minute job
 # timeout killed says nothing about what it would have found - so it is read as
 # a failure and never as grounds for the queue reading below.
+#
+# Whether GitHub reports a timeout-killed step as `timed_out` or as `cancelled`
+# is an assumption rather than an observation: all 93 recorded replay failures
+# concluded `failure`, so the case has never occurred here. It is handled in the
+# direction that costs a sentence rather than the one that prints a false one -
+# under either answer the queue reading is withheld, since `cancelled` is not in
+# this tuple and so the replay does not read as the only failing step.
 STEP_FAILURES = ("failure", "timed_out")
 
 # What a step whose name the payload does not carry is called. A name that is
@@ -155,7 +161,7 @@ STEP_FAILURES = ("failure", "timed_out")
 UNNAMED_STEP = "(a step whose name could not be read)"
 
 # A step with no `name:` is named by GitHub after its whole `run:` line, and
-# `quality.yml`'s pytest line is 180 characters of shell. Printed whole at the
+# `quality.yml`'s pytest line is 150 characters of shell. Printed whole at the
 # top of a session it buries the run number and the URL either side of it, so it
 # is cut - visibly, with an ellipsis, because a shell command truncated to look
 # complete is worse than one that says it was cut. 70 keeps every named step in
@@ -232,19 +238,37 @@ def failing_steps(steps: tuple[tuple[str, str], ...]) -> tuple[str, ...]:
     return tuple(name for name, conclusion in steps if conclusion in STEP_FAILURES)
 
 
-def unrun_after(steps: tuple[tuple[str, str], ...], name: str) -> int:
-    """How many steps after `name` never ran, because its failure skipped them.
+# GitHub appends one of these per `uses:` action, to run its cleanup, and names
+# it `Post ` plus the step it follows. They are skipped along with everything
+# else below a failure, and counting them inflates the number the line prints:
+# measured across the 93 recorded replay failures, every one carries exactly two,
+# so an unfiltered count says six to eleven where the truth is four to nine.
+# A step of this repository's own that began with `Post ` would be excluded too,
+# and that error runs the safe way - it under-counts what was skipped, where the
+# bug being fixed over-counted it.
+_CLEANUP_PREFIX = "Post "
 
-    Load-bearing rather than decoration. `quality.yml` puts six to eleven checks
+
+def unrun_after(steps: tuple[tuple[str, str], ...], name: str) -> int:
+    """How many of the job's own steps after `name` never ran, its failure skipping them.
+
+    Load-bearing rather than decoration. `quality.yml` puts four to nine checks
     *below* the replay - `contrast_check`, `import_boundary_check`,
     `core_vocabulary_check` and `glyph_check` among them, all of which read
     `src/` and `app/` - and a failing step skips every one. So a replay failure
     leaves those unrun, and a line that called the tree clean on the strength of
     the steps above it would be claiming a guarantee nobody checked.
+
+    The number is printed, so it is the repository's own steps rather than every
+    skipped row: `_CLEANUP_PREFIX` says why.
     """
     for index, (step, _) in enumerate(steps):
         if step == name:
-            return sum(1 for _, c in steps[index + 1 :] if c == "skipped")
+            return sum(
+                1
+                for later, c in steps[index + 1 :]
+                if c == "skipped" and not later.startswith(_CLEANUP_PREFIX)
+            )
     return 0
 
 

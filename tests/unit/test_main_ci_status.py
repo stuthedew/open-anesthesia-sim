@@ -17,16 +17,24 @@ outnumber the speaking ones here deliberately.
 repository built, matching `test_branch_id_check.py`: what is under test is the
 reading of a response and the decision to speak, not urllib and not git.
 Nothing here touches a network.
+
+`fetch_jobs` is the one exception and substitutes `urlopen` instead, a level
+lower. Every other test replaces `fetch_jobs` wholesale, so a typo in its
+endpoint path or in the response key it reads would leave this suite green
+while the attribution never fired once - and its caller swallows the failure by
+design, so nothing in production would report it either (`PL-T83R`).
 """
 
 from __future__ import annotations
 
 import email.message
 import http.client
+import io
 import json
 import pathlib
 import subprocess
 import urllib.error
+import urllib.request
 
 import main_ci_status
 import pytest
@@ -49,7 +57,16 @@ def _workflow_step_names() -> list[str]:
 
 
 def _run(conclusion: str | None, number: int = 1550, sha: str = "abcdef1234") -> dict:
+    """One run as the API returns it.
+
+    `id` and `run_number` are deliberately different values, and far apart. They
+    are two of the three numbers this module handles and only one of them
+    addresses the jobs endpoint - a fixture that let them coincide would pass a
+    build that fetched `/actions/runs/1550/jobs` and got a 404 forever, with the
+    attribution silently never firing and nothing here noticing.
+    """
     return {
+        "id": 99000000 + number,
         "conclusion": conclusion,
         "run_number": number,
         "head_sha": sha,
@@ -146,8 +163,9 @@ def _pairs(steps: list[tuple[str, str]]) -> tuple[tuple[str, str], ...]:
 
 
 # `quality.yml`'s real shape on a replay failure: the bare `bin/docket check`,
-# ruff, mypy and the suite pass above it, and six to eleven checks below it -
-# among them the four that read `src/` and `app/` - never run at all.
+# ruff, mypy and the suite pass above it, and four to nine checks below it -
+# among them the four that read `src/` and `app/` - never run at all, with
+# GitHub's two cleanup rows skipped alongside them and counted as neither.
 _REPLAY_STEPS = [
     ("Set up job", "success"),
     (main_ci_status.BARE_CHECK_STEP, "success"),
@@ -158,6 +176,10 @@ _REPLAY_STEPS = [
     (main_ci_status.REPLAY_STEP, "failure"),
     ("Run uv run python tools/import_boundary_check.py", "skipped"),
     ("Run uv run python tools/glyph_check.py", "skipped"),
+    # GitHub's own cleanup rows, one per `uses:` action. Every real job carries
+    # them and every recorded replay failure carries exactly two.
+    ("Post Run astral-sh/setup-uv@v9.0.0", "skipped"),
+    ("Post Run actions/checkout@v7.0.1", "success"),
 ]
 
 
@@ -230,6 +252,28 @@ class TestMain:
         assert main_ci_status.main() == 0
         assert capsys.readouterr().out == ""
 
+    def test_addresses_the_jobs_endpoint_with_the_run_id_not_the_run_number(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The one number that wires the two requests together.
+
+        `run_number` is what the line prints and `id` is what the endpoint takes.
+        Sending the wrong one 404s forever, the failure is swallowed by design,
+        and the attribution would simply never appear.
+        """
+        run = _run("failure", 1553)
+        seen: list[object] = []
+
+        def _jobs(slug: str, run_id: object) -> list[object]:
+            seen.append(run_id)
+            return [_REPLAY_ONLY]
+
+        monkeypatch.setattr(main_ci_status, "fetch_runs", lambda slug: [run])
+        monkeypatch.setattr(main_ci_status, "fetch_jobs", _jobs)
+        assert main_ci_status.main() == 0
+        assert seen == [run["id"]]
+        assert seen != [run["run_number"]]
+
     def test_attributes_a_red_main_to_the_step_that_failed(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
@@ -300,8 +344,9 @@ class TestStepConclusions:
         assert main_ci_status.failing_steps(_pairs(_REPLAY_STEPS)) == (main_ci_status.REPLAY_STEP,)
 
     def test_reports_every_failing_step_in_run_order(self) -> None:
-        pairs = _pairs([("a", "failure"), ("b", "success"), ("c", "failure")])
-        assert main_ci_status.failing_steps(pairs) == ("a", "c")
+        """Names chosen against alphabetical order, so sorting anywhere would fail."""
+        pairs = _pairs([("zulu", "failure"), ("mike", "success"), ("alfa", "failure")])
+        assert main_ci_status.failing_steps(pairs) == ("zulu", "alfa")
 
     def test_a_skipped_or_cancelled_step_is_not_a_failure(self) -> None:
         """Steps after the failure are `skipped`; reporting them would bury the cause."""
@@ -326,8 +371,29 @@ class TestStepConclusions:
     def test_counts_the_steps_a_failure_left_unrun(self) -> None:
         assert main_ci_status.unrun_after(_pairs(_REPLAY_STEPS), main_ci_status.REPLAY_STEP) == 2
 
+    def test_does_not_count_githubs_own_cleanup_rows(self) -> None:
+        """They are skipped with everything else and are not checks.
+
+        Every one of the 93 recorded replay failures carries exactly two, so an
+        unfiltered count printed six to eleven where the truth was four to nine
+        (`PL-T83R`). The fixture carries a skipped one, which this pins.
+        """
+        pairs = _pairs(_REPLAY_STEPS)
+        assert any(n.startswith("Post ") and c == "skipped" for n, c in pairs), "fixture"
+        assert main_ci_status.unrun_after(pairs, main_ci_status.REPLAY_STEP) == 2
+
     def test_counts_nothing_for_a_step_that_is_not_there(self) -> None:
         assert main_ci_status.unrun_after(_pairs(_REPLAY_STEPS), "no such step") == 0
+
+    def test_counts_only_the_steps_that_were_skipped(self) -> None:
+        """A step below the failure that ran and passed is not unrun."""
+        pairs = _pairs(
+            [("x", "failure"), ("ran", "success"), ("never", "skipped"), ("also", "skipped")]
+        )
+        assert main_ci_status.unrun_after(pairs, "x") == 2
+
+    def test_counts_nothing_when_the_failure_was_the_last_step(self) -> None:
+        assert main_ci_status.unrun_after(_pairs([("only", "failure")]), "only") == 0
 
 
 class TestAdvisoryNamesTheCause:
@@ -347,6 +413,13 @@ class TestAdvisoryNamesTheCause:
         line = main_ci_status.advisory(_run("failure", 1553), _pairs(_REPLAY_STEPS))
         assert "unrun rather than green" in line
         assert "2 step(s) below it were skipped" in line
+
+    def test_the_queue_line_still_carries_the_run_number_sha_and_url(self) -> None:
+        """The longer sentence must not have pushed out what identifies the run."""
+        line = main_ci_status.advisory(_run("failure", 1553, "9c6ebd29aaaa"), _pairs(_REPLAY_STEPS))
+        assert "#1553" in line
+        assert "9c6ebd29" in line
+        assert line.endswith("https://github.com/o/r/actions/runs/1553")
 
     def test_does_not_claim_the_queue_when_another_step_failed_too(self) -> None:
         """The whole claim rests on the replay being the only failure."""
@@ -395,7 +468,7 @@ class TestAdvisoryNamesTheCause:
         assert "bin/docket check --verify" not in line
 
     def test_cuts_a_long_unnamed_step_and_says_that_it_cut_it(self) -> None:
-        """`quality.yml`'s pytest step has no `name:`, so GitHub names it after 180
+        """`quality.yml`'s pytest step has no `name:`, so GitHub names it after 150
         characters of shell. Printed whole it buries the run number and the URL.
         """
         long_step = (
@@ -407,6 +480,13 @@ class TestAdvisoryNamesTheCause:
         assert "(cut)" in line, "a command cut to look complete is worse than one that says so"
         assert long_step not in line
         assert line.endswith("https://github.com/o/r/actions/runs/1553")
+
+    @pytest.mark.parametrize("length,cut", [(69, False), (70, False), (71, True)])
+    def test_cuts_exactly_at_the_declared_width(self, length: int, cut: bool) -> None:
+        """The boundary itself, rather than one workflow step happening to sit near it."""
+        assert main_ci_status.STEP_WIDTH == 70
+        line = main_ci_status.advisory(_run("failure"), _pairs([("s" * length, "failure")]))
+        assert ("(cut)" in line) is cut
 
     def test_leaves_every_named_step_in_the_workflow_whole(self) -> None:
         for step in _workflow_step_names():
@@ -430,6 +510,57 @@ class TestAdvisoryNamesTheCause:
 
     def test_still_says_nothing_when_main_is_green(self) -> None:
         assert main_ci_status.advisory(_run("success"), _pairs(_REPLAY_STEPS)) is None
+
+
+class TestFetchJobs:
+    """The request itself: nothing else here would notice a wrong path or key.
+
+    Every other test substitutes `fetch_jobs`, so a typo in the endpoint or in
+    the response key would leave the whole suite green while the attribution
+    never fired once - and the caller swallows the failure by design, so
+    production would be silent about it too.
+    """
+
+    @pytest.fixture
+    def _capture(self, monkeypatch: pytest.MonkeyPatch) -> list[str]:
+        urls: list[str] = []
+
+        class _Response:
+            def __enter__(self) -> io.BytesIO:
+                return io.BytesIO(json.dumps({"jobs": [_REPLAY_ONLY], "total_count": 1}).encode())
+
+            def __exit__(self, *exc: object) -> None:
+                return None
+
+        def _open(request: urllib.request.Request, timeout: float = 0) -> _Response:
+            urls.append(request.full_url)
+            return _Response()
+
+        monkeypatch.setattr(main_ci_status.urllib.request, "urlopen", _open)
+        return urls
+
+    def test_asks_the_jobs_endpoint_for_that_run(self, _capture: list[str]) -> None:
+        main_ci_status.fetch_jobs("o/r", 4242)
+        assert _capture == ["https://api.github.com/repos/o/r/actions/runs/4242/jobs?per_page=50"]
+
+    def test_reads_the_jobs_key(self, _capture: list[str]) -> None:
+        assert main_ci_status.fetch_jobs("o/r", 4242) == [_REPLAY_ONLY]
+
+    @pytest.mark.parametrize("payload", [{}, {"jobs": "not a list"}, {"workflow_runs": []}])
+    def test_returns_an_empty_list_for_a_payload_without_jobs(
+        self, monkeypatch: pytest.MonkeyPatch, payload: dict
+    ) -> None:
+        """A shape the API has promised nothing about degrades to no attribution."""
+
+        class _Response:
+            def __enter__(self) -> io.BytesIO:
+                return io.BytesIO(json.dumps(payload).encode())
+
+            def __exit__(self, *exc: object) -> None:
+                return None
+
+        monkeypatch.setattr(main_ci_status.urllib.request, "urlopen", lambda *a, **k: _Response())
+        assert main_ci_status.fetch_jobs("o/r", 1) == []
 
 
 class TestStepNamesMatchTheWorkflow:
