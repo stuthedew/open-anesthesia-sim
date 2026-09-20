@@ -576,18 +576,36 @@ class SimulationView(QWidget):
         being taken from it.
 
         Args:
-            controller: The run to add, on the agent already displayed.
+            controller: The run to add: a branch of this dashboard's own case.
 
         Returns:
             The view built for it.
 
         Raises:
-            ValueError: If the dashboard already displays `MAX_DISPLAYED_RUNS`
-                runs, or if `controller` is on another agent. A branch carries
-                the agent of the case it continues, so neither is reachable
-                through the branch control; both are reachable through this
-                method, which is public.
+            ValueError: If the dashboard holds no case, if it already displays
+                `MAX_DISPLAYED_RUNS` runs, if `controller` is on another
+                agent, or if `controller` is not a branch of this case. The
+                last is the one that matters and the one a caller is most
+                likely to get wrong: two curves on one axis assert that they
+                are one patient under two managements, and nothing about a
+                stranger run makes that true. It would be drawn against the
+                same ×MAC ruler and named by `run_label` exactly as a branch
+                is, so the wrong claim would arrive wearing a correct chart -
+                which `CLAUDE.md`'s safety-critical standard treats as a
+                failure of the value rather than of its presentation.
+
+                A branch carries the agent and the cap of the case it
+                continues, so the first three are unreachable through the
+                branch control. They are reachable through this method, which
+                is public.
         """
+
+        if self._case is None:
+            raise ValueError(
+                "this dashboard holds no case, so it has no branches to display; a second run "
+                "is a branch of the first, and a dashboard built over loose runs has no case "
+                "to take one from"
+            )
 
         if len(self._runs) >= MAX_DISPLAYED_RUNS:
             raise ValueError(
@@ -603,6 +621,19 @@ class SimulationView(QWidget):
                 "every displayed run must be on the same agent, because they share one MAC "
                 f"axis and one set of clinical references; the dashboard is showing "
                 f"{displayed} and this run is on {agent_id}"
+            )
+
+        if controller not in self._case.branches:
+            opened_at = controller.opened_from
+
+            raise ValueError(
+                "a displayed run must be a branch of the case on the dashboard, because two "
+                "curves on one axis assert one patient under two managements; this run "
+                + (
+                    f"opened at {opened_at.elapsed_s} s but belongs to another case"
+                    if opened_at is not None
+                    else "is a trunk of its own and was never branched from this case"
+                )
             )
 
         run = self._place_run(controller)
@@ -626,9 +657,17 @@ class SimulationView(QWidget):
         one - and `BranchedCase` would go on listing a branch of a run that
         no longer exists. The case is rebuilt on the restarted trunk, which
         is exactly what it now is: a case with no branches.
+
+        **A dashboard with no case has no branches, and this does nothing to
+        it.** Its runs are independent trunks - what the constructor admits
+        and what the two-trunk tests build - so the first run starting over
+        says nothing about the second, and dropping it would destroy a
+        recorded run over an input to another one. Reset is the gesture a
+        reader reaches for to start one run again, which is precisely the
+        wrong place to put a surprise (`PL-LQ19`).
         """
 
-        if len(self._runs) == 1:
+        if self._case is None or len(self._runs) == 1:
             return
 
         dropped = tuple(zip(self._runs[1:], self._slots[1:], strict=True))

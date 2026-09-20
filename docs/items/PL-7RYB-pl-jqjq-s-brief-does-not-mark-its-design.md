@@ -9,6 +9,7 @@ feature: queue-hygiene
 touches: CLAUDE.md, docs/items
 added: 2026-09-16
 closed: 2026-09-20
+pr: 782
 payoff: stops a later session defending 108 pre-rule decisions - most of them earlier sessions' own recommendations - at the bar reserved for ones the owner specified
 verify: grep -qF 'form records no kind at all' CLAUDE.md
 ---

@@ -3594,3 +3594,124 @@ def test_a_mark_added_after_a_fork_reaches_both_runs(application: QApplication) 
     assert len(marked) == 2
     assert marked[0] == marked[1]
     assert [bookmark.instant_s for bookmark in marked[0]][-1] == pytest.approx(300.0)
+
+
+def test_resetting_a_case_less_dashboards_first_run_keeps_the_others(
+    application: QApplication,
+) -> None:
+    """`PL-LQ19`: a dashboard with no case has no branches, so Reset drops nothing.
+
+    The runs of a case-less dashboard are independent trunks - what the
+    constructor admits and what the two-trunk tests build - so the first
+    starting over says nothing about the second. Dropping it would destroy a
+    recorded run over an input to another one, under the gesture a reader
+    reaches for to start a single run again.
+    """
+
+    other = _paused_run_with_history()
+    view = _shown_view(application, SimulationController(), other)
+
+    assert view.case is None
+    assert len(view.runs) == 2
+
+    view.runs[0]._reset_button.click()
+    _settle(application)
+
+    assert len(view.runs) == 2
+    assert view.runs[1].controller is other
+    assert view.runs[1].snapshot().elapsed_s == pytest.approx(60.0)
+    assert view.runs[1].snapshot().has_recorded_run is True
+
+
+def test_add_run_refuses_a_run_the_case_never_sanctioned(application: QApplication) -> None:
+    """`PL-K5NY`: two curves on one axis assert one patient, so a stranger is refused.
+
+    Every guard but this one passed a fresh controller on the displayed
+    agent: it was placed as "Run 2", drawn in the same frame against the same
+    ×MAC ruler and named by `run_label` exactly as a branch is, while the
+    case went on holding one run. `CLAUDE.md` names the correct number under
+    the wrong patient context as a failure of the value.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    stranger = SimulationController()
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "a displayed run must be a branch of the case on the dashboard, because two "
+            "curves on one axis assert one patient under two managements; this run is a "
+            "trunk of its own and was never branched from this case"
+        ),
+    ):
+        view.add_run(stranger)
+
+    assert len(view.runs) == 1
+    assert stranger not in case.runs
+
+
+def test_add_run_refuses_a_branch_of_another_case(application: QApplication) -> None:
+    """A run that is somebody else's branch is refused, and the message says which."""
+
+    view = _case_view(application, _branched_case())
+    elsewhere = BranchedCase(_paused_run_with_history())
+    foreign = elsewhere.fork_at(60.0)
+
+    with pytest.raises(ValueError, match=re.escape("opened at 60.0 s but belongs to another case")):
+        view.add_run(foreign)
+
+    assert len(view.runs) == 1
+
+
+def test_a_dashboard_with_no_case_cannot_gain_a_run(application: QApplication) -> None:
+    """A second run is a branch of the first, and loose runs have no case to branch."""
+
+    view = _shown_view(application, SimulationController())
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape("this dashboard holds no case, so it has no branches to display"),
+    ):
+        view.add_run(SimulationController())
+
+    assert len(view.runs) == 1
+
+
+def test_a_vanished_fork_instant_leaves_nothing_selected(application: QApplication) -> None:
+    """`PL-J12Z`: a chosen instant that stops being a keyframe clears the control.
+
+    Reachable without a reset. A keyframe collapses when a setting is
+    returned to its previous value at the same instant, which is a learner
+    changing their mind about a dial while paused. Falling back to the first
+    entry would leave induction selected under a reader who had chosen a
+    later decision point, and branch there on the next press.
+    """
+
+    trunk = SimulationController()
+    trunk.start()
+    _advance_to(trunk, 60.0)
+    trunk.pause()
+    original_flow = trunk.snapshot().fresh_gas_flow_l_min
+    trunk.set_fresh_gas_flow(original_flow + 2.0)
+    case = BranchedCase(trunk)
+    view = _case_view(application, case)
+    panel = view._fork_panel
+
+    assert case.fork_points_s == (0.0, 60.0)
+
+    panel.point_selector.setCurrentIndex(panel.point_selector.findData(60.0))
+
+    assert panel.selected_instant_s() == pytest.approx(60.0)
+
+    trunk.set_fresh_gas_flow(original_flow)
+    view.present(False)
+
+    assert case.fork_points_s == (0.0,)
+    assert panel.selected_instant_s() is None
+
+    panel.take_button.click()
+
+    assert len(view.runs) == 1
+    assert case.branches == ()
+    assert panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
