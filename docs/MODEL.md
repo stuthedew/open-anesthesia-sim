@@ -178,7 +178,7 @@ stays a reviewer's question.
 | reading a displayed value as resolved to its last digit | displayed precision is a recorded choice within a justified band, and the model retains precision the display discards rather than rounding its own state | `test_the_model_keeps_precision_the_display_throws_away`, `test_concentration_decimals_are_a_choice_within_a_recorded_band` |
 | reading a control mark on the timeline as a measurement | the timeline labels its marks "Settings only — not a measurement." | `test_the_interface_says_a_control_mark_is_an_input_not_a_measurement` |
 | reading a modelled compartment value as a measured one | the readout section states beside its values that they are model outputs and not measurements (`INTERPRETATION_DISCLAIMER_TEXT`, `PL-2K1R`), and the chart's hover names every value it reports as modelled (§ "The chart's hover readout: what the tooltip may show") | `test_the_interface_says_the_readouts_are_model_outputs_not_measurements`, `test_the_readouts_say_they_are_model_outputs_beside_the_values`, `test_the_hover_reports_the_drawn_state_through_the_formatters` |
-| reading one run's concentration as the other's while two are compared | the run is named in text wherever a value is shown: on each run's own readout panel (§ "Minimum displayed outputs") and, while more than one run is drawn, on the first line of the chart's hover readout (§ "The hover and the run it belongs to"), because the hover floats free of the legend and line width has no textual analogue | `test_the_hover_names_the_run_only_while_more_than_one_is_drawn`, `test_two_runs_within_the_hover_radius_answer_under_their_own_names` |
+| reading one run's concentration as the other's while two are compared | the run is named in text wherever a value is shown: on each run's own readout panel (§ "Minimum displayed outputs") and, while more than one run is drawn, in the chart's hover readout - on its first line where one run answers (§ "The hover and the run it belongs to") and on each value line where several do, every run inside the hover radius answering so that no hand movement can swap which is read (§ "Where more than one run answers") - because the hover floats free of the legend and line width has no textual analogue | `test_the_hover_names_the_run_only_while_more_than_one_is_drawn`, `test_two_runs_within_the_hover_radius_answer_under_their_own_names`, `test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers` |
 
 ### The row that was only partly mitigated until the Qt port
 
@@ -6828,11 +6828,110 @@ is visible on its face: a second run brings a second legend entry, a second
 readout panel and a second set of curves with it. A reader cannot be in the
 two-run state without seeing the two runs.
 
-**What this does not fix.** Naming the run makes the choice between runs
-*visible*; it does not make the hover answer for the curve the reader aimed at.
-On the measurement above, a 2 px movement of the pointer flips which run
-answers on 75.4–99.9% of the fat axis. That is a targeting rule rather than a
-readout question, and it is `PL-JVHL`.
+**Naming the run made the choice between runs *visible*; it did not make the
+hover answer for the curve the reader aimed at.** On the measurement above, a
+2 px movement of the pointer flipped which run answered on 75.4–99.9% of the
+fat axis. That is a targeting rule rather than a readout question, and the
+next subsection is how it was settled (`PL-JVHL`).
+
+#### Where more than one run answers
+
+**Every run whose drawn point is inside the hover radius answers, and the box
+carries a value line per run** (project owner, 2026-09-19, ratified, over
+breaking near-ties toward the trunk and over leaving the targeting alone until
+the axis compression is fixed).
+
+```
+Modelled sevoflurane
+Alveolar (end-tidal-equivalent)
+Run 1 · 20m8s   1.43%   0.71 ×MAC
+Run 2 · 20m8s   1.45%   0.73 ×MAC
+```
+
+**The rule is "stop choosing", and it is that because the two targeting rules
+that would have chosen better were measured and change nothing.** Scored on the
+branched sevoflurane case above, with the reader showing alveolar and fat,
+which is the pair `COMPARED_COMPARTMENT_CAP` admits on a two-run frame. The
+metric is narrower than the 75.4–99.9% above and is not comparable with it: of
+the hovers where both runs are inside the radius *before and after* a 2 px
+move, the share whose answering run changed. The figure above counts axis
+columns, this one counts hovers that could have gone either way.
+
+| Targeting rule | fat, 2 MAC | fat, 1.25 MAC | fat, vaporizer off |
+| --- | ---: | ---: | ---: |
+| the single globally nearest drawn point | 9.2% | 9.0% | 9.2% |
+| nearest curve measured along its length | 9.2% | 9.0% | 9.2% |
+| the pointer inside a run's own band, 2 px or 4 px | 9.2% | 9.0% | 9.2% |
+| distance, near-ties broken toward the trunk | 0.0% | 0.0% | 0.0% |
+| every run inside the radius answers | 0.0% | 0.0% | 0.0% |
+
+Identical to the digit, for two reasons that are facts about this chart rather
+than about any implementation. The trace is drawn at about one sample per 4 s
+against a 12 px radius, so the pointer's distance to the polyline and to its
+nearest vertex differ by a fraction of a pixel: "nearest along its length" is
+the same number as "nearest drawn point" here, however real the distinction is
+on a sparse, steep curve. And both runs' fat points are inside the radius over
+94.5–98.0% of the hoverable area, so "inside a run's own band" has to break the
+tie by the rule it was meant to replace, exactly where the defect lives.
+
+**Breaking near-ties toward the trunk reaches 0.0% too, and was refused on what
+it costs.** A tie window does not remove the boundary; it adds a second one,
+where the pointer crosses out of the window — on the alveolar trace of the
+1.25 MAC case it moves the share of contended axis columns that flip from 58.5%
+to 98.4%. It also makes the branch's value unreachable wherever the curves are
+inside the window, which is most of the fat trace, and a displayed value a
+reader cannot reach is worse than one that is hard to aim at.
+
+**Distance still settles which compartment, and nothing else.** A reader aims
+at a curve, so the nearest drawn point picks the trace; every run with a point
+for *that* trace inside the radius then answers, at its own nearest such point.
+Nothing is left for a hand movement too small to aim with to decide, which is
+what takes the flip rate to zero.
+
+**The instant is stated per line rather than once for the box.** Two runs share
+the anchored grid, but each also draws the columns its own control events fall
+on, so their points nearest one pointer can be one grid column apart — 4 s on
+the 60-minute axis, 48 s on the 12-hour one, both of which `format_elapsed`
+shows. A single instant above a column of values would assert a simultaneity
+the readings do not have. That is the same rule as the modelled marker
+travelling with the value rather than sitting in a heading: a qualifier belongs
+to the number it qualifies.
+
+**The lines are ordered by the run, not by distance**, and so is the box's own
+position, which hangs from the first answering run's point. Ordering by
+distance would put this defect back into the layout: the numbers would swap
+places under a hand movement too small to aim with, which is what the rule
+exists to stop. Run order is the legend's order and the readout panels' order,
+so the box is read in the same direction as everything beside it.
+
+**A dot is drawn on every point that answered**, not one for the box. A single
+dot would mark one run's curve while the text read for several, which is the
+attribution failure § "The hover and the run it belongs to" closes, arriving
+through the marker instead of through the words.
+
+**One run answering is the three-line form, unchanged.** Two runs drawn with
+only one inside the radius is the ordinary case — the reader has aimed
+successfully — and it gets the form the rest of this section derives, still
+naming the run because two are drawn. The box gaining and losing a line as the
+pointer moves is not a hidden mode but the display of what is in reach: a run
+leaves the radius because the reader moved deliberately, and the box says so by
+losing its line. That event is visible where the silent swap it replaces was
+not.
+
+**The root cause is elsewhere and is not fixed here.** The slow compartments
+are compressed near zero because the percent axis is scaled by the alveolar
+peak, which is what puts two runs' fat points 0.2–1.4 px apart and makes them
+contend almost everywhere. Separating the compartments' scales would remove the
+contention at its source; it also changes every reading of this chart, so it is
+a roadmap question rather than a targeting one (`PL-QYBW`).
+
+`chart_frame.format_compared_trace_hover` and
+`chart_frame.format_compared_wash_in_hover` produce the form above — through
+`app/formatting.py` like every other number here, `format_percent`,
+`format_mac_multiple` and `format_elapsed` — and `nearest_trace_point` and
+`nearest_wash_in_point` collect the runs in reach. The worked example above is
+held verbatim in `tests/unit/test_chart_frame.py`, beside the measured fat case
+this rule was decided from.
 
 #### Resolution: the readouts' derivation applies unchanged
 
@@ -6970,19 +7069,21 @@ moves too, and a reader who wants to study a value pauses, which is what they
 would do in any case. What is not acceptable is the affordance being absent
 while they look for it.
 
-**Built on pyqtgraph as the nearest drawn point** (`PL-G59B`, 2026-09-14):
-`app/chart_frame.py` holds the derivation above as code — `format_trace_hover`
-and `format_wash_in_hover` produce the three lines, and `nearest_trace_point`
-answers only for a compartment the reader has left shown, within a pixel
-radius of a point the plot actually draws — and `app/qt_chart.py` shows it
-wherever the pointer is, running or paused. The instant on the first line is
-stated at the step the run advances by, `HOVER_INSTANT_RESOLUTION_S`: a drawn
-column sits wherever the anchored grid puts it, and the state reported is the
-state at exactly that instant, but printing it to four decimals would claim a
-resolution no other display on the screen has. `tests/unit/test_chart_frame.py`
-holds the worked example above verbatim, and
-`tests/integration/test_qt_chart.py` holds the rendered readout against a real
-run.
+**Built on pyqtgraph, over the drawn points within a pixel radius**
+(`PL-G59B`, 2026-09-14; the radius stopped choosing between runs with
+`PL-JVHL`, 2026-09-19): `app/chart_frame.py` holds the derivation above as
+code — `format_trace_hover` and `format_wash_in_hover` produce the three-line
+form and `format_compared_trace_hover` and `format_compared_wash_in_hover` the
+compared one, while `nearest_trace_point` answers only for a compartment the
+reader has left shown, within a pixel radius of a point the plot actually
+draws — and `app/qt_chart.py` shows it wherever the pointer is, running or
+paused. Every instant it prints is stated at the step the run advances by,
+`HOVER_INSTANT_RESOLUTION_S`: a drawn column sits wherever the anchored grid
+puts it, and the state reported is the state at exactly that instant, but
+printing it to four decimals would claim a resolution no other display on the
+screen has. `tests/unit/test_chart_frame.py` holds both worked examples above
+verbatim, and `tests/integration/test_qt_chart.py` holds the rendered readout
+against a real run.
 
 ## Assumptions
 

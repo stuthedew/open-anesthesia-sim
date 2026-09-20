@@ -31,6 +31,7 @@ from anesthesia_sim.app.chart_frame import (
     RunInput,
     assemble_chart_frame,
     chart_columns,
+    format_compared_trace_hover,
     format_trace_hover,
     trace_style,
 )
@@ -53,6 +54,7 @@ from anesthesia_sim.app.qt_chart import (
     BRANCH_POINT_LEGEND_LABEL,
     CONTROL_MARK_LEGEND_LABEL,
     EQUILIBRIUM_LEGEND_LABEL,
+    HOVER_RADIUS_PIXELS,
     MAC_AWAKE_BAND_LEGEND_LABEL,
     WASH_IN_TRACE_LEGEND_LABEL,
     ConcentrationChart,
@@ -81,6 +83,7 @@ from anesthesia_sim.app.theme import (
     WASH_IN_STROKE_WIDTH,
 )
 from anesthesia_sim.app.wash_in import WASH_IN_EQUILIBRIUM_RATIO
+from anesthesia_sim.core.concentration import Fraction
 
 _STEP_S = 0.1
 
@@ -445,6 +448,70 @@ def test_the_hover_reports_the_drawn_state_through_the_formatters(
     assert readout.splitlines()[1] == "Vessel-rich"
     assert readout.splitlines()[2].endswith(" ×MAC")
     assert "%" in readout.splitlines()[2]
+
+
+def test_the_hover_answers_for_every_run_in_reach_on_a_real_branched_case(
+    application: QApplication,
+) -> None:
+    """`PL-JVHL`, end to end from a branched run to the rendered readout.
+
+    The case the rule was decided from: a trunk held at its dialled setting
+    and a branch forked at 10 min with the vaporizer turned off, and the fat
+    traces those two leave - which the percent axis, scaled by the alveolar
+    peak, compresses to within a pixel or two of one another. A pointer on
+    either run's fat point is answered for both, each value under its own
+    run's name, and a pointer two pixels away is answered identically.
+    """
+
+    trunk = _run_with_a_dial_change()
+    case = BranchedCase(trunk)
+    branch = case.fork_at(600.0)
+    branch.start()
+    branch.begin_control_adjustment()
+    branch.set_delivered_partial_pressure_fraction(Fraction(0.0))
+    _advance(branch, 600.0)
+
+    shown = (RecordedQuantity.ALVEOLAR, RecordedQuantity.FAT)
+    frame = _frame(*case.runs, shown=shown)
+    chart = _shown(application, ConcentrationChart(), 480)
+    chart.draw(frame)
+    assert frame.visible == shown, "the cap must leave fat drawn for this to test anything"
+
+    first, second = frame.runs
+    # Each run's own last drawn column. They are not the same column - a
+    # branch opens at its fork and draws its own control events - but both
+    # runs have reached the same instant, which is where they are compared.
+    time_s = first.times_s[-1]
+    assert second.times_s[-1] == time_s
+    on_trunk = first.percents(RecordedQuantity.FAT)[-1]
+    on_branch = second.percents(RecordedQuantity.FAT)[-1]
+    _, trunk_row = chart.plot_pixel(time_s, on_trunk)
+    _, branch_row = chart.plot_pixel(time_s, on_branch)
+    _, floor_row = chart.plot_pixel(time_s, 0.0)
+    _, ceiling_row = chart.plot_pixel(time_s, frame.axis_top_percent)
+    percent_per_pixel = frame.axis_top_percent / abs(floor_row - ceiling_row)
+    # Two different stored concentrations, inside one hover radius of each
+    # other - here inside a single pixel, which is the contention the item
+    # measured and why the retired rule was settled by arithmetic no reader
+    # could see.
+    assert on_trunk != on_branch
+    assert abs(trunk_row - branch_row) < HOVER_RADIUS_PIXELS
+
+    readout = chart.readout_at(time_s, on_trunk)
+
+    assert readout is not None
+    assert readout == chart.readout_at(time_s, on_branch)
+    assert readout == format_compared_trace_hover(
+        ((first, len(first.times_s) - 1), (second, len(second.times_s) - 1)), RecordedQuantity.FAT
+    )
+    lines = readout.splitlines()
+    assert lines[:2] == ["Modelled sevoflurane", "Fat"]
+    assert [line.split("\u00b7")[0].strip() for line in lines[2:]] == [first.label, second.label]
+    assert lines[2] != lines[3], "the two runs must read differently for this to matter"
+
+    # Two pixels of hand movement, which is what used to swap the answer.
+    assert chart.readout_at(time_s, on_trunk + 2.0 * percent_per_pixel) == readout
+    assert chart.readout_at(time_s, on_trunk - 2.0 * percent_per_pixel) == readout
 
 
 def test_the_references_answer_no_hover_and_clear_space_answers_none(

@@ -3,11 +3,13 @@ id: PL-JVHL
 title: The hover answers for whichever run is marginally nearer, so a 2 px hand movement silently swaps which run's value is read
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, ux
 feature: scenario-branching
 touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit/test_chart_frame.py
 added: 2026-09-17
+closed: 2026-09-20
+payoff: a reader hovering a two-run chart stops silently reading the wrong run's concentration - the fat traces sit inside the hover radius together ~100% of the time, and the two values differ threefold
 verify: grep -q 'def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers' tests/unit/test_chart_frame.py
 ---
 

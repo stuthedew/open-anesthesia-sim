@@ -101,6 +101,7 @@ __all__ = [
     "WASH_IN_HOVER_LABEL",
     "WASH_IN_TERMINUS_CEILING",
     "ChartFrame",
+    "HoverReading",
     "HoverTarget",
     "RunFrame",
     "RunInput",
@@ -109,6 +110,8 @@ __all__ = [
     "assemble_chart_frame",
     "chart_columns",
     "compared_compartments",
+    "format_compared_trace_hover",
+    "format_compared_wash_in_hover",
     "format_trace_hover",
     "format_wash_in_hover",
     "nearest_trace_point",
@@ -1058,14 +1061,13 @@ def format_trace_hover(
         ValueError: If `run_count` is less than one.
     """
 
-    style = trace_style(quantity)
-    fraction = Fraction(run.fractions[quantity][index])
-    what = style.label if style.gloss is None else f"{style.label} ({style.gloss})"
-    value = (
-        f"{format_percent(fraction)}   {format_mac_multiple(fraction, Percent(run.mac_percent))}"
+    return "\n".join(
+        (
+            _hover_context(run, run.times_s[index], run_count),
+            _hover_subject(quantity),
+            _hover_value(run, quantity, index),
+        )
     )
-
-    return "\n".join((_hover_context(run, run.times_s[index], run_count), what, value))
 
 
 def format_wash_in_hover(run: RunFrame, stretch: WashInStretch, index: int, run_count: int) -> str:
@@ -1138,36 +1140,247 @@ def _hover_context(run: RunFrame, time_s: float, run_count: int) -> str:
             f"a chart draws at least one run; a hover cannot be answered for {run_count}"
         )
 
-    instant_s = round(time_s / HOVER_INSTANT_RESOLUTION_S) * HOVER_INSTANT_RESOLUTION_S
-    tokens = [f"{_HOVER_MODELLED_MARKER} {run.agent_display_name.lower()}"]
+    tokens = [_hover_agent(run)]
 
     if run_count > 1:
         tokens.append(run.label)
 
-    tokens.append(format_elapsed(instant_s))
+    tokens.append(_hover_instant(time_s))
 
     return _HOVER_CONTEXT_SEPARATOR.join(tokens)
 
 
+def format_compared_trace_hover(
+    answering: Sequence[tuple[RunFrame, int]], quantity: RecordedQuantity
+) -> str:
+    """What a hover says where more than one run is within reach of the pointer.
+
+    `docs/MODEL.md` § "The chart's hover readout" -> "Where more than one run
+    answers" is the specification, and `PL-JVHL` is why there is one: the
+    three-line form settled which run a reader was shown by which drawn point
+    was marginally nearer, so a 2 px hand movement swapped it silently. Every
+    run inside the radius answers instead, and the box carries a value line
+    per run.
+
+    The form is the three-line one with its third line repeated: the modelled
+    marker and the agent, then the compartment, then one line per run. The
+    qualifiers still precede the numbers, which is the safety argument the
+    order carries, and each value line opens with the run it belongs to
+    rather than with a number.
+
+    **The instant is stated per line rather than once for the box.** Two runs
+    share the anchored grid but each adds its own control-event columns
+    (`SimulationController.drawn_window`), so their nearest points can be up
+    to one grid column apart - 4 s on the 60-minute axis and 48 s on the
+    12-hour one, both of which `format_elapsed` shows. A single instant above
+    a column of values would assert a simultaneity the readings do not have,
+    which `CLAUDE.md`'s safety-critical standard counts as a failure of the
+    value rather than of its presentation.
+
+    Args:
+        answering: Every run within reach, in `ChartFrame.runs` order, each
+            with which of its drawn points answers as a position in the run's
+            `times_s`. Ordered by the run rather than by distance, so that
+            nothing about the box moves with a hand movement too small to
+            aim with - which is the whole of `PL-JVHL`.
+        quantity: The compartment the traces draw.
+
+    Returns:
+        The readout, two lines plus one per run, joined by newlines.
+
+    Raises:
+        KeyError: If `quantity` is not a compartment on this chart.
+        IndexError: If an index is outside its run's drawn points.
+        ValueError: If no run is given, or if the runs are not all on one
+            agent. The agent is named once, above the values, because
+            `assemble_chart_frame` refuses a frame whose runs differ on it;
+            naming one run's agent over another run's concentration would be
+            the correct number under the wrong label.
+    """
+
+    if not answering:
+        raise ValueError("a hover is answered for at least one run; none was given")
+
+    agents = {run.agent_display_name for run, _ in answering}
+
+    if len(agents) > 1:
+        raise ValueError(
+            "every run a hover answers for must be on the same agent, because the readout "
+            f"names it once above their values; given {', '.join(sorted(agents))}"
+        )
+
+    return "\n".join(
+        (
+            _hover_agent(answering[0][0]),
+            _hover_subject(quantity),
+            *(
+                _hover_compared_value(run, run.times_s[index], _hover_value(run, quantity, index))
+                for run, index in answering
+            ),
+        )
+    )
+
+
+def format_compared_wash_in_hover(answering: Sequence[tuple[RunFrame, WashInStretch, int]]) -> str:
+    """`format_compared_trace_hover` for the wash-in plot, in the ratio's own units.
+
+    The same form and the same reasons, with `format_wash_in_hover`'s third
+    line in place of the compartment's: F_A/F_I is dimensionless and has
+    neither a percent nor a MAC reading.
+
+    Args:
+        answering: Every run within reach, in `ChartFrame.runs` order, each
+            with the stretch its answering point is on and which point that
+            is as a position in the stretch's `times_s`.
+
+    Returns:
+        The readout, two lines plus one per run, joined by newlines.
+
+    Raises:
+        IndexError: If an index is outside its stretch's points.
+        ValueError: If no run is given, or if the runs are not all on one
+            agent - as `format_compared_trace_hover` raises, and for the
+            same reason.
+    """
+
+    if not answering:
+        raise ValueError("a hover is answered for at least one run; none was given")
+
+    agents = {run.agent_display_name for run, _, _ in answering}
+
+    if len(agents) > 1:
+        raise ValueError(
+            "every run a hover answers for must be on the same agent, because the readout "
+            f"names it once above their values; given {', '.join(sorted(agents))}"
+        )
+
+    return "\n".join(
+        (
+            _hover_agent(answering[0][0]),
+            WASH_IN_HOVER_LABEL,
+            *(
+                _hover_compared_value(
+                    run, stretch.times_s[index], format_wash_in_ratio(stretch.ratios[index])
+                )
+                for run, stretch, index in answering
+            ),
+        )
+    )
+
+
+def _hover_agent(run: RunFrame) -> str:
+    """The modelled marker and the agent - the part of the context every form opens with."""
+
+    return f"{_HOVER_MODELLED_MARKER} {run.agent_display_name.lower()}"
+
+
+def _hover_instant(time_s: float) -> str:
+    """A drawn point's instant, at the step the run advances by.
+
+    A drawn column sits wherever the anchored grid puts it, and the state
+    reported is the state at exactly that instant, but printing it to four
+    decimals would claim a resolution no other display on the screen has.
+    """
+
+    return format_elapsed(round(time_s / HOVER_INSTANT_RESOLUTION_S) * HOVER_INSTANT_RESOLUTION_S)
+
+
+def _hover_subject(quantity: RecordedQuantity) -> str:
+    """What the value is: the compartment, with its gloss where the readout row has one."""
+
+    style = trace_style(quantity)
+
+    return style.label if style.gloss is None else f"{style.label} ({style.gloss})"
+
+
+def _hover_value(run: RunFrame, quantity: RecordedQuantity, index: int) -> str:
+    """One drawn point in both units the chart carries.
+
+    The one place either form produces a compartment number, so a hover
+    answering for one run and a hover answering for three cannot format the
+    same state differently. The MAC multiple resolves against this run's own
+    `mac_percent`, exactly as the MAC axis and the readout row do.
+    """
+
+    fraction = Fraction(run.fractions[quantity][index])
+
+    return f"{format_percent(fraction)}   {format_mac_multiple(fraction, Percent(run.mac_percent))}"
+
+
+def _hover_compared_value(run: RunFrame, time_s: float, value: str) -> str:
+    """One run's line of a compared readout: whose value it is, when, and what it is."""
+
+    context = _HOVER_CONTEXT_SEPARATOR.join((run.label, _hover_instant(time_s)))
+
+    return f"{context}   {value}"
+
+
 @dataclass(frozen=True, slots=True)
-class HoverTarget:
-    """The drawn point a pointer is nearest to, and what the hover says of it.
+class HoverReading:
+    """One run's answer to a hover: which run, and which of its drawn points.
 
     Attributes:
         run: Which run, as a position in `ChartFrame.runs`.
-        quantity: Which trace - a compartment, or
-            `RecordedQuantity.WASH_IN_RATIO` on the wash-in plot.
-        time_s: The point's simulated time.
+        time_s: The point's simulated time. Each run answers at its own
+            nearest drawn point, so two readings of one hover can differ
+            here by up to one grid column - which is why the readout states
+            the instant per run rather than once for the box.
         value: The point's height in the plot's own unit: percent on the
             compartment chart, the dimensionless ratio on the wash-in plot.
-        readout: The three-line text to show.
     """
 
     run: int
-    quantity: RecordedQuantity
     time_s: float
     value: float
+
+
+@dataclass(frozen=True, slots=True)
+class HoverTarget:
+    """Every run a pointer is within reach of, and what the hover says of them.
+
+    **Every run inside the radius answers, rather than the nearest one**
+    (project owner, 2026-09-19, ratified, over breaking the tie toward the
+    trunk and over deferring to the axis-compression fix). `PL-JVHL` measured
+    the alternatives: with two runs on one axis the two runs' points for a
+    slow compartment are inside the 12 px radius over essentially the whole
+    of the hoverable band, so keeping the single nearest point let a 2 px
+    hand movement swap which run's value was read, silently and on 75.4-99.9%
+    of the fat axis. Preferring the curve nearest along its length and
+    requiring the pointer inside a run's own band were both measured and both
+    changed nothing; answering for every run is the only rule that took the
+    swap rate to zero, because nothing is then settled by which point is
+    marginally nearer.
+
+    Attributes:
+        quantity: Which trace - a compartment, or
+            `RecordedQuantity.WASH_IN_RATIO` on the wash-in plot. The
+            compartment is still the nearest drawn point's, since a reader
+            aims at a curve; which *run* that point belonged to is what no
+            longer decides anything.
+        readings: One per run within reach, in `ChartFrame.runs` order and
+            never empty. Ordered by the run rather than by distance, so that
+            no part of the readout moves with a hand movement too small to
+            aim with.
+        readout: The text to show: the three-line form while one run answers,
+            and `format_compared_trace_hover`'s while more than one does.
+    """
+
+    quantity: RecordedQuantity
+    readings: tuple[HoverReading, ...]
     readout: str
+
+    @property
+    def anchor(self) -> HoverReading:
+        """The reading the box is hung from: the first run's, in drawing order.
+
+        A position rather than a value, and chosen by drawing order for the
+        same reason `readings` is ordered that way - a box that hung from
+        whichever point was nearest would jump with a movement too small to
+        aim with, which is the defect this class exists to remove wearing
+        its layout's clothes.
+        """
+
+        return self.readings[0]
 
 
 def nearest_trace_point(
@@ -1178,13 +1391,18 @@ def nearest_trace_point(
     percent_per_pixel: float,
     radius_pixels: float,
 ) -> HoverTarget | None:
-    """Which drawn compartment point, if any, a pointer is within reach of.
+    """Which drawn compartment points, if any, a pointer is within reach of.
 
     Distance is measured in pixels rather than in axis units, because the
     two axes are in different units and a reader's hand is in neither: a
     tolerance stated in seconds would be a hair at the 12-hour base and a
     whole window at the one-minute one. The caller supplies the scale of
     the view it is drawing.
+
+    **Distance settles the compartment and nothing else.** The nearest drawn
+    point picks which trace the reader is aiming at; every run with a point
+    for that compartment inside the radius then answers, at its own nearest
+    such point. `HoverTarget` carries why, and `PL-JVHL` the measurements.
 
     Only the compartments the frame draws are candidates, so a hidden trace
     answers nothing, and only the six compartments are - the clinical
@@ -1203,38 +1421,59 @@ def nearest_trace_point(
             and still answer.
 
     Returns:
-        The nearest point within the radius, or `None` when no drawn point
-        is that close.
+        Every run within the radius of the aimed-at compartment, or `None`
+        when no drawn point is that close.
     """
 
-    best: tuple[float, HoverTarget] | None = None
+    nearest: dict[tuple[int, RecordedQuantity], tuple[float, int]] = {}
 
     for run_index, run in enumerate(frame.runs):
         for column in _columns_within(run.times_s, time_s, radius_pixels * seconds_per_pixel):
             for quantity in frame.visible:
-                drawn_percent = percent_from_fraction(Fraction(run.fractions[quantity][column]))
                 distance = _pixel_distance(
                     time_s,
                     percent,
                     run.times_s[column],
-                    drawn_percent,
+                    percent_from_fraction(Fraction(run.fractions[quantity][column])),
                     seconds_per_pixel,
                     percent_per_pixel,
                 )
 
-                if distance <= radius_pixels and (best is None or distance < best[0]):
-                    best = (
-                        distance,
-                        HoverTarget(
-                            run=run_index,
-                            quantity=quantity,
-                            time_s=run.times_s[column],
-                            value=drawn_percent,
-                            readout=format_trace_hover(run, quantity, column, len(frame.runs)),
-                        ),
-                    )
+                if distance <= radius_pixels:
+                    _keep_nearest(nearest, (run_index, quantity), distance, column)
 
-    return None if best is None else best[1]
+    if not nearest:
+        return None
+
+    aimed_at = min(nearest, key=lambda key: nearest[key][0])[1]
+    # In drawing order, stated rather than inherited from the order the scan
+    # happened to fill the table in: it is what the readout's lines are
+    # ordered by, and a readout whose lines could reorder under the pointer
+    # would be this defect in its layout.
+    answering = [
+        (run_index, frame.runs[run_index], nearest[(run_index, aimed_at)][1])
+        for run_index in range(len(frame.runs))
+        if (run_index, aimed_at) in nearest
+    ]
+
+    return HoverTarget(
+        quantity=aimed_at,
+        readings=tuple(
+            HoverReading(
+                run=run_index,
+                time_s=run.times_s[column],
+                value=percent_from_fraction(Fraction(run.fractions[aimed_at][column])),
+            )
+            for run_index, run, column in answering
+        ),
+        readout=(
+            format_trace_hover(answering[0][1], aimed_at, answering[0][2], len(frame.runs))
+            if len(answering) == 1
+            else format_compared_trace_hover(
+                [(run, column) for _, run, column in answering], aimed_at
+            )
+        ),
+    )
 
 
 def nearest_wash_in_point(
@@ -1245,11 +1484,13 @@ def nearest_wash_in_point(
     ratio_per_pixel: float,
     radius_pixels: float,
 ) -> HoverTarget | None:
-    """Which drawn wash-in point, if any, a pointer is within reach of.
+    """Which drawn wash-in points, if any, a pointer is within reach of.
 
-    `nearest_trace_point` for the wash-in plot: the same pixel-space rule,
-    over every drawn stretch of every run. The equilibrium line and the
-    control marks are not candidates.
+    `nearest_trace_point` for the wash-in plot: the same pixel-space rule and
+    the same answer-for-every-run-in-reach rule, over every drawn stretch of
+    every run. One plot-wide trace rather than six, so there is no
+    compartment for distance to settle. The equilibrium line and the control
+    marks are not candidates.
 
     Args:
         frame: The frame on the plot.
@@ -1261,10 +1502,10 @@ def nearest_wash_in_point(
             and still answer.
 
     Returns:
-        The nearest point within the radius, or `None`.
+        Every run within the radius, or `None`.
     """
 
-    best: tuple[float, HoverTarget] | None = None
+    nearest: dict[int, tuple[float, WashInStretch, int]] = {}
 
     for run_index, run in enumerate(frame.runs):
         for stretch in run.wash_in:
@@ -1279,20 +1520,51 @@ def nearest_wash_in_point(
                     seconds_per_pixel,
                     ratio_per_pixel,
                 )
+                found = nearest.get(run_index)
 
-                if distance <= radius_pixels and (best is None or distance < best[0]):
-                    best = (
-                        distance,
-                        HoverTarget(
-                            run=run_index,
-                            quantity=RecordedQuantity.WASH_IN_RATIO,
-                            time_s=stretch.times_s[column],
-                            value=stretch.ratios[column],
-                            readout=format_wash_in_hover(run, stretch, column, len(frame.runs)),
-                        ),
-                    )
+                if distance <= radius_pixels and (found is None or distance < found[0]):
+                    nearest[run_index] = (distance, stretch, column)
 
-    return None if best is None else best[1]
+    if not nearest:
+        return None
+
+    # In drawing order, for the reason `nearest_trace_point` states.
+    answering = [
+        (run_index, frame.runs[run_index], nearest[run_index][1], nearest[run_index][2])
+        for run_index in range(len(frame.runs))
+        if run_index in nearest
+    ]
+
+    return HoverTarget(
+        quantity=RecordedQuantity.WASH_IN_RATIO,
+        readings=tuple(
+            HoverReading(
+                run=run_index, time_s=stretch.times_s[column], value=stretch.ratios[column]
+            )
+            for run_index, _, stretch, column in answering
+        ),
+        readout=(
+            format_wash_in_hover(answering[0][1], answering[0][2], answering[0][3], len(frame.runs))
+            if len(answering) == 1
+            else format_compared_wash_in_hover(
+                [(run, stretch, column) for _, run, stretch, column in answering]
+            )
+        ),
+    )
+
+
+def _keep_nearest(
+    nearest: dict[tuple[int, RecordedQuantity], tuple[float, int]],
+    key: tuple[int, RecordedQuantity],
+    distance: float,
+    column: int,
+) -> None:
+    """Record this drawn point as one run's answer for one compartment, if it is its nearest."""
+
+    found = nearest.get(key)
+
+    if found is None or distance < found[0]:
+        nearest[key] = (distance, column)
 
 
 def _columns_within(times_s: Sequence[float], time_s: float, reach_s: float) -> range:

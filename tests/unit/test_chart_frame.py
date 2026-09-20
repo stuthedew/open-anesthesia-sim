@@ -26,6 +26,8 @@ from anesthesia_sim.app.chart_frame import (
     assemble_chart_frame,
     chart_columns,
     compared_compartments,
+    format_compared_trace_hover,
+    format_compared_wash_in_hover,
     format_trace_hover,
     format_wash_in_hover,
     nearest_trace_point,
@@ -492,12 +494,13 @@ def test_a_hover_cannot_be_answered_for_a_chart_drawing_no_runs() -> None:
 def test_two_runs_within_the_hover_radius_answer_under_their_own_names() -> None:
     """The regression `PL-MN4J` was filed for, end to end from the pointer.
 
-    `nearest_trace_point` keeps the globally nearest point across every run,
-    so where two runs' points for one compartment are both inside the radius
-    the run that answers is settled below a reader's resolution. Measured on
-    a branched sevoflurane case, the two runs' fat points sit inside the 12 px
-    radius over 100% of the shared axis, and 43.8-81.4% of those hovers print
-    different values. The readout has to say which run it answered for.
+    Where two runs' points for one compartment are both inside the radius,
+    every one of them answers (`PL-JVHL`) and each value is attributed to
+    the run it belongs to (`PL-MN4J`). Measured on a branched sevoflurane
+    case, the two runs' fat points sit inside the 12 px radius over 100% of
+    the shared axis, and 43.8-81.4% of those hovers print different values,
+    so an unattributed value is the correct number under the wrong
+    management.
     """
 
     first = _run_frame((1208.0,), alveolar=(0.0143,))
@@ -512,13 +515,96 @@ def test_two_runs_within_the_hover_radius_answer_under_their_own_names() -> None
     assert nearer_first is not None
     assert abs(1.45 - 1.43) / 0.0167 < 12.0, "the two points must contend for this to test anything"
 
-    assert nearer_second.run == 1
-    assert nearer_second.readout.splitlines()[0] == "Modelled sevoflurane \u00b7 Run 2 \u00b7 20m8s"
-    assert nearer_first.run == 0
-    assert nearer_first.readout.splitlines()[0] == "Modelled sevoflurane \u00b7 Run 1 \u00b7 20m8s"
+    # Which point is marginally nearer settles nothing: one box, both runs,
+    # each named, in drawing order.
+    assert nearer_second.readout == nearer_first.readout
+    assert tuple(reading.run for reading in nearer_second.readings) == (0, 1)
+    assert nearer_second.readout.splitlines() == [
+        "Modelled sevoflurane",
+        "Alveolar (end-tidal-equivalent)",
+        "Run 1 \u00b7 20m8s   1.43%   0.71 \u00d7MAC",
+        "Run 2 \u00b7 20m8s   1.45%   0.73 \u00d7MAC",
+    ]
 
     # The values differ, which is what makes the attribution load-bearing.
-    assert nearer_second.readout.splitlines()[2] != nearer_first.readout.splitlines()[2]
+    assert nearer_second.readout.splitlines()[2] != nearer_second.readout.splitlines()[3]
+
+
+def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers() -> None:
+    """`PL-JVHL`: every run inside the radius answers, so nothing turns on the nearer point.
+
+    The geometry is the one the item measured, reduced to the two fat traces
+    it turns on. Reference adult on sevoflurane, trunk held at 1 MAC, branch
+    forked at 10 min with the vaporizer turned off, a 60-minute axis 900 px
+    wide and `theme.CHART_HEIGHT` tall, so 4.00 s/px and 0.0167 %/px: at
+    3492 s the run still carrying agent reads 0.03% and the one 48 minutes
+    into emergence reads 0.01%, which the percent axis - scaled by the
+    alveolar peak - puts 1.2 px apart. Both points are inside the 12 px
+    radius across the whole hoverable band, and the rule that kept the
+    single globally nearest point flipped which run answered on 75.4-99.9%
+    of the fat axis.
+    """
+
+    reach = dict(seconds_per_pixel=4.0, percent_per_pixel=0.0167, radius_pixels=12.0)
+    times_s = tuple(3400.0 + 4.0 * column for column in range(50))
+    still_carrying = _run_frame(times_s, fat=tuple(0.00033 for _ in times_s))
+    emerging = replace(_run_frame(times_s, fat=tuple(0.00009 for _ in times_s)), label=run_label(1))
+    frame = replace(
+        _frame(still_carrying, visible=(RecordedQuantity.FAT,)), runs=(still_carrying, emerging)
+    )
+    on_trunk = still_carrying.percents(RecordedQuantity.FAT)[0]
+    on_branch = emerging.percents(RecordedQuantity.FAT)[0]
+    midpoint = (on_trunk + on_branch) / 2.0
+    # Under 1.5 px apart; the item measured the real case at 0.2-1.4 px, which
+    # is why nothing a reader can see distinguishes these two traces.
+    assert abs(on_trunk - on_branch) / 0.0167 < 2.0
+    # Pixel offsets from the midpoint of the two traces at 3492 s, two at a
+    # time, which is the hand movement the item measured.
+    offsets = tuple(range(-12, 13, 2))
+
+    def hover(x_px: int, y_px: int) -> tuple[int, ...]:
+        target = nearest_trace_point(frame, 3492.0 + x_px * 4.0, midpoint + y_px * 0.0167, **reach)
+
+        return () if target is None else tuple(reading.run for reading in target.readings)
+
+    def contending(x_px: int, y_px: int) -> bool:
+        """Whether both runs' fat points are inside the radius of this pointer."""
+
+        return all(
+            nearest_trace_point(
+                replace(frame, runs=(run,)), 3492.0 + x_px * 4.0, midpoint + y_px * 0.0167, **reach
+            )
+            is not None
+            for run in (still_carrying, emerging)
+        )
+
+    def marginally_nearer(y_px: int) -> int:
+        """Which run the retired rule would have answered for: the nearer point's."""
+
+        percent = midpoint + y_px * 0.0167
+
+        return 0 if abs(percent - on_trunk) < abs(percent - on_branch) else 1
+
+    contended = [(x, y) for x in offsets for y in offsets if contending(x, y)]
+    assert len(contended) > len(offsets) ** 2 // 2, "the geometry must contend to test anything"
+    # The geometry is the ambiguous one: the retired rule does flip across it.
+    assert {marginally_nearer(y) for _, y in contended} == {0, 1}
+
+    for x_px, y_px in contended:
+        assert hover(x_px, y_px) == (0, 1)
+
+        for neighbour in ((x_px + 2, y_px), (x_px, y_px + 2)):
+            if contending(*neighbour):
+                assert hover(*neighbour) == hover(x_px, y_px)
+
+    # Both values are reached, and they differ - which is what made the flip
+    # consequential rather than cosmetic.
+    readout = nearest_trace_point(frame, 3492.0, midpoint, **reach)
+    assert readout is not None
+    assert readout.readout.splitlines()[2:] == [
+        "Run 1 · 58m12s   0.03%   0.02 ×MAC",
+        "Run 2 · 58m12s   0.01%   <0.01 ×MAC",
+    ]
 
 
 def test_the_hover_keeps_the_below_resolution_forms_and_the_readout_row_s_glosses() -> None:
@@ -570,11 +656,12 @@ def test_the_hover_answers_the_nearest_drawn_point_within_reach_and_nothing_else
 
     on_alveolar = nearest_trace_point(frame, 103.0, 1.02, **reach)
     assert on_alveolar is not None
-    assert (on_alveolar.quantity, on_alveolar.time_s, on_alveolar.value) == (
+    assert (on_alveolar.quantity, on_alveolar.anchor.time_s, on_alveolar.anchor.value) == (
         RecordedQuantity.ALVEOLAR,
         100.0,
         1.0,
     )
+    assert tuple(reading.run for reading in on_alveolar.readings) == (0,)
     assert on_alveolar.readout == format_trace_hover(run, RecordedQuantity.ALVEOLAR, 1, 1)
 
     # Between two columns, on the 1 MAC line: no drawn point is near, and a
@@ -603,10 +690,123 @@ def test_the_wash_in_hover_answers_its_own_stretches_in_its_own_units() -> None:
     target = nearest_wash_in_point(frame, 101.0, 0.705, **reach)
     assert target is not None
     assert target.quantity is RecordedQuantity.WASH_IN_RATIO
-    assert (target.time_s, target.value) == (100.0, 0.71)
+    assert (target.anchor.time_s, target.anchor.value) == (100.0, 0.71)
     assert target.readout.splitlines()[1:] == [WASH_IN_HOVER_LABEL, "0.71"]
     # On the equilibrium line, away from the trace: the reference is silent.
     assert nearest_wash_in_point(frame, 100.0, 1.0, **reach) is None
+
+
+def test_a_run_out_of_reach_leaves_the_three_line_form_standing() -> None:
+    """Answering for every run in reach is not answering for every run drawn.
+
+    The second run's alveolar point is 30 px away, so one run answers and the
+    readout is the three-line form `docs/MODEL.md` derives - still naming the
+    run, because two are drawn (`PL-MN4J`).
+    """
+
+    first = _run_frame((1208.0,), alveolar=(0.0143,))
+    second = replace(_run_frame((1208.0,), alveolar=(0.0193,)), label=run_label(1))
+    frame = replace(_frame(first), runs=(first, second))
+
+    target = nearest_trace_point(frame, 1208.0, 1.43, 4.0, 0.0167, 12.0)
+
+    assert target is not None
+    assert (1.93 - 1.43) / 0.0167 > 12.0, "the second run must be out of reach to test anything"
+    assert tuple(reading.run for reading in target.readings) == (0,)
+    assert target.readout == format_trace_hover(first, RecordedQuantity.ALVEOLAR, 0, 2)
+    assert target.readout.splitlines()[0] == "Modelled sevoflurane · Run 1 · 20m8s"
+
+
+def test_a_compared_hover_states_each_run_s_own_instant() -> None:
+    """Two runs answer at their own drawn points, which need not be the same instant.
+
+    Both runs sit on the shared anchored grid, but each adds the columns its
+    own control events fall on, so the points nearest one pointer can be up
+    to one grid column apart - 4 s here. One instant above a column of values
+    would assert a simultaneity the readings do not have.
+    """
+
+    first = _run_frame((1208.0,), alveolar=(0.0143,))
+    second = replace(_run_frame((1204.0,), alveolar=(0.0143,)), label=run_label(1))
+    frame = replace(_frame(first), runs=(first, second))
+
+    target = nearest_trace_point(frame, 1208.0, 1.43, 4.0, 0.0167, 12.0)
+
+    assert target is not None
+    assert tuple(reading.time_s for reading in target.readings) == (1208.0, 1204.0)
+    assert target.readout.splitlines() == [
+        "Modelled sevoflurane",
+        "Alveolar (end-tidal-equivalent)",
+        "Run 1 · 20m8s   1.43%   0.71 ×MAC",
+        "Run 2 · 20m4s   1.43%   0.71 ×MAC",
+    ]
+
+
+def test_a_compared_hover_answers_for_every_run_in_reach_however_many_there_are() -> None:
+    """Nothing in the rule is a property of there being exactly two runs."""
+
+    runs = tuple(
+        replace(_run_frame((1208.0,), alveolar=(0.0143 + 0.0001 * index,)), label=run_label(index))
+        for index in range(3)
+    )
+    frame = replace(_frame(runs[0]), runs=runs)
+
+    target = nearest_trace_point(frame, 1208.0, 1.44, 4.0, 0.0167, 12.0)
+
+    assert target is not None
+    assert tuple(reading.run for reading in target.readings) == (0, 1, 2)
+    assert [line.split()[1] for line in target.readout.splitlines()[2:]] == ["1", "2", "3"]
+
+
+def test_a_compared_hover_refuses_to_name_one_agent_over_another_run_s_value() -> None:
+    """The agent is named once, above the values, so the runs must share it.
+
+    `assemble_chart_frame` already refuses such a frame - one MAC ruler is
+    drawn across every run - so this is the second guard rather than the
+    first, on the one line that turns a per-run qualifier into a shared one.
+    """
+
+    run = _run_frame((1208.0,), alveolar=(0.0143,))
+    other = replace(run, agent_display_name="Desflurane", label=run_label(1))
+
+    with pytest.raises(ValueError, match="must be on the same agent"):
+        format_compared_trace_hover(((run, 0), (other, 0)), RecordedQuantity.ALVEOLAR)
+
+    with pytest.raises(ValueError, match="must be on the same agent"):
+        format_compared_wash_in_hover(((run, run.wash_in[0], 0), (other, other.wash_in[0], 0)))
+
+
+def test_a_compared_hover_is_answered_for_at_least_one_run() -> None:
+    with pytest.raises(ValueError, match="at least one run"):
+        format_compared_trace_hover((), RecordedQuantity.ALVEOLAR)
+
+    with pytest.raises(ValueError, match="at least one run"):
+        format_compared_wash_in_hover(())
+
+
+def test_the_wash_in_hover_answers_every_run_in_reach_in_its_own_units() -> None:
+    """The same rule on the wash-in plot, where there is no compartment to aim at."""
+
+    first = _run_frame((0.0, 100.0, 200.0))
+    second = replace(
+        _run_frame((0.0, 100.0, 200.0)),
+        label=run_label(1),
+        wash_in=(WashInStretch((0.0, 100.0, 200.0), (0.68, 0.68, 0.68), False),),
+    )
+    frame = replace(_frame(first), runs=(first, second))
+    reach = dict(seconds_per_pixel=1.0, ratio_per_pixel=0.002, radius_pixels=12.0)
+
+    target = nearest_wash_in_point(frame, 100.0, 0.695, **reach)
+
+    assert target is not None
+    assert target.quantity is RecordedQuantity.WASH_IN_RATIO
+    assert tuple(reading.run for reading in target.readings) == (0, 1)
+    assert target.readout.splitlines() == [
+        "Modelled sevoflurane",
+        WASH_IN_HOVER_LABEL,
+        "Run 1 · 1m40s   0.71",
+        "Run 2 · 1m40s   0.68",
+    ]
 
 
 # ------------------------------------------- the run's channel, and the cap
