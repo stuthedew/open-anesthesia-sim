@@ -3,11 +3,13 @@ id: PL-W6NY
 title: test_verify.py spends more on _repo's five git subprocesses per test than on sleeping, and 63 other tests pay the same fixture
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: session-cost, infra
 feature: dev-tooling
 touches: subprojects/docket/tests/test_verify.py
 added: 2026-09-05
+closed: 2026-09-20
+reason: Same finding as PL-YRYR, which supersedes it: both are test_verify.py's _repo fixture re-running git per test. Containment runs one way - PL-YRYR also carries test_cli.py's 21.2 s and rests on PL-FZ58's whole-suite measurement, so finishing it leaves nothing of PL-W6NY standing while the reverse leaves test_cli.py untouched. Its two unique contributions are carried into PL-YRYR: the fallback requiring a negative result to land as a comment on _repo in the code rather than only in the item, and the correctness-before-speed framing. Found by PL-JKML's duplicate sweep and confirmed on independent refutation, 2026-09-20.
 not-delegable: both outcomes are judgments a command cannot hold. The suite passes today, so it proves nothing about whether a shared or copied fixture has introduced order-dependence - which is the risk the brief says makes the obvious move unsafe, and which surfaces later, in a different test, as a flake. The other outcome is a timing measurement recorded with the reason the fixture was left alone, and a threshold assertion tight enough to discriminate 12 s of git subprocesses would itself flake on a slower runner. `.claude/rules/apparatus-standard.md` is the bar being weighed against, and it is prose.
 ---
 

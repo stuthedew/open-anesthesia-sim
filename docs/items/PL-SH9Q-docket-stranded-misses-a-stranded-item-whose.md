@@ -3,11 +3,13 @@ id: PL-SH9Q
 title: docket stranded misses a stranded item whose file already exists on the base, because it reads branch-only adds rather than branch-only content
 priority: P2
 effort: M
-status: ready
+status: dropped
 classes: defect
 feature: stranded-ahead-or-behind
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests
 added: 2026-09-16
+closed: 2026-09-20
+reason: Same finding as PL-KSCW, which supersedes it: both indict the single 'if identifier in known: continue' in vcs.stranded, keyed on the item id being on the base and discarding content. The one route to their being complementary - PL-SH9Q's narrower closures-only rule, which would have left PL-KSCW standing - was retired by PL-BHVM's 2026-09-19 design round in favour of the three-valued ahead/behind/equal predicate, under which one fix satisfies both done-whens. PL-KSCW survives on the fuller diagnosis: six named unreported edits, the wider touches matching where the output lands, and the settled output shape (a diff to read, never a git checkout line). Its closure instance and its warning that reporting every branch-only modification would fire on every live branch are carried into PL-KSCW. Found by PL-JKML's duplicate sweep and confirmed on independent refutation, 2026-09-20.
 verify: uv run pytest -q subprojects/docket/tests/test_vcs.py && grep -q 'def test_stranded_reports_an_item_modified_only_on_a_branch' subprojects/docket/tests/test_vcs.py
 ---
 

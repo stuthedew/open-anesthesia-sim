@@ -69,7 +69,7 @@ The one thing the modality returned was a by-product rather than a duplicate:
 `PL-RFSL`, `PL-38PN`'s remainder being refused by
 `.claude/rules/citation-drift.md`'s closed-brief clause.
 
-## The sweep's candidate table, externalized
+## The sweep's candidate table, externalized (interim - superseded by the final table below)
 
 **Read this as candidates, not verdicts, except where the row says otherwise.**
 394 of the 400 pairs were read in full; 42 came back non-distinct. Each was
@@ -149,3 +149,57 @@ complementary row is safe to act on sooner, since grouping loses nothing.
 surfaced were judged distinct on reading, so it runs at roughly one real
 signal in ten - which is the right side of the trade for a sweep whose false
 negatives are silent and whose false positives cost one brief read.
+
+## Final result, 2026-09-20
+
+The refutation stage finished. **400 pairs read in full, 42 came back
+non-distinct, and all 42 were then put to an independent reviewer told to
+refute them. 17 stand; 25 were refuted** - a 60% refutation rate, which is the
+number to keep. Reading two briefs and finding one defect is not a reliable
+verdict on its own: three in five of those readings did not survive a second
+agent attacking them, and one of the casualties (`PL-1RTM`/`PL-3NKZ`) was a
+*high-confidence same-finding* that a single-pass sweep would have acted on by
+dropping a real item.
+
+| pair | confirmed as | survivor / feature | disposition |
+| --- | --- | --- | --- |
+| `PL-4FD2` / `PL-5MFL` | complementary-halves | `verify-false-reject` | closed by #783 |
+| `PL-5GBV` / `PL-BGMK` | complementary-halves | `near-duplicate-warning` | **applied here** |
+| `PL-5MFL` / `PL-STC4` | complementary-halves | `verify-false-reject` | closed by #783 |
+| `PL-BHBZ` / `PL-STC4` | complementary-halves | `verify-false-reject` | closed by #783 |
+| `PL-BX1C` / `PL-ZMGR` | complementary-halves | `verify-false-reject` | **applied here** |
+| `PL-KFWL` / `PL-LT77` | complementary-halves | `tag-error-names-its-cause` | **applied here** |
+| `PL-KSCW` / `PL-MBTZ` | complementary-halves | `stranded-ahead-or-behind` | **applied here** |
+| `PL-W7WL` / `PL-WXX8` | complementary-halves | `cut-backfills-pr-numbers` | **applied here** |
+| `PL-2M5T` / `PL-W7WL` | same-finding | `PL-W7WL` | **applied here** |
+| `PL-4FD2` / `PL-BHBZ` | same-finding | `PL-BHBZ` | closed by #783 |
+| `PL-4HKS` / `PL-5748` | same-finding | `PL-4HKS` | **applied here** |
+| `PL-4RHP` / `PL-HCTF` | same-finding | `PL-4RHP` | **applied here** |
+| `PL-5MFL` / `PL-BHBZ` | same-finding | `PL-BHBZ` | closed by #783 |
+| `PL-GXPP` / `PL-R77L` | same-finding | `PL-GXPP` | **applied here** |
+| `PL-KSCW` / `PL-SH9Q` | same-finding | `PL-KSCW` | **applied here** |
+| `PL-TH7P` / `PL-TZ7T` | same-finding | `PL-TZ7T` | left alone - PL-TZ7T in flight |
+| `PL-W6NY` / `PL-YRYR` | same-finding | `PL-YRYR` | **applied here** |
+
+**Refuted - read as duplicates, then shown not to be** (25 of 42): `PL-037Y` / `PL-C7XV`, `PL-038` / `PL-1T6T`, `PL-1BS2` / `PL-VKGJ`, `PL-1RTM` / `PL-3NKZ`, `PL-2M9N` / `PL-8LDF`, `PL-3DN1` / `PL-Z85N`, `PL-4L49` / `PL-HKTB`, `PL-4RHP` / `PL-DHJ7`, `PL-5GBV` / `PL-TZ7T`, `PL-5MFL` / `PL-7K8Y`, `PL-5N7T` / `PL-WQT0`, `PL-73P0` / `PL-ZPDM`, `PL-BHBZ` / `PL-BX1C`, `PL-BHBZ` / `PL-ZMGR`, `PL-BYMX` / `PL-SH9Q`, `PL-CPLX` / `PL-KKRP`, `PL-GJPD` / `PL-QNYF`, `PL-K5PW` / `PL-P757`, `PL-KNHX` / `PL-VJFQ`, `PL-LPWK` / `PL-W7WL`, `PL-M21Q` / `PL-NGLM`, `PL-QNYF` / `PL-WG7Q`, `PL-R5HK` / `PL-WQT0`, `PL-TKFD` / `PL-ZMGR`, `PL-WNQT` / `PL-X3NY`.
+
+**Every confirmed row is now applied, closed elsewhere, or deliberately left**,
+so nothing here is a backlog. Nine same-finding pairs: four dropped by this
+pass into `PL-4HKS`, `PL-W7WL`, `PL-4RHP` and `PL-YRYR`, two more into
+`PL-KSCW` and `PL-GXPP`, two already closed together under `#783`, and
+`PL-TH7P`/`PL-TZ7T` left standing because `PL-TZ7T` is in flight. Eight
+complementary rows: four grouped here, three already carrying
+`verify-false-reject`, one (`PL-KSCW`/`PL-MBTZ`) grouped earlier in this pass.
+
+**What the three modalities cost and returned.** Primary (touches-candidacy,
+title-rank): 400 pairs, 17 confirmed. No-touches hand sweep: 19 items, 1
+confirmed - `PL-3HMQ`, which no shared-path key could ever have reached.
+Rare-term, no shared path: 49 pairs, **0** confirmed. So the shared-`touches`
+key is where the signal is, the items declaring no `touches` need their own
+pass, and widening the key beyond a shared path buys nothing.
+
+**For `PL-4JHS`**, which names this sweep as its input: the recurrence
+evidence is the nine same-finding rows above, not the 42 candidates and not
+the 400 pairs. `PL-W7WL` is the strongest single instance - four filings of
+one defect (`PL-66X4` dropped into `PL-2M5T` on 2026-09-14, then `PL-2M5T` and
+`PL-3HMQ` dropped into `PL-W7WL` here).

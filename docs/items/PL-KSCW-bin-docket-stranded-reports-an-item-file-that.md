@@ -92,3 +92,30 @@ three as unrelated work, and they sat in two different features
 (`parallel-sessions` and `stranded-item-edits`). They are ranked together by
 `PL-BHVM`'s `root-cause-of:` and now grouped together as well; the group closes
 when `stranded` makes that comparison.
+
+**`PL-SH9Q` is this same finding and is dropped in its favour** (`PL-JKML`'s
+duplicate sweep, 2026-09-20, confirmed on independent refutation against the
+source). `vcs.stranded` builds `known = {store ids} | set(on_base)` and then
+`continue`s per ref on `if identifier in known` - one branch, keyed on the id
+being on the base and discarding content entirely. That single `continue` is
+what both briefs indict, a day apart, each from the angle that bit it:
+`PL-SH9Q` from `PL-PX7V`'s 60-line closure on
+`origin/claude/wizardly-maxwell-dyzpjt`, this item from `PL-879R`'s appended
+section plus five more edits on `origin/claude/focused-dijkstra-outqzu`.
+
+**The one route to their being complementary was checked and is closed.**
+`PL-SH9Q` floated a deliberately narrower rule - report only a modification
+that *closes* an item, `status` moving into `done` or `dropped`. Built that
+way, `PL-SH9Q`'s own done-when and its `wizardly-maxwell-dyzpjt` test would
+both be satisfied while `PL-879R`'s append to a still-`ready` item went
+unreported, leaving this item fully standing. That one-directional gap would
+have made them halves. `PL-BHVM`'s 2026-09-19 design round retired the
+closures-only option in favour of the three-valued per-item-file predicate, so
+under the settled shape one predicate satisfies both done-whens and neither
+fix leaves the other standing.
+
+**`PL-SH9Q`'s surviving contribution, carried here.** Reporting *every*
+branch-only modification would fire on every live branch editing its own item -
+the check `CLAUDE.md` retires for firing each run without changing a decision.
+So the ahead/behind/equal predicate is not only a correctness improvement over
+the id test; it is what keeps the report quiet enough to be read at all.

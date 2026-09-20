@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: ready
 classes: defect
-feature: commit-provenance
+feature: cut-backfills-pr-numbers
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 added: 2026-09-20
 payoff: stops an item that merged just before a cut shipping a release note with no route back to the change that made it
@@ -81,3 +81,17 @@ re-cutting a shipped release is what leaves two sets of notes disagreeing
 are repaired by hand as part of this item, or the item records why a shipped
 release's notes are left standing as they were published. Decide it here; do
 not leave it to be rediscovered a fifth time.
+
+**Grouped as `feature: cut-backfills-pr-numbers`** (`PL-JKML`'s duplicate
+sweep, 2026-09-20, confirmed on independent refutation). `PL-W7WL` and
+`PL-WXX8` are the two halves of a pull request number never reaching the place
+that needs it. `PL-WXX8` is the number never landing on the item at all, because
+`bin/docket record`'s advisory addresses a session that has already finished;
+`PL-W7WL` is the number existing but arriving after the notes are rendered.
+Both are answered by the same move - the cut performing `record`'s backfill
+itself, rather than a rule a session has to remember - and neither is finished
+while the other stands.
+
+Named for what completes rather than for the theme: `commit-provenance` is
+eleven items and answers no question about whether anything finished, which is
+the test `.claude/skills/docket/SKILL.md` sets for a feature name.
