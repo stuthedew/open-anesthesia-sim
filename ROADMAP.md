@@ -4161,6 +4161,41 @@ with three of the five still open blocked on work outside it - and admitting
 one more at the beat where the milestone is one step from starting is the
 refilling shape Phase 0 was retired for.
 
+**`PL-ZM48`, added 2026-09-20, after the freeze and declined with it.** It
+corrects `docs/worker.md` § "Ref operations a session cannot perform", whose
+branch-deletion row offers two candidate causes without choosing and states an
+exit status of 0. A live deletion attempt run that day, under the project
+owner's instruction to clean the branches up, returned `HTTP 403` at exit 1
+with `Everything up-to-date` still the last line and the ref intact - so the
+two causes `PL-3V6C` called mutually exclusive are successive lines of one
+transcript. The text it corrects was written under `PL-4Q9B` in v0.4.28, after
+this gate was frozen on 2026-09-06, so the problem does not predate the freeze
+and qualifies on no other ground: it is `defect`-classed rather than `safety`
+or `science`, and `docs/worker.md` sits wholly inside `docket.toml`'s
+`workflow_paths`. What it costs while deferred is bounded, because the
+operative half of the row is correct and unchanged - a session reading it
+learns it cannot delete a remote branch, which is true. Only the stated cause
+and the exit status are wrong, and `PL-ZM48` carries the transcript that
+settles both.
+
+**The list entry alone would be wrong about which ground it declines on**,
+which is why that paragraph is carried here rather than recorded as superseded
+(`PL-QNQJ`, 2026-09-20). This subsection's heading is the refilling-queue
+ground, and its opening prose is explicit that those entries "pass the presence
+test as squarely as those do, and they are deferred anyway". `PL-ZM48` does not
+pass it - the text it corrects is thirteen days younger than the freeze - so it
+declines on the ground `PL-09G9` and `PL-YFXG` are recorded on above, each in a
+paragraph of its own and for the reason given there: saying so is cheaper than
+stretching the refilling-queue argument over an entry it does not fit.
+
+**It is a day late because it was stranded in the half nothing reads.** The
+paragraph was written on `origin/claude/practical-brown-wr7u6i`, whose session
+opened no pull request. `PL-T2YR` recovered the two *item files* from that ref,
+which is the comparison `bin/docket stranded` makes - item ids, read out of
+both trees - and left this prose, which neither half of that command looks at
+(`PL-BYMX`). `PL-2FQ5` is the ref's own deletion, which is the project owner's
+under `PL-K2C8`.
+
 ### Required scope
 
 Eighteen items, in the order the dependencies allow. The first three are the
