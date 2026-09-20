@@ -31,6 +31,14 @@ measurements say otherwise.
   changed exactly eight item files and `PL-66Z5` is one of them, so it **was in
   scope, and its command did run**. It did not report, because at 02:36 the
   answer was still "not done".
+- **By that same pull request reddening itself, one push earlier.** Run
+  35484029306, head `2f57de0b`, 02:30:14, **failed**: `PL-T2YR is open but its
+  verify: command already passes (1 of 19 checked)`, on the same
+  `20 item(s) in scope: 8 this branch changed` line. `git show 4bfcf00b
+  --name-status` records `A docs/items/PL-T2YR-…md` - **the branch added that
+  file too**. So the mechanism the brief says cannot work had already worked, on
+  this very branch, six minutes before the run the brief cites as proof that it
+  does not.
 
 **What is actually happening.** `already_passing` reads exit 0 as a fact about
 the tree. That holds only where the command is a function of the tree. Five
@@ -75,9 +83,11 @@ per run - would have prevented **neither** first red:
 
 - `PL-8GQW`: the pull request whose merge went red first (`PL-5MT4`, run
   35472981960) ran 22:19:10-22:21:14, before `#730` had even added the file.
-- `PL-66Z5`: `#744`'s run ended 02:36:27 with the ten refs still standing; the
-  merge ran at 02:37:09 with them gone. Forty-two seconds, and the whole store
-  would have answered exactly as the scope did.
+- `PL-66Z5`: its command ran on the branch **twice** - 02:30:14 and 02:36:27 -
+  and failed both times, so the ten refs still stood at 02:36:27. `main`'s run
+  began 02:37:09 and reached its replay some minutes later, by which time they
+  were gone. Identical tree, identical command, opposite answers: the whole
+  store would have answered exactly as the scope did.
 
 It would have surfaced each within one *subsequent* pull request. That is the
 honest benefit, and it is bought for 147.7 s on every pull request forever,
