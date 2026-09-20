@@ -451,9 +451,14 @@ the switch restarted the trunk, `BranchedCase` went on listing a branch of a
 run that no longer existed, and `assemble_chart_frame` then refused the frame
 over the shared MAC axis — so `_halt_every_run` failed both runs over an
 input to one of them. The trunk's selector is therefore locked while a
-comparison is shown too, which is `.claude/rules/expert-review.md`'s
+comparison is shown too (project owner, 2026-09-20, ratified, over keeping the
+selector live and growing `RunView._confirm_new_case`'s dialog a clause about
+the branches it would orphan), which is `.claude/rules/expert-review.md`'s
 preference for an interface that prevents the error over one that reports it
-afterwards. `dashboard_frame.transport` carries all three locks and names the
+afterwards. Ratified rather than specified: the case put to the owner was a
+session's own recommendation, so ordinary evidence — a learner who wants to
+change agent mid-comparison, a measurement, a cost the case did not carry —
+is enough to put it back to them. `dashboard_frame.transport` carries all three locks and names the
 longest-lasting one that holds, so the chip never sends a reader to Pause for
 a lock Pause cannot lift.
 

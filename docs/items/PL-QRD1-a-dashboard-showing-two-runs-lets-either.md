@@ -132,13 +132,20 @@ than after it, which is the disposition its brief named under the answer taken.
   control that refuses every input it accepts is one presenting itself as
   working.
 - **The trunk half**, which is this item: the trunk's selector is locked while
-  two runs are shown, and Reset is the way back to one run. Chosen over
-  growing `RunView._confirm_new_case`'s dialog a second clause about the
-  branches it would orphan, on `CLAUDE.md`'s expert-review standard - an
-  interface that prevents the error over one that reports it afterwards - and
-  because it adds no mode: the same gesture already refuses a second fork, so
-  the rule on screen is simply that nothing about the case may be changed
-  while a comparison is shown.
+  two runs are shown, and Reset is the way back to one run (project owner,
+  2026-09-20, ratified, over keeping the selector live and growing
+  `RunView._confirm_new_case`'s dialog a clause about the branches it would
+  orphan). On `CLAUDE.md`'s expert-review standard - an interface that
+  prevents the error over one that reports it afterwards - and because it adds
+  no mode: the same gesture already refuses a second fork, so the rule on
+  screen is simply that nothing about the case may be changed while a
+  comparison is shown.
+
+  **Ratified rather than specified**, which is the bar to reopen it. The case
+  put to the owner was a session's own recommendation wearing their signature,
+  so ordinary evidence puts it back to them: a learner who wants to change
+  agent mid-comparison, a measurement, or a cost the case did not carry. "It
+  is what the owner decided" does not defend it.
 
 **`dashboard_frame.transport` carries all three locks rather than the widget
 choosing between them**, and names the longest-lasting one that holds: a
