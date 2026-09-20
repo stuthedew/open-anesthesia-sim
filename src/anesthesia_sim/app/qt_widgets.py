@@ -46,13 +46,17 @@ from typing import Final
 from PySide6.QtCore import QPoint, QRect, QSignalBlocker, QSize, Qt, Signal
 from PySide6.QtGui import QFont, QFontMetrics, QResizeEvent
 from PySide6.QtWidgets import (
+    QComboBox,
     QDialog,
+    QDoubleSpinBox,
     QFrame,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QLayout,
     QLayoutItem,
+    QLineEdit,
+    QListWidget,
     QPushButton,
     QSlider,
     QSplitter,
@@ -60,7 +64,27 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from anesthesia_sim.app.bookmarks import MacTarget, TimeBookmark
+from anesthesia_sim.app.chart_frame import trace_style
 from anesthesia_sim.app.dashboard_frame import (
+    ADD_MARK_LABEL,
+    BOOKMARK_DIALOG_TITLE,
+    CLOSE_BOOKMARKS_LABEL,
+    COMPARTMENT_FIELD_LABEL,
+    DEFAULT_MAXIMUM_TARGET_MAC,
+    EDIT_BOOKMARKS_LABEL,
+    HEIGHT_FIELD_LABEL,
+    INSTANT_ENTRY_DECIMALS,
+    INSTANT_ENTRY_STEP_S,
+    INSTANT_ENTRY_SUFFIX,
+    INSTANT_FIELD_LABEL,
+    MAC_TARGET_HEADING,
+    MARK_NAME_FIELD_LABEL,
+    MARK_NAME_PLACEHOLDER,
+    REMOVE_MARK_LABEL,
+    TIME_BOOKMARK_HEADING,
+    BookmarkPanel,
+    MarkListing,
     NewCaseQuestion,
     Readout,
     SettingReadout,
@@ -69,8 +93,19 @@ from anesthesia_sim.app.dashboard_frame import (
     slider_position,
     slider_value,
 )
+from anesthesia_sim.app.formatting import (
+    MAC_DISPLAY_DECIMALS,
+    MAC_DISPLAY_RESOLUTION_MAC,
+    MAC_UNIT_SUFFIX,
+    format_elapsed,
+)
+from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.theme import (
     ACCENT,
+    BOOKMARK_DIALOG_WIDTH,
+    BOOKMARK_LIST_MAX_HEIGHT,
+    BOOKMARK_ROW_SPACING,
+    BOOKMARK_SECTION_SPACING,
     GRIDLINE,
     INK,
     METRIC_NAME_SIZE,
@@ -87,6 +122,8 @@ from anesthesia_sim.app.theme import (
     PRIMARY,
     WARNING,
 )
+from anesthesia_sim.core.concentration import MacMultiple
+from anesthesia_sim.core.supported_ranges import MAXIMUM_ELAPSED_SIMULATION_TIME_S
 
 # How much of the screen's available area the window opens on (`PL-005`).
 # A fraction rather than a size, so the same rule opens a window that is
@@ -831,6 +868,352 @@ class NewCaseDialog(QDialog):
 
         self.discard_button.clicked.connect(self.accept)
         self.keep_button.clicked.connect(self.reject)
+
+
+class MarkListingLabel(QWidget):
+    """One bookmark collection, drawn read-only: a heading and its rows.
+
+    Two of these rather than one widget holding both collections, because the
+    two are listed apart (`PL-LPLD`) and a widget that knew there were exactly
+    two of them could not be placed anywhere a third kind was wanted. It is
+    given a `MarkListing` and decides nothing: which of the rows and the empty
+    line is drawn is settled in `dashboard_frame.MarkListing.text`, where a
+    test can read it without a display.
+
+    Attributes:
+        heading_label: The collection's name.
+        rows_label: The rows, or the line that stands in for them when the
+            collection is empty.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.heading_label = styled_label("", color=INK, bold=True)
+        self.rows_label = styled_label("", color=MUTED, size_px=METRIC_QUALIFIER_SIZE, wrap=True)
+        column = QVBoxLayout(self)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(BOOKMARK_ROW_SPACING)
+        column.addWidget(self.heading_label)
+        column.addWidget(self.rows_label)
+
+    def set_listing(self, listing: MarkListing) -> None:
+        """Draw `listing`, heading and rows both.
+
+        Args:
+            listing: One of `dashboard_frame.bookmark_panel`'s two listings.
+        """
+
+        self.heading_label.setText(listing.heading)
+        self.rows_label.setText(listing.text)
+
+
+class BookmarksPanel(QWidget):
+    """The two collections beside the chart, with the control that opens the editor.
+
+    Read-only. Marks are created and removed in `BookmarkDialog`, so the
+    panel a reader has in front of them while a case runs states what is
+    marked and offers nothing that could change a run by a mis-click.
+
+    Attributes:
+        times: The marked instants.
+        targets: The marked heights.
+        edit_button: Opens the dialog; `clicked` is connected by the view.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.times = MarkListingLabel()
+        self.targets = MarkListingLabel()
+        self.edit_button = QPushButton(EDIT_BOOKMARKS_LABEL)
+        self.edit_button.setStyleSheet(_outlined_button_stylesheet())
+        column = QVBoxLayout(self)
+        column.setContentsMargins(0, 0, 0, 0)
+        column.setSpacing(BOOKMARK_SECTION_SPACING)
+        column.addWidget(self.times)
+        column.addWidget(self.targets)
+        actions = QHBoxLayout()
+        actions.addWidget(self.edit_button)
+        actions.addStretch(1)
+        column.addLayout(actions)
+
+    def set_panel(self, panel: BookmarkPanel) -> None:
+        """Draw both collections from one tick's answer.
+
+        Args:
+            panel: `dashboard_frame.bookmark_panel`'s result this tick.
+        """
+
+        self.times.set_listing(panel.times)
+        self.targets.set_listing(panel.targets)
+
+
+class BookmarkDialog(QDialog):
+    """Where the two kinds of mark are created, listed and removed.
+
+    One dialog over two mechanisms, which is the shape the reference
+    simulator uses and what `PL-LPLD` was scoped on. Both forms are visible
+    at once and each has its own add button: a tab or a kind selector would
+    make which mechanism is armed a mode, and the two collections differ in
+    their fields rather than in a flavour, so there is nothing for a shared
+    form to hold.
+
+    Non-modal, and shown with `open()` rather than `exec()` so a test can
+    drive it. Non-modal deliberately: a run may be playing, and a modal
+    window over a moving chart is a reader locked out of the transport
+    controls by a window about something else.
+
+    **The height a target may be set to is bounded by the running agent**,
+    and the bound is here rather than on `MacTarget` because it is the
+    agent's rather than the mark's. No compartment can exceed the delivered
+    concentration, and the vaporizer's own maximum bounds that, so a target
+    above `max_delivered_concentration_percent / agent_mac_percent` is one no
+    run of this agent could ever cross. Refusing it in the control is
+    `.claude/rules/expert-review.md`'s preference for an interface that
+    prevents the error over one that reports it afterwards - and it moves
+    with the agent, because the two values it is computed from do.
+
+    Attributes:
+        instant_spin: The instant to mark, in seconds.
+        instant_preview: That instant in the compound form the clock uses, so
+            no reader converts between the entry and the display.
+        time_label_edit: The optional name for a time bookmark.
+        add_time_button: Adds the time bookmark; `clicked` is the view's.
+        time_list: The marked instants, selectable for removal.
+        remove_time_button: Removes the selected instant.
+        compartment_combo: Which compartment a target is read against.
+        height_spin: The height, in multiples of the running agent's 1 MAC.
+        target_label_edit: The optional name for a target.
+        add_target_button: Adds the target.
+        target_list: The marked heights, selectable for removal.
+        remove_target_button: Removes the selected target.
+        notice: What a refused add says, or hidden when there is nothing.
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle(BOOKMARK_DIALOG_TITLE)
+        self.setStyleSheet(f"QDialog {{ background-color: {PANEL}; }}")
+        self.setMinimumWidth(BOOKMARK_DIALOG_WIDTH)
+
+        self.instant_spin = QDoubleSpinBox()
+        self.instant_spin.setDecimals(INSTANT_ENTRY_DECIMALS)
+        self.instant_spin.setSingleStep(INSTANT_ENTRY_STEP_S)
+        self.instant_spin.setRange(0.0, MAXIMUM_ELAPSED_SIMULATION_TIME_S)
+        self.instant_spin.setSuffix(INSTANT_ENTRY_SUFFIX)
+        self.instant_preview = styled_label(
+            format_elapsed(0.0), color=MUTED, size_px=METRIC_QUALIFIER_SIZE
+        )
+        self.instant_spin.valueChanged.connect(self._refresh_instant_preview)
+        self.time_label_edit = QLineEdit()
+        self.time_label_edit.setPlaceholderText(MARK_NAME_PLACEHOLDER)
+        self.add_time_button = QPushButton(ADD_MARK_LABEL)
+        self.time_list = QListWidget()
+        self.remove_time_button = QPushButton(REMOVE_MARK_LABEL)
+
+        self.compartment_combo = QComboBox()
+
+        for quantity in COMPARTMENT_QUANTITIES:
+            self.compartment_combo.addItem(trace_style(quantity).label, userData=quantity.value)
+
+        self.height_spin = QDoubleSpinBox()
+        self.height_spin.setDecimals(MAC_DISPLAY_DECIMALS)
+        self.height_spin.setSingleStep(MAC_DISPLAY_RESOLUTION_MAC)
+        self.height_spin.setSuffix(MAC_UNIT_SUFFIX)
+        self.target_label_edit = QLineEdit()
+        self.target_label_edit.setPlaceholderText(MARK_NAME_PLACEHOLDER)
+        self.add_target_button = QPushButton(ADD_MARK_LABEL)
+        self.target_list = QListWidget()
+        self.remove_target_button = QPushButton(REMOVE_MARK_LABEL)
+
+        for listing in (self.time_list, self.target_list):
+            listing.setMaximumHeight(BOOKMARK_LIST_MAX_HEIGHT)
+
+        self.notice = NoticeLabel()
+        self.close_button = QPushButton(CLOSE_BOOKMARKS_LABEL)
+        self.close_button.setDefault(True)
+        self.close_button.setStyleSheet(_filled_button_stylesheet())
+        self.close_button.clicked.connect(self.accept)
+
+        for button in (
+            self.add_time_button,
+            self.remove_time_button,
+            self.add_target_button,
+            self.remove_target_button,
+        ):
+            button.setAutoDefault(False)
+            button.setStyleSheet(_outlined_button_stylesheet())
+
+        self._build_layout()
+        self.set_reachable_height(DEFAULT_MAXIMUM_TARGET_MAC)
+
+    def _build_layout(self) -> None:
+        """Lay the two forms out one above the other, each over its own list."""
+
+        column = QVBoxLayout(self)
+        column.setSpacing(BOOKMARK_SECTION_SPACING)
+
+        times = QGridLayout()
+        times.addWidget(styled_label(TIME_BOOKMARK_HEADING, color=INK, bold=True), 0, 0, 1, 3)
+        times.addWidget(styled_label(INSTANT_FIELD_LABEL, color=MUTED), 1, 0)
+        times.addWidget(self.instant_spin, 1, 1)
+        times.addWidget(self.instant_preview, 1, 2)
+        times.addWidget(styled_label(MARK_NAME_FIELD_LABEL, color=MUTED), 2, 0)
+        times.addWidget(self.time_label_edit, 2, 1, 1, 2)
+        times.addWidget(self.add_time_button, 3, 1)
+        times.addWidget(self.time_list, 4, 0, 1, 3)
+        times.addWidget(self.remove_time_button, 5, 1)
+        column.addLayout(times)
+
+        targets = QGridLayout()
+        targets.addWidget(styled_label(MAC_TARGET_HEADING, color=INK, bold=True), 0, 0, 1, 3)
+        targets.addWidget(styled_label(COMPARTMENT_FIELD_LABEL, color=MUTED), 1, 0)
+        targets.addWidget(self.compartment_combo, 1, 1, 1, 2)
+        targets.addWidget(styled_label(HEIGHT_FIELD_LABEL, color=MUTED), 2, 0)
+        targets.addWidget(self.height_spin, 2, 1)
+        targets.addWidget(styled_label(MARK_NAME_FIELD_LABEL, color=MUTED), 3, 0)
+        targets.addWidget(self.target_label_edit, 3, 1, 1, 2)
+        targets.addWidget(self.add_target_button, 4, 1)
+        targets.addWidget(self.target_list, 5, 0, 1, 3)
+        targets.addWidget(self.remove_target_button, 6, 1)
+        column.addLayout(targets)
+
+        column.addWidget(self.notice)
+        actions = QHBoxLayout()
+        actions.addStretch(1)
+        actions.addWidget(self.close_button)
+        column.addLayout(actions)
+
+    def _refresh_instant_preview(self, seconds: float) -> None:
+        """Restate the entered instant in the form the clock and the axis use."""
+
+        self.instant_preview.setText(format_elapsed(seconds))
+
+    def set_reachable_height(self, maximum_mac: float) -> None:
+        """Bound the height control at what the running agent can actually reach.
+
+        Args:
+            maximum_mac: The agent's maximum delivered concentration as a
+                multiple of its own 1 MAC. The floor is one count of the
+                displayed resolution, because a target at zero is one every
+                run stands on before it begins.
+        """
+
+        self.height_spin.setRange(MAC_DISPLAY_RESOLUTION_MAC, maximum_mac)
+
+    def set_panel(self, panel: BookmarkPanel) -> None:
+        """Redraw both lists from one tick's answer, keeping each selection.
+
+        The rows are the same strings the panel beside the chart draws, from
+        the same `dashboard_frame` call, so a reader moving between the two
+        is reading one listing in two places rather than two listings.
+
+        Args:
+            panel: `dashboard_frame.bookmark_panel`'s result this tick.
+        """
+
+        _refill(self.time_list, panel.times.rows)
+        _refill(self.target_list, panel.targets.rows)
+
+    def selected_time_index(self) -> int:
+        """Which marked instant is selected, or -1 for none."""
+
+        return self.time_list.currentRow()
+
+    def selected_target_index(self) -> int:
+        """Which marked height is selected, or -1 for none."""
+
+        return self.target_list.currentRow()
+
+    def entered_time_bookmark(self) -> TimeBookmark:
+        """The time bookmark the form currently describes.
+
+        Raises:
+            SimulationConfigurationError: If the entered instant or name is
+                one `TimeBookmark` refuses.
+        """
+
+        return TimeBookmark(self.instant_spin.value(), _entered_label(self.time_label_edit))
+
+    def entered_mac_target(self) -> MacTarget:
+        """The MAC target the form currently describes.
+
+        Raises:
+            SimulationConfigurationError: If the entered height or name is one
+                `MacTarget` refuses.
+        """
+
+        return MacTarget(
+            RecordedQuantity(self.compartment_combo.currentData()),
+            MacMultiple(self.height_spin.value()),
+            _entered_label(self.target_label_edit),
+        )
+
+    def clear_entry(self) -> None:
+        """Empty the two name fields, for a mark that has just been added.
+
+        The instant, compartment and height are left where they are: adding
+        a second mark near the first is the common case, and a control that
+        reset itself would make the second entry the longer one.
+        A name is cleared because reusing one would name two marks alike.
+        """
+
+        self.time_label_edit.clear()
+        self.target_label_edit.clear()
+
+
+def _entered_label(field: QLineEdit) -> str | None:
+    """What a name field says, or `None` where the reader left it empty.
+
+    An empty field means "list it under its own value" rather than "name it
+    nothing", which is the distinction `bookmarks.TimeBookmark` refuses a
+    blank string in order to keep.
+    """
+
+    entered = field.text().strip()
+
+    return entered or None
+
+
+def _refill(widget: QListWidget, rows: Sequence[str]) -> None:
+    """Rewrite `widget`'s rows, leaving the selected position where it was.
+
+    Qt clears the current row when the model empties, so the index is read
+    back afterwards rather than trusted across the rewrite. A selection that
+    no longer exists - the row a reader has just removed - lands on nothing,
+    which is what a reader expects of a list they have just shortened.
+    """
+
+    selected = widget.currentRow()
+
+    with QSignalBlocker(widget):
+        widget.clear()
+        widget.addItems(list(rows))
+
+        if 0 <= selected < widget.count():
+            widget.setCurrentRow(selected)
+
+
+def _outlined_button_stylesheet() -> str:
+    """The secondary action: INK on PANEL inside an INK border.
+
+    The same pair `NewCaseDialog`'s discard button draws, which
+    `tools/contrast_check.py` already measures, so these buttons declare no
+    colour of their own.
+    """
+
+    return (
+        f"QPushButton {{ color: {INK}; background-color: {PANEL}; "
+        f"border: 1px solid {INK}; border-radius: {PANEL_RADIUS}px; padding: 6px 12px; }}"
+    )
+
+
+def _filled_button_stylesheet() -> str:
+    """The primary action: PANEL on PRIMARY, as `NewCaseDialog`'s keep button draws."""
+
+    return (
+        f"QPushButton {{ color: {PANEL}; background-color: {PRIMARY}; "
+        f"border: 1px solid {PRIMARY}; border-radius: {PANEL_RADIUS}px; padding: 6px 12px; }}"
+    )
 
 
 def inert_splitter(orientation: Qt.Orientation, widgets: Sequence[QWidget]) -> QSplitter:

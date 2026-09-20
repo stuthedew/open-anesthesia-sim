@@ -80,6 +80,7 @@ __all__ = [
     "mac_awake_band_percent",
     "mac_axis_ticks",
     "mac_multiple",
+    "render_mac_multiple",
 ]
 
 # Displayed resolution for every modeled concentration and relative partial
@@ -357,7 +358,28 @@ def format_mac_multiple(partial_pressure_fraction: Fraction, mac_percent: Percen
         ValueError: If `mac_percent` is not strictly positive.
     """
 
-    multiple = mac_multiple(partial_pressure_fraction, mac_percent)
+    return render_mac_multiple(mac_multiple(partial_pressure_fraction, mac_percent))
+
+
+def render_mac_multiple(multiple: MacMultiple) -> str:
+    """Render a MAC multiple that is already one, with its unit.
+
+    The rendering half of `format_mac_multiple`, split out for the values that
+    arrive as a multiple rather than as a fraction and a divisor — a
+    `bookmarks.MacTarget`'s height is the one that does. One function rather
+    than two spellings of the same three rules, because a target listed at
+    `0.8 ×MAC` beside a readout showing `0.80 ×MAC` would read as two
+    quantities where there is one, and the reader would have to work out
+    whether the target had been met.
+
+    Args:
+        multiple: The value, as a multiple of the running agent's 1 MAC.
+
+    Returns:
+        The multiple at the displayed resolution with its unit, or the
+        below-resolution form for a positive value that rounds to zero.
+    """
+
     rendered = f"{multiple:.{MAC_DISPLAY_DECIMALS}f}"
 
     if multiple > 0.0 and float(rendered) == 0.0:

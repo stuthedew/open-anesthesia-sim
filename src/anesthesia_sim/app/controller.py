@@ -15,6 +15,7 @@ reader of either is not reading the boundary as well.
 from dataclasses import dataclass, replace
 from math import isfinite
 
+from anesthesia_sim.app.bookmarks import BookmarkSet, MacTarget, TimeBookmark
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
 from anesthesia_sim.app.run_series import DrawnWindow
 from anesthesia_sim.core.concentration import Fraction, Percent
@@ -115,6 +116,20 @@ class SimulationSnapshot:
     Empty for a run nobody has touched, and cleared with the rest of the
     run by `reset()` and by a change of agent. A setting the core refused
     is absent: it never took effect, so it is not part of the run.
+    """
+    bookmarks: BookmarkSet
+    """The instants and the heights this run is marked at, in two collections.
+
+    The opposite kind of thing to `control_timeline` above, and travelling
+    beside it so the difference is visible: the timeline is a record of what
+    was done to the run, and this is the set of questions still being asked of
+    it. Nothing here has happened yet, and nothing here changes a run.
+
+    It survives what the timeline does not — `reset()` and `set_agent` both
+    keep it, for the reason they keep the settings — and a branch opens
+    carrying its trunk's copy. `app/bookmarks.py` holds the argument for each,
+    and whether a run has *reached* a mark is `PL-CTD7` rather than anything
+    this snapshot answers.
     """
     supported_limit_reason: str | None
     """Why the run stopped at a declared limit of the model's domain, or
@@ -237,6 +252,14 @@ class SimulationController:
         self._is_running = False
         self._failure_reason: str | None = None
         self._supported_limit_reason: str | None = None
+        # Set here and not in `_build_state`, which is deliberate rather than
+        # incidental: `_build_state` is also what `set_agent` comes back
+        # through, and a mark is the learner's question rather than the run's
+        # product, so it outlives the run the way a setting does. A MAC target
+        # is held as a multiple of whichever agent is running, so it means the
+        # same thing after the change as before it - which is the comparison a
+        # learner changing agent is making.
+        self._bookmarks = BookmarkSet()
         self._build_state(
             agent_id=agent_id,
             circuit_volume_l=circuit_volume_l,
@@ -395,6 +418,14 @@ class SimulationController:
         a third of a MAC of desflurane). Circuit, flow, ventilation, and
         cardiac output settings are preserved.
 
+        The bookmarks are preserved with them, and a MAC target is the reason
+        that is safe: it is held as a multiple of whichever agent is running,
+        so 0.8 ×MAC stays 0.8 ×MAC of the new agent rather than becoming the
+        old agent's absolute concentration under a new divisor. Reaching the
+        same multiple at a different time is what a learner changing agent is
+        there to see, so a target that survived the change is the comparison
+        rather than a leftover.
+
         Mid-run agent switching with residual washout accounting is a
         distinct, harder feature (see ROADMAP.md's anesthesia-machine
         milestone); this always begins a new run rather than attempting it.
@@ -484,9 +515,60 @@ class SimulationController:
             agent_accounting_absolute_error_l=accounting.absolute_error_l,
             agent_accounting_passes_validation=accounting.passes_validation,
             control_timeline=self._control_timeline,
+            bookmarks=self._bookmarks,
             supported_limit_reason=self._supported_limit_reason,
             failure_reason=self._failure_reason,
         )
+
+    # ------------------------------------------------------------- bookmarks
+    #
+    # Four methods and no `marks` setter, so the collections can only be
+    # reached through the operations `BookmarkSet` validates. A setter would
+    # let a caller hand over a set built anywhere, and the invariant that
+    # matters - one instant is marked once, one crossing is marked once -
+    # would then be enforced in whichever caller happened to remember it.
+    #
+    # Each refusal comes out of `app/bookmarks.py` unchanged rather than being
+    # re-worded here: the message names the value that failed, and a second
+    # sentence wrapped around it would put two accounts of one refusal on
+    # screen.
+
+    def add_time_bookmark(self, bookmark: TimeBookmark) -> None:
+        """Mark an instant of the case.
+
+        Raises:
+            SimulationConfigurationError: If the instant is already marked.
+        """
+
+        self._bookmarks = self._bookmarks.with_time_bookmark(bookmark)
+
+    def remove_time_bookmark(self, bookmark: TimeBookmark) -> None:
+        """Unmark the instant `bookmark` stands at.
+
+        Raises:
+            SimulationConfigurationError: If no bookmark stands there.
+        """
+
+        self._bookmarks = self._bookmarks.without_time_bookmark(bookmark)
+
+    def add_mac_target(self, target: MacTarget) -> None:
+        """Mark a height on one compartment.
+
+        Raises:
+            SimulationConfigurationError: If that compartment, height and
+                direction is already marked.
+        """
+
+        self._bookmarks = self._bookmarks.with_mac_target(target)
+
+    def remove_mac_target(self, target: MacTarget) -> None:
+        """Unmark the crossing `target` names.
+
+        Raises:
+            SimulationConfigurationError: If no target names it.
+        """
+
+        self._bookmarks = self._bookmarks.without_mac_target(target)
 
     @property
     def run_segments(self) -> tuple[RunSegment, ...]:
@@ -593,7 +675,7 @@ class SimulationController:
         Returns:
             A paused `SimulationController` standing at that state, carrying
             this run's agent, patient and circuit, with an empty control
-            timeline of its own.
+            timeline of its own and a copy of this run's bookmarks.
 
         Raises:
             SimulationConfigurationError: `elapsed_s` is not finite or is not
@@ -637,6 +719,23 @@ class SimulationController:
                 "its parent never did; the recorded timeline does not reproduce its own "
                 "segments"
             )
+
+        # The branch inherits the marks and not the timeline, and the two go
+        # opposite ways for the same reason. The timeline is this run's record
+        # - what was done to *it* - so reproducing it on a branch would claim
+        # acts the learner never made on the branch. A mark is a question about
+        # what is still to come, and a comparison is two managements answering
+        # one question: made the learner re-enter them, a typed 0.85 against a
+        # 0.8 would leave two branches nominally compared at one height and
+        # actually compared at two, with nothing on screen saying so.
+        #
+        # A mark lying before the fork comes across with the rest. It is
+        # unreachable going forward and is not dropped, because dropping it
+        # would make the trunk's list and the branch's disagree about what the
+        # case is marked at, which is a worse thing for a comparison to have to
+        # explain. Saying so where such a mark is listed is `PL-CTD7`'s, with
+        # the rest of the reached / not-reached outcome set.
+        branch._bookmarks = self._bookmarks
 
         branch._open_at(resume_point)
 
@@ -891,7 +990,10 @@ class SimulationController:
     def reset(self) -> None:
         """Stop the run, clear any failure or limit, and clear dynamic state.
 
-        Settings are preserved. This is the only way out of a failed
+        Settings are preserved, and so are the bookmarks, which are the
+        learner's questions rather than the run's product: a reset is for
+        taking the same case again, and it is the same case they were asking
+        about. This is the only way out of a failed
         session, and out of one standing at the supported run length: every
         compartment goes back to its initial state and the step count goes
         back to zero, so nothing carries over from the run that could not

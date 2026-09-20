@@ -429,6 +429,28 @@ COMPARED_RUN_WIDTH_STEP = 2
 # on a hue at all.
 BRANCH_POINT_STROKE_WIDTH = 1.5
 
+# The bookmark editor. Wider than the new-case dialog because it carries two
+# forms and two lists rather than three sentences, and each target row states
+# a compartment, a height, a direction and a name.
+BOOKMARK_DIALOG_WIDTH = 480
+
+# Between a collection's heading and its rows: the tighter of the two, so the
+# heading reads as belonging to the rows under it rather than floating between
+# the two collections.
+BOOKMARK_ROW_SPACING = 4
+
+# Between the two collections, and between a form and the list under it. Wider
+# than the row spacing above, which is what makes the two collections read as
+# two rather than as one long list with words in it.
+BOOKMARK_SECTION_SPACING = 12
+
+# How tall each of the editor's two lists may grow: about six rows, after
+# which it scrolls. A bound rather than a stretch, because a list widget given
+# free rein takes the whole dialog and leaves the form it belongs to floating
+# above a field of white - and the lists are a confirmation of what was just
+# added, while the form is what the reader came to use.
+BOOKMARK_LIST_MAX_HEIGHT = 120
+
 # Wide enough for the discard warning to fall in two or three lines rather
 # than a column of fragments; the dialog is text and has no chart to size to.
 NEW_CASE_DIALOG_WIDTH = 420

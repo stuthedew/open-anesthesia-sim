@@ -26,11 +26,13 @@ from typing import Any
 
 import pytest
 
+from anesthesia_sim.app.bookmarks import BookmarkSet, MacTarget, TimeBookmark
 from anesthesia_sim.app.chart_frame import (
     MAX_CHART_CONTROL_MARKS,
     ChartFrame,
     RunInput,
     assemble_chart_frame,
+    trace_style,
 )
 from anesthesia_sim.app.chart_time_base import ChartTimeBase, time_base_for_span
 from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange, ControlInput
@@ -43,6 +45,7 @@ from anesthesia_sim.app.dashboard_frame import (
     EMPTY_METRIC_QUALIFIER,
     EMPTY_METRIC_SECONDARY_VALUE,
     INTERPRETATION_DISCLAIMER_TEXT,
+    MAC_TARGET_HEADING,
     MAX_DISPLAYED_RUNS,
     MAX_LISTED_ADJUSTMENTS,
     NEW_CASE_CARRYOVER_TEMPLATE,
@@ -54,6 +57,7 @@ from anesthesia_sim.app.dashboard_frame import (
     RENDER_INTERVAL_S,
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
+    TIME_BOOKMARK_HEADING,
     USE_DISCLAIMER_TEXT,
     WIDEST_COMPARTMENT_SECONDARY,
     WIDEST_COMPARTMENT_VALUE,
@@ -62,7 +66,9 @@ from anesthesia_sim.app.dashboard_frame import (
     Emphasis,
     HaltDisposition,
     accounting,
+    bookmark_panel,
     delivered_fraction,
+    format_mac_target,
     halt_disposition,
     mac_awake_caption,
     mac_reference_caption,
@@ -100,6 +106,7 @@ from anesthesia_sim.app.formatting import (
     format_playback_rate,
     format_time_base,
     format_wash_in_ratio,
+    render_mac_multiple,
 )
 from anesthesia_sim.app.playback import (
     DEFAULT_PLAYBACK_RATE,
@@ -112,7 +119,7 @@ from anesthesia_sim.app.run_series import (
     DrawnWindow,
     RecordedQuantity,
 )
-from anesthesia_sim.core.concentration import Fraction, Percent
+from anesthesia_sim.core.concentration import Fraction, MacMultiple, Percent
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -202,6 +209,7 @@ def _snapshot(
     agent_mac_percent: float | None = None,
     agent_mac_awake: MacAwakeReference | None = None,
     control_timeline: tuple[ControlChange, ...] = (),
+    bookmarks: BookmarkSet | None = None,
     failure_reason: str | None = None,
     supported_limit_reason: str | None = None,
     delivered_agent_l: float = 0.012345,
@@ -257,6 +265,7 @@ def _snapshot(
         agent_accounting_absolute_error_l=1.5e-13,
         agent_accounting_passes_validation=passes_validation,
         control_timeline=control_timeline,
+        bookmarks=BookmarkSet() if bookmarks is None else bookmarks,
         supported_limit_reason=supported_limit_reason,
         failure_reason=failure_reason,
     )
@@ -1665,3 +1674,121 @@ def test_the_educational_disclaimer_says_what_the_tool_is_not() -> None:
         "Educational simulation only. This idealized model is not a clinical prediction, "
         "monitoring, or dosing tool."
     )
+
+
+# ----------------------------------------------------------- bookmark panel
+#
+# What the two listings claim, and the one thing they must not claim: that a
+# mark has been *reached*. Detection is `PL-CTD7` and is not built, so a row
+# implying a crossing would put an unbuilt guarantee on screen (`PL-LPLD`).
+
+
+def _marks() -> BookmarkSet:
+    """One mark of each kind, both named."""
+
+    return (
+        BookmarkSet()
+        .with_time_bookmark(TimeBookmark(600.0, "intubation"))
+        .with_mac_target(MacTarget(RecordedQuantity.VESSEL_RICH, MacMultiple(0.8), "wash-in"))
+    )
+
+
+def test_an_unmarked_run_lists_each_collection_as_empty_in_its_own_words() -> None:
+    panel = bookmark_panel(BookmarkSet())
+
+    assert panel.times.rows == ()
+    assert panel.targets.rows == ()
+    assert panel.times.empty_text != panel.targets.empty_text
+
+
+def test_the_two_collections_carry_their_own_headings() -> None:
+    panel = bookmark_panel(BookmarkSet())
+
+    assert panel.times.heading == TIME_BOOKMARK_HEADING
+    assert panel.targets.heading == MAC_TARGET_HEADING
+
+
+def test_a_marked_instant_is_listed_at_the_clock_the_run_states() -> None:
+    panel = bookmark_panel(_marks())
+
+    assert panel.times.rows == (f"{format_elapsed(600.0)} – intubation",)
+
+
+def test_an_unnamed_instant_is_listed_under_its_own_time() -> None:
+    panel = bookmark_panel(BookmarkSet().with_time_bookmark(TimeBookmark(600.0)))
+
+    assert panel.times.rows == (format_elapsed(600.0),)
+
+
+def test_a_target_names_its_compartment_and_its_height() -> None:
+    row = bookmark_panel(_marks()).targets.rows[0]
+
+    assert row.startswith("Vessel-rich 0.80 ×MAC")
+
+
+def test_a_target_is_named_by_the_table_that_names_its_trace() -> None:
+    # One table rather than a second list of compartment words, so a row and
+    # the curve it is read against cannot come to disagree.
+    for quantity in COMPARTMENT_QUANTITIES:
+        target = MacTarget(quantity, MacMultiple(0.8))
+
+        assert format_mac_target(target).startswith(trace_style(quantity).label)
+
+
+def test_a_target_is_rendered_by_the_renderer_the_readouts_use() -> None:
+    # A target listed at `0.8 x MAC` beside a readout showing `0.80 x MAC`
+    # would read as two quantities where there is one, so both go through
+    # `render_mac_multiple` rather than through two spellings of one rule.
+    height = MacMultiple(0.8)
+    target = MacTarget(RecordedQuantity.ALVEOLAR, height)
+
+    assert render_mac_multiple(height) == "0.80 ×MAC"
+    assert render_mac_multiple(height) in format_mac_target(target)
+
+
+def test_a_target_row_is_the_compartment_then_the_height() -> None:
+    target = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
+
+    assert format_mac_target(target) == "Fat 0.50 \u00d7MAC"
+
+
+def test_two_heights_on_one_compartment_are_told_apart_on_the_row() -> None:
+    lower = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
+    higher = MacTarget(RecordedQuantity.FAT, MacMultiple(0.8))
+
+    assert format_mac_target(lower) != format_mac_target(higher)
+
+
+def test_marks_are_listed_oldest_first() -> None:
+    # The opposite of the control-change list, deliberately: that is a record
+    # a reader chases the newest entry of, and this is a standing set they add
+    # to and scan, so a row that moves is one they have to find again.
+    marks = (
+        BookmarkSet()
+        .with_time_bookmark(TimeBookmark(120.0, "first"))
+        .with_time_bookmark(TimeBookmark(600.0, "second"))
+    )
+
+    rows = bookmark_panel(marks).times.rows
+
+    assert rows[0].endswith("first")
+    assert rows[1].endswith("second")
+
+
+def test_the_panel_says_nothing_about_whether_a_mark_has_been_reached() -> None:
+    # Detection is `PL-CTD7` and is not built. A row wording a crossing would
+    # put an unbuilt guarantee on screen.
+    panel = bookmark_panel(_marks())
+    everything = " ".join((*panel.times.rows, *panel.targets.rows)).lower()
+
+    for claim in ("reached", "crossed", "not reached", "halted", "stopped"):
+        assert claim not in everything
+
+
+def test_the_panel_reads_the_marks_the_snapshot_carries() -> None:
+    controller = SimulationController()
+    controller.add_time_bookmark(TimeBookmark(600.0, "intubation"))
+
+    panel = bookmark_panel(controller.snapshot().bookmarks)
+
+    assert panel.times.rows == (f"{format_elapsed(600.0)} – intubation",)

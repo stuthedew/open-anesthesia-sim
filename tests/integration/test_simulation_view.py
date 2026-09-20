@@ -63,8 +63,11 @@ from anesthesia_sim.app.dashboard_frame import (
     MAX_DISPLAYED_RUNS,
     NEW_CASE_CARRYOVER_TEMPLATE,
     NEW_CASE_IS_NOT_A_VIEW_TEXT,
+    NO_MAC_TARGETS_TEXT,
+    NO_TIME_BOOKMARKS_TEXT,
     NO_TRACES_SHOWN_TEXT,
     READOUT_PANELS,
+    REMOVE_NOTHING_SELECTED_TEXT,
     RUNNING_AGENT_LOCK_TEXT,
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
@@ -84,6 +87,7 @@ from anesthesia_sim.app.formatting import (
     format_playback_rate,
     format_time_base,
     format_wash_in_ratio,
+    mac_multiple,
 )
 from anesthesia_sim.app.playback import (
     DEFAULT_PLAYBACK_RATE,
@@ -91,7 +95,7 @@ from anesthesia_sim.app.playback import (
     PlaybackRate,
     playback_rate_for,
 )
-from anesthesia_sim.app.qt_widgets import ParameterSlider
+from anesthesia_sim.app.qt_widgets import BookmarkDialog, ParameterSlider
 from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuantity
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.simulation_view import SimulationView
@@ -106,7 +110,7 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.wash_in import read_wash_in
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
-from anesthesia_sim.core.concentration import Fraction
+from anesthesia_sim.core.concentration import Fraction, fraction_from_percent
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -2947,3 +2951,230 @@ def test_the_dashboard_carries_the_educational_disclaimer(application: QApplicat
     view = _shown_view(application, SimulationController())
 
     assert USE_DISCLAIMER_TEXT in view.interface_strings()
+
+
+# --------------------------------------------------------------- bookmarks
+#
+# The editing path end to end: a form filled in, a mark reaching both runs,
+# and the listing a reader sees. `tests/unit/test_bookmarks.py` holds what a
+# mark refuses and `tests/unit/test_dashboard_frame.py` what a row says; what
+# is here is that the dialog is wired to every run rather than to one
+# (`PL-LPLD`).
+
+
+def _opened_bookmark_dialog(view: SimulationView) -> BookmarkDialog:
+    """The editor, opened the way the button opens it."""
+
+    view._bookmarks_panel.edit_button.click()
+    dialog = view._bookmark_dialog
+
+    assert dialog is not None
+
+    return dialog
+
+
+def test_a_dashboard_opens_with_both_collections_listed_as_empty(application: QApplication) -> None:
+    view = _shown_view(application, SimulationController())
+
+    assert view._bookmarks_panel.times.rows_label.text() == NO_TIME_BOOKMARKS_TEXT
+    assert view._bookmarks_panel.targets.rows_label.text() == NO_MAC_TARGETS_TEXT
+
+
+def test_an_instant_entered_in_the_dialog_is_listed_beside_the_chart(
+    application: QApplication,
+) -> None:
+    view = _shown_view(application, SimulationController())
+    dialog = _opened_bookmark_dialog(view)
+    dialog.instant_spin.setValue(600.0)
+    dialog.time_label_edit.setText("intubation")
+    dialog.add_time_button.click()
+
+    assert "intubation" in view._bookmarks_panel.times.rows_label.text()
+    assert dialog.time_list.count() == 1
+
+
+def test_the_entered_instant_is_restated_in_the_form_the_clock_uses(
+    application: QApplication,
+) -> None:
+    # The spin box states one unit and the clock states three, so the dialog
+    # carries the conversion rather than leaving it to the reader.
+    view = _shown_view(application, SimulationController())
+    dialog = _opened_bookmark_dialog(view)
+    dialog.instant_spin.setValue(600.0)
+
+    assert dialog.instant_preview.text() == format_elapsed(600.0)
+
+
+def test_a_target_entered_in_the_dialog_names_its_compartment_and_height(
+    application: QApplication,
+) -> None:
+    view = _shown_view(application, SimulationController())
+    dialog = _opened_bookmark_dialog(view)
+    dialog.compartment_combo.setCurrentIndex(
+        dialog.compartment_combo.findData(RecordedQuantity.VESSEL_RICH.value)
+    )
+    dialog.height_spin.setValue(0.8)
+    dialog.add_target_button.click()
+
+    listed = view._bookmarks_panel.targets.rows_label.text()
+
+    assert listed == "Vessel-rich 0.80 ×MAC"
+
+
+def test_the_compartment_picker_offers_the_six_drawn_compartments_and_no_ratio(
+    application: QApplication,
+) -> None:
+    # `WASH_IN_RATIO` is a quotient rather than a concentration, so a multiple
+    # of MAC of it is not a quantity the model holds.
+    view = _shown_view(application, SimulationController())
+    dialog = _opened_bookmark_dialog(view)
+    offered = [
+        dialog.compartment_combo.itemData(row) for row in range(dialog.compartment_combo.count())
+    ]
+
+    assert offered == [quantity.value for quantity in COMPARTMENT_QUANTITIES]
+    assert RecordedQuantity.WASH_IN_RATIO.value not in offered
+
+
+def test_the_height_control_stops_at_what_the_running_agent_can_reach(
+    application: QApplication,
+) -> None:
+    # No compartment exceeds the delivered concentration and the vaporizer
+    # bounds that, so a target above it is one no run of this agent could
+    # cross. Refused in the control rather than reported afterwards.
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    dialog = _opened_bookmark_dialog(view)
+    snapshot = controller.snapshot()
+    reachable = mac_multiple(
+        fraction_from_percent(snapshot.max_delivered_concentration_percent),
+        snapshot.agent_mac_percent,
+    )
+
+    assert dialog.height_spin.maximum() == pytest.approx(reachable)
+
+    dialog.height_spin.setValue(reachable * 2.0)
+
+    assert dialog.height_spin.value() == pytest.approx(reachable)
+
+
+def test_a_mark_added_from_the_dashboard_reaches_every_displayed_run(
+    application: QApplication,
+) -> None:
+    # The marks are the case's. Two runs compared at two different heights,
+    # because a learner typed one of them twice, is what writing to every run
+    # makes unreachable.
+    first = SimulationController()
+    second = SimulationController()
+    view = _shown_view(application, first, second)
+    dialog = _opened_bookmark_dialog(view)
+    dialog.instant_spin.setValue(600.0)
+    dialog.add_time_button.click()
+
+    assert first.snapshot().bookmarks == second.snapshot().bookmarks
+    assert len(first.snapshot().bookmarks.time_bookmarks) == 1
+
+
+def test_every_displayed_run_carries_the_same_marks_after_an_add_and_a_removal(
+    application: QApplication,
+) -> None:
+    first = SimulationController()
+    second = SimulationController()
+    view = _shown_view(application, first, second)
+    dialog = _opened_bookmark_dialog(view)
+
+    for instant_s in (120.0, 600.0):
+        dialog.instant_spin.setValue(instant_s)
+        dialog.add_time_button.click()
+
+    dialog.time_list.setCurrentRow(0)
+    dialog.remove_time_button.click()
+
+    assert first.snapshot().bookmarks == second.snapshot().bookmarks
+    assert [mark.instant_s for mark in first.snapshot().bookmarks.time_bookmarks] == [600.0]
+
+
+def test_removing_with_nothing_selected_says_so_and_removes_nothing(
+    application: QApplication,
+) -> None:
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    dialog = _opened_bookmark_dialog(view)
+    dialog.instant_spin.setValue(600.0)
+    dialog.add_time_button.click()
+    dialog.time_list.setCurrentRow(-1)
+    dialog.remove_time_button.click()
+
+    assert dialog.notice.notice() == REMOVE_NOTHING_SELECTED_TEXT
+    assert len(controller.snapshot().bookmarks.time_bookmarks) == 1
+
+
+def test_marking_one_instant_twice_is_refused_and_says_why(application: QApplication) -> None:
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    dialog = _opened_bookmark_dialog(view)
+    dialog.instant_spin.setValue(600.0)
+    dialog.add_time_button.click()
+    dialog.add_time_button.click()
+
+    notice = dialog.notice.notice()
+
+    assert notice is not None
+    assert "marked once" in notice
+    assert len(controller.snapshot().bookmarks.time_bookmarks) == 1
+
+
+def test_a_refusal_leaves_every_run_carrying_the_same_marks(application: QApplication) -> None:
+    # The refusal fires on the second run rather than the first only if the
+    # two have drifted; this asserts they have not, which is the invariant
+    # the write-to-every-run path exists for.
+    first = SimulationController()
+    second = SimulationController()
+    view = _shown_view(application, first, second)
+    dialog = _opened_bookmark_dialog(view)
+    dialog.instant_spin.setValue(600.0)
+    dialog.add_time_button.click()
+    dialog.add_time_button.click()
+
+    assert first.snapshot().bookmarks == second.snapshot().bookmarks
+
+
+def test_a_name_field_is_cleared_after_a_mark_is_added_and_the_value_is_not(
+    application: QApplication,
+) -> None:
+    # Adding a second mark near the first is the common case, so the instant
+    # stays; a reused name would name two marks alike, so the name goes.
+    view = _shown_view(application, SimulationController())
+    dialog = _opened_bookmark_dialog(view)
+    dialog.instant_spin.setValue(600.0)
+    dialog.time_label_edit.setText("intubation")
+    dialog.add_time_button.click()
+
+    assert dialog.time_label_edit.text() == ""
+    assert dialog.instant_spin.value() == 600.0
+
+
+def test_the_dialog_and_the_panel_list_one_set_of_rows(application: QApplication) -> None:
+    # Both read `dashboard_frame.bookmark_panel`, so a reader moving between
+    # them is reading one listing in two places.
+    view = _shown_view(application, SimulationController())
+    dialog = _opened_bookmark_dialog(view)
+    dialog.instant_spin.setValue(600.0)
+    dialog.time_label_edit.setText("intubation")
+    dialog.add_time_button.click()
+
+    listed = [dialog.time_list.item(row).text() for row in range(dialog.time_list.count())]
+
+    assert view._bookmarks_panel.times.rows_label.text() == "\n".join(listed)
+
+
+def test_the_bookmark_panel_sits_outside_the_region_between_the_two_plots(
+    application: QApplication,
+) -> None:
+    # `PL-F9TQ` governs what may stand between a chart heading and its plot.
+    # The marks are the case's rather than either plot's, so they are a
+    # section of their own below both.
+    view = _shown_view(application, SimulationController())
+    children = view._chart_column.findChildren(QWidget)
+
+    assert children.index(view._bookmarks_panel) > children.index(view._wash_in_chart)

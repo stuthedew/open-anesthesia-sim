@@ -3,12 +3,13 @@ id: PL-LPLD
 title: Add time bookmarks and MAC targets as two separately listed collections
 priority: P2
 effort: M
-status: ready
+status: done
 classes: feature, ux
 feature: scenario-branching
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, tests/unit
+touches: src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/formatting.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/theme.py, tests/unit, tests/integration, docs/ARCHITECTURE.md
 blocked-by: PL-25KS
 added: 2026-09-06
+closed: 2026-09-20
 payoff: lets a learner run fast to the moment they care about and return to it by name, instead of watching the clock and overshooting by minutes of simulated time at 300x
 verify: grep -rq 'class TimeBookmark' src/anesthesia_sim/ && grep -rq 'class MacTarget' src/anesthesia_sim/
 ---
@@ -66,3 +67,71 @@ tests/unit && grep -rq 'class TimeBookmark' src/anesthesia_sim/` — where the
 already prove and made the exit unreadable. Replaced with the two clauses that
 actually discriminate, one per collection, both confirmed exiting 1 on this tree
 before being written down.
+
+## Built 2026-09-20, and the one place this reads the brief against its letter
+
+**Crossing direction is on `MacTarget` and not on `TimeBookmark`.** The
+`Done when` above says "each carries its crossing direction where it is
+shown", which read across both kinds would put a rising/falling/either control
+on a time bookmark. Simulated time only advances - `advance()` moves it
+forward, nothing moves it back within a run, and `reset()` returns a run to its
+own beginning rather than running it backwards - so an instant has exactly one
+crossing, and a direction beside it is a control offering a choice that does
+not exist. The brief's own reason for the field names a threshold and not an
+instant: "the same threshold means opposite things during wash-in and
+washout". So the field is on the kind that reason reaches.
+
+**A target is held as a `MacMultiple`, where the scope floor says "a percent of
+MAC".** Same quantity, in the unit every compartment on this interface is
+already read in, so a target is compared against a readout with no conversion
+at all; `core/concentration.py` records what a second form of one
+concentration has cost this project. `PL-CTD7`'s own brief already writes the
+example as "0.8 MAC".
+
+**`WASH_IN_RATIO` may not carry a target.** It is a quotient of two
+compartments rather than a concentration, so a multiple of MAC of it is not a
+quantity the model holds - and it is the one member of `RecordedQuantity` a
+compartment picker could otherwise offer.
+
+**Three points where a run starts over were decisions rather than
+consequences**, and each has a test naming which way it went: `reset()` keeps
+the marks, `set_agent()` keeps them although it destroys the run, and a branch
+inherits its trunk's. The last is the opposite of the control timeline and
+settles by the same test - a timeline is the record of what was done to a run,
+a mark is a question about what is still to come, and a comparison is two
+managements answering one question.
+
+**The panel is the dashboard's rather than a run's.** `SimulationView` holds
+the only thing that writes a mark and writes it to every displayed run, so the
+copies the controllers hold stay equal by construction. Two runs compared at
+two different heights, because a learner typed one of them twice, is what that
+arrangement makes unreachable.
+
+**A target's height is bounded in the control by what the running agent can
+reach** - `max_delivered_concentration_percent / agent_mac_percent`, since no
+compartment exceeds the delivered concentration and the vaporizer bounds that.
+The bound is the dialog's rather than `MacTarget`'s because it is the agent's
+rather than the mark's.
+
+Detection is still `PL-CTD7` and is still not built: nothing here compares a
+mark against a state, and `test_the_panel_says_nothing_about_whether_a_mark_has_been_reached`
+is what keeps a drawn row from implying otherwise.
+
+## Crossing direction removed (project owner, 2026-09-20)
+
+"Don't need falling or rising for target". So **neither kind carries a
+crossing direction**, and the `Done when` clause above - "each carries its
+crossing direction where it is shown" - is withdrawn rather than met. The
+scope floor took the field from the reference simulator; it is not wanted.
+
+What it changes, beyond deleting a control: a height is now a height, so a run
+taken up and back down through 0.8 x MAC has reached what the learner marked
+**both times**, and `MacTarget.crossing_key` - what makes two targets the same
+question - is a compartment and a height alone. Whether a target re-arms after
+a halt, or fires once, is `PL-CTD7`'s and is noted in that item: removing the
+direction makes that question sharper rather than softer, because there is no
+longer a way for a learner to say "only on the way up".
+
+The section above this one argued the direction belonged on `MacTarget` and
+not on `TimeBookmark`. That argument is now moot in the cleanest direction and
+is left standing as the record of what was asked and answered.
