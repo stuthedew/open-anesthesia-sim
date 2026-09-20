@@ -188,6 +188,16 @@ check: sync
 # so an entry added without a thought for the cap is paid by every session
 # forever. Reads two files, so it costs milliseconds. `PL-NB35`.
 	python3 tools/dead_ends.py check
+# Beside the guards above and reading `git log` like the first of them, but
+# asking about the *base* rather than about this branch: whether the reasoning
+# behind what already merged is in this checkout at all. This repository's
+# squash commit message is the pull request body, and 187 of 683 squash
+# commits on `main` landed without one - 763,222 characters that survive only
+# on GitHub (`PL-843V`). Advisory, never a hard failure: a merge creates the
+# condition, so the branch running this is never the branch that caused it,
+# and the remedy needs the network while this line must stay green offline.
+# Reads `git log` and one directory listing, so it costs milliseconds.
+	python3 tools/pr_body_check.py
 	python3 tools/doc_check.py check
 # Under `uv run`, both of them, unlike the bare-`python3` lines above, and for
 # a reason about the *input* rather than about the tool. These two read `app/`
