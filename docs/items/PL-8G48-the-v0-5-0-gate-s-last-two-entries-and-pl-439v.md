@@ -62,9 +62,11 @@ off the item files rather than inferred:
   as a status one, and it is the decision `PL-ZF2G` and `PL-JFQ3` already
   settled - promoting an anticipated safety item is what returns it to the debt
   gate. Apply that precedent rather than re-deriving it.
-- **All three carry `feature: anesthesia-machine`**, which stands at 3/7 done.
-  They are three of its four open items, so this pass decides how much of that
-  feature is startable, not merely how three files read.
+- **All three carry `feature: anesthesia-machine`**, which stands at 3/8 done -
+  the same triage pass that wrote this note put `PL-KZ60` into that feature, so
+  it was 3/7 when the note was first drafted. They are three of its five open
+  items, so this pass decides how much of that feature is startable, not merely
+  how three files read.
 
 `PL-JFQ3` is the worked precedent for the pass itself: seven items, `P2`/`M`,
 `classes: planning, docs`, `touches: docs/items`, and non-delegable because no
