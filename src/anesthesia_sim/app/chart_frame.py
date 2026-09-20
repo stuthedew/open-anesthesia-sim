@@ -1151,22 +1151,26 @@ def _hover_context(run: RunFrame, time_s: float, run_count: int) -> str:
 
 
 def format_compared_trace_hover(
-    answering: Sequence[tuple[RunFrame, int]], quantity: RecordedQuantity
+    answering: Sequence[tuple[RunFrame, RecordedQuantity, int]], run_count: int
 ) -> str:
-    """What a hover says where more than one run is within reach of the pointer.
+    """What a hover says where more than one drawn point is within reach of the pointer.
 
-    `docs/MODEL.md` § "The chart's hover readout" -> "Where more than one run
-    answers" is the specification, and `PL-JVHL` is why there is one: the
+    `docs/MODEL.md` § "The chart's hover readout" -> "Where more than one
+    trace answers" is the specification, and `PL-JVHL` is why there is one: the
     three-line form settled which run a reader was shown by which drawn point
     was marginally nearer, so a 2 px hand movement swapped it silently. Every
     run inside the radius answers instead, and the box carries a value line
-    per run.
+    per run. `PL-0RZ0` extended that to the compartment, which the same axis
+    compression leaves contending just as often.
 
-    The form is the three-line one with its third line repeated: the modelled
-    marker and the agent, then the compartment, then one line per run. The
-    qualifiers still precede the numbers, which is the safety argument the
-    order carries, and each value line opens with the run it belongs to
-    rather than with a number.
+    **Two forms, and the first is exactly what it always was.** Where every
+    reading is of one compartment - which `PL-0RZ0` measured at 54.3-99.5% of
+    hovers - the form is the three-line one with its third line repeated: the
+    modelled marker and the agent, then the compartment, then one line per
+    run. Where the readings span compartments the heading cannot stand for
+    them all, so it goes and each value line opens with its own compartment,
+    then its run while more than one is drawn. The qualifiers still precede
+    the numbers in both, which is the safety argument the order carries.
 
     **The instant is stated per line rather than once for the box.** Two runs
     share the anchored grid but each adds its own control-event columns
@@ -1175,33 +1179,52 @@ def format_compared_trace_hover(
     12-hour one, both of which `format_elapsed` shows. A single instant above
     a column of values would assert a simultaneity the readings do not have,
     which `CLAUDE.md`'s safety-critical standard counts as a failure of the
-    value rather than of its presentation.
+    value rather than of its presentation. Two *compartments* of one run do
+    not share one either, though a run draws all six traces at one set of
+    times: each keeps its own nearest point, and nearest is measured in two
+    dimensions, so the pointer's height decides which column a trace answers
+    at where two are near-equidistant in time. Observed at t = 1200 s on the
+    branched case, where muscle answers at 19m56s and fat at 20m for the same
+    run and the same pointer.
 
     Args:
-        answering: Every run within reach, in `ChartFrame.runs` order, each
-            with which of its drawn points answers as a position in the run's
-            `times_s`. Ordered by the run rather than by distance, so that
-            nothing about the box moves with a hand movement too small to
-            aim with - which is the whole of `PL-JVHL`.
-        quantity: The compartment the traces draw.
+        answering: Every drawn point within reach, in the frame's own drawing
+            order - compartment by `ChartFrame.visible`, run by
+            `ChartFrame.runs` - each with the compartment its trace draws and
+            which of the run's drawn points answers, as a position in the
+            run's `times_s`. Ordered by the frame rather than by distance, so
+            that nothing about the box moves with a hand movement too small to
+            aim with - which is the whole of `PL-JVHL` and `PL-0RZ0`.
+        run_count: How many runs the chart draws. The value lines name the
+            run while more than one is, on `_hover_context`'s rule and for its
+            reason; it is the chart's count rather than the answering one,
+            because a run that is drawn but out of reach is still a run the
+            reader can see.
 
     Returns:
-        The readout, two lines plus one per run, joined by newlines.
+        The readout: the agent, then the compartment where one is shared, then
+        one line per reading, joined by newlines.
 
     Raises:
-        KeyError: If `quantity` is not a compartment on this chart.
+        KeyError: If a quantity is not a compartment on this chart.
         IndexError: If an index is outside its run's drawn points.
-        ValueError: If no run is given, or if the runs are not all on one
-            agent. The agent is named once, above the values, because
+        ValueError: If no reading is given, if `run_count` is less than the
+            readings' own runs need, or if the runs are not all on one agent.
+            The agent is named once, above the values, because
             `assemble_chart_frame` refuses a frame whose runs differ on it;
             naming one run's agent over another run's concentration would be
             the correct number under the wrong label.
     """
 
     if not answering:
-        raise ValueError("a hover is answered for at least one run; none was given")
+        raise ValueError("a hover is answered for at least one drawn point; none was given")
 
-    agents = {run.agent_display_name for run, _ in answering}
+    if run_count < 1:
+        raise ValueError(
+            f"a chart draws at least one run; a hover cannot be answered for {run_count}"
+        )
+
+    agents = {run.agent_display_name for run, _, _ in answering}
 
     if len(agents) > 1:
         raise ValueError(
@@ -1209,13 +1232,28 @@ def format_compared_trace_hover(
             f"names it once above their values; given {', '.join(sorted(agents))}"
         )
 
+    quantities = tuple(dict.fromkeys(quantity for _, quantity, _ in answering))
+
+    if len(quantities) == 1:
+        return "\n".join(
+            (
+                _hover_agent(answering[0][0]),
+                _hover_subject(quantities[0]),
+                *(
+                    _hover_compared_value(
+                        run, run.times_s[index], _hover_value(run, quantity, index)
+                    )
+                    for run, quantity, index in answering
+                ),
+            )
+        )
+
     return "\n".join(
         (
             _hover_agent(answering[0][0]),
-            _hover_subject(quantity),
             *(
-                _hover_compared_value(run, run.times_s[index], _hover_value(run, quantity, index))
-                for run, index in answering
+                _hover_contended_value(run, quantity, index, run_count)
+                for run, quantity, index in answering
             ),
         )
     )
@@ -1315,28 +1353,63 @@ def _hover_compared_value(run: RunFrame, time_s: float, value: str) -> str:
     return f"{context}   {value}"
 
 
+def _hover_contended_value(
+    run: RunFrame, quantity: RecordedQuantity, index: int, run_count: int
+) -> str:
+    """One line of a readout whose pointer is in reach of more than one compartment.
+
+    The compartment leads, because it is what the heading carried while the
+    readings shared one and a value line that did not name it would leave the
+    reader to infer which trace it came from - which is exactly the inference
+    `PL-0RZ0` found a 2 px hand movement falsifying. It keeps the gloss
+    `_hover_subject` gives it: `docs/MODEL.md` requires that hedge wherever
+    the compartment is named, and a form that dropped it to stay narrow would
+    be trading a required qualifier for a column of whitespace.
+
+    The run follows while more than one is drawn and is omitted while one is,
+    which is `_hover_context`'s rule rather than a second one - a name on the
+    only run drawn implies a comparison that is not on screen.
+    """
+
+    tokens = [_hover_subject(quantity)]
+
+    if run_count > 1:
+        tokens.append(run.label)
+
+    tokens.append(_hover_instant(run.times_s[index]))
+
+    return f"{_HOVER_CONTEXT_SEPARATOR.join(tokens)}   {_hover_value(run, quantity, index)}"
+
+
 @dataclass(frozen=True, slots=True)
 class HoverReading:
-    """One run's answer to a hover: which run, and which of its drawn points.
+    """One drawn point a hover answers for: whose it is, what it is, and where.
 
     Attributes:
         run: Which run, as a position in `ChartFrame.runs`.
-        time_s: The point's simulated time. Each run answers at its own
+        quantity: Which trace the point is on - a compartment, or
+            `RecordedQuantity.WASH_IN_RATIO` on the wash-in plot. Carried per
+            reading rather than once for the box because more than one
+            compartment answers where two compressed traces are inside one
+            radius of each other, and a value whose trace the reader has to
+            infer is the failure `PL-0RZ0` closes.
+        time_s: The point's simulated time. Each trace answers at its own
             nearest drawn point, so two readings of one hover can differ
             here by up to one grid column - which is why the readout states
-            the instant per run rather than once for the box.
+            the instant per reading rather than once for the box.
         value: The point's height in the plot's own unit: percent on the
             compartment chart, the dimensionless ratio on the wash-in plot.
     """
 
     run: int
+    quantity: RecordedQuantity
     time_s: float
     value: float
 
 
 @dataclass(frozen=True, slots=True)
 class HoverTarget:
-    """Every run a pointer is within reach of, and what the hover says of them.
+    """Every drawn point a pointer is within reach of, and what the hover says of them.
 
     **Every run inside the radius answers, rather than the nearest one**
     (project owner, 2026-09-19, ratified, over breaking the tie toward the
@@ -1351,27 +1424,43 @@ class HoverTarget:
     swap rate to zero, because nothing is then settled by which point is
     marginally nearer.
 
+    **Every compartment inside the radius answers too, on the same rule**
+    (project owner, 2026-09-20, ratified, over recording the measurement and
+    leaving the flip to the axis fix, `PL-QYBW`). That rule left distance to
+    settle which *compartment* answered, on the reasoning that a reader aims
+    at a curve; `PL-0RZ0` measured what the same axis compression does to
+    that. Two or more compartments are inside the radius over 15.2-45.7% of
+    the hoverable area on the two-run chart and 37.0% on the single-run one,
+    and a 2 px move changed which one answered on 6.6-13.6% of contended
+    pointer pairs - printing a different number on 99.9% of them, by a median
+    17.1-17.9x for muscle against fat. The box does not move when it happens:
+    the two winning points are a median 0.9 px apart, so only the words and
+    the numbers change. There is no aim to respect at that separation, which
+    is `PL-QYBW`'s own second consequence, so a rule that picked would be
+    picking arbitrarily rather than honouring an aim.
+
     Attributes:
-        quantity: Which trace - a compartment, or
-            `RecordedQuantity.WASH_IN_RATIO` on the wash-in plot. The
-            compartment is still the nearest drawn point's, since a reader
-            aims at a curve; which *run* that point belonged to is what no
-            longer decides anything.
-        readings: One per run within reach, in `ChartFrame.runs` order and
-            never empty. Ordered by the run rather than by distance, so that
-            no part of the readout moves with a hand movement too small to
-            aim with.
-        readout: The text to show: the three-line form while one run answers,
-            and `format_compared_trace_hover`'s while more than one does.
+        quantities: Every trace within reach, in the frame's drawing order
+            and never empty: compartments, or `RecordedQuantity.WASH_IN_RATIO`
+            alone on the wash-in plot, which draws one trace and so has no
+            compartment for distance to settle.
+        readings: One per run and compartment within reach, in the frame's own
+            drawing order - compartment by `ChartFrame.visible`, run by
+            `ChartFrame.runs` - and never empty. Ordered by the frame rather
+            than by distance, so that no part of the readout moves with a hand
+            movement too small to aim with.
+        readout: The text to show: the three-line form while one point
+            answers, and `format_compared_trace_hover`'s while more than one
+            does.
     """
 
-    quantity: RecordedQuantity
+    quantities: tuple[RecordedQuantity, ...]
     readings: tuple[HoverReading, ...]
     readout: str
 
     @property
     def anchor(self) -> HoverReading:
-        """The reading the box is hung from: the first run's, in drawing order.
+        """The reading the box is hung from: the first, in the frame's drawing order.
 
         A position rather than a value, and chosen by drawing order for the
         same reason `readings` is ordered that way - a box that hung from
@@ -1399,10 +1488,11 @@ def nearest_trace_point(
     whole window at the one-minute one. The caller supplies the scale of
     the view it is drawing.
 
-    **Distance settles the compartment and nothing else.** The nearest drawn
-    point picks which trace the reader is aiming at; every run with a point
-    for that compartment inside the radius then answers, at its own nearest
-    such point. `HoverTarget` carries why, and `PL-JVHL` the measurements.
+    **Distance settles nothing at all.** Every drawn point inside the radius
+    answers, whichever run and whichever compartment it belongs to, at each
+    trace's own nearest such point - so no hand movement can change what the
+    box reports without also changing what is in reach. `HoverTarget` carries
+    why, `PL-JVHL` the run measurements and `PL-0RZ0` the compartment ones.
 
     Only the compartments the frame draws are candidates, so a hidden trace
     answers nothing, and only the six compartments are - the clinical
@@ -1421,8 +1511,8 @@ def nearest_trace_point(
             and still answer.
 
     Returns:
-        Every run within the radius of the aimed-at compartment, or `None`
-        when no drawn point is that close.
+        Every drawn point within the radius, or `None` when none is that
+        close.
     """
 
     nearest: dict[tuple[int, RecordedQuantity], tuple[float, int]] = {}
@@ -1445,32 +1535,35 @@ def nearest_trace_point(
     if not nearest:
         return None
 
-    aimed_at = min(nearest, key=lambda key: nearest[key][0])[1]
-    # In drawing order, stated rather than inherited from the order the scan
+    # In the frame's own drawing order - compartment by the trace table, run
+    # by the chart - stated rather than inherited from the order the scan
     # happened to fill the table in: it is what the readout's lines are
     # ordered by, and a readout whose lines could reorder under the pointer
     # would be this defect in its layout.
     answering = [
-        (run_index, frame.runs[run_index], nearest[(run_index, aimed_at)][1])
+        (run_index, frame.runs[run_index], quantity, nearest[(run_index, quantity)][1])
+        for quantity in frame.visible
         for run_index in range(len(frame.runs))
-        if (run_index, aimed_at) in nearest
+        if (run_index, quantity) in nearest
     ]
+    first_run, first_quantity, first_column = answering[0][1:]
 
     return HoverTarget(
-        quantity=aimed_at,
+        quantities=tuple(dict.fromkeys(quantity for _, _, quantity, _ in answering)),
         readings=tuple(
             HoverReading(
                 run=run_index,
+                quantity=quantity,
                 time_s=run.times_s[column],
-                value=percent_from_fraction(Fraction(run.fractions[aimed_at][column])),
+                value=percent_from_fraction(Fraction(run.fractions[quantity][column])),
             )
-            for run_index, run, column in answering
+            for run_index, run, quantity, column in answering
         ),
         readout=(
-            format_trace_hover(answering[0][1], aimed_at, answering[0][2], len(frame.runs))
+            format_trace_hover(first_run, first_quantity, first_column, len(frame.runs))
             if len(answering) == 1
             else format_compared_trace_hover(
-                [(run, column) for _, run, column in answering], aimed_at
+                [(run, quantity, column) for _, run, quantity, column in answering], len(frame.runs)
             )
         ),
     )
@@ -1536,10 +1629,13 @@ def nearest_wash_in_point(
     ]
 
     return HoverTarget(
-        quantity=RecordedQuantity.WASH_IN_RATIO,
+        quantities=(RecordedQuantity.WASH_IN_RATIO,),
         readings=tuple(
             HoverReading(
-                run=run_index, time_s=stretch.times_s[column], value=stretch.ratios[column]
+                run=run_index,
+                quantity=RecordedQuantity.WASH_IN_RATIO,
+                time_s=stretch.times_s[column],
+                value=stretch.ratios[column],
             )
             for run_index, _, stretch, column in answering
         ),

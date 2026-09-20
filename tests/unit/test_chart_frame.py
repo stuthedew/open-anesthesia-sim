@@ -607,6 +607,160 @@ def test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers() -> N
     ]
 
 
+def _contended_muscle_and_fat() -> tuple[ChartFrame, dict[str, float]]:
+    """The geometry `PL-0RZ0` measured, reduced to the pair it turns on.
+
+    Reference adult on sevoflurane, a 60-minute axis 900 px wide and
+    `theme.CHART_HEIGHT` tall, so 4.00 s/px and 0.0167 %/px: at 20 minutes on
+    the branched case the trunk's muscle reads 0.19% and its fat 0.01%, which
+    the percent axis - scaled by the alveolar peak - puts 10.7 px apart, well
+    inside the 12 px radius. Muscle and fat are the pair a reader comparing
+    two runs picks most often, and the pair whose values differ most: a median
+    17.1-17.9x across the measured cases, every flip twofold or more.
+    """
+
+    times_s = tuple(1160.0 + 4.0 * column for column in range(20))
+    still_carrying = _run_frame(
+        times_s, muscle=tuple(0.0019 for _ in times_s), fat=tuple(0.00012 for _ in times_s)
+    )
+    emerging = replace(
+        _run_frame(
+            times_s, muscle=tuple(0.0009 for _ in times_s), fat=tuple(0.00008 for _ in times_s)
+        ),
+        label=run_label(1),
+    )
+    frame = replace(
+        _frame(still_carrying, visible=(RecordedQuantity.MUSCLE, RecordedQuantity.FAT)),
+        runs=(still_carrying, emerging),
+    )
+
+    return frame, dict(seconds_per_pixel=4.0, percent_per_pixel=0.0167, radius_pixels=12.0)
+
+
+def test_two_compartments_within_one_hover_radius_answer_under_their_own_names() -> None:
+    """`PL-0RZ0`: every compartment inside the radius answers, so nothing turns on the nearer trace.
+
+    The rule `PL-JVHL` settled for the run, one axis over. It left distance to
+    pick the compartment, on the reasoning that a reader aims at a curve;
+    `PL-0RZ0` measured two or more compartments inside the radius over
+    15.2-45.7% of the two-run chart's hoverable area, a 2 px move changing
+    which one answered on 6.6-13.6% of contended pointer pairs, and the two
+    winning points a median 0.9 px apart - so there was no aim to respect and
+    the box did not move when the answer changed.
+    """
+
+    frame, reach = _contended_muscle_and_fat()
+    still_carrying, emerging = frame.runs
+    on_muscle = still_carrying.percents(RecordedQuantity.MUSCLE)[0]
+    on_fat = still_carrying.percents(RecordedQuantity.FAT)[0]
+    # The contention this tests: the two traces are inside one radius of each
+    # other, so no pointer position lies on one and not the other.
+    assert 0.0 < (on_muscle - on_fat) / 0.0167 < 12.0
+    offsets = tuple(range(-12, 13, 2))
+    midpoint = (on_muscle + on_fat) / 2.0
+
+    def hover(x_px: int, y_px: int) -> tuple[tuple[RecordedQuantity, int], ...]:
+        target = nearest_trace_point(frame, 1200.0 + x_px * 4.0, midpoint + y_px * 0.0167, **reach)
+
+        return (
+            ()
+            if target is None
+            else tuple((reading.quantity, reading.run) for reading in target.readings)
+        )
+
+    def contending(x_px: int, y_px: int) -> bool:
+        """Whether every one of the four traces has a drawn point inside this pointer's radius.
+
+        Asked trace by trace, each on a frame drawing only itself, so that the
+        rule under test cannot be what decides the question put to it.
+        """
+
+        return all(
+            nearest_trace_point(
+                replace(frame, visible=(quantity,), runs=(run,)),
+                1200.0 + x_px * 4.0,
+                midpoint + y_px * 0.0167,
+                **reach,
+            )
+            is not None
+            for quantity in (RecordedQuantity.MUSCLE, RecordedQuantity.FAT)
+            for run in frame.runs
+        )
+
+    def marginally_nearer(y_px: int) -> RecordedQuantity:
+        """Which compartment the retired rule would have answered for: the nearer trace's."""
+
+        percent = midpoint + y_px * 0.0167
+
+        return (
+            RecordedQuantity.MUSCLE
+            if abs(percent - on_muscle) < abs(percent - on_fat)
+            else RecordedQuantity.FAT
+        )
+
+    contended = [(x, y) for x in offsets for y in offsets if contending(x, y)]
+    assert len(contended) > len(offsets) ** 2 // 4, "the geometry must contend to test anything"
+    # The geometry is the ambiguous one: the retired rule does flip across it.
+    assert {marginally_nearer(y) for _, y in contended} == {
+        RecordedQuantity.MUSCLE,
+        RecordedQuantity.FAT,
+    }
+
+    for x_px, y_px in contended:
+        # Both compartments, both runs, in the frame's own drawing order.
+        assert hover(x_px, y_px) == (
+            (RecordedQuantity.MUSCLE, 0),
+            (RecordedQuantity.MUSCLE, 1),
+            (RecordedQuantity.FAT, 0),
+            (RecordedQuantity.FAT, 1),
+        )
+
+        for neighbour in ((x_px + 2, y_px), (x_px, y_px + 2)):
+            if contending(*neighbour):
+                assert hover(*neighbour) == hover(x_px, y_px)
+
+    # Every value is reached, each under its own compartment and run, and the
+    # two compartments differ by the severalfold the item measured.
+    target = nearest_trace_point(frame, 1200.0, midpoint, **reach)
+    assert target is not None
+    assert target.quantities == (RecordedQuantity.MUSCLE, RecordedQuantity.FAT)
+    assert target.readout.splitlines() == [
+        "Modelled sevoflurane",
+        "Muscle · Run 1 · 20m   0.19%   0.10 ×MAC",
+        "Muscle · Run 2 · 20m   0.09%   0.04 ×MAC",
+        "Fat · Run 1 · 20m   0.01%   0.01 ×MAC",
+        "Fat · Run 2 · 20m   0.01%   <0.01 ×MAC",
+    ]
+    assert (
+        emerging.percents(RecordedQuantity.MUSCLE)[0]
+        > still_carrying.percents(RecordedQuantity.FAT)[0] * 5.0
+    ), "the contending values must differ severalfold for this to matter"
+
+
+def test_a_contended_hover_names_no_run_while_only_one_is_drawn() -> None:
+    """`_hover_context`'s rule reaches the compartment lines: one run drawn is not a comparison.
+
+    The single-run chart draws all six compartments and has the same exposure
+    - `PL-0RZ0` measured two or more inside the radius over 37.0% of its
+    hoverable area - so this form fires there too, where naming the only run
+    would imply a comparison that is not on screen.
+    """
+
+    frame, reach = _contended_muscle_and_fat()
+    alone = replace(frame, runs=frame.runs[:1])
+    on_muscle = alone.runs[0].percents(RecordedQuantity.MUSCLE)[0]
+    on_fat = alone.runs[0].percents(RecordedQuantity.FAT)[0]
+
+    target = nearest_trace_point(alone, 1200.0, (on_muscle + on_fat) / 2.0, **reach)
+
+    assert target is not None
+    assert target.readout.splitlines() == [
+        "Modelled sevoflurane",
+        "Muscle · 20m   0.19%   0.10 ×MAC",
+        "Fat · 20m   0.01%   0.01 ×MAC",
+    ]
+
+
 def test_the_hover_keeps_the_below_resolution_forms_and_the_readout_row_s_glosses() -> None:
     """`docs/MODEL.md`'s measured table: fat at 48.3 s is `<0.01%`, never `3.52e-05`."""
 
@@ -643,7 +797,7 @@ def test_the_hover_states_the_instant_at_the_clock_s_own_resolution() -> None:
     )
 
 
-def test_the_hover_answers_the_nearest_drawn_point_within_reach_and_nothing_else() -> None:
+def test_the_hover_answers_every_drawn_point_within_reach_and_nothing_else() -> None:
     run = _run_frame(
         (0.0, 100.0, 200.0),
         alveolar=(0.0, 0.010, 0.012),
@@ -656,8 +810,8 @@ def test_the_hover_answers_the_nearest_drawn_point_within_reach_and_nothing_else
 
     on_alveolar = nearest_trace_point(frame, 103.0, 1.02, **reach)
     assert on_alveolar is not None
-    assert (on_alveolar.quantity, on_alveolar.anchor.time_s, on_alveolar.anchor.value) == (
-        RecordedQuantity.ALVEOLAR,
+    assert (on_alveolar.quantities, on_alveolar.anchor.time_s, on_alveolar.anchor.value) == (
+        (RecordedQuantity.ALVEOLAR,),
         100.0,
         1.0,
     )
@@ -676,7 +830,7 @@ def test_a_hidden_trace_answers_no_hover() -> None:
     reach = dict(seconds_per_pixel=1.0, percent_per_pixel=0.01, radius_pixels=12.0)
 
     shown = nearest_trace_point(_frame(run), 100.0, 2.0, **reach)
-    assert shown is not None and shown.quantity is RecordedQuantity.CIRCUIT
+    assert shown is not None and shown.quantities == (RecordedQuantity.CIRCUIT,)
 
     hidden = nearest_trace_point(_frame(run, (RecordedQuantity.ALVEOLAR,)), 100.0, 2.0, **reach)
     assert hidden is None
@@ -689,7 +843,7 @@ def test_the_wash_in_hover_answers_its_own_stretches_in_its_own_units() -> None:
 
     target = nearest_wash_in_point(frame, 101.0, 0.705, **reach)
     assert target is not None
-    assert target.quantity is RecordedQuantity.WASH_IN_RATIO
+    assert target.quantities == (RecordedQuantity.WASH_IN_RATIO,)
     assert (target.anchor.time_s, target.anchor.value) == (100.0, 0.71)
     assert target.readout.splitlines()[1:] == [WASH_IN_HOVER_LABEL, "0.71"]
     # On the equilibrium line, away from the trace: the reference is silent.
@@ -770,18 +924,25 @@ def test_a_compared_hover_refuses_to_name_one_agent_over_another_run_s_value() -
     other = replace(run, agent_display_name="Desflurane", label=run_label(1))
 
     with pytest.raises(ValueError, match="must be on the same agent"):
-        format_compared_trace_hover(((run, 0), (other, 0)), RecordedQuantity.ALVEOLAR)
+        format_compared_trace_hover(
+            ((run, RecordedQuantity.ALVEOLAR, 0), (other, RecordedQuantity.ALVEOLAR, 0)), 2
+        )
 
     with pytest.raises(ValueError, match="must be on the same agent"):
         format_compared_wash_in_hover(((run, run.wash_in[0], 0), (other, other.wash_in[0], 0)))
 
 
 def test_a_compared_hover_is_answered_for_at_least_one_run() -> None:
-    with pytest.raises(ValueError, match="at least one run"):
-        format_compared_trace_hover((), RecordedQuantity.ALVEOLAR)
+    with pytest.raises(ValueError, match="at least one drawn point"):
+        format_compared_trace_hover((), 1)
 
     with pytest.raises(ValueError, match="at least one run"):
         format_compared_wash_in_hover(())
+
+    run = _run_frame((1208.0,), alveolar=(0.0143,))
+
+    with pytest.raises(ValueError, match="a chart draws at least one run"):
+        format_compared_trace_hover(((run, RecordedQuantity.ALVEOLAR, 0),), 0)
 
 
 def test_the_wash_in_hover_answers_every_run_in_reach_in_its_own_units() -> None:
@@ -799,7 +960,7 @@ def test_the_wash_in_hover_answers_every_run_in_reach_in_its_own_units() -> None
     target = nearest_wash_in_point(frame, 100.0, 0.695, **reach)
 
     assert target is not None
-    assert target.quantity is RecordedQuantity.WASH_IN_RATIO
+    assert target.quantities == (RecordedQuantity.WASH_IN_RATIO,)
     assert tuple(reading.run for reading in target.readings) == (0, 1)
     assert target.readout.splitlines() == [
         "Modelled sevoflurane",

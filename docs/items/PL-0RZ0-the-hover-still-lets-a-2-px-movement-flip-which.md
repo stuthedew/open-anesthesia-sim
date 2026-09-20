@@ -3,11 +3,12 @@ id: PL-0RZ0
 title: The hover still lets a 2 px movement flip which *compartment* answers where two compressed traces contend, which PL-JVHL fixed only for runs
 priority: P1
 effort: S
-status: ready
+status: done
 classes: safety, ux
 feature: compartment-trace-legibility
 touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit/test_chart_frame.py
 added: 2026-09-20
+closed: 2026-09-20
 payoff: stops the hover box naming fat's value under muscle's label when the reader's hand moves 2 px, where the two can differ severalfold
 verify: grep -q 'def test_two_compartments_within_one_hover_radius' tests/unit/test_chart_frame.py
 ---
@@ -47,7 +48,7 @@ nearest *along its length*, prefer the one the reader most recently hovered, or
 leave it and fix the axis.
 
 **Where.** `src/anesthesia_sim/app/chart_frame.py` (`nearest_trace_point`, the
-`aimed_at` selection); `docs/MODEL.md` § "Where more than one run answers"
+`aimed_at` selection); `docs/MODEL.md` § "Where more than one trace answers"
 states the current rule.
 
 **Why it matters.** The same failure as `PL-JVHL`'s, one axis over: the box
@@ -59,3 +60,164 @@ already read past.
 **Done when.** The contention is measured, and either a targeting rule removes
 the flip or the measurement is recorded and the item dropped in favour of
 `PL-QYBW` (the shared percent axis compressing the slow compartments).
+
+## Measured 2026-09-20: the contention is real, and one premise above is not
+
+`PL-JVHL`'s geometry reproduced exactly - reference adult on sevoflurane, a
+60-minute axis 900 px wide and `theme.CHART_HEIGHT` (360 px) tall, so 4.00 s/px
+and 0.0167 %/px against an `axis_top_percent` of 6.00%. The trunk raises its
+dial by half at 10 minutes, which is the keyframe a fork there needs and what
+`tests/integration/test_qt_chart.py`'s own branched case does; the branch forks
+at that instant under each of three managements. The scan walks every pixel of
+the plot, and its selection was held against `nearest_trace_point` itself at
+400 random pointer positions per case before any number below was kept.
+
+Share of the hoverable area where two or more **compartments** have a drawn
+point inside the 12 px radius, and - of the pointer pairs 2 px apart where both
+positions are contended - the share whose aimed-at compartment changes:
+
+| Chart | Compartments | Two or more in reach | 2 px flips the compartment |
+| --- | --- | ---: | ---: |
+| one run | all six | 37.0% | 12.7% |
+| two runs, branch doubled to 2 MAC | muscle + fat | 15.2% | 9.3% |
+| two runs, branch raised to 1.25 MAC | muscle + fat | 19.1% | 9.2% |
+| two runs, branch's vaporizer off | muscle + fat | 45.7% | 7.5% |
+| two runs, branch doubled to 2 MAC | mixed venous + vessel rich | 5.1% | 12.8% |
+| two runs, branch raised to 1.25 MAC | mixed venous + vessel rich | 29.4% | 6.6% |
+| two runs, branch's vaporizer off | mixed venous + vessel rich | 27.5% | 8.2% |
+| two runs, branch doubled to 2 MAC | alveolar + fat | 0.5% | 13.6% |
+| two runs, branch raised to 1.25 MAC | alveolar + fat | 0.5% | 13.6% |
+| two runs, branch's vaporizer off | alveolar + fat | 24.0% | 6.7% |
+
+**The flip changes the number, not only the word.** Across every case the two
+compartments' values print differently on 99.9% of flips. For muscle against
+fat the ratio is a median 17.1-17.9x and **every** flip is twofold or more; for
+mixed venous against vessel rich it is 1.3x and none reaches twofold. So the
+severalfold claim in `**Why it matters.**` above holds for the pair that
+contends most, and is an overstatement for the pair beside it.
+
+**And it is silent, which is the part that carries.** The box hangs from the
+aimed-at point (`app/qt_chart.py`, `setPos(anchor.time_s, anchor.value)`), and
+at a flip the two winning points are a median 0.9 px apart - 100% of them
+within 2 px - so the box does not move. Worked case, branch's vaporizer off,
+t = 1200 s, the pointer moved 2 px up the percent axis; the two boxes are the
+same four lines at the same instant under the same run labels:
+
+```
+Modelled sevoflurane            Modelled sevoflurane
+Fat                             Muscle
+Run 1 · 20m   0.01%   0.01 ×MAC Run 1 · 20m   0.19%   0.09 ×MAC
+Run 2 · 20m   0.01%  <0.01 ×MAC Run 2 · 20m   0.09%   0.05 ×MAC
+```
+
+**No compartment becomes unreachable, and that is worth recording because it
+refutes the sharper complaint.** `docs/MODEL.md` already rules that "a
+displayed value a reader cannot reach is worse than one that is hard to aim
+at", which is what the near-tie tie-break was refused on. Measured here, every
+compartment is answered for somewhere at 98% or more of the axis columns it is
+drawn at - worst is muscle, unreachable at 2.0% of columns on the single-run
+chart, and nothing else exceeds 1.2%. The defect is that the reader gets the
+wrong trace, never that a trace cannot be got at.
+
+### The premise that fails: "there is no answer-for-both rule available"
+
+`**Why it may be the axis rather than the targeting.**` above rules the
+`PL-JVHL` rule out on the grounds that the box names one compartment on line 2
+and that a reader aiming at muscle does not want fat's value beside it. Two
+measurements say otherwise.
+
+1. **There is no aim to respect.** At a flip the two candidate points are a
+   median 0.9 px apart. `PL-QYBW` states the same fact as its own second
+   consequence: at that separation *no* targeting rule can let a reader aim at
+   one trace rather than the other. A rule that picks is therefore picking
+   arbitrarily, not honouring an aim.
+2. **The box stays small.** Counting every `(run, compartment)` whose drawn
+   point is inside the radius - which is what the rule would print - the box
+   carries one value line on 21-93% of hovers, and never more than four on the
+   two-run chart or three on the single-run six-compartment one:
+
+| Chart | 1 line | 2 | 3 | 4 |
+| --- | ---: | ---: | ---: | ---: |
+| one run, all six | 63% | 25% | 12% | 0% |
+| two runs, 2 MAC, muscle + fat | 58% | 32% | 4% | 6% |
+| two runs, 1.25 MAC, muscle + fat | 21% | 66% | 2% | 11% |
+| two runs, vaporizer off, muscle + fat | 47% | 16% | 23% | 14% |
+| two runs, 1.25 MAC, mixed venous + vessel rich | 64% | 35% | 1% | 1% |
+| two runs, vaporizer off, mixed venous + vessel rich | 71% | 28% | 1% | 0% |
+
+The other two candidates this item names are refuted by `PL-JVHL`'s own
+arguments, which transfer unchanged. **Nearest along its length** is the same
+number as nearest drawn point on a trace sampled at about one point per pixel
+against a 12 px radius. **Most recently hovered** is a tie window with memory:
+it moves the boundary rather than removing it, exactly as the near-tie
+tie-break did, and it makes the answer depend on the path the pointer took,
+which is a hidden mode and a loss of the determinism the safety-critical
+standard requires of a displayed value. A third, **preferring the compartment
+higher in the trace table**, is worse than either: it would make fat
+unreachable wherever muscle is inside the radius - up to 45.7% of the fat
+trace - which is the failure `docs/MODEL.md` has already refused.
+
+**Decided 2026-09-20: generalise it** (project owner, ratified, over
+recording the measurement and dropping this in favour of `PL-QYBW`). What
+follows is the case as it was put.
+
+**Decision needed.** Whether to generalise the ratified run rule to
+compartments, or to record the measurement above and drop this in favour of
+`PL-QYBW` (the shared percent axis compressing the slow compartments).
+
+The recommendation is to generalise it. Every `(run, compartment)` whose drawn
+point is inside the radius answers; the three-line form stands exactly as
+today whenever one compartment answers, which is 54.3-99.5% of hovers across
+the cases above and 63.0% on the single-run chart; where more than one answers,
+each value line names its compartment as it already names its run. That is the only rule measured at zero, it is the rule this chart already
+uses one axis over for the same cause, and its cost is the bounded box above.
+It does not make `PL-QYBW` less worth doing - the axis is the source, and a
+chart that draws fat in under 2 px is a legibility defect whatever the hover
+says - but it is not blocked by it either, and the hover rule would still have
+to be right after the axis changed.
+
+Against it: this changes what a learner sees on a safety-relevant display, and
+the cheaper reading is that a 12.7%-of-contended-pairs flip on a visible label
+is tolerable until the axis is fixed. That reading is what the table above is
+for.
+
+
+## Landed 2026-09-20
+
+`nearest_trace_point` stops choosing: every `(run, compartment)` whose drawn
+point is inside the radius answers, at that trace's own nearest such point, in
+the frame's drawing order - compartment by `ChartFrame.visible`, run by
+`ChartFrame.runs`. `HoverTarget.quantity` became `quantities` and
+`HoverReading` gained one, so every reading carries the trace it belongs to
+rather than the box carrying one for all of them.
+
+`format_compared_trace_hover` now takes the compartment per reading and the
+chart's run count, and keeps two forms. Where the readings share a compartment
+the output is byte-identical to what it was - the agent, the compartment, a
+value line per run - which is 54.3-99.5% of hovers. Where they span
+compartments the heading cannot stand for them all, so each value line opens
+with its own compartment, gloss included, then its run while more than one is
+drawn.
+
+Two things the work turned up that the measurement had not:
+
+1. **Two compartments of one run do not share an instant.** A run draws all six
+   traces at one set of times, but each keeps its own nearest point and nearest
+   is measured in two dimensions, so the pointer's height decides which column
+   a trace answers at where two are near-equidistant in time. The per-line
+   instant is therefore required rather than merely consistent, and
+   `docs/MODEL.md` now says so. `PL-1K9G` carries the question of whether the
+   column should be chosen by time alone.
+2. **The branch's alveolar trace contends with fat on the real case.**
+   `tests/integration/test_qt_chart.py`'s branched case moved a pointer 2 px
+   and the box gained an alveolar line, because by 20 minutes the branch's
+   vaporizer has been off for ten and its alveolar has washed down to within
+   the radius of fat. That is the compression `PL-QYBW` names, now displayed
+   rather than resolved by arithmetic a reader cannot see; the test asserts the
+   fat lines are unchanged instead of the whole box.
+
+**Documentation swept:** `docs/MODEL.md` (the hover rule, its heading, and a
+new hazard-table row for reading one compartment's concentration as another's),
+`src/anesthesia_sim/app/chart_frame.py` and `src/anesthesia_sim/app/qt_chart.py`
+docstrings. `make check` is green, including `doc_check`, which caught the
+heading rename leaving a dangling citation in this file.

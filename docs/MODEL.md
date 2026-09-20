@@ -178,7 +178,8 @@ stays a reviewer's question.
 | reading a displayed value as resolved to its last digit | displayed precision is a recorded choice within a justified band, and the model retains precision the display discards rather than rounding its own state | `test_the_model_keeps_precision_the_display_throws_away`, `test_concentration_decimals_are_a_choice_within_a_recorded_band` |
 | reading a control mark on the timeline as a measurement | the timeline labels its marks "Settings only — not a measurement." | `test_the_interface_says_a_control_mark_is_an_input_not_a_measurement` |
 | reading a modelled compartment value as a measured one | the readout section states beside its values that they are model outputs and not measurements (`INTERPRETATION_DISCLAIMER_TEXT`, `PL-2K1R`), and the chart's hover names every value it reports as modelled (§ "The chart's hover readout: what the tooltip may show") | `test_the_interface_says_the_readouts_are_model_outputs_not_measurements`, `test_the_readouts_say_they_are_model_outputs_beside_the_values`, `test_the_hover_reports_the_drawn_state_through_the_formatters` |
-| reading one run's concentration as the other's while two are compared | the run is named in text wherever a value is shown: on each run's own readout panel (§ "Minimum displayed outputs") and, while more than one run is drawn, in the chart's hover readout - on its first line where one run answers (§ "The hover and the run it belongs to") and on each value line where several do, every run inside the hover radius answering so that no hand movement can swap which is read (§ "Where more than one run answers") - because the hover floats free of the legend and line width has no textual analogue | `test_the_hover_names_the_run_only_while_more_than_one_is_drawn`, `test_two_runs_within_the_hover_radius_answer_under_their_own_names`, `test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers` |
+| reading one compartment's concentration as another's where two traces are drawn on top of each other | the compartment is named in text on every value line, and every compartment whose drawn point is inside the hover radius answers under its own name rather than the nearest trace being chosen for the reader (§ "Where more than one trace answers") - because the percent axis is scaled by the alveolar peak, so the slow compartments are drawn within a pixel or two of one another and no aim can separate them (`PL-0RZ0`, `PL-QYBW`) | `test_two_compartments_within_one_hover_radius_answer_under_their_own_names`, `test_a_contended_hover_names_no_run_while_only_one_is_drawn` |
+| reading one run's concentration as the other's while two are compared | the run is named in text wherever a value is shown: on each run's own readout panel (§ "Minimum displayed outputs") and, while more than one run is drawn, in the chart's hover readout - on its first line where one run answers (§ "The hover and the run it belongs to") and on each value line where several do, every run inside the hover radius answering so that no hand movement can swap which is read (§ "Where more than one trace answers") - because the hover floats free of the legend and line width has no textual analogue | `test_the_hover_names_the_run_only_while_more_than_one_is_drawn`, `test_two_runs_within_the_hover_radius_answer_under_their_own_names`, `test_a_small_pointer_movement_never_swaps_which_run_the_hover_answers` |
 
 ### The row that was only partly mitigated until the Qt port
 
@@ -6901,7 +6902,7 @@ hover answer for the curve the reader aimed at.** On the measurement above, a
 fat axis. That is a targeting rule rather than a readout question, and the
 next subsection is how it was settled (`PL-JVHL`).
 
-#### Where more than one run answers
+#### Where more than one trace answers
 
 **Every run whose drawn point is inside the hover radius answers, and the box
 carries a value line per run** (project owner, 2026-09-19, ratified, over
@@ -6949,11 +6950,74 @@ to 98.4%. It also makes the branch's value unreachable wherever the curves are
 inside the window, which is most of the fat trace, and a displayed value a
 reader cannot reach is worse than one that is hard to aim at.
 
-**Distance still settles which compartment, and nothing else.** A reader aims
-at a curve, so the nearest drawn point picks the trace; every run with a point
-for *that* trace inside the radius then answers, at its own nearest such point.
-Nothing is left for a hand movement too small to aim with to decide, which is
-what takes the flip rate to zero.
+**Distance settles nothing, including which compartment** (project owner,
+2026-09-20, ratified, over recording the measurement and leaving the flip to
+the axis fix). Until then the nearest drawn point picked the trace, on the
+reasoning that a reader aims at a curve. `PL-0RZ0` measured what the same
+compression does to that: two or more compartments sit inside the radius over
+15.2–45.7% of the two-run chart's hoverable area and 37.0% of the single-run
+chart's, and across the contended pointer pairs 2 px apart the aimed-at
+compartment changed on 6.6–13.6% — printing a different number on 99.9% of
+them, by a median 17.1–17.9× for muscle against fat.
+
+| Chart | Compartments | Two or more in reach | 2 px flips the compartment |
+| --- | --- | ---: | ---: |
+| one run | all six | 37.0% | 12.7% |
+| two runs, vaporizer off | muscle + fat | 45.7% | 7.5% |
+| two runs, 1.25 MAC | muscle + fat | 19.1% | 9.2% |
+| two runs, 1.25 MAC | mixed venous + vessel rich | 29.4% | 6.6% |
+| two runs, 2 MAC | alveolar + fat | 0.5% | 13.6% |
+
+**There is no aim to respect at that separation**, which is why the reasoning
+above did not survive its own measurement. The two winning points at a flip are
+a median 0.9 px apart and 100% of them within 2 px, so the box — which hangs
+from the aimed-at point — does not move: only the compartment's name and the
+numbers change, and the reader has already read past the name. That is the
+second consequence `PL-QYBW` states in its own terms, that at 0.2–1.4 px no
+targeting rule can let a reader aim at one trace rather than another. A rule
+that picked would be picking arbitrarily, not honouring an aim.
+
+**Nothing became unreachable under the old rule, and recording that is part of
+the case.** This section refuses the near-tie tie-break partly because it made
+a value unreachable; measured across the same cases, every compartment was
+answered for somewhere at 98% or more of the axis columns it is drawn at, worst
+being muscle at 2.0% on the single-run chart. The defect was that the reader got
+the wrong trace, never that a trace could not be got at.
+
+So every drawn point inside the radius answers, whichever run and whichever
+compartment it is on, each at its own nearest such point. Nothing is left for a
+hand movement too small to aim with to decide, which is what takes the flip rate
+to zero on both axes.
+
+**The box keeps the form it had wherever one compartment answers**, which is
+54.3–99.5% of hovers across the measured cases and 63.0% on the single-run
+chart: the agent, the compartment, then a value line per run. Where the
+readings span compartments the heading cannot stand for them all, so it goes
+and each value line opens with its own compartment — with the gloss
+`docs/MODEL.md` requires wherever a compartment is named — then its run while
+more than one is drawn:
+
+```
+Modelled sevoflurane
+Muscle · Run 1 · 20m   0.19%   0.10 ×MAC
+Muscle · Run 2 · 20m   0.09%   0.04 ×MAC
+Fat · Run 1 · 20m   0.01%   0.01 ×MAC
+Fat · Run 2 · 20m   0.01%  <0.01 ×MAC
+```
+
+The lines are ordered compartment-major, by the trace table, then by the run —
+the frame's own drawing order in both, so the box is read in the same direction
+as the legend beside it. The box carries one value line on 21–93% of hovers and
+never more than four on the two-run chart or three on the single-run one, which
+is what made stopping choosing affordable here.
+
+**Two compartments of one run do not share an instant either.** A run draws all
+six traces at one set of times, but each trace keeps its own nearest point and
+nearest is measured in two dimensions, so the pointer's height decides which
+column a trace answers at where two are near-equidistant in time — observed at
+t = 1200 s on the branched case, where muscle answers at 19m56s and fat at 20m
+for the same run under one pointer. The per-line instant is therefore required
+rather than merely consistent.
 
 **The instant is stated per line rather than once for the box.** Two runs share
 the anchored grid, but each also draws the columns its own control events fall
@@ -6993,12 +7057,12 @@ contention at its source; it also changes every reading of this chart, so it is
 a roadmap question rather than a targeting one (`PL-QYBW`).
 
 `chart_frame.format_compared_trace_hover` and
-`chart_frame.format_compared_wash_in_hover` produce the form above — through
+`chart_frame.format_compared_wash_in_hover` produce both forms above — through
 `app/formatting.py` like every other number here, `format_percent`,
 `format_mac_multiple` and `format_elapsed` — and `nearest_trace_point` and
-`nearest_wash_in_point` collect the runs in reach. The worked example above is
-held verbatim in `tests/unit/test_chart_frame.py`, beside the measured fat case
-this rule was decided from.
+`nearest_wash_in_point` collect the traces in reach. Both worked examples above
+are held verbatim in `tests/unit/test_chart_frame.py`, beside the measured fat
+and muscle cases the two halves of this rule were decided from.
 
 #### Resolution: the readouts' derivation applies unchanged
 
@@ -7138,7 +7202,7 @@ while they look for it.
 
 **Built on pyqtgraph, over the drawn points within a pixel radius**
 (`PL-G59B`, 2026-09-14; the radius stopped choosing between runs with
-`PL-JVHL`, 2026-09-19): `app/chart_frame.py` holds the derivation above as
+`PL-JVHL`, 2026-09-19, and between compartments with `PL-0RZ0`, 2026-09-20): `app/chart_frame.py` holds the derivation above as
 code — `format_trace_hover` and `format_wash_in_hover` produce the three-line
 form and `format_compared_trace_hover` and `format_compared_wash_in_hover` the
 compared one, while `nearest_trace_point` answers only for a compartment the
