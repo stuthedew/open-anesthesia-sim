@@ -6,7 +6,7 @@ effort: S
 status: needs-decision
 classes: defect, safety
 feature: scenario-branching
-touches: src/anesthesia_sim/app/bookmarks.py, tests/unit/test_bookmarks.py, tests/integration/test_controller.py
+touches: src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/controller.py, tests/unit/test_bookmarks.py, tests/integration/test_controller.py
 added: 2026-09-20
 payoff: stops the bookmark panel telling a learner to wait for a mark their branch is standing on and can never reach
 ---
@@ -102,10 +102,76 @@ until a bookmark was forkable, a branch beginning on one of its own marks
 needed the learner to have marked a control-event instant by coincidence. Now
 it is what every fork at a mark does.
 
-**Decision needed.** What a mark a branch was forked *at* should read, given
-that the branch begins standing on that crossing and, for a time bookmark, can
-never cross it again. It is the owner's because it is what a learner sees on
-the bookmark panel the moment after they branch at a mark.
+**Measured again 2026-09-20 against the same tree, and the root is wider than
+these three.** Four further cases were run. Two of them involve no branch at
+all, and the seeding recommended below reaches none of the four.
+
+**D - a mark added behind a running trunk.** A trunk is stepped to 60 s; the
+learner then marks 30 s. The row reads `still_running`, and still reads it at
+180 s. Nothing refuses the act: `app/simulation_view.py`'s
+`_add_time_bookmark` validates only what `TimeBookmark.__post_init__`
+validates - finite and not negative - so an instant already behind the clock is
+an ordinary entry. This is the common form of the defect rather than an edge of
+it. Marking an instant you have just run past is what a learner does when
+something interesting has already happened, and it produces exactly the row
+`format_time_bookmark`'s docstring says it exists to prevent: "no row can be
+drawn that quietly asserts a mark is still reachable without anybody having
+asked the run."
+
+**E - a branch taken at a control event, which seeding cannot reach.** Route
+one (`resumed_at`) opens at a keyframe rather than at a crossing, so there is no
+`BookmarkCrossing` to seed from. A trunk halted on a mark at 30.0 s, dialled,
+then forked at the 30.0 s keyframe gives a branch whose row for that mark reads
+`still_running` while the trunk's reads `reached` - case C's disagreement,
+on a time bookmark, at the door that predates `PL-B8MK` entirely. A mark added
+*on* such a branch at its own fork instant reads the same.
+
+**F - a mark removed and re-added on a branch at its fork instant** reads
+`still_running`: `_forget_unmarked` drops the reached entry when the mark goes,
+and nothing puts it back when an equal one arrives.
+
+**G - `reset()` on a branch discards the fork crossing.** A branch reset stands
+at its fork with `bookmark_halt` at `None` and the fork mark back at
+`still_running`, so seeding done at fork time has to survive a reset or the
+defect returns on the first one. `_open_at` is reset's path as well as the
+fork's, which is where that is cheapest to get right.
+
+**What D to G change.** The common root is not the empty reached-sets. It is
+that `still_running` is inferred from *absence from the halt set*, when the
+question a one-way clock actually asks is whether the instant is still ahead of
+the run. A run's clock only increases and never returns below `began_at_s`, so
+a time bookmark is reachable if and only if the clock has not yet arrived at
+it; everything at or behind the clock is behind the run, whatever put it there
+- a fork, a control event, or a learner typing a number they had already passed.
+
+**Decision needed.** What a time bookmark reads once the run's clock is at or
+past it - whether it got there by being forked at the mark, by being forked at a
+control event the mark sits on, or by the learner marking an instant the run had
+already run past. It is the owner's because it is what a learner sees on the
+bookmark panel, and because the honest answer redefines `MarkStanding.REACHED`.
+
+**Recommended answer, superseding the one below in part.** Decide a time
+bookmark's standing from the run's own clock rather than from the halt set
+alone. A mark is `REACHED` when `began_at_s <= instant_s <= elapsed_s` - the run
+has been at that instant - or when the halt set already holds it, which is what
+carries case B, where the fork instant is one floating-point step past the mark
+it crossed and no comparison against the clock can see it. Keep the seeding for
+that case and for the MAC target, which has no clock to read and so needs the
+crossing carried across the fork; carry it on `ResumePoint` rather than reading
+the trunk's `_bookmark_halt`, so that `_open_at` seeds a fork and a reset
+identically and `G` is closed with it. Keep `BEFORE_THIS_BRANCH` at its strict
+`<` and at its present wording, which stays true: nothing lands in it that the
+clock rule has not already claimed, so no wording has to be found that is true
+on a trunk.
+
+It costs one argument - the run's `elapsed_s`, alongside the `opened_at_s`
+`BookmarkSet.standings` already takes - and one sentence of `REACHED`'s
+docstring, which today reads "This run has halted on this mark at least once"
+and would read that the run has been at it. **That is the judgment inside the
+recommendation.** On a trunk the two coincide, because a run halts on every mark
+it crosses; they part only where the run was already past the instant when the
+mark arrived, and there "has been at it" is the one that is true and "has halted
+on it" is the one no step can make true.
 
 **Recommended answer.** Seed the branch with the crossing it was forked at -
 `_reached_instants_s`, `_reached_crossings` and `_bookmark_halt` from
@@ -130,9 +196,10 @@ read as the fork rather than as history - and costs a new member, its
 rendering, and the argument `MarkStanding`'s docstring makes for each of the
 four it has; it is a display feature rather than a correction, and can follow.
 
-**Done when.** A mark a branch was forked at reads something the branch can
-make true, for a time bookmark and a MAC target alike; the answer does not
-depend on whether the marked instant is exactly representable as
-`step_count x simulation_step_s` - the four rows in the table reaching one
-answer rather than two; and a test pins the MAC-target case, where a trunk and
-a branch currently disagree about the crossing that separated them.
+**Done when.** No mark at or behind a run's own clock reads as still
+reachable, on a trunk and on a branch alike and whichever door the branch came
+through; the answer does not depend on whether the marked instant is exactly
+representable as `step_count x simulation_step_s` - the four rows in the table
+reaching one answer rather than two; a reset does not put a branch back into the
+defect; and a test pins each of A to G, the MAC-target case included, where a
+trunk and a branch currently disagree about the crossing that separated them.
