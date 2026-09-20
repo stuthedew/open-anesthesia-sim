@@ -23,9 +23,12 @@ from .model import (
     LANE_PRODUCT,
     LANE_UNPLACED,
     LANE_WORKFLOW,
+    MIN_ROOT_CAUSE_ITEMS,
     PRIORITIES,
     SELECTABLE_LANES,
     Item,
+    recurrence_count,
+    recurrences_of,
 )
 from .notes import Thread
 from .plan import (
@@ -36,6 +39,7 @@ from .plan import (
     placement_clause,
     placement_mark,
     recommend,
+    recurring,
     set_aside,
 )
 from .release import PLANNED, RESERVED, Readiness, ReleaseOffer, release_offer
@@ -492,6 +496,18 @@ def format_digest(
             f"  Left on a branch after its pull request merged: {first.ref} "
             f"({outstanding}){rest}. `bin/docket stranded` to recover."
         )
+    # Silent until a defect has been filed three times, which is the only state
+    # it says anything about - so it costs nothing on the turns it is not true,
+    # and on the turn it is, it is the one line naming evidence no session
+    # asserted (`PL-X5JR`).
+    repeats = recurring(report.items)
+    if repeats:
+        named = ", ".join(f"{item.identifier} ({recurrence_count(item)})" for item in repeats[:3])
+        rest = f", +{len(repeats) - 3} more" if len(repeats) > 3 else ""
+        lines.append(
+            f"  Filed more than once, never promoted for it: {named}{rest}. "
+            "A generator tier candidate a reader confirms; `bin/docket show <id>`."
+        )
     if report.untriaged:
         lines.append(
             f"  {_plural(len(report.untriaged), 'item', 'items')} untriaged; "
@@ -875,6 +891,36 @@ def format_near_duplicates(candidates: Sequence[Candidate], identifier: str) -> 
     lines.append(
         f"    group them: bin/docket set {identifier} --feature <name>, and the same on each."
     )
+    return "\n".join(lines)
+
+
+def format_recurrences(item: Item) -> str:
+    """The filings this item absorbed, as a pointer to briefs rather than a count.
+
+    A count alone says a cluster exists and gives a reader no way to check it,
+    which is the partial answer the apparatus standard's floor refuses. The ids
+    are what make the claim auditable: open both briefs, and either they are
+    one mechanism - in which case `root-cause-of:` is the field to write - or
+    the title match was wrong and the entry says exactly which filing to
+    disbelieve.
+
+    The threshold is named only once it is reached. Below it there is nothing
+    to act on, and printing "1 of 3" on every item that has ever been filed
+    twice is a progress bar toward a promotion nothing has earned.
+    """
+    filings = [found for found in recurrences_of(item) if found.identifier]
+    if not filings:
+        return ""
+    lines = [f"  Filed again {_plural(len(filings), 'time', 'times')} since, as:"]
+    for found in filings:
+        when = found.when.isoformat() if found.when else "an unreadable date"
+        lines.append(f"    {found.identifier} on {when}")
+    if recurrence_count(item) >= MIN_ROOT_CAUSE_ITEMS:
+        lines.append(
+            "    That is the generator threshold. Read them against this brief: one "
+            "mechanism means `docket set <id> --root-cause-of <ids>`, which is a "
+            "judgment nothing here makes for you."
+        )
     return "\n".join(lines)
 
 

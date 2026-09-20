@@ -1531,6 +1531,82 @@ def test_record_on_non_canonical_key_order_classifies_as_pr(tmp_path: Path) -> N
     assert any("pr" in line for line in check.lines), check.lines
 
 
+def test_a_recurrence_written_by_new_classifies_as_a_sanctioned_edit(tmp_path: Path) -> None:
+    """A worker that captures a finding must not fail the audit for it.
+
+    `CLAUDE.md` requires a finding not fixed in the session to be captured
+    unconditionally, and `bin/docket new` now writes a `recurrences:` entry
+    onto the item that capture matched - so a worker following the instruction
+    edits an item nobody commissioned it to touch, exactly as `record`'s
+    backfill does. That is the shape `PL-66PR` and `PL-ZYQC` each cost a round
+    trip, arriving through a third door.
+    """
+    root = _repo(tmp_path)
+    items = root / "docs" / "items"
+    neighbour = items / "PL-B2B2-do-the-other.md"
+
+    insert_field(
+        items,
+        parse_item(neighbour.read_text(), neighbour.name),
+        "recurrences",
+        "2026-09-20 PL-N3W1",
+    )
+    (root / "tests" / "test_thing.py").write_text(KEPT + "\ndef test_more():\n    pass\n")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "PL-K7QX close it out, having captured a finding on the way")
+
+    path = "docs/items/PL-B2B2-do-the-other.md"
+    assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == "recurrence"
+
+
+def test_a_second_recurrence_extending_the_line_is_sanctioned_and_a_rewrite_is_not(
+    tmp_path: Path,
+) -> None:
+    """The growth case, which reads as a removal and so has to be matched exactly.
+
+    Appending to a line removes that line and adds a longer one, and "removes
+    nothing" is what makes the `pr` exemption safe to state exactly. So the
+    append is recognised on its shape - both lines whole `recurrences:` values,
+    the new one starting with the old - rather than by relaxing the removal
+    rule, which would forgive an entry being altered or dropped under cover of
+    one being added.
+    """
+    root = _repo(tmp_path)
+    items = root / "docs" / "items"
+    neighbour = items / "PL-B2B2-do-the-other.md"
+    insert_field(
+        items,
+        parse_item(neighbour.read_text(), neighbour.name),
+        "recurrences",
+        "2026-09-19 PL-N3W1",
+    )
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "base: a neighbour carrying one recurrence")
+    path = "docs/items/PL-B2B2-do-the-other.md"
+
+    insert_field(
+        items,
+        parse_item(neighbour.read_text(), neighbour.name),
+        "recurrences",
+        "2026-09-20 PL-N3W2",
+        append=True,
+    )
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "PL-K7QX a second capture matched to the same item")
+    assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == "recurrence"
+
+    # The same line rewritten rather than extended is an ordinary content edit,
+    # which is the half this must not widen into.
+    neighbour.write_text(
+        neighbour.read_text().replace(
+            "recurrences: 2026-09-19 PL-N3W1, 2026-09-20 PL-N3W2", "recurrences: 2026-09-21 PL-N3W3"
+        )
+    )
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "PL-K7QX replace what was recorded")
+    assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == ""
+
+
 def test_an_ordinary_edit_to_another_items_file_is_still_outside_touches(tmp_path: Path) -> None:
     """The half the exemption must not widen into.
 

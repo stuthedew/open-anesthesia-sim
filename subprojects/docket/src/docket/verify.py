@@ -975,6 +975,14 @@ def _store_at(root: Path, base: str, items_dir: str) -> tuple[str, ...] | None:
 #: ends so that `pr: 495 and also something` is not read as one.
 PR_LINE_RE = re.compile(r"^pr:\s*\d+\s*$")
 
+#: A `recurrences:` line as `cmd_new` writes it: `DATE PL-XXXX` entries,
+#: comma-separated. Anchored at both ends for the reason `PR_LINE_RE` is, and
+#: spelling the whole value rather than a prefix so that a line carrying one
+#: real entry and one invented clause is not read as one.
+RECURRENCE_LINE_RE = re.compile(
+    r"^recurrences:\s*\d{4}-\d{2}-\d{2} \S+(?:,\s*\d{4}-\d{2}-\d{2} \S+)*\s*$"
+)
+
 
 def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path: str) -> str:
     """Whether an out-of-`touches` edit to the queue is one the workflow asked for.
@@ -1002,6 +1010,24 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
     refuses to overwrite a different one, so there is nothing here a worker
     could use to change what a check measures.
 
+    **`"recurrence"`** - an existing item file whose whole diff is its
+    `recurrences:` line arriving, or that line growing by entries on its right.
+    `bin/docket new` writes it onto the item a capture matched, so a worker
+    that captures a finding - which `CLAUDE.md` requires unconditionally -
+    edits an item it was never commissioned to touch, exactly as `record`'s
+    backfill does. The value is dictated rather than chosen: today's date and
+    the id of the capture the session just made. It buys nothing a worker could
+    want either, since the field only makes an item *named* as a generator-tier
+    candidate for a human to confirm, and cannot move a band, a status or
+    anything a check measures (`PL-X5JR`).
+
+    The growth case is the one that needs care, because extending a line reads
+    as a removal and a removal is what the `pr` rule is allowed to be exact
+    about. So it is matched rather than forgiven: the one removed line and the
+    one added line must both be whole `recurrences:` values, and the added one
+    must begin with the removed one - which is an append and cannot be an edit
+    of what was already recorded.
+
     Nothing else is exempt. An item file this branch edited in any other way -
     a `status`, a `touches`, a `verify:` command - is still outside `touches`
     and still fails, which is the case the audit exists for and the reason
@@ -1022,10 +1048,29 @@ def sanctioned_queue_edit(root: Path, base: str, commits: tuple[str, ...], path:
         elif line.startswith("-"):
             removed.append(line[1:])
     if removed:
-        return ""
+        return "recurrence" if _recurrences_grew(added, removed) else ""
     if created:
         return "capture" if any(line.strip() == "status: untriaged" for line in added) else ""
-    return "pr" if added and all(PR_LINE_RE.match(line) for line in added) else ""
+    if added and all(PR_LINE_RE.match(line) for line in added):
+        return "pr"
+    return "recurrence" if added and all(RECURRENCE_LINE_RE.match(line) for line in added) else ""
+
+
+def _recurrences_grew(added: list[str], removed: list[str]) -> bool:
+    """Whether the only change is one `recurrences:` line gaining entries on its right.
+
+    The append `cmd_new` makes on the second and later filings, and the only
+    shape of removal this exemption admits. Both lines have to be whole
+    `recurrences:` values and the new one has to start with the old one, so an
+    entry that was already recorded cannot be altered or dropped under cover of
+    the append.
+    """
+    if len(added) != 1 or len(removed) != 1:
+        return False
+    before, after = removed[0].rstrip(), added[0].rstrip()
+    if not RECURRENCE_LINE_RE.match(before) or not RECURRENCE_LINE_RE.match(after):
+        return False
+    return after.startswith(before) and len(after) > len(before)
 
 
 def commissioned_falsification(

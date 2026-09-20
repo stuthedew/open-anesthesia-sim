@@ -25,10 +25,12 @@ from .model import (
     EFFORTS,
     LANE_CROSSING,
     LANE_UNPLACED,
+    MIN_ROOT_CAUSE_ITEMS,
     PRIORITIES,
     Item,
     impairs_generators_soundly,
     is_generator,
+    recurrence_count,
 )
 from .roadmap import EXCLUDED, IN_SCOPE, OUT_OF_SCOPE, UNPLACED, Scope
 
@@ -345,6 +347,49 @@ def promotable(items: list[Item]) -> list[Item]:
             and set(item.blocking_items) <= resolved
         ),
         key=lambda item: item.identifier,
+    )
+
+
+def recurring(items: list[Item]) -> list[Item]:
+    """Open items the store has now absorbed three or more filings of.
+
+    The evidence a generator claim rests on, arriving without anybody having to
+    notice it. `CLAUDE.md` ranks a root cause above every band but `P0` because
+    "every session it stands through pays it again", and a re-filing is that
+    sentence happening: a session hit the defect, had no idea an item existed,
+    and paid the diagnosis a second time. Until `bin/docket new` recorded the
+    match, that evidence existed only in prose - `PL-STC4`'s brief names its own
+    duplication three times and nothing was promoted until a session read the
+    cluster by hand, five captures in.
+
+    **Three, and it is deliberately the generator rule's own number**
+    (`MIN_ROOT_CAUSE_ITEMS`). A second threshold would be a second thing to
+    argue about and a second place for the project to disagree with itself
+    about what "keeps happening" means.
+
+    **Candidates, never a verdict, and this one may not even rank.**
+    `promotable` above is named-but-not-ranked because a closed blocker is not
+    evidence that nothing else holds an item; this is named-but-not-ranked for a
+    stronger reason. The count is built from a title-similarity match, which
+    `README.md` refuses to let write `root-cause-of:` at all - "the one place in
+    the store where a typo would buy a promotion". So ranking on this field
+    would buy exactly the promotion that validation exists to refuse, one
+    indirection away. A reader opens both briefs and writes the claim by hand,
+    as they always have; what has changed is that the cluster is now *seen*.
+
+    An item already carrying a sound generator claim is left out: it is on the
+    tier already, so naming it as a candidate for the tier is a line that
+    changes no decision.
+    """
+    return sorted(
+        (
+            item
+            for item in items
+            if item.status not in CLOSED_STATUSES
+            and recurrence_count(item) >= MIN_ROOT_CAUSE_ITEMS
+            and not is_generator(item, {i.identifier for i in items if i.identifier})
+        ),
+        key=lambda item: (-recurrence_count(item), item.identifier),
     )
 
 

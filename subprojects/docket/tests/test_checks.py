@@ -2687,6 +2687,33 @@ def test_an_item_listing_itself_as_its_own_root_cause_is_an_error() -> None:
     assert _has(errors, "lists itself among the items it is the root cause of")
 
 
+def test_a_recurrence_naming_an_unknown_capture_is_an_error() -> None:
+    """An entry nothing can resolve is a filing the store will not show you.
+
+    Weaker in consequence than the generator checks around it - this field
+    surfaces a candidate and never promotes one - and still an error, because
+    the failure is quiet in the direction that matters: `recurrence_count` can
+    only count what it can read, so an item filed four times with one bad entry
+    sits below the threshold and nothing says why.
+    """
+    errors = _errors(_item("PL-K7QX", recurrences=("2026-09-20 PL-NOPE",)))
+
+    assert _has(errors, "PL-NOPE, which no item in this store carries")
+
+
+def test_a_recurrence_that_is_not_a_date_and_an_id_is_an_error() -> None:
+    """The field is tool-written, so a malformed entry is a hand edit gone wrong."""
+    errors = _errors(_item("PL-K7QX", recurrences=("filed twice",)))
+
+    assert _has(errors, "does not read as `DATE PL-XXXX`")
+
+
+def test_a_sound_recurrence_is_accepted() -> None:
+    errors = _errors(_item("PL-K7QX", recurrences=("2026-09-20 PL-E1E1",)), *_explained())
+
+    assert not _has(errors, "recurrences")
+
+
 def test_the_root_cause_error_says_the_generator_is_not_being_ranked() -> None:
     """The repair is the point: an unsound claim is recorded and inert."""
     errors = _errors(_item("PL-K7QX", root_cause_of=_EXPLAINS[:1]), *_explained())

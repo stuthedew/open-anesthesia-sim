@@ -9,6 +9,7 @@ feature: delegation
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/store.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests
 added: 2026-09-16
 closed: 2026-09-20
+pr: 785
 payoff: a close-out that followed the instructions stops coming back REJECT, so no session has to rebuild its branch history to clear a line the tool itself wrote
 verify: grep -q 'def test_record_on_non_canonical_key_order_classifies_as_pr' subprojects/docket/tests/test_verify.py
 ---

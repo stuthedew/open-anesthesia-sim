@@ -191,3 +191,34 @@ def near_duplicates(
 
     scored.sort(key=lambda found: (-found.score, -len(found.shared), found.item.identifier))
     return tuple(scored[:limit])
+
+
+def anchor(candidates: tuple[Candidate, ...]) -> Candidate | None:
+    """Which of the printed candidates a recurrence is recorded onto.
+
+    The top-ranked one, except that a candidate already carrying recurrences
+    wins over a higher-scoring one that carries none. Both are matches the
+    search already selected and printed; this only decides which of them the
+    evidence accumulates on.
+
+    **Without it the counter never fires, which is measured rather than
+    argued.** Replaying the two real clusters through the search as if it had
+    existed when they were filed - each member arriving in filing order against
+    the rest of the store - the top-ranked candidate is a different item almost
+    every time, because each new capture is most similar to the *previous*
+    capture rather than to the diagnosis at the head of the cluster. The five
+    suppression-check filings spread as 2 + 1 + 1 and peak at two; anchoring
+    them collects 3 on `PL-5MFL` and crosses the threshold. A cluster whose
+    evidence is split three ways is a cluster nothing surfaces, which is the
+    state this mechanism exists to end.
+
+    **What it cannot do is invent a cluster.** Every candidate here already
+    shares a declared path and already cleared `DISPLAY_FLOOR`, so the
+    preference reorders a shortlist and never extends it. The effect is
+    bounded at three items by `LIMIT`, and each entry names the capture it came
+    from, so a reader who thinks the anchor is wrong can see exactly which
+    filings were attributed to it.
+    """
+    if not candidates:
+        return None
+    return min(candidates, key=lambda found: (-len(found.item.recurrences), -found.score))

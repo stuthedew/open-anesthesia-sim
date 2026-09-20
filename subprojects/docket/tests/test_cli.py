@@ -126,6 +126,22 @@ def test_touches_may_be_repeated_as_well_as_comma_separated(tmp_path: Path) -> N
     assert "touches: src/a.py, src/b.py, src/c.py" in next(store.glob("*.md")).read_text()
 
 
+CLUSTERED = """---
+id: PL-E5E5
+title: alpha beta gamma delta epsilon zeta
+priority: P2
+effort: M
+status: ready
+classes: defect
+touches: z.py
+added: 2026-08-01
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
 SUPPRESSION = """---
 id: PL-C1C1
 title: verify's suppression check reads prose as code
@@ -177,6 +193,64 @@ def test_new_names_an_existing_item_with_a_near_identical_title(
     assert "PL-C1C1" in printed
     assert "(ready)" in printed
     assert "subprojects/docket/src/docket/verify.py" in printed
+
+
+def test_new_records_the_filing_on_the_item_it_matched(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The evidence written down, instead of waiting for a session to notice it.
+
+    `PL-STC4`'s brief documents its own duplication three separate times in its
+    own prose and nothing was promoted until a session read the cluster by
+    hand, five captures in. The entry carries the date and the capture's id so
+    a reader can open both briefs and decide, which is the judgment a
+    similarity score may not make.
+    """
+    store = _store(tmp_path, SUPPRESSION)
+
+    assert (
+        _run(
+            "new",
+            "--touches",
+            "subprojects/docket/src/docket/verify.py",
+            "verify's suppression check reads every added line as code",
+            "--items",
+            str(store),
+        )
+        == 0
+    )
+
+    matched = next(p for p in store.glob("*.md") if "PL-C1C1" in p.read_text())
+    filed = next(p for p in store.glob("*.md") if p != matched)
+    identifier = re.search(r"^id: (PL-\S+)", filed.read_text(), re.M).group(1)
+    assert f"recurrences: 2026-08-24 {identifier}" in matched.read_text()
+    assert "Recorded on PL-C1C1: 1 filing matched to it" in capsys.readouterr().out
+
+
+def test_a_second_filing_extends_the_line_the_first_one_wrote(tmp_path: Path) -> None:
+    """The counter accumulates on one item rather than starting over.
+
+    Two entries on one line, because that is what `recurrence_count` reads and
+    what `plan.recurring` counts to three. The append is byte-faithful for the
+    reason `PL-7K8Y` established - `verify.sanctioned_queue_edit` forgives a
+    queue edit that removes nothing, so re-rendering the file would fail the
+    close-out of any worker that captured a finding, which `CLAUDE.md` requires
+    unconditionally.
+
+    The two capture titles share little with each other and a lot with the
+    target, so the second filing matches the target rather than the first
+    capture - which is the real ranking, not a contrivance: a session filing
+    two unrelated findings against one module is the ordinary case.
+    """
+    store = _store(tmp_path, CLUSTERED)
+
+    assert _run("new", "--touches", "z.py", "alpha beta gamma theta", "--items", str(store)) == 0
+    assert _run("new", "--touches", "z.py", "delta epsilon zeta kappa", "--items", str(store)) == 0
+
+    matched = next(p for p in store.glob("*.md") if "PL-E5E5" in p.read_text())
+    entries = re.search(r"^recurrences: (.+)$", matched.read_text(), re.M).group(1)
+    assert matched.read_text().count("recurrences: ") == 1
+    assert len(entries.split(", ")) == 2
 
 
 def test_new_says_nothing_about_an_item_declaring_a_different_path(

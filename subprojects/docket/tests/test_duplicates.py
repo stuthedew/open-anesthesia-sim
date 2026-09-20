@@ -4,11 +4,18 @@ from __future__ import annotations
 
 from datetime import date
 
-from docket.duplicates import DISPLAY_FLOOR, near_duplicates, similarity
+from docket.duplicates import DISPLAY_FLOOR, anchor, near_duplicates, similarity
 from docket.model import Item
 
 
-def _item(identifier: str, title: str, *, touches: tuple[str, ...], status: str = "ready") -> Item:
+def _item(
+    identifier: str,
+    title: str,
+    *,
+    touches: tuple[str, ...],
+    status: str = "ready",
+    recurrences: tuple[str, ...] = (),
+) -> Item:
     return Item(
         identifier=identifier,
         title=title,
@@ -25,6 +32,7 @@ def _item(identifier: str, title: str, *, touches: tuple[str, ...], status: str 
         commit="",
         reason="",
         body="",
+        recurrences=recurrences,
     )
 
 
@@ -184,3 +192,46 @@ def test_a_capture_declaring_nothing_searches_nothing() -> None:
     ]
 
     assert near_duplicates("verify's suppression check reads prose as code", (), store) == ()
+
+
+def test_the_recurrence_anchors_on_the_item_already_carrying_one() -> None:
+    """Without this the count fragments across a cluster and never reaches three.
+
+    Measured by replaying the two real clusters through the search as if it
+    had existed when they were filed: each new capture is most similar to the
+    *previous* capture rather than to the diagnosis at the head of the cluster,
+    so the five suppression-check filings spread as 2 + 1 + 1 and peak at two.
+    Anchoring collects 3 on `PL-5MFL` and crosses the threshold. A cluster
+    whose evidence is split three ways is a cluster nothing surfaces.
+
+    Both candidates were already selected and already printed, so this
+    reorders a shortlist rather than extending one - it cannot invent a
+    cluster, only decide which member of one the evidence lands on.
+    """
+    closest = _item(
+        "PL-AAAA",
+        "verify's suppression check reads every added line as code",
+        touches=("subprojects/docket/src/docket/verify.py",),
+    )
+    already = _item(
+        "PL-BBBB",
+        "verify's suppression check reads prose as code",
+        touches=("subprojects/docket/src/docket/verify.py",),
+        recurrences=("2026-09-19 PL-CCCC",),
+    )
+
+    found = near_duplicates(
+        "verify's suppression check reads every added line as code, again",
+        ("subprojects/docket/src/docket/verify.py",),
+        [closest, already],
+    )
+
+    assert found[0].item.identifier == "PL-AAAA", "the ranking still puts the closest title first"
+    picked = anchor(found)
+    assert picked is not None
+    assert picked.item.identifier == "PL-BBBB"
+
+
+def test_anchoring_an_empty_shortlist_names_nothing() -> None:
+    """No candidates means no recurrence, rather than a guess at which item."""
+    assert anchor(()) is None

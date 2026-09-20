@@ -29,12 +29,13 @@ from .concurrency import (
 )
 from .config import CONFIG_NAME, Config
 from .config import load as load_config
-from .duplicates import near_duplicates
+from .duplicates import anchor, near_duplicates
 from .model import (
     CLOSED_STATUSES,
     EFFORTS,
     LANE_CROSSING,
     LIST_FIELDS,
+    MIN_ROOT_CAUSE_ITEMS,
     PRIORITIES,
     SELECTABLE_LANES,
     STATUSES,
@@ -43,6 +44,8 @@ from .model import (
     generators_explaining,
     impairs_generators_soundly,
     is_generator,
+    recurrence_count,
+    recurrences_of,
 )
 from .plan import (
     OfferedReport,
@@ -52,6 +55,7 @@ from .plan import (
     placement_line,
     promotable,
     recommend,
+    recurring,
     set_aside,
 )
 from .release import (
@@ -636,7 +640,62 @@ def cmd_new(args: argparse.Namespace) -> int:
         taken.add(identifier)
         if found:
             print(render.format_near_duplicates(found, identifier))
+            onto = anchor(found)
+            if onto is not None:
+                items = _record_recurrence(directory, items, onto.item, identifier, args)
     return 0
+
+
+def _record_recurrence(
+    directory: Path, items: list[Item], matched: Item, identifier: str, args: argparse.Namespace
+) -> list[Item]:
+    """Write this filing onto the open item it matched, and say the count.
+
+    The whole of `PL-X5JR`: a re-filing is evidence the defect fired again, and
+    until this wrote it down the evidence had to be *asserted* by a session that
+    happened to notice the cluster. `PL-STC4` documents its own duplication
+    three times in its own prose, and nothing was ranked until a session read
+    the five captures by hand.
+
+    **Onto the top candidate alone, not onto everything printed.** The ranking
+    is a similarity over prose and the lower candidates are there so a reader
+    can check them, not because the tool believes in them; recording against
+    all three would inflate every count in a cluster by the size of the cluster.
+    Both ids and the date go in, so a reader who thinks the match was wrong can
+    see exactly which filing was attributed and to what.
+
+    **A file the rewrite could not keep faithful is left alone**, as `set`
+    leaves one: a file spelling a key twice, or carrying a field this format
+    does not know, would come back collapsed or shorn. Saying so and carrying on
+    is the only acceptable outcome here, because the capture has already been
+    written and must not be undone over a second item's formatting.
+    """
+    if matched.duplicate_fields or matched.unknown_fields:
+        print(
+            f"    Not recorded on {matched.identifier}: its file spells "
+            f"{', '.join(matched.duplicate_fields + matched.unknown_fields)} in a way a "
+            "rewrite would silently change. `docket check` names the repair."
+        )
+        return items
+
+    today = args.today or date.today()
+    entry = f"{today.isoformat()} {identifier}"
+    updated = with_fields(matched, recurrences=(*matched.recurrences, entry))
+    try:
+        insert_field(directory, matched, "recurrences", entry, append=bool(matched.recurrences))
+    except ValueError as refusal:
+        print(f"    Not recorded on {matched.identifier}: {refusal}.")
+        return items
+
+    count = recurrence_count(updated)
+    reached = (
+        " - `bin/docket next` now names it as a generator-tier promotion candidate"
+        if count == MIN_ROOT_CAUSE_ITEMS
+        else ""
+    )
+    plural = "filing" if count == 1 else "filings"
+    print(f"    Recorded on {matched.identifier}: {count} {plural} matched to it{reached}.")
+    return [updated if item is matched else item for item in items]
 
 
 def _comma_separated(values: list[str] | None) -> tuple[str, ...]:
@@ -694,9 +753,15 @@ def _capture(directory: Path, title: str, taken: set[str], args: argparse.Namesp
 #: attribute each lands on - which is also the flag's `dest`, so one table
 #: serves the parser, the conflict check and the write. Every field triage
 #: answers is here and nothing else is: `id`, `title` and `added` are the
-#: capture's, `pr` is `record`'s, `milestone` is `release`'s, and `commit` is
-#: retired. A flag outside this table is an unknown field, and argparse refuses
-#: it before the store is read.
+#: capture's, `pr` is `record`'s, `milestone` is `release`'s, `recurrences` is
+#: `new`'s, and `commit` is retired. A flag outside this table is an unknown
+#: field, and argparse refuses it before the store is read.
+#:
+#: `recurrences` is left out for the reason `pr` is, and the reason is stronger:
+#: the field's whole worth is that each entry was written by the tool at the
+#: moment it matched a filing, so a hand-written one is a claim about a filing
+#: that may never have happened. `docket check` holds the entries to naming real
+#: items, which is as far as a check can go (`PL-X5JR`).
 SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("priority", "priority"),
     ("effort", "effort"),
@@ -983,6 +1048,12 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(f"  plan: {placement}")
     if heads := generators_explaining(item.identifier, items):
         print(render.format_generators(heads))
+    if item.recurrences:
+        # Where a reader sent here by `next` or the digest actually lands. Naming
+        # the count and not the filings would be the partial answer this package
+        # refuses: the whole worth of the field is that both briefs can be opened
+        # and compared, which needs the ids (`PL-X5JR`).
+        print(render.format_recurrences(item))
     if item.impairs_generators:
         # The promotion is invisible from the item file alone - `impairs-generators`
         # lifts this above every band but `P0`, and a session reading `P2` at the
@@ -1234,6 +1305,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         if report.untriaged:
             print(f"{len(report.untriaged)} untriaged item(s) are waiting: `docket list`.")
         _say_promotable(items)
+        _say_recurring(items)
         _say_lane_holdouts(items, flight, config, args, lane)
         _say_unread(flight)
         return 0
@@ -1243,6 +1315,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     if flight.ids:
         print(f"Excluded, already in flight: {', '.join(sorted(flight.ids))}")
     _say_promotable(items)
+    _say_recurring(items)
     _say_lane_holdouts(items, flight, config, args, lane)
     _say_answer_lane(items, flight, config, args, plan, lane, picks[0].item)
     if report.advisories:
@@ -1284,6 +1357,37 @@ def _say_promotable(items: list[Item]) -> None:
         "item, and 7 of 13 measured this way were held by something the field could not "
         "see. Read each against the tree, then `docket set <id> --status ready` or record "
         "what is really holding it."
+    )
+
+
+def _say_recurring(items: list[Item]) -> None:
+    """Name the open items the store has now absorbed three or more filings of.
+
+    The counter's only output, and the design's whole point of restraint
+    (project owner, 2026-09-20, ratified, over raising the matched item's
+    `priority:`). `CLAUDE.md` ranks a root cause above every band but `P0`
+    because "every session it stands through pays it again", and three separate
+    sessions filing the same defect is that sentence measured rather than
+    asserted - but the count is built from a title-similarity match, and
+    `README.md` refuses to let one of those write `root-cause-of:` at all. So
+    the line names the cluster and stops. A reader opens the briefs and writes
+    the claim, or does not.
+
+    Printed beside `_say_promotable` and for the same reason: `docket check`
+    can only ever report this in an advisory, and a session picking work has no
+    reason to run the checker.
+    """
+    candidates = recurring(items)
+    if not candidates:
+        return
+    print("Filed more than once, and never promoted for it:")
+    for item in candidates:
+        filed = ", ".join(sorted({f.identifier for f in recurrences_of(item) if f.identifier}))
+        print(f"  {item.identifier} ({recurrence_count(item)} filings: {filed})")
+    print(
+        "  Not ranked above - the count comes from a title match, which may not buy a "
+        "promotion. Read them against each other, and where they are one mechanism, "
+        "record it: `docket set <id> --root-cause-of <ids>`."
     )
 
 

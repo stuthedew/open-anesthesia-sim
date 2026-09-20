@@ -9,6 +9,7 @@ feature: worker-instructions
 touches: .claude/skills/docket, .claude/rules/citation-drift.md, tools/doc_check.py, docs/items, ROADMAP.md, docket.toml, docs/ARCHITECTURE.md
 added: 2026-09-16
 closed: 2026-09-20
+pr: 786
 payoff: the close-out, triage and start-an-item procedures still exist after a compaction, instead of CLAUDE.md's pointer to them resolving to nothing
 verify: test "$(wc -c < .claude/skills/docket/SKILL.md)" -lt 20000 && test -f .claude/skills/docket/modes/close-out.md
 ---

@@ -1555,6 +1555,33 @@ cheap falsifier. A bare `yes` is rejected for the reason `not-delegable`
 rejects one: a field that lifts an item above every band owes its reader the
 function that broke.
 
+`recurrences` is the evidence those two fields rest on, arriving without a
+session having to notice it — and it is deliberately not a third field that
+changes a queue position. Each entry is a date and the id of a capture that
+`docket new` matched to this item: the filing happened, so the defect fired
+again, and `CLAUDE.md`'s reason for pulling a root cause is that every session
+it stands through pays it again. At three distinct filings — the generator
+rule's own number, so the project carries one threshold rather than two —
+`docket next` and the session-start digest name the item as a promotion
+candidate and stop there. A reader opens the briefs and writes `root-cause-of:`
+by hand, or does not.
+
+**It surfaces; it never promotes**, and that is the whole restraint of the
+design (project owner, 2026-09-20, ratified, over counting repeat filings and
+raising the matched item's `priority:`). The count is built from a
+title-similarity ranking, and `root-cause-of:` is the one place in this store
+where a typo would buy a promotion — so letting the count rank an item would
+reintroduce the hazard that field's validation closes, one indirection away.
+`priority:` could not have carried it either: `docket check` pins `P1` to
+`safety` and `science`, and `CLAUDE.md` forbids promoting process work into
+that band to move it up the order, which is every item this counter will ever
+fire on.
+
+`docket set` does not write it. The field's worth is that each entry was
+recorded by the tool at the moment it matched a filing, so a hand-written one
+is a claim about a filing that may never have happened; `docket check` holds
+each entry to naming a real item, which is as far as a check can reach.
+
 An item at `ready` must carry one of them: the command that would prove it
 done, or a recorded reason why no command can. The gate sits at `ready` rather
 than at capture deliberately — demanding a command at the moment an idea occurs

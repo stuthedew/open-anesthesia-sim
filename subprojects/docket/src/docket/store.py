@@ -134,7 +134,9 @@ def rewrite_item(directory: Path, item: Item) -> Path:
     return target
 
 
-def insert_field(directory: Path, item: Item, name: str, value: str) -> Path:
+def insert_field(
+    directory: Path, item: Item, name: str, value: str, *, append: bool = False
+) -> Path:
     """Add one front-matter field to an item, leaving every other byte as it was.
 
     The third writer here, and the three differ by what they leave alone:
@@ -153,12 +155,17 @@ def insert_field(directory: Path, item: Item, name: str, value: str) -> Path:
 
     Reads the file rather than rendering `item`, so the value written is the
     only thing about the block that comes from the caller.
+
+    `append` extends a list field that already exists instead of refusing,
+    which is what `bin/docket new` needs for the second and later filings it
+    matches to one item. Byte-faithfulness is the reason it lands here rather
+    than in a re-render: see `with_front_matter_field`.
     """
     if not item.path:
         raise ValueError(f"{item.identifier or 'the item'} was not read from a file")
     target = directory / item.path
     text = target.read_text(encoding="utf-8")
-    target.write_text(with_front_matter_field(text, name, value), encoding="utf-8")
+    target.write_text(with_front_matter_field(text, name, value, append=append), encoding="utf-8")
     return target
 
 
