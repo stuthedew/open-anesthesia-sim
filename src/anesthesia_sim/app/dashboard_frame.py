@@ -282,15 +282,30 @@ MARK_STANDING_TEXT: Final[Mapping[MarkStanding, str]] = MappingProxyType(
 # On an unattributed row silence is unambiguous: nothing has happened to a
 # mark on the one run whose answer the row states. Beside a named run that has
 # something to say, silence would read as the second run having no answer
-# rather than as its answer being "not yet", so the row would leave a reader
-# to infer from an absence exactly what `.claude/rules/ui-reader.md` keeps
+# rather than as its answer being not yet, so the row would leave a reader to
+# infer from an absence exactly what `.claude/rules/ui-reader.md` keeps
 # conditional text for. The word costs nothing on the rows that stay
 # unattributed, because those rows never reach this table.
+#
+# **It is predicated of the mark, not of the run, and "still running" was the
+# wrong word for it.** `MARK_ATTRIBUTION_TEMPLATE` puts the run's name first,
+# which makes the run the grammatical subject: for `passed`, `reached` and the
+# cap the predicate still reads as that run's relation to the mark, but "still
+# running" reads as its transport state. This interface owns that vocabulary
+# already - `STATUS_RUNNING_TEXT`, `STATUS_PAUSED_TEXT` and
+# `STATUS_FAILED_TEXT` are a few lines above, and
+# `REFUSED_SETTING_NOTICE_TEMPLATE` uses the phrase in exactly that sense - so
+# `Run 2 still running` contradicted the word on Run 2's own panel whenever
+# that run was paused, which is most of the time a learner reads this row, and
+# said something `MarkStanding.STILL_RUNNING` is not licensed to claim: it
+# says the run *can still reach* the mark and has not yet, which is a
+# statement about the mark rather than about the clock. "Not yet" is that
+# statement, and it holds of a paused run and a running one alike.
 #
 # Derived from `MARK_STANDING_TEXT` rather than written out again, so the four
 # words the two tables share cannot come to disagree about what a standing is
 # called on one row and on the row beside it.
-MARK_STILL_RUNNING_TEXT: Final = "still running"
+MARK_STILL_RUNNING_TEXT: Final = "not yet"
 MARK_STANDING_COMPARED_TEXT: Final[Mapping[MarkStanding, str]] = MappingProxyType(
     {**MARK_STANDING_TEXT, MarkStanding.STILL_RUNNING: MARK_STILL_RUNNING_TEXT}
 )

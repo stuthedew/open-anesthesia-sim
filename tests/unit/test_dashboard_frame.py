@@ -70,6 +70,9 @@ from anesthesia_sim.app.dashboard_frame import (
     RUNNING_AGENT_LOCK_TEXT,
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
+    STATUS_FAILED_TEXT,
+    STATUS_PAUSED_TEXT,
+    STATUS_RUNNING_TEXT,
     TIME_BOOKMARK_HEADING,
     USE_DISCLAIMER_TEXT,
     WIDEST_COMPARTMENT_SECONDARY,
@@ -1869,7 +1872,7 @@ def test_a_mark_the_run_can_still_reach_adds_no_words_to_its_row() -> None:
     panel = bookmark_panel(_marks(), _one_run(_unreached(_marks())))
     everything = " ".join((*panel.times.rows, *panel.targets.rows)).lower()
 
-    for claim in ("reached", "crossed", "halted", "stopped", "still running"):
+    for claim in ("reached", "crossed", "halted", "stopped", MARK_STILL_RUNNING_TEXT):
         assert claim not in everything
 
 
@@ -2051,6 +2054,29 @@ def test_every_standing_a_run_can_report_has_a_word_on_an_attributed_row() -> No
 
     for standing in MarkStanding:
         assert MARK_STANDING_COMPARED_TEXT[standing]
+
+
+def test_the_attributed_standing_words_describe_the_mark_and_not_the_transport() -> None:
+    """`MARK_ATTRIBUTION_TEMPLATE` makes the run the grammatical subject.
+
+    So a standing borrowing one of the transport's own words would assert
+    what the clock is doing rather than where the mark stands - and this
+    interface says what the clock is doing a few lines away, in
+    `STATUS_RUNNING_TEXT` and its neighbours, on that run's own panel. The
+    entry this catches is `STILL_RUNNING`, whose attributed form read "still
+    running" and so contradicted the panel beside it on every paused run,
+    while claiming more than `MarkStanding.STILL_RUNNING` is licensed to: it
+    says the run *can still reach* the mark and has not yet, which is about
+    the mark rather than about the clock.
+    """
+
+    transport = (STATUS_RUNNING_TEXT, STATUS_PAUSED_TEXT, STATUS_FAILED_TEXT)
+
+    for standing in MarkStanding:
+        said = MARK_STANDING_COMPARED_TEXT[standing].lower()
+
+        for word in transport:
+            assert word.lower() not in said
 
 
 def test_a_panel_drawn_for_no_run_is_refused() -> None:
