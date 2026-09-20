@@ -56,8 +56,12 @@ from anesthesia_sim.app.chart_time_base import (
 )
 from anesthesia_sim.app.control_record import ControlChange
 from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustments
-from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
+    BRANCH_AGENT_LOCK_TEXT,
+    COMPARING_AGENT_LOCK_TEXT,
+    COMPARING_FORK_LOCK_TEXT,
+    FORK_NOTHING_SELECTED_TEXT,
     INTERPRETATION_DISCLAIMER_TEXT,
     KEEP_CURRENT_CASE_TEMPLATE,
     MAX_DISPLAYED_RUNS,
@@ -72,6 +76,7 @@ from anesthesia_sim.app.dashboard_frame import (
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
     START_NEW_CASE_TEMPLATE,
+    run_label,
     slider_position,
 )
 from anesthesia_sim.app.formatting import (
@@ -198,7 +203,10 @@ def _advance_to(controller: SimulationController, elapsed_s: float) -> None:
 
 
 def _shown_view(
-    application: QApplication, *controllers: SimulationController, width_px: int = _WINDOW_WIDTH_PX
+    application: QApplication,
+    *controllers: SimulationController,
+    width_px: int = _WINDOW_WIDTH_PX,
+    case: BranchedCase | None = None,
 ) -> SimulationView:
     """A dashboard over these runs, shown at the fixed size and presented once.
 
@@ -207,7 +215,7 @@ def _shown_view(
     """
 
     _delete_shown_views(application)
-    view = SimulationView(controllers)
+    view = SimulationView(controllers, case=case)
     _SHOWN_VIEWS.append(view)
     view.resize(width_px, _WINDOW_HEIGHT_PX)
     view.show()
@@ -338,6 +346,36 @@ def _paused_run_with_history(elapsed_s: float = 60.0) -> SimulationController:
     controller.pause()
 
     return controller
+
+
+def _branched_case(elapsed_s: float = 60.0) -> BranchedCase:
+    """A case whose trunk is paused with a recorded run and two instants to fork at.
+
+    `_paused_run_with_history` records one setting change, so the trunk holds
+    a keyframe at induction and another at `elapsed_s` - which is what
+    `BranchedCase.fork_points_s` offers and the only two instants
+    `resumed_at` will open a branch at.
+    """
+
+    return BranchedCase(_paused_run_with_history(elapsed_s))
+
+
+def _case_view(
+    application: QApplication, case: BranchedCase, width_px: int = _WINDOW_WIDTH_PX
+) -> SimulationView:
+    """A dashboard opened over a case's trunk, the way `main()` opens one."""
+
+    return _shown_view(application, case.trunk, width_px=width_px, case=case)
+
+
+def _take_fork(view: SimulationView, instant_s: float) -> None:
+    """Choose an offered instant in the branch control and press its button."""
+
+    panel = view._fork_panel
+    index = panel.point_selector.findData(instant_s)
+    assert index >= 0, f"the branch control does not offer {instant_s} s"
+    panel.point_selector.setCurrentIndex(index)
+    panel.take_button.click()
 
 
 def _select_agent(run: RunView, agent_id: str) -> None:
@@ -3178,3 +3216,381 @@ def test_the_bookmark_panel_sits_outside_the_region_between_the_two_plots(
     children = view._chart_column.findChildren(QWidget)
 
     assert children.index(view._bookmarks_panel) > children.index(view._wash_in_chart)
+
+
+# ------------------------------------------------------------------ branching
+
+
+def test_the_shipped_dashboard_opens_over_a_case_it_can_branch(application: QApplication) -> None:
+    """`PL-VKJW`: every mechanism under v0.5.0's Goal had shipped and nothing called it.
+
+    A dashboard handed loose controllers cannot branch and says so by not
+    offering the control; one opened over a case offers it, from the trunk's
+    own keyframes.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+
+    assert view.case is case
+    assert view.case.trunk is view.runs[0].controller
+    assert view._fork_section.isHidden() is False
+    assert view._fork_panel.take_button.isHidden() is False
+
+
+def test_a_dashboard_over_loose_runs_offers_no_branch_control(application: QApplication) -> None:
+    """A control that could only refuse is one presenting itself as working."""
+
+    view = _shown_view(application, SimulationController())
+
+    assert view.case is None
+    assert view._fork_section.isHidden() is True
+
+
+def test_a_dashboard_refuses_a_case_rooted_in_another_run() -> None:
+    """Two curves on one axis assert one patient; a foreign case would misattribute it."""
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "a dashboard's case must be the one rooted in its first run, which is the "
+            "trunk every branch of it is taken from"
+        ),
+    ):
+        SimulationView((SimulationController(),), case=BranchedCase(SimulationController()))
+
+
+def test_the_branch_control_offers_exactly_the_trunks_keyframes(application: QApplication) -> None:
+    """`BranchedCase.fork_points_s`, rendered the way the clock renders time.
+
+    Induction is offered rather than filtered out: a fork at zero is a second
+    management of the whole case, and a case that has recorded nothing else
+    would otherwise have an empty selector beside a live button.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    selector = view._fork_panel.point_selector
+    offered = [selector.itemData(index) for index in range(selector.count())]
+    labels = [selector.itemText(index) for index in range(selector.count())]
+
+    assert case.fork_points_s == (0.0, 60.0)
+    assert offered == list(case.fork_points_s)
+    assert labels == [format_elapsed(instant_s) for instant_s in case.fork_points_s]
+
+
+def test_taking_a_fork_adds_the_branch_to_the_dashboard(application: QApplication) -> None:
+    """The run added after construction: the case gains a run and so does the display.
+
+    `SimulationView` fixed its run set at construction until `PL-VKJW`, so a
+    branch taken during a session had nowhere to be drawn. The branch is
+    added last, leaving the run that happened in the first position, which
+    is where the ×MAC ruler and the clinical references are read from.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+
+    assert len(view.runs) == 1
+
+    _take_fork(view, 60.0)
+
+    assert len(view.runs) == 2
+    assert len(case.branches) == 1
+    assert view.runs[0].controller is case.trunk
+    assert view.runs[1].controller is case.branches[0]
+    assert view.runs[1].controller.opened_from is not None
+    assert view.runs[1].snapshot().elapsed_s == pytest.approx(60.0)
+    assert view.runs[1].is_running is False
+
+
+def test_the_branch_is_drawn_beside_the_trunk_on_one_time_axis(application: QApplication) -> None:
+    """One frame, both runs, and the branch's curve begins where it was taken."""
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    _take_fork(view, 60.0)
+    view.present(False)
+
+    frame = view._frame
+    assert frame is not None
+    assert len(frame.runs) == 2
+
+    trunk_times, _ = view._concentration_chart.drawn_points(0, RecordedQuantity.ALVEOLAR)
+    branch_times, _ = view._concentration_chart.drawn_points(1, RecordedQuantity.ALVEOLAR)
+
+    assert min(trunk_times) == pytest.approx(0.0)
+    assert min(branch_times) == pytest.approx(60.0)
+    assert max(branch_times) <= max(trunk_times) + SIMULATION_STEP_S
+
+
+def test_the_run_added_after_construction_is_named_and_given_its_own_sections(
+    application: QApplication,
+) -> None:
+    """Everything that reads the run count follows the addition, not the construction.
+
+    The legends name the runs and hold the compartment selection to the
+    compared cap from this count, the panels carry the names the legend
+    entries use, and `PL-25KS` gives every surface a splitter section of its
+    own - so a second run adds two.
+    """
+
+    view = _case_view(application, _branched_case())
+    sections_before = _stacked_sections(view).count()
+
+    _take_fork(view, 60.0)
+    _settle(application)
+
+    assert _stacked_sections(view).count() == sections_before + 2
+    assert view._legend._run_count == 2
+    assert view._wash_in_legend._run_count == 2
+    assert view.runs[0]._run_name_text.text() == run_label(0)
+    assert view.runs[1]._run_name_text.text() == run_label(1)
+    assert view.runs[1]._run_name_text.isHidden() is False
+
+
+def test_no_handle_of_the_restacked_splitter_becomes_draggable(application: QApplication) -> None:
+    """Qt enables the handle it creates with a new section (`PL-25KS` freezes them)."""
+
+    view = _case_view(application, _branched_case())
+    _take_fork(view, 60.0)
+    _settle(application)
+    sections = _stacked_sections(view)
+
+    for index in range(1, sections.count()):
+        assert sections.handle(index).isEnabled() is False
+
+
+def test_a_second_fork_is_refused_while_two_runs_are_shown(application: QApplication) -> None:
+    """The display is capped at two and there is no run selector, so the way out is Reset.
+
+    Refused visibly rather than silently: the control is hidden in the same
+    form the transport hides the agent selector, and the reason stands where
+    it stood. Replacing the shown branch while the first went on living
+    inside `BranchedCase` would be state the screen does not carry.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    _take_fork(view, 60.0)
+
+    panel = view._fork_panel
+
+    assert panel.take_button.isHidden() is True
+    assert panel.take_button.isEnabled() is False
+    assert panel.point_selector.isHidden() is True
+    assert panel.point_selector.isEnabled() is False
+    assert panel.lock_text.text() == COMPARING_FORK_LOCK_TEXT
+    assert panel.lock_text.isHidden() is False
+    # The mode is not a warning: this interface has one alarm colour and a
+    # comparison in progress is the dashboard working as intended.
+    assert panel.notice.notice() is None
+
+    view._handle_fork()
+
+    assert len(view.runs) == 2
+    assert len(case.branches) == 1
+    assert panel.lock_text.text() == COMPARING_FORK_LOCK_TEXT
+
+
+def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApplication) -> None:
+    """`resumed_at` refuses an instant that is not a keyframe rather than approximating.
+
+    The control cannot offer such an instant - it is built from
+    `fork_points_s` - so the entry is put there directly to reach the guard
+    behind it. A refusal leaves the case and the display untouched and says
+    which instant was refused.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    panel = view._fork_panel
+    panel.point_selector.addItem("30 s", userData=30.0)
+    panel.point_selector.setCurrentIndex(panel.point_selector.findData(30.0))
+    panel.take_button.click()
+
+    assert len(view.runs) == 1
+    assert case.branches == ()
+    notice = panel.notice.notice()
+    assert notice is not None
+    assert "30" in notice
+
+
+def test_a_branch_control_with_nothing_selected_says_so(application: QApplication) -> None:
+    """A press that cannot name an instant is reported rather than ignored."""
+
+    view = _case_view(application, _branched_case())
+    view._fork_panel.point_selector.clear()
+    view._fork_panel.take_button.click()
+
+    assert len(view.runs) == 1
+    assert view._fork_panel.notice.notice() == FORK_NOTHING_SELECTED_TEXT
+
+
+def test_a_branch_shows_the_agent_chip_in_place_of_the_selector(application: QApplication) -> None:
+    """`PL-QRD1`, the branch half: a branch carries the agent of the case it continues.
+
+    `SimulationController.set_agent` refuses a branch outright (`PL-TFX5`),
+    so a selector on its row would refuse every input it accepted. The chip
+    says which lock is in force, and it is not the one a Pause would lift.
+    """
+
+    view = _case_view(application, _branched_case())
+    _take_fork(view, 60.0)
+    branch = view.runs[1]
+
+    assert branch._agent_dropdown.isHidden() is True
+    assert branch._agent_dropdown.isEnabled() is False
+    assert branch._running_agent_display.isHidden() is False
+    assert branch._running_agent_lock_text.text() == BRANCH_AGENT_LOCK_TEXT
+
+
+def test_the_trunks_selector_is_locked_while_two_runs_are_shown(application: QApplication) -> None:
+    """`PL-QRD1`, the trunk half: `set_agent` succeeds on a trunk and destroys the case.
+
+    With a branch displayed and the trunk paused, the trunk's selector was
+    live. Choosing another agent restarted the trunk, left `BranchedCase`
+    listing a branch of a run that no longer existed, and
+    `assemble_chart_frame` then refused the frame over the shared MAC axis -
+    so `_halt_every_run` failed both runs over an input to one of them. The
+    switch is refused before it reaches the controller.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    trunk = view.runs[0]
+
+    assert trunk._agent_dropdown.isHidden() is False
+
+    _take_fork(view, 60.0)
+
+    assert trunk._agent_dropdown.isHidden() is True
+    assert trunk._agent_dropdown.isEnabled() is False
+    assert trunk._running_agent_lock_text.text() == COMPARING_AGENT_LOCK_TEXT
+    assert trunk.snapshot().agent_id == "sevoflurane"
+
+    trunk._reset_button.click()
+    _settle(application)
+
+    assert trunk._agent_dropdown.isHidden() is False
+    assert trunk._running_agent_display.isHidden() is True
+
+
+def test_resetting_the_trunk_ends_the_comparison(application: QApplication) -> None:
+    """Reset is the way back to one run, and the case it leaves has no branches.
+
+    The trunk has started over, so it never passed through the instant the
+    branch was taken at: a branch left on the chart would be two curves
+    asserting one patient under two managements while no longer being one.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    _take_fork(view, 60.0)
+
+    assert len(view.runs) == 2
+
+    view.runs[0]._reset_button.click()
+    _settle(application)
+
+    assert len(view.runs) == 1
+    assert view.case is not None
+    assert view.case is not case
+    assert view.case.trunk is view.runs[0].controller
+    assert view.case.branches == ()
+    assert view._legend._run_count == 1
+    assert view.runs[0]._run_name_text.isHidden() is True
+    assert view._fork_panel.take_button.isHidden() is False
+    assert view._fork_panel.lock_text.isHidden() is True
+    assert view._fork_panel.notice.notice() is None
+
+
+def test_resetting_a_branch_leaves_the_comparison_standing(application: QApplication) -> None:
+    """A branch's Reset returns it to its fork; only the trunk's is a new case."""
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    _take_fork(view, 60.0)
+    branch = view.runs[1]
+    branch._start_button.click()
+    _steps(branch, 4)
+    branch._reset_button.click()
+    _settle(application)
+
+    assert len(view.runs) == 2
+    assert view.case is case
+    assert len(case.branches) == 1
+    assert branch.snapshot().elapsed_s == pytest.approx(60.0)
+
+
+def test_a_branch_added_while_the_dashboard_runs_gets_its_own_step_timer(
+    application: QApplication,
+) -> None:
+    """`start_simulation_timer` started the runs that existed; this one did not.
+
+    Without its own timer a branch would sit at its fork however often the
+    learner pressed Start.
+    """
+
+    view = _case_view(application, _branched_case())
+
+    _take_fork(view, 60.0)
+    assert view.runs[1]._step_timer.isActive() is False
+
+    view.runs[0]._reset_button.click()
+    _settle(application)
+    view.start_simulation_timer()
+
+    try:
+        _take_fork(view, 0.0)
+
+        assert view.runs[1]._step_timer.isActive() is True
+    finally:
+        view.stop_timers()
+
+
+def test_adding_a_third_run_is_refused(application: QApplication) -> None:
+    """The cap is the display's, so it binds the public path as well as the control."""
+
+    view = _case_view(application, _branched_case())
+    _take_fork(view, 60.0)
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            f"2 runs are already displayed; at most {MAX_DISPLAYED_RUNS} may be displayed at once"
+        ),
+    ):
+        view.add_run(SimulationController())
+
+
+def test_adding_a_run_on_another_agent_is_refused(application: QApplication) -> None:
+    """One ×MAC ruler cannot describe two agents, whenever the second run arrives."""
+
+    view = _case_view(application, _branched_case())
+
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "every displayed run must be on the same agent, because they share one MAC axis "
+            "and one set of clinical references; the dashboard is showing sevoflurane and "
+            "this run is on desflurane"
+        ),
+    ):
+        view.add_run(SimulationController(agent_id="desflurane"))
+
+
+def test_a_mark_added_after_a_fork_reaches_both_runs(application: QApplication) -> None:
+    """The marks are the case's, so the run added after construction is written too."""
+
+    view = _case_view(application, _branched_case())
+    _take_fork(view, 60.0)
+    dialog = _opened_bookmark_dialog(view)
+    dialog.instant_spin.setValue(300.0)
+    dialog.add_time_button.click()
+
+    marked = [run.snapshot().bookmarks.time_bookmarks for run in view.runs]
+
+    assert len(marked) == 2
+    assert marked[0] == marked[1]
+    assert [bookmark.instant_s for bookmark in marked[0]][-1] == pytest.approx(300.0)

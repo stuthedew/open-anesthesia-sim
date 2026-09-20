@@ -267,6 +267,25 @@ MARK_STANDING_TEXT: Final[Mapping[MarkStanding, str]] = MappingProxyType(
 # what a height on a given compartment does and does not assert is
 # `docs/MODEL.md` § "MAC multiples as a display unit" rather than a paragraph
 # in a dialog.
+# The branch control, beside the marks and for the same reason: both offer
+# instants of the *case* rather than of either run, so both are panels of the
+# dashboard rather than of a `RunView` (`docs/ARCHITECTURE.md` § "Where new
+# code belongs"). "From" labels the instant the branch opens at; the heading
+# names the mechanism and says nothing else, per the rule the mark headings
+# are written under.
+FORK_HEADING: Final = "Branch"
+FORK_POINT_LABEL: Final = "From"
+TAKE_FORK_LABEL: Final = "Branch here"
+# Conditional text, so it earns a sentence where standing chrome would not
+# (`.claude/rules/ui-reader.md`). It says the rule and the way out of it,
+# because a refused control that does not say how to un-refuse itself is a
+# dead end rather than a mode. The display is capped at two runs and there is
+# no run selector yet - `ROADMAP.md` § "Explicitly out of scope for v0.5.0" -
+# so a second branch would have to replace the shown one silently, with the
+# first still live inside `BranchedCase`.
+COMPARING_FORK_LOCK_TEXT: Final = "One comparison at a time. Reset the case to end this one."
+FORK_NOTHING_SELECTED_TEXT: Final = "Select an instant to branch at"
+
 BOOKMARK_DIALOG_TITLE: Final = "Bookmarks"
 EDIT_BOOKMARKS_LABEL: Final = "Edit bookmarks"
 CLOSE_BOOKMARKS_LABEL: Final = "Close"
@@ -331,6 +350,18 @@ START_NEW_CASE_TEMPLATE: Final = "Discard and start {agent}"
 # (`PL-61WW`). The caption says "running" rather than "this case" because
 # that is what is true: the selector returns on Pause.
 RUNNING_AGENT_LOCK_TEXT: Final = "Locked while running"
+# The other two reasons the chip stands in the selector's place. A branch
+# carries the agent of the case it continues - `SimulationController.set_agent`
+# refuses one outright (`PL-TFX5`) - so its selector is not locked but absent,
+# and the caption says what is true of it rather than what a Pause would undo.
+# While two runs are compared the trunk's selector *would* be obeyed, and that
+# is the worse case: the switch succeeds, `assemble_chart_frame` then refuses a
+# frame whose runs are on two agents, and `_halt_every_run` fails both over an
+# input to one of them (`PL-QRD1`). Refusing it before it reaches the controller
+# is `.claude/rules/expert-review.md`'s preference for an interface that
+# prevents the error over one that reports it afterwards.
+BRANCH_AGENT_LOCK_TEXT: Final = "Locked to the case"
+COMPARING_AGENT_LOCK_TEXT: Final = "Locked while comparing"
 
 # The agent-accounting panel. The amounts are litres of equivalent pure agent
 # gas - not the unit anyone consumes agent in - so the caption says so
@@ -906,33 +937,67 @@ class Transport:
         pause_enabled: True only while running.
         reset_enabled: Always true; Reset is how every stopped state ends.
         selector_locked: Whether the agent selector is replaced by the
-            running-agent chip. True while running, because choosing an
-            agent discards the case.
+            agent chip. True while running, because choosing an agent
+            discards the case; true on a branch and while two runs are
+            compared, for the reasons `selector_lock_reason` states.
+        selector_lock_reason: What the chip says about why the selector is
+            gone, or the empty string while the selector is shown. Carried
+            here rather than chosen in the widget layer, so the three
+            reasons are written in one place and a reader is never told
+            "running" about a lock a Pause will not lift.
     """
 
     start_enabled: bool
     pause_enabled: bool
     reset_enabled: bool
     selector_locked: bool
+    selector_lock_reason: str
 
 
-def transport(snapshot: SimulationSnapshot) -> Transport:
-    """The transport enablement for one snapshot.
+def transport(
+    snapshot: SimulationSnapshot, *, is_branch: bool = False, comparing: bool = False
+) -> Transport:
+    """The transport enablement for one snapshot, and why its selector is locked.
+
+    The three locks are ranked by how long they last, longest first, because
+    the chip has room for one reason and a reader acts on it: a branch's
+    selector never returns, a comparison's returns on Reset, and a running
+    run's returns on Pause. Naming the shortest of the three that happens to
+    hold would send a reader to Pause for a lock Pause cannot lift.
 
     Args:
         snapshot: The run's state this tick.
+        is_branch: Whether this run was opened from another
+            (`SimulationController.opened_from`). A branch carries the agent
+            of the case it continues, so `set_agent` refuses it outright and
+            the selector would be a control presenting itself as working.
+        comparing: Whether more than one run is on the chart. The runs share
+            one MAC axis and one set of clinical references, so a switch
+            accepted here is refused a moment later by
+            `chart_frame.assemble_chart_frame` - after the controller has
+            already changed agent (`PL-QRD1`).
 
     Returns:
-        Which controls are usable.
+        Which controls are usable, and what the chip says when the selector
+        is not one of them.
     """
 
     stopped = snapshot.failure_reason is not None or snapshot.supported_limit_reason is not None
+    lock_reason = ""
+
+    if is_branch:
+        lock_reason = BRANCH_AGENT_LOCK_TEXT
+    elif comparing:
+        lock_reason = COMPARING_AGENT_LOCK_TEXT
+    elif snapshot.is_running:
+        lock_reason = RUNNING_AGENT_LOCK_TEXT
 
     return Transport(
         start_enabled=not snapshot.is_running and not stopped,
         pause_enabled=snapshot.is_running,
         reset_enabled=True,
-        selector_locked=snapshot.is_running,
+        selector_locked=bool(lock_reason),
+        selector_lock_reason=lock_reason,
     )
 
 
@@ -1279,6 +1344,81 @@ def bookmark_panel(bookmarks: BookmarkSet, standings: BookmarkStandings) -> Book
             ),
             NO_MAC_TARGETS_TEXT,
         ),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class ForkOffer:
+    """What the branch control offers this tick, and why it may offer nothing.
+
+    Attributes:
+        points_s: The case instants a branch may be taken at, earliest
+            first, from `BranchedCase.fork_points_s`. They are the trunk's
+            keyframes: its opening at induction and every setting change the
+            model was actually stepped under. Anywhere else is refused by
+            `SimulationController.resumed_at` rather than approximated, so
+            the control offers this list and never a free instant.
+        labels: One label per instant, in the same order, rendered by
+            `format_elapsed` - the form the run clock and every bookmark row
+            use, so a learner reads one quantity one way wherever it appears.
+        locked: Whether the control is replaced by its reason. True while a
+            comparison is already on the chart.
+        lock_reason: What stands where the control stood, or the empty
+            string while it is offered. A state caption rather than a
+            warning: a mode a reader can leave by pressing Reset is not the
+            same kind of thing as a refusal, and this interface has one
+            alarm colour (`.claude/rules/ui-reader.md`) which is worth
+            exactly as much as it is spent on.
+        refusal: Why the branch last asked for was not taken, for the
+            notice banner, or None. Never set while `locked`: the control
+            that produced it is gone, so the message is about something the
+            reader can no longer see.
+    """
+
+    points_s: tuple[float, ...]
+    labels: tuple[str, ...]
+    locked: bool
+    lock_reason: str
+    refusal: str | None
+
+
+def fork_offer(
+    fork_points_s: Sequence[float], *, comparing: bool, refusal: str | None = None
+) -> ForkOffer:
+    """What the branch control shows for one tick of the trunk.
+
+    Induction is offered rather than filtered out. A fork at zero is a second
+    management of the whole case, which is a comparison a learner may
+    legitimately want, and filtering it would leave a case that has recorded
+    nothing offering no instant at all - a control with an empty list and a
+    live button, which is worse than a strange entry.
+
+    Args:
+        fork_points_s: The trunk's keyframes, from
+            `BranchedCase.fork_points_s`.
+        comparing: Whether a second run is already on the chart. The display
+            is capped at `MAX_DISPLAYED_RUNS` and no run selector exists yet
+            (`ROADMAP.md` § "Explicitly out of scope for v0.5.0"), so a
+            second branch taken now would have to replace the shown one while
+            the first went on living inside `BranchedCase` - state the screen
+            does not carry, which is what the control is refused for.
+
+        refusal: Why the branch last asked for was not taken, or None. It
+            is dropped while the control is locked, because it describes a
+            press of a control the reader can no longer see.
+
+    Returns:
+        The instants to offer and their labels, or the reason none are.
+    """
+
+    points = tuple(fork_points_s)
+
+    return ForkOffer(
+        points_s=points,
+        labels=tuple(format_elapsed(instant_s) for instant_s in points),
+        locked=comparing,
+        lock_reason=COMPARING_FORK_LOCK_TEXT if comparing else "",
+        refusal=None if comparing else refusal,
     )
 
 
