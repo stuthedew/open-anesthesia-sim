@@ -1453,6 +1453,48 @@ way. It was a bare substring test until `PL-VJ1X`, so the one heading an author
 most wants to qualify — who decides, and by when — was the one heading that
 could not be, and the checker contradicted the rule stated above it.
 
+**The recommendation is the other half of that status, and the half that does
+not survive on its own.** The question is written into the item; the
+recommendation that would let the owner answer it in one read is written into
+the reply that posed it, and a reply dies with its session while the item
+waits. So the longer an item sits at `needs-decision` - which is what the
+status is *for* - the likelier the recommendation is gone by the time the
+answer arrives. `PL-KQHN` is the instance: its answer was reconstructed from a
+harness-written summary line naming two options and marking neither, and a
+decision of record about the release train rested on a reading of another
+model's compressed prose.
+
+So from `recommendation_required_from`, `check` advises on a `needs-decision`
+brief that marks no recommendation. Three things about the rule:
+
+- **The test is the marker, not the word.** A marked recommendation is the
+  token under emphasis - `**Recommended.**`, `**This is the
+  recommendation.**`, `*Recommendation: not yet.*` - or the labelled
+  `Recommendation:`. Presence of the word decides nothing: of the ten open
+  `needs-decision` items using it on 2026-09-20, two used it only to say when
+  a recommendation should be *formed*. Findability is the property being
+  asked for rather than presence, because a recommendation in the ninth
+  paragraph of a long brief buys a reader nothing, and the brief is matched
+  with its line wrapping flattened - four of the eight carrying a marker wrap
+  somewhere inside it.
+- **Declining is a marked answer too.** A brief may honestly have no
+  recommendation to give, and `**No recommendation**, because the deciding
+  number cannot be measured` carries the word under emphasis, so one pattern
+  serves both endings. That is what keeps the advisory reachable-to-zero on an
+  item that will never carry one.
+- **Two populations, reaching two different sessions.** An item captured on or
+  after the cutover is one somebody is writing now, and the advisory reaches
+  it while the session still holds the reasoning - the only moment anything
+  can be *prevented*. One predating the cutover is reached as it is about to
+  be offered, which is `verify:`'s and `payoff:`'s narrowing taken for their
+  reason: 37 of the 45 open `needs-decision` items marked nothing on
+  2026-09-20, and naming all of them every run is an advisory that cannot
+  reach zero without a campaign.
+
+An advisory and never an error, because whether a recommendation is *owed* is
+not an exact rule - and a check that refuses correct content is one `CLAUDE.md`
+retires.
+
 `payoff` is one plain-language line of what closing the item buys, and it is
 the only field written for the person choosing rather than for the person
 working. A title is written for the session that will implement the item, so it
@@ -2592,7 +2634,19 @@ exists to prevent.
   the check names every same-file line differing from the removal by exactly one
   string, with the true count and none chosen - 15 of the 20 such close-outs in
   this history carry more than one candidate, so choosing would print a guess as
-  fact (`PL-K4R5`).
+  fact (`PL-K4R5`). **One commission cannot write the field in advance**, and
+  takes it from the branch instead. A `needs-decision` item's answer is the
+  session's to make, so which assertions it falsifies is not known until it is
+  made: `PL-G6J5` asked whether an advisory should be re-based on a different
+  denominator or retired, the count said retire, and the close-out that deleted
+  the advisory and its 29 assertions printed `FAIL no existing assertion
+  removed` with `make check` green and every other guard passing. There the
+  gate is the base's **status** rather than the base's field — `status:
+  needs-decision` on the base's copy *is* the standing statement that the
+  answer is this session's to make — and the branch must be the one closing the
+  item. The fold names itself on the page rather than happening quietly: the
+  check says the declaration is the closure's own, and that the base is what
+  let it be (`PL-ZMGR`).
 - **A `dropped` item, or one carrying `not-delegable:`**, has no `verify:`
   command by construction — the first built nothing, and the second is what
   `docket check` accepts *instead of* a command. The check names which applies
@@ -2601,14 +2655,19 @@ exists to prevent.
   such item, so the close-out the `docket` skill prescribes had no passing
   state (`PL-L4KX`).
 
-Neither is anything a session can grant itself. Both are read off the item as
-the **base** holds it — the commission — rather than off the branch, so a
+Neither is anything a session can grant itself, because each turns on the item
+as the **base** holds it — the commission — rather than on the branch. A
 `falsifies:` line added beside the deletion it excuses folds nothing and is
-reported as the worker's own word for it. That matters most in `--self`, where
-`front_matter_check` is an advisory by design and so catches nothing; reading
-the base holds the property in both modes and needs no second guard. Where the
-base's copy cannot be read at all, the report says so rather than folding
-nothing silently.
+reported as the worker's own word for it, and the one declaration that is read
+from the branch is gated on a base `status: needs-decision`, which a session
+can no more write on its own branch than it can the field. That matters most in
+`--self`, where `front_matter_check` is an advisory by design and so catches
+nothing; reading the base holds the property in both modes and needs no second
+guard. Where the base's copy cannot be read at all, the report says so rather
+than folding nothing silently. Where the base holds no copy — an item captured
+on this branch, which is also the one route by which a session could write both
+halves of the `needs-decision` gate itself — the commission declares nothing
+and carries no status, so neither exemption is reached.
 
 `--self` also adds one line when the audited commits name other items' ids.
 `item_commits` selects by id so a batch can be judged per item, and a commit
@@ -2692,6 +2751,8 @@ verify_prerequisite_refused_from = 2026-09-20   # when a command may no longer
                                    # re-run a tree `check_command` collects
 collected_test_paths = ["tests"]   # the trees it does collect; empty = rule off
 payoff_required_from = 2026-09-20  # omit to leave the `payoff:` rule off
+recommendation_required_from = 2026-09-21   # a `needs-decision` brief
+                                   # marks a recommendation; omit for off
 minor_classes = ["feature"]
 protected_paths = []
 gate_paths = ["Makefile", "pyproject.toml", ".github", ".claude", "docket.toml"]

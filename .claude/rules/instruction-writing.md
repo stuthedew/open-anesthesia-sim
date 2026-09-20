@@ -127,7 +127,11 @@ apply to every reply of any kind. Never mention these rules, "phases," or
       the item. That is `CLAUDE.md`'s capture rule reaching the closing block,
       not a new obligation of its own. A line the reader acts on in this
       sitting — a decision this reply waits on, a tag to run now — needs
-      nothing.
+      nothing. Where the line asks them to decide something **an item
+      already holds**, that item is the instrument and `bin/docket new` is
+      not: write your recommendation into its brief beside the question, and
+      mark it, before the block points at it. A reply is the one carrier
+      certain to be gone when the answer comes (`PL-M21Q`).
     - Where several lines are one problem, say so and name the group. A
       reader tracks problems, not ids: three ids listed flat read as three
       unrelated obligations, and nothing then says the list is finished when

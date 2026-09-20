@@ -138,6 +138,35 @@ answer was "not now, and keep it on the roadmap as an option" - which is a
 different project, and a better one, because an option can state its own
 uncertainty where a default cannot (`PL-4T90`).
 
+**And record the recommendation in the item, not only in the reply.** The
+reply is where the recommendation naturally goes, and it is the one carrier
+that does not survive: a reply dies with its session while the item waits.
+So the longer an item sits at `needs-decision` - which is what the status is
+*for* - the likelier the recommendation is gone by the time the owner answers.
+`PL-KQHN` is what that costs. Its brief carried a `**Decision needed.**`
+naming both answers and marking neither; by the time the owner said "agree
+with the recommendation", the recommending session's branch had been deleted
+with its pull request, and the only surviving carrier was a harness-written
+summary line naming two options and marking neither. A decision of record
+about the release train was settled by reconstructing another model's
+compressed prose.
+
+Write it into the brief as you write the question, in your own words, and
+**mark it** - `**Recommended.**`, `**Recommendation:**`, or the word under
+emphasis somewhere a reader skimming will land on it. Marking is the half
+that is easy to skip and the half that failed here: a recommendation in the
+ninth paragraph of a long brief is present and unfindable, which buys the
+owner nothing. `bin/docket check` advises where a `needs-decision` brief
+marks neither a recommendation nor a reason there is none.
+
+**Where none is owed, say that and why, in the brief.** Declining is a real
+answer - `PL-PFK1` declines because the deciding number cannot be measured
+retroactively, and `PL-JW9J` because the answer follows from a count nobody
+has taken yet. Both are better records than a brief that simply says nothing,
+because silence cannot be told apart from an omission. Marking the
+declination also satisfies the check, which is deliberate: the advisory is
+asking the brief to be explicit, not to hold an opinion.
+
 ### The `verify:` command, and running it before writing it down
 
 Triaging an item to `ready` means naming the command that proves it done.

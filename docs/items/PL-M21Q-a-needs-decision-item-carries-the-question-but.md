@@ -3,10 +3,11 @@ id: PL-M21Q
 title: A needs-decision item carries the question but not the recommendation, so a session's recommendation lives only in a reply and cannot be agreed with once that session's branch is deleted
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, docs
 touches: .claude/skills/docket/SKILL.md, .claude/rules/instruction-writing.md, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-16
+closed: 2026-09-20
 verify: python3 tools/doc_check.py check && grep -rqF 'record the recommendation in the item, not only in the reply' .claude/skills/docket/
 ---
 
@@ -93,3 +94,39 @@ carry one. The advisory in `bin/docket check` is built only if that count says i
 would fire on a real population, per `CLAUDE.md`'s "where the benefit is unclear,
 the answer is no"; the rule half lands either way, which is what the `verify:`
 command pins.
+
+**The count the brief asked for, run 2026-09-20 before anything was built.**
+Of the 45 open `needs-decision` items, **8 marked a recommendation and 37 did
+not**. Two of the ten that use the word use it only to say when a
+recommendation should be *formed* (`PL-0HPV`, `PL-V67Q`), which is why the
+test built is the marker rather than the word. One carries a real
+recommendation with no marker on it (`PL-X3NY`, "Route 2 is the recommendation
+on the evidence above", ninth paragraph), which is why the property asked for
+is findability rather than presence - and is captured as `PL-2J5X`.
+
+So the advisory was built: the population is real and the gap is the common
+case rather than the exception. It is narrowed two ways, because a whole-store
+advisory naming 37 items is the advisory-that-cannot-reach-zero `checks.py`
+has already diagnosed twice. An item captured on or after
+`recommendation_required_from` is reported wherever it is, which reaches the
+session *writing* it while that session still holds the reasoning - the only
+moment anything is prevented. One predating the cutover is reported only as it
+is about to be offered, which is `verify:`'s and `payoff:`'s narrowing taken
+whole. At the cutover this landed with, nothing fires: the grandfathered set
+is closed at what the store held on the day the rule began working.
+
+Advisory and never an error. A brief may honestly decline to recommend
+(`PL-PFK1` declines because the deciding number cannot be measured
+retroactively; `PL-JW9J` because the answer follows from a count nobody has
+taken), and a check that refuses correct content is one `CLAUDE.md` retires.
+Marking the declination satisfies it, so one pattern serves both endings.
+
+**What the resident edit cost, and why nothing was cut for it.**
+`.claude/rules/instruction-writing.md` grew 340 characters. `tools/doc_check.py`
+forbids trimming other resident text to offset the number and asks instead why
+a session could violate the rule before it would look anything up: a session
+composing a closing block that asks the owner to decide something has read no
+skill and opened no matching path, and the advisory added here fires on the
+item in the store rather than on the reply being written. Without the sentence,
+that session applies the bullet's own `bin/docket new` and files a second item
+instead of repairing the one it is pointing at.
