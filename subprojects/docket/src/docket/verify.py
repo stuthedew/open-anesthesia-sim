@@ -69,6 +69,52 @@ _SUPPRESSION_RE = re.compile(
     )
 )
 
+#: Where a suppression can genuinely live, for `no suppression added`. The
+#: sibling assertion check below narrows the same way and to a narrower set,
+#: and the difference is the reasoning rather than an oversight: an assertion
+#: is a *statement*, so only a file Python executes holds one, while a
+#: suppression is also *configured*. `xfail_strict = false` under
+#: `[tool.pytest.ini_options]` turns every expected failure back into a pass,
+#: and a `.pyi` stub carries a file-level ignore directive, neither of which
+#: changes a line of `.py`. So this list is that one plus the files that
+#: configure a run, and reusing `ASSERTION_BEARING_SUFFIX` here would have
+#: carried the sibling's rule past the argument that earned it.
+#:
+#: Counted before it was written, because this narrows a check whose safe
+#: direction is reporting: over 1,109 commits of this repository, the added
+#: lines `_SUPPRESSION_RE` matches are 69 in `.py` and 41 in `.md`, and **no
+#: other suffix carries one at all**. So the tuple reports every match the
+#: history has ever held, and what it stops reading is 41 lines of prose -
+#: a release note, an item brief, or the `ROADMAP.md` version row that
+#: REJECTed every release cut (`PL-5MFL`, `PL-BHBZ`).
+SUPPRESSION_BEARING_SUFFIXES = (".py", ".pyi", ".toml", ".cfg", ".ini")
+
+
+def is_suppression_line(path: str, line: str) -> bool:
+    """Whether an added line could suppress anything, for `no suppression added`.
+
+    The check used to ask the line alone, so a line *about* a suppression read
+    as one. That is the same defect `PL-7TYC` removed from the sibling
+    assertion check and it was left standing here, on the one check `--self`
+    may never relax - which makes it the check least able to afford a false
+    positive, since a `REJECT` on it says in the tool's strongest terms that
+    the branch weakened a test (`PL-BHBZ`).
+
+    A release cut is what met it every time. `ROADMAP.md`'s version table
+    narrates the defects each release fixed, so its rows quote the tokens
+    `SUPPRESSIONS` holds; dropping the `current baseline` mark from the
+    departing row edits one cell, and a whole-line diff re-adds the whole row
+    (`PL-5MFL`).
+
+    An unreadable diff header yields `""`, which stays on the reporting side
+    exactly as `is_assertion_line` keeps it: where the file cannot be
+    identified, the line is printed rather than guessed at.
+    """
+    if path and not path.endswith(SUPPRESSION_BEARING_SUFFIXES):
+        return False
+    return bool(_SUPPRESSION_RE.search(line))
+
+
 #: Only a file Python executes can hold an assertion, so a removed line from
 #: anything else is prose whatever words it uses. This is the larger half of
 #: the narrowing by count: every close-out edits its own item's `.md`, and
@@ -1395,7 +1441,7 @@ def verify_item(
 
     # One diff read for both checks, where there were two.
     added, removed = _net_line_changes(root, base, commits)
-    suppressed = [line.strip() for _, line in added if _SUPPRESSION_RE.search(line)]
+    suppressed = [line.strip() for path, line in added if is_suppression_line(path, line)]
     report.checks.append(
         Check(
             "no suppression added",

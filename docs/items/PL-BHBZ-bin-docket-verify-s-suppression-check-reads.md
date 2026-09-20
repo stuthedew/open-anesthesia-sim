@@ -3,10 +3,12 @@ id: PL-BHBZ
 title: bin/docket verify's suppression check reads every added line regardless of file type, so prose naming xfail in ROADMAP.md or a release note REJECTs a correct close-out - the .py narrowing PL-VHVJ's sibling assertion check already has at verify.py:160 was never applied at verify.py:1269
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
+feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-19
+closed: 2026-09-20
 payoff: stops a correct close-out being REJECTed for writing the word xfail in a release note, on the one check bin/docket verify may never relax
 verify: grep -q 'def test_a_roadmap_line_naming_xfail_is_not_a_suppression' subprojects/docket/tests/test_verify.py
 ---

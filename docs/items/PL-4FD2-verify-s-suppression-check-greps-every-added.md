@@ -3,11 +3,13 @@ id: PL-4FD2
 title: verify's suppression check greps every added line for the three marker substrings it knows, so prose in a docstring, an item brief or a README explaining why a suppression was not used refuses the branch
 priority: P2
 effort: M
-status: ready
+status: dropped
 classes: defect
 feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-19
+closed: 2026-09-20
+reason: Same defect as PL-STC4, which carries strictly more evidence - the 13-line breakdown from PL-VHVJ's branch, the decidability argument, and the duplicate history. Both briefs asked for one item rather than two. PL-4FD2's unique content (the PL-Q9Z1 finding, and tools/doc_check.py candidates as the in-tree precedent for marking a term as code) is folded into PL-STC4. The file-suffix half both described landed in #783 via PL-5MFL and PL-BHBZ.
 verify: grep -q 'def test_prose_naming_a_suppression_is_not_a_suppression' subprojects/docket/tests/test_verify.py
 ---
 

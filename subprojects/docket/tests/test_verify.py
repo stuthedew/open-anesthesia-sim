@@ -258,6 +258,77 @@ def test_a_suppression_is_still_found_after_a_word_character(tmp_path: Path) -> 
     assert not _check(report, "no suppression added").passed
 
 
+def test_suppression_ignores_prose(tmp_path: Path) -> None:
+    """A release cut re-adds whole prose rows, and the check read them as code.
+
+    `ROADMAP.md`'s version table narrates the defects each release fixed, so its
+    rows quote the very tokens `SUPPRESSIONS` holds. Dropping the `current
+    baseline` mark from the departing row changes one cell, and a whole-line
+    diff cannot see that: the entire row re-enters the diff as an addition. So
+    every release cut ended `REJECT` on the one check `--self` may never relax,
+    which is the refusal-on-correct-work that trains a reader to skim the block
+    a real weakening is also printed in (`PL-5MFL`, `PL-69JZ`).
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX cut the release",
+        "ROADMAP.md",
+        "| Version | State |\n"
+        "| --- | --- |\n"
+        "| v0.4.29 | Completed | stopped the suppression list matching `xfail`"
+        " out of pytest's `--maxfail` |\n",
+    )
+    report = verify(root, _item(touches=("ROADMAP.md",)), _config(), "HEAD~1")
+
+    assert _check(report, "no suppression added").passed
+
+
+def test_a_roadmap_line_naming_xfail_is_not_a_suppression(tmp_path: Path) -> None:
+    """The narrowing must not cost the check its finding, so both halves are pinned.
+
+    Prose naming a suppression is not one; the same token in a file Python runs
+    still is. They are one commit apart in one report because the pair is the
+    whole claim - a narrowing that also stopped reporting the second line would
+    satisfy the first assertion and gut the check (`PL-BHBZ`).
+    """
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX write it down", "docs/releases/v0.4.29.md", "Removed the `xfail`.\n")
+    _work(
+        root,
+        "PL-K7QX silence it",
+        "tests/test_thing.py",
+        KEPT + "\n\n@pytest.mark.xfail\ndef test_b() -> None:\n    assert 2 == 2\n",
+    )
+    report = verify(root, _item(), _config(), "HEAD~2")
+
+    suppression = _check(report, "no suppression added")
+    assert not suppression.passed
+    assert suppression.detail == "1 line(s)"
+    assert suppression.lines == ("@pytest.mark.xfail",)
+
+
+def test_a_pytest_configuration_key_is_still_a_suppression(tmp_path: Path) -> None:
+    """The suffix list is wider than the sibling assertion check's, deliberately.
+
+    An assertion is a statement, so only a file Python executes holds one. A
+    suppression is the wider claim, because it is also *configured*:
+    `xfail_strict = false` in `pyproject.toml` turns every expected failure back
+    into a pass without a line of Python changing. Narrowing to `.py` alone
+    would have carried the sibling's rule past the reasoning that earned it.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX loosen it",
+        "pyproject.toml",
+        "[tool.pytest.ini_options]\nxfail_strict = false\n",
+    )
+    report = verify(root, _item(touches=("pyproject.toml",)), _config(), "HEAD~1")
+
+    assert not _check(report, "no suppression added").passed
+
+
 def test_a_removed_assertion_is_rejected(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     _work(root, "PL-K7QX drop it", "tests/test_thing.py", "def test_a() -> None:\n    pass\n")
