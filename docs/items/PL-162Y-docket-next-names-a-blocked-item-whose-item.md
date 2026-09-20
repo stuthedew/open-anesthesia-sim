@@ -2,6 +2,7 @@
 id: PL-162Y
 title: docket next names a blocked item whose item blockers have all closed, but not one whose blocked-by milestone is now scoped, which docket check reports as equally promotable
 status: untriaged
+feature: stale-blocked-routing
 added: 2026-09-20
 ---
 

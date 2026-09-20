@@ -794,6 +794,27 @@ typed into the front matter by hand or by a helper the session wrote and threw
 away, and 96 of the 1,189 files in the store this grew in carried a key order
 no tool had written (`PL-L4YG`).
 
+**A write that moves a status into `done` or `dropped` names the items that
+closure just took the last recorded blocker off.** The reverse of `blocked-by`
+is derived rather than stored: a `blocking:` field was considered and refused,
+because it duplicates an edge `plan.promotable` already computes and adds a
+second place for it to be written wrong (project owner, 2026-09-20, ratified,
+over adding the field). The data was never what was missing — `docket check`
+has printed the same set all along, and `docket next` names it to a session
+choosing work. What was missing is that neither fires at the moment a blocker
+closes, so the reading reached only a session running a deliberate grooming
+pass: `PL-JFQ3` ran one over nine items, and `PL-8G48` and `PL-CHQY` ran two
+more over the same four items four days later, two sessions filing for one
+batch on one day (`PL-PQC7`).
+
+It prints what *this* write released rather than the standing backlog, which
+is the half no other command can attribute to a cause, and it names without
+promoting: 6 of 13 items reached this way across those passes were genuinely
+startable, and a recomputed status would have put `PL-WZVZ` — unbuildable —
+into `P1` and onto the debt gate (`PL-6T44`). A `blocked-by` write can make an
+item promotable the instant it lands; that is a different event with a
+different reader and is deliberately left silent.
+
 It names, per item, whether a branch already carries that id — and which refs
 it could not read to answer that. Triage is the more exposed of the two entry
 points rather than the less: `show` guards the path where a session has
