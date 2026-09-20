@@ -202,3 +202,29 @@ from an arbitrary float, and
 `test_an_instant_between_keyframes_is_refused_rather_than_approximated` keeps
 its refusal unchanged for an instant the run is not standing on. Widening it
 past that is `PL-Z3W6`'s to ask for, not this item's.
+
+**The re-pricing above is wrong on `drawn_window`, and the cost is three named
+edits rather than two** (project owner, 2026-09-20). Its second bullet reads
+the shipped clip - `first_s = max(start_s, self._run_definition.opened_at_s)`
+in `app/controller.py` - as already refusing to draw a branch back past its own
+beginning. That is true only while `opened_at_s` *is* the fork instant, which
+is exactly the identity this route gives up: the definition opens at the
+keyframe before the fork, so the clip lands at that keyframe and the branch
+becomes drawable across an interval it never lived, showing the trunk's
+trajectory under the branch's identity. The comment on those lines says "a
+branch opens at its fork" and would stop being true with it. So the fork
+instant has to be carried explicitly and the clip read from it - not the
+`origin_s` subtraction `PL-ZMRT` deleted, which converted between two frames,
+but a second case instant on the one frame, beside `opened_at_s`. The three
+edits are: `_open_at` restoring the fork state rather than the segment's
+opening state, the fork instant carried on the controller, and `drawn_window`
+clipping at it.
+
+`docs/MODEL.md` § "What this requires of a branch" now records which of its two
+conditions this route relaxes and why the element-wise guarantee survives it,
+and `docs/ARCHITECTURE.md` records that the route is chosen and not yet built.
+Both were amended ahead of the implementation deliberately: the section states
+two conditions a branch satisfies, a bookmark fork cannot satisfy both, and a
+reader meeting the unqualified pair would conclude a bookmark fork is
+impossible rather than that one condition was always the special case of a
+weaker one.
