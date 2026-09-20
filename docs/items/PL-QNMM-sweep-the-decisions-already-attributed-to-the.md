@@ -42,3 +42,27 @@ swept, and `grep -qF 'swept for ratified-versus-specified' ROADMAP.md` finds
 nothing. The conversions that have happened (`PL-1YT5`, `PL-YTDN`, `PL-ZMGR`)
 are one at a time and outside these two files. `PL-7RYB` is the same question
 for closed items and is still `needs-decision`.
+
+**What `PL-7RYB` settled on 2026-09-20, and what is left here.** `CLAUDE.md`'s
+`Record which it was` bullet now reads the *date* rather than the absence: a
+plain `(project owner, DATE)` dated before 2026-09-16 records no kind at all,
+is read as unrecorded rather than as specified, and is reopened on ordinary
+evidence while saying the kind is unrecorded. That was one clause against
+sweeping, and it changes this item's job rather than doing it. All 234
+attributions in the tree stop reading as the opposite of what they are, so the
+sweep is no longer what makes the record *honest*; it is what makes the 52
+load-bearing ones in `ROADMAP.md` and `docs/MODEL.md` - the decisions a later
+session cites to refuse work - say which kind they were instead of saying
+nothing. Worth doing, and no longer urgent: `P3` is right.
+
+**Two consequences for the pass itself.** The `Done when` above asks for the
+undecidable ones to be *listed*; under the reading rule they need no list,
+because leaving one untouched now says "unrecorded" in the same words the rule
+does. The opposite case is the one that gained a problem: a pre-2026-09-16
+decision this sweep reads as plainly **specified** can no longer be recorded by
+leaving it alone, since leaving it alone is now the unrecorded form. Write that
+one `(project owner, DATE, specified)` - this session's recommendation, and the
+only place in the tree the third token is needed, which is why it is recorded
+here and not in `CLAUDE.md`. The `swept for ratified-versus-specified` line
+this item's `verify:` already requires is what tells a later session that
+`ROADMAP.md`'s plain markers have been read and mean what they say.

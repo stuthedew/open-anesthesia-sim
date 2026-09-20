@@ -8,6 +8,7 @@ classes: housekeeping
 touches: docs/items
 added: 2026-09-20
 closed: 2026-09-20
+pr: 779
 payoff: puts v0.5.0's remaining bookmark-fork work in front of bin/docket next, which has not offered it since its last blocker closed
 verify: grep -q '^status: ready' docs/items/PL-B8MK-a-bookmark-instant-is-not-forkable-and-the.md
 ---

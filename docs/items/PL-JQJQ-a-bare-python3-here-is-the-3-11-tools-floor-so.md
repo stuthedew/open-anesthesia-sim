@@ -59,7 +59,15 @@ the hooks run it on the bare interpreter every session; and 3.14 is not
 installed here at all (`uv python list` shows 3.14.7 as download-only), so it
 would be a `uv python install` plus a shim redone on every ephemeral container.
 
-**Built.** `.claude/hooks/floor-interpreter-guard.sh`, a `PreToolUse` hook on
+**Built** (project owner, 2026-09-16, ratified, over pointing the system
+`python3` at 3.14). The marker is retrospective, written under `PL-7RYB` on
+2026-09-20: this item closed hours before `CLAUDE.md` gained the
+ratified-versus-specified rule, and the exchange is on record - the owner
+proposed the interpreter change, the session recommended the hook against it,
+and they replied "Agree with recs" - so the kind is recoverable here, where
+`CLAUDE.md`'s pre-2026-09-16 default says it usually is not.
+
+`.claude/hooks/floor-interpreter-guard.sh`, a `PreToolUse` hook on
 Bash that denies a bare `python`/`python3` whose command names a path under
 `src/` or `tests/`, or which compiles the whole tree, with a reason naming
 PEP 758, `uv run python`, this item, and the instruction not to "fix" it by
