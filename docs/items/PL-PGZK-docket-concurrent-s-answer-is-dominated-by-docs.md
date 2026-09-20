@@ -24,7 +24,7 @@ shape. Two items that both append a paragraph to different sections of
 `simulation_view.py`'s run loop.
 
 **Why it matters.** The command's stated contract is to rule work out, never
-to certify it (`.claude/skills/docket/SKILL.md`, "Mode: work several items at
+to certify it (`.claude/skills/docket/modes/picking.md`, "Mode: work several items at
 once"), so a false *positive* is the one failure it has no defence against. At
 this hit rate the answer stops discriminating: a session planning a batch
 inside `v0.4.0` is told that nearly every pair collides, which is the same

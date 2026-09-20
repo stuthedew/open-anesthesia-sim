@@ -469,6 +469,13 @@ AGENT_SELECTOR_WIDTH = 180
 TIME_BASE_SELECTOR_WIDTH = 170
 PLAYBACK_RATE_SELECTOR_WIDTH = 150
 
+# The branch control's instant selector. Fixed for the reason the agent
+# selector is: its entries are the trunk's keyframes, so a running case adds
+# one on every setting change, and a control that resized as it filled would
+# move the button beside it under a reader's pointer. Narrower than the time
+# base's because its longest entry is a clock reading rather than a phrase.
+FORK_POINT_SELECTOR_WIDTH = 120
+
 # The chip's inset. Slightly wider than the header badge's 6 because this one
 # carries two lines rather than one and sits among controls rather than under
 # the title.

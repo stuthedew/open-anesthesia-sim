@@ -1608,8 +1608,8 @@ each time, not a re-scope" got wrong. The port's own work has put the number
 back. Counted 2026-09-16, eight sites in five files outside this one name
 `v0.4.26`: three in `tools/import_boundary_check.py`, two of those inside error
 messages a developer reads; two in `docs/ARCHITECTURE.md`; and one each in
-`subprojects/docket/src/docket/roadmap.py`, `.claude/skills/docket/SKILL.md` and
-`subprojects/docket/README.md`. Four carry the section-citation form
+`subprojects/docket/src/docket/roadmap.py`, `.claude/skills/docket/modes/release.md`
+and `subprojects/docket/README.md`. Four carry the section-citation form
 `tools/doc_check.py` validates, so a rename that missed them fails `make check`;
 the other four name the number bare, where no check reads it. **Re-counted after
 `PL-7SVX` closed in `#638`** - the last of this section's Required scope, and the
@@ -3723,9 +3723,20 @@ why they are recorded here rather than left to look deferred:
 a hover box nobody has looked at rendered, and a hover readout that answers the
 pointer's previous position and never re-answers a resting pointer while paused
 - so both are seated `P2` and belong to the v0.4.26 port beat, ahead of this
-gate on the timeline rather than behind it. `PL-QRD1` is `blocked` on
-`PL-8PSW`, which decides whether a two-run dashboard needs a selector lock at
-all, and no shipped entry point reaches the defect today.
+gate on the timeline rather than behind it. `PL-QRD1` was `blocked` on
+`PL-8PSW`, which was expected to decide whether a two-run dashboard needs a
+selector lock at all, and no shipped entry point reached the defect.
+
+**`PL-QRD1` closed 2026-09-20**, and the expectation in the sentence above was
+wrong about which item would settle it. `PL-8PSW` landed the drawing rather
+than the route, so neither disposition was taken; `PL-VKJW` is the entry point
+that builds a two-run dashboard, so it is what made the defect reachable and
+what closed it. The answer taken was to lock the trunk's selector while two
+runs are shown - `.claude/rules/expert-review.md`'s preference for an
+interface that prevents the error over one that reports it afterwards - with a
+branch's selector replaced by the agent chip, since `set_agent` refuses a
+branch outright. The two-*trunk* case the item's title names is still
+unreachable and is still the stronger statement of the guard.
 
 **One more from 2026-09-15, on the same ground and worth naming rather than
 listing** — `PL-SMN4` (a push run on `main` can be cancelled by a later merge,
@@ -4502,6 +4513,31 @@ live with the first profile that declares a range, and that profile is
 planned-milestone item 1's work rather than this gate's.
 
 - PL-7CRY (S) The fresh gas flow slider reads the model envelope alone, so a machine profile declaring a narrower deliverable range would offer settings the circuit refuses
+
+**One more from the 2026-09-20 verify-inflow review** (`PL-G21K`), which is the
+altitude item over four entries already declined in this subsection. `PL-5MFL`
+and `PL-BHBZ` are declined above; `PL-STC4` and `PL-4FD2` are the same defect
+from inside `.py`; `PL-0KQP` was captured on 2026-09-20 as a fifth. `PL-G21K`
+names the mechanism under all of them - `verify`'s suppression and assertion
+checks infer *intent* from diff text, so each fix is a new special case that
+uncovers the next - and carries a `root-cause-of:`, so it ranks above every
+band but `P0` wherever it is worked.
+
+It is declined here on the refilling-queue ground, and the count is what makes
+that safe rather than merely consistent. Measured over the 564 commits on
+`main` since 2026-09-01, the check flags 66 added lines: 33 are prose and 33
+are real directives, and **every one of the 33 is `# type: ignore[<code>]` in a
+test file**. The four markers that would name a *disabled test* - `xfail`,
+`pytest.skip`, `@skip`, `typing.no_type_check` - fired zero times. So nothing
+the gate would buy by admitting this is a wrong result reaching anybody: the
+failure is loud, `--self` reports it rather than relaxing it, and
+`subprojects/docket/` sits wholly inside `docket.toml`'s `workflow_paths` and
+so cannot reach a reader of the simulator. Against that, this gate stands at
+177 of 178 with its one open entry blocked on work outside it, and admitting an
+`M`-effort design decision at the beat where the milestone is one step from
+starting is the refilling shape Phase 0 was retired for.
+
+- PL-G21K (M) `verify`'s suppression and assertion checks infer intent from diff text, so every fix adds a special case and uncovers the next: four of the five suppression markers fired zero times on a real directive across 564 commits
 
 ### Required scope
 

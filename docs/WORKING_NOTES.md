@@ -2050,3 +2050,54 @@ defect: `CLAUDE.md` says `root-cause-of:` names the items a head *explains*,
 not the ones it closes, so a head stops the inflow and leaves the stock. It is
 worth writing down because those 64 are the well-organised, safe-to-chip-at
 half of the backlog, and because nothing in the store says so.
+
+## Decided: a repeat filing is evidence, and it feeds the generator tier - not the band (2026-09-20)
+
+**(project owner, 2026-09-20, ratified**, over the mechanism they first
+described - counting repeat filings and raising the item's `priority:`.)
+
+**The observation is theirs and it is the sharper half.** Asked why so many open
+items named `verify` and prose, the answer was a cluster of five captures of one
+defect. Their follow-up was the part that had been missed: if we keep *trying*
+to file the same item, the defect keeps firing, so the attempt is a signal about
+recurrence rather than only a cost to suppress.
+
+**Two corrections the design took.**
+
+- **`priority:` cannot carry it.** `docket check` pins `P1` to `safety` and
+  `science`, and `CLAUDE.md` forbids promoting process work into that band to
+  move it up the order - the 2026-09-19 check-sequencing decision above hit this
+  and had to move three items by sequencing instead. Every item this counter
+  would ever fire on is workflow work, so an automatic bump is unavailable. The
+  **generator tier** is the lever that exists, sits above every band but `P0`,
+  and already means what a recurrence count measures: "every session it stands
+  through pays it again."
+- **It surfaces, it does not promote.** `subprojects/docket/README.md` calls
+  `root-cause-of:` "the one place in the store where a typo would buy a
+  promotion". A title-similarity heuristic writing that field reintroduces
+  exactly the hazard `docket check`'s validation closes, on a match that is a
+  judgment about prose. So the count is recorded as auditable fact and a reader
+  decides.
+
+**What the mechanism keys on, measured rather than assumed.** Title similarity
+is refuted: over the 1,362-item store it catches 0 of 13 known duplicate pairs
+at any usable threshold, and the only clusters it *does* find are the items
+meant to recur - sixteen triage passes, plus release cuts and tags. Shared
+`touches` catches 9 of 13, and narrowing by shared path then ranking by title
+puts the true duplicate in the top 3 for 8 of 9. `PL-TZ7T` carries the full
+table.
+
+**The feature is `recurrence-signal`, four items.** `PL-TZ7T` (detect at
+`docket new`, key corrected), `PL-X5JR` (record the recurrence and surface at
+three), `PL-THLT` (infer candidate paths from the working tree, the gap
+`PL-0KQP` fell through), `PL-4JHS` (backfill what the store already paid for).
+`PL-G21K` is the separate defect underneath the cluster that started this.
+
+**Still open, and not this feature's:** a backward sweep for clusters filed
+before any detection existed. 21 ungrouped candidate pairs over 342 open items
+on 2026-09-20, of which `PL-4HKS`/`PL-5748` and `PL-2M5T`/`PL-W7WL` are
+confirmed duplicates and `PL-BYMX`/`PL-SH9Q`/`PL-KSCW` is a three-way that would
+meet the generator threshold if it is one mechanism. The project owner is
+starting a separate session on it; `PL-4JHS` takes that session's confirmed
+pairs as its input.
+

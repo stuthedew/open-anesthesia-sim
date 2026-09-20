@@ -39,7 +39,7 @@ correct. An item that stays `ready` after its work has shipped is offered
 again by `docket next`, counted open by `wave`, and holds a gate that has in
 fact cleared.
 
-**Where.** The rule is in `.claude/skills/docket/SKILL.md` ("Mode: close out
+**Where.** The rule is in `.claude/skills/docket/modes/close-out.md` ("Mode: close out
 an item"); the error is `checks.py`'s done-without-`pr`. Options worth
 weighing rather than one obvious fix: let the closure record the branch and
 have a later pass fill the number from the merge; accept a closure with no

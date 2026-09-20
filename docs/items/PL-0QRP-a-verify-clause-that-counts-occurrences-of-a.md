@@ -8,7 +8,7 @@ classes: docs
 feature: verify-command-meaning
 touches: .claude/skills/docket/SKILL.md
 added: 2026-09-19
-verify: grep -qF 'nothing unrelated can drive it there' .claude/skills/docket/SKILL.md
+verify: grep -rqF 'nothing unrelated can drive it there' .claude/skills/docket/
 ---
 
 **Problem.** A verify: clause that counts occurrences of a symbol passes as soon as any unrelated change adds one, so the skill's verify guidance should name counting beside the -k and --cov traps

@@ -93,3 +93,113 @@ with a reason, is a decision for whoever works them — not something to settle
 from the titles. This is also a live instance of `PL-TZ7T` (`bin/docket new`
 files a duplicate title without noticing): two captures, one mechanism, filed
 apart.
+
+## Half of this landed in `#783`, 2026-09-20 — read this before starting
+
+`PL-5MFL` and `PL-BHBZ` were worked together and closed in `#783`, by a
+session that had not found this item or `PL-4FD2`. That is a fourth instance
+of `PL-TZ7T` (`bin/docket new` files a duplicate title without noticing), and
+it means **the file-suffix half of this item is done**. What follows is what
+landed, so nobody pays for it again.
+
+**Landed.** `is_suppression_line(path, line)` in
+`subprojects/docket/src/docket/verify.py` now asks the path first, against
+`SUPPRESSION_BEARING_SUFFIXES = (".py", ".pyi", ".toml", ".cfg", ".ini")`.
+Deliberately wider than the sibling's `ASSERTION_BEARING_SUFFIX`: an assertion
+is a statement, so only executed code holds one, while a suppression is also
+*configured* - `xfail_strict = false` under `[tool.pytest.ini_options]` turns
+every expected failure back into a pass with no Python changing. Three tests
+pin it, including one holding the wider list against a later narrowing to
+`.py` alone.
+
+Counted before it was written, per `.claude/rules/expert-review.md`: across
+1,109 commits the added lines the matcher finds are 69 `.py` and 41 `.md`,
+**no other suffix carrying one at all**. Replayed on the real cuts, v0.4.30
+(`fe32c6f`) went from 7 reported lines to 0.
+
+So of this item's own 13-line breakdown above, the **7 item-brief lines are
+gone**. The 5 comment-and-docstring lines and the 1 test fixture remain, and
+they are the whole of what is left.
+
+**Measured again on `#783`'s own branch**, which is the cleanest evidence this
+item has because the branch was doing exactly this work: **6** added `.py`
+lines reported, none a suppression - two docstrings naming `xfail_strict` to
+explain the suffix list, three test fixtures that must write a literal marker
+into a scratch repository, and one assertion pinning the tuple the check
+reports. `PL-BHBZ`'s own "Done when" requires that a `.py` line containing a
+marker still fails, so this REJECT is **structural for any work on this
+check** rather than unlucky wording.
+
+**Folded in from `PL-4FD2`** (dropped 2026-09-20 as the same defect; it read
+"prose in a docstring, an item brief or a README explaining why a suppression
+was not used refuses the branch"). Two things it carried that this item did
+not:
+
+- It was found closing `PL-Q9Z1`, where the refusing lines were a docstring
+  paragraph, an item brief and a `README.md` paragraph - and that branch's
+  workaround was to *avoid the word*, which makes the documentation worse in
+  the one place a reader needs it, since the reason a suppression was refused
+  is what stops the next session adding one.
+- **The precedent for the remaining half is already in this tree**:
+  `tools/doc_check.py`'s `candidates` reports a term that is also an ordinary
+  word *only where a line marks it as code*. That is the same line this check
+  still does not draw, drawn deterministically and shipping.
+
+**Folded in from `PL-0KQP`** (dropped 2026-09-20, captured on `#783`'s branch
+before its author found this item): a file-level `# type: ignore` on its own
+line is a real mypy directive for the whole file, so "the line is a comment"
+cannot be the predicate - which is this item's own decidability argument,
+reached independently and with the concrete counter-example.
+
+**A candidate rule the design round should weigh, found 2026-09-20.** This
+item already names it - "a line whose suppression name sits inside backticks
+or inside a string literal is being *discussed*, not applied" - but the
+backtick half alone is decidable with no idea of Python's grammar, which is
+what `verify.py`'s own `TOKEN_RE` comment warns against growing. A backtick is
+never Python syntax outside a string or comment, and a real directive is never
+written backticked. Scored against the evidence above: it clears 4 of `#783`'s
+6 and the 5 comment-and-docstring lines of the 13. What it does **not** clear
+is the test fixture that genuinely contains a marker as the subject under
+test, which is honest reporting rather than a false positive. Not built, and
+not this session's to decide.
+
+**Still open, and unchanged:** whether to narrow within `.py` at all, and on
+what rule. `docs/WORKING_NOTES.md:1987` records the decision that this item
+goes ahead of product work.
+
+## Superseded as the place the decision lives, 2026-09-20 — read this first
+
+A generator item was recorded the same day and declares this item one of its
+causes. It merged to `main` in `#787` as `PL-G21K`, so it is in the store and
+citable directly - this paragraph was written while it was still stranded on
+`origin/claude/busy-einstein-8bmtwd` and said it was not.
+
+> `PL-G21K` — "verify's suppression and assertion checks infer intent from
+> diff text, so every fix adds a special case and uncovers the next: across
+> 564 commits four of the five suppression markers fired zero times on a real
+> directive while half of all hits were prose". `status: needs-decision`,
+> `feature: verify-false-reject`, and
+> `root-cause-of: PL-4FD2, PL-STC4, PL-BHBZ, PL-5MFL, PL-XQGH, PL-CNJH, PL-2DTK`.
+
+**Do not build this item's remaining half without reading it.** Its count over
+564 commits of `main` splits `_SUPPRESSION_RE`'s 66 flagged lines three ways:
+22 (33.3%) `.md` prose, 11 (16.7%) `.py` where the marker sits in backticks, a
+string literal or a prose comment, and 33 (50.0%) real directives - **every one
+of the 33 a `# type: ignore[<code>]` in a test file, and not one a test being
+disabled**. `typing.no_type_check`, `xfail`, `pytest.skip` and `@skip` fired on
+a real directive **zero** times.
+
+Two consequences for this item:
+
+- The 33.3% row is what `#783` landed, so that part is done rather than
+  pending.
+- The 16.7% row is this item's own backtick candidate, already measured. So
+  the remaining half is not a patch this item should specify - on `PL-G21K`'s
+  evidence the question is whether the check should be asking this at all, and
+  that is a decision rather than a narrowing.
+
+This item's value from here is its evidence, not its disposition: the 13-line
+breakdown, the `PL-Q9Z1` finding folded from `PL-4FD2`, and
+`tools/doc_check.py`'s `candidates` as the in-tree precedent. Whether it
+closes as part of `PL-G21K` or survives it belongs to whoever answers
+`PL-G21K`, not to this brief.

@@ -1,0 +1,194 @@
+# docket: release
+
+Read this when freezing a milestone's debt gate, or when there is finished work
+to ship.
+
+Part of the `docket` skill. `.claude/skills/docket/SKILL.md` is its front
+page and decides which file a session reads.
+
+## Mode: freeze a milestone's debt gate
+
+Triggered by scoping a milestone — scoping is the act that freezes the list,
+**except for a milestone scoped out of turn, whose gate freezes when the
+milestone before it ships.** That exception is `ROADMAP.md` § "The debt gate" →
+"The cadence"'s rather than this file's, and the timeline row for the gate names
+the release the freeze waits for. It exists because a gate holds the
+*preceding* milestone's findings: freezing it while that milestone is still
+unimplemented produces a gate holding none of what it is for, and sends those
+findings to the next gate instead. v0.4.26 and v0.6.0 are both in that state.
+The rest of the cadence is unchanged — the list still clears before
+implementation begins, and the milestone's own section still carries the heading
+the frozen list goes under, empty of entries until the day. Whether the trigger
+itself should be reworded is `PL-KKRP`'s; do not reword it here.
+
+```bash
+bin/docket gate --feature teachable-case
+```
+
+That is the whole pass: the open debt, split into what the milestone clears
+itself (the items carrying its feature) and what clears before it begins, with
+effort totals for each. Recording Gate 0 by hand meant reading 48 items and
+applying the rule to each; do not repeat that.
+
+**Sweep the frozen list for staleness before clearing it.** That is beat 3 of
+`ROADMAP.md`'s cadence and the first thing to happen once the list exists. A
+`verify:` command tests for the presence of the fix and never for the presence
+of the fault, so an entry whose problem was solved another way fails forever and
+reads as outstanding work — and nothing in the store marks it, so it is ranked,
+offered by `bin/docket next`, and counted into this gate. The one pass that has
+run found 12 of 134 items dead and 31 more overtaken, 32% of the lane, and a
+churn advisory was built, measured against its verdicts and rejected, so there
+is no mechanical substitute (`PL-LKGL`). Read each frozen entry against the
+tree, drop what no longer reproduces with its `reason`, and correct the briefs
+that overstate what is left. `PL-6ZQY` is the standing item for the pass, and
+its own brief carries a 134-item map whose verification phase never finished —
+nothing in it may be acted on without re-checking against the tree.
+
+**Recorded debt is cleared before a new milestone begins.** `ROADMAP.md`'s
+"The debt gate" is the rule: open items classed `defect`, `safety`, `science`,
+`refactor` or `perf`, and anything at `needs-decision`, reach `done` — or
+`dropped` with a reason — before milestone work starts. `feature` and
+`planning` items are not debt. Process work is debt once its mechanism is live
+and unreliable, not while it is still being built; that case is classed
+`defect` like any other, so the class carries the rule.
+
+The command computes and decides nothing. Whether an item is *really* debt,
+whether the gate should open, and what goes into `ROADMAP.md` are yours —
+transcribe the two lists into the milestone's own section with the date they
+were frozen, per `ROADMAP.md`'s "Recording it". The list is frozen at that
+moment; a finding made afterwards goes to the next gate unless the problem it
+describes predates the freeze, or is `P0`, `safety` or `science`.
+
+## Mode: ship a release
+
+**Offer this; do not wait to be asked — when the session is about what to do
+next.** The session-start digest says when there is enough finished work to be
+worth raising, and the release itself takes no arguments: the store already
+knows what has shipped and what has not, so there is nothing for the owner to
+look up and asking them to is pure friction.
+
+Where the digest says `No release to offer` instead, the version a bump would
+arrive at is one `ROADMAP.md` has already given to a milestone ahead of the
+current one and not yet finished — placed on the release train, scoped in a
+section, or both — and the line names what holds it. There is nothing to raise then: the beat printed
+under it is the work, and cutting the version anyway would ship a milestone
+under its own name with most of it missing. `bin/docket status` prints that
+refusal in the same words off the same verdict, and `docket wave`'s `Reserved`
+line is the whole set of numbers the plan has spent rather than the one that
+collided — which is the evidence behind either refusal, and the thing to read
+before arguing that some other number is free.
+
+But the digest says it in *every* session, including the ones where it is
+beside the point. Offer it when the owner is choosing what to work on or has
+just finished something. Not in a design round, a triage pass, a
+question about one mechanism, or a review of one change — there it is noise appended to a reply
+that was about something else, and it quietly converts ideation into
+implementation, which `.claude/skills/docket/SKILL.md` § "The two modes this queue serves"
+says not to do.
+
+Raise it the way a colleague would: what got done, what it completes, what the
+version would be, and a question.
+
+> "PL-010 and PL-011 landed, so chart-readout is finished — four items. That
+> makes a natural v0.2.4. Want me to cut it?"
+
+```bash
+docket status                    # includes what is releasable
+bin/docket release --dry-run     # the notes and the bump, without writing
+make release VERSION=0.3.0       # cut it
+```
+
+**Cut it with `make release`, never `bin/docket release` on its own.** The
+tool writes the new version into `pyproject.toml` and stops, but `uv.lock`
+records the project's own version too, so the next `make check` fails on `uv
+sync --locked` with the tree half-updated and the reason unrelated to the
+release. That happened on both releases the command has existed for. `make
+release` runs `bin/docket release` and then `uv lock`, which is the whole
+mechanical half.
+
+**It stops there, and the last thing it prints is what is left.** `ROADMAP.md`
+needs a version-table row, the `current baseline` mark moved onto it, and a
+baseline section — release prose that says what the release was *for*, which
+nothing generates. `bin/docket release` names each statement that is now
+stale, with its line number. Make those edits, then run `make check`: that is
+what proves they landed, and running it any earlier fails on edits nobody has
+been asked for yet.
+
+This project names its version rather than incrementing it, so `VERSION=` is
+required; `bin/docket release --dry-run` prints the mechanical guess for
+reference.
+
+`docket.toml` sets `version_policy = "manual"` here, so the version is named
+rather than inferred — `ROADMAP.md`'s "Versioning decision" is why: the number
+marks the capability boundary a release crosses, which no class label carries.
+The dry run still prints the mechanical guess, as a reference point and not an
+answer.
+
+`release` stops before tagging on purpose: review the bump and the generated
+notes, then commit and tag. It **refuses to cut a release while the previous
+one is untagged**, because a release cut without a tag leaves a permanent gap
+— `git describe --contains` resolves nothing across its span — and the gap
+cannot be repaired with confidence once the history has moved on.
+
+It **also refuses to cut a release another session already has** (`PL-66FP`,
+two sessions cut v0.3.7 independently), on either of two facts, and it
+fetches first so both are current:
+
+- **The default branch already holds the version** — its `docs/releases/`
+  notes file or its version field. Another session's release has merged, so
+  the work is `git merge origin/main` and then asking again what is left.
+- **An unmerged ref is carrying a cut** — of any version, not only this one,
+  because two releases under different numbers stamp `milestone:` onto an
+  overlapping set of items and the second to merge claims work the first
+  shipped. The message names the ref and the date the notes were written; that
+  date is what separates a live session from a branch nobody will merge, and
+  it is yours to read. Wait for a live one; for an abandoned one run
+  `bin/docket stranded` before dropping the ref.
+
+**A cut that was interrupted is resumed, never cut again under a new number.**
+The stamps go into the items one file at a time and the notes are written after
+the whole loop, so a lost container leaves work stamped for a release that has
+no notes. Re-run the same number — `make release VERSION=0.3.0` — and it picks
+those items back up and cuts the whole release; the `Resuming an interrupted
+cut of v0.3.0` line it prints says how many were already stamped, and the total
+under it should match what the dry run said. Naming a *different* version is
+refused, because two numbers over one unfinished cut leave both sets of notes
+permanently wrong about the same items. Where nobody re-runs it, `docket check`
+reports the release whose notes were never written (`PL-1MKQ`).
+
+The digest says the same thing on its `Releasable:` line instead of offering
+a release, so the second session never raises one. **Neither read sees a
+session that has pushed nothing**, so a clean answer still means "nothing
+visible", never "nothing" — which is why the session check under **Mode: start an item**, in
+`.claude/skills/docket/modes/start.md`, is worth running before offering a release too.
+
+**Never ask the owner to "tag vX.Y.Z". Paste the commands, filled in, and
+resolve the merge commit rather than leaving a placeholder to fill:**
+
+```bash
+git fetch origin main
+git tag -a v0.3.0 origin/main -m "v0.3.0"
+git push origin v0.3.0
+```
+
+Every time, not only the first. Asking for a tag without them makes the owner
+reconstruct three commands at the moment they are trying to do something else.
+Run these straight after the merge, when `origin/main` *is* the merge commit;
+an angle-bracket placeholder is also the one thing a pull request body silently
+eats (`PL-1DN9`).
+
+**Do not try to push the tag yourself first - it fails, and it fails
+convincingly (`PL-N936`).** `git push --dry-run` reports `[new tag]` and the
+real push then dies with `send-pack: unexpected disconnect`, ending on
+`Everything up-to-date` while `git ls-remote --tags` shows nothing. Branch
+pushes from the same session work throughout, so this is tag refs specifically,
+and it is the same family as `PL-TFWR`'s branch deletion: an operation a
+session will reasonably attempt, that does not look like it failed. The tag is
+the owner's to run.
+
+**Say the tag is outstanding until they confirm it, and check rather than
+assume.** `bin/docket release` refuses to cut the next release while the
+previous one is untagged, and `tools/doc_check.py` will not catch the gap - the
+baseline-tag advisory was removed in v0.3.4 because a local checkout cannot
+tell a release never tagged from one tagged since it last fetched. So nothing
+in the tree reports it; `git ls-remote --tags origin` is what answers.

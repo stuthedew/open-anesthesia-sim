@@ -14,7 +14,7 @@ import re
 import unicodedata
 from pathlib import Path
 
-from .model import Item, parse_item, render_item
+from .model import Item, parse_item, render_item, with_front_matter_field
 
 ITEM_GLOB = "*.md"
 
@@ -121,13 +121,44 @@ def rewrite_item(directory: Path, item: Item) -> Path:
     (`PL-LBR6`). So a field write keeps the name, and bringing a drifted name
     back into line stays a pass of its own (`PL-YTDN`).
 
-    The front matter is still rendered in canonical order; the name is the one
-    thing about the file this leaves alone.
+    The front matter is still rendered in canonical order, which is right for
+    a command that was asked to change a field and wrong for one that was
+    asked to *add* one: on a file the tool did not write, re-rendering moves
+    keys and reflows multi-line values, and those are removals in a diff about
+    something else. `insert_field` is the writer for that case.
     """
     if not item.path:
         raise ValueError(f"{item.identifier or 'the item'} was not read from a file")
     target = directory / item.path
     target.write_text(render_item(item), encoding="utf-8")
+    return target
+
+
+def insert_field(directory: Path, item: Item, name: str, value: str) -> Path:
+    """Add one front-matter field to an item, leaving every other byte as it was.
+
+    The third writer here, and the three differ by what they leave alone:
+    `write_item` re-derives the filename and re-renders the file,
+    `rewrite_item` keeps the name and re-renders, and this keeps the name and
+    the existing text both.
+
+    That last one is what `bin/docket record` needs and what `PL-LBR6` and
+    `PL-7K8Y` are the two halves of. The `docket` skill grants `record` a
+    standing exemption from the in-flight guard on the grounds that two
+    sessions running it write the same line and git merges them, and
+    `verify.sanctioned_queue_edit` exempts its write from the close-out audit
+    on the grounds that the diff adds a line and removes none. A rename
+    defeated the first and a reorder defeated the second; both were the same
+    cause, a field write re-rendering a file it was not asked to rewrite.
+
+    Reads the file rather than rendering `item`, so the value written is the
+    only thing about the block that comes from the caller.
+    """
+    if not item.path:
+        raise ValueError(f"{item.identifier or 'the item'} was not read from a file")
+    target = directory / item.path
+    text = target.read_text(encoding="utf-8")
+    target.write_text(with_front_matter_field(text, name, value), encoding="utf-8")
     return target
 
 

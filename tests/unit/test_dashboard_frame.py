@@ -46,6 +46,9 @@ from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustm
 from anesthesia_sim.app.controller import ResumePoint, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
     ACCOUNTING_UNIT_CAPTION,
+    BRANCH_AGENT_LOCK_TEXT,
+    COMPARING_AGENT_LOCK_TEXT,
+    COMPARING_FORK_LOCK_TEXT,
     CONTROL_MARK_LEGEND_LABEL,
     CONTROL_TIMELINE_CAPTION,
     EMPTY_METRIC_QUALIFIER,
@@ -61,6 +64,7 @@ from anesthesia_sim.app.dashboard_frame import (
     READOUT_RESERVATIONS,
     READOUT_ROW_LADDER,
     RENDER_INTERVAL_S,
+    RUNNING_AGENT_LOCK_TEXT,
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
     TIME_BOOKMARK_HEADING,
@@ -75,6 +79,7 @@ from anesthesia_sim.app.dashboard_frame import (
     accounting,
     bookmark_panel,
     delivered_fraction,
+    fork_offer,
     format_mac_target,
     format_time_bookmark,
     halt_disposition,
@@ -1852,3 +1857,89 @@ def test_the_panel_reads_the_marks_the_snapshot_carries() -> None:
     )
 
     assert panel.times.rows == (f"{format_elapsed(600.0)} – intubation",)
+
+
+# ------------------------------------- the branch control and its three locks
+
+
+def test_fork_offer_labels_every_keyframe_the_trunk_holds() -> None:
+    """`BranchedCase.fork_points_s` in, `format_elapsed` out, one label per instant.
+
+    Induction is offered rather than filtered out: a fork at zero is a
+    second management of the whole case, and dropping it would leave a case
+    that has recorded nothing with an empty selector beside a live button.
+    """
+
+    offer = fork_offer((0.0, 60.0, 185.0), comparing=False)
+
+    assert offer.points_s == (0.0, 60.0, 185.0)
+    assert offer.labels == tuple(format_elapsed(instant_s) for instant_s in offer.points_s)
+    assert offer.locked is False
+    assert offer.lock_reason == ""
+    assert offer.refusal is None
+
+
+def test_fork_offer_is_refused_while_a_comparison_is_shown_and_says_the_way_out() -> None:
+    """The display is capped at two runs and there is no run selector yet.
+
+    A refused control that does not say how to un-refuse itself is a dead
+    end rather than a mode, so the reason names Reset.
+    """
+
+    offer = fork_offer((0.0, 60.0), comparing=True)
+
+    assert offer.locked is True
+    assert offer.lock_reason == COMPARING_FORK_LOCK_TEXT
+    assert "Reset" in COMPARING_FORK_LOCK_TEXT
+
+
+def test_a_standing_refusal_shows_only_while_the_control_is_offered() -> None:
+    """A refusal describes a press of a control that is no longer on screen.
+
+    The lock and the refusal are two lines of two severities rather than one
+    line of two meanings, so the question is not which wins but whether a
+    message about a vanished control should still be standing. It should
+    not.
+    """
+
+    refusal = "Setting refused: no keyframe at 30.0 s"
+
+    assert fork_offer((0.0,), comparing=False, refusal=refusal).refusal == refusal
+    assert fork_offer((0.0,), comparing=True, refusal=refusal).refusal is None
+
+
+def test_the_agent_selector_is_shown_only_on_a_paused_lone_trunk() -> None:
+    """Three reasons replace it with the chip, and a paused single run is none of them."""
+
+    offered = transport(_snapshot(is_running=False))
+
+    assert offered.selector_locked is False
+    assert offered.selector_lock_reason == ""
+
+
+@pytest.mark.parametrize(
+    ("is_running", "is_branch", "comparing", "expected"),
+    [
+        (True, False, False, RUNNING_AGENT_LOCK_TEXT),
+        (False, False, True, COMPARING_AGENT_LOCK_TEXT),
+        (False, True, False, BRANCH_AGENT_LOCK_TEXT),
+        (True, False, True, COMPARING_AGENT_LOCK_TEXT),
+        (True, True, True, BRANCH_AGENT_LOCK_TEXT),
+        (True, True, False, BRANCH_AGENT_LOCK_TEXT),
+    ],
+)
+def test_the_chip_names_the_lock_that_lasts_longest(
+    is_running: bool, is_branch: bool, comparing: bool, expected: str
+) -> None:
+    """A reader acts on the reason, so it has to be one the named gesture can lift.
+
+    A branch's selector never returns - `set_agent` refuses a branch - a
+    comparison's returns on Reset, and a running run's returns on Pause.
+    Naming the shortest lock that happens to hold would send a reader to
+    Pause for something Pause cannot lift.
+    """
+
+    locked = transport(_snapshot(is_running=is_running), is_branch=is_branch, comparing=comparing)
+
+    assert locked.selector_locked is True
+    assert locked.selector_lock_reason == expected

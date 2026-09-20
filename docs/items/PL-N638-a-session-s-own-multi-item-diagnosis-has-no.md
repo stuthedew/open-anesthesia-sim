@@ -30,7 +30,7 @@ digest", not "when do PL-XD3C, PL-0J9K and PL-MMVF land".
 **Where the path is missing.** Two routes set `feature:` and neither covers a
 finding:
 
-- `.claude/skills/docket/SKILL.md` "Mode: turn an idea into work" creates items
+- `.claude/skills/docket/modes/ideas.md` "Mode: turn an idea into work" creates items
   with `docket new --feature <name>`, but it is triggered by *the owner*
   describing something they want.
 - The triage mode fills in `feature` "when it belongs with related work", which

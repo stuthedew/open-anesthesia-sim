@@ -111,7 +111,8 @@ verify_required_at_close_from = 2026-09-03
 # (project owner, ratified): the field records the discriminator, and proving
 # the tree is `check_command`'s job, which `docket verify`, `docs/worker.md`
 # and CI each already run. Until now that contract was carried by one table in
-# `.claude/skills/docket/SKILL.md` and by nothing a machine reads, against a
+# the `docket` skill - now `.claude/skills/docket/modes/triage.md` - and by
+# nothing a machine reads, against a
 # store recording 82 counter-examples - 23 of them written on 2026-09-14 alone.
 #
 # The rule fires only where the author has already said which clause

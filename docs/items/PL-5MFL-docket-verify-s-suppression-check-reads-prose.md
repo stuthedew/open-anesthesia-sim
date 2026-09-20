@@ -3,10 +3,13 @@ id: PL-5MFL
 title: docket verify's suppression check reads prose as code, so every release cut REJECTs: the assertion check narrows to files Python executes and the suppression check beside it does not
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
-touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests
+feature: verify-false-reject
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests, subprojects/docket/README.md
 added: 2026-09-19
+closed: 2026-09-20
+payoff: stops a correct release cut ending REJECT because the ROADMAP row it edits narrates a suppression
 verify: grep -q "def test_suppression_ignores_prose" subprojects/docket/tests/test_verify.py
 ---
 
@@ -63,3 +66,38 @@ session may not write the declaration that excuses its own work.
 `ROADMAP.md` line containing `xfail` is not reported, and
 `bin/docket verify --self` on a release cut that edits the departing
 baseline's row returns `ACCEPT`.
+
+**Closed 2026-09-20 with `PL-BHBZ`**, which is this same defect filed a day
+apart and from the other end - this item found it at a release cut, `PL-BHBZ`
+found it by reading the two checks side by side. One fix closes both, so they
+are grouped under `feature: suppression-file-scope`.
+
+**The title overstates one thing, and the record should say so.** "Every
+release cut REJECTs" is not what the history shows. Replaying
+`_net_line_changes` over the real cuts: v0.4.30 (`fe32c6f`, this item's own
+observation) reported **7** lines and REJECTed; v0.4.31 (`18c7689`) and
+v0.4.35 (`cce6f28`) reported **none**. A cut trips it only where the row it
+edits, or an item brief riding in the same commit, happens to quote a token -
+which is frequent, because this project fixes suppression handling often, but
+not universal. The mechanism the item describes is exactly right; the
+frequency claim is not. All 7 of v0.4.30's lines were prose, and all 7 go
+quiet under the fix.
+
+**What was built, and why it is not the sibling's constant.** A separate
+`SUPPRESSION_BEARING_SUFFIXES` - `.py`, `.pyi`, `.toml`, `.cfg`, `.ini` -
+rather than a reuse of `ASSERTION_BEARING_SUFFIX`. The sibling's reasoning is
+that an assertion is a *statement*, so only executed code holds one; a
+suppression is also *configured*, and `xfail_strict = false` under
+`[tool.pytest.ini_options]` turns every expected failure back into a pass
+without a line of Python changing. Reusing the one-suffix constant would have
+carried the sibling's rule past the argument that earned it.
+
+**Counted before the narrowing was written**, since this tightens a check
+whose safe direction is reporting: across 1,109 commits, the added lines
+`_SUPPRESSION_RE` matches are 69 `.py` and 41 `.md`, with **no other suffix
+carrying one at all**. So the suffix list reports every match the history has
+ever held, and the 41 it stops reading are prose without exception.
+
+**What it does not fix** is prose inside a `.py` file, captured as `PL-0KQP` -
+which is why this branch's own `verify --self` still reports its regression
+test's fixtures.

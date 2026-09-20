@@ -37,7 +37,7 @@ which was the job. It is also the ideation-to-implementation slide the skill
 already forbids twice, arriving through a door it had not closed: the reply
 itself.
 
-**Where.** `.claude/skills/docket/SKILL.md`, "Mode: triage".
+**Where.** `.claude/skills/docket/modes/triage.md`, "Mode: triage".
 
 **Done when.** The triage mode states what the reply contains - the triaged
 items, and the queue's shape - says plainly that it ends there, routes a
