@@ -1,8 +1,16 @@
 ---
 id: PL-205P
 title: An item whose verify: reads the remote flips to passing with no commit, so main goes red for every commit until it is closed and no pull request can show it
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, infra
+feature: replay-hermeticity
+touches: subprojects/docket/src/docket/verify.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests, docs/items
 added: 2026-09-20
+closed: 2026-09-20
+payoff: stops main going red - through a release cut, twice - for a finding no commit caused and no branch could have shown, while keeping the error on the case a commit does cause
+verify: uv run pytest subprojects/docket/tests/test_verify.py subprojects/docket/tests/test_checks.py -q -k 'outside_the_tree or reported_apart or reads_the_remote or only_reads_the_tree_is_still' | grep -q '8 passed'
 ---
 
 **Problem.** An item whose `verify:` reads the remote flips from failing to
@@ -108,32 +116,42 @@ until a session closes it. One end is an advisory by decision; the other fails
 the default branch's required check. That inconsistency is the defect, not the
 scope.
 
-**Recommended shape** (needs the project owner's answer before building; see
-the alternatives in the reply that filed this). Decide hermetic from
-non-hermetic by reading the recorded command for the verbs that leave the tree
-- `git ls-remote`, `git fetch`, `git push`, `curl`, `wget`, `gh` - which is an
-exact rule a script can state and a reviewer can read. Then:
+**What was built.** `verify.reaches_outside_tree` decides whether a recorded
+command's answer depends on more than the tree, by `shlex`-tokenizing it and
+looking for a network command word - `curl`, `wget`, `gh`, `ssh`, `scp`,
+`rsync`, `nc`, or `git` immediately followed by `ls-remote`, `fetch`, `push`,
+`pull` or `clone`. `already_passing` carries the matching ids in a new
+`LandedReport.external`, subtracted from `blocked` because that clause's
+certainty - "work nobody can start has not landed, so the command does not
+discriminate" - does not survive a command the world can answer. `checks.py`
+renders `external` as a **grooming advisory** and leaves everything else an
+error exactly as before.
 
-- a **hermetic** command that already passes stays an error, unchanged: that
-  one *is* caused by the commit, and is the finding the check was built for;
-- a **non-hermetic** one becomes a grooming advisory naming the item and saying
-  to close it, which puts it in the block every `bin/docket check` prints -
-  where sessions already look - instead of only on `main`'s run, which by this
-  item's own account is watched by nobody.
+Wrong in the safe direction by construction: an unparseable command, and
+anything the predicate does not recognize, reads as hermetic, so the finding
+keeps today's severity and only a command the predicate is sure about is
+softened.
 
-**One trap for whoever builds it.** The classifier must read the command
-*being run*, not any text inside it. `PL-K2C8`'s `verify:` is `grep -q 'git
-push origin --delete' .claude/skills/docket/SKILL.md && …` - it contains a
-network verb as a **search string** and is perfectly hermetic, touching nothing
-but a file in the tree. A naive substring scan for the verbs above calls it
-non-hermetic and silently downgrades a finding that should stay a hard error.
-It is the only such case in the store today and it is the one a first
-implementation will get wrong, so it is the regression test to write first.
+**The trap it had to survive, and does.** The classifier reads the command
+*being run*, not text inside it. `PL-K2C8`'s `verify:` is `grep -q 'git push
+origin --delete' .claude/skills/docket/SKILL.md && …` - a network verb as a
+**search string**, opening no socket. `shlex` collapses that quoted argument
+into one token, so it never matches the bare `git` the scan looks for, where a
+substring search would call it non-hermetic and silently downgrade a finding
+that must stay an error. It is the only such case in the store and it is the
+first regression test.
 
-**Done when.** An item whose `verify:` reads the remote, and which has flipped
-to passing, is reported where a session will act on it and does not fail
-`main`; an item whose `verify:` is a function of the tree still fails as it
-does today; and a test drives both halves with the two recorded commands.
+**What deliberately did not move.** A hermetic command that already passes is
+still a hard error. That case *is* caused by a commit, and the scoped replay
+already catches it on the branch - which is what reddened `2f57de0b` over
+`PL-T2YR` before `#744` merged. Softening it would have thrown away the finding
+the check exists for in order to repair a case it never covered.
+
+**Done when** - met. An item whose `verify:` reads the remote and has flipped to
+passing is reported where a session will act on it and does not fail `main`; an
+item whose `verify:` is a function of the tree still fails as it does today;
+and `subprojects/docket/tests/` drives both halves, the `PL-K2C8` shape
+included.
 
 **Do not re-derive the refutation.** The scoped replay covers added items. That
 is measured twice above, and `git diff --name-only <base>...HEAD` is why.

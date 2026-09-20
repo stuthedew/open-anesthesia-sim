@@ -1038,6 +1038,19 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
     returned 1, which is what a failing test returns, so the item vanished
     from every finding while the report stayed clean.
 
+    A command that reads past the tree is the one case where neither reading is
+    safe to assert, and it is an advisory for that reason (`PL-205P`). Its exit
+    status is a fact about the world at the moment it ran, so it can flip with
+    no commit behind it: `PL-8GQW`'s `git ls-remote --tags origin v0.4.30`
+    failed correctly when `#730` filed it, and began passing the moment the
+    project owner pushed the tag - reddening `main` across six commits by five
+    unrelated sessions while the repository had not changed. No branch could
+    have shown it, because no branch changed anything. `ROADMAP.md` settled the
+    same question at the other end of that window - a release whose tag has not
+    been pushed yet is an advisory "rather than an error: failing it would turn
+    `make check` red on every release branch" - and this is that window seen
+    from the far side.
+
     This is the replay's clause of the `verify:` contract (`PL-6TP8`,
     `subprojects/docket/README.md` § "What a `verify:` exit status proves, and to whom"): exit 0
     is the finding, the never-evaluated statuses are refusals, and a plain
@@ -1080,6 +1093,30 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
     # that should have closed. The transient case, a session that ran the work
     # before editing its item, resolves in the same commit the skill already
     # requires: `status: done` travels with the work.
+    # Before the two findings below and subtracted from both. A command that
+    # reads the remote answers about the world rather than about this commit,
+    # so neither the error's "close it" nor the blocked clause's "the command
+    # does not discriminate" is safe to assert: the item may simply be open
+    # because the work it records landed somewhere no commit can show. It is
+    # still worth saying - these are exactly the items nobody remembers to
+    # close - so it is an advisory, which prints on every `docket check` a
+    # session runs, rather than an error on a default-branch run that by
+    # `PL-205P`'s own measurement nobody watches. `ROADMAP.md` decided the
+    # same question on the other side of the same window: the tag a release
+    # has not yet been given is an advisory "rather than an error: failing it
+    # would turn `make check` red on every release branch".
+    if landed.external:
+        one = len(landed.external) == 1
+        report.advisories.append(
+            f"{', '.join(landed.external)} {'is' if one else 'are'} open and "
+            f"{'its' if one else 'their'} `verify:` command now passes, but that "
+            f"command reads past the tree, so {'it' if one else 'they'} can have "
+            f"flipped with no commit behind {'it' if one else 'them'} - the work is "
+            f"the project owner's and the remote is where it shows. Close "
+            f"{'it' if one else 'them'} if the work is done; nothing here fails until "
+            f"you do"
+        )
+
     if landed.blocked:
         one = len(landed.blocked) == 1
         report.errors.append(
@@ -1094,7 +1131,7 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
     # Everything below is the two-reading finding, so the blocked ids are taken
     # out of it rather than reported twice under a question one of them has
     # already answered.
-    named = set(landed.blocked)
+    named = set(landed.blocked) | set(landed.external)
     startable = tuple(identifier for identifier in landed.passing if identifier not in named)
     if not startable:
         return

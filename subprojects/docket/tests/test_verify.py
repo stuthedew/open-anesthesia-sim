@@ -33,6 +33,7 @@ from docket.verify import (
     item_commits,
     items_reading,
     landed_workers,
+    reaches_outside_tree,
     selects_no_test,
     verify,
     verify_batch,
@@ -2234,3 +2235,77 @@ def test_a_done_item_with_no_command_and_no_reason_still_fails_hard(tmp_path: Pa
     assert command.blocks and not command.advisory
     assert report.stopped_early
     assert not report.passed
+
+
+# `verify:` commands that read past the tree (`PL-205P`). The two recorded
+# shapes are kept verbatim from the store, because the point of these is that
+# they are what was actually written rather than what a test author would
+# invent.
+TAG_COMMAND = "git ls-remote --tags origin v0.4.30 | grep -q 'refs/tags/v0.4.30'"
+REFS_COMMAND = "! git ls-remote --heads origin 'refs/heads/claude/x' | grep -q ."
+GREPS_FOR_A_NETWORK_VERB = (
+    "grep -q 'git push origin --delete' .claude/skills/docket/SKILL.md && "
+    "grep -q 'say the remote is gone' docs/worker.md"
+)
+
+
+@pytest.mark.parametrize("command", [TAG_COMMAND, REFS_COMMAND, "curl -sS https://example.com"])
+def test_a_command_that_asks_the_remote_reaches_outside_the_tree(command: str) -> None:
+    assert reaches_outside_tree(command) is True
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        # The trap. `PL-K2C8`'s real command carries `git push origin --delete`
+        # as a *search string* and opens no socket, so a substring scan calls
+        # it non-hermetic and silently downgrades a finding that must stay an
+        # error. `shlex` collapses the quoted argument into one token.
+        GREPS_FOR_A_NETWORK_VERB,
+        "uv run pytest tests/unit/test_thing.py",
+        # A network subcommand that is not the word after `git`.
+        "git log --grep fetch",
+        # Unparseable, which must read as hermetic: failing to parse is not a
+        # licence to soften a finding.
+        "grep -q 'unbalanced",
+        "",
+    ],
+)
+def test_a_command_that_only_reads_the_tree_does_not(command: str) -> None:
+    assert reaches_outside_tree(command) is False
+
+
+def test_a_passing_command_that_asks_the_remote_is_reported_apart(tmp_path: Path) -> None:
+    """It stays in `passing` and is named in `external`, so `checks` can soften it.
+
+    `PL-205P`: the command's answer is a fact about the world at the moment it
+    ran, so it flips with no commit behind it - which is how `main` went red
+    across six commits by five unrelated sessions for `PL-8GQW` while the
+    repository had not changed.
+    """
+    root = _repo(tmp_path)
+    items = [
+        _item(identifier="PL-K7QX", status="ready", verify="true"),
+        _item(identifier="PL-A1B2", status="ready", verify="git ls-remote --tags . HEAD"),
+    ]
+    report = already_passing(root, items)
+
+    assert report.passing == ("PL-K7QX", "PL-A1B2")
+    assert set(report.external) <= set(report.passing)
+    assert report.external == ("PL-A1B2",)
+
+
+def test_reaching_outside_the_tree_takes_precedence_over_blocked(tmp_path: Path) -> None:
+    """`blocked`'s certainty does not survive a command the world can answer.
+
+    A blocked item's passing command is reported as certainly
+    non-discriminating, because work nobody can start cannot have landed. That
+    rests on the tree being the only thing the command reads.
+    """
+    root = _repo(tmp_path)
+    items = [_item(identifier="PL-A1B2", status="blocked", verify="git ls-remote --tags . HEAD")]
+    report = already_passing(root, items, scoped_to={"PL-A1B2"})
+
+    assert report.passing == ("PL-A1B2",)
+    assert report.external == ("PL-A1B2",)
+    assert report.blocked == ()
