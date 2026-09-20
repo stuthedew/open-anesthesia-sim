@@ -162,9 +162,9 @@ compartments, or to record the measurement above and drop this in favour of
 
 The recommendation is to generalise it. Every `(run, compartment)` whose drawn
 point is inside the radius answers; the three-line form stands exactly as
-today whenever one compartment answers, which is most hovers; where more than
-one answers, each value line names its compartment as it already names its
-run. That is the only rule measured at zero, it is the rule this chart already
+today whenever one compartment answers, which is 54.3-99.5% of hovers across
+the cases above and 63.0% on the single-run chart; where more than one answers,
+each value line names its compartment as it already names its run. That is the only rule measured at zero, it is the rule this chart already
 uses one axis over for the same cause, and its cost is the bounded box above.
 It does not make `PL-QYBW` less worth doing - the axis is the source, and a
 chart that draws fat in under 2 px is a legibility defect whatever the hover
