@@ -1,8 +1,14 @@
 ---
 id: PL-RR1N
 title: A verify: grep for a prose phrase can never match once the document's own line-wrapping splits it, and exit 1 reads as work-not-done
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
+touches: subprojects/docket/src/docket, subprojects/docket/tests
 added: 2026-09-20
+payoff: stops a finished item's own verify: reporting the work as absent because the document wrapped the phrase it greps for
+verify: grep -rq 'def test_a_verify_phrase_split_by_line_wrapping' subprojects/docket/tests tests/unit
 ---
 
 **Problem.** A verify: grep for a prose phrase can never match once the document's own line-wrapping splits it, and exit 1 reads as work-not-done
@@ -50,3 +56,20 @@ here:
 **Done when.** A `verify:` command written against a phrase in a wrapped
 paragraph resolves correctly, or the author is told at write time that it will
 not.
+
+**The 199 above is the wrong population, and the correction changes what the
+fix is worth** (triage, 2026-09-20). Counted against the store that day: **198
+items in total** carry a `grep -qF` command and **41 of them are open** (`ready`,
+`blocked`, `needs-decision` or `untriaged`). 180 open items carry some
+`grep -q` form. So the live surface is 41, not 199 - the original figure
+counted the closed items too.
+
+That matters for the third bullet above in particular. "`docket set` could then
+rewrite a bare `grep -qF` into it, which makes the fix retroactive for the 199"
+cannot be done for the other 157: `.claude/skills/docket/SKILL.md` makes a
+closed item's `verify:` a record of what was run rather than a command that
+still runs, and `docket check` errors on rewriting one. So a retroactive rewrite
+reaches 41 items, and the argument for the helper has to stand on those.
+
+The defect itself is unchanged and still reproduces - the `PL-FG9D` case is
+dated and recorded above, and nothing about the count touches it.

@@ -1,9 +1,11 @@
 ---
 id: PL-VHPR
 title: docs/MODEL.md does not say whether the delivered concentration is a volume fraction or a partial-pressure fraction, nor at what ambient pressure
-status: untriaged
+status: dropped
 feature: delivery-semantics
 added: 2026-09-19
+closed: 2026-09-20
+reason: Overtaken before capture: PL-5K5C (#458, merged 2026-09-07) recorded the sea-level assumption and the vaporizer-class dependence of the delivered-concentration dial in docs/MODEL.md. Every clause of this item's Done-when is answered there - the 760 mmHg assumption and that every concentration is a fraction of it, the note saying a gas-phase fraction and a partial pressure are interchangeable at that pressure, and the split between variable-bypass (sevoflurane, isoflurane) and gas-vapour blender (desflurane, Tec 6 class) with the Datex-Ohmeda operator instruction quoted. Checked clause by clause at triage 2026-09-20; the capture looked under the wrong two sections.
 ---
 
 **Problem.** docs/MODEL.md does not say whether the delivered concentration is a volume fraction or a partial-pressure fraction, nor at what ambient pressure
@@ -40,3 +42,39 @@ milestone, not here.
 **Done when.** `docs/MODEL.md` states the convention the delivered concentration
 follows and the ambient pressure it assumes, and says which real device class
 that matches.
+
+**Dropped at triage, 2026-09-20: the premise was already false when this was
+captured.** The statement this item asks for is in `docs/MODEL.md` and has been
+since `PL-5K5C` merged as `#458` on 2026-09-07, twelve days before the capture.
+Checked line by line against the item's own "Done when":
+
+- *the ambient pressure it assumes* — § "Assumptions": "ambient pressure is
+  constant, and it is one atmosphere — 760 mmHg. Every concentration in this
+  model is a fraction of that pressure, so the model is specified at sea level
+  and nowhere else."
+- *the convention the delivered concentration follows* — the note under that
+  list, "What one atmosphere buys, and why nothing in the model is wrong
+  today": a gas-phase fraction and a partial pressure are interchangeable at
+  760 mmHg, "so … no statement in this document has to say which of them it
+  means", followed by "The delivered-concentration control is where that
+  assumption does the most work", which names the dial as a vaporizer dial
+  carrying the unit *fraction of 1 atm*.
+- *which real device class that matches* — § "Ambient pressure is not
+  modelled…" separates **variable bypass** (sevoflurane and isoflurane here;
+  delivered partial pressure approximately preserved as ambient pressure falls,
+  with Boumphrey and Marshall's approximation worked) from the **gas–vapour
+  blender** (desflurane here, the Tec 6 class; constant volumes percent and
+  falling partial pressure, with the Datex-Ohmeda operator instruction quoted).
+
+That last section is the same volume-percentage-versus-partial-pressure
+contrast this item cites Meyer et al. for, reached from the same device
+physics. It also carries the two things the item did not ask for and a reader
+needs: the MAC divisor's sea-level nature, and why no $`1/P`$ correction factor
+is stored.
+
+**What the capture got right, and why this is a drop rather than a mistake.**
+The question is the correct one to have asked, and the survey was right that it
+is safety-critical. What went wrong is a search, not a judgment: the section
+answering it sits under § "Assumptions" and § "Known limitations" rather than
+under § "Concentrations" and § "Runtime controls", which is where the item's
+"Where" line looked. Nothing here is owed to the document.

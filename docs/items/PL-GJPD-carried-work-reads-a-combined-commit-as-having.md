@@ -1,9 +1,15 @@
 ---
 id: PL-GJPD
 title: _carried_work reads a combined commit as having carried the work, so the triage pass that closed PL-3CBS is recorded as its pull request because it also edited ROADMAP.md - three of main's 698 answerable closures disagree with their stored pr
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect
 feature: commit-provenance
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-19
+payoff: stops the store recording a confident, well-formed and wrong pull request as the provenance of a closed change, which no check would report
+verify: grep -q 'def test_a_combined_commit_that_carried_no_part_of_the_item' subprojects/docket/tests/test_vcs.py
 ---
 
 **Problem.** _carried_work reads a combined commit as having carried the work, so the triage pass that closed PL-3CBS is recorded as its pull request because it also edited ROADMAP.md - three of main's 698 answerable closures disagree with their stored pr
@@ -50,3 +56,28 @@ reading it for the general case - does the diff intersect the item's `touches`
 `touches` names four `subprojects/docket` paths that `#129` never goes near.
 Count what it would change across the store before adopting it: the first half
 of that measurement is in `PL-YFXG`'s close-out.
+
+**Why it matters.** `pr:` is how a reader gets from a closed item back to the
+change that made it, and it is the only route left - `commit:` was retired
+(`PL-T63T`) because a squash merge discards the branch commit. A wrong number
+does not look wrong: the field is present, well formed, and points at a real
+pull request that really did touch the item's file, so `bin/docket check`
+reports nothing. That is `PL-KX9N`'s failure mode, and it is why this is worth
+an item rather than a note - the store would carry a confident, traceable, false
+provenance line for a safety-critical project's own change history.
+
+The three measured disagreements are not the damage. `bin/docket record` writes
+only where the field is absent, and all three already hold the correct number,
+so nothing in the store is wrong today. The damage is the next closure of this
+shape: a commit that both closes an item and edits a file outside `docs/items/`
+for an unrelated reason - which `CLAUDE.md`'s leading-id rule and its capture
+rule together make ordinary rather than contrived.
+
+Confirmed at triage, 2026-09-20: `PL-3CBS` stores `pr: 128`, which is the
+number the recovery disagrees with.
+
+**Done when.** A closure commit that carried no part of *this item's* work is
+declined as its pull request even when its diff reaches outside `docs/items/`,
+with the `PL-3CBS` case driven as a test; and the count of what the new reading
+changes across the store is recorded before it is adopted, per the item's own
+note above.
