@@ -9,6 +9,7 @@ feature: scenario-branching
 touches: ROADMAP.md, docs/items
 added: 2026-09-14
 closed: 2026-09-20
+pr: 752
 payoff: turns v0.5.0 from a milestone a learner cannot reach into one they can, by naming the fork control as scope instead of leaving branching as machinery with no caller
 verify: grep -qF 'Selecting which two runs are displayed' ROADMAP.md
 ---

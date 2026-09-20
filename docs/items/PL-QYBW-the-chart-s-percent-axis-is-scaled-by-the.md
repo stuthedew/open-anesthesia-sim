@@ -1,8 +1,14 @@
 ---
 id: PL-QYBW
 title: The chart's percent axis is scaled by the alveolar peak, so the slow compartments are compressed into 1-2 px and two runs' fat curves cannot be told apart by pointing
-status: untriaged
+priority: P2
+effort: M
+status: needs-decision
+classes: ux, defect
+feature: compartment-trace-legibility
+touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md
 added: 2026-09-19
+payoff: makes the slow compartments this simulator exists to teach visible on the chart that teaches them, instead of a flat line under 2 px
 ---
 
 **Problem.** The chart's percent axis is scaled by the alveolar peak, so the slow compartments are compressed into 1-2 px and two runs' fat curves cannot be told apart by pointing
@@ -51,3 +57,40 @@ replaces it and what the reader is told about the change of scale, which
 `CLAUDE.md`'s safety-critical standard reaches directly - a curve whose scale
 differs from its neighbour's and does not say so is a misleading visual
 encoding.
+
+**Decision needed.** Whether the chart keeps one shared percent axis for all
+six compartments, and if it does not, what replaces it and what the reader is
+told about the change of scale. The options carry different costs and none is
+free:
+
+1. **Keep the shared axis.** The comparison it buys - alveolar above mixed
+   venous above muscle above fat, all on one scale - is a real teaching point
+   and the ordering is itself the lesson. Cost: fat and muscle stay under 2 px
+   and the slow filling this simulator exists to teach is invisible on the
+   chart that teaches it; `PL-0RZ0` (the hover flipping which compartment
+   answers) has no fix at all, because no targeting rule can separate traces
+   0.2-1.4 px apart.
+2. **A second axis for the slow compartments.** Recovers the detail. Cost: two
+   curves on one plot at different scales is the misleading visual encoding
+   `CLAUDE.md`'s safety-critical standard names, unless the change of scale is
+   unmissable - so this option is only as good as its labelling, and the
+   labelling is the hard part rather than the axis.
+3. **A log or split scale.** One axis, all six legible. Cost: a log axis
+   changes what "twice as much" looks like, which is the comparison a learner
+   is being taught to make by eye; and a split scale has option 2's labelling
+   problem with a discontinuity added.
+4. **A separate detail view** for the slow compartments. Keeps the main chart
+   honest and unchanged. Cost: the comparison across compartments moves to the
+   reader's memory between two views, which is the thing option 1 exists to
+   avoid, and it is the largest build of the four.
+
+**This is the project owner's** rather than a session's: it changes what a
+learner sees, and every option is defensible, which is the test rule 14 of
+`.claude/rules/instruction-writing.md` sets. What is *not* theirs, and should be
+in hand before they are asked, is the measurement `PL-0RZ0` owes - how much of
+the chart's hoverable area has two compartments inside one hover radius - since
+it sizes the cost of option 1.
+
+**Done when.** The roadmap or this item records which axis treatment the chart
+takes and what the reader is told about it, and either the chart implements it
+or the decision is recorded with the reason the shared axis stays.

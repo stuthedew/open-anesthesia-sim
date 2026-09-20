@@ -1,8 +1,14 @@
 ---
 id: PL-W7WL
 title: bin/docket release writes the notes before bin/docket record can backfill pr:, so an item merged just before a cut gets a notes line with no pull request number and the cut cannot be regenerated to add it
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
+touches: subprojects/docket/src/docket/release.py, subprojects/docket/tests/test_release.py
 added: 2026-09-20
+payoff: stops an item that merged just before a cut shipping a release note with no route back to the change that made it
+verify: grep -q 'def test_a_cut_backfills_a_pull_request_number' subprojects/docket/tests/test_release.py
 ---
 
 **Problem.** bin/docket release writes the notes before bin/docket record can backfill pr:, so an item merged just before a cut gets a notes line with no pull request number and the cut cannot be regenerated to add it
