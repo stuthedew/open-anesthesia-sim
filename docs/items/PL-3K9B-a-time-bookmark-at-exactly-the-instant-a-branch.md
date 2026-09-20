@@ -3,12 +3,13 @@ id: PL-3K9B
 title: A time bookmark at exactly the instant a branch forked at reads still_running, which no step can make true
 priority: P1
 effort: S
-status: needs-decision
+status: ready
 classes: defect, safety
 feature: scenario-branching
 touches: src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/controller.py, tests/unit/test_bookmarks.py, tests/integration/test_controller.py
 added: 2026-09-20
 payoff: stops the bookmark panel telling a learner to wait for a mark their branch is standing on and can never reach
+verify: grep -q 'PASSED = ' src/anesthesia_sim/app/bookmarks.py && grep -q 'def test_a_mark_the_run_has_passed_does_not_read_as_still_reachable' tests/unit/test_bookmarks.py
 ---
 
 **Problem.** A time bookmark at exactly the instant a branch forked at reads still_running, which no step can make true
@@ -252,6 +253,19 @@ reachable and will stop the learner again - which is precisely the revocation a
 historical `REACHED` cannot survive, and it happens on a single run rather than
 between two. Whichever of the two meanings of "returning to a mark" the project
 takes, the standing has to be positional; under truncation it has to be, sooner.
+
+**Decided (project owner, 2026-09-20, ratified)**, over reusing `REACHED` for
+the at-or-behind case, and over this brief's original answer of seeding the fork
+crossing and reordering the existing four members. Add `PASSED` as a fifth
+`MarkStanding` and decide a time bookmark from the run's own clock; `REACHED`
+keeps its present meaning and its present word and serves MAC targets.
+
+Ratified rather than specified: it was this session's recommendation agreed on
+one read, so ordinary evidence - a measurement, a cost this case did not carry,
+a constraint that appears later - is enough to put it back to the owner, and
+"it is what the owner decided" does not defend it. The fork-versus-truncate
+question it sits beside is *not* decided: `PL-ZW0J` carries the owner's leaning
+to truncate-with-confirm, explicitly to be revisited after use.
 
 **Done when.** No mark at or behind a run's own clock reads as still
 reachable, on a trunk and on a branch alike and whichever door the branch came
