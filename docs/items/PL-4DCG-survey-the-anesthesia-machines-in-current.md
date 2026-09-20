@@ -3,12 +3,15 @@ id: PL-4DCG
 title: Survey the anesthesia machines in current clinical use for the variables that change a simulated result
 priority: P2
 effort: M
+status: done
 classes: docs
-not-delegable: No command can prove a survey: the deliverable is the judgment about which manufacturer specification reaches a modelled number, and its correctness is whether each recorded value matches the manual revision it cites. Non-delegable by `touches` as well, which names docs/MODEL.md.
-status: ready
 feature: anesthesia-machine
-touches: docs/MODEL.md, ROADMAP.md
+touches: docs/machine-survey.md, docs/MODEL.md, ROADMAP.md
 added: 2026-09-02
+closed: 2026-09-19
+payoff: unblocks the machine milestone by saying which machine differences reach a computed number, and shows by measurement that a volume-only machine profile is already falsified before anyone builds one
+verify: grep -qF 'Fresh gas inlet position and internal topology' docs/machine-survey.md
+not-delegable: No command can prove a survey: the deliverable is the judgment about which manufacturer specification reaches a modelled number, and its correctness is whether each recorded value matches the manual revision it cites. Non-delegable by `touches` as well, which names docs/MODEL.md.
 ---
 
 **Problem.** `ROADMAP.md` planned-milestone item 1 commits to "a modular

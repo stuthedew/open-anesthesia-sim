@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, session-cost
 feature: model-capability-routing
+milestone: v0.4.31
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_plan.py
 added: 2026-09-19
 closed: 2026-09-19
