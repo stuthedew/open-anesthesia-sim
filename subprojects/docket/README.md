@@ -1609,7 +1609,9 @@ reads the command and the diff together.
   to completion), and nothing from any other non-zero exit. It never reads a
   failure as "the item is legitimately open", because it cannot know that. It
   may decline, and a declined run says so; an empty result is never a clean
-  one.
+  one. Where the command reads past the tree its exit 0 is a fact about
+  the world rather than about the commit, so the finding is reported as an
+  advisory rather than an error (`PL-205P`).
 - **The delegated audit and the close-out** - `verify_item` - read exit 0 as
   the commission's assertion holding and every other status as `REJECT`, with
   the reason on the line where the run can name it: re-entered `docket
@@ -2177,6 +2179,32 @@ asks the filesystem nothing — a file the branch is *creating* matches, which
 line and even when the scope held nothing to run: a narrowed run reporting
 nothing must never read as a whole store with nothing to report. Where the two
 sets both contributed, the line says how many came from each.
+
+**A command that reads past the tree is reported as an advisory, not an error**
+(`PL-205P`). Everything above reads exit 0 as a fact about the tree, which
+holds only while the command is a function of the tree. A `verify:` that asks
+the remote is not one: its answer is a fact about the world at the moment it
+ran, so it flips with no commit behind it and the commits the sweep then names
+are innocent. `PL-8GQW`'s was `git ls-remote --tags origin v0.4.30` — correct
+and failing when `#730` filed it, passing the instant the project owner pushed
+the tag, and `main` was then red across six commits by five unrelated sessions
+while the repository had not changed. No branch could have shown it, because no
+branch changed anything, and scoping was never the reason. Five items have ever
+recorded such a command, four of them the same release-tag line, one per
+release; there is no hermetic substitute to prefer, because the work is the
+owner's and the remote is the only place it is visible.
+
+`verify.reaches_outside_tree` decides it by `shlex`-tokenizing the command and
+looking for a network command word — `curl`, `wget`, `gh`, `ssh`, `scp`,
+`rsync`, `nc`, or `git` immediately followed by `ls-remote`, `fetch`, `push`,
+`pull` or `clone`. Tokenized rather than searched because a hermetic command
+may carry one as a *search string*: `PL-K2C8`'s greps `SKILL.md` for the
+literal `git push origin --delete` and opens no socket. Unparseable, and
+anything unrecognized, reads as hermetic — wrong in the safe direction, so the
+finding keeps its severity and only a command the predicate is sure about is
+softened. `ROADMAP.md` settled the same question at the other end of the same
+window: a release whose tag has not been pushed yet is an advisory "rather than
+an error: failing it would turn `make check` red on every release branch".
 
 **It reports two findings rather than a verdict**, because a passing command is
 consistent with two states no exit status can separate:

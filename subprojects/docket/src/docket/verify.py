@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import os
 import re
+import shlex
 import subprocess
 import tempfile
 import time
@@ -566,6 +567,72 @@ def command_paths(command: str) -> frozenset[str]:
             if start + match.start() not in run:
                 found.add(match.group())
     return frozenset(found)
+
+
+#: Command words whose answer is a fact about the world rather than about the
+#: tree: the first element is `git` followed by one of its network subcommands,
+#: the rest stand alone. Kept as command words rather than substrings because
+#: a `verify:` may legitimately *search* for one - see `reaches_outside_tree`.
+GIT_NETWORK_SUBCOMMANDS = frozenset({"ls-remote", "fetch", "push", "pull", "clone"})
+NETWORK_COMMANDS = frozenset({"curl", "wget", "gh", "ssh", "scp", "rsync", "nc"})
+
+
+def reaches_outside_tree(command: str) -> bool:
+    """Whether this `verify:` command's answer depends on more than the tree.
+
+    `already_passing` reads exit 0 as a fact about the tree, and that holds
+    only where the command is a function of the tree. A command that asks the
+    remote is not: its answer is a fact about the world at the moment it ran,
+    so it can flip from failing to passing with no commit behind it, and the
+    commits the whole-store replay then names are innocent of it. Five items
+    have ever recorded one, four of them the same release-tag line - the work
+    they record is the project owner's and the remote is the only place it is
+    visible, so there is no hermetic substitute to prefer (`PL-205P`).
+
+    `comments=True`, so a trailing `# …` is stripped as a shell would strip it
+    rather than scanned for verbs.
+
+    **Tokenized rather than searched, which is the whole difficulty.** A
+    `verify:` may carry a network verb as a *search string* and be perfectly
+    hermetic: `PL-K2C8`'s is `grep -q 'git push origin --delete'
+    .claude/skills/docket/SKILL.md && …`, which reads one file and no socket.
+    `shlex.split` collapses that quoted argument into a single token, so it
+    never matches the bare `git` this looks for, where a substring scan calls
+    it non-hermetic and silently downgrades a finding that should stay an
+    error.
+
+    **Wrong in the safe direction by construction.** An unparseable command -
+    unbalanced quotes, which `shlex` raises on - answers `False`, and so does
+    anything this does not recognize. False means hermetic, which means the
+    finding keeps today's severity; only a command this is sure about is
+    softened. A predicate that guessed the other way would quietly turn real
+    findings into advisories, which is the failure worth being asymmetric
+    about.
+
+    The subcommand must follow `git` immediately, so `git -C some/path
+    ls-remote` reads as hermetic. That is the safe direction again rather than
+    an oversight: no recorded command has ever taken that shape, and widening
+    the scan to "a network subcommand appears anywhere after a `git`" would
+    catch `git log --grep fetch`, which touches nothing.
+
+    What it deliberately does not attempt: deciding whether a command *should*
+    reach the remote, or whether reaching it is correct. That is the judgment
+    half, and it stays with the reader.
+    """
+    try:
+        tokens = shlex.split(command, comments=True)
+    except ValueError:  # unbalanced quotes; unparseable is not a licence to soften
+        return False
+    for position, token in enumerate(tokens):
+        if token in NETWORK_COMMANDS:
+            return True
+        if (
+            token == "git"
+            and tokens[position + 1 : position + 2]
+            and (tokens[position + 1] in GIT_NETWORK_SUBCOMMANDS)
+        ):
+            return True
+    return False
 
 
 def reads_any(command: str, paths: Collection[str]) -> bool:
@@ -1600,6 +1667,15 @@ class LandedReport:
     is only ever populated on a narrowed run, because `SCOPED_ONLY_STATUSES`
     is only asked about there.
 
+    `external` is the third carved-out subset, and it is carved out for a
+    reason about the *commit* rather than about the item. `passing` means "the
+    tree satisfies this command"; that reading holds only while the command is
+    a function of the tree. One that asks the remote answers about the world at
+    the moment it ran, so it flips with no commit behind it and the commits a
+    whole-store replay then names had nothing to do with it. Those ids are
+    named here so `checks.py` can soften them, and they are taken out of
+    `blocked` for the same reason - see `reaches_outside_tree` and `PL-205P`.
+
     `declined` carries the meaning it does everywhere else here: the check did
     not run, and a caller must not read the empty `passing` - or the empty
     `vacuous` - as a clean result.
@@ -1618,6 +1694,14 @@ class LandedReport:
     #: status, so the "work landed" reading is unavailable and only the
     #: non-discriminating one is left (`PL-RC0M`).
     blocked: tuple[str, ...] = ()
+    #: The subset of `passing` whose command reaches past the tree, so its exit
+    #: status is a fact about the world at the moment it ran rather than about
+    #: this commit. It can flip with no commit behind it, which is why it is
+    #: carried apart and rendered as an advisory: see `reaches_outside_tree`
+    #: and `PL-205P`. It takes precedence over `blocked`, whose "the command
+    #: does not discriminate" certainty does not survive a command that could
+    #: simply have been answered by a changed world.
+    external: tuple[str, ...] = ()
     shared: tuple[str, ...] = ()
     #: Open items whose command matched no test, so it asserted nothing. Unlike
     #: `passing` this is a verdict rather than a candidate: `selects_no_test`
@@ -1769,6 +1853,13 @@ def already_passing(
     came from it, carried so the cost line can say which of the two produced
     its count (`PL-XMNC`).
 
+    A passing command that reads past the tree is reported in `external` rather
+    than suppressed, because the finding is real and these are precisely the
+    items nobody remembers to close - four of the five ever recorded are the
+    release-tag line, one per release. What changes is only where it lands:
+    `checks.py` renders it as an advisory a session sees on every run, instead
+    of an error on the default branch's run that nothing watches (`PL-205P`).
+
     A scoped run says so in `scope`, and every path out of here carries it -
     including the one where the scope holds nothing to run. A narrowed run
     reporting nothing is indistinguishable from a whole store with nothing to
@@ -1918,7 +2009,20 @@ def already_passing(
     # land, so a passing command can only mean the command does not
     # discriminate. `checks.py` words the two separately for that reason.
     scoped_only = {item.identifier for item in candidates if item.status in scoped_only_statuses}
-    blocked = tuple(identifier for identifier in passing if identifier in scoped_only)
+    # Computed before `blocked` and subtracted from it. A blocked item is
+    # reported as certainly non-discriminating, and that certainty rests on the
+    # work not having landed - which a command reading the remote can no longer
+    # establish, since the world may simply have moved (`PL-205P`).
+    recorded = {item.identifier: item.verify for item in candidates}
+    external = tuple(
+        identifier for identifier in passing if reaches_outside_tree(recorded.get(identifier) or "")
+    )
+    outside = set(external)
+    blocked = tuple(
+        identifier
+        for identifier in passing
+        if identifier in scoped_only and identifier not in outside
+    )
 
     counts = Counter(item.verify for item in candidates)
     named = set(passing)
@@ -1930,6 +2034,7 @@ def already_passing(
     return LandedReport(
         passing=tuple(passing),
         blocked=blocked,
+        external=external,
         shared=shared,
         vacuous=tuple(vacuous),
         timed_out=tuple(timed_out),

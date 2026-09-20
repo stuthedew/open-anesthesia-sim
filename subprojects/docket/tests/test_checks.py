@@ -2864,3 +2864,46 @@ def test_the_rule_is_off_where_a_project_names_no_collected_trees() -> None:
     command = "uv run pytest tests/unit/test_alveolar.py && grep -q 'def test_x' a.py"
 
     assert not _has(analyze([_item(added=AFTER, verify=command)], TODAY, off).errors, TWICE)
+
+
+def test_a_passing_command_that_reads_the_remote_is_an_advisory_not_an_error() -> None:
+    """`PL-205P`: no commit caused it, and no commit on the branch can show it.
+
+    `PL-8GQW`'s command was `git ls-remote --tags origin v0.4.30`. `#730` added
+    the item with the tag absent, so it correctly failed; the project owner
+    pushed the tag; from that instant `main` was red across six commits by five
+    unrelated sessions while the repository had not changed. Failing a
+    default-branch run for that is the mirror of the window `ROADMAP.md`
+    already made an advisory at the other end.
+    """
+    landed = _landed(passing=("PL-K7QX",), external=("PL-K7QX",), shared=())
+
+    assert not _has(_landed_errors(landed), "already passes")
+    assert _has(_advisories(landed), "reads past the tree")
+    assert _has(_advisories(landed), "Close it if the work is done")
+
+
+def test_a_passing_command_that_only_reads_the_tree_is_still_an_error() -> None:
+    """The half that must not move. `PL-71P4` made it an error and it stays one.
+
+    That case *is* caused by a commit, and the scoped replay catches it on the
+    branch - which is what reddened `2f57de0b` over `PL-T2YR` before `#744`
+    merged. Softening it would have thrown away the finding the check exists
+    for in order to fix a case it never covered.
+    """
+    landed = _landed(passing=("PL-K7QX",), external=(), shared=())
+
+    assert _has(_landed_errors(landed), "already passes")
+    assert not _has(_advisories(landed), "reads past the tree")
+
+
+def test_reaching_outside_the_tree_also_softens_the_blocked_wording() -> None:
+    """A blocked item's "the command does not discriminate" is a certainty claim.
+
+    It rests on the work not having landed, which a command reading the remote
+    can no longer establish - the world may simply have moved.
+    """
+    landed = _landed(passing=("PL-K7QX",), blocked=(), external=("PL-K7QX",), shared=())
+
+    assert not _has(_landed_errors(landed), "is blocked but")
+    assert _has(_advisories(landed), "reads past the tree")
