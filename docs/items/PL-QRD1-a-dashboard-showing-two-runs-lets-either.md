@@ -7,7 +7,7 @@ status: blocked
 classes: defect, ux
 feature: scenario-branching
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py
-blocked-by: PL-8PSW
+blocked-by: PL-8PSW, PL-XJ37
 added: 2026-09-15
 ---
 
@@ -47,3 +47,29 @@ selector lock at all is decided by the shape `PL-8PSW` lands - lock the
 selectors while two runs are shown, or rely on the branch refusal and say so
 there. Working it before then would design against an interface that does not
 exist yet.
+
+## Groomed 2026-09-20 under `PL-JFQ3`: the premise that `PL-8PSW` would settle it was wrong
+
+**What the brief expected.** That `PL-8PSW` (overlay two branches on one time
+axis) "is where two runs first reach a reader", so it would settle whether this
+needs a selector lock at all — "lock, or rely on the branch refusal and say
+so".
+
+**What `PL-8PSW` actually landed.** The drawing, not the route.
+`src/anesthesia_sim/app/main.py` constructs `SimulationView((controller,))`
+with one controller and mentions no branch, and `dashboard_frame.transport`
+still computes `selector_locked=snapshot.is_running` — locked while *running*,
+which is the discards-the-case rule, and not while two runs are shown. So
+neither disposition was taken: the selectors are not locked on a two-run
+dashboard, and nothing says the branch refusal is being relied on instead.
+
+**The defect is therefore still exactly as unreachable as the triage said**,
+and for the reason the triage gave: no shipped entry point constructs a
+two-trunk dashboard. What was wrong was only *which item* makes one reachable.
+
+**The real blocker, now declared.** `PL-XJ37` (nothing in v0.5.0's scope lets a
+learner take a fork or select between runs, and `SimulationView`'s run set is
+fixed at construction), `needs-decision`, written into `blocked-by` beside
+`PL-8PSW`. The question the brief poses is unchanged and is `PL-XJ37`'s to
+settle for the same reason it was `PL-8PSW`'s: working it before then designs
+against an interface that does not exist yet.

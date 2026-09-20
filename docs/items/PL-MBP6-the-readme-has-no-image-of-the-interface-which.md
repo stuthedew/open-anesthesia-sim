@@ -3,12 +3,14 @@ id: PL-MBP6
 title: The README has no image of the interface, which is the largest remaining gap for both of its audiences
 priority: P2
 effort: M
-status: blocked
+status: ready
 classes: docs, ux
 feature: project-introduction
 touches: README.md, assets/branding
 blocked-by: PL-YCWZ
 added: 2026-09-06
+payoff: gives a clinician deciding whether to put this in front of a resident a picture of the interface, which is the whole of what they can see while there is no packaged build
+verify: grep -qF '](assets/' README.md
 ---
 
 **Problem.** `README.md` describes the interface in prose - the readouts, the
@@ -79,3 +81,31 @@ shipped interface by hand today, which satisfies that wording and needs no
 mechanism. That is a live option for the owner rather than a decision this
 re-point takes: `PL-2QMK` records that no session in the web container can render
 Flet at all, so no session can do it for them.
+
+## Promoted 2026-09-20 under `PL-JFQ3`: the re-point's own objection has lapsed
+
+**`PL-YCWZ` is `done`** (`2026-09-15`, `pr: 588`), so headless rendering over
+the real Qt interface exists and decision 1 — how the image is produced — is
+answered by it rather than by a second mechanism.
+
+**The re-point's remaining objection no longer holds.** It said "this item now
+waits for the Qt port to *land*, not merely for `PL-YCWZ` to be built", because
+"a Qt screenshot cannot ship while the built interface is Flet without asserting
+a display that does not exist yet". The port has landed. Checked 2026-09-20:
+`pyproject.toml`'s dependency list is `PySide6-Essentials` and `pyqtgraph` with
+no `flet`, `grep -rn flet src/` returns nothing, and
+`tools/import_boundary_check.py` permits `flet` and `flet_charts` in no module
+under `src/` at all. Qt *is* the shipped interface, so a Qt screenshot is the
+honest one.
+
+**The route this brief left open for the project owner is also no longer the
+only one.** It noted that `PL-2QMK` records no session in the web container
+being able to render Flet, so a hand capture was the owner's alone. That was a
+fact about Flet; `PL-YCWZ`'s headless Qt rendering is what changes it.
+
+**One stale line, corrected here rather than left to mislead.** The brief says
+"`assets/branding/` holds only a `.gitkeep`". There is no `assets/` directory in
+the tree at all as of 2026-09-20. Paragraph 2's requirements are unaffected —
+the image still has to show the agent name, the 1 MAC divisor and the playback
+rate, uncropped — and the `verify:` now recorded pins the README referencing an
+image under `assets/`, which is the path this brief names.

@@ -9,6 +9,7 @@ feature: anesthesia-machine
 touches: docs/machine-abstraction.md, docs/MODEL.md, ROADMAP.md
 added: 2026-09-02
 closed: 2026-09-20
+pr: 748
 payoff: settles what a machine module is before two machines are in the tree, so adding a real commercial machine is a data file rather than a second calculation path nobody can check
 verify: grep -qF 'a machine contributes exactly two rates and one volume' docs/machine-abstraction.md
 ---
@@ -125,3 +126,25 @@ is answered here.
 with reasoning, states the second-machine cost as a concrete target, is
 consistent with `docs/MODEL.md`'s existing provenance discipline, and leaves
 planned-milestone item 1 scopeable without reopening any of them.
+
+## Promoted 2026-09-20 under `PL-JFQ3`
+
+`PL-4DCG` (survey the anesthesia machines in current clinical use for the
+variables that change a simulated result) is `done`, `closed: 2026-09-19`,
+merged as #742. The survey this item said it could not be designed without —
+"the extension points are the axes of real variation that reach a number;
+designing them before the survey is guessing" — now exists, so the seven
+questions are answerable against evidence.
+
+Nothing else about the item changes. It stays design-only: no machine class, no
+interlocks, no `src/` change, and planned-milestone item 1 remains gated behind
+Phase 1's multi-substance generalization.
+
+**Closed the same day, by a second session.** The promotion above is what made
+it visible to `bin/docket next`; `#748` then answered the seven questions in
+`docs/machine-abstraction.md` and closed this item. The `verify:` and `payoff:`
+recorded here are that session's, written against the document that exists,
+rather than the placeholder pair the promotion carried — which pinned a phrase
+guessed at before the design was written. Recorded on the `PL-JFQ3` branch when
+the two met at merge, so that this note is not left reading as though the item
+were still open.

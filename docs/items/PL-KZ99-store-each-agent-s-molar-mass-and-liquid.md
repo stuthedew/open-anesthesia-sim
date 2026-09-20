@@ -7,7 +7,7 @@ status: blocked
 classes: science, anticipated
 feature: liquid-agent-consumption
 touches: src/anesthesia_sim/data, src/anesthesia_sim/core/parameters.py, docs/MODEL.md, tests/reference
-blocked-by: PL-S6WW
+blocked-by: PL-S6WW, PL-B396
 added: 2026-09-16
 ---
 
@@ -86,3 +86,39 @@ deferral. Item 28 is named by no release, which is why the disposition is
 recorded in the gate's declined subsection alongside `PL-0S0V` and `PL-VJZK`,
 on the same ground and with the same expiry: the day item 28 is placed, this
 belongs in that milestone's `Required scope`.
+
+## Groomed 2026-09-20 under `PL-JFQ3`: `PL-S6WW` closed, and the second edge this item always had is now declared
+
+**`PL-S6WW` has closed** (`done`, `2026-09-17`, `pr: 669`), so the reference
+temperature this conversion needs as one of its two inputs is on record and
+that half of the block is genuinely resolved. `bin/docket check` was correctly
+reporting "every blocker has closed; it is ready to promote".
+
+**Promoting it would have been wrong, and the roadmap already says why.**
+`ROADMAP.md` § the gate's declined subsection names this item as "the same case
+as `PL-0S0V` and `PL-VJZK` above, against the same planned-milestone item 28,
+and takes the same disposition for the same reason: item 28 is named by no
+release, so there is no `Required scope` to place it in. It expires the day item
+28 is placed." Both of those siblings carry `blocked-by: PL-B396` — `PL-0S0V`
+as `PL-S6WW, PL-B396`, `PL-VJZK` as `PL-B396` alone — and this item was the one
+of the three that never had the second edge written in. That is the whole of
+why it appeared in the advisory and neither of them did.
+
+**So the real blocker is `PL-B396`** (agent amounts are displayed in litres of
+vapour, which is not the unit a reader buys, fills or wastes agent in — report a
+liquid-equivalent millilitre figure), `needs-decision`, which the roadmap calls
+"whether item 28 is scoped at all, which is a milestone decision rather than
+gate work". It is written into `blocked-by` beside `PL-S6WW`, whose closure is
+kept as the record of what this waited on first.
+
+**Why not a milestone blocker instead.** `blocked-by` takes an item id or a
+`vX.Y.Z` the roadmap places, and `checks.py` `_check_references` errors on a
+version the roadmap places nowhere — which is exactly the state item 28 is in.
+There is no version to name until `PL-B396` produces one, which is the same
+fact the edge now records.
+
+**The `anticipated` carve-out is therefore intact and honest.** The hazard —
+a liquid-equivalent figure derived from a composite constant whose temperature
+is invisible — still does not exist, because no vapour-to-liquid conversion
+exists. `anticipated` and `status: blocked` hold together, which is what
+`check_gate_reentries` requires since `PL-ZF2G`.

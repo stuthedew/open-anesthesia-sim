@@ -3,13 +3,14 @@ id: PL-XJ37
 title: Nothing in v0.5.0's scope lets a learner take a fork or select between runs, and SimulationView's run set is fixed at construction
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: planning, ux
 feature: scenario-branching
 touches: ROADMAP.md, docs/items
 added: 2026-09-14
+payoff: turns v0.5.0 from a milestone a learner cannot reach into one they can, by naming the fork control as scope instead of leaving branching as machinery with no caller
+verify: grep -qF 'Selecting which two runs are displayed' ROADMAP.md
 ---
-
 
 **Problem.** Nothing in v0.5.0's scope lets a learner take a fork or select between runs, and SimulationView's run set is fixed at construction
 
@@ -115,3 +116,100 @@ exists; the equivalent is `main.py:32-33`, `SimulationView((controller,))`
 inside `main()`. And `resumed_at` does have a production caller now,
 `controller.py:1261` inside `BranchedCase` - though nothing in `src/`
 constructs a `BranchedCase`, so the gap one level up is exactly as described.
+
+## Decided 2026-09-20 (project owner): B2 and C — forking is v0.5.0, the selector is not
+
+The question was put as three options for the fork work and, once forking was
+provisionally deferred, two for the version number. The owner's answer was
+**"B2 and C, move comparison to later"**.
+
+**What was chosen, in this item's own terms.** Both halves of the
+`**Decision needed.**` above are answered:
+
+- *Does the learner-facing half belong to `PL-8PSW` or an item of its own?*
+  **Its own item.** The brief's first alternative is moot rather than rejected:
+  `PL-8PSW` closed and merged in v0.4.26 (`pr: 618`), so folding into it is no
+  longer available. Its scope entry stands as the record of what shipped.
+- *Is v0.5.0's `Required scope` amended to name it?* **Yes**, for the fork
+  control. **No** for run selection, which is deferred.
+
+**The shape that was chosen (option C).** `main()` builds a `BranchedCase`
+rather than a bare controller; `SimulationView` gains a path that adds a
+`RunView` after construction; and one control offers
+`BranchedCase.fork_points_s` and calls `fork_at`. The dashboard then shows the
+trunk and one branch. **No run selector**, and `MAX_DISPLAYED_RUNS` stays 2.
+
+The learner-visible result is the milestone's Goal sentence verbatim: run a
+case, mark the decision point, fork there, manage the two branches differently,
+read both on one time axis.
+
+**What "move comparison to later" defers, stated so a later session does not
+re-open it as an oversight.** Not comparison itself — trunk-against-branch is
+what option C draws, and `PL-8PSW` already built it. What moves out is the
+**selector**: choosing *which two* of N runs are displayed, and therefore
+
+- comparing one branch directly against another rather than each against the
+  trunk, and
+- returning to a branch the learner has left.
+
+Both were priced and declined on the educational question rather than the
+technical one: the display is capped at two runs under either option, so the
+selector buys the *choice* of pair rather than more curves, and branch-against-
+branch was judged not to be a first-release teaching case. `BranchedCase.branches`
+already returns a stable-ordered tuple chosen for exactly this — "a list
+re-sorted by instant would renumber the branch they were looking at" — so
+adding the selector later is additive rather than a rework.
+
+**The consequence that has to be designed, not discovered: the second fork.**
+With no selector, a learner who forks twice has no way to say which branch is
+shown. Silently replacing the displayed branch while the first lives on in
+`BranchedCase` is hidden state of exactly the kind this project refuses, so the
+recommended answer is to **refuse a second fork while a comparison is shown** —
+one comparison at a time, reset to start another. That is explicit and carries
+no hidden mode, and it is the implementation item's to settle rather than
+something to leave to the first pull request.
+
+**The agent-dropdown edge, disposed of here as this item's `Done when`
+requires.** A branch's `RunView` gets the same agent dropdown the trunk does,
+and `set_agent` refuses on a branch (`PL-TFX5`), so it is a control presenting
+itself as working. **Answer: a branch's `RunView` shows the running-agent chip
+instead of the dropdown** — the same `setDisabled(locked)`-beside-`setHidden(locked)`
+pair `run_view.py` already uses for a running trunk, with
+`dashboard_frame.transport` gaining a branch test alongside `is_running`, which
+today reads `selector_locked=snapshot.is_running` alone. This is also
+`PL-QRD1`'s answer, which is why that item's brief asked for the two to be
+decided together.
+
+**The version-number half (B2), which is not this item's but constrains it.**
+Bookmarks — `PL-LPLD` and `PL-CTD7` — ship as `v0.4.x` patches rather than
+becoming v0.5.0 themselves. That needs no scope surgery: nine of v0.5.0's
+entries have already shipped early as patches and stayed on the Required-scope
+list, closed against it, and § "The plan" row 5 records each such case. v0.5.0
+keeps its name and its Goal and arrives when forking is reachable.
+
+**Three entries stay in v0.5.0 that an earlier reading of this decision would
+have moved out.** `PL-B8MK` (a bookmark is a forkable instant), `PL-Z3W6` (the
+branch reproduces its parent element-wise) and `PL-W7H9` (what a comparison
+asserts) are all forking work, and under B2 forking *is* v0.5.0. None is
+deferred.
+
+**Done when** — unchanged, and now executable rather than blocked on an answer:
+
+1. `ROADMAP.md` § "Explicitly out of scope for v0.5.0" names the deferral. Its
+   existing third bullet already says "More than two runs displayed at once …
+   N branches may exist and be selected between" (line 4399) — that sentence
+   now reads as permitting a future the milestone does not build, so it is
+   amended to say so outright.
+2. The fork-control work is filed as its own item, sized, and added to
+   v0.5.0's `Required scope` with the second-fork refusal and the
+   running-agent-chip disposition named in its brief.
+3. `PL-QRD1` and `PL-W7H9`, both currently `blocked-by: PL-8PSW, PL-XJ37`, are
+   re-pointed at that new item, which is what actually makes their hazards
+   reachable.
+
+**Recorded rather than executed, and why.** The session that took this decision
+reached 331,481 tokens of context against `CLAUDE.md`'s 150,000 handoff budget.
+Its rule for a design round past the budget is to externalize and hand off
+rather than to spend the remaining edit at low attention on the document that
+governs the milestone. Everything above is the externalization; nothing in the
+three steps needs the conversation that produced it.

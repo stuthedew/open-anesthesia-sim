@@ -3,12 +3,14 @@ id: PL-5NR5
 title: A private reference corpus can be attached per session with add_repo, which is the fourth candidate PL-XJ5P does not list: owner-supplied full texts re-uploaded into every session that needs them
 priority: P2
 effort: S
-status: blocked
-blocked-by: PL-XJ5P
+status: dropped
 classes: docs, infra
 feature: provenance
 touches: docs/references/README.md
+blocked-by: PL-XJ5P
 added: 2026-09-13
+closed: 2026-09-20
+reason: Overtaken by PL-XJ5P (pr 531, 2026-09-13), which wrote the paragraph this item existed to write: docs/references/README.md:57 names stuthedew/open-anesthesia-sim-references and :98-100 routes the add_repo-plus-clone and poppler-utils prerequisite to .claude/rules/citing-sources.md:193-199, which is path-scoped to that directory. Every clause of Done when is met in the tree.
 ---
 
 **Problem.** Owner-supplied full texts reach a session only by being uploaded
@@ -174,3 +176,46 @@ in flight and whose own "Done when" already requires that file to say what now
 stands where owner-supplied full texts used to. That sentence and this one are
 the same sentence, so this item closes with `PL-XJ5P` rather than beside it.
 Working it separately would mean two sessions resolving one paragraph.
+
+## Dropped 2026-09-20 under `PL-JFQ3`: `PL-XJ5P` closed it, exactly as this brief said it would
+
+**This item predicted its own ending.** Its last paragraph: "That sentence and
+this one are the same sentence, so this item closes with `PL-XJ5P` rather than
+beside it. Working it separately would mean two sessions resolving one
+paragraph." `PL-XJ5P` is `done`, `closed: 2026-09-13`, `pr: 531`, and it wrote
+the paragraph.
+
+**Every clause of "Done when" is met in the tree, checked 2026-09-20.** The
+requirement was that `docs/references/README.md` name the private corpus — the
+repository it lives in, the `add_repo`-then-clone route, and the
+`poppler-utils` prerequisite the base image does not carry — "so a session that
+has never read this item can reach a held source":
+
+- **The repository.** `docs/references/README.md:57`, § "Where owner-supplied
+  full texts live now": "**A private companion repository:
+  `stuthedew/open-anesthesia-sim-references`**".
+- **The route and the prerequisite.** `docs/references/README.md:98-100` sends
+  the reader on rather than repeating it — "How a session attaches and reads
+  the corpus — `add_repo`, the shallow clone, `poppler-utils` and `pdftotext
+  -layout` — is in `.claude/rules/citing-sources.md`, which loads on this
+  directory" — and `.claude/rules/citing-sources.md:193-199` carries all three:
+  `add_repo` with owner `stuthedew`, repo `open-anesthesia-sim-references` and
+  access `read`; `git clone --depth 1`; and `apt-get update -qq && apt-get
+  install -y -qq poppler-utils`, then `pdftotext -layout FILE -`.
+
+The indirection is not a gap. The rule file is path-scoped to this directory,
+so it loads for the session that is reading a source, which is the moment the
+route is wanted — cheaper than the resident copy this item's "Done when" would
+have accepted, and reachable by a session that has never read this item, which
+is what that clause was actually asking for.
+
+**What this item bought is kept, not lost.** The verification it performed —
+that `add_repo` plus a shallow clone needs no credential in the sandbox and no
+change to the environment's network level, and the two constraints it found
+(the 25 MB browser-uploader cap, and that the corpus must carry no `CLAUDE.md`
+lest `register_repo_root` inject resident context) — is what `PL-XJ5P` wrote
+down from. The corpus itself is standing, populated and indexed.
+
+**Dropped rather than done**, because the work landed under another item's
+pull request and `pr`/`milestone` belong to that item. Nothing here is
+outstanding.
