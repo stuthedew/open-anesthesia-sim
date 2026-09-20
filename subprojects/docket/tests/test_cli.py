@@ -126,6 +126,86 @@ def test_touches_may_be_repeated_as_well_as_comma_separated(tmp_path: Path) -> N
     assert "touches: src/a.py, src/b.py, src/c.py" in next(store.glob("*.md")).read_text()
 
 
+SUPPRESSION = """---
+id: PL-C1C1
+title: verify's suppression check reads prose as code
+priority: P2
+effort: M
+status: ready
+classes: defect
+touches: subprojects/docket/src/docket/verify.py
+added: 2026-08-01
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+
+def test_new_names_an_existing_item_with_a_near_identical_title(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The warning that was missing while one defect was diagnosed five times.
+
+    `PL-LBR6` sat `ready` for six days with the `docket record` rename
+    diagnosed while `PL-5QLP` and `PL-QMC0` were filed as fresh discoveries of
+    it, and the suppression-check defect was captured five times across two
+    days. Every one of those sessions ran this command, which held the title,
+    the store and the session's attention, and said nothing.
+
+    **It warns and still files.** The capture rule is unconditional, so the
+    exit code, the id and the written file are all unchanged - a session whose
+    finding is a genuine second instance must not be stopped, and neither must
+    one that stops reading after the first line.
+    """
+    store = _store(tmp_path, SUPPRESSION)
+
+    exit_code = _run(
+        "new",
+        "--touches",
+        "subprojects/docket/src/docket/verify.py",
+        "verify's suppression check reads every added line as code",
+        "--items",
+        str(store),
+    )
+
+    assert exit_code == 0
+    assert len(sorted(store.glob("*.md"))) == 2
+
+    printed = capsys.readouterr().out
+    assert "PL-C1C1" in printed
+    assert "(ready)" in printed
+    assert "subprojects/docket/src/docket/verify.py" in printed
+
+
+def test_new_says_nothing_about_an_item_declaring_a_different_path(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The refuted key, pinned shut at the command rather than only in the module.
+
+    Title closeness alone catches 0 of 13 known duplicate pairs at any usable
+    threshold and finds the sixteen recurring triage passes instead
+    (`PL-TZ7T`). So a capture whose title all but matches an open item's is
+    still not warned about when the two declare different paths, and a change
+    that reversed the key would be a silently worse command rather than a
+    failing test.
+    """
+    store = _store(tmp_path, SUPPRESSION)
+
+    exit_code = _run(
+        "new",
+        "--touches",
+        "src/anesthesia_sim/core/tissue.py",
+        "verify's suppression check reads prose as code",
+        "--items",
+        str(store),
+    )
+
+    assert exit_code == 0
+    assert "PL-C1C1" not in capsys.readouterr().out
+
+
 def test_a_space_separated_second_path_is_refused_rather_than_captured_as_a_title(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -3,14 +3,15 @@ id: PL-TZ7T
 title: bin/docket new files a duplicate title without noticing: PL-LBR6 sat ready for six days with the record rename diagnosed and a verify command written while PL-5QLP and PL-QMC0 were filed as fresh discoveries of the same mechanism
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: slug-rename-on-write
-root-cause-of: PL-BHBZ, PL-4FD2, PL-5QLP, PL-QMC0
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/duplicates.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/concurrency.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_duplicates.py
 added: 2026-09-19
+closed: 2026-09-20
 payoff: stops one defect being diagnosed three times - it has happened five times now, and each duplicate costs a full brief written by a session that could not know the first existed
 verify: grep -q 'def test_new_names_an_existing_item_with_a_near_identical_title' subprojects/docket/tests/test_cli.py
+root-cause-of: PL-BHBZ, PL-4FD2, PL-5QLP, PL-QMC0
 ---
 
 **Problem.** bin/docket new files a duplicate title without noticing: PL-LBR6 sat ready for six days with the record rename diagnosed and a verify command written while PL-5QLP and PL-QMC0 were filed as fresh discoveries of the same mechanism
@@ -104,3 +105,27 @@ on 2026-09-20 whether repeat filing attempts should be counted and used to raise
 priority. That is a live design question above this item rather than inside it,
 and the measurement here only fixes the key.
 
+
+**Built 2026-09-20, and the one number the brief did not fix.** The key is as
+measured above: shared `touches` selects, title similarity orders inside that
+selection, closed items are dropped, and the command warns without refusing.
+What the measurement did not settle is how close a title has to be to be worth
+printing once the path has already selected it, and the answer matters because
+most of this store declares `cli.py` or `verify.py` - a typical capture selects
+34 to 83 candidates on the path alone.
+
+A floor of zero was measured and refused: at that setting 323 of 325 open items,
+probed as simulated captures, print three candidates each, which is a warning
+firing every run without changing a decision. The break-even was stated before
+counting - a floor is wrong if it suppresses a real duplicate - and the count
+settled it: the nine known path-sharing pairs score 0.133 to 0.244, so **0.10
+suppresses none of them** while cutting the captures that print anything from
+323/325 to 179/325 and the lines printed from 2.89 to 1.07. 0.15 was refused
+for suppressing two of the nine, at 0.133 and 0.143. `DISPLAY_FLOOR` in
+`subprojects/docket/src/docket/duplicates.py` carries those numbers, because
+that is where somebody changing the constant will look.
+
+Verified against the real store rather than only against fixtures: filing
+`PL-4FD2`'s own title reproduced the defect on `origin/main`'s code - the id and
+nothing else - and named all three open members of the suppression cluster on
+this branch.

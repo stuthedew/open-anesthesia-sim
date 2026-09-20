@@ -29,6 +29,7 @@ from .concurrency import (
 )
 from .config import CONFIG_NAME, Config
 from .config import load as load_config
+from .duplicates import near_duplicates
 from .model import (
     CLOSED_STATUSES,
     EFFORTS,
@@ -624,8 +625,17 @@ def cmd_new(args: argparse.Namespace) -> int:
         )
         return 1
     taken = {item.identifier for item in items}
+    declared = _comma_separated(args.touches)
     for title in args.title:
-        taken.add(_capture(directory, title, taken, args))
+        # Searched before the write so that the capture cannot match itself, and
+        # printed after it so that the id and path stay the first line: a session
+        # that reads no further has still recorded its finding, which is the half
+        # of this command that may not be made conditional on anything.
+        found = near_duplicates(title, declared, items)
+        identifier = _capture(directory, title, taken, args)
+        taken.add(identifier)
+        if found:
+            print(render.format_near_duplicates(found, identifier))
     return 0
 
 

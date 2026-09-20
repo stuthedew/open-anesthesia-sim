@@ -23,6 +23,7 @@ import re
 from collections.abc import Collection
 from dataclasses import dataclass, field
 from datetime import date
+from pathlib import PurePosixPath
 
 # Front matter is a `---` fenced block of `key: value` lines at the top of the
 # file. Deliberately not YAML: a real YAML parser is a dependency, and the
@@ -635,6 +636,25 @@ def impairs_generators_soundly(item: Item, generator_paths: tuple[str, ...]) -> 
     item, and `docket check` is what tells somebody it was unsound.
     """
     return bool(item.impairs_generators) and not generator_defect_faults(item, generator_paths)
+
+
+def covers(one: str, other: str) -> bool:
+    """Whether two declared paths can reach the same file.
+
+    A directory covers everything beneath it, so an item declaring
+    `src/anesthesia_sim/app/` reaches the same files as one declaring a single
+    view module inside it, and a capture declaring `subprojects/docket/tests`
+    reaches the module an existing item names there.
+
+    Symmetric, which is what separates it from `is_under`: that asks whether
+    one path falls inside a fixed set of roots - the delegation and lane
+    partitions - and this asks whether two declarations, neither of them a
+    root, could meet. Both live here so that the two path comparisons this
+    package makes sit in one file rather than giving a session two places to
+    get a trailing slash wrong.
+    """
+    first, second = PurePosixPath(one.strip("/")), PurePosixPath(other.strip("/"))
+    return first == second or first in second.parents or second in first.parents
 
 
 def is_under(path: str, roots: tuple[str, ...]) -> bool:

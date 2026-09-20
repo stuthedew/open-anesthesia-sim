@@ -1,16 +1,16 @@
 ---
 id: PL-X5JR
 title: bin/docket new records a near-duplicate filing onto the open item it matched, and an item carrying three or more recurrences is surfaced as a generator-tier promotion candidate rather than promoted by the heuristic itself
-status: blocked
-feature: recurrence-signal
-touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests, subprojects/docket/README.md
-added: 2026-09-20
 priority: P2
 effort: M
+status: ready
 classes: infra
+feature: recurrence-signal
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests, subprojects/docket/README.md
+blocked-by: PL-TZ7T
+added: 2026-09-20
 payoff: turns a cost the store already pays - one defect diagnosed five times - into the evidence that ranks it, without a session having to notice and assert the claim by hand
 verify: grep -q 'def test_a_third_recurrence_surfaces_a_promotion_candidate' subprojects/docket/tests/test_plan.py
-blocked-by: PL-TZ7T
 ---
 
 **Problem.** `bin/docket new` records a near-duplicate filing onto the open item

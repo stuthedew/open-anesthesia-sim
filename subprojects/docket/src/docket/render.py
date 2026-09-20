@@ -17,6 +17,7 @@ from datetime import UTC, date
 from .checks import DONE_WHEN, HOUSEKEEPING, REQUIRED_BRIEF, STATUS_REQUIREMENTS, Report, brief_gaps
 from .concurrency import undeclared
 from .config import Config
+from .duplicates import Candidate
 from .model import (
     LANE_CROSSING,
     LANE_PRODUCT,
@@ -837,6 +838,43 @@ def format_generators(heads: Sequence[Item]) -> str:
             f"    {head.identifier} ({head.status}) root cause of {named} - {_gloss(head.title)}"
         )
     lines.append(f"    {closing}")
+    return "\n".join(lines)
+
+
+def format_near_duplicates(candidates: Sequence[Candidate], identifier: str) -> str:
+    """The open items a capture may be a second filing of, under the capture's own line.
+
+    Printed after the item is written rather than instead of writing it. The
+    capture rule is unconditional, so this is a warning and never a gate, and
+    the order says so: the id and path come first, exactly as they did before
+    this existed, and a session that stops reading has still captured its
+    finding.
+
+    **What each line claims is what it can support.** The shared path is a fact
+    about two declarations and is named; the ranking that ordered them is not,
+    so no line gives a score or calls the match a duplicate. What the reader is
+    asked to do is open two briefs, which is the judgment this cannot make -
+    whether two items are one defect is a reading of prose, and
+    `subprojects/docket/README.md` already refuses to let a similarity score buy
+    a promotion (`PL-X5JR`).
+
+    The status comes with each id for the reason it does on a generator head: an
+    item at `ready` with a brief already written is a diagnosis this session can
+    read instead of repeating, while one still `untriaged` is another session's
+    capture of the same moment.
+    """
+    if not candidates:
+        return ""
+    named = _plural(len(candidates), "open item declares", "open items declare")
+    lines = [f"  Possibly filed already - {named} a path this capture reaches:"]
+    for candidate in candidates:
+        item = candidate.item
+        lines.append(f"    {item.identifier} ({item.status}) - {_gloss(item.title)}")
+        lines.append(f"      shares {', '.join(candidate.shared)}")
+    lines.append("    Read those briefs before writing this one. If it is the same problem,")
+    lines.append(
+        f"    group them: bin/docket set {identifier} --feature <name>, and the same on each."
+    )
     return "\n".join(lines)
 
 

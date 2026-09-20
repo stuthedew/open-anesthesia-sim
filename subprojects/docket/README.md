@@ -52,6 +52,18 @@ band — those are triage, and demanding them at the moment an idea occurs is
 how ideas stop being written down. Several titles in one call, because
 interruptions rarely carry exactly one thought.
 
+**It says when the capture may already be in the store, and files it anyway.**
+An open item declaring a path this capture reaches, whose title is close to it,
+is printed underneath the new id with its status and the shared path. A warning
+rather than a refusal: the capture rule is unconditional, and a near-duplicate
+that is genuinely a second instance is a legitimate filing. The key is the
+declared path, with the title only ordering what the path selected — title
+closeness on its own catches none of the known duplicate pairs and finds the
+items *meant* to recur, the triage passes and release cuts, instead (`PL-TZ7T`
+carries the table; `duplicates.py` carries the floor and what it was measured
+against). A capture declaring no path searches nothing rather than falling back
+to that refuted key.
+
 **It writes one line into the body and no headings to fill in:** the title,
 under a `**Problem.**` of its own. A brief appended below it composes — the
 title is the terse problem statement the fuller sections elaborate — and
