@@ -1329,9 +1329,7 @@ def _with_standings(stated: str, said: Sequence[str]) -> str:
     return stated + "".join(f"{MARK_STANDING_JOINER}{clause}" for clause in said if clause)
 
 
-def _standing_clauses(
-    runs: Sequence[RunMarks], standings: Sequence[MarkStanding]
-) -> tuple[str, ...]:
+def _standing_clauses(answers: Sequence[tuple[str, MarkStanding]]) -> tuple[str, ...]:
     """What one mark's row says about it, attributed where the runs disagree.
 
     **Agreement is what decides attribution, not the number of runs**
@@ -1349,33 +1347,33 @@ def _standing_clauses(
     named - including a run whose answer is "not yet", which unattributed
     silence would hide behind the run that did have something to say.
 
+    **One run and its answer arrive already paired, rather than as two
+    sequences read in step.** Pairing them here would make a shorter standings
+    sequence draw the agreement clause from a subset of the runs — one run's
+    answer stated as the case's, which is the defect this function exists to
+    remove, reappearing as an off-by-one. The caller builds each pair in one
+    comprehension over the runs, so there is no length to check and no guard
+    that could be dropped: `CLAUDE.md` asks for the interface that prevents
+    the error over the one that refuses it afterwards.
+
     Args:
-        runs: The displayed runs, in drawing order.
-        standings: Each of those runs' standing on this one mark, in the same
-            order.
+        answers: One `(run label, that run's standing on this mark)` pair per
+            displayed run, in drawing order.
 
     Returns:
         One clause for the case where the runs agree, and one clause per run
-        where they do not.
-
-    Raises:
-        ValueError: If a standing is not given for each run, which would
-            silently attribute one run's answer to another - the failure this
-            function exists to make impossible.
+        where they do not. Empty where no run is given, which
+        `bookmark_panel` refuses before reaching here.
     """
 
-    if len(runs) != len(standings):
-        raise ValueError(
-            f"a mark stands somewhere on each displayed run; {len(runs)} run(s) were given "
-            f"with {len(standings)} standing(s)"
-        )
+    standings = tuple(standing for _, standing in answers)
 
     if len(set(standings)) == 1:
         return (MARK_STANDING_TEXT[standings[0]],)
 
     return tuple(
-        MARK_ATTRIBUTION_TEMPLATE.format(run=run.label, said=MARK_STANDING_COMPARED_TEXT[standing])
-        for run, standing in zip(runs, standings, strict=True)
+        MARK_ATTRIBUTION_TEMPLATE.format(run=label, said=MARK_STANDING_COMPARED_TEXT[standing])
+        for label, standing in answers
     )
 
 
@@ -1389,19 +1387,34 @@ def format_time_bookmark(bookmark: TimeBookmark, standing: MarkStanding) -> str:
     state one quantity one way. Where the run has something to say about the
     mark, it comes last, after both.
 
+    **The unattributed form, which is the row every displayed run agrees
+    on.** `bookmark_panel` builds a drawn row from `_stated_time_bookmark`
+    and `_standing_clauses` instead, because a row whose runs *disagree*
+    carries a clause per run and there is then no single standing to pass
+    here. So this renders the row a lone run draws, and the row two runs
+    draw when they answer alike — and it is where the unattributed wording
+    is pinned.
+
     Args:
         bookmark: The marked instant.
-        standing: Its standing on the run being drawn, from
-            `SimulationSnapshot.bookmark_standings`. Required rather than
-            defaulted, so no row can be drawn that quietly asserts a mark is
-            still reachable without anybody having asked the run.
+        standing: Its standing, from `SimulationSnapshot.bookmark_standings`.
+            Required rather than defaulted, so no row can be rendered that
+            quietly asserts a mark is still reachable without anybody having
+            asked the run.
     """
 
     return _with_standings(_stated_time_bookmark(bookmark), (MARK_STANDING_TEXT[standing],))
 
 
 def _stated_time_bookmark(bookmark: TimeBookmark) -> str:
-    """A marked instant's own words: the time, and the name if it was given one."""
+    """A marked instant's own words: the time, and the name if it was given one.
+
+    The time first and the name after it, on every drawn row: the time is
+    what the row asserts and the name is what the learner chose to call it,
+    and two rows read against each other are read down their first column.
+    `format_elapsed` renders it, so a bookmark and the run clock beside it
+    state one quantity one way.
+    """
 
     rendered = format_elapsed(bookmark.instant_s)
 
@@ -1424,9 +1437,14 @@ def format_mac_target(target: MacTarget, standing: MarkStanding) -> str:
     The compartment's name comes from `chart_frame.trace_style`, so the row
     and the trace it is read against are named by one table.
 
+    The unattributed form, for the reason `format_time_bookmark` gives: a
+    drawn row whose runs disagree carries a clause per run, and
+    `bookmark_panel` assembles that from `_stated_mac_target` and
+    `_standing_clauses`.
+
     Args:
         target: The marked height.
-        standing: Its standing on the run being drawn, required for the reason
+        standing: Its standing, required for the reason
             `format_time_bookmark` gives.
     """
 
@@ -1434,7 +1452,18 @@ def format_mac_target(target: MacTarget, standing: MarkStanding) -> str:
 
 
 def _stated_mac_target(target: MacTarget) -> str:
-    """A marked height's own words: the compartment, the height, and any name."""
+    """A marked height's own words: the compartment, the height, and any name.
+
+    Compartment, then height, then the name — on every drawn row, this being
+    what `bookmark_panel` builds them from. The compartment is on the row
+    rather than in a heading above it because a target means a different
+    thing on each one: `docs/MODEL.md` § "MAC multiples as a display unit"
+    states that a multiple of 1 MAC is the conventional reading only on the
+    alveolar compartment and is a partial-pressure ratio everywhere else, so
+    a row naming the height alone would be one number standing for six
+    claims. The compartment's name comes from `chart_frame.trace_style`, so
+    the row and the trace it is read against are named by one table.
+    """
 
     compartment = trace_style(target.quantity).label
     height = render_mac_multiple(target.mac_multiple)
@@ -1496,7 +1525,7 @@ def bookmark_panel(bookmarks: BookmarkSet, runs: Sequence[RunMarks]) -> Bookmark
                 _with_standings(
                     _stated_time_bookmark(bookmark),
                     _standing_clauses(
-                        runs, tuple(run.standings.of_time_bookmark(bookmark) for run in runs)
+                        tuple((run.label, run.standings.of_time_bookmark(bookmark)) for run in runs)
                     ),
                 )
                 for bookmark in bookmarks.time_bookmarks
@@ -1509,7 +1538,7 @@ def bookmark_panel(bookmarks: BookmarkSet, runs: Sequence[RunMarks]) -> Bookmark
                 _with_standings(
                     _stated_mac_target(target),
                     _standing_clauses(
-                        runs, tuple(run.standings.of_mac_target(target) for run in runs)
+                        tuple((run.label, run.standings.of_mac_target(target)) for run in runs)
                     ),
                 )
                 for target in bookmarks.mac_targets

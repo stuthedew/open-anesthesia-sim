@@ -56,6 +56,7 @@ from anesthesia_sim.app.dashboard_frame import (
     INTERPRETATION_DISCLAIMER_TEXT,
     MAC_TARGET_HEADING,
     MARK_STANDING_COMPARED_TEXT,
+    MARK_STANDING_JOINER,
     MARK_STANDING_TEXT,
     MARK_STILL_RUNNING_TEXT,
     MAX_DISPLAYED_RUNS,
@@ -1996,8 +1997,17 @@ def test_a_branch_that_halted_on_a_target_the_trunk_is_still_running_for_says_so
 
     (row,) = bookmark_panel(marks, _two_runs(trunk, branch)).targets.rows
 
-    assert f"{run_label(1)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.REACHED]}" in row
-    assert f"{run_label(0)} {MARK_STILL_RUNNING_TEXT}" in row
+    # Pinned whole rather than by `in`, which holds the shape of the row and
+    # not merely its contents: the mark stated once however many runs are
+    # shown, the runs in drawing order, and each clause naming its run before
+    # its answer. Every one of those is a way of attributing an answer to the
+    # wrong run that still reads plausibly on the screen.
+    assert row == (
+        f"Alveolar 0.50 ×MAC"
+        f"{MARK_STANDING_JOINER}{run_label(0)} {MARK_STILL_RUNNING_TEXT}"
+        f"{MARK_STANDING_JOINER}{run_label(1)}"
+        f" {MARK_STANDING_COMPARED_TEXT[MarkStanding.REACHED]}"
+    )
 
 
 def test_a_bookmark_the_branch_opened_after_is_not_drawn_as_the_trunk_left_it() -> None:
@@ -2054,6 +2064,21 @@ def test_every_standing_a_run_can_report_has_a_word_on_an_attributed_row() -> No
 
     for standing in MarkStanding:
         assert MARK_STANDING_COMPARED_TEXT[standing]
+
+
+def test_no_two_standings_share_a_word_on_an_attributed_row() -> None:
+    """`PL-3K9B`'s wording guarantee, held where a learner actually compares.
+
+    "Passed" and "reached" are two words because they are two claims, and the
+    two unreachable outcomes are worded apart so that neither reads as the
+    other. Both were pinned on `MARK_STANDING_TEXT` alone - the form a lone
+    run draws - and the row where the distinction earns its keep is the
+    two-run row, which draws from this table instead.
+    """
+
+    said = tuple(MARK_STANDING_COMPARED_TEXT[standing] for standing in MarkStanding)
+
+    assert len(set(said)) == len(said)
 
 
 def test_the_attributed_standing_words_describe_the_mark_and_not_the_transport() -> None:
