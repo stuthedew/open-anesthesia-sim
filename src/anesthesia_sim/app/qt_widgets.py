@@ -1143,6 +1143,17 @@ class ForkPanel(QWidget):
         The rebuild is made under a `QSignalBlocker` so that repopulating the
         control cannot be mistaken for a reader operating it.
 
+        **A selection whose instant is no longer offered is cleared rather
+        than moved** (`PL-J12Z`). `findData` answers -1 for an instant that
+        has gone, and `setCurrentIndex(-1)` leaves nothing selected, so
+        `selected_instant_s` answers None and the button says so. Falling
+        back to the first entry would put *induction* under a reader who had
+        chosen a later decision point, and branch there on the next press -
+        a silently substituted default of exactly the kind `CLAUDE.md`'s
+        safety-critical standard refuses, and reachable without a reset: a
+        keyframe collapses when a dial is returned to its previous value at
+        the same instant, which is a learner changing their mind.
+
         Args:
             offer: `dashboard_frame.fork_offer`'s result this tick.
         """
@@ -1157,8 +1168,7 @@ class ForkPanel(QWidget):
                     self.point_selector.addItem(label, userData=instant_s)
 
                 if selected_s is not None:
-                    restored = self.point_selector.findData(selected_s)
-                    self.point_selector.setCurrentIndex(max(restored, 0))
+                    self.point_selector.setCurrentIndex(self.point_selector.findData(selected_s))
 
         self.point_selector.setDisabled(offer.locked)
         self.point_selector.setHidden(offer.locked)
