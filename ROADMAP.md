@@ -3151,6 +3151,38 @@ ordinary gate work and the other is a deferral this section has to record:
   sequenced past its milestone in a `blocked-by:` field and nowhere else already
   cost. This is that sentence for `PL-WZVZ`.
 
+  **It clears in Gate 2, and v0.5.0 ships without it** (project owner,
+  2026-09-20, on `PL-S5Q9`). The paragraphs above establish that the entry is
+  deferred; they do not say where it lands, and an entry deferred to nowhere is
+  what holds a release open. Gate 2 freezes when v0.5.0 ships and ships inside
+  v0.6.0 - the same release that carries `PL-TH35` and `PL-R1WQ`, the two items
+  this entry waits on - so Gate 2 is the first gate at which it is workable at
+  all. Naming it there is therefore a statement about when the work becomes
+  possible rather than a preference about when it is done.
+
+  **The entry stays on Gate 1's frozen list above, and that is deliberate.**
+  Removing it would make the list a moving target, which is the renegotiation
+  the snapshot rule exists to prevent: that list is what was found on
+  2026-09-06 and it does not change because one of its entries turned out to
+  need a later release. What moves is the disposition, recorded here. The two
+  readings agree - `bin/docket wave` reports the gate as `0 this gate can
+  clear, 1 waiting on 3 open items outside it`, computed from the items rather
+  than from this prose - so a future disagreement between them is visible on
+  the next run, which is what § "What reads this, and what reads past it" below
+  asks of every entry.
+
+  **Why a `safety`-classed entry may be deferred at all**, stated because the
+  unconditional safety exception would otherwise forbid it. The hazard is a
+  learner attributing a curve difference to a brand rather than to the named
+  parameter that produced it, and it is not live: `src/anesthesia_sim/data/machines/`
+  holds one profile, there is no selection surface, and no trade name is
+  displayed anywhere, so nothing is being misattributed today. That was checked
+  against the tree by `PL-8G48`'s pass and again on 2026-09-20 when
+  planned-milestone item 1 was split - item 40 deliberately keeps one profile
+  and adds no chooser, which is what holds the hazard inactive rather than an
+  accident of what has been built so far. The entry is owed its band the moment
+  either condition lifts: a second profile, or a surface that names a machine.
+
 **What reads this, and what reads past it.** `bin/docket wave` reaches the same
 eleven from the items rather than from this prose - an open entry whose
 `blocked-by` chain leaves the frozen list is counted apart from the ones this
