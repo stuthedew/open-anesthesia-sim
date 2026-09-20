@@ -2048,6 +2048,118 @@ def test_a_replacement_in_another_file_does_not_fold(tmp_path: Path) -> None:
     assert check.detail == "1 line(s)"
 
 
+# A changed *string* is named and never folded (`PL-K4R5`). The original
+# string is gone, so nothing in the diff separates the item's own commissioned
+# rewrite from an expectation quietly dropped - and the candidates are usually
+# several, so choosing one would print a guess as fact.
+
+WAVE_OLD = (
+    "def test_wave() -> None:\n"
+    '    assert "1 this gate can clear, 1 waiting on work outside it" in printed\n'
+)
+
+WAVE_NEW = (
+    "def test_wave() -> None:\n"
+    '    assert "what they wait on: PL-ZZZZ" in printed\n'
+    '    assert "blocked outside the gate: PL-001" in printed\n'
+    '    assert "1 this gate can clear, 2 waiting on 2 open items outside it" in printed\n'
+    '    assert "what they wait on: PL-AAAA" in printed\n'
+)
+
+
+def test_a_changed_string_names_its_candidates_and_still_counts(tmp_path: Path) -> None:
+    """`PL-FCM3`'s own shape, which is why the report names rather than folds.
+
+    Four added lines differ from the removed one by exactly one string, and
+    only the third is its rewrite. A fold would have to pick, and picking the
+    first - the shape a greedy pairing gives - records `what they wait on:
+    PL-ZZZZ` as the replacement for a gate summary line. So the refusal
+    stands, the count stays honest, and the candidates go on the page for the
+    reader who can tell which is which.
+    """
+    root = _repo(tmp_path)
+    _work(root, "PL-K7QX pin the gate line", "tests/test_thing.py", KEPT + WAVE_OLD)
+    _work(root, "PL-K7QX name what they wait on", "tests/test_thing.py", KEPT + WAVE_NEW)
+
+    check = _check(
+        verify(root, _item(), _config(), "HEAD~1", self_audit=True), "no existing assertion removed"
+    )
+    assert check.blocks, "a changed string is still a removed assertion"
+    assert check.detail == "1 line(s), 1 differing by one string"
+    assert any(
+        line.strip().startswith('one string differs, still counted: assert "1 this gate can clear')
+        for line in check.lines
+    )
+    removed_line = 'assert "1 this gate can clear, 1 waiting on work outside it" in printed'
+    assert sum(removed_line in line for line in check.lines) == 1, (
+        "a line with candidates is printed under them rather than also in the plain list"
+    )
+    named = [line.strip() for line in check.lines if line.strip().startswith("candidate ")]
+    assert [line.split(":")[0] for line in named] == [
+        "candidate 1 of 4",
+        "candidate 2 of 4",
+        "candidate 3 of 4",
+    ], "the count is every candidate; only the printing is capped"
+    assert any(
+        "`falsifies:` on the base's copy is what declares this shape" in line
+        for line in check.lines
+    )
+
+
+def test_a_changed_number_is_not_named_as_a_changed_string(tmp_path: Path) -> None:
+    """The narrowness, stated as a test rather than as a sentence.
+
+    `approx(2.05)` to `approx(1.05)` keeps its subject and changes what is
+    expected of it, which `PL-K1WS` already identified as a weakened
+    assertion. It is the shape this report must not dress up as a commissioned
+    rewrite, so it reaches the refusal with no candidate beside it.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX pin the reading",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_r() -> None:\n    assert reading == pytest.approx(2.05)\n",
+    )
+    _work(
+        root,
+        "PL-K7QX move the reading",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_r() -> None:\n    assert reading == pytest.approx(1.05)\n",
+    )
+
+    check = _check(
+        verify(root, _item(), _config(), "HEAD~1", self_audit=True), "no existing assertion removed"
+    )
+    assert check.blocks
+    assert check.detail == "1 line(s)"
+    assert not [line for line in check.lines if "one string differs" in line]
+
+
+def test_an_ordinary_deletion_carries_no_candidate_lines(tmp_path: Path) -> None:
+    """An assertion that simply left the suite reads exactly as it did before.
+
+    The report grows only where there is a candidate to name, so the branch
+    this check exists to refuse is not buried under an explanation of a shape
+    it does not have.
+    """
+    root = _repo(tmp_path)
+    _work(
+        root,
+        "PL-K7QX pin it",
+        "tests/test_thing.py",
+        KEPT + "\ndef test_r() -> None:\n    assert reading == 2\n",
+    )
+    _work(root, "PL-K7QX drop it", "tests/test_thing.py", KEPT)
+
+    check = _check(
+        verify(root, _item(), _config(), "HEAD~1", self_audit=True), "no existing assertion removed"
+    )
+    assert check.blocks
+    assert check.detail == "1 line(s)"
+    assert not [line for line in check.lines if "candidate" in line or "one string" in line]
+
+
 # `falsifies:` - the declared exemption to "no existing assertion removed"
 # (`PL-K82G`). The check had no passing route for an item whose own work makes
 # a rendered string false, so a correct close-out could only game the fold or

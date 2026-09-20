@@ -288,6 +288,68 @@ def replacements(removed: Sequence[tuple[str, str]], added: Sequence[tuple[str, 
     return found
 
 
+def _one_string_differs(old: Sequence[str], new: Sequence[str]) -> bool:
+    """Whether `new` is `old` with exactly one token changed, and that token a string."""
+    if len(old) != len(new):
+        return False
+    differ = [(was, now) for was, now in zip(old, new, strict=True) if was != now]
+    return len(differ) == 1 and all(text[:1] in "\"'" for text in differ[0])
+
+
+def literal_swaps(
+    removed: Sequence[tuple[str, str]], added: Sequence[tuple[str, str]]
+) -> list[tuple[str, ...]]:
+    """For each removed line, every same-file added line differing from it by one string.
+
+    Reported, never folded, and the distinction is the whole of this function.
+    `replacements` above folds because an insertion proves the original
+    survived; here the original string is *gone*, which is indistinguishable
+    from an expectation that was simply dropped. So this names the candidates
+    and leaves the pairing to a reader, which is the judgment half `CLAUDE.md`
+    refuses to script.
+
+    **Why it may not fold, counted rather than argued** (`PL-K4R5`). Over 502
+    single-id squash close-outs, 57 would REJECT `no existing assertion
+    removed` and 20 reach this shape. Of those 20, **15 have more than one
+    candidate**, so a fold would have to guess - and `PL-FCM3`, the item that
+    raised this, is the worked example: one removed line, `assert "1 this gate
+    can clear, 1 sequenced ahead of it, 1 waiting on work outside it" in
+    printed`, and **six** candidates. The real rewrite is the fifth of them by
+    diff order, so folding on the first would have recorded `assert "what they
+    wait on: PL-ZZZZ" in printed` as its replacement and printed a guess as
+    fact. Folding at all would also have folded `PL-6580`, whose seven
+    disclaimer assertions genuinely left the suite when the prose they read
+    was deleted - the hazard this check exists for.
+
+    **Two narrower anchors were measured and rejected.** Keying the fold to
+    the commission's own `verify:` command - the new string it greps for, a
+    reviewer's, written before the work - explains **1 of the 20**. Having
+    triage copy the old string out of the brief it is already reading reaches
+    **3 of 20**: the string is in the item for `PL-026`, `PL-6580` and
+    `PL-1J0P` and nowhere else, so the objection `PL-K4R5` rests on holds.
+
+    Strings only, deliberately. A changed *number* - `approx(2.05)` to
+    `approx(1.05)` - keeps its subject and changes what is expected of it,
+    which `PL-K1WS` already identified as a weakened assertion and which no
+    item here has asked to change as a deliverable. Widening to numbers is one
+    alternative away should one ever be filed.
+
+    Per file, never across, on the same reasoning as the two folds above it.
+    """
+    by_file: dict[str, list[tuple[str, list[str]]]] = {}
+    for where, line in added:
+        by_file.setdefault(where, []).append(
+            (line.strip(), [text for text, _ in tokens_at_depth(line)])
+        )
+    out: list[tuple[str, ...]] = []
+    for where, line in removed:
+        old = [text for text, _ in tokens_at_depth(line)]
+        out.append(
+            tuple(text for text, new in by_file.get(where, ()) if _one_string_differs(old, new))
+        )
+    return out
+
+
 RESIDUAL = (
     "Not proven: whether a new test asserts the value the model should produce "
     "or merely the value it currently produces. A test can exercise the right "
@@ -1363,6 +1425,13 @@ def verify_item(
     # signature - whose replacement is in the same diff and differs by an
     # argument. `replacements` pairs the two (`PL-K1WS`).
     #
+    # A sixth is reported and never folded, which is why it is last: an
+    # assertion whose *string* changed, because the output the item was asked
+    # to change is the thing that string pinned. The original string is gone,
+    # so nothing in the diff separates it from an expectation quietly dropped,
+    # and `PL-FCM3` offers six candidate replacements for one removal.
+    # `literal_swaps` names them and refuses to choose (`PL-K4R5`).
+    #
     # The removal stays on the page in every one of them: what changes is that
     # it reads as a commissioned or an answered act rather than an unexplained
     # one, which is the property the check was defending.
@@ -1372,23 +1441,53 @@ def verify_item(
     rest = [pair for pair in removed_assertions if not (declared and declared in pair[1])]
     paired = list(zip(rest, replacements(rest, added), strict=True))
     replaced = [(line.strip(), hit) for (_, line), hit in paired if hit]
-    dropped = [line.strip() for (_, line), hit in paired if not hit]
+    unpaired = [pair for pair, hit in paired if not hit]
+    dropped = [line.strip() for _, line in unpaired]
+    swapped = [
+        (line.strip(), candidates)
+        for (_, line), candidates in zip(unpaired, literal_swaps(unpaired, added), strict=True)
+        if candidates
+    ]
     detail = f"{len(dropped)} line(s)" if dropped else "none"
     if folded:
         detail += f", {len(folded)} declared falsified"
     if replaced:
         detail += f", {len(replaced)} replaced in place"
+    if swapped:
+        detail += f", {len(swapped)} differing by one string"
+    # A line with candidates is printed under them rather than twice: the
+    # refusal is unchanged either way, and the evidence reads as one item.
+    named = {was for was, _ in swapped}
     report.checks.append(
         Check(
             "no existing assertion removed",
             not dropped,
             detail,
-            tuple(dropped[:5])
+            tuple(line for line in dropped if line not in named)[:5]
             + tuple(f"declared falsified, not counted: {line}" for line in folded[:5])
             + tuple(
                 text
                 for was, now in replaced[:3]
                 for text in (f"replaced, not counted: {was}", f"                   by: {now}")
+            )
+            + tuple(
+                text
+                for was, candidates in swapped[:3]
+                for text in (
+                    f"one string differs, still counted: {was}",
+                    *(
+                        f"      candidate {n} of {len(candidates)}: {now}"
+                        for n, now in enumerate(candidates[:3], 1)
+                    ),
+                )
+            )
+            + (
+                (
+                    "which candidate replaced it is not decidable from the diff, so none is "
+                    "folded; `falsifies:` on the base's copy is what declares this shape",
+                )
+                if swapped
+                else ()
             ),
         )
     )
