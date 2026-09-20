@@ -3,7 +3,8 @@
 The counterpart of `chart_frame.py` for everything beside the plots: the
 status word, the notice banner, the seven readouts, the four setting
 controls, the transport enablement, the agent-accounting panel, the
-control-change list, the chart captions and the new-case question. Each is a
+control-change list, the two bookmark listings, the chart captions and the
+new-case question. Each is a
 pure function of a `SimulationSnapshot` (or of the `ChartFrame` the same tick
 assembled), so every string a reader sees and every precedence rule that
 chooses between two of them is readable and testable without a display.

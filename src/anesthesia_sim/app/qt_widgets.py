@@ -105,6 +105,7 @@ from anesthesia_sim.app.run_series import COMPARTMENT_QUANTITIES, RecordedQuanti
 from anesthesia_sim.app.theme import (
     ACCENT,
     BOOKMARK_DIALOG_WIDTH,
+    BOOKMARK_LIST_MAX_HEIGHT,
     BOOKMARK_ROW_SPACING,
     BOOKMARK_SECTION_SPACING,
     GRIDLINE,
@@ -1031,6 +1032,9 @@ class BookmarkDialog(QDialog):
         self.add_target_button = QPushButton(ADD_MARK_LABEL)
         self.target_list = QListWidget()
         self.remove_target_button = QPushButton(REMOVE_MARK_LABEL)
+
+        for listing in (self.time_list, self.target_list):
+            listing.setMaximumHeight(BOOKMARK_LIST_MAX_HEIGHT)
 
         self.notice = NoticeLabel()
         self.close_button = QPushButton(CLOSE_BOOKMARKS_LABEL)

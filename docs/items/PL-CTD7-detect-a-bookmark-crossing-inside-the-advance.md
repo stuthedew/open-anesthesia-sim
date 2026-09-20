@@ -66,3 +66,22 @@ from it is step-exact rather than landing on the next tick boundary; an
 unreachable threshold ends in a distinct, visible not-reached outcome; and
 `docs/MODEL.md` states the halt semantics and that a halt lands on an instant
 finer than the control grid s "Supported simulation step" publishes.
+
+## One case for the outcome set, found building `PL-LPLD` (2026-09-20)
+
+A branch inherits its trunk's marks, because a mark is a question about what is
+still to come and a comparison is two managements answering one question
+(`SimulationController.resumed_at`, and `docs/ARCHITECTURE.md` § "What a branch
+is"). So a **time bookmark lying before the branch's own fork instant comes
+across with the rest, and the branch can never reach it going forward.**
+
+It is inherited rather than dropped deliberately: dropping it would make the
+trunk's list and the branch's disagree about what the case is marked at, which
+is a worse thing for a comparison to have to explain than a row that cannot
+fire. But nothing currently says so where the row is listed, and this item owns
+the vocabulary that would - it is the fourth member of the reached /
+not-reached-within-the-cap / still-running set, and unlike the other three it
+is decidable statically from `ResumePoint.elapsed_s` rather than by running.
+
+A MAC target has no equivalent case: a height is reachable from either side, so
+a branch may cross one its trunk never did.

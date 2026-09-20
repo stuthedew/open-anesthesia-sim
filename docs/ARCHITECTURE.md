@@ -218,8 +218,8 @@ instants are drawn, where the references stand, what a hover says - as plain
 values, and `app/qt_chart.py` moves pyqtgraph items to match it;
 `app/dashboard_frame.py` does the same for everything beside the plots - the
 status word, the notice and its precedence, the readouts, the setting
-controls, the captions - and `app/qt_widgets.py` moves the leaf widgets to
-match it, deciding nothing; `app/control_timeline.py` turns the recorded
+controls, the captions, the two bookmark listings - and `app/qt_widgets.py`
+moves the leaf widgets to match it, deciding nothing; `app/control_timeline.py` turns the recorded
 control changes into the adjustments a reader sees, `app/playback.py` turns the playback rate a
 reader selects into the number of whole simulation steps a tick takes, and
 `app/wash_in.py` divides the alveolar fraction by the inspired one. The last
@@ -1096,7 +1096,10 @@ widens, and it neither fetches nor prunes, so it cannot destroy a ref
   belongs to `RunView`, which is instantiated once per run, and the dashboard
   places it by looping over its runs. A panel about the chart both runs are
   drawn on - an axis, a legend, a reference, the time base, the compartment
-  selection - belongs to `SimulationView`. Getting this the wrong way round
+  selection - belongs to `SimulationView`, and so does a control asking one
+  question of the whole case rather than of either run: the bookmark editor
+  is the worked example (`PL-LPLD`), and it writes each mark to every
+  displayed run so the copies the controllers hold stay equal. Getting this the wrong way round
   is not a tidiness matter: a run's panel put on the dashboard would state one
   branch's numbers over both, and a shared control duplicated into each run
   would let a comparison be read under two different settings. Either way,
