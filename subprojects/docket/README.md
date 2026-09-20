@@ -2527,7 +2527,23 @@ cell. The real v0.4.30 cut reported seven such lines and REJECTed on them.
 Counted before the narrowing was written, because the safe direction here is
 reporting: across 1,109 commits the added lines the matcher finds are 69 `.py`
 and 41 `.md`, with no other suffix carrying one at all (`PL-5MFL`, `PL-BHBZ`).
-Prose *inside* a file Python executes is still read as code, which is `PL-0KQP`.
+Prose *inside* a file Python executes is narrowed the same way, by blanking a
+line's quoted spans, backtick spans and trailing comment before matching what
+is left - so a docstring naming the tokens, a fixture writing a suppression
+into a test file as a string, and a comment explaining why one was *not* used
+are each read as what they are. Only `.py` and `.pyi` are stripped: in a `.cfg`
+or `.ini` a quote is an ordinary character in a value and an inline `#` is part
+of that value, so the same strip would delete configuration rather than prose.
+
+`# type: ignore` is deliberately not one of the markers. Replayed over `main`'s
+1,004 non-merge commits it is the only one that has ever matched a real
+directive - 56 of them, all carrying an explicit error code, and none of them a
+disabled test - and whether an ignore is load-bearing is a question for mypy,
+which `warn_unused_ignores` asks of every directive in the repository:
+`strict = true` over `[tool.mypy] files`, and `tools/ignore_check.py` over the
+two test trees that list excludes. The four markers that remain have matched a
+real directive zero times; they stay at that price because a count of zero
+cannot tell deterrence from absence (`PL-G21K`, `PL-J5NN`).
 
 What counts as a *removed assertion* is decided by shape rather than by the
 word: a line in a file Python executes, opening an `assert` statement, calling
