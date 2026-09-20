@@ -64,10 +64,14 @@ of 74 - the tree was never broken for the thirty-seven hours `main` was red,
 the store was.
 
 So the old line - which named no step - asked every reader to tell those 93
-from the 16 that were something else by opening the run, and a container whose egress
-policy blocks GitHub's log storage cannot open it at all. Naming the step is
-one extra request, paid only on the runs that were already going to print a
+from the 16 that were something else by opening the run, and a container whose
+egress policy blocks GitHub's log storage cannot open it at all. Naming the step
+is one extra request, paid only on the runs that were already going to print a
 line, and it separates "stop, the tree is broken" from "an item wants closing".
+It is about 330 ms in practice, and its worst case is a second `TIMEOUT_S` -
+so a session start reading a red `main` can wait 16 s rather than 8 s before the
+line appears. That is the deliberate trade: the ceiling is paid only in the case
+the reader most needs the answer, and never on a green `main`.
 
 **Why the rate itself is left alone.** `main` failed on 32.7% of the pushes
 that reached a verdict in that window, which reads like a check firing so often
@@ -88,6 +92,7 @@ go red *during* a session that started while it was green.
 
 from __future__ import annotations
 
+import http.client
 import json
 import re
 import subprocess
@@ -100,6 +105,15 @@ from pathlib import Path
 # it from wherever a session started, and `git remote` would otherwise answer
 # for a different checkout or for nothing at all.
 ROOT = Path(__file__).resolve().parents[1]
+
+# Every way a read of the API can fail, and it is a named tuple rather than an
+# inline one because both call sites have to catch the same set: a gap in either
+# loses the line. `urllib.error.URLError`, `HTTPError`, `TimeoutError` and
+# `ConnectionResetError` are all `OSError`; `json.JSONDecodeError` is a
+# `ValueError`. `http.client.HTTPException` is neither, which is the one worth
+# writing down - a body GitHub cuts short raises `IncompleteRead`, a bare
+# `Exception` subclass, and it would otherwise escape both.
+NETWORK_FAILURES = (OSError, ValueError, http.client.HTTPException)
 
 API = "https://api.github.com"
 WORKFLOW = "quality.yml"
@@ -285,7 +299,7 @@ def main() -> int:
 
     try:
         runs = fetch_runs(slug)
-    except (OSError, urllib.error.URLError, ValueError, TimeoutError):
+    except NETWORK_FAILURES:
         return 0
 
     run = pick_run(runs)
@@ -299,7 +313,7 @@ def main() -> int:
     if run.get("conclusion") != "success":
         try:
             steps = failing_steps(fetch_jobs(slug, run.get("id")))
-        except (OSError, urllib.error.URLError, ValueError, TimeoutError):
+        except NETWORK_FAILURES:
             steps = ()
 
     line = advisory(run, steps)

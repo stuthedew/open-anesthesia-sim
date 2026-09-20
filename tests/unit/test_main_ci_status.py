@@ -21,6 +21,9 @@ Nothing here touches a network.
 
 from __future__ import annotations
 
+import email.message
+import http.client
+import json
 import pathlib
 import subprocess
 import urllib.error
@@ -93,6 +96,23 @@ class TestAdvisory:
         assert "https://github.com/o/r/actions/runs/1553" in line
 
 
+# Every failure either request can raise. `IncompleteRead` is the one that was
+# missing: GitHub cutting a response body short raises an `http.client`
+# exception, which is neither an `OSError` nor a `ValueError`, so it escaped
+# both call sites and the red-`main` line was lost with it (`PL-T83R`).
+_NETWORK_FAILURES = [
+    urllib.error.URLError("offline"),
+    urllib.error.HTTPError("u", 503, "busy", email.message.Message(), None),
+    OSError("connection reset"),
+    ConnectionResetError("reset"),
+    TimeoutError("slow"),
+    ValueError("not json"),
+    json.JSONDecodeError("bad", "", 0),
+    http.client.IncompleteRead(b"half"),
+    http.client.HTTPException("protocol error"),
+]
+
+
 def _job(steps: list[tuple[str, str]]) -> dict:
     """One job whose steps are (name, conclusion) in the order CI ran them."""
     return {
@@ -147,15 +167,7 @@ class TestMain:
         assert main_ci_status.main() == 0
         assert capsys.readouterr().out == ""
 
-    @pytest.mark.parametrize(
-        "boom",
-        [
-            urllib.error.URLError("offline"),
-            OSError("connection reset"),
-            TimeoutError("slow"),
-            ValueError("not json"),
-        ],
-    )
+    @pytest.mark.parametrize("boom", _NETWORK_FAILURES)
     def test_stays_silent_and_exits_zero_when_the_fetch_fails(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], boom: Exception
     ) -> None:
@@ -222,15 +234,7 @@ class TestMain:
         assert capsys.readouterr().out == ""
         assert asked == [], "a green main must cost one request, not two"
 
-    @pytest.mark.parametrize(
-        "boom",
-        [
-            urllib.error.URLError("offline"),
-            OSError("connection reset"),
-            TimeoutError("slow"),
-            ValueError("not json"),
-        ],
-    )
+    @pytest.mark.parametrize("boom", _NETWORK_FAILURES)
     def test_still_reports_a_red_main_when_the_attribution_cannot_be_read(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], boom: Exception
     ) -> None:
