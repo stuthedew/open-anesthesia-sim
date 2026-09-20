@@ -36,6 +36,50 @@ Two consequences of that rule are worth stating, because both look like gaps:
   from here", which is also what an offline container gets. The line exists to
   surface a red nobody would otherwise see, never to certify a green one.
 
+**The line names the failing step, and that is the whole of what `PL-T83R`
+changed.** Attributed over all 819 completed `main` push runs from 2026-08-22
+to 2026-09-20, the 109 failures fall almost entirely into one step:
+
+| first failing step | runs | share |
+| --- | --- | --- |
+| `verify replay, the whole store` | 93 | 85.3% |
+| `bin/docket check` (the bare floor-section run) | 14 | 12.8% |
+| the pytest/coverage line | 1 | 0.9% |
+| no job ran (startup failure) | 1 | 0.9% |
+
+Reading the error text back out of each run's log agrees with that split
+exactly: 93 are `checks.py`'s "open but its `verify:` command already passes",
+14 are "marked done but records no `pr`", and the one pytest failure is
+`test_this_repository_records_a_disposition_for_every_open_debt_item`, which
+asserts on `ROADMAP.md` rather than on the simulator. **Not one of the 109 was
+a defect in `src/`.**
+
+In every one of the 93, the bare `bin/docket check` step earlier in the *same
+job* passed, as did `ruff`, `mypy` and the full suite at 100% branch coverage.
+The bare run is the same store validation without `--verify`, so a failure at
+the replay and not at it isolates the cause to the one report `--verify` adds:
+an open item whose own `verify:` command has flipped to passing. The tree was
+not broken in any of the 93. Over the window `PL-T83R` was filed on it was 73
+of 74 - the tree was never broken for the thirty-seven hours `main` was red,
+the store was.
+
+So the old line - which named no step - asked every reader to tell those 93
+from the 16 that were something else by opening the run, and a container whose egress
+policy blocks GitHub's log storage cannot open it at all. Naming the step is
+one extra request, paid only on the runs that were already going to print a
+line, and it separates "stop, the tree is broken" from "an item wants closing".
+
+**Why the rate itself is left alone.** `main` failed on 32.7% of the pushes
+that reached a verdict in that window, which reads like a check firing so often
+that nobody could act on it. It is an artifact of counting merges: the 74
+failures are 8 episodes, and 2 of them - 37.7 h and 44.3 h - hold 87% of the
+red time, because merges keep arriving while `main` is red. Each of those two
+ended in a single cheap commit (`#432` closed two items whose work had landed;
+`#493` rewrote one command that did not discriminate). What was wrong was the
+time to green, not the count. Suppressing the class would have cost every one
+of the 93 findings, all of which were real and all of which somebody later
+fixed, so the rate is accepted and the line made precise instead.
+
 Standard library only, and parsing at the 3.11 floor `tools/ruff.toml` sets, so
 a bare checkout with no virtualenv can run it — from the session-start hook, or
 by hand at any moment, which is the half a hook alone cannot give: `main` can
@@ -65,6 +109,26 @@ TIMEOUT_S = 8
 # A conclusion that judged the tree. `cancelled` and `skipped` did not, and
 # `None` is a run still going.
 VERDICTS = ("success", "failure", "timed_out", "startup_failure", "action_required")
+
+# The name `.github/workflows/quality.yml` gives the whole-store replay step,
+# which is the one step whose failure is a fact about the queue rather than
+# about the tree. Matched as a literal because that is what the API returns;
+# `tests/unit/test_main_ci_status.py` holds it to the workflow file, so a rename
+# there fails a test rather than silently dropping this back to the plain line.
+REPLAY_STEP = "verify replay, the whole store"
+
+# `skipped` is every step after the failure, and `cancelled` is a job that lost
+# its runner. Neither names a cause, and printing them would bury the one that
+# does.
+STEP_FAILURES = ("failure", "timed_out")
+
+# A step with no `name:` is named by GitHub after its whole `run:` line, and
+# `quality.yml`'s pytest line is 180 characters of shell. Printed whole at the
+# top of a session it buries the run number and the URL either side of it, so it
+# is cut - visibly, with an ellipsis, because a shell command truncated to look
+# complete is worse than one that says it was cut. 70 keeps every named step in
+# the workflow whole; only the unnamed `run:` lines reach it.
+STEP_WIDTH = 70
 
 _REMOTE = re.compile(r"github\.com[:/]+([^/]+)/(.+?)(?:\.git)?/?$")
 
@@ -100,12 +164,52 @@ def pick_run(runs: list[object]) -> dict[str, object] | None:
     return None
 
 
-def advisory(run: dict[str, object]) -> str | None:
+def failing_steps(jobs: list[object]) -> tuple[str, ...]:
+    """Return the names of the steps that failed, in the order CI ran them.
+
+    Empty for a payload this cannot read - a run whose jobs were never created,
+    a shape the API has promised nothing about, a job that was cancelled. The
+    caller degrades to the unattributed line rather than guessing, because the
+    fact that `main` is red is already established by the time this is asked and
+    must not be lost to a failure of the enrichment.
+    """
+    names: list[str] = []
+    for job in jobs:
+        if not isinstance(job, dict):
+            continue
+        steps = job.get("steps")
+        if not isinstance(steps, list):
+            continue
+        for step in steps:
+            if isinstance(step, dict) and step.get("conclusion") in STEP_FAILURES:
+                name = step.get("name")
+                if isinstance(name, str):
+                    names.append(name)
+    return tuple(names)
+
+
+def _quoted(step: str) -> str:
+    """One step name, quoted and cut to `STEP_WIDTH` with the cut made visible."""
+    if len(step) <= STEP_WIDTH:
+        return f'"{step}"'
+    return f'"{step[: STEP_WIDTH - 1].rstrip()}..." (cut)'
+
+
+def advisory(run: dict[str, object], steps: tuple[str, ...] = ()) -> str | None:
     """Return the line to print for a run, or None when it says nothing useful.
 
     Only a non-`success` verdict earns a line. The head sha is included because
     a reader's first question is whether the failure is still `main`'s head or
-    something already pushed past.
+    something already pushed past; `steps` answers the second, which is whether
+    this is the tree or the queue.
+
+    **The queue reading is claimed only when the replay failed alone**, and that
+    condition is the whole of its soundness rather than a caution around it. The
+    bare `bin/docket check` runs earlier in the same job on the same tree, so it
+    has already ruled out every store error that does not need `--verify`; if it
+    and every other step passed, what is left is the one report `--verify` adds.
+    A second failing step anywhere breaks that inference, so the line falls back
+    to naming the steps and interpreting nothing.
     """
     conclusion = run.get("conclusion")
     if conclusion == "success":
@@ -113,10 +217,15 @@ def advisory(run: dict[str, object]) -> str | None:
     number = run.get("run_number", "?")
     sha = str(run.get("head_sha", ""))[:8] or "?"
     url = run.get("html_url", "")
-    return (
-        f"main's quality run #{number} on {sha} concluded {conclusion} - "
-        f"main is red and no pull request will show it. {url}"
-    )
+    head = f"main's quality run #{number} on {sha} concluded {conclusion}"
+    if steps == (REPLAY_STEP,):
+        return (
+            f'{head} at "{REPLAY_STEP}", and nothing else in that job failed - so `main` is '
+            "red on the queue rather than on the tree: an open item's `verify:` command has "
+            f"flipped to passing. `bin/docket check --verify` reproduces it here. {url}"
+        )
+    where = f" at {', '.join(_quoted(s) for s in steps)}" if steps else ""
+    return f"{head}{where} - main is red and no pull request will show it. {url}"
 
 
 def fetch_runs(slug: str) -> list[object]:
@@ -137,6 +246,23 @@ def fetch_runs(slug: str) -> list[object]:
         payload = json.load(response)
     runs = payload.get("workflow_runs")
     return runs if isinstance(runs, list) else []
+
+
+def fetch_jobs(slug: str, run_id: object) -> list[object]:
+    """Fetch one run's jobs, for the names of the steps that failed.
+
+    A second request, and it is paid only on a run that is already going to
+    print a line - never on a green `main`, which is every session start but a
+    few. Unauthenticated like `fetch_runs`, and for the same reason.
+    """
+    url = f"{API}/repos/{slug}/actions/runs/{run_id}/jobs?per_page=50"
+    request = urllib.request.Request(
+        url, headers={"Accept": "application/vnd.github+json", "User-Agent": "docket-digest"}
+    )
+    with urllib.request.urlopen(request, timeout=TIMEOUT_S) as response:
+        payload = json.load(response)
+    jobs = payload.get("jobs")
+    return jobs if isinstance(jobs, list) else []
 
 
 def main() -> int:
@@ -166,7 +292,17 @@ def main() -> int:
     if run is None:
         return 0
 
-    line = advisory(run)
+    # Asked only once the verdict is known to be a failure, and swallowed
+    # separately from the fetch above: by this point `main` is red and the
+    # reader is owed that whether or not the attribution can be read.
+    steps: tuple[str, ...] = ()
+    if run.get("conclusion") != "success":
+        try:
+            steps = failing_steps(fetch_jobs(slug, run.get("id")))
+        except (OSError, urllib.error.URLError, ValueError, TimeoutError):
+            steps = ()
+
+    line = advisory(run, steps)
     if line is not None:
         print(line)
     return 0
