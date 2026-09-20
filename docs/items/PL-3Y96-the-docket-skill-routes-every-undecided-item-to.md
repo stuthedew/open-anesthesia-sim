@@ -41,7 +41,7 @@ was scoped (`PL-MKFG`). The next item deferred into v0.6.0 gets the same
 treatment unless the skill says otherwise, because the skill is what the
 triage pass reads.
 
-**Where.** `.claude/skills/docket/SKILL.md`, "Mode: triage" — the
+**Where.** `.claude/skills/docket/modes/triage.md`, "Mode: triage" — the
 `needs-decision` paragraph. Outside `PL-W8XP`'s declared `touches`, which is
 why this is an item rather than a fix riding that branch.
 

@@ -13,7 +13,7 @@ pr: 542
 verify: grep -q 'git push origin --delete' .claude/skills/docket/SKILL.md && grep -q "say the remote deletion is outstanding" .claude/skills/docket/SKILL.md
 ---
 
-**Problem.** `.claude/skills/docket/SKILL.md` § "Mode: capture" gives the
+**Problem.** `.claude/skills/docket/modes/capture.md` § "Mode: capture" gives the
 recovery for a branch whose pull request already took part of its work:
 
 ```

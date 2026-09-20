@@ -40,7 +40,7 @@ reached by the owner asking rather than by the tooling.
 
 **Where.** Two candidate levers, and the second is the cheaper.
 
-- `.claude/skills/docket/SKILL.md`, "Mode: start an item" - it already says to
+- `.claude/skills/docket/modes/start.md`, "Mode: start an item" - it already says to
   rename the session, name the branch and set `status`/`feature`/`touches`. It
   does not say to ask whether the item is in flight. One line, and it fires at
   exactly the right moment.

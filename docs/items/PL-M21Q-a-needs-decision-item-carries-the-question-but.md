@@ -7,7 +7,7 @@ status: ready
 classes: defect, docs
 touches: .claude/skills/docket/SKILL.md, .claude/rules/instruction-writing.md, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-16
-verify: python3 tools/doc_check.py check && grep -qF 'record the recommendation in the item, not only in the reply' .claude/skills/docket/SKILL.md
+verify: python3 tools/doc_check.py check && grep -rqF 'record the recommendation in the item, not only in the reply' .claude/skills/docket/
 ---
 
 **Problem.** A needs-decision item carries the question but not the recommendation, so a session's recommendation lives only in a reply and cannot be agreed with once that session's branch is deleted

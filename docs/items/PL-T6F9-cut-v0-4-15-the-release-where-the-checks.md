@@ -61,7 +61,7 @@ Read `bin/docket release --dry-run` for the full set - 33 finished items as of
 2026-09-13 - and the individual release notes under `docs/releases/` for how
 much prose each of these gets.
 
-**The procedure.** `.claude/skills/docket/SKILL.md` § "Mode: ship a release" is
+**The procedure.** `.claude/skills/docket/modes/release.md` § "Mode: ship a release" is
 authoritative; this is the short form.
 
 1. `git fetch origin main` and confirm `#508` merged.

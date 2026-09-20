@@ -145,6 +145,17 @@ except ImportError as error:  # pragma: no cover - a checkout missing the subpro
 # docket skill are included because they cite paths as heavily as the docs
 # proper do, and a rule that names a file that no longer exists is a rule
 # nobody can follow.
+#
+# The skills entry reaches below `SKILL.md` deliberately. A skill whose body
+# outgrows compaction's 5,000-token re-attachment cap is split into a front
+# page and mode files it points at, and the pointers are the whole mechanism -
+# `.claude/skills/docket/` is seven such files carrying most of that skill's
+# prose and all of its path citations. Matching only `SKILL.md` would have
+# checked the page that survives and none of what it sends a session to read,
+# which is the coverage-shaped hole a split would otherwise open silently
+# (`PL-2XM2`). This widening admits the skills tree and nothing else; the
+# reasoning under `_quoting_sources` for leaving the *queue* out is untouched,
+# since that one turns on handing 687 item files to `check_make_targets`.
 DOC_GLOBS = (
     "README.md",
     "ROADMAP.md",
@@ -152,7 +163,7 @@ DOC_GLOBS = (
     "AGENTS.md",
     "docs/*.md",
     ".claude/rules/**/*.md",
-    ".claude/skills/*/SKILL.md",
+    ".claude/skills/**/*.md",
     "subprojects/*/README.md",
 )
 

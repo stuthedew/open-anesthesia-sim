@@ -38,7 +38,7 @@ a `git show` on the recorded hash fails with nothing said about why.
 
 **Where.** The `commit:` field's meaning, in `subprojects/docket/README.md`'s
 "Provenance survives the merge strategy"; whatever writes it at close-out
-(`.claude/skills/docket/SKILL.md`, "Mode: close out an item"); and possibly a
+(`.claude/skills/docket/modes/close-out.md`, "Mode: close out an item"); and possibly a
 `docket check` rule, since reachability is decidable in a complete clone and
 must decline in a shallow one the way `merged_pull_requests` does.
 

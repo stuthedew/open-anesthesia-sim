@@ -42,7 +42,7 @@ two unrelated items legitimately touch one file, and the right outcome is that
 both proceed knowing it, and the second to merge resolves deliberately rather
 than discovering it.
 
-**Where.** `.claude/skills/docket/SKILL.md`, "Mode: start an item". One line in
+**Where.** `.claude/skills/docket/modes/start.md`, "Mode: start an item". One line in
 the existing guard, plus what to do with a non-empty answer — which is the part
 worth thinking about, since the honest answer is usually "proceed, and expect
 to resolve", not "pick something else".

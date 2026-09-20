@@ -593,7 +593,7 @@ matching ids its own way, because a check looser than the guard it protects
 would certify a branch as visible that `docket flight` still cannot see — the
 gate green while the guarantee is void. One commit carrying an id is enough,
 which is what keeps the tool out of the judgment it must not make: how small a
-piece of work is too small to file is decided in `.claude/skills/docket/SKILL.md`
+piece of work is too small to file is decided in `.claude/skills/docket/modes/capture.md`
 under "Mode: housekeeping nobody filed", and a fix riding inside a commit an id
 already leads needs no item of its own. A release commit is exempt, exactly:
 `make release` writes that subject, and it closes no item.

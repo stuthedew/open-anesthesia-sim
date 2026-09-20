@@ -1608,8 +1608,8 @@ each time, not a re-scope" got wrong. The port's own work has put the number
 back. Counted 2026-09-16, eight sites in five files outside this one name
 `v0.4.26`: three in `tools/import_boundary_check.py`, two of those inside error
 messages a developer reads; two in `docs/ARCHITECTURE.md`; and one each in
-`subprojects/docket/src/docket/roadmap.py`, `.claude/skills/docket/SKILL.md` and
-`subprojects/docket/README.md`. Four carry the section-citation form
+`subprojects/docket/src/docket/roadmap.py`, `.claude/skills/docket/modes/release.md`
+and `subprojects/docket/README.md`. Four carry the section-citation form
 `tools/doc_check.py` validates, so a rename that missed them fails `make check`;
 the other four name the number bare, where no check reads it. **Re-counted after
 `PL-7SVX` closed in `#638`** - the last of this section's Required scope, and the
