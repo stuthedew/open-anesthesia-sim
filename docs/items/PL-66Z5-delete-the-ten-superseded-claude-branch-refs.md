@@ -3,11 +3,12 @@ id: PL-66Z5
 title: Delete the ten superseded claude/* branch refs whose work is already whole on main
 priority: P2
 effort: S
-status: ready
+status: done
 classes: housekeeping
 feature: remote-ref-deletion
 touches: docs/items
 added: 2026-09-20
+closed: 2026-09-20
 payoff: every stranded, flight and concurrent read stops walking ten dead refs, so the two live branches stop being buried among twelve
 verify: ! git ls-remote --heads origin 'refs/heads/claude/fervent-knuth-pr9ex7' 'refs/heads/claude/amazing-thompson-3hwksq' 'refs/heads/claude/awesome-brown-x29b1e' 'refs/heads/claude/tender-goldberg-psn2x7' 'refs/heads/claude/tender-keller-omy3ec' 'refs/heads/claude/magical-bohr-brjvi4' 'refs/heads/claude/optimistic-brahmagupta-63pa72' 'refs/heads/claude/nifty-gauss-rgoya2' 'refs/heads/claude/funny-turing-bul2ux' 'refs/heads/claude/happy-shannon-e9eeen' | grep -q .
 ---
