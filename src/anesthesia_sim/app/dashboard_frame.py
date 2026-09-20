@@ -24,11 +24,12 @@ requirements rather than wording: the "Alveolar" readout glossed
 (`PL-71CF`), each stated in `docs/MODEL.md` and held by an exact-string test.
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Final
 
+from anesthesia_sim.app.bookmarks import BookmarkSet, CrossingDirection, MacTarget, TimeBookmark
 from anesthesia_sim.app.chart_frame import (
     COMPARED_COMPARTMENT_CAP,
     ChartFrame,
@@ -57,6 +58,7 @@ from anesthesia_sim.app.formatting import (
     format_supported_run_length,
     format_time_base,
     format_wash_in_ratio,
+    render_mac_multiple,
 )
 from anesthesia_sim.app.playback import SUPPORTED_PLAYBACK_RATES, PlaybackRate
 from anesthesia_sim.app.run_series import RecordedQuantity
@@ -202,6 +204,77 @@ CONTROL_TIMELINE_CAPTION: Final = (
 UNLISTED_CHANGES_TEMPLATE: Final = "{count} earlier change(s) not listed"
 UNMARKED_CHANGES_TEMPLATE: Final = "{count} not marked on the chart"
 TIMELINE_OVERFLOW_JOINER: Final = "; "
+
+# The bookmark panel. Two headings and two empty lines rather than one of
+# each, because the two collections are listed apart (`PL-LPLD`) and a shared
+# "nothing marked yet" would leave a reader working out which of the two it
+# was about.
+#
+# Oldest first, which is the opposite of the control-change list above and is
+# not an inconsistency: that list is a record of what has happened and the
+# newest entry is the one a reader is chasing, while this is a set of standing
+# questions a reader adds to and scans, so an entry that moves when another is
+# added is one they have to find again.
+#
+# **The headings name the two kinds and say nothing else.** A caption here
+# would be explaining the domain to a clinician, which
+# `.claude/rules/ui-reader.md` rules out; what each row asserts is carried by
+# its own units and words.
+TIME_BOOKMARK_HEADING: Final = "Time bookmarks"
+MAC_TARGET_HEADING: Final = "MAC targets"
+NO_TIME_BOOKMARKS_TEXT: Final = "None marked"
+NO_MAC_TARGETS_TEXT: Final = "None set"
+
+# What a row says, and the separator between a mark's value and the name the
+# learner gave it. An en dash, which `tools/glyph_check.py` records as
+# rendered; an arrow for the crossing direction was the obvious alternative
+# and is refused, because no arrow is in that table and the direction is the
+# one thing these rows exist to disambiguate (`PL-8XPQ` is what an unrendered
+# arrow cost the control-change list).
+MARK_LABEL_JOINER: Final = " – "
+
+# The editor's own words. Field labels rather than sentences, which is the
+# form `.claude/rules/ui-reader.md` asks a specialist reader's screen to carry
+# its meaning in: "Compartment" and "Height" say what the control sets, and
+# what a height on a given compartment does and does not assert is
+# `docs/MODEL.md` § "MAC multiples as a display unit" rather than a paragraph
+# in a dialog.
+BOOKMARK_DIALOG_TITLE: Final = "Bookmarks"
+EDIT_BOOKMARKS_LABEL: Final = "Edit bookmarks"
+CLOSE_BOOKMARKS_LABEL: Final = "Close"
+ADD_MARK_LABEL: Final = "Add"
+REMOVE_MARK_LABEL: Final = "Remove selected"
+INSTANT_FIELD_LABEL: Final = "Instant"
+COMPARTMENT_FIELD_LABEL: Final = "Compartment"
+HEIGHT_FIELD_LABEL: Final = "Height"
+DIRECTION_FIELD_LABEL: Final = "Crossing"
+MARK_NAME_FIELD_LABEL: Final = "Name"
+MARK_NAME_PLACEHOLDER: Final = "Optional"
+# The entry unit for an instant, and the resolution it is entered at. Seconds
+# rather than the compound form the clock reads, because a spin box states one
+# unit and the compound form is three; the dialog restates the entered value in
+# that form beside the control, so no reader converts between them. One decimal
+# is the simulation step, which is the finest instant a run can stand on.
+INSTANT_ENTRY_SUFFIX: Final = " s"
+INSTANT_ENTRY_DECIMALS: Final = 1
+INSTANT_ENTRY_STEP_S: Final = 1.0
+# What the height control is bounded at before an agent has been named. Every
+# shipped agent's vaporizer reaches at least this multiple of its own 1 MAC,
+# so it is a floor on the real bound rather than a guess at it, and
+# `BookmarkDialog.set_reachable_height` replaces it with the running agent's
+# own the first time a frame is drawn.
+DEFAULT_MAXIMUM_TARGET_MAC: Final = 3.0
+
+REMOVE_NOTHING_SELECTED_TEXT: Final = "Select a mark to remove it."
+"""Conditional text, which is where a sentence is appropriate: it fires on a
+press that did nothing and costs nothing when it does not
+(`.claude/rules/ui-reader.md`). The two empty lines above are standing text
+and are labels for that reason."""
+CROSSING_DIRECTION_WORDS: Final[Mapping[CrossingDirection, str]] = {
+    CrossingDirection.RISING: "rising",
+    CrossingDirection.FALLING: "falling",
+    CrossingDirection.EITHER: "rising or falling",
+}
 
 # Names the substance the six readouts belong to (`PL-TCD1`). Label rather
 # than sentence, and "Modelled" rather than a bare agent name, because the
@@ -1023,6 +1096,128 @@ def timeline_panel(
         notes.append(UNMARKED_CHANGES_TEMPLATE.format(count=undrawn_control_marks))
 
     return TimelinePanel(entries, TIMELINE_OVERFLOW_JOINER.join(notes))
+
+
+@dataclass(frozen=True, slots=True)
+class MarkListing:
+    """One of the two bookmark collections as drawn this tick.
+
+    Attributes:
+        heading: What the collection is called.
+        rows: One line per mark, in the order they were added, or empty.
+        empty_text: What stands where the rows would be when there are none.
+            Carried on the listing rather than chosen by the widget, so the
+            two collections cannot come to disagree about what "nothing
+            marked" looks like.
+    """
+
+    heading: str
+    rows: tuple[str, ...]
+    empty_text: str
+
+    @property
+    def text(self) -> str:
+        """The rows as one block, or the empty line where there are none.
+
+        What a label draws, in the shape `TimelinePanel.entries` already has:
+        the widget writes one string and decides nothing, so the choice
+        between the rows and the empty line is made here where a test can
+        read it.
+        """
+
+        return "\n".join(self.rows) if self.rows else self.empty_text
+
+
+@dataclass(frozen=True, slots=True)
+class BookmarkPanel:
+    """Both collections, listed apart.
+
+    Two listings and not one, which is the shape `PL-LPLD` was scoped on: a
+    single list with a kind column would make a reader sort the rows before
+    reading either.
+
+    Attributes:
+        times: The marked instants.
+        targets: The marked heights.
+    """
+
+    times: MarkListing
+    targets: MarkListing
+
+
+def format_time_bookmark(bookmark: TimeBookmark) -> str:
+    """One marked instant, as a reader meets it.
+
+    The time first and the name after it, because the time is what the row
+    asserts and the name is what the learner chose to call it — and because
+    two rows read against each other are read down their first column.
+    `format_elapsed` renders it, so a bookmark and the run clock beside it
+    state one quantity one way.
+    """
+
+    rendered = format_elapsed(bookmark.instant_s)
+
+    if bookmark.label is None:
+        return rendered
+
+    return f"{rendered}{MARK_LABEL_JOINER}{bookmark.label}"
+
+
+def format_mac_target(target: MacTarget) -> str:
+    """One marked height, as a reader meets it.
+
+    Compartment, height, direction, then the name. All four are on the row
+    rather than in a heading above it, because a target means a different
+    thing on each compartment and in each direction: `docs/MODEL.md`
+    § "MAC multiples as a display unit" states that a multiple of 1 MAC is the
+    conventional reading only on the alveolar compartment and is a
+    partial-pressure ratio everywhere else, and the same height is a wash-in
+    milestone rising and an emergence milestone falling. A row that named the
+    height alone would be the same number standing for six different claims.
+
+    The compartment's name comes from `chart_frame.trace_style`, so the row
+    and the trace it is read against are named by one table.
+    """
+
+    compartment = trace_style(target.quantity).label
+    height = render_mac_multiple(target.mac_multiple)
+    direction = CROSSING_DIRECTION_WORDS[target.direction]
+    stated = f"{compartment} {height} {direction}"
+
+    if target.label is None:
+        return stated
+
+    return f"{stated}{MARK_LABEL_JOINER}{target.label}"
+
+
+def bookmark_panel(bookmarks: BookmarkSet) -> BookmarkPanel:
+    """The two collections a run is marked at, as two listings.
+
+    It states what is *marked* and never what has been *reached*: nothing here
+    reads a compartment, so a listed target says a learner asked for it and
+    says nothing about whether the run has crossed it. The reached /
+    not-reached / still-running outcome is `PL-CTD7`, and keeping it out of
+    this panel is what stops an unbuilt detection being implied by a drawn row.
+
+    Args:
+        bookmarks: The run's marks, from `SimulationSnapshot.bookmarks`.
+
+    Returns:
+        Both listings, each with its heading, its rows and its empty line.
+    """
+
+    return BookmarkPanel(
+        times=MarkListing(
+            TIME_BOOKMARK_HEADING,
+            tuple(format_time_bookmark(bookmark) for bookmark in bookmarks.time_bookmarks),
+            NO_TIME_BOOKMARKS_TEXT,
+        ),
+        targets=MarkListing(
+            MAC_TARGET_HEADING,
+            tuple(format_mac_target(target) for target in bookmarks.mac_targets),
+            NO_MAC_TARGETS_TEXT,
+        ),
+    )
 
 
 def substance_heading(snapshot: SimulationSnapshot) -> str:

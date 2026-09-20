@@ -29,7 +29,7 @@ nothing to it.
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from typing import Final
 
 from PySide6.QtCore import Qt, QTimer
@@ -54,28 +54,37 @@ from anesthesia_sim.app.chart_time_base import (
     ChartTimeBase,
     time_base_for_span,
 )
-from anesthesia_sim.app.controller import SimulationController
+from anesthesia_sim.app.controller import SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
     CHART_HEADING,
     FIT_RUN_LABEL,
     MAX_DISPLAYED_RUNS,
     NO_TRACES_SHOWN_TEXT,
+    REMOVE_NOTHING_SELECTED_TEXT,
     RENDER_INTERVAL_S,
     TIME_BASE_LABEL,
     USE_DISCLAIMER_TEXT,
     WASH_IN_DENOMINATOR_TEXT,
     WASH_IN_HEADING,
     WASH_IN_MODELLED_TEXT,
+    bookmark_panel,
     compartment_cap_notice,
     mac_awake_caption,
     mac_reference_caption,
     no_traces_shown,
+    refused_setting_notice,
     run_label,
     time_axis_caption,
 )
-from anesthesia_sim.app.formatting import format_time_base
+from anesthesia_sim.app.formatting import format_time_base, mac_multiple
 from anesthesia_sim.app.qt_chart import ConcentrationChart, TraceLegend, WashInChart, WashInLegend
-from anesthesia_sim.app.qt_widgets import inert_splitter, selector_stylesheet, styled_label
+from anesthesia_sim.app.qt_widgets import (
+    BookmarkDialog,
+    BookmarksPanel,
+    inert_splitter,
+    selector_stylesheet,
+    styled_label,
+)
 from anesthesia_sim.app.run_view import RunView
 from anesthesia_sim.app.theme import (
     APP_TITLE_SIZE,
@@ -93,6 +102,8 @@ from anesthesia_sim.app.theme import (
     WARNING,
 )
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
+from anesthesia_sim.core.concentration import fraction_from_percent
+from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
 #: Milliseconds per second, for the timer interval `RENDER_INTERVAL_S` states
 #: in seconds.
@@ -223,6 +234,18 @@ class SimulationView(QWidget):
 
         for index, run in enumerate(self._runs):
             run.set_run_name(run_label(index) if len(self._runs) > 1 else None)
+
+        # The marks are the *case's* and not any one run's, which is why they
+        # are built here beside the chart rather than in `RunView`
+        # (`docs/ARCHITECTURE.md` § "Where new code belongs": a control shared
+        # between runs must not be duplicated into each). Every run holds its
+        # own copy and this is the only thing that writes them, so the copies
+        # stay equal by construction - and two runs compared at two different
+        # heights, because a learner typed one of them twice, is the failure
+        # that arrangement exists to make unreachable.
+        self._bookmarks_panel = BookmarksPanel()
+        self._bookmark_dialog: BookmarkDialog | None = None
+        self._bookmarks_panel.edit_button.clicked.connect(self._open_bookmark_dialog)
 
         self._chart_column = self._build_chart_column()
         self._build_page()
@@ -358,12 +381,7 @@ class SimulationView(QWidget):
             column.addWidget(run.build_off_scale_notice())
 
         column.addWidget(self._concentration_chart)
-
-        divider = QFrame()
-        divider.setFrameShape(QFrame.Shape.HLine)
-        divider.setFixedHeight(SECTION_DIVIDER_HEIGHT)
-        divider.setStyleSheet(f"color: {GRIDLINE};")
-        column.addWidget(divider)
+        column.addWidget(self._section_divider())
 
         column.addWidget(styled_label(WASH_IN_HEADING, color=INK, bold=True, wrap=True))
         column.addWidget(styled_label(WASH_IN_DENOMINATOR_TEXT, color=MUTED, wrap=True))
@@ -375,7 +393,27 @@ class SimulationView(QWidget):
 
         column.addWidget(self._wash_in_chart)
 
+        # A section of its own, below both plots, rather than under the
+        # concentration chart it is most often read against. Two reasons, and
+        # the second is the stronger: the marks are the case's rather than
+        # either plot's, so nesting them in one plot's chrome would say
+        # otherwise; and `PL-F9TQ` governs what may stand between a chart
+        # heading and its plot, which is the accretion a control placed there
+        # would resume.
+        column.addWidget(self._section_divider())
+        column.addWidget(self._bookmarks_panel)
+
         return panel
+
+    def _section_divider(self) -> QFrame:
+        """The rule between two sections of the chart column."""
+
+        divider = QFrame()
+        divider.setFrameShape(QFrame.Shape.HLine)
+        divider.setFixedHeight(SECTION_DIVIDER_HEIGHT)
+        divider.setStyleSheet(f"color: {GRIDLINE};")
+
+        return divider
 
     # ---------------------------------------------------------- presenting
 
@@ -465,8 +503,162 @@ class SimulationView(QWidget):
         for index, (run, snapshot) in enumerate(zip(self._runs, snapshots, strict=True)):
             run.refresh(snapshot, frame, index)
 
+        self._refresh_bookmarks(snapshots[0])
         self._frame = frame
         self.presented_frames += 1
+
+    # -------------------------------------------------------------- bookmarks
+
+    def _refresh_bookmarks(self, snapshot: SimulationSnapshot) -> None:
+        """Redraw both collections, and rebound the height control to this agent.
+
+        Read from the reference run, which is the run every other reading on
+        this panel is taken from. Reading one run is correct rather than a
+        simplification: `_apply_to_every_run` is the only thing that writes a
+        mark, so every displayed run carries the same set, and
+        `test_every_displayed_run_carries_the_same_marks` is what holds that.
+
+        Args:
+            snapshot: The reference run's snapshot for this tick.
+        """
+
+        panel = bookmark_panel(snapshot.bookmarks)
+        self._bookmarks_panel.set_panel(panel)
+
+        if self._bookmark_dialog is None:
+            return
+
+        self._bookmark_dialog.set_panel(panel)
+        self._bookmark_dialog.set_reachable_height(
+            mac_multiple(
+                fraction_from_percent(snapshot.max_delivered_concentration_percent),
+                snapshot.agent_mac_percent,
+            )
+        )
+
+    def _open_bookmark_dialog(self) -> None:
+        """Show the editor, building it the first time it is asked for.
+
+        One dialog for the life of the dashboard rather than one per opening,
+        so a reader who closes it and opens it again finds their selection
+        where they left it. Non-modal and `open()` rather than `exec()`, for
+        the reasons `BookmarkDialog` states.
+        """
+
+        if self._bookmark_dialog is None:
+            dialog = BookmarkDialog(self)
+            dialog.add_time_button.clicked.connect(self._add_time_bookmark)
+            dialog.remove_time_button.clicked.connect(self._remove_time_bookmark)
+            dialog.add_target_button.clicked.connect(self._add_mac_target)
+            dialog.remove_target_button.clicked.connect(self._remove_mac_target)
+            self._bookmark_dialog = dialog
+
+        self.present(False)
+        self._bookmark_dialog.open()
+
+    def _apply_to_every_run(self, edit: Callable[[SimulationController], None]) -> None:
+        """Make one change to every displayed run, or to none of them.
+
+        The marks are the case's, so a mark added to one run and refused by
+        another would leave two runs of one case answering different
+        questions - which is exactly the state this panel exists to prevent.
+        `BookmarkSet` is a value and every operation on it returns a new one,
+        so the edits are computed against copies first and written only once
+        all of them have been accepted.
+
+        Args:
+            edit: What to do to one run.
+        """
+
+        self._bookmarks_notice(None)
+
+        try:
+            for run in self._runs:
+                edit(run.controller)
+        except SimulationConfigurationError as error:
+            self._bookmarks_notice(refused_setting_notice(error))
+
+        self.present(False)
+
+    def _bookmarks_notice(self, text: str | None) -> None:
+        """Say why an edit was refused, in the dialog the reader is looking at."""
+
+        if self._bookmark_dialog is not None:
+            self._bookmark_dialog.notice.set_notice(text)
+
+    def _add_time_bookmark(self) -> None:
+        """Mark the instant the form describes, on every run."""
+
+        dialog = self._bookmark_dialog
+
+        if dialog is None:
+            return
+
+        try:
+            bookmark = dialog.entered_time_bookmark()
+        except SimulationConfigurationError as error:
+            self._bookmarks_notice(refused_setting_notice(error))
+
+            return
+
+        self._apply_to_every_run(lambda run: run.add_time_bookmark(bookmark))
+        dialog.clear_entry()
+
+    def _remove_time_bookmark(self) -> None:
+        """Unmark the selected instant, on every run."""
+
+        dialog = self._bookmark_dialog
+
+        if dialog is None:
+            return
+
+        marks = self._runs[0].snapshot().bookmarks.time_bookmarks
+        index = dialog.selected_time_index()
+
+        if not 0 <= index < len(marks):
+            self._bookmarks_notice(REMOVE_NOTHING_SELECTED_TEXT)
+
+            return
+
+        selected = marks[index]
+        self._apply_to_every_run(lambda run: run.remove_time_bookmark(selected))
+
+    def _add_mac_target(self) -> None:
+        """Mark the height the form describes, on every run."""
+
+        dialog = self._bookmark_dialog
+
+        if dialog is None:
+            return
+
+        try:
+            target = dialog.entered_mac_target()
+        except SimulationConfigurationError as error:
+            self._bookmarks_notice(refused_setting_notice(error))
+
+            return
+
+        self._apply_to_every_run(lambda run: run.add_mac_target(target))
+        dialog.clear_entry()
+
+    def _remove_mac_target(self) -> None:
+        """Unmark the selected height, on every run."""
+
+        dialog = self._bookmark_dialog
+
+        if dialog is None:
+            return
+
+        marks = self._runs[0].snapshot().bookmarks.mac_targets
+        index = dialog.selected_target_index()
+
+        if not 0 <= index < len(marks):
+            self._bookmarks_notice(REMOVE_NOTHING_SELECTED_TEXT)
+
+            return
+
+        selected = marks[index]
+        self._apply_to_every_run(lambda run: run.remove_mac_target(selected))
 
     def _handle_time_base_change(self, index: int) -> None:
         """Take the width the reader chose and draw it at once.
