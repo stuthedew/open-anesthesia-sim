@@ -1532,6 +1532,32 @@ in the tree reports it; `git ls-remote --tags origin` is what answers.
    on this branch to clear it. The whole worth of the field is that a reviewer
    wrote it first.
 
+   **One class of item reaches that `REJECT` every time, and the case is
+   settled - do not re-derive it** (`PL-K4R5`). Where the deliverable *is* a
+   changed output string, the test pinning the old one must change, and the
+   old string is then simply gone: nothing in the diff separates the
+   commissioned rewrite from an expectation quietly dropped. The check now
+   prints the same-file lines differing from the removal by exactly one
+   string, with the true count, and folds none of them. Report the `REJECT`
+   with those lines and say which candidate is the rewrite - that is the
+   reading the tool refuses to guess at, and it is one line rather than a
+   reconstruction.
+
+   Three ways out were measured over 502 single-id close-outs, in which 57
+   would `REJECT` this check and 20 are this shape, and all three failed:
+   folding on the pairing reaches a wrong answer, since 15 of the 20 have more
+   than one candidate and `PL-FCM3` has six; keying the fold to the
+   commission's own `verify:` string explains 1 of 20; and having triage copy
+   the old string out of the brief reaches 3 of 20, because the string is
+   usually not in the item. `falsifies:` itself stands at **0 of 1,324**
+   items - written once into the tool in `v0.4.27` and never onto an item.
+
+   So write it at triage only in the case that actually works: the item's own
+   brief already quotes the old string, as `PL-FCM3`'s title did. Then
+   `bin/docket set <id> --falsifies '<the quoted string>'` before the work,
+   and the close-out folds. Everywhere else the `REJECT` is expected, and
+   reporting it is the whole of what is owed.
+
    Run the bare `bin/docket verify <id>` only when reviewing a branch somebody
    else was commissioned to write.
 

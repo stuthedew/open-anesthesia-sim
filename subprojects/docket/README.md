@@ -1461,9 +1461,11 @@ Two further fields govern whether the work may be handed to a cheaper model:
 holding the reason an otherwise-qualifying item is withheld. See *Delegation is
 derived, never granted* below.
 
-`falsifies` is read by `docket verify` alone, and is almost always absent. It
-holds enough of one assertion to name the single subject this item's work makes
-untrue — a substring rather than the whole line, because an exact line breaks on
+`falsifies` is read by `docket verify` alone, and is absent from every item
+this store holds - 0 of 1,324 on 2026-09-20, having shipped in `v0.4.27`
+(`PL-K4R5` counted it, and the bullet below says what the check prints instead).
+It holds enough of one assertion to name the single subject this item's work
+makes untrue — a substring rather than the whole line, because an exact line breaks on
 reformatting and on the commas a real assertion carries, and one subject rather
 than a list, because an item falsifying several unrelated assertions is doing
 several things. A fragment shorter than twelve characters is an error: `verify`
@@ -2478,7 +2480,14 @@ exists to prevent.
   arrangement of the tests keeps it. A removed assertion containing that
   substring folds out of "no existing assertion removed" and is printed
   beside it, so the removal stays on the page and reads as a commissioned act
-  rather than an unexplained one (`PL-K82G`).
+  rather than an unexplained one (`PL-K82G`). **One class of removal cannot be
+  folded by anything**: where the item's deliverable *is* a changed output
+  string, the old string is simply gone, and the diff holds nothing separating
+  the commissioned rewrite from an expectation dropped. The refusal stands, and
+  the check names every same-file line differing from the removal by exactly one
+  string, with the true count and none chosen - 15 of the 20 such close-outs in
+  this history carry more than one candidate, so choosing would print a guess as
+  fact (`PL-K4R5`).
 - **A `dropped` item, or one carrying `not-delegable:`**, has no `verify:`
   command by construction — the first built nothing, and the second is what
   `docket check` accepts *instead of* a command. The check names which applies
