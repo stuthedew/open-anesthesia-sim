@@ -167,11 +167,12 @@ class SimulationSnapshot:
     """Where each mark in `bookmarks` stands on this run, keyed by the mark.
 
     The other half of the same question `bookmarks` asks: that field is what
-    the learner marked, and this is how far the run has got with each of them.
-    Four answers rather than two, because "not reached" and "not reached yet"
-    are different claims and a row that conflates them tells a learner to wait
-    for something that cannot arrive — `bookmarks.MarkStanding` carries the
-    argument for each.
+    the learner marked, and this is where the run stands on each of them.
+    Five answers rather than two, because "not reached", "not reached yet" and
+    "already behind the clock" are different claims and a row that conflates
+    them tells a learner to wait for something that cannot arrive —
+    `bookmarks.MarkStanding` carries the argument for each, and the reason a
+    marked instant and a marked height are answered in different words.
     """
     supported_limit_reason: str | None
     """Why the run stopped at a declared limit of the model's domain, or
@@ -232,10 +233,10 @@ class SimulationSnapshot:
 class ResumePoint:
     """Everything a branch needs in order to have opened where it did.
 
-    Five things that only mean anything together, so they travel together
-    rather than as five attributes a later edit could set one of - the
+    Six things that only mean anything together, so they travel together
+    rather than as six attributes a later edit could set one of - the
     argument `RunSegment` already makes about its own two halves. A branch
-    rebuilt from four of these and a stale fifth would open at a state its
+    rebuilt from five of these and a stale sixth would open at a state its
     settings never produced, or on an accounting period that never happened.
 
     It is also what `SimulationController.reset()` reads. Reset returns a run
@@ -272,6 +273,15 @@ class ResumePoint:
         accounting_anchor_l: The agent the *case's* accounting period started
             from, carried rather than re-derived. `AgentUptakeSystem.resume_at`
             says why deriving it is unsafe.
+        crossing: The marked crossing the fork was taken at, or `None` for a
+            fork at a control event, which is not a crossing at all. It is
+            the one member that is about the *marks* rather than about the
+            state, and it is here rather than read from the parent for the
+            reason the other five are: `_open_at` is a reset's path as well
+            as a fork's, and a reset cannot go back and ask the parent. Held
+            on the resume point, both paths seed from the identical value and
+            a branch reset onto its own fork stands where it stood
+            (`PL-3K9B`, case G).
     """
 
     segment: RunSegment
@@ -279,6 +289,7 @@ class ResumePoint:
     step_count: int
     simulation_step_s: float | None
     accounting_anchor_l: float
+    crossing: BookmarkCrossing | None
 
     @property
     def elapsed_s(self) -> float:
@@ -322,7 +333,10 @@ class SimulationController:
         # Both are the run's product rather than the learner's question, so
         # both are cleared wherever a new run begins - `_build_state`, which
         # `set_agent` comes back through, and `reset()` - while `_bookmarks`
-        # below survives all of it.
+        # below survives all of it. `_stand_on` is the one exception, and it
+        # is not a carry-over: a branch opens *standing on* the crossing it
+        # was forked at, which is where it is rather than something an earlier
+        # run did.
         self._bookmark_halt: BookmarkCrossing | None = None
         self._reached_instants_s: frozenset[float] = frozenset()
         self._reached_crossings: frozenset[tuple[RecordedQuantity, float]] = frozenset()
@@ -350,6 +364,11 @@ class SimulationController:
         survives; whether a run halted on one is that run's product and does
         not, because a standing carried across a reset would report a crossing
         that the run now on screen never took.
+
+        A branch's reset clears through here and is then re-seeded by
+        `_open_at`, which is the same sequence a fork runs: the crossing a
+        branch opens on is where the branch stands rather than what an earlier
+        run did, so it comes back with the state it belongs to.
         """
 
         self._bookmark_halt = None
@@ -1039,6 +1058,54 @@ class SimulationController:
         self._run_definition.record_change(system.equation_settings())
         self._opened_from = resume_point
         self._clear_control_timeline()
+        self._stand_on(resume_point.crossing)
+
+    def _stand_on(self, crossing: BookmarkCrossing | None) -> None:
+        """Seed what this run has done with the marks from the crossing it opens on.
+
+        The deliberate exception to the rule stated beside `_reached_instants_s`
+        - that what a run has done with the marks is the run's product and is
+        cleared wherever a new run begins. A branch forked at a halt is
+        *standing on* that crossing: it is not something the parent did and
+        the branch inherited, it is where the branch is, and a run that opens
+        on a crossing and reports having crossed nothing describes a different
+        run (`PL-3K9B`).
+
+        Assigned rather than merged, because this is called from `_open_at`,
+        which is a reset's path as well as a fork's. A fork reaches it with
+        the sets already empty and a reset with them just cleared, so both
+        arrive at the same three values from the same crossing - which is what
+        keeps a branch reset onto its own fork standing where it stood rather
+        than back in the defect.
+
+        A time bookmark no longer needs this - the clock places it, and
+        `bookmarks._time_bookmark_standing` says how - with the one exception
+        the comparison cannot see: a mark whose instant is not a multiple of
+        the step in binary is crossed by a step that lands a few parts in 1e16
+        past it, so the branch opens *after* its own mark. A MAC target needs
+        it outright, having no clock to be placed against.
+
+        Args:
+            crossing: The marked crossing this run opens standing on, or
+                `None` where it opens at a control event, which crossed
+                nothing.
+        """
+
+        self._bookmark_halt = crossing
+
+        if crossing is None:
+            self._reached_instants_s = frozenset()
+            self._reached_crossings = frozenset()
+            return
+
+        self._reached_instants_s = frozenset(
+            bookmark.instant_s for bookmark in crossing.time_bookmarks
+        )
+        self._reached_crossings = frozenset(target.crossing_key for target in crossing.mac_targets)
+        # A mark unmarked on this branch before the reset is not put back by
+        # it: the crossing is a record of a step, and `_forget_unmarked` is
+        # what keeps that record from naming a row the panel no longer draws.
+        self._forget_unmarked()
 
     def _resume_point_at(self, elapsed_s: float) -> ResumePoint:
         """Everything a branch opening at `elapsed_s` needs, or a refusal saying why.
@@ -1069,8 +1136,13 @@ class SimulationController:
             )
 
         # The fork *is* the stretch's opening here, which is what makes a
-        # control event the simple case: one instant doing both jobs.
-        return self._resume_point(segment, segment.opening)
+        # control event the simple case: one instant doing both jobs. And no
+        # crossing: a keyframe is where a setting was changed, which is not a
+        # mark and carries none. A mark standing on that instant is answered
+        # by the clock instead - the branch opens exactly at it, so
+        # `opened_at_s <= instant_s <= elapsed_s` holds from the first
+        # snapshot (`PL-3K9B`, case E).
+        return self._resume_point(segment, segment.opening, None)
 
     def _resume_point_at_halt(self) -> ResumePoint:
         """Everything a branch opening at this run's halt needs, or a refusal saying why.
@@ -1102,6 +1174,7 @@ class SimulationController:
         return self._resume_point(
             self._run_definition.segment_at(fork_at_s),
             Keyframe(fork_at_s, self._run_definition.state_at(fork_at_s)),
+            self._bookmark_halt,
         )
 
     def _require_forkable(self) -> None:
@@ -1121,7 +1194,9 @@ class SimulationController:
                 "the trunk instead"
             )
 
-    def _resume_point(self, segment: RunSegment, fork: Keyframe) -> ResumePoint:
+    def _resume_point(
+        self, segment: RunSegment, fork: Keyframe, crossing: BookmarkCrossing | None
+    ) -> ResumePoint:
         """A branch's whole provenance: the stretch it opens inside and where it stands.
 
         Args:
@@ -1129,6 +1204,10 @@ class SimulationController:
                 the keyframe the branch's own definition opens at.
             fork: The instant the branch is taken at and this run's canonical
                 state there.
+            crossing: The marked crossing being forked at, or `None` where the
+                fork is a control event rather than a halt. Required rather
+                than defaulted, so a door added later states which it is
+                instead of inheriting the quieter answer.
 
         Raises:
             SimulationConfigurationError: the fork instant is not a whole
@@ -1158,6 +1237,7 @@ class SimulationController:
             accounting_anchor_l=(
                 self._state.uptake_system.agent_simulation_validator.initial_agent_l
             ),
+            crossing=crossing,
         )
 
     def _setting_at(self, control: ControlInput, elapsed_s: float, current: float) -> float:
@@ -1550,6 +1630,7 @@ class SimulationController:
             reached_instants_s=self._reached_instants_s,
             reached_crossings=self._reached_crossings,
             opened_at_s=self.began_at_s,
+            elapsed_s=self._state.elapsed_s,
             run_length_cap_s=MAXIMUM_ELAPSED_SIMULATION_TIME_S,
             stopped_at_cap=self._supported_limit_reason is not None,
         )

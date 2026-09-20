@@ -383,14 +383,21 @@ def _standings(
     reached_instants_s: frozenset[float] = frozenset(),
     reached_crossings: frozenset[tuple[RecordedQuantity, float]] = frozenset(),
     opened_at_s: float = 0.0,
+    elapsed_s: float | None = None,
     stopped_at_cap: bool = False,
 ) -> object:
-    """This set's standings, so a test states only the fact it is about."""
+    """This set's standings, so a test states only the fact it is about.
+
+    `elapsed_s` defaults to the run's own opening, which is a run that has not
+    stepped: every marked instant is still ahead of it, so a test that is
+    about something other than the clock is not quietly answered by it.
+    """
 
     return marks.standings(
         reached_instants_s=reached_instants_s,
         reached_crossings=reached_crossings,
         opened_at_s=opened_at_s,
+        elapsed_s=opened_at_s if elapsed_s is None else elapsed_s,
         run_length_cap_s=MAXIMUM_ELAPSED_SIMULATION_TIME_S,
         stopped_at_cap=stopped_at_cap,
     )
@@ -407,19 +414,38 @@ def test_a_mark_the_run_can_still_reach_stands_as_still_running() -> None:
     assert standings.of_mac_target(target) is MarkStanding.STILL_RUNNING
 
 
-def test_a_mark_the_run_halted_on_stands_as_reached() -> None:
-    bookmark = TimeBookmark(600.0)
+def test_a_height_the_run_halted_on_stands_as_reached() -> None:
+    """A target's own word, and the only mark that reads it.
+
+    A height is not ordered by a clock - a compartment arrives, leaves and may
+    arrive again - so what the run *did* is the only thing that can be said of
+    one, which is what `REACHED` says.
+    """
+
     target = _target()
-    marks = BookmarkSet().with_time_bookmark(bookmark).with_mac_target(target)
+    marks = BookmarkSet().with_mac_target(target)
 
-    standings = _standings(
-        marks,
-        reached_instants_s=frozenset({600.0}),
-        reached_crossings=frozenset({target.crossing_key}),
-    )
+    standings = _standings(marks, reached_crossings=frozenset({target.crossing_key}))
 
-    assert standings.of_time_bookmark(bookmark) is MarkStanding.REACHED
     assert standings.of_mac_target(target) is MarkStanding.REACHED
+
+
+def test_an_instant_the_run_halted_on_stands_as_passed_rather_than_reached() -> None:
+    """The two vocabularies, at the one place they could have been confused.
+
+    The run halted on this instant, which is the historical claim `REACHED`
+    makes - and the standing is still the positional one, because a clock
+    taken backwards would revoke the history while the mark went on being
+    perfectly reachable (`PL-3K9B`).
+    """
+
+    bookmark = TimeBookmark(600.0)
+    marks = BookmarkSet().with_time_bookmark(bookmark)
+
+    standings = _standings(marks, reached_instants_s=frozenset({600.0}))
+
+    assert standings.of_time_bookmark(bookmark) is MarkStanding.PASSED
+    assert standings.of_time_bookmark(bookmark) is not MarkStanding.REACHED
 
 
 def test_a_relabelled_mark_keeps_what_the_run_did_with_it() -> None:
@@ -467,15 +493,100 @@ def test_a_bookmark_before_a_branch_fork_reads_apart_from_the_cap_case() -> None
     assert standings.of_time_bookmark(inherited) is not MarkStanding.NOT_REACHED_WITHIN_CAP
 
 
-def test_a_bookmark_at_the_fork_instant_itself_is_not_called_unreachable() -> None:
-    """The branch opens standing on it, so the run has not been put past it."""
+def test_a_mark_the_run_has_passed_does_not_read_as_still_reachable() -> None:
+    """The defect `PL-3K9B` names, at the comparison that caused it.
+
+    `STILL_RUNNING` says the run can still reach the mark. A clock only
+    increases, so an instant at or behind it can never be reached again -
+    whatever put the clock there. Both halves are asserted, because the
+    failure was a row that said the wrong one of the two rather than a row
+    that said nothing.
+    """
+
+    at_the_fork = TimeBookmark(300.0)
+    behind_the_clock = TimeBookmark(120.0)
+    marks = BookmarkSet().with_time_bookmark(at_the_fork).with_time_bookmark(behind_the_clock)
+
+    standings = _standings(marks, elapsed_s=300.0)
+
+    assert standings.of_time_bookmark(at_the_fork) is MarkStanding.PASSED
+    assert standings.of_time_bookmark(at_the_fork) is not MarkStanding.STILL_RUNNING
+    assert standings.of_time_bookmark(behind_the_clock) is MarkStanding.PASSED
+    assert standings.of_time_bookmark(behind_the_clock) is not MarkStanding.STILL_RUNNING
+
+
+def test_a_bookmark_at_a_branch_s_own_fork_instant_reads_passed() -> None:
+    """Case A: the branch opens standing on it, and no step it takes can cross it.
+
+    `TimeBookmark.crossed_between` needs `before_s < instant_s`, and the
+    branch's first `before_s` is the fork itself, so the halt set can never
+    acquire this instant however long the branch runs. The clock is what
+    answers it.
+    """
 
     at_the_fork = TimeBookmark(300.0)
     marks = BookmarkSet().with_time_bookmark(at_the_fork)
 
-    assert _standings(marks, opened_at_s=300.0).of_time_bookmark(at_the_fork) is (
-        MarkStanding.STILL_RUNNING
+    standings = _standings(marks, opened_at_s=300.0, elapsed_s=300.0)
+
+    assert standings.of_time_bookmark(at_the_fork) is MarkStanding.PASSED
+
+
+def test_a_seeded_halt_answers_a_fork_that_opened_just_past_its_own_mark() -> None:
+    """Case B: the one case the clock comparison cannot see.
+
+    A halt lands on the step that *crossed* the mark, so an instant that is
+    not a multiple of the step in binary is crossed by a step landing a few
+    parts in 1e16 past it - 45.3 marked, 45.300000000000004 forked at. The
+    branch then opens after its own mark, `opened_at_s <= instant_s` is false,
+    and only the crossing seeded from the fork knows the two are one crossing.
+    Without it the row would read `before this branch opened` while the
+    identical act one step-grid over read `passed`, and both rows render their
+    instant as `45.3s`.
+    """
+
+    marked = 45.3
+    forked_at = 45.300000000000004
+    assert forked_at > marked
+
+    off_grid = TimeBookmark(marked)
+    marks = BookmarkSet().with_time_bookmark(off_grid)
+
+    seeded = _standings(
+        marks, reached_instants_s=frozenset({marked}), opened_at_s=forked_at, elapsed_s=forked_at
     )
+    unseeded = _standings(marks, opened_at_s=forked_at, elapsed_s=forked_at)
+
+    assert seeded.of_time_bookmark(off_grid) is MarkStanding.PASSED
+    assert unseeded.of_time_bookmark(off_grid) is MarkStanding.BEFORE_THIS_BRANCH
+
+
+def test_a_bookmark_at_the_case_s_opening_reads_passed_on_an_ordinary_trunk() -> None:
+    """The same arithmetic with no branch in it at all.
+
+    `crossed_between` needs `before_s < 0.0` and no run's clock is negative,
+    so a mark on induction could never enter the halt set either. It is a
+    strange thing to mark and not an impossible one.
+    """
+
+    induction = TimeBookmark(0.0)
+    marks = BookmarkSet().with_time_bookmark(induction)
+
+    assert _standings(marks, elapsed_s=60.0).of_time_bookmark(induction) is MarkStanding.PASSED
+
+
+def test_a_clock_standing_before_its_own_run_s_opening_is_refused() -> None:
+    """Rather than placing every row against a run that does not exist.
+
+    The two are one run's own numbers, so crossed over they are two runs'.
+    Clamping would answer plausibly, which is the outcome the safety-critical
+    standard puts an obvious failure ahead of.
+    """
+
+    marks = BookmarkSet().with_time_bookmark(TimeBookmark(120.0))
+
+    with pytest.raises(SimulationConfigurationError, match="at or after its own beginning"):
+        _standings(marks, opened_at_s=300.0, elapsed_s=299.9)
 
 
 def test_a_bookmark_beyond_the_run_length_says_so_before_the_run_gets_there() -> None:

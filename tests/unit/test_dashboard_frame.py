@@ -55,6 +55,7 @@ from anesthesia_sim.app.dashboard_frame import (
     EMPTY_METRIC_SECONDARY_VALUE,
     INTERPRETATION_DISCLAIMER_TEXT,
     MAC_TARGET_HEADING,
+    MARK_STANDING_TEXT,
     MAX_DISPLAYED_RUNS,
     MAX_LISTED_ADJUSTMENTS,
     NEW_CASE_CARRYOVER_TEMPLATE,
@@ -229,6 +230,7 @@ def _unreached(marks: BookmarkSet) -> BookmarkStandings:
         reached_instants_s=frozenset(),
         reached_crossings=frozenset(),
         opened_at_s=0.0,
+        elapsed_s=0.0,
         run_length_cap_s=MAXIMUM_ELAPSED_SIMULATION_TIME_S,
         stopped_at_cap=False,
     )
@@ -1831,6 +1833,38 @@ def test_a_mark_the_run_can_still_reach_adds_no_words_to_its_row() -> None:
 def test_a_mark_the_run_halted_on_says_so_on_its_row() -> None:
     target = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
 
+    assert "reached" in format_mac_target(target, MarkStanding.REACHED)
+
+
+def test_every_standing_a_run_can_report_has_a_word_to_draw_it_with() -> None:
+    """A member added without an entry is a `KeyError` at the moment of drawing.
+
+    `_with_standing` indexes the table, so the failure lands in the panel of a
+    running app rather than in anything a reviewer reads - which is why the
+    enum is walked here rather than the table.
+    """
+
+    for standing in MarkStanding:
+        assert standing in MARK_STANDING_TEXT
+
+
+def test_a_mark_the_clock_has_gone_past_is_worded_apart_from_one_the_run_halted_on() -> None:
+    """`PL-3K9B`: two claims, so two words.
+
+    "Passed" is where the clock stands, re-read every time the row is drawn.
+    "Reached" is what the run did, and a clock taken backwards - a rewind, a
+    truncation at a mark - would revoke it while the mark went on being
+    perfectly reachable.
+    """
+
+    bookmark = TimeBookmark(600.0)
+    target = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
+
+    passed = format_time_bookmark(bookmark, MarkStanding.PASSED)
+
+    assert "passed" in passed
+    assert "reached" not in passed
+    assert passed != format_time_bookmark(bookmark, MarkStanding.REACHED)
     assert "reached" in format_mac_target(target, MarkStanding.REACHED)
 
 

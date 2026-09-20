@@ -65,12 +65,36 @@ __all__ = [
 
 
 class MarkStanding(StrEnum):
-    """Where one mark stands on one run: four outcomes, and not three.
+    """Where one mark stands on one run: five outcomes, and not two.
 
-    A mark is a question, so its standing is the answer so far. Three of the
-    four are the obvious ones; the fourth exists because reporting it as one
-    of the other three would state something the model cannot support, which
-    `CLAUDE.md`'s safety-critical standard forbids of a displayed value.
+    A mark is a question, so its standing is the answer so far. Two of the
+    five are the obvious ones; the other three exist because reporting any of
+    them as one of the obvious two would state something the model cannot
+    support, which `CLAUDE.md`'s safety-critical standard forbids of a
+    displayed value.
+
+    **The two kinds are answered in two vocabularies, and the split is the
+    clock** (`PL-3K9B`, project owner 2026-09-20). A time bookmark names an
+    instant, and a run's clock only increases, so where the mark stands is a
+    *position* — ahead of the clock or at or behind it — and nothing about the
+    run's history can change it. A MAC target names a height, which no clock
+    orders: a compartment may arrive at one, leave it and arrive again, so the
+    only thing that can be said of a target is what the run *did*. So
+    `PASSED` and `BEFORE_THIS_BRANCH` answer for time bookmarks and never for
+    targets, `REACHED` answers for targets and never for bookmarks, and
+    `STILL_RUNNING` and `NOT_REACHED_WITHIN_CAP` answer for both.
+
+    **`PASSED` rather than `REACHED` for a bookmark the run is at or behind**,
+    which is the same distinction read from the other side. "Reached" is a
+    historical claim, and a run whose clock is taken backwards — by a rewind,
+    or by truncating at a mark and running on — falsifies it while the mark
+    goes on being perfectly reachable: it will stop the learner again. A
+    positional word survives that, because it is re-read from the clock every
+    time the standing is drawn. The reference simulator avoids the question by
+    giving a bookmark no standing at all — Philip JH, *Workbook for Gas Man*,
+    chapter 2 "Using Bookmarks", where a bookmark is a pause point that fires
+    on the original pass and on every replay alike, read in `PL-3K9B`. This
+    panel draws a standing, so it needs a word that cannot be revoked.
 
     `NOT_REACHED_WITHIN_CAP` is separate from `STILL_RUNNING` because a
     threshold above a compartment's asymptote is never reached: the run stops
@@ -81,13 +105,14 @@ class MarkStanding(StrEnum):
     `BEFORE_THIS_BRANCH` is separate from `NOT_REACHED_WITHIN_CAP` for the
     mirror-image reason. A branch inherits its trunk's marks, so a time
     bookmark lying before the branch's own fork instant comes across with the
-    rest and the branch can never reach it going forward — and unlike the
-    other three this is decidable statically, from `ResumePoint.elapsed_s`,
-    without running anything. Telling a learner it was "not reached within the
-    cap" would say that running longer might reach it, which is false. It is
-    inherited rather than dropped so that a trunk's list and a branch's do not
-    disagree about what the case is marked at (`docs/ARCHITECTURE.md`
-    § "What a branch is"); this is the vocabulary that says so on the row.
+    rest and the branch can never reach it going forward — and unlike
+    `STILL_RUNNING` and the cap this is decidable statically, from
+    `ResumePoint.elapsed_s`, without running anything. Telling a learner it
+    was "not reached within the cap" would say that running longer might reach
+    it, which is false. It is inherited rather than dropped so that a trunk's
+    list and a branch's do not disagree about what the case is marked at
+    (`docs/ARCHITECTURE.md` § "What a branch is"); this is the vocabulary that
+    says so on the row.
 
     A MAC target has no `BEFORE_THIS_BRANCH` case: a height is reachable from
     either side, so a branch may cross one its trunk never did.
@@ -96,8 +121,20 @@ class MarkStanding(StrEnum):
     STILL_RUNNING = "still_running"
     """The run can still reach this mark, and has not yet."""
 
+    PASSED = "passed"
+    """This run's clock is at or behind this marked instant.
+
+    Positional and about a time bookmark only, so it holds however the clock
+    got there — a step, a fork taken at the mark, or the learner marking an
+    instant the run had already run past.
+    """
+
     REACHED = "reached"
-    """This run has halted on this mark at least once."""
+    """This run has halted on this mark at least once.
+
+    Historical and about a MAC target only, which is the one kind no clock
+    orders.
+    """
 
     NOT_REACHED_WITHIN_CAP = "not_reached_within_cap"
     """The run cannot reach it inside the supported run length."""
@@ -583,6 +620,7 @@ class BookmarkSet:
         reached_instants_s: frozenset[float],
         reached_crossings: frozenset[tuple[RecordedQuantity, float]],
         opened_at_s: float,
+        elapsed_s: float,
         run_length_cap_s: float,
         stopped_at_cap: bool,
     ) -> BookmarkStandings:
@@ -604,6 +642,11 @@ class BookmarkSet:
                 bookmark before it is `BEFORE_THIS_BRANCH`, because a reset
                 returns a branch to its fork rather than to the case's
                 opening, so no step of this run can reach it.
+            elapsed_s: Where its clock stands now, on the same axis. Between
+                the two, a marked instant's standing is a position rather
+                than a history — `_time_bookmark_standing` says what that
+                buys and `MarkStanding.PASSED` says why it is the honest
+                answer. A MAC target reads neither: no clock orders a height.
             run_length_cap_s: `MAXIMUM_ELAPSED_SIMULATION_TIME_S`, passed in
                 rather than imported so this module keeps naming no core
                 range of its own. A bookmark beyond it is reported as
@@ -615,7 +658,23 @@ class BookmarkSet:
 
         Returns:
             One standing per mark, keyed by the mark.
+
+        Raises:
+            SimulationConfigurationError: If `elapsed_s` stands before
+                `opened_at_s`. A run's clock starts at its own beginning and
+                only increases, so the two crossed over means a caller has
+                paired one run's clock with another run's opening — and every
+                bookmark row drawn from that pairing would be positioned
+                against a run that does not exist. Refused rather than
+                clamped, because a clamp would answer plausibly.
         """
+
+        if elapsed_s < opened_at_s:
+            raise SimulationConfigurationError(
+                f"a run's clock stands at or after its own beginning; given a run opened at "
+                f"{opened_at_s} s standing at {elapsed_s} s, so the marks cannot be placed "
+                "against it"
+            )
 
         return BookmarkStandings(
             time_bookmarks=MappingProxyType(
@@ -624,6 +683,7 @@ class BookmarkSet:
                         bookmark,
                         reached_instants_s=reached_instants_s,
                         opened_at_s=opened_at_s,
+                        elapsed_s=elapsed_s,
                         run_length_cap_s=run_length_cap_s,
                         stopped_at_cap=stopped_at_cap,
                     )
@@ -646,21 +706,54 @@ def _time_bookmark_standing(
     *,
     reached_instants_s: frozenset[float],
     opened_at_s: float,
+    elapsed_s: float,
     run_length_cap_s: float,
     stopped_at_cap: bool,
 ) -> MarkStanding:
-    """One marked instant's standing, in the order the four cases exclude each other.
+    """One marked instant's standing, in the order the five cases exclude each other.
 
-    `BEFORE_THIS_BRANCH` is tested first because it is a fact about the run's
-    own beginning rather than about what has happened since, and it is the one
-    answer no amount of running can change.
+    **The question a one-way clock asks is where the instant is, not what the
+    run did** (`PL-3K9B`, project owner 2026-09-20, ratified). A run's clock
+    only increases and never returns below `opened_at_s`, so a marked instant
+    is still ahead of the run or it is not, and the halt set cannot answer it:
+    the set records the instants this run *stopped* on, and an instant can be
+    behind the clock without the run ever having stopped there. Every case the
+    item measured is that gap — a branch opening on the mark it forked at, a
+    branch opening at a control event the mark sits on, a mark typed in behind
+    a running clock, a mark removed and re-added. Each of them read
+    `STILL_RUNNING`, which says the run can still reach the mark, and in none
+    of them could any step ever make that true.
+
+    So the clock decides it, in this order:
+
+    1. **The halt set**, first, because it is the one case the comparison
+       below cannot see. A halt lands on the step that *crossed* the mark, so
+       a fork taken there opens at the crossing step's own instant — which is
+       at or one step past the marked instant, and for an instant that is not
+       a multiple of the step in binary it is past it by a few parts in 1e16.
+       `45.3` marked, `45.300000000000004` forked at: the branch opens after
+       its own mark, and only the seeded halt set knows they are one crossing.
+    2. **`opened_at_s <= instant_s <= elapsed_s`** — the run has been at that
+       instant, whatever put it there.
+    3. **`BEFORE_THIS_BRANCH`**, at its strict `<`, for what is behind the
+       run's own beginning. It keeps its meaning and its wording exactly:
+       nothing reaches it that 1 or 2 has not already claimed, so it is still
+       only ever a branch's inherited mark.
+    4. **The cap**, then **still running**, unchanged.
+
+    `REACHED` is not among them. It is a historical claim, it is
+    `_mac_target_standing`'s answer, and `MarkStanding` carries the argument
+    for keeping the two vocabularies apart.
     """
+
+    if bookmark.instant_s in reached_instants_s:
+        return MarkStanding.PASSED
+
+    if opened_at_s <= bookmark.instant_s <= elapsed_s:
+        return MarkStanding.PASSED
 
     if bookmark.instant_s < opened_at_s:
         return MarkStanding.BEFORE_THIS_BRANCH
-
-    if bookmark.instant_s in reached_instants_s:
-        return MarkStanding.REACHED
 
     if stopped_at_cap or bookmark.instant_s > run_length_cap_s:
         return MarkStanding.NOT_REACHED_WITHIN_CAP
@@ -676,9 +769,13 @@ def _mac_target_standing(
 ) -> MarkStanding:
     """One marked height's standing.
 
-    Three cases rather than four: a height is reachable from either side, so a
-    branch may cross one its trunk never did and there is no
-    `BEFORE_THIS_BRANCH` for a target to be in.
+    Three cases rather than five, and the two it does not have are the two the
+    clock supplies. A height is reachable from either side, so a branch may
+    cross one its trunk never did and there is no `BEFORE_THIS_BRANCH` for a
+    target to be in; and a compartment may arrive at a height, leave it and
+    arrive again, so there is no position for `PASSED` to name either. What
+    the run did is the only thing that can be said of a target, which is why
+    this is where `REACHED` lives.
     """
 
     if target.crossing_key in reached_crossings:

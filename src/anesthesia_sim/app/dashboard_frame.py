@@ -251,10 +251,20 @@ MARK_LABEL_JOINER: Final = " – "
 # `NOT_REACHED_WITHIN_CAP` names the run length rather than a number of hours,
 # so the figure lives once, in `core/supported_ranges.py` and
 # `docs/MODEL.md` § "Supported run length".
+#
+# **"passed" and "reached" are two words because they are two claims**
+# (`PL-3K9B`). "Passed" is where the run's clock is relative to a marked
+# instant, so it is re-read every time the row is drawn and stays true across
+# anything that moves the clock. "Reached" is what the run did to a marked
+# height, which no clock orders. Wording them alike would put one word on a
+# row a rewind can revoke and a row it cannot, which is the plausible-looking
+# answer again - and a learner reading two branches side by side is reading
+# exactly that difference.
 MARK_STANDING_JOINER: Final = " · "
 MARK_STANDING_TEXT: Final[Mapping[MarkStanding, str]] = MappingProxyType(
     {
         MarkStanding.STILL_RUNNING: "",
+        MarkStanding.PASSED: "passed",
         MarkStanding.REACHED: "reached",
         MarkStanding.NOT_REACHED_WITHIN_CAP: "not reached within the supported run length",
         MarkStanding.BEFORE_THIS_BRANCH: "before this branch opened",
