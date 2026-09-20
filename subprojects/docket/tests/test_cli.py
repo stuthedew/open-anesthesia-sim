@@ -4249,3 +4249,139 @@ def test_set_removes_a_field_given_an_empty_value(tmp_path: Path) -> None:
     assert _run("set", "PL-B1B1", "--not-delegable", "", "--overwrite", "--items", str(store)) == 0
 
     assert "not-delegable" not in _item_text(store)
+
+
+BLOCKER = """---
+id: PL-C1C1
+title: The blocker
+priority: P2
+effort: S
+status: ready
+classes: perf
+touches: a.py
+added: 2026-08-01
+payoff: unblocks the two items waiting on it
+verify: grep -q x a.py
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+HELD = """---
+id: PL-D2D2
+title: Held by the blocker alone
+priority: P2
+effort: S
+status: blocked
+classes: perf
+touches: b.py
+blocked-by: PL-C1C1
+added: 2026-08-01
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+HELD_TWICE = """---
+id: PL-E3E3
+title: Held by the blocker and by something still open
+priority: P2
+effort: S
+status: blocked
+classes: perf
+touches: c.py
+blocked-by: PL-C1C1, PL-B1B1
+added: 2026-08-01
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+
+def test_closing_an_item_names_what_it_just_unblocked(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The reverse of `blocked-by` is derived and printed where the blocker closes.
+
+    `PL-PQC7`. `docket check` has reported the same set all along and
+    `cli._say_promotable` names it to a session choosing work, but neither
+    fires at the moment a blocker closes - so the reading reached only a
+    session running a deliberate grooming pass, and two of those ran over the
+    same four items on one day.
+    """
+    store = _store(tmp_path, READY, BLOCKER, HELD, HELD_TWICE)
+
+    assert (
+        _run("set", "PL-C1C1", "--status", "done", "--closed", "2026-08-24", "--items", str(store))
+        == 0
+    )
+
+    out = capsys.readouterr().out
+    assert "Closing PL-C1C1 clears the last recorded blocker on 1 item(s):" in out
+    assert "PL-D2D2" in out
+    # Still held by PL-B1B1, which is open, so closing this one released nothing.
+    assert "PL-E3E3" not in out
+    assert "Not promoted for you" in out
+
+
+def test_closing_an_item_that_unblocks_nothing_says_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An advisory that fires on every close would be read on none of them."""
+    store = _store(tmp_path, READY, BLOCKER, HELD_TWICE)
+
+    assert (
+        _run("set", "PL-C1C1", "--status", "done", "--closed", "2026-08-24", "--items", str(store))
+        == 0
+    )
+
+    assert "clears the last recorded blocker" not in capsys.readouterr().out
+
+
+def test_a_write_that_is_not_a_closure_names_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The trigger is a status reaching `CLOSED_STATUSES`, not any write.
+
+    A `blocked-by` edit can make an item promotable the instant it lands. That
+    is a different event with a different reader, and reporting it here would
+    put the standing backlog in front of somebody who did not cause it.
+    """
+    store = _store(tmp_path, READY, BLOCKER, HELD)
+
+    assert _run("set", "PL-C1C1", "--payoff", "y", "--overwrite", "--items", str(store)) == 0
+
+    assert "clears the last recorded blocker" not in capsys.readouterr().out
+
+
+def test_dropping_a_blocker_releases_what_it_held(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`dropped` closes an item as `done` does, and `promotable` resolves both."""
+    store = _store(tmp_path, READY, BLOCKER, HELD)
+
+    assert (
+        _run(
+            "set",
+            "PL-C1C1",
+            "--status",
+            "dropped",
+            "--reason",
+            "overtaken by the tree",
+            "--closed",
+            "2026-08-24",
+            "--items",
+            str(store),
+        )
+        == 0
+    )
+
+    assert (
+        "Closing PL-C1C1 clears the last recorded blocker on 1 item(s):" in capsys.readouterr().out
+    )

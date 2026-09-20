@@ -30,6 +30,7 @@ from .concurrency import (
 from .config import CONFIG_NAME, Config
 from .config import load as load_config
 from .model import (
+    CLOSED_STATUSES,
     EFFORTS,
     LANE_CROSSING,
     LIST_FIELDS,
@@ -785,8 +786,9 @@ def cmd_set(args: argparse.Namespace) -> int:
         return 0
 
     updated = with_fields(item, **changes)
+    after = [updated if i is item else i for i in items]
     today = args.today or date.today()
-    introduced = analyze([updated if i is item else i for i in items], today, config).errors
+    introduced = analyze(after, today, config).errors
     if introduced:
         # Only what this write adds counts against it. An error the store
         # already carries is somebody else's, and blocking every write until
@@ -805,7 +807,60 @@ def cmd_set(args: argparse.Namespace) -> int:
         if attribute in changes:
             print(f"{item.identifier}: {key}: {_spelled(value) or '(removed)'}")
     print(f"  {path}")
+    _say_unblocked(item, updated, changes, items, after)
     return 0
+
+
+def _say_unblocked(
+    item: Item, updated: Item, changes: dict[str, Any], before: list[Item], after: list[Item]
+) -> None:
+    """Name the items this closure just took the last recorded blocker off.
+
+    The reverse of `blocked-by` is derived rather than stored - a `blocking:`
+    field was considered and refused, because it duplicates an edge the store
+    already computes and adds a second place for it to be written wrong
+    (project owner, 2026-09-20, ratified, over adding the field). What was
+    missing was never the data. `plan.promotable` has derived this set all
+    along and `docket check` has printed it all along, but nothing said it at
+    the moment a blocker closes, so the reading reached only a session running
+    a deliberate grooming pass - `PL-JFQ3` ran one over nine items, and
+    `PL-8G48` and `PL-CHQY` ran two more over the same four four days later,
+    two sessions filing for one batch on one day.
+
+    **Newly promotable, never the whole set.** `cli._say_promotable` prints
+    every stale-blocked item to a session choosing work, which is the standing
+    backlog; this prints only what *this* write released, which is the half no
+    other command can attribute to a cause. Printing the standing set here too
+    would put the same ids in front of the one reader who did not cause them.
+
+    Fires on a status moving into `CLOSED_STATUSES` and on nothing else.
+    `dropped` closes an item as `done` does, and `promotable` resolves against
+    both, so dropping a blocker releases what it held. A `blocked-by` write can
+    also make an item promotable the instant it lands, which is a different
+    event with a different reader and is deliberately left silent.
+
+    Named, never promoted. Of 13 items reached this way across the two passes
+    above, 6 were genuinely startable; the rest were already done inside
+    another item, held by a condition nobody had declared, or carrying a
+    user-facing question written in since triage. `PL-6T44` carries why a
+    recomputed status must not override what an item declares - it would have
+    put `PL-WZVZ`, unbuildable, into `P1` and onto the debt gate.
+    """
+    if "status" not in changes or updated.status not in CLOSED_STATUSES:
+        return
+    held = {candidate.identifier for candidate in promotable(before)}
+    freed = [c for c in promotable(after) if c.identifier not in held]
+    if not freed:
+        return
+    print(f"Closing {item.identifier} clears the last recorded blocker on {len(freed)} item(s):")
+    for candidate in freed:
+        print(f"  {candidate.identifier}  {candidate.title}")
+    print(
+        "  Not promoted for you - a closed blocker is not evidence that nothing else "
+        "holds an item, and 7 of 13 measured this way were held by something the field "
+        "could not see. Read each against the tree, then `docket set <id> --status ready` "
+        "or write what is really holding it into `blocked-by`."
+    )
 
 
 def _requested(args: argparse.Namespace) -> list[tuple[str, str, object]]:
