@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: session-cost, docs
 feature: worker-instructions
-touches: .claude/skills/docket, tools/doc_check.py, docs/items
+touches: .claude/skills/docket, .claude/rules/citation-drift.md, tools/doc_check.py, docs/items, ROADMAP.md, docket.toml, docs/ARCHITECTURE.md
 added: 2026-09-16
 closed: 2026-09-20
 payoff: the close-out, triage and start-an-item procedures still exist after a compaction, instead of CLAUDE.md's pointer to them resolving to nothing
