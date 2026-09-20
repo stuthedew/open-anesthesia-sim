@@ -397,9 +397,12 @@ to continue, rather than the refusal guarding against nothing.
 
 A **bookmark is not yet one of those instants**, and how it becomes one is
 open. `app/bookmarks.py` is what a learner may mark — `PL-LPLD`, built — and
-the halt that stops a run on the step crossing one is `PL-CTD7`, which is not.
-So a mark is currently a question the interface holds and nothing reads it
-against a state. A bookmark's instant is not in
+`PL-CTD7` is the halt that stops a run on the step crossing one, built too:
+`SimulationController.advance` reads every compartment either side of each
+step and pauses the run where a mark lies between the two readings, so a mark
+is now read against a state on every step. What is still open is the *fork*:
+being stopped at a mark is not the same as being able to branch there. A
+bookmark's instant is not in
 general a setting change, so the trunk holds no keyframe there and `resumed_at`
 refuses it like any other — on a 120 s run with two control changes, 3 of the
 1 201 instants a halt could land on are keyframes. Two routes to a forkable

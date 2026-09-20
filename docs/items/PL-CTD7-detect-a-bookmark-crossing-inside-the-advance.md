@@ -3,11 +3,12 @@ id: PL-CTD7
 title: Detect a bookmark crossing inside the advance loop, with an explicit not-reached outcome
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, feature, anticipated
 feature: scenario-branching
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/core/simulation.py, tests/unit, docs/MODEL.md
+touches: src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/simulation_view.py, tests/unit, tests/integration, docs/MODEL.md, docs/ARCHITECTURE.md, ROADMAP.md
 added: 2026-09-06
+closed: 2026-09-20
 payoff: stops a threshold halt landing up to 30 simulated seconds past the value the learner asked for, silently and differently depending on how fast they were running
 verify: grep -q 'def test_a_target_halts_on_every_crossing_in_either_direction' tests/unit/test_bookmarks.py
 ---
@@ -213,3 +214,42 @@ set` refused the move at `P2` in those words.
 live safety defect, and `anticipated` stays on the item to say so. The `safety`
 class describes the overshoot hazard the detection loop is built to prevent, and
 what has changed is that the question in front of it is now answerable.
+
+## Built 2026-09-20: where it landed, and the one declared file it did not need
+
+**`core/simulation.py` was untouched, and that is the finding rather than an
+omission.** This item's `touches` anticipated it — "whatever `core/simulation.py`
+has to expose for a per-step test that does not put simulation logic in a UI
+callback" — and the answer turned out to be nothing. `SimulationState` already
+exposes `elapsed_s`, and `AgentUptakeSystem.state_vector()` is already public
+for `RunDefinition`, so `SimulationController.advance` can read both sides of a
+step without the core learning anything about marks. The core stays unaware
+that bookmarks exist, which is a better boundary than the one the brief
+expected to have to open.
+
+**The detection is stateless, which is stronger than the carried-side rule the
+decision asked for.** Consequence 2 above requires that the crossing just
+halted on is not a new crossing on resume, and proposed carrying the side the
+value was on at the previous step. What shipped needs no carried state at all:
+`advance()` reads the compartments *before* it takes the step and again after,
+so the "previous reading" on the step after a halt is structurally the halting
+step's own. The property holds by construction rather than by maintenance, and
+there is nothing to clear on a reset, a fork or an agent change.
+
+Where the pieces went:
+
+- `app/bookmarks.py` — `TimeBookmark.crossed_between`,
+  `MacTarget.crossed_between`, `BookmarkSet.crossings_between`,
+  `BookmarkCrossing`, `MarkStanding` and `BookmarkStandings`. All pure: two
+  readings in, an answer out. The module still holds no state and reads no
+  run, which is what makes it safe to call from inside the loop.
+- `app/controller.py` — the per-step call in `advance()`, the pause on a
+  crossing, and `bookmark_halt` / `bookmark_standings` on the snapshot.
+- `app/dashboard_frame.py` — the standing on the row, which is what makes the
+  not-reached outcome *visible* rather than only representable. Conditional
+  text: a mark the run can still reach adds no words.
+- `docs/MODEL.md` § "Halting on a marked crossing" — the halt semantics, the
+  grid argument, every-crossing-in-either-direction, and the four outcomes.
+
+**Not built here, and not in scope:** forking *at* a halt is `PL-B8MK`, which
+this unblocks.

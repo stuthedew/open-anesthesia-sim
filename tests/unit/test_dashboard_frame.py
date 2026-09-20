@@ -26,7 +26,13 @@ from typing import Any
 
 import pytest
 
-from anesthesia_sim.app.bookmarks import BookmarkSet, MacTarget, TimeBookmark
+from anesthesia_sim.app.bookmarks import (
+    BookmarkSet,
+    BookmarkStandings,
+    MacTarget,
+    MarkStanding,
+    TimeBookmark,
+)
 from anesthesia_sim.app.chart_frame import (
     MAX_CHART_CONTROL_MARKS,
     ChartFrame,
@@ -63,12 +69,14 @@ from anesthesia_sim.app.dashboard_frame import (
     WIDEST_COMPARTMENT_VALUE,
     WIDEST_READOUT_SECONDARY,
     WIDEST_READOUT_VALUE,
+    BookmarkPanel,
     Emphasis,
     HaltDisposition,
     accounting,
     bookmark_panel,
     delivered_fraction,
     format_mac_target,
+    format_time_bookmark,
     halt_disposition,
     mac_awake_caption,
     mac_reference_caption,
@@ -199,6 +207,28 @@ def _state_of(sample: _Sample, substance_id: str) -> tuple[float, ...]:
     return tuple(state)
 
 
+def _panel(marks: BookmarkSet) -> BookmarkPanel:
+    """That set's panel, with every mark standing as still reachable."""
+
+    return bookmark_panel(marks, _unreached(marks))
+
+
+def _unreached(marks: BookmarkSet) -> BookmarkStandings:
+    """Standings for a run that has reached none of its marks and can still reach all.
+
+    Which is what a panel test wants by default: the rows carry the mark's own
+    value, and the standing is the one that adds no words to them.
+    """
+
+    return marks.standings(
+        reached_instants_s=frozenset(),
+        reached_crossings=frozenset(),
+        opened_at_s=0.0,
+        run_length_cap_s=MAXIMUM_ELAPSED_SIMULATION_TIME_S,
+        stopped_at_cap=False,
+    )
+
+
 def _snapshot(
     is_running: bool = False,
     passes_validation: bool = True,
@@ -266,6 +296,8 @@ def _snapshot(
         agent_accounting_passes_validation=passes_validation,
         control_timeline=control_timeline,
         bookmarks=BookmarkSet() if bookmarks is None else bookmarks,
+        bookmark_halt=None,
+        bookmark_standings=_unreached(BookmarkSet() if bookmarks is None else bookmarks),
         supported_limit_reason=supported_limit_reason,
         failure_reason=failure_reason,
     )
@@ -1694,7 +1726,7 @@ def _marks() -> BookmarkSet:
 
 
 def test_an_unmarked_run_lists_each_collection_as_empty_in_its_own_words() -> None:
-    panel = bookmark_panel(BookmarkSet())
+    panel = bookmark_panel(BookmarkSet(), _unreached(BookmarkSet()))
 
     assert panel.times.rows == ()
     assert panel.targets.rows == ()
@@ -1702,26 +1734,26 @@ def test_an_unmarked_run_lists_each_collection_as_empty_in_its_own_words() -> No
 
 
 def test_the_two_collections_carry_their_own_headings() -> None:
-    panel = bookmark_panel(BookmarkSet())
+    panel = bookmark_panel(BookmarkSet(), _unreached(BookmarkSet()))
 
     assert panel.times.heading == TIME_BOOKMARK_HEADING
     assert panel.targets.heading == MAC_TARGET_HEADING
 
 
 def test_a_marked_instant_is_listed_at_the_clock_the_run_states() -> None:
-    panel = bookmark_panel(_marks())
+    panel = bookmark_panel(_marks(), _unreached(_marks()))
 
     assert panel.times.rows == (f"{format_elapsed(600.0)} – intubation",)
 
 
 def test_an_unnamed_instant_is_listed_under_its_own_time() -> None:
-    panel = bookmark_panel(BookmarkSet().with_time_bookmark(TimeBookmark(600.0)))
+    panel = _panel(BookmarkSet().with_time_bookmark(TimeBookmark(600.0)))
 
     assert panel.times.rows == (format_elapsed(600.0),)
 
 
 def test_a_target_names_its_compartment_and_its_height() -> None:
-    row = bookmark_panel(_marks()).targets.rows[0]
+    row = bookmark_panel(_marks(), _unreached(_marks())).targets.rows[0]
 
     assert row.startswith("Vessel-rich 0.80 ×MAC")
 
@@ -1732,7 +1764,9 @@ def test_a_target_is_named_by_the_table_that_names_its_trace() -> None:
     for quantity in COMPARTMENT_QUANTITIES:
         target = MacTarget(quantity, MacMultiple(0.8))
 
-        assert format_mac_target(target).startswith(trace_style(quantity).label)
+        assert format_mac_target(target, MarkStanding.STILL_RUNNING).startswith(
+            trace_style(quantity).label
+        )
 
 
 def test_a_target_is_rendered_by_the_renderer_the_readouts_use() -> None:
@@ -1743,20 +1777,22 @@ def test_a_target_is_rendered_by_the_renderer_the_readouts_use() -> None:
     target = MacTarget(RecordedQuantity.ALVEOLAR, height)
 
     assert render_mac_multiple(height) == "0.80 ×MAC"
-    assert render_mac_multiple(height) in format_mac_target(target)
+    assert render_mac_multiple(height) in format_mac_target(target, MarkStanding.STILL_RUNNING)
 
 
 def test_a_target_row_is_the_compartment_then_the_height() -> None:
     target = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
 
-    assert format_mac_target(target) == "Fat 0.50 \u00d7MAC"
+    assert format_mac_target(target, MarkStanding.STILL_RUNNING) == "Fat 0.50 \u00d7MAC"
 
 
 def test_two_heights_on_one_compartment_are_told_apart_on_the_row() -> None:
     lower = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
     higher = MacTarget(RecordedQuantity.FAT, MacMultiple(0.8))
 
-    assert format_mac_target(lower) != format_mac_target(higher)
+    assert format_mac_target(lower, MarkStanding.STILL_RUNNING) != format_mac_target(
+        higher, MarkStanding.STILL_RUNNING
+    )
 
 
 def test_marks_are_listed_oldest_first() -> None:
@@ -1769,26 +1805,50 @@ def test_marks_are_listed_oldest_first() -> None:
         .with_time_bookmark(TimeBookmark(600.0, "second"))
     )
 
-    rows = bookmark_panel(marks).times.rows
+    rows = bookmark_panel(marks, _unreached(marks)).times.rows
 
     assert rows[0].endswith("first")
     assert rows[1].endswith("second")
 
 
-def test_the_panel_says_nothing_about_whether_a_mark_has_been_reached() -> None:
-    # Detection is `PL-CTD7` and is not built. A row wording a crossing would
-    # put an unbuilt guarantee on screen.
-    panel = bookmark_panel(_marks())
+def test_a_mark_the_run_can_still_reach_adds_no_words_to_its_row() -> None:
+    # Conditional text rather than standing text
+    # (`.claude/rules/ui-reader.md`): a standing repeated on every row would
+    # be chrome, and the rows whose state a reader has to know are the ones
+    # where something has happened.
+    panel = bookmark_panel(_marks(), _unreached(_marks()))
     everything = " ".join((*panel.times.rows, *panel.targets.rows)).lower()
 
-    for claim in ("reached", "crossed", "not reached", "halted", "stopped"):
+    for claim in ("reached", "crossed", "halted", "stopped", "still running"):
         assert claim not in everything
+
+
+def test_a_mark_the_run_halted_on_says_so_on_its_row() -> None:
+    target = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
+
+    assert "reached" in format_mac_target(target, MarkStanding.REACHED)
+
+
+def test_the_two_unreachable_outcomes_are_worded_apart() -> None:
+    # "Not reached" alone would be true of both, and would tell a learner that
+    # a bookmark standing before this branch's fork might arrive if they kept
+    # running. `CLAUDE.md`'s safety-critical standard is what rules that out:
+    # the model can decide it outright, so a row must not imply otherwise.
+    bookmark = TimeBookmark(600.0)
+    at_the_cap = format_time_bookmark(bookmark, MarkStanding.NOT_REACHED_WITHIN_CAP)
+    inherited = format_time_bookmark(bookmark, MarkStanding.BEFORE_THIS_BRANCH)
+
+    assert at_the_cap != inherited
+    assert "run length" in at_the_cap
+    assert "branch" in inherited
 
 
 def test_the_panel_reads_the_marks_the_snapshot_carries() -> None:
     controller = SimulationController()
     controller.add_time_bookmark(TimeBookmark(600.0, "intubation"))
 
-    panel = bookmark_panel(controller.snapshot().bookmarks)
+    panel = bookmark_panel(
+        controller.snapshot().bookmarks, controller.snapshot().bookmark_standings
+    )
 
     assert panel.times.rows == (f"{format_elapsed(600.0)} – intubation",)

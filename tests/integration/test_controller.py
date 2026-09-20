@@ -1186,15 +1186,33 @@ readout can show so a real divergence still does.
 """
 
 
+def _advance_through_halts(controller: SimulationController, duration_s: float) -> None:
+    """Advance `duration_s`, resuming wherever a marked crossing halts the run.
+
+    A marked run halts on the step that crosses one of its marks (`PL-CTD7`),
+    which is an ordinary pause. A driver that did not resume would leave a
+    marked run standing at its first crossing while an unmarked one ran on,
+    so the two would differ by where the marks were rather than by anything
+    the model computed. Unmarked runs never halt, so this is `_advance_for`
+    for every caller that has no marks.
+    """
+
+    for _ in range(round(duration_s / MAXIMUM_SIMULATION_STEP_S)):
+        if not controller.is_running:
+            controller.start()
+
+        controller.advance(MAXIMUM_SIMULATION_STEP_S)
+
+
 def _run_with_two_changes(controller: SimulationController) -> None:
     """Drive 120 s through the controller, moving two controls on the way."""
 
     controller.start()
-    _advance_for(controller, duration_s=30.0)
+    _advance_through_halts(controller, duration_s=30.0)
     controller.set_delivered_partial_pressure_fraction(0.04)
-    _advance_for(controller, duration_s=30.0)
+    _advance_through_halts(controller, duration_s=30.0)
     controller.set_alveolar_ventilation(6.0)
-    _advance_for(controller, duration_s=60.0)
+    _advance_through_halts(controller, duration_s=60.0)
 
 
 def test_a_setting_change_opens_a_segment_where_the_run_saw_it() -> None:
@@ -2378,6 +2396,12 @@ def test_a_mark_changes_nothing_the_run_computes() -> None:
     # where a run halts moves the trunk's own later answers, and holding a mark
     # in a collection beside the run moves nothing. Element-wise rather than
     # within a tolerance, because that is the claim.
+    #
+    # It survives `PL-CTD7` unchanged, and the claim is now the stronger one:
+    # the marked run below is *stopped twice* on the way through, at 45 s and
+    # where the alveolar compartment crosses 0.8 ×MAC, and still computes the
+    # same trajectory element-wise. A halt costs the run no simulated time and
+    # moves no state - it only declines to take the next step until asked.
     marked = SimulationController()
     marked.add_time_bookmark(TimeBookmark(45.0))
     marked.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.8)))

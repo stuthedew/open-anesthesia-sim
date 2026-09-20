@@ -4079,6 +4079,88 @@ same run. Nothing here is stale or resized; the reader simply has a coarser
 choice of when. § "Supported simulation step" measures it, and `PL-NBWP` is
 where the claim above was found overstated.
 
+### Halting on a marked crossing
+
+A run may be **marked**, in two ways: at an instant of the case (a *time
+bookmark*), or at a height on one named compartment (a *MAC target*, held as a
+multiple of the running agent's 1 MAC — § "MAC multiples as a display unit"
+states what that multiple asserts on each compartment, and marking a height
+does not widen it). A mark is a question asked of the case rather than an
+input to it. Nothing marked enters a governing equation, opens a segment or
+moves a keyframe, and a run stepped through its marks computes what an
+unmarked run computes, element for element; what a mark changes is when the
+run stops.
+
+**The crossing is tested on every simulation step, and the run halts on the
+step that crossed.** This is the one respect in which a halt is finer than
+anything a learner can reach while the run is playing. § "Supported simulation
+step" publishes the grid a *control change* lands on — `multiplier × 0.1` s,
+so 0.1 s at 1x and 30 simulated seconds at 300x — and a halt is not on that
+grid: it lands on the crossing step itself, at every playback rate. So the
+concentration displayed beside a halt is the height the learner marked, rather
+than one up to a whole burst's worth of simulated time past it. Testing once
+per rendered frame instead would stop the same bookmark at a different
+concentration depending on how fast the case was being played, with nothing on
+screen saying so — and two branches nominally taken "at 0.8 ×MAC" would open
+from two different states.
+
+**A halt leaves the run paused, and resuming is explicit.** That is the
+consequence of the paragraph above rather than a separate choice: a halt is
+exact, and the next thing the learner does would not be. A setting changed
+while the run plays first acts at a tick boundary, so "halt at 0.8 ×MAC, then
+turn the vaporizer off" would otherwise turn it off up to 30 simulated seconds
+after the value being looked at, leaving a right displayed value and a wrong
+action taken from it. No step is taken while paused and the setters apply
+unconditionally, so a halt that pauses makes the pause-change-resume route
+above automatic instead of something a learner has to know.
+
+**A crossing is a transition between two steps, never a comparison at one.**
+The test is that the reading was on one side of the height at the previous
+step and is on the other at this one. Tested instead as "the reading is at or
+above the height", a run that settled exactly on a marked height would satisfy
+the test on every subsequent step and could never be advanced past it — and a
+comparison at a single reading cannot say *which* step crossed, which is the
+whole of what the halt is for. The height counts as reached on arrival and not
+on departure, in both directions, which is also what makes a halt resumable:
+the run is left standing on the crossing step, so the next step's earlier
+reading is that step's own and the crossing just halted on is not crossed
+again.
+
+**A MAC target halts on every crossing, in either direction** (project owner,
+2026-09-20). A target names a compartment and a height and carries no crossing
+direction, so a case taken up through 0.8 ×MAC and back down through it has
+reached what the learner marked both times and stops both times. Halting once
+and then requiring a target to be re-armed was considered and refused: two
+targets identical in the list would behave differently according to which had
+already fired, with nothing on screen distinguishing them, which is the hidden
+mode this interface is built to avoid. Resuming a paused run is one control,
+and the learner is already looking at it.
+
+**Where a mark stands is reported as one of four outcomes, not two.** The
+distinctions are required rather than stylistic: each of the last two would be
+misread as one of the others.
+
+- **Reached** — the run has halted on this mark at least once. It is a
+  property of the run rather than of the mark, so it is cleared by a reset and
+  by a change of agent, which begin a new run, and a mark inherited by a
+  branch arrives unreached.
+- **Still running** — nothing yet, and the run can still reach it.
+- **Not reached within the supported run length** — the run has stopped at the
+  limit § "Supported run length" declares, with this mark outstanding. A
+  height above a compartment's asymptote is never reached, so this is an
+  answer rather than an interruption, and a row still reading "still running"
+  would invite a learner to wait for something that cannot arrive.
+- **Before this branch opened** — a time bookmark standing earlier than the
+  instant this branch forked at. A branch inherits its trunk's marks, so such
+  a bookmark comes across with the rest and no step of the branch can reach
+  it; it is inherited rather than dropped so that a trunk's list and a
+  branch's do not disagree about what the case is marked at
+  (`docs/ARCHITECTURE.md` § "What a branch is"). It is decidable without
+  running anything, and reporting it as the previous outcome would tell a
+  learner that running longer might reach it, which is false. A MAC target has
+  no equivalent: a height is reachable from either side, so a branch may cross
+  one its trunk never did.
+
 ### The control-input record
 
 Every change to a runtime control that the model actually runs under is
