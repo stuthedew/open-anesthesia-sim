@@ -71,3 +71,14 @@ off the item files rather than inferred:
 command can tell a promotion that was reasoned from one that was typed. The
 same holds here, which is why this item records `not-delegable:` beside a
 `verify:` that only proves no closed blocker is still named.
+
+**One statement above is true today and has a live challenger** (`PL-028T`,
+2026-09-20). "These two *are* the remainder of the gate" holds against
+`origin/main`, where the frozen list is 175 entries with `PL-WZVZ` and `PL-8PS6`
+open. Pull request #757, open and mergeable at the time of writing, proposes
+moving that list to 178 - adding `PL-0RZ0` (`safety`) and `PL-D126` and
+`PL-WJNS` (`science`) under the unconditional safety/science exception. If it
+merges before this item is worked, the gate has three further open entries and
+promoting these two no longer clears it. Check `bin/docket wave` rather than
+this sentence; the pass itself is unaffected, since the three items needing a
+disposition are the same either way.
