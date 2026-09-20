@@ -2,10 +2,13 @@ from math import exp, inf
 
 import pytest
 
-from anesthesia_sim.core.circuit import BreathingCircuit
+from anesthesia_sim.core.circuit import BreathingCircuit, DeliverableFreshGasFlowRange
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import load_reference_circle_system_parameters
-from anesthesia_sim.core.supported_ranges import MAXIMUM_FRESH_GAS_FLOW_L_MIN
+from anesthesia_sim.core.supported_ranges import (
+    MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+    MINIMUM_FRESH_GAS_FLOW_L_MIN,
+)
 from anesthesia_sim.core.uptake_system import AgentUptakeSystem
 
 
@@ -312,3 +315,158 @@ def test_for_agent_builds_the_circuit_at_the_machine_file_s_values() -> None:
     assert circuit.circuit_volume_l == machine.circuit_volume_l
     assert circuit.fresh_gas_flow_l_min == machine.default_fresh_gas_flow_l_min
     assert circuit.time_constant_s == pytest.approx(90.0)
+
+
+# --- The machine's deliverable flow range (PL-8PS6) --------------------------
+
+# The circuit is the one object holding both claims on the fresh gas flow: the
+# model's envelope in `core/supported_ranges.py` and the range a machine
+# profile declares. The tests below cover the machine half; the split itself -
+# that neither claim can be mistaken for the other - is pinned in
+# `tests/unit/test_supported_ranges.py`, beside the envelope it must not widen.
+
+
+def test_a_declared_range_includes_both_of_its_own_endpoints() -> None:
+    """Closed, like every interval `core/supported_ranges.py` declares.
+
+    A machine's minimum-flow floor is a setting the machine reaches, not the
+    first one it refuses, and the same for the top of its flowmeter.
+    """
+
+    circuit = BreathingCircuit(
+        fresh_gas_flow_l_min=1.0,
+        deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
+            minimum_l_min=0.5, maximum_l_min=8.0
+        ),
+    )
+
+    for flow in (0.5, 4.0, 8.0):
+        circuit.set_fresh_gas_flow(flow)
+        assert circuit.fresh_gas_flow_l_min == flow
+
+
+def test_construction_is_refused_at_a_flow_the_machine_cannot_deliver() -> None:
+    """The constructor is a third way in, so it carries the guard too.
+
+    `BreathingCircuit(fresh_gas_flow_l_min=...)` reaches the field without
+    passing `set_fresh_gas_flow`, exactly as `PL-0MLQ` found for the model's
+    own envelope.
+    """
+
+    with pytest.raises(SimulationConfigurationError, match="machine can deliver"):
+        BreathingCircuit(
+            fresh_gas_flow_l_min=0.2,
+            deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
+                minimum_l_min=0.5, maximum_l_min=8.0
+            ),
+        )
+
+
+def test_a_profile_declaring_no_range_leaves_the_model_envelope_alone() -> None:
+    """`None` is an absence of claim, and it is what the shipped profile records.
+
+    No operator's manual or manufacturer specification giving a deliverable
+    range was reachable for any surveyed machine, so the field is `null` in
+    `data/machines/reference_circle_system.json` and the envelope is the only
+    bound - which is the behavior that shipped before the field existed.
+    """
+
+    circuit = BreathingCircuit()
+
+    assert circuit.deliverable_fresh_gas_flow_range is None
+
+    circuit.set_fresh_gas_flow(MAXIMUM_FRESH_GAS_FLOW_L_MIN)
+
+    assert circuit.fresh_gas_flow_l_min == MAXIMUM_FRESH_GAS_FLOW_L_MIN
+
+    with pytest.raises(SimulationConfigurationError, match="compartment model"):
+        circuit.set_fresh_gas_flow(MAXIMUM_FRESH_GAS_FLOW_L_MIN + 1.0)
+
+
+def test_a_machine_that_overlaps_the_envelope_nowhere_is_refused_when_built() -> None:
+    """Said once, rather than discovered one refused setting at a time.
+
+    Every flow such a profile can deliver is outside the model's envelope and
+    every flow the model supports is outside the profile's range, so each
+    individual refusal would be correct while none of them said that the pair
+    is what cannot be simulated.
+    """
+
+    with pytest.raises(SimulationConfigurationError) as raised:
+        BreathingCircuit(
+            deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
+                minimum_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN + 2.0,
+                maximum_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN + 5.0,
+            )
+        )
+
+    message = str(raised.value)
+
+    assert "no fresh gas flow the model is claimed over" in message
+    assert "12.0 to 15.0 L/min" in message
+    assert f"{MINIMUM_FRESH_GAS_FLOW_L_MIN} to {MAXIMUM_FRESH_GAS_FLOW_L_MIN} L/min" in message
+
+
+def test_a_range_touching_the_envelope_at_one_point_is_built() -> None:
+    """The overlap test is on the closed intervals, so one shared flow is enough."""
+
+    circuit = BreathingCircuit(
+        fresh_gas_flow_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+        deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
+            minimum_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN,
+            maximum_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN + 5.0,
+        ),
+    )
+
+    assert circuit.fresh_gas_flow_l_min == MAXIMUM_FRESH_GAS_FLOW_L_MIN
+
+
+def test_a_range_whose_minimum_is_above_its_maximum_is_refused() -> None:
+    """An inverted range refuses every setting while looking like a capability."""
+
+    with pytest.raises(SimulationConfigurationError, match="minimum above its maximum"):
+        DeliverableFreshGasFlowRange(minimum_l_min=8.0, maximum_l_min=0.5)
+
+
+@pytest.mark.parametrize("value", (-1.0, -0.0001, float("nan"), inf, -inf))
+def test_a_range_end_that_is_negative_or_not_finite_is_refused(value: float) -> None:
+    """A machine delivers no negative flow, and `nan` compares false against both ends."""
+
+    with pytest.raises(SimulationConfigurationError):
+        DeliverableFreshGasFlowRange(minimum_l_min=value, maximum_l_min=8.0)
+
+    with pytest.raises(SimulationConfigurationError):
+        DeliverableFreshGasFlowRange(minimum_l_min=0.5, maximum_l_min=value)
+
+
+def test_a_range_may_be_floored_at_zero() -> None:
+    """The one machine property zero is meaningful for: a true off position.
+
+    `_validate_nonnegative_finite` exists in `core/parameters.py` for this
+    case alone, and a guard written as "positive and finite" would make a
+    machine whose common gas outlet turns off unrepresentable.
+    """
+
+    circuit = BreathingCircuit(
+        deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
+            minimum_l_min=0.0, maximum_l_min=8.0
+        )
+    )
+
+    circuit.set_fresh_gas_flow(0.0)
+
+    assert circuit.fresh_gas_flow_l_min == 0.0
+
+
+def test_for_agent_passes_the_machine_file_s_declared_range_to_the_circuit() -> None:
+    """The route, not the value: the shipped profile's range is `None` today.
+
+    What the assertion protects is that a profile which does declare a range
+    reaches the circuit, rather than being parsed and dropped at the seam.
+    """
+
+    machine = load_reference_circle_system_parameters()
+    circuit = AgentUptakeSystem.for_agent("sevoflurane").circuit
+
+    assert machine.deliverable_fresh_gas_flow_range is None
+    assert circuit.deliverable_fresh_gas_flow_range is machine.deliverable_fresh_gas_flow_range

@@ -31,6 +31,7 @@ from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, ConfigDict, field_validator, model_validator
 from pydantic import ValidationError as PydanticValidationError
 
+from anesthesia_sim.core.circuit import DeliverableFreshGasFlowRange
 from anesthesia_sim.core.concentration import MacMultiple, Percent
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 
@@ -232,6 +233,12 @@ class BreathingCircuitParameters:
     display_name: str
     circuit_volume_l: float
     default_fresh_gas_flow_l_min: float
+    # What this machine's flowmeters can actually set, or `None` where the
+    # profile declares no range. `None` is an absence of claim and not a
+    # machine known to be unlimited: with it the model's envelope in
+    # `core/supported_ranges.py` is the only bound, which is what the shipped
+    # profile records and why (`PL-8PS6`).
+    deliverable_fresh_gas_flow_range: DeliverableFreshGasFlowRange | None
     sources: tuple[SourceReference, ...]
     # Why no primary source is adopted, where none is; `None` where one is.
     # Neither value here adopts one at all, which the file's own entry says.
@@ -299,6 +306,26 @@ def _validate_positive_finite(value: object) -> float:
     return numeric_value
 
 
+def _validate_nonnegative_finite(value: object) -> float:
+    """Like `_validate_positive_finite`, admitting zero.
+
+    Separate rather than a flag, because zero is meaningful for exactly one
+    kind of value here and meaningless for the rest: a machine whose common
+    gas outlet has a true off position declares a deliverable floor of 0.0,
+    where a volume or a partition coefficient of zero is a broken file.
+    """
+
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError("must be a number")
+
+    numeric_value = float(value)
+
+    if not isfinite(numeric_value) or numeric_value < 0.0:
+        raise ValueError("must be nonnegative and finite")
+
+    return numeric_value
+
+
 def _validate_positive_fraction(value: object) -> float:
     numeric_value = _validate_positive_finite(value)
 
@@ -323,6 +350,7 @@ SourceTier = Annotated[str, BeforeValidator(_validate_source_tier)]
 DeclaredBool = Annotated[bool, BeforeValidator(_validate_bool)]
 SchemaVersion = Annotated[int, BeforeValidator(_validate_schema_version)]
 PositiveFinite = Annotated[float, BeforeValidator(_validate_positive_finite)]
+NonNegativeFinite = Annotated[float, BeforeValidator(_validate_nonnegative_finite)]
 PositiveFraction = Annotated[float, BeforeValidator(_validate_positive_fraction)]
 PositivePercent = Annotated[float, BeforeValidator(_validate_positive_percent)]
 """**Which vocabulary a new field in this file takes** (`PL-KL2Q`).
@@ -576,6 +604,23 @@ class _ReferenceAdultPayload(_StrictPayload):
         return value
 
 
+class _DeliverableFreshGasFlowRangePayload(_StrictPayload):
+    """Load-time schema for one machine's flow range, discarded into the type above.
+
+    Each end carries its own unit rather than inheriting one from the key, so
+    that a reader of the file sees L/min beside every number - the same reason
+    `circuit_volume_l` and `default_fresh_gas_flow_l_min` are spelled out.
+
+    Ordering is not checked here. `DeliverableFreshGasFlowRange` refuses an
+    inverted range in its own `__post_init__`, so the rule has one statement
+    and the seam below raises it for a data file exactly as it raises for a
+    direct construction.
+    """
+
+    minimum_l_min: NonNegativeFinite
+    maximum_l_min: NonNegativeFinite
+
+
 class _BreathingCircuitPayload(_StrictPayload):
     """Load-time schema for `data/machines/*.json`, discarded into `BreathingCircuitParameters`.
 
@@ -590,6 +635,17 @@ class _BreathingCircuitPayload(_StrictPayload):
     that will hold the value, so a data file naming an unsupported flow is
     refused by `BreathingCircuit.__post_init__` with the message that names
     the interval, rather than by a second copy of the interval here.
+
+    `deliverable_fresh_gas_flow_range` is optional and defaults to `None`,
+    which reads as *this profile declares no range* rather than as *this
+    machine is unlimited* - a profile written before the field existed
+    declared no range, and that is the honest reading of its silence. The
+    shipped profile writes `null` explicitly anyway, so the absence is a
+    statement its author made rather than one a schema default made for them.
+    Nothing here compares it against `core/supported_ranges.py` either: a
+    machine whose range does not overlap the model's envelope is refused by
+    `BreathingCircuit.__post_init__`, which is the one place that holds both
+    claims (`PL-8PS6`).
     """
 
     schema_version: SchemaVersion
@@ -597,6 +653,7 @@ class _BreathingCircuitPayload(_StrictPayload):
     display_name: NonEmptyString
     circuit_volume_l: PositiveFinite
     default_fresh_gas_flow_l_min: PositiveFinite
+    deliverable_fresh_gas_flow_range: _DeliverableFreshGasFlowRangePayload | None = None
     sources: Sources
     provenance_gap: OptionalNonEmptyString = None
 
@@ -677,12 +734,21 @@ def parse_reference_adult_parameters(payload: object) -> ReferenceAdultParameter
 
 
 def parse_breathing_circuit_parameters(payload: object) -> BreathingCircuitParameters:
-    """Validate a breathing-circuit payload and return immutable parameters."""
+    """Validate a breathing-circuit payload and return immutable parameters.
+
+    Raises:
+        SimulationConfigurationError: the payload is not a valid machine
+            profile - a missing or misspelled key, a value outside its
+            validated range, or a `deliverable_fresh_gas_flow_range` whose
+            minimum is above its maximum.
+    """
 
     try:
         model = _BreathingCircuitPayload.model_validate(payload)
     except PydanticValidationError as error:
         raise SimulationConfigurationError(str(error)) from error
+
+    declared_range = model.deliverable_fresh_gas_flow_range
 
     return BreathingCircuitParameters(
         schema_version=model.schema_version,
@@ -690,6 +756,14 @@ def parse_breathing_circuit_parameters(payload: object) -> BreathingCircuitParam
         display_name=model.display_name,
         circuit_volume_l=model.circuit_volume_l,
         default_fresh_gas_flow_l_min=model.default_fresh_gas_flow_l_min,
+        deliverable_fresh_gas_flow_range=(
+            None
+            if declared_range is None
+            else DeliverableFreshGasFlowRange(
+                minimum_l_min=declared_range.minimum_l_min,
+                maximum_l_min=declared_range.maximum_l_min,
+            )
+        ),
         sources=_sources_to_tuple(model.sources),
         provenance_gap=model.provenance_gap,
     )

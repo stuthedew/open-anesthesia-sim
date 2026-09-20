@@ -3,11 +3,12 @@ id: PL-8PS6
 title: Fresh gas flow range is a machine property held in supported_ranges.py, not a global constant
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, anticipated, refactor
 feature: anesthesia-machine
-touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/data/machines, tests/unit, docs/MODEL.md
+touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/data/machines, tests/unit, docs/MODEL.md, docs/machine-abstraction.md, docs/machine-survey.md
 added: 2026-09-06
+closed: 2026-09-20
 payoff: stops a second machine's flowmeter silently widening the range the compartment model's error bound was actually measured over, by giving the model envelope and the machine's deliverable range separate names, sources and refusal messages
 verify: grep -q 'def test_machine_deliverable_flow_range_is_separate_from_model_envelope' tests/unit/test_supported_ranges.py
 ---
@@ -155,3 +156,52 @@ behavior rather than a side effect - `PL-ZF2G` installed it and `PL-JFQ3`
 applied it - and the brief above already says "the band is owed again the moment
 the item is unblocked". The hazard is still not live (one machine), which is why
 `anticipated` stays on the item; what has changed is that the work is startable.
+
+## What was built, 2026-09-20
+
+The split, over one profile, with the machine's range recorded as unknown - the
+shape the correction above prescribes.
+
+- **`core/circuit.py`** gains `DeliverableFreshGasFlowRange` (a frozen
+  minimum/maximum pair, refusing a negative, non-finite or inverted range) and
+  `BreathingCircuit.deliverable_fresh_gas_flow_range`, defaulting to `None`.
+  `_require_deliverable_flow` refuses a flow outside it, in the machine's own
+  words and saying in the same sentence that the model's envelope is not what
+  refused it. `_require_the_two_flow_claims_overlap` refuses, when the circuit
+  is built, a profile that overlaps the envelope nowhere.
+- **`core/supported_ranges.py`** is unchanged in its numbers and states in its
+  docstring that the interval is the model's and only the model's.
+- **`data/machines/reference_circle_system.json`** declares
+  `"deliverable_fresh_gas_flow_range": null`, with the `provenance_gap`
+  carrying survey section (b8) as the authority for the unknown.
+- **`docs/MODEL.md`** § "Supported input ranges" gains "The model's envelope
+  and a machine's deliverable range are two claims", a table of the two and
+  what refuses each.
+
+**Three decisions a later session would otherwise re-derive.**
+
+1. **The field is optional, defaulting to `None`, and `None` means *declares no
+   range* rather than *unlimited*.** A profile written before the field existed
+   declared no range, so silence reading that way is the honest default, and
+   with it the model's envelope is the only bound - exactly the behavior that
+   shipped before. The shipped profile writes `null` explicitly anyway, so the
+   absence is its author's statement rather than a schema default's.
+2. **`minimum_total_flow_l_min` and `minimum_oxygen_flow_l_min` were not
+   built**, though `docs/machine-abstraction.md`'s table names them under the
+   same survey section. A machine's minimum total fresh gas flow *is* the
+   deliverable range's floor, and two names for one number in a safety-critical
+   data file is the conflation this item exists to remove; a minimum oxygen
+   flow reaches nothing this model computes, which carries one volatile agent
+   and no oxygen, so the abstraction's own admission rule refuses it until a
+   hypoxic guard consumes it.
+3. **`MINIMUM_FRESH_GAS_FLOW_L_MIN` and `MAXIMUM_FRESH_GAS_FLOW_L_MIN` keep
+   their names.** "Each side needs its own name" is met by the machine's side
+   having a different one; renaming the model's pair would break the symmetry
+   with the two sibling controls in the same module and would reach
+   `app/dashboard_frame.py` and two integration test files for no safety gain.
+   The distinction is carried where a reader meets it - in the docstrings and
+   in the two refusal messages - rather than in the constant names.
+
+**Not closed by this item, and filed.** `PL-7CRY`: the fresh gas flow slider
+reads the envelope alone, so a profile declaring a narrower range would offer
+settings the circuit refuses. Not live, because no shipped profile declares one.

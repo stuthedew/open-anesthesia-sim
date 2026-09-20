@@ -286,7 +286,7 @@ The fields the survey's evidence admits:
 | Field | Consumer | What it changes | Survey |
 | --- | --- | --- | --- |
 | `apparatus_volume_l` | model | $`V_C`$, hence $`\tau_C`$ | (a1) |
-| `deliverable_flow_range_l_min` | model | the flow bound, with the model envelope | (b8) |
+| `deliverable_fresh_gas_flow_range` | model | the flow bound, with the model envelope | (b8) |
 | `minimum_total_flow_l_min`, `minimum_oxygen_flow_l_min` | model | refusals below the floor | (b8) |
 | `agents` | model | which agents may be mounted at all | (b9) |
 | `agent_limits` | model | per-agent dial maximum | (b2) |
@@ -339,6 +339,23 @@ envelope and the machine's deliverable range, each with its own name, source
 and refusal message. That is `PL-8PS6`'s framing and this design adopts it
 unchanged; it is also what stops a machine profile silently widening the
 model's claimed validity.
+
+**Built, for the fresh gas flow alone, on 2026-09-20** (`PL-8PS6`). The row
+above is in the tree: `deliverable_fresh_gas_flow_range` is a field on
+`BreathingCircuitParameters` carrying a `DeliverableFreshGasFlowRange`, and
+`BreathingCircuit` holds both claims and refuses in each one's own words.
+`reference_circle_system.json` declares `null`, section (b8) having found no
+reachable range for any surveyed machine, so the envelope alone binds and
+nothing displayed changed. Two consequences for item 1's own work, recorded
+here because this document is where its scope is read: the field is
+**optional, defaulting to `None`**, which reads as *declares no range* rather
+than as *unlimited*, so Question 4's refusal of an `unknown` in a field the
+model reads applies to the required fields a real machine profile must supply
+and not to this one; and `minimum_total_flow_l_min` was **not** built beside
+it, because a machine's minimum total fresh gas flow is the same number as
+that range's floor and the admission rule above forbids storing it twice.
+`minimum_oxygen_flow_l_min` was not built either, on the same rule: it reaches
+nothing the model computes until there is a hypoxic guard to consume it.
 
 **The reference profile is a breathing system, not a machine, and stays one.**
 `reference_circle_system.json` is named for what it is. Its `circuit_volume_l`

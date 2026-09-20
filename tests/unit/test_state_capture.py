@@ -37,7 +37,7 @@ import pytest
 from anesthesia_sim.core.agent_simulation_validation import AgentSimulationValidator
 from anesthesia_sim.core.alveolar import AlveolarCompartment
 from anesthesia_sim.core.blood import VenousBloodCompartment
-from anesthesia_sim.core.circuit import BreathingCircuit
+from anesthesia_sim.core.circuit import BreathingCircuit, DeliverableFreshGasFlowRange
 from anesthesia_sim.core.governing_equations import (
     TISSUE_GROUP_COUNT,
     TissueGroupEquationSettings,
@@ -65,7 +65,21 @@ class _Compartment:
 
 
 def _breathing_circuit() -> BreathingCircuit:
-    return BreathingCircuit(inspired_partial_pressure_fraction=0.013)
+    """Built with a machine range declared, unlike every shipped profile.
+
+    `None` is what `data/machines/reference_circle_system.json` records, and a
+    `None` here would make the perturbation below untestable - there is no
+    second value of `NoneType` to write. Declaring one costs nothing and
+    measures more: the field is a setting, so a rollback that restored it
+    would swap the machine under a run in progress (`PL-8PS6`).
+    """
+
+    return BreathingCircuit(
+        inspired_partial_pressure_fraction=0.013,
+        deliverable_fresh_gas_flow_range=DeliverableFreshGasFlowRange(
+            minimum_l_min=0.5, maximum_l_min=8.0
+        ),
+    )
 
 
 def _alveolar_compartment() -> AlveolarCompartment:
@@ -110,6 +124,7 @@ COMPARTMENTS = (
                 "fresh_gas_flow_l_min",
                 "delivered_partial_pressure_fraction",
                 "max_delivered_partial_pressure_fraction",
+                "deliverable_fresh_gas_flow_range",
             }
         ),
     ),
@@ -162,6 +177,11 @@ def _perturb(value: object) -> object:
 
     if isinstance(value, float):
         return value + 1.0
+
+    if isinstance(value, DeliverableFreshGasFlowRange):
+        return DeliverableFreshGasFlowRange(
+            minimum_l_min=value.minimum_l_min + 1.0, maximum_l_min=value.maximum_l_min + 1.0
+        )
 
     raise AssertionError(f"no perturbation defined for {type(value).__name__}")
 

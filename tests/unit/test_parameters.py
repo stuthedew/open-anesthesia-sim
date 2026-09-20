@@ -11,6 +11,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from anesthesia_sim.core import parameters as parameters_module
 from anesthesia_sim.core import patient as patient_module
+from anesthesia_sim.core.circuit import DeliverableFreshGasFlowRange
 from anesthesia_sim.core.exceptions import SimulationConfigurationError
 from anesthesia_sim.core.parameters import (
     AGENT_DATA_FILENAMES,
@@ -478,7 +479,7 @@ def test_every_payload_model_forbids_unknown_keys() -> None:
     strict_base = parameters_module._StrictPayload
     subclasses = strict_base.__subclasses__()
 
-    assert len(subclasses) == 8, "a payload model was added or removed; update this count"
+    assert len(subclasses) == 9, "a payload model was added or removed; update this count"
 
     for model in subclasses:
         assert model.model_config.get("extra") == "forbid", model.__name__
@@ -908,6 +909,81 @@ def test_the_reference_circle_system_records_its_provenance_gap() -> None:
     assert not any(source.adopted for source in machine.sources)
     assert machine.provenance_gap is not None
     assert machine.provenance_gap.strip()
+
+
+def test_the_shipped_machine_declares_no_deliverable_flow_range_and_says_why() -> None:
+    """`PL-8PS6`: the null is the record, and the gap is what makes it one.
+
+    `docs/machine-survey.md` § "(b8) Flow bounds, minimum oxygen flow, and the
+    hypoxic guard" found no minimum oxygen flow, minimum total flow or
+    deliverable range for any of the eight machines it surveyed, so this
+    profile states the absence rather than inventing a plausible range. Under
+    it the model's envelope in `core/supported_ranges.py` is the only bound on
+    the flow, which is the behavior that shipped before the field existed.
+    """
+
+    machine = load_reference_circle_system_parameters()
+
+    assert machine.deliverable_fresh_gas_flow_range is None
+    assert machine.provenance_gap is not None
+    assert "deliverable_fresh_gas_flow_range" in machine.provenance_gap
+    assert "machine-survey.md" in machine.provenance_gap
+
+
+def test_a_machine_payload_may_declare_a_deliverable_flow_range() -> None:
+    """The route a real machine's flowmeter limits will travel."""
+
+    payload = _valid_breathing_circuit_payload()
+    payload["deliverable_fresh_gas_flow_range"] = {"minimum_l_min": 0.2, "maximum_l_min": 15.0}
+
+    machine = parse_breathing_circuit_parameters(payload)
+
+    assert machine.deliverable_fresh_gas_flow_range == DeliverableFreshGasFlowRange(
+        minimum_l_min=0.2, maximum_l_min=15.0
+    )
+
+
+def test_a_machine_payload_omitting_the_range_declares_none_rather_than_unlimited() -> None:
+    """A profile written before the field existed declared no range.
+
+    Silence reading as "no claim" is what makes the default safe: the model's
+    envelope still binds, and nothing infers a machine capable of any flow.
+    """
+
+    machine = parse_breathing_circuit_parameters(_valid_breathing_circuit_payload())
+
+    assert machine.deliverable_fresh_gas_flow_range is None
+
+
+def test_rejects_a_machine_payload_whose_declared_range_is_inverted() -> None:
+    """The ordering rule has one statement, in the type that owns the invariant.
+
+    `DeliverableFreshGasFlowRange.__post_init__` raises it, and the seam lets
+    it out unwrapped, so a data file and a direct construction are refused in
+    the same words.
+    """
+
+    payload = _valid_breathing_circuit_payload()
+    payload["deliverable_fresh_gas_flow_range"] = {"minimum_l_min": 8.0, "maximum_l_min": 0.5}
+
+    with pytest.raises(SimulationConfigurationError, match="minimum above its maximum"):
+        parse_breathing_circuit_parameters(payload)
+
+
+@pytest.mark.parametrize("end", ("0.2", True, None, -1.0))
+def test_rejects_a_machine_payload_whose_range_end_is_not_a_nonnegative_number(end: object) -> None:
+    """Coercion is the failure this payload layer exists to stop.
+
+    `"0.2"` and `True` both load as numbers under Pydantic's defaults, and a
+    machine range that silently became 1.0 L/min would refuse settings a
+    reader of the file expects to work.
+    """
+
+    payload = _valid_breathing_circuit_payload()
+    payload["deliverable_fresh_gas_flow_range"] = {"minimum_l_min": end, "maximum_l_min": 15.0}
+
+    with pytest.raises(SimulationConfigurationError):
+        parse_breathing_circuit_parameters(payload)
 
 
 def test_rejects_a_machine_payload_whose_volume_is_not_positive() -> None:

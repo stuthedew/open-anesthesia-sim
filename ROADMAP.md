@@ -4358,6 +4358,23 @@ not a hole; what would be a hole is closing it silently.
 - PL-W7WL (S) `bin/docket release` writes the notes before `bin/docket record` can backfill `pr:`, so an item merged just before a cut gets a notes line with no number
 - PL-WG7Q (S) `_merges_naming`'s subject scan applies only the closed-here test and never the carried-work one, so a closure split from its work is recorded
 
+**One more from closing `PL-8PS6`** (`PL-7CRY`, 2026-09-20). Splitting the model's
+fresh gas flow envelope from a machine's deliverable range left the interface
+reading the envelope alone, so a profile declaring a narrower range would offer
+settings the circuit refuses. It reaches `src/anesthesia_sim/app/` and so could
+reach a reader of the simulator, which rules out the refilling-queue ground. It
+is declined on the ground `PL-5B1N` and `PL-QYBW` are recorded on: **nothing is
+misleading anybody meanwhile.** No shipped machine profile declares a range - none
+was reachable for any machine the 2026-09-19 survey covered - so the intersection
+*is* the envelope today and the slider's bounds are correct. The refusal it would
+prevent is itself correct and names which of the two claims it violated, so what
+the item buys is an error prevented rather than an error corrected, which is
+`.claude/rules/expert-review.md`'s preference and not a live defect. It becomes
+live with the first profile that declares a range, and that profile is
+planned-milestone item 1's work rather than this gate's.
+
+- PL-7CRY (S) The fresh gas flow slider reads the model envelope alone, so a machine profile declaring a narrower deliverable range would offer settings the circuit refuses
+
 ### Required scope
 
 Nineteen items, in the order the dependencies allow. The first three are the

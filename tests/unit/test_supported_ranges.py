@@ -20,6 +20,7 @@ from typing import NamedTuple
 
 import pytest
 
+from anesthesia_sim.core.circuit import BreathingCircuit, DeliverableFreshGasFlowRange
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -249,3 +250,45 @@ def test_the_run_length_refusal_is_not_a_configuration_error() -> None:
 
     assert not isinstance(raised.value, SimulationConfigurationError)
     assert isinstance(raised.value, SimulationExecutionError)
+
+
+# --- The model envelope against the machine's range (PL-8PS6) ---------------
+
+# The two claims coincided in one pair of constants until PL-8PS6. The module
+# above declares the *model's* envelope; a machine profile declares what that
+# machine can physically set, and the effective limit on the control is the
+# intersection. What the test below pins is that neither can be mistaken for
+# the other: a machine range narrower than the envelope refuses in the
+# machine's name, and a flow outside the envelope refuses in the model's name
+# even on a machine that could deliver it.
+
+
+def test_machine_deliverable_flow_range_is_separate_from_model_envelope() -> None:
+    """Each side refuses in its own name, so a reader can tell which bound bit.
+
+    The safety property is the second assertion rather than the first. A
+    machine whose flowmeter runs past the envelope must not widen the domain
+    the compartment model is claimed over - so the flow it *can* deliver is
+    still refused, and the refusal says the model is what refused it.
+    """
+
+    machine_range = DeliverableFreshGasFlowRange(
+        minimum_l_min=0.5, maximum_l_min=MAXIMUM_FRESH_GAS_FLOW_L_MIN + 5.0
+    )
+    circuit = BreathingCircuit(deliverable_fresh_gas_flow_range=machine_range)
+
+    with pytest.raises(SimulationConfigurationError) as below_the_machine:
+        circuit.set_fresh_gas_flow(0.2)
+
+    with pytest.raises(SimulationConfigurationError) as above_the_model:
+        circuit.set_fresh_gas_flow(MAXIMUM_FRESH_GAS_FLOW_L_MIN + 1.0)
+
+    assert "machine" in str(below_the_machine.value)
+    assert "0.5 to 15.0 L/min" in str(below_the_machine.value)
+
+    assert "compartment model is claimed to represent a patient over" in str(above_the_model.value)
+    assert f"{MINIMUM_FRESH_GAS_FLOW_L_MIN} to {MAXIMUM_FRESH_GAS_FLOW_L_MIN} L/min" in str(
+        above_the_model.value
+    )
+
+    assert circuit.fresh_gas_flow_l_min == 4.0

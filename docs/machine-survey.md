@@ -446,6 +446,16 @@ ISO 80601-2-13:2022/Amd 1:2026. **Its text was not reachable and no claim about
 what it requires is made here** — naming it is a pointer for the session that
 can open it, not a citation of a requirement.
 
+**The structure now exists and the value is still unknown** (2026-09-20,
+`PL-8PS6`). A machine profile carries `deliverable_fresh_gas_flow_range`, and
+`BreathingCircuit` refuses a flow outside it separately from the model's own
+envelope. `reference_circle_system.json` declares `null` on the strength of
+this section, so a session that reaches a deliverable range for a real machine
+writes it into the profile rather than designing a home for it. The minimum
+total flow is that range's floor and is not a second field; the minimum oxygen
+flow reaches nothing the model computes until there is a hypoxic guard to
+consume it.
+
 ### (b9) Which agents a machine can deliver, and the single-agent interlock
 
 **Why it reaches a number.** Model selection is safety-critical under
