@@ -92,21 +92,40 @@ answer it today; that, not a regex, is the repair.
 
 **Three candidate resolutions, for the design round.**
 
-1. **Route the decidable half to the tool that owns it.** Drop
-   `# type: ignore` from `SUPPRESSIONS`; widen the mypy gate to `tests/` and
-   turn on `warn_unused_ignores` (`PL-CMCB`, `PL-M3YJ`). The four remaining
-   markers keep the check honest at zero observed cost. Highest yield; costs a
-   mypy-scope change that is its own piece of work.
+1. **Drop `# type: ignore` from `SUPPRESSIONS`, and change nothing else.**
+   The four remaining markers keep the check honest at zero observed cost.
 2. **Narrow the matcher to code.** Strip backticks and string literals before
    matching, and apply the `.py` restriction the sibling check already carries.
-   This is what `PL-5MFL`, `PL-STC4`, `PL-BHBZ` and `PL-4FD2` each propose a
-   piece of; measured together they remove 33 of 66 hits and leave all 33
-   type-ignore hits untouched. Necessary, not sufficient — it is the third
-   special case, not an exit from the pattern.
-3. **Retire the suppression check and keep the assertion check.** Defensible on
-   the count, and the most likely to be wrong if the deterrence reading holds.
+   `PL-5MFL`, `PL-BHBZ`, `PL-STC4`, `PL-4FD2` and `PL-0KQP` each propose a piece
+   of this; together they remove 33 of 66 hits and leave all 33 type-ignore hits
+   untouched. Necessary, not sufficient.
+3. **Retire the suppression check outright.** Defensible on the count, and the
+   most likely to be wrong if the deterrence reading holds.
 
-**Recommendation: 1, with 2 landing first because it is already in flight.**
+**Recommendation: 1 and 2, which are independent. Not a mypy change.**
+
+**Widening mypy to `tests/` was considered here and is refused, because the
+project already decided it.** `PL-CMCB` closed on 2026-09-01 (`v0.2.8`, pull
+request 168) having asked exactly this question, and its **Approach** is a
+standing decision rather than an oversight: *"Do not start by widening `files`
+to include `tests`. The comment above `files` records the measurement that
+argues against it ... and that comment is the standing decision."* Re-measured
+2026-09-20 and it holds, harder than when it was written: `uv run mypy tests
+subprojects/docket/tests` reports **427 errors in 63 files** under the project's
+`strict = true`, and **255 errors in 37 files** even with `strict` off and only
+`warn_unused_ignores` on - because `warn_unused_ignores` has to type-check a
+file to know whether an ignore is load-bearing, so there is no cheap subset. Of
+the 427, 201 are `[arg-type]`, which is what a test tree that deliberately
+passes invalid inputs to validation code is *supposed* to contain.
+
+**So dropping the marker loses no coverage that exists.** In `src/`, `tools/`,
+`.claude/hooks/` and `subprojects/docket/src/` - everything in `[tool.mypy]
+files` - `strict = true` already enables `--warn-unused-ignores`, so a
+type-ignore there is policed by the tool that can actually decide it, and this
+check adds nothing. In `tests/`, nobody polices it *by decision*, and a regex
+that fires on all 33 is not a substitute for the checker that was declined: it
+cannot tell a load-bearing ignore from an inert one, which is the only question
+worth asking about one. Zero of the 33 observed hits were outside a test file.
 
 **Done when** the suppression check's markers each have a recorded reason to be
 there that its own `noqa` comment would accept, and the seven items above are
