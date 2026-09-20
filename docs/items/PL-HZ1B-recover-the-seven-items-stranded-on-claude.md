@@ -1,6 +1,6 @@
 ---
 id: PL-HZ1B
-title: Recover the seven items stranded on claude/vigilant-albattani-3lkcb3 and give each a v0.5.0 gate disposition, since a triaged safety item with none fails make check
+title: Give the six #784 review items a v0.5.0 gate disposition, the half of their recovery #806 left: untriaged today, each becomes a make check failure the moment triage gives it classes
 status: untriaged
 feature: two-run-attribution
 added: 2026-09-20
@@ -16,7 +16,27 @@ folded into it**. `PL-LHBY` was preferred because it reproduces offscreen
 against the merged tree and its `touches` reach `app/qt_widgets.py`, which
 `PL-4KZD`'s does not.
 
-**What is stranded, and why it matters.** Seven item files exist only on
+**The recovery half landed 2026-09-20 as `#806`, and the gate half did not.**
+All seven files are on `main`, and `PL-LHBY` - the carrier - was admitted to
+v0.5.0's frozen list under its own heading, "Added 2026-09-20 under the
+unconditional safety/science exception - 1 entry". The gate reads 181 entries,
+3 open: `PL-LHBY`, `PL-4KZD`, and `PL-WZVZ` blocked outside it. **What `#806`
+did not do is disposition the other six** - `PL-25DD`, `PL-624C`, `PL-FKN7`,
+`PL-R17Y`, `PL-RS3Z`, `PL-WG73` - and that is the whole of what is left here.
+
+**It is not failing `make check` today, and that is the trap.**
+`doc_check`'s gate check fires only on a *triaged* debt item, and all six are
+`untriaged`, so they carry no `classes` and nothing can yet say whether they
+are debt. The failure arrives with triage, not with the items. `PL-NQKP`
+(triage the 35 untriaged captures) is live on
+`origin/claude/blissful-mendel-ccad0y` and routes these six here by name -
+"work the 29 here and leave the 6 to `PL-HZ1B`", because a gate scoping
+decision does not belong inside a field-filling pass. So this item is a
+**prerequisite of that triage**, and doing them in the other order reddens
+`main`.
+
+**Original framing, kept because the reasoning still applies to the six.**
+Seven item files existed only on
 `origin/claude/vigilant-albattani-3lkcb3`, filed there by the adversarial
 review of `#784`. They are not in the default branch's store, so
 `bin/docket next` cannot see them and a session picking up the marks-panel
@@ -54,10 +74,17 @@ leave the gate reading clear while the defect it stands for is still open,
 which is the bookkeeping drift `gate-list-integrity` (`PL-0VFF` and its five
 siblings) was closed to stop. Do both in one commit or neither.
 
-**Done when.** The seven files are in the default branch's store; every
-recovered debt item has a v0.5.0 gate disposition; `PL-LHBY` is on the frozen
-list and `PL-4KZD` records the fold against it; `make check` is green; and
-`bin/docket stranded` reports nothing on that branch.
+**Done when.** Each of `PL-25DD`, `PL-624C`, `PL-FKN7`, `PL-R17Y`, `PL-RS3Z`
+and `PL-WG73` has a v0.5.0 disposition recorded in `ROADMAP.md` - on the frozen
+list where it is debt under the presence rule or the safety/science exception,
+or in a `### Declined to Gate ...` subsection saying why - with the group
+heading's count moved to match, since `tools/doc_check.py` holds those numbers
+to the list. `make check` green, and `PL-NQKP`'s triage pass is then free to
+run without reddening `main`.
+
+Already done and not to be redone: the recovery itself, `PL-LHBY`'s frozen-list
+entry, and `PL-4KZD`'s record of the fold - all on `main` as of `#806` and
+`#805`.
 
 **One measurement to pass to `PL-8JQQ`, from the other side of it.** That item
 is the implementing session's own record of the same events, and this is the
