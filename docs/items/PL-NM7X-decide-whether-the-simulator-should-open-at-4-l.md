@@ -1,8 +1,15 @@
 ---
 id: PL-NM7X
 title: Decide whether the simulator should open at 4 L/min fresh gas flow, which is above the flow contemporary practice is moving to
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: science
+feature: anesthesia-machine
+touches: src/anesthesia_sim/data/machines/reference_circle_system.json, docs/MODEL.md, docs/machine-survey.md
 added: 2026-09-19
+payoff: stops the simulator's opening fresh gas flow teaching 4 L/min as routine practice when its own survey found the field has moved below it
+verify: grep -q 'teaching default, not a clinical recommendation' src/anesthesia_sim/data/machines/reference_circle_system.json
 ---
 
 **Problem.** Decide whether the simulator should open at 4 L/min fresh gas flow, which is above the flow contemporary practice is moving to
@@ -26,6 +33,14 @@ flow anaesthesia' (e.g. 2 L/min FGF) should be abandoned" in favour of automated
 minimal-flow delivery (*J Clin Monit Comput* 2022;36(6):1601–1610, PMID
 34978655). All three read at the abstract through the PubMed MCP server on
 2026-09-19.
+
+**Why it matters.** The opening fresh gas flow is the first clinical number a
+learner meets, and a default carries an implicit recommendation whether or not
+anyone intends one. The file's own rationale calls 4 L/min "a routine mid-range
+clinical fresh gas flow", which the survey's sources contradict, so the
+simulator currently teaches a practice norm on the authority of a sentence that
+is no longer true. Under `CLAUDE.md`'s safety-critical standard a correct number
+with a wrong provenance is still a presentation failure.
 
 **Why it is the project owner's decision and not a session's.** It is what a
 learner meets on first contact, which `.claude/rules/instruction-writing.md`
@@ -51,3 +66,37 @@ legibility rather than as a recommendation.
 **Done when.** The value is either changed or kept with a recorded decision that
 says it is a teaching choice rather than a clinical convention, and the data
 file's rationale no longer describes 4 L/min as mid-range practice.
+
+**Decision (project owner, 2026-09-20, ratified, over lowering the default to
+match contemporary low-flow practice).** Keep `default_fresh_gas_flow_l_min` at
+4.0, and rewrite the rationale so it reads as a teaching choice rather than as a
+description of practice.
+
+The case that was put and accepted: an unlabelled default teaches a norm
+whatever number it holds, so moving to 0.5 L/min relocates the problem instead
+of removing it — and 0.5 would carry the same unsourced provenance gap this item
+objects to, since no machine publishes a startup flow either. What 4.0 buys is a
+circuit time constant near 90 s, which makes the machine's own lag a separable
+phase ahead of patient uptake inside a run a learner will sit through; at
+0.5 L/min that is roughly 12 minutes and the demonstration no longer completes.
+What is actually wrong today is the sentence, not the number.
+
+The third option in the section above — also surfacing the caveat on the
+interface — was **not** taken in this round. It is a separate change to
+learner-facing display and is not part of this item's scope.
+
+**Done when.** `src/anesthesia_sim/data/machines/reference_circle_system.json`
+no longer describes 4 L/min as "a routine mid-range clinical fresh gas flow",
+and its `provenance_gap` instead records the value as a **teaching default, not
+a clinical recommendation** — that exact phrase, so the claim is greppable —
+with the time-constant legibility reason and this decision's date. `docs/MODEL.md`
+§ "Parameter provenance" and `docs/machine-survey.md` § "(a2)" are corrected to
+match, since both restate the superseded rationale.
+
+**Sources behind the supersession**, gathered by `PL-4DCG`'s survey session at
+abstract level through the PubMed server on 2026-09-19 and **not yet confirmed
+against full text** — the implementing session confirms them before the
+citations land in `docs/MODEL.md`: Candries et al., *J Clin Monit Comput*
+2022;36(6):1881–1890 (PMID 35318567); Hoffmann et al., *Anesthesiology*
+2025;142(6):1038–1046 (PMID 40073301); Kalmar et al., *J Clin Monit Comput*
+2022;36(6):1601–1610 (PMID 34978655).
