@@ -52,6 +52,28 @@ band — those are triage, and demanding them at the moment an idea occurs is
 how ideas stop being written down. Several titles in one call, because
 interruptions rarely carry exactly one thought.
 
+**It says when the capture may already be in the store, and files it anyway.**
+An open item declaring a path this capture reaches, whose title is close to it,
+is printed underneath the new id with its status and the shared path. A warning
+rather than a refusal: the capture rule is unconditional, and a near-duplicate
+that is genuinely a second instance is a legitimate filing. The key is the
+declared path, with the title only ordering what the path selected — title
+closeness on its own catches none of the known duplicate pairs and finds the
+items *meant* to recur, the triage passes and release cuts, instead (`PL-TZ7T`
+carries the table; `duplicates.py` carries the floor and what it was measured
+against). A capture declaring no path — which is
+every capture, since `docket new` writes no `touches` — keys on what the
+working tree is changing instead: the branch's own commits and its uncommitted
+edits. A capture is made *while* working on the thing that produced it, so that
+is the best available guess, and it is the only one, since asking the session
+for a path is friction capture may not have. `PL-0KQP` is the miss it closes —
+nine of thirteen known duplicate pairs share a declared path and the key finds
+them, and all four misses are that one item, filed from a branch whose commits
+touched the exact path the four items it duplicated declare. Where git answers
+nothing the search has no key, finds nothing, and the command behaves as it did
+before any of this existed; it does not fall back to that refuted title-only
+key.
+
 **It writes one line into the body and no headings to fill in:** the title,
 under a `**Problem.**` of its own. A brief appended below it composes — the
 title is the terse problem statement the fuller sections elaborate — and
@@ -1542,6 +1564,33 @@ shared files, so the claim stays a session's judgment and the path list is the
 cheap falsifier. A bare `yes` is rejected for the reason `not-delegable`
 rejects one: a field that lifts an item above every band owes its reader the
 function that broke.
+
+`recurrences` is the evidence those two fields rest on, arriving without a
+session having to notice it — and it is deliberately not a third field that
+changes a queue position. Each entry is a date and the id of a capture that
+`docket new` matched to this item: the filing happened, so the defect fired
+again, and `CLAUDE.md`'s reason for pulling a root cause is that every session
+it stands through pays it again. At three distinct filings — the generator
+rule's own number, so the project carries one threshold rather than two —
+`docket next` and the session-start digest name the item as a promotion
+candidate and stop there. A reader opens the briefs and writes `root-cause-of:`
+by hand, or does not.
+
+**It surfaces; it never promotes**, and that is the whole restraint of the
+design (project owner, 2026-09-20, ratified, over counting repeat filings and
+raising the matched item's `priority:`). The count is built from a
+title-similarity ranking, and `root-cause-of:` is the one place in this store
+where a typo would buy a promotion — so letting the count rank an item would
+reintroduce the hazard that field's validation closes, one indirection away.
+`priority:` could not have carried it either: `docket check` pins `P1` to
+`safety` and `science`, and `CLAUDE.md` forbids promoting process work into
+that band to move it up the order, which is every item this counter will ever
+fire on.
+
+`docket set` does not write it. The field's worth is that each entry was
+recorded by the tool at the moment it matched a filing, so a hand-written one
+is a claim about a filing that may never have happened; `docket check` holds
+each entry to naming a real item, which is as far as a check can reach.
 
 An item at `ready` must carry one of them: the command that would prove it
 done, or a recorded reason why no command can. The gate sits at `ready` rather

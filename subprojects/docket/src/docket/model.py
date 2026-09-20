@@ -23,6 +23,7 @@ import re
 from collections.abc import Collection
 from dataclasses import dataclass, field
 from datetime import date
+from pathlib import PurePosixPath
 
 # Front matter is a `---` fenced block of `key: value` lines at the top of the
 # file. Deliberately not YAML: a real YAML parser is a dependency, and the
@@ -55,7 +56,7 @@ SAFETY_CLASSES = ("safety", "science")
 # set, so a `science`-and-`infra` item is still science.
 PROCESS_CLASSES = ("session-cost", "docs", "infra")
 
-LIST_FIELDS = ("classes", "touches", "blocked-by", "root-cause-of")
+LIST_FIELDS = ("classes", "touches", "blocked-by", "root-cause-of", "recurrences")
 
 # How many distinct items a `root-cause-of:` has to name before the claim is a
 # generator rather than an ordinary item. Three is the project owner's own
@@ -271,6 +272,42 @@ class Item:
     #: `checks.py` and `plan.py` both read, so the checker and the ranking
     #: cannot disagree about what counts as a claim.
     root_cause_of: tuple[str, ...] = ()
+    #: Every time a session filed a capture that `bin/docket new` matched to
+    #: this item, as `DATE PL-XXXX` entries - the date of the filing and the id
+    #: of the capture that matched. A re-filing is not only waste: it is
+    #: evidence that the defect *fired again*, a session hit it, had no idea an
+    #: item existed, and paid the diagnosis a second time. `CLAUDE.md`'s
+    #: generator rule ranks on exactly that property - "every session it stands
+    #: through pays it again" - and what was missing is that the evidence had to
+    #: be *asserted* by a session that happened to notice. `PL-STC4` documents
+    #: its own duplication three times in its own prose and nothing was promoted
+    #: until a session read the cluster by hand, five captures later.
+    #:
+    #: **It surfaces a candidate; it never promotes one.** `README.md` calls
+    #: `root-cause-of:` "the one place in the store where a typo would buy a
+    #: promotion", so letting a title-similarity heuristic write that field - or
+    #: rank as though it had - would reintroduce the hazard `docket check`'s
+    #: validation closes, on a match that is a judgment about prose. The count
+    #: is recorded as auditable fact, both ids are named so a reader can open
+    #: both briefs, and a session confirming the cluster writes `root-cause-of:`
+    #: by hand as it always has.
+    #:
+    #: **Two branches appending on the same day conflict, and that is the right
+    #: trade.** This is the one field a second session can edit on an item
+    #: neither of them is working, so two captures matched to one item in the
+    #: same window put two versions of one line in front of a merge. The
+    #: resolution is always to keep both entries, and the alternative - an index
+    #: or a manifest beside the items - is `docs/dead-ends.md`'s first rejected
+    #: design, for a conflict surface spanning the whole store rather than one
+    #: line of one item.
+    #:
+    #: **`priority:` could not have carried it** (project owner, 2026-09-20,
+    #: ratified, over counting repeat filings and raising the band). `checks.py`
+    #: pins `P1` to `safety` and `science`, and `CLAUDE.md` forbids promoting
+    #: process work into that band to move it up the order - and every item this
+    #: counter fires on is workflow work. The generator tier is the lever that
+    #: exists and already means what a recurrence count measures.
+    recurrences: tuple[str, ...] = ()
     #: Why this item is a defect in the machinery that identifies and ranks
     #: generators - the sibling entrance to the tier `root_cause_of` opens.
     #: A generator earns that tier because three items stand on it; a defect
@@ -637,6 +674,109 @@ def impairs_generators_soundly(item: Item, generator_paths: tuple[str, ...]) -> 
     return bool(item.impairs_generators) and not generator_defect_faults(item, generator_paths)
 
 
+def covers(one: str, other: str) -> bool:
+    """Whether two declared paths can reach the same file.
+
+    A directory covers everything beneath it, so an item declaring
+    `src/anesthesia_sim/app/` reaches the same files as one declaring a single
+    view module inside it, and a capture declaring `subprojects/docket/tests`
+    reaches the module an existing item names there.
+
+    Symmetric, which is what separates it from `is_under`: that asks whether
+    one path falls inside a fixed set of roots - the delegation and lane
+    partitions - and this asks whether two declarations, neither of them a
+    root, could meet. Both live here so that the two path comparisons this
+    package makes sit in one file rather than giving a session two places to
+    get a trailing slash wrong.
+    """
+    first, second = PurePosixPath(one.strip("/")), PurePosixPath(other.strip("/"))
+    return first == second or first in second.parents or second in first.parents
+
+
+@dataclass(frozen=True)
+class Recurrence:
+    """One filing `bin/docket new` matched to this item, as recorded.
+
+    Both halves are kept because both are what makes the count auditable
+    rather than a score. The date says when the defect fired again, which is
+    the property the generator tier ranks on; the id names the capture, so a
+    reader can open that brief beside this one and decide for themselves
+    whether the two are one problem - the judgment this mechanism refuses to
+    make.
+
+    `raw` survives a reading that failed, so a malformed entry can be reported
+    in the words it was written in rather than dropped.
+    """
+
+    when: date | None
+    identifier: str
+    raw: str
+
+
+def recurrences_of(item: Item) -> tuple[Recurrence, ...]:
+    """The recorded recurrences, parsed, malformed entries included.
+
+    An entry that does not read as `DATE PL-XXXX` comes back with whatever
+    could be recovered from it rather than being skipped, because a count that
+    silently drops what it cannot read is a count that says a defect fired
+    fewer times than it did - the failure the apparatus standard's floor names
+    exactly. `recurrence_faults` is what reports it.
+    """
+    found: list[Recurrence] = []
+    for entry in item.recurrences:
+        parts = entry.split()
+        when = _parse_date(parts[0]) if parts else None
+        identifier = parts[1] if len(parts) > 1 else ""
+        found.append(Recurrence(when=when, identifier=identifier, raw=entry))
+    return tuple(found)
+
+
+def recurrence_count(item: Item) -> int:
+    """How many distinct captures this item has absorbed.
+
+    Distinct, and for the reason `root_cause_faults` counts distinct ids: one
+    capture recorded twice names one filing, and a floor a repetition defeats
+    is not a floor. An entry naming no id counts for nothing, since it names
+    no filing that can be read.
+    """
+    return len({found.identifier for found in recurrences_of(item) if found.identifier})
+
+
+def recurrence_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
+    """Why a `recurrences:` entry cannot be read as a filing, or `()`.
+
+    Written like `root_cause_faults` and read by `checks.py` the same way,
+    though it defends against a weaker hazard: this field surfaces a candidate
+    and never promotes one, so a bad entry cannot mis-rank anything. What it
+    can do is make the count wrong in the quiet direction - an entry nobody can
+    resolve is a filing the store cannot show you - and nothing else in the
+    project would ever say so.
+
+    The field is tool-written, so every fault here is a hand edit that went
+    wrong, which is why these are exact rules and so errors rather than
+    advisories.
+    """
+    if not item.recurrences:
+        return ()
+
+    faults: list[str] = []
+    unreadable = [f.raw for f in recurrences_of(item) if f.when is None or not f.identifier]
+    if unreadable:
+        faults.append(
+            f"records {', '.join(repr(entry) for entry in unreadable)}, which does not read "
+            "as `DATE PL-XXXX` - the date the capture was filed, then its id"
+        )
+
+    named = list(dict.fromkeys(f.identifier for f in recurrences_of(item) if f.identifier))
+    if item.identifier and item.identifier in named:
+        faults.append("names itself among the captures that recurred onto it")
+
+    missing = [i for i in named if i != item.identifier and i not in known]
+    if missing:
+        faults.append(f"names {', '.join(missing)}, which no item in this store carries")
+    return tuple(faults)
+
+
 def is_under(path: str, roots: tuple[str, ...]) -> bool:
     """Whether one declared path falls inside any of `roots`.
 
@@ -693,6 +833,7 @@ def parse_item(text: str, path: str = "") -> Item:
         "falsifies",
         "root-cause-of",
         "impairs-generators",
+        "recurrences",
     }
     return Item(
         identifier=fields.get("id", ""),
@@ -716,6 +857,7 @@ def parse_item(text: str, path: str = "") -> Item:
         falsifies=fields.get("falsifies", ""),
         root_cause_of=_split_list(fields.get("root-cause-of", "")),
         impairs_generators=fields.get("impairs-generators", ""),
+        recurrences=_split_list(fields.get("recurrences", "")),
         body=body,
         path=path,
         unknown_fields=tuple(sorted(set(fields) - known)),
@@ -752,6 +894,7 @@ FIELD_ORDER = (
     "falsifies",
     "root-cause-of",
     "impairs-generators",
+    "recurrences",
 )
 
 #: Written even when empty. A file carrying neither is not an item, and one
@@ -784,6 +927,7 @@ def _front_matter_values(item: Item) -> dict[str, str]:
         "falsifies": item.falsifies,
         "root-cause-of": ", ".join(item.root_cause_of),
         "impairs-generators": item.impairs_generators,
+        "recurrences": ", ".join(item.recurrences),
     }
 
 
@@ -810,7 +954,7 @@ def render_item(item: Item) -> str:
     return "---\n" + "\n".join(lines) + "\n---\n\n" + body.lstrip("\n")
 
 
-def with_front_matter_field(text: str, name: str, value: str) -> str:
+def with_front_matter_field(text: str, name: str, value: str, *, append: bool = False) -> str:
     """Add one front-matter field to an item file, changing nothing else in it.
 
     `render_item` is the wrong writer for this, and the reason is what
@@ -840,10 +984,21 @@ def with_front_matter_field(text: str, name: str, value: str) -> str:
     order does not name, and the continuation lines of a value, are passed
     over rather than inserted between.
 
-    Raises `ValueError` where the field is already present, or where there is
-    no front matter to add it to. Both mean the caller asked for something
-    this cannot express, and both are bugs rather than states to paper over:
-    `cmd_record` establishes that the field is absent before it writes.
+    `append` is for a list field that grows one entry at a time -
+    `recurrences:`, which `bin/docket new` extends on every matched filing. It
+    adds `, value` to the end of the field's existing line and is otherwise
+    this same insert, so a second, third and tenth entry are as byte-faithful
+    as the first. Without it the only way to extend a field was to re-render
+    the file, which is exactly what `PL-7K8Y` cost: `sanctioned_queue_edit`
+    forgives a queue edit that removes nothing, and a re-render removes every
+    line it normalises on the way past.
+
+    Raises `ValueError` where the field is already present and `append` was not
+    asked for, where the file spells the field more than once so that no single
+    line is the one to extend, or where there is no front matter to add it to.
+    Each means the caller asked for something this cannot express, and each is
+    a bug rather than a state to paper over: `cmd_record` establishes that the
+    field is absent before it writes, and `docket check` reports a doubled key.
     """
     if name not in FIELD_ORDER:
         raise ValueError(f"`{name}` is not a front-matter field")
@@ -856,8 +1011,30 @@ def with_front_matter_field(text: str, name: str, value: str) -> str:
     # other than where the line index says - and the whole worth of this
     # function is that every other byte is left where it was.
     lines = match.group(1).split("\n")
-    if any((field := FIELD_RE.match(line)) and field.group(1) == name for line in lines):
+    present = [
+        index
+        for index, line in enumerate(lines)
+        if (field := FIELD_RE.match(line)) and field.group(1) == name
+    ]
+    if present and not append:
         raise ValueError(f"the item already records `{name}`")
+    if len(present) > 1:
+        raise ValueError(f"the item spells `{name}` {len(present)} times")
+    if present:
+        # Past the continuation lines of the existing value, so a field spread
+        # over several lines grows at its end rather than in the middle of
+        # itself. 12 item files in this store carry a multi-line value.
+        last = present[0]
+        while (
+            last + 1 < len(lines)
+            and lines[last + 1].strip()
+            and FIELD_RE.match(lines[last + 1]) is None
+        ):
+            last += 1
+        head = "\n".join(lines[: last + 1])
+        return (
+            text[: match.start(1) + len(head)] + f", {value}" + text[match.start(1) + len(head) :]
+        )
 
     rank = FIELD_ORDER.index(name)
     insert_at, precedes = 0, False

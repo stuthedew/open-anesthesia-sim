@@ -19,6 +19,7 @@ from docket.plan import (
     placement_mark,
     promotable,
     recommend,
+    recurring,
     set_aside,
 )
 from docket.roadmap import Scope, milestone_scope, parse_milestones
@@ -38,6 +39,7 @@ def _item(
     verify: str = "",
     payoff: str = "",
     blocked_by: tuple[str, ...] = (),
+    recurrences: tuple[str, ...] = (),
 ) -> Item:
     return Item(
         identifier=identifier,
@@ -59,7 +61,61 @@ def _item(
         impairs_generators=impairs_generators,
         payoff=payoff,
         verify=verify,
+        recurrences=recurrences,
     )
+
+
+def test_a_third_recurrence_surfaces_a_promotion_candidate() -> None:
+    """Three filings of one defect is the evidence the generator tier ranks on.
+
+    `CLAUDE.md` pulls a root cause rather than queueing it because "every
+    session it stands through pays it again", and a re-filing is that sentence
+    happening once: a session hit the defect, had no idea an item existed, and
+    paid the diagnosis again. The threshold is the generator rule's own three,
+    so at two the store says nothing and at three it names the cluster.
+    """
+    at_two = _item("PL-1111", recurrences=("2026-09-18 PL-AAAA", "2026-09-19 PL-BBBB"))
+    at_three = _item(
+        "PL-2222", recurrences=("2026-09-18 PL-CCCC", "2026-09-19 PL-DDDD", "2026-09-20 PL-EEEE")
+    )
+
+    assert [item.identifier for item in recurring([at_two, at_three])] == ["PL-2222"]
+
+
+def test_a_repeated_capture_id_does_not_reach_the_threshold() -> None:
+    """Counted over distinct captures, as the generator floor counts distinct ids.
+
+    Three entries spelling one capture name one filing, and a floor a
+    repetition defeats is not a floor.
+    """
+    repeated = _item(
+        "PL-1111", recurrences=("2026-09-18 PL-AAAA", "2026-09-19 PL-AAAA", "2026-09-20 PL-AAAA")
+    )
+
+    assert recurring([repeated]) == []
+
+
+def test_an_item_already_recorded_as_a_generator_is_not_offered_again() -> None:
+    """It is on the tier already, so naming it as a candidate changes no decision."""
+    known = _item(
+        "PL-1111",
+        root_cause_of=("PL-AAAA", "PL-BBBB", "PL-CCCC"),
+        recurrences=("2026-09-18 PL-AAAA", "2026-09-19 PL-BBBB", "2026-09-20 PL-CCCC"),
+    )
+    members = [_item(i) for i in ("PL-AAAA", "PL-BBBB", "PL-CCCC")]
+
+    assert recurring([known, *members]) == []
+
+
+def test_a_closed_item_stops_being_a_candidate() -> None:
+    """The defect it absorbed is fixed, so the cluster is no longer anybody's to pull."""
+    closed = _item(
+        "PL-1111",
+        status="done",
+        recurrences=("2026-09-18 PL-AAAA", "2026-09-19 PL-BBBB", "2026-09-20 PL-CCCC"),
+    )
+
+    assert recurring([closed]) == []
 
 
 def test_features_group_their_items() -> None:

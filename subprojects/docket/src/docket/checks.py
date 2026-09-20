@@ -35,6 +35,7 @@ from .model import (
     STATUSES,
     Item,
     generator_defect_faults,
+    recurrence_faults,
     root_cause_faults,
 )
 from .plan import OfferedReport, promotable
@@ -1328,6 +1329,7 @@ def _check_references(report: Report, milestones: MilestoneStates | None = None)
                 )
 
     _check_root_causes(report, known)
+    _check_recurrences(report, known)
 
     known_items = {i.identifier: i for i in report.items}
     _outranks_its_blocker(report, known_items)
@@ -1374,6 +1376,32 @@ def _check_root_causes(report: Report, known: set[str]) -> None:
             f"{_where(item)}: `root-cause-of:` {'; '.join(faults)}. `docket next` "
             f"ranks a sound claim above every band but P0 and ignores an unsound one, "
             f"so this generator is recorded and unranked until the field is repaired"
+        )
+
+
+def _check_recurrences(report: Report, known: set[str]) -> None:
+    """Hold a `recurrences:` entry to being readable as a filing.
+
+    Weaker in consequence than the two generator checks around it and worth the
+    same treatment. This field surfaces a promotion candidate and never promotes
+    one, so a bad entry cannot mis-rank anything - what it can do is make the
+    count wrong in the quiet direction, since `recurrence_count` can only count
+    the entries it can read. An item filed four times whose third entry is
+    unreadable sits one short of the threshold and nothing says why.
+
+    The field is written by `bin/docket new` and by nothing else, so every
+    fault here is a hand edit that went wrong. Exact rules, and so errors: the
+    judgment half - whether the two items are really one defect - is what this
+    whole mechanism refuses to decide, and is not checked anywhere.
+    """
+    for item in report.items:
+        faults = recurrence_faults(item, known)
+        if not faults:
+            continue
+        report.errors.append(
+            f"{_where(item)}: `recurrences:` {'; '.join(faults)}. The count is what "
+            f"surfaces this item as a generator-tier candidate, so an entry nothing can "
+            f"read is a filing the store will not show you"
         )
 
 

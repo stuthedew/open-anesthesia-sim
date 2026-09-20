@@ -60,6 +60,7 @@ from docket.vcs import (
     released_on_base,
     stranded,
     tags,
+    working_paths,
 )
 
 ITEM = """---
@@ -323,6 +324,7 @@ READS: tuple[Read, ...] = (
         lambda r, g: files_in_flight(r, branches_in_flight(r, runner=g), runner=g),
         _findings("branches", "unreadable"),
     ),
+    Read("working_paths", lambda r, g: working_paths(r, runner=g), _findings("paths")),
     Read(
         "ref_walk",
         lambda r, g: ref_walk(r, "docs/items", runner=g),

@@ -218,6 +218,43 @@ def test_a_field_already_present_is_refused_rather_than_doubled() -> None:
         with_front_matter_field(once, "pr", "496")
 
 
+def test_an_appended_entry_extends_the_line_and_removes_nothing_else() -> None:
+    """The second and later filings, held to the same standard as the first.
+
+    `bin/docket new` writes a `recurrences:` entry onto the item a capture
+    matched, and after the first there is a line to extend rather than a field
+    to insert. Re-rendering the file to do it would normalise the whole block,
+    and `verify.sanctioned_queue_edit` reads every normalised line as a
+    removal - which is what `PL-7K8Y` cost and why the append lands here
+    rather than in `rewrite_item`.
+    """
+    once = with_front_matter_field(SCRAMBLED, "recurrences", "2026-09-19 PL-A1A1")
+
+    twice = with_front_matter_field(once, "recurrences", "2026-09-20 PL-B2B2", append=True)
+
+    assert "recurrences: 2026-09-19 PL-A1A1, 2026-09-20 PL-B2B2\n" in twice
+    assert twice.count("recurrences:") == 1
+    assert set(SCRAMBLED.splitlines()) <= set(twice.splitlines()), "a line was removed"
+
+
+def test_an_append_to_a_field_spelled_twice_is_refused_rather_than_guessed_at() -> None:
+    """Two lines and no way to say which one grows, which is a doubled key's own defect.
+
+    The shape `repeated_front_matter_keys` exists to report: two branches
+    inserting the same field at different positions merge without conflicting,
+    and every reader downstream then takes a value nobody chose. Appending to
+    one of them would pick a winner silently, which is the defect rather than
+    the repair.
+    """
+    doubled = SCRAMBLED.replace(
+        "status: done\n",
+        "status: done\nrecurrences: 2026-09-19 PL-A1A1\nrecurrences: 2026-09-20 PL-B2B2\n",
+    )
+
+    with pytest.raises(ValueError, match="spells `recurrences` 2 times"):
+        with_front_matter_field(doubled, "recurrences", "2026-09-21 PL-C3C3", append=True)
+
+
 def test_a_file_with_no_front_matter_is_refused_rather_than_given_some() -> None:
     with pytest.raises(ValueError, match="no front matter"):
         with_front_matter_field("**Problem.** x\n", "pr", "495")

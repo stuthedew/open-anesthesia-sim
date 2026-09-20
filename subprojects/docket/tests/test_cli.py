@@ -126,6 +126,228 @@ def test_touches_may_be_repeated_as_well_as_comma_separated(tmp_path: Path) -> N
     assert "touches: src/a.py, src/b.py, src/c.py" in next(store.glob("*.md")).read_text()
 
 
+CLUSTERED = """---
+id: PL-E5E5
+title: alpha beta gamma delta epsilon zeta
+priority: P2
+effort: M
+status: ready
+classes: defect
+touches: z.py
+added: 2026-08-01
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+SUPPRESSION = """---
+id: PL-C1C1
+title: verify's suppression check reads prose as code
+priority: P2
+effort: M
+status: ready
+classes: defect
+touches: subprojects/docket/src/docket/verify.py
+added: 2026-08-01
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+
+def test_new_names_an_existing_item_with_a_near_identical_title(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The warning that was missing while one defect was diagnosed five times.
+
+    `PL-LBR6` sat `ready` for six days with the `docket record` rename
+    diagnosed while `PL-5QLP` and `PL-QMC0` were filed as fresh discoveries of
+    it, and the suppression-check defect was captured five times across two
+    days. Every one of those sessions ran this command, which held the title,
+    the store and the session's attention, and said nothing.
+
+    **It warns and still files.** The capture rule is unconditional, so the
+    exit code, the id and the written file are all unchanged - a session whose
+    finding is a genuine second instance must not be stopped, and neither must
+    one that stops reading after the first line.
+    """
+    store = _store(tmp_path, SUPPRESSION)
+
+    exit_code = _run(
+        "new",
+        "--touches",
+        "subprojects/docket/src/docket/verify.py",
+        "verify's suppression check reads every added line as code",
+        "--items",
+        str(store),
+    )
+
+    assert exit_code == 0
+    assert len(sorted(store.glob("*.md"))) == 2
+
+    printed = capsys.readouterr().out
+    assert "PL-C1C1" in printed
+    assert "(ready)" in printed
+    assert "subprojects/docket/src/docket/verify.py" in printed
+
+
+def test_new_records_the_filing_on_the_item_it_matched(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The evidence written down, instead of waiting for a session to notice it.
+
+    `PL-STC4`'s brief documents its own duplication three separate times in its
+    own prose and nothing was promoted until a session read the cluster by
+    hand, five captures in. The entry carries the date and the capture's id so
+    a reader can open both briefs and decide, which is the judgment a
+    similarity score may not make.
+    """
+    store = _store(tmp_path, SUPPRESSION)
+
+    assert (
+        _run(
+            "new",
+            "--touches",
+            "subprojects/docket/src/docket/verify.py",
+            "verify's suppression check reads every added line as code",
+            "--items",
+            str(store),
+        )
+        == 0
+    )
+
+    matched = next(p for p in store.glob("*.md") if "PL-C1C1" in p.read_text())
+    filed = next(p for p in store.glob("*.md") if p != matched)
+    identifier = re.search(r"^id: (PL-\S+)", filed.read_text(), re.M).group(1)
+    assert f"recurrences: 2026-08-24 {identifier}" in matched.read_text()
+    assert "Recorded on PL-C1C1: 1 filing matched to it" in capsys.readouterr().out
+
+
+def test_a_second_filing_extends_the_line_the_first_one_wrote(tmp_path: Path) -> None:
+    """The counter accumulates on one item rather than starting over.
+
+    Two entries on one line, because that is what `recurrence_count` reads and
+    what `plan.recurring` counts to three. The append is byte-faithful for the
+    reason `PL-7K8Y` established - `verify.sanctioned_queue_edit` forgives a
+    queue edit that removes nothing, so re-rendering the file would fail the
+    close-out of any worker that captured a finding, which `CLAUDE.md` requires
+    unconditionally.
+
+    The two capture titles share little with each other and a lot with the
+    target, so the second filing matches the target rather than the first
+    capture - which is the real ranking, not a contrivance: a session filing
+    two unrelated findings against one module is the ordinary case.
+    """
+    store = _store(tmp_path, CLUSTERED)
+
+    assert _run("new", "--touches", "z.py", "alpha beta gamma theta", "--items", str(store)) == 0
+    assert _run("new", "--touches", "z.py", "delta epsilon zeta kappa", "--items", str(store)) == 0
+
+    matched = next(p for p in store.glob("*.md") if "PL-E5E5" in p.read_text())
+    entries = re.search(r"^recurrences: (.+)$", matched.read_text(), re.M).group(1)
+    assert matched.read_text().count("recurrences: ") == 1
+    assert len(entries.split(", ")) == 2
+
+
+def test_new_infers_candidate_paths_from_the_working_tree(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The hole the fifth filing of the suppression defect fell straight through.
+
+    Nine of thirteen known duplicate pairs share a declared `touches` path and
+    the shared-path key finds them; **all four misses are `PL-0KQP`**, which
+    `bin/docket new` wrote with no `touches` at all. The session that filed it
+    was on a branch whose commits touch
+    `subprojects/docket/src/docket/verify.py` - the exact path all four items it
+    duplicates declare. The information was there and nothing read it.
+
+    No new argument, no prompt, no refusal: the capture is written exactly as it
+    would have been, and the warning is the only difference.
+    """
+    root = tmp_path / "repo"
+    store = root / "items"
+    store.mkdir(parents=True)
+    (store / "existing.md").write_text(SUPPRESSION, encoding="utf-8")
+    target = root / "subprojects" / "docket" / "src" / "docket"
+    target.mkdir(parents=True)
+    (target / "verify.py").write_text("# the module this session is changing\n", encoding="utf-8")
+    for command in (
+        ["git", "init", "-q", str(root)],
+        ["git", "-C", str(root), "config", "user.email", "t@example.com"],
+        ["git", "-C", str(root), "config", "user.name", "T"],
+        ["git", "-C", str(root), "add", "-A"],
+        ["git", "-C", str(root), "commit", "-qm", "base"],
+    ):
+        subprocess.run(command, check=True, capture_output=True)
+    # Uncommitted, which is where a session usually is when it notices something.
+    (target / "verify.py").write_text("# now being changed\n", encoding="utf-8")
+
+    exit_code = main(
+        [
+            "new",
+            "verify's suppression check reads every added line as code",
+            "--items",
+            str(store),
+            "--today",
+            "2026-08-24",
+        ]
+    )
+
+    assert exit_code == 0
+    printed = capsys.readouterr().out
+    assert "PL-C1C1" in printed
+    assert "a path this branch is changing" in printed, "the key's source is named"
+
+
+def test_a_capture_with_no_git_to_read_is_written_exactly_as_before(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Capture is frictionless or it is not capture.
+
+    A reading git cannot answer leaves the search with no key, so it finds
+    nothing and says nothing - rather than falling back to scoring titles
+    across the store, which is the refuted key and would fire on the sixteen
+    recurring triage passes.
+    """
+    store = _store(tmp_path, SUPPRESSION)
+
+    assert _run("new", "verify's suppression check reads prose as code", "--items", str(store)) == 0
+
+    assert "PL-C1C1" not in capsys.readouterr().out
+    assert len(sorted(store.glob("*.md"))) == 2
+
+
+def test_new_says_nothing_about_an_item_declaring_a_different_path(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The refuted key, pinned shut at the command rather than only in the module.
+
+    Title closeness alone catches 0 of 13 known duplicate pairs at any usable
+    threshold and finds the sixteen recurring triage passes instead
+    (`PL-TZ7T`). So a capture whose title all but matches an open item's is
+    still not warned about when the two declare different paths, and a change
+    that reversed the key would be a silently worse command rather than a
+    failing test.
+    """
+    store = _store(tmp_path, SUPPRESSION)
+
+    exit_code = _run(
+        "new",
+        "--touches",
+        "src/anesthesia_sim/core/tissue.py",
+        "verify's suppression check reads prose as code",
+        "--items",
+        str(store),
+    )
+
+    assert exit_code == 0
+    assert "PL-C1C1" not in capsys.readouterr().out
+
+
 def test_a_space_separated_second_path_is_refused_rather_than_captured_as_a_title(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
