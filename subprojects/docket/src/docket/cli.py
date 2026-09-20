@@ -48,6 +48,7 @@ from .plan import (
     gate,
     placement_clause,
     placement_line,
+    promotable,
     recommend,
     set_aside,
 )
@@ -1167,6 +1168,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         print(f"Nothing is ready to start{where}.")
         if report.untriaged:
             print(f"{len(report.untriaged)} untriaged item(s) are waiting: `docket list`.")
+        _say_promotable(items)
         _say_lane_holdouts(items, flight, config, args, lane)
         _say_unread(flight)
         return 0
@@ -1175,6 +1177,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         print(f"  {index}. {pick.describe()}\n")
     if flight.ids:
         print(f"Excluded, already in flight: {', '.join(sorted(flight.ids))}")
+    _say_promotable(items)
     _say_lane_holdouts(items, flight, config, args, lane)
     _say_answer_lane(items, flight, config, args, plan, lane, picks[0].item)
     if report.advisories:
@@ -1183,6 +1186,40 @@ def cmd_next(args: argparse.Namespace) -> int:
         )
     _say_unread(flight)
     return 0
+
+
+def _say_promotable(items: list[Item]) -> None:
+    """Name the blocked items whose every recorded blocker has since closed.
+
+    `recommend` cannot offer them - `plan._startable` filters on `status` - and
+    `docket check` has named them in an advisory all along, which is a command
+    a session picking work has no reason to run. `next` prints the *number* of
+    advisories pending and not the ids, so on 2026-09-17 the one item that
+    would have unblocked three more of v0.5.0's own scope was reachable only by
+    reading `blocked-by` on five items and resolving each root by hand
+    (`PL-6T44`).
+
+    Printed on the empty ranking too, and that is the case it exists for: a
+    lane whose whole remainder is stale `blocked` says "nothing is ready to
+    start" while naming nothing a session could do about it.
+
+    Named, never ranked. `plan.promotable` carries the count that settled it -
+    6 of 13 were genuinely startable, and ranking the other 7 would have put an
+    unbuildable item into `P1` and onto the debt gate.
+    """
+    candidates = promotable(items)
+    if not candidates:
+        return
+    print(
+        f"Blocked on paper only, every recorded blocker closed: "
+        f"{', '.join(item.identifier for item in candidates)}."
+    )
+    print(
+        "  Not ranked above - a closed blocker is not evidence that nothing else holds an "
+        "item, and 7 of 13 measured this way were held by something the field could not "
+        "see. Read each against the tree, then `docket set <id> --status ready` or record "
+        "what is really holding it."
+    )
 
 
 def _say_lane_holdouts(

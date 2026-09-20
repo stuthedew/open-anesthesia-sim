@@ -17,6 +17,7 @@ from docket.plan import (
     placement_clause,
     placement_line,
     placement_mark,
+    promotable,
     recommend,
     set_aside,
 )
@@ -36,6 +37,7 @@ def _item(
     impairs_generators: str = "",
     verify: str = "",
     payoff: str = "",
+    blocked_by: tuple[str, ...] = (),
 ) -> Item:
     return Item(
         identifier=identifier,
@@ -45,7 +47,7 @@ def _item(
         status=status,
         classes=classes,
         touches=touches,
-        blocked_by=(),
+        blocked_by=blocked_by,
         feature=feature,
         milestone="",
         added=date(2026, 8, 1),
@@ -1100,3 +1102,91 @@ def test_the_clause_and_the_sentence_agree_about_gate_membership() -> None:
     assert "debt gate" in placement_clause(scope, "PL-1111")
     assert "debt gate" in placement_line(scope, "PL-1111")
     assert placement_mark(scope, "PL-1111") == "[gate]"
+
+
+def test_an_item_whose_every_blocker_has_closed_is_reported_promotable() -> None:
+    """The defect `PL-6T44` was filed for: `_startable` filters on `status` and
+    never opens `blocked_by`, so an item ranked as unstartable long after the
+    thing it waited for closed. `docket check` derived this all along and
+    `docket next` never showed it."""
+    closed = _item("PL-1111", status="done")
+    waiting = _item("PL-2222", status="blocked", blocked_by=("PL-1111",))
+
+    assert [i.identifier for i in promotable([closed, waiting])] == ["PL-2222"]
+
+
+def test_a_dropped_blocker_counts_as_closed_like_a_done_one() -> None:
+    """`dropped` sits beside `done` in `CLOSED_STATUSES`, and an item dropped
+    with a reason is as finished as one that was built."""
+    dropped = _item("PL-1111", status="dropped")
+    waiting = _item("PL-2222", status="blocked", blocked_by=("PL-1111",))
+
+    assert [i.identifier for i in promotable([dropped, waiting])] == ["PL-2222"]
+
+
+def test_one_blocker_still_open_holds_the_whole_item() -> None:
+    closed = _item("PL-1111", status="done")
+    still_open = _item("PL-3333", status="ready")
+    waiting = _item("PL-2222", status="blocked", blocked_by=("PL-1111", "PL-3333"))
+
+    assert promotable([closed, still_open, waiting]) == []
+
+
+def test_an_unknown_blocker_is_read_as_unresolved_rather_than_absent() -> None:
+    """Fail-closed: a `blocked-by` the store cannot place is not evidence that
+    the blocker closed, and saying otherwise on a field deciding what may be
+    started is the wrong way to fail."""
+    waiting = _item("PL-2222", status="blocked", blocked_by=("PL-9999",))
+
+    assert promotable([waiting]) == []
+
+
+def test_a_milestone_blocker_is_left_to_the_roadmap() -> None:
+    """A milestone blocker clears when a scoping round happens, not when an
+    item closes, so it takes the roadmap to answer. `checks.py` keeps that
+    branch; `PL-162Y` is whether `next` should name those too."""
+    closed = _item("PL-1111", status="done")
+    waiting = _item("PL-2222", status="blocked", blocked_by=("PL-1111", "v0.6.0"))
+
+    assert promotable([closed, waiting]) == []
+
+
+def test_an_item_declaring_no_blocker_at_all_is_not_promotable() -> None:
+    """`status: blocked` with an empty `blocked-by` is a different defect, and
+    `checks.py` already errors on it by name. Reporting it here would tell a
+    session to promote an item whose reason for waiting nobody wrote down."""
+    assert promotable([_item("PL-2222", status="blocked")]) == []
+
+
+def test_only_a_blocked_item_is_promotable() -> None:
+    """A `ready` item carrying a closed edge is already rankable, and a
+    `needs-decision` one is waiting on an answer rather than on a blocker."""
+    closed = _item("PL-1111", status="done")
+    ready = _item("PL-2222", status="ready", blocked_by=("PL-1111",))
+    deciding = _item("PL-3333", status="needs-decision", blocked_by=("PL-1111",))
+
+    assert promotable([closed, ready, deciding]) == []
+
+
+def test_promotable_items_are_named_but_never_ranked() -> None:
+    """The decision `PL-6T44` records. Of 13 items reached this way across two
+    grooming passes, 6 were genuinely startable; ranking the rest would have
+    put an unbuildable item into `P1` and onto the debt gate, because leaving
+    `blocked` is what ends the `anticipated` exemption. So `recommend` still
+    excludes them and the caller names them instead."""
+    closed = _item("PL-1111", status="done")
+    waiting = _item("PL-2222", status="blocked", blocked_by=("PL-1111",))
+    items = [closed, waiting]
+
+    assert [i.identifier for i in promotable(items)] == ["PL-2222"]
+    assert [pick.item.identifier for pick in recommend(items)] == []
+
+
+def test_the_report_is_ordered_so_two_readers_see_one_answer() -> None:
+    """`docket check` and `docket next` print the same set, so the set has to
+    come back in the same order however the store was loaded."""
+    closed = _item("PL-1111", status="done")
+    first = _item("PL-2222", status="blocked", blocked_by=("PL-1111",))
+    second = _item("PL-3333", status="blocked", blocked_by=("PL-1111",))
+
+    assert [i.identifier for i in promotable([second, closed, first])] == ["PL-2222", "PL-3333"]

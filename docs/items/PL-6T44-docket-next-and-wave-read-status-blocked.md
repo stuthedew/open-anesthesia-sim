@@ -3,11 +3,14 @@ id: PL-6T44
 title: docket next and wave read status: blocked literally, so an item whose blockers have all closed ranks as unstartable while docket check already prints it as promotable
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: defect
 feature: docket-store
-touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/test_plan.py
+touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_plan.py
 added: 2026-09-17
+closed: 2026-09-20
+payoff: stops the queue reading as more stuck than it is by naming, where work is chosen, the blocked items whose blockers have all closed - the one that unblocked three more of v0.5.0's own scope was invisible to docket next
+verify: grep -q 'def test_an_item_whose_every_blocker_has_closed_is_reported_promotable' subprojects/docket/tests/test_plan.py
 root-cause-of: PL-JFQ3, PL-8G48, PL-CHQY
 ---
 
@@ -96,3 +99,54 @@ re-ranking them - is the option this measurement does not argue against.
 **One `blocked-by` edge that would have survived any of the three options:**
 `PL-WZVZ` now names `PL-TH35` and `PL-R1WQ`, and `PL-CTD7`'s closed edge is
 cleared. Both were written by hand, by the session that read the tree.
+
+## Decision, and one half of the premise that did not survive contact (2026-09-20)
+
+**Option 2, and the title's claim about `wave` was wrong.**
+
+**`wave` never read `status` and needs no change.** `roadmap.py` contains no
+literal `status == "blocked"` comparison - `gate_status` is not even given item
+statuses, only `closed_ids`, `known_ids` and each item's `blocked-by`, and
+`_blockers_outside` skips a blocker that has closed. `format_wave` reads no
+status either. The behaviour this item asks for on that side already exists and
+has been pinned by a test since `PL-9SH6`:
+`test_a_blocker_that_has_already_closed_holds_nothing` in
+`subprojects/docket/tests/test_roadmap.py`, whose docstring records the same
+hour-long stale `blocked` that prompted this item. What the 2026-09-17 reading
+saw was `wave` counting five genuinely open gate entries, which is correct; it
+does not distinguish them, and `next` is where that mattered.
+
+So the defect is `plan._startable`'s `status != "blocked"` alone - one filter,
+not two commands. `checks.py` says so in its own comment on
+`_ready_with_an_open_blocker`: "`plan.py` filters on `status != 'blocked'` and
+never opens `blocked_by`".
+
+**Option 2 was taken on the evidence already in this item**, which the
+`PL-8G48` pass measured and which argues against option 1 rather than for it:
+6 of 13 items reached this way were genuinely startable, and ranking the other
+7 would have put `PL-WZVZ` - unbuildable, with no second machine - into `P1`
+and onto the debt gate, because leaving `blocked` is what ends the
+`anticipated` exemption. Option 3 was refused for the reason the brief gives:
+it puts a queue edit in front of unrelated work. A recomputed status does not
+override what an item declares; the ids are named where the choosing happens
+and a person still reads each against the tree.
+
+This was a session's call rather than the project owner's: the consequence is
+one internal structure of the apparatus, no learner sees it, and the
+safety-critical standard does not reach it. Reopen it on ordinary evidence.
+
+**What landed.** `plan.promotable` is the one reading, and `checks.py` now
+derives its "every blocker has closed" advisory from it rather than computing
+the same set a second time, so the advisory and the ranking cannot disagree.
+`cli._say_promotable` prints the ids on both of `next`'s paths - including the
+empty ranking, which is the case it exists for: a lane whose whole remainder is
+stale `blocked` said "Nothing is ready to start" and named nothing.
+
+Milestone blockers are deliberately left out: they clear when a scoping round
+happens, which takes the roadmap to answer. `PL-162Y` is whether `next` should
+name those too.
+
+**Measured on a scratch store, 2026-09-20.** Before: `next` printed "2 grooming
+advisory(ies) pending" and no id, while `check` printed "PL-BBBB: every blocker
+has closed; it is ready to promote". After: `next` names `PL-BBBB` on both
+paths.
