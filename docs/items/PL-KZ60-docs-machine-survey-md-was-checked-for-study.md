@@ -2,14 +2,14 @@
 id: PL-KZ60
 title: docs/machine-survey.md was checked for study-protocol-read-as-practice in section (a2) only, and one of that section's three sources did not support the claim it was cited for
 priority: P2
-effort: M
+effort: S
 status: ready
 classes: docs
 feature: anesthesia-machine
 touches: docs/machine-survey.md
 added: 2026-09-20
-payoff: stops the machine survey passing unchecked source claims into docs/MODEL.md and the machine abstraction, the route by which section (a2) put a wrong statement about clinical practice behind the simulator's opening fresh gas flow
-verify: grep -qF 'Every claim in this document has been checked against the depth its source was read at' docs/machine-survey.md
+payoff: stops a wrong source claim in the survey reaching docs/MODEL.md or a data file, without paying for a 23-source re-read of claims nothing has adopted
+verify: grep -qF 'adopted into the model specification or a data file has been checked against the depth its source was read at' docs/machine-survey.md
 not-delegable: The deliverable is a per-claim judgment about what a paper establishes against the depth it was read at - the distinction that failed in section (a2), where two protocol ranges read as reports of practice. It needs full-text retrieval through the PubMed MCP server and the private reference corpus, and the verify: pins only the sentence recording the conclusion, never whether the reading behind it happened.
 ---
 
@@ -137,3 +137,66 @@ boundary both passes landed on is the same one: a survey finding that reaches a
 computed path is `science`/`P1` and goes on the gate, and the survey document's
 own sourcing is not. Stated as what #757 proposes rather than as settled fact,
 since those three are still untriaged on the default branch.
+
+**Re-scoped down, 2026-09-20.** The finding is untouched and this item stays
+open: one of § "(a2)"'s three sources did not support the claim it was cited
+for, one of the other two supported a narrower claim, and no other bucket has
+been checked. What changes is how much of the document is re-read *now*.
+
+**Why.** The project owner objected to the machine work having grown into "a
+fully fleshed-out system with all the machines on the market and multiple
+manuals" (2026-09-20). A 23-source, 13-bucket full-text re-audit of a
+design-input document is part of that growth. Two facts already recorded above
+settle that it can be cut without losing the guard:
+
+- **Nothing in the simulator computes from this survey.** The § "Why this is
+  classed `docs` and not `science`" section above turns on exactly that, and it
+  is why the item is `P2` rather than `P1`.
+- **Adoption is the route by which a wrong claim reaches a displayed value,**
+  and adoption is separately governed — `docs/MODEL.md` § "Source hierarchy",
+  the `tier` and `adopted` fields, `.claude/rules/citing-sources.md`. `PL-NM7X`
+  is that guard working: it caught the § "(a2)" claim *at the moment of
+  adoption*, and it was `science`/`P1` because *it* reached the data file. The
+  full audit would have caught the same claim later and at much higher cost.
+
+**Done when** (replacing the clause above). Every claim in this survey that has
+**already been adopted** into `docs/MODEL.md` or a file under
+`src/anesthesia_sim/data/` has been checked against what its cited source
+actually establishes, at the depth that claim needs; full text is fetched where
+an abstract-level read cannot carry the claim; anything a source does not
+support is withdrawn with the withdrawal recorded, or re-sourced. The pass then
+writes its conclusion into § "How a value gets into this document" as: `Every
+claim in this document that has been adopted into the model specification or a
+data file has been checked against the depth its source was read at; the rest
+are checked per claim at the moment of adoption.` The `verify:` above pins a
+fragment of that sentence and nothing else in the tree produces it.
+
+The first step of the work is therefore a *diff*, not a re-read: list which of
+this survey's claims have actually been adopted. That set is small today —
+§ "(a2)" is the one known case and it is already corrected — so the pass may
+find its adopted set nearly empty, which is a legitimate result and is recorded
+as one rather than treated as a reason to widen the scope back out.
+
+**What is explicitly deferred.** The unadopted remainder of the document: the
+other twelve buckets' claims, and the four entries § "Sources" asserts carry a
+depth statement but do not — Bashraheel et al., Jakobsson et al., Leijonhufvud
+et al., Zumsande et al. (the two ISO entries are exempt by § "How a value gets
+into this document" rule 4). Those are checked **per claim, at the moment the
+claim is adopted**, by the adopting item — the way `PL-NM7X` did. That is not a
+weaker check; it is the same check, paid by whoever is about to spend the claim
+rather than in advance of anyone spending it.
+
+**What would reopen the full 23-source audit.** Any one of: a claim from this
+survey being adopted into `docs/MODEL.md` or a data file *without* an adopting
+item of its own to catch it (which is the reopening condition already recorded
+above, unchanged); the project owner deciding a design-input document's
+sourcing is inside the safety-critical standard's reach; or a *second*
+independent instance of protocol-read-as-practice turning up in a bucket other
+than § "(a2)", which would make the error a property of the document rather
+than of one section. The third is new here: one instance is a defect, two is a
+pattern, and a pattern justifies the sweep this re-scope declines to run on one.
+
+**`effort:` cut `M` to `S`**; `status: ready` and `priority: P2` are unchanged,
+as is `classes: docs` and the reasoning above for it. `not-delegable:` still
+holds — the remaining work is still a per-claim judgment about what a paper
+establishes against the depth it was read at, over a smaller set of claims.

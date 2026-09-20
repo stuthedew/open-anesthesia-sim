@@ -434,7 +434,7 @@ adds no capability and exists to clear the ground they are built on:
 | 11 | **v0.8.0 — the schematic** | Planned-milestone item 27: Gas Man's Picture, showing where the agent *is* rather than where its tension is. (Written `v0.6.0` until 2026-09-16, when item 34 took that number and this moved down two.) | — |
 | 12 | **Gate 5** | Frozen when v0.8.0 ships; ships inside v0.9.0. | — |
 | 13 | **v0.9.0 — multi-substance and nitrous oxide** | Planned-milestone items 6 and 7, and the substance generalization Phase 1 describes. (Written `v0.7.0` until 2026-09-16, for the same reason as row 11.) | — |
-| 14+ | **Beyond** | The machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. | — |
+| 14+ | **Beyond** | The machine and its interlocks (items 1-5), save/load and replay (9, 10), then intravenous agents (13-15), in "Development pathway" order. **Item 40 is no longer among them** - the machine-profile framework was split out of item 1 on 2026-09-20 (project owner) and is patch-track work that may be cut whenever its items finish, taking no version of its own and freezing no gate. What stays here is the interlock baseline and the machine behaviors that need solver work item 40 defers. | — |
 
 **Rows 1 and 2 are the only releases whose whole content is a frozen list,
 and they are not the same kind of thing.** Row 2 is Gate 0's release: that
@@ -3306,6 +3306,36 @@ because the port rewrites the chart on pyqtgraph and redecides dash pattern, alp
 and stroke width along with it, so answering against the Flet chart would mean
 answering twice - the same reason those two wait for `PL-L9RD`.
 
+**Three from the 2026-09-20 machine-profile re-scope** (`PL-77G2`). `PL-HGB6`,
+`PL-QW19` and `PL-HNWX` were filed the day planned-milestone item 1 was split
+(project owner, 2026-09-20), and all three postdate the 2026-09-06 freeze by two
+weeks, so § "The gate is a snapshot, not a moving target" defers them on its own
+terms rather than on the refilling-queue ground. None is `safety` or `science`,
+so the unconditional exception does not reach them either.
+
+What makes the disposition easy is that none of the three can reach a reader of
+the simulator today, and each says so in its own brief. `PL-HNWX` is a
+`refactor` wholly inside `core/parameters.py`'s schema-version constant and
+changes no value. `PL-QW19` makes a required field optional so that a machine
+profile which does not yet exist can be written without inventing a startup
+flow; with one profile shipped and that profile declaring the field, nothing
+changes. `PL-HGB6` is a contradiction between `docs/machine-abstraction.md` and
+the shipped profile's own provenance note about what `circuit_volume_l` means -
+a design document that governs a milestone nobody has started, against a stored
+value that is correct under the data file's reading. All three are `anticipated`
+in substance: they bite when a second machine profile is written, which item 40
+enables and does not schedule.
+
+**One of them is the residue of a finding this gate should not inherit.**
+`PL-HGB6` replaces `PL-TBMX`, which was filed the same day asserting that
+`circuit_volume_l` meant apparatus-plus-circuit and that a real profile would
+therefore understate the circuit time constant by about 40%. The re-scoping
+audit's own adversarial verifier refuted it against the source - the profile
+states "This file's `circuit_volume_l` is the apparatus alone" - and `PL-TBMX`
+is `dropped` carrying that refutation. Recorded here because a `safety`-classed
+`P1` briefly existed on the strength of it, and a later reader meeting the
+dropped item is owed the reason it never reached this list.
+
 Nothing is misleading anybody meanwhile, which is what makes the deferral safe
 rather than merely convenient: no preview is drawn today, so the safety obligation
 the item records binds whoever builds it rather than describing a live defect. Had
@@ -5596,7 +5626,10 @@ by Phase 0, only by its own gate.
 **Phase 1 — scientific maturity.** Generalize the patient's state from one
 agent to N simultaneously present substances, then items 6 and 7 (nitrous
 oxide, concentration and second-gas effects), then item 1 (machine abstraction
-with interlocks), then item 2 (agent switching with residual washout).
+with interlocks), then item 2 (agent switching with residual washout). Item 40,
+the machine-profile framework, is **not** part of this phase: it was split out
+of item 1 on 2026-09-20 (project owner) precisely because nothing in a config
+file needs the substance generalization.
 
 The generalization leads because three separate items need the same thing:
 holding more than one substance at once, with per-substance kinetics. Agent
@@ -5697,6 +5730,22 @@ specified.
    question. `PL-4DCG` surveyed the variation that reaches a number, `PL-FG9D`
    designed the abstraction against it, and `PL-WZVZ` is the surface that keeps
    a machine's effect on a curve attributable to a named parameter.
+
+   **Split 2026-09-20 (project owner).**
+   *The framework half is item 40, and it is not gated behind Phase 1.*
+   This item bundles two things that need each other in
+   only one direction. Interlock behavior needs to know which agents are mounted
+   and what a machine forbids, so it needs the profile; the profile needs nothing
+   from the interlocks. But interlocks are what put this item in Phase 1 - a
+   single-halogenated-agent interlock is a statement about holding more than one
+   agent, which is the multi-substance generalization - so the bundle carried the
+   *data* half to timeline row 14+ with it, after v0.9.0. Nothing about a config
+   file needed to wait that long, and the cost of the bundle was being paid in
+   the queue rather than in the code: items scoped against this line were written
+   as though the deliverable were the fleet of machines the survey found. Item 40
+   is the half that can be built now; what remains here is the interlock baseline
+   and the machine behaviors that need the solver work item 40 explicitly defers.
+   The goal sentence above is unchanged and is item 40's to deliver.
 
    **The default fresh gas flow is no longer this item's to place, and the
    sentence that said otherwise was stale.** It was a literal in
@@ -6976,7 +7025,60 @@ once someone is ready to scope it.
     an amount leaves the unit - the liquid-equivalent consumption figure item
     28 plans.
 
-None of items 1-39 mix scientific-core and UI/tooling concerns within a
+40. Make an anesthesia machine a config file rather than hardcoded Python
+    constants - the framework half of item 1, split out of it on 2026-09-20
+    (project owner). **The deliverable is the extension point, not the
+    machines.** A second profile dropped into
+    `src/anesthesia_sim/data/machines/` should be loadable, selectable in code,
+    and refused where it is not admissible; which machines exist, and how
+    faithfully each is modelled, is item 1's and has no timeframe.
+
+    *The data half already shipped and the selection half does not exist.*
+    `PL-4YY1` moved the circuit volume and the fresh gas flow out of
+    `core/circuit.py` field defaults into a cited, strictly validated
+    `reference_circle_system.json`, and `PL-8PS6` added the first per-machine
+    capability field beside them. But `load_reference_circle_system_parameters()`
+    names one filename, nothing looks a profile up by id, and the profile's own
+    `id` and `display_name` are read by nothing in `src/`. A second profile put
+    in that directory today is ignored by the runtime, passes the unit suite
+    unnoticed, and fails `make check` on the provenance rows it owes - which is
+    the state this item ends.
+
+    *Why it is separable from item 1, stated as the test that would falsify it.*
+    A machine's whole reach into the model is two rates and one volume in the
+    breathing circuit's row of the system matrix, which `docs/machine-abstraction.md`
+    establishes; none of the three touches a patient row. So this item is
+    separable exactly while it changes no rate - it declares where a rate would
+    come from and leaves the rates where they are. The moment a profile needs to
+    *compute* a rate differently, it is item 1's work and this split stops
+    holding.
+
+    *Scope constraints, both of which are what keeps it cheap.* One shipped
+    profile, and no machine chooser: a comparison surface is `PL-WZVZ`'s and is
+    held behind item 34's View contract anyway, and a second profile plus a
+    selection surface is what makes `PL-WZVZ`'s misattribution hazard live.
+    Nothing displayed changes.
+
+    *Explicitly deferred, with no rework cost.* Extracting the delivery and
+    removal rates from `core/governing_equations.py` and `core/circuit.py` costs
+    the same whether it is done with one profile or ten, so it waits for a
+    machine that needs it. So do the second member of each strategy slot,
+    automated end-tidal control (item 5), fresh gas decoupling and ventilator
+    drive, and internal circuit topology (declined; item 39 reverses it).
+
+    *A stated cost that the design document's own target omits.* "One data file
+    and nothing else" is not reachable under this project's checks:
+    `tools/doc_check.py` requires a provenance row in `docs/MODEL.md` for every
+    leaf number in every data file. A machine is one data file **plus** one
+    provenance row per number. That is the discipline working, not a defect, but
+    the target should say it.
+
+    Six queue items carry this, grouped as `machine-profile-framework`, and two
+    of them bite on the *first* real profile rather than the second: what
+    `circuit_volume_l` means, and a required startup-flow field that no
+    manufacturer publishes.
+
+None of items 1-40 mix scientific-core and UI/tooling concerns within a
 single milestone; where one depends on another (e.g. 2-5 on 1, 7 on 6, 10
 on 9, 13 on 12), that dependency is noted inline rather than bundled into
 one item.

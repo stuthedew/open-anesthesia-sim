@@ -60,6 +60,15 @@ between 2006 and 2025**, which is evidence it was in service somewhere and
 studied there, **and** if it contributes an axis of variation that the rest of
 the set does not already cover.
 
+**The table is a map of the variation, not a list of machines to implement.**
+Each row earns its place by contributing an axis the others do not, so the set
+as a whole is the range of real behavior a machine profile's schema has to be
+able to express. Nothing here commits the project to eight profiles, and a
+machine's presence below is not a claim that it will be built. The reference
+material follows the same rule: a machine's operator or technical manual is
+sought as that machine's profile is built, one at a time, rather than gathered
+in bulk ahead of the milestone (project owner, 2026-09-20).
+
 | Machine | In because | Axes it contributes |
 | --- | --- | --- |
 | Dräger Primus | Kern 2012; Shin 2017; Zumsande 2023 | Piston ventilator; fresh gas decoupling; large apparatus volume |
@@ -628,9 +637,15 @@ Every `unknown` above is unknown for the same reason, and the fix is one thing:
 **a session that can reach manufacturer technical data, or a project owner who
 can supply it.** The private reference corpus is the route that worked here and
 should be tried first — it answered the vaporizer, injector, gas-module and
-closed-circuit questions outright — so the cheapest way to close the rest is to
-add the manuals below to it rather than to wait for the egress policy to change.
-The documents to fetch, named so nobody has to rediscover them:
+closed-circuit questions outright.
+
+**Each of these is sought one at a time, when a profile needs it**, rather than
+gathered in bulk ahead of the milestone (project owner, 2026-09-20). The list
+below is a lookup table, not a shopping list: an `unknown` is closed at the
+moment some machine profile has to carry the field behind it, and that
+machine's manual is requested then. No `unknown` here blocks the machine
+abstraction, and acquiring all of them in advance of any profile is work nobody
+has asked for. Where to look, named so nobody has to rediscover it:
 
 - Dräger *Instructions for Use* for the Perseus A500, Primus, Apollo, Fabius and
   Zeus IE — technical data sections, for apparatus volume, flow ranges, minimum
