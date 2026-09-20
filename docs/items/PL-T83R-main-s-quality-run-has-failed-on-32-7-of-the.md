@@ -3,11 +3,12 @@ id: PL-T83R
 title: main's quality run has failed on 32.7% of the pushes that reached a verdict since 2026-09-05, including one unbroken stretch of 50, so the red-main digest line is closer to routine than to an alarm
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra, session-cost
 feature: ci-cost
 touches: tools/main_ci_status.py, tests/unit/test_main_ci_status.py, docs/ARCHITECTURE.md, docs/WORKING_NOTES.md
 added: 2026-09-16
+closed: 2026-09-20
 verify: python3 tools/doc_check.py check && grep -qF 'attributed by failing step' docs/WORKING_NOTES.md
 ---
 
