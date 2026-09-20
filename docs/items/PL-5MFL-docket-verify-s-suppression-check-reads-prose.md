@@ -9,6 +9,7 @@ feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests, subprojects/docket/README.md
 added: 2026-09-19
 closed: 2026-09-20
+pr: 783
 payoff: stops a correct release cut ending REJECT because the ROADMAP row it edits narrates a suppression
 verify: grep -q "def test_suppression_ignores_prose" subprojects/docket/tests/test_verify.py
 ---

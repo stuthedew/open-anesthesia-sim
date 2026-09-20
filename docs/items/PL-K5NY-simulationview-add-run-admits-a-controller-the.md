@@ -9,6 +9,7 @@ feature: branch-run-set-integrity
 touches: src/anesthesia_sim/app/simulation_view.py, tests/integration/test_simulation_view.py
 added: 2026-09-20
 closed: 2026-09-20
+pr: 788
 payoff: stops two unrelated runs being drawn as one patient under two managements, which is the whole claim a comparison makes
 verify: grep -q 'def test_add_run_refuses_a_run_the_case_never_sanctioned' tests/integration/test_simulation_view.py
 ---
