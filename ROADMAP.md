@@ -2893,19 +2893,21 @@ turns on has always been strict, and until a bookmark was forkable a mark
 sitting exactly on a branch's fork instant needed the learner to have marked a
 control-event instant by coincidence.
 
-- PL-3K9B (S) — **added 2026-09-20, `safety`, at `needs-decision`.** A time
-  bookmark standing at exactly a branch's fork instant reads `still_running`,
-  whose own vocabulary says "the run can still reach this mark". No step of
-  that branch can: `TimeBookmark.crossed_between` is
-  `before_s < instant_s <= after_s`, the branch's first `before_s` is the fork,
-  and it only increases. Which of two rows a learner gets turns on whether the
-  instant they typed is exactly representable as `step_count x 0.1` — measured
-  2026-09-20, marks at 30.0 and 20.0 read `still_running` and marks at 45.3 and
-  12.7 read `before_this_branch`, none of the four reachable. The decision it
-  carries is what such a row should say; the item recommends widening
-  `_time_bookmark_standing`'s first comparison to `<=` and reading
-  `BEFORE_THIS_BRANCH` as "at or before the fork", over a fifth standing naming
-  the fork.
+- PL-3K9B (S) — **added 2026-09-20, `safety`, at `needs-decision`.** A branch
+  taken at a halt begins standing on the crossing it was taken at, and the
+  bookmark panel says that crossing has not happened on this run. Three cases
+  measured 2026-09-20, one root: a time bookmark on the step grid reads
+  `still_running` — "the run can still reach this mark" — which no step can
+  make true, since `crossed_between` is `before_s < instant_s <= after_s` and
+  the branch's first `before_s` is the fork; the same act with an instant off
+  the grid reads `before this branch opened` instead, so which row a learner
+  gets turns on whether the number they typed is a multiple of 0.1 in binary;
+  and a MAC target reads `still_running` on the branch while reading `reached`
+  on its trunk, about the one crossing the two runs share by construction, on a
+  branch whose identity is the management taken at that height. The item
+  recommends seeding the branch with the crossing it was forked at and testing
+  `REACHED` before `BEFORE_THIS_BRANCH`, over a `<=` widening that leaves the
+  MAC-target case alone and over a fifth standing naming the fork.
 
 ### Deferred to v0.4.26, because the port dissolves the defect — 1 entry
 

@@ -328,13 +328,15 @@ trunk with N branches is the whole of the structure — sub-forks of forks are
 excluded rather than unimplemented (project owner, 2026-08-25): they multiply
 without bound and buy little over branching from the trunk again.
 
-This is the object map. What a branch *guarantees* — that it opens at a
-keyframe and why, that its run definition opens at that keyframe's own case
-instant so no clock is re-based and no conversion is performed, and what both
-are worth in floating point — is `docs/MODEL.md` § "The canonical evaluation
-rule", which is the one place those are stated and measured.
+This is the object map. What a branch *guarantees* — that its run definition
+opens at a keyframe of the case and why, that it opens at that keyframe's own
+case instant so no clock is re-based and no conversion is performed, and what
+both are worth in floating point — is `docs/MODEL.md` § "The canonical
+evaluation rule", which is the one place those are stated and measured. Which
+keyframe, and how it relates to the instant the branch itself began at, is the
+same section's "What this requires of a branch".
 
-Three objects in `app/controller.py` carry it:
+Four things in `app/controller.py` carry it:
 
 - `SimulationController.resumed_at(elapsed_s)` makes one. It builds a second
   controller through the ordinary constructor, replays the trunk's settings
