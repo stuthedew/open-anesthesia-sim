@@ -55,3 +55,28 @@ inherited mark, and no screen this change makes reachable can display it.
    two runs are shown, keeping today's single unnamed standing for one run.
 2. `BEFORE_THIS_BRANCH` is reachable on screen.
 3. A regression test covers both the silent negative and the false positive.
+
+## Re-checked 2026-09-20 against `main` after `PL-3K9B` landed
+
+**The defect is unchanged and was verified directly:**
+`SimulationView._refresh_view` still calls `self._refresh_bookmarks(snapshots[0])`,
+and `SimulationController._bookmark_standings` still computes from the run's own
+`opened_at_s`, `_reached_instants_s` and `_reached_crossings`. One run's answer
+is still presented as the case's.
+
+**One number in the reproductions above may have moved, and was not re-run.**
+`PL-3K9B` (#805) added `PASSED` as a fifth `MarkStanding` and decides a *time*
+bookmark's standing from the run's own clock. The false-positive reproduction
+used a time bookmark at 30 s with a fork at 60 s and recorded the branch's own
+standing as `before_this_branch`; under `PL-3K9B` a branch whose clock stands at
+60 s is at-or-behind that mark, so its standing is now most likely `PASSED`.
+**That changes which wrong word the panel shows, not whether it shows one** -
+the trunk reads `reached`, the branch reads something else, and the panel
+renders only the trunk's. The MAC-target half is untouched by `PL-3K9B`, which
+moved time bookmarks alone.
+
+Re-run both halves before writing the regression test, and correct the standing
+named above rather than trusting it. It is recorded as unverified deliberately:
+this item exists because a brief asserted something about standings that was
+true of the mark set instead, and repeating that shape here would be the same
+error one layer down.
