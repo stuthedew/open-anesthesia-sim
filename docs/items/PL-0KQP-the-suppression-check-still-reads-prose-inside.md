@@ -1,8 +1,10 @@
 ---
 id: PL-0KQP
 title: The suppression check still reads prose inside a .py file as code, so a comment, a docstring or a test fixture naming xfail REJECTs - which is why this fix's own regression test cannot be audited clean
-status: untriaged
+status: dropped
 added: 2026-09-20
+closed: 2026-09-20
+reason: Duplicate of PL-STC4's remaining half, captured on #783's branch before its author found PL-STC4 or PL-4FD2 - itself a fourth instance of PL-TZ7T (bin/docket new files a duplicate title without noticing). Its unique evidence is folded into PL-STC4: the 6-line measurement from #783's own branch, and that a file-level '# type: ignore' on its own line is a real whole-file mypy directive, so 'the line is a comment' cannot be the predicate.
 ---
 
 **Problem.** The suppression check still reads prose inside a .py file as code, so a comment, a docstring or a test fixture naming xfail REJECTs - which is why this fix's own regression test cannot be audited clean

@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: defect
-feature: suppression-file-scope
+feature: verify-false-reject
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-19
 closed: 2026-09-20
