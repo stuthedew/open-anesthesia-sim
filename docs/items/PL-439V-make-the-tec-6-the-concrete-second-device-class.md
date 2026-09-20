@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, anticipated
 feature: anesthesia-machine
+milestone: v0.4.34
 touches: docs/MODEL.md, ROADMAP.md, docs/machine-abstraction.md
 added: 2026-09-06
 closed: 2026-09-20

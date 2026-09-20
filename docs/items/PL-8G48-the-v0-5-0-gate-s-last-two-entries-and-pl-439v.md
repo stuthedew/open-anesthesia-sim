@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning, docs
 feature: debt-gate
+milestone: v0.4.34
 touches: docs/items, ROADMAP.md
 added: 2026-09-20
 closed: 2026-09-20

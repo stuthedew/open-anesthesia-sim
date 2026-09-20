@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: gate-remaining-cost
+milestone: v0.4.34
 touches: subprojects/docket/src/docket, subprojects/docket/tests
 added: 2026-09-20
 closed: 2026-09-20

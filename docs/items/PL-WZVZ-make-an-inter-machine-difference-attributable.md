@@ -94,8 +94,11 @@ leaving `blocked` is what ends the `anticipated` exemption.
 of `Done when.` above - "selecting between machines", "a comparison of two runs
 on different machines" - needs a second machine to exist. `PL-FG9D` answered
 planned-milestone item 1 **as a written design** in `docs/machine-abstraction.md`
-rather than as code, which `ROADMAP.md` § "What a machine module is, settled
-before there are two" states in those terms.
+rather than as code, which `ROADMAP.md`'s `v0.4.33` version-table row states in
+those terms: it "settles what a machine module is before there are two".
+(Re-pointed by the `v0.4.34` cut, `PL-Y3XK`. This cited the v0.4.33 *baseline
+section*, which a release replaces by design, where the version-table row is
+permanent - so a citation into the baseline section dangles at the next cut.)
 
 Nothing schedules the implementation. `ROADMAP.md` § "Planned milestones" item 1
 is a line of intent, and intent is not scope: no milestone *section* places it,

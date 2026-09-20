@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: platform-palette
+milestone: v0.4.34
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, tests/integration/test_dark_appearance.py
 added: 2026-09-20
 closed: 2026-09-20

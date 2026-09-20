@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: safety, anticipated, refactor
 feature: anesthesia-machine
+milestone: v0.4.34
 touches: src/anesthesia_sim/core/supported_ranges.py, src/anesthesia_sim/core/circuit.py, src/anesthesia_sim/core/parameters.py, src/anesthesia_sim/core/uptake_system.py, src/anesthesia_sim/data/machines, tests/unit, docs/MODEL.md, docs/machine-abstraction.md, docs/machine-survey.md
 added: 2026-09-06
 closed: 2026-09-20
+pr: 768
 payoff: stops a second machine's flowmeter silently widening the range the compartment model's error bound was actually measured over, by giving the model envelope and the machine's deliverable range separate names, sources and refusal messages
 verify: grep -q 'def test_machine_deliverable_flow_range_is_separate_from_model_envelope' tests/unit/test_supported_ranges.py
 ---
