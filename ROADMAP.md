@@ -4644,6 +4644,64 @@ question only a person can answer would be the refilling shape twice over.
 
 - PL-WFFX (S) Name the merge client that sends an empty commit_message, which only the project owner can do: affected merges cluster by sitting at 98.3% and by owner-local hour at p=5e-5, but GitHub records no client identity
 
+**Fifteen more from the 2026-09-20 triage pass over the thirty untriaged
+captures it took** (`PL-NQKP`). That pass folded in 30 of the 37 captures open
+that day, leaving the six from `#784`'s adversarial review to `PL-HZ1B`, which
+owns their disposition. Fifteen of the thirty came out debt - thirteen by a
+`defect` class, `PL-TDBT` and `PL-W80S` by their `needs-decision` status - and
+every one was captured on 2026-09-19 or 2026-09-20, thirteen days or more after
+the 2026-09-06 freeze, so "The gate is a snapshot" already places them in the
+next gate on its own terms. They are written down because a gate standing at
+178 cleared of 181 owes a reader a reason for every open debt item it does not
+hold.
+
+**Fourteen sit wholly in the workflow lane**, where the first thirty do:
+apparatus held to `.claude/rules/apparatus-standard.md`'s deliberately lower
+bar, none of which can reach a reader of the simulator. The refilling-queue
+arithmetic above is unchanged and is still the reason - admitting fourteen at
+the beat where the milestone is one step from starting is the shape Phase 0 was
+retired for.
+
+- PL-087W (M) `verify` unions removed assertions per commit and never nets them against a later restore, so a session that puts a flagged assertion back on the check's own advice cannot clear the check
+- PL-162Y (S) `docket next` names a blocked item whose item blockers have closed but not one whose `blocked-by` milestone is now scoped, which `docket check` reports as equally promotable
+- PL-1X2C (S) `docket show` names the reader's own branch as a carrier and stays silent about the other branch editing the same item
+- PL-5B39 (M) `parse_item` silently truncates a multi-line front-matter value at its first line, and `rewrite_item` then deletes the rest from the file
+- PL-73G8 (S) a recovery file's header claims the body verbatim when it is the body as GitHub serves it today, and its `commit:` sha dangles after a history rewrite with nothing checking it
+- PL-7K2C (S) `quality.yml` runs six to eleven tool checks after the whole-store verify replay, so a replay failure skips the contrast, import-boundary, core-vocabulary and glyph checks on that `main` commit entirely
+- PL-7NKD (S) `verify` caps the removed-assertion evidence at five lines with nothing saying so, so a count of six prints five and the reader cannot tell which line is missing
+- PL-7TVT (M) `docket flight` separates a live session from an abandoned branch only by commit age, which cannot fire in the first hour
+- PL-DMNX (S) `PL-1DN9`'s premise that nothing repository-side runs when a pull request is created is now false, so the read-back it bought 337 resident characters for may be scriptable
+- PL-H6VQ (S) `doc_check`'s `_declined_ids` counts every `PL-` id in a Declined-to-Gate subsection, including ids a deferral's prose only cites, so an item mentioned in another item's reasoning reads as disposed
+- PL-N2PP (M) a rider item worked inside another item's session is invisible to every in-flight guard the project has
+- PL-P4XB (S) `test_verify.py`'s `_commission` helper commits unconditionally, so a call with fields identical to the base store's copy dies inside `subprocess` rather than saying nothing changed
+- PL-TDBT (M) `docs/pr-bodies` holds 187 historical documents that read as current, with `doc_check` blind to all of it by design
+- PL-W80S (M) the 150k handoff budget leaves about 35k of headroom over a ~115k session-start baseline, so read literally it refuses to start almost any `M` item
+
+**`PL-H6VQ` is the one to watch among them, and it is deferred with that said.**
+It is the defect that decides whether this subsection means what it says: every
+paragraph here disposes its entries by naming their ids, and `_declined_ids`
+reads every id in the subsection's prose, so an id cited as a cause or a
+precedent is counted as disposed. The direction is the safe one - the check goes
+quiet rather than red - but a narrowing of it to `^- PL-XXXX` entry lines would
+turn every prose-only id in this section into an undisposed debt item at once.
+This pass therefore writes its own ids as entry lines above, which reads the
+same under either rule. It is recommended as the first of these fourteen taken
+off the list.
+
+**`PL-1K9G` is product-lane and so needs its own ground**, which is stated
+rather than stretched: it is a defect in what the Qt chart's hover tells a
+reader, and it can reach one. It is deferred on the snapshot rule alone - found
+2026-09-20 while closing `PL-0RZ0`, fourteen days after this gate froze, and
+classed `defect, ux` rather than `safety`, so the unconditional re-entry that
+admitted `PL-0RZ0` does not reach it. **That class rests on a count nobody has
+run**, and the item says so: how often two adjacent drawn columns differ by at
+least one displayed digit is its first step, and a non-trivial answer
+reclassifies it `safety` at `P1`, at which point § "The cadence" re-admits it to
+this gate whatever the date. The deferral is a statement about what has been
+measured, not about the hazard.
+
+- PL-1K9G (M) which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with - and two compartments of one run can carry two instants in one box
+
 ### Required scope
 
 Nineteen items, in the order the dependencies allow. The first three are the

@@ -1,9 +1,15 @@
 ---
 id: PL-1X2C
 title: bin/docket show names the reader's own branch as a carrier and stays silent about the other branch editing the same item
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
 feature: carrier-detection
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-20
+payoff: the one guard that fires when the owner names an item points at the branch that will collide instead of at the reader's own
+verify: grep -q 'def test_the_carrier_line_names_the_other_branch_not_the_readers_own' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** bin/docket show names the reader's own branch as a carrier and stays silent about the other branch editing the same item
@@ -45,3 +51,9 @@ as "somebody else is here" to a reader skimming.
 all, and that a queue-only diff does not raise the in-flight mark, are both
 deliberate and documented. This is about the line being wrong when it does
 fire.
+
+**Done when.** `bin/docket show <id>` names the branches other than the
+reader's own that carry an edit to the item's file, names all of them rather
+than one, and says nothing where the only carrier is the branch the reader is
+standing on - with a test under `subprojects/docket/tests/test_cli.py` driving
+a store whose item file is edited on two branches, one of them the current one.

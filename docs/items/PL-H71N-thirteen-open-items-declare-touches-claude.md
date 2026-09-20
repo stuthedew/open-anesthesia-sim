@@ -1,8 +1,14 @@
 ---
 id: PL-H71N
 title: Thirteen open items declare touches: .claude/skills/docket/SKILL.md, but the docket skill's modes now live in .claude/skills/docket/modes/, so bin/docket concurrent under-reports contention between items whose work lands in the same mode file
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: housekeeping
+touches: docs/items
 added: 2026-09-20
+payoff: bin/docket concurrent reports the real contention between two docket-skill items instead of overlap on a front page neither will touch
+verify: grep -qE '^touches:.*[.]claude/skills/docket/modes/' docs/items/PL-0QRP-a-verify-clause-that-counts-occurrences-of-a.md
 ---
 
 **Problem.** Thirteen open items declare touches: .claude/skills/docket/SKILL.md, but the docket skill's modes now live in .claude/skills/docket/modes/, so bin/docket concurrent under-reports contention between items whose work lands in the same mode file
@@ -29,3 +35,12 @@ judgment per item rather than a rewrite, so it wants a pass of its own.
 **Done when.** Each of the thirteen declares a `touches` that names where its
 work actually lands, and `bin/docket concurrent` on any two of them reports the
 overlap they really have.
+
+**Recounted 2026-09-20, and the number has moved twice.** 16 item files now
+declare `touches: .claude/skills/docket/SKILL.md`; 12 of them are open, since
+`PL-M21Q` has closed `done` since this was filed. The 12 are `PL-0QRP`,
+`PL-6YYR`, `PL-CPLX`, `PL-G8TR`, `PL-HX5C`, `PL-KKRP`, `PL-NGLM`, `PL-PNW6`,
+`PL-SY1J`, `PL-VYK1`, `PL-WVJ0`, `PL-WXX8`. Closed items are not re-pointed:
+`.claude/rules/citation-drift.md` makes drift in a `done` brief not a finding,
+so the pass is over the open ones only and the count will keep moving until it
+is run.
