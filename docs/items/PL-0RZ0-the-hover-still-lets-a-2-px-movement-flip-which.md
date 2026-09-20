@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: safety, ux
 feature: compartment-trace-legibility
+milestone: v0.4.34
 touches: src/anesthesia_sim/app/chart_frame.py, docs/MODEL.md, tests/unit/test_chart_frame.py
 added: 2026-09-20
 closed: 2026-09-20
+pr: 767
 payoff: stops the hover box naming fat's value under muscle's label when the reader's hand moves 2 px, where the two can differ severalfold
 verify: grep -q 'def test_two_compartments_within_one_hover_radius' tests/unit/test_chart_frame.py
 ---

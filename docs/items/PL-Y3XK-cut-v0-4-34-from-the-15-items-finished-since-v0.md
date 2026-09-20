@@ -1,18 +1,19 @@
 ---
 id: PL-Y3XK
-title: Cut v0.4.34 from the 15 items finished since v0.4.33: the release where the interface stops rendering the host's dark surfaces, and the machine abstraction gets its second device class
+title: Cut v0.4.34 from the 15 items finished since v0.4.33: the release where the interface stopped answering in the host's colours, and the model's flow envelope stopped standing in for a machine's
 priority: P2
 effort: S
-status: ready
+status: done
 classes: housekeeping
 feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 added: 2026-09-20
+closed: 2026-09-20
 payoff: clears the release the session-start digest re-raises in every session, and unblocks the next cut, which docket refuses while a release is untagged
 verify: grep -q '^version = "0.4.34"' pyproject.toml
 ---
 
-**Problem.** Cut v0.4.34 from the 15 items finished since v0.4.33: the release where the interface stops rendering the host's dark surfaces, and the machine abstraction gets its second device class
+**Problem.** Cut v0.4.34 from the 15 items finished since v0.4.33: the release where the interface stopped answering in the host's colours, and the model's flow envelope stopped standing in for a machine's
 
 The fifteen are three dark-appearance palette defects (`PL-0NVN` the three
 selector popups, `PL-7W9N` the six legend checkboxes, `PL-RKRY` the bookmark
@@ -65,3 +66,10 @@ composing one for it.
 4. `make check`, which is what proves those edits landed.
 5. Commit, push, open the pull request; the tag is the project owner's to run
    after the merge.
+
+**Retitled during the cut.** The working title said "the machine abstraction
+gets its second device class". Reading `PL-439V` against the tree showed that
+is wrong: it closed as **satisfied by `PL-FG9D`'s specification**, which
+shipped in `v0.4.33`, so the Tec 6 entered `docs/machine-abstraction.md` one
+release ago and nothing about it landed here. The title now names what this
+release actually moves.

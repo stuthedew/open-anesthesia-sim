@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect
 feature: docket-store
+milestone: v0.4.34
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_plan.py
 added: 2026-09-17
 closed: 2026-09-20
+pr: 769
 payoff: stops the queue reading as more stuck than it is by naming, where work is chosen, the blocked items whose blockers have all closed - the one that unblocked three more of v0.5.0's own scope was invisible to docket next
 verify: grep -q 'def test_an_item_whose_every_blocker_has_closed_is_reported_promotable' subprojects/docket/tests/test_plan.py
 root-cause-of: PL-JFQ3, PL-8G48, PL-CHQY
