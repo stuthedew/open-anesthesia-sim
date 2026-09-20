@@ -4583,7 +4583,7 @@ placing them.
   with no conversion and survives a change of agent intact. And the
   rising/falling/either crossing direction is **withdrawn rather than met**
   (project owner, 2026-09-20), for the reason under planned-milestone item 26.
-  Nothing halts at a mark yet; that is PL-CTD7, below.
+  Halting at a mark is the entry below, PL-CTD7.
 - **Crossings are detected inside the advance loop** (queue item PL-CTD7), with
   an explicit not-reached outcome that reads differently from a reached one.
   Testing per rendered frame overshoots by the frame's worth of simulated time
@@ -5989,11 +5989,18 @@ specified.
     rather than as the reference's percent. `app/bookmarks.py`'s `MacTarget`
     carries the reasoning, recorded on the class because the reference has
     the field and a later reading of this paragraph would otherwise put it
-    back. What is open instead is whether a target halts on every crossing or
-    fires once until re-armed, which is part of PL-CTD7's outcome set. A
+    back. Whether a target halts on every crossing or fires once until
+    re-armed was what remained open, and it is **answered: every crossing**
+    (project owner, 2026-09-20), against the session recommendation to
+    re-arm - a re-arm flag is a hidden mode, two targets identical in the
+    list behaving differently because one has fired, where resuming a paused
+    run is one control the learner is already looking at. A
     threshold above a compartment's asymptote is unreachable, so a bookmark
     needs a distinct "not reached, run-time cap hit" outcome that reads
-    differently from "reached" rather than stopping silently. Bookmarks are
+    differently from "reached" rather than stopping silently; `PL-CTD7`
+    shipped that as a four-valued set, the fourth member being a time
+    bookmark standing before a branch's own fork instant, which no amount of
+    running reaches. Bookmarks are
     part of the saved scenario rather than session-local, so item 12 can
     branch from them.
 
