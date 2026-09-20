@@ -2476,12 +2476,14 @@ where no provenance row could reach them and changed neither value.
   gives the circuit row a volume and no flow, its interface defaults are
   described without numbers, and the two Gas Man simulation studies read here
   chose flows for their own purposes (De Wolf et al. 1 L/min; Meybohm et al.
-  10 L/min for washout). It is a project convention: a routine mid-range
-  clinical flow, well inside the supported interval, that puts the circuit time
-  constant at 90 s — long enough for the machine lag to read as a distinct
-  phase of the early rise, short enough to resolve within the first minutes of
-  a teaching run. That is a design rationale, and the data file labels it as
-  one rather than as a measurement.
+  10 L/min for washout). It is a **teaching default, not a clinical
+  recommendation** (project owner, 2026-09-20, ratified, over lowering it to
+  match contemporary low-flow practice): a flow well inside the supported
+  interval, chosen because it puts the circuit time constant at 90 s — long
+  enough for the machine lag to read as a distinct phase of the early rise,
+  short enough to resolve within the first minutes of a teaching run. That is a
+  design rationale, and the data file labels it as one rather than as a
+  measurement.
 
 **One measured circle-system volume is now held, and it bounds the first row
 rather than replacing it** (`PL-QBKQ`). Targ, Yasuda and Eger measured a
@@ -2543,6 +2545,41 @@ internal topology is not represented, folding it into an effective volume is
 refused because it would attribute to volume a difference volume did not cause,
 and `ROADMAP.md`'s planned-milestone item 39 is the condition under which the
 decline is revisited.
+
+**The flow row's gap has since been searched, and what came back is a
+recommendation rather than a convention** (`PL-NM7X`). `docs/machine-survey.md`
+§ "(a2)" looked for a startup fresh gas flow published by any machine in
+current clinical use and found none, so the row above still adopts no source and
+the gap is narrower than "not sought": what is missing is a published startup
+convention that does not appear to exist. What the literature carries instead is
+normative. Kalmar et al. conclude that *"routine clinical practice using what
+historically is called 'low flow anaesthesia' (e.g. 2 L/min FGF) should be
+abandoned"* in favour of automated minimal-flow delivery (*J Clin Monit Comput*
+2022;36(6):1601–1610, PMID 34978655; read at full text 2026-09-20 from PubMed
+Central, PMC9637609, where the quoted sentence closes the abstract). That is a
+single-centre retrospective's recommendation rather than a measurement of what
+flows are used — but its own comparator is a fixed 2 L/min group it calls
+conventional low flow, which already sits below this model's 4.0.
+
+**Until 2026-09-20 this section called 4.0 L/min "a routine mid-range clinical
+flow", and that sentence is withdrawn rather than re-sourced.** It was a claim
+about clinical practice that no source this project holds supports, and under
+the safety-critical standard a correct number carrying a wrong provenance is
+still a presentation failure. **The number did not change**, because an
+unlabelled default teaches a norm whatever it holds: moving to 0.5 L/min would
+relocate the problem rather than remove it, would carry the same absent
+provenance, and would put the apparatus lag at **12 minutes**, longer than the
+demonstration it exists to make. What was wrong was the sentence.
+<!-- derived: 12 minutes from data/machines/reference_circle_system.json circuit_volume_l = 6.0 -->
+
+**Two papers cited alongside Kalmar et al. in the survey do not bear on
+practice, and the survey now says so.** Candries et al. randomised 0.2 to
+6 L/min in 28 patients as the protocol of a Gas Man validation study, and
+Hoffmann et al. ran 0.3 to 6 L/min *in vitro* into a test lung and describe
+those settings as reflecting clinical conditions — a range that contains 4, 5
+and 6 L/min. A study's chosen flow range is not a report of practice, which is
+the same error the De Wolf entry guards against for its 1 L/min elsewhere in
+this section.
 
 There is no "arterial blood-pool volume" row: arterial blood is flow-limited
 and holds no independent state (see "Model boundary"). Tissue:blood

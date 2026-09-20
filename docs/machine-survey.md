@@ -183,26 +183,50 @@ or agent property, and the project owner's recorded decision was to wait for
 this abstraction.
 
 **Where it lives today.** The same machine data file, at 4.0 L/min, declared in
-that file's `provenance_gap` as a project convention with no published
-counterpart. (The item's brief describes it as a literal in
+that file's `provenance_gap` as a **teaching default, not a clinical
+recommendation**, with no published counterpart. (The item's brief describes it as a literal in
 `src/anesthesia_sim/core/circuit.py`; that stopped being true when `PL-4YY1`
 moved both constants into the data file, and the literal that remains is a
 default for a bare unit-test construction, guarded by a test that fails if it
 disagrees with the file.)
 
-**What the survey found: no machine default, and a convention that has moved.**
-No reachable source states a startup fresh gas flow for any surveyed machine.
-What the literature does establish is that 4 L/min is at the high end of
-contemporary practice rather than the middle of it. Candries et al. randomised
-flows from 0.2 to 6 L/min in patients; Hoffmann et al. ran 0.3 to 6 L/min;
-Kalmar et al. conclude in those words that *"routine clinical practice using
-what historically is called 'low flow anaesthesia' (e.g. 2 L/min FGF) should be
-abandoned"* in favour of automated minimal-flow delivery.
+**What the survey found: no machine default, and one recommendation that is not
+a survey of practice.** No reachable source states a startup fresh gas flow for
+any surveyed machine. What the literature carries is normative rather than
+descriptive. Kalmar et al. conclude in those words that *"routine clinical
+practice using what historically is called 'low flow anaesthesia' (e.g. 2 L/min
+FGF) should be abandoned"* in favour of automated minimal-flow delivery — a
+recommendation drawn from a single-centre retrospective of 25 cases per group on
+one workstation, not a measurement of what flows are used. What it does
+establish about practice is its own comparator: a fixed 2 L/min group the paper
+calls conventional low flow, which already sits below this simulator's 4 L/min
+default.
 
-**This is a finding, not a change.** Whether the simulator should open at a flow
-the field is moving away from is a question about what a learner is taught on
-first contact, which is the project owner's to decide; it is filed rather than
-acted on here.
+**Two papers this section first cited beside it do not support a claim about
+practice, and the correction is recorded rather than quietly dropped**
+(`PL-NM7X`, 2026-09-20). Candries et al. randomised 0.2 to 6 L/min and Hoffmann
+et al. ran 0.3 to 6 L/min, and until 2026-09-20 this section read those two
+ranges as establishing that *"4 L/min is at the high end of contemporary
+practice rather than the middle of it"*. Neither supports it. Candries' range is
+the protocol of a Gas Man validation study, chosen to span a wide envelope;
+Hoffmann's is a bench protocol run *in vitro* into a 2 L test lung, whose
+settings that paper describes as reflecting clinical conditions and whose range
+contains 4, 5 and 6 L/min — so it reads, if anything, the other way. **A study's
+chosen flow range is not a report of practice**, which is the error
+`reference_circle_system.json`'s De Wolf entry already guards against for its
+1 L/min.
+
+**The decision, and what it turned on** (project owner, 2026-09-20, ratified,
+over lowering the default to match contemporary low-flow practice). The
+simulator keeps 4.0 L/min, relabelled in the data file as a **teaching default,
+not a clinical recommendation**. An unlabelled default teaches a norm whatever
+number it holds, so moving to 0.5 L/min would relocate the problem rather than
+remove it, and would carry the same absent provenance this section objects to,
+since no machine publishes a startup flow either. What 4 L/min buys is a
+$`\tau_C`$ near 90 s, which makes the machine's own lag a separable phase ahead
+of patient uptake inside a run a learner will sit through; at 0.5 L/min it is
+about 12 minutes and the demonstration no longer completes. What was wrong was
+the sentence, not the number.
 
 ### (b1) Delivered concentration is not the dial setting
 
@@ -685,9 +709,13 @@ description).**
   simulations of sevoflurane in O2/air over a wide fresh gas flow range. *J Clin
   Monit Comput.* 2022;36(6):1881–1890.
   PMID 35318567; [DOI 10.1007/s10877-022-00842-0](https://doi.org/10.1007/s10877-022-00842-0).
-  Abstract read. Directly relevant to this project: it validates the reference
+  Abstract read; identifiers and the 0.2–6 L/min protocol range re-confirmed
+  against the PubMed record 2026-09-20 (`PL-NM7X`). No PubMed Central full text,
+  and a check of the private reference corpus the same day did not find it.
+  Directly relevant to this project: it validates the reference
   implementation this simulator is compared against, on two workstations, and
   reports materially worse agreement during wash-in than during maintenance.
+  Its flow range is a protocol, not a report of practice — see § "(a2)".
 - Hendrickx JFA, De Wolf AM. The anesthesia workstation: quo vadis? *Anesth
   Analg.* 2018;127(3):671–675.
   PMID 29239956; [DOI 10.1213/ANE.0000000000002688](https://doi.org/10.1213/ANE.0000000000002688).
@@ -709,10 +737,18 @@ description).**
   for any measured quantity.
 - Kalmar AF, Van Der Vekens N, De Rydt F, Allaert S, Van De Velde M, Mulier J.
   Minimizing sevoflurane wastage by sensible use of automated gas control
-  technology in the Flow-i workstation. *J Clin Monit Comput.*
-  2022;36(6):1601–1610.
+  technology in the Flow-i workstation: an economic and ecological assessment.
+  *J Clin Monit Comput.* 2022;36(6):1601–1610.
   PMID 34978655; [DOI 10.1007/s10877-021-00803-z](https://doi.org/10.1007/s10877-021-00803-z).
-  Abstract read.
+  **Read at full text 2026-09-20** from PubMed Central (PMC9637609) for
+  `PL-NM7X`. The sentence quoted in § "(a2)" is the abstract's closing one; the
+  body's Conclusion states it again without the parenthesised 2 L/min figure.
+  Design bounds what it may be cited for: a retrospective of one centre's
+  records, 25 cases per group, on Flow-i workstations alone, comparing AGC
+  speed settings against a fixed 2 L/min group and a manual minimal-flow group.
+  So it is a recommendation about what practice should be, and evidence that
+  2 L/min is the conventional comparator — not a measurement of what flows are
+  used.
 - Križmarić M, Maver U, Zdravković M, Mekiš D. Effects of the reservoir bag
   disconnection on inspired gases during general anesthesia: a simulator-based
   study. *BMC Anesthesiol.* 2021;21(1):32.
@@ -730,6 +766,11 @@ criterion.**
   vitro performance of a charcoal-capturing device with desflurane.
   *Anesthesiology.* 2025;142(6):1038–1046.
   PMID 40073301; [DOI 10.1097/ALN.0000000000005445](https://doi.org/10.1097/ALN.0000000000005445).
+  Abstract read; identifiers and the 0.3–6 L/min bench protocol re-confirmed
+  against the PubMed record 2026-09-20 (`PL-NM7X`). No PubMed Central full text,
+  and a check of the private reference corpus the same day did not find it. It
+  is an *in vitro* study into a 2 L test lung and is **not** evidence about
+  clinical practice; § "(a2)" records that it was once cited as such here.
 - Jakobsson P, Lindgren M, Jakobsson JG. Wash-in and wash-out of sevoflurane in
   a test-lung model: a comparison between Aisys and FLOW-i. *F1000Res.*
   2017;6:389.

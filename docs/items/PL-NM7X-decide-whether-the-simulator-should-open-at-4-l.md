@@ -3,11 +3,12 @@ id: PL-NM7X
 title: Decide whether the simulator should open at 4 L/min fresh gas flow, which is above the flow contemporary practice is moving to
 priority: P1
 effort: S
-status: ready
+status: done
 classes: science
 feature: anesthesia-machine
 touches: src/anesthesia_sim/data/machines/reference_circle_system.json, docs/MODEL.md, docs/machine-survey.md
 added: 2026-09-19
+closed: 2026-09-20
 payoff: stops the simulator's opening fresh gas flow teaching 4 L/min as routine practice when its own survey found the field has moved below it
 verify: grep -q 'teaching default, not a clinical recommendation' src/anesthesia_sim/data/machines/reference_circle_system.json
 ---
@@ -100,3 +101,44 @@ citations land in `docs/MODEL.md`: Candries et al., *J Clin Monit Comput*
 2022;36(6):1881–1890 (PMID 35318567); Hoffmann et al., *Anesthesiology*
 2025;142(6):1038–1046 (PMID 40073301); Kalmar et al., *J Clin Monit Comput*
 2022;36(6):1601–1610 (PMID 34978655).
+
+**Confirmation done 2026-09-20, and one of the three does not support the claim
+it was cited for.** Route and depth for each, per
+`.claude/rules/citing-sources.md`:
+
+- **Kalmar et al.** (PMID 34978655) — **read at full text** from PubMed Central
+  (PMC9637609). The quoted sentence is verbatim and is the abstract's closing
+  one; the body's Conclusion restates it without the parenthesised 2 L/min. It
+  holds, with its design stated: a single-centre retrospective, 25 cases per
+  group, Flow-i workstations only, so it is a *recommendation about what
+  practice should be* rather than a measurement of what it is. What it does
+  establish about practice is its own comparator — a fixed 2 L/min group it
+  calls conventional low flow, already below this project's 4.0.
+- **Candries et al.** (PMID 35318567) — abstract confirmed against the PubMed
+  record; no PubMed Central full text, and not in the private reference corpus
+  (checked 2026-09-20). Its 0.2–6 L/min is the *protocol* of a Gas Man
+  validation study, chosen to span a wide envelope, and is not a report of
+  practice.
+- **Hoffmann et al.** (PMID 40073301) — abstract confirmed against the PubMed
+  record; no PubMed Central full text, and not in the private reference corpus
+  (checked 2026-09-20). It is an **in vitro** bench study into a 2 L test lung,
+  and its 0.3–6 L/min range *contains* 4, 5 and 6 L/min, settings the paper
+  describes as reflecting clinical conditions. **It does not support "the field
+  has moved below 4 L/min"; if anything it reads the other way.**
+
+Neither of the two unreachable full texts is needed: every claim made from them
+is about a protocol flow range, and both ranges are stated in full in the
+abstracts.
+
+**This does not reopen the decision — it strengthens it.** The ratified answer
+was to keep 4.0 and fix the sentence. A weaker supersession makes that more
+clearly right, not less, and makes the relabelling *more* necessary rather than
+less: the data file should now make no claim about clinical practice in either
+direction, which is what it does. What changed is the supporting text, which
+says what each source establishes instead of reading three flow ranges as one
+finding.
+
+**Not changed, deliberately.** `ROADMAP.md`'s v0.5.0 gate entry quotes the old
+"routine mid-range clinical fresh gas flow" wording as the defect this entry was
+frozen against. A frozen gate entry is a record of the finding at freeze time,
+and the entries for closed items are left as written, so it stays.
