@@ -3,13 +3,14 @@ id: PL-FCM3
 title: bin/docket wave reports 'N waiting on work outside it' without naming or counting those items, so the gate understates what clearing it costs
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: gate-remaining-cost
-touches: subprojects/docket/src/docket
+touches: subprojects/docket/src/docket, subprojects/docket/tests
 added: 2026-09-20
+closed: 2026-09-20
 payoff: makes the beat say what clearing the gate actually costs, instead of reporting 4 items when it is 1 plus 13 prerequisites
-verify: grep -q 'def test_wave_names_off_gate_prerequisites' subprojects/docket/tests/test_wave.py
+verify: grep -q 'def test_the_gate_sizes_the_work_its_entries_wait_on_outside_it' subprojects/docket/tests/test_roadmap.py
 ---
 
 **Problem.** bin/docket wave reports 'N waiting on work outside it' without naming or counting those items, so the gate understates what clearing it costs

@@ -38,7 +38,7 @@ from .plan import (
     set_aside,
 )
 from .release import PLANNED, RESERVED, Readiness, ReleaseOffer, release_offer
-from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, Scope, Wave
+from .roadmap import CLEAR, FREEZE, IMPLEMENT, RELEASE, STEP_SEPARATOR, GateStatus, Scope, Wave
 from .trend import APPARATUS, BY_DAY, EFFORT_POINTS, LANES, PRODUCT_BUCKETS, QUEUE, Trend
 from .vcs import (
     CURRENT,
@@ -1674,7 +1674,8 @@ def format_wave(plan: Wave) -> str:
         if gate.sequenced_ahead:
             aside.append(f"{len(gate.sequenced_ahead)} sequenced ahead of it")
         if gate.waiting_outside:
-            aside.append(f"{len(gate.waiting_outside)} waiting on work outside it")
+            cost = _outside_cost(gate)
+            aside.append(f"{len(gate.waiting_outside)} waiting on {cost or 'work'} outside it")
         if aside:
             counted += f" - {len(gate.clearable)} this gate can clear, " + ", ".join(aside)
         lines.append(f"          {counted}")
@@ -1694,6 +1695,12 @@ def format_wave(plan: Wave) -> str:
         if gate.waiting_outside:
             held = [identifier for entry in gate.waiting_outside for identifier in entry.ids]
             lines.append(f"          blocked outside the gate: {', '.join(held)}")
+            # The ids under the count above, so the reader can go and look at
+            # what the gate is actually waiting for rather than take a number
+            # for it. Milestones are named in that count and not repeated here:
+            # a version is not a file anybody can open (`PL-FCM3`).
+            if gate.outside_items:
+                lines.append(f"          what they wait on: {', '.join(gate.outside_items)}")
         if gate.unknown_ids:
             lines.append(
                 f"          not in the store, so not countable: {', '.join(gate.unknown_ids)}"
@@ -1780,6 +1787,22 @@ def _release_advice(ready: Readiness, plan: Wave | None) -> str:
     return f"Offer {offer.version} before taking new work."
 
 
+def _outside_cost(gate: GateStatus) -> str:
+    """What the entries waiting outside the gate are waiting on, counted.
+
+    Empty when the walk found nothing, which `gate_status` cannot produce - an
+    entry reaches `waiting_outside` only by waiting on something - so the
+    callers' fallbacks are a formatter declining to state a number it was not
+    given, rather than a case to design around.
+    """
+    parts = []
+    if gate.outside_milestones:
+        parts.append(", ".join(gate.outside_milestones))
+    if gate.outside_items:
+        parts.append(_plural(len(gate.outside_items), "open item", "open items"))
+    return " and ".join(parts)
+
+
 def _beat_line(plan: Wave) -> str:
     """The beat, said as an instruction, with the count that makes it checkable."""
     if plan.beat == CLEAR and plan.gate is not None:
@@ -1791,7 +1814,13 @@ def _beat_line(plan: Wave) -> str:
         if plan.gate.sequenced_ahead:
             aside.append(f"{len(plan.gate.sequenced_ahead)} sequenced ahead of it")
         if plan.gate.waiting_outside:
-            aside.append(f"{len(plan.gate.waiting_outside)} blocked outside it")
+            # Sized here as well as in the gate block above, because the digest
+            # every session opens with prints this line and no other: unsized,
+            # it put the whole cost of the milestone at the open-entry count
+            # and nothing said otherwise (`PL-FCM3`).
+            blocked = f"{len(plan.gate.waiting_outside)} blocked outside it"
+            cost = _outside_cost(plan.gate)
+            aside.append(f"{blocked} by {cost}" if cost else blocked)
         if aside:
             line += " here, " + ", ".join(aside)
         return line

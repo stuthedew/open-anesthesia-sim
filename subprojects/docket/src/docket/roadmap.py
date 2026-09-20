@@ -31,6 +31,7 @@ import re
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 
+from .model import MILESTONE_BLOCKER_RE
 from .release import SEMVER_RE
 from .store import ID_PATTERN
 
@@ -907,10 +908,66 @@ class GateStatus:
     #: `blocked_outside` whole. Empty where `gate_status` was given no train,
     #: because the split is then not attempted rather than guessed.
     sequenced_ahead: tuple[Sequenced, ...] = ()
+    #: For each entry blocked outside the list, every open id it waits on that
+    #: the list does not hold - transitively, so the figure is what clearing
+    #: the entry costs rather than where the walk first left the list. Keyed by
+    #: entry because only the `waiting_outside` half of `blocked_outside` is
+    #: reported against it: an entry the plan sequences ahead of the gate is
+    #: paid for by the rows before it, and charging the reader for it here
+    #: would make the plan's own ordering look like unbudgeted work. Defaulted
+    #: for a status built by hand; `gate_status` always fills it.
+    prerequisites: Mapping[GateEntry, frozenset[str]] = field(default_factory=dict)
 
     @property
     def ids(self) -> tuple[str, ...]:
         return tuple(identifier for entry in self.entries for identifier in entry.ids)
+
+    @property
+    def _outside(self) -> frozenset[str]:
+        """The distinct ids the entries waiting outside the gate wait on, of any kind."""
+        waiting = set(self.waiting_outside)
+        found: set[str] = set()
+        for entry, prerequisites in self.prerequisites.items():
+            if entry in waiting:
+                found |= prerequisites
+        return frozenset(found)
+
+    @property
+    def outside_items(self) -> tuple[str, ...]:
+        """The distinct open queue items those entries are waiting on.
+
+        What clearing them costs beyond the gate's own count, and the number
+        the beat was missing: `4 open - 1 this gate can clear, 3 waiting on
+        work outside it` named the hole without sizing it, so a reader took
+        four items for the whole of the work where it was one plus thirteen
+        (`PL-FCM3`).
+
+        Distinct, because two entries waiting on one item are one piece of
+        work; summing per entry would overstate exactly what the old line
+        understated. Sorted for a stable line rather than by any ranking - the
+        queue ranks work, and a report that quietly invented a second order
+        would be read as one.
+        """
+        return tuple(sorted(i for i in self._outside if MILESTONE_BLOCKER_RE.match(i) is None))
+
+    @property
+    def outside_milestones(self) -> tuple[str, ...]:
+        """The distinct milestone versions those entries are waiting on.
+
+        Counted apart from the items because a milestone is not work anybody
+        can pick up, so folding one into the item count would restate the same
+        overstatement with the sign reversed. Told from an item by the grammar
+        `Item.blocking_items` uses rather than by absence from the store, which
+        keeps the partition fail-closed the same way: a typo stays an item and
+        is refused by name where `checks.py` already refuses unrecognised
+        blockers, instead of being silently counted as a milestone.
+        """
+        return tuple(
+            sorted(
+                (i for i in self._outside if MILESTONE_BLOCKER_RE.match(i) is not None),
+                key=lambda version: version_tuple(version) or (0, 0, 0),
+            )
+        )
 
     @property
     def waiting_outside(self) -> tuple[GateEntry, ...]:
@@ -1535,6 +1592,53 @@ def _blockers_outside(
     return frozenset(outside)
 
 
+def _prerequisites_outside(
+    identifier: str,
+    blockers: Mapping[str, Sequence[str]],
+    gate_ids: frozenset[str],
+    closed_ids: frozenset[str],
+    seen: set[str],
+) -> frozenset[str]:
+    """Every open id this one waits on, at any depth, that the frozen list does not hold.
+
+    The cost question, where `_blockers_outside` answers the placement one, and
+    the two part company at the first crossing. That walk stops there on
+    purpose - where the plan puts a blocker off the list is the plan's business
+    - so what it returns is a frontier and not a total, and asking it for the
+    total reproduces the defect this was filed on one level down. Of the open
+    items carrying an open blocker on 2026-09-20, 38% waited on something their
+    immediate blockers waited on in turn, and across that set the frontier
+    undercounted the open prerequisites by 31% (`PL-FCM3`).
+
+    So this one continues past the crossing, and collects an id whenever the
+    list does not hold it. A blocker the list *does* hold is already counted as
+    an open entry of the gate, so collecting it here too would charge the
+    reader twice for one piece of work - the walk still follows it, because an
+    entry on the list may itself wait on something off it.
+
+    A milestone version names no item and carries no blockers of its own, so
+    the walk stops on it having collected it; `GateStatus.outside_milestones`
+    is where it is told apart from an id, and on the grammar rather than on
+    absence from the store.
+
+    Cycle-safe on `seen`, which is what keeps the session-start digest from
+    dying of recursion on two items waiting on each other: `_plan` declines on
+    `OSError`, `ValueError` and `KeyError`, and a `RecursionError` is none of
+    the three, so the digest would not degrade - it would fail.
+    """
+    if identifier in seen:
+        return frozenset()
+    seen.add(identifier)
+    outside: set[str] = set()
+    for blocker in blockers.get(identifier, ()):
+        if blocker in closed_ids:
+            continue
+        if blocker not in gate_ids:
+            outside.add(blocker)
+        outside |= _prerequisites_outside(blocker, blockers, gate_ids, closed_ids, seen)
+    return frozenset(outside)
+
+
 def gate_status(
     milestone: MilestoneSection,
     closed_ids: frozenset[str],
@@ -1572,6 +1676,12 @@ def gate_status(
     before the gate's; one placed later, or by no section, leaves it waiting
     outside. Without a train the split is not attempted (`PL-7CSP`).
 
+    `prerequisites` answers the remaining question about those entries, and is
+    the one place a second walk is worth its cost: how *much* is outside, which
+    the frontier cannot say because it stops at the first crossing. See
+    `_prerequisites_outside`, and `GateStatus.outside_items` for what is then
+    reported from it (`PL-FCM3`).
+
     **The section's group headings are not read, and are not the test.** Gate 1
     writes the same split in prose - "Cleared by v0.5.0 itself" - and the two
     disagreed on three ids when this was built: `PL-2FM6` and `PL-8LXM` sit
@@ -1604,6 +1714,16 @@ def gate_status(
         if frontier:
             outside[entry] = frontier
     blocked_outside = tuple(entry for entry in outstanding if entry in outside)
+    prerequisites = {
+        entry: frozenset().union(
+            *(
+                _prerequisites_outside(identifier, blockers, gate_ids, closed_ids, set())
+                for identifier in entry.ids
+                if identifier not in closed_ids
+            )
+        )
+        for entry in blocked_outside
+    }
     sequenced: list[Sequenced] = []
     gate_row = train.row(milestone) if train is not None else None
     if train is not None and gate_row is not None:
@@ -1637,6 +1757,7 @@ def gate_status(
         self_cleared=self_cleared,
         unknown_ids=tuple(unknown),
         sequenced_ahead=tuple(sequenced),
+        prerequisites=prerequisites,
     )
 
 
