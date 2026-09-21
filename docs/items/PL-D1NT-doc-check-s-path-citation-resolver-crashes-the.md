@@ -8,6 +8,7 @@ classes: defect
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-19
 closed: 2026-09-21
+pr: 869
 verify: grep -q 'def test_a_citation_the_process_cannot_stat_is_reported_not_raised' tests/unit/test_doc_check.py
 recurrences: 2026-09-21 PL-H0CF
 ---

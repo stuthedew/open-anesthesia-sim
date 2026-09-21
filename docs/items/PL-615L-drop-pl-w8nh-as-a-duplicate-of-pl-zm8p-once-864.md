@@ -3,10 +3,12 @@ id: PL-615L
 title: "Drop PL-W8NH as a duplicate of PL-ZM8P once #864 and #866 both land: both name check_quoted_sources holding closed briefs to current prose, PL-ZM8P is the one implemented"
 priority: P3
 effort: S
-status: untriaged
+status: done
 classes: housekeeping
 feature: dev-tooling
 added: 2026-09-21
+closed: 2026-09-21
+verify: grep -q '^status: dropped' docs/items/PL-W8NH-*.md && grep -q 'PL-ZM8P' docs/items/PL-W8NH-*.md
 ---
 
 **Problem.** Two sessions found the same defect inside an hour on 2026-09-21
@@ -48,3 +50,18 @@ has `PL-ZM8P` in it, or they will write the same filter a second time.
 #864 merges first and #866's fix is what actually lands - the two are
 reconciled in whichever direction leaves one implemented item and no second
 brief describing unfinished work that is finished.
+
+## Closed 2026-09-21: done by the session that filed the duplicate
+
+`#864` dropped `PL-W8NH` itself, with `reason: Duplicate of PL-ZM8P, which
+diagnosed the same defect from the release cut that hit it`. That is this
+item's `Done when` exactly, reached by the other session rather than by a
+later sweep, so nothing was owed by the time this was read.
+
+Two things confirmed against the merged tree rather than assumed. The
+closed-brief filter survives `#864`'s own edits - `_quoting_sources` still
+yields `_live_item_briefs(root)`, and the docstring naming
+`.claude/rules/citation-drift.md` is intact - so shape 4 was built **on**
+`PL-ZM8P` rather than over it, which is what the duplicate risked. And
+`PL-316G` kept the 34-of-40 closed-brief measurement that was the one thing
+worth salvaging from `PL-W8NH` before it went.
