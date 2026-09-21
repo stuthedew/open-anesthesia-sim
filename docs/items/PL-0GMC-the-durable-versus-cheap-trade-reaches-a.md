@@ -9,6 +9,7 @@ feature: worker-instructions
 touches: .claude/rules/expert-review.md, docs/resident-instructions.md, docs/items/
 added: 2026-09-21
 closed: 2026-09-21
+pr: 872
 verify: grep -q 'Count what undoing it would cost' .claude/rules/expert-review.md && grep -q 'PL-0GMC' docs/resident-instructions.md
 ---
 

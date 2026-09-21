@@ -5556,6 +5556,74 @@ named here, for the reason beat 3 gives.
 - PL-HKTB (S) The chart gridline and divider grey measures 1.31:1 on the panel and carries no contrast requirement; decide whether it should be darkened or recorded as exempt furniture
 - PL-VZYS (S) A hand-run 'uv run ruff check .' still reads the stale .ruff_cache that PL-QSJM's --no-cache removes from make check and make fix, so the guard sits at the entry point rather than where the tool reads it - the same shape as PL-0MLZ's finding about PYTHONDONTWRITEBYTECODE
 
+### Declined to Gate 2, because every one was captured after this list was frozen
+
+**The rule decides this, not a judgment about severity.** § "Debt gate: the
+frozen list" above opens by saying this list holds every open debt item "as the
+store held it on the day of the cut", and § "The debt gate" closes by making the
+gate a snapshot rather than a moving target. The cut is `e6cdfd93`, 07:04 on
+2026-09-21. All six below were created by commits later the same day, so none was
+in the store the snapshot was taken from. None is classed `safety` or
+`science` either, so the unconditional re-entry that makes those two
+non-deferrable does not reach any of them, and the presence test they are then
+held to answers no.
+
+They were recorded here by the triage pass that classed them (`PL-2JRC`), which
+is the first moment any of them could be read as debt at all: each was an
+untriaged capture until that pass, and an untriaged capture carries no class, so
+`bin/docket gate` could not see one as debt however old its problem. That is the
+same mechanism § "Debt gate: the frozen list" describes for the thirteen entries
+that were untriaged when the list was frozen - the difference being that those
+thirteen were open in the store at the cut and these seven were not yet filed.
+
+**All six are apparatus.** Three items the same pass triaged are absent
+because none of them is debt: `PL-P55F` is classed `docs` and `PL-M3X6`
+`planning`, neither of which is a debt class, and `PL-PBP5` was reverted to the
+base's untriaged copy once `origin/claude/trusting-hawking-wlh7vg` was found to
+have implemented and closed it.
+
+- PL-H0CF (S) - **deferred 2026-09-21.** `tools/doc_check.py`'s `_resolves`
+  joins an absolute citation token onto the repository root, which in Python
+  yields the token itself, so a token naming the agent-proxy README under the
+  container's root home is asked of the container rather than of the tree, and
+  root and the CI runner can disagree on one commit. The token is named in
+  prose rather than in a code span deliberately: writing it as a citation is
+  what made this entry fail CI on #880, which is the defect demonstrating
+  itself.
+  `defect`, `infra`. It is the prerequisite for `PL-1RTM`, which is on this
+  list - so the gate still reaches it, through the entry it blocks.
+
+- PL-M7W1 (S) - **deferred 2026-09-21.** GitHub's auto-merge captures the squash
+  subject when auto-merge is armed, while `tools/pr_title_check.py` reads the
+  live title, so a rename after arming goes green on a subject that never lands.
+  `defect`, `infra`. Observed on `#868` the same day; the damage was bounded by
+  `PL-2XTF`'s fallback to the item's own file history, which is also why it can
+  recur unseen.
+
+- PL-RFHH (S) - **deferred 2026-09-21.** `plan.gate()` partitions the whole
+  store by `feature` where `roadmap.GateStatus.self_cleared` reads the frozen
+  list, and both phrases answer "cleared by the milestone itself", so
+  `bin/docket gate` and `bin/docket wave` can report different membership for
+  one milestone. `defect`, `infra`. At `needs-decision`: whether the fix is
+  wording or unification is costed before either is chosen.
+
+- PL-YZJD (S) - **deferred 2026-09-21.** `falsifies:` is read from the base's
+  copy of an item, so a capture triaged and worked in one session can never
+  declare one - which is most of why the field stands at 0 of 1,324.
+  `defect`, `docs`. At `needs-decision`.
+
+- PL-6SRZ (S) - **deferred 2026-09-21.** `check_named_tests` reads
+  `docs/MODEL.md` alone and its regex cannot match a backticked test name a line
+  wrap has broken. `defect`, `infra`. Its own brief counts the exposure at six
+  citations outside `docs/MODEL.md` and one firing in the tree's history, which
+  is why it is `P3`.
+
+- PL-Z891 (S) - **deferred 2026-09-21.** `DECLINED_HEADING_RE` matches only
+  `### Declined to Gate`, so a disposition recorded under `### Sequenced past
+  ...` or `### Deferred to ...` is not read. `defect`, `infra`. Latent: this
+  gate carries no such heading, and the subsection you are reading was written
+  to match the pattern deliberately.
+
 ### Required scope
 
 1. **The layout model** (queue items `PL-1FT6` and `PL-HJPY`). Pure Python,

@@ -1,7 +1,12 @@
 ---
 id: PL-RFHH
 title: plan.gate()'s feature test and roadmap.GateStatus.self_cleared's Required-scope test both answer 'cleared by the milestone itself' and disagree, so bin/docket gate and bin/docket wave can report different membership for the same milestone with nothing saying which is authoritative
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, infra
+feature: gate-list-integrity
+touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/roadmap.py, subprojects/docket/tests/
 added: 2026-09-21
 ---
 
@@ -26,6 +31,18 @@ different questions under one phrase.
 question each answers, or `plan.gate()` is changed to read the frozen list so
 there is one answer. Cost the second before choosing the first: they may
 deserve to stay separate, in which case the wording is the whole fix.
+
+**Recommended: reword, and do not unify.** The two commands answer different
+questions and both answers are wanted. `bin/docket gate` has to partition the
+whole store by `feature` to say what debt exists, including items filed after
+the freeze; `bin/docket wave` has to read the frozen list, because a frozen list
+is what a gate *is*. Making `plan.gate()` read the frozen list would leave
+`bin/docket gate` unable to see debt filed after the freeze, which is the thing
+it is for. So the expected fix is `format_gate` saying it partitions the store
+by `feature` and `format_wave` saying it reads the frozen list and `Required
+scope`. Cost unification before discarding it, as **Done when.** asks - but the
+answer this brief expects is that the two stay separate and the wording is the
+whole fix.
 
 **Done when.** A reader of either command can tell which question it answered.
 The cheapest form is wording rather than unification - `format_gate` saying it

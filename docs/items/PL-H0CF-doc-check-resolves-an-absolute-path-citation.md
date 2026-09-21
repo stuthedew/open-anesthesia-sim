@@ -1,9 +1,15 @@
 ---
 id: PL-H0CF
 title: doc_check resolves an absolute-path citation against the container filesystem, so one tree gives root and CI different verdicts on the same line
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: doc-consistency-checks
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-21
+payoff: A path citation's verdict depends on the repository alone, so root and the CI runner agree on the same commit - which is what PL-1RTM needs before it hands the queue's 22 absolute tokens to check_citations.
+verify: grep -q 'def test_an_absolute_citation_is_repository_anchored' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check resolves an absolute-path citation against the container filesystem, so one tree gives root and CI different verdicts on the same line
@@ -70,6 +76,18 @@ errors on files that exist, the container paths as verdicts that differ by who
 ran the check. That makes this a prerequisite for `PL-1RTM` rather than a
 parallel cleanup, and the measurement above is part of the "worth measuring
 before building" `PL-1RTM` asks for.
+
+**Demonstrated end to end on #880, 2026-09-21**, after this item was triaged
+and before it was worked. `PL-2JRC`'s gate-disposition entry for this very item
+quoted the agent-proxy README path as a code span in `ROADMAP.md`, which
+`check_citations` does scan. `make check` passed in the session container, where
+the process runs as root and the path resolves; CI failed on the same commit
+with "cites ..., which does not exist", the unprivileged runner's
+`PermissionError` arriving through `PL-D1NT`'s guard. One tree, one commit, two
+verdicts - the split this brief predicted, with the roles exactly as the table
+above gives them. Worked around the way `PL-ZM48` did: the entry now names the
+file in prose instead of marking it as code. That workaround is the cost this
+item removes.
 
 **Shape of a fix.** Decide the token by where it points rather than by whether
 some filesystem holds it: a citation that resolves outside the repository root
