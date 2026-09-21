@@ -8,6 +8,7 @@ classes: housekeeping
 touches: docs/items, ROADMAP.md
 added: 2026-09-21
 closed: 2026-09-21
+pr: 851
 payoff: the queue stops carrying twenty captures no session can rank, and the thirteen of them that are debt reach v0.6.0's gate where they can be counted
 verify: test "$(grep -l '^status: untriaged' docs/items/*.md | wc -l)" -le 1
 ---

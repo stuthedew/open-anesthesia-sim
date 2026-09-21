@@ -3281,11 +3281,11 @@ def test_a_rider_closure_recovers_the_pull_request_that_closed_it() -> None:
         {"PL-K7QX-a.md": CLOSED.format(id="PL-K7QX")},
         (
             "PL-B1C2 Make the simulation step transactional (#204)",
-            "PL-K7QX, PL-A1B2: triage the two captures (#159)",
+            "PL-K7QX, PL-41B2: triage the two captures (#159)",
         ),
         file_history=(
             "PL-B1C2 Make the simulation step transactional (#204)",
-            "PL-K7QX, PL-A1B2: triage the two captures (#159)",
+            "PL-K7QX, PL-41B2: triage the two captures (#159)",
         ),
     )
 
@@ -3770,11 +3770,11 @@ def test_two_items_on_one_branch_are_reported_once_naming_both() -> None:
     run = _files_runner({"origin/feature": ["a.py"]})
 
     files = files_in_flight(
-        ROOT, _flight(("origin/feature", "PL-K7QX"), ("origin/feature", "PL-A1B2")), runner=run
+        ROOT, _flight(("origin/feature", "PL-K7QX"), ("origin/feature", "PL-41B2")), runner=run
     )
 
     assert len(files.branches) == 1
-    assert files.branches[0].item_ids == ("PL-A1B2", "PL-K7QX")
+    assert files.branches[0].item_ids == ("PL-41B2", "PL-K7QX")
 
 
 def test_a_ref_whose_commits_went_unread_is_not_diffed() -> None:

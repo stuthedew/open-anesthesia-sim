@@ -126,7 +126,7 @@ def test_a_milestone_is_not_judged_where_the_comparison_cannot_be_made() -> None
 
 
 def test_a_malformed_id_is_an_error() -> None:
-    assert _has(_errors(_item(identifier="PL-1")), "not a valid item id")
+    assert _has(_errors(_item(identifier="PL-1")), "not a valid item id")  # not-an-id
 
 
 def test_a_duplicate_id_is_an_error() -> None:
@@ -639,14 +639,14 @@ def test_unblocking_safety_work_re_fires_the_band_rule() -> None:
 def test_a_blocked_item_may_not_outrank_its_blocker() -> None:
     """A P1 waiting on a P3 promises a schedule the blocker does not keep, and is
     how a live safety defect goes quiet while passing every other rule."""
-    blocked = _item("PL-AAAA", priority="P1", status="blocked", blocked_by=("PL-BBBB",))
+    blocked = _item("PL-8888", priority="P1", status="blocked", blocked_by=("PL-BBBB",))
     blocker = _item("PL-BBBB", priority="P3", verify="pytest")
 
     assert _has(_errors(blocked, blocker), "raise PL-BBBB to P1 or above")
 
 
 def test_waiting_on_equal_or_higher_rank_is_fine() -> None:
-    blocked = _item("PL-AAAA", priority="P2", status="blocked", blocked_by=("PL-BBBB",))
+    blocked = _item("PL-8888", priority="P2", status="blocked", blocked_by=("PL-BBBB",))
     blocker = _item("PL-BBBB", priority="P1", verify="pytest")
 
     assert not _has(_errors(blocked, blocker), "or above")
@@ -654,7 +654,7 @@ def test_waiting_on_equal_or_higher_rank_is_fine() -> None:
 
 def test_a_closed_blocker_holds_nothing_up() -> None:
     """It is already done, and a done item's priority is often cleared outright."""
-    blocked = _item("PL-AAAA", priority="P1", status="blocked", blocked_by=("PL-BBBB",))
+    blocked = _item("PL-8888", priority="P1", status="blocked", blocked_by=("PL-BBBB",))
     closed = _item(
         "PL-BBBB", priority="", effort="", status="done", closed=TODAY, pr="7", added=None
     )
@@ -2186,7 +2186,7 @@ def test_a_dropped_item_is_never_asked_what_proved_it() -> None:
         closed=date(2026, 8, 24),
         priority="",
         effort="",
-        reason="superseded by PL-AAAA",
+        reason="superseded by PL-8888",
     )
 
     assert not _has(analyze([item], TODAY, CLOSE_CUTOVER).errors, "is done but names no")
@@ -2367,7 +2367,7 @@ def test_the_digest_withholds_a_recurrence_cluster_on_an_item_in_flight() -> Non
     anywhere else - and the claim a reader would write in answer moves a queue
     position the item no longer has.
     """
-    filings = ("2026-09-18 PL-AAAA", "2026-09-19 PL-BBBB", "2026-09-20 PL-CCCC")
+    filings = ("2026-09-18 PL-8888", "2026-09-19 PL-BBBB", "2026-09-20 PL-CCCC")
     working = _item("PL-0002", recurrences=filings)
     report = Report(items=[working])
     flight = FlightReport(branches=(Branch(name="claude/x", item_id="PL-0002"),))
@@ -2595,7 +2595,7 @@ def _store_with_untriaged() -> Report:
     """Two triaged items and one untriaged: 3 open, of which 1 is untriaged."""
     return Report(
         items=[
-            _item("PL-AAAA", priority="P1"),
+            _item("PL-8888", priority="P1"),
             _item("PL-BBBB", priority="P2"),
             _item("PL-CCCC", status="untriaged", priority="", effort=""),
         ]
@@ -2628,7 +2628,7 @@ def test_a_store_with_nothing_untriaged_still_names_the_zero() -> None:
     # A count omitted for being zero reads as a count that does not exist, and
     # this is the one a reader needs told about: it is the difference between
     # the queue and the work.
-    report = Report(items=[_item("PL-AAAA", priority="P1")])
+    report = Report(items=[_item("PL-8888", priority="P1")])
 
     assert "1 open (0 P0, 1 P1, 0 P2, 0 P3, 0 untriaged)" in format_check(report)
 
@@ -2772,7 +2772,7 @@ def test_a_window_git_would_not_answer_is_declined_rather_than_read_as_empty() -
 # mistyped id mis-ranks nothing - it just leaves the session that recorded the
 # generator believing the mechanism is ranked when it is not.
 
-_EXPLAINS = ("PL-E1E1", "PL-E2E2", "PL-E3E3")
+_EXPLAINS = ("PL-G1G1", "PL-G2G2", "PL-G3G3")
 _LIVE = "live - two more captures matched onto this path after the cluster was recorded"
 
 
@@ -2824,9 +2824,9 @@ def test_a_closed_generator_is_not_asked_for_a_verdict() -> None:
 
 
 def test_a_root_cause_naming_an_unknown_item_is_an_error() -> None:
-    errors = _errors(_item("PL-K7QX", root_cause_of=(*_EXPLAINS, "PL-NOPE")), *_explained())
+    errors = _errors(_item("PL-K7QX", root_cause_of=(*_EXPLAINS, "PL-N0P3")), *_explained())
 
-    assert _has(errors, "PL-NOPE, which no item in this store carries")
+    assert _has(errors, "PL-N0P3, which no item in this store carries")
 
 
 def test_a_root_cause_under_three_items_is_an_error() -> None:
@@ -2850,9 +2850,9 @@ def test_a_recurrence_naming_an_unknown_capture_is_an_error() -> None:
     only count what it can read, so an item filed four times with one bad entry
     sits below the threshold and nothing says why.
     """
-    errors = _errors(_item("PL-K7QX", recurrences=("2026-09-20 PL-NOPE",)))
+    errors = _errors(_item("PL-K7QX", recurrences=("2026-09-20 PL-N0P3",)))
 
-    assert _has(errors, "PL-NOPE, which no item in this store carries")
+    assert _has(errors, "PL-N0P3, which no item in this store carries")
 
 
 def test_a_recurrence_that_is_not_a_date_and_an_id_is_an_error() -> None:
@@ -2863,7 +2863,7 @@ def test_a_recurrence_that_is_not_a_date_and_an_id_is_an_error() -> None:
 
 
 def test_a_sound_recurrence_is_accepted() -> None:
-    errors = _errors(_item("PL-K7QX", recurrences=("2026-09-20 PL-E1E1",)), *_explained())
+    errors = _errors(_item("PL-K7QX", recurrences=("2026-09-20 PL-G1G1",)), *_explained())
 
     assert not _has(errors, "recurrences")
 

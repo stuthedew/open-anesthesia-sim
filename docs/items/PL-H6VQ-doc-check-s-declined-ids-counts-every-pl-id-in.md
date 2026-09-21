@@ -9,6 +9,7 @@ feature: gate-list-integrity
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-20
 closed: 2026-09-21
+pr: 852
 payoff: an open debt item cited in another item's reasoning stops reading as disposed, so the gate check goes quiet only for items that actually have a disposition
 verify: grep -q 'def test_a_group_deferral_naming_its_ids_only_in_prose_is_read' tests/unit/test_doc_check.py
 ---

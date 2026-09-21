@@ -48,7 +48,7 @@ def test_a_shared_path_selects_and_the_title_only_orders() -> None:
     """
     store = [
         _item(
-            "PL-AAAA",
+            "PL-8888",
             "verify's suppression check reads prose as code",
             touches=("subprojects/docket/src/docket/verify.py",),
         ),
@@ -65,7 +65,7 @@ def test_a_shared_path_selects_and_the_title_only_orders() -> None:
         store,
     )
 
-    assert [candidate.item.identifier for candidate in found] == ["PL-AAAA"]
+    assert [candidate.item.identifier for candidate in found] == ["PL-8888"]
     assert found[0].shared == ("subprojects/docket/src/docket/verify.py",)
 
 
@@ -81,7 +81,7 @@ def test_an_unrelated_title_sharing_a_path_is_not_offered() -> None:
     """
     store = [
         _item(
-            "PL-AAAA",
+            "PL-8888",
             "Make the session-start digest name both lanes",
             touches=("subprojects/docket/src/docket/verify.py",),
         )
@@ -114,7 +114,7 @@ def test_a_closed_item_is_not_offered() -> None:
     """
     store = [
         _item(
-            "PL-AAAA",
+            "PL-8888",
             "Triage the 12 untriaged captures standing in the queue",
             touches=("docs/items",),
             status="done",
@@ -138,7 +138,7 @@ def test_a_declared_directory_reaches_a_module_inside_it() -> None:
     """
     store = [
         _item(
-            "PL-AAAA",
+            "PL-8888",
             "verify's suppression check reads prose as code",
             touches=("subprojects/docket/tests/test_verify.py",),
         )
@@ -148,7 +148,7 @@ def test_a_declared_directory_reaches_a_module_inside_it() -> None:
         "verify's suppression check reads prose as code again", ("subprojects/docket/tests",), store
     )
 
-    assert [candidate.item.identifier for candidate in found] == ["PL-AAAA"]
+    assert [candidate.item.identifier for candidate in found] == ["PL-8888"]
 
 
 def test_two_sessions_filing_the_same_title_get_the_same_order() -> None:
@@ -163,7 +163,7 @@ def test_two_sessions_filing_the_same_title_get_the_same_order() -> None:
     title = "verify's suppression check reads prose as code"
     store = [
         _item("PL-ZZZZ", title, touches=("subprojects/docket/src/docket/verify.py",)),
-        _item("PL-AAAA", title, touches=("subprojects/docket/src/docket/verify.py",)),
+        _item("PL-8888", title, touches=("subprojects/docket/src/docket/verify.py",)),
     ]
 
     forwards = near_duplicates(title, ("subprojects/docket/src/docket/verify.py",), store)
@@ -171,8 +171,8 @@ def test_two_sessions_filing_the_same_title_get_the_same_order() -> None:
         title, ("subprojects/docket/src/docket/verify.py",), list(reversed(store))
     )
 
-    assert [candidate.item.identifier for candidate in forwards] == ["PL-AAAA", "PL-ZZZZ"]
-    assert [candidate.item.identifier for candidate in backwards] == ["PL-AAAA", "PL-ZZZZ"]
+    assert [candidate.item.identifier for candidate in forwards] == ["PL-8888", "PL-ZZZZ"]
+    assert [candidate.item.identifier for candidate in backwards] == ["PL-8888", "PL-ZZZZ"]
 
 
 def test_a_capture_declaring_nothing_searches_nothing() -> None:
@@ -186,7 +186,7 @@ def test_a_capture_declaring_nothing_searches_nothing() -> None:
     """
     store = [
         _item(
-            "PL-AAAA",
+            "PL-8888",
             "verify's suppression check reads prose as code",
             touches=("subprojects/docket/src/docket/verify.py",),
         )
@@ -210,7 +210,7 @@ def test_the_recurrence_anchors_on_the_item_already_carrying_one() -> None:
     cluster, only decide which member of one the evidence lands on.
     """
     closest = _item(
-        "PL-AAAA",
+        "PL-8888",
         "verify's suppression check reads every added line as code",
         touches=("subprojects/docket/src/docket/verify.py",),
     )
@@ -227,7 +227,7 @@ def test_the_recurrence_anchors_on_the_item_already_carrying_one() -> None:
         [closest, already],
     )
 
-    assert found[0].item.identifier == "PL-AAAA", "the ranking still puts the closest title first"
+    assert found[0].item.identifier == "PL-8888", "the ranking still puts the closest title first"
     picked = anchor(found)
     assert picked is not None
     assert picked.item.identifier == "PL-BBBB"
@@ -242,7 +242,7 @@ def test_a_withdrawn_entry_does_not_pull_the_next_capture_onto_the_same_item() -
     reached entirely on evidence nobody believes (`PL-34BG`).
     """
     closest = _item(
-        "PL-AAAA",
+        "PL-8888",
         "verify's suppression check reads every added line as code",
         touches=("subprojects/docket/src/docket/verify.py",),
     )
@@ -261,7 +261,7 @@ def test_a_withdrawn_entry_does_not_pull_the_next_capture_onto_the_same_item() -
 
     picked = anchor(found)
     assert picked is not None
-    assert picked.item.identifier == "PL-AAAA", "a withdrawn entry still won the anchor"
+    assert picked.item.identifier == "PL-8888", "a withdrawn entry still won the anchor"
 
 
 def test_anchoring_an_empty_shortlist_names_nothing() -> None:
@@ -285,7 +285,7 @@ def test_a_cluster_is_still_caught_at_its_second_filing() -> None:
     silently stop the mechanism working.
     """
     first = _item(
-        "PL-AAAA",
+        "PL-8888",
         "docket record renames an item file as a side effect of writing a field",
         touches=("subprojects/docket/src/docket/store.py",),
     )
@@ -296,4 +296,4 @@ def test_a_cluster_is_still_caught_at_its_second_filing() -> None:
         [first],
     )
 
-    assert [candidate.item.identifier for candidate in found] == ["PL-AAAA"]
+    assert [candidate.item.identifier for candidate in found] == ["PL-8888"]
