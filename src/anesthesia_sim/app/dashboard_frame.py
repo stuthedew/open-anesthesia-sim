@@ -511,6 +511,15 @@ COMPARED_TRACE_LEGEND_CAPTION: Final = "Drawn traces:"
 #: and a differentiator at the end of a wrapped sentence is one the reader has
 #: to go looking for.
 COMPARED_RUN_LINE_TEMPLATE: Final = "{run} — {line}"
+#: One run's banner in the notice column the runs share, while more than one is
+#: drawn. A colon where `COMPARED_RUN_LINE_TEMPLATE` uses an em dash, because
+#: every notice already opens `label — detail` - "Simulation stopped — ...",
+#: "Setting refused — ..." - so a second em dash would sit at a different depth
+#: than the first and read as the banner's own separator with the run's name as
+#: the label. The colon scopes what follows to the run, which is the sense
+#: `OFF_SCALE_NOTICE_TEMPLATE` and `COMPARED_TRACE_LEGEND_CAPTION` already use
+#: it in.
+COMPARED_RUN_NOTICE_TEMPLATE: Final = "{run}: {notice}"
 #: The fork's legend words. Vertical like a control mark and solid where that
 #: is dashed, which is the pair of channels that separates them; the words say
 #: both so the mark is identifiable without reference to the plot.
@@ -1886,6 +1895,70 @@ def compared_run_line(line: str, frame: ChartFrame, run_index: int) -> str:
         return line
 
     return COMPARED_RUN_LINE_TEMPLATE.format(run=run.label, line=line)
+
+
+def compared_run_notice(notice_text: str | None, run_name: str | None) -> str | None:
+    """One run's banner in the notice column the runs share, named while two are drawn.
+
+    The banner sits in a column both runs write into, and all three of the
+    notices `notice` can return assert something about *a* run while naming
+    none: a halt says "Simulation stopped", and a refusal says "The
+    simulation is unchanged and still running its previous setting" - which
+    is false of the run it is not about. Read as the dashboard's rather than
+    one run's, a halt on the branch says the case has stopped when the trunk
+    is still going, and a refusal says a setting was not applied to a run
+    that took it (`PL-TSZM`).
+
+    Stacking order separates these less than it separates the chart column's
+    lines, because a banner with nothing to say is hidden rather than blank:
+    with one run halted the column holds a single block whose position moves
+    by the column's spacing alone - 12 px measured on 2026-09-21, against
+    nothing on screen to measure it from - while the words are identical.
+
+    A colon rather than `COMPARED_RUN_LINE_TEMPLATE`'s em dash, which is why
+    this is a second function and not that one with the run read from a
+    different place. Every notice already opens `label — detail`
+    ("Simulation stopped — ...", "Setting refused — ..."), so an em dash
+    prefix would put two in one sentence at different depths, and the first
+    would read as the banner's own label separator with "Run 2" as the
+    label. The colon is the same one `OFF_SCALE_NOTICE_TEMPLATE` and the
+    compare-mode legend caption already use to scope what follows.
+
+    Takes the run's name rather than the frame and an index, where
+    `compared_run_line` takes the frame: the banner is also written by
+    `RunView.present_halt`, which states a halt from the snapshot alone
+    because the frame is what may have failed (`PL-25KS`). Reading the count
+    off the frame there would drop the attribution in exactly the case this
+    is for, and the name the dashboard has already given the run through
+    `set_run_name` is the same word `run_label` put on the run's own panel
+    and in both legends.
+
+    Args:
+        notice_text: `notice`'s result for this run this tick, or None when
+            there is nothing to say.
+        run_name: What the dashboard calls this run, from `run_label`, or
+            None while one run is drawn and there is nothing to tell it
+            apart from.
+
+    Returns:
+        The notice unchanged while one run is drawn or there is no notice;
+        the run's name and then the notice while two are.
+
+    Raises:
+        ValueError: If `run_name` is empty, which names no run. An empty
+            name would render a banner opening with a bare colon rather
+            than fail, and a notice that looks addressed to a run called
+            nothing is the plausible-looking output `CLAUDE.md` asks to be
+            failed instead.
+    """
+
+    if run_name is not None and not run_name:
+        raise ValueError("a run's name says which run the banner is about, so it cannot be empty")
+
+    if notice_text is None or run_name is None:
+        return notice_text
+
+    return COMPARED_RUN_NOTICE_TEMPLATE.format(run=run_name, notice=notice_text)
 
 
 def compartment_cap_notice(frame: ChartFrame) -> str | None:

@@ -84,6 +84,7 @@ from anesthesia_sim.app.dashboard_frame import (
     Transport,
     accounting,
     compared_run_line,
+    compared_run_notice,
     delivered_fraction,
     halt_disposition,
     new_case_question,
@@ -319,6 +320,11 @@ class RunView(QWidget):
         # a name the next view could take.
         self._run_name_text = styled_label("", color=INK, bold=True)
         self._run_name_text.setHidden(True)
+        # Kept beside the label because the banner needs it too, and the
+        # banner is written on a path that has no frame to read it from
+        # (`_write_notice`). Reading it back off the widget would make the
+        # attribution depend on a label's text, which is a display detail.
+        self._run_name: str | None = None
         self._status_text = styled_label("", color=MUTED, bold=True)
         _emphasised(self._status_text, status_word(snapshot))
         self._notice_text = NoticeLabel(self)
@@ -579,7 +585,24 @@ class RunView(QWidget):
         self._control_timeline_overflow_text.setText(timeline.overflow)
         self._control_timeline_overflow_text.setHidden(not timeline.overflow)
 
-        self._notice_text.set_notice(notice(snapshot, self._rejected_setting_notice))
+        self._write_notice(snapshot)
+
+    def _write_notice(self, snapshot: SimulationSnapshot) -> None:
+        """Write the banner for this run, named while a second run is drawn.
+
+        The one writer of it, because there are two callers and the
+        attribution must not be a thing either could forget: `refresh` has a
+        frame and `present_halt` deliberately has none. That is also why the
+        run's name comes from `set_run_name` rather than from the frame -
+        `dashboard_frame.compared_run_notice` carries the argument.
+
+        Args:
+            snapshot: The run's state this tick.
+        """
+
+        self._notice_text.set_notice(
+            compared_run_notice(notice(snapshot, self._rejected_setting_notice), self._run_name)
+        )
 
     def _refresh_against_last_frame(self) -> None:
         """Rewrite this run's own widgets now, against the frame still on screen.
@@ -611,7 +634,7 @@ class RunView(QWidget):
         snapshot = self.snapshot()
         _emphasised(self._status_text, status_word(snapshot))
         self._write_transport(self._transport_lock(snapshot))
-        self._notice_text.set_notice(notice(snapshot, self._rejected_setting_notice))
+        self._write_notice(snapshot)
 
     def _transport_lock(self, snapshot: SimulationSnapshot) -> Transport:
         """This run's transport enablement, with both facts `dashboard_frame` cannot read.
@@ -1027,11 +1050,18 @@ class RunView(QWidget):
         a legend entry reading "Run 2" attributes a curve only if something
         holding that run's settings also says "Run 2".
 
+        Recorded as well as drawn, because the notice banner is named from it
+        too (`_write_notice`). The banner sits in a column the runs share and
+        is written on a path with no frame to read a run count off, so this
+        is where it learns whether it is one run's statement or the only
+        run's (`PL-TSZM`).
+
         Args:
             name: What to call it, or `None` for no name - which is what a
                 lone run gets, having nothing to be told apart from.
         """
 
+        self._run_name = name
         self._run_name_text.setText(name or "")
         self._run_name_text.setHidden(name is None)
 
