@@ -9,7 +9,7 @@ feature: cut-backfills-pr-numbers
 touches: subprojects/docket/src/docket/release.py, .claude/skills/docket/SKILL.md, subprojects/docket/tests
 added: 2026-09-16
 closed: 2026-09-21
-verify: uv run pytest -q subprojects/docket/tests/test_release.py && grep -q 'def test_release_writes_the_pr_numbers_the_base_is_owed' subprojects/docket/tests/test_release.py
+verify: uv run pytest subprojects/docket/tests/test_cli.py::test_a_cut_backfill_writes_the_number_onto_the_item_as_well -q
 ---
 
 **Problem.** `bin/docket check` on `main` at `6114ce8` names eleven items
@@ -136,3 +136,16 @@ a cut is.
 The backlog this item was filed over regrew twice and was backfilled again on
 the same day by the `record` run that repaired the release notes — three
 closures owed a number, all three written.
+
+**The `verify:` clause was repointed at close-out, and the reason is worth
+recording.** It named `def test_release_writes_the_pr_numbers_the_base_is_owed`
+in `subprojects/docket/tests/test_release.py` — a test name guessed at triage,
+before anyone knew where the cut's backfill would live. It lives in
+`cmd_release`, so its end-to-end test needs a real git remote and belongs in
+`test_cli.py` beside the other release-cut tests; `test_release.py` holds the
+pure functions. Forcing a git-backed test into that file to match a guessed
+string would have contorted the code to satisfy the clause rather than the
+other way round. The clause now runs
+`test_a_cut_backfill_writes_the_number_onto_the_item_as_well`, which asserts
+exactly what the old name described: after a cut, the item records the number
+the base named.
