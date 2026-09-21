@@ -5297,3 +5297,170 @@ def test_dropping_a_blocker_releases_what_it_held(
     assert (
         "Closing PL-C1C1 clears the last recorded blocker on 1 item(s):" in capsys.readouterr().out
     )
+
+
+def _drained_cluster(tmp_path: Path, *members: str, **head_fields: str) -> Path:
+    """A cluster whose head is closed over members at the statuses given.
+
+    `_cluster` above builds the shape a *claim* needs - three open members
+    under one head. This builds the shape a *drain* report needs, which is the
+    one every generator this project has recorded actually has: the head
+    closed, and most of what it named still open.
+    """
+    fields = {"status": "done", "closed": "2026-08-20", "names": "PL-B1B1, PL-C2C2, PL-D3D3"}
+    return _store(
+        tmp_path,
+        _clustered("PL-A0A0", "The shared refresh nobody owns", **{**fields, **head_fields}),
+        *members,
+    )
+
+
+def test_a_generator_head_reports_how_much_of_its_cluster_is_open(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A head at `done` must not read as a cluster that is finished.
+
+    Every `root-cause-of:` head this project carries is closed and most of what
+    each one names is not, so a reader taking the head's own status for the
+    cluster's state sees the generator work as finished while 58 of 99 members
+    are open. Nothing counted them, and the question was answered twice in two
+    days by a throwaway script over the whole store instead (`PL-XF5V`).
+    """
+    store = _drained_cluster(
+        tmp_path,
+        _clustered("PL-B1B1", "A member that closed", status="done", closed="2026-08-22"),
+        _clustered("PL-C2C2", "A member still open"),
+        _clustered("PL-D3D3", "A third member, open"),
+    )
+
+    assert _run("generators", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert "1 generator, 0 drained - 3 distinct members, 2 still open" in output
+    assert "PL-A0A0 3 members, 2 open - 1 closed since the head closed 2026-08-20" in output
+
+
+def test_generators_does_not_count_a_same_date_closure_as_drain(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`closed:` is a date, so a member closed on the head's date did not drain after it.
+
+    The trend is measured against the head's own close date, and 32 of this
+    store's 99 member closures share it. Counting those as drain would report
+    movement the dates cannot support, in the one place the answer exists to be
+    trusted - which is what `.claude/rules/apparatus-standard.md`'s floor
+    refuses. Naming the bucket beside the drain is what the dates do support.
+    """
+    store = _drained_cluster(
+        tmp_path,
+        _clustered("PL-B1B1", "Closed with the head", status="done", closed="2026-08-20"),
+        _clustered("PL-C2C2", "A member still open"),
+        _clustered("PL-D3D3", "A third member, open"),
+    )
+
+    assert _run("generators", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert "2 open - none closed since the head closed 2026-08-20 (1 closed on that date)" in output
+
+
+def test_generators_reports_a_drained_cluster_as_finished(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Half of "are the generators dealt with" is the ones that are.
+
+    Four of this project's eleven clusters are drained and no surface said so,
+    which is the same missing count wearing its other face. The date is the
+    last member's rather than the head's: the head closing is the cause being
+    fixed, and the cluster drains after it.
+    """
+    store = _drained_cluster(
+        tmp_path,
+        _clustered("PL-B1B1", "Closed after the head", status="done", closed="2026-08-21"),
+        _clustered("PL-C2C2", "Closed later still", status="done", closed="2026-08-23"),
+        _clustered(
+            "PL-D3D3", "Dropped", status="dropped", closed="2026-08-22", reason="not reproducible"
+        ),
+    )
+
+    assert _run("generators", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert "1 generator, 1 drained - 3 distinct members, 0 still open" in output
+    assert "PL-A0A0 3 members, drained 2026-08-23" in output
+
+
+def test_generators_names_an_unsound_claim_it_could_not_count(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A claim `is_generator` refuses is reported as uncounted, never dropped in silence.
+
+    `docket check` is a separate command, so a store is routinely read before
+    it is validated. An unsound `root-cause-of:` is ranked by nothing and
+    counted by nothing, so omitting it without a word would hand a reader a
+    partial reading as a complete one - the one property
+    `.claude/rules/apparatus-standard.md` makes this package refuse.
+    """
+    store = _drained_cluster(
+        tmp_path,
+        _clustered("PL-B1B1", "A member still open"),
+        _clustered("PL-C2C2", "Another member"),
+        _clustered("PL-D3D3", "A third member"),
+        _clustered("PL-E4E4", "A head naming an id nothing carries", names="PL-B1B1, PL-NOPE"),
+    )
+
+    assert _run("generators", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert "1 generator, 0 drained" in output
+    assert "1 item carries a `root-cause-of:` that is not a sound claim" in output
+    assert "PL-E4E4" in output
+
+
+def test_generators_resolves_a_member_id_to_the_cluster_above_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A session holds a member's id, because that is what `next` hands it.
+
+    Requiring the head's id would leave the command answerable only by a
+    session that had already found the thing it exists to find.
+    """
+    store = _drained_cluster(
+        tmp_path,
+        _clustered("PL-B1B1", "A member that closed", status="done", closed="2026-08-22"),
+        _clustered("PL-C2C2", "A member still open"),
+        _clustered("PL-D3D3", "A third member, open"),
+    )
+
+    assert _run("generators", "PL-C2C2", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert "PL-A0A0 (done) root cause of 3 items: 1/3 done (2 left)" in output
+    # Every member is a line, so counting the marks reproduces both figures
+    # above them - `progress_mark`'s reconciliation, kept here too (`PL-VFVW`).
+    assert "[x] PL-B1B1" in output
+    assert "[ ] PL-C2C2" in output
+    assert "[ ] PL-D3D3" in output
+
+
+def test_show_on_a_head_says_how_much_of_its_cluster_is_open(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`show` has named a member's head since `PL-C97K` and said nothing on the head.
+
+    So the surface a session reaches by naming a generator - the way the
+    project owner starts one - was the surface that could not say whether the
+    repairs underneath it were still owed.
+    """
+    store = _drained_cluster(
+        tmp_path,
+        _clustered("PL-B1B1", "A member that closed", status="done", closed="2026-08-22"),
+        _clustered("PL-C2C2", "A member still open"),
+        _clustered("PL-D3D3", "A third member, open"),
+    )
+
+    assert _run("show", "PL-A0A0", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert "root cause of 3 items, 2 open - 1 closed since the head closed 2026-08-20" in output
+    assert "`docket generators PL-A0A0` lists them" in output

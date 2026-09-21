@@ -71,6 +71,15 @@ asked about and confirmed. `CLAUDE.md` § "A root cause of more than two items i
 pulled, not queued" is what a session does on finding one; `tools/generator_check.py`
 prints the clusters worth looking at and decides none of them.
 
+**"Are the generators dealt with?" is `bin/docket generators`, and the heads'
+own statuses do not answer it.** Fixing a generator closes the head and leaves
+its members owed, so every head this project has recorded reads `done` over a
+cluster that is mostly open. The command prints each cluster's open count, how
+far it has drained since its head closed, and which clusters are finished; with
+an id it lists one cluster's members, and a member's id resolves to the head
+above it. Answering from the item files instead is the read this was built to
+replace — it had been done twice in two days by a throwaway script (`PL-XF5V`).
+
 **That tier has a second entrance, and finding one is not a filing.** A
 defect in the machinery that *finds and ranks* generators ranks at the same
 priority as a generator (project owner, 2026-09-19): while identification is

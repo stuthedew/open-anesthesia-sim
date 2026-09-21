@@ -3,11 +3,12 @@ id: PL-XF5V
 title: No command reports how much of a generator's cluster is still open: all 12 recorded heads are closed while 60 distinct members are not, and answering 'are the generators dealt with' took a script over the whole store
 priority: P2
 effort: M
-status: ready
+status: done
 classes: feature, infra
 feature: convergence-visibility
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-20
+closed: 2026-09-21
 payoff: 'are the generators dealt with' is answered by a command reporting each cluster's drain, instead of a script written over the whole store
 verify: grep -q 'def test_a_generator_head_reports_how_much_of_its_cluster_is_open' subprojects/docket/tests/test_cli.py
 ---
@@ -33,15 +34,15 @@ clusters are genuinely drained. Nothing in `bin/docket` prints either fact.
 
 **Why it matters.** The project owner's recurring question is "is that dealt
 with?", and `CLAUDE.md` answers it for a feature with `bin/docket feature
-<name>`. A generator has no equivalent. `docket show` on a *head* prints its
-member list and on a *member* prints the head with its status and cluster size
-(`PL-C97K`), so both halves of the edge are already loaded — what is missing is
-the count over them. A session asked the question today reads item files until
+<name>`. A generator has no equivalent. `docket show` on a *member* prints the head
+with its status and cluster size (`PL-C97K`); on a *head* it printed nothing at
+all about the cluster, so only one half of the edge was loaded and the count
+over it existed nowhere. A session asked the question today reads item files until
 it can answer, which is the read `CLAUDE.md` builds deterministic tooling to
 replace: "printing the few lines a decision needs, instead of loading the
 documents that hold them, is the same win as answering the question outright."
 
-**The answer is also actively misleading without it.** All twelve heads read
+**The answer is also actively misleading without it.** Every head reads
 `done`, so the surface a session sees says the generator work is finished. What
 finished is the *cause* — a convention adopted, a check built — and each head's
 brief is explicit that its members are repairs still owed. `format_generators`
@@ -95,3 +96,33 @@ useful, and it needs the previous count, which nothing stores. The cheapest
 honest form is to print each cluster's open count against the count at the
 head's close date, both derivable from the store's `closed:` dates - not a new
 stored field.
+
+**Closed 2026-09-21.** `bin/docket generators` reports every cluster against how
+much of it is still open, `docket show` on a head carries the same line, and a
+member's id resolves to the head above it. `plan.clusters` builds the clusters
+on `is_generator`'s own test, so a cluster this counts is exactly a claim the
+checker accepts and `recommend` ranks.
+
+**Two figures in the title and the problem line are wrong, and the table beneath
+them is right.** There are **eleven** sound heads, not twelve: the table
+enumerates eleven, and the twelfth is `PL-LSR0`, which ranks on the generator
+tier by `impairs-generators:` and names no members to drain. The report prints
+that item on a line of its own rather than in the count, so the discrepancy
+cannot be re-derived a third time. The open-member figure was 60 at filing and
+reads 58 today, which is the drain the trend below exists to show.
+
+**The trend is three buckets rather than one number, and the reason is the
+store's granularity.** `closed:` is a date and not a timestamp, so a member
+closed on its head's own date cannot be ordered against it — **32 of the 99
+member closures are that case**, a third of the edges. A single "open when the
+head closed" figure would have had to pick a reading and print it as fact, which
+`.claude/rules/apparatus-standard.md`'s floor refuses. So what closed *after*
+the head is drain, what closed *on its date* is named beside the drain, and what
+closed *before* is named only where it would otherwise stop the line's numbers
+reconciling. The project owner asked for the count at the head's close date;
+that figure is `open + closed since`, and the same-date bucket is what the dates
+alone cannot assign to either side.
+
+**`PL-S0MB` is still its sibling** and is untouched by this: a catch-all
+`feature:` name cannot report completion, which is the same failure on the
+feature surface rather than the generator one.

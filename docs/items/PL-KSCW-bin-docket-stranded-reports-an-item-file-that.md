@@ -9,6 +9,7 @@ feature: stranded-ahead-or-behind
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-17
 closed: 2026-09-21
+pr: 825
 verify: uv run pytest -q subprojects/docket/tests/test_cli.py -k stranded && grep -q 'def test_stranded_hands_a_diff_for_an_item_edited_only_on_a_branch' subprojects/docket/tests/test_cli.py
 recurrences: 2026-09-16 PL-SH9Q
 ---
