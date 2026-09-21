@@ -112,3 +112,11 @@ the sample store actually lived - `RunHistory`, `SimulationHistorySample` and
 the M4 aggregate cache were 531 of its lines until `PL-2FM6` deleted them - and
 it still holds `drawn_window`, the chart's read, which is the method a cache
 would be hung on.
+
+**The widening from three to five was ratified rather than specified** (project
+owner, 2026-09-21, ratified, over the three paths `PL-49R8` itself named). It
+was a session's recommendation agreed to, not a scope the owner wrote, so
+ordinary evidence reopens it: a measurement of what this file costs on a read of
+one of the two added modules, or a session finding it fires there without
+changing a decision. Dropping either back is an edit to this file's `paths:` and
+nothing else.
