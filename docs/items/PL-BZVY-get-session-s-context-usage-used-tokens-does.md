@@ -10,7 +10,7 @@ touches: CLAUDE.md
 blocked-by: PL-W80S
 added: 2026-09-20
 closed: 2026-09-21
-verify: grep -qF 'tools/context_reading.py' CLAUDE.md && grep -qF 'never moves inside a turn' CLAUDE.md
+verify: grep -qF 'tools/context_reading.py' CLAUDE.md && tr '\n' ' ' < CLAUDE.md | tr -s ' ' | grep -qF 'never moves inside a turn'
 ---
 
 **Problem.** get_session's context_usage.used_tokens does not refresh within a turn, so the prescribed budget check reads a start-of-turn value for the whole of an item worked in one turn
