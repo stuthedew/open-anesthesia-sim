@@ -143,11 +143,13 @@ KEYWORD_ORDINARY = """def f(**kw: object) -> None:
 f(ignoreBounds=True, userData=1, rateLimit=60, prefix="PL", pl_count=2)
 """
 
-KEYWORD_MARKED = """def f(**kw: str) -> None:  # not-an-id
+#: The marker sits on the call rather than above it: a keyword's span is its
+#: own lines, so a marker on the `def` exempts the `def` and nothing else.
+KEYWORD_MARKED = """def f(**kw: str) -> None:
     pass
 
 
-f(PL_AAAA_open="brief")
+f(PL_AAAA_open="brief")  # not-an-id
 """
 
 #: `**{...}` names no keyword at all - `keyword.arg` is `None` - and its keys
@@ -158,6 +160,17 @@ KEYWORD_UNPACKED = """def f(**kw: str) -> None:  # not-an-id
 
 
 f(**{"PL-AAAA-open": "brief"})
+"""
+
+#: A keyword finding above a literal one, which the two passes would otherwise
+#: report in the wrong order.
+KEYWORD_THEN_VALUE = """def f(**kw: str) -> None:  # not-an-id
+    pass
+
+
+f(PL_AAAA_open="brief")
+
+ITEM = "PL-STUV"
 """
 
 #: Prose *about* malformed ids, which is the norm under `docs/`.
@@ -416,6 +429,21 @@ def test_a_double_star_unpacking_is_left_to_the_value_scan(tmp_path: Path) -> No
     _write(tmp_path, "pkg/thing.py", KEYWORD_UNPACKED)
 
     assert _tokens(tmp_path) == [UNMINTABLE[0]]
+
+
+def test_a_file_is_reported_in_line_order_across_both_passes(tmp_path: Path) -> None:
+    """One file, two passes, and a reader who fixes findings from the top.
+
+    The keyword scan walks the tree a second time, so without a sort every
+    keyword finding would print after every literal one in the same file.
+    """
+    _write(tmp_path, "pkg/thing.py", KEYWORD_THEN_VALUE)
+
+    offenders = fixture_id_check.collect(tmp_path)
+
+    assert [offender.line for offender in offenders] == [5, 7]
+    assert [offender.token for offender in offenders] == [UNMINTABLE[0], UNMINTABLE[1]]
+
 
 # --- the shipped tree, through the entry point `make check` runs -------------
 

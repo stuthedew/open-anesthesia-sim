@@ -39,13 +39,14 @@ both together.
 
 ## What is scanned, and what is deliberately not
 
-**Python, everywhere.** Values only: an `ast` walk, with docstrings dropped
-before it runs, so an id *discussed* in writing needs nothing and a comment
-never reaches the tree at all. A literal malformed on purpose - the rejection
-tests need one, and a `glob("PL-K*.md")` pattern is not an id - says so with a
-`not-an-id` marker anywhere in the lines its literal spans. That marker is
-inline rather than a list kept here, because a list can name a literal the tree
-no longer holds and nothing would ever say so.
+**Python, everywhere.** What the module *uses*, never what it says about
+itself: an `ast` walk over string values and keyword-argument names, with
+docstrings dropped before it runs, so an id *discussed* in writing needs
+nothing and a comment never reaches the tree at all. A name malformed on
+purpose - the rejection tests need one, and a `glob("PL-K*.md")` pattern is
+not an id - says so with a `not-an-id` marker anywhere in the lines it spans.
+That marker is inline rather than a list kept here, because a list can name a
+literal the tree no longer holds and nothing would ever say so.
 
 **`.claude/`, line by line, for everything that is not Python.** No `ast` is
 available for markdown or shell, so this half is a text scan and its rule has to
@@ -54,13 +55,28 @@ token under `.claude/` failing the grammar was a defect - 2 of 2, both
 `PL-A1B2`. `.claude/` is the resident instruction set a session reads to learn
 the conventions, so a malformed id in it is a template, not a discussion.
 
-**What it cannot see, stated rather than left to be found.** An id spelled with
-underscores so that it can be a keyword argument - `_items(root,
-PL_AAAA_open=...)` in `tests/unit/test_doc_check.py`, whose helper writes
-`PL-AAAA-open.md` - is the same defect and passes here, because widening the
-candidate to `PL_` would reject ordinary constant names like `PL_PREFIX` for a
-reason that has nothing to do with ids. Four instances existed and `PL-7922`
-renamed them; the mechanism gap is `PL-L609`.
+**Keyword-argument names, translated back to the filename they become.** An id
+cannot be an identifier - `PL-8888` is not one - so a helper keyed by an id
+takes `PL_8888_open` and puts the hyphens back, which is what
+`tests/unit/test_doc_check.py` did until `PL-L609`. The value scan is blind to
+that by construction: no `PL-` token appears in the source at all. So a
+keyword name is translated `_` to `-` and handed to the same `malformed()`
+every literal goes through, rather than given a grammar of its own.
+
+The scope is `ast.keyword.arg` and not identifiers at large, and that is the
+whole of what keeps `PL_PREFIX` and every other ordinary constant out of it: a
+constant is a name being bound, a keyword is a parameter being passed, and
+nothing in this repository is both. Measured 2026-09-21 under the 3.14
+interpreter, so nothing was skipped for syntax: of 8,098 keyword arguments,
+21 carry an uppercase letter at all and 17 of those are Qt's `ignoreBounds`,
+`rateLimit` and `userData`, none of which can yield a `PL-` token. The
+remaining four were the fixture this rule was written for.
+
+**What it still cannot see, stated rather than left to be found.** A helper
+that does *not* put the hyphens back - one writing `f"{name}.md"` from
+`PL_8888_open` - produces a filename no store could write, and this stays
+quiet on it: the token is mintable once translated. That is a filename shape
+rather than an id grammar, and what is judged here is ids.
 
 **`docs/`, `ROADMAP.md` and the item store are out of scope, and that is the
 same measurement pointing the other way.** There, prose *about* malformed ids is
@@ -208,18 +224,43 @@ def malformed(value: str) -> Iterator[str]:
             yield found.group(0)
 
 
+def keyword_names(node: ast.AST) -> Iterator[tuple[int, int, str]]:
+    """Every keyword-argument name, spelled as the filename it would become.
+
+    See the module docstring for why this half exists and why it is scoped to
+    `ast.keyword.arg`. The translation mirrors the one helper that made the
+    form convenient, so what is judged is the id the caller meant rather than
+    the identifier they were obliged to write.
+
+    `**{...}` sets `arg` to `None` and names no keyword at all; its keys are
+    ordinary string literals, which `values` above already reads. Skipping
+    them here is what stops one literal being reported twice.
+    """
+    for child in ast.walk(node):
+        if isinstance(child, ast.keyword) and child.arg:
+            end = child.end_lineno or child.lineno
+            yield child.lineno, end, child.arg.replace("_", "-")
+
+
 def scan_python(path: Path) -> list[Offender]:
-    """Malformed ids among the string values one module uses."""
+    """Malformed ids among the string values one module uses, and its keyword names.
+
+    Sorted by line rather than left in walk order. Two passes over one tree
+    would otherwise print a file's keyword findings after all of its literal
+    ones, and a reader fixing them top to bottom would be sent back up the
+    file - the ordering `collect` promises was incidental before and is held
+    here now that there is a second pass to interleave.
+    """
     lines = path.read_text(encoding="utf-8").splitlines()
     tree = without_docstrings(ast.parse("\n".join(lines), filename=str(path)))
     offenders: list[Offender] = []
-    for start, end, value in values(tree):
+    for start, end, value in (*values(tree), *keyword_names(tree)):
         span = "\n".join(lines[start - 1 : end])
         if MARKER in span:
             continue
         for token in malformed(value):
             offenders.append(Offender(path, start, token))
-    return offenders
+    return sorted(offenders, key=lambda offender: offender.line)
 
 
 def scan_text(path: Path) -> list[Offender]:
