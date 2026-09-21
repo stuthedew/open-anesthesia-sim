@@ -104,8 +104,11 @@ guarantee**; they differ only in what they cost to reach it.
 
 **What the widening reports, counted rather than estimated.** Admitting
 `['’]s(?:\s+own)?` to `CITATION_CONNECTIVE` takes the citations
-`check_quoted_sources` examines from **950 to 1,169** (+219) and produces
-**40 errors** where the tree is otherwise clean. Each was then classified by
+`check_quoted_sources` examines from **950 to 1,169** (+219) and produced
+**40 errors** where the tree was otherwise clean. After the three repairs this
+item's own commit makes, and rebased on `aff66dbb`, the same experiment reads
+950 -> 1,167 and **37 errors** - that is the reproducible number today, and
+the classification below is of the original 40. Each was then classified by
 searching the cited file's own history on `origin/main` for the quoted text:
 
 | Class | Count | What it is |
@@ -145,11 +148,19 @@ and `PL-4QCJ`, whose `docs/MODEL.md` pointer was reworded to name
 
 **The remaining three are one disposition question, and it belongs to this
 decision rather than to a repair.** `ROADMAP.md` twice and `PL-BYMX` use the
-possessive to *name* a rule by a compressed handle - `` `CLAUDE.md`'s "prefer
-an obvious failure to a plausible-looking number" `` for a sentence that runs
-"Prefer an obvious failure/error state to displaying a plausible-looking number
-when correctness cannot be established." Nothing is stale: the rule is live and
-the handle is a fair compression of it. What the widening would demand is that
+possessive to *name* a rule by a compressed handle, not to point at a section.
+The example is fenced because this brief would otherwise be its own
+thirty-ninth finding, which is the convention `.claude/rules/citation-drift.md`
+already sets for an item whose subject is a broken citation:
+
+```text
+  written    `CLAUDE.md`'s "prefer an obvious failure to a plausible-looking
+             number"
+  the rule   Prefer an obvious failure/error state to displaying a
+             plausible-looking number when correctness cannot be established.
+```
+
+Nothing is stale: the rule is live and the handle is a fair compression of it. What the widening would demand is that
 the handle be written out verbatim or lose its quotation marks. That is the
 real cost of shape 4, it is a cost to how this project writes rather than a
 backlog, and it is what the fifteen never-verbatim findings mostly are.
