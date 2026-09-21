@@ -9,6 +9,7 @@ feature: scenario-branching
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_simulation_view.py
 added: 2026-09-20
 closed: 2026-09-20
+pr: 811
 payoff: stops a mark's row attributing one run's answer to the other while two managements are being compared
 verify: grep -q 'def test_a_branch_that_halted_on_a_target_the_trunk_is_still_running_for_says_so' tests/unit/test_dashboard_frame.py
 recurrences: 2026-09-20 PL-GHMB

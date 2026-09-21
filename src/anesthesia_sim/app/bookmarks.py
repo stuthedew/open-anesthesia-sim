@@ -65,10 +65,10 @@ __all__ = [
 
 
 class MarkStanding(StrEnum):
-    """Where one mark stands on one run: five outcomes, and not two.
+    """Where one mark stands on one run: six outcomes, and not two.
 
     A mark is a question, so its standing is the answer so far. Two of the
-    five are the obvious ones; the other three exist because reporting any of
+    six are the obvious ones; the other four exist because reporting any of
     them as one of the obvious two would state something the model cannot
     support, which `CLAUDE.md`'s safety-critical standard forbids of a
     displayed value.
@@ -82,7 +82,8 @@ class MarkStanding(StrEnum):
     only thing that can be said of a target is what the run *did*. So
     `PASSED` and `BEFORE_THIS_BRANCH` answer for time bookmarks and never for
     targets, `REACHED` answers for targets and never for bookmarks, and
-    `STILL_RUNNING` and `NOT_REACHED_WITHIN_CAP` answer for both.
+    `STILL_RUNNING`, `NOT_REACHED_WITHIN_CAP` and `NOT_REACHED_BEFORE_FAILURE`
+    answer for both.
 
     **`PASSED` rather than `REACHED` for a bookmark the run is at or behind**,
     which is the same distinction read from the other side. "Reached" is a
@@ -116,6 +117,19 @@ class MarkStanding(StrEnum):
 
     A MAC target has no `BEFORE_THIS_BRANCH` case: a height is reachable from
     either side, so a branch may cross one its trunk never did.
+
+    `NOT_REACHED_BEFORE_FAILURE` is the sixth, and it answers for the one
+    state the other five cannot see: a run `SimulationController.start`
+    refuses to resume. A failed run's next step would raise as its last one
+    did — `SimulationController.fail` says why resuming is not offered — so a
+    mark it has not reached is not one it has not reached *yet*. Nothing but
+    a reset reaches it, and a reset is a different run. It is worded apart
+    from the cap because the two stop a run for opposite reasons: at the cap
+    the model has answered the question and says a longer run would not
+    change the answer, and in a failure it could not answer at all. Only
+    these two refusals are in the vocabulary, because only these two are
+    refusals: a *paused* run resumes, so `STILL_RUNNING` holds of it and the
+    transport state stays off this row (`PL-N3N5`).
     """
 
     STILL_RUNNING = "still_running"
@@ -141,6 +155,9 @@ class MarkStanding(StrEnum):
 
     BEFORE_THIS_BRANCH = "before_this_branch"
     """It stands before this branch's fork instant, so no step can reach it."""
+
+    NOT_REACHED_BEFORE_FAILURE = "not_reached_before_failure"
+    """The run stopped on an error without reaching it, and cannot be resumed."""
 
 
 def _checked_label(label: str | None) -> str | None:
@@ -623,6 +640,7 @@ class BookmarkSet:
         elapsed_s: float,
         run_length_cap_s: float,
         stopped_at_cap: bool,
+        run_failed: bool,
     ) -> BookmarkStandings:
         """Where each of these marks stands on one run.
 
@@ -655,6 +673,16 @@ class BookmarkSet:
             stopped_at_cap: Whether the run is standing at that limit with the
                 next step refused. Everything still outstanding is then
                 `NOT_REACHED_WITHIN_CAP`.
+            run_failed: Whether the run is halted by a failure rather than
+                paused — `SimulationController.has_failed`, which is the other
+                state `SimulationController.start` refuses to resume.
+                Everything still outstanding is then
+                `NOT_REACHED_BEFORE_FAILURE`. Required rather than defaulted,
+                as `stopped_at_cap` is: a caller that did not answer it would
+                draw every mark on a run that cannot step again as one the run
+                can still reach, which is the plausible-looking row
+                `CLAUDE.md`'s safety-critical standard puts an obvious answer
+                ahead of (`PL-N3N5`).
 
         Returns:
             One standing per mark, keyed by the mark.
@@ -686,6 +714,7 @@ class BookmarkSet:
                         elapsed_s=elapsed_s,
                         run_length_cap_s=run_length_cap_s,
                         stopped_at_cap=stopped_at_cap,
+                        run_failed=run_failed,
                     )
                     for bookmark in self.time_bookmarks
                 }
@@ -693,7 +722,10 @@ class BookmarkSet:
             mac_targets=MappingProxyType(
                 {
                     target: _mac_target_standing(
-                        target, reached_crossings=reached_crossings, stopped_at_cap=stopped_at_cap
+                        target,
+                        reached_crossings=reached_crossings,
+                        stopped_at_cap=stopped_at_cap,
+                        run_failed=run_failed,
                     )
                     for target in self.mac_targets
                 }
@@ -709,8 +741,9 @@ def _time_bookmark_standing(
     elapsed_s: float,
     run_length_cap_s: float,
     stopped_at_cap: bool,
+    run_failed: bool,
 ) -> MarkStanding:
-    """One marked instant's standing, in the order the five cases exclude each other.
+    """One marked instant's standing, in the order the six cases exclude each other.
 
     **The question a one-way clock asks is where the instant is, not what the
     run did** (`PL-3K9B`, project owner 2026-09-20, ratified). A run's clock
@@ -739,7 +772,16 @@ def _time_bookmark_standing(
        run's own beginning. It keeps its meaning and its wording exactly:
        nothing reaches it that 1 or 2 has not already claimed, so it is still
        only ever a branch's inherited mark.
-    4. **The cap**, then **still running**, unchanged.
+    4. **The cap**, then **the failure**, then **still running**.
+
+    The cap outranks the failure where a run carries both, because it is the
+    one that came first: `SimulationController.advance` takes no step on a
+    stopped run, so a run standing at the cap and failed was failed by a
+    setting *after* it had already run out of supported time, and the cap is
+    then what the mark went unreached within. It is also the more durable
+    answer of the two — a mark beyond `run_length_cap_s` is out of reach of
+    the fresh run a reset would give, and one merely unreached before a
+    failure is not.
 
     `REACHED` is not among them. It is a historical claim, it is
     `_mac_target_standing`'s answer, and `MarkStanding` carries the argument
@@ -758,6 +800,9 @@ def _time_bookmark_standing(
     if stopped_at_cap or bookmark.instant_s > run_length_cap_s:
         return MarkStanding.NOT_REACHED_WITHIN_CAP
 
+    if run_failed:
+        return MarkStanding.NOT_REACHED_BEFORE_FAILURE
+
     return MarkStanding.STILL_RUNNING
 
 
@@ -766,10 +811,11 @@ def _mac_target_standing(
     *,
     reached_crossings: frozenset[tuple[RecordedQuantity, float]],
     stopped_at_cap: bool,
+    run_failed: bool,
 ) -> MarkStanding:
     """One marked height's standing.
 
-    Three cases rather than five, and the two it does not have are the two the
+    Four cases rather than six, and the two it does not have are the two the
     clock supplies. A height is reachable from either side, so a branch may
     cross one its trunk never did and there is no `BEFORE_THIS_BRANCH` for a
     target to be in; and a compartment may arrive at a height, leave it and
@@ -783,6 +829,9 @@ def _mac_target_standing(
 
     if stopped_at_cap:
         return MarkStanding.NOT_REACHED_WITHIN_CAP
+
+    if run_failed:
+        return MarkStanding.NOT_REACHED_BEFORE_FAILURE
 
     return MarkStanding.STILL_RUNNING
 

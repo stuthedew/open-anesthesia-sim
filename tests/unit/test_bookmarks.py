@@ -385,6 +385,7 @@ def _standings(
     opened_at_s: float = 0.0,
     elapsed_s: float | None = None,
     stopped_at_cap: bool = False,
+    run_failed: bool = False,
 ) -> object:
     """This set's standings, so a test states only the fact it is about.
 
@@ -400,6 +401,7 @@ def _standings(
         elapsed_s=opened_at_s if elapsed_s is None else elapsed_s,
         run_length_cap_s=MAXIMUM_ELAPSED_SIMULATION_TIME_S,
         stopped_at_cap=stopped_at_cap,
+        run_failed=run_failed,
     )
 
 
@@ -491,6 +493,111 @@ def test_a_bookmark_before_a_branch_fork_reads_apart_from_the_cap_case() -> None
 
     assert standings.of_time_bookmark(inherited) is MarkStanding.BEFORE_THIS_BRANCH
     assert standings.of_time_bookmark(inherited) is not MarkStanding.NOT_REACHED_WITHIN_CAP
+
+
+def test_a_mark_outstanding_on_a_failed_run_is_not_reported_as_still_reachable() -> None:
+    """`PL-N3N5`, the sixth outcome and the state the other five cannot see.
+
+    `SimulationController.start` refuses a failed session - "cannot resume a
+    failed simulation ... reset it first" - because its next step would raise
+    as its last one did. `STILL_RUNNING` says the run *can still reach* the
+    mark and has not yet, so the first half of it is false of every mark such
+    a run has not reached.
+
+    Both kinds are asserted because the failure ends a clock and a height
+    alike, which is what puts it in both vocabularies rather than in the
+    bookmark's alone.
+    """
+
+    bookmark = TimeBookmark(600.0)
+    target = _target()
+    marks = BookmarkSet().with_time_bookmark(bookmark).with_mac_target(target)
+
+    standings = _standings(marks, run_failed=True)
+
+    assert standings.of_time_bookmark(bookmark) is MarkStanding.NOT_REACHED_BEFORE_FAILURE
+    assert standings.of_mac_target(target) is MarkStanding.NOT_REACHED_BEFORE_FAILURE
+
+
+def test_a_failed_run_reads_apart_from_one_that_ran_out_of_supported_time() -> None:
+    """The two refusals stop a run for opposite reasons, so they are two answers.
+
+    At the cap the model has answered the question and a longer run would not
+    change the answer; in a failure it could not answer at all. Reporting a
+    failure as the cap would tell a learner the mark lies beyond what the
+    model supports, which is a claim about the model rather than about this
+    run - and a fresh run started by the reset the failure demands would
+    falsify it.
+    """
+
+    bookmark = TimeBookmark(600.0)
+    marks = BookmarkSet().with_time_bookmark(bookmark)
+
+    failed = _standings(marks, run_failed=True)
+
+    assert failed.of_time_bookmark(bookmark) is MarkStanding.NOT_REACHED_BEFORE_FAILURE
+    assert failed.of_time_bookmark(bookmark) is not MarkStanding.NOT_REACHED_WITHIN_CAP
+    assert _standings(marks, stopped_at_cap=True).of_time_bookmark(bookmark) is (
+        MarkStanding.NOT_REACHED_WITHIN_CAP
+    )
+
+
+def test_the_cap_answers_for_a_run_standing_at_it_that_then_failed() -> None:
+    """Which of the two refusals a run carrying both reports, and why it is the cap.
+
+    `SimulationController.advance` takes no step on a stopped run, so a run
+    standing at the cap and failed was failed by a setting *after* it had run
+    out of supported time: the cap is what the mark went unreached within, and
+    the failure came after the question had been answered. It is also the more
+    durable of the two, being the one the reset would not clear.
+    """
+
+    bookmark = TimeBookmark(600.0)
+    target = _target()
+    marks = BookmarkSet().with_time_bookmark(bookmark).with_mac_target(target)
+
+    standings = _standings(marks, stopped_at_cap=True, run_failed=True)
+
+    assert standings.of_time_bookmark(bookmark) is MarkStanding.NOT_REACHED_WITHIN_CAP
+    assert standings.of_mac_target(target) is MarkStanding.NOT_REACHED_WITHIN_CAP
+
+
+def test_a_failure_stops_a_clock_without_taking_it_back() -> None:
+    """What the failure does not revoke: the two answers about what has happened.
+
+    A marked instant at or behind the clock was passed, and a height the run
+    halted on was reached, whatever stopped the run afterwards. Reporting
+    either as unreached would withdraw a true claim about the case, which is
+    the mirror of the defect this outcome was added for.
+    """
+
+    passed = TimeBookmark(30.0)
+    reached = _target()
+    marks = BookmarkSet().with_time_bookmark(passed).with_mac_target(reached)
+
+    standings = _standings(
+        marks, elapsed_s=60.0, reached_crossings=frozenset({reached.crossing_key}), run_failed=True
+    )
+
+    assert standings.of_time_bookmark(passed) is MarkStanding.PASSED
+    assert standings.of_mac_target(reached) is MarkStanding.REACHED
+
+
+def test_an_inherited_bookmark_on_a_failed_branch_still_reads_before_the_branch() -> None:
+    """The statically decidable answer outranks the failure, as it does the cap.
+
+    An instant before the fork could not have been reached by this branch had
+    it run perfectly, so naming the failure would suggest the failure is why -
+    and a reset returns a branch to its fork rather than to the case's
+    opening, so the next run of it cannot reach the instant either.
+    """
+
+    inherited = TimeBookmark(120.0)
+    marks = BookmarkSet().with_time_bookmark(inherited)
+
+    standings = _standings(marks, opened_at_s=300.0, run_failed=True)
+
+    assert standings.of_time_bookmark(inherited) is MarkStanding.BEFORE_THIS_BRANCH
 
 
 def test_a_mark_the_run_has_passed_does_not_read_as_still_reachable() -> None:
