@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-21
 closed: 2026-09-21
+pr: 866
 payoff: a release cut stops being blocked by drift the project has already decided is not a finding, and the two citation checks stop disagreeing about the same file
 verify: uv run pytest tests/unit/test_doc_check.py -q -k "closed_brief or open_brief"
 ---

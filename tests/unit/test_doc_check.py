@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from collections.abc import Mapping
 from pathlib import Path
 
 import doc_check
@@ -3737,12 +3738,20 @@ def test_a_not_delegable_count_is_declined_when_an_entry_id_has_no_item(tmp_path
 # --- line citations ---------------------------------------------------------
 
 
-def _items(root: Path, **briefs: str) -> Path:
-    """Write item briefs under `docs/items/`, named the way the store names them."""
+def _items(root: Path, briefs: Mapping[str, str]) -> Path:
+    """Write item briefs under `docs/items/`, keyed by the filename to write.
+
+    A mapping rather than `**briefs`, because an id cannot be an identifier:
+    the keyword form spelled it `PL_8888_open` and this helper put the hyphens
+    back, which is the one spelling `tools/fixture_id_check.py` reads a rule
+    of its own to see (`PL-L609`). Keyed this way the ids are ordinary string
+    literals, which is the scan's main rule - and the closed-brief test below
+    no longer needs `**{identifier: ...}` to pass an id that is not a name.
+    """
     items = root / "docs" / "items"
     items.mkdir(parents=True, exist_ok=True)
     for name, body in briefs.items():
-        (items / f"{name.replace('_', '-')}.md").write_text(body, encoding="utf-8")
+        (items / f"{name}.md").write_text(body, encoding="utf-8")
     return root
 
 
@@ -3763,7 +3772,7 @@ def test_a_line_citation_past_the_end_of_its_file_is_an_error(tmp_path: Path) ->
     sentence says, so this is resolvability rather than truth - the same
     question `check_citations` asks of a path, one line finer.
     """
-    root = _items(_repo(tmp_path), PL_8888_open=_brief("ready", "See `core/thing.py:900`."))
+    root = _items(_repo(tmp_path), {"PL-8888-open": _brief("ready", "See `core/thing.py:900`.")})
 
     errors = _line_citation_errors(root)
 
@@ -3782,7 +3791,7 @@ def test_a_line_citation_inside_its_file_stays_quiet(tmp_path: Path) -> None:
     (root / "src" / "anesthesia_sim" / "core" / "thing.py").write_text(
         "one\ntwo\nthree\n", encoding="utf-8"
     )
-    _items(root, PL_8888_open=_brief("ready", "See `core/thing.py:2`."))
+    _items(root, {"PL-8888-open": _brief("ready", "See `core/thing.py:2`.")})
 
     assert _line_citation_errors(root) == []
 
@@ -3799,7 +3808,7 @@ def test_a_closed_brief_is_exempt(tmp_path: Path) -> None:
     # Spelled out rather than derived from the status, because `f"PL-{status.upper()}"`
     # mints `PL-DONE` and `PL-DROPPED`, neither of which is in `store.ID_ALPHABET`.
     for status, identifier in (("done", "PL-D0N3"), ("dropped", "PL-DRPD")):
-        _items(root, **{identifier: _brief(status, "See `core/thing.py:900`.")})
+        _items(root, {identifier: _brief(status, "See `core/thing.py:900`.")})
 
     assert _line_citation_errors(root) == []
 
@@ -3812,7 +3821,7 @@ def test_an_item_may_quote_the_broken_citation_it_reports(tmp_path: Path) -> Non
     """
     root = _items(
         _repo(tmp_path),
-        PL_8888_open=_brief("ready", "It still says:\n\n```text\ncore/thing.py:900\n```\n"),
+        {"PL-8888-open": _brief("ready", "It still says:\n\n```text\ncore/thing.py:900\n```\n")},
     )
 
     assert _line_citation_errors(root) == []
@@ -3825,7 +3834,7 @@ def test_an_ambiguous_bare_filename_declines(tmp_path: Path) -> None:
     to be worse than no answer.
     """
     root = _repo(tmp_path, modules=("core/thing.py", "app/thing.py"))
-    _items(root, PL_8888_open=_brief("ready", "See `thing.py:900`."))
+    _items(root, {"PL-8888-open": _brief("ready", "See `thing.py:900`.")})
 
     assert _line_citation_errors(root) == []
 
