@@ -3,11 +3,12 @@ id: PL-49R8
 title: A path-scoped rule that stops a session re-introducing a sample store once the run is a closed-form function of its definition
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs
 feature: numerical-domain
 touches: .claude/rules
 added: 2026-09-05
+closed: 2026-09-21
 verify: test -f .claude/rules/run-is-its-definition.md && grep -q 'cannot be re-derived' .claude/rules/run-is-its-definition.md
 ---
 
