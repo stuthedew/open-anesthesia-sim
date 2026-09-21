@@ -165,3 +165,16 @@ def test_emit_prints_the_header_and_every_entry() -> None:
     shipped = dead_ends.entries(dead_ends.DEAD_ENDS.read_text(encoding="utf-8"))
     assert "bin/docket show" in result.stdout
     assert result.stdout.count("\n") == len(shipped) + 1
+
+
+def test_an_entry_citing_a_token_the_store_could_not_mint_says_nothing() -> None:
+    """`PL-[A-Z0-9]{3,4}` read three letters as an id; only three *digits* is one.
+
+    The store mints four characters from Crockford base32 minus the vowels, or
+    three digits, and nothing else. A looser reader here turns an ordinary
+    hyphenated word into "cites X, which is not an item" - a hard failure on
+    prose that named no item at all (`PL-KYW3`).
+    """
+    text = PREAMBLE + entry("An approach", "refuted at the PL-CAP stage")  # not-an-id
+
+    assert dead_ends.check(text) == []

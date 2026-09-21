@@ -3905,3 +3905,35 @@ def test_this_repository_resolves_every_live_line_citation() -> None:
     doc_check.check_line_citations(root, doc_check.read_docs(root), report)
 
     assert report.errors == []
+
+
+def test_a_family_member_may_declare_no_test_yet_against_a_historical_id(tmp_path: Path) -> None:
+    """The declared-none form took a four-character id only, so `PL-001` failed it.
+
+    43 of the store's ids are three digits, and against one of them the fixed
+    parenthesis `docs/MODEL.md` clause 3 prescribes read as no declaration at
+    all - a hard error on a row that had done exactly what the clause asks
+    (`PL-KYW3`).
+    """
+    root = _family_repo(tmp_path, "no test yet (`PL-001`)", items={"PL-001": "ready"})
+
+    assert _family_errors(root) == []
+
+
+def test_a_deferral_naming_a_historical_id_disposes_of_it(tmp_path: Path) -> None:
+    """`_declined_ids` read the same restated grammar, in the safer direction.
+
+    An id the gate has deferred but the reader cannot see is reported as having
+    no disposition - a false hard error rather than a silent pass, and still an
+    answer that is wrong about the document in front of it (`PL-KYW3`).
+    """
+    roadmap = VERSIONED_GATE_ROADMAP.replace(
+        "### Definition of done",
+        "### Declined to Gate 2 on the refilling-queue ground\n\n"
+        "**Deferred on the workflow-lane ground**, where admitting them would "
+        "refill a gate that is not draining: `PL-001`, `PL-ZZZZ`.\n\n"
+        "### Definition of done",
+        1,
+    )
+
+    assert _dispositions(tmp_path, {"PL-001": DEBT, "PL-ZZZZ": DEBT}, roadmap) == []

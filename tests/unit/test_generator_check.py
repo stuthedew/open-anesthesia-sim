@@ -336,3 +336,38 @@ def test_every_id_the_advisory_prints_is_one_the_store_could_mint(
         "these ids in the advisory's output are outside the alphabet the store mints, "
         "so a session copying one writes an id `ID_PATTERN` can never match: " + ", ".join(outside)
     )
+
+
+def test_a_historical_three_digit_id_is_cited_like_any_other(repo: Path) -> None:
+    """43 of the store's ids are `PL-001`-shaped and `PL-[A-Z0-9]{4}` saw none.
+
+    Measured 2026-09-21: the restated grammar hid 219 citation edges naming one,
+    and the signal this prints for the `docs/MODEL.md` cluster read `6 cited by
+    3+ open items` where 7 was the answer. The oldest items in the store were
+    exactly the ones the advisory under-counted (`PL-KYW3`).
+    """
+    ids = {"PL-001", "PL-8888", "PL-BBBB", "PL-CCCC"}
+    _write(repo, "PL-001", touches="src/a.py", status="ready")
+    for identifier in ("PL-8888", "PL-BBBB", "PL-CCCC"):
+        _write(repo, identifier, touches="src/a.py", status="ready", body="caused by PL-001")
+    _commit(repo, "PL-001, PL-8888, PL-BBBB, PL-CCCC: capture four findings")
+
+    assert generator_check.citations(repo, ids)["PL-001"] == 3
+
+
+def test_a_commit_leading_with_a_three_digit_id_attributes_what_it_created(repo: Path) -> None:
+    """`creation_parents` reads the id off the subject and off the filename.
+
+    Both readers used the same restated grammar, so neither could see one of the
+    44 item files whose id is three digits, nor the 6 creation commits that lead
+    with one - the whole of the store's early history spawned nothing.
+    """
+    _write(repo, "PL-001", touches="src/a.py", status="done")
+    _commit(repo, "PL-001: capture")
+    _write(repo, "PL-8888", touches="src/a.py", status="ready")
+    _commit(repo, "PL-001: work that spawned a finding")
+
+    parents = generator_check.creation_parents(repo)
+
+    assert parents["PL-8888"] == {"PL-001"}
+    assert parents["PL-001"] == set()

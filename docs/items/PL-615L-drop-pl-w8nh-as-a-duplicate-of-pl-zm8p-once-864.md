@@ -8,6 +8,7 @@ classes: housekeeping
 feature: dev-tooling
 added: 2026-09-21
 closed: 2026-09-21
+pr: 868
 verify: grep -q '^status: dropped' docs/items/PL-W8NH-*.md && grep -q 'PL-ZM8P' docs/items/PL-W8NH-*.md
 ---
 

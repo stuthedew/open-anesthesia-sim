@@ -203,3 +203,15 @@ def test_the_advisory_is_one_line(monkeypatch: pytest.MonkeyPatch, tmp_path, cap
     printed = capsys.readouterr().out.strip()
     assert printed.count("\n") == 0
     assert "--recover" in printed
+
+
+def test_item_ids_judges_a_subject_by_the_stores_own_grammar() -> None:
+    """A recovered body is filed under the ids in its subject, so those have to be ids.
+
+    `PL-[0-9A-Z]{3,4}` stood here: it read any three characters as one of the
+    store's historical ids, where only three *digits* is one, and admitted the
+    vowels the alphabet excludes. A recovery filed under a token no item
+    carries is provenance attached to nothing (`PL-KYW3`).
+    """
+    assert pr_body_check.item_ids("PL-001: the early work (#12)", 12, {}) == ["PL-001"]
+    assert pr_body_check.item_ids("Rework the PL-CAP fixture (#13)", 13, {}) == []  # not-an-id

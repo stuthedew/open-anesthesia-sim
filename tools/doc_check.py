@@ -125,7 +125,7 @@ try:
         table_rows,
         version_tuple,
     )
-    from docket.store import read_items
+    from docket.store import ID_PATTERN, read_items
 
     # Reading `git tag` is a second borrowing, for the same reason as the first.
     # `vcs` collapses every way git can fail to answer - not installed, not a
@@ -1838,7 +1838,7 @@ class EntityKind:
 
 def _entity_kind(noun: str, names: re.Pattern[str]) -> EntityKind:
     """An `EntityKind` whose declared-none form is built from its own noun."""
-    return EntityKind(noun, names, re.compile(rf"\bno {noun} yet \(`(PL-[A-Z0-9]{{4}})`\)"))
+    return EntityKind(noun, names, re.compile(rf"\bno {noun} yet \(`({ID_PATTERN})`\)"))
 
 
 TEST_ENTITY = _entity_kind("test", NAMED_TEST_RE)
@@ -2420,7 +2420,7 @@ def _declined_ids(text: str, gate: MilestoneSection) -> frozenset[str]:
         stop = next(
             (index for index in range(start + 1, end) if HEADING_RE.match(lines[index])), end
         )
-        identifiers.update(re.findall(r"PL-[A-Z0-9]{4}", "\n".join(lines[start:stop])))
+        identifiers.update(re.findall(ID_PATTERN, "\n".join(lines[start:stop])))
     return frozenset(identifiers)
 
 

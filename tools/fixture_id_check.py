@@ -1,4 +1,5 @@
-"""Refuse a `PL-` literal the store could never have minted.
+"""Refuse a `PL-` literal the store could never have minted, or a second spelling
+of the grammar that decides what one is.
 
 `read_items` takes the `id` field verbatim, so `PL-STUV` parses and behaves
 like any other item right up to the moment it reaches something that applies
@@ -36,6 +37,30 @@ matching ids more loosely than `store.ID_RE` would certify a literal that
 would be green while the guarantee it stands for was void. So `ID_RE` is
 imported from the module under protection, and a change to the alphabet moves
 both together.
+
+## The second rule: a pattern that restates the grammar
+
+The paragraph above is the argument, and for two months nothing enforced it on
+anything but this file. Five tools wrote their own: `PL-[A-Z0-9]{4}` in
+`generator_check.py` and twice in `doc_check.py`, `PL-[A-Z0-9]{3,4}` in
+`item_reads.py` and `dead_ends.py`, `PL-[0-9A-Z]{3,4}` in `pr_body_check.py`.
+Every one was looser than the store in the alphabet - all five admit the vowels
+the store cannot mint - and the four spelled `{4}` were *tighter* in the length,
+blind to the 43 historical three-digit ids. That is not symmetrical damage:
+`generator_check.citations` could not read 219 citation edges, and the signal it
+prints for `docs/MODEL.md` said 6 items where 7 was the answer (`PL-KYW3`).
+
+None of it was reachable by the literal rule above, which is why it stood:
+`CANDIDATE_RE` needs an alphanumeric after `PL-` and a character class opens
+with `[`. So the pattern is the thing judged, and the signature is the **counted
+quantifier**: `{4}` or `{3,4}` after a character class is a second copy of
+`store.ID_LENGTH` with a second copy of the alphabet in front of it. An
+open-ended `PL-[A-Za-z0-9]+` claims to know nothing about the grammar and is
+left alone - including `CANDIDATE_RE` itself, which is loose on purpose and judges
+what it finds with `ID_RE` afterwards. Drawing the rule at the quantifier rather
+than at "a regex after `PL-`" is what makes it exact enough to fail the build:
+measured 2026-09-21 over every text file in the repository, it matches the six
+repaired sites and nothing else outside `docs/items/`, which is not scanned.
 
 ## What is scanned, and what is deliberately not
 
@@ -121,6 +146,16 @@ from docket.store import ID_RE  # noqa: E402
 #: lookbehind can only ever drop a false positive.
 CANDIDATE_RE = re.compile(r"(?<![A-Za-z0-9])PL-[A-Za-z0-9]+")
 
+#: A `PL-` that opens a *restatement* of the grammar rather than naming an item:
+#: the prefix, an optional non-capturing group, then a character class or class
+#: escape closed by a counted quantifier. The counted quantifier is what makes
+#: this exact rather than a guess - `{4}` or `{3,4}` is a second copy of
+#: `store.ID_LENGTH`, where `PL-\S+` and `PL-[A-Za-z0-9]+` claim to know
+#: nothing about the grammar and are left alone. Measured 2026-09-21 over every
+#: text file in the repository: the rule matches the six sites `PL-KYW3`
+#: repaired and nothing else outside `docs/items/`, which is not scanned.
+GRAMMAR_RE = re.compile(r"PL-(?:\(\?:)?(?:\[[^\]]*\]|\\[dwsDWS])\{\d+(?:,\d*)?\}")
+
 #: `f"PL-B1B{n:03d}"` mints `PL-B1B000`, so a hole has to stand for the digits
 #: it will be given. This reads the width out of an explicit format spec; one
 #: character is the default. Dropping the holes instead would report `PL-B1B` as
@@ -147,12 +182,20 @@ SKIP_DIRS = frozenset(
 TEXT_ROOT = ".claude"
 
 
+#: The two rules, and the key each finding is grouped under for reporting.
+#: They are reported separately because their remedies have nothing in common:
+#: "rename it to an id the store could mint" is wrong advice for a pattern.
+LITERAL = "literal"
+GRAMMAR = "grammar"
+
+
 class Offender(NamedTuple):
-    """One malformed id, and enough to go and find it."""
+    """One malformed id or restated grammar, and enough to go and find it."""
 
     path: Path
     line: int
     token: str
+    rule: str = LITERAL
 
     def render(self, root: Path) -> str:
         return f"{self.path.relative_to(root)}:{self.line} {self.token}"
@@ -224,6 +267,19 @@ def malformed(value: str) -> Iterator[str]:
             yield found.group(0)
 
 
+def restated(value: str) -> Iterator[str]:
+    """Every second spelling of the id grammar in `value`.
+
+    Scoped to what a module *runs* - see `scan_python` - and so never to prose:
+    a docstring or comment explaining the pattern is discussion, and this file's
+    own header would be its first finding otherwise. The literal half is scanned
+    in `.claude/` text as well because an example there gets copied into an item;
+    a regular expression is not copied that way, so this half has no text pass.
+    """
+    for found in GRAMMAR_RE.finditer(value):
+        yield found.group(0)
+
+
 def keyword_names(node: ast.AST) -> Iterator[tuple[int, int, str]]:
     """Every keyword-argument name, spelled as the filename it would become.
 
@@ -259,7 +315,9 @@ def scan_python(path: Path) -> list[Offender]:
         if MARKER in span:
             continue
         for token in malformed(value):
-            offenders.append(Offender(path, start, token))
+            offenders.append(Offender(path, start, token, LITERAL))
+        for token in restated(value):
+            offenders.append(Offender(path, start, token, GRAMMAR))
     return sorted(offenders, key=lambda offender: offender.line)
 
 
@@ -303,27 +361,53 @@ def collect(root: Path) -> list[Offender]:
     return offenders
 
 
+def _report(offenders: list[Offender], root: Path, rule: str) -> str:
+    """One rule's findings, listed, with the remedy that rule actually has."""
+    listed = "\n".join(f"    {offender.render(root)}" for offender in offenders)
+    if rule == LITERAL:
+        return (
+            f"fixture-id: {len(offenders)} `PL-` literal(s) outside the alphabet the store mints "
+            f"(Crockford base32 minus the vowels, four characters, or three digits):\n"
+            f"{listed}\n"
+            f"  `ID_PATTERN` matches none of these, so a fixture carrying one exercises nothing "
+            f"and any assertion resting on it passes vacuously - and an example carrying one is "
+            f"copied.\n"
+            f"  Rename it to an id the store could mint, or, where the literal is deliberately "
+            f"not an id, say so with a `{MARKER}` comment on one of the lines it spans."
+        )
+    return (
+        f"fixture-id: {len(offenders)} second spelling(s) of the id grammar:\n"
+        f"{listed}\n"
+        f"  A counted quantifier here is a copy of `store.ID_LENGTH` and of the alphabet beside "
+        f"it, and the copies drift: every one of these was looser than the store, so a tool and "
+        f"`bin/docket check` disagreed about what an id is (`PL-KYW3`).\n"
+        f"  Import it instead - `from docket.store import ID_PATTERN` after inserting "
+        f"`subprojects/docket/src` on `sys.path` - and interpolate it, the way `docket`'s own "
+        f"`vcs.py` and `roadmap.py` do. Where the pattern is deliberately not the store's, say "
+        f"so with a `{MARKER}` comment on one of the lines it spans."
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Refuse a `PL-` literal the store could not mint.")
+    parser = argparse.ArgumentParser(
+        description="Refuse a `PL-` literal the store could not mint, or a second spelling of "
+        "its id grammar."
+    )
     parser.add_argument("--root", type=Path, default=ROOT, help="repository root to scan")
     args = parser.parse_args(argv)
 
     offenders = collect(args.root)
     if not offenders:
-        print("fixture-id: every `PL-` literal is one the store could mint")
+        print(
+            "fixture-id: every `PL-` literal is one the store could mint, "
+            "and the id grammar is spelled once"
+        )
         return 0
 
-    listed = "\n".join(f"    {offender.render(args.root)}" for offender in offenders)
-    print(
-        f"fixture-id: {len(offenders)} `PL-` literal(s) outside the alphabet the store mints "
-        f"(Crockford base32 minus the vowels, four characters, or three digits):\n"
-        f"{listed}\n"
-        f"  `ID_PATTERN` matches none of these, so a fixture carrying one exercises nothing and "
-        f"any assertion resting on it passes vacuously - and an example carrying one is copied.\n"
-        f"  Rename it to an id the store could mint, or, where the literal is deliberately not an "
-        f"id, say so with a `{MARKER}` comment on one of the lines it spans.",
-        file=sys.stderr,
-    )
+    for rule in (LITERAL, GRAMMAR):
+        found = [offender for offender in offenders if offender.rule == rule]
+        if found:
+            print(_report(found, args.root, rule), file=sys.stderr)
     return 1
 
 
