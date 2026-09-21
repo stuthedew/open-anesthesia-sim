@@ -6,10 +6,10 @@ effort: M
 status: ready
 classes: docs, infra
 feature: dev-tooling
-touches: docs/, src/anesthesia_sim/, tests/, tools/, CLAUDE.md, .claude/rules/, ROADMAP.md, README.md
+touches: docs/, src/anesthesia_sim/, tests/, tools/, CLAUDE.md, .claude/, ROADMAP.md, README.md, subprojects/docket/, docket.toml
 added: 2026-09-13
 payoff: every citation form the project writes is checked, so a renamed heading or a reworded sentence stops orphaning a pointer silently
-verify: uv run pytest tests/unit/test_doc_check.py -q -k "possessive" && python3 tools/doc_check.py check
+verify: python3 tools/possessive_section_check.py
 recurrences: 2026-09-21 PL-YSMV
 ---
 
@@ -244,32 +244,33 @@ form; and the three findings it surfaced are repaired - `ROADMAP.md:86` became
 a `§` section citation, `ROADMAP.md`'s colour-panel paragraph and `PL-BYMX`
 now quote verbatim. `make check` green.
 
-**Step 2 is the conversion, and it is what remains.** Scope is the live text
-only: **49 possessive citations** on the merged tree, against **174 in closed
-briefs that must not be touched** - `_quoting_sources` exempts those since
-`PL-ZM8P`, so converting one changes nothing and edits a historical record.
-Enumerate them rather than working from a list that will go stale:
+**Step 2 is the conversion, and a tool now names its sites.**
+`tools/possessive_section_check.py` reports every possessive citation whose
+quotation matches a heading or a `**Bold.**` marker in the file it names -
+**29 sites** on the merged tree - and prints the exact `§` line each should
+become. It is `PL-316G`'s `verify:`, and it fails today, which is what the
+earlier `verify:` did not do: proving step 1 proved nothing about step 2, and
+`docket check` was right to refuse it.
 
-```text
-  grep -rEno "\`[A-Za-z0-9_./-]+\.md\`['’]s( own)?[ \n]*\"" \
-    --include="*.md" --include="*.py" . | grep -v "^./.git/"
-```
+**Why a tool rather than the per-site judgment this brief first described.**
+The decidable half is narrower than "is this a section citation" and it is the
+half that matters: a quotation that *matches a heading* is one, as a fact about
+the tree. A quotation matching no heading may still be a faithful quotation of
+a sentence, which is correct as written, so the tool reports nothing about it.
+That asymmetry is deliberate - `CLAUDE.md` refuses to script the judgment half,
+and the half needing judgment is exactly the one left alone.
 
-then skip any hit whose file is a `done` or `dropped` brief, or is under
-`docs/pr-bodies/`.
+Scope is live text only. The 174 possessive citations in closed briefs are
+exempt at `_quoting_sources` since `PL-ZM8P`, so the tool never sees them and
+none must be edited.
 
-**The rule for each site, which is the judgment the script cannot make.**
-Read what the quotation *is*, not where it points:
+**Step 2 ends by wiring the check into `make check`**, which is the part that
+answers the standing question - a convention nothing enforces decays, and this
+is what stops the next session writing a section citation in a form that says
+nothing to its reader. It cannot be wired in before the conversion, because it
+would hard-fail on the 29 sites it exists to find.
 
-- **A section, heading or `**Bold.**` marker** - convert to
-  `` `<document>.md` § "Exact Heading" ``. The heading must be exact; the
-  check now verifies it either way, which is the net this ordering buys.
-- **A sentence quoted from the document** - leave it in the possessive. It is
-  checked now, and `§` would assert it names a section, which is false.
-- **A compressed handle that is neither** - it will already have failed
-  `make check` in step 1, so none should remain; if one appears, quote it
-  verbatim or drop the quotation marks rather than inventing a section.
-
-**Done when.** Every live possessive citation that names a section reads in the
-section-mark form, every one that quotes prose is left in the possessive and
-still passes, no closed brief is edited, and `make check` is green.
+**Done when.** `python3 tools/possessive_section_check.py` exits 0, every
+quotation it reported reads in the section-mark form, no quotation of prose was
+converted, no closed brief was edited, the check runs inside `make check`, and
+`make check` is green.
