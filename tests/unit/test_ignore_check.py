@@ -103,10 +103,11 @@ def test_mypy_missing_entirely_is_not_checked_rather_than_clean() -> None:
 def test_directives_finds_the_real_ones_in_this_repository() -> None:
     """Against the live tree, because what it must not count lives there.
 
-    `verify.py` holds the marker in a tuple, `test_release.py` names it in
-    prose, and `test_verify.py` writes one into a fixture file as a string
-    literal. Only the last is inside a checked tree, and it is the one a grep
-    over these directories would wrongly count.
+    `test_release.py` and `test_verify.py` name the marker in prose,
+    `test_verify.py` also writes one into a fixture file as a string literal,
+    and this file writes a fixture line holding a string-literal marker and a
+    real directive at once. Every one of them is inside a checked tree, so
+    every one is a line a grep over these directories would wrongly count.
     """
     found = ignore_check.directives(REPO_ROOT)
 
