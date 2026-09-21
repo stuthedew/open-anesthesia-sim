@@ -176,7 +176,7 @@ def test_a_cluster_reproducing_into_itself_says_so(repo: Path) -> None:
 def test_a_cluster_with_nothing_open_is_history_not_friction(repo: Path) -> None:
     """A cluster already closed out is not work anyone can act on."""
     _closers(repo, "src/thing.py", 3, kids_touch="src/thing.py")
-    for path in (repo / "docs" / "items").glob("PL-K*.md"):
+    for path in (repo / "docs" / "items").glob("PL-K*.md"):  # not-an-id: a glob, not a literal
         path.write_text(path.read_text().replace("status: ready", "status: done"), encoding="utf-8")
     _commit(repo, "PL-C000: close the children")
 
