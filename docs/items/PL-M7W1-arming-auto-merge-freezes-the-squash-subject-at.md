@@ -86,26 +86,45 @@ Three, cheapest first, and the choice wants measuring rather than arguing:
    under `CLAUDE.md`'s "a check earns its place every run" - but `PL-2XTF`
    wanted both halves deliberately, so this reopens that.
 
-## A second instance, three hours later, on #880
+## What #880 actually showed: a near miss, and a narrower hazard than this item claimed
 
-Recorded 2026-09-21 by the session that triaged this item, which then did the
-same thing itself. Auto-merge was armed on `#880` at 21:15:50; the title was
-edited afterwards, so the frozen squash subject is the 21:09 original. Nothing
-is lost this time - both spellings lead with `PL-2JRC`, so the provenance the
-check exists to protect survives, and the divergence is only that the subject
-landing on `origin/main` will read "the 10 untriaged captures" where the pull
-request a reader opens reads "the untriaged captures".
+**Corrected 2026-09-21 (`PL-G7ST`).** The section that first stood here, landed
+on `origin/main` in `32c70c5d`, said #880 was a third instance and that "the
+frozen squash subject is the 21:09 original". **That was wrong, and the commit
+carrying it disproves it**: the subject on `origin/main` is
 
-**It is evidence about direction 2 rather than about severity.** That session
-had read this brief, in full, within the hour - it wrote the `**Decision
-needed.**` below - and still armed auto-merge and then renamed. So a rule in
-`docs/worker.md` saying "arm auto-merge only once the title is final" would
-have been read and not applied, by the reader best placed to apply it, on the
-same day. That is the disposition test `CLAUDE.md` § "Route it" states in
-terms, answered by observation instead of by argument: this one does not
-survive as prose. It moves direction 1 from recommended-on-balance to
-recommended-unless-the-payload-forbids-it, and leaves direction 2 as a
-fallback that is known to be weak rather than merely suspected to be.
+```text
+PL-2JRC: triage the untriaged captures standing in the queue on 2026-09-21 (#880)
+```
+
+which is the *renamed* title. The original said "the 10 untriaged captures". The
+claim was written while the pull request was open, from the arm time alone, and
+never checked against what landed - in the item whose whole subject is squash
+provenance, which is the part worth keeping.
+
+**What happened.** Auto-merge was armed at 21:15:50 on the 21:09 title and the
+title was edited at about 21:26, so the precondition this item describes was
+fully set up. It never fired: the project owner merged manually at 21:35:55, and
+a manual squash merge composes its subject from the **live** title. The stale
+subject was never at risk of landing.
+
+**So the hazard is narrower than § "Why it matters." above states, and that is
+the finding.** The freeze bites only when auto-merge itself performs the merge.
+Where a human merges - the ordinary case on this project, and what happened on
+both #868 and #880 - the live title is used and the capture is irrelevant. #868
+is still a real instance because the stale subject *did* land there; what #880
+adds is the boundary. Any fix taking direction 1 should therefore expect to fire
+on pull requests that will mostly be merged by hand, which is an argument about
+its cost rather than against it.
+
+**The behavioural point survives the correction**, and is the one that bears on
+the decision below. The session that armed and then renamed without re-arming
+had written this item's `**Decision needed.**` within the hour, having read
+§ "Direction 2's mechanism is now confirmed, on #877" or been about to. So
+direction 2 - a `docs/worker.md` sentence whose entire cost falls on a session
+remembering at the right moment - was not applied by the reader best placed to
+apply it, and that is true whether or not the merge method happened to rescue
+the outcome.
 
 **Decision needed.** Which of the three directions above to take, and whether
 `pr_title_check.py`'s docstring keeps its stronger claim.
