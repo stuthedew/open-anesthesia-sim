@@ -5408,9 +5408,10 @@ yet be misattributed between machines.
 staleness pass before any of it is worked - a `verify:` command tests for the
 presence of the fix and never for the presence of the fault, so an entry whose
 problem was solved another way fails forever and reads as outstanding. The one
-measured pass found 12 of 134 items dead and 31 more overtaken. `PL-6ZQY` is
-the standing item for it, and it runs against this list before implementation
-of this milestone begins.
+measured pass found 12 of 134 items dead and 31 more overtaken. The pass is
+filed as its own item under `feature: gate-staleness-sweep` and runs against
+this list before implementation of this milestone begins; no standing item is
+named here, for the reason beat 3 gives.
 
 **Cleared by v0.6.0 itself - 12 entries**
 
@@ -6199,7 +6200,12 @@ shows them on one timeline with the milestones they gate:
    this is a beat and not a check: read each frozen entry against the tree, drop
    what no longer reproduces with its reason, and correct the briefs that
    overstate what is left — before spending a session on any of them.
-   `PL-6ZQY` is the standing item for the pass.
+   **File the pass as its own item under `feature: gate-staleness-sweep`; do
+   not name a standing one here.** Any item named is an item that can close,
+   and the next gate's session then looks the instrument up and reads `done` —
+   which is what happened to `PL-6ZQY`, closed 2026-09-19, two days before
+   Gate 2 froze on a list it had never seen (`PL-D8KW`). An instruction to
+   file cannot go stale the way a pointer to one item does.
 
    **The third disposition, and the terms that make it legitimate** (project
    owner, 2026-09-21, ratified, over leaving each milestone's own bullet to be

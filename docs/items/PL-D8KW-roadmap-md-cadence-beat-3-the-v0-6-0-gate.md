@@ -1,9 +1,15 @@
 ---
 id: PL-D8KW
 title: ROADMAP.md cadence beat 3, the v0.6.0 gate section and docket's release mode all name PL-6ZQY as the standing item for the pre-gate staleness sweep, but PL-6ZQY closed 2026-09-19 two days before Gate 2 froze, so the pass every gate must run before any entry is worked has no open instrument and a session that looks it up reads done
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: defect, docs
 feature: gate-staleness-sweep
+touches: ROADMAP.md, .claude/skills/docket/modes/release.md
 added: 2026-09-21
+closed: 2026-09-21
+verify: ! grep -qE "PL-6ZQY. is the standing item" ROADMAP.md .claude/skills/docket/modes/release.md
 ---
 
 **Problem.** ROADMAP.md cadence beat 3, the v0.6.0 gate section and docket's release mode all name PL-6ZQY as the standing item for the pre-gate staleness sweep, but PL-6ZQY closed 2026-09-19 two days before Gate 2 froze, so the pass every gate must run before any entry is worked has no open instrument and a session that looks it up reads done
@@ -36,3 +42,30 @@ instrument for a recurring beat has to outlive any one pass, or this defect
 returns at Gate 3 under a new id. Either the sentence names no item and states
 the pass, or the item it names is one that cannot reach `done` - that choice is
 this item's work.
+
+## What was done: the beat names no item at all
+
+All three sites now instruct a session to *file* the pass under `feature:
+gate-staleness-sweep` rather than to *look up* a standing one. That is the
+first of the two dispositions the section above left open, and it was chosen
+over the second — naming an item that cannot reach `done` — because no such
+item exists in this store and inventing one would be a mechanism built to
+carry a sentence.
+
+**The near-miss worth recording: a `feature:` handle fails the same test.**
+`bin/docket feature gate-staleness-sweep` looks like a durable instrument,
+since a feature name is not an item and cannot close. But once Gate 2's
+members close it prints `2/2 done`, and a Gate 3 session reading it learns
+exactly what a session reading closed `PL-6ZQY` learned. The failure is not
+that the pointer named an item; it is that the sentence was a *lookup* at all.
+An imperative — file one — has no state to be stale.
+
+The feature name survives in the new text as the label to file under, which is
+a different job: it groups each gate's pass so `bin/docket feature
+gate-staleness-sweep` answers "has this gate's sweep been run" for whoever
+asks, without any sentence depending on the answer.
+
+`PL-6ZQY` still appears at two of the three sites, now as provenance — what
+happened, and the 134-item map whose verification never finished — which
+`.claude/rules/citation-drift.md` holds to be the correct and only use of a
+closed brief.
