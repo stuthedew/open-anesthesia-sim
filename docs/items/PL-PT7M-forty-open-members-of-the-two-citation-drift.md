@@ -141,9 +141,14 @@ drifted as well (`require_concentration_fraction` is now `require_fraction`,
 and `apply_blood_uptake` no longer exists), and both are marked in that brief
 for whoever takes it.
 
-**None of the 34 kept items has already been done.** Every one whose `verify:`
-command is cheap enough to run - 24 of them - was run on 2026-09-21 and every
-one still fails, so no kept row is a close-out waiting to be noticed.
+**No live-document repair has already been done.** Twenty-one of the 22 carry a
+`verify:` command that runs without the project virtualenv; all 21 were run on
+2026-09-21 and all 21 still fail, so none of those rows is a close-out waiting
+to be noticed. The 22nd (`PL-21RC`, the apparatus enumerations missing
+`docs/maintainer.md`) and the 9 check-building members run under `uv run
+pytest` and were not re-run; the 3 not-startable rows carry no command. That
+covers the group the deferral is about and leaves the two groups whose
+disposition is their own.
 
 **What the pass did not do**, per the decision above: no editing sweep of the
 live-document repairs, and no ranking of the check-building members. The 22
