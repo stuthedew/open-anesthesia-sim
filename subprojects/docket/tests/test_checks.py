@@ -2773,6 +2773,7 @@ def test_a_window_git_would_not_answer_is_declined_rather_than_read_as_empty() -
 # generator believing the mechanism is ranked when it is not.
 
 _EXPLAINS = ("PL-E1E1", "PL-E2E2", "PL-E3E3")
+_LIVE = "live - two more captures matched onto this path after the cluster was recorded"
 
 
 def _explained() -> list[Item]:
@@ -2780,9 +2781,46 @@ def _explained() -> list[Item]:
 
 
 def test_a_sound_root_cause_is_accepted() -> None:
-    errors = _errors(_item("PL-K7QX", root_cause_of=_EXPLAINS), *_explained())
+    errors = _errors(_item("PL-K7QX", root_cause_of=_EXPLAINS, generator=_LIVE), *_explained())
 
     assert not _has(errors, "root-cause-of")
+
+
+def test_a_recorded_generator_owes_a_recurrence_verdict() -> None:
+    """The second of the two tests, and it fails as quietly as the first.
+
+    The count decides a generator is *recorded* and the verdict decides whether
+    it *ranks* above every band but `P0` (project owner, 2026-09-21, ratified).
+    `plan.py` already refuses to rank a claim carrying no verdict, so nothing
+    is mis-ranked - what the error catches is the session that recorded a live
+    generator and believes it now outranks every safety item in the queue.
+    """
+    errors = _errors(_item("PL-K7QX", root_cause_of=_EXPLAINS), *_explained())
+
+    assert _has(errors, "`generator:` is absent")
+    assert _has(errors, "offers this on its band like any other item")
+
+
+def test_a_verdict_outside_the_vocabulary_is_an_error() -> None:
+    """The decidable half; whether the mechanism is really spent is checked nowhere."""
+    errors = _errors(
+        _item("PL-K7QX", root_cause_of=_EXPLAINS, generator="probably - who knows"), *_explained()
+    )
+
+    assert _has(errors, "it has to open with one of `live`, `spent`")
+
+
+def test_a_closed_generator_is_not_asked_for_a_verdict() -> None:
+    """A closed item is startable by nothing, so its verdict would rank nothing.
+
+    Demanding one would mean backfilling every head this project has already
+    closed with a retrospective judgment about a mechanism that session did not
+    diagnose.
+    """
+    head = _item("PL-K7QX", root_cause_of=_EXPLAINS, status="done")
+    errors = _errors(head, *_explained())
+
+    assert not _has(errors, "`generator:`")
 
 
 def test_a_root_cause_naming_an_unknown_item_is_an_error() -> None:

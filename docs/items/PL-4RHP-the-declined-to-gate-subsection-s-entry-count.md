@@ -10,7 +10,7 @@ touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-16
 closed: 2026-09-21
 verify: python3 tools/doc_check.py check && ! grep -qE '^#{2,6} .*entr(y|ies)[[:space:]]*$' ROADMAP.md
-recurrences: 2026-09-19 PL-HCTF
+recurrences: 2026-09-19 PL-HCTF, 2026-09-21 PL-JN3F
 ---
 
 **Problem.** The Declined-to-Gate subsection's entry count is outside check_gate_counts' reach, and its group counts cannot be reconciled to the 151 it states

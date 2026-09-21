@@ -35,6 +35,7 @@ from .model import (
     STATUSES,
     Item,
     generator_defect_faults,
+    generator_faults,
     recurrence_faults,
     root_cause_faults,
 )
@@ -1461,6 +1462,7 @@ def _check_references(report: Report, milestones: MilestoneStates | None = None)
                 )
 
     _check_root_causes(report, known)
+    _check_generator_verdicts(report, known)
     _check_recurrences(report, known)
 
     known_items = {i.identifier: i for i in report.items}
@@ -1508,6 +1510,40 @@ def _check_root_causes(report: Report, known: set[str]) -> None:
             f"{_where(item)}: `root-cause-of:` {'; '.join(faults)}. `docket next` "
             f"ranks a sound claim above every band but P0 and ignores an unsound one, "
             f"so this generator is recorded and unranked until the field is repaired"
+        )
+
+
+def _check_generator_verdicts(report: Report, known: set[str]) -> None:
+    """Hold a recorded generator to saying whether its mechanism is still running.
+
+    The check beside this one holds a `root-cause-of:` to naming three real
+    items, which is what decides the claim is *recorded*. This holds the
+    separate question that decides whether it *ranks* above every band but
+    `P0` (project owner, 2026-09-21, ratified): is the store still handing this
+    mechanism new members, or is it spent?
+
+    It fails the same quiet way as the two around it, and that is the whole
+    reason it is an error rather than an advisory. `plan.py` refuses to rank a
+    claim carrying no verdict - it reads the same `generator_faults`, so the
+    two cannot drift - so an absent verdict mis-ranks nothing. What it does is
+    leave the session that recorded a live generator believing the mechanism is
+    now ranked above every safety item in the queue, with nothing else in the
+    project ever saying it is not. This is what says it.
+
+    The decidable half only, as everywhere else here: whether the field opens
+    with a word from the vocabulary, whether a reason follows it, whether a
+    verdict has a cluster to be about. Whether a mechanism is *really* spent is
+    judgment, is checked nowhere, and is what the reason beside the verdict is
+    for.
+    """
+    for item in report.items:
+        faults = generator_faults(item, known)
+        if not faults:
+            continue
+        report.errors.append(
+            f"{_where(item)}: `generator:` {'; '.join(faults)}. The count decides whether a "
+            f"generator is recorded and this decides whether it ranks, so until the field "
+            f"is repaired `docket next` offers this on its band like any other item"
         )
 
 

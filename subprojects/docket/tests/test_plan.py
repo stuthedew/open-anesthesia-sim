@@ -35,6 +35,7 @@ def _item(
     classes: tuple[str, ...] = ("perf",),
     touches: tuple[str, ...] = ("a.py",),
     root_cause_of: tuple[str, ...] = (),
+    generator: str = "",
     impairs_generators: str = "",
     verify: str = "",
     payoff: str = "",
@@ -58,6 +59,7 @@ def _item(
         reason="",
         body="**Problem.** x\n**Why it matters.** y\n**Done when.** z\n",
         root_cause_of=root_cause_of,
+        generator=generator,
         impairs_generators=impairs_generators,
         payoff=payoff,
         verify=verify,
@@ -895,9 +897,86 @@ def test_an_undeclared_boundary_places_nothing_in_a_lane() -> None:
 
 GENERATOR = ("PL-E1E1", "PL-E2E2", "PL-E3E3")
 
+# The recurrence verdict, which from `PL-T7QR` is the second of the two tests a
+# generator has to pass to rank: the count decides that one is *recorded*, and
+# this decides whether it ranks above every band but `P0`. Written out at every
+# call site that means a ranking generator rather than defaulted in `_item`,
+# because a test asserting the tier is asserting both halves and a default
+# would hide one of them.
+LIVE = "live - two more captures matched onto this path after the cluster was recorded"
+SPENT = "spent - the parse every member stood on was deleted, so no new one can arrive"
+
 
 def _explained() -> list[Item]:
     return [_item(identifier, priority="P3") for identifier in GENERATOR]
+
+
+def test_a_spent_generator_ranks_on_its_own_band() -> None:
+    """The recurrence test, which is the whole of what `PL-T7QR` added.
+
+    The count and the verdict sit on different axes (project owner,
+    2026-09-21, ratified): three items standing on one mechanism is what makes
+    it *recorded*, and whether the store is still handing it members is what
+    makes it *rank*. A cluster whose mechanism is spent did its damage and
+    cannot do more, so it competes on its band like any other item - and the
+    `safety`-classed `P1` below it goes first, which is the outcome the
+    decision exists to produce.
+
+    Recorded all the same: the claim is still sound, `clusters` still counts
+    it, and `generators_explaining` still names it above its members. Only the
+    rank moved.
+    """
+    picks = recommend(
+        [
+            _item("PL-1111", priority="P1", classes=("safety",)),
+            _item("PL-5555", priority="P2", root_cause_of=GENERATOR, generator=SPENT),
+            *_explained(),
+        ],
+        limit=2,
+    )
+
+    assert [p.item.identifier for p in picks] == ["PL-1111", "PL-5555"]
+
+
+def test_a_recorded_generator_with_no_verdict_does_not_rank() -> None:
+    """Opt-in, because `docket check` runs separately from `docket next`.
+
+    A store is routinely ranked before it is validated - the argument
+    `root_cause_faults` already makes about a mistyped id - so the unqualified
+    state has to be the one that cannot buy a promotion over a clinical defect.
+    The cost of that default is a live generator waiting on its band until the
+    checker is run, which is recoverable and which `docket check` reports; the
+    cost the other way is a spent cluster outranking a `safety`-classed `P1`,
+    which is what the ratified decision removed.
+    """
+    picks = recommend(
+        [
+            _item("PL-1111", priority="P1", classes=("safety",)),
+            _item("PL-5555", priority="P2", root_cause_of=GENERATOR),
+            *_explained(),
+        ],
+        limit=2,
+    )
+
+    assert [p.item.identifier for p in picks] == ["PL-1111", "PL-5555"]
+
+
+def test_a_spent_generator_is_not_told_it_ranked_as_one() -> None:
+    """The reason line has to match the rank, or it teaches a reader to discount it.
+
+    `recommend` says "Ranked as a generator" in those words so that a `P2` at
+    the top of a list with `P1`s below it reads as the ranking meaning it. Said
+    of an item that ranked on its band, the sentence asserts a promotion that
+    did not happen - and `placement_line`'s "ranks on its band alone" clause,
+    which a generator must not carry, is true of this one and must stay.
+    """
+    (pick,) = recommend(
+        [_item("PL-5555", priority="P2", root_cause_of=GENERATOR, generator=SPENT), *_explained()],
+        limit=1,
+    )
+
+    assert "Ranked as a generator" not in pick.reason
+    assert pick.generator == 0
 
 
 def test_a_generator_outranks_a_safety_classed_p1() -> None:
@@ -906,7 +985,7 @@ def test_a_generator_outranks_a_safety_classed_p1() -> None:
         [
             _item("PL-9999", priority="P0"),
             _item("PL-1111", priority="P1", classes=("safety",)),
-            _item("PL-5555", priority="P2", root_cause_of=GENERATOR),
+            _item("PL-5555", priority="P2", root_cause_of=GENERATOR, generator=LIVE),
             *_explained(),
         ],
         limit=3,
@@ -924,7 +1003,7 @@ def test_a_generator_outranks_work_the_current_step_includes() -> None:
     picks = recommend(
         [
             _item("PL-1111", priority="P1"),
-            _item("PL-5555", priority="P3", root_cause_of=GENERATOR),
+            _item("PL-5555", priority="P3", root_cause_of=GENERATOR, generator=LIVE),
             *_explained(),
         ],
         scope=_scope(current=("PL-1111",)),
@@ -937,7 +1016,8 @@ def test_a_generator_outranks_work_the_current_step_includes() -> None:
 def test_the_reason_says_it_was_ranked_as_a_generator() -> None:
     """A `P2` above a `P1` has to say the ranking meant it."""
     (pick,) = recommend(
-        [_item("PL-5555", priority="P2", root_cause_of=GENERATOR), *_explained()], limit=1
+        [_item("PL-5555", priority="P2", root_cause_of=GENERATOR, generator=LIVE), *_explained()],
+        limit=1,
     )
 
     assert "Ranked as a generator" in pick.reason
@@ -979,7 +1059,11 @@ def test_a_claim_does_not_decay_as_the_items_it_explains_close() -> None:
     """A root cause still explains an item that has since closed."""
     closed = [_item(identifier, status="done") for identifier in GENERATOR]
     picks = recommend(
-        [_item("PL-1111", priority="P1"), _item("PL-5555", root_cause_of=GENERATOR), *closed],
+        [
+            _item("PL-1111", priority="P1"),
+            _item("PL-5555", root_cause_of=GENERATOR, generator=LIVE),
+            *closed,
+        ],
         limit=2,
     )
 
@@ -989,7 +1073,11 @@ def test_a_claim_does_not_decay_as_the_items_it_explains_close() -> None:
 def test_a_generator_in_flight_is_still_excluded() -> None:
     """The rank changes what is offered, never whether somebody else has it."""
     picks = recommend(
-        [_item("PL-1111", priority="P1"), _item("PL-5555", root_cause_of=GENERATOR), *_explained()],
+        [
+            _item("PL-1111", priority="P1"),
+            _item("PL-5555", root_cause_of=GENERATOR, generator=LIVE),
+            *_explained(),
+        ],
         {"PL-5555"},
         limit=2,
     )
@@ -1006,7 +1094,7 @@ def test_a_generator_is_not_also_told_it_ranks_on_its_band_alone() -> None:
     broken where a reader can see both at once.
     """
     (pick,) = recommend(
-        [_item("PL-5555", priority="P2", root_cause_of=GENERATOR), *_explained()],
+        [_item("PL-5555", priority="P2", root_cause_of=GENERATOR, generator=LIVE), *_explained()],
         scope=_scope(current=("PL-1111",)),
         limit=1,
     )
@@ -1042,7 +1130,7 @@ def test_a_generator_machinery_defect_ranks_with_a_generator() -> None:
         [
             _item("PL-9999", priority="P0"),
             _item("PL-1111", priority="P1", classes=("safety",)),
-            _item("PL-5555", priority="P2", root_cause_of=GENERATOR),
+            _item("PL-5555", priority="P2", root_cause_of=GENERATOR, generator=LIVE),
             _item("PL-7777", priority="P2", touches=MACHINERY, impairs_generators=IMPAIRS),
             *_explained(),
         ],

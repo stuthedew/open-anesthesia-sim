@@ -77,6 +77,20 @@ LIST_FIELDS = ("classes", "touches", "blocked-by", "root-cause-of", "recurrences
 # session it stands through.
 MIN_ROOT_CAUSE_ITEMS = 3
 
+# The two verdicts `generator:` may carry. The count above decides whether a
+# generator is *recorded*; this decides whether it *ranks* (project owner,
+# 2026-09-21, ratified, over keeping the count for both and accepting that any
+# three-item cluster outranks a `safety`-classed `P1`). `live` is a claim about
+# future inflow - the store is still handing this mechanism new members, so
+# every session it stands through pays it again - and `spent` says the
+# mechanism can no longer produce one.
+#
+# Named for the state rather than for the consequence. "ranking" is the word
+# `CLAUDE.md` uses of the tier, and a field called that would make the record
+# and the ranking one sentence again - which is the conflation this field
+# exists to undo.
+GENERATOR_VERDICTS = ("live", "spent")
+
 # How many recorded recurrences make a cluster the size that floor describes.
 # Derived rather than chosen, because the item is itself the first filing: an
 # item carrying two recurrences has been filed three times, which is the three
@@ -402,6 +416,41 @@ class Item:
     #: `checks.py` and `plan.py` both read, so the checker and the ranking
     #: cannot disagree about what counts as a claim.
     root_cause_of: tuple[str, ...] = ()
+    #: Whether the mechanism `root_cause_of` records is still being handed new
+    #: members, as `live - why` or `spent - why`. The count above decides
+    #: whether a generator is *recorded*; this decides whether it *ranks*
+    #: (project owner, 2026-09-21, ratified, over keeping the count for both
+    #: and accepting that any three-item cluster outranks a `safety`-classed
+    #: `P1`). The tier is the only rank above such an item, so what sits in it
+    #: has to be scarce: a mechanism paid again by every session it stands
+    #: through earns that, and one that can no longer produce a member does
+    #: not, however much damage its existing three did.
+    #:
+    #: **A verdict and a reason, because both states are recorded ones.**
+    #: `impairs_generators` is a one-sided claim - present is a claim, absent
+    #: is silence - and that shape cannot carry this, where `spent` is an
+    #: assertion a reader may want to overturn rather than the absence of one.
+    #: So the verdict is an exact word from `GENERATOR_VERDICTS`, which is
+    #: decidable, and the reason beside it is the judgment, which is not. The
+    #: refused alternative was reading the verdict out of the item's own prose:
+    #: `CLAUDE.md` refuses to script the judgment half, and a tool inferring
+    #: "still generating" from a brief would be guessing at exactly that half
+    #: while looking authoritative.
+    #:
+    #: **Recording it does not rank it; claiming `live` does.** An item with a
+    #: sound `root_cause_of` and no verdict at all is recorded and unranked.
+    #: `docket check` is a separate command, so a store is routinely ranked
+    #: before it is validated - the argument `root_cause_faults` already makes
+    #: about a mistyped id - and the unvalidated state therefore has to be the
+    #: one that cannot buy a promotion over a `safety`-classed `P1`. Absent,
+    #: the field fails toward the ordinary band, where the item is still
+    #: visible in `docket generators` and the checker says what is missing.
+    #:
+    #: Soundness lives in `generator_faults`, read by both `checks.py` and
+    #: `plan.py`, so the checker and the ranking cannot disagree about what a
+    #: verdict is - the arrangement `root_cause_faults` and
+    #: `generator_defect_faults` both already have.
+    generator: str = ""
     #: Every time a session filed a capture that `bin/docket new` matched to
     #: this item, as `DATE PL-XXXX` entries - the date of the filing and the id
     #: of the capture that matched. A re-filing is not only waste: it is
@@ -703,6 +752,113 @@ def is_generator(item: Item, known: Collection[str]) -> bool:
     it was unsound.
     """
     return bool(item.root_cause_of) and not root_cause_faults(item, known)
+
+
+def split_generator_verdict(value: str) -> tuple[str, str]:
+    """A `generator:` value as its verdict and its reason, neither validated.
+
+    The verdict is the leading run of letters, so `live - why`, `live: why`,
+    `spent, why` and `live` all read the same way; whatever separator follows
+    it is stripped off the reason. Forgiving about punctuation and exact about
+    vocabulary, which is the split this field needs: the word is the decidable
+    half and the sentence after it is the judgment, and a reader who wrote a
+    colon where the README wrote a dash has made no mistake worth an error.
+
+    Returns `("", "")` for an empty value, which is the same answer as an
+    absent field - `generator_faults` is where a field present-but-empty is
+    told apart from one that was never written, since only it knows whether
+    the item makes a generator claim at all.
+    """
+    text = value.strip()
+    verdict = ""
+    for char in text:
+        if not char.isalpha():
+            break
+        verdict += char
+    return verdict.lower(), text[len(verdict) :].strip(" -\u2013\u2014:,;").strip()
+
+
+def generator_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
+    """Why an item's recurrence verdict is not usable, or `()`.
+
+    The third predicate built this way, and for the third time the reason is
+    that `checks.py` and `plan.py` must not drift about what a claim is on a
+    field that decides whether an item outranks a `safety`-classed `P1`.
+
+    **Only where a verdict could still move something.** A closed item is
+    never startable, so `recommend` never ranks one and a verdict written onto
+    it is read by nothing - which is `generator_candidates`' own test for the
+    window `root-cause-of:` acts in, arriving here. Demanding one anyway would
+    mean backfilling every head this project has already closed with a
+    retrospective judgment about a mechanism that session did not diagnose,
+    which invents the audit fact rather than recording it.
+
+    **An absent verdict on an open generator is a fault, not a default.** The
+    ranking already fails safe without it - `ranks_as_generator` refuses to
+    rank what does not claim `live` - so this is not what protects the tier.
+    What it catches is the quiet half the two checks beside it catch: the
+    session that recorded a live generator and believes it is now ranked,
+    where nothing else in the project would ever say it is not.
+
+    A verdict without a `root-cause-of:` is faulted from the other end. It
+    judges the recurrence of a cluster the item does not record, so the reader
+    is told which field is missing rather than left with a line that ranks
+    nothing and looks like it should.
+    """
+    verdict, reason = split_generator_verdict(item.generator)
+    sound_claim = is_generator(item, known)
+
+    if not item.generator:
+        if sound_claim and item.status not in CLOSED_STATUSES:
+            return (
+                "is absent, so this generator is recorded and unranked; write "
+                f"`{GENERATOR_VERDICTS[0]}` with the evidence the store is still handing "
+                f"this mechanism new members, or `{GENERATOR_VERDICTS[1]}` with why it "
+                "can no longer produce one",
+            )
+        return ()
+
+    faults: list[str] = []
+    if not item.root_cause_of:
+        faults.append(
+            "judges the recurrence of a cluster this item does not record; write the "
+            "`root-cause-of:` naming the items the mechanism explains, or drop this field"
+        )
+    if verdict not in GENERATOR_VERDICTS:
+        shown = f"`{verdict}`" if verdict else "no verdict"
+        faults.append(
+            f"opens with {shown}; it has to open with one of "
+            f"{', '.join(f'`{v}`' for v in GENERATOR_VERDICTS)}, which is the half of this "
+            "field a tool may read"
+        )
+    elif not reason:
+        faults.append(
+            f"states `{verdict}` and no reason; the verdict decides whether this outranks "
+            "every band, so a reader is owed what the mechanism is still doing - or has "
+            "stopped doing - rather than an unexplained rank"
+        )
+    return tuple(faults)
+
+
+def ranks_as_generator(item: Item, known: Collection[str]) -> bool:
+    """Whether this item's generator claim earns the tier, not merely the record.
+
+    Two tests, and `CLAUDE.md` puts them on different axes: the count decides
+    whether a generator is *recorded* - `is_generator`, three or more items
+    standing on one mechanism - and the recurrence verdict decides whether it
+    *ranks* above every band but `P0`. A cluster whose mechanism is spent is
+    recorded all the same, for the audit, and ranks on its own band.
+
+    Opt-in rather than opt-out, so a claim nobody has qualified ranks nothing.
+    `docket check` runs separately from `next`, and the field it validates is
+    the one the README calls the place where a typo would buy a promotion; the
+    unvalidated reading therefore has to be the conservative one. The cost is
+    that a live generator whose verdict was never written waits on its band
+    until the checker is run, which is recoverable and loud. The cost the
+    other way is a spent cluster outranking a `safety`-classed `P1`, which is
+    the outcome the ratified decision exists to remove.
+    """
+    return is_generator(item, known) and split_generator_verdict(item.generator)[0] == "live"
 
 
 def generators_explaining(identifier: str, items: Collection[Item]) -> tuple[Item, ...]:
@@ -1046,6 +1202,7 @@ def parse_item(text: str, path: str = "") -> Item:
         "not-delegable",
         "falsifies",
         "root-cause-of",
+        "generator",
         "impairs-generators",
         "recurrences",
     }
@@ -1070,6 +1227,7 @@ def parse_item(text: str, path: str = "") -> Item:
         not_delegable=fields.get("not-delegable", ""),
         falsifies=fields.get("falsifies", ""),
         root_cause_of=_split_list(fields.get("root-cause-of", "")),
+        generator=fields.get("generator", ""),
         impairs_generators=fields.get("impairs-generators", ""),
         recurrences=_split_list(fields.get("recurrences", "")),
         body=body,
@@ -1108,6 +1266,7 @@ FIELD_ORDER = (
     "not-delegable",
     "falsifies",
     "root-cause-of",
+    "generator",
     "impairs-generators",
     "recurrences",
 )
@@ -1141,6 +1300,7 @@ def _front_matter_values(item: Item) -> dict[str, str]:
         "not-delegable": item.not_delegable,
         "falsifies": item.falsifies,
         "root-cause-of": ", ".join(item.root_cause_of),
+        "generator": item.generator,
         "impairs-generators": item.impairs_generators,
         "recurrences": ", ".join(item.recurrences),
     }

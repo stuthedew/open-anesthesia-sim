@@ -905,8 +905,8 @@ pins `safety` and `science` items to `P1`, so the top band is product work by
 construction and a tie-breaker there would never fire in the case the rule
 exists for. `P0` sits above it: a hotfix outranks the phase.
 
-An item carrying a sound `root-cause-of:` sits between the two, above the
-phase and above every band. Promotion *within* a band was the alternative and
+An item carrying a sound `root-cause-of:` **and** a `generator: live`
+verdict sits between the two, above the phase and above every band. Promotion *within* a band was the alternative and
 was refused by the project owner on 2026-09-17: *"We constantly add more P1 as
 we develop, so these never get done and the bugs pile up."* A band that is
 itself growing moves nothing in absolute terms, so the decision is about what
@@ -915,6 +915,10 @@ is untouched by it — a clinical defect that has to be fixed now is what `P0` i
 for, and `P0` still outranks a generator. The reason line says it was ranked as
 a generator and names the items it explains, so a `P2` leading a queue with
 `P1`s in it reads as the ranking meaning it.
+
+The verdict is the second of two tests and it is the one that moves the rank. A
+cluster recorded but marked `generator: spent` ranks on its own band: it is a
+generator for the audit, and the tier is for a mechanism still being paid for.
 
 An item carrying a sound `impairs-generators:` sits on that same tier, not
 below it — "the same priority as a generator" is what was asked for, so where
@@ -1653,15 +1657,41 @@ names the *right* one is left to whoever reads the lines `verify` prints. Write
 it when the item is triaged, not while working it — a declaration only counts
 where the base already holds it. See *Verification is scoped, not just green*.
 
-`root-cause-of` names three or more items this one is the cause of, and it is
-the only field that changes an item's queue position. `CLAUDE.md` calls such a
-mechanism a *generator*: every session it stands through pays it again, so it
-ranks above everything but `P0` — a `safety`-classed `P1` included, which the
-project owner was asked about and confirmed. `docket check` holds every id to
-naming a real item and holds the list to three, because this is the one place
-in the store where a typo would buy a promotion; below three, or with an id
-that does not resolve, the item ranks on its band exactly as it did before and
-the checker says so.
+`root-cause-of` names three or more items this one is the cause of.
+`CLAUDE.md` calls such a mechanism a *generator*. `docket check` holds every id
+to naming a real item and holds the list to three, because this is the one
+place in the store where a typo would buy a promotion; below three, or with an
+id that does not resolve, the item ranks on its band exactly as it did before
+and the checker says so.
+
+`generator` is the second half, and the two are deliberately on different axes:
+**the count decides whether a generator is recorded, and this decides whether
+it ranks** (project owner, 2026-09-21, ratified, over keeping the count for
+both and accepting that any three-item cluster outranks a `safety`-classed
+`P1`). It holds a verdict and a reason — `live - <why the store is still
+handing this mechanism members>`, or `spent - <why it can no longer produce
+one>`. A `live` one ranks above everything but `P0`, a `safety`-classed `P1`
+included, which the project owner was asked about and confirmed: every session
+such a mechanism stands through pays it again, which is a claim about future
+inflow rather than about the damage the existing three already did. A `spent`
+one is recorded all the same, for the audit, and ranks on its own band — so a
+cluster judged finished is now written down rather than withheld to keep the
+ranking honest.
+
+Recording does not rank. An open generator carrying no verdict ranks on its
+band and `docket check` says the field is missing — the fail-safe direction,
+because `check` runs separately from `next`, so a store is routinely ranked
+before it is validated and the unqualified state has to be the one that cannot
+buy a promotion. A **closed** head is asked for nothing: it is startable by
+nothing, so its verdict would move no ranking, and demanding one would mean
+backfilling every head already closed with a retrospective judgment about a
+mechanism that session did not diagnose.
+
+The verdict is a session's judgment written into the store, never inferred.
+Reading "still generating" out of an item's prose would be guessing at exactly
+the half `CLAUDE.md` refuses to script, while looking authoritative; the
+vocabulary is the decidable half a tool may read, and the sentence beside it is
+what a later reader needs in order to overturn it.
 
 The edge reads from both ends. `docket show` on an item that some sound claim
 names prints the head, its status and how many items it explains, because the

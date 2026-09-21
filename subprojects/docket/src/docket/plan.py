@@ -30,6 +30,7 @@ from .model import (
     Item,
     impairs_generators_soundly,
     is_generator,
+    ranks_as_generator,
     recurrence_count,
 )
 from .roadmap import EXCLUDED, IN_SCOPE, OUT_OF_SCOPE, UNPLACED, Scope
@@ -515,9 +516,14 @@ def recurring(items: list[Item], in_flight: Collection[str] | None = None) -> li
     indirection away. A reader opens both briefs and writes the claim by hand,
     as they always have; what has changed is that the cluster is now *seen*.
 
-    An item already carrying a sound generator claim is left out: it is on the
-    tier already, so naming it as a candidate for the tier is a line that
-    changes no decision.
+    An item already carrying a sound generator claim is left out, and that
+    stays `is_generator` rather than `ranks_as_generator` after `PL-T7QR` split
+    the two. A head recorded and marked `spent` is not on the tier, so the
+    wider test is tempting - but the line this list produces asks a reader to
+    write `root-cause-of:`, which such an item already carries, and an offer
+    naming the wrong field is worse than no offer. What a spent head accruing
+    fresh recurrences deserves is a line of its own saying the verdict has been
+    falsified, which is `PL-5DPF`.
 
     **Named only where a promotion could still move something, which is the
     window `root-cause-of:` acts in.** The field changes a queue position and
@@ -779,11 +785,34 @@ def recommend(
     notices by hand. `generator_paths` is what refutes a false claim; see
     `model.generator_defect_faults` for why it cannot establish a true one.
 
+    **Two tests, on different axes, and only the second one ranks.** The
+    count - three or more items standing on one mechanism - decides whether a
+    generator is *recorded*; the recurrence verdict on `generator:` decides
+    whether it ranks here (project owner, 2026-09-21, ratified, over keeping
+    the count for both and accepting that any three-item cluster outranks a
+    `safety`-classed `P1`). The tier is the only rank above a safety item, so
+    what earns it is a claim about future inflow - this mechanism is still
+    being handed members, so every session it stands through pays it again -
+    rather than a claim about the damage the existing three already did. A
+    cluster whose mechanism is spent is recorded all the same, for the audit,
+    and is ranked here on its own band. `model.ranks_as_generator` is the
+    shared test; `model.is_generator` remains what `clusters` and
+    `generators_explaining` read, since a spent root cause still explains its
+    members.
+
+    The verdict is a session's judgment, written into the store rather than
+    inferred from the brief: `CLAUDE.md` refuses to script the judgment half,
+    and reading "still generating" out of prose would be guessing at exactly
+    that half. Recording alone does not rank - a sound claim carrying no
+    verdict is ranked on its band and reported by `docket check` - because
+    `check` runs separately from this, so the unvalidated state has to be the
+    one that cannot buy a promotion.
+
     Soundness is re-decided here rather than assumed from the field's presence,
     against every id in `items` including closed ones: a root cause still
     explains an item that has since closed, so a claim must not decay as its
-    cluster is worked. `model.is_generator` is the shared test, so this and
-    `docket check` cannot disagree about what a claim is.
+    cluster is worked. That shared predicate is why this and `docket check`
+    cannot disagree about what a claim is.
 
     A `lane` narrows the candidates to one half of the project before any of
     that runs, so two sessions can rank simultaneously without arriving at the
@@ -803,7 +832,7 @@ def recommend(
     ]
     known = {item.identifier for item in items if item.identifier}
     generating = {
-        item.identifier: item.root_cause_of for item in startable if is_generator(item, known)
+        item.identifier: item.root_cause_of for item in startable if ranks_as_generator(item, known)
     }
     impairing = {
         item.identifier: item.impairs_generators

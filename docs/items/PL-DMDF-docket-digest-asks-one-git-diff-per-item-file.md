@@ -220,3 +220,42 @@ this one run: the re-measured `diff` count is above, and `PL-0J9K`'s re-measured
 `show` time on the same clone is 412 asked, 376 reaching git, 375 of them folded
 into one `cat-file --batch` - **0.06 s, against the 5.77 s that item measured
 before the batch existed.**
+
+**Recovered 2026-09-21 from `claude/amazing-thompson-3hwksq`** (`PL-DZM1`), a
+branch with no open pull request that has since been deleted from the remote —
+its only surviving copy was one container's unpruned remote-tracking ref. The
+decision below was ratified while this item was open, shipped in `#664`, and
+never reached `main` in writing. It is appended after close because it is
+provenance for live code rather than a change to what closed the item:
+`_pathspec_chunks` at `subprojects/docket/src/docket/vcs.py:1330` is the design
+it chose, and a later session proposing the rejected alternative would find
+nothing on `main` saying it had already been weighed.
+
+**Decided: chunk the pathspec** (project owner, 2026-09-17, ratified). Chosen
+over dropping the pathspec and filtering git's full output in Python, which
+removes the `ARG_MAX` ceiling but changes the contract `_superseded`'s docstring
+reasons about — "git names every path it was given that differs" is the property
+the "absent from the diff means the tips agree" branch relies on, and filtering
+in Python means re-deriving that property in a second place. Chunking keeps the
+contract and confines the change to the call site, which is what the brief above
+already scoped.
+
+Ratified rather than specified: this was a session's recommendation, so
+`CLAUDE.md`'s reopening bar is the lower one — a measurement, or a cost the case
+did not carry, is enough to put it back to the owner.
+
+**Two things settled while implementing, neither of them reopening the above.**
+The chunk size was not stated in the decision on purpose: ~60 bytes a path
+against a 2 MB `ARG_MAX` on Linux and 256 KB on macOS means macOS is the binding
+constraint, so the chunk was sized against that rather than against the platform
+the session ran on. And a chunked `_superseded` is called more than once per
+ref, so what the loop hoist saves was re-measured after chunking rather than
+quoted from the 593 → 148 figure above, which was measured unchunked.
+
+**Scope correction, verified 2026-09-17 against `origin/main`.** This item was
+recommended as one of a four-item `vcs.py` branch with `PL-0J9K`, `PL-MMVF` and
+`PL-XD3C`. Two of those three had already landed in `#635` (`ff4be61`): `git
+cat-file --batch` is at `subprojects/docket/src/docket/vcs.py:313` (`PL-0J9K`)
+and `GitRunner`'s memo is at `vcs.py:174` (`PL-MMVF`). Their item files were
+left at `status: untriaged` by that commit, which is why they still read as
+open. The live branch was therefore this item plus `PL-XD3C`, not four.
