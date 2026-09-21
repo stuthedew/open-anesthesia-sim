@@ -1,11 +1,14 @@
 """The suite's own git configuration, which every scratch repository inherits.
 
-`conftest.py` points `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM` at `/dev/null`
-so that the repositories these tests build read no configuration from the
-machine running them. Nothing else in the suite fails when that stops being
-true: every test still passes, three times slower, and the next thing a
-developer's `~/.gitconfig` turns on decides whether they pass at all. These two
-tests are what makes its removal visible instead of silent.
+The repository root's `conftest.py` points `GIT_CONFIG_GLOBAL` and
+`GIT_CONFIG_SYSTEM` at `/dev/null` so that the repositories these tests build
+read no configuration from the machine running them. It is pinned from here
+rather than from `tests/`, because this is the tree that builds one per test.
+
+Nothing else in the suite fails when that stops being true: every test still
+passes, three times slower, and the next thing a developer's `~/.gitconfig`
+turns on decides whether they pass at all. These two tests are what makes its
+removal visible instead of silent.
 """
 
 from __future__ import annotations

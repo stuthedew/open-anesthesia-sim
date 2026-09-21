@@ -2676,14 +2676,15 @@ across 14 items, `tests/unit/test_doc_check.py` 292 s across 12, and
 Both files under `subprojects/docket/tests/` build a scratch repository per
 test, and git signed every commit in them because the machine's `~/.gitconfig`
 said to - 72.7 ms a commit against 5.1 ms unsigned, which nothing in either
-file named or could have named. `conftest.py` there now points
+file named or could have named. The repository root's `conftest.py` now points
 `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM` at `/dev/null`, and the two
 commands cost 25.1 s -> 8.6 s and 30.9 s -> 10.0 s measured on 4 cores the same
 way. Across the 28 open items whose commands name them, and the 3 naming the
 whole tree, that is about 573 s off a whole-store replay - roughly 39% of the
 1458 s above, none of it from changing a test. `tests/unit/test_doc_check.py`,
-the third file, builds no repositories and is untouched by it; `PL-XJWG`
-carries the same two lines for the repository's own `tests/` tree.
+the third file, builds no repositories and is untouched by it. The
+`conftest.py` sits at the repository root rather than in this tree, so the
+repository's own `tests/` gets the same isolation from the same two lines.
 
 **It changes nothing about `make check`.** That runs pytest under `-n
 $(cpu*2) --dist worksteal`, where this cost was subprocess waiting already

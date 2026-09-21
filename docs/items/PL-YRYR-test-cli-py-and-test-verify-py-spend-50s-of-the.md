@@ -6,7 +6,7 @@ effort: M
 status: done
 classes: perf, test
 feature: verify-replay-cost
-touches: subprojects/docket/tests/conftest.py, subprojects/docket/tests/test_git_isolation.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
+touches: conftest.py, subprojects/docket/tests/test_git_isolation.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-19
 closed: 2026-09-21
 verify: uv run pytest subprojects/docket/tests/test_git_isolation.py -q
@@ -190,11 +190,26 @@ thing on a machine whose own config is empty. Both were watched failing with
 `conftest.py` moved aside: `AssertionError: read commit.gpgsign='true' from
 outside`.
 
-**What is recorded rather than done.** The repository's own `tests/` tree pays
-the same toll on a smaller bill - 142 commits, 6.20 s of a 257 s run - and
-takes the identical two lines in the `tests/conftest.py` that already exists.
-It is a separate item because it is the simulator's tree, held to the other
-standard, and 2.4% does not justify widening a `P3` into it.
+**Why the file ended up at the repository root.** It was written into
+`subprojects/docket/tests/conftest.py` first, and `make check` went red:
+`tools/ignore_check.py` type-checks `tests` and `subprojects/docket/tests` in
+one mypy invocation, and a second file named `conftest` in those trees is a
+duplicate-module error that stops mypy before it evaluates anything. The tool
+declined honestly rather than passing a partial read off as a complete one,
+which is the apparatus floor working; but the collision is a real latent defect
+and is `PL-CR36`, with the one-flag fix measured on its brief. It is not fixed
+here: it touches `tools/`, outside this item's `touches`, and a tool whose job
+is to decide whether an answer is sound owes a test for the case that broke it,
+so both of the fix-now rule's first two tests fail.
+
+The root is a better home on its own merits rather than a workaround. `pytest`
+resolves `rootdir` there however the suite is invoked - including from inside
+`subprojects/docket/`, whose `pyproject.toml` declares no pytest section, so
+the walk continues up - which means one statement of the rule covers both
+trees. That also takes the repository's own `tests/`, which pays the same toll
+on a smaller bill: 142 commits, 6.20 s of a 257 s run. `PL-XJWG` was filed for
+that tree while the file lived in the other one, and is dropped in favour of
+this.
 
 **Done when** - satisfied by isolation rather than by sharing. The cheaper
 route the brief could not see was to stop the cost being paid at all, and the

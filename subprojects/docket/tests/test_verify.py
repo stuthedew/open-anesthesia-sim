@@ -68,7 +68,8 @@ def _repo(tmp_path: Path) -> Path:
 
     The five git processes this spawns look like the thing to make cheaper, and
     are not: four of them cost about 2 ms each, and the commit costs about 5 ms
-    once `conftest.py` stops the developer's `~/.gitconfig` signing it - where
+    once the root `conftest.py` stops the developer's `~/.gitconfig` signing it -
+    where
     it cost 73 ms while that config reached in. Copying a prebuilt tree per test
     instead would save single-digit milliseconds and trade an independent
     checkout for a shared one, which is the one thing these tests cannot give
