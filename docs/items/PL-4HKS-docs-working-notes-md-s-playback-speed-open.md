@@ -9,6 +9,7 @@ feature: frame-cost-harness
 touches: docs/WORKING_NOTES.md
 added: 2026-09-19
 closed: 2026-09-21
+pr: 854
 verify: ! grep -q '0\.011 ms' docs/WORKING_NOTES.md
 recurrences: 2026-09-07 PL-5748
 ---

@@ -3,11 +3,12 @@ id: PL-DG84
 title: docs/WORKING_NOTES.md asks for resolved threads to be deleted and nothing reads that policy
 priority: P2
 effort: M
-status: needs-decision
+status: ready
 classes: docs, session-cost
 feature: dev-tooling
-touches: docs/WORKING_NOTES.md
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, docs/WORKING_NOTES.md
 added: 2026-09-13
+verify: uv run pytest subprojects/docket/tests/test_checks.py -k stale_open_thread -q
 ---
 
 **Problem.** docs/WORKING_NOTES.md asks for resolved threads to be deleted and nothing reads that policy
@@ -133,3 +134,59 @@ that maintains itself. `PL-4HKS` was deletable only because `ROADMAP.md` item
 25 carries the shipped feature, `docs/MODEL.md` § "Supported simulation step"
 carries the step, and `tests/benchmarks/frame_cost.py` re-measures the frame in
 three seconds. No check can decide that, and it is the whole of the work.
+
+## Decided 2026-09-21 - the grooming advisory, on the narrow signal
+
+**Ratified by the project owner, 2026-09-21**, over the two neighbours this
+brief named beside it: the `tools/doc_check.py` `candidates`-mode line that
+would run at every close-out, and the one-off pruning pass with no mechanism at
+all. So the bar to reopen it is **ordinary evidence** rather than a compelling
+argument, per `CLAUDE.md` § "Working with the project owner" - a measurement, a
+cost the case did not carry, or a constraint that has since appeared is enough
+to put it back to them. It was this session's recommendation, agreed on one
+read, which is not the same as a decision they authored.
+
+**What is to be built.** One grooming advisory naming each `##` section of
+`docs/WORKING_NOTES.md` where **both** hold:
+
+1. the heading's own status word says the thread is open - it begins `Open`
+   (`Open thread:` or `Open:`), as against `Settled:`, `Decided:`, `Measured`,
+   `Built`, `Shelved`, `Aspirational` or `Long-term`; and
+2. every `PL-` id the section cites, heading and body alike, resolves to an
+   item whose status is `done` or `dropped`.
+
+A section citing no id at all is **not** named: two exist today
+(§ "Aspirational: power-user custom agents", § "Long-term vision") and both are
+direction with no item, which the file's preamble sanctions outright.
+
+**Where.** `subprojects/docket/src/docket/checks.py`, in `_groom`, which is
+where the other grooming advisories are produced and which already holds the
+store and the config. The file is `docket.toml`'s `notes_file`, so the path is
+read from config rather than written in. A test beside the others in
+`subprojects/docket/tests/test_checks.py`.
+
+**Why not the other two, in the numbers rather than the argument** (measured
+2026-09-21 while closing `PL-4HKS`; the section above carries the full table):
+clause 2 alone fires on **16 of 26** sections, most of them correct content
+that other rules cite; clause 1 plus clause 2 fires on **4**, of which **3** are
+the already-filed instances. The fourth is § "Open thread: what makes
+desflurane wash out too fast", whose three items are all closed and which is
+genuinely open - *"what is left is the published value itself, which nothing
+this project runs can settle."* That false fire is **permanent**, being the
+preamble's own third membership test, which is what rules out a hard failure
+and rules out close-out candidates mode with it: a permanent false fire at
+every close-out trains a reader to skim the block a real advisory shares. The
+one-off pass leaves nothing behind, and this file has now generated six
+instances.
+
+**Done when.** The advisory exists, fires on the four sections above and on no
+other, names the section by heading, and is reachable from `make docket`; a
+test pins both clauses, including that the desflurane section is named (it
+satisfies the rule) and that the two no-id sections are not.
+
+**What stays a judgment, deliberately.** Whether the outcome is recorded
+somewhere that maintains itself, which is the whole of the work a named section
+then needs. `PL-4HKS` was deletable only because `ROADMAP.md` item 25 carries
+the shipped feature, `docs/MODEL.md` § "Supported simulation step" carries the
+step and `tests/benchmarks/frame_cost.py` re-measures the frame. No check
+decides that, and none should try.
