@@ -44,10 +44,11 @@ written yet - the next `tools/` check's test will import `tools/`, not
 
 **A second list in the same file drifts the same way, so it is checked here
 too (`PL-BBDD`).** `docket.toml`'s `gate_paths` names the files a delegated diff
-may not touch, and `docs/worker.md`'s "any `ruff.toml`" is folded into it by
-naming `tools/ruff.toml` and `subprojects/docket/ruff.toml` one by one - a
-hand-maintained list of files that appear as `tools/` and the subprojects grow,
-which is exactly the shape that drifted above. A missed one is silent in the
+may not touch, and `docs/worker.md` sends a reader there rather than restating
+it, so the `ruff.toml` coverage is `tools/ruff.toml` and
+`subprojects/docket/ruff.toml` named one by one - a hand-maintained list of
+files that appear as `tools/` and the subprojects grow, which is exactly the
+shape that drifted above. A missed one is silent in the
 direction that hurts: `docket verify`'s "the checks themselves are unedited"
 audit reads `gate_paths`, so an uncovered `ruff.toml` lets a delegated diff relax
 the linter config that keeps these scripts parseable by the bare `python3` that
