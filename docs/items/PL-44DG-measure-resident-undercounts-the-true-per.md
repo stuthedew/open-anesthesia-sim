@@ -3,13 +3,14 @@ id: PL-44DG
 title: measure_resident undercounts the true per-session resident payload by 4,794 characters: the SessionStart digest and the docket skill description are resent every turn and counted by nothing
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: instruction-staleness-audit
-touches: tools/doc_check.py, tests
+touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/resident-instructions.md
 added: 2026-09-21
+closed: 2026-09-21
 payoff: the one gauge the project consults about resident size stops being 7.2% low
-verify: grep -q 'digest' tools/doc_check.py
+verify: uv run pytest tests/unit/test_doc_check.py -k 'digest or skill or hook' -q
 ---
 
 **Problem.** measure_resident undercounts the true per-session resident payload by 4,794 characters: the SessionStart digest and the docket skill description are resent every turn and counted by nothing

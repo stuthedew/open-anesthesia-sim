@@ -2336,6 +2336,172 @@ def test_this_repository_reports_its_own_resident_total() -> None:
     assert ".claude/rules/expert-review.md" in measured
 
 
+# Two payloads reach every session at launch and are resent on every turn, and
+# until `PL-44DG` nothing counted either: the SessionStart hook's output and
+# each skill's description frontmatter. Measured 2026-09-21 they were 4,169 and
+# 625 characters against a reported total of 66,773, so the one gauge the
+# project consults about resident size was 7.2% low.
+
+SKILLED = """---
+name: worked
+description: A description a session is shown before it invokes anything.
+---
+
+# worked
+
+A body, which loads only once the skill fires.
+"""
+
+
+def _with_skill(root: Path, name: str = "worked", text: str = SKILLED) -> Path:
+    directory = root / ".claude" / "skills" / name
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "SKILL.md").write_text(text, encoding="utf-8")
+    return root
+
+
+def _with_digest(root: Path, emits: str = "queue: 3 open\n", exit_code: int = 0) -> Path:
+    """A SessionStart hook that emits a known payload."""
+    hooks = root / ".claude" / "hooks"
+    hooks.mkdir(parents=True, exist_ok=True)
+    # Emitted from a file rather than inlined into the script, so the payload
+    # reaches stdout byte for byte: a shell quoting the text would be a test
+    # of the quoting.
+    (hooks / "payload.txt").write_text(emits, encoding="utf-8")
+    hook = hooks / "docket-digest.sh"
+    hook.write_text(
+        f'#!/usr/bin/env bash\ncat "$(dirname "$0")/payload.txt"\nexit {exit_code}\n',
+        encoding="utf-8",
+    )
+    hook.chmod(0o755)
+    return root
+
+
+def test_a_skill_description_is_resident_and_its_body_is_not(tmp_path: Path) -> None:
+    """Claude Code lists every skill's description before one has been invoked.
+
+    So the frontmatter loads at launch and the body does not, and counting the
+    file would overstate the launch payload by eight times here.
+    """
+    root = _with_skill(_instructed(_repo(tmp_path)))
+
+    rows = {row.name: row.characters for row in doc_check.measure_resident(root)}
+
+    assert ".claude/skills/worked/SKILL.md (description)" in rows
+    assert ".claude/skills/worked/SKILL.md" not in rows
+    block = SKILLED.split("---\n")[1].rstrip("\n")
+    assert rows[".claude/skills/worked/SKILL.md (description)"] == len(block)
+
+
+def test_a_skill_file_with_no_frontmatter_is_not_resident(tmp_path: Path) -> None:
+    """Nothing is listed for it, so nothing of it loads at launch."""
+    root = _with_skill(_instructed(_repo(tmp_path)), text="# worked\n\nA body.\n")
+
+    assert _resident_names(root) == {"CLAUDE.md"}
+
+
+def test_a_skills_file_that_is_not_a_skill_md_is_not_resident(tmp_path: Path) -> None:
+    """A mode file loads when the skill reads it, which is not at launch."""
+    root = _with_skill(_instructed(_repo(tmp_path)))
+    modes = root / ".claude" / "skills" / "worked" / "modes"
+    modes.mkdir()
+    (modes / "one.md").write_text("---\nname: x\n---\n\nBody.\n", encoding="utf-8")
+
+    assert ".claude/skills/worked/modes/one.md (description)" not in _resident_names(root)
+    assert ".claude/skills/worked/modes/one.md" not in _resident_names(root)
+
+
+def test_a_widened_skill_description_is_growth_like_any_other(tmp_path: Path) -> None:
+    """The half of the undercount a git ref can reproduce, so it is compared."""
+    root = _with_skill(_instructed(_repo(tmp_path)))
+    _on_main(root)
+    _with_skill(root, text=SKILLED.replace("anything.", "anything, " + "D" * 80 + "."))
+
+    report = doc_check.analyze(root)
+
+    assert report.resident is not None
+    assert report.resident.growth == 82
+    assert any("grew 82 characters" in message for message in report.advisories)
+
+
+def test_the_session_start_digest_is_counted(tmp_path: Path) -> None:
+    """The payload that grows on its own, and that nothing counted.
+
+    It carries the dead-ends list and scales with the store, so it is the one
+    component of resident cost that can rise without any edit to an
+    instruction file - which is exactly what a size gauge is for.
+    """
+    root = _with_digest(_instructed(_repo(tmp_path)), emits="branch: main\nqueue: 3 open\n")
+
+    report = doc_check.analyze(root)
+
+    assert report.resident is not None
+    assert report.resident.total == len(CLAUDE_BODY) + len("branch: main\nqueue: 3 open\n")
+    assert ".claude/hooks/docket-digest.sh (output) 27/2" in doc_check.format_check(report)
+    assert report.declined == []
+
+
+def test_the_digest_is_left_out_of_the_growth_comparison(tmp_path: Path) -> None:
+    """A store that grew is not an instruction file that grew.
+
+    `git show <ref>:<path>` returns a hook's source and never its output, so
+    there is no baseline for this row. Compared, it would read as growth of
+    its whole size on the first run and then forever; left out, the printed
+    total is true and the advisory still means what it says.
+    """
+    root = _with_digest(_instructed(_repo(tmp_path)), emits="short\n")
+    _on_main(root)
+    _with_digest(root, emits="much longer output " + "L" * 400 + "\n")
+
+    report = doc_check.analyze(root)
+
+    assert report.resident is not None
+    assert report.resident.growth == 0
+    assert report.resident.total == len(CLAUDE_BODY) + len("much longer output " + "L" * 400 + "\n")
+    assert report.advisories == []
+
+
+def test_a_digest_that_will_not_run_is_declined_rather_than_dropped(tmp_path: Path) -> None:
+    """A total short by four thousand characters with nothing saying so is the
+    partial reading handed over as a complete one that the apparatus floor
+    refuses."""
+    root = _with_digest(_instructed(_repo(tmp_path)), emits="anything\n", exit_code=1)
+
+    report = doc_check.analyze(root)
+
+    assert report.resident is not None
+    assert report.resident.total == len(CLAUDE_BODY)
+    assert any("docket-digest.sh adds to every session" in m for m in report.declined)
+    assert "1 not checked" in doc_check.format_check(report)
+
+
+def test_a_tree_with_no_digest_hook_claims_nothing_about_one(tmp_path: Path) -> None:
+    """Most projects have no such hook; that is not a reading that went missing."""
+    report = doc_check.analyze(_instructed(_repo(tmp_path)))
+
+    assert report.declined == []
+    assert report.resident is not None
+    assert report.resident.runtime == ()
+
+
+def test_this_repository_still_has_the_hook_the_count_reads(tmp_path: Path) -> None:
+    """A rename would drop four thousand characters out of the total in silence.
+
+    `measure_digest` returns `None` for a hook that is not there, and the
+    declined line is guarded on the file existing - correctly, since a project
+    without one is owed no explanation. That leaves a rename here invisible,
+    and this is the assertion that catches it. Paired with the settings entry,
+    because a hook that exists and is not registered reaches no session
+    either.
+    """
+    repo = Path(__file__).resolve().parents[2]
+
+    assert (repo / doc_check.DIGEST_HOOK).is_file()
+    settings = (repo / ".claude" / "settings.json").read_text(encoding="utf-8")
+    assert doc_check.DIGEST_HOOK in settings
+    assert "SessionStart" in settings
+
+
 # --- instructions loaded on demand -------------------------------------------
 
 
