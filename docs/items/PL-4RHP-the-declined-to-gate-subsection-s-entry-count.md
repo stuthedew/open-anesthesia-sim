@@ -3,12 +3,13 @@ id: PL-4RHP
 title: The Declined-to-Gate subsection's entry count is outside check_gate_counts' reach, and its group counts cannot be reconciled to the 151 it states
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs, defect
 feature: debt-gate
-touches: ROADMAP.md, tools/doc_check.py
+touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-16
-verify: python3 tools/doc_check.py check && ! grep -qE '^### Declined to Gate 2 .*[0-9]+ entries$' ROADMAP.md
+closed: 2026-09-21
+verify: python3 tools/doc_check.py check && ! grep -qE '^#{2,6} .*entr(y|ies)[[:space:]]*$' ROADMAP.md
 recurrences: 2026-09-19 PL-HCTF, 2026-09-21 PL-JN3F
 ---
 
@@ -123,3 +124,35 @@ evidence is stronger than this brief's and is carried here:
 from the heading disposes of the drift going forward; `origin/main`'s existing
 off-by-one is disposed of by the same edit, since a heading that states no
 count cannot be wrong by one.
+
+**Closed 2026-09-21 on the remedy triage chose, with a check behind it.** The
+heading states no count, and neither does any other heading in the gate's
+section: `ROADMAP.md`'s `### Declined to Gate 2, because this milestone's own
+work created them`, `### Deferred to v0.4.26, because the port dissolves the
+defect` and `### Sequenced past v0.5.0, so not clearable before it begins`
+carried the same unreadable number for the same reason, and the rule is pitched
+at the position rather than at the word "Declined" - two of the tree's four
+counted headings are worded otherwise, so the narrower rule would have been
+falsified by the tree it was written against.
+
+`tools/doc_check.py`'s `_uncheckable_heading_counts` refuses an entry count in
+any heading below the `##` of a section that records a gate, and
+`check_gate_counts` reports each as an error naming the line and the number.
+This is not the check triage refused: that one would have *held* the number,
+firing on a document nobody had broken and needing "entry" to be counted
+against a subsection that records some entries as prose and some as bullets
+(128 bullets against a heading of 228, with the first thirty in prose). This
+one asks whether a heading states a count at all, which is decidable, and is
+silent on a clean tree. `docs/MODEL.md` § "Counts, which both halves meet"
+already stated the rule for prose - "stated only where a check holds it to what
+it counts … or it is dated" - and a heading can carry no date, so it has no
+third option.
+
+The reconciliation the brief left open is disposed of rather than performed:
+the subsection's own body says twice that its count is deliberately not written
+down (`ROADMAP.md`'s `PL-0VFF` paragraph, and the closing "How many
+dispositions this section holds is deliberately not written down"), so the
+edit makes the document consistent with itself. Prose counts are untouched and
+are `PL-DHJ7`'s (about thirty-five bold count paragraphs in the live sections),
+which this neither closes nor blocks.
+

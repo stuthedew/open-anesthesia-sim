@@ -1377,6 +1377,13 @@ NOT_DELEGABLE_COUNT_RE = re.compile(
     r"(?P<count>[\w-]+)\s+entr(?:y|ies)\s+(?:is|are)\s+marked\s+`not-delegable`"
 )
 
+# An entry count stated in a *heading*, singular accepted: `- 13 entries`,
+# `- 1 entry`. Separate from `ENTRY_COUNT_RE` above, which scans prose and is
+# plural-only so that "the one entry in it a user cannot set" stays a sentence.
+# A heading holds no sentences, so the singular is a count there, and reading
+# it is what stops a one-entry subsection being the way round the rule.
+HEADING_ENTRY_COUNT_RE = re.compile(r"(?P<count>[\w-]+)\s+entr(?:y|ies)\b")
+
 
 def _count_word(word: str) -> int | None:
     """The number a count word states, or `None` where it states none."""
@@ -1430,6 +1437,38 @@ def _gate_groups(
         following = headings[position + 1][0] if position + 1 < len(headings) else end + 1
         covered = [entry for entry in section.gate_entries if line < entry.line < following]
         yield line, stated, stated_ids, len(covered), sum(len(entry.ids) for entry in covered)
+
+
+def _uncheckable_heading_counts(
+    lines: Sequence[str], section: MilestoneSection
+) -> Iterator[tuple[int, int]]:
+    """Every entry count written into a heading of a section that records a gate.
+
+    `check_gate_counts` reads two positions and can read no others: an
+    emphasized group heading inside the frozen list, and a table cell naming
+    the release. A heading is neither, and cannot become one - `_gate_groups`
+    matches `GATE_GROUP_RE`, which requires the line to open with `*`, and
+    `_subsection_end` stops the frozen list at the first `###`, which puts
+    every subsection heading below the gate outside the only range it reads.
+
+    So a count written into a heading is held by nothing while reading exactly
+    like the ones that are held. These are refused rather than reconciled,
+    because the position that would make one checkable already exists one line
+    below it, and because a subsection's record is its entries: `PL-4RHP` is
+    the heading that carried a number through twenty hand edits to 228 against
+    128 entries listed, was filed three times as a defect, and validated
+    identically at `174`, `191` and `999`.
+    """
+    for index in range(section.line, _section_end(lines, section.line)):
+        heading = HEADING_RE.match(lines[index])
+        if heading is None or len(heading.group("hashes")) < 3:
+            continue
+        match = HEADING_ENTRY_COUNT_RE.search(heading.group("title"))
+        if match is None:
+            continue
+        stated = _count_word(match.group("count"))
+        if stated is not None:
+            yield index + 1, stated
 
 
 def _table_counts(text: str, section: MilestoneSection) -> Iterator[tuple[int, str, int]]:
@@ -1580,6 +1619,12 @@ def check_gate_counts(root: Path, report: Report) -> None:
     claim about today's list, from "frozen ... at seventeen entries", a dated
     fact that must never change. Judging that is a reader's job, so the prose
     restates no count instead of being guessed at.
+
+    A count in a *heading* is refused rather than read, because no heading is
+    one of those two positions and none can be made into one - the reasoning
+    is in `_uncheckable_heading_counts`. A heading carries no date either, so
+    the reader's exemption above does not reach it: it counts the subsection
+    below it and is wrong the next time one is added.
     """
     roadmap = root / ROADMAP
     if not roadmap.is_file():
@@ -1613,6 +1658,16 @@ def check_gate_counts(root: Path, report: Report) -> None:
             report.errors.append(
                 f"{ROADMAP}:{section.gate_line}: the group headings of {rendered}'s frozen "
                 f"list count {summed} entries between them, but the list holds {total}"
+            )
+
+        for line, stated in _uncheckable_heading_counts(lines, section):
+            counted = "entry" if stated == 1 else "entries"
+            report.errors.append(
+                f"{ROADMAP}:{line}: this heading in {rendered}'s section states {stated} "
+                f"{counted}, and nothing checks it - a frozen list's counts are read from its "
+                "emphasized group headings, which stop at the first `###`, and from the "
+                "table rows naming the release. Drop the number: the entries below are the "
+                "record, and `bin/docket wave` is what counts the open ones"
             )
 
         for line, where, stated in _table_counts(text, section):
