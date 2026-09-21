@@ -76,10 +76,19 @@ def directives(root: Path) -> list[str]:
     """Every real `type: ignore` comment in the checked trees, as `path:line`.
 
     Tokenized rather than grepped, because the string that names the directive
-    is not the directive. `subprojects/docket/src/docket/verify.py` holds one in
-    a tuple of suppression markers, `test_release.py` names one in prose, and
-    `test_verify.py` writes one into a fixture file as a string literal. A grep
-    counts all three; only a comment token is a directive.
+    is not the directive, and both carriers are live inside the checked trees:
+    `subprojects/docket/tests/test_release.py` names one in prose,
+    `subprojects/docket/tests/test_verify.py` both names one in prose and
+    writes one into a fixture file as a string literal, and this tool's own
+    test writes a fixture line holding a string-literal marker and a real
+    directive at once. A grep over `TREES` returned 39 lines on 2026-09-21
+    where 28 are directives; only a comment token is one.
+
+    Every example above sits inside a checked tree, so each is an occurrence
+    this function actually meets, and
+    `test_directives_finds_the_real_ones_in_this_repository` fails if the trees
+    stop carrying one a grep would over-count. The example that stood here
+    before was outside `TREES` and went stale unread (`PL-S8JT`).
     """
     found: list[str] = []
     for tree in TREES:
