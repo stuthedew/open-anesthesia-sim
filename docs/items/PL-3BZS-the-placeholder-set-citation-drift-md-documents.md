@@ -1,10 +1,14 @@
 ---
 id: PL-3BZS
 title: The placeholder set citation-drift.md documents as the project's illustrative ids includes PL-A1B2, which is outside store.ID_ALPHABET, and modes/ideas.md prints it as an example
-status: untriaged
+status: done
 feature: one-id-grammar
 touches: .claude/rules/citation-drift.md, .claude/skills/docket/modes/ideas.md
 added: 2026-09-21
+closed: 2026-09-21
+pr: 865
+reason: closed with PL-7922: citation-drift.md and modes/ideas.md now name PL-B1C2, and tools/fixture_id_check.py refuses an unmintable literal anywhere under .claude/ so the hand-fix cannot regress
+verify: uv run python tools/fixture_id_check.py
 ---
 
 **Problem.** `.claude/rules/citation-drift.md:103` names the project's

@@ -342,6 +342,7 @@ workflow_paths = [
   "tests/unit/test_doc_check.py",
   "tests/unit/test_docket_branch_guard.py",
   "tests/unit/test_docket_digest_hook.py",
+  "tests/unit/test_fixture_id_check.py",
   "tests/unit/test_floor_interpreter_guard.py",
   "tests/unit/test_glyph_check.py",
   "tests/unit/test_ignore_check.py",
@@ -359,6 +360,7 @@ workflow_paths = [
   "tests/unit/test_generator_check.py",
   "tests/unit/test_context_reading.py",
   "tests/unit/test_workflow_paths_check.py",
+  "tests/unit/test_possessive_section_check.py",
   "tools",
 ]
 

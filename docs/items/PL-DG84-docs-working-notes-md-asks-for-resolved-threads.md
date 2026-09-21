@@ -12,6 +12,7 @@ added: 2026-09-13
 closed: 2026-09-21
 pr: 861
 verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_notes.py -k "stale_open_thread or declares_open or cites" -q
+recurrences: 2026-09-21 PL-S669
 ---
 
 **Problem.** docs/WORKING_NOTES.md asks for resolved threads to be deleted and nothing reads that policy

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from collections.abc import Mapping
 from pathlib import Path
 
 import doc_check
@@ -518,6 +519,49 @@ def test_glob_citation_resolves_and_a_dangling_one_does_not(tmp_path: Path) -> N
     assert any("cites `data/patients/*.json`" in e for e in _errors(_repo(tmp_path, readme=readme)))
 
 
+def test_a_citation_the_process_cannot_stat_is_reported_not_raised(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One unstattable token must not take every other citation with it.
+
+    Found 2026-09-19 and live again on 2026-09-21: a documentation line cited
+    the container's agent-proxy README by absolute path, under a directory
+    mode 700 for the unprivileged user CI runs as. `_resolves` raised
+    `PermissionError` out of `Path.exists` and `doc_check` reported nothing at
+    all about any of the ~1,279 citations around it, while `make check` stayed
+    green in the session that wrote the line (`PL-D1NT`; `PL-0M7L` is the same
+    failure in the `glob` branch above, guarded since).
+
+    The raise is driven rather than staged, because this suite's interpreter
+    can no longer produce one. Through 3.13 `Path.exists` re-raises any
+    `OSError` outside ENOENT, ENOTDIR, EBADF and ELOOP; 3.14 rewrote it to
+    `return os.path.exists(self)`, which swallows all of them - so the defect
+    is live under the `python3 tools/doc_check.py check` that CI and a bare
+    checkout run, and invisible under the pinned 3.14 that runs these tests.
+    Patching the method this resolver must not use is what pins the fix on the
+    interpreters where it matters: restore `Path.exists` here and this fails,
+    on any version.
+    """
+    token = "refused/only-here.md"
+    unpatched = Path.exists
+
+    def refusing_exists(self: Path, *, follow_symlinks: bool = True) -> bool:
+        if str(self).endswith(token):
+            raise PermissionError(13, "Permission denied")
+        return unpatched(self, follow_symlinks=follow_symlinks)
+
+    monkeypatch.setattr(Path, "exists", refusing_exists)
+
+    readme = f"# Demo\n\nSee `{token}` and `core/moved.py`.\n"
+
+    errors = _errors(_repo(tmp_path, readme=readme))
+
+    assert any(f"cites `{token}`" in e for e in errors)
+    # The regression is the second line, not the first: an unguarded stat
+    # aborted `analyze` before any later citation was judged at all.
+    assert any("cites `core/moved.py`" in e for e in errors)
+
+
 def test_identifiers_are_not_mistaken_for_paths(tmp_path: Path) -> None:
     readme = "# Demo\n\nSee `Entry.model_guidance`, `flet_charts.*`, `v0.2.0`, `--cov`.\n"
     assert not any("cites `" in e for e in _errors(_repo(tmp_path, readme=readme)))
@@ -700,17 +744,32 @@ def test_a_parenthesised_citation_is_checked(tmp_path: Path) -> None:
     assert any("quotes docs/MODEL.md" in e for e in _errors(root))
 
 
-def test_a_possessive_quotation_of_prose_is_not_read_as_a_citation(tmp_path: Path) -> None:
-    """The form this check deliberately does not read, and why.
+def test_a_possessive_quotation_of_absent_text_is_reported(tmp_path: Path) -> None:
+    """The possessive is read like every other connective, and for one reason.
 
     `` `CLAUDE.md`'s "..." `` quotes a *sentence* as often as it cites a
-    section, and nothing distinguishes the two without reading the meaning.
-    Admitting it reported 28 quotations of real prose as stale headings
-    (measured 2026-09-13, `PL-V13T`). `§` has no second use, which is what
-    makes it checkable and this not.
+    section, and `PL-V13T` excluded it because nothing distinguishes the two
+    without reading the meaning. The distinction was never needed: this check
+    tests containment, so it asks one question of both uses - whether the
+    cited file holds the words - and a quotation that has drifted is as stale
+    as a title that has. Re-measured 2026-09-21, a majority of what the
+    exclusion suppressed was real drift (`PL-316G`).
     """
     root = _repo(tmp_path)
-    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md`\'s "a sentence quoted from it".\n')
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md`\'s "a sentence not in it".\n')
+    assert any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_possessive_quotation_of_text_that_is_there_passes(tmp_path: Path) -> None:
+    """Admitting the form is not the same as failing every use of it.
+
+    The constraint the widening adds is that a quotation in quotation marks
+    has to be quotable; prose quoted faithfully is still correct prose, and
+    holding that here is what keeps the check from reading as a ban on the
+    possessive (`PL-316G`).
+    """
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md`\'s "Known limitations".\n')
     assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
 
 
@@ -3539,7 +3598,7 @@ def test_a_family_member_declaring_no_test_yet_against_an_open_item_is_quiet(
     parenthesis is what lets a script tell a declared absence from a forgotten
     link.
     """
-    root = _family_repo(tmp_path, "no test yet (`PL-AAAA`)", items={"PL-AAAA": "ready"})
+    root = _family_repo(tmp_path, "no test yet (`PL-8888`)", items={"PL-8888": "ready"})
 
     assert _family_errors(root) == []
 
@@ -3552,7 +3611,7 @@ def test_a_family_member_declaring_no_test_yet_against_a_closed_item_is_an_error
     The forward reference was the whole of what made the absence acceptable, so
     it has to expire with the item rather than outlive it silently.
     """
-    root = _family_repo(tmp_path, "no test yet (`PL-AAAA`)", items={"PL-AAAA": "done"})
+    root = _family_repo(tmp_path, "no test yet (`PL-8888`)", items={"PL-8888": "done"})
     errors = _family_errors(root)
 
     assert len(errors) == 1
@@ -3563,7 +3622,7 @@ def test_a_family_member_declaring_no_test_yet_against_an_absent_item_is_an_erro
     tmp_path: Path,
 ) -> None:
     """An id the queue never held is a hole with a plausible-looking label."""
-    root = _family_repo(tmp_path, "no test yet (`PL-ZZZZ`)", items={"PL-AAAA": "ready"})
+    root = _family_repo(tmp_path, "no test yet (`PL-ZZZZ`)", items={"PL-8888": "ready"})
     errors = _family_errors(root)
 
     assert len(errors) == 1
@@ -3584,7 +3643,7 @@ def test_a_family_member_naming_nothing_at_all_is_an_error(tmp_path: Path) -> No
 
 def test_a_declared_absence_is_declined_rather_than_failed_without_a_store(tmp_path: Path) -> None:
     """A checkout with no queue has not disproved the forward reference."""
-    root = _family_repo(tmp_path, "no test yet (`PL-AAAA`)")
+    root = _family_repo(tmp_path, "no test yet (`PL-8888`)")
     report = doc_check.analyze(root)
 
     assert _family_errors(root) == []
@@ -3737,12 +3796,20 @@ def test_a_not_delegable_count_is_declined_when_an_entry_id_has_no_item(tmp_path
 # --- line citations ---------------------------------------------------------
 
 
-def _items(root: Path, **briefs: str) -> Path:
-    """Write item briefs under `docs/items/`, named the way the store names them."""
+def _items(root: Path, briefs: Mapping[str, str]) -> Path:
+    """Write item briefs under `docs/items/`, keyed by the filename to write.
+
+    A mapping rather than `**briefs`, because an id cannot be an identifier:
+    the keyword form spelled it `PL_8888_open` and this helper put the hyphens
+    back, which is the one spelling `tools/fixture_id_check.py` reads a rule
+    of its own to see (`PL-L609`). Keyed this way the ids are ordinary string
+    literals, which is the scan's main rule - and the closed-brief test below
+    no longer needs `**{identifier: ...}` to pass an id that is not a name.
+    """
     items = root / "docs" / "items"
     items.mkdir(parents=True, exist_ok=True)
     for name, body in briefs.items():
-        (items / f"{name.replace('_', '-')}.md").write_text(body, encoding="utf-8")
+        (items / f"{name}.md").write_text(body, encoding="utf-8")
     return root
 
 
@@ -3753,7 +3820,7 @@ def _line_citation_errors(root: Path) -> list[str]:
 
 
 def _brief(status: str, body: str) -> str:
-    return f"id: PL-TEST\nstatus: {status}\n\n**Problem.** {body}\n"
+    return f"id: PL-T3ST\nstatus: {status}\n\n**Problem.** {body}\n"
 
 
 def test_a_line_citation_past_the_end_of_its_file_is_an_error(tmp_path: Path) -> None:
@@ -3763,7 +3830,7 @@ def test_a_line_citation_past_the_end_of_its_file_is_an_error(tmp_path: Path) ->
     sentence says, so this is resolvability rather than truth - the same
     question `check_citations` asks of a path, one line finer.
     """
-    root = _items(_repo(tmp_path), PL_AAAA_open=_brief("ready", "See `core/thing.py:900`."))
+    root = _items(_repo(tmp_path), {"PL-8888-open": _brief("ready", "See `core/thing.py:900`.")})
 
     errors = _line_citation_errors(root)
 
@@ -3782,7 +3849,7 @@ def test_a_line_citation_inside_its_file_stays_quiet(tmp_path: Path) -> None:
     (root / "src" / "anesthesia_sim" / "core" / "thing.py").write_text(
         "one\ntwo\nthree\n", encoding="utf-8"
     )
-    _items(root, PL_AAAA_open=_brief("ready", "See `core/thing.py:2`."))
+    _items(root, {"PL-8888-open": _brief("ready", "See `core/thing.py:2`.")})
 
     assert _line_citation_errors(root) == []
 
@@ -3796,8 +3863,10 @@ def test_a_closed_brief_is_exempt(tmp_path: Path) -> None:
     skim the output where a real failure is printed.
     """
     root = _repo(tmp_path)
-    for status in ("done", "dropped"):
-        _items(root, **{f"PL-{status.upper()}": _brief(status, "See `core/thing.py:900`.")})
+    # Spelled out rather than derived from the status, because `f"PL-{status.upper()}"`
+    # mints `PL-DONE` and `PL-DROPPED`, neither of which is in `store.ID_ALPHABET`.
+    for status, identifier in (("done", "PL-D0N3"), ("dropped", "PL-DRPD")):
+        _items(root, {identifier: _brief(status, "See `core/thing.py:900`.")})
 
     assert _line_citation_errors(root) == []
 
@@ -3810,7 +3879,7 @@ def test_an_item_may_quote_the_broken_citation_it_reports(tmp_path: Path) -> Non
     """
     root = _items(
         _repo(tmp_path),
-        PL_AAAA_open=_brief("ready", "It still says:\n\n```text\ncore/thing.py:900\n```\n"),
+        {"PL-8888-open": _brief("ready", "It still says:\n\n```text\ncore/thing.py:900\n```\n")},
     )
 
     assert _line_citation_errors(root) == []
@@ -3823,7 +3892,7 @@ def test_an_ambiguous_bare_filename_declines(tmp_path: Path) -> None:
     to be worse than no answer.
     """
     root = _repo(tmp_path, modules=("core/thing.py", "app/thing.py"))
-    _items(root, PL_AAAA_open=_brief("ready", "See `thing.py:900`."))
+    _items(root, {"PL-8888-open": _brief("ready", "See `thing.py:900`.")})
 
     assert _line_citation_errors(root) == []
 

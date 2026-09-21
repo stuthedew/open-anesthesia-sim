@@ -197,7 +197,7 @@ def test_a_tools_script_and_its_own_test_land_in_the_same_lane() -> None:
     for stem in ("pr_title_check", "branch_id_check", "ignore_check"):
         item = parse_item(
             "---\n"
-            "id: PL-TEST\n"
+            "id: PL-T3ST\n"
             f"title: A change to {stem} and its own test\n"
             "priority: P2\n"
             "effort: S\n"
@@ -228,7 +228,7 @@ def test_the_owners_own_notes_are_apparatus_like_the_workers() -> None:
     for doc in ("docs/maintainer.md", "docs/worker.md"):
         item = parse_item(
             "---\n"
-            "id: PL-TEST\n"
+            "id: PL-T3ST\n"
             f"title: A change to {doc}\n"
             "priority: P2\n"
             "effort: S\n"

@@ -118,15 +118,15 @@ def test_the_summariser_counts_a_real_citation_edge(tmp_path: Path, monkeypatch,
 
     items = tmp_path / "docs" / "items"
     items.mkdir(parents=True)
-    (items / "PL-AAAA-cites-another.md").write_text(
-        "---\nid: PL-AAAA\nstatus: ready\n---\n\n**Problem.** See `PL-BBBB`.\n", encoding="utf-8"
+    (items / "PL-8888-cites-another.md").write_text(
+        "---\nid: PL-8888\nstatus: ready\n---\n\n**Problem.** See `PL-BBBB`.\n", encoding="utf-8"
     )
     (items / "PL-BBBB-the-cited-one.md").write_text(
         "---\nid: PL-BBBB\nstatus: done\n---\n\n**Problem.** Nothing.\n", encoding="utf-8"
     )
     log = tmp_path / ".docket-reads.log"
     log.write_text(
-        "2026-09-13T00:00:00+00:00\ts1\tRead\tdocs/items/PL-AAAA-cites-another.md\n"
+        "2026-09-13T00:00:00+00:00\ts1\tRead\tdocs/items/PL-8888-cites-another.md\n"
         "2026-09-13T00:00:01+00:00\ts1\tGrep\tPL-BBBB\n"
         "2026-09-13T00:00:02+00:00\ts2\tRead\tdocs/items/PL-BBBB-the-cited-one.md\n",
         encoding="utf-8",
@@ -141,6 +141,6 @@ def test_the_summariser_counts_a_real_citation_edge(tmp_path: Path, monkeypatch,
     out = capsys.readouterr().out
     assert "Citation edges traversed      1" in out
     assert "in 1 session" in out
-    # s1 reached PL-BBBB having read PL-AAAA, which cites it; s2 reached one
+    # s1 reached PL-BBBB having read PL-8888, which cites it; s2 reached one
     # item and traversed nothing.
     assert "Distinct items reached        2 of 2" in out

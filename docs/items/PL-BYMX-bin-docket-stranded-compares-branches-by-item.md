@@ -32,8 +32,9 @@ the project owner - correctly, on `PL-66Z5`'s finding that the superseded refs
 carry nothing `main` lacks. The paragraph survived only because the session had
 already copied it into a working tree; on the remote it was gone, and one
 container's stale `refs/remotes/` entry is what it had been reduced to. That is
-`CLAUDE.md`'s "one prune from unrecoverable" with the prune replaced by a
-legitimate deletion, taken on a check that could not see the file.
+the hazard `CLAUDE.md` names in "an uncommitted thought is one interruption
+from gone", with the prune replaced by a legitimate deletion, taken on a check
+that could not see the file.
 
 **Why it matters.** The deletion decision is made on `stranded`'s answer -
 `PL-66Z5` compared every superseded ref file-by-file precisely because nothing

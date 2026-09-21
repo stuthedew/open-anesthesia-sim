@@ -229,17 +229,27 @@ check: sync
 # and it reads `app/`, `core/` and `data/`, because the view prints a `core/`
 # validation message verbatim and `display_name` comes out of a data file.
 #
+# `fixture_id_check.py` joined them under `PL-7922`, and its input is the
+# broadest of the group: every `*.py` in the repository, so `tests/` and `src/`
+# both, which is the same 3.14 argument `workflow_paths_check.py` makes. It
+# refuses a `PL-` literal outside `store.ID_ALPHABET`, which `ID_PATTERN`
+# matches nowhere - so a fixture carrying one exercises nothing and every
+# assertion resting on it passes vacuously (`PL-GXPP`, 261 substitutions), and
+# an example carrying one is copied (`PL-DPY6`, `PL-3BZS`). The rule was
+# `subprojects/docket/tests/test_store.py`'s and globbed that directory alone.
+#
 # `tools/ignore_check.py` above is the same category for a different reason.
-# All six tools here stay standard-library-only and parse at the floor
+# All seven tools here stay standard-library-only and parse at the floor
 # themselves, which is what `tests/unit/test_tools_portability.py` holds them
 # to; that suite's docstring states the rule this group is an instance of.
-# `PL-Y0RZ`, `PL-L17Q`, `PL-JBZK`, `PL-97VB`, `PL-FZ6T`, `PL-8XPQ`.
+# `PL-Y0RZ`, `PL-L17Q`, `PL-JBZK`, `PL-97VB`, `PL-FZ6T`, `PL-8XPQ`, `PL-7922`.
 	uv run python tools/contrast_check.py
 	uv run python tools/agent_identity_check.py
 	uv run python tools/import_boundary_check.py
 	uv run python tools/workflow_paths_check.py
 	uv run python tools/core_vocabulary_check.py
 	uv run python tools/glyph_check.py
+	uv run python tools/fixture_id_check.py
 
 fix:
 	uv run ruff format .
