@@ -1,14 +1,14 @@
 ---
 id: PL-MSFB
 title: PL-6194's verify: command still uses [(] and [)] to work around the math check that PL-WTQ1 fixed, and WORKING_NOTES.md:504 still uses backticks to work around PL-KJ63
-status: ready
-added: 2026-09-13
 priority: P3
 effort: S
+status: ready
 classes: defect, docs
 feature: dev-tooling
 touches: docs/items/, docs/WORKING_NOTES.md
-verify: python3 tools/doc_check.py check && grep -qF '"~88-256 B each" above' docs/WORKING_NOTES.md && ! grep -q '\[(\]' docs/items/PL-6194-*.md
+added: 2026-09-13
+verify: python3 tools/doc_check.py check && grep -qF '"~88-256 B each" above' docs/WORKING_NOTES.md
 ---
 
 **Problem.** PL-6194's verify: command still uses [(] and [)] to work around the math check that PL-WTQ1 fixed, and WORKING_NOTES.md:504 still uses backticks to work around PL-KJ63
@@ -60,3 +60,24 @@ greps, and was run first: it exits 1 today.
 **Sequencing stands as the brief has it.** The `PL-6194` half is only doable
 while that item is open, so it rides whoever starts it; the
 `docs/WORKING_NOTES.md` half is independent and can land any time.
+
+**Narrowed to the live half, 2026-09-21 (`PL-PT7M`'s re-judging pass).** The
+`PL-6194` half is struck, on two grounds that agree. This brief already named
+the first: "`PL-6194` is an open Gate 1 entry ... a closed item's `verify:` is a
+record and is never rewritten, but an open one's is writable - so this is only
+doable while `PL-6194` is open". `PL-6194` has since closed `done`, so the
+item's own stated condition has expired. `.claude/rules/citation-drift.md`'s
+closed-brief clause reaches it independently: a `done` brief is a historical
+record, and a workaround preserved in one records what the checks demanded at
+the time, which is the correct meaning to leave in place.
+
+What survives is the `docs/WORKING_NOTES.md` half, unchanged and still failing
+its command: the figure at what was `:504` and is now found by searching for
+`~88-256 B each` sits in backticks to work around a `CITATION_RE` branch
+`PL-KJ63` has since fixed, and should read `"~88-256 B each" above`. The
+`verify:` command has been trimmed to that half - its third clause grepped
+`PL-6194`'s file and can no longer be satisfied by anything this item should
+do. The title still names both halves; this note is the correction, since
+renaming an item file breaks the `touches` and `verify:` lines that point at
+it from elsewhere.
+

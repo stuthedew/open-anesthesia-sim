@@ -3,13 +3,14 @@ id: PL-PT7M
 title: Forty open members of the two citation-drift heads have no drain plan: PL-4FBP and PL-G424 both closed their mechanism, and the 40 repairs they named sit in the flat P2 band as forty independent items with no batch, no check and no disposition
 priority: P2
 effort: M
-status: ready
+status: done
 classes: planning, docs, housekeeping
 feature: citation-drift-drain
 touches: docs/items, docs/WORKING_NOTES.md
 added: 2026-09-21
+closed: 2026-09-21
 payoff: 40 items the project has already decided about stop being offered as work, and the open count stops carrying non-findings
-verify: test "$(grep -cE '^\| PL-[A-Z0-9]{4} \|' docs/items/PL-PT7M-forty-open-members-of-the-two-citation-drift.md)" -eq 40
+verify: test "$(grep -cE '^\| PL-[A-Z0-9]{3,4} \|' docs/items/PL-PT7M-forty-open-members-of-the-two-citation-drift.md)" -eq 40
 ---
 
 **Problem.** Forty open members of the two citation-drift heads have no drain plan: PL-4FBP and PL-G424 both closed their mechanism, and the 40 repairs they named sit in the flat P2 band as forty independent items with no batch, no check and no disposition
@@ -109,3 +110,100 @@ generators and their clusters were dealt with. Answering it took a script over
 the whole store - the read `PL-XF5V` exists to replace - and the answer was
 "the heads yes, the clusters no", with these two heads accounting for 40 of the
 60 open members.
+
+## Disposition, 2026-09-21
+
+**Worked: step 1, as decided.** All 40 open members were read against
+`.claude/rules/citation-drift.md`. **Six are dropped** - five for the
+closed-brief clause, one for the line-anchor ban - and 34 are kept. Nothing was
+dropped for being small, for being old, or for being a drift repair: each drop
+names a clause of a ratified rule against that item's own deliverable, which is
+the test `PL-LKGL` refuted a bar-raising proposal for failing.
+
+**Two of the six had a live half, and neither was discarded with the item.**
+`PL-8T3Z` asked for `PL-K2C8`'s `touches` and **Where** to be corrected, which
+the clause refuses now that `PL-K2C8` is `done` - but the finding underneath it
+is that `.claude/hooks/no-prune-guard.sh` still prints the three-command restart
+recipe `PL-K2C8` replaced, in the louder of the two places: the message a
+session reads at the moment it is refused a prune. That is `PL-J3TV`, filed and
+verified against the hook the same day. `PL-MSFB` is narrowed rather than
+dropped: its `PL-6194` half expired on the item's own stated condition when
+`PL-6194` closed, its `docs/WORKING_NOTES.md` half is untouched, and its
+`verify:` no longer greps a closed item's file.
+
+**The line-anchor drops cost nothing, because the repair the rule prescribes
+was made instead.** `PL-Z5FG` and `PL-JXVD` between them named citations in one
+live brief, `PL-HXKC`. All eight of its entries already carried the symbol
+beside the number, so this commit struck the numbers and kept the symbols -
+`.claude/rules/citation-drift.md`'s own remedy, riding the current item's commit
+exactly as the rule says such a repair should. Two of the eight symbols had
+drifted as well (`require_concentration_fraction` is now `require_fraction`,
+and `apply_blood_uptake` no longer exists), and both are marked in that brief
+for whoever takes it.
+
+**None of the 34 kept items has already been done.** Every one whose `verify:`
+command is cheap enough to run - 24 of them - was run on 2026-09-21 and every
+one still fails, so no kept row is a close-out waiting to be noticed.
+
+**What the pass did not do**, per the decision above: no editing sweep of the
+live-document repairs, and no ranking of the check-building members. The 22
+live-document rows are the sweep that is deferred behind `v0.5.0`; the 9
+check-building rows rank on their own merits as ordinary `tools/doc_check.py`
+work.
+
+| Member | Disposition | Clause, or the kind it is |
+| --- | --- | --- |
+| PL-38PN | dropped | closed-brief clause - repoints `PL-VM40` and `PL-L2F2`, both `done`; the line-anchor ban refuses it again |
+| PL-JXVD | dropped | line-anchor ban - a second generation of line repair, and the rule's own worked example |
+| PL-Z5FG | dropped | line-anchor ban; `PL-0NQ1` half is closed-brief. `PL-HXKC`'s citations re-anchored to symbols in this commit |
+| PL-2GQW | dropped | closed-brief clause - `PL-L9JS` is `done`, and no live document carries the disproved recursion claim |
+| PL-5F26 | dropped | closed-brief clause - `PL-1XPX` is `done`, and `ROADMAP.md` already dates `PL-TCD1` correctly |
+| PL-8T3Z | dropped | closed-brief clause - `PL-K2C8` is `done`. Live half re-filed as `PL-J3TV` (the no-prune hook's stale recipe) |
+| PL-036 | kept | check-building - `docs/MODEL.md`'s minimum displayed outputs, bound to `SimulationSnapshot` |
+| PL-2M9N | kept | check-building - `docs/MODEL.md`'s Required tests headings resolved to real test functions |
+| PL-5N7T | kept | check-building - `docs/ARCHITECTURE.md`'s prose enumeration held to `quality.yml`'s run steps |
+| PL-8LDF | kept | check-building - `docs/MODEL.md`'s eighteen required invariants each named to a test |
+| PL-9LXK | kept | check-building - a prose claim about a stored value's source tier held to the data files |
+| PL-41YP | kept | check-building - a test that each required displayed output reaches the rendered view |
+| PL-4RHP | kept | check-building - `ROADMAP.md`'s Declined-to-Gate count, or the decision to state none |
+| PL-DHJ7 | kept | check-building - the live `ROADMAP.md` subset counts, on `PL-GLBF`'s pattern |
+| PL-GQWP | kept | check-building - `README.md`'s playback ladder, time-base range and agent list held to the code |
+| PL-NWTM | kept | not startable - `blocked`, and a `safety`-classed structural item rather than a citation repair |
+| PL-6QZP | kept | not startable - `needs-decision`; prose drift in `CLAUDE.md`, which no clause reaches |
+| PL-QV5Y | kept | not startable - `needs-decision`; a stale measurement in the `Makefile`, explicitly outside the rule |
+| PL-0R06 | kept | live-document repair - `docs/WORKING_NOTES.md`'s matplotlib note |
+| PL-037Y | kept | live-document repair - `docs/WORKING_NOTES.md`'s gloss of `PL-NGF7` |
+| PL-245B | kept | live-document repair - `docs/WORKING_NOTES.md`; its remedy already names a symbol, not a line |
+| PL-4HKS | kept | live-document repair - `docs/WORKING_NOTES.md`'s pre-Qt-port playback numbers |
+| PL-60CQ | kept | live-document repair - `docs/WORKING_NOTES.md`'s `PL-024` entry, superseded by the 1.222 L pool |
+| PL-75R0 | kept | live-document repair - `docs/WORKING_NOTES.md`'s resolved no-README thread |
+| PL-B5LB | kept | live-document repair - `docs/ARCHITECTURE.md` and `CONTRIBUTING.md` on what `doc_check.py` covers |
+| PL-BHJW | kept | live-document repair - `docs/WORKING_NOTES.md` names CI's deleted `floor` job |
+| PL-C7XV | kept | live-document repair - `docs/WORKING_NOTES.md`'s two placements under one decision date |
+| PL-C25K | kept | live-document repair - `ROADMAP.md` v0.2.8 asserts the dropped `PL-J786` is in effect |
+| PL-CPLX | kept | live-document repair - the `docket` skill's out-of-turn example names a shipped release |
+| PL-DBGT | kept | live-document repair - `desflurane.json`'s provenance note; a stored data file, so the closest to safety-critical in the set |
+| PL-DL4M | kept | live-document repair - `docs/WORKING_NOTES.md`'s two `Open thread` headings and v0.2.0 baseline |
+| PL-FV7G | kept | live-document repair - `ROADMAP.md`'s v0.4.14 row reads as a live claim |
+| PL-GTSL | kept | live-document repair - `docs/ARCHITECTURE.md` omits `check_resident_instructions` |
+| PL-LM8P | kept | live-document repair - `.claude/rules/citing-sources.md`'s thirteen-of-twenty-six census |
+| PL-MSFB | kept | live-document repair, narrowed - the `PL-6194` half struck (closed-brief), `docs/WORKING_NOTES.md` half stands |
+| PL-N32Y | kept | live-document repair - `ROADMAP.md` calls the stored tissue:gas coefficients tissue:blood |
+| PL-T9XJ | kept | live-document repair - `docs/resident-instructions.md` names two resident files of three |
+| PL-WVJ0 | kept | live-document repair - the `docket` skill says `show` prints no placement |
+| PL-YZKK | kept | live-document repair - `PL-PGZF` and `PL-CNCF` are both open, so both briefs are live |
+| PL-21RC | kept | live-document repair - `docs/maintainer.md` missing from all three apparatus enumerations |
+
+**Counts.** 6 dropped, 34 kept: 9 check-building, 22 live-document repairs, 3
+not startable. The original reading of the 40 put 27 in the live-document group
+and 4 in the not-startable one; five of those 27 and one of those 4 are the six
+drops.
+
+**The `verify:` command was repointed, and this is why.** As filed it counted
+rows matching `^\| PL-[A-Z0-9]{4} \|` - four characters after the prefix. One
+of the 40 members is `PL-036`, a legacy three-character id, so the command
+could count at most 39 and the item could never have verified however complete
+the table was. The pattern is now `{3,4}` and the count is exactly 40. This is
+a false-fail rather than a goalpost moved: no row was added or removed to make
+it pass, and the same command still fails if a row goes missing.
+

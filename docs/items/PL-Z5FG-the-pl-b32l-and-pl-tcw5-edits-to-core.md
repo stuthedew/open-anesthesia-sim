@@ -3,11 +3,13 @@ id: PL-Z5FG
 title: The PL-B32L and PL-TCW5 edits to core/parameters.py shifted line numbers cited by PL-0NQ1 and PL-HXKC, which is PL-J7C5's hazard arriving again from an unrelated branch
 priority: P3
 effort: S
-status: needs-decision
+status: dropped
 classes: docs
 feature: dev-tooling
 touches: docs/items
 added: 2026-09-13
+closed: 2026-09-21
+reason: `.claude/rules/citation-drift.md`'s line-anchor ban, with the closed-brief clause covering half of it. Both routes this item's decision named are closed: repairing the six citations in place is what the ban refuses, and folding them into `PL-J7C5` is impossible because `PL-J7C5` is `done`. `PL-0NQ1` is `done` too, so its three citations are a historical record the clause says not to repair. Nothing is lost on the live half: `PL-HXKC` is open, all eight of its citations already named their symbols beside the numbers, and `PL-PT7M`'s commit struck the numbers and kept the symbols - the form the rule prescribes. Two of those symbols had themselves drifted (`require_concentration_fraction` is now `require_fraction`; `apply_blood_uptake` is gone), and both are marked in `PL-HXKC` for whoever takes it. Re-judged in `PL-PT7M`'s pass, 2026-09-21
 ---
 
 **Problem.** The PL-B32L and PL-TCW5 edits to core/parameters.py shifted line numbers cited by PL-0NQ1 and PL-HXKC, which is PL-J7C5's hazard arriving again from an unrelated branch

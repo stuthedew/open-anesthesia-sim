@@ -18,14 +18,17 @@ missing in eight places. Measured 2026-09-05 by walking `src/` with `ast`:
 23 public functions contain a `raise`, 15 name the failure in the docstring,
 and these 8 do not —
 
-- `core/validation.py:22` `require_positive_finite`
-- `core/validation.py:29` `require_nonnegative_finite`
-- `core/validation.py:36` `require_concentration_fraction`
-- `core/alveolar.py:68` `apply_blood_uptake`
-- `core/circuit.py:180` `set_agent_amount`
-- `core/parameters.py:427` `parse_agent_parameters`
-- `core/parameters.py:456` `parse_reference_adult_parameters`
-- `core/parameters.py:501` `load_agent_parameters`
+- `core/validation.py` `require_positive_finite`
+- `core/validation.py` `require_nonnegative_finite`
+- `core/validation.py` `require_fraction` — named `require_concentration_fraction`
+  when this was measured
+- `core/alveolar.py` `apply_blood_uptake` — **the symbol no longer exists**, so
+  the census below is one entry stale and wants re-deriving before the work
+  starts
+- `core/circuit.py` `set_agent_amount`
+- `core/parameters.py` `parse_agent_parameters`
+- `core/parameters.py` `parse_reference_adult_parameters`
+- `core/parameters.py` `load_agent_parameters`
 
 Separately, 13 `__post_init__` and `_validate_*` functions raise and carry no
 docstring at all. Those are a different question — a dataclass validator's
@@ -62,3 +65,12 @@ and points at `core/supported_ranges.py` rather than restating the range.
 **Done when.** Each of the eight names, in its docstring, the condition it
 refuses and the exception it raises; the walk above reports 23 of 23.
 `PL-GZPX` is the check that holds the line afterwards and is blocked on this.
+
+**Re-anchored to symbols, 2026-09-21 (`PL-PT7M`).** The eight entries carried a
+bare line number as well as their symbol, and every one of the numbers had
+moved - `parse_agent_parameters` alone went from `:427` to `:674`.
+`.claude/rules/citation-drift.md` bans the anchor rather than asking for more
+careful repair, so the numbers are struck and the symbols kept, which is the
+form a rename cannot silently break and `grep` can still find. Two of the eight
+symbols had drifted too, and both are marked above; the `23`/`15` census itself
+was not re-derived, and belongs to whoever takes this item.

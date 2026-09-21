@@ -3337,7 +3337,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 227 entries
+### Declined to Gate 2 on the refilling-queue ground — 228 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -4852,6 +4852,20 @@ fifteen days after this gate froze. The refilling-queue arithmetic above is
 unchanged, and nothing under this milestone turns on which test wins.
 
 - PL-J870 (S) `CLAUDE.md`'s generator rule triggers on a count of three items but promotion is being declined on severity, and nothing records which test governs
+
+**And one from the re-judging pass over those same clusters** (2026-09-21).
+`PL-J3TV` is the live half of `PL-8T3Z`, which `PL-PT7M` dropped under
+`.claude/rules/citation-drift.md`'s closed-brief clause: the item asked for a
+`done` item's `touches` to be corrected, but the finding underneath it is that
+`.claude/hooks/no-prune-guard.sh` still prints the three-command restart recipe
+`PL-K2C8` replaced, at the one moment a session is certainly about to run it -
+when the hook refuses a prune. It is debt here by `defect`, it is wholly in the
+workflow lane - a hook message no reader of the simulator ever sees - and it was
+captured fifteen days after this gate froze. The refilling-queue arithmetic
+above is unchanged. `PL-G8TR` is already on this list against the same file and
+the same message, so whoever takes either should take both.
+
+- PL-J3TV (S) `.claude/hooks/no-prune-guard.sh` still prints the pre-`PL-K2C8` three-command restart recipe, so the incomplete version survives in the louder of the two places
 
 
 ### Required scope
