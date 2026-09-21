@@ -51,3 +51,26 @@ budget measures at all. Whichever answer that item takes decides this one:
 spend-since-baseline needs an observable that moves within a turn, and the
 absolute reading does not need one. Working this first would be choosing a
 gauge before knowing what is being weighed.
+
+**Answered 2026-09-21, in the session working `PL-W80S`.** Yes, it is fixable
+from inside a session, and the fix is built: `tools/context_reading.py` reads
+this session's own transcript - `$CLAUDE_CONFIG_DIR/projects/*/`
+`$CLAUDE_CODE_SESSION_ID.jsonl` - which the harness appends to as each request
+happens rather than at turn boundaries. Each assistant record carries
+`message.usage`, and `input_tokens + cache_read_input_tokens +
+cache_creation_input_tokens` is the same quantity `used_tokens` reports, taken
+from a record already written instead of a field not yet refreshed. Verified
+live: 81,048 -> 112,857 across 15 requests inside one turn, while
+`get_session` held at 0 throughout.
+
+**And the measurement here understated it.** `used_tokens` does not merely read
+late: for a session that has not yet crossed a turn boundary it reads **0**,
+and the session listing on 2026-09-21 showed all six concurrently RUNNING
+sessions at 0. This item recorded a stale gauge; it is a gauge that reads zero
+for exactly the window in which the prescribed check is made.
+
+This item stays `blocked` on `PL-W80S` only for the choice of *which* quantity
+the budget names - the observable itself is no longer the open question, and
+`tools/context_reading.py` prints `baseline`, `context` and `spend` so it is
+correct under either answer.
+

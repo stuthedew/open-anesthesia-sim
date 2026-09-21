@@ -6,7 +6,7 @@ effort: M
 status: needs-decision
 classes: session-cost
 feature: context-budget-reading
-touches: CLAUDE.md
+touches: CLAUDE.md, tools/context_reading.py, tests/unit/test_context_reading.py, docs/items/PL-BZVY-get-session-s-context-usage-used-tokens-does.md
 added: 2026-09-20
 ---
 
@@ -80,3 +80,62 @@ session listing carries.
 **Its sibling is why the reading is stale anyway.** `PL-BZVY` measured that
 `used_tokens` does not refresh within a turn, so whichever observable is chosen
 has to be one a session can read mid-item. That item is `blocked` on this one.
+
+## Measured and counted 2026-09-21, and the decision is now the only thing left
+
+**The count the brief above asked for, run.** Final `context_usage.used_tokens`
+across the 24 most recent archived sessions: minimum **173,021**, median
+**313,293**, maximum **495,290**, on a 1,000,000-token window. **None of the 24
+finished at or below 150,000** - the smallest overshoot is 15% and the median
+is more than double the budget. Subtracting the baseline gives per-session
+spend of roughly 60,000-390,000 with a median near 200,000, against headroom of
+35,000-69,000 under the current rule. The brief's claim that no `M` item fits
+is not an estimate; the budget is below the observed minimum.
+
+**Naming the number that would make the recommendation wrong, per
+`PL-LKGL`.** Spend-since-baseline is the wrong quantity if the binding
+constraint is the *window* rather than the per-turn cost, because a window
+constraint cares about absolute occupancy and not about who chose it. Counted:
+the maximum occupancy in 24 sessions is 495,290 of 1,000,000, so nothing has
+reached half the window. The window is not binding and a budget defending it
+would defend against something that has never happened. `CLAUDE.md` states the
+constraint that *is* binding in its own first line - "Session cost is turns
+times context" - which is a cost constraint, and under it what a handoff buys
+back is exactly the distance above the floor it restarts at.
+
+**The baseline is variable, which the brief above did not know.** This session
+read **81,048** at its first request with no skill loaded; `PL-CTD7`'s read
+115,320 with the `docket` skill body in context. So the same absolute budget
+grants 35,000 or 69,000 of headroom depending on whether the session did a
+queue workflow - a 42% swing in the thing being budgeted, driven by something
+`CLAUDE.md` requires. An absolute number cannot hold still.
+
+**The gauge reads zero, not stale, which is worse than `PL-BZVY` found.**
+`get_session` returned `used_tokens: 0` for this session while its transcript
+showed 112,857, and the same listing showed **all six** concurrently RUNNING
+sessions at 0. The field is written at turn boundaries, so before the first
+boundary it reads 0 and after it reads late. The prescribed check happens
+inside a turn, which is where it reads 0.
+
+**A mid-turn observable exists, and is now built.** `tools/context_reading.py`
+reads this session's own transcript - `$CLAUDE_CONFIG_DIR/projects/*/`
+`$CLAUDE_CODE_SESSION_ID.jsonl`, appended as each request happens rather than
+at turn boundaries - and reports `baseline`, `context` and `spend`. Verified
+live: the series moved 81,048 -> 112,857 across 15 requests inside one turn
+while `get_session` held at 0. It prints all three and decides nothing, so it
+is correct under either answer below. This unblocks `PL-BZVY`, whose open
+question was whether such an observable exists from inside a session.
+
+**Recommendation, unchanged in direction and now carrying its count:** state
+the budget against **spend since baseline**, read with
+`tools/context_reading.py`, and set it at **150,000 of spend** - which is the
+owner's own ratified figure, re-anchored to the quantity it was always about
+rather than a new number chosen to fit. Against the counted distribution that
+still stops roughly the top third of sessions before they start another item,
+where the present rule stops 100% of them from starting anything and is
+therefore ignored instead.
+
+**Both parts are the project owner's**, per `CLAUDE.md`'s rule that a ratified
+decision (2026-09-16) reopens on ordinary evidence and goes back to them: the
+quantity, and whether 150,000 carries over to it.
+
