@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-06
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_a_nested_store_reads_the_same_in_flight_answer_as_the_default' subprojects/docket/tests/test_cli.py
+recurrences: 2026-09-21 PL-X9NB
 ---
 
 **Problem.** `_tracked` in `subprojects/docket/src/docket/cli.py` derives the
@@ -46,3 +47,15 @@ store's parent - `find_root()` walking up from `args.items`, or git's own
 `rev-parse --show-toplevel` - so that `--items docs/items` and no `--items` at
 all give the same in-flight answer, with a test at the nested depth this
 project actually uses.
+
+**A second symptom, observed 2026-09-21 working `PL-MBTZ`.** The wrong root
+also breaks every `git show <rev>:<path>` this module makes. `git ls-tree` run
+from a subdirectory prints paths relative to *that directory*, while
+`<rev>:<path>` is always resolved from the repository root - so under
+`--items <repo>/docs/items` the listing says `items/PL-0001-....md` and the
+`show` for it finds nothing. `bin/docket stranded` then printed every finding
+as `(title unreadable)`, and `vcs._standing`, handed two empty texts, fell
+through to its report-it direction for every item on every branch. Exit zero
+throughout. Reproduced on a scratch repository while building the standing
+predicate; the same derivation is the cause, so it closes with this item
+rather than beside it.
