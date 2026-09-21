@@ -158,8 +158,12 @@ def test_the_command_exits_non_zero_and_prints_nothing_when_it_could_not_look(
     assert capsys.readouterr().out == ""
 
 
-def test_a_remote_that_is_not_github_s_is_not_guessed_at(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(open_pull_requests, "_git", lambda args: "git@example.invalid:o/r.git\n")
+@pytest.mark.parametrize("url", ["https://gitlab.com/o/r.git\n", "/srv/mirrors/bare.git\n", "\n"])
+def test_a_remote_that_is_not_github_s_is_not_guessed_at(
+    monkeypatch: pytest.MonkeyPatch, url: str
+) -> None:
+    """Not an error: a checkout with another remote, or none, has nothing to look up."""
+    monkeypatch.setattr(open_pull_requests, "_git", lambda args, url=url: url)
     assert open_pull_requests.repo_slug() is None
 
 
