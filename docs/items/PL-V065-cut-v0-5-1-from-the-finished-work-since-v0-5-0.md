@@ -46,6 +46,27 @@ cut**. No equation, parameter, constant, numerical method, solver step or
 displayed clinical value moves in this release, and #861 does not change that:
 it touches `subprojects/docket/` and `docs/WORKING_NOTES.md` only.
 
+## What the cut was shipped as, and what that was chosen over
+
+`#863` (`PL-ZM48`, `PL-X9WZ`) merged after this cut was taken and before it
+landed, and `#864`, `#865` and `#867` were open and green at the same moment.
+**Ship the cut as taken** (project owner, 2026-09-21, ratified, over holding
+this pull request while those merged and re-running `make release
+VERSION=0.5.1`, which resumes a cut under the same number and would have picked
+the newly-`done` items up).
+
+The argument that decided it is the treadmill rather than the tidiness: while
+sibling sessions keep landing pull requests, any regenerated set of notes goes
+stale before it can merge - `#867` appeared while the question was being put.
+The cost is stated rather than smoothed over: the v0.5.1 tag contains
+`PL-ZM48` and `PL-X9WZ` without naming them, and they are cited under v0.5.2.
+`PL-4B1G` shows the same shape is already accepted here - the cut of v0.5.0 is
+inside the v0.5.0 tag and is cited in v0.5.1's notes, because a cut cannot
+stamp itself.
+
+Recorded in `ROADMAP.md`'s v0.5.1 baseline section too, since that is where a
+reader meets the gap rather than here.
+
 **Done when.** `pyproject.toml` reads 0.5.1, `docs/releases/` holds the notes,
 `ROADMAP.md` has the version-table row with the `current baseline` mark moved
 onto it and a baseline section, `make check` is green, and the tag is run by
