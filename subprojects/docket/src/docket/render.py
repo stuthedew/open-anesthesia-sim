@@ -34,6 +34,7 @@ from .model import (
 from .notes import Thread
 from .plan import (
     PLACEMENT_MARKS,
+    Cluster,
     Feature,
     Gate,
     effort_total,
@@ -905,6 +906,158 @@ def format_generators(heads: Sequence[Item]) -> str:
             f"    {head.identifier} ({head.status}) root cause of {named} - {_gloss(head.title)}"
         )
     lines.append(f"    {closing}")
+    return "\n".join(lines)
+
+
+def _drain_phrase(cluster: Cluster) -> str:
+    """How far this cluster has drained since its head closed, in one clause.
+
+    The trend, which the present split cannot carry: "58 of 99 open" was
+    derived twice in two days and it was the *unchanged* that made the answer
+    worth having (project owner, 2026-09-21). Measured against the head's own
+    close date, which is already in the store, so nothing new is recorded to
+    get it.
+
+    Three readings a single number could not keep apart, so each is named.
+    What closed *after* the head is drain. What closed *on the head's date*
+    cannot be ordered against it at all - `closed:` is a date and not a
+    timestamp, and 32 of this store's 99 member closures are that case - so it
+    is reported beside the drain rather than folded into it, and only where it
+    changes how "none closed since" should be read. What closed *before* is
+    not drain at all, and is named only when it would otherwise stop the
+    numbers on the line reconciling.
+
+    An open head has no reference date, which is not hypothetical: a generator
+    is recorded when it is identified, and `CLAUDE.md` lets a session end by
+    handing it to a fresh one.
+    """
+    if cluster.is_drained:
+        last = max((i.closed for i in cluster.members if i.closed), default=None)
+        return f"drained {last.isoformat()}" if last else "drained"
+    left = f"{len(cluster.open_items)} open"
+    if cluster.head.closed is None:
+        return f"{left} - head still open, so nothing dates the drain yet"
+    since = len(cluster.closed_since_head)
+    moved = f"{since} closed since" if since else "none closed since"
+    phrase = f"{left} - {moved} the head closed {cluster.head.closed.isoformat()}"
+    footnotes = []
+    if with_head := len(cluster.closed_with_head):
+        footnotes.append(f"{with_head} closed on that date")
+    if before := len(cluster.closed_before_head):
+        footnotes.append(f"{before} closed before it")
+    return f"{phrase} ({', '.join(footnotes)})" if footnotes else phrase
+
+
+def format_drain(cluster: Cluster) -> str:
+    """One cluster's state in one line, for `show` on the head itself.
+
+    A line rather than the member list, because `show` on a head is read to
+    start the head, and what it was missing was the one fact its own status
+    contradicts: the cause is closed and the repairs are not. `docket
+    generators <id>` is where the members are.
+    """
+    return (
+        f"{_plural(len(cluster.members), 'item', 'items')}, {_drain_phrase(cluster)}"
+        f"; `docket generators {cluster.head.identifier}` lists them"
+    )
+
+
+def format_clusters(
+    clusters: Mapping[str, Cluster], unsound: Sequence[Item] = (), defects: Sequence[Item] = ()
+) -> str:
+    """Every generator against how much of its cluster is still open.
+
+    The question this answers is the project owner's recurring one - "are the
+    generators dealt with?" - which had no command behind it and was answered
+    twice in two days by a throwaway script over the whole store, both times
+    with the same figures (`PL-XF5V`). `CLAUDE.md` builds deterministic tooling
+    for exactly that recurrence.
+
+    **Ordered by what is still open, largest first**, because the reader is
+    sizing outstanding work rather than auditing the list. A drained cluster is
+    printed too, and last: four of this project's eleven are drained, and
+    "these are finished" is half of the answer to whether the generators are
+    dealt with.
+
+    Two sets sit outside the clusters and are named rather than omitted, per
+    `.claude/rules/apparatus-standard.md`'s floor. An unsound `root-cause-of:`
+    is ranked by nothing and counted here by nothing, so a reader would see
+    neither the cluster nor its absence; and an `impairs-generators:` item
+    ranks on the generator tier while having no members to drain, which is the
+    discrepancy that made `PL-XF5V`'s brief say twelve heads over a table of
+    eleven.
+    """
+    if not clusters:
+        lines = ["no item carries a sound `root-cause-of:`, so no generator is recorded"]
+        return "\n".join(lines + _outside_clusters(unsound, defects))
+
+    members = {i.identifier for c in clusters.values() for i in c.members}
+    still_open = {i.identifier for c in clusters.values() for i in c.open_items}
+    drained = [c for c in clusters.values() if c.is_drained]
+    lines = [
+        f"{_plural(len(clusters), 'generator', 'generators')}, {len(drained)} drained"
+        f" - {_plural(len(members), 'distinct member', 'distinct members')},"
+        f" {len(still_open)} still open",
+        "",
+    ]
+    ordered = sorted(
+        clusters.values(), key=lambda c: (-len(c.open_items), -len(c.members), c.head.identifier)
+    )
+    for cluster in ordered:
+        lines.append(
+            f"  {cluster.head.identifier} "
+            f"{_plural(len(cluster.members), 'member', 'members')}, {_drain_phrase(cluster)}"
+        )
+        lines.append(f"      {_gloss(cluster.head.title, 64)}")
+    lines.extend(_outside_clusters(unsound, defects))
+    return "\n".join(lines)
+
+
+def _outside_clusters(unsound: Sequence[Item], defects: Sequence[Item]) -> list[str]:
+    """The generator-tier items no cluster count reaches, so the total is honest."""
+    lines: list[str] = []
+    if unsound:
+        named = ", ".join(i.identifier for i in unsound)
+        lines.append("")
+        lines.append(
+            f"  {_plural(len(unsound), 'item carries', 'items carry')} a `root-cause-of:` that is "
+            f"not a sound claim, so it is ranked and counted as an ordinary item: {named}"
+        )
+        lines.append("      `docket check` says what is wrong with each.")
+    if defects:
+        named = ", ".join(f"{i.identifier} ({i.status})" for i in defects)
+        lines.append("")
+        lines.append(
+            f"  {_plural(len(defects), 'item ranks', 'items rank')} on the generator tier by "
+            f"`impairs-generators:` and names no members, so none is a cluster above: {named}"
+        )
+    return lines
+
+
+def format_cluster(cluster: Cluster) -> str:
+    """One generator's members, drawn the way `feature` draws a feature's.
+
+    Same three marks and the same two figures above them, so the reconciliation
+    `progress_mark` documents holds here too: `[x]` is the numerator, `[ ]` is
+    what is left, and every member is a line (`PL-VFVW`).
+
+    The split by the head's close date is printed in full here, where the
+    summary carries only the drain. `closed before` is the bucket that is not
+    drain at all - a head is recorded once a mechanism is seen under three
+    items, which can be after some were worked singly - and folding it into
+    the same number would overstate what the fix achieved.
+    """
+    head = cluster.head
+    left = f"{len(cluster.open_items)} left" if cluster.open_items else "drained"
+    lines = [
+        f"{head.identifier} ({head.status}) root cause of "
+        f"{_plural(len(cluster.members), 'item', 'items')}: "
+        f"{len(cluster.done)}/{len(cluster.members)} done ({left})",
+        f"  {_gloss(head.title, 72)}",
+        f"  {_drain_phrase(cluster)}",
+    ]
+    for item in cluster.members:
+        lines.append(f"  [{progress_mark(item)}] {item.identifier} {item.title}")
     return "\n".join(lines)
 
 

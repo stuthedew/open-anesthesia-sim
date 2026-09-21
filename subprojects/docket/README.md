@@ -1671,6 +1671,27 @@ item while the generator above it was still being decided, and that decision
 can re-scope or drop the member. An unsound claim prints nothing here, for the
 same reason the ranking refuses it.
 
+`docket generators` reports how much of each cluster is still open, and
+`docket show` on the head itself carries the same line. Fixing a generator
+closes the head and leaves its members owed, so a head's own status is the one
+fact that cannot answer "is that dealt with?" for the cluster: every head this
+project has recorded is closed while most of what each names is not. Given an
+id the command lists that cluster's members the way `docket feature` lists a
+feature's, and a member's id resolves to the head above it, since that is the
+id a session is usually holding.
+
+The report carries a **trend** as well as the present split, measured against
+the head's own `closed:` date, because "unchanged since the cause was fixed" is
+the fact that makes the count worth having and no field stores it. The three
+buckets are printed apart rather than summed into one "open when the head
+closed" figure: `closed:` is a date and not a timestamp, so a member closed on
+the head's own date cannot be ordered against it — about a third of this
+store's are — and one number would have to pick a reading and print it as
+fact. What a sound claim leaves uncounted is named rather than omitted: an
+unsound `root-cause-of:`, which nothing ranks and nothing counts, and an
+`impairs-generators:` item, which ranks on the same tier while naming no
+members to drain.
+
 Nothing infers it. A ratio over a `touches` path measures how busy a file is,
 and citation is not causation — 33 items in this store are cited by more than
 two others. `tools/generator_check.py` prints the clusters carrying those
