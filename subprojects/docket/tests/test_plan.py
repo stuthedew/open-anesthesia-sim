@@ -82,7 +82,7 @@ def test_a_third_recurrence_surfaces_a_promotion_candidate() -> None:
     command is a record of what was run rather than a statement about today.
     """
     at_three = _item(
-        "PL-2222", recurrences=("2026-09-18 PL-CCCC", "2026-09-19 PL-DDDD", "2026-09-20 PL-EEEE")
+        "PL-2222", recurrences=("2026-09-18 PL-CCCC", "2026-09-19 PL-DDDD", "2026-09-20 PL-GGGG")
     )
 
     assert [item.identifier for item in recurring([at_three])] == ["PL-2222"]
@@ -100,7 +100,7 @@ def test_the_floor_is_two_recurrences_because_the_item_is_the_first_filing() -> 
     recorded as a generator by hand) peaks at two and would never have
     surfaced (project owner, 2026-09-20, ratified).
     """
-    at_one = _item("PL-1111", recurrences=("2026-09-18 PL-AAAA",))
+    at_one = _item("PL-1111", recurrences=("2026-09-18 PL-8888",))
     at_two = _item("PL-2222", recurrences=("2026-09-18 PL-BBBB", "2026-09-19 PL-CCCC"))
 
     assert [item.identifier for item in recurring([at_one, at_two])] == ["PL-2222"]
@@ -113,7 +113,7 @@ def test_a_repeated_capture_id_does_not_reach_the_threshold() -> None:
     repetition defeats is not a floor.
     """
     repeated = _item(
-        "PL-1111", recurrences=("2026-09-18 PL-AAAA", "2026-09-19 PL-AAAA", "2026-09-20 PL-AAAA")
+        "PL-1111", recurrences=("2026-09-18 PL-8888", "2026-09-19 PL-8888", "2026-09-20 PL-8888")
     )
 
     assert recurring([repeated]) == []
@@ -123,10 +123,10 @@ def test_an_item_already_recorded_as_a_generator_is_not_offered_again() -> None:
     """It is on the tier already, so naming it as a candidate changes no decision."""
     known = _item(
         "PL-1111",
-        root_cause_of=("PL-AAAA", "PL-BBBB", "PL-CCCC"),
-        recurrences=("2026-09-18 PL-AAAA", "2026-09-19 PL-BBBB", "2026-09-20 PL-CCCC"),
+        root_cause_of=("PL-8888", "PL-BBBB", "PL-CCCC"),
+        recurrences=("2026-09-18 PL-8888", "2026-09-19 PL-BBBB", "2026-09-20 PL-CCCC"),
     )
-    members = [_item(i) for i in ("PL-AAAA", "PL-BBBB", "PL-CCCC")]
+    members = [_item(i) for i in ("PL-8888", "PL-BBBB", "PL-CCCC")]
 
     assert recurring([known, *members]) == []
 
@@ -136,7 +136,7 @@ def test_a_closed_item_stops_being_a_candidate() -> None:
     closed = _item(
         "PL-1111",
         status="done",
-        recurrences=("2026-09-18 PL-AAAA", "2026-09-19 PL-BBBB", "2026-09-20 PL-CCCC"),
+        recurrences=("2026-09-18 PL-8888", "2026-09-19 PL-BBBB", "2026-09-20 PL-CCCC"),
     )
 
     assert recurring([closed]) == []
@@ -153,7 +153,7 @@ def test_an_item_in_flight_is_not_offered_for_promotion() -> None:
     field (`PL-CJ5R`).
     """
     working = _item(
-        "PL-1111", recurrences=("2026-09-18 PL-AAAA", "2026-09-19 PL-BBBB", "2026-09-20 PL-CCCC")
+        "PL-1111", recurrences=("2026-09-18 PL-8888", "2026-09-19 PL-BBBB", "2026-09-20 PL-CCCC")
     )
 
     assert recurring([working], {"PL-1111"}) == []
@@ -169,7 +169,7 @@ def test_untriaged_and_blocked_clusters_are_still_offered() -> None:
     ranks when its blocker clears. Suppressing these to fix `PL-CJ5R` would
     trade that defect for the same defect pointing the other way.
     """
-    filings = ("2026-09-18 PL-AAAA", "2026-09-19 PL-BBBB", "2026-09-20 PL-CCCC")
+    filings = ("2026-09-18 PL-8888", "2026-09-19 PL-BBBB", "2026-09-20 PL-CCCC")
     untriaged = _item("PL-1111", status="untriaged", recurrences=filings)
     blocked = _item("PL-2222", status="blocked", recurrences=filings)
 
@@ -783,32 +783,32 @@ WORKFLOW = ("tools", ".claude")
 def test_a_lane_offers_only_its_own_half_of_the_project() -> None:
     """The whole point: two sessions asking at once must not be handed one item."""
     items = [
-        _item("PL-PROD", touches=("src/core/blood.py",)),
-        _item("PL-WORK", touches=("tools/doc_check.py",)),
+        _item("PL-PR0D", touches=("src/core/blood.py",)),
+        _item("PL-W0RK", touches=("tools/doc_check.py",)),
     ]
 
     product = recommend(items, lane="product", workflow_paths=WORKFLOW)
     workflow = recommend(items, lane="workflow", workflow_paths=WORKFLOW)
 
-    assert [p.item.identifier for p in product] == ["PL-PROD"]
-    assert [p.item.identifier for p in workflow] == ["PL-WORK"]
+    assert [p.item.identifier for p in product] == ["PL-PR0D"]
+    assert [p.item.identifier for p in workflow] == ["PL-W0RK"]
 
 
 def test_no_lane_ranks_the_whole_queue_exactly_as_before() -> None:
     """The unfiltered answer is the default and is not changed by the split existing."""
     items = [
-        _item("PL-PROD", touches=("src/core/blood.py",)),
-        _item("PL-WORK", touches=("tools/doc_check.py",)),
-        _item("PL-BOTH", touches=("tools/doc_check.py", "src/core/blood.py")),
+        _item("PL-PR0D", touches=("src/core/blood.py",)),
+        _item("PL-W0RK", touches=("tools/doc_check.py",)),
+        _item("PL-B0TH", touches=("tools/doc_check.py", "src/core/blood.py")),
     ]
 
     picks = recommend(items, workflow_paths=WORKFLOW)
 
-    assert {p.item.identifier for p in picks} == {"PL-PROD", "PL-WORK", "PL-BOTH"}
+    assert {p.item.identifier for p in picks} == {"PL-PR0D", "PL-W0RK", "PL-B0TH"}
 
 
 def test_work_reaching_both_halves_is_offered_to_neither_lane() -> None:
-    items = [_item("PL-BOTH", touches=("tools/doc_check.py", "src/core/blood.py"))]
+    items = [_item("PL-B0TH", touches=("tools/doc_check.py", "src/core/blood.py"))]
 
     assert recommend(items, lane="product", workflow_paths=WORKFLOW) == []
     assert recommend(items, lane="workflow", workflow_paths=WORKFLOW) == []
@@ -817,14 +817,14 @@ def test_work_reaching_both_halves_is_offered_to_neither_lane() -> None:
 def test_a_lane_filters_and_never_reorders() -> None:
     """A lane changes what is eligible, not what the project's priorities are."""
     items = [
-        _item("PL-LOW", priority="P3", touches=("tools/a.py",)),
-        _item("PL-HOT", priority="P0", touches=("tools/b.py",)),
-        _item("PL-MID", priority="P2", touches=("tools/c.py",)),
+        _item("PL-L0W5", priority="P3", touches=("tools/a.py",)),
+        _item("PL-H0T5", priority="P0", touches=("tools/b.py",)),
+        _item("PL-M1D5", priority="P2", touches=("tools/c.py",)),
     ]
 
     picks = recommend(items, lane="workflow", workflow_paths=WORKFLOW)
 
-    assert [p.item.identifier for p in picks] == ["PL-HOT", "PL-MID", "PL-LOW"]
+    assert [p.item.identifier for p in picks] == ["PL-H0T5", "PL-M1D5", "PL-L0W5"]
 
 
 def test_feature_progress_is_read_from_the_whole_store_not_from_the_lane() -> None:
@@ -834,49 +834,49 @@ def test_feature_progress_is_read_from_the_whole_store_not_from_the_lane() -> No
     different completion in each session, and the ranking rests on that number.
     """
     items = [
-        _item("PL-DONE", status="done", feature="alpha", touches=("src/core/a.py",)),
-        _item("PL-OPEN", feature="alpha", touches=("tools/a.py",)),
-        _item("PL-ALON", touches=("tools/b.py",)),
+        _item("PL-D0N3", status="done", feature="alpha", touches=("src/core/a.py",)),
+        _item("PL-0P3N", feature="alpha", touches=("tools/a.py",)),
+        _item("PL-4L0N", touches=("tools/b.py",)),
     ]
 
     picks = recommend(items, lane="workflow", workflow_paths=WORKFLOW)
 
-    assert picks[0].item.identifier == "PL-OPEN"
+    assert picks[0].item.identifier == "PL-0P3N"
     assert "Finishes 'alpha'" in picks[0].reason
 
 
 def test_set_aside_names_what_a_lane_could_not_claim_and_why() -> None:
     """A filter that silently drops a fifth of the queue is how work goes missing."""
     items = [
-        _item("PL-PROD", touches=("src/core/blood.py",)),
-        _item("PL-BOTH", touches=("tools/a.py", "src/core/b.py")),
-        _item("PL-NONE", touches=()),
+        _item("PL-PR0D", touches=("src/core/blood.py",)),
+        _item("PL-B0TH", touches=("tools/a.py", "src/core/b.py")),
+        _item("PL-N0N3", touches=()),
     ]
 
     held = set_aside(items, workflow_paths=WORKFLOW)
 
-    assert [i.identifier for i in held.crossing] == ["PL-BOTH"]
-    assert [i.identifier for i in held.unplaced] == ["PL-NONE"]
+    assert [i.identifier for i in held.crossing] == ["PL-B0TH"]
+    assert [i.identifier for i in held.unplaced] == ["PL-N0N3"]
     assert held.total == 2
 
 
 def test_set_aside_applies_the_same_exclusions_the_ranking_did() -> None:
     """A count drawn from a different population describes a different ranking."""
     items = [
-        _item("PL-BOTH", touches=("tools/a.py", "src/core/b.py")),
-        _item("PL-FLY", touches=("tools/c.py", "src/core/d.py")),
-        _item("PL-BIG", effort="L", touches=("tools/e.py", "src/core/f.py")),
-        _item("PL-BLOK", status="blocked", touches=("tools/g.py", "src/core/h.py")),
+        _item("PL-B0TH", touches=("tools/a.py", "src/core/b.py")),
+        _item("PL-FLY5", touches=("tools/c.py", "src/core/d.py")),
+        _item("PL-B1G5", effort="L", touches=("tools/e.py", "src/core/f.py")),
+        _item("PL-BL0K", status="blocked", touches=("tools/g.py", "src/core/h.py")),
     ]
 
-    held = set_aside(items, {"PL-FLY"}, workflow_paths=WORKFLOW, effort="S")
+    held = set_aside(items, {"PL-FLY5"}, workflow_paths=WORKFLOW, effort="S")
 
-    assert [i.identifier for i in held.crossing] == ["PL-BOTH"]
+    assert [i.identifier for i in held.crossing] == ["PL-B0TH"]
 
 
 def test_an_undeclared_boundary_places_nothing_in_a_lane() -> None:
     """Fail closed: with no boundary, no item is on either side of it."""
-    items = [_item("PL-WORK", touches=("tools/doc_check.py",))]
+    items = [_item("PL-W0RK", touches=("tools/doc_check.py",))]
 
     assert recommend(items, lane="workflow") == []
     assert recommend(items, lane="product") == []
@@ -895,7 +895,7 @@ def test_an_undeclared_boundary_places_nothing_in_a_lane() -> None:
 # store is routinely ranked before it is validated; an unsound claim that
 # ranked anyway would outrank a clinical defect on a typo.
 
-GENERATOR = ("PL-E1E1", "PL-E2E2", "PL-E3E3")
+GENERATOR = ("PL-G1G1", "PL-G2G2", "PL-G3G3")
 
 # The recurrence verdict, which from `PL-T7QR` is the second of the two tests a
 # generator has to pass to rank: the count decides that one is *recorded*, and
@@ -1022,7 +1022,7 @@ def test_the_reason_says_it_was_ranked_as_a_generator() -> None:
 
     assert "Ranked as a generator" in pick.reason
     assert "root cause of 3 items" in pick.reason
-    assert "PL-E1E1" in pick.reason
+    assert "PL-G1G1" in pick.reason
     assert pick.generator == 3
     assert "root cause of 3 items" in pick.describe()
 
@@ -1046,7 +1046,7 @@ def test_a_claim_naming_an_id_no_item_carries_ranks_on_its_band() -> None:
     picks = recommend(
         [
             _item("PL-1111", priority="P1"),
-            _item("PL-5555", priority="P2", root_cause_of=(*GENERATOR[:2], "PL-NOPE")),
+            _item("PL-5555", priority="P2", root_cause_of=(*GENERATOR[:2], "PL-N0P3")),
             *_explained(),
         ],
         limit=2,
@@ -1082,7 +1082,7 @@ def test_a_generator_in_flight_is_still_excluded() -> None:
         limit=2,
     )
 
-    assert [p.item.identifier for p in picks] == ["PL-1111", "PL-E1E1"]
+    assert [p.item.identifier for p in picks] == ["PL-1111", "PL-G1G1"]
 
 
 def test_a_generator_is_not_also_told_it_ranks_on_its_band_alone() -> None:

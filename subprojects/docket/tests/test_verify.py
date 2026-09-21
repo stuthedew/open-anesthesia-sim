@@ -927,7 +927,7 @@ def test_a_base_behind_its_remote_is_said_so_on_the_report(tmp_path: Path) -> No
     root = _repo(tmp_path)
     _git(root, "branch", "-M", "main")
     _git(root, "checkout", "-q", "-b", "other")
-    _work(root, "another session's merged commit", "docs/items/PL-OTHR-thing.md", "x\n")
+    _work(root, "another session's merged commit", "docs/items/PL-0THR-thing.md", "x\n")
     _git(root, "update-ref", "refs/remotes/origin/main", "other")
     _git(root, "checkout", "-q", "main")
     _work(
@@ -1001,25 +1001,25 @@ def test_a_closed_item_is_not_asked_whether_it_landed(tmp_path: Path) -> None:
     # nothing yet. Only an open commitment can be open by mistake.
     root = _repo(tmp_path)
     items = [
-        _item(identifier="PL-DONE", status="done", verify="true"),
-        _item(identifier="PL-CAP", status="untriaged", verify="true"),
+        _item(identifier="PL-D0N3", status="done", verify="true"),
+        _item(identifier="PL-C4P5", status="untriaged", verify="true"),
     ]
     assert already_passing(root, items).passing == ()
 
 
 def test_a_landed_command_shared_by_two_open_items_proves_neither(tmp_path: Path) -> None:
     root = _repo(tmp_path)
-    items = [_item(identifier="PL-K7QX", verify="true"), _item(identifier="PL-A1B2", verify="true")]
+    items = [_item(identifier="PL-K7QX", verify="true"), _item(identifier="PL-41B2", verify="true")]
     report = already_passing(root, items)
-    assert report.passing == ("PL-K7QX", "PL-A1B2")
-    assert report.shared == ("PL-K7QX", "PL-A1B2")
+    assert report.passing == ("PL-K7QX", "PL-41B2")
+    assert report.shared == ("PL-K7QX", "PL-41B2")
 
 
 def test_a_command_unique_to_one_landed_item_is_not_called_shared(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     items = [
         _item(identifier="PL-K7QX", verify="true"),
-        _item(identifier="PL-A1B2", verify="false"),
+        _item(identifier="PL-41B2", verify="false"),
     ]
     report = already_passing(root, items)
     assert report.passing == ("PL-K7QX",)
@@ -1062,11 +1062,11 @@ def test_one_missing_command_beside_a_real_one_still_reports_landed_work(tmp_pat
     root = _repo(tmp_path)
     items = [
         _item(identifier="PL-K7QX", verify="docket-no-such-command-xyz"),
-        _item(identifier="PL-A1B2", verify="true"),
+        _item(identifier="PL-41B2", verify="true"),
     ]
     report = already_passing(root, items)
     assert report.known
-    assert report.passing == ("PL-A1B2",)
+    assert report.passing == ("PL-41B2",)
 
 
 def test_an_item_with_no_command_is_not_a_landed_candidate(tmp_path: Path) -> None:
@@ -1092,11 +1092,11 @@ def test_the_killed_status_cannot_be_confused_with_one_a_process_returned() -> N
 
 def test_a_timed_out_command_is_not_checked(tmp_path: Path) -> None:
     root = _repo(tmp_path)
-    items = [_item(identifier="PL-K7QX", verify="sleep 5"), _item(identifier="PL-A1B2")]
+    items = [_item(identifier="PL-K7QX", verify="sleep 5"), _item(identifier="PL-41B2")]
     report = already_passing(root, items, timeout=0.2, workers=2)
 
     assert report.timed_out == ("PL-K7QX",)
-    assert report.passing == ("PL-A1B2",)
+    assert report.passing == ("PL-41B2",)
     assert report.vacuous == ()
 
 
@@ -1104,7 +1104,7 @@ def test_a_timed_out_command_is_not_counted_as_one_that_ran(tmp_path: Path) -> N
     # `considered` is rendered to a reader as "checked". A command killed
     # part-way through was not, and counting it overstates what the run saw.
     root = _repo(tmp_path)
-    items = [_item(identifier="PL-K7QX", verify="sleep 5"), _item(identifier="PL-A1B2")]
+    items = [_item(identifier="PL-K7QX", verify="sleep 5"), _item(identifier="PL-41B2")]
 
     assert already_passing(root, items, timeout=0.2, workers=2).considered == 1
 
@@ -1126,7 +1126,7 @@ def test_one_missing_command_beside_a_real_one_is_named_not_silently_dropped(
     root = _repo(tmp_path)
     items = [
         _item(identifier="PL-K7QX", verify="docket-no-such-command-xyz"),
-        _item(identifier="PL-A1B2", verify="true"),
+        _item(identifier="PL-41B2", verify="true"),
     ]
     report = already_passing(root, items)
 
@@ -1140,7 +1140,7 @@ def test_a_run_where_every_command_was_killed_declines(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     items = [
         _item(identifier="PL-K7QX", verify="sleep 5"),
-        _item(identifier="PL-A1B2", verify="sleep 5"),
+        _item(identifier="PL-41B2", verify="sleep 5"),
     ]
     report = already_passing(root, items, timeout=0.2, workers=2)
 
@@ -1203,11 +1203,11 @@ def test_the_costliest_command_is_the_one_that_actually_cost_the_most(tmp_path: 
     # 0.3 s, not 1: `slowest` is a maximum and is held to no threshold, so this
     # only has to beat four commands that take milliseconds - which it does by
     # about sixty times (`PL-VJ7W`).
-    items.append(_item(identifier="PL-SLOW", verify="sleep 0.3"))
+    items.append(_item(identifier="PL-SL0W", verify="sleep 0.3"))
     report = already_passing(root, items, workers=8)
 
     assert report.slowest is not None
-    assert report.slowest.identifier == "PL-SLOW"
+    assert report.slowest.identifier == "PL-SL0W"
 
 
 def test_a_killed_command_does_not_count_into_the_serial_total(tmp_path: Path) -> None:
@@ -1216,13 +1216,13 @@ def test_a_killed_command_does_not_count_into_the_serial_total(tmp_path: Path) -
     # read against the limit itself.
     root = _repo(tmp_path)
     items = [_item(identifier=f"PL-000{n}") for n in range(4)]
-    items.append(_item(identifier="PL-KILL", verify="sleep 30"))
+    items.append(_item(identifier="PL-K1LL", verify="sleep 30"))
     report = already_passing(root, items, timeout=0.3, workers=8)
 
-    assert report.timed_out == ("PL-KILL",)
+    assert report.timed_out == ("PL-K1LL",)
     assert report.serial < 1
     assert report.slowest is not None
-    assert report.slowest.identifier != "PL-KILL"
+    assert report.slowest.identifier != "PL-K1LL"
 
 
 def test_the_run_says_how_wide_the_pool_that_produced_it_was(tmp_path: Path) -> None:
@@ -1273,7 +1273,7 @@ def test_verify_commands_run_concurrently(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     log = root / "overlap.log"
     items = [
-        _item(identifier=f"PL-RUN{n}", verify=f"printf s >> {log}; sleep 0.3; printf e >> {log}")
+        _item(identifier=f"PL-RVN{n}", verify=f"printf s >> {log}; sleep 0.3; printf e >> {log}")
         for n in range(4)
     ]
 
@@ -1290,13 +1290,13 @@ def test_the_findings_follow_the_store_order_not_the_order_the_commands_finished
     # store would print a different advisory run to run.
     root = _repo(tmp_path)
     items = [
-        _item(identifier="PL-SLOW", verify="sleep 0.3"),
-        _item(identifier="PL-FAST", verify="true"),
+        _item(identifier="PL-SL0W", verify="sleep 0.3"),
+        _item(identifier="PL-F4ST", verify="true"),
     ]
 
     report = already_passing(root, items, workers=4)
 
-    assert report.passing == ("PL-SLOW", "PL-FAST")
+    assert report.passing == ("PL-SL0W", "PL-F4ST")
 
 
 def test_no_two_commands_share_a_coverage_data_file(tmp_path: Path) -> None:
@@ -1308,7 +1308,7 @@ def test_no_two_commands_share_a_coverage_data_file(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     seen = root / "coverage-paths"
     record = f'printf "%s\n" "$COVERAGE_FILE" >> {seen}'
-    items = [_item(identifier="PL-COV1", verify=record), _item(identifier="PL-COV2", verify=record)]
+    items = [_item(identifier="PL-C0V1", verify=record), _item(identifier="PL-C0V2", verify=record)]
 
     already_passing(root, items, workers=4)
 
@@ -1403,13 +1403,13 @@ def test_an_item_whose_command_genuinely_fails_is_not_named(tmp_path: Path) -> N
 def test_the_two_findings_are_separated_within_one_run(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     items = [
-        _item(identifier="PL-PASS", verify="true"),
-        _item(identifier="PL-NONE", verify=_pytest("no_such_test_name")),
-        _item(identifier="PL-FAIL", verify="false"),
+        _item(identifier="PL-P4SS", verify="true"),
+        _item(identifier="PL-N0N3", verify=_pytest("no_such_test_name")),
+        _item(identifier="PL-F41L", verify="false"),
     ]
     report = already_passing(root, items)
-    assert report.passing == ("PL-PASS",)
-    assert report.vacuous == ("PL-NONE",)
+    assert report.passing == ("PL-P4SS",)
+    assert report.vacuous == ("PL-N0N3",)
     assert report.considered == 3
 
 
@@ -1453,7 +1453,7 @@ def test_a_verify_report_of_a_real_failure_makes_no_such_claim(tmp_path: Path) -
 
 def test_a_scoped_run_checks_only_the_items_it_was_given(tmp_path: Path) -> None:
     root = _repo(tmp_path)
-    items = [_item(identifier="PL-K7QX", verify="true"), _item(identifier="PL-A1B2", verify="true")]
+    items = [_item(identifier="PL-K7QX", verify="true"), _item(identifier="PL-41B2", verify="true")]
     report = already_passing(root, items, scoped_to={"PL-K7QX"})
 
     assert report.passing == ("PL-K7QX",)
@@ -1476,7 +1476,7 @@ def test_a_scope_that_holds_nothing_to_run_still_carries_the_scope(tmp_path: Pat
     # confusion `declined` exists to prevent one level up.
     root = _repo(tmp_path)
     report = already_passing(
-        root, [_item(identifier="PL-K7QX")], scoped_to={"PL-NONE"}, scope_base="origin/main"
+        root, [_item(identifier="PL-K7QX")], scoped_to={"PL-N0N3"}, scope_base="origin/main"
     )
 
     assert report.passing == ()
@@ -1562,7 +1562,7 @@ def test_a_directory_a_command_greps_covers_a_file_added_under_it() -> None:
     # found.
     item = _item(verify="bin/docket check && ! grep -rq phrase docs/items/")
 
-    assert items_reading([item], ["docs/items/PL-A1B2-a-new-capture.md"]) == {"PL-K7QX"}
+    assert items_reading([item], ["docs/items/PL-41B2-a-new-capture.md"]) == {"PL-K7QX"}
 
 
 def test_a_file_the_branch_is_creating_is_matched_before_it_exists() -> None:
@@ -1621,9 +1621,9 @@ def test_a_widened_scope_says_which_half_each_id_came_from(tmp_path: Path) -> No
     root = _repo(tmp_path)
     report = already_passing(
         root,
-        [_item(identifier="PL-K7QX"), _item(identifier="PL-A1B2")],
-        scoped_to={"PL-K7QX", "PL-A1B2"},
-        reading={"PL-A1B2"},
+        [_item(identifier="PL-K7QX"), _item(identifier="PL-41B2")],
+        scoped_to={"PL-K7QX", "PL-41B2"},
+        reading={"PL-41B2"},
         scope_base="origin/main",
     )
 
@@ -1667,7 +1667,7 @@ def test_a_blocked_item_outside_the_scope_is_still_left_alone(tmp_path: Path) ->
     root = _repo(tmp_path)
     items = [
         _item(identifier="PL-K7QX", status="ready", verify="true"),
-        _item(identifier="PL-A1B2", status="blocked", verify="true"),
+        _item(identifier="PL-41B2", status="blocked", verify="true"),
     ]
     report = already_passing(root, items, scoped_to={"PL-K7QX"})
 
@@ -1690,13 +1690,13 @@ def test_blocked_is_always_a_subset_of_passing(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     items = [
         _item(identifier="PL-K7QX", status="ready", verify="true"),
-        _item(identifier="PL-A1B2", status="blocked", verify="true"),
+        _item(identifier="PL-41B2", status="blocked", verify="true"),
     ]
-    report = already_passing(root, items, scoped_to={"PL-K7QX", "PL-A1B2"})
+    report = already_passing(root, items, scoped_to={"PL-K7QX", "PL-41B2"})
 
     assert set(report.blocked) <= set(report.passing)
-    assert report.passing == ("PL-K7QX", "PL-A1B2")
-    assert report.blocked == ("PL-A1B2",)
+    assert report.passing == ("PL-K7QX", "PL-41B2")
+    assert report.blocked == ("PL-41B2",)
 
 
 TOUCHES = "diff stayed inside `touches`"
@@ -2486,7 +2486,7 @@ WAVE_NEW = (
     '    assert "what they wait on: PL-ZZZZ" in printed\n'
     '    assert "blocked outside the gate: PL-001" in printed\n'
     '    assert "1 this gate can clear, 2 waiting on 2 open items outside it" in printed\n'
-    '    assert "what they wait on: PL-AAAA" in printed\n'
+    '    assert "what they wait on: PL-8888" in printed\n'
 )
 
 
@@ -2961,13 +2961,13 @@ def test_a_passing_command_that_asks_the_remote_is_reported_apart(tmp_path: Path
     root = _repo(tmp_path)
     items = [
         _item(identifier="PL-K7QX", status="ready", verify="true"),
-        _item(identifier="PL-A1B2", status="ready", verify="git ls-remote --tags . HEAD"),
+        _item(identifier="PL-41B2", status="ready", verify="git ls-remote --tags . HEAD"),
     ]
     report = already_passing(root, items)
 
-    assert report.passing == ("PL-K7QX", "PL-A1B2")
+    assert report.passing == ("PL-K7QX", "PL-41B2")
     assert set(report.external) <= set(report.passing)
-    assert report.external == ("PL-A1B2",)
+    assert report.external == ("PL-41B2",)
 
 
 def test_reaching_outside_the_tree_takes_precedence_over_blocked(tmp_path: Path) -> None:
@@ -2978,9 +2978,9 @@ def test_reaching_outside_the_tree_takes_precedence_over_blocked(tmp_path: Path)
     rests on the tree being the only thing the command reads.
     """
     root = _repo(tmp_path)
-    items = [_item(identifier="PL-A1B2", status="blocked", verify="git ls-remote --tags . HEAD")]
-    report = already_passing(root, items, scoped_to={"PL-A1B2"})
+    items = [_item(identifier="PL-41B2", status="blocked", verify="git ls-remote --tags . HEAD")]
+    report = already_passing(root, items, scoped_to={"PL-41B2"})
 
-    assert report.passing == ("PL-A1B2",)
-    assert report.external == ("PL-A1B2",)
+    assert report.passing == ("PL-41B2",)
+    assert report.external == ("PL-41B2",)
     assert report.blocked == ()

@@ -3,12 +3,13 @@ id: PL-GXPP
 title: Test fixtures use item ids outside the id alphabet, so a test routing one through id-aware machinery silently exercises nothing
 priority: P3
 effort: S
-status: ready
+status: done
 classes: infra
 feature: dev-tooling
-touches: subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_roadmap.py
+touches: subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_duplicates.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_notes.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/tests/test_store.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-02
-verify: uv run pytest subprojects/docket/tests --collect-only -q && ! grep -qE 'PL-[A-Z0-9]*[AEIOU]' subprojects/docket/tests/*.py
+closed: 2026-09-21
+verify: uv run pytest subprojects/docket/tests/test_store.py -q -k test_every_fixture_id_is_one_the_store_could_mint
 recurrences: 2026-09-19 PL-R77L
 ---
 
@@ -90,3 +91,54 @@ and it is the one to meet.
 at `:625` and `:672-673` on the `PL-HWW1` branch and records that `:105` and
 `:508-509` were not reached, so both items are live on the occurrences that
 remain.
+
+## What it turned out to be (2026-09-21)
+
+**Ten files, not three.** The `touches` this item was filed with named
+`test_cli.py`, `test_verify.py` and `test_roadmap.py`; the offenders were in
+those plus `test_checks.py`, `test_duplicates.py`, `test_model.py`,
+`test_notes.py`, `test_plan.py`, `test_store.py` and `test_vcs.py` - 52
+literals over 261 occurrences, against the six this item counted on
+2026-09-02. `touches` is widened to what the work reached. The growth is the
+argument for the deterministic half below: nineteen days of ordinary fixture
+writing took it from six to 261, because nothing was saying no.
+
+**The `verify:` grep is retired rather than kept**, on `CLAUDE.md`'s rule that
+a check earns its place every run. It was a proxy for `ID_RE` and a strictly
+weaker one: `ID_PATTERN` accepts four alphabet characters *or* three digits,
+so length is half the rule and the grep reads none of it. `PL-CAP`,
+`PL-OTHER` and `PL-RUN{n}` all fail `ID_RE` on length, and the grep caught
+them only because they happened to carry a vowel as well. It is replaced by
+`test_store.py::test_every_fixture_id_is_one_the_store_could_mint`, which
+imports the real `ID_RE` rather than restating it, so the two cannot drift.
+
+**The deterministic half was worth having, and the allowlist this item feared
+is avoided by putting the marker inline.** A fixture malformed on purpose
+carries `# not-an-id` on the line its literal opens; there are four, and each
+sits where the reader already is. A list kept in the check could name a
+literal the tree no longer holds and nothing would say so. Comments never
+reach the tree and docstrings are dropped before the scan, so an id merely
+discussed in prose - `PL-M01` is, three times - needs no marker at all.
+
+**`PL-R77L`'s stronger bar was met and the evidence is recorded.** With the
+placement rule mutated to admit prose heads as gate entries,
+`scope.placement("PL-STVW")` returns `in-scope` and
+`test_an_id_named_for_exclusion_or_for_reference_is_placed_nowhere` goes red;
+under the same mutation the old `PL-STUV` returns `unplaced` and the test
+stays green. That is the vacuity this item describes, measured rather than
+argued: before the rename the assertion could not detect the defect it exists
+to detect. `PL-R77L`'s own `! grep -q PL-STUV` is satisfied too.
+
+**One workaround went with it.** Three tests in `test_cli.py` wrote
+`UNTRIAGED.replace("PL-U1U1", "PL-N3W1")` under a comment explaining that
+`UNTRIAGED`'s own id carried no id at all in a commit subject. `UNTRIAGED` now
+carries `PL-V1V1` and the tests use it directly.
+
+**Mapping, for anyone reading a blame.** `A` has no in-alphabet letter, so
+`PL-AAAA` became `PL-8888` - digits sort before letters, which preserves every
+ordering it had against `PL-BBBB`, `PL-CCCC` and `PL-ZZZZ`. `E` went to `G`,
+`U` to `V`, `O` to `Q` where the doubled-letter shape mattered; word mnemonics
+took their vowels' digit lookalikes (`PL-SLOW` to `PL-SL0W`); and the
+three-character ones gained the fourth the pattern requires. The
+deliberately-malformed `PL-1` and `PL-M0{number}` are untouched, as this item
+asked.

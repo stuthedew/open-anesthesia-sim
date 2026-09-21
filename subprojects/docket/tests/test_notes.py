@@ -1,7 +1,7 @@
 """The threads parser: what splits a thread, and which ids each one names.
 
 Every id below is spellable by `store.ID_ALPHABET`, which excludes vowels. An
-invented id like `PL-AAAA` matches nothing, so a test written with one asserts
+invented id like `PL-8888` matches nothing, so a test written with one asserts
 that the parser found no thread for an id it could never have parsed - which
 passes, and proves nothing.
 """

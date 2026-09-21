@@ -237,11 +237,11 @@ def test_an_appended_entry_extends_the_line_and_removes_nothing_else() -> None:
     removal - which is what `PL-7K8Y` cost and why the append lands here
     rather than in `rewrite_item`.
     """
-    once = with_front_matter_field(SCRAMBLED, "recurrences", "2026-09-19 PL-A1A1")
+    once = with_front_matter_field(SCRAMBLED, "recurrences", "2026-09-19 PL-4141")
 
     twice = with_front_matter_field(once, "recurrences", "2026-09-20 PL-B2B2", append=True)
 
-    assert "recurrences: 2026-09-19 PL-A1A1, 2026-09-20 PL-B2B2\n" in twice
+    assert "recurrences: 2026-09-19 PL-4141, 2026-09-20 PL-B2B2\n" in twice
     assert twice.count("recurrences:") == 1
     assert set(SCRAMBLED.splitlines()) <= set(twice.splitlines()), "a line was removed"
 
@@ -257,7 +257,7 @@ def test_an_append_to_a_field_spelled_twice_is_refused_rather_than_guessed_at() 
     """
     doubled = SCRAMBLED.replace(
         "status: done\n",
-        "status: done\nrecurrences: 2026-09-19 PL-A1A1\nrecurrences: 2026-09-20 PL-B2B2\n",
+        "status: done\nrecurrences: 2026-09-19 PL-4141\nrecurrences: 2026-09-20 PL-B2B2\n",
     )
 
     with pytest.raises(ValueError, match="spells `recurrences` 2 times"):
@@ -319,13 +319,13 @@ def test_a_replaced_value_changes_one_line_and_leaves_the_rest_alone() -> None:
     `reason:` on the way past, and every one of those lines is a removal in a
     diff about something else.
     """
-    once = with_front_matter_field(SCRAMBLED, "recurrences", "2026-09-19 PL-A1A1")
+    once = with_front_matter_field(SCRAMBLED, "recurrences", "2026-09-19 PL-4141")
 
     withdrawn = with_front_matter_value(
-        once, "recurrences", "2026-09-19 PL-A1A1 withdrawn 2026-09-21 PL-B2B2"
+        once, "recurrences", "2026-09-19 PL-4141 withdrawn 2026-09-21 PL-B2B2"
     )
 
-    assert "recurrences: 2026-09-19 PL-A1A1 withdrawn 2026-09-21 PL-B2B2\n" in withdrawn
+    assert "recurrences: 2026-09-19 PL-4141 withdrawn 2026-09-21 PL-B2B2\n" in withdrawn
     assert withdrawn.count("recurrences:") == 1
     assert set(SCRAMBLED.splitlines()) <= set(withdrawn.splitlines()), "a line was removed"
 
@@ -338,7 +338,7 @@ def test_replacing_a_value_the_file_does_not_carry_is_refused() -> None:
     the file - which is worth an exception rather than a silent insert.
     """
     with pytest.raises(ValueError, match="records no `recurrences`"):
-        with_front_matter_value(SCRAMBLED, "recurrences", "2026-09-19 PL-A1A1")
+        with_front_matter_value(SCRAMBLED, "recurrences", "2026-09-19 PL-4141")
 
 
 def test_a_file_with_no_front_matter_is_refused_rather_than_given_some() -> None:
@@ -584,7 +584,7 @@ def test_a_repeated_front_matter_key_is_reported_not_collapsed_away() -> None:
 
 
 def test_repeated_keys_are_reported_once_each_and_sorted() -> None:
-    text = "---\nid: PL-K7QX\nid: PL-AAA1\nid: PL-BBB2\ntitle: a\ntitle: b\n---\nBody\n"
+    text = "---\nid: PL-K7QX\nid: PL-8881\nid: PL-BBB2\ntitle: a\ntitle: b\n---\nBody\n"
 
     assert repeated_front_matter_keys(text) == ("id", "title")
 
@@ -833,14 +833,14 @@ def test_a_declared_path_is_placed_whatever_its_classes_say() -> None:
 # not a claim, because `docket check` runs separately and the ranking would
 # otherwise act on it first.
 
-KNOWN = {"PL-K7QX", "PL-E1E1", "PL-E2E2", "PL-E3E3"}
-EXPLAINS = ("PL-E1E1", "PL-E2E2", "PL-E3E3")
+KNOWN = {"PL-K7QX", "PL-G1G1", "PL-G2G2", "PL-G3G3"}
+EXPLAINS = ("PL-G1G1", "PL-G2G2", "PL-G3G3")
 
 
 def test_a_root_cause_round_trips_through_the_file() -> None:
     written = render_item(_item(root_cause_of=EXPLAINS))
 
-    assert "root-cause-of: PL-E1E1, PL-E2E2, PL-E3E3" in written
+    assert "root-cause-of: PL-G1G1, PL-G2G2, PL-G3G3" in written
     assert parse_item(written).root_cause_of == EXPLAINS
 
 
@@ -869,17 +869,17 @@ def test_a_root_cause_naming_fewer_than_three_items_is_an_ordinary_item() -> Non
 
 def test_repeating_one_id_does_not_reach_the_floor() -> None:
     """Counted over distinct ids: a floor a repetition defeats is not a floor."""
-    item = _item(root_cause_of=("PL-E1E1", "PL-E1E1", "PL-E1E1"))
+    item = _item(root_cause_of=("PL-G1G1", "PL-G1G1", "PL-G1G1"))
 
     (fault,) = root_cause_faults(item, KNOWN)
     assert "names 1 item(s)" in fault
 
 
 def test_a_root_cause_naming_an_id_no_item_carries_is_refused() -> None:
-    item = _item(root_cause_of=(*EXPLAINS, "PL-NOPE"))
+    item = _item(root_cause_of=(*EXPLAINS, "PL-N0P3"))
 
     (fault,) = root_cause_faults(item, KNOWN)
-    assert "PL-NOPE" in fault
+    assert "PL-N0P3" in fault
     assert not is_generator(item, KNOWN)
 
 
@@ -891,10 +891,10 @@ def test_a_typo_and_a_short_list_stay_two_findings() -> None:
     resolved ids instead would report "names 1 item(s)" and hide the typo
     behind a number.
     """
-    faults = root_cause_faults(_item(root_cause_of=("PL-E1E1", "PL-NOPE")), KNOWN)
+    faults = root_cause_faults(_item(root_cause_of=("PL-G1G1", "PL-N0P3")), KNOWN)
 
     assert len(faults) == 2
-    assert "PL-NOPE" in faults[0]
+    assert "PL-N0P3" in faults[0]
     assert "names 2 item(s)" in faults[1]
 
 

@@ -141,7 +141,7 @@ def test_touches_may_be_repeated_as_well_as_comma_separated(tmp_path: Path) -> N
 
 
 CLUSTERED = """---
-id: PL-E5E5
+id: PL-G5G5
 title: alpha beta gamma delta epsilon zeta
 priority: P2
 effort: M
@@ -261,7 +261,7 @@ def test_a_second_filing_extends_the_line_the_first_one_wrote(tmp_path: Path) ->
     assert _run("new", "--touches", "z.py", "alpha beta gamma theta", "--items", str(store)) == 0
     assert _run("new", "--touches", "z.py", "delta epsilon zeta kappa", "--items", str(store)) == 0
 
-    matched = next(p for p in store.glob("*.md") if "PL-E5E5" in p.read_text())
+    matched = next(p for p in store.glob("*.md") if "PL-G5G5" in p.read_text())
     entries = re.search(r"^recurrences: (.+)$", matched.read_text(), re.M).group(1)
     assert matched.read_text().count("recurrences: ") == 1
     assert len(entries.split(", ")) == 2
@@ -640,7 +640,7 @@ def test_new_seed_is_not_double_written(tmp_path: Path) -> None:
 
 
 CAPTURED_OVER_A_TEMPLATE = """---
-id: PL-U3U3
+id: PL-V3V3
 title: An idea briefed underneath the headings capture used to write
 status: untriaged
 added: 2026-08-20
@@ -1056,7 +1056,7 @@ def _delegable_store(tmp_path: Path) -> Path:
     )
     brief = "**Problem.** P\n**Why it matters.** W\n**Done when.** D\n"
     for ident, extra in (
-        ("PL-AAAA", "verify: pytest tests/test_a.py\ntouches: tests/test_a.py\n"),
+        ("PL-8888", "verify: pytest tests/test_a.py\ntouches: tests/test_a.py\n"),
         ("PL-BBBB", "touches: tests/test_b.py\n"),  # no verify command
         ("PL-CCCC", "verify: pytest\ntouches: src/core/x.py\n"),  # protected
         ("PL-DDDD", "verify: pytest\ntouches: tests/test_d.py\nclasses: safety\n"),
@@ -1064,7 +1064,7 @@ def _delegable_store(tmp_path: Path) -> Path:
         # from the config written above: this is the end-to-end guard that
         # `cmd_delegable` passes `gate_paths` through at all, which no unit
         # test of `Item.delegability` can see (`PL-S2L4`).
-        ("PL-EEFF", "verify: pytest\ntouches: Makefile\n"),
+        ("PL-GGFF", "verify: pytest\ntouches: Makefile\n"),
     ):
         (items / f"{ident}-x.md").write_text(
             f"---\nid: {ident}\ntitle: Item {ident}\npriority: P1\neffort: S\n"
@@ -1080,9 +1080,9 @@ def test_delegable_lists_only_what_qualifies(
     """Four of the five items must not be offered, each for a different reason."""
     assert main(["--items", str(_delegable_store(tmp_path)), "--no-git", "delegable"]) == 0
     out = capsys.readouterr().out
-    assert "PL-AAAA" in out
+    assert "PL-8888" in out
     assert "verify: pytest tests/test_a.py" in out
-    for excluded in ("PL-BBBB", "PL-CCCC", "PL-DDDD", "PL-EEFF"):
+    for excluded in ("PL-BBBB", "PL-CCCC", "PL-DDDD", "PL-GGFF"):
         assert excluded not in out
 
 
@@ -1092,8 +1092,8 @@ def test_delegable_says_so_when_nothing_qualifies(
     """An empty result must read as 'nothing to do', not as a broken command."""
     items = tmp_path / "docs" / "items"
     items.mkdir(parents=True)
-    (items / "PL-EEEE-x.md").write_text(
-        "---\nid: PL-EEEE\ntitle: Item\npriority: P1\neffort: S\nstatus: ready\n"
+    (items / "PL-GGGG-x.md").write_text(
+        "---\nid: PL-GGGG\ntitle: Item\npriority: P1\neffort: S\nstatus: ready\n"
         "touches: tests/x.py\nadded: 2026-08-01\n---\n\n"
         "**Problem.** P\n**Why it matters.** W\n**Done when.** D\n",
         encoding="utf-8",
@@ -1603,7 +1603,7 @@ def _interruptible_repo(tmp_path: Path, count: int) -> Path:
     """A release repository holding `count` finished items instead of one."""
     root = _release_repo(tmp_path, "v0.2.5")
     for index in range(count - 1):
-        identifier = f"PL-E{index}E{index}"
+        identifier = f"PL-G{index}G{index}"
         (root / "items" / f"done-{index}.md").write_text(
             DONE.replace("PL-D1D1", identifier).replace(
                 "title: A finished item", f"title: Another finished item {index}"
@@ -1664,9 +1664,9 @@ def test_a_cut_interrupted_inside_the_stamp_loop_is_resumed_whole(
     notes = (root / "docs" / "releases" / "v0.2.6.md").read_text(encoding="utf-8")
     assert sorted(re.findall(r"^- (PL-\S+)", notes, re.M)) == [
         "PL-D1D1",
-        "PL-E0E0",
-        "PL-E1E1",
-        "PL-E2E2",
+        "PL-G0G0",
+        "PL-G1G1",
+        "PL-G2G2",
     ]
     assert 'version = "0.2.6"' in (root / "pyproject.toml").read_text(encoding="utf-8")
 
@@ -1814,7 +1814,7 @@ def test_a_project_with_no_roadmap_still_gets_the_rest_of_the_hand_off(
 
 
 UNTRIAGED = """---
-id: PL-U1U1
+id: PL-V1V1
 title: An idea nobody has weighed yet
 status: untriaged
 added: 2026-08-20
@@ -1839,7 +1839,7 @@ def test_triage_prints_the_body_and_what_is_still_unset(
     _triage(tmp_path, UNTRIAGED, READY)
     output = capsys.readouterr().out
 
-    assert "PL-U1U1" in output
+    assert "PL-V1V1" in output
     assert "induction curve looks wrong" in output
     assert "priority*" in output and "effort*" in output
     assert "**Why it matters.**" in output  # the brief sections still missing
@@ -1870,7 +1870,7 @@ def test_triage_says_nothing_about_a_payoff_where_the_rule_is_off(
 
 
 STUBBED = """---
-id: PL-U2U2
+id: PL-V2V2
 title: An idea captured over the format's own headings
 status: untriaged
 added: 2026-08-20
@@ -2029,7 +2029,7 @@ def test_feature_draws_a_dropped_entry_distinctly_from_an_open_one(
     store = _store(
         tmp_path,
         _featured("PL-D0D0", "done", closed="2026-08-10"),
-        _featured("PL-O0O0", "ready"),
+        _featured("PL-Q0Q0", "ready"),
         _featured("PL-X0X0", "dropped", closed="2026-08-11", reason="superseded"),
     )
 
@@ -2038,7 +2038,7 @@ def test_feature_draws_a_dropped_entry_distinctly_from_an_open_one(
     output = capsys.readouterr().out
     assert "chart-readout: 1/3 done (1 left)" in output
     assert "[x] PL-D0D0" in output
-    assert "[ ] PL-O0O0" in output
+    assert "[ ] PL-Q0Q0" in output
     assert "[-] PL-X0X0" in output
     # The counts and the marks are now two renderings that agree: one `[x]` for
     # the numerator, one `[ ]` for what is left, three lines for the denominator.
@@ -2076,7 +2076,7 @@ def test_triage_says_so_when_nothing_is_waiting(
 
 
 DEBT = """---
-id: PL-E1E1
+id: PL-G1G1
 title: A defect in the milestone's own scope
 priority: P2
 effort: M
@@ -2103,8 +2103,8 @@ def test_gate_splits_the_debt_the_milestone_clears_from_the_debt_before_it(
 
     output = capsys.readouterr().out
     before, _, after = output.partition("Cleared by the milestone itself")
-    assert "PL-B1B1" in before and "PL-E1E1" not in before
-    assert "PL-E1E1" in after
+    assert "PL-B1B1" in before and "PL-G1G1" not in before
+    assert "PL-G1G1" in after
     assert "1 M" in after
 
 
@@ -2380,7 +2380,7 @@ def test_stranded_is_silent_when_the_merge_took_the_commit_and_merged_it(
     git("checkout", "-q", "main")
     (root / "NOTES.md").write_text("first line\nan edit that landed first\n")
     git("add", "-A")
-    git("commit", "-qm", "PL-OTHER: an edit that landed first (#1)")
+    git("commit", "-qm", "PL-0TH3: an edit that landed first (#1)")
     (root / "NOTES.md").write_text(
         "first line\nan edit that landed first\nthe branch's own paragraph\n"
     )
@@ -2759,12 +2759,8 @@ def test_triage_names_an_item_already_in_flight(
     of one, because the reader has to be able to tell another session's work
     from its own without leaving the output.
     """
-    # A valid id, which `UNTRIAGED`'s own `PL-U1U1` is not: the alphabet drops
-    # the vowels, so a subject leading with that one carries no id at all.
-    root = _flight_repo(tmp_path, "PL-N3W1 Triage it")
-    (root / "items" / "PL-N3W1-untriaged.md").write_text(
-        UNTRIAGED.replace("PL-U1U1", "PL-N3W1"), encoding="utf-8"
-    )
+    root = _flight_repo(tmp_path, "PL-V1V1 Triage it")
+    (root / "items" / "PL-V1V1-untriaged.md").write_text(UNTRIAGED, encoding="utf-8")
 
     assert main(["--items", str(root / "items"), "triage"]) == 0
 
@@ -2787,13 +2783,11 @@ def test_triage_names_the_refs_that_bound_its_in_flight_answer(
     root = _flight_repo(tmp_path, "PL-K7QX Do the thing")
     for args in (
         ["checkout", "-q", "--orphan", "unrelated"],
-        ["commit", "-qm", "PL-N3W1 Triage it"],
+        ["commit", "-qm", "PL-V1V1 Triage it"],
     ):
         subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
     subprocess.run(["git", "checkout", "-q", "main"], cwd=root, check=True, capture_output=True)
-    (root / "items" / "PL-N3W1-untriaged.md").write_text(
-        UNTRIAGED.replace("PL-U1U1", "PL-N3W1"), encoding="utf-8"
-    )
+    (root / "items" / "PL-V1V1-untriaged.md").write_text(UNTRIAGED, encoding="utf-8")
 
     assert main(["--items", str(root / "items"), "triage"]) == 0
 
@@ -2816,10 +2810,8 @@ def test_triage_names_an_item_whose_file_a_branch_has_already_edited(
     being proved here is that `--name-only` names the item file in a shape the
     walk parses into an id.
     """
-    root = _flight_repo(tmp_path, "PL-N3W1 Triage it", wrote="items/PL-N3W1-untriaged.md")
-    (root / "items" / "PL-N3W1-untriaged.md").write_text(
-        UNTRIAGED.replace("PL-U1U1", "PL-N3W1"), encoding="utf-8"
-    )
+    root = _flight_repo(tmp_path, "PL-V1V1 Triage it", wrote="items/PL-V1V1-untriaged.md")
+    (root / "items" / "PL-V1V1-untriaged.md").write_text(UNTRIAGED, encoding="utf-8")
 
     assert main(["--items", str(root / "items"), "triage"]) == 0
 
@@ -2905,7 +2897,7 @@ def test_next_withholds_a_recurrence_cluster_on_an_item_already_in_flight(
     nobody can take.
     """
     root = _flight_repo(tmp_path, "PL-0002 Fix the thing three sessions have filed")
-    filings = "recurrences: 2026-09-18 PL-AAAA, 2026-09-19 PL-BBBB, 2026-09-20 PL-CCCC"
+    filings = "recurrences: 2026-09-18 PL-8888, 2026-09-19 PL-BBBB, 2026-09-20 PL-CCCC"
     for identifier in ("PL-0002", "PL-0003"):
         body = READY.replace("PL-B1B1", identifier).replace("added:", f"{filings}\nadded:")
         (root / "items" / f"{identifier}-clustered.md").write_text(body, encoding="utf-8")
@@ -3235,7 +3227,7 @@ def _shallow_pair(tmp_path: Path) -> Path:
     def commit(number: int) -> None:
         (origin / f"f{number}").write_text(f"main {number}\n")
         git("add", "-A")
-        git("commit", "-qm", f"PL-M0{number} Main work {number}")
+        git("commit", "-qm", f"PL-M0{number} Main work {number}")  # not-an-id
 
     for number in range(1, 7):
         commit(number)
@@ -3322,7 +3314,7 @@ def _unevenly_truncated_pair(tmp_path: Path) -> Path:
     # The short path, merged back in: this is what leaves `main` reaching the
     # root at a depth that still grafts the long one.
     git("checkout", "-qb", "side", "main~6")
-    commit("side", "PL-S1DE The short path")
+    commit("side", "PL-S1D3 The short path")
     git("checkout", "-q", "main")
     git("merge", "-q", "--no-edit", "-m", "Merge the short path", "side")
     commit("tip", "PL-T1PP The tip")
@@ -3494,7 +3486,7 @@ def test_flight_does_not_answer_from_a_walk_the_clone_truncated(
 
     out = capsys.readouterr().out
     assert "No branch carries an item id" in out
-    assert "PL-M01" not in out
+    assert "PL-M01" not in out  # not-an-id
     assert "1 ref cannot be compared with origin/main" in out
     assert f"  origin/{BRANCH}" in out
 
@@ -4403,9 +4395,9 @@ def _laned_store(tmp_path: Path) -> Path:
     )
     brief = "**Problem.** P\n**Why it matters.** W\n**Done when.** D\n"
     for ident, touches in (
-        ("PL-PROD", "src/core/blood.py"),
-        ("PL-WORK", "tools/doc_check.py"),
-        ("PL-BOTH", "tools/doc_check.py, src/core/blood.py"),
+        ("PL-PR0D", "src/core/blood.py"),
+        ("PL-W0RK", "tools/doc_check.py"),
+        ("PL-B0TH", "tools/doc_check.py, src/core/blood.py"),
     ):
         (items / f"{ident}-x.md").write_text(
             f"---\nid: {ident}\ntitle: Item {ident}\npriority: P2\neffort: S\n"
@@ -4431,8 +4423,8 @@ def test_next_takes_a_lane_so_two_sessions_never_rank_onto_one_item(
     assert _run("next", "workflow", "--items", store) == 0
     workflow = capsys.readouterr().out
 
-    assert "PL-PROD" in product and "PL-WORK" not in product
-    assert "PL-WORK" in workflow and "PL-PROD" not in workflow
+    assert "PL-PR0D" in product and "PL-W0RK" not in product
+    assert "PL-W0RK" in workflow and "PL-PR0D" not in workflow
     assert "in the product lane" in product
     assert "in the workflow lane" in workflow
 
@@ -4451,7 +4443,7 @@ def test_next_without_a_lane_still_answers_for_the_whole_queue(
     assert _run("next", "--items", str(_laned_store(tmp_path))) == 0
     out = capsys.readouterr().out
 
-    assert "PL-PROD" in out and "PL-WORK" in out and "PL-BOTH" in out
+    assert "PL-PR0D" in out and "PL-W0RK" in out and "PL-B0TH" in out
     assert "Set aside" not in out
 
 
@@ -4466,20 +4458,20 @@ def test_next_without_a_lane_names_the_lane_of_its_answer(
     the answer rather than upstream of it.
     """
     store = _laned_store(tmp_path)
-    _raise_to_p1(store / "PL-PROD-x.md")
+    _raise_to_p1(store / "PL-PR0D-x.md")
 
     assert _run("next", "--items", str(store)) == 0
     out = capsys.readouterr().out
 
-    assert "Lane of this answer: PL-PROD is product work (P1)." in out
-    assert "The workflow lane's own pick is PL-WORK (P2): Item PL-WORK" in out
+    assert "Lane of this answer: PL-PR0D is product work (P1)." in out
+    assert "The workflow lane's own pick is PL-W0RK (P2): Item PL-W0RK" in out
     assert "`docket next workflow`" in out
     # `PL-Z27P`: the band rides along even with no roadmap to read, because it
     # is the half of "why this one" that needs no plan. A bare id and title
     # here could not tell a `P1` on the gate from a `P3` placed nowhere, and
     # this line is one of the two places the project owner meets the other
     # lane at all.
-    assert "PL-WORK)" not in out
+    assert "PL-W0RK)" not in out
 
 
 def test_the_lane_line_names_both_lanes_when_the_answer_is_in_neither(
@@ -4494,9 +4486,9 @@ def test_the_lane_line_names_both_lanes_when_the_answer_is_in_neither(
     assert _run("next", "--items", str(_laned_store(tmp_path))) == 0
     out = capsys.readouterr().out
 
-    assert "PL-BOTH reaches both halves, so no lane places it." in out
-    assert "product: PL-PROD (P2): Item PL-PROD" in out
-    assert "workflow: PL-WORK (P2): Item PL-WORK" in out
+    assert "PL-B0TH reaches both halves, so no lane places it." in out
+    assert "product: PL-PR0D (P2): Item PL-PR0D" in out
+    assert "workflow: PL-W0RK (P2): Item PL-W0RK" in out
 
 
 def test_the_lane_line_is_silent_when_no_boundary_is_declared(
@@ -4517,7 +4509,7 @@ def test_a_lane_names_the_work_it_set_aside_rather_than_dropping_it(
     assert _run("next", "workflow", "--items", str(_laned_store(tmp_path))) == 0
     out = capsys.readouterr().out
 
-    assert "Set aside, reaching both halves (1): PL-BOTH" in out
+    assert "Set aside, reaching both halves (1): PL-B0TH" in out
     assert "`docket next` without a lane offers these" in out
 
 
@@ -4546,7 +4538,7 @@ def test_the_digest_names_each_lane_s_pick_for_a_parallel_session(
     assert _run("digest", "--items", str(_laned_store(tmp_path))) == 0
     out = capsys.readouterr().out
 
-    assert "By lane, for a second session: product PL-PROD (P2), workflow PL-WORK (P2)" in out
+    assert "By lane, for a second session: product PL-PR0D (P2), workflow PL-W0RK (P2)" in out
     assert "1 in neither lane" in out
 
 
@@ -4561,7 +4553,7 @@ def test_the_digest_lane_line_says_what_each_pick_buys(
     own line, where a pick has one.
     """
     store = _laned_store(tmp_path)
-    work = store / "PL-WORK-x.md"
+    work = store / "PL-W0RK-x.md"
     work.write_text(
         work.read_text(encoding="utf-8").replace(
             "added: 2026-08-01\n", "added: 2026-08-01\npayoff: the doc check stops lying\n"
@@ -4572,8 +4564,8 @@ def test_the_digest_lane_line_says_what_each_pick_buys(
     assert _run("digest", "--items", str(store)) == 0
     out = capsys.readouterr().out
 
-    assert "PL-WORK payoff: the doc check stops lying" in out
-    assert "PL-PROD payoff" not in out
+    assert "PL-W0RK payoff: the doc check stops lying" in out
+    assert "PL-PR0D payoff" not in out
 
 
 def test_the_digest_says_nothing_about_lanes_when_no_boundary_is_declared(
@@ -4597,7 +4589,7 @@ def test_the_digest_lane_line_names_an_empty_lane_rather_than_omitting_it(
         '[docket]\nworkflow_paths = ["tools"]\n', encoding="utf-8"
     )
     (items / "only-product.md").write_text(
-        "---\nid: PL-PROD\ntitle: Item PL-PROD\npriority: P2\neffort: S\nstatus: ready\n"
+        "---\nid: PL-PR0D\ntitle: Item PL-PR0D\npriority: P2\neffort: S\nstatus: ready\n"
         "classes: perf\ntouches: src/core/blood.py\nadded: 2026-08-01\n---\n\n"
         "**Problem.** P\n**Why it matters.** W\n**Done when.** D\n",
         encoding="utf-8",
@@ -4606,7 +4598,7 @@ def test_the_digest_lane_line_names_an_empty_lane_rather_than_omitting_it(
     assert _run("digest", "--items", str(items)) == 0
     out = capsys.readouterr().out
 
-    assert "product PL-PROD (P2), workflow none" in out
+    assert "product PL-PR0D (P2), workflow none" in out
     assert "in neither lane" not in out
 
 
@@ -4715,10 +4707,10 @@ def _trend_store(tmp_path: Path, *, lanes: bool = True) -> Path:
     (items.parent / "docket.toml").write_text(f"[docket]\n{declared}", encoding="utf-8")
     brief = "**Problem.** P\n**Why it matters.** W\n**Done when.** D\n"
     for ident, touches, closed, effort in (
-        ("PL-AA01", "src/core.py", "2026-08-25", "M"),
-        ("PL-AA02", "tools/x.py", "2026-08-25", "S"),
-        ("PL-AA03", "tools/y.py", "2026-09-02", "S"),
-        ("PL-AA04", "tools/x.py, src/core.py", "2026-09-02", "S"),
+        ("PL-4401", "src/core.py", "2026-08-25", "M"),
+        ("PL-4402", "tools/x.py", "2026-08-25", "S"),
+        ("PL-4403", "tools/y.py", "2026-09-02", "S"),
+        ("PL-4404", "tools/x.py, src/core.py", "2026-09-02", "S"),
     ):
         (items / f"{ident}-x.md").write_text(
             f"---\nid: {ident}\ntitle: Item {ident}\npriority: P2\neffort: {effort}\n"
@@ -4994,7 +4986,7 @@ def _cluster(tmp_path: Path, **head_fields: str) -> Path:
     """A three-item cluster under one head, which is what a sound claim needs."""
     return _store(
         tmp_path,
-        _clustered("PL-A0A0", "The shared refresh nobody owns", **head_fields),
+        _clustered("PL-4040", "The shared refresh nobody owns", **head_fields),
         _clustered("PL-B1B1", "A member of the cluster"),
         _clustered("PL-C2C2", "Another member"),
         _clustered("PL-D3D3", "A third member"),
@@ -5017,7 +5009,7 @@ def test_show_names_the_generator_that_explains_a_member(
 
     out = capsys.readouterr().out
     assert "Explained by a generator - a root cause is fixed at its head, not here:" in out
-    assert "PL-A0A0 (needs-decision) root cause of 3 items - The shared refresh nobody owns" in out
+    assert "PL-4040 (needs-decision) root cause of 3 items - The shared refresh nobody owns" in out
     assert "Read it before starting: its decision can re-scope or drop this item." in out
 
 
@@ -5050,7 +5042,7 @@ def test_show_withholds_a_root_cause_claim_the_checker_refuses(
 
     out = capsys.readouterr().out
     assert "Explained by" not in out
-    assert "PL-A0A0" not in out
+    assert "PL-4040" not in out
 
 
 def test_show_counts_a_generators_items_as_the_checker_counts_them(
@@ -5087,7 +5079,7 @@ def test_show_still_names_a_generator_that_has_since_closed(
 
     assert _run("show", "PL-B1B1", "--items", str(store)) == 0
 
-    assert "PL-A0A0 (done) root cause of 3 items" in capsys.readouterr().out
+    assert "PL-4040 (done) root cause of 3 items" in capsys.readouterr().out
 
 
 def test_triage_marks_an_item_whose_filing_commit_also_changed_code(
@@ -5351,7 +5343,7 @@ added: 2026-08-01
 """
 
 HELD_TWICE = """---
-id: PL-E3E3
+id: PL-G3G3
 title: Held by the blocker and by something still open
 priority: P2
 effort: S
@@ -5390,7 +5382,7 @@ def test_closing_an_item_names_what_it_just_unblocked(
     assert "Closing PL-C1C1 clears the last recorded blocker on 1 item(s):" in out
     assert "PL-D2D2" in out
     # Still held by PL-B1B1, which is open, so closing this one released nothing.
-    assert "PL-E3E3" not in out
+    assert "PL-G3G3" not in out
     assert "Not promoted for you" in out
 
 
@@ -5462,7 +5454,7 @@ def _drained_cluster(tmp_path: Path, *members: str, **head_fields: str) -> Path:
     fields = {"status": "done", "closed": "2026-08-20", "names": "PL-B1B1, PL-C2C2, PL-D3D3"}
     return _store(
         tmp_path,
-        _clustered("PL-A0A0", "The shared refresh nobody owns", **{**fields, **head_fields}),
+        _clustered("PL-4040", "The shared refresh nobody owns", **{**fields, **head_fields}),
         *members,
     )
 
@@ -5489,7 +5481,7 @@ def test_a_generator_head_reports_how_much_of_its_cluster_is_open(
 
     output = capsys.readouterr().out
     assert "1 generator, 0 drained - 3 distinct members, 2 still open" in output
-    assert "PL-A0A0 3 members, 2 open - 1 closed since the head closed 2026-08-20" in output
+    assert "PL-4040 3 members, 2 open - 1 closed since the head closed 2026-08-20" in output
 
 
 def test_generators_does_not_count_a_same_date_closure_as_drain(
@@ -5539,7 +5531,7 @@ def test_generators_reports_a_drained_cluster_as_finished(
 
     output = capsys.readouterr().out
     assert "1 generator, 1 drained - 3 distinct members, 0 still open" in output
-    assert "PL-A0A0 3 members, drained 2026-08-23" in output
+    assert "PL-4040 3 members, drained 2026-08-23" in output
 
 
 def test_generators_names_an_unsound_claim_it_could_not_count(
@@ -5558,7 +5550,7 @@ def test_generators_names_an_unsound_claim_it_could_not_count(
         _clustered("PL-B1B1", "A member still open"),
         _clustered("PL-C2C2", "Another member"),
         _clustered("PL-D3D3", "A third member"),
-        _clustered("PL-E4E4", "A head naming an id nothing carries", names="PL-B1B1, PL-NOPE"),
+        _clustered("PL-G4G4", "A head naming an id nothing carries", names="PL-B1B1, PL-N0P3"),
     )
 
     assert _run("generators", "--items", str(store)) == 0
@@ -5566,7 +5558,7 @@ def test_generators_names_an_unsound_claim_it_could_not_count(
     output = capsys.readouterr().out
     assert "1 generator, 0 drained" in output
     assert "1 item carries a `root-cause-of:` that is not a sound claim" in output
-    assert "PL-E4E4" in output
+    assert "PL-G4G4" in output
 
 
 def test_generators_resolves_a_member_id_to_the_cluster_above_it(
@@ -5587,7 +5579,7 @@ def test_generators_resolves_a_member_id_to_the_cluster_above_it(
     assert _run("generators", "PL-C2C2", "--items", str(store)) == 0
 
     output = capsys.readouterr().out
-    assert "PL-A0A0 (done) root cause of 3 items: 1/3 done (2 left)" in output
+    assert "PL-4040 (done) root cause of 3 items: 1/3 done (2 left)" in output
     # Every member is a line, so counting the marks reproduces both figures
     # above them - `progress_mark`'s reconciliation, kept here too (`PL-VFVW`).
     assert "[x] PL-B1B1" in output
@@ -5611,7 +5603,7 @@ def test_show_on_a_live_head_says_it_is_on_the_tier(
     """
     store = _cluster(tmp_path, names=_MEMBERS, generator=_LIVE)
 
-    assert _run("show", "PL-A0A0", "--items", str(store)) == 0
+    assert _run("show", "PL-4040", "--items", str(store)) == 0
 
     output = capsys.readouterr().out
     assert f"generator: {_LIVE}" in output
@@ -5631,7 +5623,7 @@ def test_show_on_a_spent_head_says_it_ranks_on_its_own_band(
     """
     store = _cluster(tmp_path, names=_MEMBERS, generator=_SPENT)
 
-    assert _run("show", "PL-A0A0", "--items", str(store)) == 0
+    assert _run("show", "PL-4040", "--items", str(store)) == 0
 
     output = capsys.readouterr().out
     assert f"generator: {_SPENT}" in output
@@ -5650,7 +5642,7 @@ def test_show_on_a_head_with_no_verdict_says_the_field_is_missing(
     """
     store = _cluster(tmp_path, names=_MEMBERS)
 
-    assert _run("show", "PL-A0A0", "--items", str(store)) == 0
+    assert _run("show", "PL-4040", "--items", str(store)) == 0
 
     output = capsys.readouterr().out
     assert "generator: is absent" in output
@@ -5687,7 +5679,7 @@ def test_generators_says_nothing_about_a_closed_heads_verdict(
     assert _run("generators", "--items", str(store)) == 0
 
     output = capsys.readouterr().out
-    assert "PL-A0A0" in output
+    assert "PL-4040" in output
     assert "spent" not in output
 
 
@@ -5707,11 +5699,11 @@ def test_show_on_a_head_says_how_much_of_its_cluster_is_open(
         _clustered("PL-D3D3", "A third member, open"),
     )
 
-    assert _run("show", "PL-A0A0", "--items", str(store)) == 0
+    assert _run("show", "PL-4040", "--items", str(store)) == 0
 
     output = capsys.readouterr().out
     assert "root cause of 3 items, 2 open - 1 closed since the head closed 2026-08-20" in output
-    assert "`docket generators PL-A0A0` lists them" in output
+    assert "`docket generators PL-4040` lists them" in output
 
 
 class TestAskingTheForgeWhichBranchesAreOpen:
