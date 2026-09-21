@@ -84,10 +84,11 @@ two sessions on one item costs a session and a merge conflict (`PL-PRHN`).
 **One shape of abandonment is separated outright rather than by age**
 (`PL-Q664`). A branch whose every claimed item is closed in its own copy and
 which has no pull request open is finished work that has stalled, and `flight`
-names those rows in a section of their own under "nothing here is being
-worked". Read it as what it says: nobody is on that branch, so the item is not
-being worked by a live session - and nothing there says the work is reviewed,
-correct or ready, which is still a branch to read rather than a merge to make.
+moves those rows out of the list the age is meant to separate, into one saying
+that nothing there is being worked. Read it as what it says: nobody is on that
+branch, so the item is not being worked by a live session - and nothing there
+says the work is reviewed, correct or ready, which is still a branch to read
+rather than a merge to make.
 The ids stay in flight for `docket next`, because the work exists and starting
 it again would redo what is already written.
 
