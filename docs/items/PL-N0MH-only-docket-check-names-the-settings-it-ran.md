@@ -2,7 +2,6 @@
 id: PL-N0MH
 title: Only docket check names the settings it ran under, so next, digest, status and list under --items are read under the wrong policy in silence
 status: untriaged
-classes: defect, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, docs/items/PL-QNYF-docket-check-errors-on-an-item-whose-closure.md
 added: 2026-09-21
