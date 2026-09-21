@@ -3300,7 +3300,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 226 entries
+### Declined to Gate 2 on the refilling-queue ground — 227 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -4802,6 +4802,20 @@ this gate whatever the date. The deferral is a statement about what has been
 measured, not about the hazard.
 
 - PL-1K9G (M) which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with - and two compartments of one run can carry two instants in one box
+
+**One more from the session asked whether the generators and their clusters
+were dealt with** (2026-09-21). `PL-J870` asks which test governs entry to the
+generator tier - the count of three items `CLAUDE.md` states, or the severity
+condition the text does not carry - after two sessions read `PL-9HD1`'s
+`FIELD_RE` cluster oppositely on the same day and agreed on everything but its
+rank. It is debt here by `needs-decision` rather than by any class it carries;
+it is wholly in the workflow lane, apparatus held to
+`.claude/rules/apparatus-standard.md`'s deliberately lower bar, and captured
+fifteen days after this gate froze. The refilling-queue arithmetic above is
+unchanged, and nothing under this milestone turns on which test wins.
+
+- PL-J870 (S) `CLAUDE.md`'s generator rule triggers on a count of three items but promotion is being declined on severity, and nothing records which test governs
+
 
 ### Required scope
 
