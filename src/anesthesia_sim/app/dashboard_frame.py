@@ -376,6 +376,13 @@ FORK_NOTHING_SELECTED_TEXT: Final = "Select an instant to branch at"
 # and a marked height at once, and "your mark" is true of both; which marks
 # were crossed is the bookmark panel's row to state, and repeating it here
 # would put two accounts of one stop on screen.
+#
+# **These exact words** (project owner, 2026-09-21, ratified, over `PL-TYWQ`'s
+# own illustrative "Branch at your mark - 0:45", which asserts where the mark
+# *is* and so is wrong whenever a mark lies inside a step). Ratified rather
+# than specified, so ordinary evidence reopens it - a learner who misreads it,
+# a measurement - but the clause it was chosen over is the one thing a rewrite
+# must not reintroduce.
 HALT_FORK_LABEL_TEMPLATE: Final = "Branch here: {instant}, stopped on your mark"
 
 BOOKMARK_DIALOG_TITLE: Final = "Bookmarks"

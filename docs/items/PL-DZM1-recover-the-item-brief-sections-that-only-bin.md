@@ -9,6 +9,7 @@ feature: unmerged-item-edits
 touches: docs/items
 added: 2026-09-21
 closed: 2026-09-21
+pr: 837
 payoff: a ratified project-owner decision that shipped as _pathspec_chunks stops existing only on a deleted branch, so a session proposing the alternative it was chosen over finds the refusal already recorded
 verify: grep -q 'chunk the pathspec' docs/items/PL-DMDF-docket-digest-asks-one-git-diff-per-item-file.md
 ---
