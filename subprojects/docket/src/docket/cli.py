@@ -52,14 +52,17 @@ from .model import (
 )
 from .plan import (
     OfferedReport,
+    clusters,
     features,
     gate,
+    generator_defects,
     placement_clause,
     placement_line,
     promotable,
     recommend,
     recurring,
     set_aside,
+    unsound_generator_claims,
 )
 from .release import (
     NOTES_DIR,
@@ -1306,6 +1309,14 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(f"  plan: {placement}")
     if heads := generators_explaining(item.identifier, items):
         print(render.format_generators(heads))
+    # The other half of the same edge. `show` on a *member* has named its head
+    # since `PL-C97K`; `show` on the *head* printed nothing at all about the
+    # cluster, so the surface a session reaches by naming a generator was the
+    # one surface that could not say whether its repairs were owed. `done` on
+    # the head means the cause was fixed, and on every head this project
+    # carries it sits above members that are still open (`PL-XF5V`).
+    if (cluster := clusters(items).get(item.identifier)) is not None:
+        print(f"  root cause of {render.format_drain(cluster)}")
     if item.recurrences:
         # Where a reader sent here by `next` or the digest actually lands. Naming
         # the count and not the filings would be the partial answer this package
@@ -1817,6 +1828,60 @@ def cmd_feature(args: argparse.Namespace) -> int:
         print(f"{feature.name}: {len(feature.done)}/{len(feature.items)} done ({state})")
         for item in feature.items:
             print(f"  [{render.progress_mark(item)}] {item.identifier} {item.title}")
+    return 0
+
+
+def cmd_generators(args: argparse.Namespace) -> int:
+    """How much of each generator's cluster is still open.
+
+    `bin/docket feature <name>` answers "is that dealt with?" for a feature and
+    nothing answered it for a generator, though a generator is the grouping
+    `CLAUDE.md` ranks above every band but `P0`. The gap was not cosmetic: all
+    eleven recorded heads are closed and 58 of the 99 items they name are not,
+    so every surface a session sees says the generator work is finished. What
+    finished is the *cause*; the repairs underneath it are what each head's
+    brief is explicit about owing (`PL-XF5V`).
+
+    With no argument it summarizes every cluster, rather than listing every
+    member as `feature` does. The question is a whole-store one and its answer
+    has to fit on a screen - 99 members do not - so the member list is what the
+    id argument buys.
+
+    An id may be a head or a member. A session usually holds a member's id,
+    since that is what `next` hands it, and asking "how is my cluster doing"
+    should not require first finding out what sits above it.
+    """
+    _, items, config = _load(args)
+    groups = clusters(items)
+    if not args.head:
+        print(
+            render.format_clusters(
+                groups,
+                unsound_generator_claims(items),
+                generator_defects(items, config.generator_paths),
+            )
+        )
+        return 0
+
+    item = find_item(items, args.head)
+    if item is None:
+        print(f"no item matching '{args.head}'")
+        return 1
+    if item.identifier in groups:
+        print(render.format_cluster(groups[item.identifier]))
+        return 0
+    # A member resolves to the cluster above it. Where more than one generator
+    # names it both are printed: `generators_explaining` already allows that,
+    # and picking one of them here would be this package answering from a
+    # partial read.
+    heads = [groups[h.identifier] for h in generators_explaining(item.identifier, items)]
+    if not heads:
+        print(
+            f"{item.identifier} carries no sound `root-cause-of:` and no generator names it, "
+            f"so it is in no cluster"
+        )
+        return 1
+    print("\n\n".join(render.format_cluster(cluster) for cluster in heads))
     return 0
 
 
@@ -2978,6 +3043,12 @@ def build_parser() -> argparse.ArgumentParser:
     feature = add("feature", "progress by feature")
     feature.add_argument("name", nargs="?")
     feature.set_defaults(func=cmd_feature)
+
+    generators = add("generators", "how much of each generator's cluster is still open")
+    generators.add_argument(
+        "head", nargs="?", help="one cluster's members; a member's id resolves to its head"
+    )
+    generators.set_defaults(func=cmd_generators)
 
     show = add("show", "print one item")
     show.add_argument("item")

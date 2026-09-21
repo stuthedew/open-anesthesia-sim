@@ -65,6 +65,138 @@ class Feature:
 
 
 @dataclass(frozen=True)
+class Cluster:
+    """A generator and the items its `root-cause-of:` names - the unit that drains.
+
+    `Feature` above is the analogue, and the reason this is a second type
+    rather than a reuse of it is the head. A feature is a set of items sharing
+    a name, and its own progress is the whole of its story; a cluster has an
+    item *above* it whose status answers a different question. Every generator
+    this project has recorded is closed while most of what each one named is
+    not, so a reader taking `done` on the head for the cluster's state reads
+    the work as finished when 58 of 99 members are open (`PL-XF5V`).
+
+    **The buckets are split by the head's own close date, not merged into one
+    count, because a third of the edges cannot be ordered.** `closed:` is a
+    date and not a timestamp, so a member closed on the head's close date may
+    have closed with it or hours after it - 32 of this store's 99 member
+    closures are that case. A single "open at the head's close" number would
+    have to pick one reading and print it as fact. Naming the same-day bucket
+    separately says exactly what the date supports, which is the floor
+    `.claude/rules/apparatus-standard.md` sets for an answer this package
+    gives.
+    """
+
+    head: Item
+    members: list[Item]
+
+    @property
+    def done(self) -> list[Item]:
+        return [i for i in self.members if i.status == "done"]
+
+    @property
+    def open_items(self) -> list[Item]:
+        return [i for i in self.members if i.is_open]
+
+    @property
+    def is_drained(self) -> bool:
+        """Every member closed - the state that makes a generator finished work."""
+        return bool(self.members) and not self.open_items
+
+    @property
+    def closed_since_head(self) -> list[Item]:
+        """Members closed strictly after the head did: the drain since the fix.
+
+        The trend the present split cannot carry. "58 of 99 open" was derived
+        twice two days apart and came back unchanged, and it was the
+        *unchanged* that made the answer useful; nothing stored that, and this
+        recovers it from the dates already in the store rather than from a new
+        field (project owner, 2026-09-21).
+        """
+        if self.head.closed is None:
+            return []
+        return [i for i in self.members if i.closed is not None and i.closed > self.head.closed]
+
+    @property
+    def closed_with_head(self) -> list[Item]:
+        """Members whose `closed:` is the head's own date - the unorderable bucket."""
+        if self.head.closed is None:
+            return []
+        return [i for i in self.members if i.closed is not None and i.closed == self.head.closed]
+
+    @property
+    def closed_before_head(self) -> list[Item]:
+        """Members already closed when the head closed.
+
+        A head is filed once a mechanism is seen standing under three items,
+        which can be after some of them were worked singly, so this is not
+        drain and is counted apart from it.
+        """
+        if self.head.closed is None:
+            return [i for i in self.members if not i.is_open]
+        return [i for i in self.members if i.closed is not None and i.closed < self.head.closed]
+
+
+def clusters(items: list[Item], known: Collection[str] | None = None) -> dict[str, Cluster]:
+    """Every sound generator head with the members it names, by head id.
+
+    Soundness is `is_generator`'s test, which is the same one `checks.py` and
+    `recommend` apply - so a claim this report counts is exactly a claim the
+    checker accepts and the ranking lifts. A head whose field is faulty is
+    left out here and named by `format_clusters` instead of being silently
+    dropped: an unsound claim is invisible to `docket next` too, and a report
+    that omitted it without saying so would hand over a partial reading as a
+    complete one.
+
+    Members are looked up across every item, the closed ones included, for the
+    reason `generators_explaining` gives: a root cause still explains an item
+    that has since closed, and a cluster whose edges decayed as it drained
+    could never report that it had drained.
+    """
+    by_id = {item.identifier: item for item in items if item.identifier}
+    resolved = set(by_id) if known is None else set(known)
+    heads = [item for item in items if item.identifier and is_generator(item, resolved)]
+    return {
+        head.identifier: Cluster(
+            head,
+            sorted(
+                (by_id[m] for m in dict.fromkeys(head.root_cause_of) if m in by_id),
+                key=lambda i: i.sort_key(),
+            ),
+        )
+        for head in sorted(heads, key=lambda i: i.identifier)
+    }
+
+
+def unsound_generator_claims(items: list[Item]) -> list[Item]:
+    """Items carrying `root-cause-of:` that `is_generator` refuses.
+
+    What `clusters` could not count, so that the report can say so. `docket
+    check` is a separate command and a store is routinely read before it is
+    validated, so these exist in practice rather than in principle.
+    """
+    known = {item.identifier for item in items if item.identifier}
+    return sorted(
+        (i for i in items if i.root_cause_of and not is_generator(i, known)),
+        key=lambda i: i.identifier,
+    )
+
+
+def generator_defects(items: list[Item], generator_paths: tuple[str, ...]) -> list[Item]:
+    """Items on the generator tier by `impairs-generators:` - tier, but no cluster.
+
+    They rank with a generator and have no members, so they are neither a
+    cluster nor absent from the question "are the generators dealt with": a
+    count of heads that ignored them is off by the number of them, which is
+    how `PL-XF5V`'s own brief came to say twelve heads over a table of eleven.
+    """
+    return sorted(
+        (i for i in items if impairs_generators_soundly(i, generator_paths)),
+        key=lambda i: i.identifier,
+    )
+
+
+@dataclass(frozen=True)
 class Gate:
     """The debt owed before a milestone begins, split by who clears it.
 
