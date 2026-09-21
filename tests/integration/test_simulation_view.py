@@ -3583,6 +3583,69 @@ def test_the_run_added_after_construction_is_named_and_given_its_own_sections(
     assert view.runs[1]._run_name_text.isHidden() is False
 
 
+def test_the_wash_in_state_and_off_scale_lines_name_their_run(application: QApplication) -> None:
+    """Both lines sit in the chart column the runs share, so each says whose value it is.
+
+    Once a branch is drawn the column stacks one line per run, and the run
+    names live in a different splitter section - so the only channel telling
+    the two apart is stacking order, which nothing on screen declares. Read
+    as the trunk's, the branch's F_A/F_I inverts the comparison the branch
+    exists to teach, and its off-scale notice reports a clipped trace on a
+    run that has none (`PL-25DD`).
+
+    Sevoflurane's 8% dial is 4 MAC against a 3 MAC ceiling, and the branch
+    inherits the trunk's dial, so both runs draw a clipped circuit trace and
+    both advisories are on screen at once - which is the case where a bare
+    line is most easily taken for the other run's.
+
+    No presentation is driven here beyond the one `_handle_fork` makes, so
+    the names arrive on the frame the branch appears on rather than on some
+    later tick.
+    """
+
+    trunk = SimulationController()
+    trunk.start()
+    trunk.set_delivered_partial_pressure_fraction(Fraction(0.08))
+    _advance_to(trunk, 600.0)
+    trunk.set_fresh_gas_flow(2.0)
+    trunk.pause()
+    view = _case_view(application, BranchedCase(trunk))
+    selector = view._fork_panel.point_selector
+    _take_fork(view, selector.itemData(selector.count() - 1))
+    _settle(application)
+
+    assert len(view.runs) == 2
+
+    for index, run in enumerate(view.runs):
+        opening = f"{run_label(index)} — "
+        assert run._wash_in_state_text.text().startswith(opening)
+        assert run._off_scale_text.isHidden() is False
+        assert run._off_scale_text.text().startswith(opening)
+        assert "Circuit" in run._off_scale_text.text()
+
+
+def test_a_lone_run_leaves_the_shared_chart_lines_unnamed(application: QApplication) -> None:
+    """One run has nothing to be told apart from, so the column carries no name.
+
+    The rule the run panels and both legends already follow (`_rename_runs`),
+    held here so the attribution `PL-25DD` adds does not become standing
+    chrome on the display a learner opens.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    controller.set_delivered_partial_pressure_fraction(Fraction(0.08))
+    _advance(controller, 600.0)
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+
+    assert run._off_scale_text.isHidden() is False
+    assert run._off_scale_text.text().startswith("Above the top of the plot:")
+    assert run._wash_in_state_text.text().startswith("Now: F_A/F_I =")
+    assert run_label(0) not in run._off_scale_text.text()
+    assert run_label(0) not in run._wash_in_state_text.text()
+
+
 def test_no_handle_of_the_restacked_splitter_becomes_draggable(application: QApplication) -> None:
     """Qt enables the handle it creates with a new section (`PL-25KS` freezes them)."""
 

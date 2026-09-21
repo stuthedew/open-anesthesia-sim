@@ -501,6 +501,16 @@ COMPARED_TRACE_LEGEND_TEMPLATE: Final = "{trace}, {run}"
 #: "Compartments", because the row above it already names the compartments and
 #: is the control; this row is the four curves actually on the plot.
 COMPARED_TRACE_LEGEND_CAPTION: Final = "Drawn traces:"
+#: One run's line in a column the runs share, while more than one is drawn:
+#: the run's name, then the line. The run leads here where it trails in
+#: `COMPARED_TRACE_LEGEND_TEMPLATE`, and the difference is what the reader is
+#: scanning for. A legend is read by curve, so the compartment leads there and
+#: the run tells two entries for one compartment apart. These columns stack one
+#: line per run, each opening with the same words - "Above the top of the
+#: plot", "Now: F_A/F_I" - so the run is the only thing distinguishing them,
+#: and a differentiator at the end of a wrapped sentence is one the reader has
+#: to go looking for.
+COMPARED_RUN_LINE_TEMPLATE: Final = "{run} — {line}"
 #: The fork's legend words. Vertical like a control mark and solid where that
 #: is dashed, which is the pair of channels that separates them; the words say
 #: both so the mark is identifiable without reference to the plot.
@@ -1829,6 +1839,53 @@ def compared_trace_legend_label(trace: str, run: str) -> str:
     """
 
     return COMPARED_TRACE_LEGEND_TEMPLATE.format(trace=trace, run=run)
+
+
+def compared_run_line(line: str, frame: ChartFrame, run_index: int) -> str:
+    """One run's line in a column the runs share, named while more than one is drawn.
+
+    The wash-in state line and the off-scale notice both sit in the chart
+    column rather than on the run's own panel, one line per run, and both
+    carry a clinical value: an F_A/F_I the reader compares against the other
+    run's, and a statement that a compartment's trace is clipped. Neither
+    said whose it was, and stacking order is not an attribution - it is
+    declared nowhere on screen, and the run names live in a different
+    splitter section. Read as the other run's, the first inverts the
+    comparison a branch exists to teach and the second reports a clipped
+    trace on a run that has none (`PL-25DD`).
+
+    Composed here rather than built into either line, following
+    `compared_trace_legend_label`: what the line says is a property of the
+    run's state, and which run it belongs to is a property of how many runs
+    the chart is drawing, so the run's name is a separate fact joined at the
+    one place that holds both.
+
+    A lone run is given no name, having nothing to be told apart from - the
+    rule `SimulationView._rename_runs` applies to the run panels and to both
+    legends, so a single-run display is unchanged. The frame's run is read
+    before that count is consulted, so an index addressing no run raises on
+    a one-run frame too rather than returning a line that looks right.
+
+    Args:
+        line: This run's line, already formatted.
+        frame: The frame drawn this tick, which is what says how many runs
+            are on the chart and what each is called.
+        run_index: Which of the frame's runs the line belongs to.
+
+    Returns:
+        The line unchanged while one run is drawn; the run's name and then
+        the line while more than one is.
+
+    Raises:
+        IndexError: If `run_index` is not one of the frame's runs.
+    """
+
+    run = frame.runs[run_index]
+
+    if len(frame.runs) <= 1:
+        return line
+
+    return COMPARED_RUN_LINE_TEMPLATE.format(run=run.label, line=line)
 
 
 def compartment_cap_notice(frame: ChartFrame) -> str | None:

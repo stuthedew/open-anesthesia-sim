@@ -86,6 +86,7 @@ from anesthesia_sim.app.dashboard_frame import (
     RunMarks,
     accounting,
     bookmark_panel,
+    compared_run_line,
     delivered_fraction,
     fork_offer,
     format_mac_target,
@@ -427,6 +428,20 @@ def _frame(
         (RunInput(run_label(0), controller, controller.snapshot(), adjustments),),
         time_base,
         shown,
+        plot_width_px=_PLOT_WIDTH_PX,
+    )
+
+
+def _compared_frame(*controllers: Any) -> ChartFrame:
+    """The frame one tick would draw for several runs, named as the dashboard names them."""
+
+    return assemble_chart_frame(
+        tuple(
+            RunInput(run_label(index), controller, controller.snapshot(), ())
+            for index, controller in enumerate(controllers)
+        ),
+        None,
+        COMPARTMENT_QUANTITIES,
         plot_width_px=_PLOT_WIDTH_PX,
     )
 
@@ -1606,6 +1621,54 @@ def test_a_hidden_trace_is_not_named_as_off_scale() -> None:
 
     assert off_scale_notice(_frame(controller), 0) is not None
     assert off_scale_notice(_frame(controller, shown=without_circuit), 0) is None
+
+
+# --- attributing a shared column's lines to the run that produced them ----------
+
+
+def test_a_lone_run_s_shared_line_is_left_unnamed() -> None:
+    """One run has nothing to be told apart from, which is the rule the panels follow."""
+
+    frame = _frame(_fake_controller(history=_run_history(40)))
+
+    assert compared_run_line("Now: F_A/F_I = 0.50", frame, 0) == "Now: F_A/F_I = 0.50"
+
+
+def test_a_compared_run_s_shared_line_opens_with_the_run_s_own_name() -> None:
+    """The name the legend and the run's panel use, leading the line rather than trailing it.
+
+    Both lines this composes sit in a column the runs share, so the run is
+    the only thing telling two otherwise identical openings apart - and a
+    differentiator behind a wrapped sentence is one the reader must hunt for
+    (`PL-25DD`).
+    """
+
+    frame = _compared_frame(
+        _fake_controller(history=_run_history(40)), _fake_controller(history=_run_history(40))
+    )
+
+    assert compared_run_line("Now: F_A/F_I = 0.50", frame, 0) == "Run 1 — Now: F_A/F_I = 0.50"
+    assert compared_run_line("Now: F_A/F_I = 0.61", frame, 1) == "Run 2 — Now: F_A/F_I = 0.61"
+
+
+def test_the_shared_line_takes_its_name_from_the_frame_that_drew_the_value() -> None:
+    """One source for both, so no caller can pair one run's name with another's line."""
+
+    frame = _compared_frame(
+        _fake_controller(history=_run_history(40)), _fake_controller(history=_run_history(40))
+    )
+
+    for index, run in enumerate(frame.runs):
+        assert compared_run_line("line", frame, index).startswith(f"{run.label} ")
+
+
+def test_a_shared_line_for_a_run_the_frame_does_not_hold_is_refused() -> None:
+    """An unattributable line is a failure rather than one that silently loses its name."""
+
+    single = _frame(_fake_controller(history=_run_history(40)))
+
+    with pytest.raises(IndexError):
+        compared_run_line("Now: F_A/F_I = 0.50", single, 1)
 
 
 def test_the_chart_says_so_when_no_compartment_is_drawn() -> None:
