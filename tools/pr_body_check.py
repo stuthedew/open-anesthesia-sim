@@ -116,6 +116,10 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
+
+from docket.store import ID_PATTERN  # noqa: E402
+
 RECOVERY_DIR = ROOT / "docs" / "pr-bodies"
 API = "https://api.github.com"
 TIMEOUT_S = 15
@@ -282,7 +286,7 @@ def item_ids(subject: str, pr: int, backlinks: dict[int, set[str]]) -> list[str]
     alone leaves 4 - the four release commits - and together they leave the
     same 4.
     """
-    found = set(re.findall(r"\bPL-[0-9A-Z]{3,4}\b", subject))
+    found = set(re.findall(ID_PATTERN, subject))
     found.update(backlinks.get(pr, set()))
     return sorted(found)
 

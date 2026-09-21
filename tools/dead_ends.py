@@ -95,6 +95,10 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO / "subprojects" / "docket" / "src"))
+
+from docket.store import ID_PATTERN  # noqa: E402
+
 DEAD_ENDS = REPO / "docs" / "dead-ends.md"
 ITEMS = REPO / "docs" / "items"
 
@@ -113,7 +117,10 @@ MAX_EMITTED_BYTES = 4000
 NUDGE_FRACTION = 0.8
 
 ENTRY = re.compile(r"^- \*\*(?P<what>.+?)\*\* [-—] (?P<why>.+)$")
-ITEM_ID = re.compile(r"\bPL-[A-Z0-9]{3,4}\b")
+#: The store's own grammar, so that "cites X, which is not an item" is
+#: refused on the same tokens `bin/docket check` calls ids. `PL-[A-Z0-9]{3,4}`
+#: stood here and read a three-letter token as an id (`PL-KYW3`).
+ITEM_ID = re.compile(ID_PATTERN)
 
 HEADER = (
     "Dead ends - approaches already tried here and refuted. "

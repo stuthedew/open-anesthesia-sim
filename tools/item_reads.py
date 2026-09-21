@@ -32,14 +32,22 @@ Standard library only, and parses at the floor
 from __future__ import annotations
 
 import re
+import sys
 from collections import defaultdict
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO / "subprojects" / "docket" / "src"))
+
+from docket.store import ID_PATTERN  # noqa: E402
+
 LOG = REPO / ".docket-reads.log"
 ITEMS = REPO / "docs" / "items"
 
-ITEM_ID = re.compile(r"\bPL-[A-Z0-9]{3,4}\b")
+#: The store's own grammar. `PL-[A-Z0-9]{3,4}` stood here and read `PL-CAP`
+#: and `PL-B1B` as ids - three characters is an id only when all three are
+#: digits, and no id carries a vowel (`PL-KYW3`).
+ITEM_ID = re.compile(ID_PATTERN)
 CLOSED = ("status: done", "status: dropped")
 
 

@@ -72,6 +72,11 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
+
+from docket.store import ID_PATTERN  # noqa: E402
+
 ITEM_DIR = Path("docs/items")
 
 #: A `touches` entry is compared after stripping any trailing separator:
@@ -97,8 +102,13 @@ NOT_SHRINKING = 1.0
 #: How many clusters to print. A display limit; the rest are counted.
 SHOW = 6
 
-ID_RE = re.compile(r"\bPL-[A-Z0-9]{4}\b")
-LEADING_IDS_RE = re.compile(r"^((?:PL-[A-Z0-9]{4})(?:\s*,\s*PL-[A-Z0-9]{4})*)\s*:")
+#: The store's own grammar, borrowed rather than restated. The pattern this
+#: replaced was `PL-[A-Z0-9]{4}`, which is blind to the 43 historical
+#: three-digit ids `store.ID_PATTERN` still accepts: 219 citation edges and
+#: 44 item filenames went unread, so `citations` undercounted exactly the
+#: oldest items and `creation_parents` attributed none of them (`PL-KYW3`).
+ID_RE = re.compile(ID_PATTERN)
+LEADING_IDS_RE = re.compile(rf"^((?:{ID_PATTERN})(?:\s*,\s*(?:{ID_PATTERN}))*)\s*:")
 
 
 @dataclass(frozen=True)
