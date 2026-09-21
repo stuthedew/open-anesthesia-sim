@@ -9,6 +9,7 @@ feature: scenario-branching
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, tests/unit, tests/integration, docs/ARCHITECTURE.md
 added: 2026-09-20
 closed: 2026-09-21
+pr: 841
 payoff: closes the one sequence the interface cannot complete - mark a decision point, stop there, branch there - which is what v0.5.0's Definition of done asks for
 verify: grep -q 'def test_a_branch_is_offered_at_the_mark_the_run_is_standing_on' tests/integration/test_simulation_view.py
 ---
@@ -162,3 +163,35 @@ this project would normally want measured rather than asserted.
 or truncates is `PL-ZW0J`, is the owner's, and is deliberately downstream: they
 asked on 2026-09-20 to revisit it after using the thing. This item is the route
 to a branch at a marked instant, which both answers to `PL-ZW0J` need.
+
+---
+
+## What shipped, and the second decision the shape needed
+
+Recorded after the close because the brief's own sketch is now contradicted by
+the string on screen, and a later session reading only the sketch would take it
+for the specification.
+
+The shape is as ratified: a separate transient control, on the panel only while
+`snapshot().bookmark_halt` holds. The **wording** is not the sketch's. This
+brief illustrated it as `Branch at your mark - 0:45`, which asserts where the
+mark *is* - and that claim is false whenever a mark lies inside a step, because
+`SimulationController.resumed_at_halt` opens the branch at the step's end rather
+than at the marked instant. What shipped binds the number to what the control
+*does* and says `stopped on your mark` of the halt rather than of the number:
+
+```
+Branch here: {instant}, stopped on your mark
+```
+
+**Ratified 2026-09-21** (project owner), over this brief's own illustrative
+label. Ratified rather than specified: the case was a session's recommendation,
+so ordinary evidence reopens it. `dashboard_frame.HALT_FORK_LABEL_TEMPLATE`
+carries the full reasoning beside the string, which is where a session about to
+change it will read.
+
+Merged as `#841`. `tests/unit/test_dashboard_frame.py` pins the marked-versus-
+halted distinction on the plain value (45.3 s marked, 45.4 s halted) and
+`tests/integration/test_simulation_view.py` pins it end to end through the panel
+(80.05 s marked, 80.1 s halted), so a rewrite that reintroduces the refused
+claim fails rather than merely looking different.

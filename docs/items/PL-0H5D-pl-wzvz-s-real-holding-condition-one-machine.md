@@ -8,6 +8,7 @@ feature: wzvz-deferral-integrity
 touches: docs/items, subprojects/docket/src/docket
 added: 2026-09-21
 closed: 2026-09-21
+pr: 840
 payoff: stops PL-WZVZ arriving at P1 and unbuildable in front of bin/docket next the moment its proxy blockers close in v0.6.0, which is the same false-ready PL-8G48 corrected by hand on 2026-09-20
 verify: python3 tools/doc_check.py check && grep -qE '^blocked-by: (PL-[A-Z0-9]{4}, ){2,}PL-[A-Z0-9]{4}' docs/items/PL-WZVZ-make-an-inter-machine-difference-attributable.md
 ---
