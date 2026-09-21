@@ -58,10 +58,15 @@ Three facts decide Sonnet over Haiku, and none of them is a preference:
    defect with a real fix — `bin/docket delegable` currently offers 141 of
    them — not a typo sweep.
 2. **Haiku 4.5's context window is 200K against the others' 1M.**
-   `CLAUDE.md` tells a session to hand off at about 150,000 tokens, which
-   leaves roughly 50K of headroom on Haiku and roughly 850K on Sonnet. The
-   resident instruction set alone measured 2.5–5.6% of the contexts seven
-   concurrent sessions carried on 2026-09-19 (`PL-H253`).
+   `CLAUDE.md` budgets 150,000 tokens of *spend* on top of whatever a session
+   starts with, and that baseline measured 81,048 bare and 115,320 with the
+   `docket` skill loaded (`PL-W80S`, 2026-09-21). A session spending its whole
+   budget therefore ends around 231K–265K of context: **past Haiku's entire
+   window before it reaches the hand-off**, and about a quarter of Sonnet's.
+   This line previously read "roughly 50K of headroom on Haiku", which the
+   2026-09-21 re-anchoring of the budget to spend made backwards rather than
+   merely stale. The resident instruction set alone measured 2.5–5.6% of the
+   contexts seven concurrent sessions carried on 2026-09-19 (`PL-H253`).
 3. **Haiku 4.5 does not take the effort parameter**, so § "Match effort to
    the standard the work is held to" below — open apparatus sessions at
    `high` — cannot be honoured on a Haiku session at all. The lever this file
