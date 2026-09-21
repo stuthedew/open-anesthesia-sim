@@ -17,25 +17,45 @@ than one route.
   agree **element for element**, not within a tolerance. This is what a cache,
   a memoised propagator or a reused buffer would break, and each of those is a
   reasonable-looking optimisation somebody will propose.
-- *A fork opening from a keyframe reproduces its parent exactly.* `ROADMAP.md`
+- *A fork reproduces its parent exactly, wherever it was taken.* `ROADMAP.md`
   item 12 requires element-wise reproduction rather than agreement within a
-  tolerance, and the canonical rule supplies it under two conditions, both
-  measured on this file's run on 2026-09-07 rather than assumed. The fork must
-  open **at a keyframe**: a run definition restarted from `state_at` at a segment
-  opening reproduces its parent bit for bit, and one restarted at an instant
-  the parent has no keyframe for does not, differing by up to 5.3e-13 in a
-  cumulative accumulator - the restart is one propagation over an interval
-  against two over its halves, which is a different rounding of the same exact
-  solution. And the child's definition must open **at the fork instant on the
-  case's own axis**, so that parent and child are asked for the same instant in
-  the same float and form their intervals by the same subtraction. That
-  condition replaced a rule (`PL-ZMRT`, 2026-09-14): while the child opened at
-  a zero of its own, exactness depended on every caller reaching it by
-  subtracting the fork instant rather than naming the child's own elapsed time,
-  and the two differ because the subtraction does not always round-trip - with
-  a fork at 900 s, `(900.0 + 1e-6) - 900.0` is 9.999999974752427e-07 rather
-  than 1e-6. One frame makes that difference unrepresentable instead of
-  forbidden. That condition constrains how a fork may be built, which is why
+  tolerance, and the canonical rule supplies it under one condition on where
+  the child's definition opens: **at the parent's keyframe at or before the
+  fork instant, on the case's own axis**. Parent and child then propagate from
+  the identical keyframe and form each interval by the identical subtraction,
+  so the reproduction follows from how a branch is built rather than from a
+  caller having converted correctly. The two shapes the program can produce
+  are held to it separately here (`PL-Z3W6`), over 207 instants each:
+
+  - *A fork on a keyframe*, where the fork and the definition's opening are
+    one instant. Every fork taken at a control event is this.
+  - *A fork between two keyframes*, where the definition opens at the earlier
+    one while the branch stands at the fork - a fork at a bookmark halt, whose
+    instant is not in general a keyframe (`PL-B8MK`). Its definition therefore
+    covers a stretch the branch never lived, between that keyframe and the
+    fork, and the parent's answers over that stretch are asserted too. What
+    clips it from a branch's *drawn* range is a presentation decision about
+    whose trajectory it is; this is what says the numbers under it were never
+    in question.
+
+  **Both are measured against the route the program refuses**, because a
+  reproduction obtained for nothing is no evidence that the condition is
+  load-bearing. Opening a definition *at* an unkeyframed fork instant, from the
+  canonical state there, replaces one propagation over an interval with two
+  over its halves - a different rounding of the same exact solution - and stops
+  reproducing: on this file's run forked at 1 234.5 s, 1 109 of the 1 269 state
+  elements over the 141 probes at or past it differ, worst 7.8e-15 as a fraction
+  and 1.9e-12 L on an accumulator, measured 2026-09-21. Both figures sit far below anything a
+  readout resolves, which is why the condition is enforced in code rather than
+  left to a reader to notice.
+
+  **One frame is what makes the subtraction safe** (`PL-ZMRT`, 2026-09-14).
+  While a child opened at a zero of its own, exactness depended on every caller
+  reaching it by subtracting the fork instant rather than naming the child's
+  own elapsed time, and the two differ because the subtraction does not always
+  round-trip - with a fork at 900 s, `(900.0 + 1e-6) - 900.0` is
+  9.999999974752427e-07 rather than 1e-6. Opening on the case's own axis makes
+  that difference unrepresentable instead of merely forbidden, which is why
   this file gates it rather than leaving it to be discovered by item 12.
 - *The display path is separated in code.* A `DisplayState` cannot open a
   definition. `docs/MODEL.md` states the rule; this is what makes the statement
@@ -152,6 +172,39 @@ four orders past anything ever measured without failing.
 """
 
 
+FORK_BETWEEN_KEYFRAMES_S = 1234.5
+"""A fork instant inside the run's last stretch that is not one of its keyframes.
+
+Chosen for three properties. It lies in the stretch opening at 900 s and the
+run records no change after that, so parent and child share every instant from
+that keyframe to the end of the run rather than only as far as the parent's
+next setting. It is not a keyframe, which is what a fork at a bookmark halt is:
+on the 120 s run the integration tests use, 3 of the 1 201 instants a halt
+could land on are keyframes. And it is a whole number of the 0.1 s steps a run
+is advanced through, so it is an instant the program could really be halted and
+forked at rather than one only this file can name.
+"""
+
+WORST_RESTART_FRACTION_DIVERGENCE = 1e-13
+"""Bound on |parent - restarted| for a compartment fraction, in a fraction of 1 atm.
+
+"Restarted" is the route the program refuses: a definition opened *at* an
+unkeyframed fork instant rather than at the keyframe before it. Measured at or
+below 7.8e-15 on the run below; set an order above that so an ordinary
+floating-point wobble does not fail the suite, and nine orders below the 1e-4 a
+readout resolves, which is the point that measurement makes.
+"""
+
+WORST_RESTART_ACCUMULATOR_DIVERGENCE = 2e-11
+"""Bound on |parent - restarted| for a cumulative accumulator, in litres.
+
+Measured at or below 1.9e-12 on the run below. Held separately from the
+fraction bound for the reason `WORST_ACCUMULATOR_SEPARATION` gives: one bound
+covering both would have to be the looser of the two, and would let the other
+quantity drift orders past anything measured without failing.
+"""
+
+
 def _run_definition(length_s: float = RUN_LENGTH_S, probe: Random | None = None) -> RunDefinition:
     """The run every test here uses, optionally queried as it is built.
 
@@ -204,6 +257,38 @@ def _probe_instants(count: int = 200) -> tuple[float, ...]:
     spread = Random(20260907)
 
     return (*PROBES, *(spread.uniform(0.0, RUN_LENGTH_S) for _ in range(count)))
+
+
+def _shared_instants(opening_s: float, count: int = 200) -> tuple[float, ...]:
+    """The instants a fork inside the run's last stretch shares with its parent.
+
+    The structural ones first - the stretch's own opening, one microsecond past
+    it, a second and a half past it, the fork and either side of it, and the
+    end of the run - then a seeded spread across the stretch. Seeded for the
+    reason `_probe_instants` is seeded: a failure has to name the same instants
+    on the next run, or it reports something that cannot be acted on.
+
+    The probes *below* the fork are not decoration. A branch taken between two
+    keyframes opens its definition at the earlier one, so its definition covers
+    a stretch the branch itself never lived; `SimulationController.began_at_s`
+    clips that stretch from what the branch may be drawn from, because drawing
+    it would show the parent's trajectory under the branch's identity. The clip
+    is a statement about whose trajectory it is and not about the arithmetic,
+    and these probes are what says so.
+    """
+
+    spread = Random(20260921)
+
+    return (
+        opening_s,
+        opening_s + 1e-6,
+        opening_s + 1.5,
+        FORK_BETWEEN_KEYFRAMES_S - 1e-6,
+        FORK_BETWEEN_KEYFRAMES_S,
+        FORK_BETWEEN_KEYFRAMES_S + 1e-6,
+        RUN_LENGTH_S,
+        *(spread.uniform(opening_s, RUN_LENGTH_S) for _ in range(count)),
+    )
 
 
 def _settings_at(definition: RunDefinition, elapsed_s: float) -> UptakeEquationSettings:
@@ -285,8 +370,128 @@ def test_a_fork_opening_from_a_keyframe_reproduces_its_parent() -> None:
     )
     child.advance_to(RUN_LENGTH_S)
 
-    for elapsed_s in (opening.instant_s, opening.instant_s + 1e-6, 901.5, 1234.5678, RUN_LENGTH_S):
-        assert child.state_at(elapsed_s) == parent.state_at(elapsed_s)
+    for elapsed_s in _shared_instants(opening.instant_s):
+        assert child.state_at(elapsed_s) == parent.state_at(elapsed_s), (
+            f"the branch and its parent differ at {elapsed_s} s"
+        )
+
+
+def test_a_fork_opening_between_two_keyframes_reproduces_its_parent() -> None:
+    """The same guarantee where the fork instant is not a keyframe (`PL-Z3W6`).
+
+    A bookmark may be dropped anywhere, so a fork taken at one is in general
+    taken between two of the parent's keyframes rather than on one - on the
+    120 s run the integration tests use, 3 of the 1 201 instants a halt could
+    land on are keyframes. Recording a keyframe where the run halts would make
+    the two coincide again, and is the route `PL-B8MK` measured and refused: it
+    displaces the parent's own later answers, so marking a run would change it.
+
+    What the branch does instead is open its definition at the parent's
+    keyframe **at or before** the fork, under the parent's settings, and stand
+    its clock at the fork. That is the general form of the condition the
+    keyframe case satisfies as a special case, and this is where the two are
+    held apart: a keyframe fork cannot tell them apart, because there the
+    opening and the fork are one instant.
+
+    Three claims, and the second is the one a later change would break
+    silently. The child's definition reproduces the parent over every instant
+    they share, including the stretch below the fork that the branch never
+    lived. The state the child stands at when it is forked is the parent's own
+    canonical state there, bit for bit, rather than a value rederived by the
+    child or read back out of a seeded uptake system - an 11.7% round-trip
+    error on alveolar fractions is what `app/controller.py` takes the canonical
+    route to avoid. And the parent is left as it was, which is what says the
+    fork read the run rather than edited it.
+    """
+
+    parent = _run_definition()
+    segment = parent.segment_at(FORK_BETWEEN_KEYFRAMES_S)
+    opening = segment.opening
+
+    assert FORK_BETWEEN_KEYFRAMES_S not in [
+        candidate.opening.instant_s for candidate in parent.segments
+    ], "the premise: the parent holds no keyframe at the fork, so the two conditions differ"
+    assert opening.instant_s < FORK_BETWEEN_KEYFRAMES_S
+
+    before = [candidate.opening for candidate in parent.segments]
+    child = RunDefinition(segment.settings, opening.state, opened_at_s=opening.instant_s)
+    child.advance_to(RUN_LENGTH_S)
+
+    assert child.state_at(FORK_BETWEEN_KEYFRAMES_S) == parent.state_at(FORK_BETWEEN_KEYFRAMES_S), (
+        "the branch does not stand at the state its parent holds at the fork"
+    )
+
+    for elapsed_s in _shared_instants(opening.instant_s):
+        assert child.state_at(elapsed_s) == parent.state_at(elapsed_s), (
+            f"the branch and its parent differ at {elapsed_s} s"
+        )
+
+    assert [candidate.opening for candidate in parent.segments] == before
+
+
+def test_a_fork_opening_at_the_instant_it_was_taken_does_not_reproduce_its_parent() -> None:
+    """Why the definition opens at the keyframe, measured here rather than quoted.
+
+    Opening at the fork is the arrangement a reader expects, and it is the one
+    thing the relaxation above gives up. If it reproduced the parent anyway,
+    the condition would be costing a reader an explanation and buying nothing,
+    and every test above would pass while guarding it.
+
+    It does not reproduce. Restarting at an instant the parent holds no
+    keyframe for replaces one propagation over an interval with two over its
+    halves, which is the same exact solution composed in a different order, and
+    the difference survives to every later instant. Measured 2026-09-21 over
+    the 141 probes at or past the fork: 1 109 of the 1 269 state elements
+    differ, worst 7.8e-15 as a fraction and 1.9e-12 L on an accumulator.
+
+    Both halves are asserted, because each alone permits a failure the other
+    catches. That the difference is *real* is what makes the condition worth
+    enforcing; that it is *this small* is what makes enforcing it in code the
+    only way to catch it, since it is nine orders below the 1e-4 a compartment
+    readout resolves and six below the 1e-6 L the mass balance is shown to. A
+    branch built this way would look exactly like one built correctly.
+
+    It fails honestly if a future change makes the restart exact, which would
+    mean the condition had stopped costing anything and this file had a
+    sentence to delete rather than a bug to fix.
+    """
+
+    parent = _run_definition()
+    segment = parent.segment_at(FORK_BETWEEN_KEYFRAMES_S)
+    restarted = RunDefinition(
+        segment.settings,
+        parent.state_at(FORK_BETWEEN_KEYFRAMES_S),
+        opened_at_s=FORK_BETWEEN_KEYFRAMES_S,
+    )
+    restarted.advance_to(RUN_LENGTH_S)
+
+    differing = 0
+
+    for elapsed_s in _shared_instants(segment.opening.instant_s):
+        if elapsed_s < FORK_BETWEEN_KEYFRAMES_S:
+            continue
+
+        canonical = parent.state_at(elapsed_s)
+        restart = restarted.state_at(elapsed_s)
+        differing += sum(canonical[entry] != restart[entry] for entry in range(STATE_SIZE))
+
+        for entry in FRACTION_STATES:
+            assert abs(canonical[entry] - restart[entry]) < WORST_RESTART_FRACTION_DIVERGENCE, (
+                f"entry {entry} diverged further than measured at {elapsed_s} s"
+            )
+
+        for entry in (DELIVERED_AGENT_L, EXHAUSTED_AGENT_L):
+            assert abs(canonical[entry] - restart[entry]) < WORST_RESTART_ACCUMULATOR_DIVERGENCE, (
+                f"entry {entry} diverged further than measured at {elapsed_s} s"
+            )
+
+        assert restart[UNIT_STATE] == 1.0
+
+    assert differing > 0, (
+        "a definition restarted at an unkeyframed instant reproduced its parent element "
+        "for element, so opening a branch at the keyframe before the fork has stopped "
+        "buying anything and the condition should be retired rather than explained"
+    )
 
 
 def test_a_display_value_cannot_open_a_run_definition() -> None:
