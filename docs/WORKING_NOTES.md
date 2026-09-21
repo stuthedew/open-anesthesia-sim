@@ -2192,3 +2192,65 @@ Whether a *second* consecutive red should read differently from the first was
 not designed: at 8 episodes over 10 days there is no evidence it would change a
 decision, and inventing a rule for it now would be the altitude error
 `.claude/rules/expert-review.md` warns about.
+
+## v0.6.0's headline is the area/View system itself, which reshaped three things on 2026-09-21
+
+A design round after v0.5.0 shipped, asked as "reassess where we are and
+finalize the plan to v0.6.0". The plan needed no finalizing - v0.6.0 was scoped
+2026-09-16 and re-affirmed 09-17 - so what the round produced is three ratified
+decisions and one defect, none of which is implemented. `PL-M3X6` and
+`PL-C4W8` carry the detail; this thread is what spans them.
+
+**The project owner's argument, and it is the spine of all three.** UI decisions
+about layout and location - where a y-axis control lives, how many readout
+columns fit, what an axis is scaled against - are informed by what a View looks
+like. Settling them now against a monolithic GUI means settling them twice.
+Stated plainly at the end: **the app should not look as it does now at v0.6.0;
+the modular workspace/area/View system is the headline feature.** A session
+reply in this round said the opposite - that v0.6.0 leaves the app looking much
+as it does today - and was corrected. That reply had conflated the visual pass
+over the *existing* dashboard (item 33, `v0.7.x`, correctly deferred) with the
+appearance of the surfaces this milestone *creates*, which nothing owns.
+
+**1. `PL-M3X6` - Required-scope entry 20.** Entries 1-19 are all mechanism and
+none says what any of it looks like, while § "Explicitly out of scope" sends
+"the visual composition of each surface" to item 33. The membership test is
+*does this surface exist in the application today* - the new-versus-inherited
+axis, deliberately not furniture-versus-content, because the unconditional
+region is content and the two failure states are states, and all three qualify.
+Seven members, and the pixel budget across them: a tab strip, Area headers and
+live handles all take screen from the chart, on a window where `PL-Z4K6`
+already questions seven readout columns at 1366 px.
+
+**2. The gate reclassification, recorded on `PL-C4W8`.** An entry v0.6.0 would
+re-decide carries `feature: interface-areas` and is cleared *by* the milestone.
+This is re-labelling, not renegotiation: `plan.py`'s rule is "Cleared by the
+milestone itself: open debt carrying its feature", the freeze holds, every entry
+stays on the list, nothing defers to Gate 3. The bucket holds one member today
+(`PL-VN6M`). The line: **ownership, placement and sizing move; units, wording,
+arithmetic and guards do not.** Answered per entry against the tree, never per
+feature in bulk - and against a live counter-precedent, since the same
+"it will be redone anyway" argument was made for the Qt port absorbing item 33
+and falsified by measurement at 10 insertions and 29 deletions in `theme.py`.
+
+**3. `PL-D8KW` - the defect, and it is upstream of everything above.** Cadence
+beat 3 requires a staleness sweep before any gate entry is worked, and three
+places name `PL-6ZQY` as the standing instrument: `ROADMAP.md:6172`,
+`ROADMAP.md:5394` and `.claude/skills/docket/modes/release.md:43`. `PL-6ZQY`
+closed 2026-09-19, two days before Gate 2 froze, and its brief ends "What this
+item still owes: Nothing." A session follows the instruction, reads `done`, and
+skips the beat with nothing failing.
+
+**Measured in the round, for whoever picks this up.** Gate 2 stands at 183
+entries, 168 clearable: 110 S, 58 M; 113 `ready`, 47 `needs-decision`, 8
+blocked; 95 apparatus, 43 product, 27 both. 41 of the 168 are learner-visible,
+11 of those need an owner decision. v0.6.0's own 23 Required-scope items are
+4 L, 16 M, 3 S at dependency depth 4, and **only two are startable** -
+`PL-1FT6` alone unblocks 8 directly and gates 20 transitively, which is the
+schedule risk in this milestone. Gate 1's precedent: 185 entries frozen
+2026-09-06, 184 cleared by 2026-09-21, alongside v0.5.0's own scope.
+
+**Nothing here is built.** `PL-M3X6` and `PL-C4W8` are both `untriaged`, the
+`ROADMAP.md` edit for entry 20 has not been made, and the reclassification has
+been applied to no entry. The session stopped at 158k of spend, not for the
+work.
