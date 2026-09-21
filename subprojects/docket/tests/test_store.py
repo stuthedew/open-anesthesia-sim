@@ -160,4 +160,3 @@ def test_rewrite_item_keeps_the_file_it_came_from(tmp_path: Path) -> None:
     assert target == original
     assert [p.name for p in tmp_path.glob("*.md")] == [original.name]
     assert "title: New title" in original.read_text(encoding="utf-8")
-

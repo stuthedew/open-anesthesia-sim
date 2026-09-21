@@ -54,6 +54,14 @@ token under `.claude/` failing the grammar was a defect - 2 of 2, both
 `PL-A1B2`. `.claude/` is the resident instruction set a session reads to learn
 the conventions, so a malformed id in it is a template, not a discussion.
 
+**What it cannot see, stated rather than left to be found.** An id spelled with
+underscores so that it can be a keyword argument - `_items(root,
+PL_AAAA_open=...)` in `tests/unit/test_doc_check.py`, whose helper writes
+`PL-AAAA-open.md` - is the same defect and passes here, because widening the
+candidate to `PL_` would reject ordinary constant names like `PL_PREFIX` for a
+reason that has nothing to do with ids. Four instances existed and `PL-7922`
+renamed them; the mechanism gap is `PL-L609`.
+
 **`docs/`, `ROADMAP.md` and the item store are out of scope, and that is the
 same measurement pointing the other way.** There, prose *about* malformed ids is
 the norm rather than the exception - `PL-GXPP`'s brief alone names seventeen,
@@ -78,8 +86,9 @@ import argparse
 import ast
 import re
 import sys
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator, NamedTuple
+from typing import NamedTuple
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
@@ -113,7 +122,9 @@ MARKER = "not-an-id"
 DOCSTRING_HOLDERS = (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
 
 #: Never walked: neither is repository source, and both can hold anything.
-SKIP_DIRS = frozenset({".git", ".venv", "__pycache__", ".ruff_cache", ".mypy_cache", "node_modules"})
+SKIP_DIRS = frozenset(
+    {".git", ".venv", "__pycache__", ".ruff_cache", ".mypy_cache", "node_modules"}
+)
 
 #: The one tree whose prose is scanned. See the module docstring for why it is
 #: this tree and not `docs/`.
