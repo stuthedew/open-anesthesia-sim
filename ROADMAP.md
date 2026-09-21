@@ -196,15 +196,21 @@ own work is 74 files, +2,949/-364, of which 37 are item files; what is left is
 `subprojects/docket/`, `tools/`, `tests/unit/`, `.claude/`, `CLAUDE.md`,
 `ROADMAP.md` and the two `core/` docstrings above.
 
-**What sits inside this tag without being named in these notes.** Three sibling
-sessions were running when this cut was taken, so anything they land between
-the cut and the tag is inside `v0.5.2` and is cited under v0.5.3. Shipping the
-cut as taken rather than regenerating it is `PL-V065`'s ratified precedent
-(project owner, 2026-09-21) applied rather than re-decided: while sibling
-sessions keep landing pull requests, a regenerated set of notes goes stale
-before it can merge. `PL-JYTJ`, the cut of v0.5.2 itself, closes under v0.5.3
-for the same structural reason `PL-V065` closes here - a cut cannot stamp
-itself.
+**What sits inside this tag without being named in these notes.** #877
+(`PL-HWV1`) merged minutes after this cut was taken - the withdrawal of a
+repository-topic objection, dropped on the project owner's challenge the day it
+was filed. It is inside the `v0.5.2` tag and will be named in no release's
+notes at all, here or under v0.5.3, because a `dropped` item is never stamped
+with a milestone: this paragraph is the only place a reader meets it. Anything
+the two sessions still running land before the tag is inside `v0.5.2` the same
+way, and those are cited under v0.5.3.
+
+Shipping the cut as taken rather than regenerating it is `PL-V065`'s ratified
+precedent (project owner, 2026-09-21) applied rather than re-decided: while
+sibling sessions keep landing pull requests, a regenerated set of notes goes
+stale before it can merge - #877 arrived while this section was being written.
+`PL-JYTJ`, the cut of v0.5.2 itself, closes under v0.5.3 for the same
+structural reason `PL-V065` closes here - a cut cannot stamp itself.
 
 ### One grammar for what an item id is
 
