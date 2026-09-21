@@ -1018,6 +1018,16 @@ def test_two_open_items_sharing_a_command_both_report_as_passing(tmp_path: Path)
     assert already_passing(root, items).passing == ("PL-K7QX", "PL-41B2")
 
 
+def test_only_the_passing_item_is_reported_where_two_commands_differ(tmp_path: Path) -> None:
+    """The other half the deleted pair pinned: the filter across items, not one flag."""
+    root = _repo(tmp_path)
+    items = [
+        _item(identifier="PL-K7QX", verify="true"),
+        _item(identifier="PL-41B2", verify="false"),
+    ]
+    assert already_passing(root, items).passing == ("PL-K7QX",)
+
+
 def test_the_landed_check_declines_rather_than_re_entering_docket_check(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
