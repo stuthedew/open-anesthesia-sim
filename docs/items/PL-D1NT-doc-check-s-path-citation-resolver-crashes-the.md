@@ -3,11 +3,13 @@ id: PL-D1NT
 title: doc_check's path-citation resolver crashes the whole run on a path it cannot stat: the glob branch is guarded against exactly this and the .exists() branch is not
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-19
+closed: 2026-09-21
 verify: grep -q 'def test_a_citation_the_process_cannot_stat_is_reported_not_raised' tests/unit/test_doc_check.py
+recurrences: 2026-09-21 PL-H0CF
 ---
 
 **Problem.** doc_check's path-citation resolver crashes the whole run on a path it cannot stat: the glob branch is guarded against exactly this and the .exists() branch is not

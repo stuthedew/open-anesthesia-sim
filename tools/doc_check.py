@@ -80,6 +80,7 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import os
 import re
 import subprocess
 import sys
@@ -2749,7 +2750,25 @@ def _resolves(root: Path, basenames: frozenset[str], token: str) -> bool:
                     # which is a finding about that line and not a reason to
                     # stop (`PL-0M7L`).
                     continue
-            elif (base / candidate).exists():
+            # `os.path.exists`, never `Path.exists`, and a later tidy-up
+            # must not put the method back. Through 3.13 `Path.exists`
+            # re-raises every `OSError` it does not read as "absent" - it
+            # ignores ENOENT, ENOTDIR, EBADF and ELOOP and lets EACCES out -
+            # so a token naming a path this process may not stat aborted the
+            # whole run on a traceback. 3.14 rewrote the method to `return
+            # os.path.exists(self)`, which is what this line calls directly,
+            # so the verdict stops depending on which interpreter ran the
+            # check. That dependency is why the defect reached `main` twice
+            # while `make check` was green in the session that wrote the line:
+            # a session runs as root on 3.14, CI runs `python3
+            # tools/doc_check.py check` unprivileged on the system one, and
+            # there it reported nothing at all about any of the ~1,279
+            # citations around it (`PL-D1NT`). It is the guard the `glob`
+            # branch above has carried since `PL-0M7L`, and this branch did
+            # not: a path the process cannot stat is a citation that does not
+            # resolve, which is a finding about that line and not a reason to
+            # stop.
+            elif os.path.exists(base / candidate):
                 return True
     # A bare filename (`parameters.py`, `WORKING_NOTES.md`) is written without
     # a directory throughout the documentation; resolve it by name.

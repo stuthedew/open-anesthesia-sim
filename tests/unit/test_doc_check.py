@@ -518,6 +518,49 @@ def test_glob_citation_resolves_and_a_dangling_one_does_not(tmp_path: Path) -> N
     assert any("cites `data/patients/*.json`" in e for e in _errors(_repo(tmp_path, readme=readme)))
 
 
+def test_a_citation_the_process_cannot_stat_is_reported_not_raised(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One unstattable token must not take every other citation with it.
+
+    Found 2026-09-19 and live again on 2026-09-21: a documentation line cited
+    the container's agent-proxy README by absolute path, under a directory
+    mode 700 for the unprivileged user CI runs as. `_resolves` raised
+    `PermissionError` out of `Path.exists` and `doc_check` reported nothing at
+    all about any of the ~1,279 citations around it, while `make check` stayed
+    green in the session that wrote the line (`PL-D1NT`; `PL-0M7L` is the same
+    failure in the `glob` branch above, guarded since).
+
+    The raise is driven rather than staged, because this suite's interpreter
+    can no longer produce one. Through 3.13 `Path.exists` re-raises any
+    `OSError` outside ENOENT, ENOTDIR, EBADF and ELOOP; 3.14 rewrote it to
+    `return os.path.exists(self)`, which swallows all of them - so the defect
+    is live under the `python3 tools/doc_check.py check` that CI and a bare
+    checkout run, and invisible under the pinned 3.14 that runs these tests.
+    Patching the method this resolver must not use is what pins the fix on the
+    interpreters where it matters: restore `Path.exists` here and this fails,
+    on any version.
+    """
+    token = "refused/only-here.md"
+    unpatched = Path.exists
+
+    def refusing_exists(self: Path, *, follow_symlinks: bool = True) -> bool:
+        if str(self).endswith(token):
+            raise PermissionError(13, "Permission denied")
+        return unpatched(self, follow_symlinks=follow_symlinks)
+
+    monkeypatch.setattr(Path, "exists", refusing_exists)
+
+    readme = f"# Demo\n\nSee `{token}` and `core/moved.py`.\n"
+
+    errors = _errors(_repo(tmp_path, readme=readme))
+
+    assert any(f"cites `{token}`" in e for e in errors)
+    # The regression is the second line, not the first: an unguarded stat
+    # aborted `analyze` before any later citation was judged at all.
+    assert any("cites `core/moved.py`" in e for e in errors)
+
+
 def test_identifiers_are_not_mistaken_for_paths(tmp_path: Path) -> None:
     readme = "# Demo\n\nSee `Entry.model_guidance`, `flet_charts.*`, `v0.2.0`, `--cov`.\n"
     assert not any("cites `" in e for e in _errors(_repo(tmp_path, readme=readme)))
