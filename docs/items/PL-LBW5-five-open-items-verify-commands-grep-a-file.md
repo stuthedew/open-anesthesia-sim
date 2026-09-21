@@ -78,3 +78,26 @@ but `checks.py` never calls either, and `concurrency.py:60-61` still reads
 greps `PL-L4YG`'s `touches`, and satisfying it would mean editing a shipped
 item's declaration. Re-point it at one of the three open items as part of
 starting this.
+
+## Narrowed by PL-C4W8's Gate 2 staleness sweep, 2026-09-21
+
+**Three of the five, not five.** `PL-L4YG` closed `done` on 2026-09-19 (#679)
+with its undeclared path unrepaired, which puts it outside `bin/docket
+concurrent`'s scope - the command ranks open items only, so a closed item's
+undeclared `verify:` path cannot cause the collision this item is about. And
+`PL-MSFB` was never a member: this brief's own text calls it "a trailing-slash
+artifact and not a finding".
+
+**Still live, each re-checked against the tree:**
+
+- `PL-QS9H` - `verify:` runs `tests/unit/test_standing_text_check.py`, which no
+  declared `touches` path covers.
+- `PL-RWBV` - `touches: docs/items`, `verify:` reaches
+  `subprojects/docket/tests/test_checks.py`.
+- `PL-TCKV` - `touches: docs/worker.md,
+  subprojects/docket/src/docket/verify.py`, `verify:` greps `pyproject.toml`.
+
+**This item's own `verify:` needs re-pointing before it can run again.** It
+greps `PL-L4YG`'s `touches` for `subprojects/docket/tests/test_cli.py`, which
+that item does not carry - and, being closed, never will. Point it at one of
+the three live members instead.
