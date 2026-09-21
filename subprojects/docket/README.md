@@ -1659,23 +1659,25 @@ recorded by the tool at the moment it matched a filing, so a hand-written one
 is a claim about a filing that may never have happened; `docket check` holds
 each entry to naming a real item, which is as far as a check can reach.
 
-**A match the tool got wrong is withdrawn rather than deleted.** `docket
-withdraw <item> <capture> --because <item>` annotates the entry where it
-stands — `2026-09-20 PL-S8JT withdrawn 2026-09-21 PL-34BG` — so it stops
-counting and stays on the record. That argument for keeping the field out of
-`set` is about *writing* an entry and does not carry across to withdrawing one:
-the hazard of a field nothing can write is a fabricated filing, and the hazard
-of one nothing can withdraw is a false filing nobody can correct, which is the
-state `PL-34BG` found this store in. Deleting the entry would leave a file
-reading as though the match had never been made — a quieter record than the one
-that was there before, and it would make the withdrawal the one event in this
-mechanism's life that no command will show you. `--because` names an item
-rather than a sentence, for the same reason the entry names a capture: why a
-match was wrong is a judgment, judgments belong in briefs where they can run to
-the length they need, and the field carries the pointer a reader opens. `check`
-holds that pointer to a real item exactly as it holds the capture's id, and a
-tail it cannot read as `withdrawn DATE PL-XXXX` leaves the entry counting and
-says so — a mis-typed withdrawal must not cancel a filing quietly.
+**A match the tool got wrong is withdrawn rather than deleted** (project owner,
+2026-09-21, ratified, over deleting the entry outright as `PL-34BG`'s brief
+sketched it). `docket withdraw <item> <capture> --because <item>` annotates the
+entry where it stands — `2026-09-20 PL-S8JT withdrawn 2026-09-21 PL-34BG` — so
+it stops counting and stays on the record. That argument for keeping the field
+out of `set` is about *writing* an entry and does not carry across to
+withdrawing one: the hazard of a field nothing can write is a fabricated
+filing, and the hazard of one nothing can withdraw is a false filing nobody can
+correct, which is the state `PL-34BG` found this store in. Deleting the entry
+would leave a file reading as though the match had never been made — a quieter
+record than the one that was there before, and it would make the withdrawal the
+one event in this mechanism's life that no command will show you. `--because`
+names an item rather than a sentence, for the same reason the entry names a
+capture: why a match was wrong is a judgment, judgments belong in briefs where
+they can run to the length they need, and the field carries the pointer a
+reader opens. `check` holds that pointer to a real item exactly as it holds the
+capture's id, and a tail it cannot read as `withdrawn DATE PL-XXXX` leaves the
+entry counting and says so — a mis-typed withdrawal must not cancel a filing
+quietly.
 
 **The write is exempt from the close-out audit and the withdrawal is not.** An
 append rides a capture `CLAUDE.md` requires unconditionally, and its value is
