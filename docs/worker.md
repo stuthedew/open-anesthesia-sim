@@ -256,8 +256,9 @@ end rather than a ref dropped in transit - `curl 22` is curl's code for an HTTP
 error response, not for a cut transfer. An empty `recentRelayFailures` is
 worthless as evidence, exactly as `PL-3V6C` argued before anyone had measured
 it: the field read `[]` while that 403 was being returned, and the container's
-own `/root/.ccr/README.md` scopes it to relay-level aborts. And the proxy's own
-403 does not take this shape - the README documents it as a host-level egress
+own agent-proxy README - whose location the proxy's status endpoint prints as
+`readmePath` - scopes the field to relay-level aborts. And the proxy's own 403
+does not take this shape: that README documents it as a host-level egress
 denial surfacing as `CONNECT tunnel failed, response 403` before a tunnel
 exists, which is the form recorded above for publisher egress, and says that
 once a tunnel is up the proxy aborts rather than answering; `github.com` is
