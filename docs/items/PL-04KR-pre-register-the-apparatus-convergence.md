@@ -83,6 +83,33 @@ contamination this brief already had to exclude by hand. And 11 open items
 declare another item's *file* as their `touches`, which would inflate the
 re-entry rate for a bookkeeping reason; item-file paths need excluding.
 
+**A reading taken 2026-09-21 confirms the contamination warning above before
+the command exists.** Measured over the whole store by `added:` date, lane
+assigned from `touches` with `docs/items`-only declarations excluded as
+bookkeeping, apparatus share of classified filings by ISO week reads 57.0% ->
+59.5% -> 63.3% -> **66.5%** for W35-W38 — a rise, and the shape that sends a
+session hunting a generator. Dropping 2026-09-17 to 09-19, the window this
+brief already excludes as a deliberate generator campaign, the same series
+reads 57.0% -> 59.5% -> 63.3% -> **58.6%**: flat, not rising. The 7.9-point
+swing on three days is the whole apparent regression, so the break-out this
+brief asks for is not a refinement of the measurement, it is the difference
+between the right answer and the wrong one. W39 is two days and n=37 and is
+not read.
+
+That share is **not a third signal and must not become one.** `CLAUDE.md`
+§ "What this project is" says no ratio is tracked or enforced, and this brief's
+two signals are deliberately causal rather than proportional. It is recorded
+here only as the reading a session will take when it notices the apparatus lane
+is busy — which is the re-argument-from-memory this item exists to end — and as
+evidence that the exclusion is load-bearing rather than cautious.
+
+**What it leaves standing.** Flat is not declining. The owner's 2026-09-19
+expectation was that apparatus inflow *declines* as the functionality settles,
+and four weeks of flat share neither confirms nor refutes it, because share is
+not the claim. Both signals that are the claim remain unmeasurable while this
+item is open, so the expectation is still in the unfalsifiable state
+§ "Why it matters" below names.
+
 **Staleness caveat on every number above.** `PL-LKGL` measured 32% of the
 workflow lane dead or partly overtaken on 2026-09-12. The 151, the cluster sizes
 and both rates are therefore upper bounds. The apparatus backlog review
