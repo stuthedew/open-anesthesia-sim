@@ -700,17 +700,32 @@ def test_a_parenthesised_citation_is_checked(tmp_path: Path) -> None:
     assert any("quotes docs/MODEL.md" in e for e in _errors(root))
 
 
-def test_a_possessive_quotation_of_prose_is_not_read_as_a_citation(tmp_path: Path) -> None:
-    """The form this check deliberately does not read, and why.
+def test_a_possessive_quotation_of_absent_text_is_reported(tmp_path: Path) -> None:
+    """The possessive is read like every other connective, and for one reason.
 
     `` `CLAUDE.md`'s "..." `` quotes a *sentence* as often as it cites a
-    section, and nothing distinguishes the two without reading the meaning.
-    Admitting it reported 28 quotations of real prose as stale headings
-    (measured 2026-09-13, `PL-V13T`). `§` has no second use, which is what
-    makes it checkable and this not.
+    section, and `PL-V13T` excluded it because nothing distinguishes the two
+    without reading the meaning. The distinction was never needed: this check
+    tests containment, so it asks one question of both uses - whether the
+    cited file holds the words - and a quotation that has drifted is as stale
+    as a title that has. Re-measured 2026-09-21, a majority of what the
+    exclusion suppressed was real drift (`PL-316G`).
     """
     root = _repo(tmp_path)
-    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md`\'s "a sentence quoted from it".\n')
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md`\'s "a sentence not in it".\n')
+    assert any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_a_possessive_quotation_of_text_that_is_there_passes(tmp_path: Path) -> None:
+    """Admitting the form is not the same as failing every use of it.
+
+    The constraint the widening adds is that a quotation in quotation marks
+    has to be quotable; prose quoted faithfully is still correct prose, and
+    holding that here is what keeps the check from reading as a ban on the
+    possessive (`PL-316G`).
+    """
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-demo", '**Context.** `docs/MODEL.md`\'s "Known limitations".\n')
     assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
 
 

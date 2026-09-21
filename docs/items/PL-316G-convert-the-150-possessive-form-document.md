@@ -1,13 +1,15 @@
 ---
 id: PL-316G
 title: Convert the 150 possessive-form document citations to the section-mark form, which is the only way doc_check can check them without reading prose as a citation
-status: needs-decision
-added: 2026-09-13
 priority: P2
 effort: M
+status: ready
 classes: docs, infra
 feature: dev-tooling
 touches: docs/, src/anesthesia_sim/, tests/, tools/, CLAUDE.md, .claude/rules/, ROADMAP.md, README.md
+added: 2026-09-13
+payoff: every citation form the project writes is checked, so a renamed heading or a reworded sentence stops orphaning a pointer silently
+verify: uv run pytest tests/unit/test_doc_check.py -q -k "possessive" && python3 tools/doc_check.py check
 recurrences: 2026-09-21 PL-YSMV
 ---
 
@@ -222,3 +224,52 @@ misfiled as never-verbatim; none of the cited files has moved. The measurement
 scripts were scratch and are not committed - the counts above are reproducible
 by adding the possessive to `CITATION_CONNECTIVE` and running
 `python3 tools/doc_check.py check`.
+
+## Decided 2026-09-21: both steps, in this order (project owner)
+
+The project owner took the fourth shape and the conversion **both**, on the
+five-year test - "however much it costs to do it right once, it is still
+cheaper than doing it twice" - and on the reading that these are sequential
+rather than competing. The ordering is the substance of the decision: the
+check has to exist first, because it is what makes the conversion safe. A
+conversion done first is 49 hand edits with nothing underneath them, followed
+by building the check anyway.
+
+**Step 1 is done, in this item's branch.** `CITATION_CONNECTIVE` admits
+`['’]s(?:\s+own)?`; the comment above it records why the 2026-09-13
+exclusion was reversed and what the widening costs;
+`test_a_possessive_quotation_of_prose_is_not_read_as_a_citation` is replaced by
+a reporting test and a passing test, so the change cannot read as a ban on the
+form; and the three findings it surfaced are repaired - `ROADMAP.md:86` became
+a `§` section citation, `ROADMAP.md`'s colour-panel paragraph and `PL-BYMX`
+now quote verbatim. `make check` green.
+
+**Step 2 is the conversion, and it is what remains.** Scope is the live text
+only: **49 possessive citations** on the merged tree, against **174 in closed
+briefs that must not be touched** - `_quoting_sources` exempts those since
+`PL-ZM8P`, so converting one changes nothing and edits a historical record.
+Enumerate them rather than working from a list that will go stale:
+
+```text
+  grep -rEno "\`[A-Za-z0-9_./-]+\.md\`['’]s( own)?[ \n]*\"" \
+    --include="*.md" --include="*.py" . | grep -v "^./.git/"
+```
+
+then skip any hit whose file is a `done` or `dropped` brief, or is under
+`docs/pr-bodies/`.
+
+**The rule for each site, which is the judgment the script cannot make.**
+Read what the quotation *is*, not where it points:
+
+- **A section, heading or `**Bold.**` marker** - convert to
+  `` `<document>.md` § "Exact Heading" ``. The heading must be exact; the
+  check now verifies it either way, which is the net this ordering buys.
+- **A sentence quoted from the document** - leave it in the possessive. It is
+  checked now, and `§` would assert it names a section, which is false.
+- **A compressed handle that is neither** - it will already have failed
+  `make check` in step 1, so none should remain; if one appears, quote it
+  verbatim or drop the quotation marks rather than inventing a section.
+
+**Done when.** Every live possessive citation that names a section reads in the
+section-mark form, every one that quotes prose is left in the possessive and
+still passes, no closed brief is edited, and `make check` is green.
