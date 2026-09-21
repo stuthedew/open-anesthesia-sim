@@ -6,9 +6,11 @@ effort: M
 status: ready
 classes: perf, test
 feature: verify-replay-cost
-touches: subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_verify.py
+touches: subprojects/docket/tests/conftest.py, subprojects/docket/tests/test_git_isolation.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-19
-verify: grep -q 'repository_template' subprojects/docket/tests/test_cli.py subprojects/docket/tests/test_verify.py
+verify: uv run pytest subprojects/docket/tests/test_git_isolation.py -q
+root-cause-of: PL-W6NY, PL-KCQ7, PL-8T83, PL-FZ58
+generator: spent - the ambient commit.gpgsign this item isolates the suite from can no longer reach a test repository, so no further measurement can be inflated by it
 recurrences: 2026-09-05 PL-W6NY
 ---
 
@@ -85,3 +87,76 @@ why it is shaped as it is, rather than re-deriving it. And its framing of the
 constraint is the one to keep: the fixture leaks state between tests that
 commit into their own repository, so correctness, not speed, sets the ceiling
 on any rework.
+
+## What the cost actually was (2026-09-21)
+
+**The premise above is wrong about where the time goes, and the sketched fix
+would have bought almost none of it.** Counting and timing every `git`
+subprocess the tree spawns - not the five-spawns-per-test shape, but each
+spawn's own cost - separates them by a factor of 35:
+
+| git subcommand | calls | total | each |
+| --- | --- | --- | --- |
+| `commit` | 563 | 40.92 s | 72.7 ms |
+| `show` | 685 | 1.42 s | 2.1 ms |
+| `add` | 545 | 1.36 s | 2.5 ms |
+| `config` | 506 | 0.99 s | 2.0 ms |
+| `init` | 194 | 0.71 s | 3.7 ms |
+
+`init`, `config` and `add` together are 3.06 s of a 60.44 s run. The brief
+counted them because they are visible in the fixture; the commit is the bill.
+
+**And the commit was slow for a reason no test names.** `/root/.gitconfig` in
+the agent container sets `commit.gpgsign = true` with `gpg.format = ssh`, so
+every commit these tests make signs an SSH key. Measured in a scratch
+repository, 20 commits per arm, interleaved against a control to rule out
+warm-up: **69.6 ms signed against 4.3 ms unsigned, and 67.7 / 4.3 on the repeat.**
+Nothing under `subprojects/docket/` read or set that config; it reached the
+test repositories because git reads `~/.gitconfig` for every repository on the
+machine.
+
+**The fix is therefore isolation rather than sharing.** `conftest.py` points
+`GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM` at `/dev/null`, which git
+documents as "read no configuration at this level" (git 2.32 and later).
+Whole-tree result, same 1,442 tests, same machine, nothing else changed:
+
+| | before | after |
+| --- | --- | --- |
+| wall clock | 60.44 s | **21.51 s** |
+| git subprocess time | 53.19 s | 14.32 s |
+| 563 commits | 40.92 s | 2.87 s |
+
+That is 64% off the tree the two named files live in, against the roughly 6 s
+the brief predicted for the copytree rework - and it takes no test with it:
+`_repo` and every helper in `test_cli.py` still builds its own repository,
+`git init` per test, so the constraint under **What must not be traded for it**
+is not weakened but untouched. There is no shared fixture to leak.
+
+**Why the correctness half outranks the stopwatch.** A signing key behind a
+passphrase or held on hardware does not make this suite slow - it makes `git
+commit` block on a prompt or fail outright, and every test here that needs
+history fails with it on a machine where nothing is wrong. That is the same
+class as `PL-6YL1` and the macOS `python3` items: a suite that is green in one
+environment and red in another for a reason it never names. Isolation removes
+the class, not just the instance.
+
+**`test_git_isolation.py` is what makes the removal visible.** Deleting
+`conftest.py` costs nothing the suite reports - every test still passes, three
+times slower - which is the silent failure `.claude/rules/apparatus-standard.md`
+sets its floor against. The second test builds a `HOME` whose `.gitconfig`
+turns signing on and asserts git ignores it, so the assertion means the same
+thing on a machine whose own config is empty. Both were watched failing with
+`conftest.py` moved aside: `AssertionError: read commit.gpgsign='true' from
+outside`.
+
+**What is recorded rather than done.** The repository's own `tests/` tree pays
+the same toll on a smaller bill - 142 commits, 6.20 s of a 257 s run - and
+takes the identical two lines in the `tests/conftest.py` that already exists.
+It is a separate item because it is the simulator's tree, held to the other
+standard, and 2.4% does not justify widening a `P3` into it.
+
+**Done when** - satisfied by isolation rather than by sharing. The cheaper
+route the brief could not see was to stop the cost being paid at all, and the
+sketched module-scoped copytree is refuted rather than deferred: it is more
+code, it buys single-digit milliseconds per test once the commit is cheap, and
+it pays for them with the one property these tests cannot give up.

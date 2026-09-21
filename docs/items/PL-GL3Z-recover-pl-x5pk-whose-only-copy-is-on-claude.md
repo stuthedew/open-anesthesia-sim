@@ -9,6 +9,7 @@ feature: stranded-triage-sweep
 touches: docs/items
 added: 2026-09-21
 closed: 2026-09-21
+pr: 837
 payoff: PL-X5PK's flight-detection observation stops living only on an archived session's branch, so the next session can read it from the store
 verify: test -f docs/items/PL-X5PK-bin-docket-flight-reported-a-squash-merged.md
 recurrences: 2026-09-21 PL-CZR6

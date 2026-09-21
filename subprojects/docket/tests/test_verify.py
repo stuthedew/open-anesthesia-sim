@@ -64,6 +64,18 @@ def _stored(identifier: str, title: str, **fields: str) -> str:
 
 
 def _repo(tmp_path: Path) -> Path:
+    """A repository with one commit on it, rebuilt per test rather than shared.
+
+    The five git processes this spawns look like the thing to make cheaper, and
+    are not: four of them cost about 2 ms each, and the commit costs about 5 ms
+    once `conftest.py` stops the developer's `~/.gitconfig` signing it - where
+    it cost 73 ms while that config reached in. Copying a prebuilt tree per test
+    instead would save single-digit milliseconds and trade an independent
+    checkout for a shared one, which is the one thing these tests cannot give
+    up: they are what keeps `docket` correct about refs, and a fixture leaking
+    state between them would let a real defect through silently (`PL-YRYR`,
+    measured 2026-09-21).
+    """
     root = tmp_path / "repo"
     (root / "docs" / "items").mkdir(parents=True)
     (root / "tests").mkdir()

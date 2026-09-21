@@ -8,6 +8,7 @@ classes: housekeeping
 touches: docs/pr-bodies, docs/items
 added: 2026-09-21
 closed: 2026-09-21
+pr: 837
 payoff: the reasoning behind four merged pull requests stops existing only on GitHub and on an archived session's branch, and the digest line that has reported it lost in every session goes quiet
 verify: test -f docs/pr-bodies/818.md && test -f docs/pr-bodies/820.md && test -f docs/pr-bodies/821.md && test -f docs/pr-bodies/822.md
 ---

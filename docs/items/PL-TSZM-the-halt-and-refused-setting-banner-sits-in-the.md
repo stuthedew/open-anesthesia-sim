@@ -9,6 +9,7 @@ feature: two-run-attribution
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md
 added: 2026-09-21
 closed: 2026-09-21
+pr: 834
 payoff: stops a halt or a refused setting on one run reading as the dashboard's, and stops 'the simulation is unchanged' asserting something false of the run it is not about
 verify: grep -q 'def test_the_halt_and_refusal_banners_name_their_run' tests/integration/test_simulation_view.py
 ---

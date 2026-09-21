@@ -9,6 +9,7 @@ feature: stranded-triage-sweep
 touches: docs/items
 added: 2026-09-21
 closed: 2026-09-21
+pr: 837
 payoff: the queue stops carrying five captures bin/docket next cannot rank, so what is actually next stops being understated
 verify: ! grep -q "^status: untriaged" docs/items/PL-DZM1*.md docs/items/PL-NGBM*.md docs/items/PL-T441*.md docs/items/PL-TJTV*.md docs/items/PL-X9WZ*.md
 ---
