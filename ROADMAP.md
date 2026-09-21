@@ -5696,13 +5696,28 @@ named here, for the reason beat 3 gives.
    divergence. Whether a declared minimum is a request or a constraint, and what
    a split or a border drag does when it cannot be met, are this entry's.
 
-9. **State a layout could duplicate or relocate** (queue items `PL-VN6M` and
-   `PL-9LNF`). The compartment selection owned outside `TraceLegend`; `RunView`'s
+9. **State a layout could duplicate or relocate** (queue items `PL-VN6M`,
+   `PL-9LNF`, `PL-CNCF` and `PL-PGZF`). The compartment selection owned outside
+   `TraceLegend`; `RunView`'s
    nine `build_*` accessors, which hand out the instance's own widgets so a
    second request silently reparents the first placement away; the chart time
    base, owned by a dropdown built into one plot's panel while governing both;
    and the chart's column budget, read as a maximum over two named siblings that
    stop being siblings once each is a View in its own Area.
+
+   **`PL-CNCF` and `PL-PGZF` are named here rather than re-labelled** (project
+   owner, 2026-09-21, ratified - chosen over a `cleared-by:` item field, whose
+   design was falsified before it was built, and over overwriting their
+   `feature: chart-readout`). Both measure a per-frame cost *against the column
+   budget this entry relocates*: `simulation_view.py` computes it as
+   `plot_width_px=max(self._concentration_chart.plot_width_px(),
+   self._wash_in_chart.plot_width_px())`, and the two siblings that `max` reads
+   over are exactly the ones this entry says stop being siblings. Measuring the
+   cost first and moving the budget afterwards measures the wrong number, so
+   they are cleared *by* this milestone. This is the entry stating a consequence
+   it already implied rather than taking on new scope - `PL-YVP7` carries why
+   the field route was refused, and `PL-C4W8`'s sweep is where the verdict was
+   reached against the tree.
 
 10. **Run identity** (queue item `PL-7Z84`). A run carries an identity stable
     across serialization and independent of drawing order, with

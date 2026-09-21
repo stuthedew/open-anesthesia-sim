@@ -1,9 +1,11 @@
 ---
 id: PL-YVP7
 title: Question 2 of the gate staleness sweep cannot be recorded as decided: plan.py clears an entry by the milestone only when item.feature equals the milestone's feature, feature: is single-valued, and 147 of the 170 clearable Gate 2 entries already carry one - so re-labelling an entry interface-areas destroys the feature membership that bin/docket feature reports completion against
-status: untriaged
+status: done
 feature: gate-staleness-sweep
 added: 2026-09-21
+closed: 2026-09-21
+verify: bin/docket wave --no-git 2>/dev/null | grep -q 'cleared by the milestone itself:.*PL-CNCF'
 ---
 
 **Problem.** Question 2 of the gate staleness sweep cannot be recorded as decided: plan.py clears an entry by the milestone only when item.feature equals the milestone's feature, feature: is single-valued, and 147 of the 170 clearable Gate 2 entries already carry one - so re-labelling an entry interface-areas destroys the feature membership that bin/docket feature reports completion against
@@ -162,3 +164,41 @@ owner's rather than this brief's - which is why no edit has been made.
 
 **Do not build `cleared-by:` on the strength of the ratification above.** It
 was ratified against a mechanism description that this section falsifies.
+
+## Resolved 2026-09-21: named in Required-scope entry 9, no field built
+
+**Decided (project owner, 2026-09-21, ratified)** - chosen over building the
+`cleared-by:` field, whose design the section above falsified before any code
+was written, and over overwriting `feature:` on each re-decided entry.
+
+`ROADMAP.md`'s Required-scope entry 9 now declares `PL-CNCF` and `PL-PGZF`
+alongside `PL-VN6M` and `PL-9LNF`, with a paragraph recording why.
+
+**Verified by running the chain, not by reading it.** Before:
+
+    cleared by the milestone itself: PL-VN6M
+    161 -> was 163 this gate can clear, 1 the milestone clears itself
+
+After:
+
+    cleared by the milestone itself: PL-VN6M, PL-CNCF, PL-PGZF
+    Beat  clear the gate - 161 entries of 183 still open here, 3 the
+          milestone clears itself
+
+So the edit moves `self_cleared`, `clearable` and the beat line together -
+which is precisely what wiring `cleared-by:` into `plan.gate()` would **not**
+have done, and the reason the ratified field design was reopened.
+
+**One mechanical detail worth carrying forward**, because it would have made
+the edit a silent no-op: `_declared_ids` (`roadmap.py:613`) reads ids only from
+a `(queue item ...)` slot, walking to the first token that is neither an id nor
+a connective. An id added to entry 9's *prose* registers nowhere. The two ids
+had to go inside the parenthetical.
+
+**What this item does not do.** No new field, no change to `plan.gate()`, no
+change to `tools/doc_check.py`. The divergence between `plan.gate()`'s
+feature test and `GateStatus.self_cleared`'s Required-scope test is untouched
+and still live - `ROADMAP.md`'s gate section already records that the two
+"disagree on two entries". That is a real finding this item surfaced and did
+not fix; it is filed separately rather than folded in here, because fixing it
+is a change to the queue tool and this was a change to one document.
