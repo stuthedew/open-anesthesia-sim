@@ -55,3 +55,59 @@ no longer standing on.
 asks to branch gets a branch at that instant, through the same panel they would
 use for a control event; and what the panel shows while the run is *not*
 standing on a halt cannot be mistaken for an offer to fork at a mark.
+
+---
+
+## Recommendation, 2026-09-21: the separate transient control, not the extra list row
+
+Written into the brief rather than left in a reply, because this item is the
+instrument and a reply is gone by the time the answer comes. **Not decided
+here** - the item stays `needs-decision`, and the owner's answer is what closes
+it.
+
+**Recommended: a second control beside the list, present only while
+`snapshot().bookmark_halt` holds, labelled with the instant it will fork at and
+where that instant came from** - "Branch here: 45 s, your mark" rather than a
+bare "Branch here". The permanent list is left exactly as it is.
+
+Three grounds, in order of weight.
+
+1. **A vanishing list row is a hidden mode change; a vanishing control is a
+   visible one.** The two offers have different lifetimes - `fork_points_s`
+   only grows and every row in it stays valid, while the halt fork is valid
+   only while the run stands on the halt. A learner who reads the list, looks
+   away, takes a step and looks back finds the list one row shorter, and the
+   absence of a row is detectable only by comparison against a remembered list.
+   A control that is either there or not is detectable on sight.
+   `.claude/rules/expert-review.md` - "minimize hidden modes, surprising
+   defaults, context-dependent behavior, and stale UI state" - is the rule, and
+   a list whose membership silently changes meaning is the stale-state case.
+
+2. **It is the disposition this milestone already took, one control over.**
+   `PL-VKJW` refused a second fork while a comparison is shown rather than
+   quietly swapping which branch is displayed, on the ground that the quiet
+   swap is hidden state this project refuses; `ROADMAP.md`'s v0.5.0 Required
+   scope records it. Making the transient offer visibly transient is the same
+   judgment, and taking it differently here would leave the fork surface
+   holding two opposite conventions.
+
+3. **The cheaper-looking option is not actually cheaper.** A row added to the
+   list has to carry the same "this one is the mark you are standing on"
+   disambiguation the separate control carries in its label, *and* has to be
+   visually distinguished from permanent rows so it does not read as one, *and*
+   has to explain its own disappearance. That is more work than a second
+   control, for a weaker result.
+
+**What it costs, and it is real:** one more control on a panel that has one
+today, in a milestone whose own out-of-scope list is already holding back a run
+selector. The counter-case is the item's own - fewer controls, and a learner
+who has stopped at a mark is looking at the fork panel anyway. If the owner
+prefers the single list, the mitigation that keeps the Done-when clause
+reachable is that the halt row must be rendered differently in kind rather than
+merely labelled differently, and that is a chart-adjacent presentation decision
+this project would normally want measured rather than asserted.
+
+**What this recommendation does not touch.** Whether returning to a mark forks
+or truncates is `PL-ZW0J`, is the owner's, and is deliberately downstream: they
+asked on 2026-09-20 to revisit it after using the thing. This item is the route
+to a branch at a marked instant, which both answers to `PL-ZW0J` need.
