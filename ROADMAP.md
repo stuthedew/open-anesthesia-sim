@@ -5145,6 +5145,36 @@ v0.5.0 is complete only when:
 
 ### Explicitly out of scope for v0.5.0
 
+- **Completing the fork and bookmark interaction beyond what Required scope
+  and the definition of done already name** (project owner, 2026-09-21,
+  ratified, over widening this milestone to close the interaction gap before
+  cutting). The project owner read the shipped surface as "a bit of a mess with
+  forks and bookmarks ... half implemented in terms of user interaction", and
+  the count bears it out: nine open items sit on that surface on 2026-09-21.
+  **Four of them this milestone holds and is not deferring** - one in Required
+  scope above, and three under the definition of done's "no readout, label,
+  legend entry or reference band ambiguous as to which run it describes"; they
+  are named where they are required rather than here, because this heading is
+  read as a scope declaration. **The five it does not hold** are `PL-W4XQ` (no
+  route back to a mark set behind the clock), `PL-ZW0J` with `PL-8XMV` (whether
+  returning to a mark forks or truncates, and the setting that chooses),
+  `PL-LLBV` (the whole-step fork guard refusing 35.5% of the one-decimal times a
+  user could type), `PL-7TBQ` (`has_recorded_run` true before the learner has
+  touched the branch) and `PL-3QSX` (a listed MAC target's unit).
+
+  **Those five are Gate 2's, and that is the mechanism rather than a deferral.**
+  Gate 2 freezes the day this milestone ships and clears before v0.6.0's
+  implementation begins, so the interaction debt is paid before the area system
+  is built on top of it - which is what § "The cadence" already arranges for
+  findings made inside a milestone.
+
+  **What decided it was `PL-ZW0J` rather than schedule.** Whether returning to a
+  mark forks or truncates with a confirm decides what the act this milestone is
+  named for actually does, and the project owner deferred it on 2026-09-20
+  wanting to use the thing first. Widening v0.5.0 to close the interaction would
+  be settling that question without the use it was deferred for, so the
+  milestone cuts on the definition of done it already states.
+
 - Scenario save/load (item 9) and a user-facing deterministic replay control
   (item 10). Only the resimulation driver replay needs is in scope.
 - Sub-forks of forks, and any branch structure other than one trunk with N

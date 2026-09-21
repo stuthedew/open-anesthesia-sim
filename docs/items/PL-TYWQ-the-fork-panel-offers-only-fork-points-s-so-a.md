@@ -3,11 +3,12 @@ id: PL-TYWQ
 title: The fork panel offers only fork_points_s, so a learner stopped at their own bookmark still cannot branch there
 priority: P2
 effort: S
-status: needs-decision
+status: ready
 classes: feature
 feature: scenario-branching
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, tests/unit, tests/integration, docs/ARCHITECTURE.md
 added: 2026-09-20
+verify: grep -q 'def test_a_branch_is_offered_at_the_mark_the_run_is_standing_on' tests/integration/test_simulation_view.py
 payoff: closes the one sequence the interface cannot complete - mark a decision point, stop there, branch there - which is what v0.5.0's Definition of done asks for
 ---
 
@@ -36,9 +37,13 @@ wires the choice to `BranchedCase.fork_at`. A halt is visible to all three
 already - `snapshot().bookmark_halt` is what the transport reads to say the run
 stopped on a mark - so nothing new has to be computed, only offered.
 
-**Decision needed.** What shape the control takes, given that a bookmark fork
-is available only while the run is standing on the halt. It is the owner's
-because it is an affordance a learner sees appear and disappear.
+**Decision taken 2026-09-21** (project owner, ratified, over shape B - the
+single list that grows a row while the run is halted): **shape A, the
+separate transient control**, drawn under "What the two shapes put on
+screen" below. What shape the control takes was the owner's because it is an
+affordance a learner sees appear and disappear. The case put to them is left
+as written under "Recommendation" rather than rewritten into the decision it
+argued for, and it carries what shape B would have needed instead.
 
 **The design question is what the control says, not whether it can.** A halt
 is a permission rather than a standing offer: taking a step clears it
@@ -61,9 +66,54 @@ standing on a halt cannot be mistaken for an offer to fork at a mark.
 ## Recommendation, 2026-09-21: the separate transient control, not the extra list row
 
 Written into the brief rather than left in a reply, because this item is the
-instrument and a reply is gone by the time the answer comes. **Not decided
-here** - the item stays `needs-decision`, and the owner's answer is what closes
-it.
+instrument and a reply is gone by the time the answer comes. **Ratified 2026-09-21** by
+the project owner, over shape B; the item is `ready` and this section is the
+record of the case rather than an open question.
+
+### What the two shapes put on screen
+
+Added 2026-09-21 because the recommendation below was written in terms of the
+code, and the two options are a question about what a learner sees.
+
+The panel today, in the sidebar beside the marks:
+
+```
+Time bookmarks
+  0:45  ...
+
+Branch
+From [ 0:00 v ]  [ Branch here ]
+```
+
+The selector holds the trunk's keyframes - induction and every setting change
+the model was stepped under. A mark is not among them and structurally cannot
+be: `PL-B8MK` records no keyframe when a run is marked, because the route that
+does moves the trunk's own later answers, so marking a case would change it. A
+branch *at* the mark is nonetheless available through `fork_at_halt`, for
+exactly as long as the run stands on the halt.
+
+**Shape A, the second control** - recommended below:
+
+```
+Branch
+From [ 0:00 v ]  [ Branch here ]
+[ Branch at your mark - 0:45 ]      <- only while stopped there
+```
+
+The button is built once and shown only while `snapshot().bookmark_halt`
+holds; taking a step hides it whole.
+
+**Shape B, one list that grows a row**:
+
+```
+Branch
+From [ 0:45 (your mark) v ]  [ Branch here ]
+```
+
+The selector gains an entry while the run is halted and loses it on the next
+step. `ForkPanel.set_offer` already rebuilds entries only when they have
+changed, so the row would arrive and leave through the path that exists rather
+than needing a new one.
 
 **Recommended: a second control beside the list, present only while
 `snapshot().bookmark_halt` holds, labelled with the instant it will fork at and
