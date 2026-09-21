@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from . import notes, render
-from .checks import analyze
+from .checks import Report, analyze
 from .concurrency import (
     ORDERING,
     SAME_AREA,
@@ -111,7 +111,7 @@ from .vcs import (
     tags,
     working_paths,
 )
-from .verify import already_passing, changed_paths, items_reading, verify_batch
+from .verify import LandedReport, already_passing, changed_paths, items_reading, verify_batch
 
 # The one thing that is true at capture, and nothing else. Empty headings for a
 # session to write over were indistinguishable from headings a session had left
@@ -306,6 +306,116 @@ def _orphaned(root: Path, args: argparse.Namespace) -> OrphanedReport | None:
     return orphaned(root, runner=_runner(args))
 
 
+def _complete_report(
+    root: Path,
+    items: list[Item],
+    config: Config,
+    args: argparse.Namespace,
+    *,
+    landed: LandedReport | None = None,
+) -> Report:
+    """The report behind a printed count, with every input asked for.
+
+    Complete in what it *asks*, not in what comes back: a checkout that cannot
+    answer still declines, and the decline travels in `report.declined` as it
+    always did.
+
+    **Why the gathering is one function and not three call sites.** `analyze`
+    skips the check behind any input it was not handed, which is what lets
+    `list` and `status` read the store without asking git anything. Three
+    commands then print a *count* of what it found - `check`, `digest` and
+    `next` - and a caller that asked less printed a smaller number with
+    nothing on the line saying so. The digest asked least: it never supplied
+    `closures`, so the `pr`-backfill advisories were structurally invisible to
+    it and it reported 10 grooming advisories where `check` reported 19
+    (`PL-VKGJ`; 3 against 5 re-measured on 2026-09-20). `next` omitted
+    `milestones` as well, and under-counted the promotable-item advisory for a
+    second reason.
+
+    A count carries no qualification at the point it is read, so "the grooming
+    debt is 10" and "the part of the grooming debt this caller asked about is
+    10" are indistinguishable there - which is
+    `.claude/rules/apparatus-standard.md`'s floor exactly: what the apparatus
+    tells a session must be true, or must say what it could not read. Asking
+    the same questions is the remedy rather than footnoting the answer,
+    because the digest's number is what a session sizes its remaining debt
+    against before it has read anything, and a footnote that fires on every
+    session start is a line nobody reads.
+
+    Gathering them here is what makes that structural rather than remembered.
+    A new input added to `analyze` is added once, and every command that
+    prints a count has it in the same commit; added at one call site, it
+    silently reopens the gap. `landed` is the single deliberate exception and
+    is the caller's argument for that reason: it replays every open item's own
+    `verify:` command, 31 s of the 32 s `check --verify` takes, and only CI
+    passes it. `make docket` - the command the digest's own line names - does
+    not pass it either, so the digest still agrees with what its reader is
+    being sent to.
+
+    What the digest pays for it is one git read per input: measured over five
+    runs of each on this repository, 2026-09-20, 279 ms added to a 947 ms
+    command, of which `lost` is 119 ms, `closures_on_base` 74 ms and
+    `merged_pull_requests` 45 ms, the rest under 10 ms apiece. `next` pays
+    the same 274 ms on a 744 ms command. None of the reads touch the network,
+    so a session start offline answers exactly as it did before, and the hook
+    that prints the digest already spends 1.8 s on a fetch and a CI read.
+    """
+    return analyze(
+        items,
+        args.today or date.today(),
+        config,
+        # Asked of what has merged rather than of the store, so it needs a
+        # history to read. `None` comes back from a checkout too shallow to be
+        # trusted, and the provenance check is skipped rather than run against
+        # a truncated one.
+        history=merged_pull_requests(root),
+        offered=_offered(root, items, config, args),
+        milestones=_milestones(root, config),
+        landed=landed,
+        # Only the closures in question are asked about, because each costs a
+        # `git show`: an item is judged for a missing `pr` once its closure
+        # stands on the default base, and until then it is still in flight.
+        closures=closures_on_base(
+            root,
+            {i.identifier: i.path for i in items if i.status == "done" and not i.pr and i.path},
+            items_dir=config.items_dir,
+        ),
+        # The same `git show`, asked of the other half of a closure: not "has
+        # this landed" but "does it still record the command that proved it".
+        # Every closed item is offered and the reader narrows to the ones this
+        # checkout changed, which is usually none - a diff rather than a read
+        # per item, so it costs what the line above already costs.
+        records=records_on_base(
+            root,
+            {i.identifier: i.path for i in items if i.status == "done" and i.path},
+            items_dir=config.items_dir,
+        ),
+        # Asked of the branch rather than of the default branch, and that is
+        # the whole point: a squash merge makes the branch's commits ancestors
+        # of nothing, so the objects proving what it carried stop being
+        # reachable. Run here, on a pull request, the evidence is still intact.
+        lost=lost(root, items_dir=config.items_dir),
+        # Read rather than asked of git: a stamped `milestone:` is judged
+        # against the version the project is actually on, and an absent
+        # version file leaves the question unasked rather than answered.
+        version=read_version(root / config.version_file),
+        # The other half of the same record. A release writes its items'
+        # stamps and its notes in one run, so the two agreeing is a fact about
+        # that run having finished - and nothing compared them until an
+        # interrupted one made them disagree silently (`PL-1MKQ`). One
+        # directory read of about 36 small files.
+        notes=notes_by_version(root),
+        # The seam between those two halves. The notes are written at the cut
+        # and the tag goes on the merge, so anything landing in between is
+        # inside the tag's span and named in no notes - measured at 12 closing
+        # pull requests across 11 of 47 tagged spans (`PL-028F`). Answerable
+        # only while the cut is unmerged, which is where this runs: on the
+        # release branch and on its pull request, where re-running the cut
+        # still absorbs the newcomers.
+        window=cut_window(root),
+    )
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     # The repository root, not the store beneath it: `_load` returns the item
     # directory, and the roadmap `_offered` reads sits a level above it.
@@ -324,17 +434,11 @@ def cmd_check(args: argparse.Namespace) -> int:
     if args.verify and args.verify_base:
         changed = changed_items(root, args.verify_base, items_dir=config.items_dir)
         reading = items_reading(items, changed_paths(root, args.verify_base)) - changed
-    # The only command that asks git anything, because it is the only one whose
-    # answer depends on what has merged. `None` comes back from a checkout too
-    # shallow to be trusted, and the provenance check is skipped rather than
-    # run against a truncated history.
-    report = analyze(
+    report = _complete_report(
+        root,
         items,
-        args.today or date.today(),
         config,
-        history=merged_pull_requests(root),
-        offered=_offered(root, items, config, args),
-        milestones=_milestones(root, config),
+        args,
         # Runs every open item's own `verify:` command, which is the only
         # check here that executes the project rather than reading it - 83
         # subprocesses and 31 s of the 32 s this command took, measured
@@ -383,47 +487,6 @@ def cmd_check(args: argparse.Namespace) -> int:
             if args.verify
             else None
         ),
-        # Only the closures in question are asked about, because each costs a
-        # `git show`: an item is judged for a missing `pr` once its closure
-        # stands on the default base, and until then it is still in flight.
-        closures=closures_on_base(
-            root,
-            {i.identifier: i.path for i in items if i.status == "done" and not i.pr and i.path},
-            items_dir=config.items_dir,
-        ),
-        # The same `git show`, asked of the other half of a closure: not "has
-        # this landed" but "does it still record the command that proved it".
-        # Every closed item is offered and the reader narrows to the ones this
-        # checkout changed, which is usually none - a diff rather than a read
-        # per item, so it costs what the line above already costs.
-        records=records_on_base(
-            root,
-            {i.identifier: i.path for i in items if i.status == "done" and i.path},
-            items_dir=config.items_dir,
-        ),
-        # Asked of the branch rather than of the default branch, and that is
-        # the whole point: a squash merge makes the branch's commits ancestors
-        # of nothing, so the objects proving what it carried stop being
-        # reachable. Run here, on a pull request, the evidence is still intact.
-        lost=lost(root, items_dir=config.items_dir),
-        # Read rather than asked of git: a stamped `milestone:` is judged
-        # against the version the project is actually on, and an absent
-        # version file leaves the question unasked rather than answered.
-        version=read_version(root / config.version_file),
-        # The other half of the same record. A release writes its items'
-        # stamps and its notes in one run, so the two agreeing is a fact about
-        # that run having finished - and nothing compared them until an
-        # interrupted one made them disagree silently (`PL-1MKQ`). One
-        # directory read of about 36 small files.
-        notes=notes_by_version(root),
-        # The seam between those two halves. The notes are written at the cut
-        # and the tag goes on the merge, so anything landing in between is
-        # inside the tag's span and named in no notes - measured at 12 closing
-        # pull requests across 11 of 47 tagged spans (`PL-028F`). Answerable
-        # only while the cut is unmerged, which is where this runs: on the
-        # release branch and on its pull request, where re-running the cut
-        # still absorbs the newcomers.
-        window=cut_window(root),
     )
     print(render.format_check(report))
     return 1 if report.errors else 0
@@ -519,13 +582,10 @@ def cmd_digest(args: argparse.Namespace) -> int:
     if not items:
         return 0
     root = args.items.parent if args.items else find_root()
-    report = analyze(
-        items,
-        args.today or date.today(),
-        config,
-        offered=_offered(root, items, config, args),
-        milestones=_milestones(root, config),
-    )
+    # Through `_complete_report` rather than a narrower `analyze` of its own,
+    # because the two count lines below - errors, and the grooming total - are
+    # read as the store's whole answer by a session that has run nothing yet.
+    report = _complete_report(root, items, config, args)
     ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
     rendered = render.format_digest(
         report,
@@ -1312,9 +1372,9 @@ def cmd_next(args: argparse.Namespace) -> int:
         )
         return 1
     root = args.items.parent if args.items else find_root()
-    report = analyze(
-        items, args.today or date.today(), config, offered=_offered(root, items, config, args)
-    )
+    # The grooming count printed at the foot of a pick is the same claim the
+    # digest's is, so it is built from the same inputs (`_complete_report`).
+    report = _complete_report(root, items, config, args)
     plan = _plan(root, items, config)
     flight = _flight(args)
     picks = recommend(
