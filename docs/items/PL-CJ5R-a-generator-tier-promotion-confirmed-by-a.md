@@ -80,7 +80,10 @@ blocker clears. Dropping them would have traded this defect for the same
 defect pointing the other way. Measured before deciding: 4 items in the store
 sit at or above the floor, 2 of them open and named, and neither is untriaged
 or blocked - so the carve-out costs nothing today and the suppression is what
-had to be argued for.
+had to be argued for. Re-measured after merging `#817` into this branch:
+`PL-W7WL` closed with it, so the named set is `PL-SHTR` alone. That is the
+argument arriving as a fact rather than a prediction - the window this item
+describes shut while the item was being built.
 
 **A third surface said so out loud, and the filter made it false.**
 `_record_recurrence` printed "`bin/docket next` now names it as a

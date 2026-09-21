@@ -2134,7 +2134,9 @@ both closed, so their entries are record rather than signal. *(Amended
 2026-09-21 by `PL-CJ5R`: it also excludes an item in flight on a branch, for
 the same reason it excludes a closed one - the promotion moves a queue
 position the item no longer has. `PL-W7WL`'s own promotion was ratified while
-it was being implemented and would have written a no-op.)* The backfill's
+it was being implemented and would have written a no-op. It has since closed
+with `#817`, so the one anchor this paragraph reports as surfacing no longer
+does, and `PL-SHTR` at two filings is the whole of the named set.)* The backfill's
 real deliverable is that five open anchors now sit at one filing instead of
 zero, so the *next* re-filing of any of them crosses the threshold rather than
 the third. `PL-4JHS`'s own brief carries the table.
