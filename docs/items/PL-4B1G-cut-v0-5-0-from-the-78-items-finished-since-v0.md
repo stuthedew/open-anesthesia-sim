@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: housekeeping
 feature: release-process
+milestone: v0.5.1
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 added: 2026-09-21
 closed: 2026-09-21

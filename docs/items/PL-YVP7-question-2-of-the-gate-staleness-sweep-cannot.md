@@ -3,8 +3,10 @@ id: PL-YVP7
 title: Question 2 of the gate staleness sweep cannot be recorded as decided: plan.py clears an entry by the milestone only when item.feature equals the milestone's feature, feature: is single-valued, and 147 of the 170 clearable Gate 2 entries already carry one - so re-labelling an entry interface-areas destroys the feature membership that bin/docket feature reports completion against
 status: done
 feature: gate-staleness-sweep
+milestone: v0.5.1
 added: 2026-09-21
 closed: 2026-09-21
+pr: 862
 verify: bin/docket wave --no-git 2>/dev/null | grep -q 'cleared by the milestone itself:.*PL-CNCF'
 ---
 
