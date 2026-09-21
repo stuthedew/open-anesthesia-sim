@@ -2130,7 +2130,11 @@ entries on nine anchors - and the honest result is smaller than its `payoff:`
 line claimed. **Exactly one anchor surfaces**: `PL-W7WL`, at three filings
 (`PL-66X4`, `PL-2M5T`, `PL-3HMQ`). `plan.recurring` names open items only, and
 the two other anchors reaching the threshold - `PL-STC4` and `PL-LBR6` - are
-both closed, so their entries are record rather than signal. The backfill's
+both closed, so their entries are record rather than signal. *(Amended
+2026-09-21 by `PL-CJ5R`: it also excludes an item in flight on a branch, for
+the same reason it excludes a closed one - the promotion moves a queue
+position the item no longer has. `PL-W7WL`'s own promotion was ratified while
+it was being implemented and would have written a no-op.)* The backfill's
 real deliverable is that five open anchors now sit at one filing instead of
 zero, so the *next* re-filing of any of them crosses the threshold rather than
 the third. `PL-4JHS`'s own brief carries the table.
