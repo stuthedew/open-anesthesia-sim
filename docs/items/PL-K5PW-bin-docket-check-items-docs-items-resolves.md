@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, infra
 feature: dev-tooling
+milestone: v0.5.0
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 added: 2026-09-07
 closed: 2026-09-21
+pr: 846
 verify: uv run pytest -q subprojects/docket/tests/test_cli.py && grep -q 'def test_check_names_the_config_file_it_loaded' subprojects/docket/tests/test_cli.py
 recurrences: 2026-09-20 PL-T441
 ---

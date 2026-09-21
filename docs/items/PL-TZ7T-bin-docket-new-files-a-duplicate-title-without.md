@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: slug-rename-on-write
+milestone: v0.5.0
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/duplicates.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/concurrency.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_duplicates.py
 added: 2026-09-19
 closed: 2026-09-20

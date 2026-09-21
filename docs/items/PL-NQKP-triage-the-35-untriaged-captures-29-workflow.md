@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: housekeeping
 feature: queue-hygiene
+milestone: v0.5.0
 touches: docs/items, ROADMAP.md
 added: 2026-09-20
 closed: 2026-09-20

@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect, infra
+milestone: v0.5.0
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/store.py, subprojects/docket/src/docket/duplicates.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/verify.py, subprojects/docket/README.md, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_duplicates.py, subprojects/docket/tests/test_verify.py, docs/items/PL-SHTR-docket-verify-does-not-set-landed-guard-so-an.md
 added: 2026-09-20
 closed: 2026-09-21

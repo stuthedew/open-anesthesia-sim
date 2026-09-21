@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: cut-backfills-pr-numbers
+milestone: v0.5.0
 touches: subprojects/docket/src/docket/release.py, .claude/skills/docket/SKILL.md, subprojects/docket/tests
 added: 2026-09-16
 closed: 2026-09-21

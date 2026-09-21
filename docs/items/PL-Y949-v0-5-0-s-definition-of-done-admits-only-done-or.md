@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 feature: wzvz-deferral-integrity
+milestone: v0.5.0
 touches: ROADMAP.md
 added: 2026-09-21
 closed: 2026-09-21

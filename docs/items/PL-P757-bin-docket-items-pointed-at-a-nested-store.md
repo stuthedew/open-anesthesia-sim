@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: defect, infra
 feature: parallel-sessions
+milestone: v0.5.0
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-06
 closed: 2026-09-21
+pr: 845
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_a_nested_store_reads_the_same_in_flight_answer_as_the_default' subprojects/docket/tests/test_cli.py
 recurrences: 2026-09-21 PL-X9NB
 ---

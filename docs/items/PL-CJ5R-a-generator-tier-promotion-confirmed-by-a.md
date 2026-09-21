@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: recurrence-signal
+milestone: v0.5.0
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md, docs/WORKING_NOTES.md
 added: 2026-09-21
 closed: 2026-09-21

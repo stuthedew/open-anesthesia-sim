@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: closed-item-claims
+milestone: v0.5.0
 touches: docs/items
 added: 2026-09-20
 closed: 2026-09-21

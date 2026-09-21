@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: feature
 feature: scenario-branching
+milestone: v0.5.0
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, tests/unit, tests/integration, docs/ARCHITECTURE.md
 added: 2026-09-20
 closed: 2026-09-21

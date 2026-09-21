@@ -9,7 +9,7 @@ feature: core-domain-language
 touches: ROADMAP.md
 added: 2026-09-20
 payoff: stops every session that reads v0.5.0's scope handing the project owner back a metaphor they retired twelve days ago
-verify: ! awk '/^## v0\.5\.0 - the case you can branch/,/^## v0\.6\.0/' ROADMAP.md | grep -qiE 'score architecture'
+verify: ! awk '/^## Completed: v0\.5\.0 - the case you can branch/,/^## v0\.6\.0/' ROADMAP.md | grep -qiE 'score architecture'
 ---
 
 **Problem.** ROADMAP.md's live sections still call it the score architecture, twelve days after PL-ZX12 retired the term, so a session reading v0.5.0's scope hands the retired metaphor back to the project owner

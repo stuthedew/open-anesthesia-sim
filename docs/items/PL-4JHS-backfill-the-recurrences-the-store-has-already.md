@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: recurrence-signal
+milestone: v0.5.0
 touches: docs/items
 blocked-by: PL-X5JR
 added: 2026-09-20

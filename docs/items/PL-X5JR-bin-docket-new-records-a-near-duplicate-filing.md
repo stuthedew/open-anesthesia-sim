@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: recurrence-signal
+milestone: v0.5.0
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests, subprojects/docket/README.md
 blocked-by: PL-TZ7T
 added: 2026-09-20

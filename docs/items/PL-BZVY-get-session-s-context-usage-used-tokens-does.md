@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: session-cost, infra
 feature: context-budget-reading
+milestone: v0.5.0
 touches: CLAUDE.md
 blocked-by: PL-W80S
 added: 2026-09-20

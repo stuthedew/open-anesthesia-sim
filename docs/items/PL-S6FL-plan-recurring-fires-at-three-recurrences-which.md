@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: recurrence-signal
+milestone: v0.5.0
 touches: subprojects/docket/src/docket/plan.py
 added: 2026-09-20
 closed: 2026-09-20

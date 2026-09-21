@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: stranded-ahead-or-behind
+milestone: v0.5.0
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-17
 closed: 2026-09-21

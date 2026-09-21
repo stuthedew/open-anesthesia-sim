@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, safety, ux
 feature: two-run-attribution
+milestone: v0.5.0
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md
 added: 2026-09-20
 closed: 2026-09-21

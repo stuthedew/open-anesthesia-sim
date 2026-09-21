@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra
 feature: generator-machinery-rank
+milestone: v0.5.0
 touches: CLAUDE.md, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, tools/generator_check.py, .claude/skills/docket/modes/picking.md
 added: 2026-09-21
 closed: 2026-09-21

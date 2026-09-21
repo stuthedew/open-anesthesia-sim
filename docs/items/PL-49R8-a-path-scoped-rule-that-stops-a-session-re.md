@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: docs
 feature: numerical-domain
+milestone: v0.5.0
 touches: .claude/rules
 added: 2026-09-05
 closed: 2026-09-21
+pr: 847
 verify: test -f .claude/rules/run-is-its-definition.md && grep -q 'cannot be re-derived' .claude/rules/run-is-its-definition.md
 ---
 

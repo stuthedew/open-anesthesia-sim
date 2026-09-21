@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, defect
 feature: debt-gate
+milestone: v0.5.0
 touches: ROADMAP.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-16
 closed: 2026-09-21

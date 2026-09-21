@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: defect
 feature: pr-body-integrity
+milestone: v0.5.0
 touches: tools/pr_body_check.py, tests/unit/test_pr_body_check.py, Makefile, docs/ARCHITECTURE.md, docket.toml, docs/pr-bodies
 added: 2026-09-20
 closed: 2026-09-20

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect
 feature: cut-backfills-pr-numbers
+milestone: v0.5.0
 touches: subprojects/docket/src/docket/release.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_release.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_checks.py, docs/releases
 added: 2026-09-20
 closed: 2026-09-21

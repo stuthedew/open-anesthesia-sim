@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature, infra
 feature: convergence-visibility
+milestone: v0.5.0
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-20
 closed: 2026-09-21

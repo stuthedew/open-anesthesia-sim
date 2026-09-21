@@ -5,6 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: defect
+milestone: v0.5.0
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-20
 closed: 2026-09-21

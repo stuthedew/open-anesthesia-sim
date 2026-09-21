@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: infra, session-cost
 feature: ci-cost
+milestone: v0.5.0
 touches: tools/main_ci_status.py, tests/unit/test_main_ci_status.py, docs/ARCHITECTURE.md, docs/WORKING_NOTES.md
 added: 2026-09-16
 closed: 2026-09-20

@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: defect
 feature: parallel-sessions
+milestone: v0.5.0
 touches: subprojects/docket, tools, docs/ARCHITECTURE.md, docket.toml, .claude/skills/docket/modes/start.md, tests/unit
 added: 2026-09-13
 closed: 2026-09-21
+pr: 848
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_whose_items_are_all_closed_is_not_live_work' subprojects/docket/tests/test_vcs.py
 recurrences: 2026-09-20 PL-8JQQ
 ---

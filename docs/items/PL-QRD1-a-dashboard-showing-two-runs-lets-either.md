@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: scenario-branching
+milestone: v0.5.0
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, ROADMAP.md, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
 blocked-by: PL-8PSW, PL-VKJW
 added: 2026-09-15
