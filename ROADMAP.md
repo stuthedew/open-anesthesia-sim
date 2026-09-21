@@ -183,6 +183,17 @@ passing at the same numbers. The release as a whole is 77 files, +3,168/-833,
 of which 53 are item files; what is left is `subprojects/docket/`, `tools/`,
 `ROADMAP.md`, `docs/WORKING_NOTES.md` and one skill mode file.
 
+**Two items sit inside this tag without being named in these notes.** #863
+(`PL-ZM48`, `PL-X9WZ`) merged after this cut was taken and before it landed, so
+the v0.5.1 tag contains them and the list above does not; they close under
+v0.5.2. Shipping the cut as taken was chosen over regenerating it (project
+owner, 2026-09-21, ratified, over re-running `make release VERSION=0.5.1` to
+absorb them), because sibling sessions were landing pull requests faster than a
+regenerated set of notes could merge - #867 appeared while the question was
+being put. The shape is already in the record rather than new: `PL-4B1G`, the
+cut of v0.5.0, sits inside the v0.5.0 tag and is cited in *these* notes for the
+same structural reason.
+
 ### The debt gate got its sweep, and an instrument that cannot close
 
 `ROADMAP.md`'s cadence makes beat 3 - sweeping a frozen gate list against the

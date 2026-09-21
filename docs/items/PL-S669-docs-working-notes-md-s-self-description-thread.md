@@ -9,6 +9,7 @@ feature: project-introduction
 touches: docs/WORKING_NOTES.md
 added: 2026-09-21
 closed: 2026-09-21
+pr: 871
 verify: python3 tools/doc_check.py check && ! grep -q 'one-line self-description' docs/WORKING_NOTES.md
 ---
 
