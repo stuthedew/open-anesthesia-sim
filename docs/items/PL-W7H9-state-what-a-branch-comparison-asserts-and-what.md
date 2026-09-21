@@ -3,11 +3,12 @@ id: PL-W7H9
 title: State what a branch comparison asserts and what it does not, in docs/MODEL.md and docs/ARCHITECTURE.md
 priority: P1
 effort: S
-status: ready
+status: done
 classes: docs, safety, anticipated
 feature: scenario-branching
 touches: docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-09-06
+closed: 2026-09-21
 payoff: writes down the limits of the most persuasive thing this simulator draws, before a learner reads a difference between two curves as a result about patients
 verify: grep -q 'What a branch comparison asserts' docs/MODEL.md && grep -q 'What a branch comparison asserts' docs/ARCHITECTURE.md
 ---
@@ -155,3 +156,59 @@ refuses, which no branch it builds ever takes. Both are orders below anything
 a readout resolves. A comparison section that says "identical before the fork"
 without saying which path that is true of would be wrong about the one a
 learner is looking at.
+
+## Landed 2026-09-21
+
+**`docs/MODEL.md` § "What a branch comparison asserts, and what it does not"**,
+a new top-level section in four parts: what is compared and what the two runs
+share (eight inherited things, each naming the test that holds it); that the
+shared history is identical by construction rather than by measurement, and
+what that does *not* guarantee; that neither run is a prediction for a patient;
+and what the interface may and may not assert about a comparison.
+
+**`docs/ARCHITECTURE.md` § "What a branch comparison asserts, and which part of
+it is structural"** replaces the placeholder paragraph that named this item.
+It carries the three claims the object map itself decides - that the comparison
+is a trunk and one branch, that what may be attributed to the differing
+settings is the complement of what a branch inherits, and that the shared
+history is the same object rather than a reproduction - and routes the rest to
+`docs/MODEL.md`.
+
+**All four bullets of "What has to be stated" are answered.** The fourth -
+"any divergence bound `PL-Z3W6` could not eliminate" - is answered by quoting
+the zero `PL-Z3W6` established, and the section says in its own words why
+nothing is drawn for it. The third is stated with the two divergences that do
+exist named beside it: the display path's, which is what a learner comparing
+traces is actually looking at, and the restart no branch this program builds
+ever takes.
+
+**Two judgments worth recording, neither of which changed the deliverable.**
+
+- **Placement.** The brief said "a subsection beside the reproducibility
+  guarantee". The guarantee sits under § "Conventions" -> § "Time", which files
+  a statement about what a drawn comparison claims under a units-and-frames
+  heading. It is a top-level `##` immediately before § "Interface boundary"
+  instead - the last thing said about the model before the document turns to
+  what may be displayed - and the reproducibility guarantee, the zero-bound
+  paragraph under § "The canonical evaluation rule" and `docs/ARCHITECTURE.md`
+  all now point at it, so a reader arriving at any of the three is one link
+  away.
+- **The heading name came from this item's own `verify:`**, which greps both
+  documents for `What a branch comparison asserts`. The drafted headings read
+  "a comparison of two runs"; they were renamed to satisfy the pre-written
+  check rather than the check rewritten to match the prose.
+
+**One statement was narrowed after an audit of the shipped interface.** The
+prohibition first read "no time-to-wake-up or time-to-any-endpoint figure",
+which the bookmark halt would have contradicted: two runs halted at one marked
+height do read two instants. The section now draws the line where it belongs -
+an instant a run *reached* is not a figure predicted for an endpoint it has not
+- and says the same of each run's control-change record, which states its own
+run's inputs rather than the difference between the two.
+
+**Interface audit, 2026-09-21.** `src/anesthesia_sim/app/dashboard_frame.py`,
+`src/anesthesia_sim/app/chart_frame.py` and
+`src/anesthesia_sim/app/qt_chart.py` assert nothing about a comparison beyond
+the branch-point legend entry, the per-run naming the hazard table already
+requires, and the two standing disclaimers. No difference trace, no ranking, no
+wake-up figure. The "Done when" clause about the interface holds as shipped.

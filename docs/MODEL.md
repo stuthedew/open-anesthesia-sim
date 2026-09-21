@@ -481,7 +481,9 @@ tolerance: the same segments, the same keyframes, and the same state at step
 *n*, which is at simulated time *n* times the step in both. This is the
 property a comparison of one run against another rests on, including the
 comparison of a branched run against the run it branched from at every
-instant they share.
+instant they share. What a comparison built on it may and may not claim is
+§ "What a branch comparison asserts, and what it does not", which bounds
+the drawing where this paragraph bounds the arithmetic behind it.
 
 **What carries this for a state that is derived rather than stepped to.** The
 paragraph above is a claim about the stepped system, and it rests on every
@@ -4414,7 +4416,9 @@ residue: the display path's, tabulated above and refused in code as a source
 for anything but a drawn value, and the restart's, which no branch this program
 builds ever takes. A bound of zero drawn on screen would tell a learner there
 is something to watch where there is nothing, which is a false signal and not a
-safeguard.
+safeguard. What the comparison these two runs are drawn for may and may not
+claim — of which this zero is one clause — is § "What a branch comparison
+asserts, and what it does not".
 
 **What the relaxation costs is a second job the second condition was doing
 silently.** With the definition opening at the fork, `opened_at_s` *is* where
@@ -5081,6 +5085,222 @@ is exempt: there is nothing to discard, and
 a confirmation that fires where nothing is at stake is answered without being
 read by the time one is. Reset is therefore also the way to make a change of
 agent free.
+
+## What a branch comparison asserts, and what it does not
+
+**Two curves, one difference, an obvious conclusion — and the conclusion is
+the part this model does not supply.** The sections above establish that a
+difference between two runs is *real*: § "The reproducibility guarantee" and
+§ "The canonical evaluation rule" between them rule out rounding, evaluation
+order, playback rate and the machine as sources of it. Neither says what the
+difference is *about*. A comparison is the most persuasive thing this
+simulator draws, and the persuasiveness arrives whether or not its limits do,
+which is why they are stated here rather than left to be inferred from the
+machinery that produced them.
+
+### What is compared, and what the two runs share
+
+**Two managements of one case.** A comparison is a **trunk** and one
+**branch** of it — the same run continued two ways from an instant the first
+run passed through. `docs/ARCHITECTURE.md` § "What a branch is, and what it
+shares with its parent" is the structure.
+
+**Two, and never N.** The display holds at most two runs; while two are shown
+a further fork is refused rather than replacing the one on screen
+(`test_a_second_fork_is_refused_while_two_runs_are_shown`), and no branch is
+ever read against another branch — each is read against the trunk it was taken
+from. `ROADMAP.md` § "Explicitly out of scope for v0.5.0" declares both. So a
+comparison asserts something about **two** control timelines over one case.
+Nothing on screen has surveyed a field of managements or ranked one, because
+only two were ever run, and a reader must not generalise a capped facility
+into an uncapped one.
+
+**What the two runs share, each held by construction rather than by a reader's
+agreement to leave it alone:**
+
+- **The patient.** One reference adult
+  (`src/anesthesia_sim/data/patients/reference_adult.json`), carried into the
+  branch at the fork rather than re-chosen
+  (`test_a_branch_is_the_agent_and_patient_its_parent_was`,
+  `test_a_case_s_branches_carry_the_trunk_s_agent_and_patient_at_the_fork`).
+- **The agent.** Carried the same way, then locked on both sides for as long
+  as the comparison stands: a branch's `set_agent` refuses outright
+  (`test_a_branch_cannot_change_its_agent_out_from_under_the_case`) and the
+  trunk's selector is locked while two runs are shown
+  (`test_the_trunks_selector_is_locked_while_two_runs_are_shown`). Changing
+  agent begins a new run (§ "Agent-change behavior"), so an agent free to move
+  under a comparison would end one of its two runs rather than vary it.
+- **The equations, the parameter set and the model version.** § "The
+  reproducibility guarantee" excludes a different model version and a
+  different platform from what it covers; a comparison is inside one of each
+  by construction, because both runs are the same program run.
+- **The circuit volume**, a build-time parameter with no live setter
+  (`test_the_circuit_volume_is_a_build_time_parameter_with_no_live_setter`),
+  applied to a branch before any state is.
+- **The step.** A branch carries the trunk's own step through its
+  `ResumePoint`, and a fork at an instant that is not a whole number of that
+  step is refused rather than approximated
+  (`test_a_branch_steps_to_where_its_parent_stepped`). § "The reproducibility
+  guarantee" excludes two runs at different steps from what it covers, and
+  this is what keeps a comparison out of that exclusion.
+- **Every control value up to the fork.** The branch's settings are replayed
+  from the trunk's own recorded control timeline and then checked against the
+  settings the trunk's stretch carries rather than trusted
+  (`test_a_branch_inherits_its_parent_s_settings_at_the_fork`).
+- **The bookmarks**, so both runs are marked at the same questions
+  (`test_a_branch_opens_carrying_the_marks_of_the_case_it_continues`).
+- **The time frame.** Both runs are stamped in case time measured from
+  induction, and the chart's columns are anchored to the case's zero rather
+  than to either run's own opening, so the two traces are read against each
+  other at matched instants
+  (`test_a_branch_is_drawn_on_the_same_columns_as_the_run_it_forked_from`). A
+  fork taken at a bookmark adds exactly one column, the fork itself
+  (`test_a_bookmark_branch_draws_one_column_its_parent_does_not_and_it_is_the_fork`).
+
+**What differs is the control timeline after the fork, and nothing else.** A
+branch opens with an empty timeline of its own
+(`test_a_branch_opens_with_its_own_empty_control_timeline`) and forking leaves
+the trunk untouched (`test_forking_leaves_the_trunk_untouched`), so everything
+either run records after the fork is what its learner did to it. **A
+difference between the two at an instant past the fork is therefore
+attributable to the settings that differ after the fork — on either side — and
+to nothing else in the model.** That is what the mechanism buys, and it is
+worth stating positively as well as negatively: building the case twice
+instead would leave the two runs differing by everything that was not
+reproduced identically, and a learner reading that could not see which
+differences they had caused.
+
+### The shared history is identical by construction, not by measurement
+
+**Construction, not reproduction.** A branch's run definition carries the
+parent's own keyframe and forms each propagation interval as the instant minus
+the opening of the segment holding it — the identical keyframe, the identical
+subtraction — so parent and child perform the same sequence of floating-point
+operations at every instant they share. § "What this requires of a branch" is
+the rule, its two conditions, and which of them a fork at a bookmark relaxes.
+The tests exist to catch that construction breaking rather than to establish
+the property: `test_a_fork_opening_from_a_keyframe_reproduces_its_parent` and
+`test_a_fork_opening_between_two_keyframes_reproduces_its_parent` hold the two
+fork shapes, `test_a_branch_reproduces_its_parent_at_every_instant_they_share`
+and `test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share`
+hold them through the controller at case instants and at drawn columns, and
+`test_a_fork_opening_at_the_instant_it_was_taken_does_not_reproduce_its_parent`
+holds the restart that would *not* reproduce — which is not a route any branch
+this program builds ever takes.
+
+**So there is no residual to state: it is zero.** A branch and its parent
+agree element for element, not within a tolerance, at every instant they
+share, at a fork on a keyframe and at a fork between two of them (§ "What this
+requires of a branch"). Nothing is left over for a reader to allow for, and
+nothing is shown to them for the same reason.
+
+**What that does not guarantee is anything after the fork.** Identity before
+the fork is a statement about arithmetic, and it bounds nothing past it. How
+far the two runs diverge, in which direction, how quickly, and whether they
+converge again are properties of the settings and of the model; no property of
+the construction limits any of them. "Identical up to the branch point" is a
+warrant that what comes after is not an artifact of the fork, and it is a
+warrant for nothing else.
+
+**And it is a statement about the canonical path, which is not the path the
+chart draws.** Where the fork was taken at a control event, the two runs' drawn
+values agree exactly at every column they share. Where it was taken at a
+bookmark they agree only to floating-point composition — worst 2.7e-15 over the
+240 shared columns the test above holds, which § "The canonical evaluation
+rule" tabulates and places orders below what § "Displayed precision" resolves,
+so no displayed digit moves. What would *not* read as zero is a **difference**
+between the two drawn traces, and that is one reason this interface draws none:
+such a trace would read a few units in the last place where two identical runs
+should read zero, and a reader meeting it would take it for a disagreement
+about the case rather than for the composition order it is.
+
+### Neither run is a prediction for a patient
+
+**This model has one patient, and no variability around it.** The parameters
+are one reference adult's, and no equation here takes a covariate by which one
+patient is distinguished from another: no weight, age, sex or body-composition
+term enters any of them, and nothing scales a volume, a flow or a coefficient
+from one (§ "Known limitations"). Two branches are two trajectories of *one*
+modelled patient under two managements. They are not two patients, not two
+samples from a population, and not a range.
+
+**So a difference between the branches is a property of the model rather than
+an expected clinical difference.** It carries no interval, no spread and no
+distribution, because the model contains nothing that could supply one. It
+does not say how much two patients managed those two ways would differ from
+each other, nor how far a real patient would depart from either curve, nor how
+likely either management is to reach a given state by a given time. It says
+what these equations do under these two control timelines, inside the envelope
+§ "Supported input ranges" and § "Supported run length" declare, and to the
+fidelity § "Published wash-in and elimination validation test" establishes.
+
+**A branch that differs in cardiac output is still not a second patient**, and
+this is the case most likely to be misread, because cardiac output is a live
+control and also the quantity by which a clinician most readily separates one
+patient from another. Dialling it changes this patient's circulation, and its
+effect on uptake is a real property of these equations — a legitimate thing to
+put on either side of a fork. What it does not do is describe a *different*
+patient: a patient who differs in cardiac output differs in compartment volumes
+too, and this model holds those fixed, so moving one half of the coupled pair
+shifts every tissue time constant
+$`V_i \lambda_{i:b} / Q_i`$ in a direction the intact pair need not take.
+§ "Known limitations" measures that artifact where it arises from weight
+scaling, and the same arithmetic governs it here.
+
+**The reading to refuse, stated concretely: "low flow woke this patient twelve
+minutes sooner."** Three separate things are wrong with it and only the first
+is about variability.
+
+- **"this patient"** — there is one modelled patient and no population around
+  it, so nothing on screen is about a patient at all.
+- **"woke"** — this model has no effect-site compartment and defines
+  $`F_a \equiv F_A`$ (§ "Model boundary"), so it carries no measure of
+  responsiveness for two runs to differ in. The nearest thing the chart holds
+  is the vessel-rich trace read against the MAC-awake band, which is one
+  standard deviation either side of a published population mean and is
+  explicitly not a prediction for the patient on the screen (§ "MAC-awake as a
+  chart reference"). The interface displays no time-to-wake-up figure of any
+  kind, by decision rather than by omission.
+- **"twelve minutes"** — a duration read between two curves inherits every
+  limitation of the model that drew them, and § "Known limitations" is long
+  enough that a minutes-precise emergence difference is not among the things
+  this model is claimed to get right.
+
+**What a comparison is for is the mechanism**: which way a curve moves when
+one thing changes, why it moves that way, and roughly how fast, in a model
+whose structure makes the reason legible. That is the educational claim these
+two runs support, and it is the only one.
+
+### What the interface may assert about a comparison
+
+The interface may mark where the branch was taken
+(`BRANCH_POINT_LEGEND_LABEL` in `src/anesthesia_sim/app/dashboard_frame.py`),
+name which run every displayed value and every record of an input belongs to
+(§ "Reasonably foreseeable misuse, and the hazards the presentation carries",
+the row on reading one run's value as the other's), and carry the two standing
+statements beside the readouts — `INTERPRETATION_DISCLAIMER_TEXT` and
+`USE_DISCLAIMER_TEXT`.
+
+**It must not draw the conclusion for the reader.** No difference trace
+between two runs, no score or ranking of one management against the other, no
+time-to-wake-up figure, and no sentence stating what the comparison shows.
+Each is the conclusion this section says the model does not support, and a
+qualifier beside it does not repair that: the number would be acted on and the
+qualifier would not, which is the argument § "MAC-awake as a chart reference"
+already makes about a wake-up readout. Audited 2026-09-21 against
+`src/anesthesia_sim/app/dashboard_frame.py`,
+`src/anesthesia_sim/app/chart_frame.py` and
+`src/anesthesia_sim/app/qt_chart.py`: the interface draws none of them.
+
+**Where the line falls, since two shipped surfaces sit close to it and neither
+crosses.** A bookmark halts a run on the step that crosses a marked instant or
+height and the clock then reads where that run actually stopped (§ "Halting on
+a marked crossing"); two runs halted at one marked height therefore read two
+instants, and those are instants each run *reached* rather than figures
+predicted for an endpoint it has not. And each run's control-change record
+states that run's own inputs, which is the record of what its learner did and
+not a statement about the difference between the two — which is why it is
+headed for the run it belongs to rather than for the comparison.
 
 ## Interface boundary
 
