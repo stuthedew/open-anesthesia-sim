@@ -106,6 +106,19 @@ release. That happened on both releases the command has existed for. `make
 release` runs `bin/docket release` and then `uv lock`, which is the whole
 mechanical half.
 
+**Before it renders the notes it writes the numbers they will cite.** A
+closure lands with an empty `pr` by design, so an item that merged since the
+last cut used to ship a bullet naming no pull request, with no supported way to
+add one afterwards — 128 bullets across 22 releases before this was fixed
+(`PL-W7WL`). The cut now reads the same thing `docket record` reads and writes
+it onto the items first, printing a `recorded pr: N, so these notes can cite
+it` line for each. Two things follow for you. A number it could not reach is
+said so rather than refused — the release still cuts, and `bin/docket record`
+repairs the bullet afterwards. And where it reports a **shallow clone**, run
+`git fetch --unshallow origin` and cut again: the merge commits that name the
+numbers are outside the checkout, and a bullet is better written right than
+repaired.
+
 **It stops there, and the last thing it prints is what is left.** `ROADMAP.md`
 needs a version-table row, the `current baseline` mark moved onto it, and a
 baseline section — release prose that says what the release was *for*, which

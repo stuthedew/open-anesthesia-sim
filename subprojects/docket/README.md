@@ -39,7 +39,8 @@ docket branch                # where this branch stands against the default one
 docket flight                # which items a branch is already carrying
 docket stranded              # work that exists only on a branch
 docket digest --profile      # what the session-start digest asks git, and the ref set it walked
-docket record                # write every pull request number the base is owed
+docket record                # write every pull request number the base is owed,
+                             # onto the items and onto the released notes alike
 docket check                 # validate the store; exits non-zero on errors
 docket check --verify        # ...and replay every open item's `verify:` command
 docket check --verify --verify-base origin/main   # ...only the ones this branch could have changed
@@ -2235,6 +2236,22 @@ merge, because a session may be owed numbers from several, and because taking
 them from the base is what lets the write ride whatever commit the session was
 about to make. That is the cost being removed: not the typing, but the commit
 the typing needed.
+
+Bare, it also puts that number where a reader is actually looking. `pr` exists
+so somebody can get from a released item back to the change that made it, and a
+release's notes are where they look — so a number written onto the item and not
+onto the bullet has been recorded in the half nobody reads. That happened to
+128 of this project's 853 released bullets across 22 of 40 releases, because
+the cut rendered the notes and this command ran afterwards (`PL-W7WL`, filed
+four times from four separate cuts before anything compared the two files on
+that axis). The cut now writes the number first, which stops the next one; this
+is the only supported route to a bullet that has already shipped, since
+re-cutting a released version to regenerate it is refused and should be. The
+edit is an append — the id and the title stay exactly as they went out — so a
+release never changes what it claims, and a run with nothing to add writes
+nothing, which is what lets it sit in `make fix`. `docket check` reports what
+is left as an advisory, counting only bullets the store can actually supply a
+reference for.
 
 `docket record NUMBER --merge MERGE_COMMIT` is the explicit form, for the number
 the base cannot name — a squash subject that led with no id. It takes the

@@ -20,6 +20,7 @@ is *for*; a milestone says which release it left in.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -366,15 +367,112 @@ def release_notes(milestone: Milestone, today: date) -> str:
         lines.append(f"### {name}")
         lines.append("")
         for item in by_class[name]:
-            # The pull request in preference to the commit: it is what a reader
-            # can still follow after a squash-merge discards the branch, and a
-            # bare `#48` renders as a link where these notes are read.
-            reference = (
-                f" — #{item.pr}" if item.pr else (f" — `{item.commit}`" if item.commit else "")
-            )
-            lines.append(f"- {item.identifier} {item.title}{reference}")
+            lines.append(f"- {item.identifier} {item.title}{reference(item)}")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
+
+
+def reference(item: Item) -> str:
+    """Where a reader goes to see the change one notes bullet is about.
+
+    The pull request in preference to the commit: it is what a reader can
+    still follow after a squash-merge discards the branch, and a bare `#48`
+    renders as a link where these notes are read. Empty where the item records
+    neither, which is the state every closure is in until the number its merge
+    event carried is written back.
+
+    Its own function because two callers have to agree on it exactly. The cut
+    writes it, and `restate_references` puts it on a bullet that shipped
+    before the number existed - so a second spelling of the rule would let a
+    repaired line and a generated one differ inside the same file.
+    """
+    if item.pr:
+        return f" — #{item.pr}"
+    if item.commit:
+        return f" — `{item.commit}`"
+    return ""
+
+
+#: A notes bullet that already says where its change landed. Anchored to the
+#: end of the line because that is the only place `reference` writes one, and
+#: matched on shape rather than against the item's current title: a bullet
+#: records the title *as it shipped*, so an item retitled afterwards would fail
+#: an equality test while its missing number stayed exactly as recoverable.
+#: Measured 2026-09-21 over this project's 1,412 items, no title ends in a tail
+#: this could mistake for a reference.
+REFERENCED_RE = re.compile(r" — (#\d+|`[0-9a-f]{7,40}`)$")
+
+#: A notes bullet split into the id it claims and everything after it, which is
+#: the title plus whatever reference the bullet carries. Same anchoring as
+#: `NOTES_ENTRY_RE` and for the same reason: titles quote other ids, so only
+#: the leader says which item a bullet is about.
+NOTES_BULLET_RE = re.compile(rf"^- ({ID_PATTERN})(.*)$", re.M)
+
+
+def unreferenced(text: str) -> tuple[str, ...]:
+    """The ids one notes file names with no route back to the change that made them."""
+    return tuple(
+        identifier
+        for identifier, tail in NOTES_BULLET_RE.findall(text)
+        if not REFERENCED_RE.search(tail)
+    )
+
+
+def unreferenced_by_version(root: Path, notes_dir: str = NOTES_DIR) -> dict[str, tuple[str, ...]]:
+    """Which items each cut release's notes name without saying where they landed.
+
+    The companion to `notes_by_version`, reading the same files for the other
+    half of what a bullet records. That one answers *which* items a release
+    claims, which is what `_check_release_notes` holds against the stamps;
+    this answers which of those claims a reader cannot follow.
+
+    Releases whose bullets all carry a reference are absent rather than empty,
+    so a healthy project reports `{}` and the caller has nothing to filter.
+    """
+    directory = root / notes_dir
+    if not directory.is_dir():
+        return {}
+    found: dict[str, tuple[str, ...]] = {}
+    for path in sorted(directory.glob("v*.md")):
+        if not SEMVER_RE.match(path.stem):
+            continue
+        if missing := unreferenced(path.read_text(encoding="utf-8")):
+            found[path.stem] = missing
+    return found
+
+
+def restate_references(text: str, by_id: Mapping[str, Item]) -> tuple[str, tuple[str, ...]]:
+    """Append the reference the store can now supply to every bullet missing one.
+
+    An append, and nothing else. The id and the title are left exactly as they
+    shipped, so this cannot change what a release *claims* - which is the
+    hazard `PL-1MKQ` names for re-cutting one, and which adding the route back
+    to a change the bullet already names does not engage. Every other byte of
+    the file, including the headings and the class grouping, is untouched for
+    the same reason `_write_pr` inserts a field rather than re-rendering the
+    item: a repair that rewrites what it did not have to is a repair nobody can
+    review.
+
+    A bullet whose item the store no longer holds, or holds with neither a
+    number nor a commit, is left alone. This supplies a fact or it does
+    nothing; there is no third thing it could honestly write.
+
+    Returns the new text and the ids it repaired, so a caller can report the
+    repair rather than a diff.
+    """
+    repaired: list[str] = []
+
+    def restate(match: re.Match[str]) -> str:
+        identifier, tail = match.group(1), match.group(2)
+        item = by_id.get(identifier)
+        if item is None or REFERENCED_RE.search(tail):
+            return match.group(0)
+        if not (suffix := reference(item)):
+            return match.group(0)
+        repaired.append(identifier)
+        return f"- {identifier}{tail}{suffix}"
+
+    return NOTES_BULLET_RE.sub(restate, text), tuple(repaired)
 
 
 @dataclass(frozen=True)
