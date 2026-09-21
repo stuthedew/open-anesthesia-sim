@@ -106,6 +106,43 @@ open items that bar would have suppressed — was 67% still-real findings, which
 killed the proposal. The project owner caught it by instinct first; the number
 only confirmed what the objection already said (`PL-LKGL`, `PL-27S8`).
 
+## Count what undoing it would cost, before taking the cheaper route
+
+`.claude/rules/expert-review.md` § "Name the number that would change your mind,
+then go and count it" fires on a proposal to tighten something. This is the
+other half of the same trade: two routes to one end state, the durable one
+slower, the cheap one destined to be redone. Doing it twice costs more than
+doing it once, so the cheap route is a loan — sound or reckless depending on a
+number nobody states.
+
+State it. **Name what would have to change to switch routes later, and count
+what is already downstream of the choice.** One file and nothing stored yet:
+take the cheap route, say that is what you did, and move on. Every item file,
+every stored parameter entry, every citation in the tree: the cheap route is
+not cheaper, because the principal grows with each instance added before it is
+repaid, and the durable route is taken now.
+
+**The count runs both ways, which is what keeps it honest.** A mechanism with
+nothing downstream fails this test as surely as a stop-gap under a thousand
+call sites passes it, so it is never a licence to build the larger thing.
+Reversibility is the discriminator rather than size or effort: Bezos's 2015
+letter to Amazon shareholders reserves the slow, deliberate path for the Type 1
+decisions that are "consequential and irreversible or nearly irreversible" —
+one-way doors — and warns that putting the reversible Type 2 kind through the
+same process buys only risk aversion and too little experiment (*2015 Letter to
+Shareholders*, Amazon.com, Inc.,
+https://s2.q4cdn.com/299287126/files/doc_financials/annual/2015-Letter-to-Shareholders.PDF).
+Ward Cunningham's reading of his own debt metaphor has the same shape: the loan
+is sound taken deliberately and repaid by refactoring as experience arrives, and
+is never a licence for shipping what you already know is wrong (*Debt Metaphor*,
+2009, https://www.youtube.com/watch?v=pqeJFYwnkjE).
+
+**Where the count cannot be taken, the horizon decides.** The project owner's
+form of it, and the one to quote back: *of these options, which will we be glad
+we implemented in five years?* `CLAUDE.md` § "What this project is" is why that
+resolves anything here. It is the tie-breaker and not the opening move: reach
+for it where the count genuinely is not available, never to avoid taking one.
+
 ## Say what would falsify it, then record the instance rather than the rule
 
 An argument licenses the narrowest rule that removes the hazard, never the
