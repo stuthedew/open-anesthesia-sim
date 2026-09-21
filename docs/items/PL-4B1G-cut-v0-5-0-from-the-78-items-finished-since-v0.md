@@ -9,6 +9,7 @@ feature: release-process
 touches: pyproject.toml, uv.lock, ROADMAP.md, docs/releases, docs/items
 added: 2026-09-21
 closed: 2026-09-21
+pr: 850
 payoff: the MVP milestone ships under its own number, the 78 finished items stop being re-offered in every session digest, and Gate 2 is frozen on the day the timeline says rather than by whoever next opens the section
 verify: grep -q "^version = \"0.5.0\"" pyproject.toml
 ---

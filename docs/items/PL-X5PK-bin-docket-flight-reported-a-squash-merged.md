@@ -1,9 +1,16 @@
 ---
 id: PL-X5PK
 title: bin/docket flight reported a squash-merged branch whose every change was already on the base, and _work_already_on_base is documented to have excluded it
-status: untriaged
+priority: P3
+effort: M
+status: ready
+feature: carrier-detection
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
 added: 2026-09-21
+payoff: it is settled whether every session in this harness gets a degraded flight read that none of them can detect
+not-delegable: An investigation whose two readings demand opposite work and whose honest outcome may be a drop, so no command can be written that passes only when it is done. The measurement it needs - whether an unread guard fires on a shallow clone - cannot be run against a full checkout, which is where a worker would run it.
 ---
+
 **Problem.** `bin/docket flight` reported a squash-merged branch whose every
 change was already on the base, and `_work_already_on_base` is documented to
 have excluded it
@@ -65,3 +72,13 @@ that has read the code rather than with this one, which has not.
 depth-triggered unread guard, and either a test in
 `subprojects/docket/tests/test_vcs.py` holds the fix, or the item is dropped
 with the reading that explains the observation.
+
+**Why it matters.** The two readings cost very different things and nothing in
+the observation separates them. If the exclusion simply misses this shape, it is
+a narrow fix on a report a reader consults occasionally. If instead one of the
+two documented unread-guards is firing on clone depth, every session in this
+harness gets a degraded `flight` read, none of them can tell, and the degradation
+is invisible in the full clone where anyone would go looking - which is
+`CLAUDE.md`'s first compounding-friction test, a check passing while the
+guarantee it stands for is void. The container clones shallow, so the expensive
+reading is also the likelier one.

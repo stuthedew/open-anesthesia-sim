@@ -1,10 +1,15 @@
 ---
 id: PL-N0MH
 title: Only docket check names the settings it ran under, so next, digest, status and list under --items are read under the wrong policy in silence
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_cli.py, docs/items/PL-QNYF-docket-check-errors-on-an-item-whose-closure.md
 added: 2026-09-21
+payoff: a command reading a store under settings that are not that store's own says so, so a band size or lane split judged against library defaults is visible rather than silent
+verify: grep -q 'def test_next_names_the_settings_it_ran_under' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** Only docket check names the settings it ran under, so next, digest, status and list under --items are read under the wrong policy in silence

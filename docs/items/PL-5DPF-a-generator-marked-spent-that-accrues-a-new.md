@@ -1,8 +1,14 @@
 ---
 id: PL-5DPF
 title: A generator marked spent that accrues a new recurrence has had its verdict falsified, and nothing says so
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 added: 2026-09-21
+payoff: a generator whose spent verdict the store has since contradicted is named to a session that can re-rank it, instead of sitting demoted in silence
+verify: grep -q 'def test_a_spent_generator_the_store_still_feeds_is_reported' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** A generator marked spent that accrues a new recurrence has had

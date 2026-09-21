@@ -1,9 +1,15 @@
 ---
 id: PL-3QM9
 title: bin/docket flight reports a branch's age by calendar-date subtraction, so a branch committed 55 minutes ago reads 'last commit 1 day ago' across midnight and a running session looks abandoned
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect
 feature: carrier-detection
+touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-21
+payoff: a branch pushed to an hour ago stops reading as a day-old abandoned one, so a reader of flight does not start an item another session is holding
+verify: grep -q 'def test_a_branch_committed_an_hour_ago_is_not_reported_a_day_old' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** bin/docket flight reports a branch's age by calendar-date subtraction, so a branch committed 55 minutes ago reads 'last commit 1 day ago' across midnight and a running session looks abandoned
