@@ -360,6 +360,7 @@ workflow_paths = [
   "tests/unit/test_generator_check.py",
   "tests/unit/test_context_reading.py",
   "tests/unit/test_workflow_paths_check.py",
+  "tests/unit/test_possessive_section_check.py",
   "tools",
 ]
 

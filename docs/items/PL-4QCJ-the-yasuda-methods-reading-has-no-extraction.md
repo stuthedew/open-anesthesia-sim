@@ -68,8 +68,8 @@ texts live now" closes it.
 
 **Done when.** The Yasuda methods facts above carry page locators in an
 extraction note under `docs/references/`, in whatever shape `PL-Z3V5` settles,
-and `docs/MODEL.md`'s "not held in this repository" sentence points a reader at
-where they now are.
+and `docs/MODEL.md`'s "not held in `docs/references/`" sentence points a reader
+at where they now are.
 
 ## Page locators now available, 2026-09-13
 

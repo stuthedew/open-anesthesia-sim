@@ -38,8 +38,8 @@ facts rather than prose.
 by preference: `tests/unit/test_contrast_check.py`,
 `tests/unit/test_doc_check.py` and `tests/unit/test_import_boundary_check.py`
 are named in `docket.toml`'s `workflow_paths`, which counts them apparatus
-rather than product - so `CLAUDE.md`'s "working reliably and staying
-streamlined" governs them, not the specialist standard this item applies. The
+rather than product - so `.claude/rules/apparatus-standard.md` governs them,
+not the specialist standard this item applies. The
 same reasoning kept `docs/WORKING_NOTES.md` out of the prose split.
 
 **Where.** `tests/`, less the three files above. Counts are measured 2026-09-05 and rounded because they move every release; re-measure before starting rather than trusting them - they are here for ordering, not as a claim.

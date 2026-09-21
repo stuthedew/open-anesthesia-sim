@@ -372,19 +372,31 @@ MARKER_RE = re.compile(r"^(?:[-*+]\s+)?\*\*(?P<title>[^*\n]+?)\.?\*\*", re.M)
 #: reported. Counted 2026-09-13 over `*.py` and `*.md`: 353 `§`, 150 `'s`, 44
 #: `,`, 20 bare, 11 `under`, 9 `(`, 5 `'s own`, 4 `:`, 3 `§§`.
 #:
-#: The possessive is deliberately NOT here, and it is the biggest excluded
-#: group. This project writes `` `CLAUDE.md`'s "..." `` for a *sentence* it is
-#: quoting as often as for a section it is citing, and the two are
-#: indistinguishable without reading the meaning: admitting it reported 28
-#: quotations of real prose as stale headings (measured 2026-09-13). `§` has no
-#: such second use, which is what makes it checkable. The tail below the
-#: possessive is prose too - "`docs/MODEL.md` gains \"a new section\"", "its
-#: eighteen \"...\"" - and admitting an arbitrary word would read it as a
-#: citation and hard-fail on text that is not wrong. That is `PL-KJ63`'s
-#: over-reach, which cost a rewording of correct prose, so widening this set
-#: means adding a named connective that has no second use, and nothing else
-#: (`PL-V13T`).
-CITATION_CONNECTIVE = r"(?:[,:(]|§{1,2}|\bunder\b)"
+#: The possessive was excluded until 2026-09-21, on the ground that this
+#: project writes `` `CLAUDE.md`'s "..." `` for a *sentence* it is quoting as
+#: often as for a section it is citing, and that the two are indistinguishable
+#: without reading the meaning (`PL-V13T`, which measured 28 errors and read
+#: every one as a false positive). **The distinction was never needed.**
+#: `check_quoted_sources` is the only consumer of this pattern and it tests
+#: containment rather than headings, so it asks one question of both uses -
+#: whether the cited file contains the words - and a quotation that has drifted
+#: is as stale as a title that has. Re-measured on 2026-09-21 over the same
+#: tree: 40 errors, of which 24 were verbatim in an earlier version of the
+#: cited file and 2 were verbatim in a *different* file from the one named. A
+#: majority were real, which is the count the exclusion turned on and the count
+#: that reversed it (`PL-316G`).
+#:
+#: What it costs is a constraint on prose rather than a false-error risk: a
+#: quotation in quotation marks has to be quotable, so a rule named by a
+#: compressed handle is written out or loses its quotes. Three sites paid it.
+#:
+#: The tail below the possessive stays out, and for the original reason -
+#: "`docs/MODEL.md` gains \"a new section\"", "its eighteen \"...\"" - because
+#: admitting an arbitrary word would read prose as a citation and hard-fail on
+#: text that is not wrong. That is `PL-KJ63`'s over-reach, so widening this set
+#: still means adding a *named* connective with no second use that containment
+#: cannot answer, and nothing else.
+CITATION_CONNECTIVE = r"(?:[,:(]|§{1,2}|['\u2019]s(?:\s+own)?|\bunder\b)"
 
 QUOTED_SOURCE_RE = re.compile(
     r"(?:\b(?:see|under|in)\s+)?"
