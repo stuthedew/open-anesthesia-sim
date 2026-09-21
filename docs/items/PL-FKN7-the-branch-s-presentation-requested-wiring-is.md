@@ -1,6 +1,6 @@
 ---
 id: PL-FKN7
-title: "The branch's presentation_requested wiring is untested: every branch test reads the controller, none reads the display"
+title: The branch's presentation_requested wiring is untested: every branch test reads the controller, none reads the display
 priority: P2
 effort: S
 status: ready

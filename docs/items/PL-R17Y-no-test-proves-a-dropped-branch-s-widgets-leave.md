@@ -1,6 +1,6 @@
 ---
 id: PL-R17Y
-title: "No test proves a dropped branch's widgets leave the dashboard; the trunk-Reset test asserts Python-side state only"
+title: No test proves a dropped branch's widgets leave the dashboard; the trunk-Reset test asserts Python-side state only
 priority: P2
 effort: S
 status: ready

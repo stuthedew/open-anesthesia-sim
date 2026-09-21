@@ -1,6 +1,6 @@
 ---
 id: PL-RS3Z
-title: "The order of a branch's splitter sections is unasserted; the test counts them without checking where they land"
+title: The order of a branch's splitter sections is unasserted; the test counts them without checking where they land
 priority: P2
 effort: S
 status: ready
