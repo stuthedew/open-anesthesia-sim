@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from . import notes, render
-from .checks import Report, analyze
+from .checks import Report, SettingsSource, analyze
 from .concurrency import (
     ORDERING,
     SAME_AREA,
@@ -166,6 +166,29 @@ def _load(args: argparse.Namespace) -> tuple[Path, list[Item], Config]:
     config = load_config(root)
     directory = args.items or (root / config.items_dir)
     return directory, read_items(directory), config
+
+
+def _settings_source(root: Path) -> SettingsSource:
+    """Which `docket.toml` governed this run, named the way its reader would type it.
+
+    `_load` above is the whole of the resolution and this repeats one line of
+    it, deliberately: `load_config` returns a `Config` and not where it came
+    from, and a `Config` holding library defaults is indistinguishable from a
+    project that wrote those values down. `checks._note_settings` says what
+    the answer is for.
+
+    Made relative to the working directory where it can be, because the reader
+    is being shown a path to go and look at and an absolute one from a
+    temporary directory is noise. Absolute where the store is somewhere else
+    entirely, which is the case that most needs saying.
+    """
+    path = root / CONFIG_NAME
+    found = path.is_file()
+    try:
+        path = path.relative_to(Path.cwd())
+    except ValueError:
+        pass
+    return SettingsSource(path=path, found=found)
 
 
 #: Where `_flight` keeps its per-invocation answer. On the namespace rather than
@@ -447,6 +470,10 @@ def _complete_report(
         # release branch and on its pull request, where re-running the cut
         # still absorbs the newcomers.
         window=cut_window(root),
+        # Not read from the store at all, unlike everything above: it is which
+        # policy the store was read *under*, which only the caller that
+        # resolved it knows.
+        settings_source=_settings_source(root),
     )
 
 

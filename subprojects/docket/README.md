@@ -2977,6 +2977,49 @@ version_file = "pyproject.toml"
 roadmap_file = "ROADMAP.md"
 ```
 
+### Where the settings are resolved from, and why the run says so
+
+From beside the store, not from wherever the command was run. With no
+`--items`, that is the repository root and the two are the same place. With
+`--items <dir>`, it is `<dir>`'s parent - so pointing at another project's
+queue reads that project's `docket.toml`, and never this one's. Applying the
+policy of whichever checkout you happened to be standing in would be wrong in
+the way that is hardest to notice: the answers look right and are governed by
+the wrong rules.
+
+The cost of that is paid by a store that lives *under* the root. `docket check
+--items docs/items` looks for `docs/docket.toml`, finds none, applies library
+defaults, and reports a clean store as hundreds of vocabulary errors - the
+project's own classes are not the library's. Nothing about that reading is
+wrong, and a session meeting it mid-task reads it as its own edits having
+corrupted the queue, which is the most expensive available misreading
+(`PL-K5PW`).
+
+So `docket check` names the settings it ran under, on its own second line,
+whether or not it found a file:
+
+```
+docket: 345 open (0 P0, 1 P1, 201 P2, 131 P3, 12 untriaged), 0 errors, 12 advisories
+  settings: docket.toml
+```
+
+```
+docket: 345 open (0 P0, 1 P1, 201 P2, 131 P3, 12 untriaged), 280 errors, 11 advisories
+  settings: no docs/docket.toml, so library defaults govern this run rather than
+  this project's - a finding below may be this store read under the wrong policy
+  rather than a store that is wrong
+```
+
+Named on both runs, because silence is ambiguous: a reader who sees no line
+cannot tell a config that was found from a version of the command that reports
+nothing, and it is the difference between the two lines that identifies the
+defect. It is a fact about the run rather than a finding - the category the
+`verify:` cost line beside it is in, and the open-item counts above it - so
+nobody is asked to act on it and a *change* in it is the whole signal.
+
+Refusing the run instead was considered and is wrong: the behaviour is correct,
+and another project's store is a real use.
+
 ### `notes_file`: making a threads file reachable
 
 A project that keeps a running cross-session log beside its queue - threads

@@ -1778,6 +1778,13 @@ def format_check(report: Report) -> str:
     if report.declined:
         headline += f", {len(report.declined)} not checked"
     lines = [headline]
+    # First of the two run lines, because it is context for the headline above
+    # it rather than for the findings below: a count read under library
+    # defaults is a different claim from the same count read under the store's
+    # own policy, and a reader who cannot see which has been told the store is
+    # broken (`PL-K5PW`).
+    if report.settings:
+        lines.append(f"  {report.settings}")
     # Under the headline rather than appended to it: this is what the run cost
     # rather than what it found, and the two want different attention. Absent
     # entirely where nothing ran, so a reader never sees a cost line whose

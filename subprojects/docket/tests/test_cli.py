@@ -689,6 +689,50 @@ def test_check_exits_zero_on_a_clean_store(tmp_path: Path) -> None:
     assert _run("check", "--items", str(_store(tmp_path, READY))) == 0
 
 
+def test_check_names_the_config_file_it_loaded(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Which policy a store was read under is a fact about the run (`PL-K5PW`).
+
+    Named on the run that found its config as well as on the run that did not,
+    so that the two are distinguishable: silence would read the same as a
+    version of the command that reports nothing, and it is the difference
+    between the two lines that identifies the defect below.
+    """
+    store = _store(tmp_path, READY)
+    (tmp_path / "docket.toml").write_text("[docket]\n", encoding="utf-8")
+
+    assert _run("check", "--items", str(store)) == 0
+    line = capsys.readouterr().out.splitlines()[1]
+    assert line.strip() == f"settings: {tmp_path / 'docket.toml'}"
+
+
+def test_check_says_when_it_found_no_config_beside_the_store(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The half that was the defect (`PL-K5PW`, filed twice).
+
+    `--items` resolves settings from beside the store rather than from the
+    repository root, which is deliberate - another project's queue must not be
+    read under this project's policy. Pointed at this project's own store,
+    though, it finds no `docs/docket.toml`, applies library defaults, and
+    reports a clean store as hundreds of vocabulary errors. Nothing on the
+    output said which had happened, so the alarming reading - that the session's
+    own edits had corrupted the queue - was the only one available.
+
+    The store here is clean, so the line stands alone rather than beside the
+    errors it explains: what is under test is that the reading is named, not
+    that a wrong policy produced findings.
+    """
+    store = _store(tmp_path, READY)
+    assert not (tmp_path / "docket.toml").exists()
+
+    assert _run("check", "--items", str(store)) == 0
+    line = capsys.readouterr().out.splitlines()[1]
+    assert line.strip().startswith(f"settings: no {tmp_path / 'docket.toml'},")
+    assert "library defaults govern this run" in line
+
+
 #: A `ready` item - one of `LANDED_STATUSES` - whose `verify:` command leaves a
 #: file behind. Whether that file exists after a run is the only direct evidence
 #: that the command was executed, which is what the two tests below turn on.
