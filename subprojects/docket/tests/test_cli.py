@@ -2118,6 +2118,38 @@ def test_stranded_finds_an_item_that_exists_only_on_a_branch(
     assert "git checkout abandoned -- items/PL-K7QX-lost.md" in out
 
 
+def test_settings_are_read_from_the_repository_root_not_the_store_s_parent(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-P757's third symptom, and the quietest of the three.
+
+    `_load` resolves settings from the project that owns the store, so that
+    `--items` pointed at another project's queue is not answered under this
+    project's policy. Taking the store's parent for that project's root made
+    the rule true only one level down: `--items docs/items` looked for
+    `docket.toml` in `docs/`, found none, and ran on the package defaults -
+    so `check` judged this repository's own queue against a vocabulary,
+    a band limit and a path partition nobody wrote.
+
+    `known_classes` is the observable end of it: declared, it replaces the
+    derived vocabulary entirely, so a class that is only in the file is
+    accepted when the file was read and an error when it was not.
+    """
+    root = tmp_path / "repo"
+    (root / ".git").mkdir(parents=True)
+    (root / "docket.toml").write_text('[docket]\nknown_classes = ["weather"]\n', encoding="utf-8")
+    store = root / "docs" / "items"
+    store.mkdir(parents=True)
+    (store / "PL-0001-forecast.md").write_text(
+        READY.replace("PL-B1B1", "PL-0001").replace("classes: perf", "classes: weather"),
+        encoding="utf-8",
+    )
+
+    assert _run("check", "--items", str(store)) == 0
+
+    assert "weather" not in capsys.readouterr().out, "the declared vocabulary was read"
+
+
 def test_stranded_reads_a_store_two_levels_down(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -2526,7 +2558,7 @@ def test_flight_ignores_a_branch_that_only_wrote_to_the_queue(
     assert "PL-K7QX" not in capsys.readouterr().out
 
 
-def test_flight_reads_a_store_two_levels_down_exactly_as_it_reads_one(
+def test_a_nested_store_reads_the_same_in_flight_answer_as_the_default(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """PL-P757: `--items docs/items` is this project's own layout, and it read wrong.
@@ -2543,10 +2575,7 @@ def test_flight_reads_a_store_two_levels_down_exactly_as_it_reads_one(
     same store and their answers have to be the same string.
     """
     root = _flight_repo(
-        tmp_path,
-        "PL-K7QX Do the thing",
-        wrote="docs/items/PL-K7QX-a-note.md",
-        store="docs/items",
+        tmp_path, "PL-K7QX Do the thing", wrote="docs/items/PL-K7QX-a-note.md", store="docs/items"
     )
 
     assert main(["--items", str(root / "docs" / "items"), "--today", "2026-08-23", "flight"]) == 0

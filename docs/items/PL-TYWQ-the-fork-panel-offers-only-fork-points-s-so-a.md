@@ -9,6 +9,7 @@ feature: scenario-branching
 touches: src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/simulation_view.py, tests/unit, tests/integration, docs/ARCHITECTURE.md
 added: 2026-09-20
 closed: 2026-09-21
+pr: 841
 payoff: closes the one sequence the interface cannot complete - mark a decision point, stop there, branch there - which is what v0.5.0's Definition of done asks for
 verify: grep -q 'def test_a_branch_is_offered_at_the_mark_the_run_is_standing_on' tests/integration/test_simulation_view.py
 ---
