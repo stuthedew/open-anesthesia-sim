@@ -83,6 +83,7 @@ from anesthesia_sim.app.dashboard_frame import (
     StatusWord,
     Transport,
     accounting,
+    compared_panel_heading,
     compared_run_line,
     delivered_fraction,
     halt_disposition,
@@ -436,6 +437,15 @@ class RunView(QWidget):
         for slider, handler in handlers:
             slider.adjustment_started.connect(self._handle_adjustment_start)
             slider.value_changed.connect(handler)
+
+        # The two sidebar panels' headings. Instance labels rather than
+        # widgets built inside `build_sidebar_panels`, because each has to
+        # gain and lose this run's name as the dashboard's run set changes,
+        # and `set_run_name` is the one writer of that name (`PL-C3GS`).
+        self._accounting_heading_text = styled_label(ACCOUNTING_HEADING, color=INK, bold=True)
+        self._control_timeline_heading_text = styled_label(
+            CONTROL_TIMELINE_HEADING, color=INK, bold=True
+        )
 
         initial_accounting = accounting(snapshot)
         self._agent_accounting_status_text = styled_label(
@@ -1020,12 +1030,19 @@ class RunView(QWidget):
         return row
 
     def set_run_name(self, name: str | None) -> None:
-        """Name this view in its own header, or show no name at all.
+        """Name this view in its own header and on both its sidebar panels, or not at all.
 
         The dashboard decides the name, from `dashboard_frame.run_label`, so
         that this panel and the chart's legend call one run the same thing -
         a legend entry reading "Run 2" attributes a curve only if something
         holding that run's settings also says "Run 2".
+
+        **The one writer of this run's name**, which is why the two sidebar
+        headings are written here rather than in `refresh`: what a run is
+        called changes when the dashboard's run set changes and at no other
+        time, and `SimulationView._place_run` renames every run the moment a
+        branch is placed - so the headings are attributed on the frame the
+        branch appears on, before any chart frame is drawn (`PL-C3GS`).
 
         Args:
             name: What to call it, or `None` for no name - which is what a
@@ -1034,6 +1051,10 @@ class RunView(QWidget):
 
         self._run_name_text.setText(name or "")
         self._run_name_text.setHidden(name is None)
+        self._accounting_heading_text.setText(compared_panel_heading(ACCOUNTING_HEADING, name))
+        self._control_timeline_heading_text.setText(
+            compared_panel_heading(CONTROL_TIMELINE_HEADING, name)
+        )
 
     def build_notice(self) -> QWidget:
         """The banner for a halted run or a refused setting, placed above every value."""
@@ -1089,7 +1110,7 @@ class RunView(QWidget):
         accounting_column.setContentsMargins(
             PANEL_PADDING, PANEL_PADDING, PANEL_PADDING, PANEL_PADDING
         )
-        accounting_column.addWidget(styled_label(ACCOUNTING_HEADING, color=INK, bold=True))
+        accounting_column.addWidget(self._accounting_heading_text)
         accounting_column.addWidget(self._agent_accounting_status_text)
         accounting_column.addWidget(self._agent_accounting_detail_text)
         accounting_column.addWidget(
@@ -1105,7 +1126,7 @@ class RunView(QWidget):
             PANEL_PADDING, PANEL_PADDING, PANEL_PADDING, PANEL_PADDING
         )
         timeline_column.setSpacing(4)
-        timeline_column.addWidget(styled_label(CONTROL_TIMELINE_HEADING, color=INK, bold=True))
+        timeline_column.addWidget(self._control_timeline_heading_text)
         timeline_column.addWidget(
             styled_label(
                 CONTROL_TIMELINE_CAPTION,

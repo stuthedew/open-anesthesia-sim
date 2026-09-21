@@ -59,9 +59,11 @@ from anesthesia_sim.app.control_record import ControlChange
 from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustments
 from anesthesia_sim.app.controller import BranchedCase, SimulationController
 from anesthesia_sim.app.dashboard_frame import (
+    ACCOUNTING_HEADING,
     BRANCH_AGENT_LOCK_TEXT,
     COMPARING_AGENT_LOCK_TEXT,
     COMPARING_FORK_LOCK_TEXT,
+    CONTROL_TIMELINE_HEADING,
     FORK_NOTHING_SELECTED_TEXT,
     INTERPRETATION_DISCLAIMER_TEXT,
     KEEP_CURRENT_CASE_TEMPLATE,
@@ -3644,6 +3646,80 @@ def test_a_lone_run_leaves_the_shared_chart_lines_unnamed(application: QApplicat
     assert run._wash_in_state_text.text().startswith("Now: F_A/F_I =")
     assert run_label(0) not in run._off_scale_text.text()
     assert run_label(0) not in run._wash_in_state_text.text()
+
+
+def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) -> None:
+    """Both panels sit in the sidebar column the runs share, so each heading says whose.
+
+    Once a branch is drawn the column stacks four panels - accounting,
+    control changes, accounting, control changes - and nothing on any of them
+    said which run it recorded. Both carry a claim about one run: a
+    mass-balance status with litres of equivalent pure agent gas, and a list
+    of settings under the words "What was changed during this run". Read as
+    the other run's, the second says the trunk received an intervention it
+    never got (`PL-C3GS`).
+
+    The trunk is given a setting change before the fork and the branch one
+    after it, so the two control-change lists differ and misattributing
+    either is a concrete wrong reading rather than a formal one.
+
+    The attribution is asserted on the labels the panels hold rather than on
+    freshly built ones, and each is then found under the shared column, which
+    is what says the named heading is the heading on screen.
+    """
+
+    trunk = SimulationController()
+    trunk.start()
+    _advance_to(trunk, 120.0)
+    trunk.set_fresh_gas_flow(2.0)
+    _advance_to(trunk, 600.0)
+    trunk.pause()
+    view = _case_view(application, BranchedCase(trunk))
+    selector = view._fork_panel.point_selector
+    _take_fork(view, selector.itemData(selector.count() - 1))
+    _settle(application)
+
+    assert len(view.runs) == 2
+
+    branch = view.runs[1]
+    branch.controller.set_alveolar_ventilation(6.0)
+    view.present(False)
+    sidebar = view._sidebar_column.parentWidget()
+
+    assert sidebar is not None
+
+    for index, run in enumerate(view.runs):
+        name = run_label(index)
+        headings = (run._accounting_heading_text, run._control_timeline_heading_text)
+
+        assert headings[0].text() == f"{ACCOUNTING_HEADING} — {name}"
+        assert headings[1].text() == f"{CONTROL_TIMELINE_HEADING} — {name}"
+
+        for heading in headings:
+            assert heading.isVisible(), "a panel heading naming the run is not on screen"
+            assert sidebar.isAncestorOf(heading), "the named heading is not in the shared column"
+
+    assert view.runs[0]._control_timeline_text.text() != branch._control_timeline_text.text()
+
+
+def test_a_lone_run_leaves_the_sidebar_panel_headings_unnamed(application: QApplication) -> None:
+    """One run has nothing to be told apart from, so neither heading gains a name.
+
+    The rule `_rename_runs` already applies to the run panels and both
+    legends, held here so `PL-C3GS`'s attribution does not become standing
+    chrome on the display a learner opens.
+    """
+
+    controller = SimulationController()
+    controller.start()
+    _advance(controller, 120.0)
+    view = _shown_view(application, controller)
+    run = view.runs[0]
+
+    assert run._accounting_heading_text.text() == ACCOUNTING_HEADING
+    assert run._control_timeline_heading_text.text() == CONTROL_TIMELINE_HEADING
+    assert run_label(0) not in run._accounting_heading_text.text()
+    assert run_label(0) not in run._control_timeline_heading_text.text()
 
 
 def test_no_handle_of_the_restacked_splitter_becomes_draggable(application: QApplication) -> None:
