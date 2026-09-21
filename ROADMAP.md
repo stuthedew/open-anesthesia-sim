@@ -202,8 +202,9 @@ repository-topic objection, dropped on the project owner's challenge the day it
 was filed. It is inside the `v0.5.2` tag and will be named in no release's
 notes at all, here or under v0.5.3, because a `dropped` item is never stamped
 with a milestone: this paragraph is the only place a reader meets it. Anything
-the two sessions still running land before the tag is inside `v0.5.2` the same
-way, and those are cited under v0.5.3.
+else the sibling sessions land before the tag is inside `v0.5.2` the same way,
+but those close `done` rather than `dropped`, so v0.5.3's notes cite them and
+this paragraph does not have to carry them.
 
 Shipping the cut as taken rather than regenerating it is `PL-V065`'s ratified
 precedent (project owner, 2026-09-21) applied rather than re-decided: while
