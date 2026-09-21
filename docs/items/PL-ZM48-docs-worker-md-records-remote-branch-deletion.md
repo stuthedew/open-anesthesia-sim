@@ -9,6 +9,7 @@ feature: remote-ref-deletion
 touches: docs/worker.md, docs/items, docs/WORKING_NOTES.md
 added: 2026-09-20
 closed: 2026-09-21
+pr: 863
 payoff: a session composing a branch cleanup reads one established cause instead of two candidates, and stops being told the push exits 0 when it exits 1
 verify: grep -qF 'PL-ZM48' docs/worker.md
 ---
