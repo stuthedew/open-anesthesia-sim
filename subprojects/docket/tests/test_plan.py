@@ -140,6 +140,40 @@ def test_a_closed_item_stops_being_a_candidate() -> None:
     assert recurring([closed]) == []
 
 
+def test_an_item_in_flight_is_not_offered_for_promotion() -> None:
+    """The window `root-cause-of:` acts in has closed, so the offer cannot be taken.
+
+    A promotion moves a queue position and nothing else, and `recommend`
+    excludes an in-flight id from the set it ranks - so a reader who confirms
+    this cluster writes a claim nothing reads. `PL-W7WL` was ratified onto the
+    tier on 2026-09-21 while it was being implemented, and the write would have
+    been a no-op; `PL-GYRX` was dropped on the same reasoning about the sibling
+    field (`PL-CJ5R`).
+    """
+    working = _item(
+        "PL-1111", recurrences=("2026-09-18 PL-AAAA", "2026-09-19 PL-BBBB", "2026-09-20 PL-CCCC")
+    )
+
+    assert recurring([working], {"PL-1111"}) == []
+    assert [item.identifier for item in recurring([working])] == ["PL-1111"]
+
+
+def test_untriaged_and_blocked_clusters_are_still_offered() -> None:
+    """Their window has not opened rather than closed, which is the opposite case.
+
+    `_startable` excludes both, so neither ranks today - but a claim written
+    onto an untriaged item ranks the moment triage seats it, and is exactly
+    what a triage pass wants before choosing a band; one on a blocked item
+    ranks when its blocker clears. Suppressing these to fix `PL-CJ5R` would
+    trade that defect for the same defect pointing the other way.
+    """
+    filings = ("2026-09-18 PL-AAAA", "2026-09-19 PL-BBBB", "2026-09-20 PL-CCCC")
+    untriaged = _item("PL-1111", status="untriaged", recurrences=filings)
+    blocked = _item("PL-2222", status="blocked", recurrences=filings)
+
+    assert [item.identifier for item in recurring([untriaged, blocked])] == ["PL-1111", "PL-2222"]
+
+
 def test_features_group_their_items() -> None:
     grouped = features([_item("PL-1111", feature="alpha"), _item("PL-2222", feature="alpha")])
 

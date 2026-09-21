@@ -17,8 +17,10 @@ from docket.render import format_check, format_digest, format_list
 from docket.roadmap import MilestoneStates, milestone_states
 from docket.vcs import (
     BaseRecord,
+    Branch,
     ClosureReport,
     CutWindow,
+    FlightReport,
     LostItem,
     LostReport,
     PullRequestHistory,
@@ -2321,6 +2323,23 @@ def test_the_digest_names_the_top_item_with_what_it_buys() -> None:
 def test_the_digest_says_nothing_where_the_top_item_carries_no_payoff() -> None:
     """A store that has not adopted the field pays no resident context for it."""
     assert "payoff:" not in format_digest(Report(items=[_item()]))
+
+
+def test_the_digest_withholds_a_recurrence_cluster_on_an_item_in_flight() -> None:
+    """The second call site of the rule `PL-CJ5R` fixed, and the busier one.
+
+    Every session reads the digest before it has run anything, so an offer to
+    promote an item already on a branch is paid for here more often than
+    anywhere else - and the claim a reader would write in answer moves a queue
+    position the item no longer has.
+    """
+    filings = ("2026-09-18 PL-AAAA", "2026-09-19 PL-BBBB", "2026-09-20 PL-CCCC")
+    working = _item("PL-0002", recurrences=filings)
+    report = Report(items=[working])
+    flight = FlightReport(branches=(Branch(name="claude/x", item_id="PL-0002"),))
+
+    assert "Filed more than once" in format_digest(report)
+    assert "Filed more than once" not in format_digest(report, flight)
 
 
 # --- a closed item's `verify:` is a record, not a live command ---------------

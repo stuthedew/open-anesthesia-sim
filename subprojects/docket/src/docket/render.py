@@ -499,8 +499,10 @@ def format_digest(
     # Silent until a defect has been filed three times, which is the only state
     # it says anything about - so it costs nothing on the turns it is not true,
     # and on the turn it is, it is the one line naming evidence no session
-    # asserted (`PL-X5JR`).
-    repeats = recurring(report.items)
+    # asserted (`PL-X5JR`). Passed the flight ids because a promotion only
+    # moves a queue position, and an item already on a branch has no position
+    # left to move (`PL-CJ5R`).
+    repeats = recurring(report.items, flight.ids)
     if repeats:
         named = ", ".join(f"{item.identifier} ({recurrence_count(item)})" for item in repeats[:3])
         rest = f", +{len(repeats) - 3} more" if len(repeats) > 3 else ""
