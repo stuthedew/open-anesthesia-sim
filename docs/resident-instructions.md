@@ -178,6 +178,47 @@ sentence stop being true, and where the answer is already on the roadmap,
 record an instance with its condition rather than a rule. Three instances in
 one session bought it, each caught by the owner and none by any gate.
 
+*Extended 2026-09-21, +2348 characters (`PL-0GMC`, the durable-versus-cheap
+trade, project owner).* § "Count what undoing it would cost, before taking the
+cheaper route": where two routes reach one end state and one of them will have
+to be redone, name what would have to change to switch later and count what is
+already downstream of the choice, then take the cheap route only when that
+count is small. The owner's five-year form of the test — *which option will we
+be glad we implemented in five years?* — is carried as the tie-breaker for
+where the count genuinely cannot be taken, not as the opening move.
+
+**Nothing was cut to pay for it, and the reason is the carrier rather than the
+rule.** This is not a new obligation entering the set. It is one the project
+owner has been supplying by hand, in chat, whenever a session reached a fork,
+and their own report is that it works every time they do — which is the carrier
+failure exactly: it reaches the design rounds they are present for and no
+others. Nothing resident was doing that job, so there is nothing superseded to
+retire here. Two candidates were looked at and both fail the rewrite test in
+§ "When a resident rule is retired": `CLAUDE.md`'s "Challenge assumptions when
+warranted" is about inertia rather than cost asymmetry, and its
+irreversible-architectural-problems clause is a *ranking* where this is a
+*trigger* — the new section is what lets a session recognize one, so cutting it
+would remove the thing being triggered.
+
+**Why it is a forcing question and not a statement of the philosophy.** A value
+("do it right once") can be agreed with and not applied, which is how a
+resident rule rots without anyone noticing. A count cannot: either a number was
+produced or it was not, and the reply shows which. It is also symmetric, which
+is the property that stops it being quoted as licence to over-build — a
+mechanism with nothing downstream fails it — and that keeps it from colliding
+with `.claude/rules/apparatus-standard.md`, which argues the other way on the
+apparatus paths.
+
+**What should retire it.** The decidable sliver is presence rather than
+judgment: 74 of the 345 open items carry an `**Approach**` or `**Decision
+needed**` section (measured 2026-09-21, excluding `done` and `dropped`), and a
+check could refuse one that enumerates two or more routes and records no count
+of what is downstream. Not built, on `CLAUDE.md` § "Prefer deterministic
+tooling over repeated model work": it would fire on all 74 at once without
+changing a decision, which is the defect that section retires a check for.
+Build it once the store holds a run of items written under this rule to
+calibrate the shape against, and this block goes when it does.
+
 **Path-scoping was measured against this rather than waved off, and it loses
 on one moment.** Two rules already scope `docs/MODEL.md` — `citing-sources.md`
 and `sources-and-docstrings.md` — and nothing scopes `ROADMAP.md`, so the
