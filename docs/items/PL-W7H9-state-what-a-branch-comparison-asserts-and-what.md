@@ -1,14 +1,15 @@
 ---
 id: PL-W7H9
 title: State what a branch comparison asserts and what it does not, in docs/MODEL.md and docs/ARCHITECTURE.md
-priority: P2
+priority: P1
 effort: S
-status: blocked
+status: ready
 classes: docs, safety, anticipated
 feature: scenario-branching
 touches: docs/MODEL.md, docs/ARCHITECTURE.md
-blocked-by: PL-Z3W6
 added: 2026-09-06
+payoff: writes down the limits of the most persuasive thing this simulator draws, before a learner reads a difference between two curves as a result about patients
+verify: grep -q 'What a branch comparison asserts' docs/MODEL.md && grep -q 'What a branch comparison asserts' docs/ARCHITECTURE.md
 ---
 
 **Problem.** A side-by-side comparison of two branches makes a claim, and
@@ -135,3 +136,22 @@ bound nobody has measured or leaving the one clause a reader most needs.
 a bookmark's instant forkable) → `PL-Z3W6` (assert a branch reproduces its
 parent element-wise up to the fork) → this item, and all three are in v0.5.0's
 Required scope.
+
+## `PL-Z3W6`'s answer to the fourth bullet, 2026-09-21
+
+**There is no residual bound to state: it is zero.** A branch and its parent
+agree element for element at every instant they share, at a fork on a keyframe
+and at a fork between two of them, and `docs/MODEL.md` § "What this requires of
+a branch" now says so in its own paragraph - "So nothing is left over to bound,
+and there is nothing to show a learner" - with the tests that hold it named.
+So the bullet is answered by quoting that, not by measuring anything.
+
+**The third bullet is the one that still needs care, and the reason is in the
+same section.** The two divergences that *do* exist are real and neither is a
+residue of the guarantee: the display path's, which puts a few units in the
+last place between two runs' drawn columns where a reader comparing traces
+might take it for a disagreement about the case, and the restart the program
+refuses, which no branch it builds ever takes. Both are orders below anything
+a readout resolves. A comparison section that says "identical before the fork"
+without saying which path that is true of would be wrong about the one a
+learner is looking at.
