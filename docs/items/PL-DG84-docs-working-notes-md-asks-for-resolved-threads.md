@@ -77,3 +77,59 @@ id has closed.
 
 **Found.** 2026-09-13, reviewing an outside article on long AI projects against
 this repository.
+
+## Measured 2026-09-21, while closing `PL-4HKS`: the three candidates are not close
+
+`PL-4HKS` was the sixth instance to be resolved by hand (the playback-speed
+thread, deleted rather than re-headed). Closing it gave the count this item's
+decision needs, so it is recorded here rather than left to be re-derived.
+**Recommendation: the grooming advisory, on the narrow signal below.** The
+project owner decides; the numbers are what the recommendation rests on.
+
+**The signal this item proposed fires on 16 of 26 sections.** Candidates-mode
+was to name "a thread all of whose cited `PL-` ids have closed". Run against
+the file as it stands, that is **16 of its 26 `##` sections**, and most are
+correct content: § "Decided: no numpy" is kept deliberately because the
+question recurs and says so in its own text; § "Decided: control resolution is
+not what the interface promised at speed" is the live authority `PL-4HKS`'s
+deletion just pointed at; § "Settled: when a session may fix a small finding"
+is what `CLAUDE.md`'s resident fix-now rule cites. A check naming those every
+run is `CLAUDE.md`'s retirement test met before the check is built.
+
+**Narrowing it by the heading's own status word takes it to 4, and 3 are
+right.** Require *both* that the heading declares the thread open and that
+every id it cites has closed:
+
+| Section | Verdict |
+| --- | --- |
+| `## Open thread: scenario branching, bookmarks, and what a snapshot is for` | stale - `PL-DL4M` |
+| `## Open thread: which moment a rule has to reach` | stale - `PL-DL4M` |
+| `## Open: the repository has no README` | stale - `PL-75R0` |
+| `## Open thread: what makes desflurane wash out too fast` | **legitimately open** |
+
+So precision is 3 of 4 on the narrow signal against roughly 3 of 16 on the
+loose one, and the two filed instances it recovers are exactly the ones
+sessions have been filing one at a time.
+
+**The fourth row is the load-bearing one, and it decides the carrier.** The
+desflurane thread's three items (`PL-W21J`, `PL-73G7`, `PL-RFLN`) are all
+closed and the thread is still open: "what is left is the published value
+itself, which nothing this project runs can settle." That is the file
+preamble's third membership test - a thread *having no item at all* - so this
+false fire is not a bug to be tuned out. It is permanent, and it means the
+signal can never be a hard `make check` failure.
+
+**Which leaves the advisory, and rules out both neighbours.** Candidates-mode
+runs at every close-out, where a permanent false fire trains a reader to skim
+the block a real advisory shares (`PL-HJZW` is what that costs). A one-off
+pruning pass leaves nothing behind, and this file has now generated six
+instances, so the seventh is a question of when rather than whether. A
+grooming advisory fires on a pass that is already about hygiene, prints four
+lines against this file, and one of those four is a judgment a reader makes in
+seconds because the thread's own last paragraph says it is open.
+
+**What stays a judgment either way.** Whether the outcome is recorded somewhere
+that maintains itself. `PL-4HKS` was deletable only because `ROADMAP.md` item
+25 carries the shipped feature, `docs/MODEL.md` § "Supported simulation step"
+carries the step, and `tests/benchmarks/frame_cost.py` re-measures the frame in
+three seconds. No check can decide that, and it is the whole of the work.

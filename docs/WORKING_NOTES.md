@@ -363,43 +363,6 @@ below out-of-scope work. Another section's exclusions stay silent - one the
 project has passed says what was true then, and one it has not reached is a
 decision that milestone's own scoping round may revisit.
 
-## Open thread: playback speed (target: real-time up to ~120x and beyond, "like Gas Man") - PL-009
-
-Not scoped yet. The performance blocker this waited on has landed: render
-cadence is now independent of simulation cadence, and frame cost no longer
-grows with run length, so a multiplier no longer multiplies a growing
-bottleneck.
-
-What a speed multiplier now costs is bounded and known. Stepping the model
-is nearly free (~0.011 ms per step, flat), so going faster means calling
-`advance()` more times per render tick rather than rendering more often. A
-frame currently costs ~17 ms of which ~15 ms is chart-point construction, so
-PL-010 (point reuse, measured 20x cheaper) is the headroom to spend if a
-high multiplier makes the render rate the constraint again.
-
-Half of this is now decided rather than open. PL-VP7N put the supported step
-in the core as `MAXIMUM_SIMULATION_STEP_S` - then the operator split's
-applicability domain, now a declared control-resolution tolerance (`PL-X9KD`) -
-and a step above it is refused, so the multiplier cannot be a larger step even
-if someone wanted it to be: it is steps per tick, and that is enforced
-rather than merely written down. What "a larger step is a model-fidelity
-question" was pointing at has an answer - `docs/MODEL.md` § "Supported
-simulation step" - and the answer is that the supported step and the shipped
-step are the same number.
-
-**The other half is not decided, and this paragraph read as though it were
-until 2026-09-06.** Bounding the *step* does not bound what the multiplier
-costs, because the cost arrives through steps per tick rather than through step
-size: the burst that takes them is synchronous, so a control change cannot land
-inside one and is displaced by up to `tick x multiplier`. `PL-NBWP` carries it,
-and the section on control resolution below has the measurements.
-
-Still undecided, and the reason this stays `needs-decision` rather than
-`ready`: how the multiplier is exposed without creating a hidden mode - a
-learner who does not notice a 120x setting will misread the time axis
-entirely. Being an `L`, it needs scoping into a `ROADMAP.md` milestone
-before implementation.
-
 ## Open thread: what the v0.2.0 architecture review left behind - PL-024, PL-6GS0
 
 An independent architecture review of the v0.2.0 baseline (commit `3251ebf`)
@@ -476,12 +439,13 @@ transfers were considered as rows and rejected: they would have cost the matrix
 the Metzler property the propagator's nonnegativity rests on, and both are
 recoverable exactly from the balances instead.
 
-It bears on the playback-speed thread above, and the bearing has now changed
-direction: an exact step makes a larger step a fidelity-free choice, which is
-exactly what that thread assumed it was not. The conclusion survives anyway -
-the multiplier stays steps-per-tick and the step stays 0.1 s - but for
-determinism rather than for accuracy, which is the ground `docs/MODEL.md`
-already gave and which `PL-SN2C`'s brief has been moved onto.
+It bears on the playback multiplier (`PL-SN2C`, shipped v0.4.0), and the
+bearing has now changed direction: an exact step makes a larger step a
+fidelity-free choice, where the scoping that preceded that item had assumed it
+was not. The conclusion survives anyway - the multiplier stays steps-per-tick
+and the step stays 0.1 s - but for determinism rather than for accuracy, which
+is the ground `docs/MODEL.md` already gave and which `PL-SN2C`'s brief has
+been moved onto.
 
 ## Open thread: scenario branching, bookmarks, and what a snapshot is for - PL-DHV7, ROADMAP items 8, 11, 12 and 26
 
