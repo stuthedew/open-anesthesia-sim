@@ -16,7 +16,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from . import notes, render
+from . import instructions, notes, render
 from .checks import Report, SettingsSource, analyze
 from .concurrency import (
     ORDERING,
@@ -529,6 +529,19 @@ def _complete_report(
         # `notes_file` hands `None`, which leaves the stale-thread advisory
         # unraised rather than computed against an empty parse.
         threads=notes.read(root / config.notes_file) if config.notes_file else None,
+        # The dated lines of the instruction set, for the staleness advisory.
+        # A read of about twenty small markdown files, and only where the
+        # project names them: `instruction_paths` empty hands `None`, which
+        # leaves the advisory unraised rather than saying nothing has aged.
+        #
+        # Here rather than in `make check`'s `doc_check.py`, and the placement
+        # is the decision: `docket check` is what `make docket` runs, where a
+        # reader is already doing hygiene and has the judgment in hand. On an
+        # edit-triggered check the same line would fire at a session nowhere
+        # near an instruction file, every run, until it stopped being read.
+        assertions=(
+            instructions.read(root, config.instruction_paths) if config.instruction_paths else None
+        ),
         # Not read from the store at all, unlike everything above: it is which
         # policy the store was read *under*, which only the caller that
         # resolved it knows.

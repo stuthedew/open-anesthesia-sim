@@ -3,13 +3,14 @@ id: PL-PHK4
 title: Add instruction_stale_days to docket config, defaulting to 90, with synthetic-date tests so the advisory is tested before it first fires
 priority: P2
 effort: S
-status: ready
+status: done
 classes: infra
 feature: instruction-staleness-audit
-touches: subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests
+touches: subprojects/docket/src/docket/config.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/instructions.py, subprojects/docket/README.md, subprojects/docket/tests, docket.toml
 added: 2026-09-21
+closed: 2026-09-21
 payoff: the advisory is proven working 69 days before it first fires, not discovered broken when it does
-verify: grep -q 'instruction_stale_days' subprojects/docket/src/docket/config.py
+verify: uv run pytest subprojects/docket/tests/test_config.py -k instruction -q && uv run pytest subprojects/docket/tests/test_checks.py -k 'threshold or re_dating' -q
 ---
 
 **Problem.** Add instruction_stale_days to docket config, defaulting to 90, with synthetic-date tests so the advisory is tested before it first fires

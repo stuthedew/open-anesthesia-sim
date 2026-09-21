@@ -7,11 +7,13 @@ notices.
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from docket.checks import Report, analyze
 from docket.config import Config
+from docket.instructions import Assertion
+from docket.instructions import read as read_instructions
 from docket.model import Item, parse_item, render_item
 from docket.notes import Thread, read
 from docket.plan import OfferedReport
@@ -854,6 +856,127 @@ def test_a_stale_open_thread_is_read_from_the_notes_file_itself(tmp_path: Path) 
     assert "power-user custom agents" not in named[0]
     assert "Long-term vision" not in named[0]
     assert "no numpy" not in named[0]
+
+
+# Every date below is synthetic, which is the whole point of the item that
+# asked for this knob (`PL-PHK4`). The oldest dated assertion in this
+# repository's instruction set was 21 days old when the advisory was built, so
+# at the configured 90 days it names nothing until 2026-11-30. Waiting for the
+# tree to age means the first evidence the advisory works arrives ten weeks
+# after it merges, against assertions nobody remembers writing.
+STALE_DAYS = Config(instruction_stale_days=90)
+AUDITED = "dated assertion(s) in the instruction set"
+
+
+def _aged(days: int, file: str = "CLAUDE.md", line: int = 42, text: str = "a claim") -> Assertion:
+    """One assertion exactly `days` old as of `TODAY`."""
+    return Assertion(file=file, line=line, when=TODAY - timedelta(days=days), text=text)
+
+
+def test_a_dated_assertion_past_the_threshold_is_a_grooming_advisory() -> None:
+    report = analyze([_item()], TODAY, STALE_DAYS, assertions=(_aged(91),))
+
+    named = [line for line in report.advisories if AUDITED in line]
+    assert len(named) == 1
+    assert "1 dated assertion(s)" in named[0]
+    assert "CLAUDE.md:42" in named[0]
+    assert (TODAY - timedelta(days=91)).isoformat() in named[0]
+    assert "91 days" in named[0]
+    assert "a claim" in named[0]
+
+
+def test_a_tree_with_nothing_past_the_threshold_reads_as_zero() -> None:
+    """The branch this repository is in today, and for ten more weeks.
+
+    An advisory that names something on every run is the one whose cost is the
+    *next* advisory, so the quiet branch matters as much as the loud one.
+    """
+    report = analyze([_item()], TODAY, STALE_DAYS, assertions=(_aged(89), _aged(90)))
+
+    assert not _has(report.advisories, AUDITED)
+
+
+def test_the_threshold_is_the_configured_one() -> None:
+    """The knob is read, not a constant wearing its name."""
+    assert _has(
+        analyze(
+            [_item()], TODAY, Config(instruction_stale_days=30), assertions=(_aged(31),)
+        ).advisories,
+        "30 days without",
+    )
+    assert not _has(
+        analyze(
+            [_item()], TODAY, Config(instruction_stale_days=365), assertions=(_aged(31),)
+        ).advisories,
+        AUDITED,
+    )
+
+
+def test_re_dating_a_line_discharges_it() -> None:
+    """The remedy the advisory asks for has to actually clear the entry.
+
+    A report whose entries cannot be cleared names more of them every day, and
+    the cost of that is not the entries but the next advisory, which gets read
+    the same way. Re-verifying is the discharge; this is the test that it is.
+    """
+    stale = _aged(200)
+
+    assert _has(analyze([_item()], TODAY, STALE_DAYS, assertions=(stale,)).advisories, AUDITED)
+
+    rewritten = Assertion(stale.file, stale.line, TODAY, f"{stale.text} (re-verified)")
+    assert not _has(
+        analyze([_item()], TODAY, STALE_DAYS, assertions=(rewritten,)).advisories, AUDITED
+    )
+
+
+def test_the_report_is_oldest_first_and_capped() -> None:
+    """Five named, the rest counted: the head of the list, not a sample of it."""
+    aged = tuple(_aged(100 + index, line=index) for index in range(8))
+
+    report = analyze([_item()], TODAY, STALE_DAYS, assertions=aged)
+
+    named = [line for line in report.advisories if AUDITED in line][0]
+    assert "8 dated assertion(s)" in named
+    assert "and 3 more" in named
+    # Oldest first: line 7 is 107 days old, line 3 is 103.
+    assert named.index("CLAUDE.md:7") < named.index("CLAUDE.md:3")
+    assert "CLAUDE.md:2" not in named
+
+
+def test_a_line_dated_in_the_future_is_never_named() -> None:
+    """A cutover dated a day ahead is not an assertion that has gone unchecked."""
+    report = analyze([_item()], TODAY, STALE_DAYS, assertions=(_aged(-1),))
+
+    assert not _has(report.advisories, AUDITED)
+
+
+def test_the_staleness_audit_is_unraised_where_no_instruction_path_was_read() -> None:
+    """A project naming no instruction files leaves the question unasked."""
+    assert not _has(analyze([_item()], TODAY, STALE_DAYS).advisories, AUDITED)
+    assert not _has(analyze([_item()], TODAY, STALE_DAYS, assertions=()).advisories, AUDITED)
+
+
+def test_the_staleness_audit_reads_instruction_files_end_to_end(tmp_path: Path) -> None:
+    """Parser and advisory together, on the file shapes the real set uses."""
+    (tmp_path / "CLAUDE.md").write_text(
+        "An undated rule about keeping simulation code out of the UI.\n"
+        "\n"
+        "Measured 2026-01-04: the egress policy refuses doi.org.\n"
+        "\n"
+        "(project owner, 2026-01-05, ratified; re-verified 2026-08-20)\n",
+        encoding="utf-8",
+    )
+
+    assertions = read_instructions(tmp_path, ("CLAUDE.md",))
+    report = analyze([_item()], TODAY, STALE_DAYS, assertions=assertions)
+
+    named = [line for line in report.advisories if AUDITED in line][0]
+    assert "1 dated assertion(s)" in named
+    assert "CLAUDE.md:3" in named
+    assert "2026-01-04" in named
+    # Line 5 carries a 2026-01-05 record and a 2026-08-20 re-verification; the
+    # newest date is what it is judged on, so it is four days short of due.
+    assert "CLAUDE.md:5" not in named
 
 
 def test_a_blocked_item_whose_blocker_closed_is_flagged_for_promotion() -> None:

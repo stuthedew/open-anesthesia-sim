@@ -28,6 +28,7 @@ from datetime import date
 from pathlib import Path
 
 from .config import Config
+from .instructions import Assertion
 from .model import (
     CLOSED_STATUSES,
     EFFORTS,
@@ -2383,6 +2384,94 @@ def _check_stale_open_threads(
     )
 
 
+#: How many dated assertions the staleness advisory names, and how much of
+#: each line it prints. Five for `STALE_THREADS_NAMED`'s reason - one line a
+#: reader takes in - and the cap is also what keeps the advisory actionable
+#: however large the instruction set grows: the count in the message says how
+#: many there are, and these are the ones to start on.
+STALE_ASSERTIONS_NAMED = 5
+STALE_ASSERTION_CHARS = 70
+
+
+def _check_stale_instructions(
+    report: Report, assertions: tuple[Assertion, ...] | None, config: Config, today: date
+) -> None:
+    """Name the dated assertions in the instruction set that are due for re-checking.
+
+    The instruction set asserts facts about a world that changes and nothing
+    expires any of them. `PL-BSYZ` stated an egress refusal measured on one
+    day as a standing fact, so it would have gone on telling sessions not to
+    retry `doi.org` the moment the policy opened; `PL-GDB0` records three
+    current-state facts written as permanent rules in a single session. Both
+    were caught by the project owner rather than by any gate, and
+    `.claude/rules/expert-review.md` says why no gate will catch the judgment
+    half: "It fails quietly. A wrongly permanent sentence trips no check and
+    never can, because altitude is judgment rather than a fact about the
+    tree."
+
+    **So only the decidable half is here.** Which assertions are due is
+    arithmetic on dates; whether an aged one is still true is left to the
+    reader, per `CLAUDE.md` § "Prefer deterministic tooling" - do not script
+    the judgment.
+
+    **An advisory, on a grooming pass, and never an error.** A reader met here
+    already has hygiene in hand and the files open. On `make check`, which is
+    edit-triggered, this would fire on every run of a session that is nowhere
+    near an instruction file, which is the defect `CLAUDE.md` retires a check
+    for.
+
+    **It can reach zero, which is the constraint that shaped it.** A raw age
+    list cannot, since every assertion ages and the report would name more of
+    them every day - and the cost of an advisory that cannot reach zero is not
+    the entries it names but the next advisory, which gets read the same way.
+    The threshold is what bounds the set; re-verifying a line and writing
+    today onto it is what empties it. `instructions.py` reads the *newest*
+    date on a line for exactly that reason, so "(project owner, 2026-08-31;
+    re-verified 2026-12-05)" discharges a record without falsifying the record.
+
+    **Known limitation, recorded so it is not rediscovered as a defect.** Age
+    is a proxy for staleness, not staleness. A dated record does not go stale;
+    a measured environmental fact does, and this cannot tell them apart. Early
+    precision will be mediocre, and the right narrowing is to be learned from
+    the first firing rather than guessed now. Neither `PL-BSYZ` nor `PL-GDB0`
+    would have been caught here - both were filed within days. This targets
+    the assertion that quietly goes wrong at month eighteen, not the fast
+    failure somebody notices.
+
+    **It stays silent where it cannot answer.** A project naming no
+    instruction paths, or a caller supplying none, leaves the audit unraised
+    rather than computed against an empty parse.
+    """
+    if not assertions:
+        return
+    stale = sorted(
+        (row for row in assertions if row.age(today) > config.instruction_stale_days),
+        key=lambda row: (row.when, row.file, row.line),
+    )
+    if not stale:
+        return
+    # Oldest first, which is the order they are worth reading in: the one
+    # least recently confirmed is the one likeliest to have gone wrong, and
+    # the cap below takes the head of this list rather than a sample of it.
+    shown = "; ".join(
+        f"{row.file}:{row.line} ({row.when.isoformat()}, {row.age(today)} days) "
+        f'"{_clipped(row.text, STALE_ASSERTION_CHARS)}"'
+        for row in stale[:STALE_ASSERTIONS_NAMED]
+    )
+    rest = len(stale) - STALE_ASSERTIONS_NAMED
+    if rest > 0:
+        shown = f"{shown}; and {rest} more"
+    report.advisories.append(
+        f"{len(stale)} dated assertion(s) in the instruction set have gone "
+        f"{config.instruction_stale_days} days without being re-checked, oldest first - "
+        f"{shown}; read each against the world it describes and write today's date onto the "
+        "line. A measured fact is re-measured and re-dated; a record of what was decided "
+        "keeps its own date and gains a re-verification one, so neither has to be falsified "
+        "to clear it. Where the claim has stopped being true, the edit is the point of the "
+        "advisory - age is only the proxy, and whether the sentence still holds is yours"
+    )
+
+
 def _groom(
     report: Report,
     today: date,
@@ -2390,6 +2479,7 @@ def _groom(
     offered: frozenset[str] | None,
     milestones: MilestoneStates | None = None,
     threads: tuple[Thread, ...] | None = None,
+    assertions: tuple[Assertion, ...] | None = None,
 ) -> None:
     """Detect the conditions that make a grooming pass worth someone's time."""
     # Grooming rather than close-out, and that placement is the decision
@@ -2398,6 +2488,7 @@ def _groom(
     # hand, instead of on every close-out, where one permanent false fire
     # costs the whole advisory block its reader.
     _check_stale_open_threads(report, threads, config)
+    _check_stale_instructions(report, assertions, config, today)
     stale = [
         item
         for item in report.untriaged
@@ -2734,6 +2825,7 @@ def analyze(
     window: CutWindow | None = None,
     unreferenced: dict[str, tuple[str, ...]] | None = None,
     threads: tuple[Thread, ...] | None = None,
+    assertions: tuple[Assertion, ...] | None = None,
     settings_source: SettingsSource | None = None,
 ) -> Report:
     """Validate and groom in one pass.
@@ -2776,6 +2868,12 @@ def analyze(
     that does not supply it, or a project that configures no notes file,
     leaves the stale-thread advisory unraised rather than guessed at.
 
+    `assertions` is the dated lines of the project's instruction set, read
+    from `instruction_paths`. Passed in for the reason the rest are: this
+    module reads no filesystem. A caller that does not supply it, or a project
+    that names no instruction paths, leaves the staleness advisory unraised
+    rather than reporting that nothing has aged.
+
     `settings_source` is which `docket.toml` the caller resolved `config` from,
     and whether it was there. It is the one input that says nothing about the
     store and everything about the reading of it, which is why it cannot be
@@ -2805,7 +2903,7 @@ def analyze(
     _check_closures(report, closures)
     _check_records(report, records)
     _check_lost(report, lost)
-    _groom(report, today, settings, ids, milestones, threads)
+    _groom(report, today, settings, ids, milestones, threads, assertions)
     # Said once, for both advisories above that read `offered`, and said even
     # where neither fired: an unread ref might carry the item that would have
     # been named, so silence there is the same partial answer as a wrong name.

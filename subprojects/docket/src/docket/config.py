@@ -49,6 +49,34 @@ class Config:
     top_band_limit: int = 5
     #: Past this, an untriaged capture has become a second queue nobody reads.
     untriaged_stale_days: int = 14
+    #: Past this, a dated assertion in the instruction set is due for
+    #: re-checking - not wrong, and not judged here, only old enough that
+    #: nobody has confirmed it lately.
+    #:
+    #: **90 rather than 180, and the number is the load-bearing decision**
+    #: (project owner, 2026-09-21, ratified, over 180). The threshold decides
+    #: whether the advisory is ever tested before it matters. The oldest dated
+    #: assertion in this repository's instruction set was 21 days old when
+    #: this was set, so at 180 days the advisory names nothing for about 159
+    #: days and then fires for the first time, untested, against assertions
+    #: nobody remembers writing, in a session with no idea what it is for -
+    #: the shape of a mechanism discovered to be broken at exactly the moment
+    #: it was built to help. At 90 it first fires in about 69 days, while the
+    #: assertions are recent enough to be judged quickly, and that first
+    #: firing is the validation run. Raise it once the advisory has been seen
+    #: to name the right things.
+    instruction_stale_days: int = 90
+    #: The instruction files whose dated assertions the advisory above audits:
+    #: a markdown file, or a directory every `.md` beneath it is read from.
+    #:
+    #: Empty by default, which leaves the audit off. Not fail-closed in the
+    #: sense `protected_paths` and `workflow_paths` are - there is nothing
+    #: here to permit - but the same refusal to guess: which files instruct a
+    #: session is a fact about a project's conventions, and a package that
+    #: went looking for them would be encoding one repository's layout, which
+    #: is what `notes_file` and `open_pull_requests_command` are also empty to
+    #: avoid.
+    instruction_paths: tuple[str, ...] = ()
     #: The date the `verify:` requirement started applying. An item that
     #: reaches `ready` must name the command that proves it done, but a store
     #: written before the rule existed holds items that predate it, and
@@ -307,6 +335,10 @@ def load(root: Path) -> Config:
         untriaged_stale_days=int(
             section.get("untriaged_stale_days", defaults.untriaged_stale_days)
         ),
+        instruction_stale_days=int(
+            section.get("instruction_stale_days", defaults.instruction_stale_days)
+        ),
+        instruction_paths=_tuple(section.get("instruction_paths"), defaults.instruction_paths),
         verify_required_from=_date(
             section.get("verify_required_from"), defaults.verify_required_from
         ),

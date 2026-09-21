@@ -112,3 +112,33 @@ def test_the_command_shape_rule_reads_its_cutover_and_its_trees(tmp_path: Path) 
 def test_the_command_shape_rule_is_off_until_a_project_adopts_it(tmp_path: Path) -> None:
     assert load(tmp_path).verify_prerequisite_refused_from is None
     assert load(tmp_path).collected_test_paths == ()
+
+
+def test_the_instruction_staleness_threshold_defaults_to_ninety(tmp_path: Path) -> None:
+    """90 rather than 180, and the number is the decision (`PL-PHK4`).
+
+    A threshold that first fires in about five months is a mechanism nobody
+    can test until it matters; one that first fires in about ten weeks is
+    validated by its own first firing, while the assertions it names are
+    recent enough to be judged quickly. Pinned here so a later tidy-up back to
+    a rounder number has to argue with this test.
+    """
+    assert load(tmp_path).instruction_stale_days == 90
+
+
+def test_the_instruction_audit_is_off_until_a_project_names_its_files(tmp_path: Path) -> None:
+    """Nothing in this package knows which files instruct a session."""
+    assert load(tmp_path).instruction_paths == ()
+
+
+def test_the_instruction_audit_settings_are_read_from_the_config(tmp_path: Path) -> None:
+    (tmp_path / "docket.toml").write_text(
+        "[docket]\n"
+        "instruction_stale_days = 45\n"
+        'instruction_paths = ["CLAUDE.md", ".claude/rules"]\n',
+        encoding="utf-8",
+    )
+    config = load(tmp_path)
+
+    assert config.instruction_stale_days == 45
+    assert config.instruction_paths == ("CLAUDE.md", ".claude/rules")
