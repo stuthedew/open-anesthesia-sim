@@ -2,7 +2,7 @@
 id: PL-54V0
 title: resumed_at refuses an unkeyframed instant with a reason resumed_at_halt disproves
 status: untriaged
-classes: safety, docs
+classes: docs
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, tests/integration/test_controller.py
 added: 2026-09-21
@@ -38,3 +38,14 @@ in the same commit, which is the close-out shape `PL-K4R5` describes.
 
 **Where.** `src/anesthesia_sim/app/controller.py` (`_resume_point_at`), and
 `tests/integration/test_controller.py`, which pins the current string.
+**Classed `docs` rather than `safety`, and the call is worth stating because it
+decides a gate disposition** (session, 2026-09-21). Filed `safety` first, which
+made v0.5.0's gate owe it one - a `safety`-classed item re-enters the current
+gate regardless of when it was captured. Read against the standard, `safety` is
+the wrong class: nothing here can produce a wrong or misleading *clinical
+value*. The refusal is correct and stays correct; only the sentence explaining
+it is stale, and no number a learner could act on passes through it. That makes
+it a wrong statement in a place a reader learns from, which is `docs`. Overrule
+this if a refusal a learner can see counts as a warning the safety standard
+reaches - it then needs a `### Declined to Gate` entry or a place in v0.5.0's
+Required scope, and neither is a session's to write into a frozen list.
