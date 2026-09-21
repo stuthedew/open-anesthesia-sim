@@ -3285,7 +3285,14 @@ ordinary gate work and the other is a deferral this section has to record:
   built before that item** (project owner, 2026-09-17, ratified). The rule names
   its own condition rather than a version, so the entry now names it:
   `blocked-by: PL-TH35, PL-R1WQ`, the View contract and the view registry, both
-  placed by v0.6.0. Its second half - a machine appearing as a labelled input
+  placed by v0.6.0. **Two more were added on 2026-09-21** (`PL-0H5D`):
+  `PL-TBMK`, a second machine profile, and `PL-4TWW`, the surface that selects
+  between profiles. Those two are the condition the paragraph below states in
+  prose — one profile exists and there is nothing to compare — which until then
+  was in no field, so closing the View contract and the view registry would have
+  reported this entry promotable while it stayed unbuildable. Neither new item
+  is scheduled by any milestone section, which is now visible in the queue
+  rather than only here. Its second half - a machine appearing as a labelled input
   expanded into the parameters that differ - is a requirement on planned-milestone
   items 11 and 12 rather than a surface, and the display rule does not reach it;
   what holds that half is simply that one machine profile exists and there is
@@ -5153,7 +5160,9 @@ v0.5.0 is complete only when:
   asserts and does not, and the bound on any divergence that could not be
   eliminated;
 - every item of the frozen list above outside this milestone's Required scope
-  is `done`, or `dropped` with its reason recorded;
+  is `done`, `dropped` with its reason recorded, or deferred to a later gate on
+  § "The cadence" beat 3's terms — which `PL-WZVZ`, deferred to Gate 2 by
+  `PL-S5Q9`, is the one entry taking;
 - the v0.0.2 circuit, v0.1.0 sevoflurane and v0.2.0 multi-agent reference tests
   remain unchanged and passing, and no equation, parameter or governing
   constant has changed; and
@@ -5899,7 +5908,8 @@ shows them on one timeline with the milestones they gate:
    explicit out-of-scope list. Scoping is the act that freezes the list.
 2. **Freeze and record** the debt list in that milestone's own section, as
    item ids, on the day it was frozen.
-3. **Clear** it — every item `done`, or `dropped` with its reason — before
+3. **Clear** it — every item `done`, or `dropped` with its reason, or
+   **deferred to a later gate** on the terms below — before
    implementation of the milestone begins. **Sweep the frozen list for
    staleness first** (project owner, 2026-09-17, ratified — chosen over a second
    `verify:`-style field recording a fault test beside each fix test, and over
@@ -5915,6 +5925,35 @@ shows them on one timeline with the milestones they gate:
    what no longer reproduces with its reason, and correct the briefs that
    overstate what is left — before spending a session on any of them.
    `PL-6ZQY` is the standing item for the pass.
+
+   **The third disposition, and the terms that make it legitimate** (project
+   owner, 2026-09-21, ratified, over leaving each milestone's own bullet to be
+   read at its own cut). An entry may be *deferred to a later gate* instead of
+   cleared, and the release then ships without it — but only on all three of:
+
+   - § "The gate is a snapshot, not a moving target" permits the deferral,
+     which means the gate's own section **says so and says why**;
+   - the deferral **names the later gate** the entry lands in, because an entry
+     deferred to nowhere is what holds a release open (`PL-S5Q9`); and
+   - the entry **stays written on the frozen list**, since removing it is the
+     renegotiation the freeze exists to prevent.
+
+   A `safety`- or `science`-classed entry may take this route only where the
+   gate section also records that its hazard is **not live**, read against the
+   tree rather than asserted.
+
+   **Stated here rather than in each definition of done**, because it recurs.
+   Gate 1's last entry `PL-WZVZ` is deferred to Gate 2 on exactly these terms
+   while v0.5.0's bullet admits only `done` or `dropped`, so a session running
+   that cut would have had to choose between dropping a `safety`-classed entry
+   whose hazard is real but not yet live and holding the release; `PL-F0L8`
+   records the bullet already read as exhaustive once, with `dropped` chosen to
+   stay inside it. Gate 2 freezes the day v0.5.0 ships and inherits that entry,
+   so a gate with a deferral in it is the normal case rather than this one's.
+   What would make it an instance instead of a rule is no later gate ever
+   deferring an entry, which Gate 2 already falsifies. Completed milestones'
+   bullets are left as written: they record conditions those releases met, and
+   editing a satisfied condition is the wider change (`PL-Y949`).
 4. **Implement** the milestone. A finding made while clearing or implementing
    goes to the next gate unless the problem it describes predates the freeze
    (per "The gate is a snapshot" above) or is `P0`/`safety`/`science`, either

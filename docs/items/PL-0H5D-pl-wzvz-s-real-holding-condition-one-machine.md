@@ -1,14 +1,15 @@
 ---
 id: PL-0H5D
 title: PL-WZVZ's real holding condition - one machine profile and no chooser - is unexpressible in blocked-by, so every reader of that field will report it promotable the moment PL-TH35 and PL-R1WQ close, as PL-8G48 already found once
-verify: python3 tools/doc_check.py check && grep -qE '^blocked-by: (PL-[A-Z0-9]{4}, ){2,}PL-[A-Z0-9]{4}' docs/items/PL-WZVZ-make-an-inter-machine-difference-attributable.md
-payoff: stops PL-WZVZ arriving at P1 and unbuildable in front of bin/docket next the moment its proxy blockers close in v0.6.0, which is the same false-ready PL-8G48 corrected by hand on 2026-09-20
-effort: S
 priority: P2
-status: ready
+effort: S
+status: done
 feature: wzvz-deferral-integrity
 touches: docs/items, subprojects/docket/src/docket
 added: 2026-09-21
+closed: 2026-09-21
+payoff: stops PL-WZVZ arriving at P1 and unbuildable in front of bin/docket next the moment its proxy blockers close in v0.6.0, which is the same false-ready PL-8G48 corrected by hand on 2026-09-20
+verify: python3 tools/doc_check.py check && grep -qE '^blocked-by: (PL-[A-Z0-9]{4}, ){2,}PL-[A-Z0-9]{4}' docs/items/PL-WZVZ-make-an-inter-machine-difference-attributable.md
 ---
 
 **Problem.** PL-WZVZ's real holding condition - one machine profile and no chooser - is unexpressible in blocked-by, so every reader of that field will report it promotable the moment PL-TH35 and PL-R1WQ close, as PL-8G48 already found once

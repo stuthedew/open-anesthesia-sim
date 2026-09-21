@@ -1,14 +1,15 @@
 ---
 id: PL-Y949
 title: v0.5.0's Definition of done admits only done or dropped for a frozen-list entry outside Required scope, so PL-S5Q9's recorded deferral of PL-WZVZ leaves the cut unable to satisfy the milestone's own bullet
-verify: python3 tools/doc_check.py check && grep -qF 'deferred to a later gate' ROADMAP.md
-payoff: stops the v0.5.0 cut having to choose between dropping a safety-classed entry and holding the release, which is what a bullet admitting only done or dropped leaves a session meeting a deferred one
-effort: S
 priority: P2
-status: ready
+effort: S
+status: done
 feature: wzvz-deferral-integrity
 touches: ROADMAP.md
 added: 2026-09-21
+closed: 2026-09-21
+payoff: stops the v0.5.0 cut having to choose between dropping a safety-classed entry and holding the release, which is what a bullet admitting only done or dropped leaves a session meeting a deferred one
+verify: python3 tools/doc_check.py check && grep -qF 'deferred to a later gate' ROADMAP.md
 ---
 
 **Problem.** v0.5.0's Definition of done admits only done or dropped for a frozen-list entry outside Required scope, so PL-S5Q9's recorded deferral of PL-WZVZ leaves the cut unable to satisfy the milestone's own bullet
