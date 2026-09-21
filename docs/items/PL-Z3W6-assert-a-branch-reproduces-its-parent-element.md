@@ -3,7 +3,7 @@ id: PL-Z3W6
 title: Assert a branch reproduces its parent element-wise at every sampled point up to the branch point
 priority: P1
 effort: M
-status: ready
+status: doing
 classes: safety, science, test, anticipated
 feature: scenario-branching
 touches: tests/reference, tests/integration, docs/MODEL.md
