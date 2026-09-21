@@ -47,7 +47,7 @@ the instrument can close, and the next gate's session then reads `done`
 verification phase never finished; nothing in it may be acted on without
 re-checking against the tree.
 
-**Recorded debt is cleared before a new milestone begins.** `ROADMAP.md`'s
+**Recorded debt is cleared before a new milestone begins.** `ROADMAP.md` §
 "The debt gate" is the rule: open items classed `defect`, `safety`, `science`,
 `refactor` or `perf`, and anything at `needs-decision`, reach `done` — or
 `dropped` with a reason — before milestone work starts. `feature` and
@@ -58,7 +58,7 @@ and unreliable, not while it is still being built; that case is classed
 The command computes and decides nothing. Whether an item is *really* debt,
 whether the gate should open, and what goes into `ROADMAP.md` are yours —
 transcribe the two lists into the milestone's own section with the date they
-were frozen, per `ROADMAP.md`'s "Recording it". The list is frozen at that
+were frozen, per `ROADMAP.md` § "Recording it". The list is frozen at that
 moment; a finding made afterwards goes to the next gate unless the problem it
 describes predates the freeze, or is `P0`, `safety` or `science`.
 
@@ -135,7 +135,7 @@ required; `bin/docket release --dry-run` prints the mechanical guess for
 reference.
 
 `docket.toml` sets `version_policy = "manual"` here, so the version is named
-rather than inferred — `ROADMAP.md`'s "Versioning decision" is why: the number
+rather than inferred — `ROADMAP.md` § "Versioning decision" is why: the number
 marks the capability boundary a release crosses, which no class label carries.
 The dry run still prints the mechanical guess, as a reference point and not an
 answer.

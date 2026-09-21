@@ -3,11 +3,12 @@ id: PL-316G
 title: Convert the 150 possessive-form document citations to the section-mark form, which is the only way doc_check can check them without reading prose as a citation
 priority: P2
 effort: M
-status: ready
+status: done
 classes: docs, infra
 feature: dev-tooling
-touches: docs/, src/anesthesia_sim/, tests/, tools/, CLAUDE.md, .claude/, ROADMAP.md, README.md, subprojects/docket/, docket.toml
+touches: docs/, src/anesthesia_sim/, tests/, tools/, CLAUDE.md, .claude/, ROADMAP.md, README.md, subprojects/docket/, docket.toml, Makefile
 added: 2026-09-13
+closed: 2026-09-21
 payoff: every citation form the project writes is checked, so a renamed heading or a reworded sentence stops orphaning a pointer silently
 verify: python3 tools/possessive_section_check.py
 recurrences: 2026-09-21 PL-YSMV

@@ -187,7 +187,7 @@ advisory, and a default branch missing work everyone believes landed. Observed
 2026-09-04 on `#284`, whose follow-up `#286` says it plainly — "that pull
 request merged at its first commit, so the behavior change pushed to the same
 branch afterwards never landed". The commit carried a rule the project owner
-had asked for in that session, so `CLAUDE.md`'s "a behavior change takes effect
+had asked for in that session, so `CLAUDE.md` § "a behavior change takes effect
 in the session that asks for it" was quietly void.
 
 It surfaced only because that session happened to check the merge file by file.

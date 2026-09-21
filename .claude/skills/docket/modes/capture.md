@@ -48,7 +48,7 @@ which reads as an item with no brief at all (`PL-D188`).
 When work turns up something such an item needs in order to be properly
 finished, the two are worked together - one branch, closed together - rather
 than filed as sequential items. A freeze closes new behavior and features, not
-the completeness of a fix; `ROADMAP.md`'s "The gate is a snapshot, not a moving
+the completeness of a fix; `ROADMAP.md` § "The gate is a snapshot, not a moving
 target" carries the rule and the reasoning.
 
 Never hold a finding in conversation until the current work lands. The

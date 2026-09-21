@@ -56,7 +56,7 @@ Propose an answer and invite correction; do not ask an open question.
 | What the owner said | Where it goes |
 | --- | --- |
 | "Make this specific change" | A queue item, now. It is actionable already. |
-| "I want this feature eventually" | One line of intent in `ROADMAP.md`'s "Planned milestones". No items. |
+| "I want this feature eventually" | One line of intent in `ROADMAP.md` § "Planned milestones". No items. |
 | "Let's build this" | The design round above, then items once settled. |
 
 The middle row is the one that goes wrong. An aspirational feature filed as an

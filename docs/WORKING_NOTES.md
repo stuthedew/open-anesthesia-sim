@@ -87,7 +87,7 @@ file describing the v0.2.0 baseline until v0.5.0, forty releases on
 The frozen list is a *scope*, not a set of items: a finding is inside it if it
 contributes to the goal the release states — a low-friction workflow before
 the two long milestones are run through it — and outside it if it is a
-different goal. `ROADMAP.md`'s "What the freeze closes, and what it does not"
+different goal. `ROADMAP.md` § "What the freeze closes, and what it does not"
 now carries that test, with the two limits that keep it from reopening the
 list for everything: the finding must be a **defect** in machinery the goal
 names, and it must be **workable in this tree**.
@@ -482,7 +482,7 @@ SimTiva functionality" against Gas Man's real-world v4.x.
 
 Concretely, this points at IV/TIVA pharmacokinetic and effect-site
 modeling integrated with the existing inhaled-agent model. That is not a
-new idea - it is already `ROADMAP.md`'s "Planned milestones" item 13 ("Add
+new idea - it is already `ROADMAP.md` § "Planned milestones" item 13 ("Add
 IV pharmacokinetic and effect-site models, after item 12 (simulation
 forking) is available"). The vision here is the same destination with much higher
 ambition on execution and UX quality, and possibly a different order,
@@ -539,7 +539,7 @@ because they bear on decisions beyond it.
 this belongs on v0.2.8's frozen list: a defect in machinery that release's Goal
 already names ("the instructions a session reads before it does anything
 else"), present before the 2026-08-30 freeze, and prose-only so it does not
-trip the "new tools, better tools" exclusion at `ROADMAP.md`'s "Explicitly out
+trip the "new tools, better tools" exclusion at `ROADMAP.md` § "Explicitly out
 of scope for v0.2.8". The project owner declined, directing it to "the next
 gate or two" - Gate 0 (under v0.4.0) or Gate 1. The reasoning stands and the
 placement did not: a release 6 entries of 38 from done is the wrong place for a

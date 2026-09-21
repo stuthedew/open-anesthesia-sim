@@ -26,7 +26,7 @@ quantity of agent over any case length this simulator is used to teach. The
 model is right.
 
 What is wrong is that the reader cannot tell that from the document.
-`docs/MODEL.md`'s "Known limitations" list is otherwise close to exhaustive —
+`docs/MODEL.md` § "Known limitations" list is otherwise close to exhaustive —
 it names shunt, dead space, V/Q mismatch, diffusion limitation, multiple
 alveolar units, compound A, hypothermia, age-dependent MAC and about twenty
 more. Precisely because the list is that complete, a reader who knows Eger's
@@ -77,7 +77,7 @@ partition coefficients: "Tissue solubilities vary up to 150% between authors
 (Yasuda et al. 1989), and the tissue homogenates used to determine these
 coefficients may not represent in vivo conditions."
 
-**Done when.** `docs/MODEL.md`'s "Known limitations" names the absent
+**Done when.** `docs/MODEL.md` § "Known limitations" names the absent
 vessel-poor group with the reason it is absent and why the omission is
 tolerable, `python3 tools/doc_check.py check` passes, and no modelled value
 changed.

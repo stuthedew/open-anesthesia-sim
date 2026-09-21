@@ -443,7 +443,7 @@ v0.1.0 is complete only when:
   prediction; and
 - no deferred feature has entered the release accidentally.
 
-All criteria above were met at tag time; see `docs/MODEL.md`'s "Release
+All criteria above were met at tag time; see `docs/MODEL.md` § "Release
 gate" section for the corresponding scientific-documentation checklist.
 
 ### Explicitly out of scope for v0.1.0
@@ -1248,7 +1248,7 @@ Findings made while clearing this gate go to Gate 1, except `P0` and
   the Flet chart-series module (deleted with `PL-25KS`). Both are behavior-unchanged and held to the
   existing view tests; PL-WB0X's brief names the modules. Stage 1 lands before
   the MAC unit below: that item rewrites every formatter and extends
-  `docs/MODEL.md`'s "Displayed precision" derivation, which today terminates in
+  `docs/MODEL.md` § "Displayed precision" derivation, which today terminates in
   a private static method on a Flet view class, so the one function the
   specification reasons about cannot be read, cited or tested without loading
   the whole interface. Stage 2 lands before the chart work, which four items of
@@ -6584,7 +6584,7 @@ specified.
     order for `elapsed_s`, since simulated time is now the step count times
     the run's step, and a different number of steps per frame, since the run
     loop takes a fixed number per tick and never catches up. What is left is
-    a different step size, which `docs/MODEL.md`'s "The reproducibility
+    a different step size, which `docs/MODEL.md` § "The reproducibility
     guarantee" states it does not cover, and whatever a branch restores from
     a stored point rather than resimulating. If exactness is unreachable, the
     divergence must be bounded, documented in `docs/MODEL.md`, and shown to
@@ -7687,7 +7687,7 @@ once someone is ready to scope it.
     is a later decision.
 
     *Its own item because two recorded limitations already end here.*
-    `docs/MODEL.md`'s "Known limitations" carries two notes that stop at the
+    `docs/MODEL.md` § "Known limitations" carries two notes that stop at the
     same unbuilt change. "One reference condition, where the model physically
     has two" sizes the temperature half: the alveolar, venous and tissue
     stores hold 5.8 % fewer moles than their 20 °C label implies. "The

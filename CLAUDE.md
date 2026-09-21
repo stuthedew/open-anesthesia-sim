@@ -501,7 +501,7 @@ deviating from a described deliverable, not acting without one.
   2026-09-06).
 - **Capture intent, and route it by how ready it is.** A **specific change** is
   a queue item, written now. A **feature wanted but not yet ready to build** is
-  one unscoped line of intent in `ROADMAP.md`'s "Planned milestones" — filing it
+  one unscoped line of intent in `ROADMAP.md` § "Planned milestones" — filing it
   as an `L` queue item instead puts work in the queue that cannot be worked,
   where every session reads past it. A **feature being designed right now** gets
   the design round first and items only once the shape has settled, because an

@@ -10,7 +10,7 @@ touches: CLAUDE.md
 added: 2026-08-24
 ---
 
-**Problem.** `CLAUDE.md`'s "Session and tool-use efficiency" section says to
+**Problem.** `CLAUDE.md` § "Session and tool-use efficiency" section says to
 edit `CLAUDE.md` and the core docs in their own session, because "they sit in
 the cached prefix of every request, so editing one partway through a session
 invalidates that cache for the rest of it." Anthropic's documentation

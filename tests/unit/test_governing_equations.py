@@ -5,7 +5,7 @@ mistyped index or a sign: a matrix that is wrong in one entry still produces
 a smooth, plausible trajectory, and the reference gates would catch it only
 as a number that disagrees with the oracle without saying where.
 
-So every expected value below is written out from `docs/MODEL.md`'s
+So every expected value below is written out from `docs/MODEL.md` §
 "Governing equations" independently of the module under test, at settings
 chosen so that no two rates share a value and a transposed index cannot pass.
 The structural properties the propagator depends on - that the matrix is

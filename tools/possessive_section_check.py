@@ -16,8 +16,8 @@ about it. The asymmetry is the point: `CLAUDE.md` refuses to script the
 judgment half, and the half that would need judgment is exactly the one left
 alone here.
 
-Run as a command it exits 1 with a line per site. It is `PL-316G`'s `verify:`
-while the conversion is outstanding, and is wired into `make check` once the
+Run as a command it exits 1 with a line per site. It was `PL-316G`'s `verify:`
+while the conversion was outstanding, and `make check` runs it now that the
 tree is clean, so the convention holds for citations nobody has written yet.
 """
 
