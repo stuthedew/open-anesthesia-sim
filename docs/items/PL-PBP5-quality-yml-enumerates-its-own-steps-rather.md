@@ -5,7 +5,7 @@ priority: P2
 effort: M
 status: done
 classes: defect, infra
-touches: .github/workflows/quality.yml, Makefile, tools/doc_check.py, tests/unit/test_doc_check.py, docs/items/
+touches: .github/workflows/quality.yml, Makefile, tools/doc_check.py, tests/unit/test_doc_check.py, docs/ARCHITECTURE.md, docs/items/
 added: 2026-09-21
 closed: 2026-09-21
 payoff: a check wired into make check is enforced by CI too, so the convention it holds does not depend on a session remembering to run the local gate
