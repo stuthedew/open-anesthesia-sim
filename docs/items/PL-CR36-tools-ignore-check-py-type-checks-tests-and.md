@@ -1,8 +1,14 @@
 ---
 id: PL-CR36
 title: tools/ignore_check.py type-checks tests and subprojects/docket/tests in one mypy invocation, so a second file named conftest in those trees is a duplicate-module error that stops mypy before it evaluates anything and turns make check red
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
+touches: tools/ignore_check.py, tests/unit/test_ignore_check.py
 added: 2026-09-21
+payoff: a second conftest.py can be added to either test tree without turning make check red for a reason that names the wrong file
+verify: grep -q 'def test_a_second_conftest_does_not_stop_mypy' tests/unit/test_ignore_check.py
 ---
 
 **Problem.** tools/ignore_check.py type-checks tests and subprojects/docket/tests in one mypy invocation, so a second file named conftest in those trees is a duplicate-module error that stops mypy before it evaluates anything and turns make check red
@@ -35,3 +41,13 @@ latent for whoever adds the next `conftest.py`.
 **Done when** a second `conftest.py` may exist in `tests/` or
 `subprojects/docket/tests/` without `ignore_check` declining, with a test that
 fails on the current invocation.
+
+**Why it matters.** The cost is latent, and the trap is that it presents as an
+unrelated failure. `make check` goes red on a duplicate-module error naming two
+`conftest.py` paths, and `ignore_check` reports that it evaluated nothing -
+honest, and also the loudest line in the output, so a session reads the gate's
+decline rather than the one-line cause underneath it. The remedy that presents
+itself is to move or rename the new file, which is what `PL-YRYR` did; the
+remedy that holds is one flag on the invocation. Until it lands, `tests/` and
+`subprojects/docket/tests/` may each hold exactly one `conftest.py` for the life
+of the project, which is a constraint nothing states and no check names.

@@ -5340,6 +5340,23 @@ v0.4.0 and v0.5.0 sections both give: a count written into a document goes
 stale the next time an item closes. `bin/docket wave` reads these against
 `docs/items/` and reports the split.
 
+**Thirteen entries were untriaged when this list was frozen and are on it all
+the same.** They were open in the store on the day of the cut, which is what the
+paragraph above says this list holds; what they were not was *classed*, and an
+untriaged capture carries no class, so `bin/docket gate` could not read one as
+debt however old its problem. Triaging them the same day gave eleven of them
+`defect` - some with `infra` or `test` beside it - one `refactor` and one
+`perf`, and `tools/doc_check.py` then asked this section for a disposition it
+had had no way to write. Each describes code that predates the freeze, so they
+re-enter by the presumption in "The gate is a snapshot, not a moving target"
+rather than by the exception that admits a `safety` finding regardless:
+`PL-3QM9`, `PL-5DPF`, `PL-B78T`, `PL-CR36`, `PL-CZR6`, `PL-HVLJ`, `PL-M6FY`,
+`PL-N0MH`, `PL-NPWP` and `PL-YSMV` in the workflow lane, and `PL-JS0X`,
+`PL-KZR1` and `PL-N67T` in the product lane. What this cost is worth recording
+for the next freeze: a frozen list is computed from the store's *classes*, so
+an untriaged backlog is invisible to it, and a freeze taken while captures are
+waiting understates itself by however many of them turn out to be debt.
+
 **Three kinds of group, and only the third is a precondition.** The first is
 debt inside this milestone's own Required scope, cleared *by* it per § "Debt
 inside the milestone's own scope" - the test is whether `Required scope` below
@@ -5414,7 +5431,7 @@ of this milestone begins.
 
 - PL-Y04W (L) Build break-out: an Area taken into its own top-level window, the window lifetime that keeps the main window unclosable while break-outs exist, and the test that every window the application can be left showing carries the invariant display tier
 
-**Cleared before v0.6.0 begins, the product lane - 42 entries**
+**Cleared before v0.6.0 begins, the product lane - 45 entries**
 
 - PL-0S0V (M) AGENT_VOLUME_DISPLAY_DECIMALS and the other display-precision constants are one Final per quantity, but once the unit is reader-selectable precision is a function of quantity AND unit, and docs/MODEL.md's derivation has to be per-unit too
 - PL-1K9G (M) Which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with
@@ -5446,8 +5463,11 @@ of this milestone begins.
 - PL-HGB6 (S) docs/machine-abstraction.md says circuit_volume_l is apparatus-plus-circuit where the shipped profile says apparatus alone, so a profile author following the design document would store an assembled total the code does not expect
 - PL-J0F7 (S) The Qt chart's hover box was never looked at rendered: its placement flips near the window's right edge and the axis top, and nothing has confirmed the flip lands the box inside the plot or that INK on PANEL in a pg.TextItem is what is painted
 - PL-JQY1 (S) max_delivered_concentration_percent is a vaporizer device maximum stored as an agent property, so 18% reads as a fact about desflurane
+- PL-JS0X (S) test_the_dashboard_fits_its_window_without_a_horizontal_scrollbar calls build_sidebar_panels a second time and then measures mapTo(page, ...) on panels that are not in the page, so its last two assertions are vacuous and the sidebar they claim to measure has been dismantled
+- PL-KZR1 (S) RunView's build_* methods are split between returning a stored widget (build_notice, build_off_scale_notice) and constructing a new one on each call (build_sidebar_panels, build_readout_section), with nothing in the names saying which
 - PL-LLBV (S) The whole-step guard on a fork instant refuses 35.5% of the one-decimal times a user could type
 - PL-LPH9 (S) ROADMAP.md's cadence says no interim release is cut partway through clearing a gate, but 159 of Gate 1's 175 frozen entries already shipped in v0.4.x patches, so the sentence a later session would cite to refuse a cut describes nothing this project has done since v0.4.5
+- PL-N67T (S) RunView.build_sidebar_panels constructs fresh panels on every call and reparents the run's live labels into them, so a second call silently strips the accounting and control-change panels out of the sidebar
 - PL-NC62 (S) resumed_at's settings-mismatch refusal blames the control timeline whatever the cause, so a patient or agent mismatch would be misdiagnosed
 - PL-QW19 (S) default_fresh_gas_flow_l_min is a required field no manufacturer publishes, so the first real machine profile must invent an unsourced number or cannot be written
 - PL-RBMK (S) _apply_to_every_run documents a two-phase write it does not implement: it applies in a loop and catches, so the docstring promises atomicity the code cannot give
@@ -5459,7 +5479,7 @@ of this milestone begins.
 - PL-Y4YX (S) PL-L9RD's verify: demands PySide6 in app/theme.py, which that file's own documented invariant forbids, and the invariant's stated reason does not hold either - both tools ast.parse it and neither imports it
 - PL-Z4K6 (S) Decide whether seven readout columns on a 1366 px laptop is wanted, now that dashboard_frame.readout_columns is font-measured and that screen misses the seven-column width by nine pixels
 
-**Cleared before v0.6.0 begins, the workflow lane - 103 entries**
+**Cleared before v0.6.0 begins, the workflow lane - 113 entries**
 
 - PL-087W (M) bin/docket verify unions removed assertions per commit and never nets them against a later restore, so a line a session puts back on the check's own advice keeps refusing the branch
 - PL-2DTK (M) docket verify --self cancels an added line against its removal only within the commits it selects per id, so an item is charged with removing an assertion a commit that does not name it had added on the same branch
@@ -5472,15 +5492,18 @@ of this milestone begins.
 - PL-7TVT (M) bin/docket flight separates a live session from an abandoned branch only by commit age, which cannot fire in the first hour: PR #757 sat green and unclaimed 25 minutes after its session was archived, with its three items still reading 'do not start these again'
 - PL-99YZ (M) Three sessions opened three pull requests for the same red-main fix within four minutes, each having correctly filed its own item first, because every in-flight guard matches an existing PL- id and none of them can see an item that did not exist when the other sessions looked
 - PL-9LXK (M) Nothing checks a prose claim about the tier or adoption of a stored value's source, though PL-1JDD made both machine-readable and three such claims went stale within a day
+- PL-B78T (M) bin/docket stranded reads only docs/items, so unmerged work anywhere else is invisible to it: four recovered PR bodies on claude/festive-allen-nj1x98 and 206 lines of docket source on claude/recurrence-signal-feature-3hnynt sit on branches with no open pull request and nothing reports either
 - PL-BGMK (M) Two open items whose touches and verify: command overlap are never compared, so PL-1YDK and PL-8PT6 were filed and worked as one finding twice and only docket check --verify on main caught it
 - PL-BYMX (M) bin/docket stranded compares branches by item id, so a branch carrying a non-item file the default branch lacks is reported by nothing
 - PL-CNJH (M) verify's replacement pairing folds an assertion whose inserted argument loosens it - approx(2.05) to approx(2.05, rel=0.5) - reporting the pair without refusing it; 4 of the 56 it folds across 905 commits change what the line asserts
 - PL-CWD4 (M) A verify: command that can never pass on any tree is indistinguishable from one whose work is simply not done, so PL-4PC5 carried a dead command for five days after wave stopped printing the line it grepped
+- PL-CZR6 (M) bin/docket stranded reported no branch carrying work its own pull request left behind while claude/sharp-lamport-t545rs carried two PL-X5PK commits pushed an hour after #823 squash-merged from it
 - PL-DG84 (M) docs/WORKING_NOTES.md asks for resolved threads to be deleted and nothing reads that policy
 - PL-GJPD (M) _carried_work reads a combined commit as having carried the work, so the triage pass that closed PL-3CBS is recorded as its pull request because it also edited ROADMAP.md - three of main's 698 answerable closures disagree with their stored pr
 - PL-MFM4 (M) bin/docket release's collision guard reads unmerged refs for a cut in progress, so it cannot see a second session that has filed a release item and asked the owner for the version without cutting anything: PL-Z0C7 and PL-R5VS were two ids for one release and every guard matched both cleanly
 - PL-N2PP (M) A rider item worked inside another item's session is invisible to every in-flight guard the project has
 - PL-NJ9M (M) bin/docket delegable cannot tell a brief that determines the fix from one that leaves the choice open, so a hand-off meant to need no reading still does
+- PL-NPWP (M) bin/docket stranded's ahead list keys on textual difference between the base's copy and a branch's, so a branch holding a stale copy is reported forever and no amount of recovery can empty the list - which is the completion test PL-DZM1 was written against
 - PL-Q8RQ (M) Four open items' verify commands rest on a bare 'pytest -k SUBSTRING', which any unrelated test name can satisfy: PL-S5YM turned main red exactly this way, and whether a command can discriminate at all is decidable enough for docket check to refuse it
 - PL-RR1N (M) A verify: grep for a prose phrase can never match once the document's own line-wrapping splits it, and exit 1 reads as work-not-done
 - PL-S0MB (M) Catch-all feature names can never report completion: dev-tooling carries 174 items and queue-hygiene 29, so bin/docket feature <name> cannot answer 'yes, that is dealt with' for either, and 32 of 33 workflow features read as live
@@ -5503,15 +5526,18 @@ of this milestone begins.
 - PL-28HG (S) GitRunner._drop marks a root permanently unbatchable, so one transient cat-file fault costs every later blob in the command a separate git show process
 - PL-3BYK (S) docket digest --profile's ref set block counts item-file edits per ref and sums across refs, while the walk holds one entry per identifier, so anyone predicting a diff count from it over-predicts by about 2x on a clone with overlapping long-lived branches
 - PL-3DN1 (S) bin/docket release accepts a VERSION below the current one, so a typo silently downgrades pyproject.toml's version field
+- PL-3QM9 (S) bin/docket flight reports a branch's age by calendar-date subtraction, so a branch committed 55 minutes ago reads 'last commit 1 day ago' across midnight and a running session looks abandoned
 - PL-4HKS (S) docs/WORKING_NOTES.md's playback-speed open thread reasons from pre-Qt-port numbers - a 0.011 ms step and 15 ms of chart-point construction - and names PL-010 as unspent headroom, but PL-009 is dropped, PL-010 is done, and the step now costs 0.025 ms
 - PL-4ZK8 (S) bin/docket concurrent offers a batch containing needs-decision and in-flight items, so a fan-out cannot hand it out as-is
 - PL-5B88 (S) verify's suppression check misses @pytest.mark.skip and @pytest.mark.skipif, the two commonest ways a pytest test is disabled: @skip needs its @ against the name and pytest.skip needs its halves adjacent, so the check reports none while a disabled test sits in the diff
+- PL-5DPF (S) A generator marked spent that accrues a new recurrence has had its verdict falsified, and nothing says so
 - PL-6G8T (S) _section_text reads a required heading quoted at a line break as the section itself, so a wrapped quotation above an empty real heading masks the empty one
 - PL-6QZP (S) CLAUDE.md's fix-now test 2 says a wider fix fails the touches audit, but under verify --self that check reports and the branch still ACCEPTs, so the deterrent the rule describes does not fire on a session's own branch
 - PL-7NKD (S) bin/docket verify caps the removed-assertion evidence at five lines with nothing saying so, so a count of six prints five and the reader cannot tell which line is missing
 - PL-9KSY (S) store.write_item's replace= parameter has no caller left now that every field write uses rewrite_item, and PL-YTDN's rename pass is specified as git mv, so the rename branch is dead code that the next field writer could still reach for
 - PL-B11M (S) Detect a silent model fallback: last_served_model can differ from the configured model with nothing recording it
 - PL-BX1C (S) bin/docket verify runs a dropped item's stale verify: command and REJECTs the close-out on it, though the skill says a dropped item has no command to run
+- PL-CR36 (S) tools/ignore_check.py type-checks tests and subprojects/docket/tests in one mypy invocation, so a second file named conftest in those trees is a duplicate-module error that stops mypy before it evaluates anything and turns make check red
 - PL-CY8B (S) test_flight_does_not_answer_from_a_walk_the_clone_truncated asserts PL-M01 is absent, but PL-M01 is not an id ID_PATTERN matches, so that assertion cannot fail
 - PL-D1NT (S) doc_check's path-citation resolver crashes the whole run on a path it cannot stat: the glob branch is guarded against exactly this and the .exists() branch is not
 - PL-DK8Y (S) The session-start digest prints 'The plan's numbering is behind the project' for every Wave.stale statement, which is false for the section-that-no-timeline-row-bears one
@@ -5520,6 +5546,7 @@ of this milestone begins.
 - PL-G8TR (S) no-prune-guard is evaded by the form it recommends - git branch -dr driven from a generated list is a prune
 - PL-H6VQ (S) doc_check's _declined_ids counts every PL- id in a Declined-to-Gate subsection, including ids the deferral's prose only cites, so an item mentioned in another item's reasoning reads as disposed and check_gate_dispositions goes silent on it
 - PL-H9GV (S) PL-01GD shipped as one exported Makefile variable with no test: PYTHONDONTWRITEBYTECODE appears only at Makefile:21, its declared touches names tests/unit/test_tools_portability.py which never changed, and its verify: passes against an untouched suite
+- PL-HVLJ (S) doc_check reads local tags, so a checkout whose tags were fetched ahead of its working tree errors on a clean main - observed 2026-09-21 as 'git holds v0.4.35, but no row of the version table marks v0.4.35 completed' when the row and the tag are the same commit
 - PL-HX5C (S) Both in-flight guards passed and two sessions still implemented PL-W8XP independently: the second never renamed and its branch was named after a different item, so neither the ref read nor the session read could see it
 - PL-J3TV (S) .claude/hooks/no-prune-guard.sh still prints the pre-PL-K2C8 three-command restart recipe, so the incomplete version survives in the louder of the two places - the message a session reads at the moment it is refused a prune
 - PL-J3WK (S) make check runs bin/docket check without --verify while CI runs it with, so a verify: command that proves nothing - a literal true, or one shared by three items - passes every local gate and fails CI; both halves of that are decidable statically, without running the 17 commands the flag runs
@@ -5534,7 +5561,9 @@ of this milestone begins.
 - PL-LKGW (S) bin/docket meets a python3 below docket's 3.11 floor with render.py's ImportError traceback rather than naming the floor and the interpreter it found, so a Mac whose python3 is Apple's 3.9 gets a cryptic failure by hand and silent hooks with nothing saying why
 - PL-LPWK (S) A release note cites the pull request that closed an item, not the one that carried its code, whenever the two differ
 - PL-LT77 (S) git fetch --tags does not prune, so a tag deleted on origin keeps failing doc_check in every checkout that already fetched it, and nothing distinguishes stale local state from a real repository fault
+- PL-M6FY (S) cli.cmd_flight builds its own GitRunner instead of the invocation's, so flight loses the cat-file memo every other command shares
 - PL-MSFB (S) PL-6194's verify: command still uses [(] and [)] to work around the math check that PL-WTQ1 fixed, and WORKING_NOTES.md:504 still uses backticks to work around PL-KJ63
+- PL-N0MH (S) Only docket check names the settings it ran under, so next, digest, status and list under --items are read under the wrong policy in silence
 - PL-NDKC (S) PySide6 6.11.2 segfaults on QDataStream over a temporary QByteArray, which the layout persistence work will meet the first time it decodes a saved blob
 - PL-NGBM (S) --no-git does not stop the git reads behind a printed count, so docket digest --no-git shells out to git despite the flag saying branch detection is off
 - PL-NWSK (S) required_checks_check.py treats a paths-filtered pull_request job as reporting, but GitHub leaves such a check pending forever on a pull request the filter excludes, so the reconciliation would read agreement while merges hang
@@ -5560,6 +5589,7 @@ of this milestone begins.
 - PL-XQGH (S) verify's assertion check anchors on with, so the parenthesized multi-manager form leaves pytest.raises on a line of its own that matches nothing
 - PL-YKXQ (S) This container's initial clone had local main diverged 407 commits into pre-rewrite history, so a session that checks out main gets a stale tree and an old bin/docket
 - PL-YS9F (S) outstanding_roadmap_edits states both edits for a milestone number a cut has exactly reached because it cannot read the beat that decides which; the plan computed before the bump knows
+- PL-YSMV (S) doc_check reads any quoted string near the word section as a section citation, so prose quoting a command's own output fails make check
 - PL-Z6M3 (S) bin/docket stranded prints 'No item exists only on a branch' while an item sits on two branches and not on main, because the predicate is 'neither the store nor the default branch' and the rendered sentence drops the store half
 - PL-Z85N (S) bin/docket release cuts whatever version it is handed, so the reserved-version answer exists only in the advisory digest and nothing objects on the cut path
 - PL-Z9K5 (S) bin/docket record normalizes an item's whole front matter as well as inserting pr:, so PL-ZYQC's 'pr, not counted' exemption misses and the close-out audit reports files the skill told the session to touch

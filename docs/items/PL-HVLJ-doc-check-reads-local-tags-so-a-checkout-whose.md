@@ -1,8 +1,15 @@
 ---
 id: PL-HVLJ
 title: doc_check reads local tags, so a checkout whose tags were fetched ahead of its working tree errors on a clean main - observed 2026-09-21 as 'git holds v0.4.35, but no row of the version table marks v0.4.35 completed' when the row and the tag are the same commit
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: tag-error-names-its-cause
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-21
+payoff: a checkout that is merely behind is told to pull, instead of being told a correct ROADMAP.md is wrong and to fix it before committing
+verify: grep -q 'def test_a_tag_ahead_of_the_working_tree_names_its_own_remedy' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check reads local tags, so a checkout whose tags were fetched ahead of its working tree errors on a clean main - observed 2026-09-21 as 'git holds v0.4.35, but no row of the version table marks v0.4.35 completed' when the row and the tag are the same commit
@@ -48,3 +55,9 @@ is a withdrawn tag re-cut at the same number. This is the third direction, a
 tag arriving *ahead* of the tree, and it is the one that fires on a completely
 healthy repository. Whoever takes any of the three should read the other two;
 they may well be one fix.
+
+**Done when.** A tag git holds for a version the working tree's table does not
+name is reported as a checkout that is behind - naming `git pull` as the remedy
+- rather than as an error against `ROADMAP.md`; and a test in
+`tests/unit/test_doc_check.py` drives a tag set that is ahead of the tree it is
+read against.
