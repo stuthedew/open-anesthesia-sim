@@ -5583,8 +5583,12 @@ have implemented and closed it.
 
 - PL-H0CF (S) - **deferred 2026-09-21.** `tools/doc_check.py`'s `_resolves`
   joins an absolute citation token onto the repository root, which in Python
-  yields the token itself, so `/root/.ccr/README.md` is asked of the container
-  rather than of the tree and root and the CI runner can disagree on one commit.
+  yields the token itself, so a token naming the agent-proxy README under the
+  container's root home is asked of the container rather than of the tree, and
+  root and the CI runner can disagree on one commit. The token is named in
+  prose rather than in a code span deliberately: writing it as a citation is
+  what made this entry fail CI on #880, which is the defect demonstrating
+  itself.
   `defect`, `infra`. It is the prerequisite for `PL-1RTM`, which is on this
   list - so the gate still reaches it, through the entry it blocks.
 

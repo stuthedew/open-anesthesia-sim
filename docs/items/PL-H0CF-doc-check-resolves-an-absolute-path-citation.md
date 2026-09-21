@@ -77,6 +77,18 @@ ran the check. That makes this a prerequisite for `PL-1RTM` rather than a
 parallel cleanup, and the measurement above is part of the "worth measuring
 before building" `PL-1RTM` asks for.
 
+**Demonstrated end to end on #880, 2026-09-21**, after this item was triaged
+and before it was worked. `PL-2JRC`'s gate-disposition entry for this very item
+quoted the agent-proxy README path as a code span in `ROADMAP.md`, which
+`check_citations` does scan. `make check` passed in the session container, where
+the process runs as root and the path resolves; CI failed on the same commit
+with "cites ..., which does not exist", the unprivileged runner's
+`PermissionError` arriving through `PL-D1NT`'s guard. One tree, one commit, two
+verdicts - the split this brief predicted, with the roles exactly as the table
+above gives them. Worked around the way `PL-ZM48` did: the entry now names the
+file in prose instead of marking it as code. That workaround is the cost this
+item removes.
+
 **Shape of a fix.** Decide the token by where it points rather than by whether
 some filesystem holds it: a citation that resolves outside the repository root
 is not a repository path citation. Two candidate readings, and the choice is
