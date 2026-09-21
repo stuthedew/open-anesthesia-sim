@@ -63,6 +63,20 @@ question cannot recur with the next tool added. `PL-J3WK` is the same seam from
 the other side - `make check` runs `bin/docket check` without `--verify` where
 CI runs it with - and should be answered in the same sitting.
 
+**`PL-J3WK` has since gone one way, and it is a precedent rather than an
+answer** (read 2026-09-21 from `origin/claude/trusting-hawking-wlh7vg`, where
+it is closed `done` and its pull request not yet open; `origin/main` still
+carries it `ready`). It closed the seam by moving the statically decidable half
+of `--verify` - the no-op command and the command two items share - into bare
+`bin/docket check`, so both gates run it. It touched neither `Makefile` nor
+`.github/workflows/quality.yml`. So the project's answer to "make the two gates
+one" was *no*: it moved the check to where both gates already look instead.
+That is available here for `dead_ends.py` and `possessive_section_check.py`
+only by the opposite move - putting them in CI as well - because unlike
+`docket check` they are not invoked by CI at all. The precedent to take from it
+is the shape: prefer a check that runs in both places over reconciling what
+each gate enumerates.
+
 **Recommended: count first, then take the cheap half.** Run the count the
 section above asks for, because whether pushes that skip `make check` are a
 real rate is what decides whether anything is worth adding at all. Whatever it

@@ -5,7 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: housekeeping
-touches: docs/items
+touches: docs/items, ROADMAP.md
 added: 2026-09-21
 closed: 2026-09-21
 payoff: the 10 captures standing in the queue stop being a second queue nobody reads, invisible to bin/docket next and uncounted by bin/docket gate

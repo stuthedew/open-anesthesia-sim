@@ -5,7 +5,6 @@ priority: P2
 effort: S
 status: ready
 classes: defect, infra
-feature: check-parity
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-09-20
 payoff: closes the gap that let three non-discriminating verify: commands pass every local gate and turn CI red after review had started
