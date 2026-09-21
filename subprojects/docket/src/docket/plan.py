@@ -350,7 +350,7 @@ def promotable(items: list[Item]) -> list[Item]:
     )
 
 
-def recurring(items: list[Item]) -> list[Item]:
+def recurring(items: list[Item], in_flight: Collection[str] | None = None) -> list[Item]:
     """Open items the store has now absorbed three or more filings of.
 
     The evidence a generator claim rests on, arriving without anybody having to
@@ -386,12 +386,40 @@ def recurring(items: list[Item]) -> list[Item]:
     An item already carrying a sound generator claim is left out: it is on the
     tier already, so naming it as a candidate for the tier is a line that
     changes no decision.
+
+    **Named only where a promotion could still move something, which is the
+    window `root-cause-of:` acts in.** The field changes a queue position and
+    nothing else, so a claim written onto an id `recommend` does not rank is
+    read by nothing - it builds its generator map from the startable set.
+    Closed and in flight are the two states that put an id outside that set
+    for good, and in both this line asks a reader to confirm a promotion that
+    cannot rank. `PL-W7WL` was ratified onto the tier on 2026-09-21 and the
+    write would have done nothing: the item was being implemented while the
+    reader answered. `PL-GYRX` was dropped on 2026-09-19 reasoning the same
+    way about `impairs-generators:`, the sibling entrance - two instances of
+    one hole, which is what made it `PL-CJ5R` rather than an accident.
+
+    **`untriaged` and `blocked` stay, though `_startable` excludes them too.**
+    Their windows have not opened rather than closed. A claim written onto an
+    untriaged item ranks the moment triage seats it, and is the thing a triage
+    pass most wants to know before choosing a band; one on a blocked item
+    ranks when its blocker clears. Dropping them would trade this defect for
+    the same defect pointing the other way, and neither is the state the two
+    recorded instances were in.
+
+    **The suppression is only as complete as the flight read.** An unpushed
+    branch is in no ref, so an item being implemented in another container is
+    still named here - which is the state `PL-W7WL` was actually in. `None`
+    excludes nothing on that ground, exactly as in `recommend`; callers pass
+    `FlightReport.ids` and print what went unread beside the answer.
     """
+    flight = in_flight or set()
     return sorted(
         (
             item
             for item in items
             if item.status not in CLOSED_STATUSES
+            and item.identifier not in flight
             and recurrence_count(item) >= MIN_RECURRENCES
             and not is_generator(item, {i.identifier for i in items if i.identifier})
         ),

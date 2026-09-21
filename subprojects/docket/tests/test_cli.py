@@ -2452,6 +2452,36 @@ def test_next_still_offers_an_item_whose_file_a_branch_has_only_edited(
     assert "PL-0001" in capsys.readouterr().out
 
 
+def test_next_withholds_a_recurrence_cluster_on_an_item_already_in_flight(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The offer is to promote, and an item on a branch has no position left to move.
+
+    `plan.recurring` holds the rule; this holds the wiring, which is the half a
+    unit test cannot reach. Both call sites - here and the session-start digest -
+    have to hand the flight ids over, and one left unwired ships the defect with
+    every plan-level test still green (`PL-CJ5R`).
+
+    Asserted inside the block rather than over the whole output, because `next`
+    names an in-flight id on its own line by design: "excluded, already in
+    flight" is the ranking working, and only this block's copy is the offer
+    nobody can take.
+    """
+    root = _flight_repo(tmp_path, "PL-0002 Fix the thing three sessions have filed")
+    filings = "recurrences: 2026-09-18 PL-AAAA, 2026-09-19 PL-BBBB, 2026-09-20 PL-CCCC"
+    for identifier in ("PL-0002", "PL-0003"):
+        body = READY.replace("PL-B1B1", identifier).replace("added:", f"{filings}\nadded:")
+        (root / "items" / f"{identifier}-clustered.md").write_text(body, encoding="utf-8")
+
+    assert main(["--items", str(root / "items"), "next"]) == 0
+
+    out = capsys.readouterr().out
+    offered = out.split("Filed more than once, and never promoted for it:")[1]
+    offered = offered.split("Not ranked above")[0]
+    assert "PL-0003" in offered
+    assert "PL-0002" not in offered
+
+
 def test_show_leaves_an_item_no_branch_carries_out_of_flight(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

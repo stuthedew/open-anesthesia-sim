@@ -8,7 +8,7 @@ whole store into a person's attention when a summary would do.
 from __future__ import annotations
 
 import argparse
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import replace as with_fields
 from datetime import date
 from pathlib import Path
@@ -786,8 +786,15 @@ def _record_recurrence(
         return items
 
     count = recurrence_count(updated)
+    # The condition is carried rather than resolved: `new` reads no refs, and
+    # buying an accurate sentence with a git call would put that cost on the
+    # capture path, which `CLAUDE.md` keeps cheap because it runs when usage is
+    # nearly spent. Stating the floor is a fact about the count and always
+    # true; the bare "`next` now names it" was a prediction about another
+    # command, and `PL-CJ5R` made it false for an item already on a branch.
     reached = (
-        " - `bin/docket next` now names it as a generator-tier promotion candidate"
+        " - the generator floor; `bin/docket next` offers it as a promotion "
+        "candidate unless it is already in flight"
         if count == MIN_RECURRENCES
         else ""
     )
@@ -1403,7 +1410,7 @@ def cmd_next(args: argparse.Namespace) -> int:
         if report.untriaged:
             print(f"{len(report.untriaged)} untriaged item(s) are waiting: `docket list`.")
         _say_promotable(items)
-        _say_recurring(items)
+        _say_recurring(items, flight.ids)
         _say_lane_holdouts(items, flight, config, args, lane)
         _say_unread(flight)
         return 0
@@ -1413,7 +1420,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     if flight.ids:
         print(f"Excluded, already in flight: {', '.join(sorted(flight.ids))}")
     _say_promotable(items)
-    _say_recurring(items)
+    _say_recurring(items, flight.ids)
     _say_lane_holdouts(items, flight, config, args, lane)
     _say_answer_lane(items, flight, config, args, plan, lane, picks[0].item)
     if report.advisories:
@@ -1458,7 +1465,7 @@ def _say_promotable(items: list[Item]) -> None:
     )
 
 
-def _say_recurring(items: list[Item]) -> None:
+def _say_recurring(items: list[Item], in_flight: Collection[str]) -> None:
     """Name the open items the store has now absorbed three or more filings of.
 
     The counter's only output, and the design's whole point of restraint
@@ -1474,8 +1481,14 @@ def _say_recurring(items: list[Item]) -> None:
     Printed beside `_say_promotable` and for the same reason: `docket check`
     can only ever report this in an advisory, and a session picking work has no
     reason to run the checker.
+
+    Takes the flight ids the ranking above already excluded on, because the
+    claim a reader would write only moves a queue position and an item on a
+    branch has none left to move (`PL-CJ5R`). Required rather than defaulted:
+    both call sites hold the report, and a caller that quietly passed nothing
+    would print the offer this argument exists to withhold.
     """
-    candidates = recurring(items)
+    candidates = recurring(items, in_flight)
     if not candidates:
         return
     print("Filed more than once, and never promoted for it:")

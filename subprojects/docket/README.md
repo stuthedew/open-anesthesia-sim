@@ -1631,6 +1631,11 @@ it stands through pays it again. At two distinct recurrences — which is
 three filings, the item itself being the first, and so the generator rule's own
 number counted in filings rather than in items — `docket next` and the
 session-start digest name the item as a promotion candidate and stop there.
+Neither names one that is closed or in flight on a branch: the claim a reader
+would write moves a queue position and nothing else, so an item `docket next`
+will not rank has none left to move. `untriaged` and `blocked` are named,
+because those windows have not opened rather than closed — a claim on an
+untriaged item ranks the moment triage seats it.
 `MIN_RECURRENCES` is derived from `MIN_ROOT_CAUSE_ITEMS` rather than written
 down, so the project carries one threshold rather than two; written as a
 literal three it would have demanded a *fourth* filing, and the slug-rename
