@@ -3,11 +3,12 @@ id: PL-4HKS
 title: docs/WORKING_NOTES.md's playback-speed open thread reasons from pre-Qt-port numbers - a 0.011 ms step and 15 ms of chart-point construction - and names PL-010 as unspent headroom, but PL-009 is dropped, PL-010 is done, and the step now costs 0.025 ms
 priority: P2
 effort: S
-status: ready
+status: done
 classes: docs, defect
 feature: frame-cost-harness
 touches: docs/WORKING_NOTES.md
 added: 2026-09-19
+closed: 2026-09-21
 verify: ! grep -q '0\.011 ms' docs/WORKING_NOTES.md
 recurrences: 2026-09-07 PL-5748
 ---
@@ -87,3 +88,54 @@ overtaken by the Qt port: the measurement above puts the frame at 40.4 ms at
 300x. So the store held two open items correcting one stale paragraph, and the
 younger correction had gone stale too - which is what a thread that is amended
 rather than closed does over three revisions.
+
+## Outcome: removed, 2026-09-21
+
+**Removed rather than rewritten, and the brief's argument for rewriting does
+not survive a read of the tree.** "`ROADMAP.md` still wants a playback
+multiplier" was the case for keeping the section; `ROADMAP.md`'s
+planned-milestone item 25 now closes with *"Shipped in v0.4.0 as `PL-SN2C`
+- see 'Completed: v0.4.0 - the teachable case' above. Five rates (1, 5, 20,
+60, 300x), implemented as steps per tick so the simulation's own step never
+changes size."* So there is no future scoping round to protect: the feature
+exists, at a ceiling that exceeds the deleted heading's own "~120x and beyond"
+target, and the section was sizing a cost that has already been paid.
+
+**Every item it cited is closed, so "cites a live item" was not reachable.**
+`PL-009` dropped, `PL-010` done, `PL-VP7N` done, `PL-X9KD` done, `PL-NBWP`
+done. The one successor a rewrite would have pointed at - `PL-X35V`, stating
+the control-resolution cost on the rate control itself - is **dropped on the
+project owner's challenge, 2026-09-06**, with its analysis and the declined
+teaching affordance recorded in its own file. Of this item's two stated
+endings, only "or is gone" had a reading left.
+
+**Nothing it held is lost, and each half is now somewhere that maintains
+itself.** The shipped feature and its rate ladder are in `ROADMAP.md` item 25;
+the fixed 0.1 s step and its determinism ground are `docs/MODEL.md`
+§ "Supported simulation step" and § "Selected method (as implemented)"; the
+control-resolution figures the section deferred to are in this file's
+§ "Decided: control resolution is not what the interface promised at speed"
+and pinned by `tests/reference/test_control_resolution.py`; and the frame cost
+it guessed at is `tests/benchmarks/frame_cost.py`, which prints the split in
+about three seconds and carries its method in its module docstring. A number
+that can be re-run is the replacement for a number copied into prose, which is
+the whole of why re-heading the section was refused.
+
+**Re-heading was the wrong ending for this section specifically.** `PL-DG84`
+names amend-rather-than-delete as the mechanism under all of these, and this
+section is its sharpest evidence: it was amended in place on 2026-09-06 when
+one half was corrected to "read as though it were [decided] until 2026-09-06",
+`PL-5748` was then filed to correct the rest and went stale itself - stating
+a 2.6 ms frame that the Qt port took to 40.4 ms - and this item is the third
+pass over one paragraph. A fourth amendment would have been the same bet.
+
+**One repair rode this commit**, per `.claude/rules/citation-drift.md`: the
+`PL-GS5X` thread's "It bears on the playback-speed thread above" pointed at
+the deleted section by position. It now names `PL-SN2C` and the release that
+shipped it, which is the same rule's "name the symbol, not the line".
+
+**Deliberately left for `PL-DL4M`**, which carries the remaining three
+headings of this shape and excludes this one by name in its own brief:
+`## Open thread: which moment a rule has to reach`, `## Open thread: scenario
+branching, bookmarks, and what a snapshot is for`, and `## Repository state as
+of this writing`.
