@@ -142,3 +142,26 @@ took their vowels' digit lookalikes (`PL-SLOW` to `PL-SL0W`); and the
 three-character ones gained the fourth the pattern requires. The
 deliberately-malformed `PL-1` and `PL-M0{number}` are untouched, as this item
 asked.
+
+## The close-out `REJECT`, and what was done about it
+
+`bin/docket verify --self PL-GXPP` ends `REJECT` on one check: `no existing
+assertion removed - 86 line(s), 78 differing by one string`. It is the shape
+the close-out records as settled and expected - a rename is indistinguishable
+in a diff from an expectation quietly dropped, and the tool refuses to guess
+which added line replaced which removed one. `falsifies:` is deliberately not
+added: the base's copy of this item reads `status: ready`, not
+`needs-decision`, so a declaration written here would fold nothing and count
+only as this session's own word for it.
+
+What the tool will not guess is decidable anyway, and was decided rather than
+asserted. Applying the rename map to each of the 86 removed assertion lines
+and looking for the result among the added ones: **83 reappear with their ids
+respelled, 3 reappear unchanged but for the `# not-an-id` marker, and 0 are
+unaccounted for.** No assertion was deleted, and the suite went from 1,468 to
+1,469 tests.
+
+The other three commission checks report rather than refuse under `--self`, as
+designed: the diff stayed inside `touches` (17 paths, the 3 captures and 3 `pr`
+writes sanctioned), no protected path was touched, and the front-matter edit -
+`closed`, `status`, `touches`, `verify` - is the `NOTE` a self-audit prints.

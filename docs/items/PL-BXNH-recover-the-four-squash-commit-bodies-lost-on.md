@@ -8,6 +8,7 @@ classes: housekeeping
 touches: docs/pr-bodies
 added: 2026-09-21
 closed: 2026-09-21
+pr: 851
 payoff: the reasoning behind four merged changes is in the checkout rather than only on the forge, where it can still be edited
 verify: ls docs/pr-bodies/818.md docs/pr-bodies/820.md docs/pr-bodies/821.md docs/pr-bodies/822.md
 ---
