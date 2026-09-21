@@ -165,21 +165,36 @@ the handle be written out verbatim or lose its quotation marks. That is the
 real cost of shape 4, it is a cost to how this project writes rather than a
 backlog, and it is what the fifteen never-verbatim findings mostly are.
 
-**A second finding, live today and independent of which shape wins.**
-`check_quoted_sources` holds closed briefs to current prose *already*, for
-every connective in the set. It passes only because no `§` citation in a closed
-brief has drifted yet; the first one that does hard-fails `make check` on
-something the project has ruled is not a finding, which is the shape
-`CLAUDE.md` retires a check for rather than teaching around. The check shipped
-in `#451`, the rule was ratified 2026-09-19, and nobody reconciled them. Filed
-separately, because it wants fixing whichever shape this item takes.
+**The exemption is already built, which removes half of shape 4's cost**
+(verified 2026-09-21 against `origin/claude/serene-heisenberg-x0tycm`).
+`check_quoted_sources` held closed briefs to current prose for every connective
+in the set, and it passed here only because no `§` citation in a closed brief
+had drifted yet. Cutting v0.5.1 hit it: `ROADMAP.md`'s `## Current baseline`
+section is replaced wholesale at every release, so `PL-DL4M` - closed in that
+same release - went red quoting two of its headings. `PL-ZM8P` is that item,
+and it is `done`: `_quoting_sources` now yields `_live_item_briefs(root)`, the
+same line `check_line_citations` already drew, with a second test holding the
+exemption narrow. `PL-W8NH`, filed from this measurement while the collision
+was still latent, is dropped as its duplicate.
 
-**Recommendation: shape 4 - admit the possessive, exempt closed briefs.** One
-alternative added to `CITATION_CONNECTIVE`, one status filter in
-`_quoting_sources`, a test in `tests/unit/test_doc_check.py` pinning a
-possessive citation of absent text as reported and a closed brief as exempt
-(the existing `test_a_possessive_quotation_of_prose_is_not_read_as_a_citation`
-inverts, and is the regression this replaces), and three handle dispositions.
+So shape 4 no longer has to build the exemption - it inherits it with v0.5.1.
+Measured against that branch's `doc_check` with the possessive admitted: **3
+errors**, and they are the three handles named above.
+
+```text
+  ROADMAP.md:86     CLAUDE.md  "prefer an obvious failure to a plausible-..."
+  ROADMAP.md:6738   CLAUDE.md  "the correct number with the wrong label"
+  PL-BYMX:35        CLAUDE.md  "one prune from unrecoverable"
+```
+
+**Recommendation: shape 4 - admit the possessive, on top of the exemption
+v0.5.1 lands.** One alternative added to `CITATION_CONNECTIVE`, a test in
+`tests/unit/test_doc_check.py` pinning a possessive citation of absent text as
+reported (the existing
+`test_a_possessive_quotation_of_prose_is_not_read_as_a_citation` inverts, and
+is the regression this replaces), and three handle dispositions. It is
+sequenced behind `PL-ZM8P`'s merge, and measures 3 errors there rather than
+40.
 It reaches shape 2's guarantee at a fortieth of shape 2's diff; it is strictly
 wider than shape 1, whose scope the 2026-09-19 sweep had already reduced to
 five occurrences; and unlike shape 3 it leaves nothing live unchecked. It is
