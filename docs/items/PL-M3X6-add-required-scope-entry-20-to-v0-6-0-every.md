@@ -50,6 +50,20 @@ members wrong; the term is standard (Nielsen Norman Group, "Browser and GUI
 Chrome") and correctly names the *furniture* - the tab strip, the header, the
 handle - which is a subset of this entry and not its definition.
 
+**The drafted entry was reviewed and approved as written** (project owner,
+2026-09-21, ratified) - the rule sentence and all seven members below, put to
+them verbatim and agreed without amendment. So the `ROADMAP.md` edit is
+transcription rather than a further design round: a session implementing this
+writes what is in the `Done when.` section, and reopens it only on the ordinary
+evidence a ratified decision admits.
+
+**Land it with `PL-D8KW`, not separately.** Both edit `ROADMAP.md`, and this
+entry inserts roughly thirty lines inside § "Required scope", which moves every
+line below it - including the § "The cadence" beat-3 sentence `PL-D8KW`
+repoints. Two branches editing that file in the same window is an avoidable
+conflict, and a line-number citation written by the first is stale for the
+second.
+
 **Done when.** `ROADMAP.md` § "v0.6.0 - the layout is the reader's" ->
 "Required scope" carries entry 20, stating the rule
 
