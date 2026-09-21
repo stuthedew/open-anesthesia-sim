@@ -344,6 +344,7 @@ class SimulationView(QWidget):
         # inside a `RunView`.
         self._fork_panel = ForkPanel()
         self._fork_panel.take_button.clicked.connect(self._handle_fork)
+        self._fork_panel.halt_button.clicked.connect(self._handle_halt_fork)
 
         self._chart_column = self._build_chart_column()
         self._build_page()
@@ -790,12 +791,66 @@ class SimulationView(QWidget):
         self.add_run(branch)
         self.present(False)
 
+    def _handle_halt_fork(self) -> None:
+        """Take the branch at the bookmark halt the trunk is standing on.
+
+        The second door (`PL-TYWQ`), and the sequence `docs/ARCHITECTURE.md`
+        § "How a learner takes one" describes: a learner marks the decision
+        point, the run stops there, and this is how they branch there. It
+        names no instant - `BranchedCase.fork_at_halt` forks where the trunk
+        stands - so the one thing a caller could get wrong is not expressible
+        here.
+
+        Guarded rather than trusted, for the reason `_handle_fork` is. The cap
+        is checked here too, so refusing a second branch is a property of the
+        dashboard rather than of a hidden widget; and the halt itself is
+        re-read by the case on the press, because a halt can be cleared by
+        something other than a step - unmarking the instant the run is halted
+        on clears it - so the button's own frame is not proof that the fork is
+        still there. `fork_at_halt` raising is that check, and its reason goes
+        to the notice rather than being swallowed.
+        """
+
+        case = self._case
+
+        if case is None:
+            return
+
+        if len(self._runs) >= MAX_DISPLAYED_RUNS:
+            self._fork_refusal = COMPARING_FORK_LOCK_TEXT
+            self.present(False)
+
+            return
+
+        try:
+            branch = case.fork_at_halt()
+        except SimulationConfigurationError as error:
+            self._fork_refusal = refused_setting_notice(error)
+            self.present(False)
+
+            return
+
+        self._fork_refusal = None
+        self.add_run(branch)
+        self.present(False)
+
     def _refresh_fork_panel(self) -> None:
-        """Redraw the branch control from the trunk's keyframes this tick.
+        """Redraw both branch controls from the trunk's state this tick.
 
         The instants offered are the trunk's own, so a running case adds one
         every time a setting changes and the panel has to follow; it keeps
-        the reader's selection where that instant still exists.
+        the reader's selection where that instant still exists. The halt fork
+        follows the same tick: it appears on the frame the trunk halts on a
+        mark and is gone on the frame after it steps.
+
+        **The halt is read from the trunk rather than from the displayed
+        runs.** `BranchedCase.fork_at_halt` forks the trunk and refuses a
+        branch outright, so a panel drawn from a *branch's* halt would offer a
+        fork the case cannot take - a control that can only apologise, which
+        `.claude/rules/expert-review.md` prefers to prevent. The trunk is the
+        first displayed run today, but that is an invariant of how the
+        dashboard is built rather than one this method needs, and asking the
+        case costs one snapshot a frame.
         """
 
         if self._case is None:
@@ -803,7 +858,10 @@ class SimulationView(QWidget):
 
         self._fork_panel.set_offer(
             fork_offer(
-                self._case.fork_points_s, comparing=len(self._runs) > 1, refusal=self._fork_refusal
+                self._case.fork_points_s,
+                comparing=len(self._runs) > 1,
+                halt=self._case.trunk.snapshot().bookmark_halt,
+                refusal=self._fork_refusal,
             )
         )
 

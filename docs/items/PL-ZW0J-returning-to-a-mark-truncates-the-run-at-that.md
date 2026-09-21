@@ -4,9 +4,9 @@ title: Returning to a mark truncates the run at that point after confirming inte
 priority: P2
 effort: M
 status: blocked
-blocked-by: PL-TYWQ, PL-W4XQ
 feature: scenario-branching
 touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/simulation_view.py, docs/MODEL.md, docs/ARCHITECTURE.md, tests/integration/test_controller.py
+blocked-by: PL-W4XQ
 added: 2026-09-20
 ---
 
