@@ -2365,6 +2365,38 @@ def _declined_ids(text: str, gate: MilestoneSection) -> frozenset[str]:
     The sweep stops at the next `##`, which the single-subsection reader did
     not: unbounded, it would take the *next* milestone's deferrals for this
     gate's on any roadmap where this one defers nothing.
+
+    **Every id the subsection names is read, its prose included, and that is
+    the measured answer rather than the loose one** (`PL-H6VQ`). Narrowing
+    this to the `- PL-XXXX` entry lines was proposed on the ground that a
+    deferral's prose cites items it does not dispose of, so an item named in
+    another item's reasoning reads as disposed. Counted 2026-09-21 against
+    v0.5.0's two subsections - the last pair this project has written, 1,577
+    lines - the narrowing breaks 97 dispositions and catches none. They name
+    433 distinct ids, of which 169 are open debt; 67 of those have an entry
+    line, 5 lead a paragraph of their own, and the remaining 97 are named
+    *only* inside a paragraph's body - every one of them in a group deferral
+    that states a ground and then enumerates the ids it covers ("**16 sit
+    wholly in the workflow lane**: ..."). A prose paragraph is this section's
+    form for deferring a group exactly as an entry line is its form for
+    deferring one item, so reading only the entries would have turned all 97
+    recorded dispositions into hard errors.
+
+    The citation half of the claim is real and measures zero. 42 distinct ids
+    are cited inside another entry's own line, which is where "another item's
+    reasoning" actually sits, and not one of them is an open debt item without
+    a disposition: 37 are closed, 3 carry no debt class, and the two that are
+    open debt - `PL-G8TR` and `PL-QV5Y` - each carry an entry of their own.
+    That is structural rather than lucky, which is why it is recorded here
+    instead of left to be re-measured: a citation points at a *cause* - the
+    pass that filed the group, the item whose work built the mechanism - and a
+    cause is historical, so it is usually closed by the time it is cited.
+
+    What is left is a silent pass nobody has yet observed: an open debt id
+    cited here and disposed of nowhere. No read of this file can separate that
+    from a citation, because telling one from the other is the judgment half
+    `CLAUDE.md` declines to script. It is accepted on the count above rather
+    than overlooked.
     """
     lines = text.splitlines()
     end = _section_end(lines, gate.line)

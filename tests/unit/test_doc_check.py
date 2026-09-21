@@ -3070,6 +3070,34 @@ def test_a_second_declined_subsection_is_read(tmp_path: Path) -> None:
     assert _dispositions(tmp_path, {"PL-ZZZZ": DEBT, "PL-YYYY": DEBT}, roadmap) == []
 
 
+def test_a_group_deferral_naming_its_ids_only_in_prose_is_read(tmp_path: Path) -> None:
+    """`PL-H6VQ`: a paragraph is how this section defers a *group*, not an aside.
+
+    Narrowing `_declined_ids` to the `- PL-XXXX` entry lines was proposed on
+    the ground that a deferral's prose cites items it does not dispose of.
+    Counted against v0.5.0's two subsections on 2026-09-21, that narrowing
+    breaks 97 recorded dispositions and catches none of the citations it was
+    aimed at - the reasoning is in `_declined_ids`' own docstring. This pins
+    the half the count settled, because the tree cannot: the current gate
+    carries no `### Declined to Gate ...` subsection at all, so the narrowing
+    would pass `make check` on the day it landed and only break when the next
+    gate wrote its first group deferral.
+
+    The fixture is the shape that would break: a ground stated once, the ids
+    it covers enumerated in the same paragraph, and no entry line anywhere.
+    """
+    roadmap = VERSIONED_GATE_ROADMAP.replace(
+        "### Definition of done",
+        "### Declined to Gate 2 on the refilling-queue ground\n\n"
+        "**Two sit wholly in the workflow lane** and are deferred on that "
+        "ground, where admitting them would refill a gate that is not "
+        "draining: `PL-ZZZZ`, `PL-YYYY`.\n\n### Definition of done",
+        1,
+    )
+
+    assert _dispositions(tmp_path, {"PL-ZZZZ": DEBT, "PL-YYYY": DEBT}, roadmap) == []
+
+
 def test_a_declined_subsection_of_the_next_milestone_is_not_this_gate_s(tmp_path: Path) -> None:
     """The sweep stops at the next `##`, which the single-subsection reader did not.
 
