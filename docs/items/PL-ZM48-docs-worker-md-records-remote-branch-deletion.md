@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: remote-ref-deletion
+milestone: v0.5.2
 touches: docs/worker.md, docs/items, docs/WORKING_NOTES.md
 added: 2026-09-20
 closed: 2026-09-21

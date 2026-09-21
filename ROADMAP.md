@@ -97,7 +97,8 @@ capability-boundary rule above governs.
 | v0.4.34 | Completed | **The release where the interface stopped answering in the host's colours, and the model's flow envelope stopped standing in for a machine's.** Fifteen items, and a patch on both halves of § "Versioning decision"'s test: no capability boundary is crossed - three palette fixes and a hover fix correct what existing controls render and answer, `PL-8PS6` adds a second refusal beside an existing one over a profile that declares no range, and `PL-439V` closes as a reading of a design that shipped in `v0.4.33` - and every number above it is spent. **Unlike the four releases before it this one moves the computational trees, and nothing computational moved even so**, measured rather than asserted: `src/anesthesia_sim/core/` resolves to `89683c3` at `v0.4.33` and `0c8e708` here and `src/anesthesia_sim/data/` to `0769358` and `ab3499f`, but the data tree holds 42 numeric leaves at both ends with none differing in value and none added or removed, the only key added anywhere under it being `reference_circle_system.json`'s `deliverable_fresh_gas_flow_range` at `null`; the `core/` diff removes no numeric literal at all and the four it adds are three in prose and one range guard; and `tests/reference/` resolves to `fcb3eca` at both ends, so every published-reference expected value is byte-identical and still met. **The dark-appearance half is three faults with one cause**, `platform-palette` at 4 of 6: a control declaring only a `color:` declares its label and leaves its surface to the host, and a stylesheet on a *parent* makes every descendant resolve from the application palette instead of the parent. `PL-7W9N` is the one that carries - all six legend check boxes resolve `Base #1e1e1e` against a tick the label's stylesheet had set to `INK #243B53`, **1.35:1**, so an unchecked box is a solid dark square on a light panel, the shape a *filled* box has elsewhere - and it is a legibility defect rather than a wrong reading only because a hidden compartment also loses its swatch and goes `MUTED`. `PL-0NVN` is the three selector popups, `PL-RKRY` the two dialogs. A stylesheet was measured and refused (`QAbstractSpinBox` loses its steppers, a styled `QCheckBox::indicator` its tick), so the declaration is `qt_widgets.declare_interface_colours`, writing the `Active` and `Inactive` groups from the **widget's own** palette and leaving `Disabled` as the platform supplied it; PySide6's `QPalette()` is not the application's palette, which is what made a first attempt render an unchecked box dark. **The durable half is a check**: `tests/integration/test_dark_appearance.py`, 462 new lines, walks the whole rendered tree under a dark host palette and fails on any content widget resolving to it, and `tools/contrast_check.py`'s blanket `setPalette` refusal narrowed to "only from a function a requirement cites by name" rather than going away. Every colour the interface declares is still a light-theme value; `PL-KRZW` and `PL-4L49` are open. **`PL-0RZ0` is `PL-JVHL`'s failure one axis over**: `nearest_trace_point` kept the single globally nearest point inside a 12 px radius, so a 2 px movement decided which *compartment* answered - fat's value under muscle's label, where the two can differ severalfold. Generalising the ratified run rule to compartments (project owner, 2026-09-20, ratified, over recording the measurement and deferring to `PL-QYBW`) makes every `(run, compartment)` inside the radius answer at its own nearest point, byte-identical output on the 54.3-99.5% of hovers whose readings share a compartment, removing the choice rather than improving it. Two findings the measurement had not reached: two compartments of one run do not share an instant, since nearest is measured in two dimensions (`PL-1K9G`), and the branched case's alveolar trace contends with fat by 20 minutes, which is `PL-QYBW`'s compression now displayed rather than resolved invisibly. **`PL-8PS6` separates two bounds that had been one constant** - `core/supported_ranges.py`'s 0.0-10.0 L/min is what the lumped compartment structure is claimed over, while what a machine's flowmeters deliver is a profile field refusing in its own words - because merged, a second profile reaching 15 L/min would widen the domain the reference gates were driven over with no statement in that module changing. The shipped profile declares `null`, and **the null is the record**: survey section (b8) found the deliverable range unknown for all eight machines and names ISO 80601-2-13:2022 while stating its text was not reached. Its `Done when.`'s demand for a primary source is corrected rather than met. `PL-439V` closes as **already satisfied** by `v0.4.33`'s `docs/machine-abstraction.md`, which names the Tec 6 as `fixed_volume_percent` and records that the distinction is a declared coincidence until `PL-5K5C` gives the model an ambient pressure. **It completes `gate-remaining-cost`, 2 of 2** (`PL-FCM3` names the ids an entry outside the gate waits on; with `PL-TGFY` from `v0.4.32`), and `PL-6T44` stops `next` and `wave` reading `status: blocked` literally while `PL-K4R5` stops a correct close-out `REJECT`ing whenever an item's deliverable is a changed output string. `PL-8G48` and `PL-CHQY` are `PL-JFQ3` recurring within the hour of its closing; `PL-028T`, `PL-WQF1` and `PL-V3QB` are the queue passes, and `PL-HP95` is the `v0.4.33` cut. **The gate stands at 175 of 178**, `PL-D126` and `PL-WJNS` open inside it and `PL-WZVZ` deferred outside on `PL-TH35` and `PL-R1WQ` under item 34's no-new-display-surface rule. | 15 items |
 | v0.4.35 | Completed | **The release where a bookmark started stopping the run on the step that crosses it, and where what a comparison against Gas Man is worth got written down by phase.** Sixteen items, and a patch on **one** half of § "Versioning decision"'s test rather than on both - stated rather than smoothed over. Every number above it is spent, v0.5.0 through v0.9.0 being given to milestone sections; but unlike the four patches before it this one is not a release in which nothing a learner can reach changed. `PL-CTD7` is the first release in which a bookmark *does* anything: until now a learner could write down the moment they cared about (v0.4.33, `PL-LPLD`) and the run would go straight past it. The number that would mark that is v0.5.0, which this roadmap gives to "the case you can branch" and whose `Required scope` still has five of nineteen ids open - and `PL-CTD7` is one of that milestone's own entries, so naming the milestone for a release holding one item of it would be the worse error. **Nothing computational moved**, measured by tree object: `src/anesthesia_sim/core/` resolves to `0c8e708` at both ends and `src/anesthesia_sim/data/` to `ab3499f`, so no equation, parameter, constant, numerical method or stored scientific value changed; `src/anesthesia_sim/app/` resolves to `3bbe8a2` and `87baee9`, four files, +731/-30, all of it `PL-CTD7`. **`tests/reference/` moves for the first time since v0.4.29 and no expected value moves with it** - `fcb3eca` to `5b43d4b`, the whole of it four added lines of prose inside the module docstring of `test_published_wash_in_and_elimination.py`, `PL-D126`'s cross-reference to § "Known limitations", with no case, expected value or tolerance added, removed or changed. **`PL-CTD7` is `P1` and `safety`-classed because the alternative is a wrong displayed value rather than a missing feature**: a tick advances its whole burst with nothing between the steps, so a crossing tested once per rendered frame would halt the same mark at a different concentration depending on playback rate - up to 30 simulated seconds of overshoot at 300x - and two branches nominally taken "at 0.8 ×MAC" would open from two different states. The crossing is tested on every simulation step and the run halts on the step that crossed, at every rate; the halt leaves the run **paused**, because a halt is exact and a setting changed while playing first acts at a tick boundary; and a crossing is a transition between two steps rather than a comparison at one, since a run settled exactly on a marked height would satisfy an at-or-above test forever. `docs/MODEL.md` § "Halting on a marked crossing" states all three. **The outcome set shipped four-valued rather than the three the item specified**: a branch inherits its trunk's marks, so a time bookmark before the branch's own fork instant can never be reached going forward, and "not reached" would tell a learner to wait for something that cannot arrive - it reads "before this branch opened", while a mark still reachable says nothing at all. **It completes `model-boundary-statements`, 2 of 2**, both `P1`/`science` and both limits of a comparison rather than defects: `PL-D126` records that Gas Man's own prospective in-patient validation is materially worse through wash-in than maintenance (first 15 min MDPE 18% / MDAPE 21% on the FLOW-i and 7% / 13% on the Zeus, against 0% / 6% and -1% / 5% over the last 45 min; Candries, De Wolf, Hendrickx, *J Clin Monit Comput* 2022;36(6):1881-1890, PMID 35318567), so the phase in which this project's reference implementation is least accurate is the phase this project most displays; `PL-WJNS` records that the unconditional circuit exhaust is a **semi-closed circle's**, a Zeus in automatic controlled mode closing the surplus gas valve to prevent any loss of gas volume (Meyer et al., *Modern Anesthetics*, HEP vol. 182, Springer 2008, p. 465), which is the one machine variable reaching an equation rather than a coefficient. **With both closed the debt gate under v0.5.0 stands at 177 of 178**, its one open entry `PL-WZVZ` blocked on three items that are not themselves in the gate (`PL-1FT6`, `PL-R1WQ`, `PL-TH35`), so nothing is left that working the gate can clear and v0.5.0 is implementable. **It completes `gate-list-integrity`, 6 of 6**, one problem rather than six: `ROADMAP.md`'s bookkeeping had drifted from the store where a later session would have been told something false about what is outstanding - `PL-0VFF` (three "Declined to Gate 2" entries closed in v0.4.14 and still listed as deferred, with nothing distinguishing open from closed), `PL-KF0T` (item 33 calling three done items open debt), `PL-B8V1` and `PL-NLP4` (present-tense counts true only on the day written) - and the checker had two defects of its own, `PL-82B0` (`_declined_ids` reading only the first subsection, silently orphaning the first's dispositions) and `PL-HJZW` (the gate-disposition failure printed as an advisory while the test made it a hard `make check` failure, so reading the label as optional pushed a red branch). `PL-R0P3` removes the third inline spelling of that same store read, `PL-880Z` repairs five ref-lifecycle briefs whose citations had moved, and `PL-S6RS` is the regroup that made the six one feature. `PL-77G2` and `PL-6WNZ` re-scope the anesthesia-machine work to the **framework alone** on the owner's instruction - item 1 keeps the interlock baseline, item 40 is a second profile loadable and refused where inadmissible with no chooser and no displayed value changing, which is what holds `PL-WZVZ`'s misattribution hazard inactive - and `PL-TBMX` is dropped, its premise refuted by the audit's own adversarial verifier. **It completes `settings-panel-prerequisite`, 2 of 2** with `PL-YD6X`, whose stated blocker described a tree `PL-2CS8` had already removed. `PL-Y3XK` is the v0.4.34 cut. | 16 items |
 | v0.5.0 | Completed | **MVP: the release where a learner can take a branch.** A case runs, a time bookmark or MAC target stops it on the step that crosses it, the run forks where it stopped, a setting is changed on the branch, and both runs are drawn on one time axis with every curve, readout, banner and legend entry attributable to the run that produced it - which is "The plan"'s MVP sentence, *a learner can run, branch, and compare a case*, satisfied. Seventy-eight items since v0.4.35, and twenty Required-scope ids, which are not the same set: fourteen of the twenty had already shipped along the `v0.4.x` track by the plan rather than by drift, and **six close here**. `PL-VKJW` is the entry the milestone was missing and that nothing made visible as missing - every part of a branch had shipped since v0.4.25 and none of it was reachable, because nothing in `src/` constructed a `BranchedCase` and `SimulationView` froze its run set at construction, so the milestone could have closed with every other entry `done` and a learner still unable to branch (`PL-XJ37`, project owner, 2026-09-20). A second fork is refused while a comparison is shown, and both agent selectors lock while two runs are drawn (`PL-QRD1`), because the shared MAC axis refuses a mismatched pair only after the controller has switched. **`PL-B8MK` takes the route that costs the trunk nothing**: the obvious way to make a bookmark forkable is to record a keyframe where the run halts, which moves the trunk's own later answers away from what the case would have said unmarked - marking a run would change the run - so the branch opens at the keyframe *before* the mark instead (`SimulationController.resumed_at_halt`, `BranchedCase.fork_at_halt`, `RunDefinition.segment_at`), propagating from the same keyframe its parent does with no keyframe recorded anywhere. `PL-TYWQ` exposes it as a separate transient control (project owner, 2026-09-21, ratified, over a single list that grows a row while the run is halted), which is the honest shape for a branch point that exists only while the run stands on the halt. `PL-Z3W6` discharges the milestone's central claim as a test rather than an argument - a branch reproduces its parent element-wise at every sampled point up to the branch point, at the arithmetic and at the columns both - and `PL-W7H9` states in `docs/MODEL.md` (+417/-14) and `docs/ARCHITECTURE.md` (+225/-57) what a comparison asserts and does not, since two runs on one axis invite a reader to attribute every visible difference to the change they made. `PL-49R8` is the same discipline pointed at the code: a path-scoped rule against re-introducing a sample store, the one change that would quietly restore `PL-011`'s unbounded growth debt. **Nothing computational moved**, by tree object: `src/anesthesia_sim/data/` resolves to `ab3499f` at both ends, so no parameter, constant or stored scientific value changed; `core/` moves `0c8e708` to `ca5a354` in exactly one file, `core/run_definition.py` (+37/-4, a `segment_at` query and three docstrings), touching no equation, coefficient, numerical method or solver step; `app/` moves `87baee9` to `01bc2d9`, eight files, +2,138/-220, and is where the release lives. **`tests/reference/` moves and no published expected value moves with it** - `5b43d4b` to `a184830`, the whole of it `test_canonical_evaluation.py` (+225/-20), `PL-Z3W6`'s assertion - so the v0.0.2 circuit, v0.1.0 sevoflurane and v0.2.0 multi-agent reference tests are unchanged by tree identity and passing at the same numbers. **Gate 1 ends at 184 cleared and one deferred**: `PL-WZVZ` goes to Gate 2 by `PL-S5Q9` on § "The cadence" beat 3's terms, which `PL-Y949` made legal rather than a fudge by giving a frozen-list entry a third disposition stated once in the cadence instead of in each milestone's own bullet, and `PL-0H5D` records its holding condition in a field rather than in prose `blocked-by` cannot express. Gate 2 is frozen under v0.6.0 with this release. Thirteen features complete, the rest of them apparatus: the cut now writes the pull request numbers its notes cite and the 128 bullets across 22 releases that shipped without one are repaired (`PL-W7WL`, `PL-WXX8`); `model.FIELD_RE`'s line-at-a-time front-matter read is the one regex behind three item-corruption defects, measured deleting nine of ten `reason` lines with exit 0 (`PL-9HD1`); `bin/docket stranded` learned to report a section appended to an item `main` already holds, recovering eight items and a ratified decision from five branches nobody would merge; and the 150k handoff budget is re-anchored to spend since baseline, read live from the session transcript (`PL-W80S`, `PL-BZVY`). | 78 items |
-| v0.5.1 | Completed / current baseline | **The release in which the apparatus caught up with the milestone it had just shipped, and nothing a learner can reach moved.** Thirteen items, and the simulator is untouched by tree identity rather than by reading a diff: `src/anesthesia_sim/data/` (`ab3499f`), `core/` (`ca5a354`), `app/` (`01bc2d9`) and `tests/reference/` (`a184830`) resolve to the same objects at v0.5.0 and at this cut, so **no equation, parameter, constant, numerical method, solver step or displayed clinical value moves**. What it carries instead is the bookkeeping the MVP's own cut left behind. Gate 2's frozen list of 168 clearable entries is swept against the tree for the first time, and beat 3 of the cadence gains an instrument that cannot close - `PL-6ZQY`, named as the standing one by `ROADMAP.md`, the v0.6.0 gate section and the release mode alike, had closed two days before the gate froze, so a session looking it up read `done` (`PL-C4W8`, `PL-D8KW`). `docs/WORKING_NOTES.md`'s header has always asked that a resolved thread be deleted rather than left stale and nothing read that policy; six sessions filed six instances of it one at a time, and `PL-DG84` answers the class with a grooming advisory that names a `##` section only when its heading's own leading word still says `Open` **and** every `PL-` id it cites has closed. Both clauses, on the measurement: clause 2 alone names 16 of 26 sections, most of them correct content other rules cite, where the pair named four - two of which `PL-DL4M` and `PL-FFG9` then deleted - and one of the remaining two is a permanent false fire, which is what keeps it an advisory rather than a close-out check. `PL-YVP7` puts `PL-CNCF` and `PL-PGZF` inside Required-scope entry 9's `(queue item ...)` slot, the only place `roadmap._declared_ids` reads, so v0.6.0 clears them itself instead of being blocked by the measurement they are taken against; an id added to the prose beside it would have registered nowhere and still read as done. The rest is the queue's own machinery: `doc_check`'s `_declined_ids` counted every id a deferral's prose merely cited and went silent on it (`PL-H6VQ`), `generator_check.py` printed a `root-cause-of:` example `docket check` rejects (`PL-DPY6`), and test fixtures used ids outside the id alphabet, so a test routing one through id-aware machinery exercised nothing (`PL-GXPP`). | 13 items |
+| v0.5.1 | Completed | **The release in which the apparatus caught up with the milestone it had just shipped, and nothing a learner can reach moved.** Thirteen items, and the simulator is untouched by tree identity rather than by reading a diff: `src/anesthesia_sim/data/` (`ab3499f`), `core/` (`ca5a354`), `app/` (`01bc2d9`) and `tests/reference/` (`a184830`) resolve to the same objects at v0.5.0 and at this cut, so **no equation, parameter, constant, numerical method, solver step or displayed clinical value moves**. What it carries instead is the bookkeeping the MVP's own cut left behind. Gate 2's frozen list of 168 clearable entries is swept against the tree for the first time, and beat 3 of the cadence gains an instrument that cannot close - `PL-6ZQY`, named as the standing one by `ROADMAP.md`, the v0.6.0 gate section and the release mode alike, had closed two days before the gate froze, so a session looking it up read `done` (`PL-C4W8`, `PL-D8KW`). `docs/WORKING_NOTES.md`'s header has always asked that a resolved thread be deleted rather than left stale and nothing read that policy; six sessions filed six instances of it one at a time, and `PL-DG84` answers the class with a grooming advisory that names a `##` section only when its heading's own leading word still says `Open` **and** every `PL-` id it cites has closed. Both clauses, on the measurement: clause 2 alone names 16 of 26 sections, most of them correct content other rules cite, where the pair named four - two of which `PL-DL4M` and `PL-FFG9` then deleted - and one of the remaining two is a permanent false fire, which is what keeps it an advisory rather than a close-out check. `PL-YVP7` puts `PL-CNCF` and `PL-PGZF` inside Required-scope entry 9's `(queue item ...)` slot, the only place `roadmap._declared_ids` reads, so v0.6.0 clears them itself instead of being blocked by the measurement they are taken against; an id added to the prose beside it would have registered nowhere and still read as done. The rest is the queue's own machinery: `doc_check`'s `_declined_ids` counted every id a deferral's prose merely cited and went silent on it (`PL-H6VQ`), `generator_check.py` printed a `root-cause-of:` example `docket check` rejects (`PL-DPY6`), and test fixtures used ids outside the id alphabet, so a test routing one through id-aware machinery exercised nothing (`PL-GXPP`). | 13 items |
+| v0.5.2 | Completed / current baseline | **The release where "nothing computational moved" stopped being readable off a tree hash and had to be proved instead.** Fifteen items, all apparatus and documentation, and a patch because no capability boundary is crossed. Three of the four trees the safety-critical standard cares about are byte-identical at v0.5.1 and at this cut - `src/anesthesia_sim/data/` (`ab3499f`), `app/` (`01bc2d9`) and `tests/reference/` (`a184830`) - and **`core/` is not**, moving `ca5a354` to `061714b`, the object it had held since v0.5.0. The move is two files, +6/-6, and every changed line sits inside a docstring: `PL-316G`'s conversion of 150 possessive document citations to the section-mark form, the only form `tools/doc_check.py` can hold without reading ordinary prose as a citation. Rather than assert that from the diff, both files were parsed at each revision with every docstring constant replaced by a sentinel and the resulting ASTs compared - comments never reach an AST at all - and both are identical, so **no executable statement moves in `core/`** and, with `data/` resolving to the same object, **no equation, parameter, constant, numerical method, solver step or displayed clinical value moves** either. Two features complete. **`one-id-grammar`** ends the disagreement about what an item id *is*: three tools each restated the grammar more loosely than `store.ID_PATTERN`, so a tool and `docket check` could reach opposite verdicts on the same token (`PL-KYW3`); `fixture_id_check.py` could not see an id spelled with underscores as a keyword argument, which is how an out-of-alphabet fixture name reached the `doc_check` fixtures (`PL-L609`); its reach stopped at `subprojects/docket/tests`, leaving the apparatus fixtures under `tests/unit` held to no grammar at all (`PL-7922`); and `PL-3BZS` retires `PL-A1B2` from the documented placeholder set for sitting outside `store.ID_ALPHABET` - Crockford base32 minus the vowels - so the one document a session reads to learn what a placeholder *is* stopped teaching a grammar the store does not have. **`remote-ref-deletion`** closes on `PL-ZM48` and `PL-X9WZ`, which between them replace `docs/worker.md`'s single recorded shape for deleting a remote branch with the three actually observed: exit 0, the 403 carried alongside `Everything up-to-date` at exit 1, and `git ls-remote --heads` exiting 0 with empty output while a force-with-lease push fails `stale info`. The standing-machinery half is `PL-D1NT`, `PL-ZM8P` and `PL-0GMC`: `doc_check`'s path-citation resolver crashed the whole run on one unstattable token where the glob branch beside it was already guarded; `check_quoted_sources` read every item file while `check_line_citations` read only live ones, so a closed brief quoting the `Current baseline` heading would have failed `make check` at this very cut, the release that renames it; and the durable-versus-cheap trade, which had reached a session only when the project owner typed it into the chat, is resident in `.claude/rules/expert-review.md` as a forcing question, so a design round held without them no longer picks the cheap route unopposed. | 15 items |
 
 **Tags.** Every version the table above marks Completed carries an annotated
 tag. Which ones those are is deliberately not restated here - the table is the
@@ -162,131 +163,112 @@ it again for anyone who repeats the measurement.
 
 There is no active v0.0.3 milestone. Any guide that labels the first patient
 sevoflurane build as v0.0.3 is superseded by this roadmap.
-## Current baseline: v0.5.1
+## Current baseline: v0.5.2
 
-v0.5.1 is the release in which the apparatus caught up with the milestone it
-had just shipped. Thirteen items, all of them queue, roadmap and documentation
-work, and **nothing a learner can reach changed** - which is the honest reading
-of § "Versioning decision"'s test, and why this is a patch on the `v0.5.x`
-track rather than a number of its own.
+v0.5.2 is the release in which "nothing computational moved" stopped being
+readable off a tree hash and had to be proved instead. Fifteen items, all of
+them apparatus and documentation work, and a patch on § "Versioning decision"'s
+test because no capability boundary is crossed.
 
-**What moved, by tree object rather than by reading the diff.** All four of
-the trees the safety-critical standard cares about resolve to the *same
-objects* at v0.5.0 and at this cut: `src/anesthesia_sim/data/` to `ab3499f`,
-`src/anesthesia_sim/core/` to `ca5a354`, `src/anesthesia_sim/app/` to
-`01bc2d9`, and `tests/reference/` to `a184830`. So **no equation, parameter,
-constant, numerical method, solver step or displayed clinical value moves in
-this release**, and the claim is made by tree identity rather than by a diff
-anyone has to read correctly. The v0.0.2 circuit, v0.1.0 sevoflurane and
-v0.2.0 multi-agent reference tests are unchanged by the same identity and
-passing at the same numbers. The release as a whole is 77 files, +3,168/-833,
-of which 53 are item files; what is left is `subprojects/docket/`, `tools/`,
-`ROADMAP.md`, `docs/WORKING_NOTES.md` and one skill mode file.
+**What moved, by tree object - and the one that did.** Three of the four trees
+the safety-critical standard cares about resolve to the *same objects* at
+v0.5.1 and at this cut: `src/anesthesia_sim/data/` to `ab3499f`,
+`src/anesthesia_sim/app/` to `01bc2d9`, and `tests/reference/` to `a184830`.
+`src/anesthesia_sim/core/` does **not**. It moves `ca5a354` to `061714b` - the
+object it had held since v0.5.0 - so the sentence every release since the MVP
+has been able to make by tree identity alone is unavailable here, and this is
+the first cut that had to establish it some other way.
 
-**Two items sit inside this tag without being named in these notes.** #863
-(`PL-ZM48`, `PL-X9WZ`) merged after this cut was taken and before it landed, so
-the v0.5.1 tag contains them and the list above does not; they close under
-v0.5.2. Shipping the cut as taken was chosen over regenerating it (project
-owner, 2026-09-21, ratified, over re-running `make release VERSION=0.5.1` to
-absorb them), because sibling sessions were landing pull requests faster than a
-regenerated set of notes could merge - #867 appeared while the question was
-being put. The shape is already in the record rather than new: `PL-4B1G`, the
-cut of v0.5.0, sits inside the v0.5.0 tag and is cited in *these* notes for the
-same structural reason.
+**It was proved rather than read off the diff.** The move is two files,
+`core/governing_equations.py` and `core/uptake_system.py`, +6/-6 between them,
+and every changed line sits inside a docstring - `PL-316G`'s conversion of
+possessive document citations to the section-mark form. Judging that by eye is
+exactly the judgment the safety-critical standard says not to rest a clinical
+claim on, so both files were parsed at each revision, every docstring
+`Constant` replaced with a fixed sentinel, and the resulting ASTs compared;
+comments never reach an AST at all. Both are identical. **No executable
+statement moves in `core/` in this release**, and with `src/anesthesia_sim/data/`
+resolving to the same object, **no equation, parameter, constant, numerical
+method, solver step or displayed clinical value moves** either. The v0.0.2
+circuit, v0.1.0 sevoflurane and v0.2.0 multi-agent reference tests are
+unchanged by tree identity and passing at the same numbers. The fifteen items'
+own work is 74 files, +2,949/-364, of which 37 are item files; what is left is
+`subprojects/docket/`, `tools/`, `tests/unit/`, `.claude/`, `CLAUDE.md`,
+`ROADMAP.md` and the two `core/` docstrings above.
 
-### The debt gate got its sweep, and an instrument that cannot close
+**What sits inside this tag without being named in these notes.** Three sibling
+sessions were running when this cut was taken, so anything they land between
+the cut and the tag is inside `v0.5.2` and is cited under v0.5.3. Shipping the
+cut as taken rather than regenerating it is `PL-V065`'s ratified precedent
+(project owner, 2026-09-21) applied rather than re-decided: while sibling
+sessions keep landing pull requests, a regenerated set of notes goes stale
+before it can merge. `PL-JYTJ`, the cut of v0.5.2 itself, closes under v0.5.3
+for the same structural reason `PL-V065` closes here - a cut cannot stamp
+itself.
 
-`ROADMAP.md`'s cadence makes beat 3 - sweeping a frozen gate list against the
-tree before any entry is worked - a precondition on every milestone. Gate 2
-froze with v0.5.0 at 183 entries, and `PL-C4W8` is the first pass over its 168
-clearable ones. The precedent it was sized against, the one earlier sweep, had
-found 32% of its lane dead or overtaken.
+### One grammar for what an item id is
 
-`PL-D8KW` is the defect underneath it, and the more durable half.
-`ROADMAP.md`'s beat 3, the v0.6.0 gate section and `.claude/skills/docket/`'s
-release mode all named `PL-6ZQY` as the standing item for that sweep - and
-`PL-6ZQY` closed on 2026-09-19, two days before Gate 2 froze. Three documents
-pointed a session at an item that reads `done`, so the pass every gate must run
-had no open instrument. The fix is not a longer-lived item but the rule that an
-item named as an instrument can close: each gate's sweep is filed as its own
-item under `feature: gate-staleness-sweep`, and no session looks for a standing
-one.
+`one-id-grammar` completes. Three tools each restated the id grammar, all of
+them more loosely than `store.ID_PATTERN`, so a tool and `docket check` could
+reach opposite verdicts on the same token (`PL-KYW3`).
+`tools/fixture_id_check.py` could not see an id spelled with underscores as a
+keyword argument, which is how an out-of-alphabet fixture name reached the `doc_check`
+fixtures (`PL-L609`), and its reach stopped at `subprojects/docket/tests`, so
+the apparatus fixtures under `tests/unit` were held to no grammar at all
+(`PL-7922`).
 
-### A resolved thread that still heads itself "Open" is now named
+`PL-3BZS` is the one worth remembering, because the failure was instructional
+rather than mechanical. `.claude/rules/citation-drift.md` is the document a
+session reads to learn what an illustrative placeholder *is*, and the set it
+printed included `PL-A1B2` - outside `store.ID_ALPHABET`, which is Crockford
+base32 *minus the vowels*, so an id `new_id` can never mint and `ID_PATTERN`
+never matches. The rule was teaching a grammar the store does not have.
+`PL-B1C2` replaces it.
 
-`docs/WORKING_NOTES.md`'s header has asked from the start that a resolved
-thread be deleted rather than left stale, and nothing read that policy. Six
-sessions filed six instances of it, one thread at a time - which is the shape
-of a missing mechanism rather than six unrelated findings.
+### Three shapes for deleting a remote branch, where the record held one
 
-`PL-DG84` makes it a grooming advisory. It names a `##` section only where
-**both** hold: the heading's own leading word still declares the thread open -
-`Open thread:`, `Open:`, as against `Settled:`, `Decided:`, `Measured` - and
-every `PL-` id the section cites, heading and body alike, resolves to an item
-that is `done` or `dropped`. A section citing no id is never named, because
-direction with no item is one of the things the file is for; nor is one citing
-an id the store cannot resolve, because an unreadable citation is not evidence
-that a thread is spent.
+`remote-ref-deletion` completes on `PL-ZM48` and `PL-X9WZ`. `docs/worker.md`
+recorded remote-branch deletion as exiting 0, and `PL-3V6C` offered two
+incompatible causes for the failures; a 2026-09-20 transcript then carried the
+403 and the `Everything up-to-date` line together at exit 1, which neither
+cause covered (`PL-ZM48`). `PL-X9WZ` is the third shape and the quietest: `git
+ls-remote --heads` for a branch already deleted on merge exits 0 with empty
+output, and a force-with-lease push to it fails `stale info` rather than 403.
+An operation that does not look like it failed is the same family as
+`PL-N936`'s tag push, and the reason that one is left to the project owner.
 
-**Both clauses, and the numbers are why.** Measured on the real file, clause 2
-alone names 16 of 26 sections - most of them correct content that other rules
-cite, including the settled no-numpy decision kept precisely because the
-question recurs. The pair named four, and `PL-DL4M` and `PL-FFG9` deleted two
-of those four in this release. Of the two that remain, one belongs to `PL-75R0`
-- the README thread, still open, and holding its own judgment about where that
-outcome is recorded - and the other is a **permanent** false fire: the
-desflurane wash-out thread has all three of its items closed and is genuinely
-open, because what remains is a published value nothing this project runs can
-settle. That is what keeps this an advisory in `make docket` rather than a
-close-out check - one permanent false fire at every close-out teaches a reader
-to skim the block a real advisory shares.
+### The checks that had been reporting success
 
-`PL-4HKS` is the same grooming pointed at a stale *measurement* rather than a
-stale heading, and it is the kind the advisory cannot catch: the playback-speed
-thread reasoned from pre-Qt-port numbers - a 0.011 ms step and 15 ms of
-chart-point construction - and named `PL-010` as unspent headroom, when
-`PL-009` is dropped, `PL-010` is done and the step now costs 0.025 ms. A
-heading that still says what it meant over a body whose numbers have moved is
-judgment, and no check here decides it.
+`doc_check`'s path-citation resolver crashed the whole run on a single
+unstattable token, where the glob branch beside it had been guarded against
+exactly that (`PL-D1NT`). `check_quoted_sources` read every item file while
+`check_line_citations` read only live ones, so a closed brief quoting the
+`Current baseline` heading would have failed `make check` at this very cut -
+the release that renames it (`PL-ZM8P`). `PL-316G` is the convention behind
+both: 150 possessive-form citations converted to the section-mark form, which
+is the only form `doc_check` can hold without reading ordinary prose as a
+citation, and a check wired in to keep them that way.
 
-### Required-scope entry 9 now clears the two items it depends on
+### A design rule that had been reaching sessions by hand
 
-`PL-YVP7` declares `PL-CNCF` and `PL-PGZF` alongside `PL-VN6M` in v0.6.0's
-Required-scope entry 9. Both measure a per-frame cost *against* the chart
-column budget that entry 9 commits to relocating, so measuring first and moving
-the budget afterwards measures the wrong number: they are cleared **by** the
-milestone rather than before it.
+`PL-0GMC` is the item here whose absence a reader of the simulator would
+eventually have felt. The trade between a durable route and a cheap one
+destined to be redone had no carrier: it reached a session only when the
+project owner typed it into the chat, so every design round that happened
+without them picked the cheap route unopposed. It is now resident in
+`.claude/rules/expert-review.md` as a forcing question - name what would have
+to change to switch routes later, and count what is already downstream of the
+choice - with the project's own five-year horizon as the tie-breaker where the
+count cannot be taken.
 
-Two mechanical facts came out of it and are worth keeping. `roadmap`'s
-`_declared_ids` reads ids only from a `(queue item ...)` slot, walking to the
-first token that is neither an id nor a connective - so an id added to entry
-9's surrounding prose would have registered nowhere and still read as done.
-And the `cleared-by:` item field that was recommended and ratified for this was
-reopened on evidence before anything was built: `plan.gate()` partitions the
-store by `feature` and never reads the frozen list, while `wave`'s "cleared by
-the milestone itself" is `roadmap.GateStatus.self_cleared`, computed from the
-Required-scope subsection and never reading `item.feature`. Wiring the field
-into the first would have moved one command's display and nothing in the chain
-that selects the beat every session works. `PL-RFHH` holds what is left of
-that: the two tests answer the same question and disagree, with nothing saying
-which is authoritative.
-
-### The queue's own checks
-
-Three defects in machinery that had been reporting success. `doc_check`'s
-`_declined_ids` counted every `PL-` id appearing in a Declined-to-Gate
-subsection, including ids the deferral's prose only cited in passing, so an
-item mentioned inside another item's reasoning read as disposed and
-`check_gate_dispositions` went silent on it (`PL-H6VQ`). `generator_check.py`
-printed `root-cause-of: PL-AAAA, PL-BBBB, PL-CCCC` as the example to copy, and
-`docket check` rejects all three as outside the id alphabet (`PL-DPY6`). Test
-fixtures used ids outside that alphabet too, so a test routing one through
-id-aware machinery silently exercised nothing (`PL-GXPP`).
-
-Alongside them, `PL-BXNH` recovered four squash-commit bodies lost on
-`origin/main` before the pull requests became uneditable and the reasoning
-unretrievable, and `PL-TTKP` triaged the 20 captures standing untriaged in the
-queue. `PL-4B1G`, the cut of v0.5.0 itself, closes here.
+Alongside them, `PL-75R0` deletes the README thread in `docs/WORKING_NOTES.md`
+that `PL-DG84`'s advisory named in v0.5.1, the one of its two remaining hits
+that was not the permanent false fire, and `PL-S669` deletes the
+self-description thread the same policy reaches. `PL-VCJ2` closes on the nine
+repository topics the project owner applied, recording what could not be
+measured about them because `GET /search/repositories?q=topic:...` is refused in
+this harness. `PL-615L` drops `PL-W8NH` as a duplicate of `PL-ZM8P`. `PL-V065`,
+the cut of v0.5.1 itself, closes here.
 
 ## The plan
 

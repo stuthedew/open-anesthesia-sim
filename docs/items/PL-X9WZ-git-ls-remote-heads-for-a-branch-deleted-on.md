@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs
 feature: remote-ref-deletion
+milestone: v0.5.2
 touches: docs/worker.md, docs/items
 blocked-by: PL-ZM48
 added: 2026-09-21

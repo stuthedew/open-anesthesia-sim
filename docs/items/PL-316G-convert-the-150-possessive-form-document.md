@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: docs, infra
 feature: dev-tooling
+milestone: v0.5.2
 touches: docs/, src/anesthesia_sim/, tests/, tools/, CLAUDE.md, .claude/, ROADMAP.md, README.md, subprojects/docket/, docket.toml, Makefile
 added: 2026-09-13
 closed: 2026-09-21
+pr: 874
 payoff: every citation form the project writes is checked, so a renamed heading or a reworded sentence stops orphaning a pointer silently
 verify: python3 tools/possessive_section_check.py
 recurrences: 2026-09-21 PL-YSMV

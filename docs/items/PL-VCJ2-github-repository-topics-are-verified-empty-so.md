@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: docs
 feature: project-introduction
+milestone: v0.5.2
 touches: docs/items/PL-VCJ2-github-repository-topics-are-verified-empty-so.md
 added: 2026-09-21
 closed: 2026-09-21
+pr: 873
 payoff: someone searching GitHub for an anesthesia pharmacokinetics teaching tool can find this one
 not-delegable: the deliverable is a GitHub repository setting no session can write; only the project owner can apply it
 ---
