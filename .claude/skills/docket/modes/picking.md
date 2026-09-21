@@ -65,11 +65,21 @@ something individually urgent outranks the grouping.
 then a recorded *generator*, then what the roadmap's current step places, then
 work in a feature already underway — the one nearest finishing first — then
 priority, and it excludes what is in flight on a branch. A generator is an item
-carrying `root-cause-of:`, naming three or more items it causes; it ranks above
-every other band, a `safety`-classed `P1` included, which the project owner was
-asked about and confirmed. `CLAUDE.md` § "A root cause of more than two items is
-pulled, not queued" is what a session does on finding one; `tools/generator_check.py`
-prints the clusters worth looking at and decides none of them.
+carrying `root-cause-of:`, naming three or more items it causes.
+
+**Recording one and ranking one are two separate writes** (project owner,
+2026-09-21, ratified). The count is what records it; a second field,
+`generator:`, is what decides whether it ranks — `live - <why the store is
+still handing this mechanism members>` puts it above every other band, a
+`safety`-classed `P1` included, and `spent - <why it can no longer produce
+one>` keeps the record for the audit and leaves it on its own band. Recording
+alone ranks nothing, and `docket check` asks any open generator that has not
+answered. So a three-item cluster you judge finished is now written down
+rather than withheld to keep the ranking honest, which is the trade the split
+removed. `CLAUDE.md` § "A root cause of more than two items is pulled, not
+queued" is what a session does on finding a *ranking* one;
+`tools/generator_check.py` prints the clusters worth looking at and decides
+none of them.
 
 **"Are the generators dealt with?" is `bin/docket generators`, and the heads'
 own statuses do not answer it.** Fixing a generator closes the head and leaves

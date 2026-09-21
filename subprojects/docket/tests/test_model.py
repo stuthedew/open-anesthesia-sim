@@ -19,17 +19,20 @@ from docket.model import (
     Item,
     block_list_keys,
     generator_defect_faults,
+    generator_faults,
     impairs_generators_soundly,
     is_generator,
     live_recurrences,
     parse_front_matter,
     parse_item,
+    ranks_as_generator,
     recurrence_count,
     recurrence_faults,
     recurrences_of,
     render_item,
     repeated_front_matter_keys,
     root_cause_faults,
+    split_generator_verdict,
     with_front_matter_field,
     with_front_matter_value,
 )
@@ -900,6 +903,111 @@ def test_an_item_cannot_be_its_own_root_cause() -> None:
 
     (fault,) = root_cause_faults(item, KNOWN)
     assert "lists itself" in fault
+
+
+# `generator:`: the recurrence verdict, which decides whether a *recorded*
+# generator also *ranks*. `CLAUDE.md` puts the two on different axes (project
+# owner, 2026-09-21, ratified): the count above is what records one, and this is
+# what lifts it above every band but `P0`. What these pin is the same
+# fail-closed direction as the count's tests, arrived at from the other end - a
+# claim nobody has qualified ranks nothing, because `docket check` runs
+# separately and the ranking would otherwise act first.
+
+LIVE = "live - two more captures matched onto this path after the cluster was recorded"
+SPENT = "spent - the parse every member stood on was deleted, so no new one can arrive"
+
+
+def test_a_verdict_round_trips_through_the_file() -> None:
+    written = render_item(_item(root_cause_of=EXPLAINS, generator=LIVE))
+
+    assert f"generator: {LIVE}" in written
+    assert parse_item(written).generator == LIVE
+
+
+def test_the_verdict_is_read_off_whatever_separator_follows_it() -> None:
+    """Forgiving about punctuation, exact about vocabulary.
+
+    The word is the half a tool may read and the sentence after it is the
+    judgment, so a reader who wrote a colon where the README wrote a dash has
+    made no mistake worth an error.
+    """
+    assert split_generator_verdict("live - why") == ("live", "why")
+    assert split_generator_verdict("live: why") == ("live", "why")
+    assert split_generator_verdict("spent, why") == ("spent", "why")
+    assert split_generator_verdict("  LIVE why  ") == ("live", "why")
+    assert split_generator_verdict("") == ("", "")
+
+
+def test_a_live_verdict_ranks_and_a_spent_one_only_records() -> None:
+    """The whole of the split: both are sound, and only one is on the tier."""
+    live = _item(root_cause_of=EXPLAINS, generator=LIVE)
+    spent = _item(root_cause_of=EXPLAINS, generator=SPENT)
+
+    assert generator_faults(live, KNOWN) == () and generator_faults(spent, KNOWN) == ()
+    assert is_generator(live, KNOWN) and is_generator(spent, KNOWN)
+    assert ranks_as_generator(live, KNOWN)
+    assert not ranks_as_generator(spent, KNOWN)
+
+
+def test_an_open_generator_with_no_verdict_is_recorded_unranked_and_reported() -> None:
+    """The quiet failure the check exists for, and the safe default beside it.
+
+    Nothing mis-ranks - `ranks_as_generator` refuses what does not claim `live`
+    - so what the fault catches is the session that recorded a live generator
+    and believes it is now above every safety item in the queue, with nothing
+    else in the project ever saying it is not.
+    """
+    item = _item(root_cause_of=EXPLAINS)
+
+    (fault,) = generator_faults(item, KNOWN)
+    assert "is absent" in fault
+    assert is_generator(item, KNOWN)
+    assert not ranks_as_generator(item, KNOWN)
+
+
+def test_a_closed_generator_owes_no_verdict() -> None:
+    """A closed item is startable by nothing, so a verdict on it is read by nothing.
+
+    `generator_candidates` draws the same window for `root-cause-of:` itself.
+    Demanding one here would mean backfilling every head this project has
+    already closed with a retrospective judgment about a mechanism that session
+    did not diagnose, which invents the audit fact rather than recording it.
+    """
+    for status in ("done", "dropped"):
+        item = _item(root_cause_of=EXPLAINS, status=status, closed=date(2026, 9, 1))
+
+        assert generator_faults(item, KNOWN) == ()
+
+
+def test_an_item_making_no_generator_claim_owes_no_verdict() -> None:
+    """No cluster, nothing to judge the recurrence of."""
+    assert generator_faults(_item(), KNOWN) == ()
+    assert generator_faults(_item(root_cause_of=EXPLAINS[:2]), KNOWN) == ()
+
+
+def test_a_verdict_outside_the_vocabulary_is_refused() -> None:
+    """The decidable half. `yes` is the shape `impairs-generators` refuses too."""
+    (fault,) = generator_faults(_item(root_cause_of=EXPLAINS, generator="yes - it is"), KNOWN)
+
+    assert "`yes`" in fault and "`live`" in fault and "`spent`" in fault
+
+
+def test_a_verdict_with_no_reason_is_refused() -> None:
+    """The verdict decides whether this outranks every band; a reader is owed why."""
+    (fault,) = generator_faults(_item(root_cause_of=EXPLAINS, generator="spent"), KNOWN)
+
+    assert "no reason" in fault
+
+
+def test_a_verdict_without_a_cluster_is_refused_from_the_other_end() -> None:
+    """It judges the recurrence of a cluster the item does not record.
+
+    Faulted so the reader is told which field is missing, rather than left with
+    a line that ranks nothing and looks like it should.
+    """
+    (fault,) = generator_faults(_item(generator=LIVE), KNOWN)
+
+    assert "does not record" in fault
 
 
 # `generator_defect_faults` is the tier's other entrance and is shared by the
