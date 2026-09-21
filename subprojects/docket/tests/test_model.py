@@ -17,6 +17,7 @@ from docket.model import (
     LANE_UNPLACED,
     LANE_WORKFLOW,
     Item,
+    block_list_keys,
     generator_defect_faults,
     impairs_generators_soundly,
     is_generator,
@@ -589,6 +590,184 @@ def test_a_file_with_no_repeated_key_reports_none() -> None:
     assert repeated_front_matter_keys("---\nid: PL-K7QX\ntitle: t\n---\nBody\n") == ()
     assert repeated_front_matter_keys("# Just a heading\n") == ()
     assert parse_item("---\nid: PL-K7QX\ntitle: t\n---\nBody\n").duplicate_fields == ()
+
+
+# `PL-9HD1`: the three defects one skipped line produced, and the cases that
+# decide how far the repair may reach. The fixture below is the shape `PL-9HDH`
+# carries - a `reason:` hand-wrapped over continuation lines - because that is
+# the file a `rewrite_item` round trip was measured taking from 27 lines to 18,
+# deleting 9 of its 10 recorded lines and exiting 0.
+WRAPPED = (
+    "---\n"
+    "id: PL-9HDH\n"
+    "title: t\n"
+    "status: dropped\n"
+    "reason: Would reintroduce the defect PL-3V8K and PL-0ZP8 both diagnosed\n"
+    "  independently. The `pull_request` trigger excludes `edited` on purpose,\n"
+    "  because a title edit re-runs the whole suite.\n"
+    "not-delegable: The judgment is which of two costs to pay.\n"
+    "---\n"
+    "Body\n"
+)
+
+
+def test_a_wrapped_value_is_read_whole_rather_than_truncated_at_its_first_line() -> None:
+    """`PL-5B39`: every reader was handed the first line as if it were the value."""
+    item = parse_item(WRAPPED)
+
+    assert item.reason.startswith("Would reintroduce the defect PL-3V8K")
+    assert "excludes `edited` on purpose" in item.reason
+    assert item.reason.endswith("because a title edit re-runs the whole suite.")
+
+
+def test_a_multi_line_front_matter_value_survives_a_round_trip() -> None:
+    """`PL-5B39`: `render_item` wrote the parsed value, so the rest left the file.
+
+    The round trip still reflows the field onto one line, which is a diff to
+    read. What it no longer does is shorten it.
+    """
+    once = parse_item(WRAPPED)
+    twice = parse_item(render_item(once))
+
+    assert twice.reason == once.reason
+    assert twice.not_delegable == once.not_delegable
+    assert "a title edit re-runs the whole suite." in render_item(once)
+
+
+def test_a_wrapped_list_field_keeps_every_entry() -> None:
+    item = parse_item("---\nid: PL-K7QX\ntitle: t\ntouches: a/b.py,\n  c/d.py\n---\nBody\n")
+
+    assert item.touches == ("a/b.py", "c/d.py")
+
+
+def test_a_line_at_column_zero_continues_nothing_as_it_continues_nothing_in_yaml() -> None:
+    """Indentation is what makes a line a continuation, so an outdented one is not."""
+    item = parse_item("---\nid: PL-K7QX\ntitle: t\nstray text\n---\nBody\n")
+
+    assert item.title == "t"
+    assert item.unknown_fields == ()
+
+
+def test_a_list_field_written_as_a_block_list_is_refused_rather_than_read() -> None:
+    """`PL-FX0K`: it parsed to an empty tuple, so the item reached no lane."""
+    text = "---\nid: PL-K7QX\ntitle: t\ntouches:\n  - a/b.py\n  - c/d.py\n---\nBody\n"
+    item = parse_item(text)
+
+    assert block_list_keys(text) == ("touches",)
+    assert item.block_list_fields == ("touches",)
+    assert item.touches == ()
+
+
+def test_every_list_field_is_refused_in_the_block_form_not_only_touches() -> None:
+    text = (
+        "---\nid: PL-K7QX\ntitle: t\n"
+        "classes:\n  - safety\n"
+        "touches:\n  - a/b.py\n"
+        "blocked-by:\n  - PL-0001\n"
+        "---\nBody\n"
+    )
+
+    assert parse_item(text).block_list_fields == ("blocked-by", "classes", "touches")
+
+
+def test_a_block_list_classes_cannot_hand_a_safety_item_an_empty_class_silently() -> None:
+    """`PL-FX0K`, which is `PL-MVC2` arriving through the parser.
+
+    `checks.py` seats a `safety`-classed item in the top bands only when it can
+    see the class, and an empty `classes` is what defeats that. The field still
+    arrives empty - nothing here guesses at the entries - but it arrives with
+    the fact that it could not be read, which is what `checks.py` reports.
+    """
+    item = parse_item(
+        "---\nid: PL-K7QX\ntitle: t\nstatus: ready\npriority: P3\nclasses:\n  - safety\n---\nB\n"
+    )
+
+    assert item.safety_classes == ()
+    assert item.block_list_fields == ("classes",)
+
+
+def test_a_dash_continuation_under_a_prose_field_is_prose_not_a_block_list() -> None:
+    """The refusal is scoped to `LIST_FIELDS`, which is where two spellings collide.
+
+    An argument licenses the narrowest rule that removes the hazard. Under a
+    prose field there is no second spelling to be ambiguous with, so a dash
+    folds like any other continuation.
+    """
+    item = parse_item(
+        "---\nid: PL-K7QX\ntitle: t\n"
+        "reason: dropped in favour of PL-0001\n  - the measurement never reproduced\n"
+        "---\nBody\n"
+    )
+
+    assert item.block_list_fields == ()
+    assert item.reason == "dropped in favour of PL-0001 - the measurement never reproduced"
+
+
+def test_a_value_quoted_the_way_yaml_requires_parses_to_the_unquoted_string() -> None:
+    """`PL-V6CR`: the quotes became the first and last characters of the title."""
+    text = (
+        "---\nid: PL-K7QX\n"
+        'title: "The wiring is untested: every test reads the controller"\n---\nBody\n'
+    )
+    item = parse_item(text)
+
+    assert item.title == "The wiring is untested: every test reads the controller"
+    assert parse_item(render_item(item)).title == item.title
+
+
+def test_a_single_quoted_scalar_collapses_yamls_doubled_quote_escape() -> None:
+    item = parse_item(
+        "---\nid: PL-T531\ntitle: 'Decide isoflurane''s blood:gas coefficient'\n---\nBody\n"
+    )
+
+    assert item.title == "Decide isoflurane's blood:gas coefficient"
+
+
+def test_a_quoted_verify_command_parses_to_something_a_shell_can_run() -> None:
+    """`PL-MZH2` was this defect on one item, repaired there by hand.
+
+    A shell reads the quoted form as a single word and exits 127 having run
+    nothing, so the command can never accept the work it was written for.
+    Three more arrived in the store after that repair.
+    """
+    item = parse_item(
+        "---\nid: PL-K7QX\ntitle: t\nverify: '! grep -rq \"Workflow work\" CLAUDE.md'\n---\nBody\n"
+    )
+
+    assert item.verify == '! grep -rq "Workflow work" CLAUDE.md'
+
+
+def test_a_value_that_merely_opens_with_a_quote_is_taken_verbatim() -> None:
+    """`PL-XF5V`'s `payoff:`, and why the pair has to close at the last character.
+
+    A rule stripping the ends of anything that begins and ends with a quote
+    would rewrite this into a string nobody wrote.
+    """
+    item = parse_item(
+        "---\nid: PL-XF5V\ntitle: t\n"
+        "payoff: 'are the generators dealt with' is answered by a command\n---\nBody\n"
+    )
+
+    assert item.payoff == "'are the generators dealt with' is answered by a command"
+
+
+def test_a_pair_that_closes_early_is_taken_verbatim_though_both_ends_match() -> None:
+    item = parse_item("---\nid: PL-K7QX\ntitle: t\nverify: 'a' && 'b'\n---\nBody\n")
+
+    assert item.verify == "'a' && 'b'"
+
+
+def test_an_unterminated_quote_is_taken_verbatim_rather_than_guessed_at() -> None:
+    item = parse_item('---\nid: PL-K7QX\ntitle: "unclosed\n---\nBody\n')
+
+    assert item.title == '"unclosed'
+
+
+def test_a_backslash_is_read_as_an_escape_only_before_a_quote_or_a_backslash() -> None:
+    """Turning a backslash-n into a newline would invent a character the file lacks."""
+    item = parse_item('---\nid: PL-K7QX\ntitle: "a\\nb and \\"c\\""\n---\nBody\n')
+
+    assert item.title == 'a\\nb and "c"'
 
 
 WORKFLOW = ("tools", ".claude", "docs/items", "CLAUDE.md")

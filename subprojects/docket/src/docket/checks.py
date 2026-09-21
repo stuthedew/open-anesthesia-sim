@@ -384,6 +384,14 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             "the same field at different positions merge cleanly into this - delete the "
             "wrong line by hand after checking which value is right"
         )
+    if item.block_list_fields:
+        report.errors.append(
+            f"{where}: {', '.join(item.block_list_fields)} written as a YAML block list; "
+            "this format spells a list as one comma-separated line, so the indented "
+            "entries are read by nothing and the field arrives empty at every check that "
+            "asks for it - an empty `classes:` is what lets a safety-classed item sit in "
+            "the bottom band. Put the entries on the field's own line, comma-separated"
+        )
     if not item.status:
         report.errors.append(f"{where}: no `status`; expected one of {', '.join(STATUSES)}")
         return
