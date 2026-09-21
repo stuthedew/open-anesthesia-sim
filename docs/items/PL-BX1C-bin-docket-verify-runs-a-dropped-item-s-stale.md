@@ -50,6 +50,31 @@ correctly refuses (`PL-JZ1D`). A `done` item's command is a record of what was
 run and passed; a `dropped` item's never ran against anything and records
 nothing.
 
+**Second occurrence, and the count, 2026-09-21.** It fired again closing
+`PL-CHF2` (the capture that `PL-TH7P` duplicated shipped work), whose commit
+drops `PL-TH7P`. `bin/docket verify --self PL-CHF2 PL-TH7P` returned `ACCEPT`
+for `PL-CHF2` and `REJECT` for `PL-TH7P`, on:
+
+```
+FAIL  `verify:` command passes - uv run pytest subprojects/docket/tests/test_cli.py -q && grep -rq 'def test_new_prints_candidate_duplicates' subprojects/docket/tests
+```
+
+Every other guard passed, `make check` was green, and the command was correct
+to fail: it pins a test name that the shipped work never used. The field was
+left in place this time rather than deleted, so the `REJECT` stands in the
+record as an instance of this item.
+
+**How often it can fire: 31 of the 164 `dropped` items in the store carry a
+`verify:`** (counted 2026-09-21). So it is not a rare collision, and the number
+carries a constraint this brief's **Shape of a fix** does not: the second
+option - having `bin/docket check` refuse the `dropped` + `verify:` combination
+at store-validation time - would fail `make check` on all 31 of them the moment
+it landed. It needs a dated cutover keyed on `closed`, in the shape
+`docket.toml` already uses for `verify_required_at_close_from` and
+`payoff_required_from`, or it is not shippable. The first option - `verify`
+skipping the command at that status - carries no such cost, which is a point
+for it that the "louder and earlier" reading alone does not weigh.
+
 **Done when.** Closing a `dropped` item that still carries a `verify:` reaches
 `ACCEPT` without anyone deleting the field - either because `bin/docket verify`
 skips the command at that status, or because `bin/docket check` refuses the
