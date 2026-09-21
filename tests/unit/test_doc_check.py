@@ -756,6 +756,34 @@ def test_a_quoted_source_inside_a_fence_is_not_a_citation(tmp_path: Path) -> Non
     assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
 
 
+def test_a_closed_brief_quoting_a_deleted_heading_is_not_an_error(tmp_path: Path) -> None:
+    """A closed brief says what was true when the work was done, not what is.
+
+    `check_line_citations` has always drawn this line and `check_quoted_sources`
+    did not, so the two checks disagreed about the same file. The disagreement
+    was not academic: `ROADMAP.md`'s `## Current baseline` section is replaced
+    wholesale at every release, so a closed brief quoting one of its headings
+    went red at the next cut, and the only ways out were repairing a historical
+    record or editing the roadmap to suit a check (`PL-ZM8P`).
+    """
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-done", _brief("done", '`docs/MODEL.md`, "A thread that was deleted".'))
+
+    assert not any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
+def test_an_open_brief_quoting_a_deleted_heading_is_still_an_error(tmp_path: Path) -> None:
+    """The live half is untouched, which is what makes the exemption narrow.
+
+    Without this, skipping closed briefs would be indistinguishable from
+    switching the check off.
+    """
+    root = _repo(tmp_path)
+    _item(root, "PL-0000-open", _brief("ready", '`docs/MODEL.md`, "A thread that was deleted".'))
+
+    assert any("quotes docs/MODEL.md" in e for e in _errors(root))
+
+
 def test_an_indented_fence_hides_a_quoted_source_too(tmp_path: Path) -> None:
     """A fence under a list item is indented to sit inside it."""
     root = _repo(tmp_path)
