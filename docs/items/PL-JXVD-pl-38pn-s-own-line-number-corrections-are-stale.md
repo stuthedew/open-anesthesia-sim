@@ -10,7 +10,6 @@ touches: docs/items/PL-38PN-stale-source-line-citations-in-pl-vm40-and-pl.md, do
 added: 2026-09-12
 closed: 2026-09-21
 reason: `.claude/rules/citation-drift.md`'s line-anchor ban. The whole deliverable is a second generation of line-number repair in two item briefs, and § "Why re-pointing is refused specifically" names this item and `PL-38PN` as the mechanism it bans: "That is the mechanism, and it is why the rule bans the anchor rather than asking for more careful repair." Its own **Actually at** column was already dead by 2026-09-19. `PL-38PN` is now `dropped`, so that half is a closed brief as well; `PL-QV5Y`'s four Makefile citations go with the `Makefile` comments `PL-QV5Y` itself rewrites, so nothing is left for a separate pass. Re-judged in `PL-PT7M`'s pass, 2026-09-21
-verify: python3 tools/doc_check.py check && ! grep -qF ':1149' docs/items/PL-38PN-stale-source-line-citations-in-pl-vm40-and-pl.md
 ---
 
 **Problem.** PL-38PN's own line-number corrections are stale, so working it as written writes a second generation of wrong citations; PL-QV5Y has the same defect

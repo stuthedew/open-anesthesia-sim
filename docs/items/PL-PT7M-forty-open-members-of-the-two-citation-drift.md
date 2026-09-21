@@ -207,3 +207,21 @@ the table was. The pattern is now `{3,4}` and the count is exactly 40. This is
 a false-fail rather than a goalpost moved: no row was added or removed to make
 it pass, and the same command still fails if a row goes missing.
 
+**Five stale `verify:` commands were cleared with the drops, and that is
+`PL-BX1C`.** `bin/docket verify --self` runs a `dropped` item's stored command
+although the skill says a dropped item has none, so all five drops that carried
+one printed `FAIL ... REJECT` with `make check` green and every other guard
+passing; `PL-Z5FG`, which carried none, went straight to `ACCEPT`. Worse than
+stale, three of the five asserted the opposite of the decision recorded beside
+them - `PL-8T3Z`'s command asked that `PL-K2C8`'s `touches` name the hook,
+which is precisely what the closed-brief clause refuses. The commands are
+deleted, on `PL-BX1C`'s own precedent from `PL-TFWR`, and the count that item
+now carries was taken here: 34 of 170 `dropped` items were holding one, leaving
+29.
+
+**Four of the six drops were `Declined to Gate 2` entries and now carry their
+drop date** in `ROADMAP.md`, per `PL-0VFF`'s rule that an entry dropped rather
+than shipped records the date. None of the six was on the frozen list, so
+v0.5.0's gate is unchanged by this pass: 185 entries, 2 open here and 1 blocked
+outside it.
+
