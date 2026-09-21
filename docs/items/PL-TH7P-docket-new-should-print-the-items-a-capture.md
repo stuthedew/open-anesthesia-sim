@@ -3,12 +3,14 @@ id: PL-TH7P
 title: docket new should print the items a capture might duplicate, from title words and touches overlap
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: session-cost, infra
 feature: dev-tooling
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/concurrency.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
-verify: uv run pytest subprojects/docket/tests/test_cli.py -q && grep -rq 'def test_new_prints_candidate_duplicates' subprojects/docket/tests
 added: 2026-08-30
+closed: 2026-09-21
+reason: Same finding as PL-TZ7T (bin/docket new files a duplicate title without noticing), which shipped the whole of this item's Done when in #793 on 2026-09-20: cli.cmd_new searches before the write and prints after it, never prompting; test_new_names_an_existing_item_with_a_near_identical_title covers a capture that overlaps and test_new_says_nothing_about_an_item_declaring_a_different_path one that does not; subprojects/docket/README.md documents it under 'docket new'. PL-JKML's duplicate sweep already ruled this pair a high-confidence same-finding with PL-TZ7T as survivor, and left it standing for one stated reason - PL-TZ7T was in flight - which lapsed when that branch merged. The only clause not shipped is this item's title-word key, which PL-TZ7T measured and refuted: title closeness alone catches 0 of 13 known duplicate pairs at any threshold flagging fewer than 768, and fires hardest on the items meant to recur; the shipped key is the declared path selecting with the title only ranking inside it, top 3 for 8 of 9 pairs. Nothing here is lost - this item's two historical instances are recorded on the items themselves (PL-2R01 dropped as a duplicate of PL-68XK; PL-0TRS closed by PL-020's work), its verify: pinned a test name (test_new_prints_candidate_duplicates) that no longer describes any work owed, and this file stays for the pre-PL-TZ7T evidence in its brief.
+verify: uv run pytest subprojects/docket/tests/test_cli.py -q && grep -rq 'def test_new_prints_candidate_duplicates' subprojects/docket/tests
 ---
 
 **Problem.** `docket new` records a capture without looking at what is already
