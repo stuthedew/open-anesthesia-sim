@@ -9,6 +9,7 @@ feature: two-run-attribution
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md
 added: 2026-09-20
 closed: 2026-09-21
+pr: 823
 payoff: stops a learner reading the branch's F_A/F_I or off-scale notice as the trunk's, which inverts the comparison a branch exists to teach
 verify: grep -q 'def test_the_wash_in_state_and_off_scale_lines_name_their_run' tests/integration/test_simulation_view.py
 ---

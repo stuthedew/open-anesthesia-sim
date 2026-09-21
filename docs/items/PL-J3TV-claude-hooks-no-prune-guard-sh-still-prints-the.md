@@ -9,7 +9,7 @@ feature: parallel-sessions
 touches: .claude/hooks/no-prune-guard.sh
 added: 2026-09-21
 payoff: a session refused a prune reads the recipe that finishes the job, instead of the one PL-K2C8 found incomplete
-verify: ! grep -q "delete just that one ref" .claude/hooks/no-prune-guard.sh
+verify: grep -qE 'push origin --delete|modes/capture\.md' .claude/hooks/no-prune-guard.sh
 ---
 
 **Problem.** .claude/hooks/no-prune-guard.sh still prints the pre-PL-K2C8 three-command restart recipe, so the incomplete version survives in the louder of the two places - the message a session reads at the moment it is refused a prune
@@ -66,4 +66,18 @@ one session opening the file can settle both, and fixing either alone leaves a
 message that is half right. `PL-G8TR` also declares
 `tests/unit/test_no_prune_guard.py`, which is where a test for this belongs
 too.
+
+**The message is one Python string split across source lines, which is a trap
+for the fix and was one for this item's first `verify:` command.** The sentence
+reads `"To restart a branch whose pull request has already merged, delete just "`
+then `"that one ref and rebase the name onto the merged base:\n\n"`, so
+`grep` for any phrase spanning the break finds nothing. The first command
+recorded here was `! grep -q 'delete just that one ref' ...`, which passed
+against the unfixed hook for exactly that reason - caught by
+`bin/docket check --verify` on `#830`, not by a reader. The command now asserts
+a string the *fix* adds rather than one it removes: either `push origin
+--delete`, if the hook carries the four-command block, or `modes/capture.md`,
+if it points at the skill as the one place the recipe lives. Both are the
+endings this item's **Done when** allows, and neither string is in the file
+today.
 

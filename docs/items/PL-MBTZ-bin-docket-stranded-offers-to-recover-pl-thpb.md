@@ -9,6 +9,7 @@ feature: stranded-ahead-or-behind
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/modes/capture.md
 added: 2026-09-14
 closed: 2026-09-21
+pr: 825
 verify: uv run pytest -q subprojects/docket/tests/test_cli.py -k stranded && grep -q 'def test_stranded_does_not_offer_to_restore_a_copy_the_base_has_closed_since' subprojects/docket/tests/test_cli.py
 ---
 
