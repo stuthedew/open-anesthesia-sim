@@ -7,6 +7,8 @@ in a way git accepts is proved against a real checkout in `test_cli.py`.
 
 from __future__ import annotations
 
+import hashlib
+from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
 
@@ -27,6 +29,7 @@ from docket.vcs import (
     StrandedItem,
     StrandedReport,
     _pathspec_chunks,
+    _standing,
     _superseded,
     behind_remote,
     branch_state,
@@ -50,6 +53,23 @@ from docket.vcs import (
 
 ROOT = Path("/nowhere")
 BASE = "origin/main"
+
+
+def _tree_lines(entries: Mapping[str, str]) -> str:
+    """`git ls-tree -r` output for a fake tree, as `path -> the text it holds`.
+
+    `_item_blobs` reads the object id out of the listing so that two copies of
+    one item can be told apart without opening either, which is what keeps
+    `stranded` to a handful of `git show` calls. That id is content-addressed
+    in git, so it is content-addressed here: two paths holding the same bytes
+    get the same id and a path whose text changes gets a different one. A fake
+    that has only paths to give passes the path as its own text, which is
+    sound for every read that never compares two of them.
+    """
+    return "".join(
+        f"100644 blob {hashlib.sha1(text.encode()).hexdigest()}\t{path}\n"
+        for path, text in entries.items()
+    )
 
 
 def _when(day: str) -> str:
@@ -244,7 +264,9 @@ def _runner(
             # `filename_for` guarantees and what this relies on.
             prefix = args[-1].rstrip("/")
             held = [*closed, *(base_items or {}), *same_ids, *paired_ids, *(statuses or {})]
-            return "\n".join(f"{prefix}/{identifier}-shipped.md" for identifier in held)
+            return _tree_lines(
+                {f"{prefix}/{identifier}-shipped.md": identifier for identifier in held}
+            )
         if args[0] == "show":
             # `git show <base>:<path>`, which is how the closure is read off the
             # base rather than off this checkout.
@@ -1867,22 +1889,46 @@ def test_a_hash_that_merely_looks_like_a_number_is_not_a_pull_request() -> None:
     assert history.known and history.numbers == frozenset()
 
 
-def _tree_runner(trees: dict[str, dict[str, str]], titles: dict[str, str] | None = None):
+def _tree_runner(
+    trees: dict[str, dict[str, str]],
+    titles: dict[str, str] | None = None,
+    history: tuple[str, ...] = (),
+):
     """A git that holds the given trees, as `ref -> {item file: contents}`.
 
-    Deliberately no commit graph at all: no `--merged`, no `rev-list`, nothing
-    a shallow clone would answer wrongly. If these tests pass with a runner
-    that cannot answer a containment question, the implementation is not
-    asking one.
+    Deliberately almost no commit graph: no `--merged`, no ancestry, nothing a
+    shallow clone would answer wrongly. If these tests pass with a runner that
+    cannot answer a containment question, the implementation is not asking
+    one.
+
+    `history` is the text of copies the default branch has held and has since
+    moved on from, which is the one object walk this answers. A ref still
+    holding one of them is behind whatever the base holds now however
+    different the two files read, and without that the base rewriting its own
+    prose leaves the ref holding lines the base lacks - which on text alone is
+    indistinguishable from the ref having written them.
+
+    A tree keyed `HEAD` is the checkout's own, and is deliberately not listed
+    by `for-each-ref`: git lists refs under `refs/heads` and `refs/remotes`,
+    and `HEAD` is neither.
     """
 
     def run(args: list[str], root: Path) -> str:
         if args[0] == "for-each-ref":
-            return "\n".join(trees)
+            return "\n".join(ref for ref in trees if ref != "HEAD")
         if args[:2] == ["rev-parse", "--verify"]:
             return "abc123\n" if args[-1] in trees else ""
+        if args[0] == "rev-list" and "--objects" in args:
+            # The object walk `_base_blobs` reads, in the shape git writes it:
+            # an oid, then the path anything but a commit was stored under.
+            return "".join(
+                f"{hashlib.sha1(text.encode()).hexdigest()} docs/items/held.md\n"
+                for text in history
+            )
         if args[0] == "ls-tree":
-            return "\n".join(f"docs/items/{name}" for name in trees.get(args[3], {}))
+            return _tree_lines(
+                {f"docs/items/{name}": text for name, text in trees.get(args[2], {}).items()}
+            )
         if args[0] == "show":
             ref, _, path = args[1].partition(":")
             return trees.get(ref, {}).get(path.rsplit("/", 1)[-1], "")
@@ -2022,6 +2068,108 @@ def test_whether_the_comparison_point_was_refreshed_is_part_of_the_answer() -> N
 
     assert not stranded(ROOT, {"PL-0001"}, runner=runner).fetched
     assert stranded(ROOT, {"PL-0001"}, runner=runner, fetched=True).fetched
+
+
+# An item file `main` holds and a branch has written to. This is the commoner
+# loss: the file is created once and appended to by every session that learns
+# something about it, so the unmerged *section* outnumbers the unmerged file
+# (`PL-KSCW`).
+APPENDED = {
+    "PL-0001-on-main.md": _document("PL-0001", "On main")
+    + "\n**Found again 2026-09-20.** A fourth instance, and the count it implies.\n"
+}
+
+# The same item after `main` closed it, which is what a branch forked before
+# the triage pass is holding an earlier answer to (`PL-MBTZ`).
+CLOSED_ON_MAIN = {
+    "PL-0001-on-main.md": (
+        "---\nid: PL-0001\ntitle: On main\nstatus: done\n"
+        "closed: 2026-09-13\npr: 549\n---\n\n**Problem.** x\n"
+    )
+}
+
+
+def test_stranded_reports_an_item_modified_only_on_a_branch() -> None:
+    """`PL-KSCW`: the file is on the base, and the section is on the branch alone.
+
+    `PL-879R`'s brief was missing a whole section that way - a fourth failure
+    shape and the population it implied, written onto
+    `origin/claude/focused-dijkstra-outqzu` by the session that found it. The
+    id test this read used to make cannot see it: the item is on `main`, so
+    the item is not stranded, and only 68 lines of it were.
+    """
+    runner = _tree_runner({"origin/main": MAIN, "origin/claude/abandoned": APPENDED})
+
+    report = stranded(ROOT, {"PL-0001"}, runner=runner)
+
+    assert report.items == ()
+    assert [(edit.identifier, edit.branches) for edit in report.edits] == [
+        ("PL-0001", ("origin/claude/abandoned",))
+    ]
+    assert report.edits[0].path == "docs/items/PL-0001-on-main.md"
+    assert report.edits[0].base_path == "docs/items/PL-0001-on-main.md"
+
+
+def test_a_branch_copy_the_base_has_closed_since_is_not_reported() -> None:
+    """`PL-MBTZ`, as it ran on 2026-09-14 and as `PL-XLQ5` was actually dealt.
+
+    `main` held `PL-THPB` at `done`, with a `closed:` date and a `verify:`;
+    `origin/claude/next-version-release-o2zzaf` held the `untriaged` copy it
+    had forked with. The branch carried nothing `main` lacked, and the reader
+    was handed a `git checkout` of it - which restores an untriaged item over
+    a closed one and discards everything the closure recorded.
+    """
+    runner = _tree_runner({"origin/main": CLOSED_ON_MAIN, "origin/claude/release": MAIN})
+
+    report = stranded(ROOT, {"PL-0001"}, runner=runner)
+
+    assert report.items == ()
+    assert report.edits == ()
+
+
+def test_a_branch_copy_the_base_has_only_added_to_is_not_reported() -> None:
+    """The base holds every line the branch holds and more, so nothing is behind."""
+    runner = _tree_runner({"origin/main": APPENDED, "origin/claude/older": MAIN})
+
+    assert stranded(ROOT, {"PL-0001"}, runner=runner).edits == ()
+
+
+def test_a_copy_the_base_has_held_and_moved_past_is_not_reported() -> None:
+    """The base rewrote its own prose, so the branch holds lines the base lacks.
+
+    On the text alone that is indistinguishable from the branch having written
+    them, and it is the commonest shape in this store: 2,158 of the 2,180
+    branch copies differing from `main` on 2026-09-21 are one the base has
+    held. Reading them by text instead called 873 of them ahead.
+    """
+    rewritten = {"PL-0001-on-main.md": _document("PL-0001", "On main").replace("x", "rewritten")}
+    trees = {"origin/main": rewritten, "origin/claude/older": MAIN}
+
+    walked = stranded(ROOT, {"PL-0001"}, runner=_tree_runner(trees, history=tuple(MAIN.values())))
+    unwalked = stranded(ROOT, {"PL-0001"}, runner=_tree_runner(trees))
+
+    assert walked.edits == ()
+    assert [edit.identifier for edit in unwalked.edits] == ["PL-0001"]
+
+
+def test_an_edit_this_session_is_holding_is_not_reported_back_to_it() -> None:
+    """`known_ids` applied to content: a copy `HEAD` holds is one the session can see."""
+    runner = _tree_runner({"origin/main": MAIN, "claude/this-session": APPENDED, "HEAD": APPENDED})
+
+    assert stranded(ROOT, {"PL-0001"}, runner=runner).edits == ()
+
+
+def test_two_copies_that_each_carry_something_read_as_ahead() -> None:
+    """Neither contains the other, and the reader is handed the diff either way.
+
+    Calling this behind would hide the branch's half; the report says only
+    that the branch has something the base has not, which is true of it.
+    """
+    base = _document("PL-0001", "On main") + "\nThe base's own paragraph.\n"
+    ref = _document("PL-0001", "On main") + "\nThe branch's own paragraph.\n"
+
+    assert _standing(base, ref) == "ahead"
+    assert _standing(base, base) == "equal"
 
 
 DIGEST_ITEM = """---
@@ -3283,7 +3431,7 @@ def _lost_runner(tree: list[str], history: list[str], *, shallow: str = "false")
 
     def run(args: list[str], root: Path) -> str:
         if args[0] == "ls-tree":
-            return "\n".join(tree)
+            return _tree_lines({path: path for path in tree})
         if args[0] == "rev-list":
             return "\n".join(history)
         if args[0] == "rev-parse" and args[-1] == "--is-shallow-repository":
@@ -3443,8 +3591,8 @@ def _closed_by_runner(
         if args[0] == "diff":
             return "\n".join(touched)
         if args[0] == "ls-tree":
-            prefix = f"{args[3]}:"
-            return "\n".join(sorted(k[len(prefix) :] for k in trees if k.startswith(prefix)))
+            prefix = f"{args[2]}:"
+            return _tree_lines({k[len(prefix) :]: k for k in sorted(trees) if k.startswith(prefix)})
         if args[0] == "show":
             return trees.get(args[-1], "")
         return ""
@@ -4529,7 +4677,7 @@ def _record_runner(
             paths = committed if args[2].endswith("...HEAD") else uncommitted
             return "\n".join(paths)
         if args[0] == "ls-tree":
-            return "\n".join(listing)
+            return _tree_lines({path: path for path in listing})
         if args[0] == "show":
             _, _, path = args[-1].partition(":")
             return on_base.get(path, "")

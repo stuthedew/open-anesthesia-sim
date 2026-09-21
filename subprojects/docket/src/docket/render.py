@@ -586,8 +586,16 @@ def format_stranded(report: StrandedReport) -> str:
     overwrites the merged copy with the older one, which is what happened on
     2026-09-05 (`PL-KBFN`). A reader who has already read `git checkout` has
     made the decision the caveat exists to inform.
+
+    **The second section is handed a diff and never a checkout**, and that is
+    the whole difference between the two. An item reported above is one the
+    default branch does not hold, so restoring the branch's copy overwrites
+    nothing; an item reported below is one it *does* hold, so the same command
+    would discard whatever the base has recorded on it since - which is what
+    `PL-THPB` was offered and `PL-XLQ5` was actually dealt (`PL-MBTZ`,
+    `PL-KSCW`).
     """
-    if not report.known and not report.items:
+    if not report.known and not report.items and not report.edits:
         return f"Stranded items not checked: {report.declined}."
 
     # A partial read that still found something reports both. Printing only the
@@ -598,13 +606,13 @@ def format_stranded(report: StrandedReport) -> str:
 
     refs = _plural(report.refs_read, "branch ref", "branch refs")
     if not report.items:
-        return "\n".join(
-            [
-                f"No item exists only on a branch, across the {refs} this checkout holds.",
-                "A branch not fetched here was not read, so this is bounded by what has been.",
-                *_stale_base(report),
-            ]
-        )
+        lines = [
+            *partial,
+            f"No item exists only on a branch, across the {refs} this checkout holds.",
+            "A branch not fetched here was not read, so this is bounded by what has been.",
+            *_stale_base(report),
+        ]
+        return "\n".join([*lines, *_edited_lines(report)])
 
     lines = [
         *partial,
@@ -625,7 +633,47 @@ def format_stranded(report: StrandedReport) -> str:
         "branch nobody will merge."
     )
     lines.append("Every other branch read carries no item the default branch lacks.")
-    return "\n".join(lines)
+    return "\n".join([*lines, *_edited_lines(report)])
+
+
+def _edited_lines(report: StrandedReport) -> list[str]:
+    """Items the default branch holds whose branch copy is ahead of it, or nothing.
+
+    Its own section rather than more rows above, because the reader has to do
+    something different with it. Above, the recovery is a file the base does
+    not have; here it is a *diff*, and the reader decides what of it to carry
+    across - a section appended to a brief is usually wanted whole, a field
+    edited on both sides is a merge nobody should make from a command line.
+    No `git checkout` is printed at all, which is the point of the separation
+    (`PL-KSCW`, `PL-MBTZ`).
+
+    The diff names both blobs rather than a pathspec, because a retitle
+    renames the file: `git diff <base> <ref> -- <path>` compares the ref's copy
+    against nothing at all when the base holds the item under its old name.
+
+    Silence about the branch's liveness, deliberately, the same way the
+    section above is silent: a live session editing its own item and an
+    abandoned branch holding the only copy of a finding look identical here,
+    and no timeout tells them apart. The session's own copy is the one case
+    that is answered - `stranded` drops an edit whose blob `HEAD` also holds,
+    so what remains is somebody else's.
+    """
+    if not report.edits:
+        return []
+    held = _plural(len(report.edits), "item", "items")
+    lines = ["", f"{held} the default branch holds, edited only on a branch:", ""]
+    for edit in report.edits:
+        lines.append(f"{edit.identifier}  {edit.title or '(title unreadable)'}")
+        lines.append(f"  edited on: {', '.join(edit.branches)}")
+        lines.append(
+            f"  read: git diff {report.base}:{edit.base_path} {edit.branches[0]}:{edit.path}"
+        )
+        lines.append("")
+    lines.append(
+        "A diff rather than a recovery command: the default branch holds a copy of its own, "
+        "and restoring the branch's over it discards whatever landed since."
+    )
+    return lines
 
 
 def _stale_base(report: StrandedReport) -> list[str]:

@@ -311,14 +311,24 @@ def _stranded(
 def _orphaned(root: Path, args: argparse.Namespace) -> OrphanedReport | None:
     """Work a branch carries that its own pull request left behind, or `None`.
 
-    Unlike `_stranded` this needs neither the store nor a store inside the
-    repository: the question is about the tree as a whole, which is the point
-    of it. Only `--no-git` turns it off, for the same reason it turns the rest
-    off - a caller that has said not to ask git must not be asked git.
+    Unlike `_stranded` this needs no store *content*: the question is about
+    the tree as a whole, which is the point of it. It does need to know where
+    the queue sits, for the two readings that treat an item file differently
+    from any other path - a landed commit that only annotates the queue is not
+    evidence of a merge, and an item file whose copy here is behind the base's
+    is not work left behind (`PL-MBTZ`). `_tracked` is what says where, so the
+    two commands cannot disagree about it; a store outside the checkout comes
+    back as the empty prefix and leaves both readings at the default path,
+    which is the answer for a queue git cannot be asked about at all. Only
+    `--no-git` turns this off, for the same reason it turns the rest off - a
+    caller that has said not to ask git must not be asked git.
     """
     if getattr(args, "no_git", False):
         return None
-    return orphaned(root, runner=_runner(args))
+    _, tracked = _tracked(args)
+    if not tracked:
+        return orphaned(root, runner=_runner(args))
+    return orphaned(root, items_dir=tracked, runner=_runner(args))
 
 
 def _complete_report(
@@ -2415,10 +2425,11 @@ def cmd_stranded(args: argparse.Namespace) -> int:
 
     Two reads, printed together because a reader asking "is anything only on a
     branch" means both and would not think to run two commands. `stranded`
-    answers it for items, by id across trees; `orphaned` answers it for
-    everything else, by content across the base - which is the half that was
-    missing while a dropped commit touching a skill or `src/` went unreported
-    (`PL-3D2M`).
+    answers it for items - which ids no other tree holds, and which of the ids
+    the base *does* hold have a copy on some ref that is ahead of it
+    (`PL-KSCW`); `orphaned` answers it for everything else, by content across
+    the base, which is the half that was missing while a dropped commit
+    touching a skill or `src/` went unreported (`PL-3D2M`).
 
     Exits zero whether or not it finds any: an item on a branch that is still
     being worked is the normal case, and the command cannot tell that from an
@@ -2434,6 +2445,12 @@ def cmd_stranded(args: argparse.Namespace) -> int:
     happened on 2026-09-05, eight minutes after `#325` merged (`PL-KBFN`,
     `PL-39B7`). `--no-fetch` is for the caller that already fetched and for a
     checkout with no network; the report says which of the two happened.
+
+    A stale base is not the only way that recovery went wrong, and the other
+    way is now closed rather than caveated: a `git checkout` is printed only
+    for an item the base does not hold at all. An item it holds is handed a
+    diff to read, and a branch holding a copy the base is ahead of is not
+    listed at all (`PL-MBTZ`).
     """
     directory, items, _ = _load(args)
     root = args.items.parent if args.items else find_root()

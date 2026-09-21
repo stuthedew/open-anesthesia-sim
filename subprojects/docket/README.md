@@ -141,6 +141,44 @@ default branch lacks. That claim is about items only — what a branch carries
 outside the store is the next section's question, and `docket stranded` prints
 both answers together.
 
+**The commoner loss is a section, not a file, and it is a second list.** An
+item file is created once and appended to by every session that learns
+something about it, so an item the default branch holds can still have its
+substance on a branch — and the id test above cannot see that at all. A whole
+section of `PL-879R`'s brief sat unreported that way. So the command reads one
+more question per item file the base also holds: is this ref's copy **ahead**
+of the base's, **behind** it, or the same? Ahead is listed, with a `git diff`
+naming both blobs; behind and equal are silent.
+
+**That second list is handed a diff and never a `git checkout`**, and the
+difference is the whole reason the two print separately. An item in the first
+list is one the base does not hold, so restoring the branch's copy overwrites
+nothing. An item in the second is one the base *does* hold, so the same
+command discards whatever the base has recorded on it since — which is exactly
+what `PL-XLQ5` was dealt, and what `PL-THPB` was offered when a branch's
+`untriaged` copy was reported against the `done` one the base had closed.
+
+**The direction is decided from content alone** — no date, no commit count, no
+ancestry, because this runs against refs a shallow clone holds no history for
+and because `closed:` is a field a branch can be holding a stale answer to. The
+ref's copy is behind when it adds nothing the base's lacks, and when the base
+has closed the item while the ref has not and every field the ref spells
+differently is one the base spells too. A copy whose blob the base's history
+has held is behind for the plainer reason that the base has been there and
+moved on. Everything else is ahead, including two copies that each carry
+something the other lacks: the reader is handed a diff either way, and calling
+that ahead reports it rather than hiding it.
+
+Two suppressions keep the list to something a reader acts on. A copy whose blob
+`HEAD` also holds is one this session can already see, which is the same rule
+that keeps a session's own capture out of the first list, applied to content
+rather than to ids. And the blob comparisons come first because they are both
+cheaper and truer than reading the files: of the 27,009 ref-and-item pairs this
+repository held on 2026-09-21, 24,829 carry the same blob on both sides and
+2,158 more carry one the base's history has held, leaving 15 files to open —
+0.35 s for the whole read, against 13.4 s and 873 false "ahead" readings for a
+version that compared the text of every differing pair.
+
 ### The loss that is not an item: a commit pushed after the merge
 
 A pull request merges the head it was opened against. A commit pushed to the
