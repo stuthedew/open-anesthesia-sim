@@ -45,12 +45,14 @@ from anesthesia_sim.app.control_record import CONTROL_INPUT_UNITS, ControlChange
 from anesthesia_sim.app.control_timeline import ControlAdjustment, group_adjustments
 from anesthesia_sim.app.controller import ResumePoint, SimulationController, SimulationSnapshot
 from anesthesia_sim.app.dashboard_frame import (
+    ACCOUNTING_HEADING,
     ACCOUNTING_UNIT_CAPTION,
     BRANCH_AGENT_LOCK_TEXT,
     COMPARING_AGENT_LOCK_TEXT,
     COMPARING_FORK_LOCK_TEXT,
     CONTROL_MARK_LEGEND_LABEL,
     CONTROL_TIMELINE_CAPTION,
+    CONTROL_TIMELINE_HEADING,
     EMPTY_METRIC_QUALIFIER,
     EMPTY_METRIC_SECONDARY_VALUE,
     INTERPRETATION_DISCLAIMER_TEXT,
@@ -86,6 +88,7 @@ from anesthesia_sim.app.dashboard_frame import (
     RunMarks,
     accounting,
     bookmark_panel,
+    compared_panel_heading,
     compared_run_line,
     delivered_fraction,
     fork_offer,
@@ -1669,6 +1672,37 @@ def test_a_shared_line_for_a_run_the_frame_does_not_hold_is_refused() -> None:
 
     with pytest.raises(IndexError):
         compared_run_line("Now: F_A/F_I = 0.50", single, 1)
+
+
+def test_a_lone_run_s_panel_headings_are_left_unnamed() -> None:
+    """One run has nothing to be told apart from, so the sidebar gains no standing text."""
+
+    assert compared_panel_heading(ACCOUNTING_HEADING, None) == "Agent accounting validation"
+    assert compared_panel_heading(CONTROL_TIMELINE_HEADING, None) == "Control changes"
+
+
+def test_a_compared_run_s_panel_heading_closes_with_the_run_s_own_name() -> None:
+    """The kind of record leads and the run trails, which is the legend's order not the line's.
+
+    A panel is found by the kind of record it holds - four stack in the
+    sidebar once a branch is drawn, two of each kind - so the kind leads and
+    the run tells two panels of one kind apart, exactly as the compartment
+    leads a compared legend entry (`PL-C3GS`).
+    """
+
+    assert (
+        compared_panel_heading(ACCOUNTING_HEADING, run_label(1))
+        == "Agent accounting validation — Run 2"
+    )
+    assert (
+        compared_panel_heading(CONTROL_TIMELINE_HEADING, run_label(0)) == "Control changes — Run 1"
+    )
+
+
+def test_a_panel_heading_is_named_without_knowing_which_panel_it_is() -> None:
+    """Any heading, so the next view to earn an area takes the same attribution."""
+
+    assert compared_panel_heading("Bookmarked states", run_label(0)) == "Bookmarked states — Run 1"
 
 
 def test_the_chart_says_so_when_no_compartment_is_drawn() -> None:

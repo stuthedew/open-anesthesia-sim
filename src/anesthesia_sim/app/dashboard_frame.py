@@ -511,6 +511,21 @@ COMPARED_TRACE_LEGEND_CAPTION: Final = "Drawn traces:"
 #: and a differentiator at the end of a wrapped sentence is one the reader has
 #: to go looking for.
 COMPARED_RUN_LINE_TEMPLATE: Final = "{run} — {line}"
+#: One run's panel heading in a column the runs share: the panel's own words,
+#: then the run's. The run trails here where it leads in
+#: `COMPARED_RUN_LINE_TEMPLATE`, and the two are not in tension - this is the
+#: legend's case rather than the shared-line one. The sidebar stacks whole
+#: panels, each found by the kind of record it holds, so the kind leads exactly
+#: as the compartment does in `COMPARED_TRACE_LEGEND_TEMPLATE` and the run
+#: tells two panels of one kind apart. The differentiator-first argument that
+#: puts the run in front of a shared line turns on a wrapped sentence whose end
+#: a reader has to go looking for; a heading is one short bold line, where both
+#: ends are read at once.
+#:
+#: An em dash rather than the colon `COMPARTMENT_SUBSTANCE_TEMPLATE` uses:
+#: "Agent accounting validation: Run 2" reads as the validation's *result*,
+#: which is the word the line directly below it carries (`ACCOUNTING_VALID_TEXT`).
+COMPARED_PANEL_HEADING_TEMPLATE: Final = "{heading} — {run}"
 #: The fork's legend words. Vertical like a control mark and solid where that
 #: is dashed, which is the pair of channels that separates them; the words say
 #: both so the mark is identifiable without reference to the plot.
@@ -1886,6 +1901,51 @@ def compared_run_line(line: str, frame: ChartFrame, run_index: int) -> str:
         return line
 
     return COMPARED_RUN_LINE_TEMPLATE.format(run=run.label, line=line)
+
+
+def compared_panel_heading(heading: str, run: str | None) -> str:
+    """One run's panel heading in a column the runs share, named while more than one is drawn.
+
+    The sidebar holds two panels per run - the agent-accounting validation
+    and the control-change record - in a column the runs share, so a branch
+    stacks four: accounting, control changes, accounting, control changes,
+    with nothing on any of them saying whose. Both carry a claim about one
+    run: the accounting panel a mass-balance status and litres of equivalent
+    pure agent gas, the control-change panel a list of settings under the
+    words "What was changed during this run". Read as the other run's, the
+    second says the trunk received an intervention it never got, which is the
+    comparison a branch exists to teach inverted rather than merely blurred
+    (`PL-C3GS`).
+
+    The name goes in the heading rather than on each line beneath it, which
+    is what separates this from `compared_run_line`: those columns hold one
+    bare line per run and have no heading to carry it, while a panel has a
+    heading whose whole job is to say what the panel holds. Prefixing five
+    lines with the same run name would say it five times and read as part of
+    each value.
+
+    Kept general over the heading, and given no knowledge of which panel it
+    is naming, because every main view will owe an area a heading of its own
+    (`.claude/rules/ui-areas.md`) - and because a heading that travels with
+    its own panel survives a reader rearranging the column, where one group
+    heading above both panels would not.
+
+    Args:
+        heading: The panel's own heading words.
+        run: The run's name, from `run_label`, or `None` while one run is
+            drawn - which is the rule `SimulationView._rename_runs` already
+            applies to the run panels and both legends, so a single-run
+            display gains no standing text.
+
+    Returns:
+        The heading unchanged while one run is drawn; the heading and then
+        the run's name while more than one is.
+    """
+
+    if run is None:
+        return heading
+
+    return COMPARED_PANEL_HEADING_TEMPLATE.format(heading=heading, run=run)
 
 
 def compartment_cap_notice(frame: ChartFrame) -> str | None:
