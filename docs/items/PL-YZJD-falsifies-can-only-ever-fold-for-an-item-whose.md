@@ -1,7 +1,11 @@
 ---
 id: PL-YZJD
 title: falsifies: can only ever fold for an item whose declaration reached the base before the working session started, so an untriaged item triaged and worked in one session structurally cannot use it - which is most of why it stands at 0 of 1,324
-status: untriaged
+priority: P2
+effort: S
+status: needs-decision
+classes: defect, docs
+feature: verify-false-reject
 touches: .claude/skills/docket/modes/close-out.md, subprojects/docket/src/docket/verify.py
 added: 2026-09-21
 ---
@@ -50,6 +54,21 @@ the item's state *before this branch's first commit* rather than from the base,
 which would let a triage-then-work session declare it honestly at the moment it
 still could. The second is the larger change and is a decision rather than a
 fix.
+
+**Decision needed.** Which of the two endings in **Done when.** above: state the
+precondition in the close-out mode, or change the check to read the declaration
+from the item's state before this branch's first commit.
+
+**Recommended: state the precondition**, in the same sentence that prescribes
+writing `falsifies:` at triage, so a session meets the limit at the moment it
+would otherwise try. It costs nothing, removes the trap immediately, and leaves
+intact the property that makes the field worth anything - that a reviewer wrote
+it first. Moving the read to the branch point is the larger change and weakens
+exactly that property: a session could then triage its own item and declare
+what its own work falsifies, which is the self-certification reading the base
+was chosen to prevent. Take it only if a count shows the triage-then-work path
+is where `falsifies:` would actually earn its keep, and no such count has been
+run - which at 0 of 1,324 is not evidence either way.
 
 **Not a claim that the check is wrong.** Reading the base is what makes the
 field worth anything - "the whole worth of the field is that a reviewer wrote it

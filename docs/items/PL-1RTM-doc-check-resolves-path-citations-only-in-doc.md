@@ -3,15 +3,26 @@ id: PL-1RTM
 title: doc_check resolves path citations only in DOC_GLOBS, so the queue - most of this project's prose - has its citations unchecked
 priority: P2
 effort: M
-status: ready
+status: blocked
 classes: defect, infra
-feature: dev-tooling
+feature: doc-consistency-checks
 touches: tools/doc_check.py, tests/unit/test_doc_check.py, docs/ARCHITECTURE.md
+blocked-by: PL-H0CF
 added: 2026-09-15
 verify: uv run pytest tests/unit/test_doc_check.py && grep -q 'def test_a_path_citation_in_an_item_brief_is_resolved' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check resolves path citations only in DOC_GLOBS, so the queue - most of this project's prose - has its citations unchecked
+
+**Blocked by `PL-H0CF`** (doc_check resolves an absolute-path citation against
+the container filesystem), added 2026-09-21 at triage. `PL-H0CF` measured the
+queue and found 22 open and closed briefs carrying 14 distinct absolute tokens
+that `_is_path_citation` already accepts. Handing the item files to
+`check_citations` admits all 22 at once: the repo-anchored spellings
+(`/docs/worker.md`, `/subprojects/docket/uv.lock`) as false errors on files
+that exist, and the container paths (`/root/.ccr/README.md`) as verdicts that
+differ between root and the CI runner on one commit. So the absolute-token
+reading has to be settled first, or this item's first run is 22 wrong answers.
 
 **Where.** `tools/doc_check.py:2323`, inside `check_citations`, is the only
 call site of `_is_path_citation` - and `check_citations` is handed

@@ -1,9 +1,15 @@
 ---
 id: PL-Z891
 title: doc_check's DECLINED_HEADING_RE matches only '### Declined to Gate', so a disposition the roadmap records under '### Sequenced past vX.Y.Z ...' or '### Deferred to vX.Y.Z ...' is not read and check_gate_dispositions reports its open debt items as owed
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect, infra
 feature: gate-list-integrity
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-21
+payoff: A gate disposition recorded under any heading the roadmap actually writes is read, so check_gate_dispositions stops reporting answered items as owed and the gate block stays worth reading.
+verify: grep -q 'def test_a_sequenced_past_heading_is_read_as_a_disposition' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's DECLINED_HEADING_RE matches only '### Declined to Gate', so a disposition the roadmap records under '### Sequenced past vX.Y.Z ...' or '### Deferred to vX.Y.Z ...' is not read and check_gate_dispositions reports its open debt items as owed
@@ -29,6 +35,17 @@ first time a gate records a deferral under a heading that does not use the
 words "Declined to Gate" — and the failure is a false red, naming items that do
 have a written disposition, which is the safe direction but still a wrong
 answer from the apparatus.
+
+**Why it matters.** `check_gate_dispositions` exists so that an open debt item
+carrying a written disposition is not reported as owed. Where the heading does
+not use the words "Declined to Gate" the disposition counts for nothing, and
+the check names items the roadmap has already answered - a false red from the
+apparatus, which is the direction that trains a session to skim the gate block
+where a real one is printed. The v0.5.0 section is the measured instance: 40
+ids across two subsections read as absent, `PL-TH35` and `PL-WZVZ` among them
+still open. It is latent only because the current gate happens to carry no
+disposition subsection of any form, so the next gate that records one under a
+heading of its own makes it live with nothing warning that it has.
 
 **Done when** `_declined_ids` reads every disposition subsection the roadmap
 actually writes, or `ROADMAP.md` § "The debt gate" § "Recording it" fixes one

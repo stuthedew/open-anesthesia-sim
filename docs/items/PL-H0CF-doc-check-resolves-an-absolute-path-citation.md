@@ -1,9 +1,15 @@
 ---
 id: PL-H0CF
 title: doc_check resolves an absolute-path citation against the container filesystem, so one tree gives root and CI different verdicts on the same line
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: doc-consistency-checks
 touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-21
+payoff: A path citation's verdict depends on the repository alone, so root and the CI runner agree on the same commit - which is what PL-1RTM needs before it hands the queue's 22 absolute tokens to check_citations.
+verify: grep -q 'def test_an_absolute_citation_is_repository_anchored' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check resolves an absolute-path citation against the container filesystem, so one tree gives root and CI different verdicts on the same line
