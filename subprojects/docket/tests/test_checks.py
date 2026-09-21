@@ -2033,6 +2033,40 @@ def test_no_duplicate_key_error_on_a_clean_item() -> None:
     assert not any("appear more than once" in e for e in _errors(_item()))
 
 
+def test_a_block_list_field_is_refused() -> None:
+    """`PL-FX0K`: the entries are read by nothing, so the field arrives empty."""
+    errors = _errors(_item(block_list_fields=("classes", "touches")))
+
+    assert _has(errors, "YAML block list")
+    assert _has(errors, "classes, touches")
+
+
+def test_the_block_list_error_names_the_band_a_silent_empty_classes_would_buy() -> None:
+    """The reason this is an error rather than an advisory.
+
+    An empty `classes` is what lets a `safety`-classed item sit in the bottom
+    band with nothing reporting it, so the message has to say which repair
+    closes it rather than only which field is wrong.
+    """
+    errors = _errors(_item(block_list_fields=("classes",)))
+
+    assert _has(errors, "comma-separated")
+
+
+def test_a_block_list_reaches_the_checker_from_a_real_file() -> None:
+    """End to end: the parser records it and `analyze` names it."""
+    item = parse_item(
+        "---\nid: PL-K7QX\ntitle: t\nstatus: ready\npriority: P2\neffort: S\n"
+        "touches:\n  - a.py\n---\n\n" + BRIEF
+    )
+
+    assert _has(_errors(item), "YAML block list")
+
+
+def test_no_block_list_error_on_a_clean_item() -> None:
+    assert not _has(_errors(_item()), "YAML block list")
+
+
 def test_a_class_outside_the_declared_vocabulary_is_an_error() -> None:
     """`PL-MVC2`: `classes` fails open, so an unknown label matches no rule."""
     errors = _errors(_item(classes=("safey",)))

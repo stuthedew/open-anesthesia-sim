@@ -1455,6 +1455,45 @@ payoff: a learner who pauses mid-induction stops seeing numbers that look live
 **Done when.** The observable condition that closes it.
 ```
 
+### What the front matter is, exactly
+
+Deliberately not YAML. A real YAML parser is a dependency this package will not
+take, and the subset actually wanted — scalars and comma-separated lists — is a
+few lines of parsing that cannot surprise anyone. Four rules, and they are the
+whole format:
+
+- **A field is `key: value` at column zero**, and the value runs to the end of
+  the line.
+- **A list is one comma-separated line.** `classes: safety, ux`. There is no
+  second spelling: a list written as an indented YAML block (`- entry` lines
+  under an empty field) is *refused by name* at `docket check` rather than
+  read, because two spellings of one field is a second thing every reader of
+  an item has to know, and the one that parsed to empty put a `safety`-classed
+  item in the bottom band with nothing reporting it (`PL-FX0K`).
+- **An indented line continues the value above it**, folded on with a single
+  space, exactly as YAML folds a plain scalar. Twelve `reason:` fields here are
+  hand-wrapped that way. Indentation is what makes a continuation: a line at
+  column zero that is not `key: value` belongs to no field and is passed over.
+- **A value wrapped in matching quotes parses to the unquoted string.**
+  Quoting is the correct instinct everywhere else, so `title: "Untested: every
+  test reads the controller"` means what it looks like it means. The pair has
+  to close at the last character; a value that merely *opens* with a quote —
+  `payoff: 'are the generators dealt with' is answered by ...` — is one nobody
+  quoted, and is taken verbatim.
+
+All four are one decision. `_front_matter_pairs` used to keep only the lines
+matching `key: value` and skip the rest, and that single skip produced three
+separately-briefed defects — a truncated multi-line value that the next field
+write then deleted outright (`PL-5B39`), a block-list `touches:` that reached
+no lane (`PL-FX0K`), and quote characters landing inside 56 titles and 3
+`verify:` commands, where a shell reads the quoted form as one word and exits
+127 having run nothing (`PL-V6CR`, `PL-MZH2`). `PL-9HD1` is the cluster.
+
+Where a field cannot be read, it is **reported rather than guessed at** —
+`unknown_fields`, `duplicate_fields` and `block_list_fields` on the parsed
+item, all three named by `docket check`. Guessing is what turns a validation
+failure into a silently wrong queue position.
+
 `**Problem.**`, `**Why it matters.**` and `**Done when.**` are required once
 an item leaves `untriaged`; the others are conventions. A heading is matched
 by the words it opens with and may continue past them — `**Why it matters, and

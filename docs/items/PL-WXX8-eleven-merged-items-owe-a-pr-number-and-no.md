@@ -9,6 +9,7 @@ feature: cut-backfills-pr-numbers
 touches: subprojects/docket/src/docket/release.py, .claude/skills/docket/SKILL.md, subprojects/docket/tests
 added: 2026-09-16
 closed: 2026-09-21
+pr: 817
 verify: uv run pytest subprojects/docket/tests/test_cli.py::test_a_cut_backfill_writes_the_number_onto_the_item_as_well -q
 ---
 

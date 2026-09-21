@@ -9,6 +9,7 @@ feature: recurrence-signal
 touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md, docs/WORKING_NOTES.md
 added: 2026-09-21
 closed: 2026-09-21
+pr: 818
 payoff: a reader asked to confirm a generator promotion can act on the answer, because the cluster is only named while the item still has a queue position to move
 verify: uv run pytest subprojects/docket/tests/test_plan.py subprojects/docket/tests/test_cli.py subprojects/docket/tests/test_checks.py -q && grep -q 'def test_an_item_in_flight_is_not_offered_for_promotion' subprojects/docket/tests/test_plan.py
 ---

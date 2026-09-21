@@ -780,10 +780,11 @@ def _record_recurrence(
     is the only acceptable outcome here, because the capture has already been
     written and must not be undone over a second item's formatting.
     """
-    if matched.duplicate_fields or matched.unknown_fields:
+    unsafe = matched.duplicate_fields + matched.unknown_fields + matched.block_list_fields
+    if unsafe:
         print(
             f"    Not recorded on {matched.identifier}: its file spells "
-            f"{', '.join(matched.duplicate_fields + matched.unknown_fields)} in a way a "
+            f"{', '.join(unsafe)} in a way a "
             "rewrite would silently change. `docket check` names the repair."
         )
         return items
@@ -1073,10 +1074,11 @@ def cmd_set(args: argparse.Namespace) -> int:
     if item is None:
         print(f"no item matching '{args.item}'")
         return 1
-    if item.duplicate_fields or item.unknown_fields:
+    unsafe = item.duplicate_fields + item.unknown_fields + item.block_list_fields
+    if unsafe:
         print(
             f"{item.identifier}: its file spells "
-            f"{', '.join(item.duplicate_fields + item.unknown_fields)} in a way a "
+            f"{', '.join(unsafe)} in a way a "
             "rewrite would silently change, so nothing was written; `docket check` "
             "names the repair"
         )

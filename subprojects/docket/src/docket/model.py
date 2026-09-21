@@ -32,6 +32,17 @@ from pathlib import PurePosixPath
 FRONT_MATTER_RE = re.compile(r"\A---\n(.*?)\n---\n?(.*)\Z", re.DOTALL)
 FIELD_RE = re.compile(r"^([a-z][a-z0-9-]*):[ \t]*(.*)$")
 
+# An indented line under a field: YAML's continuation of the value above it.
+# Indentation is required rather than assumed, so a line at column zero that is
+# not a `key: value` line stays what it has always been - a line belonging to no
+# field, passed over. All 67 continuation lines in this store are indented
+# (measured 2026-09-21).
+CONTINUATION_RE = re.compile(r"^[ \t]+\S")
+
+# A continuation spelling a YAML block-sequence entry, `  - value`. The space
+# after the dash is what makes it one; `-value` is an ordinary word.
+BLOCK_ENTRY_RE = re.compile(r"^[ \t]+-([ \t]|$)")
+
 PRIORITIES = ("P0", "P1", "P2", "P3")
 EFFORTS = ("S", "M", "L")
 
@@ -117,27 +128,109 @@ LANE_UNPLACED = "unplaced"
 SELECTABLE_LANES = (LANE_PRODUCT, LANE_WORKFLOW)
 
 
-def _front_matter_pairs(text: str) -> tuple[list[tuple[str, str]], str] | None:
-    """Every `key: value` line of the front matter, in file order, with the body.
+def _unquote(value: str) -> str:
+    """A value written as a quoted YAML scalar, with its quotes removed.
+
+    Quoting is the correct instinct everywhere else, so a session writing a
+    title with a colon in it quotes the way YAML requires - and this format,
+    which takes the rest of the line verbatim, kept the quote characters as the
+    first and last characters of the title. 56 titles and 3 `verify:` commands
+    in this store carry a pair (measured 2026-09-21). A quoted `verify:` is
+    worse than untidy: it is handed to a shell, which reads the whole command
+    as one quoted word and exits 127 having run nothing, which is `PL-MZH2`
+    exactly - repaired by hand on one item then, and three more have arrived
+    since (`PL-V6CR`).
+
+    The pair has to be a *complete* scalar - closing at the last character and
+    nowhere earlier - or the value is taken verbatim as it always was. That is
+    not fussiness. `PL-XF5V`'s `payoff:` opens with a quoted phrase, `'are the
+    generators dealt with' is answered by ...`, and a rule that stripped the
+    ends of anything merely beginning and ending with a quote would rewrite it
+    into a string nobody wrote.
+
+    Two escapes are read, and no more. `''` inside a single-quoted scalar is
+    YAML's spelling of one quote, and two titles here use it; inside a
+    double-quoted scalar, a backslash before a quote or before another
+    backslash escapes it. Every other backslash stays a backslash, because
+    turning a backslash-n into a newline is inventing a character the file does
+    not hold, and nothing in this store asks for it.
+    """
+    quote = value[:1]
+    if quote not in ("'", '"'):
+        return value
+    out: list[str] = []
+    index = 1
+    while index < len(value):
+        char = value[index]
+        if char == quote:
+            if quote == "'" and value[index + 1 : index + 2] == "'":
+                out.append("'")
+                index += 2
+                continue
+            return "".join(out) if index == len(value) - 1 else value
+        if quote == '"' and char == "\\" and value[index + 1 : index + 2] in ('"', "\\"):
+            out.append(value[index + 1])
+            index += 2
+            continue
+        out.append(char)
+        index += 1
+    return value
+
+
+def _front_matter_pairs(text: str) -> tuple[list[tuple[str, str]], tuple[str, ...], str] | None:
+    """Every field of the front matter, in file order, with the body.
 
     Pairs rather than a dict, because a dict is exactly where a repeated key
     stops being visible. `parse_front_matter` collapses them for callers that
     want the fields; `repeated_front_matter_keys` reads the same list to find
     the ones a collapse would have hidden. `None` when there is no front
-    matter at all, which the two callers report differently.
+    matter at all, which the callers report differently.
+
+    **A line that is not a `key: value` line is not passed over.** It continues
+    the value above it. Skipping it was one decision and it produced three
+    separately-briefed defects (`PL-9HD1`): a multi-line value truncated at its
+    first line by every reader and then deleted outright by the next write
+    (`PL-5B39`), a `touches:` written as a YAML block list parsing to empty so
+    the item reached no lane (`PL-FX0K`), and a value quoted the way YAML
+    requires keeping its quote characters (`PL-V6CR`).
+
+    Continuations are folded into the value with a single space, which is what
+    YAML does to a plain scalar and what the 12 hand-wrapped `reason:` fields
+    in this store mean. Folding is a faithful read rather than a guess, and it
+    is what makes `render_item` safe on them: the value comes back on one line,
+    where it used to come back 9 lines shorter.
+
+    The middle element names the *list* fields written as a block list, which
+    are refused instead. A list has one spelling here - one comma-separated
+    line - and teaching the reader a second is a second thing every reader of
+    an item has to know (`PL-FX0K`). Refused only for `LIST_FIELDS`, because
+    that is where the ambiguity is: an indented `- ...` under a prose field is
+    prose, and folds like any other continuation.
     """
     match = FRONT_MATTER_RE.match(text)
     if match is None:
         return None
 
-    pairs: list[tuple[str, str]] = []
+    collected: list[tuple[str, str, list[str]]] = []
     for line in match.group(1).splitlines():
         if not line.strip() or line.lstrip().startswith("#"):
             continue
         field_match = FIELD_RE.match(line)
         if field_match is not None:
-            pairs.append((field_match.group(1), field_match.group(2).strip()))
-    return pairs, match.group(2)
+            collected.append((field_match.group(1), field_match.group(2).strip(), []))
+        elif collected and CONTINUATION_RE.match(line):
+            collected[-1][2].append(line)
+
+    pairs: list[tuple[str, str]] = []
+    block_lists: list[str] = []
+    for key, head, continuations in collected:
+        if key in LIST_FIELDS and any(BLOCK_ENTRY_RE.match(line) for line in continuations):
+            block_lists.append(key)
+            pairs.append((key, ""))
+            continue
+        parts = [part for part in (head, *(line.strip() for line in continuations)) if part]
+        pairs.append((key, _unquote(" ".join(parts))))
+    return pairs, tuple(sorted(set(block_lists))), match.group(2)
 
 
 def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
@@ -151,12 +244,13 @@ def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
     `parse_item` pairs it with `repeated_front_matter_keys` so the loss is
     reported instead of taken. Do not "fix" this by keeping the first instead:
     either choice picks a winner, and picking one silently is the defect
-    (`PL-BR4G`).
+    (`PL-BR4G`). A list field written as a block list arrives empty for the
+    same reason and is reported the same way, by `block_list_keys`.
     """
     parsed = _front_matter_pairs(text)
     if parsed is None:
         return {}, text
-    pairs, body = parsed
+    pairs, _block_lists, body = parsed
     return dict(pairs), body
 
 
@@ -173,7 +267,7 @@ def repeated_front_matter_keys(text: str) -> tuple[str, ...]:
     parsed = _front_matter_pairs(text)
     if parsed is None:
         return ()
-    pairs, _ = parsed
+    pairs, _block_lists, _body = parsed
     seen: set[str] = set()
     repeated: set[str] = set()
     for key, _value in pairs:
@@ -181,6 +275,31 @@ def repeated_front_matter_keys(text: str) -> tuple[str, ...]:
             repeated.add(key)
         seen.add(key)
     return tuple(sorted(repeated))
+
+
+def block_list_keys(text: str) -> tuple[str, ...]:
+    """List fields the file writes as a YAML block list, sorted.
+
+    The dangerous third of the cluster `PL-9HD1` groups, and the only one of
+    the three that reaches the safety pin. `touches:` written this way parsed
+    to an empty tuple and the item was offered to no lane; `classes:` written
+    this way is worse, because `checks.py` seats a `safety`- or
+    `science`-classed item at `P0` or `P1` only when it can see the class - so
+    work a clinician could be misled by would sit in the bottom band with
+    `bin/docket check` reporting zero errors. That is `PL-MVC2` arriving
+    through the parser instead of through a misspelling, and `known_classes`
+    cannot catch it, because there is no class there to reject (`PL-FX0K`).
+
+    Recorded rather than read. Nothing here learns the block form: `checks.py`
+    names the field and the repair, which is what an ambiguous field is owed -
+    guessing at one is how a validation failure becomes a silently wrong queue
+    position.
+    """
+    parsed = _front_matter_pairs(text)
+    if parsed is None:
+        return ()
+    _pairs, block_lists, _body = parsed
+    return block_lists
 
 
 def _split_list(value: str) -> tuple[str, ...]:
@@ -345,6 +464,12 @@ class Item:
     path: str = ""
     unknown_fields: tuple[str, ...] = field(default_factory=tuple)
     duplicate_fields: tuple[str, ...] = field(default_factory=tuple)
+    #: List fields the file spells as a YAML block list, which this format does
+    #: not read. Reported alongside the value like the two above, rather than
+    #: guessed at: the entries a block list holds are the one thing a reader
+    #: here must not invent, because an empty `classes:` is what defeats the
+    #: safety pin (`PL-FX0K`).
+    block_list_fields: tuple[str, ...] = field(default_factory=tuple)
 
     @property
     def is_open(self) -> bool:
@@ -951,6 +1076,7 @@ def parse_item(text: str, path: str = "") -> Item:
         path=path,
         unknown_fields=tuple(sorted(set(fields) - known)),
         duplicate_fields=repeated_front_matter_keys(text),
+        block_list_fields=block_list_keys(text),
     )
 
 
@@ -1034,6 +1160,12 @@ def render_item(item: Item) -> str:
     renderings, and both a removal in the diff. Where the caller is adding a
     field rather than rewriting the item, `with_front_matter_field` is the
     writer that has no such effect.
+
+    The one-line form now keeps every character of the value, which is the
+    whole of what `PL-5B39` was: `_front_matter_pairs` folded nothing, so this
+    emitted the first line of a multi-line value and deleted the rest of the
+    file's copy on the way past - 9 of `PL-9HDH`'s 10 `reason:` lines, at exit
+    0. A reflow is a diff to read; that was a deletion nothing reported.
     """
     values = _front_matter_values(item)
     lines = [

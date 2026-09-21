@@ -3,10 +3,11 @@ id: PL-5B39
 title: parse_item silently truncates a multi-line front-matter value at its first line, so every reader sees a partial value and rewrite_item deletes the rest from the file
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect, infra
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_model.py
 added: 2026-09-20
+closed: 2026-09-21
 payoff: an item that acquires a multi-line field keeps it, instead of every reader seeing a partial value and the next field write deleting the rest
 verify: grep -q 'def test_a_multi_line_front_matter_value_survives_a_round_trip' subprojects/docket/tests/test_model.py
 ---
@@ -59,3 +60,20 @@ off - `Item.duplicate_fields` is the existing instance of exactly that.
 `parse_item`/`render_item` round trip without losing characters, or the loss
 is reported rather than taken, and a test in `subprojects/docket/tests/` pins
 it against a value of the shape `PL-9HDH` carries.
+
+**Closed 2026-09-21 under `PL-9HD1`**, with `PL-FX0K` and `PL-V6CR`, because the
+three were one regex. `bin/docket show PL-9HD1` carries the whole reasoning.
+
+**Route taken: fold on read, emit on one line** - the second of the three this
+brief named. The first (re-emit the wrapping) means carrying wrap positions
+through a frozen dataclass nothing else reads; the third (refuse at `docket
+check`) fixes nothing already written and leaves `bin/docket set` still
+rewriting the file. Folding is what YAML does to a plain scalar, so it is a
+faithful read rather than a guess, and it is what makes `render_item` safe on
+the 12 files: the value comes back on one line with every character, where it
+used to come back 9 lines shorter.
+
+Measured after: `PL-9HDH`'s `reason:` parses to 731 characters where it parsed
+to 63, and 11 of the 12 files round-trip byte-stable. The twelfth, `PL-CPLD`,
+differs by a blank line `render_item` adds after the front-matter fence, which
+the original parser did too - a canonicalisation, not a loss.
