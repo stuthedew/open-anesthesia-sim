@@ -2672,6 +2672,25 @@ every item whose command names it — `subprojects/docket/tests/test_cli.py` 415
 across 14 items, `tests/unit/test_doc_check.py` 292 s across 12, and
 `subprojects/docket/tests/test_verify.py` 152 s across 4. `PL-FZ58` carries it.
 
+**Two of those three were a setting, not a fixture** (`PL-YRYR`, 2026-09-21).
+Both files under `subprojects/docket/tests/` build a scratch repository per
+test, and git signed every commit in them because the machine's `~/.gitconfig`
+said to - 72.7 ms a commit against 5.1 ms unsigned, which nothing in either
+file named or could have named. `conftest.py` there now points
+`GIT_CONFIG_GLOBAL` and `GIT_CONFIG_SYSTEM` at `/dev/null`, and the two
+commands cost 25.1 s -> 8.6 s and 30.9 s -> 10.0 s measured on 4 cores the same
+way. Across the 28 open items whose commands name them, and the 3 naming the
+whole tree, that is about 573 s off a whole-store replay - roughly 39% of the
+1458 s above, none of it from changing a test. `tests/unit/test_doc_check.py`,
+the third file, builds no repositories and is untouched by it; `PL-XJWG`
+carries the same two lines for the repository's own `tests/` tree.
+
+**It changes nothing about `make check`.** That runs pytest under `-n
+$(cpu*2) --dist worksteal`, where this cost was subprocess waiting already
+overlapped with other workers' CPU work: 77.83 s against 78.78 s, which is
+noise. The replay is where it lands, because the replay is serial by
+construction - one command per open item, one after another.
+
 ### Delegation is derived, never granted
 
 Work that a cheaper model can finish should go to one; work whose correctness

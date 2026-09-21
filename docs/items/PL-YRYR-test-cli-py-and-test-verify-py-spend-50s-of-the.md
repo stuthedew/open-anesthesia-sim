@@ -6,7 +6,7 @@ effort: M
 status: ready
 classes: perf, test
 feature: verify-replay-cost
-touches: subprojects/docket/tests/conftest.py, subprojects/docket/tests/test_git_isolation.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_verify.py
+touches: subprojects/docket/tests/conftest.py, subprojects/docket/tests/test_git_isolation.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-19
 verify: uv run pytest subprojects/docket/tests/test_git_isolation.py -q
 root-cause-of: PL-W6NY, PL-KCQ7, PL-8T83, PL-FZ58
@@ -131,6 +131,46 @@ the brief predicted for the copytree rework - and it takes no test with it:
 `_repo` and every helper in `test_cli.py` still builds its own repository,
 `git init` per test, so the constraint under **What must not be traded for it**
 is not weakened but untouched. There is no shared fixture to leak.
+
+## Where the saving lands, and where it does not
+
+**`make check` does not get faster, and the brief already said why.** Its
+pytest line runs `-n $(cpu*2) --dist worksteal`, and the brief's own reading -
+77.8 s wall against 272 s serial, within 11% of the CPU floor - is what that
+means: the docket tree's cost was subprocess *waiting*, which xdist was already
+overlapping with other workers' CPU work. Measured both ways on this branch,
+full suite, 4 cores:
+
+| | without `conftest.py` | with |
+| --- | --- | --- |
+| `make check`'s pytest line | 77.83 s | 78.78 s |
+
+That is noise, and it is the honest answer to "did the suite get faster". It
+did not. Stating it here because the serial numbers above would otherwise be
+read as a claim about the gate, and a later session measuring `make check` to
+check this item would find nothing and conclude the work did not land.
+
+**Where it lands is the verify replay, which is serial by construction.**
+`check --verify` runs one command per open item, one after another, and 44 open
+items' `verify:` commands run a file in this tree. Per-command cost, measured
+with the conftest moved aside and restored:
+
+| `verify:` names | open items | before | after | saved each |
+| --- | --- | --- | --- | --- |
+| `test_verify.py` | 10 | 30.91 s | 10.03 s | 20.88 s |
+| `test_cli.py` | 15 | 25.13 s | 8.62 s | 16.51 s |
+| the whole tree | 3 | 60.44 s | 21.51 s | 38.93 s |
+| `test_checks.py`, `test_vcs.py`, `test_release.py`, `test_roadmap.py` | 22 | 0.4-0.5 s | 0.4-0.5 s | none |
+
+**573 s - 9.6 minutes - off the whole-store replay**, which runs on every push
+to the default branch. `PL-FZ58` measured that replay at 1,458 s serial, so
+this is roughly 39% of it, against the 6 s the sketched rework was predicted to
+buy on a run that turns out not to be the one that pays.
+
+The last row is the useful negative: only these two files build real
+repositories per test. The other four are already sub-second and this changes
+nothing for them, which is also why the brief was right to name these two and
+no others.
 
 **Why the correctness half outranks the stopwatch.** A signing key behind a
 passphrase or held on hardware does not make this suite slow - it makes `git
