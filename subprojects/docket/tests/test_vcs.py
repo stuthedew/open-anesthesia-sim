@@ -62,6 +62,19 @@ def _when(day: str) -> str:
     return day if "T" in day else f"{day}T00:00:00+00:00"
 
 
+#: The day a `took` entry carries where the test does not name one: later than
+#: any commit these tests date. That is the shape a merge leaves behind - the
+#: branch's own commits are what it took, so every one of them precedes it - and
+#: it is what keeps a test about the other two facts from having to date this
+#: one (`PL-8JQQ`).
+TAKEN_ON = "2099-01-01"
+
+
+def _taken_entry(entry: str | tuple[str, str]) -> tuple[str, str]:
+    """A `took` entry as an id and the day the base took it."""
+    return entry if isinstance(entry, tuple) else (entry, TAKEN_ON)
+
+
 def _blob(entry: str | tuple[str, str]) -> str:
     """The blob an `adds` entry names, whether or not it also names a path."""
     return entry[0] if isinstance(entry, tuple) else entry
@@ -92,7 +105,7 @@ def _runner(
     duplicated: tuple[str, ...] = (),
     closed: tuple[str, ...] = (),
     base_items: dict[str, str] | None = None,
-    took: tuple[str, ...] = (),
+    took: tuple[str | tuple[str, str], ...] = (),
     same_as_base: tuple[str | tuple[str, str], ...] = (),
     statuses: dict[str, str] | None = None,
     created: tuple[str | tuple[str, str], ...] = (),
@@ -152,8 +165,11 @@ def _runner(
     item (`PL-61MD`).
 
     `took` names the ids the base's own commit subjects lead with since the
-    fork point, and `same_as_base` the ids whose file the ref holds exactly as
-    the base does. Together they are what says a ref's claim on an id is spent
+    fork point - each as the id alone, or as `(identifier, day)` for a test
+    that turns on *when* the base took it, which is what tells a branch whose
+    pull request finished it from one that has gone on committing under the
+    same id (`PL-8JQQ`). `same_as_base` names the ids whose file the ref holds
+    exactly as the base does. Together they are what says a ref's claim on an id is spent
     without the item having closed, which is what a triage pass merging leaves
     behind (`PL-LKFP`). A `same_as_base` entry spelled `(ref, id)` rather than
     `id` says only *that* ref's copy is the base's, which is what tells a spent
@@ -268,10 +284,15 @@ def _runner(
                 for entry in (adds or {}).get(args[-2], [])
             )
         if args[0] == "log":
-            if "--format=%s" in args:
-                # The base's own subjects since a ref's fork point, which is
-                # what says the base has already taken work under an id.
-                return "\n".join(f"{identifier}: taken on the base" for identifier in took)
+            if "--format=%cI%x1f%s" in args:
+                # The base's own subjects since a ref's fork point, dated,
+                # which is what says the base has already taken work under an
+                # id - and when it last did, which is what a ref that went on
+                # committing under the id is judged against (`PL-8JQQ`).
+                return "\n".join(
+                    f"{_when(day)}\x1f{identifier}: taken on the base"
+                    for identifier, day in (_taken_entry(entry) for entry in took)
+                )
             if "--left-right" in args:
                 # The rewrite fingerprint: the same author date and subject on
                 # both sides of the divergence, which is what a rewrite leaves
@@ -353,7 +374,7 @@ def _report(
     tips: dict[str, dict[str, tuple[str, str]]] | None = None,
     closed: tuple[str, ...] = (),
     base_items: dict[str, str] | None = None,
-    took: tuple[str, ...] = (),
+    took: tuple[str | tuple[str, str], ...] = (),
     same_as_base: tuple[str | tuple[str, str], ...] = (),
     statuses: dict[str, str] | None = None,
     created: tuple[str | tuple[str, str], ...] = (),
@@ -1232,6 +1253,72 @@ def test_a_claim_survives_where_the_branch_holds_its_own_copy_of_the_item() -> N
     )
 
     assert [branch.item_id for branch in report.branches] == ["PL-2M4X"]
+
+
+def test_a_branch_pushed_to_after_its_pull_request_squash_merged_is_still_in_flight() -> None:
+    """A squash makes both halves of the guard true, and they stay true forever.
+
+    The branch's pull request carries the item file to the base, so the two
+    copies agree byte for byte; its subject leads with the id, so the base has
+    taken that id since the fork. Neither fact says anything about what the
+    branch did *next* - and what it does next is the implementation, `src/` and
+    `tests/` under the same id with the item file untouched, because the design
+    round that merged is what wrote the item file.
+
+    Measured 2026-09-20 and it cost exactly what the read exists to prevent:
+    `PL-3K9B`'s whole implementation, 8 files and 637 insertions pushed with
+    the id leading its subject, appeared in no reading of the report, while a
+    second session spent three replies recommending that the item be started
+    fresh. The same command had reported it before `#801` merged, and the only
+    thing that changed between the two readings is that the branch's earlier
+    commits landed (`PL-8JQQ`).
+
+    Every long-lived branch here ends up in this shape, because the harness
+    names a branch once and a session works several items on it.
+    """
+    live = "origin/claude/lucid-dijkstra-i1qy6x"
+    report = _report(
+        [live],
+        commits={
+            live: [
+                (
+                    "2026-09-20T16:00:00+00:00",
+                    "PL-3K9B: the whole implementation",
+                    "c2",
+                    "src/b.py",
+                ),
+                ("2026-09-20T15:00:00+00:00", "PL-3K9B: the design round", "c1", "src/a.py"),
+            ]
+        },
+        same_as_base=("PL-3K9B",),
+        took=(("PL-3K9B", "2026-09-20T15:30:00+00:00"),),
+    )
+
+    assert [(branch.item_id, branch.name) for branch in report.branches] == [("PL-3K9B", live)]
+
+
+def test_a_claim_older_than_the_base_s_take_is_still_spent() -> None:
+    """The bound is a window rather than a switch, and this is its other edge.
+
+    A branch whose every commit under the id precedes the merge that took it
+    has nothing left to give, which is the reading `PL-LKFP` installed and the
+    one a stale ref depends on to leave the line. Without this the date test
+    above would read as "a ref the base took work from is live", which is every
+    merged branch this checkout still holds.
+    """
+    merged_away = "origin/claude/pl-2m4x-triage-the-captures"
+    report = _report(
+        [merged_away],
+        commits={
+            merged_away: [
+                ("2026-09-16T09:00:00+00:00", "PL-2M4X: triage the captures", "c1", "src/some.py")
+            ]
+        },
+        same_as_base=("PL-2M4X",),
+        took=(("PL-2M4X", "2026-09-16T10:00:00+00:00"),),
+    )
+
+    assert report.branches == ()
 
 
 def test_a_spent_claim_on_a_bystander_branch_does_not_drop_a_live_one() -> None:
