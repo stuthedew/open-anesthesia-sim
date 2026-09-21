@@ -20,12 +20,17 @@ from docket.model import (
     generator_defect_faults,
     impairs_generators_soundly,
     is_generator,
+    live_recurrences,
     parse_front_matter,
     parse_item,
+    recurrence_count,
+    recurrence_faults,
+    recurrences_of,
     render_item,
     repeated_front_matter_keys,
     root_cause_faults,
     with_front_matter_field,
+    with_front_matter_value,
 )
 
 BRIEF = "**Problem.** It is wrong.\n**Why it matters.** It has a cost.\n**Done when.** Fixed.\n"
@@ -253,6 +258,83 @@ def test_an_append_to_a_field_spelled_twice_is_refused_rather_than_guessed_at() 
 
     with pytest.raises(ValueError, match="spells `recurrences` 2 times"):
         with_front_matter_field(doubled, "recurrences", "2026-09-21 PL-C3C3", append=True)
+
+
+def test_a_withdrawn_entry_is_kept_on_the_record_and_out_of_the_count() -> None:
+    """Both halves of what a withdrawal is: the entry stays, the arithmetic drops it.
+
+    A deletion would give the second half alone, and give it by making the file
+    read as though `docket new` had never matched anything - the one event in
+    this mechanism's life with no record (`PL-34BG`).
+    """
+    item = _item(
+        recurrences=("2026-09-20 PL-B2B2 withdrawn 2026-09-21 PL-C3C3", "2026-09-20 PL-D4D4")
+    )
+
+    assert recurrence_count(item) == 1
+    assert [found.identifier for found in live_recurrences(item)] == ["PL-D4D4"]
+    withdrawn = next(found for found in recurrences_of(item) if found.withdrawn)
+    assert withdrawn.identifier == "PL-B2B2"
+    assert withdrawn.withdrawn == date(2026, 9, 21)
+    assert withdrawn.withdrawn_by == "PL-C3C3"
+
+
+def test_a_tail_nothing_can_read_as_a_withdrawal_still_counts_and_is_reported() -> None:
+    """The direction a mis-typed withdrawal has to fail in.
+
+    Reading a half-written tail as a withdrawal would cancel a filing nobody
+    withdrew, and do it silently. So the entry stays live - the count is then
+    too high, which is the loud direction - and `docket check` says why.
+    """
+    item = _item(recurrences=("2026-09-20 PL-B2B2 withdrawn yesterday PL-C3C3",))
+
+    assert recurrence_count(item) == 1
+    faults = recurrence_faults(item, {"PL-B2B2", "PL-C3C3", "PL-K7QX"})
+    assert any("does not read as `withdrawn DATE PL-XXXX`" in fault for fault in faults)
+
+
+def test_a_withdrawal_citing_no_item_in_the_store_is_reported() -> None:
+    """The pointer is the whole audit trail, so a dangling one is a fault.
+
+    Held exactly as the capture id is held. A withdrawal whose brief cannot be
+    opened is a correction nobody can check, which is the state the field was
+    in before the command existed.
+    """
+    item = _item(recurrences=("2026-09-20 PL-B2B2 withdrawn 2026-09-21 PL-Z9Z9",))
+
+    faults = recurrence_faults(item, {"PL-B2B2", "PL-K7QX"})
+
+    assert any("is withdrawn by PL-Z9Z9" in fault for fault in faults)
+
+
+def test_a_replaced_value_changes_one_line_and_leaves_the_rest_alone() -> None:
+    """A withdrawal edits a line that is already there, so it cannot be an insert.
+
+    The byte-faithfulness `PL-7K8Y` bought for the append is what this keeps
+    for the edit: a re-render normalises key order and reflows the multi-line
+    `reason:` on the way past, and every one of those lines is a removal in a
+    diff about something else.
+    """
+    once = with_front_matter_field(SCRAMBLED, "recurrences", "2026-09-19 PL-A1A1")
+
+    withdrawn = with_front_matter_value(
+        once, "recurrences", "2026-09-19 PL-A1A1 withdrawn 2026-09-21 PL-B2B2"
+    )
+
+    assert "recurrences: 2026-09-19 PL-A1A1 withdrawn 2026-09-21 PL-B2B2\n" in withdrawn
+    assert withdrawn.count("recurrences:") == 1
+    assert set(SCRAMBLED.splitlines()) <= set(withdrawn.splitlines()), "a line was removed"
+
+
+def test_replacing_a_value_the_file_does_not_carry_is_refused() -> None:
+    """No line to change is a caller bug, not a field to invent.
+
+    `cmd_withdraw` establishes the entry is recorded before it writes, so
+    reaching this means the store and the command disagree about what is in
+    the file - which is worth an exception rather than a silent insert.
+    """
+    with pytest.raises(ValueError, match="records no `recurrences`"):
+        with_front_matter_value(SCRAMBLED, "recurrences", "2026-09-19 PL-A1A1")
 
 
 def test_a_file_with_no_front_matter_is_refused_rather_than_given_some() -> None:

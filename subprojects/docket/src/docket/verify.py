@@ -39,7 +39,7 @@ from pathlib import Path
 
 from . import vcs
 from .config import Config
-from .model import CLOSED_STATUSES, Item, parse_front_matter
+from .model import CLOSED_STATUSES, WITHDRAWN_MARKER, Item, parse_front_matter
 from .store import ID_PATTERN
 
 # Suppressions matched as text. `noqa` is deliberately absent: a project whose
@@ -1114,12 +1114,22 @@ def _store_at(root: Path, base: str, items_dir: str) -> tuple[str, ...] | None:
 #: ends so that `pr: 495 and also something` is not read as one.
 PR_LINE_RE = re.compile(r"^pr:\s*\d+\s*$")
 
-#: A `recurrences:` line as `cmd_new` writes it: `DATE PL-XXXX` entries,
+#: One `recurrences:` entry as the store spells it: the date a capture was
+#: filed and its id, optionally followed by the withdrawal `bin/docket withdraw`
+#: writes. The withdrawn form is admitted here so that a *later* append past a
+#: withdrawn entry is still recognisable as an append - without it, one
+#: withdrawal would make every subsequent capture on that item read as
+#: tampering (`PL-34BG`).
+RECURRENCE_ENTRY = (
+    rf"\d{{4}}-\d{{2}}-\d{{2}} \S+(?: {re.escape(WITHDRAWN_MARKER)} \d{{4}}-\d{{2}}-\d{{2}} \S+)?"
+)
+
+#: A `recurrences:` line as `cmd_new` writes it: those entries,
 #: comma-separated. Anchored at both ends for the reason `PR_LINE_RE` is, and
 #: spelling the whole value rather than a prefix so that a line carrying one
 #: real entry and one invented clause is not read as one.
 RECURRENCE_LINE_RE = re.compile(
-    r"^recurrences:\s*\d{4}-\d{2}-\d{2} \S+(?:,\s*\d{4}-\d{2}-\d{2} \S+)*\s*$"
+    rf"^recurrences:\s*{RECURRENCE_ENTRY}(?:,\s*{RECURRENCE_ENTRY})*\s*$"
 )
 
 
@@ -1203,13 +1213,21 @@ def _recurrences_grew(added: list[str], removed: list[str]) -> bool:
     `recurrences:` values and the new one has to start with the old one, so an
     entry that was already recorded cannot be altered or dropped under cover of
     the append.
+
+    **And what the old line grew by has to be a new entry, not a suffix on the
+    last one.** Withdrawing the final entry appends ` withdrawn DATE PL-XXXX`
+    to it, which starts with the old line exactly as an append does - so
+    without this the one edit that *cancels* evidence would be exempted by the
+    rule written for the edit that adds it. A withdrawal is a deliberate act
+    with something to gain, so it declares the file it touches like any other
+    work (`PL-34BG`).
     """
     if len(added) != 1 or len(removed) != 1:
         return False
     before, after = removed[0].rstrip(), added[0].rstrip()
     if not RECURRENCE_LINE_RE.match(before) or not RECURRENCE_LINE_RE.match(after):
         return False
-    return after.startswith(before) and len(after) > len(before)
+    return after.startswith(before) and after[len(before) :].lstrip().startswith(",")
 
 
 @dataclass(frozen=True)

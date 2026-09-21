@@ -9,6 +9,7 @@ feature: queue-hygiene
 touches: docs/items, ROADMAP.md
 added: 2026-09-20
 closed: 2026-09-20
+pr: 810
 payoff: the newest 30 findings become rankable by bin/docket next, so the project stops computing every priority answer over a queue that excludes them
 verify: grep -qF 'from the 2026-09-20 triage pass over the thirty untriaged' ROADMAP.md
 ---

@@ -14,7 +14,7 @@ import re
 import unicodedata
 from pathlib import Path
 
-from .model import Item, parse_item, render_item, with_front_matter_field
+from .model import Item, parse_item, render_item, with_front_matter_field, with_front_matter_value
 
 ITEM_GLOB = "*.md"
 
@@ -166,6 +166,26 @@ def insert_field(
     target = directory / item.path
     text = target.read_text(encoding="utf-8")
     target.write_text(with_front_matter_field(text, name, value, append=append), encoding="utf-8")
+    return target
+
+
+def replace_field(directory: Path, item: Item, name: str, value: str) -> Path:
+    """Rewrite one front-matter field's value, leaving every other byte as it was.
+
+    `insert_field`'s counterpart, and the writer for a field that changes
+    rather than grows: `bin/docket withdraw` annotating a `recurrences:` entry
+    it is disowning. Byte-faithfulness matters here for the reason it matters
+    there - a re-render normalises key order and reflows multi-line values, and
+    both are removals in a diff about something else (`PL-LBR6`, `PL-7K8Y`).
+
+    Reads the file rather than rendering `item`, so the value written is the
+    only thing about the block that comes from the caller.
+    """
+    if not item.path:
+        raise ValueError(f"{item.identifier or 'the item'} was not read from a file")
+    target = directory / item.path
+    text = target.read_text(encoding="utf-8")
+    target.write_text(with_front_matter_value(text, name, value), encoding="utf-8")
     return target
 
 

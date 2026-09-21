@@ -39,11 +39,14 @@ from .model import (
     PRIORITIES,
     SELECTABLE_LANES,
     STATUSES,
+    WITHDRAWN_MARKER,
     Item,
     generator_defect_faults,
     generators_explaining,
     impairs_generators_soundly,
     is_generator,
+    is_under,
+    live_recurrences,
     recurrence_count,
     recurrences_of,
 )
@@ -75,7 +78,16 @@ from .release import (
     unrecorded_milestones,
 )
 from .roadmap import MilestoneStates, Wave, milestone_states, wave
-from .store import find_item, insert_field, new_id, read_items, rewrite_item, write_item
+from .store import (
+    ID_PREFIX,
+    find_item,
+    insert_field,
+    new_id,
+    read_items,
+    replace_field,
+    rewrite_item,
+    write_item,
+)
 from .trend import BY_DAY, BY_WEEK
 from .trend import analyze as analyze_trend
 from .vcs import (
@@ -788,6 +800,137 @@ def _record_recurrence(
     return [updated if item is matched else item for item in items]
 
 
+def cmd_withdraw(args: argparse.Namespace) -> int:
+    """Disown a `recurrences:` entry whose match was wrong, without erasing it.
+
+    `bin/docket new` writes that field and, until this, nothing read the other
+    direction: a match made on a title similarity a reader disagreed with was
+    permanent. The field is deliberately kept out of `docket set` - "the
+    field's whole worth is that each entry was written by the tool at the
+    moment it matched a filing", so a hand-written one is a claim about a
+    filing that may never have happened (`PL-X5JR`). That argument is about
+    *writing* an entry, and it does not carry across to withdrawing one: the
+    hazard of an unwritable field is a fabricated filing, and the hazard of an
+    unwithdrawable one is a false filing nobody can correct, which is the state
+    `PL-34BG` found the store in.
+
+    **It annotates rather than deletes**, which is what makes the correction as
+    auditable as the write it undoes. A deleted entry leaves a file that reads
+    as though the match was never made - a quieter record than the one that was
+    there before, and the one edit in this mechanism's life that would leave no
+    trace. The entry stays where it was, saying it was matched here on that
+    date and disowned on this one.
+
+    **`--because` names an item, not a sentence.** Why a match was wrong is a
+    judgment - exactly the half this mechanism refuses to make - and a judgment
+    belongs in a brief, where it can run to the length it needs and be read
+    beside the two items it is about. The field then carries the pointer, which
+    is the same shape as the write: an id a reader can open.
+
+    Refuses on a doubled `recurrences:` key, where no single line is the one to
+    change, and on nothing else about the file's formatting. An unrelated
+    unknown key is no reason to leave a false entry standing: the write here
+    replaces one line and cannot disturb another.
+    """
+    directory, items, _ = _load(args)
+    matched = find_item(items, args.item)
+    if matched is None:
+        print(f"No item matches {args.item}, so nothing was withdrawn.")
+        return 1
+    brief = find_item(items, args.because)
+    if brief is None:
+        print(
+            f"No item matches {args.because}, so nothing was withdrawn. `--because` names the "
+            "item whose brief says why the match was wrong, and that pointer is the whole of "
+            "what makes a withdrawal auditable."
+        )
+        return 1
+
+    capture = _as_identifier(args.capture)
+    entries = recurrences_of(matched)
+    targets = [found for found in entries if found.identifier.upper() == capture]
+    if not targets:
+        recorded = ", ".join(found.identifier for found in entries if found.identifier)
+        names = f"; it records {recorded}" if recorded else " - it records no filings at all"
+        print(f"{matched.identifier} records no filing from {capture}{names}.")
+        return 1
+
+    standing = [found for found in targets if found.withdrawn is None]
+    if not standing:
+        already = targets[0]
+        when = already.withdrawn.isoformat() if already.withdrawn else "an unreadable date"
+        print(
+            f"{capture} was already withdrawn from {matched.identifier} on {when}; "
+            f"why, in {already.withdrawn_by}. Nothing changed."
+        )
+        return 0
+
+    today = args.today or date.today()
+    suffix = f" {WITHDRAWN_MARKER} {today.isoformat()} {brief.identifier}"
+    value = ", ".join(
+        found.raw + suffix
+        if found.withdrawn is None and found.identifier.upper() == capture
+        else found.raw
+        for found in entries
+    )
+    try:
+        replace_field(directory, matched, "recurrences", value)
+    except ValueError as refusal:
+        print(
+            f"Nothing was withdrawn from {matched.identifier}: {refusal}. "
+            "`docket check` names the repair."
+        )
+        return 1
+
+    updated = with_fields(matched, recurrences=_comma_separated([value]))
+    for found in standing:
+        when = found.when.isoformat() if found.when else "an unreadable date"
+        print(
+            f"Withdrawn from {matched.identifier}: the {when} filing from {found.identifier}, "
+            f"on {brief.identifier}'s reading. The entry stays, marked withdrawn."
+        )
+    count = recurrence_count(updated)
+    print(f"    {matched.identifier} now counts {count} {'filing' if count == 1 else 'filings'}.")
+    _say_undeclared_withdrawal(args, matched, brief)
+    return 0
+
+
+def _as_identifier(reference: str) -> str:
+    """A typed reference as the store spells an id: upper case, prefix supplied.
+
+    The same tolerance `find_item` extends, applied to a reference that names a
+    *recorded entry* rather than an item - a withdrawn capture may be any id the
+    field carries, so the comparison cannot go through the store.
+    """
+    wanted = reference.strip().upper()
+    return wanted if wanted.startswith(ID_PREFIX) else ID_PREFIX + wanted
+
+
+def _say_undeclared_withdrawal(args: argparse.Namespace, matched: Item, brief: Item) -> None:
+    """Warn where the withdrawing item has not declared the file it just changed.
+
+    A withdrawal is not exempt from the close-out audit, deliberately: unlike
+    the append `docket new` makes, it is a deliberate act with something to
+    gain, so it declares the file it touches like any other work. That is a
+    `REJECT` at the end of a branch for a path the session could have declared
+    in one command, and this is the only moment anything knows to say so.
+
+    Silent where the path is already declared, which is the state it is asking
+    for - an advisory that fires on every run is one nobody reads (`PL-ZBJ0`).
+    """
+    if not matched.path:
+        return
+    _, prefix = _tracked(args)
+    declared = f"{prefix}/{matched.path}" if prefix else matched.path
+    if is_under(declared, brief.touches):
+        return
+    print(
+        f"    {brief.identifier} does not declare {declared}, so `docket verify` reads this "
+        f"edit as outside its commission - a withdrawal is not exempt the way the write is. "
+        f"Add the path to {brief.identifier}'s `touches` before the close-out."
+    )
+
+
 def _comma_separated(values: list[str] | None) -> tuple[str, ...]:
     """A list flag as the item file spells it: comma-separated, in order, no blanks.
 
@@ -1472,7 +1615,7 @@ def _say_recurring(items: list[Item]) -> None:
         return
     print("Filed more than once, and never promoted for it:")
     for item in candidates:
-        filed = ", ".join(sorted({f.identifier for f in recurrences_of(item) if f.identifier}))
+        filed = ", ".join(sorted({f.identifier for f in live_recurrences(item) if f.identifier}))
         print(f"  {item.identifier} ({recurrence_count(item)} filings: {filed})")
     print(
         "  Not ranked above - the count comes from a title match, which may not buy a "
@@ -2568,6 +2711,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
     new.add_argument("--feature", default=None, help="group this with related work")
     new.set_defaults(func=cmd_new)
+
+    # Beside `new`, because it is the only undo `new` has. No abbreviations, for
+    # the reason `set` refuses them: every argument here is an id, and a
+    # mistyped one writes a correction onto the wrong item.
+    withdraw = add(
+        "withdraw",
+        "disown a recorded filing whose match was wrong",
+        allow_abbrev=False,
+        epilog="The entry stays in the file, marked withdrawn, and stops counting. "
+        "`--because` names the item whose brief says why the match was wrong; a withdrawal "
+        "is auditable only through that brief.",
+    )
+    withdraw.add_argument("item", help="the item carrying the entry")
+    withdraw.add_argument("capture", help="the id of the filing to disown")
+    withdraw.add_argument(
+        "--because",
+        required=True,
+        metavar="PL-XXXX",
+        help="the item whose brief says why this match was wrong",
+    )
+    withdraw.set_defaults(func=cmd_withdraw)
 
     # No abbreviations here, where argparse's default would turn `--pr 123` into
     # `--priority 123`: a field name on this command is exact, or it is unknown.

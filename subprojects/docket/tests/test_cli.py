@@ -12,6 +12,7 @@ import pytest
 from docket import cli
 from docket.checks import STATUS_REQUIREMENTS, brief_gaps
 from docket.cli import build_parser, main, merge_shared
+from docket.model import parse_item, recurrence_count
 from docket.vcs import FlightReport, lost, records_on_base
 from docket.verify import LANDED_GUARD
 
@@ -251,6 +252,181 @@ def test_a_second_filing_extends_the_line_the_first_one_wrote(tmp_path: Path) ->
     entries = re.search(r"^recurrences: (.+)$", matched.read_text(), re.M).group(1)
     assert matched.read_text().count("recurrences: ") == 1
     assert len(entries.split(", ")) == 2
+
+
+MATCHED = """---
+id: PL-D2D2
+title: alpha beta gamma delta epsilon zeta
+priority: P3
+effort: S
+status: ready
+classes: defect
+touches: z.py
+added: 2026-08-01
+recurrences: 2026-08-20 PL-F6F6, 2026-08-21 PL-G7G7
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+#: The item whose brief says why a match was wrong. It declares the store
+#: directory, which is where `_store` writes every item, so the path advisory
+#: stays silent - the condition it fires on is tested separately.
+WITHDRAWING = """---
+id: PL-H8H8
+title: the brief that says why that match was wrong
+priority: P3
+effort: S
+status: ready
+classes: infra
+touches: items
+added: 2026-08-22
+---
+
+**Problem.** x
+**Why it matters.** y
+**Done when.** z
+"""
+
+
+def test_a_recurrence_entry_can_be_withdrawn(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The correction the field had no path for at all, and what shape it takes.
+
+    Two filings were matched onto `PL-SHTR` on shared vocabulary alone, both
+    measured afterwards at below the similarity floor `#794` shipped - so the
+    matches were false, the field is deliberately outside `docket set`, and
+    nothing could unwrite one. A false entry inflates an item toward the
+    generator tier, which ranks above every band but `P0` (`PL-34BG`).
+
+    **The entry is annotated, not deleted**, which is the half a deletion
+    cannot do: the file goes on saying the match was made and records that it
+    was disowned, on this date, citing the brief that says why. A deleted entry
+    would leave a file reading as though `docket new` had never matched
+    anything, which is a quieter record than the one that was there before.
+    """
+    store = _store(tmp_path, MATCHED, WITHDRAWING)
+    matched = next(p for p in store.glob("*.md") if "PL-D2D2" in p.read_text())
+    before = matched.read_text()
+
+    exit_code = _run(
+        "withdraw", "PL-D2D2", "PL-F6F6", "--because", "PL-H8H8", "--items", str(store)
+    )
+
+    assert exit_code == 0
+    after = matched.read_text()
+    assert (
+        "recurrences: 2026-08-20 PL-F6F6 withdrawn 2026-08-24 PL-H8H8, 2026-08-21 PL-G7G7\n"
+        in after
+    )
+    # Every other byte where it was: the withdrawal's diff is one line, for the
+    # reason the append's is (`PL-7K8Y`).
+    assert (
+        after.replace("2026-08-20 PL-F6F6 withdrawn 2026-08-24 PL-H8H8", "2026-08-20 PL-F6F6")
+        == before
+    )
+    printed = capsys.readouterr().out
+    assert "the 2026-08-20 filing from PL-F6F6" in printed
+    assert "PL-D2D2 now counts 1 filing" in printed
+
+
+def test_a_withdrawn_entry_stops_counting_toward_the_generator_tier(tmp_path: Path) -> None:
+    """The whole point of the correction: the count the store reports goes down.
+
+    The entry stays in the file, so this is the property that has to be read
+    from the count rather than from the text - `docket show` prints the
+    withdrawn match under its own heading, outside the filings.
+    """
+    store = _store(tmp_path, MATCHED, WITHDRAWING)
+
+    assert (
+        _run("withdraw", "PL-D2D2", "PL-F6F6", "--because", "PL-H8H8", "--items", str(store)) == 0
+    )
+    assert (
+        _run("withdraw", "PL-D2D2", "PL-G7G7", "--because", "PL-H8H8", "--items", str(store)) == 0
+    )
+
+    item = next(p for p in store.glob("*.md") if "PL-D2D2" in p.read_text())
+    read = parse_item(item.read_text(encoding="utf-8"), item.name)
+    assert recurrence_count(read) == 0
+    assert "PL-F6F6" in item.read_text() and "PL-G7G7" in item.read_text()
+
+
+def test_withdrawing_an_entry_twice_changes_nothing_and_says_so(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A re-run is safe, because the state it asks for is the state that holds.
+
+    Exit 0 rather than a refusal: a command that has to be run exactly once is
+    one a session cannot put in a `verify:` line or re-run after a conflict.
+    What it must not do is stack a second withdrawal onto the entry, which
+    would make the record read as two events.
+    """
+    store = _store(tmp_path, MATCHED, WITHDRAWING)
+    assert (
+        _run("withdraw", "PL-D2D2", "PL-F6F6", "--because", "PL-H8H8", "--items", str(store)) == 0
+    )
+    matched = next(p for p in store.glob("*.md") if "PL-D2D2" in p.read_text())
+    once = matched.read_text()
+    capsys.readouterr()
+
+    exit_code = _run(
+        "withdraw", "PL-D2D2", "PL-F6F6", "--because", "PL-H8H8", "--items", str(store)
+    )
+
+    assert exit_code == 0
+    assert matched.read_text() == once
+    assert "was already withdrawn from PL-D2D2 on 2026-08-24" in capsys.readouterr().out
+
+
+def test_withdrawing_a_filing_the_item_never_recorded_is_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A mistyped id writes nothing, and the refusal names what is recorded.
+
+    The alternative is the failure this command exists to correct, one step
+    further on: a session that meant to disown one match silently annotating
+    nothing, and reading the exit code as proof the entry is gone.
+    """
+    store = _store(tmp_path, MATCHED, WITHDRAWING)
+    matched = next(p for p in store.glob("*.md") if "PL-D2D2" in p.read_text())
+    before = matched.read_text()
+
+    exit_code = _run(
+        "withdraw", "PL-D2D2", "PL-J9J9", "--because", "PL-H8H8", "--items", str(store)
+    )
+
+    assert exit_code == 1
+    assert matched.read_text() == before
+    assert "records no filing from PL-J9J9; it records PL-F6F6, PL-G7G7" in capsys.readouterr().out
+
+
+def test_a_withdrawal_warns_where_the_brief_has_not_declared_the_file_it_changes(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The `REJECT` this saves, at the only moment anything knows to speak.
+
+    A withdrawal is not exempt from the close-out audit the way `docket new`'s
+    append is - it is a deliberate act with something to gain, so the item
+    doing it declares the file like any other work. Unsaid, that is a rejected
+    close-out at the end of a branch for a path one command would have fixed.
+
+    Silent in the test above, where the brief declares the store: an advisory
+    that fires every run is one nobody reads (`PL-ZBJ0`).
+    """
+    undeclared = WITHDRAWING.replace("touches: items\n", "touches: a.py\n")
+    store = _store(tmp_path, MATCHED, undeclared)
+
+    assert (
+        _run("withdraw", "PL-D2D2", "PL-F6F6", "--because", "PL-H8H8", "--items", str(store)) == 0
+    )
+
+    printed = capsys.readouterr().out
+    assert "PL-H8H8 does not declare items/item-0.md" in printed
+    assert "outside its commission" in printed
 
 
 def test_new_infers_candidate_paths_from_the_working_tree(

@@ -704,6 +704,13 @@ def covers(one: str, other: str) -> bool:
     return first == second or first in second.parents or second in first.parents
 
 
+#: The word that turns a recorded filing into a withdrawn one, written between
+#: the entry and the withdrawal that disowns it: `2026-09-20 PL-S8JT withdrawn
+#: 2026-09-21 PL-34BG`. Spelt out rather than punctuated so that the file says
+#: what it means to somebody reading the markdown with no tool in front of them.
+WITHDRAWN_MARKER = "withdrawn"
+
+
 @dataclass(frozen=True)
 class Recurrence:
     """One filing `bin/docket new` matched to this item, as recorded.
@@ -717,11 +724,23 @@ class Recurrence:
 
     `raw` survives a reading that failed, so a malformed entry can be reported
     in the words it was written in rather than dropped.
+
+    `withdrawn` and `withdrawn_by` carry a match a session later judged wrong:
+    the date it was disowned, and the item whose brief says why. The entry is
+    annotated rather than deleted, so a withdrawal is as visible as the write
+    it undoes - a deleted entry leaves a file that reads as though the match
+    was never made, which is a quieter record than the one that was there
+    before (`PL-34BG`). Both are `None`/`""` on a live entry, and a tail that
+    does not read exactly as `withdrawn DATE PL-XXXX` leaves them that way for
+    `recurrence_faults` to report: a botched hand edit then counts as a live
+    filing and raises an error, rather than silently cancelling one.
     """
 
     when: date | None
     identifier: str
     raw: str
+    withdrawn: date | None = None
+    withdrawn_by: str = ""
 
 
 def recurrences_of(item: Item) -> tuple[Recurrence, ...]:
@@ -738,8 +757,38 @@ def recurrences_of(item: Item) -> tuple[Recurrence, ...]:
         parts = entry.split()
         when = _parse_date(parts[0]) if parts else None
         identifier = parts[1] if len(parts) > 1 else ""
-        found.append(Recurrence(when=when, identifier=identifier, raw=entry))
+        disowned, by = _withdrawal(parts[2:])
+        found.append(
+            Recurrence(
+                when=when, identifier=identifier, raw=entry, withdrawn=disowned, withdrawn_by=by
+            )
+        )
     return tuple(found)
+
+
+def _withdrawal(tail: list[str]) -> tuple[date | None, str]:
+    """The `withdrawn DATE PL-XXXX` suffix of an entry, or `(None, "")` for anything else.
+
+    Exact, and deliberately unforgiving: a tail this cannot read leaves the
+    entry live rather than half-withdrawn, which is the direction that fails
+    loudly. `recurrence_faults` reports the same tail as an error, so the
+    reading and the complaint agree.
+    """
+    if len(tail) != 3 or tail[0] != WITHDRAWN_MARKER:
+        return None, ""
+    when = _parse_date(tail[1])
+    return (when, tail[2]) if when is not None and tail[2] else (None, "")
+
+
+def live_recurrences(item: Item) -> tuple[Recurrence, ...]:
+    """The filings still standing: every recorded entry but the withdrawn ones.
+
+    What every count, signal and display reads. A withdrawn entry is the record
+    of a match that was made and then disowned, not evidence that the defect
+    fired again, so it has to stay in the file and out of the arithmetic both.
+    `recurrences_of` is the raw field, for a reader that wants those too.
+    """
+    return tuple(found for found in recurrences_of(item) if found.withdrawn is None)
 
 
 def recurrence_count(item: Item) -> int:
@@ -748,9 +797,10 @@ def recurrence_count(item: Item) -> int:
     Distinct, and for the reason `root_cause_faults` counts distinct ids: one
     capture recorded twice names one filing, and a floor a repetition defeats
     is not a floor. An entry naming no id counts for nothing, since it names
-    no filing that can be read.
+    no filing that can be read, and a withdrawn one counts for nothing because
+    the match it records has been disowned.
     """
-    return len({found.identifier for found in recurrences_of(item) if found.identifier})
+    return len({found.identifier for found in live_recurrences(item) if found.identifier})
 
 
 def recurrence_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
@@ -766,6 +816,13 @@ def recurrence_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
     The field is tool-written, so every fault here is a hand edit that went
     wrong, which is why these are exact rules and so errors rather than
     advisories.
+
+    A withdrawal is held to the same exactness, and it is the half where a
+    quiet failure costs most: an entry whose `withdrawn` tail cannot be read
+    still counts as a live filing, so a mis-typed withdrawal leaves the store
+    asserting a match somebody has already disowned. Both halves of the tail
+    are checked - that it reads at all, and that the item it cites for the
+    reasoning exists to be read.
     """
     if not item.recurrences:
         return ()
@@ -778,6 +835,19 @@ def recurrence_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
             "as `DATE PL-XXXX` - the date the capture was filed, then its id"
         )
 
+    unwithdrawable = [
+        f.raw
+        for f in recurrences_of(item)
+        if f.withdrawn is None and len(f.raw.split()) > 2 and f.when is not None and f.identifier
+    ]
+    if unwithdrawable:
+        faults.append(
+            f"records {', '.join(repr(entry) for entry in unwithdrawable)}, whose tail does not "
+            f"read as `{WITHDRAWN_MARKER} DATE PL-XXXX` - the date the match was withdrawn, then "
+            "the item whose brief says why. An entry nothing can read as withdrawn is one that "
+            "still counts"
+        )
+
     named = list(dict.fromkeys(f.identifier for f in recurrences_of(item) if f.identifier))
     if item.identifier and item.identifier in named:
         faults.append("names itself among the captures that recurred onto it")
@@ -785,6 +855,14 @@ def recurrence_faults(item: Item, known: Collection[str]) -> tuple[str, ...]:
     missing = [i for i in named if i != item.identifier and i not in known]
     if missing:
         faults.append(f"names {', '.join(missing)}, which no item in this store carries")
+
+    disowned = list(dict.fromkeys(f.withdrawn_by for f in recurrences_of(item) if f.withdrawn_by))
+    unknown = [i for i in disowned if i not in known]
+    if unknown:
+        faults.append(
+            f"is withdrawn by {', '.join(unknown)}, which no item in this store carries - a "
+            "withdrawal is auditable only through the brief it cites"
+        )
     return tuple(faults)
 
 
@@ -1065,3 +1143,59 @@ def with_front_matter_field(text: str, name: str, value: str, *, append: bool = 
     head = "\n".join(lines[:insert_at])
     at = match.start(1) + (len(head) + 1 if insert_at else 0)
     return text[:at] + f"{name}: {value}\n" + text[at:]
+
+
+def with_front_matter_value(text: str, name: str, value: str) -> str:
+    """Replace one front-matter field's value, leaving every other byte as it was.
+
+    The fourth writer, and the one the other three cannot be: `write_item` and
+    `rewrite_item` re-render the whole block, and `with_front_matter_field`
+    only ever adds - by design, since `sanctioned_queue_edit` reads a removal
+    as tampering and a re-render removes every line it normalises on the way
+    past (`PL-7K8Y`).
+
+    A withdrawal has to edit a line that is already there, so it cannot be an
+    insert; what it can be is an edit whose diff is *one* line, which is what
+    this buys. That diff is deliberately not exempt from the close-out audit -
+    unlike the append `bin/docket new` makes, a withdrawal is a deliberate act
+    with something to gain, so the item doing it declares the file it touches
+    like any other work (`PL-34BG`).
+
+    Raises `ValueError` where the field is absent, where the file spells it
+    more than once so that no single line is the one to replace, or where there
+    is no front matter at all. Each is a caller asking for something this
+    cannot express: `cmd_withdraw` establishes the field is there before it
+    writes, and `docket check` reports a doubled key.
+    """
+    if name not in FIELD_ORDER:
+        raise ValueError(f"`{name}` is not a front-matter field")
+    match = FRONT_MATTER_RE.match(text)
+    if match is None:
+        raise ValueError("the file has no front matter to change a field in")
+    # `split("\n")` for the reason `with_front_matter_field` splits that way:
+    # it is the exact inverse of the join the offsets below assume.
+    lines = match.group(1).split("\n")
+    present = [
+        index
+        for index, line in enumerate(lines)
+        if (field := FIELD_RE.match(line)) and field.group(1) == name
+    ]
+    if not present:
+        raise ValueError(f"the item records no `{name}` to change")
+    if len(present) > 1:
+        raise ValueError(f"the item spells `{name}` {len(present)} times")
+    # Through the continuation lines of the existing value, so a field spread
+    # over several lines is replaced whole rather than left with an orphaned
+    # tail. Collapsing it onto one line is a removal in the diff, and an
+    # honest one: the value really did change.
+    first = last = present[0]
+    while (
+        last + 1 < len(lines)
+        and lines[last + 1].strip()
+        and FIELD_RE.match(lines[last + 1]) is None
+    ):
+        last += 1
+    before = "\n".join(lines[:first])
+    through = "\n".join(lines[: last + 1])
+    start = match.start(1) + (len(before) + 1 if first else 0)
+    return text[:start] + f"{name}: {value}" + text[match.start(1) + len(through) :]

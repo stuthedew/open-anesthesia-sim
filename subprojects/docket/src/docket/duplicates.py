@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .model import CLOSED_STATUSES, Item, covers
+from .model import CLOSED_STATUSES, Item, covers, live_recurrences
 
 #: Tokens carried by so many titles in a work queue that counting them would
 #: measure grammar rather than subject. Deliberately short: a long list starts
@@ -238,7 +238,13 @@ def anchor(candidates: tuple[Candidate, ...]) -> Candidate | None:
     bounded at three items by `LIMIT`, and each entry names the capture it came
     from, so a reader who thinks the anchor is wrong can see exactly which
     filings were attributed to it.
+
+    **Withdrawn entries are not evidence and do not attract more of it.** A
+    reader who disowns a match is saying this item is not where that filing
+    belonged, so counting the disowned entry would send the next capture to the
+    same wrong place - the one way a single bad match could compound into a
+    cluster (`PL-34BG`).
     """
     if not candidates:
         return None
-    return min(candidates, key=lambda found: (-len(found.item.recurrences), -found.score))
+    return min(candidates, key=lambda found: (-len(live_recurrences(found.item)), -found.score))
