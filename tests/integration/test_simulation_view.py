@@ -65,6 +65,7 @@ from anesthesia_sim.app.dashboard_frame import (
     COMPARING_FORK_LOCK_TEXT,
     CONTROL_TIMELINE_HEADING,
     FORK_NOTHING_SELECTED_TEXT,
+    HALT_FORK_LABEL_TEMPLATE,
     INTERPRETATION_DISCLAIMER_TEXT,
     KEEP_CURRENT_CASE_TEMPLATE,
     MARK_STANDING_COMPARED_TEXT,
@@ -375,6 +376,14 @@ def _case_view(
     return _shown_view(application, case.trunk, width_px=width_px, case=case)
 
 
+def _offered_fork_instants(view: SimulationView) -> tuple[float, ...]:
+    """The instants the permanent selector holds, in the order it holds them."""
+
+    selector = view._fork_panel.point_selector
+
+    return tuple(float(selector.itemData(index)) for index in range(selector.count()))
+
+
 def _take_fork(view: SimulationView, instant_s: float) -> None:
     """Choose an offered instant in the branch control and press its button."""
 
@@ -383,6 +392,47 @@ def _take_fork(view: SimulationView, instant_s: float) -> None:
     assert index >= 0, f"the branch control does not offer {instant_s} s"
     panel.point_selector.setCurrentIndex(index)
     panel.take_button.click()
+
+
+# The mark the halt tests stop the trunk on: later than the keyframe
+# `_branched_case` records at 60 s, so the instant a branch opens at is one the
+# permanent selector does not offer and cannot be confused with one it does.
+_HALT_MARK_S = 80.0
+
+# A budget rather than "step until it stops": a test that fails by hanging
+# reports nothing. 80 s from the trunk's 60 s is 200 steps, so this is ample.
+_TRUNK_STEP_BUDGET = 1000
+
+
+def _halted_trunk_case(application: QApplication) -> tuple[BranchedCase, SimulationView]:
+    """A case whose trunk ran onto a mark the learner set and is standing on it.
+
+    The sequence `docs/ARCHITECTURE.md` § "How a learner takes one" describes,
+    in the order a learner does it: the trunk has a recorded run and a keyframe
+    at 60 s, the learner marks a later instant, and the run is stepped until
+    the mark halts it. The frame is drawn afterwards, so the panel under test
+    is the one a learner would be looking at.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    case.trunk.add_time_bookmark(TimeBookmark(_HALT_MARK_S, "the decision point"))
+    case.trunk.start()
+
+    for _ in range(_TRUNK_STEP_BUDGET):
+        if case.trunk.snapshot().bookmark_halt is not None:
+            break
+
+        case.trunk.advance(SIMULATION_STEP_S)
+    else:
+        raise AssertionError(
+            f"the trunk ran {_TRUNK_STEP_BUDGET} steps without halting on the mark at "
+            f"{_HALT_MARK_S} s; it stands at {case.trunk.snapshot().elapsed_s} s"
+        )
+
+    view.present(False)
+
+    return case, view
 
 
 def _select_agent(run: RunView, agent_id: str) -> None:
@@ -3894,6 +3944,201 @@ def test_a_second_fork_is_refused_while_two_runs_are_shown(application: QApplica
     assert len(view.runs) == 2
     assert len(case.branches) == 1
     assert panel.lock_text.text() == COMPARING_FORK_LOCK_TEXT
+
+
+def test_a_branch_is_offered_at_the_mark_the_run_is_standing_on(application: QApplication) -> None:
+    """`PL-TYWQ`, and `ROADMAP.md`'s v0.5.0 Definition of done end to end.
+
+    The one sequence the interface could not complete: mark the decision
+    point, watch the run stop there, branch there. The branch opens at the
+    instant the trunk halted on - not at the nearest keyframe, which is what a
+    learner had to settle for - and it arrives through the same panel a
+    control-event fork is taken from.
+
+    The trunk is left standing on its halt, which is what makes this a
+    comparison rather than an undo.
+    """
+
+    case, view = _halted_trunk_case(application)
+    halt = case.trunk.snapshot().bookmark_halt
+    assert halt is not None
+    halted_s = halt.instant_s
+
+    assert view._fork_panel.halt_button.isHidden() is False
+    assert halted_s not in case.fork_points_s
+
+    view._fork_panel.halt_button.click()
+
+    assert len(view.runs) == 2
+    assert len(case.branches) == 1
+    branch = case.branches[0]
+    assert branch.snapshot().elapsed_s == pytest.approx(halted_s)
+    assert view.runs[1].controller is branch
+    # A mark adds no keyframe, so the list the other control offers is
+    # untouched by all of this.
+    assert case.fork_points_s == (0.0, 60.0)
+    # And the trunk still stands where it stopped.
+    assert case.trunk.snapshot().elapsed_s == pytest.approx(halted_s)
+    assert view._fork_panel.notice.notice() is None
+
+
+def test_the_halt_fork_says_which_instant_it_will_open_the_branch_at(
+    application: QApplication,
+) -> None:
+    """The label carries the halted instant, so a press is readable before it is made.
+
+    A bare "Branch here" beside the permanent one would leave two identical
+    buttons doing different things. The instant is the one the branch opens
+    at rather than the one the learner marked: those differ whenever a mark
+    lies inside a step, and naming the wrong one would be a correct control
+    under a wrong label.
+    """
+
+    case, view = _halted_trunk_case(application)
+    halt = case.trunk.snapshot().bookmark_halt
+    assert halt is not None
+
+    label = view._fork_panel.halt_button.text()
+
+    assert label == HALT_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(halt.instant_s))
+
+    view._fork_panel.halt_button.click()
+
+    assert case.branches[0].snapshot().elapsed_s == pytest.approx(halt.instant_s)
+
+
+def test_a_mark_inside_a_step_branches_where_the_run_stopped_not_where_it_was_marked(
+    application: QApplication,
+) -> None:
+    """The safety-relevant half of the label, end to end (`PL-TYWQ`).
+
+    A mark that does not land on the step grid halts the run at the step's
+    end, so the instant a learner marked and the instant a branch can open at
+    are two different numbers. The branch opens at the second - it is the only
+    one the run holds state for - so the button has to say the second. Saying
+    the first would be a correct control under a label naming a time nothing
+    happens at, which `CLAUDE.md`'s safety-critical standard counts as a
+    failure of the value rather than of its presentation.
+    """
+
+    marked_s = 80.05
+    halted_s = 80.1
+    case = _branched_case()
+    view = _case_view(application, case)
+    case.trunk.add_time_bookmark(TimeBookmark(marked_s, "mid-step"))
+    case.trunk.start()
+    _advance_to(case.trunk, halted_s)
+    view.present(False)
+
+    halt = case.trunk.snapshot().bookmark_halt
+    assert halt is not None
+    assert halt.instant_s == pytest.approx(halted_s)
+    assert halt.instant_s != pytest.approx(marked_s)
+
+    label = view._fork_panel.halt_button.text()
+
+    assert format_elapsed(halted_s) in label
+    assert format_elapsed(marked_s) not in label
+
+    view._fork_panel.halt_button.click()
+
+    assert case.branches[0].snapshot().elapsed_s == pytest.approx(halted_s)
+
+
+def test_the_halt_fork_is_off_the_panel_until_the_trunk_stands_on_a_halt(
+    application: QApplication,
+) -> None:
+    """A halt is a permission, so the control is absent rather than present and inert.
+
+    Absent before the run reaches a mark, there while it stands on one, and
+    gone again on the next step. The permanent selector is unaffected
+    throughout, which is the point of making this a second control: a list
+    that gained and lost a row would change membership under a reader who had
+    looked away, where a control that is either there or not is detectable on
+    sight.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    offered_before = list(_offered_fork_instants(view))
+
+    assert view._fork_panel.halt_button.isHidden() is True
+    assert view._fork_panel.halt_button.isEnabled() is False
+    assert view._fork_panel.halt_button.text() == ""
+
+    case.trunk.add_time_bookmark(TimeBookmark(_HALT_MARK_S))
+    case.trunk.start()
+    _advance_to(case.trunk, _HALT_MARK_S)
+    view.present(False)
+
+    assert case.trunk.snapshot().bookmark_halt is not None
+    assert view._fork_panel.halt_button.isHidden() is False
+    assert view._fork_panel.halt_button.isEnabled() is True
+
+    case.trunk.start()
+    case.trunk.advance(SIMULATION_STEP_S)
+    view.present(False)
+
+    assert case.trunk.snapshot().bookmark_halt is None
+    assert view._fork_panel.halt_button.isHidden() is True
+    assert view._fork_panel.halt_button.isEnabled() is False
+    assert list(_offered_fork_instants(view)) == offered_before
+
+
+def test_the_halt_fork_is_refused_with_the_rest_while_two_runs_are_shown(
+    application: QApplication,
+) -> None:
+    """The cap is on branches, not on the door a branch came through.
+
+    Taken through the transient control, the second fork has to be refused
+    exactly as the permanent one is - the display is capped at two runs and
+    there is no run selector - so the control goes off the panel rather than
+    staying live to apologise on press. The guard behind it holds too, for a
+    press that reaches it anyway.
+    """
+
+    case, view = _halted_trunk_case(application)
+    _take_fork(view, 60.0)
+
+    assert len(view.runs) == 2
+    assert case.trunk.snapshot().bookmark_halt is not None
+    assert view._fork_panel.halt_button.isHidden() is True
+    assert view._fork_panel.halt_button.isEnabled() is False
+    assert view._fork_panel.halt_button.text() == ""
+
+    view._handle_halt_fork()
+
+    assert len(view.runs) == 2
+    assert len(case.branches) == 1
+    assert view._fork_panel.lock_text.text() == COMPARING_FORK_LOCK_TEXT
+
+
+def test_a_halt_fork_the_case_refuses_is_reported_and_adds_no_run(
+    application: QApplication,
+) -> None:
+    """The halt can be cleared by something other than a step, so the press re-asks.
+
+    Unmarking the instant a run is halted on clears the halt, which leaves the
+    case with no fork to take. `fork_at_halt` refuses rather than approximating
+    one, and the reason reaches the notice instead of being swallowed - the
+    panel's own frame is not proof that the fork is still there.
+    """
+
+    case, view = _halted_trunk_case(application)
+    mark = case.trunk.snapshot().bookmarks.time_bookmarks[0]
+    case.trunk.remove_time_bookmark(mark)
+
+    assert case.trunk.snapshot().bookmark_halt is None
+
+    view._fork_panel.halt_button.click()
+
+    assert len(view.runs) == 1
+    assert case.branches == ()
+    notice = view._fork_panel.notice.notice()
+    assert notice is not None
+    # It names what is missing rather than reporting a generic failure, so a
+    # reader who pressed a button that was there a moment ago learns why.
+    assert "not standing on a bookmark crossing" in notice
 
 
 def test_a_branch_the_case_refuses_is_reported_and_adds_no_run(application: QApplication) -> None:

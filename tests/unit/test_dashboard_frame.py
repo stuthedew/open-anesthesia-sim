@@ -27,6 +27,7 @@ from typing import Any
 import pytest
 
 from anesthesia_sim.app.bookmarks import (
+    BookmarkCrossing,
     BookmarkSet,
     BookmarkStandings,
     MacTarget,
@@ -55,6 +56,7 @@ from anesthesia_sim.app.dashboard_frame import (
     CONTROL_TIMELINE_HEADING,
     EMPTY_METRIC_QUALIFIER,
     EMPTY_METRIC_SECONDARY_VALUE,
+    HALT_FORK_LABEL_TEMPLATE,
     INTERPRETATION_DISCLAIMER_TEXT,
     MAC_TARGET_HEADING,
     MARK_STANDING_COMPARED_TEXT,
@@ -2298,7 +2300,7 @@ def test_fork_offer_labels_every_keyframe_the_trunk_holds() -> None:
     that has recorded nothing with an empty selector beside a live button.
     """
 
-    offer = fork_offer((0.0, 60.0, 185.0), comparing=False)
+    offer = fork_offer((0.0, 60.0, 185.0), comparing=False, halt=None)
 
     assert offer.points_s == (0.0, 60.0, 185.0)
     assert offer.labels == tuple(format_elapsed(instant_s) for instant_s in offer.points_s)
@@ -2314,11 +2316,107 @@ def test_fork_offer_is_refused_while_a_comparison_is_shown_and_says_the_way_out(
     end rather than a mode, so the reason names Reset.
     """
 
-    offer = fork_offer((0.0, 60.0), comparing=True)
+    offer = fork_offer((0.0, 60.0), comparing=True, halt=None)
 
     assert offer.locked is True
     assert offer.lock_reason == COMPARING_FORK_LOCK_TEXT
     assert "Reset" in COMPARING_FORK_LOCK_TEXT
+
+
+def test_fork_offer_offers_no_halt_fork_while_the_trunk_stands_on_no_halt() -> None:
+    """The second control is absent rather than present and inert (`PL-TYWQ`).
+
+    The keyframe list is unaffected: a bookmark records no keyframe, so the
+    two doors never trade rows with each other.
+    """
+
+    offer = fork_offer((0.0, 60.0), comparing=False, halt=None)
+
+    assert offer.halt_offered is False
+    assert offer.halt_label == ""
+    assert offer.points_s == (0.0, 60.0)
+
+
+def test_fork_offer_offers_the_halt_fork_while_the_trunk_stands_on_a_crossing() -> None:
+    """A halt is a permission, so the control appears with it and says what it will do.
+
+    A separate control rather than a row in the selector, because the two
+    offers have different lifetimes: `points_s` only grows, and this one is
+    gone on the trunk's next step. It is labelled rather than bare, so the
+    instant a press will branch at is readable without inferring it from the
+    run clock.
+    """
+
+    halt = BookmarkCrossing(45.0, (TimeBookmark(45.0, "the decision point"),))
+
+    offer = fork_offer((0.0, 60.0), comparing=False, halt=halt)
+
+    assert offer.halt_offered is True
+    assert offer.halt_label == HALT_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(45.0))
+    assert format_elapsed(45.0) in offer.halt_label
+    # The permanent list is left exactly as it was: the halt adds no row to it
+    # and removes none, which is what keeps its membership from changing under
+    # a reader who looked away.
+    assert offer.points_s == (0.0, 60.0)
+    assert offer.labels == tuple(format_elapsed(instant_s) for instant_s in (0.0, 60.0))
+
+
+def test_the_halt_fork_is_labelled_with_the_instant_it_forks_at_not_the_marked_one() -> None:
+    """A mark inside a step halts the run at the step's end, and those differ.
+
+    `SimulationController.resumed_at_halt` opens the branch at the instant the
+    run actually stopped on, so that is the instant the label has to carry: a
+    button reading the marked instant would name a time the branch does not
+    open at, which `CLAUDE.md`'s safety-critical standard counts as a failure
+    of the value rather than of its presentation. The wording keeps the two
+    apart as well as the number does - it says the run *stopped on* a mark and
+    never says where the mark is.
+    """
+
+    marked_s = 45.3
+    halted_s = 45.4
+    halt = BookmarkCrossing(halted_s, (TimeBookmark(marked_s),))
+
+    label = fork_offer((0.0,), comparing=False, halt=halt).halt_label
+
+    assert format_elapsed(halted_s) in label
+    assert format_elapsed(marked_s) not in label
+
+
+def test_a_marked_height_offers_the_halt_fork_in_the_same_words() -> None:
+    """One crossing type reaches the control, and a step can cross both kinds at once.
+
+    Which marks were crossed is the bookmark panel's row to state; saying it
+    here too would put two accounts of one stop on screen, and "your mark" is
+    true of a marked height exactly as it is of a marked instant.
+    """
+
+    target = MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.8))
+    height = BookmarkCrossing(72.0, (), (target,))
+    both = BookmarkCrossing(72.0, (TimeBookmark(72.0),), (target,))
+    expected = HALT_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(72.0))
+
+    assert fork_offer((0.0,), comparing=False, halt=height).halt_label == expected
+    assert fork_offer((0.0,), comparing=False, halt=both).halt_label == expected
+
+
+def test_the_halt_fork_is_refused_with_the_rest_while_a_comparison_is_shown() -> None:
+    """The cap is on branches, not on the door one came through.
+
+    A second branch would have to replace the shown one while the first went
+    on living inside `BranchedCase`, whichever control took it - so the
+    transient control goes with the permanent one rather than staying live to
+    be refused on press. `.claude/rules/expert-review.md` prefers the
+    interface that prevents the error to the one that reports it.
+    """
+
+    halt = BookmarkCrossing(45.0, (TimeBookmark(45.0),))
+
+    offer = fork_offer((0.0, 60.0), comparing=True, halt=halt)
+
+    assert offer.halt_offered is False
+    assert offer.halt_label == ""
+    assert offer.locked is True
 
 
 def test_a_standing_refusal_shows_only_while_the_control_is_offered() -> None:
@@ -2332,8 +2430,8 @@ def test_a_standing_refusal_shows_only_while_the_control_is_offered() -> None:
 
     refusal = "Setting refused: no keyframe at 30.0 s"
 
-    assert fork_offer((0.0,), comparing=False, refusal=refusal).refusal == refusal
-    assert fork_offer((0.0,), comparing=True, refusal=refusal).refusal is None
+    assert fork_offer((0.0,), comparing=False, halt=None, refusal=refusal).refusal == refusal
+    assert fork_offer((0.0,), comparing=True, halt=None, refusal=refusal).refusal is None
 
 
 def test_the_agent_selector_is_shown_only_on_a_paused_lone_trunk() -> None:

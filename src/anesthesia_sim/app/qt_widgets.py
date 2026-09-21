@@ -1092,10 +1092,21 @@ class ForkPanel(QWidget):
     the lock in the notice's colour would spend this interface's one alarm
     on a state that is working as intended.
 
+    **Two controls, because the two doors to a fork have different lifetimes**
+    (`PL-TYWQ`). The selector's instants only accumulate; the halt button's
+    instant is the one the trunk is standing on and is gone on the next step.
+    It is a row of its own below the selector, in the order a learner works -
+    mark the decision point, be stopped at it, branch there - and it takes no
+    instant from this panel at all: `BranchedCase.fork_at_halt` forks where the
+    trunk stands, so there is nothing here for a press to name wrongly.
+
     Attributes:
         heading_label: What the section is called.
         point_selector: The instants a branch may be opened at.
         take_button: Takes the branch; `clicked` is connected by the view.
+        halt_button: Takes the branch at the bookmark halt the trunk is
+            standing on, and is on screen only while it is standing on one.
+            `clicked` is connected by the view.
         lock_text: Why the control is not being offered, where it stood.
         notice: Why the branch last asked for was refused.
     """
@@ -1108,6 +1119,13 @@ class ForkPanel(QWidget):
         self.point_selector.setStyleSheet(selector_stylesheet())
         self.take_button = QPushButton(TAKE_FORK_LABEL)
         self.take_button.setStyleSheet(_outlined_button_stylesheet())
+        # The same outline as the button above, because it is the same kind of
+        # act on the same case; what separates the two is that this one carries
+        # its instant in its own label and is only sometimes there.
+        self.halt_button = QPushButton("")
+        self.halt_button.setStyleSheet(_outlined_button_stylesheet())
+        self.halt_button.setDisabled(True)
+        self.halt_button.setHidden(True)
         self.lock_text = styled_label("", color=MUTED, wrap=True)
         self.lock_text.setHidden(True)
         self.notice = NoticeLabel(self)
@@ -1125,6 +1143,11 @@ class ForkPanel(QWidget):
         controls.addWidget(self.lock_text)
         controls.addStretch(1)
         column.addLayout(controls)
+        halt_row = QHBoxLayout()
+        halt_row.setSpacing(8)
+        halt_row.addWidget(self.halt_button)
+        halt_row.addStretch(1)
+        column.addLayout(halt_row)
         column.addWidget(self.notice)
 
     def selected_instant_s(self) -> float | None:
@@ -1154,6 +1177,15 @@ class ForkPanel(QWidget):
         keyframe collapses when a dial is returned to its previous value at
         the same instant, which is a learner changing their mind.
 
+        **The halt button is shown or hidden whole, never emptied in place.**
+        Its offer has no counterpart to the selection above for a reader to
+        lose, because the button carries its instant in its own label: a
+        frame in which the trunk is not standing on a halt takes the control
+        off the panel rather than leaving a live button labelled for an
+        instant that has gone. It is disabled by the same expression that
+        hides it, which is the pairing `tools/agent_identity_check.py`
+        requires of every control on this dashboard.
+
         Args:
             offer: `dashboard_frame.fork_offer`'s result this tick.
         """
@@ -1175,6 +1207,11 @@ class ForkPanel(QWidget):
         self.take_button.setDisabled(offer.locked)
         self.take_button.setHidden(offer.locked)
         self._point_label.setHidden(offer.locked)
+        # Written before it is shown, so the button is never on screen for one
+        # frame carrying the instant of a halt the trunk has already left.
+        self.halt_button.setText(offer.halt_label)
+        self.halt_button.setDisabled(not offer.halt_offered)
+        self.halt_button.setHidden(not offer.halt_offered)
         self.lock_text.setText(offer.lock_reason)
         self.lock_text.setHidden(not offer.locked)
         self.notice.set_notice(offer.refusal)

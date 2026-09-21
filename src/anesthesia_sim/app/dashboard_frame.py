@@ -32,6 +32,7 @@ from types import MappingProxyType
 from typing import Final
 
 from anesthesia_sim.app.bookmarks import (
+    BookmarkCrossing,
     BookmarkSet,
     BookmarkStandings,
     MacTarget,
@@ -349,6 +350,40 @@ TAKE_FORK_LABEL: Final = "Branch here"
 # first still live inside `BranchedCase`.
 COMPARING_FORK_LOCK_TEXT: Final = "One comparison at a time. Reset the case to end this one."
 FORK_NOTHING_SELECTED_TEXT: Final = "Select an instant to branch at"
+
+# The fork at a bookmark halt, which is a second control rather than a row in
+# the selector above (`PL-TYWQ`, project owner 2026-09-21, ratified, over the
+# single list that grows a row while the run is halted). The two offers have
+# different lifetimes: `fork_points_s` only grows and every instant in it stays
+# forkable, while this one is valid only while the trunk stands on the halt, so
+# a row that arrived and left would change the selector's membership under a
+# reader who had looked away - the stale-state case
+# `.claude/rules/expert-review.md` names, and detectable only against a
+# remembered list. A control that is either there or not is detectable on
+# sight.
+#
+# **The instant is the halt's, not the mark's, and the wording keeps them
+# apart.** A mark lying inside a step halts the run at the step's end, so the
+# instant a learner marked and the instant the branch opens at are not in
+# general the same number (`SimulationController.resumed_at_halt`). The label
+# therefore binds its instant to "Branch here" - what this control will do -
+# and says "stopped on your mark" of the halt rather than of the number, so it
+# never states a mark's position. Labelling it with the marked instant instead
+# would be the wrong label on a correct value, which `CLAUDE.md`'s
+# safety-critical standard counts as a failure of the value.
+#
+# One label for a crossing of either kind. A step can cross a marked instant
+# and a marked height at once, and "your mark" is true of both; which marks
+# were crossed is the bookmark panel's row to state, and repeating it here
+# would put two accounts of one stop on screen.
+#
+# **These exact words** (project owner, 2026-09-21, ratified, over `PL-TYWQ`'s
+# own illustrative "Branch at your mark - 0:45", which asserts where the mark
+# *is* and so is wrong whenever a mark lies inside a step). Ratified rather
+# than specified, so ordinary evidence reopens it - a learner who misreads it,
+# a measurement - but the clause it was chosen over is the one thing a rewrite
+# must not reintroduce.
+HALT_FORK_LABEL_TEMPLATE: Final = "Branch here: {instant}, stopped on your mark"
 
 BOOKMARK_DIALOG_TITLE: Final = "Bookmarks"
 EDIT_BOOKMARKS_LABEL: Final = "Edit bookmarks"
@@ -1618,6 +1653,15 @@ class ForkOffer:
             same kind of thing as a refusal, and this interface has one
             alarm colour (`.claude/rules/ui-reader.md`) which is worth
             exactly as much as it is spent on.
+        halt_offered: Whether the second control - the fork at the bookmark
+            halt the trunk is standing on - is on screen this tick. It
+            appears and disappears with the trunk's halt, where `points_s`
+            only grows, which is why it is a control of its own rather than
+            an entry in that list (`PL-TYWQ`).
+        halt_label: What that control says, or the empty string while it is
+            not offered. It names the instant the branch will open at and
+            that the trunk stopped there on a mark; `HALT_FORK_LABEL_TEMPLATE`
+            carries why those are two clauses rather than one.
         refusal: Why the branch last asked for was not taken, for the
             notice banner, or None. Never set while `locked`: the control
             that produced it is gone, so the message is about something the
@@ -1628,13 +1672,26 @@ class ForkOffer:
     labels: tuple[str, ...]
     locked: bool
     lock_reason: str
+    halt_offered: bool
+    halt_label: str
     refusal: str | None
 
 
 def fork_offer(
-    fork_points_s: Sequence[float], *, comparing: bool, refusal: str | None = None
+    fork_points_s: Sequence[float],
+    *,
+    comparing: bool,
+    halt: BookmarkCrossing | None,
+    refusal: str | None = None,
 ) -> ForkOffer:
     """What the branch control shows for one tick of the trunk.
+
+    Both doors to a fork are decided here, and they are two fields rather than
+    one list: `points_s` is every keyframe the trunk holds, and `halt_offered`
+    is the crossing it is standing on right now. `docs/ARCHITECTURE.md`
+    § "Where a branch may be taken" is why the model keeps them apart - a
+    bookmark records no keyframe, so a halt adds nothing to `fork_points_s` -
+    and `HALT_FORK_LABEL_TEMPLATE` is why the interface does too.
 
     Induction is offered rather than filtered out. A fork at zero is a second
     management of the whole case, which is a comparison a learner may
@@ -1650,23 +1707,44 @@ def fork_offer(
             (`ROADMAP.md` § "Explicitly out of scope for v0.5.0"), so a
             second branch taken now would have to replace the shown one while
             the first went on living inside `BranchedCase` - state the screen
-            does not carry, which is what the control is refused for.
-
+            does not carry, which is what the control is refused for. It
+            refuses both doors: a branch is a branch whichever one it came
+            through, and a transient control the cap would reject on press is
+            one this interface prevents rather than reports
+            (`.claude/rules/expert-review.md`).
+        halt: The bookmark crossing the **trunk** is standing on, from
+            `SimulationSnapshot.bookmark_halt`, or None when it is standing
+            on none. The crossing rather than its instant deliberately:
+            `fork_at_halt` opens the branch at the step the run halted on,
+            and a float parameter here would let a caller hand over the
+            instant a learner *marked* instead - a different number whenever
+            a mark lies inside a step. A crossing carries the halted instant
+            by construction, so there is none to get wrong.
         refusal: Why the branch last asked for was not taken, or None. It
             is dropped while the control is locked, because it describes a
             press of a control the reader can no longer see.
 
     Returns:
-        The instants to offer and their labels, or the reason none are.
+        The instants to offer and their labels, whether the halt fork is on
+        offer and what it says, or the reason none of it is.
     """
 
     points = tuple(fork_points_s)
+    # The comparison cap refuses both doors, so it is applied once, here,
+    # rather than by each field asking about it separately.
+    offered_halt = None if comparing else halt
 
     return ForkOffer(
         points_s=points,
         labels=tuple(format_elapsed(instant_s) for instant_s in points),
         locked=comparing,
         lock_reason=COMPARING_FORK_LOCK_TEXT if comparing else "",
+        halt_offered=offered_halt is not None,
+        halt_label=(
+            ""
+            if offered_halt is None
+            else HALT_FORK_LABEL_TEMPLATE.format(instant=format_elapsed(offered_halt.instant_s))
+        ),
         refusal=None if comparing else refusal,
     )
 

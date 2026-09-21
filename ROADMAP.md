@@ -5035,14 +5035,22 @@ placing them.
   at, and both closed the same day; it remains ahead of the entry below, whose
   branch "taken between two recorded samples" is this one.
 
-  **The interface half is `PL-TYWQ` and is not built** (2026-09-20). `PL-VKJW`
-  landed the fork panel the same day, on a different branch, and it offers
-  `BranchedCase.fork_points_s` - the trunk's keyframes. A bookmark halt
+  **The interface half is `PL-TYWQ` and shipped 2026-09-21.** `PL-VKJW` landed
+  the fork panel on 2026-09-20, on a different branch, and it offered
+  `BranchedCase.fork_points_s` alone - the trunk's keyframes. A bookmark halt
   deliberately adds nothing to that list, since recording no keyframe is the
-  whole of what makes the route safe, so the capability exists in the model and
-  the control does not reach it: a learner may mark 45 s, be stopped at 45 s,
-  and still be offered only induction and the control events. This entry is not
-  complete until that sequence completes, which is why both ids declare in it.
+  whole of what makes the route safe, so for a day the capability existed in
+  the model and the control did not reach it: a learner could mark 45 s, be
+  stopped at 45 s, and still be offered only induction and the control events.
+  It is now a **second control** beside that selector, on the panel only while
+  the trunk stands on the halt and labelled with the instant the branch will
+  open at (project owner, 2026-09-21, ratified, over one list that grows a row
+  while the run is halted - a row that arrives and leaves changes the
+  selector's membership under a reader who looked away, where a control that
+  is either there or not is detectable on sight). The two doors stay two
+  methods and two fields rather than one list, which is what keeps a fork from
+  being asked for at a mark the run is no longer standing on. This entry
+  completes with that sequence, which is why both ids declare in it.
 - **The branch reproduces its parent element-wise up to the branch point**
   (queue item PL-Z3W6), asserted by test at every sampled point rather than
   within a tolerance. Where exactness is unreachable the divergence is bounded,
