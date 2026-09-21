@@ -75,3 +75,122 @@ So the safety argument for the recommended scope does not hold: 184 of the 211
 are in `docs/items/`, which no reader of clinical output opens. The decision
 this item still owes should be taken on the queue, not on the simulator - and
 whoever takes it should re-measure rather than reuse either number above.
+
+## A fourth shape, measured 2026-09-21: widen the connective set, at one line
+
+**The premise above is wrong, and it is wrong about the mechanism rather than
+about the count.** The title and the problem statement both say the
+section-mark form is "the only way doc_check can check them without reading
+prose as a citation". It is not. Nothing about `§` makes a citation checkable:
+`CITATION_CONNECTIVE` feeds exactly one pattern, `QUOTED_SOURCE_RE`, which
+feeds exactly one function, `check_quoted_sources` - and that function tests
+**containment**, not headings. Its own docstring already settles the question
+this item proposes to settle by hand: whether a quotation is a section title or
+a sentence "is a distinction this tool would have to guess at", and the
+containment test does not guess, because "it is the same question in both
+cases".
+
+Positive control, run 2026-09-21 against a probe document holding the same text
+in both forms:
+
+```text
+  `README.md` § "A heading no file has"    -> reported
+  `README.md`'s "A heading no file has"    -> not matched at all
+```
+
+So converting a possessive citation to `§` moves it into the identical test.
+The conversion this item describes and the one-line widening buy the **same
+guarantee**; they differ only in what they cost to reach it.
+
+**What the widening reports, counted rather than estimated.** Admitting
+`['’]s(?:\s+own)?` to `CITATION_CONNECTIVE` takes the citations
+`check_quoted_sources` examines from **950 to 1,169** (+219) and produces
+**40 errors** where the tree is otherwise clean. Each was then classified by
+searching the cited file's own history on `origin/main` for the quoted text:
+
+| Class | Count | What it is |
+| --- | --- | --- |
+| Genuine drift | 24 | Verbatim in an earlier version of the cited file, gone now |
+| Never verbatim | 15 | A compression or paraphrase inside quotation marks |
+| Path artifact | 1 | `v0.4.5.md` written bare, its directory only in the surrounding prose |
+
+`PL-V13T` recorded the same experiment on 2026-09-13 as "28 errors, every one a
+false positive". That is no longer what the tree shows: a **majority are real**,
+and two of the 15 are real in a second way - the quoted text is verbatim in a
+*different* file, so the citation sends a reader to the wrong document. The
+clearest is `PL-SWP3:57`, which attributes "name the number that would change
+your mind, then go and count it" to `CLAUDE.md`; it is a heading in
+`.claude/rules/expert-review.md`, and moved there without the citation
+following.
+
+**Where the 40 sit, and it decides the design.** Exactly six are in text a
+session acts on - `ROADMAP.md` twice, the docstring at
+`tools/workflow_paths_check.py:47`, and the open briefs of `PL-FDMJ`,
+`PL-BYMX` and `PL-4QCJ`. The other **34 are in briefs already `done` or
+`dropped`**, and `.claude/rules/citation-drift.md` (project owner, 2026-09-19,
+ratified) has already ruled on those: drift in a closed brief is not a finding,
+not to be repaired, not to be filed against, not to be counted when sizing a
+cluster. A closed brief says what was true when the work was done and is read
+for provenance, where that is the correct meaning and the only one available.
+
+So the widening has to exempt closed briefs - not as a concession bought to
+shrink the diff, but as that ratified rule applied. With the exemption the
+backlog is **6, not 40**, and the same rule already obliges the finding session
+to repair the live ones in place. **Three of the six are repaired in this
+item's commit**: the docstring above, which quoted a sentence `docs/worker.md`
+no longer carries; `PL-FDMJ`, which sent a reader to `CLAUDE.md` for an
+apparatus bar that has since moved to `.claude/rules/apparatus-standard.md`;
+and `PL-4QCJ`, whose `docs/MODEL.md` pointer was reworded to name
+`docs/references/`.
+
+**The remaining three are one disposition question, and it belongs to this
+decision rather than to a repair.** `ROADMAP.md` twice and `PL-BYMX` use the
+possessive to *name* a rule by a compressed handle - `` `CLAUDE.md`'s "prefer
+an obvious failure to a plausible-looking number" `` for a sentence that runs
+"Prefer an obvious failure/error state to displaying a plausible-looking number
+when correctness cannot be established." Nothing is stale: the rule is live and
+the handle is a fair compression of it. What the widening would demand is that
+the handle be written out verbatim or lose its quotation marks. That is the
+real cost of shape 4, it is a cost to how this project writes rather than a
+backlog, and it is what the fifteen never-verbatim findings mostly are.
+
+**A second finding, live today and independent of which shape wins.**
+`check_quoted_sources` holds closed briefs to current prose *already*, for
+every connective in the set. It passes only because no `§` citation in a closed
+brief has drifted yet; the first one that does hard-fails `make check` on
+something the project has ruled is not a finding, which is the shape
+`CLAUDE.md` retires a check for rather than teaching around. The check shipped
+in `#451`, the rule was ratified 2026-09-19, and nobody reconciled them. Filed
+separately, because it wants fixing whichever shape this item takes.
+
+**Recommendation: shape 4 - admit the possessive, exempt closed briefs.** One
+alternative added to `CITATION_CONNECTIVE`, one status filter in
+`_quoting_sources`, a test in `tests/unit/test_doc_check.py` pinning a
+possessive citation of absent text as reported and a closed brief as exempt
+(the existing `test_a_possessive_quotation_of_prose_is_not_read_as_a_citation`
+inverts, and is the regression this replaces), and three handle dispositions.
+It reaches shape 2's guarantee at a fortieth of shape 2's diff; it is strictly
+wider than shape 1, whose scope the 2026-09-19 sweep had already reduced to
+five occurrences; and unlike shape 3 it leaves nothing live unchecked. It is
+also stronger than any of the three, because it checks the prose quotations
+that a conversion would deliberately leave in the possessive form and therefore
+outside the check forever.
+
+**Stated against itself, per `.claude/rules/expert-review.md`.** The widening
+is wrong if what it suppresses today is mostly writing that is correct as
+written, because then it forces a rewording of correct prose - `PL-KJ63`'s
+exact cost, and the reason `PL-V13T` refused. The number that decides it is how
+many of the 40 are real: **24 genuine drift, 2 wrong-document and 1
+unresolvable path against 13 handles**, and after the closed-brief exemption
+the live residue is 3 repairs already made against 3 handles to disposition. `PL-V13T` recorded 28 of 28 as
+false positives on 2026-09-13; that is not what the tree shows on 2026-09-21,
+and the widening turns on that count rather than on the argument.
+
+**Method, so it is not re-derived.** The classification was made by searching
+each cited file's own history on `origin/main` for the quoted text, folded
+through `doc_check`'s own `_comparable`. `git rev-list` was used without
+`--follow`, so a quotation of a file that has since been renamed would be
+misfiled as never-verbatim; none of the cited files has moved. The measurement
+scripts were scratch and are not committed - the counts above are reproducible
+by adding the possessive to `CITATION_CONNECTIVE` and running
+`python3 tools/doc_check.py check`.
