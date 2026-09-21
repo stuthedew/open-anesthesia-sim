@@ -8,6 +8,7 @@ classes: defect
 touches: tools/ignore_check.py, tests/unit/test_ignore_check.py
 added: 2026-09-20
 closed: 2026-09-21
+pr: 815
 payoff: stops the tokenize-over-grep argument citing an example the tree no longer holds
 verify: ! grep -q 'a tuple of suppression markers' tools/ignore_check.py
 ---

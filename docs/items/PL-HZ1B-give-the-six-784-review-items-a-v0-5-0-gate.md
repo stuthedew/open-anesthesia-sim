@@ -8,6 +8,7 @@ classes: housekeeping, docs
 feature: two-run-attribution
 added: 2026-09-20
 closed: 2026-09-21
+pr: 814
 payoff: stops a later triage pass re-deriving a gate disposition that #812 already recorded, and takes the six items off the prerequisite list PL-NQKP's pass was routed around
 verify: grep -q '^### Declined to Gate 2, because this milestone' ROADMAP.md
 ---

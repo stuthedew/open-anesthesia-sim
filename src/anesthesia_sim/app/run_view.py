@@ -83,6 +83,7 @@ from anesthesia_sim.app.dashboard_frame import (
     StatusWord,
     Transport,
     accounting,
+    compared_run_line,
     delivered_fraction,
     halt_disposition,
     new_case_question,
@@ -559,11 +560,18 @@ class RunView(QWidget):
         self._agent_accounting_detail_text.setText(panel.detail)
         self._agent_amounts_text.setText(panel.amounts)
 
+        # Both lines go into a column the runs share, so each is named while
+        # more than one run is drawn: the value is this run's, and nothing
+        # else in that column says so (`PL-25DD`).
         off_scale = off_scale_notice(frame, run_index)
-        self._off_scale_text.setText(off_scale if off_scale is not None else "")
+        self._off_scale_text.setText(
+            compared_run_line(off_scale, frame, run_index) if off_scale is not None else ""
+        )
         self._off_scale_text.setHidden(off_scale is None)
         self._wash_in_state_text.setText(
-            wash_in_state(snapshot, run_frame.undrawn_wash_in_stretches)
+            compared_run_line(
+                wash_in_state(snapshot, run_frame.undrawn_wash_in_stretches), frame, run_index
+            )
         )
 
         timeline = timeline_panel(self.adjustments(snapshot), run_frame.undrawn_control_marks)
