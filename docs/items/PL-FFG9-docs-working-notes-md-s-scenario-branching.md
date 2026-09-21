@@ -9,7 +9,7 @@ feature: doc-consistency-checks
 touches: docs/WORKING_NOTES.md
 added: 2026-09-21
 payoff: a session reading the working notes for branching context stops finding a live design thread on something v0.5.0 shipped
-verify: grep -q 'The thread stays open until item 26 is scoped' docs/WORKING_NOTES.md && exit 1 || exit 0
+verify: ! grep -q '^## Open thread: scenario branching, bookmarks' docs/WORKING_NOTES.md
 ---
 
 **Problem.** docs/WORKING_NOTES.md's scenario-branching thread states its own exit condition - 'the thread stays open until item 26 is scoped' - and item 26 shipped in v0.5.0, so the thread reads as live design work on something already built
@@ -30,10 +30,22 @@ are written in the future tense about a feature that now exists - so the cost
 is a session re-deriving a design question v0.5.0 already answered, in the
 document the project keeps specifically to stop that.
 
-**Done when.** The thread carries a dated closing note saying what shipped and
-where the record now lives - `ROADMAP.md`'s v0.5.0 section for the milestone,
-the items for the individual decisions - and either moves under a `Settled:` or
-`Decided:` heading like the other closed threads in the file, or states what is
-genuinely still open if any of it is. `PL-DHV7` is the one queue item the
-triage note left startable and its status is the thing to read first: if it is
-still open, the thread keeps whatever part of itself that item needs.
+**Done when.** The thread's heading no longer begins `## Open thread: scenario
+branching, bookmarks` - it is retitled the way this file's other closed threads
+are, `Settled:` or `Decided:` with the date - and the thread carries a dated
+closing note saying what shipped and where the record now lives:
+`ROADMAP.md`'s v0.5.0 section for the milestone, the items for the individual
+decisions. The retitle is required in every outcome, which is what the
+`verify:` command tests. Where part of it is genuinely still open, split that
+part out under its own `## Open thread:` heading rather than holding the whole
+thread open for it. `PL-DHV7` is the one queue item the 2026-08-25 triage note
+left startable, and its status is the thing to read first: if it is still open,
+that is the part to split out.
+
+**The first `verify:` written for this item proved nothing, and the way it
+failed is worth keeping.** It was `grep -q 'The thread stays open until item 26
+is scoped' docs/WORKING_NOTES.md && exit 1 || exit 0` - but that sentence is
+line-wrapped in the file between `is` and `scoped`, and `grep` is line-based,
+so the phrase never matched and the command passed on the day it was written.
+`bin/docket check --verify` caught it in CI on `#850`; `make check` does not run
+that flag locally, which is `PL-J3WK`.
