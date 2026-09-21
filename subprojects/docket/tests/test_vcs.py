@@ -5435,7 +5435,9 @@ def test_a_dropped_item_finishes_a_branch_as_a_done_one_does() -> None:
 def test_one_item_still_open_leaves_the_whole_branch_live() -> None:
     settled = settled_branches(
         ROOT,
-        _carrying(Branch("origin/claude/mixed", "PL-NB35"), Branch("origin/claude/mixed", "PL-VV16")),
+        _carrying(
+            Branch("origin/claude/mixed", "PL-NB35"), Branch("origin/claude/mixed", "PL-VV16")
+        ),
         opened=lambda: (),
         items_dir=ITEMS,
         runner=_held({"origin/claude/mixed": {"PL-NB35": "done", "PL-VV16": "ready"}}),

@@ -11,10 +11,12 @@ like it belonged to these helpers rather than to a setting none of them names
 
 from __future__ import annotations
 
+import argparse
 import os
 import re
 import subprocess
 from collections.abc import Callable
+from dataclasses import replace as with_fields
 from pathlib import Path
 
 import pytest
@@ -22,6 +24,7 @@ import pytest
 from docket import cli
 from docket.checks import STATUS_REQUIREMENTS, brief_gaps
 from docket.cli import build_parser, main, merge_shared
+from docket.config import Config
 from docket.model import parse_item, recurrence_count
 from docket.vcs import FlightReport, lost, records_on_base
 from docket.verify import LANDED_GUARD
@@ -5569,3 +5572,45 @@ def test_show_on_a_head_says_how_much_of_its_cluster_is_open(
     output = capsys.readouterr().out
     assert "root cause of 3 items, 2 open - 1 closed since the head closed 2026-08-20" in output
     assert "`docket generators PL-A0A0` lists them" in output
+
+
+class TestAskingTheForgeWhichBranchesAreOpen:
+    """`flight`'s forge half, and the one way it must never fail.
+
+    A command that could not look and one that looked and found nothing open
+    are opposite answers, and the plumbing here is where they would be
+    flattened into each other. `None` makes `flight` say "every item closed"
+    alone; a list makes it add "and no pull request is open". So the exit
+    status is what these assert, rather than the text of the report.
+    """
+
+    def _args(self, no_remote: bool = False) -> argparse.Namespace:
+        return argparse.Namespace(no_remote=no_remote)
+
+    def test_the_configured_command_supplies_the_branch_names(self, tmp_path: Path) -> None:
+        config = with_fields(
+            Config(), open_pull_requests_command="printf 'claude/one\nclaude/two\n'"
+        )
+        ask = cli._open_pull_requests(self._args(), tmp_path, config)
+        assert ask is not None
+        assert list(ask()) == ["claude/one", "claude/two"]
+
+    def test_a_command_that_could_not_look_answers_none(self, tmp_path: Path) -> None:
+        """Exit non-zero is the contract `tools/open_pull_requests.py` holds to."""
+        config = with_fields(Config(), open_pull_requests_command="false")
+        ask = cli._open_pull_requests(self._args(), tmp_path, config)
+        assert ask is not None
+        assert ask() is None
+
+    def test_a_command_that_is_not_there_answers_none(self, tmp_path: Path) -> None:
+        config = with_fields(Config(), open_pull_requests_command="no-such-command-anywhere")
+        ask = cli._open_pull_requests(self._args(), tmp_path, config)
+        assert ask is not None
+        assert ask() is None
+
+    def test_a_project_configuring_nothing_has_no_way_to_ask(self, tmp_path: Path) -> None:
+        assert cli._open_pull_requests(self._args(), tmp_path, Config()) is None
+
+    def test_no_remote_declines_to_ask_however_it_is_configured(self, tmp_path: Path) -> None:
+        config = with_fields(Config(), open_pull_requests_command="printf 'claude/one\n'")
+        assert cli._open_pull_requests(self._args(no_remote=True), tmp_path, config) is None

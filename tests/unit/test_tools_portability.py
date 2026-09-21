@@ -198,8 +198,15 @@ def test_no_tool_imports_outside_the_standard_library() -> None:
 
     for path in SOURCES:
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        # A sibling in the same directory is importable by construction:
+        # `python3 tools/x.py` puts `tools/` first on `sys.path`, so a module
+        # beside it needs no install and is in every fresh clone. Read from the
+        # tree rather than listed, because a hand-maintained list of in-tree
+        # names is the drift `PL-JBZK` records - and scoped per directory,
+        # since nothing under `.claude/hooks/` can import a `tools/` module.
+        beside = {sibling.stem for sibling in path.parent.glob("*.py")} - {path.stem}
         for root in _imported_roots(tree):
-            assert root in allowed, (
+            assert root in allowed | beside, (
                 f"{path.relative_to(REPO_ROOT)} imports '{root}', which is neither in the "
                 f"standard library nor in-tree; `python3 {path.relative_to(REPO_ROOT)}` "
                 "cannot run in a checkout with no virtualenv"

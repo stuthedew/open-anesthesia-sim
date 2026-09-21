@@ -58,6 +58,7 @@ from docket.vcs import (
     records_on_base,
     ref_walk,
     released_on_base,
+    settled_branches,
     stranded,
     tags,
     working_paths,
@@ -286,6 +287,15 @@ READS: tuple[Read, ...] = (
         "branch_state",
         lambda r, g: branch_state(r, runner=g),
         lambda a: frozenset({(a.branch, a.base, a.behind, a.ahead, a.disposition)}),
+    ),
+    Read(
+        # The forge half is a callable the caller supplies, so it is answered
+        # here rather than reached: what is under test is the git half and the
+        # propagation of a silence through it. The fixture's own branch closes
+        # `PL-K7QX` in its copy, which is exactly the shape this reads.
+        "settled_branches",
+        lambda r, g: settled_branches(r, branches_in_flight(r, runner=g), opened=tuple, runner=g),
+        _findings("branches"),
     ),
     Read("stranded", lambda r, g: stranded(r, set(), runner=g), _findings("items")),
     Read("lost", lambda r, g: lost(r, runner=g), _findings("items")),

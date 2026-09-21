@@ -919,6 +919,7 @@ def _format_settled(settled: SettledReport, today: date) -> list[str]:
     if settled.asked:
         heading += f", and no pull request is open for {them}"
     lines = [f"{heading}:", ""]
+    whose = "the branch's own copy" if count == 1 else "the branches' own copies"
     width = max(len(entry.name) for entry in settled.branches)
     for entry in settled.branches:
         lines.append(
@@ -926,13 +927,10 @@ def _format_settled(settled: SettledReport, today: date) -> list[str]:
             f"{_since(entry.last_commit, today)}"
         )
     lines.append("")
-    lines.append(
-        "Nothing here is being worked: every item those branches carry is closed in the "
-        "branch's own copy."
-    )
+    lines.append(f"Nothing here is being worked: every item {carries} is closed in {whose}.")
     if not settled.asked:
         lines.append(
-            "Whether a pull request is open for them could not be read here, so a branch "
+            f"Whether a pull request is open for {them} could not be read here, so a branch "
             "waiting on review looks the same as one nobody opened."
         )
     lines.append(
