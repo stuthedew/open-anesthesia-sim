@@ -1228,6 +1228,13 @@ rather than explaining it.
 What is left is the published value itself, which nothing this project runs can
 settle. `docs/MODEL.md` records that as the single remaining candidate.
 
+**`docket check` names this thread on every grooming pass, and that is
+correct.** All three of its items have closed while the question has not, so it
+satisfies both clauses of the stale-open-thread advisory built for `PL-DG84`.
+It is the permanent false fire that advisory was chosen knowing about - the
+reason it can never be a hard failure. The thread goes when the published value
+is settled, not before.
+
 ## Measured and answered: a server-rendered chart is not the way out - PL-YDKJ, PL-2FM6, PL-2QMK, PL-YSZN (2026-09-08)
 
 `PL-YDKJ` option 3 - "render server-side; one image per frame is one patch" -

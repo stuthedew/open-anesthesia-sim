@@ -50,6 +50,15 @@ get wrong for no reader's benefit.
 
 _ID_RE = re.compile(ID_PATTERN)
 
+_OPEN_HEADING_RE = re.compile(r"^\s*open\b", re.IGNORECASE)
+"""The leading word that says a thread is still open: `Open thread:`, `Open:`.
+
+Anchored at the start and bounded at the end, so `Opening the vaporizer`
+does not match a word it merely begins with, and the status words this
+convention uses instead - `Settled:`, `Decided:`, `Measured`, `Built`,
+`Shelved`, `Aspirational`, `Long-term` - do not match at all.
+"""
+
 
 @dataclass(frozen=True)
 class Thread:
@@ -62,6 +71,32 @@ class Thread:
 
     def concerns(self, identifier: str) -> bool:
         return identifier in self.about or identifier in self.mentions
+
+    @property
+    def cites(self) -> tuple[str, ...]:
+        """Every id the section names, heading first and in reading order.
+
+        The two kinds are stored apart because a reader weighs them
+        differently. A caller asking whether the thread's items have *all*
+        closed weighs them the same, and would otherwise re-derive the union
+        at each call site.
+        """
+        return self.about + self.mentions
+
+    @property
+    def declares_open(self) -> bool:
+        """Whether the heading's own leading word says the thread is open.
+
+        Read from the first word and from nowhere else. A body says "still
+        open" while arguing the opposite often enough that scanning one turns
+        a decidable question into a guess, and the heading is both the half
+        its writer maintains and the half a reader skimming the file sees.
+
+        This reports what the file says about itself, which is a claim rather
+        than a fact - and that is the point. It is worth something only
+        against evidence the file does not control.
+        """
+        return _OPEN_HEADING_RE.match(self.title) is not None
 
 
 def read(path: Path) -> tuple[Thread, ...]:

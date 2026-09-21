@@ -104,3 +104,22 @@ def test_a_missing_file_is_no_threads_rather_than_an_error(tmp_path: Path) -> No
 
 def test_a_file_with_no_level_two_headings_is_no_threads(tmp_path: Path) -> None:
     assert read(_notes(tmp_path, "# Title\n\nProse citing PL-B1B1.\n")) == ()
+
+
+def test_declares_open_reads_the_heading_s_leading_word(tmp_path: Path) -> None:
+    """`Open thread:` and `Open:` are the two spellings the convention uses."""
+    threads = read(_notes(tmp_path, "## Open thread: one\n\n## Open: two\n\n## Settled: three\n"))
+
+    assert [thread.declares_open for thread in threads] == [True, True, False]
+
+
+def test_declares_open_is_not_fooled_by_a_word_it_merely_prefixes(tmp_path: Path) -> None:
+    """The word, not the prefix: a status word is the whole first word."""
+    threads = read(_notes(tmp_path, "## Opening the vaporizer\n\n## Openness as a goal\n"))
+
+    assert [thread.declares_open for thread in threads] == [False, False]
+
+
+def test_cites_lists_the_heading_s_ids_before_the_body_s(tmp_path: Path) -> None:
+    """One sequence for a caller weighing them the same, still ordered for one that is not."""
+    assert read(_notes(tmp_path))[0].cites == ("PL-B1B1", "PL-C2C2", "PL-D3D3", "PL-K4K4")

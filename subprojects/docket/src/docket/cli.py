@@ -523,6 +523,12 @@ def _complete_report(
         # release branch and on its pull request, where re-running the cut
         # still absorbs the newcomers.
         window=cut_window(root),
+        # The running cross-session log, split at its `##` headings - a
+        # different file from the release notes two lines up. One read of one
+        # file, and only where the project names one: a project configuring no
+        # `notes_file` hands `None`, which leaves the stale-thread advisory
+        # unraised rather than computed against an empty parse.
+        threads=notes.read(root / config.notes_file) if config.notes_file else None,
         # Not read from the store at all, unlike everything above: it is which
         # policy the store was read *under*, which only the caller that
         # resolved it knows.

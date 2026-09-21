@@ -40,6 +40,7 @@ from .model import (
     recurrence_faults,
     root_cause_faults,
 )
+from .notes import Thread
 from .plan import OfferedReport, promotable
 from .release import NOTES_DIR, SEMVER_RE, notes_name, reference, unrecorded_milestones, version_key
 from .roadmap import MilestoneStates
@@ -2306,14 +2307,97 @@ def _check_landing_records(report: Report, records: RecordReport) -> None:
             )
 
 
+#: How many threads a stale-thread advisory names before it stops being one
+#: line a reader takes in, and how much of each heading it prints. Lower than
+#: `_named`'s eight ids because a heading is a sentence rather than a token,
+#: and clipped for the same reason: the line number beside it is what the
+#: reader navigates by, so the words are there to be recognized rather than
+#: reproduced. An advisory nobody finishes reading is `PL-CW14` again.
+STALE_THREADS_NAMED = 5
+STALE_HEADING_CHARS = 60
+
+
+def _clipped(title: str, limit: int = STALE_HEADING_CHARS) -> str:
+    """The heading, cut at a word boundary where it runs past the limit."""
+    if len(title) <= limit:
+        return title
+    cut = title[:limit].rsplit(" ", 1)[0]
+    return f"{cut or title[:limit]}..."
+
+
+def _check_stale_open_threads(
+    report: Report, threads: tuple[Thread, ...] | None, config: Config
+) -> None:
+    """Name a notes-file thread the file itself calls open, whose items have all closed.
+
+    Two clauses, and the advisory needs both. The heading's own leading word
+    has to say the thread is open, and every `PL-` id the section cites -
+    heading and body alike - has to resolve to an item that is `done` or
+    `dropped`. Measured on this repository 2026-09-21, the second clause alone
+    named 16 of 26 sections, most of them correct content that other rules
+    cite; both clauses named 4, of which 3 were already filed one at a time as
+    separate items. That ratio is the whole argument for the pair.
+
+    **A section citing no id is never named.** Direction with no item is one of
+    the three things a notes file is for, and a check that fires on it is
+    firing on the file working as intended.
+
+    **An advisory, and it can never be an error.** The fourth section the pair
+    names on this repository - "what makes desflurane wash out too fast" - has
+    all three of its items closed and is genuinely still open, because what is
+    left is a published value nothing here can settle. That false fire is
+    permanent rather than tunable, which is what keeps this out of
+    `make check`'s failure path and out of a close-out check: a permanent false
+    fire at every close-out trains a reader to skim the block a real advisory
+    shares.
+
+    **It stays silent where it cannot answer.** An id resolving to no item at
+    all leaves the thread unnamed: an unreadable citation is not evidence that
+    a thread is spent, and claiming otherwise would be the apparatus handing
+    over a partial reading as a complete one.
+    """
+    if not threads:
+        return
+    status = {item.identifier: item.status for item in report.items}
+    stale = [
+        thread
+        for thread in threads
+        if thread.declares_open
+        and thread.cites
+        and all(status.get(cited) in CLOSED_STATUSES for cited in thread.cites)
+    ]
+    if not stale:
+        return
+    # Joined on `;` rather than `,` because these headings carry commas of
+    # their own, and the line number goes beside each one: that is what the
+    # reader navigates by, and the heading is there to be recognized.
+    shown = "; ".join(f'"{_clipped(t.title)}" (line {t.line})' for t in stale[:STALE_THREADS_NAMED])
+    rest = len(stale) - STALE_THREADS_NAMED
+    if rest > 0:
+        shown = f"{shown}; and {rest} more"
+    where = config.notes_file or "the notes file"
+    report.advisories.append(
+        f"{where}: {len(stale)} thread(s) the heading calls open, whose every cited item has "
+        f"closed - {shown}; delete what is finished, once its outcome is recorded somewhere "
+        "that maintains itself, and re-head what outlived its items"
+    )
+
+
 def _groom(
     report: Report,
     today: date,
     config: Config,
     offered: frozenset[str] | None,
     milestones: MilestoneStates | None = None,
+    threads: tuple[Thread, ...] | None = None,
 ) -> None:
     """Detect the conditions that make a grooming pass worth someone's time."""
+    # Grooming rather than close-out, and that placement is the decision
+    # (`PL-DG84`, ratified 2026-09-21): this fires on a pass that is already
+    # about hygiene, where a reader has the file open and the judgment in
+    # hand, instead of on every close-out, where one permanent false fire
+    # costs the whole advisory block its reader.
+    _check_stale_open_threads(report, threads, config)
     stale = [
         item
         for item in report.untriaged
@@ -2649,6 +2733,7 @@ def analyze(
     notes: dict[str, frozenset[str]] | None = None,
     window: CutWindow | None = None,
     unreferenced: dict[str, tuple[str, ...]] | None = None,
+    threads: tuple[Thread, ...] | None = None,
     settings_source: SettingsSource | None = None,
 ) -> Report:
     """Validate and groom in one pass.
@@ -2685,6 +2770,12 @@ def analyze(
     folded into it, because the two answer different questions about them and
     a caller that wants one does not always want the other.
 
+    `threads` is the project's running cross-session log split at its `##`
+    headings - `notes_file`, not the release notes `notes` carries. Passed in
+    for the reason the rest are: this module reads no filesystem. A caller
+    that does not supply it, or a project that configures no notes file,
+    leaves the stale-thread advisory unraised rather than guessed at.
+
     `settings_source` is which `docket.toml` the caller resolved `config` from,
     and whether it was there. It is the one input that says nothing about the
     store and everything about the reading of it, which is why it cannot be
@@ -2714,7 +2805,7 @@ def analyze(
     _check_closures(report, closures)
     _check_records(report, records)
     _check_lost(report, lost)
-    _groom(report, today, settings, ids, milestones)
+    _groom(report, today, settings, ids, milestones, threads)
     # Said once, for both advisories above that read `offered`, and said even
     # where neither fired: an unread ref might carry the item that would have
     # been named, so silence there is the same partial answer as a wrong name.

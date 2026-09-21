@@ -6,9 +6,9 @@ effort: M
 status: ready
 classes: docs, session-cost
 feature: dev-tooling
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, docs/WORKING_NOTES.md
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/notes.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_notes.py, subprojects/docket/README.md, docs/WORKING_NOTES.md
 added: 2026-09-13
-verify: uv run pytest subprojects/docket/tests/test_checks.py -k stale_open_thread -q
+verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_notes.py -k "stale_open_thread or declares_open or cites" -q
 ---
 
 **Problem.** docs/WORKING_NOTES.md asks for resolved threads to be deleted and nothing reads that policy

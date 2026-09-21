@@ -8,10 +8,12 @@ notices.
 from __future__ import annotations
 
 from datetime import date
+from pathlib import Path
 
 from docket.checks import Report, analyze
 from docket.config import Config
 from docket.model import Item, parse_item, render_item
+from docket.notes import Thread, read
 from docket.plan import OfferedReport
 from docket.render import format_check, format_digest, format_list
 from docket.roadmap import MilestoneStates, milestone_states
@@ -728,6 +730,130 @@ def test_a_stale_capture_is_a_grooming_advisory() -> None:
     )
 
     assert _has(analyze([old], TODAY).advisories, "triage or drop them")
+
+
+def _thread(
+    title: str, line: int = 10, about: tuple[str, ...] = (), mentions: tuple[str, ...] = ()
+) -> Thread:
+    """One section of a notes file, as `notes.read` would have parsed it."""
+    return Thread(title=title, line=line, about=about, mentions=mentions)
+
+
+def _closed(identifier: str) -> Item:
+    return _item(identifier, status="done", commit="abc1234", closed=TODAY, priority="", effort="")
+
+
+NOTES_FILE = Config(notes_file="NOTES.md")
+
+
+def test_a_stale_open_thread_is_a_grooming_advisory() -> None:
+    """Both clauses hold: the heading says open, and its one item has closed."""
+    threads = (_thread("Open thread: the chart - PL-B1B1", line=42, about=("PL-B1B1",)),)
+
+    report = analyze([_closed("PL-B1B1")], TODAY, NOTES_FILE, threads=threads)
+
+    assert _has(report.advisories, "Open thread: the chart")
+    assert _has(report.advisories, "line 42")
+    assert _has(report.advisories, "NOTES.md")
+
+
+def test_a_stale_open_thread_needs_a_heading_that_says_it_is_open() -> None:
+    """A settled thread whose items have closed is the file working as intended."""
+    threads = (_thread("Settled: the chart - PL-B1B1", about=("PL-B1B1",)),)
+
+    report = analyze([_closed("PL-B1B1")], TODAY, NOTES_FILE, threads=threads)
+
+    assert not _has(report.advisories, "the chart")
+
+
+def test_a_stale_open_thread_needs_every_cited_item_closed() -> None:
+    """One live item is enough: the thread still has work behind it."""
+    threads = (_thread("Open thread: the chart - PL-B1B1", about=("PL-B1B1", "PL-C2C2")),)
+
+    report = analyze([_closed("PL-B1B1"), _item("PL-C2C2")], TODAY, NOTES_FILE, threads=threads)
+
+    assert not _has(report.advisories, "the chart")
+
+
+def test_a_stale_open_thread_reads_the_body_as_well_as_the_heading() -> None:
+    """An id cited in passing is still an item the thread rests on."""
+    threads = (_thread("Open thread: the chart", mentions=("PL-B1B1",)),)
+
+    report = analyze([_closed("PL-B1B1")], TODAY, NOTES_FILE, threads=threads)
+
+    assert _has(report.advisories, "Open thread: the chart")
+
+
+def test_a_stale_open_thread_citing_no_item_at_all_is_left_alone() -> None:
+    """Direction with no item is one of the three things a notes file is for."""
+    threads = (_thread("Open thread: where this is all going"),)
+
+    report = analyze([_closed("PL-B1B1")], TODAY, NOTES_FILE, threads=threads)
+
+    assert not _has(report.advisories, "where this is all going")
+
+
+def test_a_stale_open_thread_citing_an_id_the_store_lacks_is_left_alone() -> None:
+    """A citation this store cannot read is not evidence that the thread is spent."""
+    threads = (_thread("Open thread: the chart - PL-D3D3", about=("PL-D3D3",)),)
+
+    report = analyze([_closed("PL-B1B1")], TODAY, NOTES_FILE, threads=threads)
+
+    assert not _has(report.advisories, "the chart")
+
+
+def test_a_stale_open_thread_is_unraised_where_no_notes_file_was_read() -> None:
+    """A project configuring no notes file leaves the question unasked."""
+    report = analyze([_closed("PL-B1B1")], TODAY, NOTES_FILE)
+
+    assert not _has(report.advisories, "thread(s) the heading calls open")
+
+
+def test_a_stale_open_thread_is_read_from_the_notes_file_itself(tmp_path: Path) -> None:
+    """Both clauses, end to end, against the heading shapes the file really uses.
+
+    The desflurane section is the one that matters: all three of its items have
+    closed and it is genuinely still open, so it is named, and that false fire
+    is permanent rather than tunable. It is what keeps this an advisory - see
+    `_check_stale_open_threads`.
+    """
+    notes = tmp_path / "NOTES.md"
+    notes.write_text(
+        "# Working notes\n"
+        "\n"
+        "## Open: the repository has no README - PL-B1B1\n"
+        "\n"
+        "Body.\n"
+        "\n"
+        "## Open thread: what makes desflurane wash out too fast - PL-C2C2\n"
+        "\n"
+        "What is left is the published value itself, which nothing here settles.\n"
+        "\n"
+        "## Aspirational: power-user custom agents (not scoped, not started)\n"
+        "\n"
+        "Direction, citing no item.\n"
+        "\n"
+        "## Long-term vision (aspirational north star, not a scoped milestone)\n"
+        "\n"
+        "Direction, citing no item.\n"
+        "\n"
+        "## Settled: no numpy - PL-D3D3\n"
+        "\n"
+        "Kept deliberately, because the question recurs.\n",
+        encoding="utf-8",
+    )
+    items = [_closed("PL-B1B1"), _closed("PL-C2C2"), _closed("PL-D3D3")]
+
+    report = analyze(items, TODAY, NOTES_FILE, threads=read(notes))
+
+    named = [line for line in report.advisories if "the heading calls open" in line]
+    assert len(named) == 1
+    assert "2 thread(s)" in named[0]
+    assert "the repository has no README" in named[0]
+    assert "desflurane" in named[0]
+    assert "power-user custom agents" not in named[0]
+    assert "Long-term vision" not in named[0]
+    assert "no numpy" not in named[0]
 
 
 def test_a_blocked_item_whose_blocker_closed_is_flagged_for_promotion() -> None:
