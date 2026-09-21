@@ -48,9 +48,10 @@ source, and `src/` is free to use the language `.python-version` pins.
 `ast.parse`'s `feature_version` cannot bridge that: it only ever narrows the
 syntax accepted, so it cannot teach an older parser a newer language.
 
-So the six tools that parse repository source - `contrast_check.py`,
+So the seven tools that parse repository source - `contrast_check.py`,
 `agent_identity_check.py`, `import_boundary_check.py`,
-`workflow_paths_check.py`, `core_vocabulary_check.py` and `glyph_check.py` -
+`workflow_paths_check.py`, `core_vocabulary_check.py`, `glyph_check.py` and
+`fixture_id_check.py` -
 are invoked through
 `uv run python` in both `make check` and `.github/workflows/quality.yml`, and
 are deliberately absent from that workflow's floor section, while staying

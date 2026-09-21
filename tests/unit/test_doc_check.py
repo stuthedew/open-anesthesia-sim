@@ -3539,7 +3539,7 @@ def test_a_family_member_declaring_no_test_yet_against_an_open_item_is_quiet(
     parenthesis is what lets a script tell a declared absence from a forgotten
     link.
     """
-    root = _family_repo(tmp_path, "no test yet (`PL-AAAA`)", items={"PL-AAAA": "ready"})
+    root = _family_repo(tmp_path, "no test yet (`PL-8888`)", items={"PL-8888": "ready"})
 
     assert _family_errors(root) == []
 
@@ -3552,7 +3552,7 @@ def test_a_family_member_declaring_no_test_yet_against_a_closed_item_is_an_error
     The forward reference was the whole of what made the absence acceptable, so
     it has to expire with the item rather than outlive it silently.
     """
-    root = _family_repo(tmp_path, "no test yet (`PL-AAAA`)", items={"PL-AAAA": "done"})
+    root = _family_repo(tmp_path, "no test yet (`PL-8888`)", items={"PL-8888": "done"})
     errors = _family_errors(root)
 
     assert len(errors) == 1
@@ -3563,7 +3563,7 @@ def test_a_family_member_declaring_no_test_yet_against_an_absent_item_is_an_erro
     tmp_path: Path,
 ) -> None:
     """An id the queue never held is a hole with a plausible-looking label."""
-    root = _family_repo(tmp_path, "no test yet (`PL-ZZZZ`)", items={"PL-AAAA": "ready"})
+    root = _family_repo(tmp_path, "no test yet (`PL-ZZZZ`)", items={"PL-8888": "ready"})
     errors = _family_errors(root)
 
     assert len(errors) == 1
@@ -3584,7 +3584,7 @@ def test_a_family_member_naming_nothing_at_all_is_an_error(tmp_path: Path) -> No
 
 def test_a_declared_absence_is_declined_rather_than_failed_without_a_store(tmp_path: Path) -> None:
     """A checkout with no queue has not disproved the forward reference."""
-    root = _family_repo(tmp_path, "no test yet (`PL-AAAA`)")
+    root = _family_repo(tmp_path, "no test yet (`PL-8888`)")
     report = doc_check.analyze(root)
 
     assert _family_errors(root) == []
@@ -3753,7 +3753,7 @@ def _line_citation_errors(root: Path) -> list[str]:
 
 
 def _brief(status: str, body: str) -> str:
-    return f"id: PL-TEST\nstatus: {status}\n\n**Problem.** {body}\n"
+    return f"id: PL-T3ST\nstatus: {status}\n\n**Problem.** {body}\n"
 
 
 def test_a_line_citation_past_the_end_of_its_file_is_an_error(tmp_path: Path) -> None:
@@ -3763,7 +3763,7 @@ def test_a_line_citation_past_the_end_of_its_file_is_an_error(tmp_path: Path) ->
     sentence says, so this is resolvability rather than truth - the same
     question `check_citations` asks of a path, one line finer.
     """
-    root = _items(_repo(tmp_path), PL_AAAA_open=_brief("ready", "See `core/thing.py:900`."))
+    root = _items(_repo(tmp_path), PL_8888_open=_brief("ready", "See `core/thing.py:900`."))
 
     errors = _line_citation_errors(root)
 
@@ -3782,7 +3782,7 @@ def test_a_line_citation_inside_its_file_stays_quiet(tmp_path: Path) -> None:
     (root / "src" / "anesthesia_sim" / "core" / "thing.py").write_text(
         "one\ntwo\nthree\n", encoding="utf-8"
     )
-    _items(root, PL_AAAA_open=_brief("ready", "See `core/thing.py:2`."))
+    _items(root, PL_8888_open=_brief("ready", "See `core/thing.py:2`."))
 
     assert _line_citation_errors(root) == []
 
@@ -3796,8 +3796,10 @@ def test_a_closed_brief_is_exempt(tmp_path: Path) -> None:
     skim the output where a real failure is printed.
     """
     root = _repo(tmp_path)
-    for status in ("done", "dropped"):
-        _items(root, **{f"PL-{status.upper()}": _brief(status, "See `core/thing.py:900`.")})
+    # Spelled out rather than derived from the status, because `f"PL-{status.upper()}"`
+    # mints `PL-DONE` and `PL-DROPPED`, neither of which is in `store.ID_ALPHABET`.
+    for status, identifier in (("done", "PL-D0N3"), ("dropped", "PL-DRPD")):
+        _items(root, **{identifier: _brief(status, "See `core/thing.py:900`.")})
 
     assert _line_citation_errors(root) == []
 
@@ -3810,7 +3812,7 @@ def test_an_item_may_quote_the_broken_citation_it_reports(tmp_path: Path) -> Non
     """
     root = _items(
         _repo(tmp_path),
-        PL_AAAA_open=_brief("ready", "It still says:\n\n```text\ncore/thing.py:900\n```\n"),
+        PL_8888_open=_brief("ready", "It still says:\n\n```text\ncore/thing.py:900\n```\n"),
     )
 
     assert _line_citation_errors(root) == []
@@ -3823,7 +3825,7 @@ def test_an_ambiguous_bare_filename_declines(tmp_path: Path) -> None:
     to be worse than no answer.
     """
     root = _repo(tmp_path, modules=("core/thing.py", "app/thing.py"))
-    _items(root, PL_AAAA_open=_brief("ready", "See `thing.py:900`."))
+    _items(root, PL_8888_open=_brief("ready", "See `thing.py:900`."))
 
     assert _line_citation_errors(root) == []
 
