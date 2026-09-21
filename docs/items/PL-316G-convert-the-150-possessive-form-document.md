@@ -165,8 +165,9 @@ the handle be written out verbatim or lose its quotation marks. That is the
 real cost of shape 4, it is a cost to how this project writes rather than a
 backlog, and it is what the fifteen never-verbatim findings mostly are.
 
-**The exemption is already built, which removes half of shape 4's cost**
-(verified 2026-09-21 against `origin/claude/serene-heisenberg-x0tycm`).
+**The exemption is already built and has merged, which removes half of shape
+4's cost** (`PL-ZM8P`, landed on `origin/main` in `#866` with the v0.5.1 tag,
+re-verified 2026-09-21 against `origin/main` itself).
 `check_quoted_sources` held closed briefs to current prose for every connective
 in the set, and it passed here only because no `§` citation in a closed brief
 had drifted yet. Cutting v0.5.1 hit it: `ROADMAP.md`'s `## Current baseline`
@@ -177,9 +178,10 @@ same line `check_line_citations` already drew, with a second test holding the
 exemption narrow. `PL-W8NH`, filed from this measurement while the collision
 was still latent, is dropped as its duplicate.
 
-So shape 4 no longer has to build the exemption - it inherits it with v0.5.1.
-Measured against that branch's `doc_check` with the possessive admitted: **3
-errors**, and they are the three handles named above.
+So shape 4 no longer has to build the exemption, and no longer waits on
+anything: it is startable now. Measured against `origin/main`'s own
+`doc_check` with the possessive admitted: **3 errors**, and they are the three
+handles named above.
 
 ```text
   ROADMAP.md:86     CLAUDE.md  "prefer an obvious failure to a plausible-..."
@@ -192,9 +194,9 @@ v0.5.1 lands.** One alternative added to `CITATION_CONNECTIVE`, a test in
 `tests/unit/test_doc_check.py` pinning a possessive citation of absent text as
 reported (the existing
 `test_a_possessive_quotation_of_prose_is_not_read_as_a_citation` inverts, and
-is the regression this replaces), and three handle dispositions. It is
-sequenced behind `PL-ZM8P`'s merge, and measures 3 errors there rather than
-40.
+is the regression this replaces), and three handle dispositions. It measures
+3 errors on today's `main` rather than the 40 of the unexempted tree, and it
+is unblocked: nothing is sequenced ahead of it.
 It reaches shape 2's guarantee at a fortieth of shape 2's diff; it is strictly
 wider than shape 1, whose scope the 2026-09-19 sweep had already reduced to
 five occurrences; and unlike shape 3 it leaves nothing live unchecked. It is
