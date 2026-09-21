@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -2111,6 +2112,114 @@ def test_stranded_leaves_a_branch_whose_work_is_all_unlanded_alone(
     assert main(["--items", str(root / "items"), "stranded"]) == 0
 
     assert "No branch carries work its own pull request left behind" in capsys.readouterr().out
+
+
+def _queue_repo(tmp_path: Path) -> tuple[Path, Callable[..., None]]:
+    """An empty repository whose store sits where `--items` puts the root.
+
+    `--items <root>/items` makes the store's parent the repository root, which
+    is the convention every fixture above follows and what both halves of this
+    command read the queue at.
+    """
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    return root, git
+
+
+def test_stranded_hands_a_diff_for_an_item_edited_only_on_a_branch(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-KSCW`: the item is on `main` and a section of it is on a branch alone.
+
+    A `git checkout` is the wrong recovery here and the whole reason the two
+    findings print separately: the base holds a copy of its own, so restoring
+    the branch's over it discards whatever landed since.
+    """
+    root, git = _queue_repo(tmp_path)
+    item = root / "items" / "PL-0001-on-main.md"
+    item.write_text(READY.replace("PL-B1B1", "PL-0001"))
+    git("add", "-A")
+    git("commit", "-qm", "PL-0001: file the item")
+
+    git("checkout", "-qb", "claude/pl-0001-a-fourth-instance")
+    item.write_text(item.read_text() + "\n**Found again.** A fourth instance, unreported.\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-0001: record the fourth instance")
+    git("checkout", "-q", "main")
+
+    assert main(["--items", str(root / "items"), "stranded"]) == 0
+
+    out = capsys.readouterr().out
+    assert "1 item the default branch holds, edited only on a branch" in out
+    assert "PL-0001  A ready item" in out
+    assert "edited on: claude/pl-0001-a-fourth-instance" in out
+    assert (
+        "read: git diff main:items/PL-0001-on-main.md "
+        "claude/pl-0001-a-fourth-instance:items/PL-0001-on-main.md"
+    ) in out
+    # The recovery a reader must never be handed for a file the base holds.
+    assert "git checkout" not in out
+
+
+def test_stranded_does_not_offer_to_restore_a_copy_the_base_has_closed_since(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """`PL-MBTZ`, in the geometry that produced it, built with real git.
+
+    A release branch's work squash-merged; the branch then wrote an item file
+    of its own, and `main` closed that item by another route - so the branch's
+    `untriaged` copy is a blob `main` has never held, and the two-dot diff
+    `_superseded` reads sees the older `status:` line as an *addition* and
+    calls the path outstanding. The recovery printed for it was a `git
+    checkout` replacing `main`'s `done` copy with the branch's untriaged one,
+    discarding the `closed:` and `pr:` the closure recorded (`PL-KBFN`,
+    `PL-39B7`).
+    """
+    root, git = _queue_repo(tmp_path)
+    (root / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+    git("add", "-A")
+    git("commit", "-qm", "base")
+
+    git("checkout", "-qb", "claude/pl-k7qx-cut-the-release")
+    (root / "work.py").write_text("the change the pull request took\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: the work the pull request took")
+
+    git("checkout", "-q", "main")
+    git("merge", "-q", "--squash", "claude/pl-k7qx-cut-the-release")
+    git("commit", "-qm", "PL-K7QX: the work the pull request took (#1)")
+
+    # The branch files the release-tag item after its own merge, so its blob is
+    # one `main` has never held; `main` files and closes a copy of its own.
+    tag = root / "items" / "PL-K7QX-tag-the-release.md"
+    filed = READY.replace("PL-B1B1", "PL-K7QX").replace("status: ready", "status: untriaged")
+    git("checkout", "-q", "claude/pl-k7qx-cut-the-release")
+    tag.write_text(filed)
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: file the tag item")
+
+    git("checkout", "-q", "main")
+    tag.write_text(filed.replace("status: untriaged", "status: done\nclosed: 2026-09-13\npr: 549"))
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: tag the release (#2)")
+
+    assert main(["--items", str(root / "items"), "stranded"]) == 0
+
+    out = capsys.readouterr().out
+    assert "No branch carries work its own pull request left behind" in out
+    assert "PL-K7QX-tag-the-release.md" not in out
+    assert "git checkout" not in out
 
 
 def test_stranded_says_so_when_it_was_told_not_to_ask_git(

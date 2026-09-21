@@ -33,7 +33,7 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from .model import CLOSED_STATUSES, parse_item
+from .model import CLOSED_STATUSES, parse_front_matter, parse_item
 from .release import NOTES_DIR, version_in
 from .store import ID_PATTERN
 
@@ -4168,6 +4168,31 @@ class StrandedItem:
 
 
 @dataclass(frozen=True)
+class StrandedEdit:
+    """An item the default branch holds, whose branch copy carries more than it.
+
+    Kept apart from `StrandedItem` rather than folded in with it, because the
+    two findings take opposite recoveries and the recipe for one destroys the
+    other. Nothing on the base is overwritten by restoring a file the base
+    does not have, so a stranded item is handed a `git checkout`; the base
+    does hold this one, so what this is handed is a diff to read (`PL-KSCW`,
+    `PL-MBTZ`). Folding them together would also change what the session-start
+    digest's stranded line means, which is a claim about items that exist
+    nowhere else and says `to recover`.
+
+    `base_path` is carried beside `path` because a retitle renames an item's
+    file, so the two sides of the comparison can sit at different paths and
+    the diff has to name both.
+    """
+
+    identifier: str
+    title: str
+    path: str
+    base_path: str
+    branches: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class StrandedReport:
     """What is only on a branch, and how much of the repository was read.
 
@@ -4198,6 +4223,14 @@ class StrandedReport:
     """
 
     items: tuple[StrandedItem, ...] = ()
+    #: Items the base holds whose copy on some ref is ahead of it. A second
+    #: field rather than more `items`, for the reason `StrandedEdit` gives:
+    #: every reader of `items` is told the base does not have them.
+    edits: tuple[StrandedEdit, ...] = ()
+    #: The ref every finding here is a claim against. Carried rather than
+    #: recomputed by the reader, because the diff `edits` is read with names
+    #: both sides and a second guess at the default branch is a second answer.
+    base: str = ""
     refs_read: int = 0
     declined: str = ""
     fetched: bool = False
@@ -4207,22 +4240,162 @@ class StrandedReport:
         return not self.declined
 
 
-def _items_at(ref: str, root: Path, items_dir: str, run: Runner) -> dict[str, str]:
-    """Every item id the ref's tree holds, mapped to the file that holds it.
+def _item_blobs(ref: str, root: Path, items_dir: str, run: Runner) -> dict[str, tuple[str, str]]:
+    """Every item id the ref's tree holds, mapped to its blob and the path holding it.
 
     `ls-tree` reads one tree and needs no history behind it, which is what
     makes this work in the shallow clone an agent session starts from. Every
     commit-graph answer - is this branch merged, how far ahead is it - is
     unreliable there, because the commits that would prove containment are
     exactly the ones a shallow clone is missing.
+
+    **The blob comes off the same read as the path.** "Does this ref hold the
+    item" and "does it hold the same copy of it" are asked of one tree by one
+    caller, and `ls-tree` answers both in a line. Opening the files to compare
+    them instead costs a `git show` per item per ref, and the comparison is
+    settled without opening anything for almost all of them: 24,829 of the
+    27,009 ref-and-item pairs this repository held on 2026-09-21 carry the
+    same blob on the branch and on the default branch.
+
+    The long form rather than `--name-only`, so the object id is in the line:
+    `<mode> <type> <object>\t<path>`, with everything after the first tab
+    taken as the path because a path may contain one and git quotes what it
+    cannot print.
     """
-    found: dict[str, str] = {}
-    for line in run(["ls-tree", "-r", "--name-only", ref, "--", items_dir], root).splitlines():
-        path = line.strip()
-        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1]) if path else None
+    found: dict[str, tuple[str, str]] = {}
+    for line in run(["ls-tree", "-r", ref, "--", items_dir], root).splitlines():
+        head, _, path = line.partition("\t")
+        fields = head.split()
+        path = path.strip()
+        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1]) if path and len(fields) == 3 else None
         if match is not None:
-            found.setdefault(match.group(1), path)
+            found.setdefault(match.group(1), (fields[2], path))
     return found
+
+
+def _items_at(ref: str, root: Path, items_dir: str, run: Runner) -> dict[str, str]:
+    """Every item id the ref's tree holds, mapped to the file that holds it.
+
+    The path half of `_item_blobs`, for readers whose question is only whether
+    the item is there at all. One spelling of the `ls-tree` rather than two,
+    because two spellings of one question are two answers waiting to disagree.
+    """
+    return {
+        identifier: path
+        for identifier, (_blob, path) in _item_blobs(ref, root, items_dir, run).items()
+    }
+
+
+#: What one ref's copy of an item file holds that the default branch's copy
+#: does not. Three values rather than a boolean because the two mistakes they
+#: separate are opposite in cost: a copy wrongly called `_AHEAD` costs a
+#: reader one diff, and a copy wrongly called `_BEHIND` is a finding nobody
+#: receives - or, where `orphaned` prints a `git checkout` for it, a newer
+#: copy overwritten by an older one.
+_AHEAD = "ahead"
+_BEHIND = "behind"
+_EQUAL = "equal"
+
+
+def _standing(base_text: str, ref_text: str) -> str:
+    """Whether a ref's copy of one item carries anything the base's copy does not.
+
+    `stranded` used to key on whether an item's *id* was on the default
+    branch, which answers a narrower question than the one it is asked. An
+    item the base holds can still have its substance on a branch - a whole
+    section of `PL-879R`'s brief sat unreported that way (`PL-KSCW`) - and a
+    branch's copy can be an earlier revision of one the base has closed since,
+    which is the case `orphaned` offered a `git checkout` for, restoring an
+    `untriaged` copy over `main`'s `done` one (`PL-MBTZ`, and `PL-XLQ5` before
+    it). One per-file predicate answers both (`PL-BHVM`, project owner,
+    2026-09-19, ratified).
+
+    **Content only.** No date, no commit count and no ancestry: this runs
+    against refs a shallow clone holds no history for, and `closed:` is a
+    field a branch can be holding a stale answer to rather than evidence about
+    which copy is later.
+
+    The three cases:
+
+    - **`_EQUAL`.** The two copies agree.
+    - **`_BEHIND` by removal.** The ref's copy spells no field differently and
+      no line of prose the base's copy lacks, so the base holds everything it
+      holds and more. This is `_superseded`'s "removals only" read, asked of
+      one item file rather than of a path set.
+    - **`_BEHIND` by closure.** The base's copy is `done` or `dropped` and the
+      ref's is not; the ref's prose adds nothing; and every field it spells
+      differently is one the base spells too. A field has one value, and on a
+      closed item the base's is the one the project settled on - `status:
+      untriaged` against `status: done`, with `closed:`, `pr:` and `verify:`
+      beside it - so the branch's line is not content the base is missing.
+    - **`_AHEAD` otherwise.** Including two copies that each hold something
+      the other lacks: the reader is handed a diff either way, and calling
+      that case ahead reports it rather than hiding it.
+
+    **What the closure case costs, counted rather than asserted.** It is wrong
+    exactly where a branch *reopens* an item the base closed, and a reopening
+    is 2 of the 1,377 items in this store's history, both in one commit -
+    measured 2026-09-21 by replaying every one of the 889 commits touching
+    `docs/items/` on `main` and reading each item's `status` as it changed.
+    Against that: on 2026-09-21 the rule was what separated 7 branch copies
+    carrying real unmerged prose - among them a ratified project-owner
+    decision on `PL-DMDF` that reached no other report - from 7 that carried
+    nothing but an older `status:` line. Without it the report is 14 entries
+    of which half are noise, which is the shape a reader learns to skim.
+    """
+    if base_text == ref_text:
+        return _EQUAL
+    base_fields, base_body = parse_front_matter(base_text)
+    ref_fields, ref_body = parse_front_matter(ref_text)
+    held = set(base_body.splitlines())
+    if any(line.strip() and line not in held for line in ref_body.splitlines()):
+        return _AHEAD
+    differing = [key for key, value in ref_fields.items() if base_fields.get(key) != value]
+    if not differing:
+        return _BEHIND
+    closed_on_base = base_fields.get("status", "") in CLOSED_STATUSES
+    closed_on_ref = ref_fields.get("status", "") in CLOSED_STATUSES
+    if closed_on_base and not closed_on_ref and all(key in base_fields for key in differing):
+        return _BEHIND
+    return _AHEAD
+
+
+def _behind_on_base(
+    ref: str, base: str, paths: tuple[str, ...], root: Path, items_dir: str, run: Runner
+) -> set[str]:
+    """Of `paths`, the item files whose copy on `ref` is behind the base's.
+
+    The narrowing `_superseded` cannot make. That read is a two-dot diff, so a
+    path the base has moved on from reads as outstanding the moment the ref's
+    older copy spells one field differently: `status: untriaged` against
+    `status: done` *adds* a line, and "anything added" is the outstanding arm
+    of its rule. That is how `orphaned` came to print a `git checkout` of
+    `origin/claude/next-version-release-o2zzaf`'s copy of `PL-THPB` - a
+    recovery that replaces a `done` item with an `untriaged` one and discards
+    the `closed:`, `milestone:` and `pr:` the base recorded on it (`PL-MBTZ`,
+    and `PL-XLQ5` before it, whose cost `PL-KBFN` and `PL-39B7` record).
+
+    Only item files, and only for `orphaned`. `_superseded` stays generic and
+    content-only, because nothing else it is asked about is a document whose
+    front matter this store owns; `landed_whole` keeps the narrower reading it
+    was measured with, since the recovery *it* leads to deletes a ref.
+
+    A silence leaves the path outstanding, which is `_superseded`'s direction
+    and for its reason: a comparison nobody could read must not come back as
+    "the base already has it".
+    """
+    behind: set[str] = set()
+    on_base = _item_blobs(base, root, items_dir, run)
+    for path in paths:
+        match = ITEM_FILE_RE.match(path.rsplit("/", 1)[-1])
+        recorded = on_base.get(match.group(1)) if match is not None else None
+        if recorded is None:
+            continue
+        base_text = run(["show", f"{base}:{recorded[1]}"], root)
+        ref_text = run(["show", f"{ref}:{path}"], root)
+        if base_text and ref_text and _standing(base_text, ref_text) == _BEHIND:
+            behind.add(path)
+    return behind
 
 
 @dataclass(frozen=True)
@@ -4543,6 +4716,31 @@ def stranded(
     `cmd_stranded`'s and it is not optional there: every finding is a claim
     about what the base does *not* hold, and that claim is only as old as the
     last fetch. `StrandedReport.fetched` carries what happened into the output.
+
+    **The second half: an item the base holds whose substance is on a
+    branch.** An item file is created once and appended to by every session
+    that learns something about it, so the unmerged *section* is the commoner
+    loss and the id test above is blind to it - a whole section of `PL-879R`'s
+    brief sat on an abandoned branch with nothing reporting it (`PL-KSCW`).
+    `_standing` decides per item file which side is ahead, and only the ref's
+    being ahead is reported. That direction is the other half of the defect:
+    a ref holding an older copy carries nothing to recover, and offering one
+    for recovery is how `main`'s `done` copy of `PL-THPB` came to be handed a
+    `git checkout` of a branch's `untriaged` one (`PL-MBTZ`).
+
+    **Three filters before anything is read, in cost order.** The ref's blob
+    equal to the base's settles 24,829 of this repository's 27,009
+    ref-and-item pairs; a blob the base's history has held settles a further
+    2,158, and settles them *correctly* rather than merely cheaply, since the
+    base replacing its own prose leaves the ref holding lines the base lacks -
+    judged on text alone that reads as ahead, and 873 of them did. What
+    survives is 15 pairs to open, and the measured cost of the whole read is
+    0.35 s against 13.4 s without the blob filter (2026-09-21).
+
+    **An edit this session is itself holding is not reported back to it**,
+    which is `known_ids` above applied to content rather than to ids: a copy
+    whose blob `HEAD` also holds is one the session can see, whether it
+    pushed it a moment ago or is working it now.
     """
     run = _Silences(runner or _run_git)
     refs = [
@@ -4556,7 +4754,7 @@ def stranded(
         return StrandedReport(declined="no branch refs this checkout can read", fetched=fetched)
 
     base = default_base(root, runner=run)
-    on_base = _items_at(base, root, items_dir, run)
+    on_base = _item_blobs(base, root, items_dir, run)
     if not on_base:
         # Either the read failed or the store does not live where it was said
         # to. Both would make every item on every branch look stranded, which
@@ -4567,18 +4765,40 @@ def stranded(
         )
 
     known = {identifier.upper() for identifier in known_ids} | set(on_base)
+    held = _base_blobs(base, root, run)
+    here = _item_blobs("HEAD", root, items_dir, run)
     elsewhere: dict[str, tuple[str, list[str]]] = {}
+    edited: dict[str, tuple[str, str, str, list[str]]] = {}
     for ref in refs:
         if ref == base:
             continue
-        for identifier, path in _items_at(ref, root, items_dir, run).items():
-            if identifier in known:
+        for identifier, (blob, path) in _item_blobs(ref, root, items_dir, run).items():
+            recorded = on_base.get(identifier)
+            if recorded is None:
+                if identifier in known:
+                    # The session's own store holds it and the base does not,
+                    # which is at risk rather than lost - and nothing here can
+                    # compare a copy the base has never had.
+                    continue
+                # Every branch holding it is recorded, not just the first. A
+                # branch missing from the report strands nothing and is safe to
+                # delete on that count; naming only one copy would make the
+                # branch holding the other look clean.
+                elsewhere.setdefault(identifier, (path, []))[1].append(ref)
                 continue
-            # Every branch holding it is recorded, not just the first. A branch
-            # missing from the report strands nothing and is safe to delete on
-            # that count; naming only one copy would make the branch holding the
-            # other look clean.
-            elsewhere.setdefault(identifier, (path, []))[1].append(ref)
+            base_blob, base_path = recorded
+            mine = here.get(identifier, ("", ""))[0]
+            if blob in (base_blob, mine) or blob in held:
+                continue
+            ref_text = run(["show", f"{ref}:{path}"], root)
+            base_text = run(["show", f"{base}:{base_path}"], root)
+            if ref_text and base_text and _standing(base_text, ref_text) != _AHEAD:
+                continue
+            # A copy neither side could be read for is reported rather than
+            # dropped, the direction `_superseded` takes for the same reason:
+            # an unread comparison must not come back as "the base has it".
+            title = parse_item(ref_text, path).title if ref_text else ""
+            edited.setdefault(identifier, (path, base_path, title, []))[3].append(ref)
 
     found = [
         StrandedItem(
@@ -4589,8 +4809,23 @@ def stranded(
         )
         for identifier, (path, branches) in sorted(elsewhere.items())
     ]
+    edits = [
+        StrandedEdit(
+            identifier=identifier,
+            title=title,
+            path=path,
+            base_path=base_path,
+            branches=tuple(branches),
+        )
+        for identifier, (path, base_path, title, branches) in sorted(edited.items())
+    ]
     return StrandedReport(
-        items=tuple(found), refs_read=len(refs), fetched=fetched, declined=run.reason
+        items=tuple(found),
+        edits=tuple(edits),
+        base=base,
+        refs_read=len(refs),
+        fetched=fetched,
+        declined=run.reason,
     )
 
 
@@ -5024,6 +5259,12 @@ def orphaned(
         # and missing from nowhere. `_superseded` carries both shapes and why
         # the wrong answer was expensive rather than untidy.
         superseded = _superseded(name, base, outstanding, root, run)
+        # And the narrowing a two-dot diff cannot make: an item file whose copy
+        # here is an earlier revision of one the base has closed since. It
+        # reads as outstanding above because its older `status:` line is an
+        # addition, and the recovery offered for it overwrites the base's
+        # closed copy with it (`PL-MBTZ`).
+        superseded |= _behind_on_base(name, base, outstanding, root, items_dir, run)
         outstanding = tuple(path for path in outstanding if path not in superseded)
         if not outstanding:
             continue

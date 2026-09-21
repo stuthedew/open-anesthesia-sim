@@ -3,12 +3,13 @@ id: PL-KSCW
 title: bin/docket stranded reports an item file that exists only on a branch but says nothing about a section appended to an item main already holds, which is how PL-879R's fourth-instance evidence and five other item edits sat unreported on claude/focused-dijkstra-outqzu
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: stranded-ahead-or-behind
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-17
-verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_an_unmerged_edit_to_an_item_the_base_already_holds_is_named' subprojects/docket/tests/test_cli.py
+closed: 2026-09-21
+verify: uv run pytest -q subprojects/docket/tests/test_cli.py -k stranded && grep -q 'def test_stranded_hands_a_diff_for_an_item_edited_only_on_a_branch' subprojects/docket/tests/test_cli.py
 recurrences: 2026-09-16 PL-SH9Q
 ---
 
@@ -120,3 +121,31 @@ branch-only modification would fire on every live branch editing its own item -
 the check `CLAUDE.md` retires for firing each run without changing a decision.
 So the ahead/behind/equal predicate is not only a correctness improvement over
 the id test; it is what keeps the report quiet enough to be read at all.
+
+---
+
+**Done 2026-09-21, with `PL-MBTZ`, as one predicate.** The full reasoning and
+the measurements are on `PL-MBTZ`; this is the half of it this item asked for.
+
+`bin/docket stranded` now prints a second section - "N items the default branch
+holds are edited only on a branch" - naming each item whose copy on some ref is
+**ahead** of the base's, the refs holding it, and a `git diff <base>:<path>
+<ref>:<path>` to read. Both blobs are named rather than a pathspec, because a
+retitle renames the file and `git diff <base> <ref> -- <path>` would then
+compare the ref's copy against nothing.
+
+No `git checkout` is printed in that section at all, which is the settled
+output shape and the reason it is a section rather than more rows above: the
+base holds a copy of its own, so the recovery that is right for a stranded file
+is the one that destroyed `PL-XLQ5`'s.
+
+Two suppressions keep it to a report a reader acts on rather than skims. A copy
+whose blob `HEAD` also holds is one this session can already see - `known_ids`
+applied to content rather than to ids - so a session is not told its own pushed
+work is unmerged. And a copy the base is *ahead* of is silent, which is
+`PL-MBTZ`. Without the second, this section would have run to 873 entries on
+the day it was built; with it, 7.
+
+`PL-SH9Q`'s `verify:` named `test_stranded_reports_an_item_modified_only_on_a_branch`
+before that test existed. It exists now, in `subprojects/docket/tests/test_vcs.py`,
+and pins the `origin/claude/wizardly-maxwell-dyzpjt` shape that item recorded.

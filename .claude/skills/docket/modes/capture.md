@@ -105,6 +105,17 @@ which is the difference between "this item is lost" and "this item merged nine
 minutes ago" - and the recovery is a `git checkout` that overwrites the merged
 copy with the older one, which is what `PL-XLQ5` cost (`PL-KBFN`, `PL-39B7`).
 
+**A second list below it names items `main` already holds, and hands a `git
+diff` rather than a recovery.** An item file is created once and appended to by
+every session that learns something about it, so the unmerged *section* is the
+commoner loss and nothing used to report it (`PL-KSCW`). Read the diff and
+carry across what is worth keeping - a section appended to a brief usually
+whole, a field both sides have edited never from a command line. There is no
+`git checkout` for these on purpose: `main` holds a copy of its own, and
+restoring the branch's over it discards whatever landed since. A branch holding
+an *older* copy is not listed at all, which is the other half of the same
+comparison (`PL-MBTZ`).
+
 **The same command's second half is not about items at all, and it is not a
 judgment call in the same way.** It names a branch whose pull request already
 took part of its work and left the rest - a commit pushed after the merge,

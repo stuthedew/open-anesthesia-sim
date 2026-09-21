@@ -3,12 +3,13 @@ id: PL-MBTZ
 title: bin/docket stranded offers to recover PL-THPB from origin/claude/next-version-release-o2zzaf, where the branch's copy is older than main's: the recover line would overwrite a done item with an untriaged one
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: stranded-ahead-or-behind
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, tests/unit/test_docket_branch_guard.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, .claude/skills/docket/modes/capture.md
 added: 2026-09-14
-verify: uv run pytest tests/unit/test_docket_branch_guard.py && grep -q 'def test_a_branch_copy_older_than_the_base_is_not_offered' tests/unit/test_docket_branch_guard.py
+closed: 2026-09-21
+verify: uv run pytest -q subprojects/docket/tests/test_cli.py -k stranded && grep -q 'def test_stranded_does_not_offer_to_restore_a_copy_the_base_has_closed_since' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** bin/docket stranded offers to recover PL-THPB from origin/claude/next-version-release-o2zzaf, where the branch's copy is older than main's: the recover line would overwrite a done item with an untriaged one
@@ -100,3 +101,38 @@ three as unrelated work, and they sat in two different features
 (`parallel-sessions` and `stranded-item-edits`). They are ranked together by
 `PL-BHVM`'s `root-cause-of:` and now grouped together as well; the group closes
 when `stranded` makes that comparison.
+
+---
+
+**Done 2026-09-21, with `PL-KSCW`, as one predicate.** `vcs._standing` reads
+two copies of one item file and answers `ahead`, `behind` or `equal` from
+content alone - no date, no commit count, no ancestry, since this runs against
+refs a shallow clone holds no history for. `stranded` and `orphaned` both read
+it, so the two halves of the defect close together:
+
+- `orphaned` no longer offers a `git checkout` of a copy the base has closed
+  since. `_behind_on_base` is the narrowing `_superseded` cannot make: that
+  read is a two-dot diff, so the branch's older `status: untriaged` line is an
+  *addition* and the path stays outstanding, which is exactly how `PL-THPB`
+  came to be offered.
+- `stranded` gained the other direction, which is `PL-KSCW`: an item the base
+  holds whose branch copy is **ahead** is reported in a section of its own,
+  with a `git diff` to read and no checkout line anywhere in it.
+
+**The three-valued predicate needed more evidence than the design round
+assumed**, which is the one place `PL-BHVM`'s ratification flagged as untested
+and it was right to. Blob identity alone does not separate ahead from behind:
+judged on text alone, 873 of this repository's branch copies read as ahead on
+2026-09-21. Three filters in cost order settle it - the ref's blob equal to the
+base's (24,829 of 27,009 ref-and-item pairs), a blob the base's history has
+held (2,158 more, and correctly rather than merely cheaply, since the base
+rewriting its own prose leaves the ref holding lines the base lacks), then the
+text of the 15 that survive. Measured cost of the whole read: 0.35 s, against
+13.4 s without the blob filter. What it reports today is 7 branch copies
+carrying real unmerged prose, among them a ratified project-owner decision on
+`PL-DMDF` that reached no other report.
+
+**The closure carve-out is the part most likely to be wrong**, and the number
+it rests on is 2 reopenings in 1,377 items across this store's whole history,
+both in one commit - replayed over all 889 commits touching `docs/items/` on
+`main`. A branch reopening an item the base closed is what it would hide.
