@@ -3,11 +3,12 @@ id: PL-LHBY
 title: A branch halted on a learner's mark reports nothing, because the marks panel draws standings from the reference run only
 priority: P1
 effort: M
-status: ready
+status: done
 classes: defect, safety
 feature: two-run-attribution
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
 added: 2026-09-20
+closed: 2026-09-20
 payoff: stops the screen asserting a mark was reached by a run that provably could not reach it, and stops a branch halting at a learner's mark with nothing on screen saying why
 verify: grep -q 'def test_a_branch_halted_on_a_mark_says_so' tests/integration/test_simulation_view.py
 ---
@@ -80,3 +81,16 @@ named above rather than trusting it. It is recorded as unverified deliberately:
 this item exists because a brief asserted something about standings that was
 true of the mark set instead, and repeating that shape here would be the same
 error one layer down.
+
+**Both halves were re-run, and the standing named above was checked rather
+than trusted.** The false-positive reproduction marks 30 s and forks at 60 s,
+so the mark stands *before* the branch's own opening instant:
+`_time_bookmark_standing` tests `opened_at_s <= instant_s <= elapsed_s` first,
+which is `60 <= 30` and false, then `instant_s < opened_at_s`, which is
+`30 < 60` and true — `BEFORE_THIS_BRANCH`, as originally recorded. `PL-3K9B`'s
+`PASSED` takes the cases where the clock is at or past the mark, which is a
+mark *at* the fork instant rather than behind it; the caution was right to be
+recorded and does not reach this reproduction. Measured against the merged
+tree: the row reads `30s – check · Run 1 passed · Run 2 before this branch
+opened`. The silent negative was re-run too and halts at 114.7 s, the figure
+above.

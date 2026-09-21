@@ -3,13 +3,15 @@ id: PL-4KZD
 title: The bookmark panel draws every run's marks with the reference run's standings, so while two runs are shown the row states one run's answer with nothing saying which
 priority: P1
 effort: S
-status: ready
+status: done
 classes: defect, safety
 feature: scenario-branching
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_simulation_view.py
 added: 2026-09-20
+closed: 2026-09-20
 payoff: stops a mark's row attributing one run's answer to the other while two managements are being compared
-verify: grep -q 'def test_a_mark_s_row_names_the_run_its_standing_belongs_to' tests/unit/test_simulation_view.py
+verify: grep -q 'def test_a_branch_that_halted_on_a_target_the_trunk_is_still_running_for_says_so' tests/unit/test_dashboard_frame.py
+recurrences: 2026-09-20 PL-GHMB
 ---
 
 **Problem.** The bookmark panel draws every run's marks with the reference run's standings, so while two runs are shown the row states one run's answer with nothing saying which
@@ -61,15 +63,24 @@ it reproduces offscreen against the merged tree and its `touches` reach
 `app/qt_widgets.py`, which this item's do not. `PL-25DD` is the third of the
 family. All three carry `feature: two-run-attribution`.
 
-`PL-LHBY` and `PL-25DD` exist only on
-`origin/claude/vigilant-albattani-3lkcb3` and are not in this store;
-`PL-HZ1B` recovers them and settles the gate, which this item currently sits
-on as v0.5.0's one clearable open entry. Do not drop this item before
-`PL-LHBY` is on the gate in its place - the gate would read clear while the
-defect stands.
-
-**`PL-3K9B` made this live rather than masked** (merged 2026-09-20, `#805`). A
+`PL-3K9B` made this live rather than masked (merged 2026-09-20, `#805`). A
 time bookmark's standing is now positional - read from each run's own clock -
 which is exactly the quantity two runs differ in, so the single row drawn from
 `snapshots[0]` is now wrong for one of the two runs most of the time a
 comparison is on screen, where before the two answers usually agreed.
+
+**Closed 2026-09-20 with `PL-LHBY`, and the condition that note set was met
+first.** It said not to drop this item before `PL-LHBY` was on the gate in its
+place, or the gate would read clear while the defect stood. `#806` admitted
+`PL-LHBY` to v0.5.0's frozen list, and the change closing both landed after
+that, so the gate never read clear on an open defect. One change answers both:
+this item's "done when" is contained in `PL-LHBY`'s, which adds the two
+consequences reproduced offscreen and the requirement that
+`MarkStanding.BEFORE_THIS_BRANCH` become reachable on screen.
+
+The `verify:` command was rewritten on closing. It named
+`tests/unit/test_simulation_view.py`, a file that has never existed in this
+repository - that view's tests are in `tests/integration/test_simulation_view.py`
+and `tests/unit/test_dashboard_frame.py` - so as written it could not have
+passed on any tree. It now names the unit test holding this item's own "done
+when": a row whose runs disagree names each one.
