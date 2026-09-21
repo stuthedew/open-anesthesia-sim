@@ -8,6 +8,7 @@ feature: wzvz-deferral-integrity
 touches: ROADMAP.md
 added: 2026-09-21
 closed: 2026-09-21
+pr: 840
 payoff: stops the v0.5.0 cut having to choose between dropping a safety-classed entry and holding the release, which is what a bullet admitting only done or dropped leaves a session meeting a deferred one
 verify: python3 tools/doc_check.py check && grep -qF 'deferred to a later gate' ROADMAP.md
 ---
