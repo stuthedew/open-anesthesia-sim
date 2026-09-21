@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_duplicates.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_notes.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_roadmap.py, subprojects/docket/tests/test_store.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-02
 closed: 2026-09-21
+pr: 855
 verify: uv run pytest subprojects/docket/tests/test_store.py -q -k test_every_fixture_id_is_one_the_store_could_mint
 recurrences: 2026-09-19 PL-R77L
 ---
