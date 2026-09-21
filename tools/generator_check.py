@@ -350,8 +350,12 @@ def main(argv: list[str] | None = None) -> int:
         "A ratio, a shared feature and a citation count are evidence, not causation.\n"
         "Where one mechanism really explains three or more of these, record it:\n"
         "`root-cause-of: PL-AAAA, PL-BBBB, PL-CCCC` on the item that causes them.\n"
-        "`docket next` then ranks it above every band but P0, and `docket check`\n"
-        "holds the ids to existing. Under three, it is an ordinary item."
+        "`docket check` holds the ids to existing. Under three, it is an ordinary item.\n"
+        "\n"
+        "Recording it does not rank it. Add `generator: live - <why the store is\n"
+        "still handing this mechanism members>` and `docket next` ranks it above\n"
+        "every band but P0; `generator: spent - <why it can no longer produce one>`\n"
+        "keeps the record for the audit and leaves it on its own band."
     )
     return 0
 

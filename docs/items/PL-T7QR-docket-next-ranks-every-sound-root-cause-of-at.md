@@ -3,13 +3,14 @@ id: PL-T7QR
 title: docket next ranks every sound root-cause-of at the generator tier, so the recurrence test the project owner ratified on 2026-09-21 has no carrier: a recorded-but-spent generator is still offered above every band and the session has to demote it by hand
 priority: P2
 effort: M
-status: ready
+status: done
 classes: infra
 feature: generator-machinery-rank
-touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_plan.py
+touches: CLAUDE.md, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_plan.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_cli.py, tools/generator_check.py, .claude/skills/docket/modes/picking.md
 added: 2026-09-21
+closed: 2026-09-21
 payoff: a generator can be recorded for the audit without being ranked above every band, so the count stays honest and the tier stays scarce
-verify: grep -q 'spent' subprojects/docket/tests/test_plan.py
+verify: uv run pytest subprojects/docket/tests/test_model.py subprojects/docket/tests/test_plan.py subprojects/docket/tests/test_cli.py -k "verdict or spent or generator" -q
 ---
 
 **Problem.** docket next ranks every sound root-cause-of at the generator tier, so the recurrence test the project owner ratified on 2026-09-21 has no carrier: a recorded-but-spent generator is still offered above every band and the session has to demote it by hand

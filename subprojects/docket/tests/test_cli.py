@@ -5443,6 +5443,102 @@ def test_generators_resolves_a_member_id_to_the_cluster_above_it(
     assert "[ ] PL-D3D3" in output
 
 
+_MEMBERS = "PL-B1B1, PL-C2C2, PL-D3D3"
+_LIVE = "live - two more captures matched onto this path after the cluster was recorded"
+_SPENT = "spent - the parse every member stood on was deleted, so no new one can arrive"
+
+
+def test_show_on_a_live_head_says_it_is_on_the_tier(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The promotion is invisible from the item file alone.
+
+    A `P2` that outranks every `P1` in the queue has nothing on its own face
+    saying so, and `show` is the path a named item arrives on - the one `next`
+    never sees, and the one the project owner starts work from.
+    """
+    store = _cluster(tmp_path, names=_MEMBERS, generator=_LIVE)
+
+    assert _run("show", "PL-A0A0", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert f"generator: {_LIVE}" in output
+    assert "ranked on the generator tier - above every band but P0" in output
+
+
+def test_show_on_a_spent_head_says_it_ranks_on_its_own_band(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The distinction the drain line above it cannot carry.
+
+    Drain is how much of the damage is repaired; the verdict is whether more
+    is still arriving, and a cluster can be fully drained with its mechanism
+    running or wholly open with it spent. Only the second decides the rank, so
+    a reader shown the first alone would take a recorded generator for a
+    ranked one.
+    """
+    store = _cluster(tmp_path, names=_MEMBERS, generator=_SPENT)
+
+    assert _run("show", "PL-A0A0", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert f"generator: {_SPENT}" in output
+    assert "spent: recorded for the audit, ranked on its own band" in output
+    assert "above every band" not in output
+
+
+def test_show_on_a_head_with_no_verdict_says_the_field_is_missing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Recorded and unranked, which is the state a session cannot otherwise see.
+
+    Nothing is mis-ranked - the ranking refuses what does not claim `live` -
+    so what this catches is the session that recorded a live generator and
+    believes the mechanism is now above every safety item in the queue.
+    """
+    store = _cluster(tmp_path, names=_MEMBERS)
+
+    assert _run("show", "PL-A0A0", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert "generator: is absent" in output
+    assert "ranked on the generator tier" not in output
+
+
+def test_generators_marks_an_open_head_that_no_longer_ranks(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The audit table is where a recorded generator is counted, so it says which.
+
+    `format_clusters` already names the two sets its count does not reach, so
+    the total is honest; from `PL-T7QR` being recorded and ranking are two
+    different facts and this is the table where the first is read.
+    """
+    store = _cluster(tmp_path, names=_MEMBERS, generator=_SPENT)
+
+    assert _run("generators", "--items", str(store)) == 0
+
+    assert "spent, so it ranks on its band" in capsys.readouterr().out
+
+
+def test_generators_says_nothing_about_a_closed_heads_verdict(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A closed head is startable by nothing, so the clause would decide nothing.
+
+    `CLAUDE.md` retires a check that fires every run without changing a
+    decision, and a distinction printed beside every head in a table where all
+    eleven are closed is that defect in a report line.
+    """
+    store = _cluster(tmp_path, names=_MEMBERS, generator=_SPENT, status="done", closed="2026-08-20")
+
+    assert _run("generators", "--items", str(store)) == 0
+
+    output = capsys.readouterr().out
+    assert "PL-A0A0" in output
+    assert "spent" not in output
+
+
 def test_show_on_a_head_says_how_much_of_its_cluster_is_open(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

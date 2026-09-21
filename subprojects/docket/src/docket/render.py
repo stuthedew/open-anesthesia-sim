@@ -19,6 +19,7 @@ from .concurrency import undeclared
 from .config import Config
 from .duplicates import Candidate
 from .model import (
+    CLOSED_STATUSES,
     LANE_CROSSING,
     LANE_PRODUCT,
     LANE_UNPLACED,
@@ -30,6 +31,7 @@ from .model import (
     live_recurrences,
     recurrence_count,
     recurrences_of,
+    split_generator_verdict,
 )
 from .notes import Thread
 from .plan import (
@@ -948,6 +950,33 @@ def _drain_phrase(cluster: Cluster) -> str:
     return f"{phrase} ({', '.join(footnotes)})" if footnotes else phrase
 
 
+def _verdict_phrase(head: Item) -> str:
+    """Whether this head still ranks, as a trailing clause, or `""`.
+
+    Only for an **open** head, which is the only one the answer can move.
+    `recommend` ranks from the startable set, so a closed head is on no tier
+    whatever its verdict says, and printing `spent` beside one would offer a
+    reader a distinction that decides nothing - the noise `CLAUDE.md` retires a
+    check for producing. Every head this project has recorded is closed, so
+    that is the common case rather than the edge.
+
+    The distinction it does carry is one the drain figures cannot. Drain is how
+    much of the damage is repaired; the verdict is whether more is still
+    arriving, and a cluster can be fully drained with its mechanism running or
+    wholly open with it spent. Only the second decides the rank, so a report
+    showing the first alone would let a recorded generator read as a ranked one
+    - which is the conflation `PL-T7QR` closed.
+    """
+    if head.status in CLOSED_STATUSES:
+        return ""
+    verdict, _ = split_generator_verdict(head.generator)
+    if verdict == "live":
+        return "; still generating, so on the tier"
+    if verdict == "spent":
+        return "; spent, so it ranks on its band"
+    return "; no recurrence verdict, so recorded but unranked"
+
+
 def format_drain(cluster: Cluster) -> str:
     """One cluster's state in one line, for `show` on the head itself.
 
@@ -986,6 +1015,12 @@ def format_clusters(
     ranks on the generator tier while having no members to drain, which is the
     discrepancy that made `PL-XF5V`'s brief say twelve heads over a table of
     eleven.
+
+    An **open** head also carries its recurrence verdict, because from
+    `PL-T7QR` being recorded here and ranking above every band are two
+    different facts and this is the table where the first is audited. A closed
+    head carries none: it is startable by nothing, so its verdict moves no
+    ranking and the clause would decide nothing.
     """
     if not clusters:
         lines = ["no item carries a sound `root-cause-of:`, so no generator is recorded"]
@@ -1007,6 +1042,7 @@ def format_clusters(
         lines.append(
             f"  {cluster.head.identifier} "
             f"{_plural(len(cluster.members), 'member', 'members')}, {_drain_phrase(cluster)}"
+            f"{_verdict_phrase(cluster.head)}"
         )
         lines.append(f"      {_gloss(cluster.head.title, 64)}")
     lines.extend(_outside_clusters(unsound, defects))

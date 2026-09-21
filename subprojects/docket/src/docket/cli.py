@@ -42,11 +42,12 @@ from .model import (
     WITHDRAWN_MARKER,
     Item,
     generator_defect_faults,
+    generator_faults,
     generators_explaining,
     impairs_generators_soundly,
-    is_generator,
     is_under,
     live_recurrences,
+    ranks_as_generator,
     recurrence_count,
     recurrences_of,
 )
@@ -1039,6 +1040,7 @@ SET_FIELDS: tuple[tuple[str, str], ...] = (
     ("not-delegable", "not_delegable"),
     ("falsifies", "falsifies"),
     ("root-cause-of", "root_cause_of"),
+    ("generator", "generator"),
     ("impairs-generators", "impairs_generators"),
 )
 
@@ -1301,8 +1303,13 @@ def cmd_show(args: argparse.Namespace) -> int:
     # item that ranked above every band. `recommend` refuses that sentence
     # already; `show` asserted it, and `show` is the path a named item arrives
     # on.
-    on_the_tier = is_generator(item, {i.identifier for i in items if i.identifier}) or (
-        impairs_generators_soundly(item, config.generator_paths)
+    known_ids = {i.identifier for i in items if i.identifier}
+    # `ranks_as_generator` rather than `is_generator`, which is the whole of
+    # what this line asks: a recorded generator whose mechanism is spent did
+    # *not* rank above every band, so "it ranks on its band alone" is true of
+    # it and must not be dropped (`PL-T7QR`).
+    on_the_tier = ranks_as_generator(item, known_ids) or impairs_generators_soundly(
+        item, config.generator_paths
     )
     placement = placement_line(
         plan.scope if plan is not None else None, item.identifier, ranks_above_bands=on_the_tier
@@ -1319,6 +1326,25 @@ def cmd_show(args: argparse.Namespace) -> int:
     # carries it sits above members that are still open (`PL-XF5V`).
     if (cluster := clusters(items).get(item.identifier)) is not None:
         print(f"  root cause of {render.format_drain(cluster)}")
+    # The recurrence verdict, directly under the cluster it qualifies. The
+    # drain line above cannot carry it: a drained cluster and a spent mechanism
+    # are different facts - one is how much of the damage is repaired, the
+    # other is whether more is still arriving - and only the second decides
+    # whether this outranks a `safety`-classed `P1`. Soundness is re-decided
+    # here for the reason the `impairs-generators` block below re-decides its
+    # own: an unsound claim ranks nothing, and a session believing otherwise is
+    # what `docket check` exists to end.
+    verdict_faults = generator_faults(item, known_ids)
+    if item.generator:
+        print(f"  generator: {item.generator}")
+        if verdict_faults:
+            print(f"    UNSOUND - {'; '.join(verdict_faults)}; ranks on its band until repaired")
+        elif ranks_as_generator(item, known_ids):
+            print("    ranked on the generator tier - above every band but P0")
+        else:
+            print("    spent: recorded for the audit, ranked on its own band")
+    elif verdict_faults:
+        print(f"  generator: {'; '.join(verdict_faults)}")
     if item.recurrences:
         # Where a reader sent here by `next` or the digest actually lands. Naming
         # the count and not the filings would be the partial answer this package
@@ -3013,6 +3039,7 @@ def build_parser() -> argparse.ArgumentParser:
     setter.add_argument("--verify", metavar="COMMAND")
     setter.add_argument("--not-delegable", metavar="WHY")
     setter.add_argument("--falsifies", metavar="FRAGMENT")
+    setter.add_argument("--generator", metavar="live|spent - WHY")
     setter.add_argument("--impairs-generators", metavar="WHY")
     setter.add_argument(
         "--overwrite", action="store_true", help="replace a value the item already records"
