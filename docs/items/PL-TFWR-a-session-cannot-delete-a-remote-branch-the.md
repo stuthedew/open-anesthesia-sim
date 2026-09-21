@@ -89,3 +89,15 @@ day and recorded an HTTP 403 instead. At most one of the two is what this
 project meets, and nothing has established which. What this item measured and
 what is safe to carry forward is the *symptom*: the push ends on `Everything
 up-to-date` having deleted nothing. That is what `docs/worker.md` now says.
+
+**The mutual exclusivity is falsified, 2026-09-21 under `PL-ZM48`**, and so is
+this item's exit status. One 2026-09-20 `git push origin --delete` returned the
+`HTTP 403` of `PL-XQRK` *and* the `send-pack: unexpected disconnect` and
+`Everything up-to-date` of this item, in that order, from a single command - so
+the two items read different lines of one output and neither measured a failure
+the other did not. **At exit status 1, not 0.** The "exit status 0" this brief
+records is the origin of the claim `docs/worker.md` carried for both ref
+operations until 2026-09-21; tracing it found that `PL-N936`'s tag push had
+never had an exit status measured at all, so the tag row now reads "not
+established" rather than inheriting this one. The symptom this item measured
+stands: the push ends on `Everything up-to-date` having deleted nothing.

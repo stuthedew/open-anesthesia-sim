@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: docs, session-cost
 feature: dev-tooling
+milestone: v0.5.1
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/notes.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_notes.py, subprojects/docket/README.md, docs/WORKING_NOTES.md
 added: 2026-09-13
 closed: 2026-09-21
+pr: 861
 verify: uv run pytest subprojects/docket/tests/test_checks.py subprojects/docket/tests/test_notes.py -k "stale_open_thread or declares_open or cites" -q
 recurrences: 2026-09-21 PL-S669
 ---

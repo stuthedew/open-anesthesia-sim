@@ -76,8 +76,11 @@ as on `556d454` (`cbd4e7d…` and `5eaa2df…`), so the branch holds nothing `ma
 lacks.
 
 **The branch itself is still on the remote, and no session can remove it.**
-`git push origin --delete Review_articles` fails through this environment's git
-proxy, which drops the deletion ref and leaves git reporting `Everything
-up-to-date` at exit status 0; the GitHub MCP server has no branch-deletion tool.
-Deleting it is the project owner's action. `PL-TFWR` carries the diagnosis and
-the question of what the instructions should say about it.
+`git push origin --delete Review_articles` fails from a session, leaving git
+reporting `Everything up-to-date` with the ref intact; the GitHub MCP server has
+no branch-deletion tool. Deleting it is the project owner's action.
+**Two claims struck here 2026-09-21 under `PL-ZM48`**, the sweep under
+`PL-3V6C` having reached `PL-TFWR` and `PL-XQRK` but not this brief: the git
+proxy dropping the deletion ref is an unestablished mechanism, and the exit
+status is **1**, not 0. `docs/worker.md` § "Ref operations a session cannot
+perform" carries the measured sequence.

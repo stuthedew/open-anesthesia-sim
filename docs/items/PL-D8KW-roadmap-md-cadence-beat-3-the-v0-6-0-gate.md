@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, docs
 feature: gate-staleness-sweep
+milestone: v0.5.1
 touches: ROADMAP.md, .claude/skills/docket/modes/release.md
 added: 2026-09-21
 closed: 2026-09-21

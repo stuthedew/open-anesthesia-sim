@@ -231,18 +231,18 @@ def test_a_pair_below_its_minimum_is_an_error(tmp_path: Path, declare) -> None:
 
 def test_a_declared_shortfall_does_not_fail_the_build(tmp_path: Path, declare) -> None:
     declare(
-        (_requirement("FAINT", "PANEL", contrast_check.AA_TEXT),), {("FAINT", "PANEL"): "PL-DEMO"}
+        (_requirement("FAINT", "PANEL", contrast_check.AA_TEXT),), {("FAINT", "PANEL"): "PL-DDDD"}
     )
 
     report = contrast_check.analyze(_repo(tmp_path))
 
     assert not report.errors
-    assert "PL-DEMO" in contrast_check.format_report(report, matrix=False)
+    assert "PL-DDDD" in contrast_check.format_report(report, matrix=False)
 
 
 def test_a_shortfall_that_starts_passing_is_an_error(tmp_path: Path, declare) -> None:
     """The list cannot rot: fixing a shortfall forces its entry out."""
-    declare((_requirement("INK", "PANEL", contrast_check.AA_TEXT),), {("INK", "PANEL"): "PL-DEMO"})
+    declare((_requirement("INK", "PANEL", contrast_check.AA_TEXT),), {("INK", "PANEL"): "PL-DDDD"})
 
     report = contrast_check.analyze(_repo(tmp_path))
 
@@ -296,13 +296,13 @@ def test_a_two_channel_shortfall_is_excused_under_both_names(tmp_path: Path, dec
     """A disjunction is keyed by what the report prints, so its entry is findable."""
     declare(
         (_either(("demoflurane.foreground", "FAINT"), "PANEL", contrast_check.AA_NON_TEXT),),
-        {("demoflurane.foreground or FAINT", "PANEL"): "PL-DEMO"},
+        {("demoflurane.foreground or FAINT", "PANEL"): "PL-DDDD"},
     )
 
     report = contrast_check.analyze(_repo(tmp_path))
 
     assert not report.errors
-    assert "PL-DEMO" in contrast_check.format_report(report, matrix=False)
+    assert "PL-DDDD" in contrast_check.format_report(report, matrix=False)
 
 
 def test_a_renamed_constant_is_an_error_rather_than_a_skipped_check(

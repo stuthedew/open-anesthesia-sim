@@ -3082,11 +3082,22 @@ def _quoting_sources(root: Path, documents: dict[Path, str]) -> Iterator[tuple[P
     somewhere else. `DOC_GLOBS` itself is left alone - widening it would hand
     687 item files to `check_make_targets` and to `candidates`, neither of
     which wants them.
+
+    **The queue half is the *live* briefs only**, which is `_live_item_briefs`
+    and the same line `check_line_citations` draws. A closed brief is a record
+    of what was true when the work was done, so its drift is not a finding -
+    `.claude/rules/citation-drift.md` is the ratified decision, and this
+    function read every brief instead, which made the two checks disagree
+    about the same file. The disagreement was not academic: the
+    `## Current baseline` section of `ROADMAP.md` is replaced wholesale at
+    every release, so a closed brief quoting one of its headings went red at
+    the next cut, and the only ways out were repairing a historical record or
+    editing the roadmap to suit a check (`PL-ZM8P`).
     """
     for path, text in documents.items():
         yield path, 1, text
-    for path in sorted(root.glob("docs/items/*.md")):
-        yield path.relative_to(root), 1, path.read_text(encoding="utf-8")
+    for path, text in _live_item_briefs(root):
+        yield path, 1, text
     for path in sorted(_walk(root)):
         if path.suffix != ".py":
             continue

@@ -76,3 +76,12 @@ What this item measured, and what `docs/worker.md` now carries, is the
 *symptom*: the deletion does not happen, and a cleanup pass therefore ends on
 the owner's desk. That was always the part the item was for, and it is
 unaffected.
+
+**The mutual exclusivity is falsified, 2026-09-21 under `PL-ZM48`.** The
+closing paragraph above - "a push cannot both be silently swallowed and be
+refused with a status code. At most one is what this project meets" - is
+`PL-3V6C`'s premise, and one 2026-09-20 transcript carries the `HTTP 403` this
+item measured, `send-pack: unexpected disconnect`, and `Everything up-to-date`
+from a single command. Both items were right about what they saw. The `HTTP
+403` recorded here is the established shape of the failure, and `docs/worker.md`
+now gives it as the deletion row rather than as one of two candidates.

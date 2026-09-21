@@ -8,6 +8,7 @@ classes: docs, infra, session-cost
 feature: dev-tooling
 touches: docs/MODEL.md, tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-08-24
+recurrences: 2026-09-21 PL-L609
 ---
 
 **Problem.** `tools/doc_check.py` checks that cited things *exist*. It cannot
