@@ -3116,6 +3116,47 @@ derivable from the file, and a generated precis of a stale thread would be read
 as current. The line is a pointer with a line number, and the judgment stays
 with the reader.
 
+### The one thing `check` says about that file: a thread the heading calls open
+
+A notes file usually carries a policy that a resolved thread is deleted rather
+than left stale, and nothing reads it. `docket check` raises **one grooming
+advisory** naming each `##` section where both of these hold:
+
+1. the heading's own leading word says the thread is open - `Open thread:`,
+   `Open:`, as against `Settled:`, `Decided:`, `Measured`, `Built`, `Shelved`,
+   `Aspirational`, `Long-term`; and
+2. every id the section cites, heading and body alike, resolves to an item
+   that is `done` or `dropped`.
+
+```
+docs/WORKING_NOTES.md: 4 thread(s) the heading calls open, whose every cited
+item has closed - "Open: the repository has no README - PL-WB5K, PL-N092,..."
+(line 868); … ; delete what is finished, once its outcome is recorded
+somewhere that maintains itself, and re-head what outlived its items
+```
+
+**Both clauses, because the second alone is noise.** Measured on the notes file
+this package grew beside, 2026-09-21: clause 2 by itself names 16 of 26
+sections, most of them correct content that other rules cite - a settled
+decision kept because the question recurs, a measurement another document
+points at. Both clauses together name 4, of which 3 had already been filed as
+separate items, one at a time, by six different sessions.
+
+**A section citing no id is never named.** Direction with no item is one of the
+things such a file is for, and an id the store cannot resolve leaves its thread
+unnamed too: an unreadable citation is not evidence that a thread is spent.
+
+**An advisory, and it cannot become an error.** The fourth section the pair
+names on that file has all three of its items closed and is genuinely still
+open - what is left is a published value nothing in the project can settle.
+That false fire is permanent rather than tunable, which is also why this is a
+grooming advisory rather than a close-out check: one permanent false fire at
+every close-out trains a reader to skim the block a real advisory shares.
+Whether a thread's outcome is recorded somewhere that maintains itself is the
+judgment, and it stays with the reader.
+
+The advisory is skipped where the project configures no `notes_file`.
+
 ## Requirements
 
 Python 3.11 or newer, and nothing else. Standard library only, so a

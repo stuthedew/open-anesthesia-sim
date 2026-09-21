@@ -60,6 +60,20 @@ When a thread here is fully resolved (implemented, tested, and merged), its
 outcome belongs in `ROADMAP.md`/`docs/MODEL.md`/commit history as
 appropriate, and its entry here should be deleted rather than left stale.
 
+**`bin/docket check` now names candidates for that deletion, and only
+candidates.** One grooming advisory lists each `##` section whose heading says
+the thread is open and whose every cited `PL-` id has closed - three of the
+four it named when it was built had already been filed as separate items, one
+at a time, by six different sessions (`PL-DG84`). Two things follow for
+whoever writes here. **Head an open thread `Open thread:` or `Open:`, and a
+resolved one with what it resolved to** - `Settled:`, `Decided:`, `Measured`,
+`Built`, `Shelved` - because the heading is the half a check can read, and a
+live thread headed anything else is one the advisory will never name. And
+**the judgment stays with the reader**: whether the outcome is now recorded
+somewhere that maintains itself is what decides deletion, and no check will
+decide it. A section citing no id is never named at all, direction with no
+item being the third thing this file is for.
+
 **The repository's own current state is not a thread here.** It is
 `ROADMAP.md` § "Current baseline", which each release rewrites, where a
 section here is written once and then describes whatever was true that day.
@@ -935,6 +949,13 @@ rather than explaining it.
 
 What is left is the published value itself, which nothing this project runs can
 settle. `docs/MODEL.md` records that as the single remaining candidate.
+
+**`docket check` names this thread on every grooming pass, and that is
+correct.** All three of its items have closed while the question has not, so it
+satisfies both clauses of the stale-open-thread advisory built for `PL-DG84`.
+It is the permanent false fire that advisory was chosen knowing about - the
+reason it can never be a hard failure. The thread goes when the published value
+is settled, not before.
 
 ## Measured and answered: a server-rendered chart is not the way out - PL-YDKJ, PL-2FM6, PL-2QMK, PL-YSZN (2026-09-08)
 
