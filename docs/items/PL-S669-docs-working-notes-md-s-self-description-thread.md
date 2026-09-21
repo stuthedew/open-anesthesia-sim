@@ -29,13 +29,14 @@ either way - which is what puts it outside `CLAUDE.md`'s fix-now test 3.
 
 **It is an instance `PL-DG84`'s shipped advisory will never name**, and that
 is the coverage statement rather than a complaint. Clause 1 requires the
-heading to begin `Open`, and this one begins "Mostly settled", so the signal
+heading to begin `Open`, and this one began "Mostly settled", so the signal
 catches a resolved thread only while its heading is *also* wrong. `#861` added
 the preamble paragraph that closes the gap from the other side - "Head an open
 thread `Open thread:` or `Open:`, and a resolved one with what it resolved to
-- `Settled:`, `Decided:`, `Measured`, `Built`, `Shelved`". "Mostly settled" is
-in neither list, which is what makes this thread the first test of that
-convention and the reason the heading question below is not cosmetic.
+- `Settled:`, `Decided:`, `Measured`, `Built`, `Shelved`". "Mostly settled"
+was in neither list, which made this thread the first test of that convention.
+`PL-75R0` has since renamed it to `Settled:` - see below - so what is left
+here is the deletion judgment alone.
 
 **Measured after `PL-75R0`, for whoever picks this up:** `bin/docket check`
 names exactly **one** thread in this file - § "Open thread: what makes
@@ -52,22 +53,25 @@ by this endpoint", so the sentence was left alone rather than repaired on a
 guess. Settle it with a call that does report topics, and either delete the
 sentence with the thread or correct it.
 
-**Where.** `docs/WORKING_NOTES.md`, § "Mostly settled: the project's one-line
+**Where.** `docs/WORKING_NOTES.md`, § "Settled: the project's one-line
 self-description".
 
-**The heading still says "Mostly settled" and that was deliberate.**
-`PL-75R0` renamed it to "Settled:" - accurate, since the one word it called
-open is decided - and `tools/doc_check.py` then failed with two errors:
-`PL-XF89`'s brief quotes the old heading twice as a section citation, and
-`PL-XF89` is `done`. `.claude/rules/citation-drift.md` treats a closed brief
-as a historical record that is not repaired, so the rename was reverted rather
-than paid for by editing one. Whoever deletes or retitles this thread inherits
-those two citations and should decide them together with the thread.
+**The heading question is closed, and the way it closed is worth the four
+lines.** `PL-75R0` renamed it to `Settled:` and `tools/doc_check.py` failed
+with two errors: `PL-XF89`'s brief quotes the old heading twice as a section
+citation, and `PL-XF89` is `done`. `.claude/rules/citation-drift.md` treats a
+closed brief as a historical record that is not repaired, so the rename was
+reverted and filed here instead - the check was refusing on the exact ground
+the ratified rule says is not a finding. `PL-ZM8P` landed that same day in
+`#866`, pointing `_quoting_sources` at `_live_item_briefs` so a closed brief
+is no longer held to current prose, and `PL-75R0` merged it and re-applied the
+rename: 0 errors where there were 2. Nothing here is blocked on it any more.
 
 **Done when.** The thread is either deleted, with a line in the reply saying
 what carries its record, or kept with a sentence saying why the rejected-drafts
 block is still worth its space; and the repository-topics claim is verified
-rather than assumed.
+rather than assumed. The heading is no longer part of this: `PL-75R0` settled
+it.
 
 **Found.** 2026-09-21, while closing `PL-75R0` (deleting the resolved
 "the repository has no README" thread from the same file). The two threads are

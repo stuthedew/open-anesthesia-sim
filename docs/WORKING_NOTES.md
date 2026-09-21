@@ -561,7 +561,7 @@ whether this work is worth doing at all is met: "be aware of any time you feel
 discouraged from doing a small refactoring... Any such barrier is a smell that
 should prompt a conversation."
 
-## Mostly settled: the project's one-line self-description (PL-4MHK, PL-N092, PL-XF89)
+## Settled: the project's one-line self-description (PL-4MHK, PL-N092, PL-XF89)
 
 **Superseded by events on 2026-09-06, and closed out by `PL-XF89` in
 v0.4.18.** All three statements exist, the deferral is over, and the one word
