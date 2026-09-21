@@ -16,7 +16,7 @@ effort setting**, for both the change and the review of the final diff:
 - new scientific-model design;
 - ambiguous problems and genuine trade-offs;
 - non-obvious debugging and root-cause analysis;
-- anything within the scope of `CLAUDE.md`'s "Safety-critical
+- anything within the scope of `CLAUDE.md` § "Safety-critical
   clinical-output standard" — which includes the presentation of clinical
   values and the scientific content of `docs/MODEL.md`, neither of which is
   routine execution however mechanical the edit looks.

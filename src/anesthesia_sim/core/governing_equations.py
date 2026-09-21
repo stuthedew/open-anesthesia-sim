@@ -63,7 +63,7 @@ anything here.
 
 Carried as a state, the integral is exact for the same reason the fractions
 are, and the accounting residual then sits at rounding rather than at the
-numerical method's error. Two rows, `docs/MODEL.md`'s "External delivery" and
+numerical method's error. Two rows, `docs/MODEL.md` § "External delivery" and
 "Circuit exhaust" equations respectively, and each reads as such.
 
 **The two remaining reported transfers are recovered rather than accumulated,
@@ -314,10 +314,10 @@ def build_system_matrix(settings: UptakeEquationSettings) -> Matrix:
     each. `docs/MODEL.md` § "Selected method (as implemented)" is the step this
     matrix is assembled for, and names this module as where $`A`$ comes from.
 
-    The citation is in the section-mark form deliberately: `tools/doc_check.py`
-    reads that form and not the possessive one this docstring used to carry, so
-    a rename of either section now fails the gate instead of silently orphaning
-    the pointer (`PL-VZL0`, `PL-V13T`).
+    Both citations are in the section-mark form, and quote the section title
+    verbatim: `tools/doc_check.py` looks for that text in the file named, so a
+    rename fails the gate instead of silently orphaning the pointer
+    (`PL-VZL0`, `PL-V13T`, `PL-316G`).
 
     Every off-diagonal entry is a transfer rate and is nonnegative; every
     diagonal is minus the total rate leaving that state. That makes the result

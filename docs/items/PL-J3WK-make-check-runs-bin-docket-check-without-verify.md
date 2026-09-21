@@ -46,7 +46,7 @@ fired here need no command run at all.
    one of them done, which is the second sentence CI printed.
 
 Neither costs a subprocess, so both belong in the bare `bin/docket check` that
-`make check` already runs - which is `CLAUDE.md`'s "find the decidable part and
+`make check` already runs - which is `CLAUDE.md` § "find the decidable part and
 put it in code", and its cheapest-sufficient-tier rule, since the expensive
 tier already exists and is not being replaced.
 

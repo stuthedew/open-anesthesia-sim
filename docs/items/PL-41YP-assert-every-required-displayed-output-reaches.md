@@ -10,7 +10,7 @@ touches: tests/
 added: 2026-08-25
 ---
 
-**Problem.** PL-036 makes `docs/MODEL.md`'s "Minimum displayed outputs" name
+**Problem.** PL-036 makes `docs/MODEL.md` § "Minimum displayed outputs" name
 the `SimulationSnapshot` field behind each bullet and checks those fields
 exist. That proves the field exists, not that the interface displays it.
 

@@ -481,7 +481,7 @@ class AgentUptakeSystem:
         copy kept alongside them.
 
         Flows are converted to litres per second here, once, because that is
-        the unit `docs/MODEL.md`'s "Governing equations" are written in and
+        the unit `docs/MODEL.md` § "Governing equations" are written in and
         the compartments hold the litres per minute a clinician sets.
         """
 

@@ -58,7 +58,7 @@ twelve hours" cannot be parsed out of an arbitrary sentence. Two candidates:
    and a new marker vocabulary to maintain for three facts.
 
 Option 1 first regardless; whether option 2 is worth its upkeep for three
-sentences is the decision, and `CLAUDE.md`'s "the gate is whether it will
+sentences is the decision, and `CLAUDE.md` § "the gate is whether it will
 genuinely run again" is the test to answer it against.
 
 **Done when.** Adding a playback rung, moving the time-base floor or ceiling, or

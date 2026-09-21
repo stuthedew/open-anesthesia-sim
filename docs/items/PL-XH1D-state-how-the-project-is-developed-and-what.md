@@ -23,7 +23,7 @@ file in `docs/items/`.
 
 **Why it matters.** This is product, not scaffolding - it is read by anyone
 evaluating whether to trust the simulator, and it is held to the standard in
-`CLAUDE.md`'s "Two standards, deliberately unequal", not to the scaffolding
+`CLAUDE.md` § "Two standards, deliberately unequal", not to the scaffolding
 bar the rest of this feature sits at. It is also what makes the attribution
 trailers mean anything at all: without it a reader seeing `Author: Claude,
 Co-authored-by: Stuart Feichtinger` learns nothing, and with it the whole

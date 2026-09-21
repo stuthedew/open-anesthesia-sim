@@ -43,7 +43,7 @@ candidates it cannot decide). Three remain open:
 
 **What the round has to settle, stated so it is not re-derived.** The check
 answers an *intent* question - did this branch weaken what measures it - with a
-text matcher over a raw diff, and `CLAUDE.md`'s "do not script the judgment" is
+text matcher over a raw diff, and `CLAUDE.md` § "do not script the judgment" is
 the rule it keeps crossing. `PL-G21K`'s resolution was not "a better matcher":
 it was to remove the one marker whose question belonged to another tool and to
 stop reading non-code. The analogous question here is which of the three items

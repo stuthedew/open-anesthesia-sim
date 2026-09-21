@@ -189,6 +189,29 @@ check: sync
 # forever. Reads two files, so it costs milliseconds. `PL-NB35`.
 	python3 tools/dead_ends.py check
 	python3 tools/doc_check.py check
+# Beside `doc_check` because it is the notation half of the same question,
+# and it imports it. `CITATION_CONNECTIVE` admits the possessive since
+# `PL-316G`, so both citation forms are held to the same containment test and
+# neither can rot silently - which settles correctness and leaves what each
+# form tells a reader. `` `doc.md` § "X" `` says the quotation is a section
+# title; `` `doc.md`'s "X" `` says nothing, this project writing the
+# possessive to quote a sentence as often as to cite a section.
+#
+# Only the decidable direction is reported: a quotation matching a heading or
+# a `**Bold.**` marker in the file it names *is* a section citation, as a fact
+# about the tree. One matching no heading may be a faithful quotation of
+# prose, which is correct as written, so nothing is said about it - the
+# judgment half `CLAUDE.md` refuses to script is exactly the half left alone.
+#
+# Bare `python3` for the reason the line above it is, and its input raises
+# none of the 3.14 question the `uv run` group below has: it reads markdown,
+# and `doc_check._docstrings` declines a file the floor parser cannot parse
+# rather than failing on it. It could only be wired in after the 29 sites it
+# named were converted, since it hard-fails on the thing it exists to find -
+# and wiring it is the point of the conversion rather than a coda to it. A
+# convention nothing enforces decays, and this is what stops the next session
+# writing a section citation in a form that says nothing to its reader.
+	python3 tools/possessive_section_check.py
 # Under `uv run`, both of them, unlike the bare-`python3` lines above, and for
 # a reason about the *input* rather than about the tool. These two read `app/`
 # and every module under `src/anesthesia_sim/` with `ast`, and that source

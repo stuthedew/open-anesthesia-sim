@@ -55,7 +55,7 @@ found.
 
 **Where.** `tools/doc_check.py:196-212` (`TreeMap`), `:312` (construction),
 `:356` (the parent walk); `tests/unit/test_doc_check.py`;
-`docs/ARCHITECTURE.md`'s "Developer tooling (`tools/`)" section, which
+`docs/ARCHITECTURE.md` § "Developer tooling (`tools/`)" section, which
 currently says "no tree draws one today".
 
 **Approach — test it rather than delete it.** The mechanism is right: a

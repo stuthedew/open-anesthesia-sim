@@ -15,7 +15,7 @@ reference 1.0 L and 5 L/min — dominates the displayed mixed-venous value
 through the first minute of wash-in. Against a near-instant-mixing
 comparison it reads 55% low at 30 s, 34% low at 60 s, and 17% low at 120 s.
 Mixed venous is displayed both as a metric and as a chart trace, and neither
-`docs/MODEL.md`'s "Known limitations" nor the interface says the early curve
+`docs/MODEL.md` § "Known limitations" nor the interface says the early curve
 is a mixing artifact rather than tissue uptake.
 **Why it matters.** Not a defect: 1.0 L is the Gas Man reference value and
 is cited twice in `reference_adult.json`. But a learner reading the first

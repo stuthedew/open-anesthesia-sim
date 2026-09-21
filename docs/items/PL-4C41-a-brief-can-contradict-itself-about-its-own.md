@@ -60,7 +60,7 @@ has already been noticed, with the instance named.
   whether a cited path exists, never whether the sentence around it holds.
 
 **What is decidable, and what is not.** This is the design work, per
-`CLAUDE.md`'s "Find the decidable part and put it in code" and its converse,
+`CLAUDE.md` § "Find the decidable part and put it in code" and its converse,
 "Do not script the judgment."
 
 *Decidable.* A brief that names another item with an ordering word — "before
