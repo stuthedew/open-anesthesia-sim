@@ -3229,7 +3229,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 222 entries
+### Declined to Gate 2 on the refilling-queue ground — 223 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -4643,6 +4643,7 @@ waits here is prevention rather than harm, and holding the milestone for a
 question only a person can answer would be the refilling shape twice over.
 
 - PL-WFFX (S) Name the merge client that sends an empty commit_message, which only the project owner can do: affected merges cluster by sitting at 98.3% and by owner-local hour at p=5e-5, but GitHub records no client identity
+- PL-8JQQ (M) bin/docket flight went silent on a live implementation while the branch carried already-squash-merged commits beside the new one, so the one guard against two sessions implementing the same item reported a clean list; `defect` and dated after this gate's freeze, so it enters on the refilling-queue ground rather than under the safety/science exception
 
 ### Required scope
 
