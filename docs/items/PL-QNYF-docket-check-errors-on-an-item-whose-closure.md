@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_declined_recovery_names_the_explicit_record_form' subprojects/docket/tests/test_checks.py
 added: 2026-09-13
+recurrences: 2026-09-21 PL-N0MH withdrawn 2026-09-21 PL-N0MH
 ---
 
 **Problem.** docket check errors on an item whose closure landed in a queue-only commit, and the error names no remedy the session can reach
