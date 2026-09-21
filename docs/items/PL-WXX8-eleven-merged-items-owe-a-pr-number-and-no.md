@@ -3,12 +3,13 @@ id: PL-WXX8
 title: Eleven merged items owe a pr number and no session claims the work, because docket record's advisory assumes a commit is already being made
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect
 feature: cut-backfills-pr-numbers
 touches: subprojects/docket/src/docket/release.py, .claude/skills/docket/SKILL.md, subprojects/docket/tests
 added: 2026-09-16
-verify: uv run pytest -q subprojects/docket/tests/test_release.py && grep -q 'def test_release_writes_the_pr_numbers_the_base_is_owed' subprojects/docket/tests/test_release.py
+closed: 2026-09-21
+verify: uv run pytest subprojects/docket/tests/test_cli.py::test_a_cut_backfill_writes_the_number_onto_the_item_as_well -q
 ---
 
 **Problem.** `bin/docket check` on `main` at `6114ce8` names eleven items
@@ -111,3 +112,40 @@ while the other stands.
 Named for what completes rather than for the theme: `commit-provenance` is
 eleven items and answers no question about whether anything finished, which is
 the test `.claude/skills/docket/SKILL.md` sets for a feature name.
+
+**Closed under `PL-W7WL`, 2026-09-21: the cut is the mechanism this asked
+for.** Both clauses of the `Done when` are answered by the same commit, and by
+the candidate this brief itself recommended — option 2, folding `record`'s
+reading into the release cut, where a commit to the base is being composed
+anyway and the advisory's "let it ride" premise finally holds.
+
+`cmd_release` now runs `closures_on_base` over the items about to ship, before
+the notes are rendered, and writes each number onto the item file. So a
+merged closure's `pr` is written by a mechanism that runs without any session
+noticing it is owed, which is the first clause; and a base on which a release
+has since been cut owes nothing for the work that release shipped, which is the
+second. `test_a_cut_backfill_writes_the_number_onto_the_item_as_well` drives it
+end to end against real git rather than a stub.
+
+What is left standing between cuts is the residue the brief already accepted:
+an item that merges after the last cut still records no `pr` until the next one
+runs, and `make fix` is what closes that window in the meantime. The mechanism
+asked for was one that does not depend on a session noticing, and that is what
+a cut is.
+
+The backlog this item was filed over regrew twice and was backfilled again on
+the same day by the `record` run that repaired the release notes — three
+closures owed a number, all three written.
+
+**The `verify:` clause was repointed at close-out, and the reason is worth
+recording.** It named `def test_release_writes_the_pr_numbers_the_base_is_owed`
+in `subprojects/docket/tests/test_release.py` — a test name guessed at triage,
+before anyone knew where the cut's backfill would live. It lives in
+`cmd_release`, so its end-to-end test needs a real git remote and belongs in
+`test_cli.py` beside the other release-cut tests; `test_release.py` holds the
+pure functions. Forcing a git-backed test into that file to match a guessed
+string would have contorted the code to satisfy the clause rather than the
+other way round. The clause now runs
+`test_a_cut_backfill_writes_the_number_onto_the_item_as_well`, which asserts
+exactly what the old name described: after a cut, the item records the number
+the base named.

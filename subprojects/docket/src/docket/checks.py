@@ -39,7 +39,7 @@ from .model import (
     root_cause_faults,
 )
 from .plan import OfferedReport, promotable
-from .release import NOTES_DIR, SEMVER_RE, notes_name, unrecorded_milestones, version_key
+from .release import NOTES_DIR, SEMVER_RE, notes_name, reference, unrecorded_milestones, version_key
 from .roadmap import MilestoneStates
 from .store import ID_PATTERN, ID_RE, filename_for
 from .vcs import (
@@ -964,6 +964,57 @@ def _check_release_notes(
                 f"not carry `milestone: {name}`, so the notes and the store disagree about "
                 f"what {name} shipped: {_named(unstamped)}"
             )
+
+
+def _check_notes_references(
+    report: Report, unreferenced: dict[str, tuple[str, ...]] | None
+) -> None:
+    """Released bullets whose route back to the change the store can supply.
+
+    The third thing a release's notes and the store can disagree about, after
+    which items shipped and whether they were stamped. A bullet records where
+    its change landed so a reader can go and see it; a bullet without one names
+    an item and stops, and the reader's next move is a hand search of the
+    history.
+
+    **Advisory, and decidable, which is normally an error's combination.** The
+    exception is what the reader would do about it: `docket record` writes
+    these, `make fix` runs it, and the repair is an append that cannot be got
+    wrong. An error here would go red on a tree whose repair is one command
+    nobody has run yet - and, worse, on a cut made from the shallow clone that
+    is the normal state of an agent session, where the number was unreachable
+    at the moment the notes were written and no amount of refusing produces it.
+
+    **Only what the store can actually supply is counted**, which is what stops
+    this becoming the advisory nobody reads (`CLAUDE.md` § "A check earns its
+    place every run"). A bullet whose item records neither a number nor a
+    commit is not a repair anyone is declining to make; it is provenance that
+    does not exist, and `_check_closures` is where that is already reported
+    against the item. So a store with nothing to add reports nothing, and every
+    line printed here has a command behind it.
+
+    Measured 2026-09-21, before the cut backfilled anything: 128 bullets across
+    22 of this project's 40 releases, every one of them recoverable from a `pr`
+    the store already held (`PL-W7WL`, filed four times from four cuts because
+    nothing compared these two files on this axis).
+    """
+    if unreferenced is None:  # a caller that did not ask; every command but `check`
+        return
+    by_id = {item.identifier: item for item in report.items}
+    for name, identifiers in sorted(unreferenced.items(), key=lambda pair: version_key(pair[0])):
+        recoverable = sorted(
+            identifier
+            for identifier in identifiers
+            if (item := by_id.get(identifier)) is not None and reference(item)
+        )
+        if not recoverable:
+            continue
+        report.advisories.append(
+            f"{NOTES_DIR}/{notes_name(name)} names {len(recoverable)} item(s) without "
+            f"saying where the change landed, and the store can say: {_named(recoverable)}. "
+            f"`docket record` appends what each item already records, leaving the titles "
+            f"as they shipped"
+        )
 
 
 def _check_cut_window(
@@ -2488,6 +2539,7 @@ def analyze(
     milestones: MilestoneStates | None = None,
     notes: dict[str, frozenset[str]] | None = None,
     window: CutWindow | None = None,
+    unreferenced: dict[str, tuple[str, ...]] | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
@@ -2517,6 +2569,11 @@ def analyze(
     `window` is what the default branch took while a release cut on this
     checkout sat unmerged - the seam between the notes, which are written at
     the cut, and the tag, which goes on the merge.
+
+    `unreferenced` is which released bullets say where nothing landed. It is
+    read from the same files as `notes` and passed separately rather than
+    folded into it, because the two answer different questions about them and
+    a caller that wants one does not always want the other.
     """
     settings = config or Config()
     ids = offered.ids if offered is not None else None
@@ -2530,6 +2587,7 @@ def analyze(
     _check_filenames(report, settings)
     _check_milestones(report, version)
     _check_release_notes(report, notes, version)
+    _check_notes_references(report, unreferenced)
     _check_cut_window(report, window, notes)
     _check_provenance(report, history)
     _check_landed(report, landed)
