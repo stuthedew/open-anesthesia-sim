@@ -9,6 +9,7 @@ feature: verify-replay-cost
 touches: subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-19
 verify: grep -q 'repository_template' subprojects/docket/tests/test_cli.py subprojects/docket/tests/test_verify.py
+recurrences: 2026-09-05 PL-W6NY
 ---
 
 **Problem.** test_cli.py and test_verify.py spend ~50s of the suite's 272s serial cost on per-test git fixtures - 304 tests, no test above 1.3s, a git init plus config plus add plus commit in each

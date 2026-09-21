@@ -9,6 +9,7 @@ feature: frame-cost-harness
 touches: docs/WORKING_NOTES.md
 added: 2026-09-19
 verify: ! grep -q '0\.011 ms' docs/WORKING_NOTES.md
+recurrences: 2026-09-07 PL-5748
 ---
 
 **Problem.** docs/WORKING_NOTES.md's playback-speed open thread reasons from pre-Qt-port numbers - a 0.011 ms step and 15 ms of chart-point construction - and names PL-010 as unspent headroom, but PL-009 is dropped, PL-010 is done, and the step now costs 0.025 ms

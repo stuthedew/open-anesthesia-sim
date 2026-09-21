@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-07
 verify: uv run pytest -q subprojects/docket/tests/test_cli.py && grep -q 'def test_check_names_the_config_file_it_loaded' subprojects/docket/tests/test_cli.py
+recurrences: 2026-09-20 PL-T441
 ---
 
 **Problem.** bin/docket check --items docs/items resolves config from docs/ rather than the repo root, so it reports a clean store as 112 errors

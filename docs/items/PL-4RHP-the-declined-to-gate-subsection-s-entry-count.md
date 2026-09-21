@@ -9,6 +9,7 @@ feature: debt-gate
 touches: ROADMAP.md, tools/doc_check.py
 added: 2026-09-16
 verify: python3 tools/doc_check.py check && ! grep -qE '^### Declined to Gate 2 .*[0-9]+ entries$' ROADMAP.md
+recurrences: 2026-09-19 PL-HCTF
 ---
 
 **Problem.** The Declined-to-Gate subsection's entry count is outside check_gate_counts' reach, and its group counts cannot be reconciled to the 151 it states

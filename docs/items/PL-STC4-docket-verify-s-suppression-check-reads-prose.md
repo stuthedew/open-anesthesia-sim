@@ -11,6 +11,7 @@ added: 2026-09-19
 closed: 2026-09-20
 pr: 797
 verify: grep -q 'def test_a_suppression_named_in_an_item_brief_is_not_one' subprojects/docket/tests/test_verify.py
+recurrences: 2026-09-19 PL-4FD2, 2026-09-20 PL-0KQP
 ---
 
 **Problem.** docket verify's suppression check reads prose, unlike the assertion check beside it: 12 of the 13 lines it flagged on PL-VHVJ's own branch were an item brief, a comment or a docstring naming the thing being fixed

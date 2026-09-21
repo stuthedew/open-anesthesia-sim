@@ -1,8 +1,15 @@
 ---
 id: PL-DVTV
 title: docs/references/README.md says no Modern Anesthetics chapter has been read at full text, but Meyer et al. was read on 2026-09-19 and is now cited in docs/MODEL.md
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
+feature: circuit-boundary-docs
+touches: docs/references/README.md
 added: 2026-09-20
+payoff: a session checking the provenance of docs/MODEL.md's new Meyer citation finds the reading recorded, instead of a standing refusal that would read it as unsourced
+verify: grep -q 'PL-WJNS' docs/references/README.md
 ---
 
 **Problem.** docs/references/README.md says no Modern Anesthetics chapter has been read at full text, but Meyer et al. was read on 2026-09-19 and is now cited in docs/MODEL.md

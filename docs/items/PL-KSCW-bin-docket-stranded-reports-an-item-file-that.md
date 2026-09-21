@@ -9,6 +9,7 @@ feature: stranded-ahead-or-behind
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-17
 verify: uv run pytest subprojects/docket/tests/test_cli.py && grep -q 'def test_an_unmerged_edit_to_an_item_the_base_already_holds_is_named' subprojects/docket/tests/test_cli.py
+recurrences: 2026-09-16 PL-SH9Q
 ---
 
 **Problem.** bin/docket stranded reports an item file that exists only on a branch but says nothing about a section appended to an item main already holds, which is how PL-879R's fourth-instance evidence and five other item edits sat unreported on claude/focused-dijkstra-outqzu

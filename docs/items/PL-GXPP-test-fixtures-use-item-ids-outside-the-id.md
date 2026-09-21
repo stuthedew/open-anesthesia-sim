@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_verify.py, subprojects/docket/tests/test_roadmap.py
 added: 2026-09-02
 verify: uv run pytest subprojects/docket/tests --collect-only -q && ! grep -qE 'PL-[A-Z0-9]*[AEIOU]' subprojects/docket/tests/*.py
+recurrences: 2026-09-19 PL-R77L
 ---
 
 **Problem.** `store.ID_ALPHABET` is Crockford base32 *minus the vowels*, so

@@ -1,9 +1,15 @@
 ---
 id: PL-1K9G
 title: Which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, ux
 feature: compartment-trace-legibility
+touches: src/anesthesia_sim/app/chart_frame.py, tests/unit/test_chart_frame.py
 added: 2026-09-20
+payoff: two compartments of one run stop being labelled with two different instants in one hover box, so a reader comparing them is comparing one moment
+verify: grep -q 'def test_every_compartment_of_one_run_answers_at_one_instant' tests/unit/test_chart_frame.py
 ---
 
 **Problem.** Which grid column a trace answers a hover at is decided in two dimensions, so a purely vertical 2 px move can change the instant a value is labelled with
@@ -42,3 +48,31 @@ and keep the pixel radius for deciding whether the trace answers at all. That
 makes the instant a function of the pointer's x position only, which is what a
 reader would predict. It would change which point some hovers report, so it
 wants the same before-and-after scan `PL-0RZ0` ran rather than an argument.
+
+**Why it matters.** Two compartments of one run can be labelled with two
+different instants inside one hover box, so a reader comparing muscle against
+fat "at the same moment" is comparing 19m56s against 20m. `CLAUDE.md`'s
+safety-critical standard counts that as a presentation failure in its own
+right - the correct number with the wrong patient context - and across a
+control event or a steep kink the concentration itself can move by more than
+the displayed resolution under a purely vertical hand movement, which is the
+shape `PL-JVHL` and `PL-0RZ0` both closed.
+
+**The class is provisional on a measurement nobody has run, and that is stated
+rather than assumed.** This is triaged `defect, ux` at `P2` because the value
+at two adjacent columns is usually equal to the displayed precision, which is
+why nothing had noticed. How often two adjacent drawn columns differ by at
+least one displayed digit has not been counted. That count is this item's first
+step, and a non-trivial answer reclassifies it `safety` at `P1` - at which
+point it re-enters the current gate unconditionally under § "The cadence"
+rather than sitting in the deferral written for it. Do not treat the present
+class as a finding about the hazard; it is a finding about what has been
+measured.
+
+**Done when.** The count above has been run and recorded; and either the column
+a trace answers at is a function of the pointer's x position alone - with the
+pixel radius kept for deciding whether the trace answers at all - or the item
+records why composing both axes is right, with the before-and-after scan
+`PL-0RZ0` ran rather than an argument; and a test under
+`tests/unit/test_chart_frame.py` holds that every compartment of one run
+answers at one instant.

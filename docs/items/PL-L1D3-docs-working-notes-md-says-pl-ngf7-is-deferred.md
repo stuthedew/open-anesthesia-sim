@@ -1,8 +1,15 @@
 ---
 id: PL-L1D3
 title: docs/WORKING_NOTES.md says PL-NGF7 is deferred to the Qt port, which dissolves it, and that its expected disposition is dropped, but PL-NGF7 closed done in v0.4.26 having measured that premise and found it false
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
+feature: closed-item-claims
+touches: docs/WORKING_NOTES.md
 added: 2026-09-20
+payoff: the UI-structure thread records what PL-NGF7 measured and shipped, rather than the prediction it disproved, so no session concludes a live check does not exist
+verify: grep -qF 'check_disabled_states_are_the_style_s' docs/WORKING_NOTES.md
 ---
 
 **Problem.** docs/WORKING_NOTES.md says PL-NGF7 is deferred to the Qt port, which dissolves it, and that its expected disposition is dropped, but PL-NGF7 closed done in v0.4.26 having measured that premise and found it false
