@@ -4,7 +4,7 @@ title: Sweep Gate 2's 168 clearable entries against the tree before any of them 
 priority: P2
 effort: M
 status: ready
-classes: defect, infra
+classes: housekeeping, infra
 feature: gate-staleness-sweep
 touches: docs/items, docs/WORKING_NOTES.md
 added: 2026-09-21
