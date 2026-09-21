@@ -72,20 +72,25 @@ term - the bare word is a discipline-agnostic topic carrying everything from
 circuit simulators to game engines, where `medical-simulation` names the field
 this belongs to. `pharmacokinetic-modeling` and `volatile-anaesthetic` are new.
 
-**One of the additions is a finding rather than a preference, and it is filed as
-`PL-HWV1` rather than fixed here** - a topic is a repository setting no session
-can write, so closing this item cannot carry it. `volatile-anaesthetic` runs
-against `PL-XF89`'s settled decision twice over: that decision put **inhaled**
-on the surfaces describing the *project* (`README.md` and the GitHub "About"
-field) and confined **volatile** to `pyproject.toml`, which describes the
-*release*; and it replaced the British *anaesthetic* with "the US *anesthetic*
-the package name, the module, the repository name and every document in the tree
-use". Repository topics are a project-level surface, so both halves apply.
+**`volatile-anaesthetic` was queried and the query was wrong; `PL-HWV1` is
+filed and dropped, on the same day, for the audit.** This session read the topic
+as contradicting `PL-XF89`, on the grounds that the decision put **inhaled** on
+the project-describing surfaces and **volatile** on the release-describing one.
+The project owner's challenge - that the two words are interchangeable in
+clinical use - holds, and the objection fails twice: a topic list is a set of
+search keys rather than prose, where an overlapping or spelling-variant key is
+the point; and the claim that *volatile* was confined to `pyproject.toml` is
+false, since `docs/MODEL.md` is titled "Volatile-agent patient uptake and
+distribution model" and is *correct* to be, describing what is implemented.
+`PL-HWV1` carries the full withdrawal, including what the volatile-is-a-subset-
+of-inhaled taxonomy does and does not license, so that it is not re-litigated.
+The nine topics stand as set.
 
 **What could not be measured, so that the next session does not assume it was.**
 How populated each candidate topic is - the evidence that would say whether
 `volatile-anaesthetic` reaches any searcher at all - was not obtainable:
 `GET /search/repositories?q=topic:...` is refused in this harness, which binds a
 session to its configured repositories and returns "This GitHub API path is not
-available". So `PL-HWV1` rests on the recorded decision, which is verified, and
-not on a count of either spelling's reach, which is not.
+available". It is recorded because it is the evidence a future session would
+want before touching the topic set at all - not because anything now turns on
+it, `PL-HWV1` having been withdrawn on grounds a count would not have changed.
