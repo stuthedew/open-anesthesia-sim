@@ -377,17 +377,25 @@ deviating from a described deliverable, not acting without one.
   so every guard that matches a `PL-` id still sees it.
 - **A root cause of more than two items is pulled, not queued** (project owner,
   2026-09-17). A mechanism a session identifies as the cause of three or more
-  items is a *generator*, and the capture rule above does not apply to it: every
-  session it stands through pays it again, so it ranks **above everything but
-  `P0`** — including a `safety`-classed `P1`, which was asked and answered
-  rather than overlooked. Record it on the causing item as `root-cause-of:`
+  items is a *generator*. Record it on the causing item as `root-cause-of:`
   naming the items it explains — three or more, or it is an ordinary item — so
-  the claim is a recorded fact rather than the next session's inference. Then
-  one of exactly two endings: **fix it in this session, or end the reply with a
-  ready-to-paste prompt that starts a fresh session on it.** Filing it and
-  carrying on is not a third. This is the shape of the behavior-change rule
-  below and holds for the same reason — an item alone changes nothing, and a
-  weed left standing seeds. Identifying one is judgment and stays a session's;
+  the claim is a recorded fact rather than the next session's inference.
+  **The count decides the record; expected recurrence decides the rank**
+  (project owner, 2026-09-21, ratified, over keeping the count for both and
+  accepting that any three-item cluster outranks a `safety`-classed `P1`). A
+  generator the store is still handing new members ranks **above everything but
+  `P0`** — including a `safety`-classed `P1`, which was asked and answered
+  rather than overlooked — because every session it stands through pays it
+  again, and that is a claim about future inflow rather than about the damage
+  any one member does. One whose mechanism is spent is recorded all the same,
+  for the audit, and ranks on its own band. Say in the item which it is and
+  why: `bin/docket next` ranks on the field alone and cannot yet tell them
+  apart, so until it can (`PL-T7QR`) a spent one is demoted by the session
+  rather than by the tool. A *ranking* generator then takes one of exactly two
+  endings: **fix it in this session, or end the reply with a ready-to-paste
+  prompt that starts a fresh session on it.** Filing it and carrying on is not
+  a third — an item alone changes nothing. A spent one is ordinary work under
+  the capture rule above. Identifying one is judgment and stays a session's;
   what follows from it is not.
 
   **A defect in the machinery that finds and ranks generators ranks with one**

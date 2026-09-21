@@ -3,12 +3,14 @@ id: PL-J870
 title: CLAUDE.md's generator rule triggers on a count of three items, but promotion is being declined on severity: two sessions read PL-9HD1's FIELD_RE cluster oppositely on 2026-09-21 and nothing records which test governs
 priority: P2
 effort: S
-status: needs-decision
+status: done
 classes: planning, docs
 feature: generator-identification
 touches: CLAUDE.md
 added: 2026-09-21
+closed: 2026-09-21
 payoff: what enters the one tier that outranks a safety-classed P1 stops depending on which session reads the cluster
+verify: grep -q 'The count decides the record; expected recurrence decides the rank' CLAUDE.md
 ---
 
 **Problem.** CLAUDE.md's generator rule triggers on a count of three items, but promotion is being declined on severity: two sessions read PL-9HD1's FIELD_RE cluster oppositely on 2026-09-21 and nothing records which test governs
@@ -86,3 +88,31 @@ The alternative worth stating: keep the count for both, and accept that a
 three-item cluster of any severity outranks a `safety`-classed `P1` until
 worked. That is what the text says today, and it is defensible - it is simply
 not what either session did.
+
+## Decided and shipped, 2026-09-21
+
+**The recommendation above was ratified as written** (project owner,
+2026-09-21, ratified, over keeping the count for both tests and accepting that
+any three-item cluster outranks a `safety`-classed `P1`). `CLAUDE.md`'s
+generator bullet now carries it: the count decides the record, expected
+recurrence decides the rank, and a spent generator is recorded for the audit
+and ranks on its own band.
+
+**What the edit replaced**, per the resident-set rule: the bullet's closing
+flourish - "This is the shape of the behavior-change rule below and holds for
+the same reason - an item alone changes nothing, and a weed left standing
+seeds" - collapses to the clause that carried the argument. It still nets +601
+characters, and `tools/doc_check.py`'s growth advisory names that disposition
+itself: "Text the project owner asked for is the second answer, already given.
+Never trim other resident text to offset the number."
+
+**One clause the approval did not state, answered here.** The two endings -
+fix it now, or end the reply with a prompt - followed from the tier, so they
+now bind a *ranking* generator and a spent one is ordinary work under the
+capture rule. Stating it the other way would have left a session owing fix-now
+treatment to a cluster the same rule had just told it not to rank.
+
+**The code half is `PL-T7QR`.** `plan.recommend` still ranks on the field
+alone, so until it carries the distinction a spent generator is demoted by the
+session rather than by the tool. `CLAUDE.md` says so in the same bullet rather
+than leaving prose and tool silently disagreeing.
