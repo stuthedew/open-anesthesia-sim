@@ -9,6 +9,7 @@ feature: two-run-attribution
 touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py, docs/MODEL.md
 added: 2026-09-21
 closed: 2026-09-21
+pr: 833
 payoff: stops a setting change or a mass-balance status reading as the other run's, which says the trunk received an intervention it never got
 verify: grep -q 'def test_the_sidebar_panels_name_the_run_they_record' tests/integration/test_simulation_view.py
 recurrences: 2026-09-21 PL-N67T

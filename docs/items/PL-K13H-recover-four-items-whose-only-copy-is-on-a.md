@@ -9,6 +9,7 @@ feature: stranded-recovery
 touches: docs/items
 added: 2026-09-21
 closed: 2026-09-21
+pr: 832
 payoff: four captured findings stop existing only on branches nobody is merging, where the default branch cannot see them and no session will be offered them
 verify: test -f docs/items/PL-BXNH-recover-the-four-squash-commit-bodies-lost-on.md && test -f docs/items/PL-HVLJ-doc-check-reads-local-tags-so-a-checkout-whose.md && test -f docs/items/PL-7H9Y-pl-kfwl-s-stated-symptom-does-not-reproduce-on.md && test -f docs/items/PL-3QM9-bin-docket-flight-reports-a-branch-s-age-by.md
 ---

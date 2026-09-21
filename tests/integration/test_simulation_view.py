@@ -3648,6 +3648,136 @@ def test_a_lone_run_leaves_the_shared_chart_lines_unnamed(application: QApplicat
     assert run_label(0) not in run._wash_in_state_text.text()
 
 
+#: A dial position above every agent's calibrated vaporizer maximum, so the core
+#: refuses it whichever agent the run is on. Driven through the handler because
+#: the slider's own ceiling keeps it unreachable on the control.
+_ABOVE_ANY_VAPORIZER_PERCENT = 50.0
+
+
+def test_the_halt_and_refusal_banners_name_their_run(application: QApplication) -> None:
+    """The notice column is shared, and all three banners assert something about a run.
+
+    "Simulation stopped" read as the dashboard's says the case has stopped
+    while the other run is still going, and "The simulation is unchanged and
+    still running its previous setting" is false of the run it is not about -
+    which is the misreading the hazard table's halted-versus-paused row
+    exists to stop, arriving by attribution rather than by wording
+    (`PL-TSZM`).
+
+    One of each is driven at once, on different runs, because that is the
+    case where the column holds two banners and neither names itself.
+    """
+
+    view = _case_view(application, _branched_case())
+    _take_fork(view, 60.0)
+    _settle(application)
+
+    assert len(view.runs) == 2
+
+    trunk, branch = view.runs
+    branch.controller.start()
+    branch._handle_delivered_concentration_change(_ABOVE_ANY_VAPORIZER_PERCENT)
+    trunk._halt_run(RuntimeError("the shared render path raised"))
+    _settle(application)
+
+    trunk_notice = trunk._notice_text.notice()
+    branch_notice = branch._notice_text.notice()
+
+    assert trunk_notice is not None
+    assert trunk_notice.startswith(f"{run_label(0)}: Simulation stopped")
+    assert branch_notice is not None
+    assert branch_notice.startswith(f"{run_label(1)}: Setting refused")
+    assert "The simulation is unchanged" in branch_notice
+
+
+def test_a_halt_stated_without_a_frame_still_names_the_run_it_stopped(
+    application: QApplication,
+) -> None:
+    """`present_halt` has no frame by design, so the name cannot be read off one.
+
+    It states a halt from the snapshot alone because the frame is what may
+    have failed (`PL-25KS`), and `_halt_every_run` swallows the redraw that
+    follows - so on a raise out of the shared render path this banner is the
+    last one written. Taking the run count off the frame would drop the
+    attribution in exactly that case (`PL-TSZM`).
+    """
+
+    view = _case_view(application, _branched_case())
+    _take_fork(view, 60.0)
+    _settle(application)
+
+    for run in view.runs:
+        run._frame = None
+
+    view._halt_every_run(RuntimeError("the shared render path raised"))
+    _settle(application)
+
+    for index, run in enumerate(view.runs):
+        notice = run._notice_text.notice()
+        assert notice is not None
+        assert notice.startswith(f"{run_label(index)}: Simulation stopped")
+
+
+def test_a_banner_standing_when_a_branch_opens_is_named_from_that_frame(
+    application: QApplication,
+) -> None:
+    """A refusal already on screen is about one run, and a fork puts a second beside it.
+
+    "The simulation is unchanged and still running its previous setting" was
+    true of the display while the trunk was alone and is false of the branch
+    the moment it appears, so the name has to arrive on the frame the branch
+    appears on rather than on some later tick (`PL-TSZM`).
+
+    What delivers it is the presentation `_handle_fork` drives, which
+    rewrites every run's banner through `_write_notice` after
+    `_rename_runs` has named them - not a rewrite hung off `set_run_name`.
+    That was written and removed: with the fork's own presentation and the
+    Reset that drops a branch both already rewriting the banner, no scenario
+    could tell it from its absence, and a guarantee nothing can fail is not
+    one. This test is what holds the presentation in that role.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    trunk = view.runs[0]
+    trunk.controller.start()
+    trunk._handle_delivered_concentration_change(_ABOVE_ANY_VAPORIZER_PERCENT)
+
+    before = trunk._notice_text.notice()
+
+    assert before is not None
+    assert before.startswith("Setting refused")
+
+    _take_fork(view, 60.0)
+    _settle(application)
+
+    after = trunk._notice_text.notice()
+
+    assert after is not None
+    assert after.startswith(f"{run_label(0)}: Setting refused")
+
+
+def test_a_lone_run_leaves_the_notice_banner_unnamed(application: QApplication) -> None:
+    """One run has nothing to be told apart from, so the banner is not named.
+
+    The rule `_rename_runs` applies to the run panels and both legends, held
+    here so the attribution does not become standing chrome on the display a
+    learner opens.
+    """
+
+    controller = SimulationController(agent_id="isoflurane")
+    run = _shown_view(application, controller).runs[0]
+    controller.start()
+
+    run._handle_delivered_concentration_change(_ABOVE_ANY_VAPORIZER_PERCENT)
+
+    notice = run._notice_text.notice()
+
+    assert notice is not None
+    assert notice.startswith("Setting refused")
+    assert run_label(0) not in notice
+
+
 def test_the_sidebar_panels_name_the_run_they_record(application: QApplication) -> None:
     """Both panels sit in the sidebar column the runs share, so each heading says whose.
 

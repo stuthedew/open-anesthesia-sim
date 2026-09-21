@@ -90,6 +90,7 @@ from anesthesia_sim.app.dashboard_frame import (
     bookmark_panel,
     compared_panel_heading,
     compared_run_line,
+    compared_run_notice,
     delivered_fraction,
     fork_offer,
     format_mac_target,
@@ -1672,6 +1673,60 @@ def test_a_shared_line_for_a_run_the_frame_does_not_hold_is_refused() -> None:
 
     with pytest.raises(IndexError):
         compared_run_line("Now: F_A/F_I = 0.50", single, 1)
+
+
+def test_a_lone_run_s_banner_is_left_unnamed() -> None:
+    """The rule the panels and both legends follow, so the attribution is not standing text."""
+
+    assert compared_run_notice("Simulation stopped — it failed.", None) == (
+        "Simulation stopped — it failed."
+    )
+
+
+def test_a_compared_run_s_banner_opens_with_the_run_s_own_name() -> None:
+    """All three notices assert something about a run and name none (`PL-TSZM`)."""
+
+    assert compared_run_notice("Simulation stopped — it failed.", "Run 2") == (
+        "Run 2: Simulation stopped — it failed."
+    )
+    assert compared_run_notice(
+        "Setting refused — above the vaporizer maximum. The simulation is unchanged "
+        "and still running its previous setting.",
+        "Run 1",
+    ) == (
+        "Run 1: Setting refused — above the vaporizer maximum. The simulation is "
+        "unchanged and still running its previous setting."
+    )
+
+
+def test_the_banner_s_name_is_separated_by_a_colon_not_a_second_em_dash() -> None:
+    """Every notice already opens `label — detail`, so a prefixed em dash reads as that one.
+
+    `COMPARED_RUN_LINE_TEMPLATE` may use one because the lines it names -
+    "Now: F_A/F_I", "Above the top of the plot:" - carry no em dash of their
+    own. These do, and two at different depths make "Run 2" read as the
+    banner's own label with "Simulation stopped" as its detail (`PL-TSZM`).
+    """
+
+    named = compared_run_notice("Simulation stopped — it failed.", "Run 2")
+
+    assert named is not None
+    assert named.startswith("Run 2: ")
+    assert named.count("—") == 1
+
+
+def test_a_run_with_nothing_to_say_gets_no_banner_named_or_not() -> None:
+    """A hidden banner stays hidden: an attribution is not a reason to show one."""
+
+    assert compared_run_notice(None, "Run 2") is None
+    assert compared_run_notice(None, None) is None
+
+
+def test_a_banner_for_a_run_whose_name_is_empty_is_refused() -> None:
+    """A bare leading colon looks like a formatting fault and reads as a run called nothing."""
+
+    with pytest.raises(ValueError, match="cannot be empty"):
+        compared_run_notice("Simulation stopped — it failed.", "")
 
 
 def test_a_lone_run_s_panel_headings_are_left_unnamed() -> None:
