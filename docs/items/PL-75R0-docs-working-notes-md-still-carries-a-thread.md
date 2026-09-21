@@ -9,6 +9,7 @@ feature: project-introduction
 touches: docs/WORKING_NOTES.md
 added: 2026-09-13
 closed: 2026-09-21
+pr: 867
 verify: python3 tools/doc_check.py check && ! grep -q 'the repository has no README' docs/WORKING_NOTES.md
 ---
 
