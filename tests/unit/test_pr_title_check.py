@@ -16,10 +16,17 @@ closes nothing, and a base that already carried the closure.
 
 `_git` is substituted rather than a repository built, because what is under
 test is the comparison of two trees and the reading of a title, not git.
+
+The request behind `--discover` is `tools/open_pull_requests.py`'s since
+`PL-Q664` gave `docket flight` the same question, and
+`tests/unit/test_open_pull_requests.py` holds it: the token, the timeout, the
+URL, and every reason a lookup declines. What stays here is what this tool does
+with the answer.
 """
 
 from __future__ import annotations
 
+import open_pull_requests
 import pr_title_check
 import pytest
 
@@ -275,57 +282,41 @@ def test_an_environment_title_wins_over_the_lookup(
     assert "leads with PL-P909" in capsys.readouterr().out
 
 
-def test_the_lookup_declines_without_a_token_rather_than_reaching_the_network(
+def test_the_lookup_reports_the_number_and_the_title_it_was_given() -> None:
+    """All this now does is name the two fields it needs off the shared listing.
+
+    The request itself, and every reason it can decline - no token, no network,
+    a forge that refused, a body this cannot read - moved to
+    `open_pull_requests.py` when `docket flight` came to need the same
+    question (`PL-Q664`), and `tests/unit/test_open_pull_requests.py` is where
+    they are held. What is left here is the mapping, and the one property that
+    still belongs to this tool: an empty listing is a skip, not a title to
+    check.
+    """
+    assert pr_title_check.open_pull_requests is open_pull_requests.open_pull_requests
+
+
+def test_a_branch_with_nothing_open_reads_as_no_pull_request(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.delenv("GH_TOKEN", raising=False)
-    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
-
-    def never(*_: object, **__: object) -> object:
-        raise AssertionError("no token, so no request should have been made")
-
-    monkeypatch.setattr(pr_title_check.urllib.request, "urlopen", never)
-
+    monkeypatch.setattr(pr_title_check, "open_pull_requests", lambda *a, **k: ())
     assert pr_title_check.open_pull_request("o/r", "branch") is None
 
 
-def test_a_lookup_that_cannot_answer_is_a_skip_rather_than_a_failure(
+def test_a_forge_that_could_not_be_asked_reads_as_no_pull_request(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # Offline, behind a proxy that refuses, rate-limited, or a repository this
-    # token cannot see: all one answer, because the caller does the same thing
-    # for each and a message nobody can act on differently is noise.
-    monkeypatch.setenv("GH_TOKEN", "x")
-
-    def refuse(*_: object, **__: object) -> object:
-        raise OSError("Name or service not known")
-
-    monkeypatch.setattr(pr_title_check.urllib.request, "urlopen", refuse)
-
+    """The two are one answer here, deliberately: the caller skips on both."""
+    monkeypatch.setattr(pr_title_check, "open_pull_requests", lambda *a, **k: None)
     assert pr_title_check.open_pull_request("o/r", "branch") is None
 
 
-def test_the_slug_is_read_from_every_remote_spelling_this_repository_uses(
+def test_the_open_pull_request_is_reported_as_its_number_and_title(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # `.gitconfig` here rewrites both ssh spellings to https, so all three
-    # reach this function in practice depending on when it is called.
-    for url in (
-        "https://github.com/stuthedew/open-anesthesia-sim.git",
-        "https://github.com/stuthedew/open-anesthesia-sim",
-        "git@github.com:stuthedew/open-anesthesia-sim.git",
-        "ssh://git@github.com/stuthedew/open-anesthesia-sim.git",
-    ):
-        monkeypatch.setattr(pr_title_check, "_git", lambda _, url=url: url + "\n")
-        assert pr_title_check._repo_slug() == "stuthedew/open-anesthesia-sim", url
-
-
-def test_a_remote_that_is_not_github_reads_as_no_slug(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Not an error: a checkout with a different remote, or none, simply has no
-    # pull request to look up, and that is the skip like any other.
-    for url in ("https://gitlab.com/o/r.git", "/srv/mirrors/bare.git", ""):
-        monkeypatch.setattr(pr_title_check, "_git", lambda _, url=url: url + "\n")
-        assert pr_title_check._repo_slug() is None, url
+    found = (open_pull_requests.PullRequest(number=366, title="PL-P909: it", head="claude/x"),)
+    monkeypatch.setattr(pr_title_check, "open_pull_requests", lambda *a, **k: found)
+    assert pr_title_check.open_pull_request("o/r", "claude/x") == (366, "PL-P909: it")
 
 
 def test_a_detached_head_has_no_branch_to_look_up(monkeypatch: pytest.MonkeyPatch) -> None:

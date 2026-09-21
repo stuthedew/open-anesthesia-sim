@@ -3,12 +3,13 @@ id: PL-Q664
 title: A branch whose items are all closed and which has no open pull request is indistinguishable from live work in docket flight, so finished work can stall unseen
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
 feature: parallel-sessions
-touches: subprojects/docket, tools
+touches: subprojects/docket, tools, docs/ARCHITECTURE.md, docket.toml, .claude/skills/docket/modes/start.md, tests/unit
 added: 2026-09-13
-verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_whose_items_are_all_closed_is_not_in_flight' subprojects/docket/tests/test_vcs.py
+closed: 2026-09-21
+verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_whose_items_are_all_closed_is_not_live_work' subprojects/docket/tests/test_vcs.py
 recurrences: 2026-09-20 PL-8JQQ
 ---
 

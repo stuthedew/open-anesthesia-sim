@@ -66,6 +66,7 @@ from .vcs import (
     Precedence,
     QueueEdit,
     RewriteReport,
+    SettledReport,
     StrandedReport,
 )
 
@@ -783,7 +784,7 @@ def _since(last_commit: date | None, today: date) -> str:
     return f"last commit {_plural(days, 'day', 'days')} ago"
 
 
-def format_flight(report: FlightReport, today: date) -> str:
+def format_flight(report: FlightReport, today: date, settled: SettledReport | None = None) -> str:
     """Which items are on a branch, how stale each branch is, and what went unread.
 
     The age is reported rather than thresholded, because "has an unmerged
@@ -791,6 +792,21 @@ def format_flight(report: FlightReport, today: date) -> str:
     timeout tells them apart: a branch touched an hour ago is a live session,
     and the same branch three weeks on is work nobody will merge. Only the
     reader knows which, so both get the same line and the date decides it.
+
+    **Except where the branch itself has answered it** (`PL-Q664`). A ref whose
+    every claimed item is closed in its own copy, with no pull request open on
+    it, is not a case the age decides - nobody is working it and nobody is
+    reviewing it, and leaving such a row in the list above under "the age is
+    what separates them" is how finished work sat unnoticed for three hours.
+    `settled` is that reading, and its rows move out of the list rather than
+    printing twice: two lines about one branch invite the reading that they are
+    two branches, which is the mistake `FlightReport.editing` is kept disjoint
+    from `branches` to avoid.
+
+    It says what it knows and no more. "Nothing here is being worked" is the
+    claim the two facts support; whether the work is correct, reviewed or ready
+    is not, and this deliberately does not say so in any form a hurried reader
+    could take for a merge recommendation.
 
     **`FlightReport.editing` is deliberately not printed here.** Capturing a
     finding before a session ends is mandatory, so nearly every live branch has
@@ -810,14 +826,16 @@ def format_flight(report: FlightReport, today: date) -> str:
     otherwise: read perfectly well, and attributable to nothing.
     """
     lines: list[str] = []
-    if report.branches:
+    finished = {entry.name for entry in settled.branches} if settled else set()
+    live = [branch for branch in report.branches if branch.name not in finished]
+    if live:
         lines.append(
-            f"{_plural(len(report.branches), 'item is', 'items are')} on a branch "
+            f"{_plural(len(live), 'item is', 'items are')} on a branch "
             "the default branch has not taken:"
         )
         lines.append("")
-        width = max(len(branch.name) for branch in report.branches)
-        for branch in report.branches:
+        width = max(len(branch.name) for branch in live)
+        for branch in live:
             # `filed there` rather than a second table: the fact belongs to the
             # row it qualifies, and a reader scanning for their own id meets it
             # without being sent anywhere (`PL-3CTW`).
@@ -831,12 +849,12 @@ def format_flight(report: FlightReport, today: date) -> str:
             "A live session and a branch nobody will merge look the same here; "
             "the age is what separates them."
         )
-        if any(not branch.on_base for branch in report.branches):
+        if any(not branch.on_base for branch in live):
             lines.append(
                 "An item marked `filed there` is not in this checkout's queue at all: that "
                 "branch holds the only copy, and `bin/docket stranded` recovers it."
             )
-    else:
+    elif not report.branches:
         # Stated as the conclusion rather than as a fact about subjects
         # (`PL-VYSP`): a capture leads with an id and claims nothing, and a
         # claim the base has since taken or closed is removed above, so "no
@@ -846,6 +864,14 @@ def format_flight(report: FlightReport, today: date) -> str:
             "commit subject claims one that the default branch has not already taken or "
             "closed."
         )
+    else:
+        # Every claim there was is in the section below, which explains itself.
+        # Repeating "no branch claims an item" here would contradict it.
+        lines.append("No branch is carrying an item anybody is still working.")
+
+    if settled and settled.branches:
+        lines.append("")
+        lines.extend(_format_settled(settled, today))
 
     if report.unattributed:
         lines.append("")
@@ -869,6 +895,50 @@ def format_flight(report: FlightReport, today: date) -> str:
         )
         lines.extend(f"  {name}" for name in report.unreadable)
     return "\n".join(lines)
+
+
+def _format_settled(settled: SettledReport, today: date) -> list[str]:
+    """The branches nothing is left on, and exactly how much that claim covers.
+
+    Two headings rather than one, because the two readings prove different
+    amounts and a reader deciding what to do about a branch needs to know
+    which they have. Where the forge answered, the row means every item closed
+    *and* no pull request open. Where it did not, it means the first alone -
+    and a branch waiting on review is then indistinguishable from one nobody
+    opened, which is said in those words rather than left to be inferred from
+    a missing clause.
+
+    Neither heading tells the reader to merge anything, and the closing line
+    says so outright. What these rows establish is that nobody is working
+    here; whether the work is finished, correct or reviewed is a judgment
+    nothing in this checkout can make.
+    """
+    count = len(settled.branches)
+    carries, them = ("it carries", "it") if count == 1 else ("they carry", "them")
+    heading = f"On {_plural(count, 'branch', 'branches')} every item {carries} is already closed"
+    if settled.asked:
+        heading += f", and no pull request is open for {them}"
+    lines = [f"{heading}:", ""]
+    whose = "the branch's own copy" if count == 1 else "the branches' own copies"
+    width = max(len(entry.name) for entry in settled.branches)
+    for entry in settled.branches:
+        lines.append(
+            f"  {entry.name:<{width}}  {', '.join(entry.item_ids)}  "
+            f"{_since(entry.last_commit, today)}"
+        )
+    lines.append("")
+    lines.append(f"Nothing here is being worked: every item {carries} is closed in {whose}.")
+    if not settled.asked:
+        lines.append(
+            f"Whether a pull request is open for {them} could not be read here, so a branch "
+            "waiting on review looks the same as one nobody opened."
+        )
+    lines.append(
+        "That is not a verdict on the work. Nothing here says it is reviewed, correct or "
+        "ready; it says only that no session is on it. Read the branch and decide what it "
+        "needs - `bin/docket stranded` recovers an item that exists only there."
+    )
+    return lines
 
 
 def format_generators(heads: Sequence[Item]) -> str:

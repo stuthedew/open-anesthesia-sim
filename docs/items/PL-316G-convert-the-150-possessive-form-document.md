@@ -8,6 +8,7 @@ effort: M
 classes: docs, infra
 feature: dev-tooling
 touches: docs/, src/anesthesia_sim/, tests/, tools/, CLAUDE.md, .claude/rules/, ROADMAP.md, README.md
+recurrences: 2026-09-21 PL-YSMV
 ---
 
 **Problem.** Convert the 150 possessive-form document citations to the section-mark form, which is the only way doc_check can check them without reading prose as a citation
