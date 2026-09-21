@@ -817,6 +817,15 @@ class _Walk:
     #: claim, so that two design rounds on one item can be ordered.
     own_staked: dict[tuple[str, str], Stake]
     staked: dict[tuple[str, str], Stake]
+    #: The *newest* claiming commit per ref and id, where `staked` keeps the
+    #: earliest. The two answer opposite questions and both are needed: when a
+    #: ref began carrying an item is what orders two sessions against each
+    #: other, and when it last said so is what says whether a merge that took
+    #: the id could have taken this ref's work (`PL-8JQQ`). A ref that goes on
+    #: committing under an id after its own pull request squash-merged is the
+    #: shape that needs it, and it is the shape every long-lived branch here
+    #: eventually takes.
+    claimed_last: dict[tuple[str, str], Stake]
     opened: dict[str, Stake]
     unbounded: set[str]
 
@@ -1032,7 +1041,18 @@ def _unmerged_commits(
     it apart from the stronger one for exactly that reason.
     """
     if not refs:
-        return _Walk({}, {}, set(), {}, {}, {}, {}, {}, set())
+        return _Walk(
+            last={},
+            ids={},
+            named=set(),
+            edited={},
+            own_edits={},
+            own_staked={},
+            staked={},
+            claimed_last={},
+            opened={},
+            unbounded=set(),
+        )
     # `--name-only` rather than a `git show --stat` per commit, and that is the
     # whole reason the diff can be read at all here. This walk is on the hot
     # path of `next`, `list`, `triage`, `status` and the session-start digest,
@@ -1054,6 +1074,7 @@ def _unmerged_commits(
     own_edits: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {}
     own_staked: dict[tuple[str, str], Stake] = {}
     staked: dict[tuple[str, str], Stake] = {}
+    claimed_last: dict[tuple[str, str], Stake] = {}
     opened: dict[str, Stake] = {}
     unbounded: set[str] = set()
 
@@ -1128,6 +1149,13 @@ def _unmerged_commits(
                 held = staked.get((ref, identifier))
                 if held is None or stake < held:
                     staked[(ref, identifier)] = stake
+                # The other end of the same claim, and compared rather than
+                # taken from the walk's order: newest-first is git's habit
+                # rather than its promise, and this end decides whether a
+                # merge could have taken the ref's work (`PL-8JQQ`).
+                newest = claimed_last.get((ref, identifier))
+                if newest is None or newest < stake:
+                    claimed_last[(ref, identifier)] = stake
 
     for line in output.splitlines():
         parts = line.split("\x1f", 4)
@@ -1175,6 +1203,7 @@ def _unmerged_commits(
         own_edits=own_edits,
         own_staked=own_staked,
         staked=staked,
+        claimed_last=claimed_last,
         opened=opened,
         unbounded=unbounded,
     )
@@ -1600,9 +1629,29 @@ def _closed_on_base(
     return frozenset(closed)
 
 
+def _claimed_again_since(mine: Stake | None, taken: datetime | None) -> bool:
+    """Whether a ref said it was carrying an item *after* the base took that id.
+
+    Split out so the direction each silence fails in is stated once. A ref with
+    no dated claim and a take this checkout could not date both answer `False`,
+    which leaves `_taken_on_base` deciding on the two facts it had before this -
+    the reading every carrier whose claim comes from its branch *name* gets,
+    there being no commit to date. A comparison that raises answers `True` and
+    keeps the claim: a git that wrote one of the two dates without an offset is
+    an anomaly, and over-reporting is the direction this module fails in.
+    """
+    if mine is None or taken is None:
+        return False
+    try:
+        return mine.when > taken
+    except TypeError:
+        return True
+
+
 def _taken_on_base(
     claims: dict[str, tuple[str, ...]],
     forks: dict[str, str],
+    claimed_last: dict[tuple[str, str], Stake],
     items_dir: str,
     base: str,
     root: Path,
@@ -1638,11 +1687,33 @@ def _taken_on_base(
       is not enough: a session that has pushed `src/` work under its item's id
       but not yet edited the item file looks exactly like this.
     - **The base took a commit leading with that id, at or after the ref's fork
-      point.** That is what says the base has already had this ref's work under
-      this name. The fork point is what keeps it honest - an *older* commit
-      naming the id is the item's own capture, which every session's branch
-      forks from, and counting it would suppress the live work this whole read
-      exists to protect.
+      point, and not before the ref's newest commit claiming it.** That is what
+      says the base has already had this ref's work under this name. The fork
+      point is what keeps it honest - an *older* commit naming the id is the
+      item's own capture, which every session's branch forks from, and counting
+      it would suppress the live work this whole read exists to protect.
+
+    **The second bound is the one a squash merge needs** (`PL-8JQQ`). Both facts
+    above are made true *by* a pull request merging from the ref itself: the
+    squash carries the item file, so the copies agree byte for byte, and its
+    subject leads with the id, so the base has taken it since the fork. Nothing
+    then distinguishes a branch whose work is finished from one that has gone on
+    committing - and an implementation commit following a merged design round is
+    exactly that shape, `src/` and `tests/` under the same id with the item file
+    untouched. Measured 2026-09-20: `PL-3K9B`'s whole implementation, 8 files
+    and 637 insertions pushed with the id leading its subject, appeared in no
+    reading of the report, and the same command had reported it before `#801`
+    merged. The project owner caught it; three replies had by then recommended
+    that a fresh session start the item a live one was implementing.
+
+    Dated on the committer date both sides already carry, because ancestry
+    cannot answer it: a squash keeps none of the ref's commits, so there is
+    nothing to contain. The failure directions are the module's usual ones. A
+    rebase rewrites the ref's dates forward and keeps a claim whose work
+    merged, which costs a reader one look; a date this checkout could not read
+    on either side falls back to the two facts above, which is where this
+    guard stood before. Only a commit backdated behind the merge that took it
+    reads the wrong way, and nothing in this workflow writes one.
 
     Every silence keeps the claim: no fork point, no file on either side, a blob
     git would not resolve. That is the direction the module fails in by
@@ -1681,7 +1752,7 @@ def _taken_on_base(
     # of an item file is read once per path for the same reason - it is the
     # fixed end of every comparison, whichever carrier is being judged, so a
     # second carrier costs one `rev-parse` rather than two.
-    since: dict[str, set[str]] = {}
+    since: dict[str, dict[str, datetime | None]] = {}
     held: dict[str, str] = {}
     taken: set[tuple[str, str]] = set()
     for identifier, carriers in claims.items():
@@ -1698,15 +1769,37 @@ def _taken_on_base(
             if not held[path] or not theirs or held[path] != theirs:
                 continue
             if fork_point not in since:
-                since[fork_point] = {
-                    found
-                    for subject in run(
-                        ["log", "--format=%s", f"{fork_point}..{base}"], root
-                    ).splitlines()
-                    for found in leading_ids(subject)
-                }
-            if identifier.upper() in since[fork_point]:
-                taken.add((identifier, ref))
+                # Which ids the base took, and the newest take of each - the
+                # last time the base heard this name rather than the first, so
+                # a ref that committed under it later is judged against the
+                # whole of what merged. An id every one of whose takes this
+                # checkout's git dated in some other shape is recorded with no
+                # date at all, which leaves the id taken and the second bound
+                # unasked: the reading this guard had before it was bounded on
+                # that side.
+                dated: dict[str, datetime | None] = {}
+                for line in run(
+                    ["log", "--format=%cI%x1f%s", f"{fork_point}..{base}"], root
+                ).splitlines():
+                    stamp, _, subject = line.partition("\x1f")
+                    try:
+                        when: datetime | None = datetime.fromisoformat(stamp.strip())
+                    except ValueError:
+                        when = None
+                    for found in leading_ids(subject):
+                        current = dated.setdefault(found, None)
+                        if when is not None and (current is None or when > current):
+                            dated[found] = when
+                since[fork_point] = dated
+            if identifier.upper() not in since[fork_point]:
+                continue
+            # The take is real and the ref has committed under the id since, so
+            # the merge cannot have carried what the ref is holding now.
+            if _claimed_again_since(
+                claimed_last.get((ref, identifier)), since[fork_point][identifier.upper()]
+            ):
+                continue
+            taken.add((identifier, ref))
     return frozenset(taken)
 
 
@@ -2053,6 +2146,12 @@ def branches_in_flight(
     # removed, and asked per id because the ref-level content test is what a
     # shared file defeats.
     #
+    # **The ref's newest claim under the id goes with the question** (`PL-8JQQ`).
+    # Both facts that guard read as true the moment a pull request merges from
+    # the ref itself, and stay true however much the ref commits afterwards, so
+    # a branch that continues past its own squash went silent on every item its
+    # later commits named.
+    #
     # **Every carrier is judged, and the id leaves only where every one of them
     # is spent** (`PL-2BZY`). A claim is a fact about a ref, so the answer is
     # per `(id, ref)`; the first carrier the guard did not take is the one
@@ -2064,6 +2163,7 @@ def branches_in_flight(
             for identifier, carriers in claimants.items()
         },
         refs.fork,
+        walk.claimed_last,
         items_dir,
         base,
         root,

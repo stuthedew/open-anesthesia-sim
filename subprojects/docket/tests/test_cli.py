@@ -2881,6 +2881,72 @@ def _unevenly_truncated_pair(tmp_path: Path) -> Path:
     return work
 
 
+def test_flight_still_reports_a_branch_pushed_to_after_its_pull_request_squashed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The shape every long-lived branch here ends up in, against real git.
+
+    A session runs a design round on an item, that pull request squash-merges,
+    and the session goes on to push the implementation to the same branch. The
+    merge carries the item file to `main` and its subject leads with the id, so
+    both facts `_taken_on_base` judges a claim by are true of the branch from
+    the moment it merged - and they say nothing about the commit that came
+    after. Measured 2026-09-20 on `origin/claude/lucid-dijkstra-i1qy6x`, where
+    `PL-3K9B`'s whole implementation went unreported and a second session was
+    told three times to start it (`PL-8JQQ`).
+
+    Real git rather than an injected runner, for the reason `_branched_repo`
+    uses it: the walk that dates the base's take is a `git log --format` this
+    fixture is the only thing proving git accepts.
+    """
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    item = root / "items" / "PL-K7QX-the-item.md"
+    item.write_text(READY.replace("PL-B1B1", "PL-K7QX"))
+    (root / "a.py").write_text("first\n")
+    clock = {"now": "2026-09-20T10:00:00+00:00"}
+
+    def git(*args: str) -> None:
+        env = os.environ | {"GIT_AUTHOR_DATE": clock["now"], "GIT_COMMITTER_DATE": clock["now"]}
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=env)
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: capture the item")
+
+    # The design round: a queue-only commit, which is what the pull request took.
+    git("checkout", "-qb", "work")
+    clock["now"] = "2026-09-20T15:00:00+00:00"
+    item.write_text(item.read_text() + "\nThe decision.\n")
+    git("commit", "-qam", "PL-K7QX: ratify the rule and seat the implementation")
+    git("checkout", "-q", "main")
+    git("merge", "-q", "--squash", "work")
+    clock["now"] = "2026-09-20T15:30:00+00:00"
+    git("commit", "-qm", "PL-K7QX: ratify the rule and seat the implementation (#801)")
+
+    # And the work itself, pushed to the same branch afterwards. It leaves the
+    # item file alone, because the round that merged is what wrote it.
+    git("checkout", "-q", "work")
+    clock["now"] = "2026-09-20T16:00:00+00:00"
+    (root / "a.py").write_text("fixed\n")
+    (root / "test_a.py").write_text("def test_a() -> None:\n    pass\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: the whole implementation")
+    git("checkout", "-q", "main")
+
+    assert main(["--items", str(root / "items"), "flight"]) == 0
+
+    out = capsys.readouterr().out
+    assert "PL-K7QX" in out
+    assert "work" in out
+
+
 def test_flight_reports_below_an_uneven_horizon_which_is_the_accepted_limit(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
