@@ -52,3 +52,22 @@ its own work creates, and a check decides the difference rather than a reader -
 the natural home is `docket check`, beside the guards that already read
 `touches`, reporting a path that neither exists nor is named by the item's body
 as new.
+
+## Narrowed by PL-C4W8's Gate 2 staleness sweep, 2026-09-21
+
+**The count is five, not eight.** `PL-8PSW` (#618), `PL-RD3B` (`1ef84c4b`,
+#596) and `PL-ZG5J` (`76f2b949`, #707) have all closed since this was written.
+The still-open offenders are `PL-5B1N`, `PL-928V`, `PL-CNCF`, `PL-LWMS` and
+`PL-R808`.
+
+**The flagship example is wrong and should not be repeated.** The brief's
+"expensive case" is that `PL-CNCF`'s stale `core/run_score.py` escapes
+`protected_paths` while `core/run_definition.py` is protected. It does not:
+`docket.toml` protects the directory `src/anesthesia_sim/core`, and `model.py`'s
+`is_under` matches by path-segment prefix, so `core/run_score.py` matches as
+protected whether or not the file exists. Anyone reasoning from that example to
+size the risk will over-state it.
+
+**What survives is the plain version.** Nothing checks that a `touches` path
+either exists or is declared as new, so a stale or mistyped path is silently
+accepted. That is still real, still unchecked, and is the whole of the finding.

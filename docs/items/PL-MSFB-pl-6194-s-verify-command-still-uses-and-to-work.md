@@ -81,3 +81,21 @@ do. The title still names both halves; this note is the correction, since
 renaming an item file breaks the `touches` and `verify:` lines that point at
 it from elsewhere.
 
+
+## Confirmed narrowed by PL-C4W8's Gate 2 staleness sweep, 2026-09-21
+
+The `PL-6194` half is dead and the correction already recorded here is right:
+`PL-6194` closed `done` 2026-09-14 (#555), so under
+`.claude/rules/citation-drift.md` its preserved `[(]`/`[)]` workaround is a
+historical record of what the check demanded at the time, not a live finding.
+
+**The live half is one line, and it was re-measured rather than assumed.**
+`docs/WORKING_NOTES.md:554` still reads ``Not the `~88-256 B each` above``,
+with the figure in backticks; the item asks for `"~88-256 B each" above` in
+quotation marks, since `PL-KJ63` fixed the `CITATION_RE` `directed` branch that
+made the backtick workaround necessary. Running this item's own `verify:` today
+confirms it: `tools/doc_check.py check` reports 0 errors and 0 advisories, and
+`grep -qF '"~88-256 B each" above' docs/WORKING_NOTES.md` exits 1.
+
+So the remaining work is a one-character-class edit on one line, which should
+be reflected in its effort.

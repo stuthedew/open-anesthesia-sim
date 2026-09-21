@@ -212,23 +212,22 @@ headings. `_groom` holds the decision, which is what the ratified `Where`
 names. `touches` gained `notes.py`, `cli.py`, `test_notes.py` and the package
 README to match what the work actually reached.
 
-**What it names on `docs/WORKING_NOTES.md` today.** Three sections, all of them
-already filed: § "Open thread: scenario branching..." and § "Open thread: which
-moment a rule has to reach..." (`PL-DL4M`, in flight as this closed) and
-§ "Open: the repository has no README" (`PL-75R0`). The fourth the brief
-predicted - § "Open thread: what makes desflurane wash out too fast" - is
-silent for now only because a note added to that thread cites this item, which
-was open while it was being written; it returns to the list with this closure,
-which is correct and is what the permanent-false-fire argument says should
-happen. That note now states in the thread itself why the advisory names it, so
-the next groomer reads the answer instead of re-deriving it.
+**What it named when it was built, and what it names now.** Four sections at
+the measurement, three of them already filed one at a time. `PL-DL4M` and
+`PL-FFG9` then merged as `#858` while this branch was open and deleted two of
+them, so after taking that base in the advisory names **two**: § "Open: the
+repository has no README" (`PL-75R0`, still `ready`) and § "Open thread: what
+makes desflurane wash out too fast", which is the permanent false fire. That is
+the end state the decision predicted - a live signal of one real candidate and
+one standing exception - reached inside a day rather than argued for.
 
-**The deletions are not this item's.** The original `Done when.` asked that the
-file no longer carry such a thread; the ratified decision replaced it with the
-mechanism, and the three live instances belong to `PL-DL4M` and `PL-75R0`,
-which are `ready` and hold the judgment about what each thread's outcome is
-recorded against. Closing those is what takes the advisory to the one permanent
-false fire.
+**The deletions were never this item's.** The original `Done when.` asked that
+the file no longer carry such a thread; the ratified decision replaced it with
+the mechanism, and the instances belong to the items that hold the judgment
+about what each thread's outcome is recorded against - two of them now landed,
+`PL-75R0` still open. The desflurane thread carries a note saying in its own
+text why the advisory names it and what would end it, so the next groomer reads
+the answer instead of re-deriving it.
 
 **The file's header now carries the convention the check reads.** An open
 thread heads `Open thread:` / `Open:` and a resolved one says what it resolved

@@ -214,3 +214,19 @@ do — and the cheap route satisfies it the same way the full move would: the
 sentence `docs/MODEL.md` owes is that the agent file carries a
 device-capability default which a machine profile may narrow, and where that
 leaves the MAC guard.
+
+## Narrowed by PL-C4W8's Gate 2 staleness sweep, 2026-09-21
+
+**The misreading half is already discharged at the storage site.**
+`src/anesthesia_sim/data/agents/desflurane.json` carries an `adopted: true`
+note reading "This is a device-capability limit on the delivered-concentration
+control, not a scientific model parameter", present since `b1a78fc`
+(2026-08-23). So "18% reads as a fact about desflurane" overstates what a
+reader of the data file meets today.
+
+**What is still real is structural.** `core/uptake_system.py` still reads
+`agent.max_delivered_concentration_percent` off the agent file, no machine
+profile carries an `agent_limits` field, and `docs/MODEL.md` does not record
+the keying as deliberate. That is a refactor with a documentation obligation,
+not a live misattribution - which is a different priority, and the item should
+be re-ranked on it rather than on the original framing.

@@ -346,10 +346,17 @@ def main(argv: list[str] | None = None) -> int:
     if len(found) > SHOW:
         print(f"  ... and {len(found) - SHOW} more clusters with a signal.")
         print()
+    # The placeholders are the ones `docket set --root-cause-of` already prints
+    # as its metavar, and they are in `store.ID_ALPHABET`. Both halves matter:
+    # the alphabet is Crockford base32 *minus the vowels*, so `PL-AAAA` is an id
+    # the store can never mint, and an example is copied - `PL-GXPP` spent 261
+    # substitutions removing that literal from the test tree. Agreeing with the
+    # other half of the same field's interface is what keeps one placeholder set
+    # to recognise rather than two (`PL-DPY6`).
     print(
         "A ratio, a shared feature and a citation count are evidence, not causation.\n"
         "Where one mechanism really explains three or more of these, record it:\n"
-        "`root-cause-of: PL-AAAA, PL-BBBB, PL-CCCC` on the item that causes them.\n"
+        "`root-cause-of: PL-XXXX, PL-YYYY, PL-ZZZZ` on the item that causes them.\n"
         "`docket check` holds the ids to existing. Under three, it is an ordinary item.\n"
         "\n"
         "Recording it does not rank it. Add `generator: live - <why the store is\n"

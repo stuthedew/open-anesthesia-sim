@@ -120,3 +120,20 @@ string, demanding what the file forbids - closed with `PL-L9RD`, whose command
 was re-pointed at close. What remains, whether `app/theme.py` keeps its
 no-toolkit rule, is the project owner's decision and outside `PL-6TP8`; the
 recommendation above stands.
+
+## Narrowed by PL-C4W8's Gate 2 staleness sweep, 2026-09-21
+
+**The contradiction this item is named for is gone.** `PL-L9RD` closed with
+`verify: python3 tools/doc_check.py check && grep -qF 'that absorption was
+reversed on 2026-09-16' ROADMAP.md`, which demands nothing of `app/theme.py`;
+and `app/theme.py` itself now states the corrected reason for its no-toolkit
+rule, recording in place that the old `ast.parse` justification was false.
+Commit `d56f857f` (#621) made both changes together. So "two current
+statements in conflict" is no longer the finding.
+
+**What is still open, and why the item stays open.** The narrower question the
+contradiction pointed at is unresolved in the tree: whether `app/theme.py`
+keeps its no-toolkit rule, or the stylesheet-composing helpers centralise into
+it. They are still spread across `qt_widgets.py`, `run_view.py`, `qt_chart.py`
+and `simulation_view.py`. The item stays `needs-decision` on that question
+alone.

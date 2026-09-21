@@ -3,11 +3,13 @@ id: PL-SY1J
 title: bin/docket show named only one of two branches carrying PL-D1RT, and it was the later one, so the session holding the item read a verdict telling it to stand down
 priority: P2
 effort: M
-status: ready
+status: dropped
 classes: defect
 feature: inflight-verdict
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, .claude/skills/docket/SKILL.md
 added: 2026-09-16
+closed: 2026-09-21
+reason: Cannot be reproduced on the theory it names, which the brief itself says is grounds to close. The one mechanism that would have produced the 2026-09-16 observation - a silent evidence gap collapsing to a single, possibly-wrong carrier - was fixed by PL-Q9Z1 (#687): render.py now prints 'This ordering is partial ... Do not stand down on it' whenever the evidence is partial, and precedence() is deliberately the finer read that names every carrier where branches_in_flight reports one. 16 test_precedence_* tests pin the ordering and the never-both-yield guarantee. The original instance's branch no longer exists to re-diagnose. Verified against the tree 2026-09-21 in PL-C4W8's Gate 2 staleness sweep.
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_every_carrier_of_an_item_is_named_in_first_commit_order' subprojects/docket/tests/test_vcs.py
 ---
 
