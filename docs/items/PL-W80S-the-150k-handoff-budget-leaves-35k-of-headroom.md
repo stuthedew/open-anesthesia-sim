@@ -6,7 +6,8 @@ effort: M
 status: needs-decision
 classes: session-cost
 feature: context-budget-reading
-touches: CLAUDE.md, tools/context_reading.py, tests/unit/test_context_reading.py, docs/items/PL-BZVY-get-session-s-context-usage-used-tokens-does.md
+touches: CLAUDE.md, tools/context_reading.py, tests/unit/test_context_reading.py, docs/ARCHITECTURE.md, docket.toml, docs/items/PL-BZVY-get-session-s-context-usage-used-tokens-does.md
+verify: grep -q 'def test_a_missing_reading_exits_non_zero_rather_than_reporting_zero' tests/unit/test_context_reading.py && grep -q context_reading.py docs/ARCHITECTURE.md
 added: 2026-09-20
 ---
 
