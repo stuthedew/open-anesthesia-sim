@@ -5,7 +5,7 @@ priority: P1
 effort: S
 status: ready
 classes: defect, safety
-touches: src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/bookmarks.py, tests/unit/test_bookmarks.py, tests/integration/test_simulation_view.py
+touches: src/anesthesia_sim/app/bookmarks.py, src/anesthesia_sim/app/controller.py, src/anesthesia_sim/app/dashboard_frame.py, tests/unit/test_bookmarks.py, tests/unit/test_dashboard_frame.py, tests/integration/test_simulation_view.py, docs/MODEL.md
 added: 2026-09-20
 payoff: stops the marks panel telling a learner a mark is still ahead of a run that cannot be resumed without a reset
 verify: grep -q 'def test_a_failed_run_s_marks_do_not_stand_as_reachable' tests/integration/test_simulation_view.py

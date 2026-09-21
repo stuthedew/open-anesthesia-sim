@@ -265,6 +265,7 @@ def _standings(
     opened_at_s: float = 0.0,
     elapsed_s: float = 0.0,
     stopped_at_cap: bool = False,
+    run_failed: bool = False,
 ) -> BookmarkStandings:
     """One run's standings on that set, defaulting to a run that has just opened.
 
@@ -280,6 +281,7 @@ def _standings(
         elapsed_s=elapsed_s,
         run_length_cap_s=MAXIMUM_ELAPSED_SIMULATION_TIME_S,
         stopped_at_cap=stopped_at_cap,
+        run_failed=run_failed,
     )
 
 
@@ -1881,6 +1883,27 @@ def test_a_mark_the_run_halted_on_says_so_on_its_row() -> None:
     target = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
 
     assert "reached" in format_mac_target(target, MarkStanding.REACHED)
+
+
+def test_a_mark_on_a_failed_run_says_the_run_stopped_rather_than_saying_nothing() -> None:
+    """`PL-N3N5`, at the row a learner reads it off.
+
+    A failed run's marks drew as silence - `STILL_RUNNING` renders as nothing
+    at all on an unattributed row - so the one run on screen said the mark was
+    still ahead of it by saying nothing about it, beside its own panel reading
+    "Stopped - simulation error". The word has to name the failure rather than
+    the cap: they stop a run for opposite reasons, and only one of them is a
+    statement about what the model supports.
+    """
+
+    bookmark = TimeBookmark(600.0, "check")
+    target = MacTarget(RecordedQuantity.FAT, MacMultiple(0.5))
+    said = MARK_STANDING_TEXT[MarkStanding.NOT_REACHED_BEFORE_FAILURE]
+
+    assert said
+    assert said in format_time_bookmark(bookmark, MarkStanding.NOT_REACHED_BEFORE_FAILURE)
+    assert said in format_mac_target(target, MarkStanding.NOT_REACHED_BEFORE_FAILURE)
+    assert said != MARK_STANDING_TEXT[MarkStanding.NOT_REACHED_WITHIN_CAP]
 
 
 def test_every_standing_a_run_can_report_has_a_word_to_draw_it_with() -> None:

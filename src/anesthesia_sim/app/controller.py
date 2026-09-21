@@ -1624,7 +1624,17 @@ class SimulationController:
         }
 
     def _bookmark_standings(self) -> BookmarkStandings:
-        """Where each of this run's marks stands, for the snapshot to carry."""
+        """Where each of this run's marks stands, for the snapshot to carry.
+
+        **Both of `start`'s refusals are passed, because both end the run's
+        reach** (`PL-N3N5`). A standing says whether a mark can still be
+        reached, and this method is the only thing that knows: the two
+        reasons live here, `_supported_limit_reason` and `_failure_reason`,
+        and `start` reads exactly these two to decide that the run cannot be
+        resumed at all. Passing the cap and withholding the failure left
+        every mark on a failed run reading as one the run had not reached
+        *yet*, on a run whose next step would raise as its last one did.
+        """
 
         return self._bookmarks.standings(
             reached_instants_s=self._reached_instants_s,
@@ -1633,6 +1643,7 @@ class SimulationController:
             elapsed_s=self._state.elapsed_s,
             run_length_cap_s=MAXIMUM_ELAPSED_SIMULATION_TIME_S,
             stopped_at_cap=self._supported_limit_reason is not None,
+            run_failed=self._failure_reason is not None,
         )
 
     def advance(self, simulation_step_s: float) -> None:

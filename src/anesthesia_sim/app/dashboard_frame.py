@@ -243,14 +243,25 @@ MARK_LABEL_JOINER: Final = " – "
 # reach says nothing at all, so the words appear on exactly the rows whose
 # state a reader would otherwise have to infer from silence.
 #
-# **The two negative answers are worded apart deliberately.** "Not reached"
-# alone would be true of both and would tell a learner that a bookmark before
-# this branch's fork might arrive if they kept running, which it cannot -
+# **The three negative answers are worded apart deliberately.** "Not reached"
+# alone would be true of all three and would tell a learner that a bookmark
+# before this branch's fork might arrive if they kept running, which it cannot -
 # `bookmarks.MarkStanding` carries the argument, and `CLAUDE.md`'s
 # safety-critical standard is what rules out the plausible-looking answer.
 # `NOT_REACHED_WITHIN_CAP` names the run length rather than a number of hours,
 # so the figure lives once, in `core/supported_ranges.py` and
 # `docs/MODEL.md` § "Supported run length".
+#
+# **The failed run's word names the failure for the same reason the cap's
+# names the cap** (`PL-N3N5`). Each says what the mark went unreached
+# *within* or *before*, so the row carries why nothing more will happen to
+# the mark rather than leaving a reader to find it on the run's own panel -
+# and it borrows that panel's phrase, so a screen read at one instant says
+# "Stopped - simulation error" above and "not reached before the simulation
+# error" beside the mark instead of two accounts of one stop. What it does
+# not do is predicate the transport state of the mark: "not reached" is the
+# claim, and the failure is when it stopped being open to revision, which is
+# the distinction `MARK_STILL_RUNNING_TEXT` below was introduced for.
 #
 # **"passed" and "reached" are two words because they are two claims**
 # (`PL-3K9B`). "Passed" is where the run's clock is relative to a marked
@@ -268,6 +279,7 @@ MARK_STANDING_TEXT: Final[Mapping[MarkStanding, str]] = MappingProxyType(
         MarkStanding.REACHED: "reached",
         MarkStanding.NOT_REACHED_WITHIN_CAP: "not reached within the supported run length",
         MarkStanding.BEFORE_THIS_BRANCH: "before this branch opened",
+        MarkStanding.NOT_REACHED_BEFORE_FAILURE: "not reached before the simulation error",
     }
 )
 
