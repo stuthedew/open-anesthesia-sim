@@ -8,6 +8,7 @@ classes: defect
 touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-20
 closed: 2026-09-21
+pr: 813
 payoff: restores the one guard against two sessions on one item for the branch shape every harness-named branch here ends up in
 verify: grep -q 'def test_a_branch_pushed_to_after_its_pull_request_squash_merged_is_still_in_flight' subprojects/docket/tests/test_vcs.py
 ---

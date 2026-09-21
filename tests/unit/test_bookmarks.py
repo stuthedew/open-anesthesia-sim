@@ -576,10 +576,7 @@ def test_a_failure_stops_a_clock_without_taking_it_back() -> None:
     marks = BookmarkSet().with_time_bookmark(passed).with_mac_target(reached)
 
     standings = _standings(
-        marks,
-        elapsed_s=60.0,
-        reached_crossings=frozenset({reached.crossing_key}),
-        run_failed=True,
+        marks, elapsed_s=60.0, reached_crossings=frozenset({reached.crossing_key}), run_failed=True
     )
 
     assert standings.of_time_bookmark(passed) is MarkStanding.PASSED

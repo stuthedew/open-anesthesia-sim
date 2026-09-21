@@ -80,6 +80,7 @@ from anesthesia_sim.app.dashboard_frame import (
     SIMULATION_STEP_S,
     SIMULATION_TICK_INTERVAL_S,
     START_NEW_CASE_TEMPLATE,
+    STATUS_FAILED_TEXT,
     run_label,
     slider_position,
 )
@@ -3354,6 +3355,66 @@ def test_a_mark_the_branch_cannot_reach_is_not_drawn_as_the_trunk_left_it(
         f"{run_label(1)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.BEFORE_THIS_BRANCH]}"
     )
     assert f"{run_label(0)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.PASSED]}" in listed
+
+
+def test_a_failed_run_s_marks_do_not_stand_as_reachable(application: QApplication) -> None:
+    """`PL-N3N5`, read as the adversarial review of `PL-LHBY` found it.
+
+    One of two displayed runs is failed the way a raised step fails it -
+    `RunView.halt` records the disposition, which is what the tick handler
+    calls - and the whole screen is then read at one instant. The trunk's own
+    panel said `Stopped - simulation error` while its clause on a mark it had
+    not reached said `not yet`, which is `MarkStanding.STILL_RUNNING`
+    asserting the run can still reach the mark, on a run
+    `SimulationController.start` refuses to resume without a reset.
+
+    The failed run is the trunk rather than the branch so that the *drawn*
+    defect is reproduced and not only the standing behind it: the branch has
+    something to say about both new marks, so the rows are attributed and the
+    trunk's answer reaches the screen in words. Where the two runs agreed the
+    row drew as silence instead, which is the same false claim made quietly.
+
+    Both kinds are read, because a failure ends a clock and a height alike,
+    and the trunk's inherited `passed` is read beside them: a failure stops a
+    clock without taking it back, so the answers about what did happen stand.
+    """
+
+    view = _halted_branch_view(application)
+    trunk = view.runs[0]
+    # Marked after the fork and through the editor, so both runs hold them:
+    # the set is the case's and `_apply_to_every_run` is what writes one. The
+    # instant is ahead of the trunk's clock and behind the branch's, and fat
+    # at 0.8 xMAC is out of reach of either run here, so each mark is left
+    # outstanding on the trunk with the branch answering it.
+    dialog = _opened_bookmark_dialog(view)
+    dialog.instant_spin.setValue(90.0)
+    dialog.add_time_button.click()
+    dialog.compartment_combo.setCurrentIndex(
+        dialog.compartment_combo.findData(RecordedQuantity.FAT.value)
+    )
+    dialog.height_spin.setValue(0.8)
+    dialog.add_target_button.click()
+
+    trunk.halt(_real_step_failure())
+    view.present(False)
+
+    assert trunk.controller.has_failed is True
+    assert trunk._status_text.text() == STATUS_FAILED_TEXT
+
+    said = MARK_STANDING_COMPARED_TEXT[MarkStanding.NOT_REACHED_BEFORE_FAILURE]
+    still_reachable = f"{run_label(0)} {MARK_STILL_RUNNING_TEXT}"
+    times = view._bookmarks_panel.times.rows_label.text()
+    targets = view._bookmarks_panel.targets.rows_label.text()
+
+    assert f"{run_label(0)} {said}" in times
+    assert f"{run_label(0)} {said}" in targets
+    assert still_reachable not in times
+    assert still_reachable not in targets
+    # The branch still answers for itself, and the trunk still reports what
+    # it did reach before the failure.
+    assert f"{run_label(1)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.PASSED]}" in times
+    assert f"{run_label(0)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.PASSED]}" in times
+    assert f"{run_label(1)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.REACHED]}" in targets
 
 
 def test_a_lone_run_states_a_mark_s_standing_without_naming_a_run(

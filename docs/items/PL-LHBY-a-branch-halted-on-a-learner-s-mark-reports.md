@@ -9,6 +9,7 @@ feature: two-run-attribution
 touches: src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
 added: 2026-09-20
 closed: 2026-09-20
+pr: 811
 payoff: stops the screen asserting a mark was reached by a run that provably could not reach it, and stops a branch halting at a learner's mark with nothing on screen saying why
 verify: grep -q 'def test_a_branch_halted_on_a_mark_says_so' tests/integration/test_simulation_view.py
 ---

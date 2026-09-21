@@ -4136,8 +4136,8 @@ already fired, with nothing on screen distinguishing them, which is the hidden
 mode this interface is built to avoid. Resuming a paused run is one control,
 and the learner is already looking at it.
 
-**Where a mark stands is reported as one of five outcomes, not two.** The
-distinctions are required rather than stylistic: each of the last three would
+**Where a mark stands is reported as one of six outcomes, not two.** The
+distinctions are required rather than stylistic: each of the last four would
 be misread as one of the others.
 
 - **Still running** — nothing yet, and the run can still reach it.
@@ -4165,6 +4165,17 @@ be misread as one of the others.
   learner that running longer might reach it, which is false. A MAC target has
   no equivalent: a height is reachable from either side, so a branch may cross
   one its trunk never did.
+- **Not reached before the simulation error** — the run stopped on a raise the
+  model could not step past, with this mark outstanding. Resuming is not
+  offered, because the next step would raise as the last one did, so nothing
+  but a reset reaches the mark and a reset is a different run. It is worded
+  apart from the cap above, which is the outcome it would be mistaken for: the
+  two stop a run for opposite reasons — at the cap the model has answered the
+  question and says a longer run would not change the answer, and in a failure
+  it could not answer at all — so reporting a failure as the cap would turn
+  what this run did into a claim about what the model supports. Where a run stands at the cap *and* has failed, the cap is
+  what is reported — nothing steps after a failure, so such a run ran out of
+  supported time first and was failed by a setting afterwards.
 
 **The two kinds are answered in two vocabularies, and the split is the clock**
 (project owner, 2026-09-20, ratified, over reusing "reached" for both kinds).
@@ -4175,7 +4186,7 @@ height, which no clock orders: a compartment may arrive at one, leave it and
 arrive again, so what the run did is the only thing that can be said of one.
 So "passed" and "before this branch opened" answer for time bookmarks and
 never for targets, "reached" answers for targets and never for bookmarks, and
-the remaining two answer for both.
+the remaining three answer for both.
 
 **Reporting a passed bookmark as "reached" was measured wrong seven ways and
 is refused** (`PL-3K9B`, measured 2026-09-20). Deciding a bookmark from the
