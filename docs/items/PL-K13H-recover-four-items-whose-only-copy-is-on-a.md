@@ -1,15 +1,16 @@
 ---
 id: PL-K13H
 title: Recover four items whose only copy is on a branch with no live session: PL-BXNH, PL-HVLJ and PL-7H9Y on claude/festive-allen-nj1x98, PL-3QM9 on claude/cool-pascal-emsw3c
-status: done
 priority: P2
 effort: S
+status: done
 classes: infra
 feature: stranded-recovery
 touches: docs/items
-payoff: four captured findings stop existing only on branches nobody is merging, where the default branch cannot see them and no session will be offered them
 added: 2026-09-21
 closed: 2026-09-21
+payoff: four captured findings stop existing only on branches nobody is merging, where the default branch cannot see them and no session will be offered them
+verify: test -f docs/items/PL-BXNH-recover-the-four-squash-commit-bodies-lost-on.md && test -f docs/items/PL-HVLJ-doc-check-reads-local-tags-so-a-checkout-whose.md && test -f docs/items/PL-7H9Y-pl-kfwl-s-stated-symptom-does-not-reproduce-on.md && test -f docs/items/PL-3QM9-bin-docket-flight-reports-a-branch-s-age-by.md
 ---
 
 **Problem.** Recover four items whose only copy is on a branch with no live session: PL-BXNH, PL-HVLJ and PL-7H9Y on claude/festive-allen-nj1x98, PL-3QM9 on claude/cool-pascal-emsw3c
@@ -54,7 +55,15 @@ the next triage pass judges them rather than this recovery doing it blind.
 
 **Closed 2026-09-21.** All four recovered by `git checkout` from the branches
 above. `bin/docket check` reports 0 errors and the open count reconciles: 339
-before, 344 after - four recovered plus this item. Each stays `untriaged`, which
-is what they were captured at; none is triaged here, because this item's
-commission is recovery and banding them is a judgment the next triage pass owes
-with the briefs in front of it.
+before, 343 after - the four recovered, with this item closed and so not open.
+Each stays `untriaged`, which is what they were captured at; none is triaged
+here, because this item's commission is recovery and banding them is a judgment
+the next triage pass owes with the briefs in front of it.
+
+**The first push of this item failed CI, and the cause is worth recording.**
+Setting `status: done` without a `verify:` command is a `docket check` error -
+a closed item owes the command that proved it. The session missed it by running
+`bin/docket check | grep -E "errors"`, which matches the plural summary and not
+the singular "1 error", so an empty grep read as a clean store. Read the
+command's output rather than filtering it; the count line says "0 errors" only
+when there are none or many.
