@@ -1,9 +1,15 @@
 ---
 id: PL-TSZM
 title: The halt and refused-setting banner sits in the shared notice column with no run attribution, so 'Simulation stopped' and 'the simulation is unchanged and still running its previous setting' read as the dashboard's rather than one run's
-status: untriaged
+priority: P1
+effort: S
+status: ready
+classes: defect, safety, ux
 feature: two-run-attribution
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
 added: 2026-09-21
+payoff: stops a halt or a refused setting on one run reading as the dashboard's, and stops 'the simulation is unchanged' asserting something false of the run it is not about
+verify: grep -q 'def test_the_halt_and_refusal_banners_name_their_run' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** The halt and refused-setting banner sits in the shared notice column with no run attribution, so 'Simulation stopped' and 'the simulation is unchanged and still running its previous setting' read as the dashboard's rather than one run's
@@ -37,5 +43,6 @@ since it is a coloured block rather than a line of text - that is the design
 work, and `.claude/rules/ui-reader.md` governs it.
 
 **Done when.** With two runs drawn, each notice says which run it is about by a
-channel that does not depend on stacking order, held by a test in
+channel that does not depend on stacking order, held by
+`test_the_halt_and_refusal_banners_name_their_run` in
 `tests/integration/test_simulation_view.py`.

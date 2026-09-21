@@ -1,9 +1,15 @@
 ---
 id: PL-C3GS
 title: The agent-accounting and control-change panels stack unattributed in the shared sidebar column once a branch is drawn, so 'What was changed during this run' names no run and a setting change reads as the other run's
-status: untriaged
+priority: P1
+effort: M
+status: ready
+classes: defect, safety, ux
 feature: two-run-attribution
+touches: src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, tests/integration/test_simulation_view.py, tests/unit/test_dashboard_frame.py
 added: 2026-09-21
+payoff: stops a setting change or a mass-balance status reading as the other run's, which says the trunk received an intervention it never got
+verify: grep -q 'def test_the_sidebar_panels_name_the_run_they_record' tests/integration/test_simulation_view.py
 ---
 
 **Problem.** The agent-accounting and control-change panels stack unattributed in the shared sidebar column once a branch is drawn, so 'What was changed during this run' names no run and a setting change reads as the other run's
@@ -37,5 +43,6 @@ wrong instrument here, and the right one is probably the heading pair that
 against `.claude/rules/ui-reader.md` before adding any standing text.
 
 **Done when.** With two runs drawn, each sidebar panel says which run it is
-about by a channel that does not depend on stacking order, held by a test in
+about by a channel that does not depend on stacking order, held by
+`test_the_sidebar_panels_name_the_run_they_record` in
 `tests/integration/test_simulation_view.py`.
