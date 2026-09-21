@@ -1,0 +1,59 @@
+---
+id: PL-PBP5
+title: quality.yml enumerates its own steps rather than running make check, so dead_ends.py, ignore_check.py and possessive_section_check.py have no CI backstop and a branch pushed without a local make check lands green on a tree make check would refuse
+status: untriaged
+classes: infra
+touches: .github/, Makefile, tools/, docs/items/
+added: 2026-09-21
+payoff: a check wired into make check is enforced by CI too, so the convention it holds does not depend on a session remembering to run the local gate
+---
+
+**Problem.** quality.yml enumerates its own steps rather than running make check, so dead_ends.py, ignore_check.py and possessive_section_check.py have no CI backstop and a branch pushed without a local make check lands green on a tree make check would refuse
+
+**Found while closing `PL-316G`** (the possessive-to-section-mark conversion),
+whose step 2 wires `tools/possessive_section_check.py` into `make check` so
+"the convention holds for citations nobody has written yet". The wiring does
+what the item asked. What it does not do is what the item's own reasoning
+assumes: `.github/workflows/quality.yml` enumerates its own steps rather than
+invoking `make check`, so three of that target's lines run nowhere else -
+`tools/dead_ends.py check`, `tools/ignore_check.py` and now
+`tools/possessive_section_check.py`. A branch pushed without a local
+`make check` gets a green CI verdict on a tree `make check` would refuse.
+
+**Why it matters.** The project's standing argument for a check is that a
+convention nothing enforces decays. A check that runs only where a session
+remembers to run it is enforced by the same memory the convention was, which
+is the property the check was built to replace. `make check` is the required
+pre-commit gate, so this is a second line of defence rather than the only one
+- which is why it is filed rather than fixed inside `PL-316G`.
+
+**Two of the three predate this.** `ignore_check.py` and `dead_ends.py` have
+been `make check`-only for longer than `possessive_section_check.py` has
+existed, and nobody has filed it, so *deliberate* is a live reading and has to
+be ruled out before anything is added. `pr_title_check.py` is the worked
+counter-example: it is `make check`-only in `quality.yml` and has a workflow of
+its own in `.github/workflows/pr-title.yml`, so the project has already decided
+this question once, in the direction of covering it.
+
+**What the answer has to weigh.**
+
+- Whether each of the three is cheap enough for the floor section, which runs
+  before `astral-sh/setup-uv` and whose whole design is that no virtualenv
+  exists yet. `dead_ends.py` and `possessive_section_check.py` are
+  standard-library-only and read text, so both qualify; `ignore_check.py`
+  shells out to mypy and does not, which is why it sits under `uv run` in the
+  Makefile and is the one genuine split in the group.
+- What the counterfactual is worth, per
+  `.claude/rules/expert-review.md` § "Name the number that would change your
+  mind, then go and count it": this is worth adding only if pushes that skip
+  `make check` are a real rate rather than a hypothetical. Count them before
+  deciding - a CI run whose tree fails one of the three is the observable, and
+  `git log` plus the run history can say how often it has happened.
+- Whether the answer is instead to make the two gates one, so the question
+  cannot recur per tool. `PL-J3WK` is the same seam from the other side -
+  `make check` runs `bin/docket check` without `--verify` where CI runs it with
+  - and whichever way that one goes should decide this one too.
+
+**Done when.** The three are either covered by CI or recorded as deliberately
+local with the reason, and whatever decides it is written where the next tool
+added to `make check` will meet the question rather than re-derive it.
