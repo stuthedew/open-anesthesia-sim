@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: housekeeping, infra
 feature: gate-staleness-sweep
+milestone: v0.5.1
 touches: docs/items, docs/WORKING_NOTES.md
 added: 2026-09-21
 closed: 2026-09-21
+pr: 860
 payoff: the 168 swept entries can be worked on evidence rather than on a brief that may describe a tree from two weeks ago, and the three dead ones stop being ranked and offered
 verify: python3 tools/doc_check.py check && grep -q '^status: dropped' docs/items/PL-3JP0-*.md docs/items/PL-SY1J-*.md docs/items/PL-Z9K5-*.md
 ---

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, defect
 feature: frame-cost-harness
+milestone: v0.5.1
 touches: docs/WORKING_NOTES.md
 added: 2026-09-19
 closed: 2026-09-21
