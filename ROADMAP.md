@@ -5561,8 +5561,8 @@ named here, for the reason beat 3 gives.
 frozen list" above opens by saying this list holds every open debt item "as the
 store held it on the day of the cut", and § "The debt gate" closes by making the
 gate a snapshot rather than a moving target. The cut is `e6cdfd93`, 07:04 on
-2026-09-21. All seven below were created by commits later the same day, so none
-was in the store the snapshot was taken from. None is classed `safety` or
+2026-09-21. All six below were created by commits later the same day, so none was
+in the store the snapshot was taken from. None is classed `safety` or
 `science` either, so the unconditional re-entry that makes those two
 non-deferrable does not reach any of them, and the presence test they are then
 held to answers no.
@@ -5575,10 +5575,11 @@ same mechanism § "Debt gate: the frozen list" describes for the thirteen entrie
 that were untriaged when the list was frozen - the difference being that those
 thirteen were open in the store at the cut and these seven were not yet filed.
 
-**Six of the seven are apparatus and one is not**, and the one that is not is
-still not a clinical path: `PL-P55F` corrects a dead symbol in
-`src/anesthesia_sim/app/playback.py` and is classed `docs`, which is not a debt
-class, so it never reached this check and is absent below.
+**All six are apparatus.** Three items the same pass triaged are absent
+because none of them is debt: `PL-P55F` is classed `docs` and `PL-M3X6`
+`planning`, neither of which is a debt class, and `PL-PBP5` was reverted to the
+base's untriaged copy once `origin/claude/trusting-hawking-wlh7vg` was found to
+have implemented and closed it.
 
 - PL-H0CF (S) - **deferred 2026-09-21.** `tools/doc_check.py`'s `_resolves`
   joins an absolute citation token onto the repository root, which in Python
@@ -5617,13 +5618,6 @@ class, so it never reached this check and is absent below.
   ...` or `### Deferred to ...` is not read. `defect`, `infra`. Latent: this
   gate carries no such heading, and the subsection you are reading was written
   to match the pattern deliberately.
-
-- PL-PBP5 (S) - **deferred 2026-09-21.** `.github/workflows/quality.yml`
-  enumerates its own steps rather than invoking `make check`, so
-  `dead_ends.py`, `ignore_check.py` and `possessive_section_check.py` have no CI
-  backstop. `infra` alone, so it is debt only by its `needs-decision` status.
-  `make check` remains the required pre-commit gate, which is why this is a
-  second line of defence rather than the only one.
 
 ### Required scope
 
