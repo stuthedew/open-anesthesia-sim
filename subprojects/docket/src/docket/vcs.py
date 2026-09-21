@@ -28,7 +28,7 @@ import re
 import subprocess
 import time
 from collections import Counter
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Collection, Iterator, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -2736,6 +2736,190 @@ def _has_own_commits(name: str, base: str, root: Path, run: Runner) -> bool:
     """
     count = run(["rev-list", "--count", f"{base}..{name}"], root).strip()
     return count.isdigit() and int(count) > 0
+
+
+@dataclass(frozen=True)
+class SettledBranch:
+    """One unmerged ref on which nothing is left for anybody to work.
+
+    `item_ids` is every item this ref claimed, all of them closed in the ref's
+    own copy; `last_commit` is the day it last moved, carried across from the
+    flight report so a reader judging how long it has sat does not have to look
+    it up separately.
+    """
+
+    name: str
+    item_ids: tuple[str, ...]
+    last_commit: date | None = None
+
+
+@dataclass(frozen=True)
+class SettledReport:
+    """Which unmerged refs are finished, and whether the forge could be asked.
+
+    **`asked` is why this is a type rather than a list**, and it is the same
+    refusal `FlightReport.unreadable` and `PullRequestHistory.declined` make:
+    an empty answer meaning "could not look" must never render as "looked, and
+    found none open". A ref is settled here only when its items are closed
+    *and* nobody has a pull request open on it, so a reading that could not ask
+    the second question has proved half of the claim. It is reported as half,
+    and the caller that prints it says which half.
+
+    `declined` carries the usual meaning: git was asked something and did not
+    answer, so an absent row may only have gone unread.
+    """
+
+    branches: tuple[SettledBranch, ...] = ()
+    #: Whether the pull-request half of the test was answered at all. `False`
+    #: is a bare checkout, no token, no network, or a forge that refused - and
+    #: every row here is then "every item closed" alone.
+    asked: bool = True
+    declined: str = ""
+
+    @property
+    def known(self) -> bool:
+        """Whether every question this reading rests on was answered."""
+        return not self.declined and self.asked
+
+
+def _remotes(root: Path, run: Runner) -> frozenset[str]:
+    """The remotes this checkout knows, for stripping a tracking ref's prefix."""
+    return frozenset(name.strip() for name in run(["remote"], root).splitlines() if name.strip())
+
+
+def _head_name(name: str, remotes: frozenset[str]) -> str:
+    """The branch name a forge knows this ref by.
+
+    `origin/claude/pl-k7qx-thing` and `claude/pl-k7qx-thing` are one branch, and
+    a pull request names the second. Stripped against the remotes git actually
+    lists rather than against the first path segment, so a local branch that
+    happens to be called `origin/...` - or, more plausibly, one whose first
+    segment is a word like `feature` - keeps its whole name.
+    """
+    prefix, _, rest = name.partition("/")
+    return rest if rest and prefix in remotes else name
+
+
+def settled_branches(
+    root: Path,
+    report: FlightReport,
+    *,
+    opened: Callable[[], Collection[str] | None] | None = None,
+    items_dir: str = "docs/items",
+    runner: Runner | None = None,
+) -> SettledReport:
+    """The in-flight refs that have finished: every item closed, and nothing open.
+
+    `branches_in_flight` cannot tell a live session from a branch nobody will
+    merge, says so, and leaves the age to separate them. Age is a weak
+    separator where a session turns around in under an hour, and it fails in
+    the costly direction on the one case that matters most: work that is
+    *finished*, sitting on a branch with no pull request behind it, reported to
+    every session as "in flight ... do not start these again". That reading is
+    exactly backwards - nobody is doing it, and nobody will. `PL-Q664` is the
+    worked instance: two items at `status: done`, ten item files existing
+    nowhere else, and three hours before anybody noticed.
+
+    Two facts separate that case, and neither is the age. Every item the ref
+    claims is closed **in the ref's own copy**, which is where a session that
+    finished the work wrote it; and no pull request is open on the ref, which
+    is what a session that finished *and* opened one would have left. Both
+    together are what says nothing is being worked. Either one alone is
+    ordinary: a branch mid-review has closed its items, and a branch with no
+    pull request is usually a session still working.
+
+    **Kept out of `branches_in_flight` for the reason `files_in_flight` is.**
+    That read is on the hot path of `next`, `list`, `triage`, `show` and the
+    session-start digest, and this one costs a `git show` per claimed item plus,
+    where there is a candidate at all, whatever asking the forge costs. It is
+    paid by the command that asks the question and by nobody else.
+
+    **It never changes what is in flight.** The ids stay excluded from `docket
+    next`, because the work exists on a branch and offering it again would have
+    a second session redo it. What changes is only how a reader is told: a row
+    moved out of the list the age is meant to separate, into one that says
+    plainly that nothing there is being worked.
+
+    **The forge is asked through `opened`, never reached from here.** This
+    package answers from a bare checkout with no network and knows nothing
+    about GitHub; the caller supplies a way to ask which branch names have a
+    pull request open, and `None` - no way to ask, no token, no network - is
+    carried into the report as `asked=False` rather than read as "none is
+    open". It is a callable rather than a collection so that the cost is paid
+    only where the cheap half found a candidate: a checkout whose branches are
+    all still working never asks at all.
+
+    Every silence fails toward the live reading. A ref whose commits went
+    unread, an item the ref does not hold a copy of, a `git show` that returned
+    nothing: each leaves the ref out of this report and in the ordinary
+    in-flight list, because a live session wrongly called finished is the
+    expensive mistake and finished work wrongly called live is the one this
+    repository already has.
+    """
+    run = _Silences(runner or _run_git)
+    unread = set(report.unreadable)
+    carried: dict[str, list[str]] = {}
+    for branch in report.branches:
+        if branch.name in unread:
+            continue
+        carried.setdefault(branch.name, []).append(branch.item_id)
+
+    finished: list[SettledBranch] = []
+    for name, ids in carried.items():
+        held = _items_at(name, root, items_dir, run)
+        paths = [held.get(identifier.upper(), "") for identifier in ids]
+        if not all(paths) or not all(_closed_at_ref(name, path, root, run) for path in paths):
+            continue
+        finished.append(
+            SettledBranch(
+                name=name,
+                item_ids=tuple(sorted(ids)),
+                last_commit=next((b.last_commit for b in report.branches if b.name == name), None),
+            )
+        )
+
+    if not finished:
+        # Nothing to ask the forge about, so it is not asked - and the report
+        # says the question was answered, because a set with no members in it
+        # has no member whose pull request went unchecked.
+        return SettledReport(declined=report.declined or run.reason)
+    if opened is None:
+        return SettledReport(
+            branches=tuple(sorted(finished, key=lambda entry: entry.name)),
+            asked=False,
+            declined=report.declined or run.reason,
+        )
+    answer = opened()
+    if answer is None:
+        return SettledReport(
+            branches=tuple(sorted(finished, key=lambda entry: entry.name)),
+            asked=False,
+            declined=report.declined or run.reason,
+        )
+    remotes = _remotes(root, run)
+    heads = {head.strip() for head in answer if head.strip()}
+    return SettledReport(
+        branches=tuple(
+            sorted(
+                (entry for entry in finished if _head_name(entry.name, remotes) not in heads),
+                key=lambda entry: entry.name,
+            )
+        ),
+        declined=report.declined or run.reason,
+    )
+
+
+def _closed_at_ref(ref: str, path: str, root: Path, run: Runner) -> bool:
+    """Whether the ref's own copy of one item records it closed.
+
+    The ref's copy rather than the base's, which is the whole distinction:
+    `_closed_on_base` asks whether an item has *shipped*, and this asks whether
+    the session on this branch finished it. A read that comes back empty is a
+    `git show` that failed or a file that is not there, and answers `False`,
+    which keeps the ref in the ordinary in-flight list.
+    """
+    text = run(["show", f"{ref}:{path}"], root)
+    return bool(text) and parse_item(text, path.rsplit("/", 1)[-1]).status in CLOSED_STATUSES
 
 
 def default_base(root: Path, *, runner: Runner | None = None) -> str:

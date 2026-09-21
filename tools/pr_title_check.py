@@ -42,20 +42,17 @@ several hundred `git show` calls, so a branch with no pull request pays
 milliseconds and this check speaks only when it has something to say.
 
 Standard library only, like every tool here, so it runs in a bare checkout.
-`urllib` is in that library; the token is read from the environment and never
-printed.
+The request itself is `open_pull_requests.py`'s, which `docket flight` also
+asks; sharing it keeps one spelling of the token, the timeout and the rule that
+every failure is a skip, rather than two that can drift apart.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import subprocess
 import sys
-import urllib.error
-import urllib.parse
-import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -64,16 +61,9 @@ sys.path.insert(0, str(ROOT / "subprojects" / "docket" / "src"))
 from docket.model import CLOSED_STATUSES, parse_item  # noqa: E402
 from docket.vcs import ITEM_FILE_RE, leading_ids  # noqa: E402
 
+from open_pull_requests import open_pull_requests, repo_slug  # noqa: E402
+
 ITEMS_DIR = "docs/items"
-
-#: Where `--discover` looks. Named here rather than inline so a test can point
-#: it somewhere that is not the network.
-GITHUB_API = "https://api.github.com"
-
-#: Seconds to wait on that lookup. Short on purpose: this sits inside `make
-#: check`, and the answer is an improvement on running nothing rather than
-#: something worth waiting for. A timeout is a skip like any other failure.
-LOOKUP_TIMEOUT = 10.0
 
 
 def _git(args: list[str]) -> str:
@@ -120,16 +110,6 @@ def closes(base: str, head: str) -> list[str]:
     return sorted(set(_closed_ids_at(head)) - set(_closed_ids_at(base)))
 
 
-def _repo_slug() -> str | None:
-    """`owner/name` for `origin`, or None when it cannot be read as GitHub's."""
-    url = _git(["remote", "get-url", "origin"]).strip()
-    for prefix in ("git@github.com:", "ssh://git@github.com/", "https://github.com/"):
-        if url.startswith(prefix):
-            slug = url[len(prefix) :].removesuffix(".git").strip("/")
-            return slug if slug.count("/") == 1 and all(slug.split("/")) else None
-    return None
-
-
 def _branch() -> str | None:
     """The current branch name, or None on a detached HEAD."""
     name = _git(["rev-parse", "--abbrev-ref", "HEAD"]).strip()
@@ -139,46 +119,20 @@ def _branch() -> str | None:
 def open_pull_request(slug: str, branch: str) -> tuple[int, str] | None:
     """The open pull request for `branch`, as (number, title), or None.
 
-    None covers every reason there is no answer, and they are deliberately not
-    told apart: no token, no network, a proxy refusing, a rate limit, a
-    repository this token cannot see, a malformed body, or simply no pull
-    request open. The caller skips on all of them, so distinguishing them would
-    buy a message nobody can act on differently. The one thing that must not
-    happen is a missing answer reading as "checked, and fine" - which it cannot
-    here, because a skip prints nothing and returns 0 rather than passing the
-    check.
+    None covers every reason there is no answer - no token, no network, a
+    forge that refused, or simply no pull request open - and they are
+    deliberately not told apart, because the caller skips on all of them. The
+    one thing that must not happen is a missing answer reading as "checked,
+    and fine", which it cannot here: a skip prints nothing and returns 0 rather
+    than passing the check.
+
+    A thin call rather than its own request since `PL-Q664`, which gave
+    `docket flight` the same question about a different branch.
     """
-    token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
-    if not token:
+    found = open_pull_requests(slug, head=branch)
+    if not found:
         return None
-    query = urllib.parse.urlencode(
-        {"head": f"{slug.split('/')[0]}:{branch}", "state": "open", "per_page": 1}
-    )
-    request = urllib.request.Request(
-        f"{GITHUB_API}/repos/{slug}/pulls?{query}",
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "pr_title_check",
-        },
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=LOOKUP_TIMEOUT) as response:
-            payload = json.load(response)
-    except (OSError, ValueError):
-        # `URLError` and `HTTPError` are both `OSError`; a body that is not
-        # JSON raises `ValueError`. Nothing else should escape a GET.
-        return None
-    if not isinstance(payload, list) or not payload:
-        return None
-    entry = payload[0]
-    if not isinstance(entry, dict):
-        return None
-    number, title = entry.get("number"), entry.get("title")
-    if not isinstance(number, int) or not isinstance(title, str):
-        return None
-    return number, title
+    return found[0].number, found[0].title
 
 
 def main() -> int:
@@ -202,7 +156,7 @@ def main() -> int:
     if title is None and args.discover:
         # Before `closes()`, which costs a `git show` per item file at both
         # ends of the range. A branch with nothing open pays one request.
-        slug, branch = _repo_slug(), _branch()
+        slug, branch = repo_slug(), _branch()
         found = open_pull_request(slug, branch) if slug and branch else None
         if found is None:
             return 0

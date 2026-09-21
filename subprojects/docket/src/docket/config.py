@@ -155,6 +155,23 @@ class Config:
     #: The project's own full check, run by `docket verify` alongside the
     #: item's command. Shelled out, so it may be whatever the project uses.
     check_command: str = "make check"
+    #: A command printing, one branch name per line, every branch the project's
+    #: forge has an open pull request for. `docket flight` runs it to tell a
+    #: branch waiting on review from one nobody opened, which is the second
+    #: half of knowing that finished work has stalled.
+    #:
+    #: A command rather than an API call, because this package answers from a
+    #: bare checkout with no network and knows nothing about GitHub or any
+    #: other forge - nor should it, since which forge a project uses is not a
+    #: fact about its queue. The project supplies the knowledge; this supplies
+    #: the question.
+    #:
+    #: Empty by default, which turns the second half off: `flight` then reports
+    #: a finished branch as finished-and-unasked rather than claiming nothing
+    #: is open on it. The contract the command owes is the same refusal - exit
+    #: non-zero, printing nothing, when it could not look, so that "looked,
+    #: none open" and "could not look" never arrive as the same empty answer.
+    open_pull_requests_command: str = ""
     #: Paths a delegated item may never modify, whatever its check proves.
     #: Empty by default, and that default is fail-closed rather than
     #: permissive: with nothing declared protected, no item is delegable at
@@ -323,6 +340,9 @@ def load(root: Path) -> Config:
         generator_paths=_tuple(section.get("generator_paths"), defaults.generator_paths),
         gate_paths=_tuple(section.get("gate_paths"), defaults.gate_paths),
         check_command=str(section.get("check_command", defaults.check_command)),
+        open_pull_requests_command=str(
+            section.get("open_pull_requests_command", defaults.open_pull_requests_command)
+        ),
         code_paths=_tuple(section.get("code_paths"), defaults.code_paths),
         notes_file=str(section.get("notes_file", defaults.notes_file)),
         version_file=str(section.get("version_file", defaults.version_file)),

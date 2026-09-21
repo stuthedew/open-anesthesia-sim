@@ -640,6 +640,54 @@ work nobody will merge. So each line carries the date of the branch's last
 unmerged commit and the reader decides, the way `stranded` reports rather than
 decides.
 
+**Except for one case the age does not decide.** A branch whose every claimed
+item is closed *in its own copy* and which nobody has a pull request open on is
+finished work that has stalled: nothing is being implemented there and nothing
+is being reviewed, and the report was telling every session to leave it alone.
+`claude/hopeful-allen-tetrje` sat that way for three hours with two items at
+`status: done` and ten item files existing nowhere else, and surfaced only
+because the project owner asked whether the feature had been built (`PL-Q664`).
+So `settled_branches` reads both facts and `docket flight` moves those rows
+into a section of their own. Either fact alone is ordinary — a branch under
+review has closed its items, and a branch with no pull request is usually a
+session still working — which is why neither is read on its own.
+
+It changes what a reader is told and never what is in flight. The ids stay
+excluded from `docket next`, because the work exists on a branch and offering
+it again would have a second session redo what is already written. What moves
+is the row: out of the list whose closing line says the age is what separates a
+live session from abandoned work, and into one that says plainly that nothing
+there is being worked.
+
+**The package does not ask the forge, and will not learn how.** It answers from
+a bare checkout with no network and knows nothing about GitHub; which forge a
+project uses is not a fact about its queue. So the caller passes a way to ask —
+`open_pull_requests_command` in `docket.toml`, a command printing one branch
+name per line — and the contract is its exit status: zero means it looked, and
+non-zero with nothing on stdout means it could not. The two must never arrive
+as the same empty answer, because "could not look" read as "nothing is open"
+would announce that finished work has stalled on every branch waiting on
+review. `SettledReport.asked` carries the distinction into the wording: "every
+item closed, and no pull request is open for it" when the forge answered,
+"every item closed" and a line saying the rest went unread when it did not.
+A project configuring no command gets the second reading, and `flight
+--no-remote` asks for it.
+
+**The cheap half decides whether the expensive one runs.** The command is a
+callable rather than an answer, and it is invoked only where reading the
+branches' own item files found something to ask about — which on a normal day
+is nothing, so `docket flight` reaches the network on no run at all until a
+branch actually finishes. Measured on this repository 2026-09-21: 0.70 s with
+the lookup configured and 0.70 s with `--no-remote`.
+
+Every silence fails toward the live reading. A ref whose commits went unread,
+an item whose file the ref does not hold, a `git show` that came back empty:
+each leaves the branch in the ordinary list. A live session wrongly called
+finished is the expensive mistake; finished work wrongly called live is the one
+this repository already had, and it is visible the moment anyone looks at the
+branch.
+
+
 A ref whose merge-base with the default branch cannot be read is named as
 unread rather than passed over silently. In a truncated clone — which is what
 an agent session's container is — that means history the checkout does not

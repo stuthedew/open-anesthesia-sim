@@ -8,7 +8,9 @@ whole store into a person's attention when a summary would do.
 from __future__ import annotations
 
 import argparse
-from collections.abc import Collection, Mapping, Sequence
+import shlex
+import subprocess
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import replace as with_fields
 from datetime import date
 from pathlib import Path
@@ -126,6 +128,7 @@ from .vcs import (
     records_on_base,
     ref_walk,
     released_on_base,
+    settled_branches,
     stranded,
     tags,
     working_paths,
@@ -154,15 +157,61 @@ def find_root(start: Path | None = None) -> Path:
     return current
 
 
+def _root(args: argparse.Namespace) -> Path:
+    """The repository root the store belongs to, walked up from the store itself.
+
+    Not `args.items.parent`, which is the root only where the store sits one
+    level below it. That is the layout every test in `test_cli.py` happened to
+    use and not the one this project ships: `--items docs/items` resolved the
+    root to `docs/`, and everything downstream took its answer from there.
+    Two readings broke and neither said so (`PL-P757`).
+
+    The queue prefix handed to `branches_in_flight` became `items/` where `git
+    log --name-only` prints `docs/items/...` from the repository root, so no
+    path matched, `_annotates_only` read every commit as work and
+    `_item_file_ids` read none as a file edit - the direction `PL-X3WZ`
+    removed, with every item a branch had merely captured or triaged
+    disappearing from `docket next`. And git was then *run* from `docs/`,
+    where `ls-tree` prints paths relative to that directory while
+    `<rev>:<path>` is always resolved from the repository root - so every
+    `git show` this module makes found nothing, `stranded` printed each
+    finding as `(title unreadable)`, and `vcs._standing`, handed empty texts,
+    fell through to its report-it direction for every item on every branch.
+    Exit zero throughout, which is what makes the derivation worth stating in
+    one place rather than twenty.
+
+    A store in no checkout at all keeps the old answer, its parent. There is
+    no repository to walk up to, nothing git is asked can be answered, and the
+    only reader left is `load_config`, whose file sits beside the store rather
+    than inside it.
+    """
+    if args.items is None:
+        return find_root()
+    found = find_root(args.items)
+    # `find_root` falls back to its own starting point, so a returned path with
+    # no `.git` in it means the walk found no checkout rather than that the
+    # store is one.
+    return found if (found / ".git").exists() else args.items.resolve().parent
+
+
 def _load(args: argparse.Namespace) -> tuple[Path, list[Item], Config]:
     """Resolve the store and the settings that govern it.
 
-    Settings come from beside the store, not from wherever the command was
-    run. Pointing `--items` at another project's queue and silently applying
-    this project's policy to it would be wrong in exactly the way that is hard
-    to notice - the answers look right and are governed by the wrong rules.
+    Settings come from the root of the repository holding the store, not from
+    wherever the command was run. Pointing `--items` at another project's
+    queue and silently applying this project's policy to it would be wrong in
+    exactly the way that is hard to notice - the answers look right and are
+    governed by the wrong rules.
+
+    `_root` is what finds that root, and until `PL-P757` this said "beside the
+    store" and meant it: the root was the store's parent, so `--items
+    docs/items` looked for `docket.toml` in `docs/` and, finding none, ran
+    this project's own queue on the package defaults - no `known_classes`, no
+    `workflow_paths`, no `protected_paths`, `top_band_limit` at 5 rather than
+    12. The rule was always "the project that owns the store decides", and
+    one level down is the only depth at which the store's parent says that.
     """
-    root = args.items.parent if args.items else find_root()
+    root = _root(args)
     config = load_config(root)
     directory = args.items or (root / config.items_dir)
     return directory, read_items(directory), config
@@ -265,11 +314,13 @@ def _flight(args: argparse.Namespace) -> FlightReport:
 def _tracked(args: argparse.Namespace) -> tuple[Path, str]:
     """The repository root, and the queue directory beneath it as git spells it.
 
-    Resolved from the store exactly as `_load` resolves it - `--items` wins
+    Resolved through `_root` exactly as `_load` resolves it - `--items` wins
     over the setting, because a command pointed at one queue must not be
     answered about another. `branches_in_flight` decides whether a commit was
     recording an item or working on it by whether its whole diff sits in this
-    directory, so the wrong directory here reads every commit as work.
+    directory, so the wrong directory here reads every commit as work. That is
+    not hypothetical: it is what `--items docs/items` did, from a root taken
+    as the store's parent, until `PL-P757`.
 
     A store outside the repository comes back as the empty prefix, which no
     path git prints can match, so every commit keeps its claim. That is the
@@ -277,7 +328,7 @@ def _tracked(args: argparse.Namespace) -> tuple[Path, str]:
     reading itself prefers: an item wrongly left marked is picked around, an
     item wrongly unmarked is two sessions on one piece of work.
     """
-    root = args.items.parent if args.items else find_root()
+    root = _root(args)
     directory = args.items or (root / load_config(root).items_dir)
     try:
         return root, directory.resolve().relative_to(root.resolve()).as_posix()
@@ -481,7 +532,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     # The repository root, not the store beneath it: `_load` returns the item
     # directory, and the roadmap `_offered` reads sits a level above it.
     _, items, config = _load(args)
-    root = args.items.parent if args.items else find_root()
+    root = _root(args)
     # The pull-request replay's scope, in two halves, computed here rather than
     # inside `already_passing` so the cost line can name which half an id came
     # from. The first is the items this branch edited; the second is the open
@@ -587,7 +638,7 @@ def _offered(
 
 def cmd_list(args: argparse.Namespace) -> int:
     _, items, config = _load(args)
-    root = args.items.parent if args.items else find_root()
+    root = _root(args)
     report = analyze(
         items, args.today or date.today(), config, milestones=_milestones(root, config)
     )
@@ -642,7 +693,7 @@ def cmd_digest(args: argparse.Namespace) -> int:
     directory, items, config = _load(args)
     if not items:
         return 0
-    root = args.items.parent if args.items else find_root()
+    root = _root(args)
     # Through `_complete_report` rather than a narrower `analyze` of its own,
     # because the two count lines below - errors, and the grooming total - are
     # read as the store's whole answer by a session that has run nothing yet.
@@ -1323,7 +1374,7 @@ def cmd_show(args: argparse.Namespace) -> int:
         print(f"  touches: {', '.join(item.touches)}")
     if item.milestone:
         print(f"  milestone: {item.milestone}")
-    root = args.items.parent if args.items else find_root()
+    root = _root(args)
     plan = _plan(root, items, config)
     # Whether this item is on the generator tier, by either entrance, so the
     # plan line does not tell a session it "ranks on its band alone" about an
@@ -1439,7 +1490,7 @@ def _print_observed(args: argparse.Namespace, item: Item, flight: FlightReport) 
     to know which one fired, because only the second says the collision has
     already happened.
     """
-    files = files_in_flight(args.items.parent if args.items else find_root(), flight)
+    files = files_in_flight(_root(args), flight)
     observed = observed_conflicts(item, files)
     print()
     print("  Already changed on a branch in flight (observed, not declared):")
@@ -1566,7 +1617,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     """The project at feature altitude, plus whether a release is worth cutting."""
     _, items, config = _load(args)
     report = analyze(items, args.today or date.today(), config)
-    root = args.items.parent if args.items else find_root()
+    root = _root(args)
     ready = readiness(items, read_version(root / config.version_file), config.minor_classes)
     rendered = render.format_status(report, ready, _flight(args), _plan(root, items, config))
     print(rendered if rendered else "Nothing open.")
@@ -1605,7 +1656,7 @@ def cmd_next(args: argparse.Namespace) -> int:
             "`docket next` without a lane."
         )
         return 1
-    root = args.items.parent if args.items else find_root()
+    root = _root(args)
     # The grooming count printed at the foot of a pick is the same claim the
     # digest's is, so it is built from the same inputs (`_complete_report`).
     report = _complete_report(root, items, config, args)
@@ -2038,7 +2089,7 @@ def cmd_release(args: argparse.Namespace) -> int:
     store already knows exactly which finished work has not gone out.
     """
     directory, items, config = _load(args)
-    root = args.items.parent if args.items else find_root()
+    root = _root(args)
     current = read_version(root / config.version_file)
     # An interrupted cut is resumed, never cut around. The stamps go in one
     # file at a time and the notes are written after the whole loop, so a run
@@ -2448,7 +2499,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
             print(f"no item matching '{identifier}'")
             return 1
         wanted.append(item)
-    root = args.items.parent if args.items else find_root()
+    root = _root(args)
     base = args.base or default_base(root)
     reports = verify_batch(root, wanted, config, base, self_audit=args.self_audit)
     print("\n\n".join(report.describe() for report in reports))
@@ -2476,7 +2527,7 @@ def cmd_wave(args: argparse.Namespace) -> int:
     worth less than an obvious failure to produce one.
     """
     _, items, config = _load(args)
-    root = args.items.parent if args.items else find_root()
+    root = _root(args)
     roadmap = root / config.roadmap_file
     if not roadmap.is_file():
         print(f"no {config.roadmap_file} to read: there is no plan to report a position on")
@@ -2527,7 +2578,7 @@ def cmd_trend(args: argparse.Namespace) -> int:
             "answerable."
         )
         return 1
-    root = args.items.parent if args.items else find_root()
+    root = _root(args)
     history = Churn() if args.no_git else churn(root)
     report = analyze_trend(items, history, config, by=args.by, today=args.today or date.today())
     if history.declined:
@@ -2573,7 +2624,7 @@ def cmd_stranded(args: argparse.Namespace) -> int:
     listed at all (`PL-MBTZ`).
     """
     directory, items, _ = _load(args)
-    root = args.items.parent if args.items else find_root()
+    root = _root(args)
     if not args.no_fetch:
         fetch_remote(root)
     report = _stranded(root, directory, items, args, fetched=not args.no_fetch)
@@ -2605,7 +2656,7 @@ def cmd_branch(args: argparse.Namespace) -> int:
     which of the two happened. `--no-fetch` is for the caller that already
     fetched - the hook among them - and for a checkout with no network.
     """
-    root = args.items.parent if args.items else find_root()
+    root = _root(args)
     if not args.no_fetch:
         fetch_remote(root)
     state = branch_state(root, fetched=not args.no_fetch)
@@ -2621,16 +2672,75 @@ def cmd_branch(args: argparse.Namespace) -> int:
     return 0
 
 
+#: How long `open_pull_requests_command` is given. Short, because this sits in
+#: front of an answer the command already has without it: the pull-request half
+#: sharpens the report and is never what the report is for, so a slow forge
+#: costs a reader seconds and then gets the unasked reading.
+OPEN_LOOKUP_TIMEOUT = 8.0
+
+
+def _open_pull_requests(
+    args: argparse.Namespace, root: Path, config: Config
+) -> Callable[[], Collection[str] | None] | None:
+    """A way to ask which branches have a pull request open, or None if there is none.
+
+    A callable rather than an answer, because `settled_branches` asks only
+    where the cheap half found a branch worth asking about - which on a normal
+    day is none of them, and the command then reaches nothing at all.
+
+    **Every way this can fail is a skip, never a failure**, which is the
+    contract `tools/pr_title_check.py --discover` already holds to: no command
+    configured, no token, no network, a forge that refused, a timeout, a
+    command that is not there. `flight` has to answer from a bare or offline
+    checkout, and a report that failed when it could not look would be worse
+    than the gap it closes. What must never happen is a skip reading as
+    "asked, and nothing is open" - it cannot here, because `None` reaches
+    `SettledReport.asked` and the wording changes with it.
+    """
+    command = config.open_pull_requests_command
+    if args.no_remote or not command:
+        return None
+
+    def ask() -> Collection[str] | None:
+        try:
+            done = subprocess.run(
+                shlex.split(command),
+                cwd=root,
+                capture_output=True,
+                text=True,
+                timeout=OPEN_LOOKUP_TIMEOUT,
+                check=False,
+            )
+        except (OSError, ValueError, subprocess.SubprocessError):
+            return None
+        if done.returncode != 0:
+            return None
+        return [line.strip() for line in done.stdout.splitlines() if line.strip()]
+
+    return ask
+
+
 def cmd_flight(args: argparse.Namespace) -> int:
     """Which items are being worked on a branch, and how long since each moved.
 
     Exits zero whether or not it finds any, for the reason `stranded` does:
     an unmerged branch is a live session or abandoned work, the command cannot
     tell which, and reporting is the whole job.
+
+    **Except for the branches that have answered it themselves** (`PL-Q664`).
+    `settled_branches` names the refs whose every claimed item is closed in
+    their own copy and which no pull request is open on, and those move out of
+    the list the age is meant to separate. It is asked here rather than inside
+    `branches_in_flight` because that read is on the hot path of `next`,
+    `show`, `list`, `triage` and the digest, and this one is wanted by the
+    command whose whole question it is.
     """
     root, items_dir = _tracked(args)
     report = branches_in_flight(root, items_dir=items_dir)
-    print(render.format_flight(report, args.today or date.today()))
+    settled = settled_branches(
+        root, report, opened=_open_pull_requests(args, root, load_config(root)), items_dir=items_dir
+    )
+    print(render.format_flight(report, args.today or date.today(), settled))
     return 0
 
 
@@ -2660,7 +2770,7 @@ def cmd_record(args: argparse.Namespace) -> int:
     confidently is worse than the missing one this exists to supply.
     """
     directory, items, _ = _load(args)
-    root = args.items.parent if args.items else find_root()
+    root = _root(args)
     try:
         tracked = directory.resolve().relative_to(root.resolve()).as_posix()
     except ValueError:
@@ -2951,7 +3061,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="also report the git calls this digest made and the ref set it walked",
     )
     digest_cmd.set_defaults(func=cmd_digest)
-    add("flight", "branches carrying item work").set_defaults(func=cmd_flight)
+    flight_cmd = add("flight", "branches carrying item work")
+    flight_cmd.add_argument(
+        "--no-remote",
+        action="store_true",
+        default=False,
+        help="do not ask the forge which branches have a pull request open; "
+        "for an offline checkout, and for a caller wanting a reading of the tree alone",
+    )
+    flight_cmd.set_defaults(func=cmd_flight)
     branch_cmd = add("branch", "where this branch stands against the default branch")
     branch_cmd.add_argument(
         "--no-fetch",

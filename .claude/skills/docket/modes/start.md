@@ -81,6 +81,17 @@ one strands. That trade is worth taking - a session picking a different item
 because one looked busy costs almost nothing against a queue this size, while
 two sessions on one item costs a session and a merge conflict (`PL-PRHN`).
 
+**One shape of abandonment is separated outright rather than by age**
+(`PL-Q664`). A branch whose every claimed item is closed in its own copy and
+which has no pull request open is finished work that has stalled, and `flight`
+moves those rows out of the list the age is meant to separate, into one saying
+that nothing there is being worked. Read it as what it says: nobody is on that
+branch, so the item is not being worked by a live session - and nothing there
+says the work is reviewed, correct or ready, which is still a branch to read
+rather than a merge to make.
+The ids stay in flight for `docket next`, because the work exists and starting
+it again would redo what is already written.
+
 This shrinks the window rather than closing it: two sessions starting in the
 same minute still race, because both answers come from refs.
 

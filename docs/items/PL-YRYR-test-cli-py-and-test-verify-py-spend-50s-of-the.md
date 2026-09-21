@@ -9,6 +9,7 @@ feature: verify-replay-cost
 touches: conftest.py, subprojects/docket/tests/test_git_isolation.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-19
 closed: 2026-09-21
+pr: 842
 verify: uv run pytest subprojects/docket/tests/test_git_isolation.py -q
 root-cause-of: PL-W6NY, PL-KCQ7, PL-8T83, PL-FZ58
 generator: spent - the ambient commit.gpgsign this item isolates the suite from can no longer reach a test repository, so no further measurement can be inflated by it

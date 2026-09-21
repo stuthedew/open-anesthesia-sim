@@ -3,11 +3,12 @@ id: PL-Z3W6
 title: Assert a branch reproduces its parent element-wise at every sampled point up to the branch point
 priority: P1
 effort: M
-status: ready
+status: done
 classes: safety, science, test, anticipated
 feature: scenario-branching
 touches: tests/reference, tests/integration, docs/MODEL.md
 added: 2026-09-06
+closed: 2026-09-21
 payoff: puts the element-wise branch guarantee where this project checks arithmetic claims - against the reference solution rather than only through the app
 verify: grep -q 'def test_a_fork_opening_between_two_keyframes_reproduces_its_parent' tests/reference/test_canonical_evaluation.py
 ---

@@ -4343,8 +4343,16 @@ built, both measured rather than assumed:
 - **A branch opens at a keyframe.** Restarting from the canonical state at an
   instant the parent has no keyframe for replaces one propagation over an
   interval with two over its halves, which is a different rounding of the same
-  exact solution: measured at up to 5.3e-13 in an accumulator. Opening at a
-  stretch boundary reproduces the parent bit for bit.
+  exact solution. Opening at a stretch boundary reproduces the parent bit for
+  bit. Two measurements of the restart, both on the run in
+  `tests/reference/test_canonical_evaluation.py`, which now holds the second
+  of them: up to 5.3e-13 in an accumulator (2026-09-07); and, forked at
+  1 234.5 s and probed at the 141 instants at or past it, 1 109 of the 1 269
+  state elements differing, worst 7.8e-15 as a fraction and 1.9e-12 L on an
+  accumulator (2026-09-21, `PL-Z3W6`). How large it is depends on where the
+  fork is taken and how far past it a reader looks, so these are instances of
+  the divergence rather than a bound on it. What is bounded is the route the
+  program actually takes, and that bound is zero.
 - **The branch's run definition opens *at* the fork instant, on the case's own
   axis**, carrying the parent's keyframe. Parent and child then name the same
   case instant, and each forms its propagation interval as that instant minus
@@ -4391,6 +4399,22 @@ where the two coincide. Measured 2026-09-14 on a 3 600 s sevoflurane run with
 changes at 300 s and 600 s, forked at a bookmark of 655.3 s: 0 of 54 elements
 differ across the nine state entries at six probes out to an hour, and the
 trunk stays byte-identical to the same case built without the bookmark.
+
+**So nothing is left over to bound, and there is nothing to show a learner**
+(`PL-Z3W6`, 2026-09-21). `ROADMAP.md`'s v0.5.0 definition of done asks this
+document for "the bound on any divergence that could not be eliminated", and on
+the canonical path none survives: a branch and its parent agree element for
+element at every instant they share, at a fork on a keyframe and at a fork
+between two. `tests/reference/test_canonical_evaluation.py` holds each shape
+over 207 instants, against a restart at the fork that does not;
+`tests/integration/test_controller.py` holds the same over 201, 301 and 601
+case instants and over the 240 drawn columns a trunk and a bookmark branch
+share. The two divergences that do exist are named rather than left as a
+residue: the display path's, tabulated above and refused in code as a source
+for anything but a drawn value, and the restart's, which no branch this program
+builds ever takes. A bound of zero drawn on screen would tell a learner there
+is something to watch where there is nothing, which is a false signal and not a
+safeguard.
 
 **What the relaxation costs is a second job the second condition was doing
 silently.** With the definition opening at the fork, `opened_at_s` *is* where
@@ -4514,9 +4538,13 @@ the columns it shares.
 
 The guarantee above is unaffected, because it rests on `state_at` and not on
 `evaluate`: asked for those same 382 instants canonically, the two agree
-element for element, 0 differing. § "The canonical evaluation rule" is what
-separates the two paths, and this is an instance of the separation rather than
-an exception to it. It is recorded because a difference trace between two runs
+element for element, 0 differing. `tests/integration/test_controller.py` holds
+that pair on the 45.3 s case above: across the 240 columns the two runs share,
+0 of 2 160 canonical elements differ and 1 909 of the same 2 160 drawn ones
+do, worst 2.7e-15, with the fork the one extra column. § "The canonical
+evaluation rule" is what separates the two paths, and this is an instance of
+the separation rather than an exception to it.
+It is recorded because a difference trace between two runs
 would read a few units in the last place here where two identical runs should
 read zero, and a reader meeting that without this paragraph would take it for a
 disagreement about the case.

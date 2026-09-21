@@ -11,10 +11,12 @@ like it belonged to these helpers rather than to a setting none of them names
 
 from __future__ import annotations
 
+import argparse
 import os
 import re
 import subprocess
 from collections.abc import Callable
+from dataclasses import replace as with_fields
 from pathlib import Path
 
 import pytest
@@ -22,6 +24,7 @@ import pytest
 from docket import cli
 from docket.checks import STATUS_REQUIREMENTS, brief_gaps
 from docket.cli import build_parser, main, merge_shared
+from docket.config import Config
 from docket.model import parse_item, recurrence_count
 from docket.vcs import FlightReport, lost, records_on_base
 from docket.verify import LANDED_GUARD
@@ -2115,16 +2118,19 @@ def test_gate_writes_nothing_and_reaches_no_verdict(
     assert "not decided here" in capsys.readouterr().out
 
 
-def _branched_repo(tmp_path: Path) -> Path:
+def _branched_repo(tmp_path: Path, store: str = "items") -> Path:
     """A repository whose second branch carries an item `main` has never seen.
 
     Real git, for the same reason `_release_repo` uses it: the injected-runner
     tests assert the filtering, and only a real checkout proves the commands
     are spelled in a way git accepts.
+
+    `store` places the queue under the root, one level down by default and two
+    for `PL-P757`, whose symptom only appears where the two differ.
     """
     root = tmp_path / "repo"
-    (root / "items").mkdir(parents=True)
-    (root / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+    (root / store).mkdir(parents=True)
+    (root / store / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
     subprocess.run(
         ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
         check=True,
@@ -2137,7 +2143,7 @@ def _branched_repo(tmp_path: Path) -> Path:
     subprocess.run(
         ["git", "checkout", "-qb", "abandoned"], cwd=root, check=True, capture_output=True
     )
-    (root / "items" / "PL-K7QX-lost.md").write_text(
+    (root / store / "PL-K7QX-lost.md").write_text(
         READY.replace("PL-B1B1", "PL-K7QX").replace("A ready item", "A lost thought")
     )
     subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
@@ -2157,6 +2163,60 @@ def test_stranded_finds_an_item_that_exists_only_on_a_branch(
     assert "PL-K7QX  A lost thought" in out
     assert "only on: abandoned" in out
     assert "git checkout abandoned -- items/PL-K7QX-lost.md" in out
+
+
+def test_settings_are_read_from_the_repository_root_not_the_store_s_parent(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-P757's third symptom, and the quietest of the three.
+
+    `_load` resolves settings from the project that owns the store, so that
+    `--items` pointed at another project's queue is not answered under this
+    project's policy. Taking the store's parent for that project's root made
+    the rule true only one level down: `--items docs/items` looked for
+    `docket.toml` in `docs/`, found none, and ran on the package defaults -
+    so `check` judged this repository's own queue against a vocabulary,
+    a band limit and a path partition nobody wrote.
+
+    `known_classes` is the observable end of it: declared, it replaces the
+    derived vocabulary entirely, so a class that is only in the file is
+    accepted when the file was read and an error when it was not.
+    """
+    root = tmp_path / "repo"
+    (root / ".git").mkdir(parents=True)
+    (root / "docket.toml").write_text('[docket]\nknown_classes = ["weather"]\n', encoding="utf-8")
+    store = root / "docs" / "items"
+    store.mkdir(parents=True)
+    (store / "PL-0001-forecast.md").write_text(
+        READY.replace("PL-B1B1", "PL-0001").replace("classes: perf", "classes: weather"),
+        encoding="utf-8",
+    )
+
+    assert _run("check", "--items", str(store)) == 0
+
+    assert "weather" not in capsys.readouterr().out, "the declared vocabulary was read"
+
+
+def test_stranded_reads_a_store_two_levels_down(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-P757's second symptom, from the same wrong root.
+
+    `git ls-tree` run from a subdirectory prints paths relative to *that*
+    directory, while `<rev>:<path>` is always resolved from the repository
+    root. With the root taken as `docs/`, the listing said
+    `items/PL-K7QX-lost.md` and the `show` for it found nothing - so every
+    finding printed as `(title unreadable)`, and the recovery line handed over
+    a path that checks out nothing from the root it would be pasted at.
+    """
+    root = _branched_repo(tmp_path, store="docs/items")
+
+    assert main(["--items", str(root / "docs" / "items"), "stranded"]) == 0
+
+    out = capsys.readouterr().out
+    assert "PL-K7QX  A lost thought" in out
+    assert "(title unreadable)" not in out
+    assert "git checkout abandoned -- docs/items/PL-K7QX-lost.md" in out
 
 
 def test_stranded_reports_nothing_when_every_branch_has_landed(
@@ -2465,7 +2525,9 @@ def test_stranded_says_so_when_it_was_told_not_to_ask_git(
 BRANCH = "roadmap-release-write-failure-nhsjwo"
 
 
-def _flight_repo(tmp_path: Path, subject: str, wrote: str = "src/scratch.txt") -> Path:
+def _flight_repo(
+    tmp_path: Path, subject: str, wrote: str = "src/scratch.txt", store: str = "items"
+) -> Path:
     """A repository whose one live branch is named the way the harness names one.
 
     Real git, for the reason `_branched_repo` uses it: the injected-runner
@@ -2478,10 +2540,14 @@ def _flight_repo(tmp_path: Path, subject: str, wrote: str = "src/scratch.txt") -
     recording something into the queue. It defaults outside the store, because
     a commit that reaches past the queue is what every test here but one means
     by a branch mid-item.
+
+    `store` is where the queue sits under the root, and defaults to the one
+    level down every other test here happened to use - which is why `PL-P757`
+    went unseen for as long as it did. The nested form is this project's own.
     """
     root = tmp_path / "repo"
-    (root / "items").mkdir(parents=True)
-    (root / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+    (root / store).mkdir(parents=True)
+    (root / store / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
     dated = os.environ | {
         "GIT_AUTHOR_DATE": "2026-08-20T12:00:00+00:00",
         "GIT_COMMITTER_DATE": "2026-08-20T12:00:00+00:00",
@@ -2537,6 +2603,36 @@ def test_flight_ignores_a_branch_that_only_wrote_to_the_queue(
     assert main(["--items", str(root / "items"), "--today", "2026-08-23", "flight"]) == 0
 
     assert "PL-K7QX" not in capsys.readouterr().out
+
+
+def test_a_nested_store_reads_the_same_in_flight_answer_as_the_default(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """PL-P757: `--items docs/items` is this project's own layout, and it read wrong.
+
+    The root was derived as the store's *parent*, which is the root only where
+    the store sits one level below it - the layout every other test in this
+    file happens to use. Two levels down it resolved to `docs/`, so the queue
+    prefix became `items/` where git prints `docs/items/...`, nothing matched,
+    and a commit whose whole diff is inside the queue came back as work. Exit
+    zero, and the mark is indistinguishable from a real one.
+
+    The two invocations below differ in nothing but how the root is found: the
+    default `items_dir` is already `docs/items`, so they are asking about the
+    same store and their answers have to be the same string.
+    """
+    root = _flight_repo(
+        tmp_path, "PL-K7QX Do the thing", wrote="docs/items/PL-K7QX-a-note.md", store="docs/items"
+    )
+
+    assert main(["--items", str(root / "docs" / "items"), "--today", "2026-08-23", "flight"]) == 0
+    pointed = capsys.readouterr().out
+    monkeypatch.chdir(root)
+    assert main(["--today", "2026-08-23", "flight"]) == 0
+    found = capsys.readouterr().out
+
+    assert "PL-K7QX" not in found, "the reading that was already right, pinned"
+    assert pointed == found
 
 
 def test_show_marks_an_item_a_branch_has_in_flight(
@@ -5613,3 +5709,45 @@ def test_show_on_a_head_says_how_much_of_its_cluster_is_open(
     output = capsys.readouterr().out
     assert "root cause of 3 items, 2 open - 1 closed since the head closed 2026-08-20" in output
     assert "`docket generators PL-A0A0` lists them" in output
+
+
+class TestAskingTheForgeWhichBranchesAreOpen:
+    """`flight`'s forge half, and the one way it must never fail.
+
+    A command that could not look and one that looked and found nothing open
+    are opposite answers, and the plumbing here is where they would be
+    flattened into each other. `None` makes `flight` say "every item closed"
+    alone; a list makes it add "and no pull request is open". So the exit
+    status is what these assert, rather than the text of the report.
+    """
+
+    def _args(self, no_remote: bool = False) -> argparse.Namespace:
+        return argparse.Namespace(no_remote=no_remote)
+
+    def test_the_configured_command_supplies_the_branch_names(self, tmp_path: Path) -> None:
+        config = with_fields(
+            Config(), open_pull_requests_command="printf 'claude/one\nclaude/two\n'"
+        )
+        ask = cli._open_pull_requests(self._args(), tmp_path, config)
+        assert ask is not None
+        assert list(ask()) == ["claude/one", "claude/two"]
+
+    def test_a_command_that_could_not_look_answers_none(self, tmp_path: Path) -> None:
+        """Exit non-zero is the contract `tools/open_pull_requests.py` holds to."""
+        config = with_fields(Config(), open_pull_requests_command="false")
+        ask = cli._open_pull_requests(self._args(), tmp_path, config)
+        assert ask is not None
+        assert ask() is None
+
+    def test_a_command_that_is_not_there_answers_none(self, tmp_path: Path) -> None:
+        config = with_fields(Config(), open_pull_requests_command="no-such-command-anywhere")
+        ask = cli._open_pull_requests(self._args(), tmp_path, config)
+        assert ask is not None
+        assert ask() is None
+
+    def test_a_project_configuring_nothing_has_no_way_to_ask(self, tmp_path: Path) -> None:
+        assert cli._open_pull_requests(self._args(), tmp_path, Config()) is None
+
+    def test_no_remote_declines_to_ask_however_it_is_configured(self, tmp_path: Path) -> None:
+        config = with_fields(Config(), open_pull_requests_command="printf 'claude/one\n'")
+        assert cli._open_pull_requests(self._args(no_remote=True), tmp_path, config) is None

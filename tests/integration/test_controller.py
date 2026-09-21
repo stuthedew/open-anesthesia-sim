@@ -21,7 +21,7 @@ from anesthesia_sim.core.exceptions import (
     SimulationExecutionError,
     SimulationNumericalError,
 )
-from anesthesia_sim.core.governing_equations import DELIVERED_AGENT_L, EXHAUSTED_AGENT_L
+from anesthesia_sim.core.governing_equations import DELIVERED_AGENT_L, EXHAUSTED_AGENT_L, STATE_SIZE
 from anesthesia_sim.core.parameters import load_reference_adult_parameters
 from anesthesia_sim.core.run_definition import RunDefinition, RunSegment
 from anesthesia_sim.core.tissue import TissueGroup
@@ -2604,6 +2604,96 @@ def test_a_branch_taken_at_a_bookmark_is_not_drawn_before_its_fork() -> None:
     assert marked.drawn_window(0.0, fork_s - 5.0, 150).times_s != ()
 
 
+WORST_SHARED_COLUMN_DIVERGENCE = 1e-13
+"""Bound on |trunk drawn - branch drawn| at a column the two runs share.
+
+Measured at or below 2.8e-15 on the case below; set an order above that so an
+ordinary floating-point wobble does not fail the suite, and eleven orders below
+the 1e-4 `docs/MODEL.md` § "Displayed precision" resolves, which is the point
+the measurement makes.
+"""
+
+
+def test_a_bookmark_branch_and_its_parent_agree_at_every_column_they_share() -> None:
+    """`PL-Z3W6` at the sampled points a learner actually sees.
+
+    "Every sampled point" has a second reading, and it is the one the release
+    is for: the columns the chart draws. A learner does not compare two runs at
+    whole steps of the solver - they compare them at the vertices of two
+    overlaid traces, and a divergence before the fork is what would make a
+    difference after it unattributable to the one setting that was changed.
+
+    Three things are asserted, and they are three different claims:
+
+    - **The branch adds exactly one column the trunk does not draw, and it is
+      the fork.** A control-event fork adds none, because a control event is a
+      column on every run that has one; a bookmark's instant is not, so the
+      branch draws it as the left end of its own clipped range. What that
+      vertex marks is where the two stop being one run.
+    - **Canonically, they agree element for element at every column they do
+      share.** This is the guarantee, asked at the drawn instants rather than
+      at the solver's: 0 of 2 160 elements differ over 240 shared columns.
+    - **The drawn values at those columns do not** - 1 909 of the same 2 160,
+      worst 2.7e-15 - because `evaluate_anchored` chains one propagator across
+      consecutive columns and breaks at a bound, so the trunk chains through
+      the fork while the branch restarts there. Without this half the first two
+      would be satisfied by a display path that had quietly become the
+      canonical one, and `docs/MODEL.md` § "The canonical evaluation rule"
+      would be enforcing a separation that no longer existed.
+
+    The third is why the second is worth asserting at all: a reader taking a
+    difference between two drawn traces sees a few units in the last place here
+    where two identical runs should read zero, and the canonical agreement is
+    what says the case did not disagree with itself.
+    """
+
+    marked = _trunk_halted_on_a_bookmark()
+    fork_s = marked.snapshot().elapsed_s
+    branch = marked.resumed_at_halt()
+
+    marked.start()
+    _advance_for(marked, duration_s=30.0)
+    marked.pause()
+
+    branch.start()
+    _advance_for(branch, duration_s=30.0)
+    branch.pause()
+
+    span_s = marked.snapshot().elapsed_s
+    trunk_window = marked.drawn_window(0.0, span_s, 601)
+    branch_window = branch.drawn_window(0.0, span_s, 601)
+    shared = sorted(set(trunk_window.times_s) & set(branch_window.times_s))
+
+    assert tuple(sorted(set(branch_window.times_s) - set(trunk_window.times_s))) == (fork_s,)
+    assert len(shared) == 240
+
+    trunk_drawn = dict(zip(trunk_window.times_s, trunk_window.states, strict=True))
+    branch_drawn = dict(zip(branch_window.times_s, branch_window.states, strict=True))
+    elements = drawn_differing = 0
+
+    for elapsed_s in shared:
+        assert branch._run_definition.state_at(elapsed_s) == marked._run_definition.state_at(
+            elapsed_s
+        ), f"the branch and its parent differ at the column drawn at {elapsed_s} s"
+
+        for entry in range(STATE_SIZE):
+            elements += 1
+            trunk_value = trunk_drawn[elapsed_s].values[entry]
+            branch_value = branch_drawn[elapsed_s].values[entry]
+            drawn_differing += trunk_value != branch_value
+
+            assert abs(trunk_value - branch_value) < WORST_SHARED_COLUMN_DIVERGENCE, (
+                f"the two drawn columns at {elapsed_s} s diverged further than measured"
+            )
+
+    assert elements == 240 * STATE_SIZE
+    assert drawn_differing > 0, (
+        "the drawn values at every shared column agreed bit for bit, so the display path "
+        "has become the canonical one and the separation docs/MODEL.md enforces no longer "
+        "costs or buys anything"
+    )
+
+
 def test_a_run_not_standing_on_a_bookmark_has_no_instant_to_fork_at() -> None:
     """A fork at a bookmark is reached from the halt, so there is no float to get wrong.
 
@@ -2632,8 +2722,11 @@ def test_resuming_past_a_bookmark_withdraws_the_fork_it_offered() -> None:
 def test_an_instant_between_keyframes_is_refused_even_where_the_run_stands_on_it() -> None:
     """`resumed_at` keeps its keyframe rule unchanged, halt or no halt.
 
-    Widening it to any instant a run holds live state for is `PL-Z3W6`'s to
-    ask for. What this item adds is a second door, not a wider one.
+    What `PL-B8MK` added is a second door, not a wider one, and `PL-Z3W6` did
+    not widen it either: every instant a run can be halted at is already
+    reachable through `resumed_at_halt`, and an instant a run has merely run
+    past is a rewind rather than a fork - the branch's clock would have to be
+    set back, which is a feature and not a relaxation of this rule.
     """
 
     marked = _trunk_halted_on_a_bookmark()
