@@ -3,11 +3,13 @@ id: PL-Z9K5
 title: bin/docket record normalizes an item's whole front matter as well as inserting pr:, so PL-ZYQC's 'pr, not counted' exemption misses and the close-out audit reports files the skill told the session to touch
 priority: P3
 effort: S
-status: ready
+status: dropped
 classes: defect, infra
 feature: delegation
 touches: subprojects/docket/src/docket/store.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py
 added: 2026-09-15
+closed: 2026-09-21
+reason: Fixed by PL-7K8Y (closed 2026-09-20, #785, commit 388d2c50), which landed the narrower of the two fixes this brief proposed: store.insert_field now writes one front-matter field 'leaving every other byte as it was' and cli.py's _write_pr calls it instead of a re-rendering writer, so record no longer reorders a non-canonical file and sanctioned_queue_edit's 'pr, not counted' exemption no longer misses. Verified against the tree 2026-09-21 in PL-C4W8's Gate 2 staleness sweep.
 verify: uv run pytest subprojects/docket/tests/test_verify.py && grep -q 'def test_a_pr_insertion_into_non_canonical_front_matter_is_not_counted' subprojects/docket/tests/test_verify.py
 ---
 

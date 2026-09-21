@@ -3,11 +3,13 @@ id: PL-3JP0
 title: Decide whether the wash-in section's three paragraphs survive the same test PL-6580 applied to the chart panel above it
 priority: P2
 effort: S
-status: needs-decision
+status: dropped
 classes: ux, docs
 feature: presentation-safety
 touches: src/anesthesia_sim/app/wash_in.py, docs/MODEL.md
 added: 2026-09-08
+closed: 2026-09-21
+reason: The subject is gone: the 2026-09-15 PySide6 port (ae8fc7bc) deleted _build_wash_in_section along with the two italic paragraphs this item asks to adjudicate and the duplicating axis caption. dashboard_frame.py now carries WASH_IN_HEADING, one WASH_IN_DENOMINATOR_TEXT line and a standalone WASH_IN_MODELLED_TEXT, which is the outcome the PL-6580 test would have been applied to reach. Verified against the tree 2026-09-21 in PL-C4W8's Gate 2 staleness sweep: the identifier survives only inside PL-F9TQ's brief, nowhere in src/.
 ---
 
 **Problem.** Decide whether the wash-in section's three paragraphs survive the same test PL-6580 applied to the chart panel above it
