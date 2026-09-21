@@ -3337,7 +3337,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 227 entries
+### Declined to Gate 2 on the refilling-queue ground — 228 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -3668,7 +3668,7 @@ that found it is the one that would otherwise leave it silent.
 - PL-0VFF (S) ROADMAP.md's 'Declined to Gate 2' list names PL-483K, PL-69JZ and PL-L09X as deferred, but all three closed done in v0.4.14, and nothing distinguishes a still-open entry from a closed one
 - PL-12P8 (S) PL-JBZK's lane check assumes every file under tests/ is a test file, so a shared non-test helper is told to declare itself apparatus
 - PL-1BS2 (S) The session-start digest's Releasable line reads readiness without the interrupted-cut resume, so during an unfinished cut it reports the short remainder with nothing saying why
-- PL-2GQW (S) PL-L9JS's not-delegable reason rests on the recursion claim PL-20CQ disproved, so the item may be delegable after all
+- PL-2GQW (S) PL-L9JS's not-delegable reason rests on the recursion claim PL-20CQ disproved, so the item may be delegable after all — dropped 2026-09-21
 - PL-2T03 (M) Four items re-derive the release train's arrangement by comparing version numbers, though ROADMAP.md's timeline table already records it — closed in v0.4.28
 - PL-316G (M) Convert the 150 possessive-form document citations to the section-mark form, which is the only way doc_check can check them without reading prose as a citation
 - PL-3DN1 (S) bin/docket release accepts a VERSION below the current one, so a typo silently downgrades pyproject.toml's version field
@@ -3692,7 +3692,7 @@ that found it is the one that would otherwise leave it silent.
 - PL-880Z (S) Five ref-lifecycle briefs carry citations that have moved, and PL-XLQ5's title names a mechanism _landing_split cannot have - which ROADMAP.md repeats verbatim as a frozen gate entry
 - PL-8MJ3 (M) bin/docket triage's 'already edited on a branch' mark reads the merge base, so it keeps firing after that branch's edit has merged - it told one pass to skip four of its five items, every one a false positive — closed in v0.4.15
 - PL-8P6D (S) Checks refuse a pull request whose branch carries no item id, so the owner's own web edits and any contributor's pull request fail CI — closed in v0.4.12
-- PL-8T3Z (S) PL-K2C8's touches omits .claude/hooks/no-prune-guard.sh, which carries the same incomplete recovery recipe, and its Where sends a fix at PL-CPLD which is now dropped
+- PL-8T3Z (S) PL-K2C8's touches omits .claude/hooks/no-prune-guard.sh, which carries the same incomplete recovery recipe, and its Where sends a fix at PL-CPLD which is now dropped — dropped 2026-09-21
 - PL-9LXK (M) Nothing checks a prose claim about the tier or adoption of a stored value's source, though PL-1JDD made both machine-readable and three such claims went stale within a day
 - PL-B8V1 (S) ROADMAP.md's declined-to-Gate-2 argument says 'Gate 1 stands at 132 entries ... with 89 still open' in the present tense, and it is now 159 with 94 open
 - PL-BGMK (M) Two open items whose touches and verify: command overlap are never compared, so PL-1YDK and PL-8PT6 were filed and worked as one finding twice and only docket check --verify on main caught it
@@ -3711,7 +3711,7 @@ that found it is the one that would otherwise leave it silent.
 - PL-HX5C (S) Both in-flight guards passed and two sessions still implemented PL-W8XP independently: the second never renamed and its branch was named after a different item, so neither the ref read nor the session read could see it
 - PL-JBRC (M) docket stranded still calls a branch merged when one of its commits is only docket record output, which converges byte-for-byte with the base — closed in v0.4.15
 - PL-JW39 (S) docket next ranks a needs-decision item first, so every fresh session opens on work whose next step is the owner's answer
-- PL-JXVD (S) PL-38PN's own line-number corrections are stale, so working it as written writes a second generation of wrong citations; PL-QV5Y has the same defect
+- PL-JXVD (S) PL-38PN's own line-number corrections are stale, so working it as written writes a second generation of wrong citations; PL-QV5Y has the same defect — dropped 2026-09-21
 - PL-K5PW (S) bin/docket check --items docs/items resolves config from docs/ rather than the repo root, so it reports a clean store as 112 errors
 - PL-K82G (M) bin/docket verify's absolute 'no existing assertion removed' check has no passing route for an item whose own work makes a rendered string false, so a correct close-out REJECTs — closed in v0.4.27
 - PL-KFWL (S) The v0.4.8 tag is pushed onto a commit where the release was never cut, so doc_check errors on main for every session
@@ -3748,7 +3748,7 @@ that found it is the one that would otherwise leave it silent.
 - PL-YFXG (S) bin/docket record can never supply the pr of an item whose work is the queue itself - _carried_work reads a queue-only diff as a closure that landed without its work, so PL-YTDN left main red with an error no command could clear — closed in v0.4.30
 - PL-YKXQ (S) This container's initial clone had local main diverged 407 commits into pre-rewrite history, so a session that checks out main gets a stale tree and an old bin/docket
 - PL-YTDN (S) Rename the nine item files whose slug no longer matches their title, now that docket check names them — closed in v0.4.29
-- PL-Z5FG (S) The PL-B32L and PL-TCW5 edits to core/parameters.py shifted line numbers cited by PL-0NQ1 and PL-HXKC, which is PL-J7C5's hazard arriving again from an unrelated branch
+- PL-Z5FG (S) The PL-B32L and PL-TCW5 edits to core/parameters.py shifted line numbers cited by PL-0NQ1 and PL-HXKC, which is PL-J7C5's hazard arriving again from an unrelated branch — dropped 2026-09-21
 - PL-ZG5J (M) Land the headless frame-cost harness that measured all of the above, so the simulation-versus-UI split can be re-measured rather than re-derived — closed in v0.4.29
 - PL-FCM3 (S) `bin/docket wave` reports how many gate entries wait on work outside the gate and never names or counts those items, so the beat understates what clearing the gate costs - measured 2026-09-20 as 1 startable entry plus 13 off-gate prerequisites — closed in v0.4.34
 - PL-TGFY (S) `PL-Z34C` reached this gate as `needs-decision`, has since moved to `blocked` and carries no debt class, so the frozen list holds an entry `bin/docket gate` no longer counts as debt and no session can clear by working it — closed in v0.4.32
@@ -4852,6 +4852,20 @@ fifteen days after this gate froze. The refilling-queue arithmetic above is
 unchanged, and nothing under this milestone turns on which test wins.
 
 - PL-J870 (S) `CLAUDE.md`'s generator rule triggers on a count of three items but promotion is being declined on severity, and nothing records which test governs
+
+**And one from the re-judging pass over those same clusters** (2026-09-21).
+`PL-J3TV` is the live half of `PL-8T3Z`, which `PL-PT7M` dropped under
+`.claude/rules/citation-drift.md`'s closed-brief clause: the item asked for a
+`done` item's `touches` to be corrected, but the finding underneath it is that
+`.claude/hooks/no-prune-guard.sh` still prints the three-command restart recipe
+`PL-K2C8` replaced, at the one moment a session is certainly about to run it -
+when the hook refuses a prune. It is debt here by `defect`, it is wholly in the
+workflow lane - a hook message no reader of the simulator ever sees - and it was
+captured fifteen days after this gate froze. The refilling-queue arithmetic
+above is unchanged. `PL-G8TR` is already on this list against the same file and
+the same message, so whoever takes either should take both.
+
+- PL-J3TV (S) `.claude/hooks/no-prune-guard.sh` still prints the pre-`PL-K2C8` three-command restart recipe, so the incomplete version survives in the louder of the two places
 
 
 ### Required scope

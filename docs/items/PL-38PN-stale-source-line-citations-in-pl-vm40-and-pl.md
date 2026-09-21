@@ -1,13 +1,14 @@
 ---
 id: PL-38PN
 title: Stale source line citations in PL-VM40 and PL-L2F2 point at lines the files no longer have
-status: ready
 priority: P3
 effort: S
+status: dropped
 classes: docs
 touches: docs/items/PL-VM40-derive-simulated-time-from-a-step-count-and.md, docs/items/PL-L2F2-the-fixed-volume-alveolus-blocks-nitrous-oxide.md
-verify: python3 tools/doc_check.py check && ! grep -q 'line 943' docs/items/PL-VM40-derive-simulated-time-from-a-step-count-and.md
 added: 2026-09-03
+closed: 2026-09-21
+reason: `.claude/rules/citation-drift.md`'s closed-brief clause. Its whole remaining deliverable is repointing line citations inside `PL-VM40` and `PL-L2F2`, both `status: done` (closed 2026-09-04 and 2026-09-07), where the rule says drift "is not a finding: do not repair it, do not file an item about it, and do not count it when sizing a cluster". The line-anchor ban refuses the same work a second time over - re-pointing a number at a fresh number mints the next drift, which this item and `PL-JXVD` are the rule's own worked example of. `PL-RFSL` holds the finding and this is its first ending; re-judged in `PL-PT7M`'s pass, 2026-09-21
 ---
 
 **Problem.** Two open items cite source lines that have moved:

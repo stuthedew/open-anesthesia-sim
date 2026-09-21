@@ -80,3 +80,26 @@ for it that the "louder and earlier" reading alone does not weigh.
 skips the command at that status, or because `bin/docket check` refuses the
 combination at store-validation time - and a test drives a dropped item whose
 recorded command fails, asserting the audit does not refuse on it.
+
+**Counted over the whole store, 2026-09-21 (`PL-PT7M`'s close-out).** The
+collision is not rare and the workaround is not being applied consistently: of
+**170 `dropped` items, 34 still carried a `verify:` command** before that
+close-out ran - 20%. Every one of those 34 would `REJECT` its own audit today
+if anybody re-ran it, on a command describing work the drop says will not be
+done.
+
+`PL-PT7M` met five of them at once. It dropped six items under
+`.claude/rules/citation-drift.md`, five of which carried a command, and
+`bin/docket verify --self` printed `FAIL ... REJECT` for each while
+`make check` was green and every other guard passed - the sixth, `PL-Z5FG`,
+carried no command and went straight to `ACCEPT`, which is the controlled
+comparison this item's case wants. Three of the five commands asserted the
+*opposite* of the decision recorded beside them: `PL-8T3Z`'s asked that
+`PL-K2C8`'s `touches` name the hook, which is exactly what the closed-brief
+clause says not to do.
+
+The five were deleted, on this brief's own precedent from `PL-TFWR`, leaving 29
+of 170. That is a workaround applied by hand at each close-out, which is what
+this item exists to remove: the tool should read `status: dropped` and say so,
+rather than every session learning the same thing from a `REJECT`.
+

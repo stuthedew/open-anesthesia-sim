@@ -65,3 +65,22 @@ would call wrong, the rule is wrong rather than the items.
 **Done when** `bin/docket check`, with no flags, fails on an open item whose
 `verify:` is a literal no-op or is shared with another open item, and a test
 pins each of the two rules.
+
+**An instance, 2026-09-21, costing one red CI cycle on `#830`.** `PL-PT7M`'s
+session filed `PL-J3TV` and gave it
+`! grep -q 'delete just that one ref' .claude/hooks/no-prune-guard.sh`. The
+phrase is one Python string split across two source lines in that file -
+`"…delete just "` then `"that one ref and rebase…"` - so the `grep` could never
+match and the negation always passed. `make check` was run in full and reported
+green, because `make docket` runs `bin/docket check` bare; CI's
+`bin/docket check --verify --verify-base "$VERIFY_BASE"` caught it on the first
+push and failed the `checks` job.
+
+That is this item's class exactly, and the shape is worth recording beside it:
+the false pass came from a command asserting the *absence* of a string rather
+than the presence of one. A command that greps for what the fix **adds** fails
+honestly when the string is mistyped or split; one that greps for what the fix
+**removes** passes on any typo in the pattern. The replacement asserts
+`push origin --delete` or `modes/capture.md`, and was run and seen to fail
+before being recorded.
+

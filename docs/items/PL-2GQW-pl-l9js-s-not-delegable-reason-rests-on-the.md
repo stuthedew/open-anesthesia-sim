@@ -3,12 +3,13 @@ id: PL-2GQW
 title: PL-L9JS's not-delegable reason rests on the recursion claim PL-20CQ disproved, so the item may be delegable after all
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect, infra
 feature: dev-tooling
 touches: docs/items/PL-L9JS-eight-open-items-carry-a-verify-command-that.md
 added: 2026-09-07
-verify: bin/docket check && ! grep -qF 'it would recurse' docs/items/PL-L9JS-eight-open-items-carry-a-verify-command-that.md
+closed: 2026-09-21
+reason: `.claude/rules/citation-drift.md`'s closed-brief clause. `PL-L9JS` is `done` - closed 2026-09-02, shipped v0.3.1 - so its `not-delegable:` reason is a historical record of why that item was not delegated, and correcting it changes nothing: `bin/docket next` and `bin/docket delegable` read the field on open items only. Checked 2026-09-21 that the disproved recursion claim survives nowhere live - `grep` over the tree finds it in two `done` briefs (`PL-L9JS`, `PL-71P4`) and in this item, and in no standing document - so dropping it strands no reader. Re-judged in `PL-PT7M`'s pass
 ---
 
 **Problem.** PL-L9JS's not-delegable reason rests on the recursion claim PL-20CQ disproved, so the item may be delegable after all

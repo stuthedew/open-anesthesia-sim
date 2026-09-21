@@ -3,12 +3,13 @@ id: PL-8T3Z
 title: PL-K2C8's touches omits .claude/hooks/no-prune-guard.sh, which carries the same incomplete recovery recipe, and its Where sends a fix at PL-CPLD which is now dropped
 priority: P2
 effort: S
-status: ready
+status: dropped
 classes: defect, docs
 feature: parallel-sessions
 touches: docs/items/PL-K2C8-the-docket-skill-s-stranded-branch-recovery.md
 added: 2026-09-12
-verify: python3 tools/doc_check.py check && grep -q '^touches:.*no-prune-guard.sh' docs/items/PL-K2C8-the-docket-skill-s-stranded-branch-recovery.md
+closed: 2026-09-21
+reason: `.claude/rules/citation-drift.md`'s closed-brief clause reaches the deliverable as written. `PL-K2C8` is `done` - closed 2026-09-13, shipped v0.4.21 - so its `touches` field and its **Where** section are a historical record: no `bin/docket concurrent` answer reads a closed item's `touches`, and the **Where** pointing at the dropped `PL-CPLD` sends nobody anywhere because nobody will work the item. The live half underneath is not lost - it is `PL-J3TV` (the no-prune hook still prints the pre-`PL-K2C8` three-command restart recipe), filed 2026-09-21 and verified against the hook that day. Re-filed rather than narrowed in place because what survives is different work in a different file, which a title naming `PL-K2C8`'s `touches` would hide. Re-judged in `PL-PT7M`'s pass
 ---
 
 **Problem.** PL-K2C8's touches omits .claude/hooks/no-prune-guard.sh, which carries the same incomplete recovery recipe, and its Where sends a fix at PL-CPLD which is now dropped

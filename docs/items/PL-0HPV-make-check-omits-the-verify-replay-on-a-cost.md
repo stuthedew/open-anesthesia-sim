@@ -91,3 +91,29 @@ or this item is closed `dropped` with the pull-request count that showed the
 replay would not have changed an answer. Either way the `Makefile` comment
 beside `bin/docket check` states the price in force rather than the whole-store
 figure it carries today.
+
+**Re-measured 2026-09-21, on four cores - the same core count the `Makefile`
+comment's figures were taken on.** The narrowed replay costs **5.9 s**, not the
+30.5 s the recorded reason rests on:
+
+| Command | Elapsed |
+| --- | ---: |
+| `bin/docket check` (what `make docket` runs) | 1.1 s |
+| `bin/docket check --verify --verify-base origin/main` | 7.0 s |
+
+Both timed twice, within 0.1 s. The replay reported `15 commands in 5.7 s
+(44.8 s serially), scoped to 26 item(s)` - so the serial figure is still large
+and it is the parallelism plus `--verify-base`'s narrowing that makes the
+difference, which is this item's whole point. The `Makefile` comment's own
+numbers - 60.0 s with the replay against 29.5 s without, 2026-09-05, four
+cores - predate `PL-SDHR`'s `--verify-base` and are the whole-store sweep.
+
+**One caveat the decision needs:** 26 items is *this* branch's scope, and a
+branch touching a widely-cited file scopes more. The number above is a
+representative case rather than a bound, and whoever takes this should say
+which it needs to be.
+
+**A live instance arrived the same day.** `#830`'s first push was failed by CI
+on precisely the class this replay catches and `make check` cannot - see
+`PL-J3WK`, which carries it.
+
