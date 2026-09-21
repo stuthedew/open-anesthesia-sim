@@ -27,6 +27,7 @@ from .model import (
     PRIORITIES,
     SELECTABLE_LANES,
     Item,
+    live_recurrences,
     recurrence_count,
     recurrences_of,
 )
@@ -917,20 +918,34 @@ def format_recurrences(item: Item) -> str:
     The threshold is named only once it is reached. Below it there is nothing
     to act on, and printing "1 of 3" on every item that has ever been filed
     twice is a progress bar toward a promotion nothing has earned.
+
+    A withdrawn match is printed too, under its own heading and outside the
+    count. It is the record of a match that was made and then disowned, and
+    leaving it unprinted would make the withdrawal the one event in this
+    mechanism's life that no command will show you - which is the asymmetry
+    `PL-34BG` was filed about, arriving from the other side.
     """
-    filings = [found for found in recurrences_of(item) if found.identifier]
-    if not filings:
+    filings = [found for found in live_recurrences(item) if found.identifier]
+    withdrawn = [found for found in recurrences_of(item) if found.withdrawn and found.identifier]
+    if not filings and not withdrawn:
         return ""
-    lines = [f"  Filed again {_plural(len(filings), 'time', 'times')} since, as:"]
-    for found in filings:
-        when = found.when.isoformat() if found.when else "an unreadable date"
-        lines.append(f"    {found.identifier} on {when}")
-    if recurrence_count(item) >= MIN_RECURRENCES:
-        lines.append(
-            "    That is the generator threshold. Read them against this brief: one "
-            "mechanism means `docket set <id> --root-cause-of <ids>`, which is a "
-            "judgment nothing here makes for you."
-        )
+    lines = []
+    if filings:
+        lines.append(f"  Filed again {_plural(len(filings), 'time', 'times')} since, as:")
+        for found in filings:
+            when = found.when.isoformat() if found.when else "an unreadable date"
+            lines.append(f"    {found.identifier} on {when}")
+        if recurrence_count(item) >= MIN_RECURRENCES:
+            lines.append(
+                "    That is the generator threshold. Read them against this brief: one "
+                "mechanism means `docket set <id> --root-cause-of <ids>`, which is a "
+                "judgment nothing here makes for you."
+            )
+    if withdrawn:
+        lines.append("  Matched and withdrawn, counting for nothing:")
+        for found in withdrawn:
+            when = found.withdrawn.isoformat() if found.withdrawn else ""
+            lines.append(f"    {found.identifier}, withdrawn {when} - why, in {found.withdrawn_by}")
     return "\n".join(lines)
 
 

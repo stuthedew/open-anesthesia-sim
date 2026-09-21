@@ -21,7 +21,7 @@ import pytest
 
 from docket.config import Config
 from docket.model import Item, parse_item
-from docket.store import insert_field
+from docket.store import insert_field, replace_field
 from docket.verify import (
     LANDED_GUARD,
     SUPPRESSIONS,
@@ -1848,6 +1848,57 @@ def test_a_second_recurrence_extending_the_line_is_sanctioned_and_a_rewrite_is_n
     _git(root, "add", "-A")
     _git(root, "commit", "-qm", "PL-K7QX replace what was recorded")
     assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == ""
+
+
+def test_a_withdrawal_is_not_exempt_though_an_append_past_one_still_is(tmp_path: Path) -> None:
+    """The two sides of the boundary the withdrawal grammar moved.
+
+    Withdrawing the *last* recorded entry appends ` withdrawn DATE PL-XXXX` to
+    it, so the new line starts with the old one exactly as a fresh capture
+    does. Left there, the rule written for the edit that *adds* evidence would
+    have exempted the one edit that cancels it - and a withdrawal is a
+    deliberate act with something to gain, unlike the append `docket new` makes
+    while following an unconditional capture rule. So it declares the file it
+    touches like any other work (`PL-34BG`).
+
+    The other side has to keep working, and it is why the grammar admits the
+    withdrawn form at all: one withdrawal must not make every later capture
+    matched to that item read as tampering.
+    """
+    root = _repo(tmp_path)
+    items = root / "docs" / "items"
+    neighbour = items / "PL-B2B2-do-the-other.md"
+    insert_field(
+        items,
+        parse_item(neighbour.read_text(), neighbour.name),
+        "recurrences",
+        "2026-09-19 PL-N3W1",
+    )
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "base: a neighbour carrying one recurrence")
+    path = "docs/items/PL-B2B2-do-the-other.md"
+
+    replace_field(
+        items,
+        parse_item(neighbour.read_text(), neighbour.name),
+        "recurrences",
+        "2026-09-19 PL-N3W1 withdrawn 2026-09-21 PL-K7QX",
+    )
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "PL-K7QX withdraw a match that was wrong")
+    assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == ""
+
+    # And the append that follows one is still the capture's own write.
+    insert_field(
+        items,
+        parse_item(neighbour.read_text(), neighbour.name),
+        "recurrences",
+        "2026-09-22 PL-N3W2",
+        append=True,
+    )
+    _git(root, "add", "-A")
+    _git(root, "commit", "-qm", "PL-K7QX a capture matched after the withdrawal")
+    assert sanctioned_queue_edit(root, "HEAD~1", ("HEAD",), path) == "recurrence"
 
 
 def test_an_ordinary_edit_to_another_items_file_is_still_outside_touches(tmp_path: Path) -> None:

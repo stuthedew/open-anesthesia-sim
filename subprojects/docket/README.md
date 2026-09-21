@@ -28,6 +28,7 @@ docket wave                  # which beat of the plan's cadence is due
 docket list                  # the queue, one line per item
 docket triage                # what is untriaged, and the rules the answers must satisfy
 docket set PL-K7QX --priority P2 --effort S --classes defect   # write triage's answers; refused where check would fail them
+docket withdraw PL-K7QX PL-B2B2 --because PL-34BG   # disown a recorded filing whose match was wrong
 docket concurrent PL-K7QX    # what can be worked alongside it, and what a live branch is already changing
 docket feature halted-step   # progress on one feature
 docket gate --feature x      # the open debt a milestone has to clear
@@ -1657,6 +1658,34 @@ fire on.
 recorded by the tool at the moment it matched a filing, so a hand-written one
 is a claim about a filing that may never have happened; `docket check` holds
 each entry to naming a real item, which is as far as a check can reach.
+
+**A match the tool got wrong is withdrawn rather than deleted.** `docket
+withdraw <item> <capture> --because <item>` annotates the entry where it
+stands — `2026-09-20 PL-S8JT withdrawn 2026-09-21 PL-34BG` — so it stops
+counting and stays on the record. That argument for keeping the field out of
+`set` is about *writing* an entry and does not carry across to withdrawing one:
+the hazard of a field nothing can write is a fabricated filing, and the hazard
+of one nothing can withdraw is a false filing nobody can correct, which is the
+state `PL-34BG` found this store in. Deleting the entry would leave a file
+reading as though the match had never been made — a quieter record than the one
+that was there before, and it would make the withdrawal the one event in this
+mechanism's life that no command will show you. `--because` names an item
+rather than a sentence, for the same reason the entry names a capture: why a
+match was wrong is a judgment, judgments belong in briefs where they can run to
+the length they need, and the field carries the pointer a reader opens. `check`
+holds that pointer to a real item exactly as it holds the capture's id, and a
+tail it cannot read as `withdrawn DATE PL-XXXX` leaves the entry counting and
+says so — a mis-typed withdrawal must not cancel a filing quietly.
+
+**The write is exempt from the close-out audit and the withdrawal is not.** An
+append rides a capture `CLAUDE.md` requires unconditionally, and its value is
+dictated rather than chosen, so `verify.sanctioned_queue_edit` forgives a
+worker for editing an item it was never commissioned to touch. A withdrawal is
+chosen, and what it changes is how much evidence an item carries — so the item
+doing it declares the file in its `touches` like any other work, and `withdraw`
+says so where it has not. Withdrawing the last recorded entry appends to that
+line exactly as a new filing does, which is why the append rule requires what
+it gained to start a new entry rather than extend the last one.
 
 An item at `ready` must carry one of them: the command that would prove it
 done, or a recorded reason why no command can. The gate sits at `ready` rather

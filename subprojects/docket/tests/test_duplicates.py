@@ -233,6 +233,37 @@ def test_the_recurrence_anchors_on_the_item_already_carrying_one() -> None:
     assert picked.item.identifier == "PL-BBBB"
 
 
+def test_a_withdrawn_entry_does_not_pull_the_next_capture_onto_the_same_item() -> None:
+    """The one way a single false match could compound into a cluster.
+
+    `anchor` prefers a candidate already carrying recurrences, so an entry a
+    reader has disowned would keep sending captures to the item the reader just
+    said they do not belong on - and three of those is the generator threshold,
+    reached entirely on evidence nobody believes (`PL-34BG`).
+    """
+    closest = _item(
+        "PL-AAAA",
+        "verify's suppression check reads every added line as code",
+        touches=("subprojects/docket/src/docket/verify.py",),
+    )
+    disowned = _item(
+        "PL-BBBB",
+        "verify's suppression check reads prose as code",
+        touches=("subprojects/docket/src/docket/verify.py",),
+        recurrences=("2026-09-19 PL-CCCC withdrawn 2026-09-21 PL-DDDD",),
+    )
+
+    found = near_duplicates(
+        "verify's suppression check reads every added line as code, again",
+        ("subprojects/docket/src/docket/verify.py",),
+        [closest, disowned],
+    )
+
+    picked = anchor(found)
+    assert picked is not None
+    assert picked.item.identifier == "PL-AAAA", "a withdrawn entry still won the anchor"
+
+
 def test_anchoring_an_empty_shortlist_names_nothing() -> None:
     """No candidates means no recurrence, rather than a guess at which item."""
     assert anchor(()) is None
