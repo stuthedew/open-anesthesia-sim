@@ -1,10 +1,15 @@
 ---
 id: PL-PT7M
 title: Forty open members of the two citation-drift heads have no drain plan: PL-4FBP and PL-G424 both closed their mechanism, and the 40 repairs they named sit in the flat P2 band as forty independent items with no batch, no check and no disposition
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: planning, docs, housekeeping
 feature: citation-drift-drain
 touches: docs/items, docs/WORKING_NOTES.md
 added: 2026-09-21
+payoff: 40 items the project has already decided about stop being offered as work, and the open count stops carrying non-findings
+verify: test "$(grep -cE '^\| PL-[A-Z0-9]{4} \|' docs/items/PL-PT7M-forty-open-members-of-the-two-citation-drift.md)" -eq 40
 ---
 
 **Problem.** Forty open members of the two citation-drift heads have no drain plan: PL-4FBP and PL-G424 both closed their mechanism, and the 40 repairs they named sit in the flat P2 band as forty independent items with no batch, no check and no disposition
@@ -64,12 +69,40 @@ below is a per-item test against a ratified rule, not a bar being raised.
 3. **Rank the 9 check-building members on their own merits**, outside any
    drift sweep. `tools/doc_check.py` is where the class ends.
 
-**The decision this needs.** Whether steps 1-2 are worked now - they are
-apparatus work, and `PL-04KR` pre-registers the expectation that apparatus
-inflow is declining - or deferred behind `v0.5.0`'s product beat. They reduce
-the open count by up to 31 without raising any bar, which is the argument for
-now; the argument for later is that none of the 31 blocks a learner-visible
-behavior.
+**Decided (project owner, 2026-09-21, ratified)**, over working the whole
+three-step recommendation now and over deferring all of it behind `v0.5.0`:
+**step 1 only.** Re-judge the 40 against `.claude/rules/citation-drift.md` and
+drop what it refuses. The 27-repair editing sweep is **deferred** behind
+`v0.5.0`'s product beat - none of the 27 blocks a learner-visible behavior - and
+the 9 check-building members are **out of this item**, to be ranked on their own
+merits like any other `tools/doc_check.py` work.
+
+**Why it matters.** 37 of the 40 were filed against a convention that did not
+exist yet, and the rule that now governs them refuses some outright. Until they
+are re-judged, `bin/docket next` offers work the project has already decided not
+to do, and every count of the open queue - including `PL-04KR`'s convergence
+baseline - carries items that are not findings. It is also the cheapest 40-item
+movement available: a reading pass against a written rule, with no editing and
+no decision left in it.
+
+**Done when.** Every one of the 40 open members of `PL-4FBP` and `PL-G424` has
+been read against `.claude/rules/citation-drift.md` and either
+
+- dropped, with `reason:` naming the clause that refuses it - the closed-brief
+  clause, or the line-anchor ban; or
+- kept, with the kind it is (check-building, live-document repair, or not
+  startable).
+
+Either way it gets one row in a disposition table in this brief, of the shape
+`| PL-XXXX | kept/dropped | clause or kind |`, so the next session reads the
+outcome instead of re-deriving it. That table is what this item's `verify:`
+counts - 40 rows, one per member, whatever each row says. `PL-38PN` and `PL-JXVD` are the two known
+candidates for the line-anchor ban and `PL-RFSL` already holds the finding for
+one of them, so neither is a fresh judgment.
+
+**Not a bar being raised.** Each drop cites a clause of a ratified rule against
+one item's own brief. Nothing here changes what may be captured in future, which
+is the move `PL-LKGL` refuted.
 
 **Where it came from.** The project owner asked on 2026-09-21 whether the
 generators and their clusters were dealt with. Answering it took a script over

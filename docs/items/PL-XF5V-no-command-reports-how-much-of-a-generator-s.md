@@ -79,3 +79,19 @@ instead of sixty reads.
 open and get the answer from a command rather than from a script — including
 that four of the twelve are drained — and a test pins the count against a
 store whose head is closed and whose members are not.
+
+**Approved as the next workflow-lane item** (project owner, 2026-09-21,
+ratified), over leaving it to rank on its `P2` band. The question it exists to
+answer - "are the generators and their clusters dealt with?" - was asked again
+on 2026-09-21 and answered a second time by a throwaway script over the whole
+store: 12 heads, all closed; 99 distinct members, 60 still open; unchanged from
+the 2026-09-20 figures in the table above, which is itself a fact no command can
+report. Two derivations of the same number, two days apart, is the recurrence
+`CLAUDE.md`'s deterministic-tooling rule is written for.
+
+One addition the second derivation argues for: report the **drain trend**, not
+only the present split. "Unchanged in a day" is the fact that made the answer
+useful, and it needs the previous count, which nothing stores. The cheapest
+honest form is to print each cluster's open count against the count at the
+head's close date, both derivable from the store's `closed:` dates - not a new
+stored field.
