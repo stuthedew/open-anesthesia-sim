@@ -76,3 +76,42 @@ Three, cheapest first, and the choice wants measuring rather than arguing:
 either cannot land a stale subject, or is told at the moment it matters that it
 will - and whichever is chosen, `pr_title_check.py`'s docstring describes the
 guarantee it actually provides.
+
+## Direction 2's mechanism is now confirmed, on #877, 2026-09-21
+
+A second instance hit this within the hour, and it was used to test the
+re-arm remedy rather than only to work around it. The freeze reproduced, and
+**disabling auto-merge, renaming, then re-arming defeated it**: the corrected
+subject is what landed.
+
+| Time (UTC) | Event |
+| --- | --- |
+| 20:57:46 | #877 opened, title leads `PL-VCJ2` - which this branch does **not** close |
+| 20:58:04 | auto-merge armed (squash) - subject captured here, with the wrong id |
+| 20:58:00 | `pr-title` **fails**: "this branch closes PL-HWV1, but the title does not lead with PL-HWV1" |
+| 21:00:xx | auto-merge **disabled**, then the title renamed to lead with `PL-HWV1` |
+| 21:00:44 | `pr-title` re-runs and **passes** |
+| 21:00:48 | auto-merge **re-armed** - subject re-captured from the corrected title |
+| - | merged as `5b350003` |
+
+The subject on `origin/main` is the corrected one:
+
+```text
+PL-HWV1: withdraw the volatile-anaesthetic objection, and correct the false premise it rested on (#877)
+```
+
+**What this settles and what it does not.** It settles that re-arming
+*re-captures* the subject - the arm event is the capture point, not the first
+arm, so direction 2's instruction is mechanically sound rather than merely
+plausible, and direction 1 can assume a re-arm produces a fresh payload to
+check. It does not settle the disposition: this instance was caught only
+because `pr-title` happened to fail for an unrelated reason - the wrong id -
+which is what prompted looking at the arm order at all. **A rename that
+satisfies the gate without a prior failure still has nothing pointing at the
+freeze**, which is the silent case the item is about, and this instance is
+therefore not evidence that a reader will notice unaided.
+
+One detail worth keeping for direction 1: the failed and passing `pr-title`
+runs both persist on the head commit's check list (20:58:00 failure, 21:00:44
+success), so a reader of history sees a red run beside a green one, exactly as
+`PL-X1S4` describes for closures pushed under a stale title.
