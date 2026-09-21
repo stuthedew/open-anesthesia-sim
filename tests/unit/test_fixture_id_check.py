@@ -109,6 +109,57 @@ CLAUDE_HOOK = 'echo "see PL-A1B2"\n'  # not-an-id
 CLAUDE_MARKED = """`PL-A1B2` is unmintable. <!-- not-an-id -->
 """
 
+#: An id spelled as a keyword argument, which is the only way to key a helper
+#: by one: `PL-AAAA` is not an identifier, so the caller writes underscores and
+#: the helper puts the hyphens back. No marker is needed on any of the three
+#: below, and that is the defect rather than an oversight - the value scan sees
+#: no `PL-` token in `PL_AAAA_open` even with the text sitting in front of it,
+#: which is exactly why the form reached four fixtures unremarked (`PL-L609`).
+KEYWORD_UNMINTABLE = """def f(**kw: str) -> None:
+    pass
+
+
+f(PL_AAAA_open="brief")
+"""
+
+KEYWORD_MINTABLE = """def f(**kw: str) -> None:
+    pass
+
+
+f(PL_8888_open="brief")
+"""
+
+#: The ordinary keyword arguments this rule has to stay quiet on. Measured
+#: 2026-09-21 over every `.py` file the tool walks: 8,098 keyword arguments,
+#: of which 21 carry an uppercase letter at all and 17 are Qt's `ignoreBounds`,
+#: `rateLimit` and `userData`. None of them can produce a `PL-` token once the
+#: underscores are translated, and nothing here is SCREAMING_SNAKE, which is
+#: what keeps `PL_PREFIX` out of this position - it is a name being bound, not
+#: a parameter being passed.
+KEYWORD_ORDINARY = """def f(**kw: object) -> None:
+    pass
+
+
+f(ignoreBounds=True, userData=1, rateLimit=60, prefix="PL", pl_count=2)
+"""
+
+KEYWORD_MARKED = """def f(**kw: str) -> None:  # not-an-id
+    pass
+
+
+f(PL_AAAA_open="brief")
+"""
+
+#: `**{...}` names no keyword at all - `keyword.arg` is `None` - and its keys
+#: are ordinary string literals the value scan already reads. Asserted so the
+#: two halves cannot come to report one literal twice.
+KEYWORD_UNPACKED = """def f(**kw: str) -> None:  # not-an-id
+    pass
+
+
+f(**{"PL-AAAA-open": "brief"})
+"""
+
 #: Prose *about* malformed ids, which is the norm under `docs/`.
 DOCS_BRIEF = "It renamed `PL-STUV` and `PL-AAAA`.\n"  # not-an-id
 ROADMAP_LINE = "`PL-M01` is the literal that was quoted.\n"  # not-an-id
@@ -296,6 +347,75 @@ def test_a_claude_document_takes_the_marker_as_well(tmp_path: Path) -> None:
 
     assert fixture_id_check.collect(tmp_path) == []
 
+
+# --- keyword names: an id that cannot be spelled as one ----------------------
+
+
+def test_an_id_spelled_as_a_keyword_argument_is_judged(tmp_path: Path) -> None:
+    """The hole this file's value scan leaves, and the one `PL-L609` closed.
+
+    `PL_AAAA_open` carries no `PL-` token, so no amount of scanning string
+    values can reach it - and a helper keyed that way puts the hyphens back
+    before it writes the filename. The name is translated and handed to the
+    same `malformed()` every literal goes through, rather than given a grammar
+    of its own: two spellings of one rule drift, which is why `ID_PATTERN` is
+    imported rather than restated.
+    """
+    _write(tmp_path, "pkg/thing.py", KEYWORD_UNMINTABLE)
+
+    (offender,) = fixture_id_check.collect(tmp_path)
+
+    assert offender.token == UNMINTABLE[0]
+    assert offender.line == 5
+    assert offender.render(tmp_path).startswith("pkg/thing.py:5")
+
+
+def test_a_mintable_id_spelled_as_a_keyword_argument_is_quiet(tmp_path: Path) -> None:
+    """The spelling is not the defect; an unmintable id is.
+
+    `PL_8888_open` mints `PL-8888-open.md`, which is a filename the store could
+    have written. Refusing the form outright would have been the wider rule,
+    and it would fire on correct work - which is how a check gets switched off.
+    """
+    _write(tmp_path, "pkg/thing.py", KEYWORD_MINTABLE)
+
+    assert fixture_id_check.collect(tmp_path) == []
+
+
+def test_ordinary_keyword_arguments_are_not_candidates(tmp_path: Path) -> None:
+    """The false-positive class the widening was refused over, measured.
+
+    Translating every identifier would reject `PL_PREFIX` for a reason that has
+    nothing to do with ids. Translating only `keyword.arg` cannot: a module
+    constant is a name being bound. The camelCase here is Qt's, which is 17 of
+    the 21 keyword arguments in this repository carrying any uppercase at all.
+    """
+    _write(tmp_path, "pkg/thing.py", KEYWORD_ORDINARY)
+
+    assert fixture_id_check.collect(tmp_path) == []
+
+
+def test_the_marker_exempts_a_keyword_argument(tmp_path: Path) -> None:
+    """The escape hatch reaches this half too, and is read across the call.
+
+    A rejection test needs a deliberately malformed keyword exactly as it needs
+    a deliberately malformed literal, and a rule with no escape is one a session
+    works around instead of using.
+    """
+    _write(tmp_path, "pkg/thing.py", KEYWORD_MARKED)
+
+    assert fixture_id_check.collect(tmp_path) == []
+
+
+def test_a_double_star_unpacking_is_left_to_the_value_scan(tmp_path: Path) -> None:
+    """`**{...}` names no keyword, and its keys are literals already scanned.
+
+    The assertion worth having is the count: one offender rather than two, so
+    the two halves of the tool cannot come to report one literal twice.
+    """
+    _write(tmp_path, "pkg/thing.py", KEYWORD_UNPACKED)
+
+    assert _tokens(tmp_path) == [UNMINTABLE[0]]
 
 # --- the shipped tree, through the entry point `make check` runs -------------
 
