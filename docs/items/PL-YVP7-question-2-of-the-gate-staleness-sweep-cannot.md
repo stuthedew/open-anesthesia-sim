@@ -93,3 +93,72 @@ Three reasons this is the better route rather than merely the gentler one:
 and is being completed in the same pass. Nothing here reopens the ratified
 *intent*, which is that an entry v0.6.0 would re-decide is cleared by the
 milestone rather than before it. Only the recording instrument is in question.
+
+## Reopened on ordinary evidence, 2026-09-21: `plan.gate()` is the wrong function
+
+**This reopens the ratified decision above under `CLAUDE.md`'s own terms** - a
+constraint the case did not carry. The decision is sound about the *hazard*
+and wrong about the *instrument*, and the error is this brief's, not the
+owner's.
+
+**What was verified, by running the commands rather than reading the code:**
+
+- `bin/docket gate` prints `178 open debt items`. The frozen Gate 2 list holds
+  183 entries. So `plan.gate()` does not read the frozen list at all - it
+  partitions *every* open debt item in the store by `feature`.
+- `bin/docket wave` prints `cleared by the milestone itself: PL-VN6M`, and that
+  set is `roadmap.GateStatus.self_cleared`, computed from
+  `own_scope = frozenset(milestone.own_scope_ids)` - **`ROADMAP.md`'s `Required
+  scope` subsection**. It never reads `item.feature`.
+
+So the sentence this brief quoted - `plan.py`'s rule is "Cleared by the
+milestone itself: open debt carrying its feature" - describes a real function
+that is **not** the one producing the number Question 2 is about. Wiring
+`cleared-by:` into `plan.gate()`, which is what the ratified design says, would
+move an entry in one command's display and move **nothing** in `clearable`, in
+`self_cleared`, or in `is_clear` - which is what selects the CLEAR beat every
+session is told to work.
+
+**Why nobody caught it.** The one member, `PL-VN6M`, satisfies both routes: it
+is named in Required-scope entry 9 *and* carries `feature: interface-areas`. A
+single agreeing example hid the divergence. `ROADMAP.md`'s gate section had
+already written the warning down - "the test is whether `Required scope` below
+names the id, rather than whether the item carries the `interface-areas`
+feature, and the two disagree on two entries" - and this brief read past it.
+
+**What survives, unchanged.** The hazard is real and the count stands:
+`feature:` is single-valued, 147 of the 170 clearable entries carry one, and
+overwriting it destroys the membership `bin/docket feature` reports completion
+against. Nothing here rehabilitates the re-label.
+
+**Two further constraints the case did not carry**, both found by the
+completeness critic and neither in the original design:
+
+- `tools/doc_check.py`'s `check_gate_dispositions` is a **hard `make check`
+  error** and computes an item's disposition from `ROADMAP.md` alone. A
+  `cleared-by:` on an item file is invisible to it, so the field would fail
+  `make check` for any entry not already on the frozen list.
+- `self_cleared` operates on frozen-list *entries*, not items, and an entry may
+  hold two ids for one problem. The existing rule requires **all** of an
+  entry's open ids to qualify. A per-item field does not answer that question.
+
+## Recommended instead: name the two ids in Required-scope entry 9
+
+Entry 9 already commits v0.6.0 to relocating the exact mechanism `PL-CNCF` and
+`PL-PGZF` turn on - `simulation_view.py`'s `plot_width_px=max(concentration,
+wash_in)`, the column budget read across sibling plots. Naming them there is
+therefore arguably not a scope widening at all but an honest statement of what
+entry 9 already implies.
+
+It needs **no code**: it uses the live instrument, it is what
+`check_gate_dispositions` already reads, it leaves every `feature:` intact, and
+it is auditable in the one document a reader consults.
+
+**The cost, stated rather than smoothed over:** `Required scope` means the
+milestone *builds* the entry, where the 2026-09-21 decision said "re-labelling,
+not renegotiation". Whether naming a consequence of entry 9's own mechanism
+inside entry 9 counts as renegotiation is the judgment, and it is the project
+owner's rather than this brief's - which is why no edit has been made.
+
+**Do not build `cleared-by:` on the strength of the ratification above.** It
+was ratified against a mechanism description that this section falsifies.
