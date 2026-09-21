@@ -509,10 +509,42 @@ is enough to put it back to them. `dashboard_frame.transport` carries all three 
 longest-lasting one that holds, so the chip never sends a reader to Pause for
 a lock Pause cannot lift.
 
-What a comparison between two branches *asserts* — what a difference between
-them may be attributed to, and that neither is a prediction for a patient — is
-not here and is not yet written anywhere. It is `PL-W7H9`, which places it in
-`docs/MODEL.md` and in this document.
+### What a branch comparison asserts, and which part of it is structural
+
+**The full statement is `docs/MODEL.md` § "What a branch comparison asserts,
+and what it does not", and it is stated there because it is a claim about the
+model rather than about the object map.** What belongs here is the part the
+structure above decides, which is three things.
+
+**The comparison is a trunk and one branch of it, and the shape is what says
+so.** `BranchedCase` forks only its trunk, so a branch of a branch is not an
+operation it can express, and `MAX_DISPLAYED_RUNS` is two with no run
+selector — so what is on screen is always one case managed two ways, never a
+survey of N managements and never one branch read against another. A reader
+generalising the drawing into a wider facility is generalising past what the
+structure can build.
+
+**What may be attributed to the settings that differ is exactly the
+complement of what a branch inherits.** The agent, the patient, the circuit
+volume, the four live controls up to the fork and the bookmarks are carried
+across and then held — `set_agent` refuses on a branch and is locked on the
+trunk while two runs are shown — and the control timeline is the one thing
+that starts empty. So the difference between two runs past the fork is the
+difference between two control timelines, and the inheritance list above is
+the audit of that claim rather than a convenience.
+
+**The shared history is the same object, not a reproduction of one.** A
+branch's definition carries the trunk's own keyframe and both runs stand in
+the case's one time frame, so agreement before the fork follows from
+construction rather than from a tolerance being met; `docs/MODEL.md` § "What
+this requires of a branch" is where that is stated and measured, and the
+residual it leaves is zero. What the structure does *not* supply is any bound
+on what happens after the fork, and neither run is a prediction for a patient
+at any point: the model holds one reference adult and no variability around
+it, so a difference between two branches is a property of the model rather
+than an expected clinical difference. That last clause is the one a reader of
+a drawn comparison is likeliest to need, and `docs/MODEL.md` § "What a branch
+comparison asserts, and what it does not" is where it is argued.
 
 ## Data files (`data/`)
 
