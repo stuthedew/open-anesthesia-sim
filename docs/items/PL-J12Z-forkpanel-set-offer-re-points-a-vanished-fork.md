@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, ux
 feature: branch-run-set-integrity
+milestone: v0.5.0
 touches: src/anesthesia_sim/app/qt_widgets.py, tests/integration/test_simulation_view.py
 added: 2026-09-20
 closed: 2026-09-20

@@ -6,9 +6,11 @@ effort: M
 status: done
 classes: safety, science, test, anticipated
 feature: scenario-branching
+milestone: v0.5.0
 touches: tests/reference, tests/integration, docs/MODEL.md
 added: 2026-09-06
 closed: 2026-09-21
+pr: 844
 payoff: puts the element-wise branch guarantee where this project checks arithmetic claims - against the reference solution rather than only through the app
 verify: grep -q 'def test_a_fork_opening_between_two_keyframes_reproduces_its_parent' tests/reference/test_canonical_evaluation.py
 ---

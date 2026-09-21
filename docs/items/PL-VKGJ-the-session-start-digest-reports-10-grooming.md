@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: queue-hygiene
+milestone: v0.5.0
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 added: 2026-09-19
 closed: 2026-09-20

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, session-cost
 feature: pr-body-integrity
+milestone: v0.5.0
 touches: docs/dead-ends.md, docs/items/PL-NDQD-record-why-this-repository-has-no-pull-request.md
 added: 2026-09-20
 closed: 2026-09-20

@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: infra
 feature: recurrence-signal
+milestone: v0.5.0
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/vcs.py, subprojects/docket/src/docket/render.py, subprojects/docket/README.md, subprojects/docket/tests
 added: 2026-09-20
 closed: 2026-09-20

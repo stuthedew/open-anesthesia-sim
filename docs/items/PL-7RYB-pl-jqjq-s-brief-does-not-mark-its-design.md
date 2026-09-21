@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: docs, planning
 feature: queue-hygiene
+milestone: v0.5.0
 touches: CLAUDE.md, docs/items
 added: 2026-09-16
 closed: 2026-09-20

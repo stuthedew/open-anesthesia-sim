@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: housekeeping
 feature: stranded-triage-sweep
+milestone: v0.5.0
 touches: docs/items
 added: 2026-09-21
 closed: 2026-09-21

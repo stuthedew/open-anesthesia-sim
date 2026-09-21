@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: housekeeping, docs
 feature: two-run-attribution
+milestone: v0.5.0
 added: 2026-09-20
 closed: 2026-09-21
 pr: 814

@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: perf, test
 feature: verify-replay-cost
+milestone: v0.5.0
 touches: conftest.py, subprojects/docket/tests/test_git_isolation.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-19
 closed: 2026-09-21

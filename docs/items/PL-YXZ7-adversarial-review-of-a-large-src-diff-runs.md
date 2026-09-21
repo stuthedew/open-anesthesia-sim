@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: infra
+milestone: v0.5.0
 touches: .claude/skills/docket/modes/close-out.md
 added: 2026-09-20
 closed: 2026-09-20

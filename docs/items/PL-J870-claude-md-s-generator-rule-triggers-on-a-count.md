@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: planning, docs
 feature: generator-identification
+milestone: v0.5.0
 touches: CLAUDE.md
 added: 2026-09-21
 closed: 2026-09-21

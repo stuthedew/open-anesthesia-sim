@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: housekeeping
+milestone: v0.5.0
 touches: docs/items
 added: 2026-09-20
 closed: 2026-09-20

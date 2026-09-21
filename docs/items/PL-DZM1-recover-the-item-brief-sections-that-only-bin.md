@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: housekeeping
 feature: unmerged-item-edits
+milestone: v0.5.0
 touches: docs/items
 added: 2026-09-21
 closed: 2026-09-21

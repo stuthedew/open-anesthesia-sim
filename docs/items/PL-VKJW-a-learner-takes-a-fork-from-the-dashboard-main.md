@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: feature, ux
 feature: scenario-branching
+milestone: v0.5.0
 touches: src/anesthesia_sim/app/main.py, src/anesthesia_sim/app/simulation_view.py, src/anesthesia_sim/app/run_view.py, src/anesthesia_sim/app/dashboard_frame.py, src/anesthesia_sim/app/qt_widgets.py, src/anesthesia_sim/app/theme.py, docs/ARCHITECTURE.md, tests/integration/test_simulation_view.py, tests/integration/test_dark_appearance.py, tests/unit/test_dashboard_frame.py, tests/unit/test_bootstrap.py
 added: 2026-09-20
 closed: 2026-09-20

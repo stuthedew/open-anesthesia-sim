@@ -6,6 +6,7 @@ effort: S
 status: done
 classes: defect, infra
 feature: verify-false-reject
+milestone: v0.5.0
 touches: subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md, .claude/skills/docket/modes/close-out.md
 added: 2026-09-19
 closed: 2026-09-20

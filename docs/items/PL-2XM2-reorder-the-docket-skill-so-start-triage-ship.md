@@ -6,6 +6,7 @@ effort: M
 status: done
 classes: session-cost, docs
 feature: worker-instructions
+milestone: v0.5.0
 touches: .claude/skills/docket, .claude/rules/citation-drift.md, tools/doc_check.py, docs/items, ROADMAP.md, docket.toml, docs/ARCHITECTURE.md
 added: 2026-09-16
 closed: 2026-09-20

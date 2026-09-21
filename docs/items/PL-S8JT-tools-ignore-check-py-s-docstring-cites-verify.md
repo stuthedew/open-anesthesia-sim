@@ -5,6 +5,7 @@ priority: P3
 effort: S
 status: done
 classes: defect
+milestone: v0.5.0
 touches: tools/ignore_check.py, tests/unit/test_ignore_check.py
 added: 2026-09-20
 closed: 2026-09-21

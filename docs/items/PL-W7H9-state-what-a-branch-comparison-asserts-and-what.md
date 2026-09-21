@@ -6,9 +6,11 @@ effort: S
 status: done
 classes: docs, safety, anticipated
 feature: scenario-branching
+milestone: v0.5.0
 touches: docs/MODEL.md, docs/ARCHITECTURE.md
 added: 2026-09-06
 closed: 2026-09-21
+pr: 849
 payoff: writes down the limits of the most persuasive thing this simulator draws, before a learner reads a difference between two curves as a result about patients
 verify: grep -q 'What a branch comparison asserts' docs/MODEL.md && grep -q 'What a branch comparison asserts' docs/ARCHITECTURE.md
 ---
