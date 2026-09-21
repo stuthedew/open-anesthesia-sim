@@ -1,0 +1,81 @@
+---
+id: PL-XF5V
+title: No command reports how much of a generator's cluster is still open: all 12 recorded heads are closed while 60 distinct members are not, and answering 'are the generators dealt with' took a script over the whole store
+priority: P2
+effort: M
+status: ready
+classes: feature, infra
+feature: convergence-visibility
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_cli.py
+added: 2026-09-20
+payoff: 'are the generators dealt with' is answered by a command reporting each cluster's drain, instead of a script written over the whole store
+verify: grep -q 'def test_a_generator_head_reports_how_much_of_its_cluster_is_open' subprojects/docket/tests/test_cli.py
+---
+
+**Problem.** No command reports how much of a generator's cluster is still open: all 12 recorded heads are closed while 60 distinct members are not, and answering 'are the generators dealt with' took a script over the whole store
+
+**Measured 2026-09-20, against the whole store.** Every `root-cause-of:` head
+this project carries is closed, and most of what each one named is not:
+
+| Head | Feature | Members | Still open |
+| --- | --- | ---: | ---: |
+| `PL-4FBP` | generator-heads | 24 | 21 |
+| `PL-G424` | generator-heads | 21 | 19 |
+| `PL-BHVM` | parallel-sessions | 8 | 6 |
+| `PL-4Q9B` | generator-heads | 10 | 6 |
+| `PL-6TP8` | generator-heads | 12 | 4 |
+| `PL-G21K` | verify-false-reject | 7 | 3 |
+| `PL-L4YG` | dev-tooling | 5 | 1 |
+| `PL-2T03`, `PL-6T44`, `PL-HWW1`, `PL-TZ7T` | — | 14 | 0 |
+
+**60 distinct open members**, 17.6% of the 341 open items, and four heads whose
+clusters are genuinely drained. Nothing in `bin/docket` prints either fact.
+
+**Why it matters.** The project owner's recurring question is "is that dealt
+with?", and `CLAUDE.md` answers it for a feature with `bin/docket feature
+<name>`. A generator has no equivalent. `docket show` on a *head* prints its
+member list and on a *member* prints the head with its status and cluster size
+(`PL-C97K`), so both halves of the edge are already loaded — what is missing is
+the count over them. A session asked the question today reads item files until
+it can answer, which is the read `CLAUDE.md` builds deterministic tooling to
+replace: "printing the few lines a decision needs, instead of loading the
+documents that hold them, is the same win as answering the question outright."
+
+**The answer is also actively misleading without it.** All twelve heads read
+`done`, so the surface a session sees says the generator work is finished. What
+finished is the *cause* — a convention adopted, a check built — and each head's
+brief is explicit that its members are repairs still owed. `format_generators`
+already reasons about this: its docstring says a head at `done` "asks the
+opposite question — whether this member still reproduces at all." Nobody has
+asked that question of the 60, and nothing counts how many are left to ask it
+of.
+
+**This is not `impairs-generators:`, and that was checked rather than assumed.**
+Nothing broke. `format_generators` renders what it was built to render and
+`generator_check.py`'s stated scope is candidate clusters, not drain. This is a
+report that does not exist, which is an enhancement to propose — the same
+reading `PL-FH61` records for its own case.
+
+**Its sibling is `PL-S0MB`.** That item is the identical failure on the other
+surface: a catch-all `feature:` name can never report completion, so
+`dev-tooling` (174 items) and `queue-hygiene` (29) cannot answer "yes, that is
+dealt with" either. One problem, two surfaces; whichever is worked first should
+read the other.
+
+**A count is not the same as a work list, and this is why the report is worth
+building rather than the sweep being run blind.** `.claude/rules/citation-drift.md`
+— the rule `PL-G424` itself installed — decides that drift in a `done` or
+`dropped` brief is *not a finding*, and that repairing a live one "rides the
+current item's commit under the current item's id" rather than needing an item
+of its own. Applied to that head's own members, the rule dissolves an unknown
+number of them: `PL-RFSL` is the first instance recorded, filed because
+`PL-38PN`'s remaining deliverable is refused by the closed-brief clause. So the
+60 are an upper bound on outstanding work, not an estimate of it, and no
+surface says which of the three dispositions each one takes. A report that
+prints the cluster and its drain is what makes that sweep decidable in one pass
+instead of sixty reads.
+
+**Done when.** A session can ask how much of a generator's cluster is still
+open and get the answer from a command rather than from a script — including
+that four of the twelve are drained — and a test pins the count against a
+store whose head is closed and whose members are not.

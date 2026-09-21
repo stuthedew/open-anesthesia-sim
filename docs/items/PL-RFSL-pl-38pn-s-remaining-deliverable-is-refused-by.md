@@ -1,8 +1,15 @@
 ---
 id: PL-RFSL
 title: PL-38PN's remaining deliverable is refused by .claude/rules/citation-drift.md's closed-brief clause: both briefs it repoints (PL-VM40, PL-L2F2) closed done on 2026-09-04 and 2026-09-07, and its 2026-09-19 still-real sweep note predates PL-G424's ratified rule by 80 minutes
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs
+feature: closed-item-claims
+touches: docs/items
 added: 2026-09-20
+payoff: PL-38PN stops being offered as startable work whose whole deliverable a ratified rule already refuses
+verify: grep -qF 'citation-drift' docs/items/PL-38PN-stale-source-line-citations-in-pl-vm40-and-pl.md
 ---
 
 **Problem.** PL-38PN's remaining deliverable is refused by .claude/rules/citation-drift.md's closed-brief clause: both briefs it repoints (PL-VM40, PL-L2F2) closed done on 2026-09-04 and 2026-09-07, and its 2026-09-19 still-real sweep note predates PL-G424's ratified rule by 80 minutes
@@ -37,3 +44,22 @@ it survives whatever is decided about the first half.
 closed-brief clause as the reason, or its brief records why the clause does not
 reach it - and its `verify:` is repointed either way, since a command that
 cannot fail once the string moves proves nothing about the item.
+
+**Why it matters.** `PL-38PN` is `status: ready`, so `bin/docket next` can
+offer it, and the work it would hand over is refused by a ratified rule the
+session taking it has no reason to read. The cost is a whole item's work
+discovering that the item is void - and the store says nothing, because
+`PL-38PN`'s own most recent evidence of being live is eighty minutes older than
+the decision that retires it. That is the silent-wrong-answer shape
+`CLAUDE.md` names first among its compounding-friction tests, arriving through
+a timestamp rather than through a check.
+
+**Verified 2026-09-20.** `PL-38PN` is `status: ready`, `classes: docs`, and its
+`touches` names exactly the two item files it would repair: `PL-VM40` and
+`PL-L2F2`, both `status: done`.
+
+**Done when.** `PL-38PN` is either dropped with
+`.claude/rules/citation-drift.md`'s closed-brief clause as the recorded reason,
+or its brief records why that clause does not reach it - and its `verify:` is
+repointed either way, since `! grep -q 'line 943'` goes green the moment the
+number moves whatever replaces it.

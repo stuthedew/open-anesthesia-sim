@@ -1,8 +1,14 @@
 ---
 id: PL-5B39
 title: parse_item silently truncates a multi-line front-matter value at its first line, so every reader sees a partial value and rewrite_item deletes the rest from the file
-status: untriaged
+priority: P2
+effort: M
+status: ready
+classes: defect, infra
+touches: subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_model.py
 added: 2026-09-20
+payoff: an item that acquires a multi-line field keeps it, instead of every reader seeing a partial value and the next field write deleting the rest
+verify: grep -q 'def test_a_multi_line_front_matter_value_survives_a_round_trip' subprojects/docket/tests/test_model.py
 ---
 
 **Problem.** parse_item silently truncates a multi-line front-matter value at its first line, so every reader sees a partial value and rewrite_item deletes the rest from the file

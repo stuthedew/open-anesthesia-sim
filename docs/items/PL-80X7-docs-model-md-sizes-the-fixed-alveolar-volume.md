@@ -1,8 +1,15 @@
 ---
 id: PL-80X7
 title: docs/MODEL.md sizes the fixed-alveolar-volume assumption against agent uptake alone, omitting the respiratory-quotient volume change of comparable size
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs
+feature: circuit-boundary-docs
+touches: docs/MODEL.md
 added: 2026-09-20
+payoff: the fixed-alveolar-volume argument a nitrous-oxide scoping round is told to read sizes both terms that change alveolar volume, not one of the two
+verify: grep -q 'PL-80X7' docs/MODEL.md
 ---
 
 **Problem.** docs/MODEL.md sizes the fixed-alveolar-volume assumption against agent uptake alone, omitting the respiratory-quotient volume change of comparable size
