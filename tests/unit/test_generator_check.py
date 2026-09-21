@@ -22,11 +22,13 @@ on this one (`PL-LSR0`).
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+from docket.store import ID_RE
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
 
@@ -99,9 +101,9 @@ def _closers(repo: Path, path: str, count: int, *, kids_touch: str) -> None:
 
 
 def _open_trio(repo: Path, path: str, *, feature: str = "") -> None:
-    for identifier in ("PL-AAAA", "PL-BBBB", "PL-CCCC"):
+    for identifier in ("PL-8888", "PL-BBBB", "PL-CCCC"):
         _write(repo, identifier, touches=path, status="ready", feature=feature)
-    _commit(repo, "PL-AAAA, PL-BBBB, PL-CCCC: capture three findings")
+    _commit(repo, "PL-8888, PL-BBBB, PL-CCCC: capture three findings")
 
 
 def test_a_cluster_below_the_old_closure_gate_is_surfaced(repo: Path) -> None:
@@ -122,17 +124,17 @@ def test_a_cluster_below_the_old_closure_gate_is_surfaced(repo: Path) -> None:
 
 def test_a_cluster_with_no_signal_is_not_surfaced(repo: Path) -> None:
     """Size alone is not a signal: a big file honestly attracts many items."""
-    for identifier in ("PL-AAAA", "PL-BBBB", "PL-CCCC", "PL-DDDD"):
+    for identifier in ("PL-8888", "PL-BBBB", "PL-CCCC", "PL-DDDD"):
         _write(repo, identifier, touches="src/thing.py", status="ready")
-    _commit(repo, "PL-AAAA, PL-BBBB, PL-CCCC, PL-DDDD: capture four unrelated findings")
+    _commit(repo, "PL-8888, PL-BBBB, PL-CCCC, PL-DDDD: capture four unrelated findings")
 
     assert generator_check.clusters(repo) == []
 
 
 def test_a_cluster_under_three_open_items_cannot_host_a_root_cause(repo: Path) -> None:
-    for identifier in ("PL-AAAA", "PL-BBBB"):
+    for identifier in ("PL-8888", "PL-BBBB"):
         _write(repo, identifier, touches="src/thing.py", status="ready", feature="one-problem")
-    _commit(repo, "PL-AAAA, PL-BBBB: capture two findings")
+    _commit(repo, "PL-8888, PL-BBBB: capture two findings")
 
     assert generator_check.clusters(repo) == []
 
@@ -183,9 +185,9 @@ def test_a_cluster_with_nothing_open_is_history_not_friction(repo: Path) -> None
 
 def test_a_store_path_with_no_signal_is_not_surfaced(repo: Path) -> None:
     """The store is a path like any other: size alone is not a signal there either."""
-    for identifier in ("PL-AAAA", "PL-BBBB", "PL-CCCC", "PL-DDDD"):
+    for identifier in ("PL-8888", "PL-BBBB", "PL-CCCC", "PL-DDDD"):
         _write(repo, identifier, touches="docs/items/", status="ready")
-    _commit(repo, "PL-AAAA, PL-BBBB, PL-CCCC, PL-DDDD: capture four unrelated findings")
+    _commit(repo, "PL-8888, PL-BBBB, PL-CCCC, PL-DDDD: capture four unrelated findings")
 
     assert generator_check.clusters(repo) == []
 
@@ -219,18 +221,18 @@ def test_a_signal_breaks_ties_before_size(repo: Path) -> None:
     _write(repo, "PL-BBB3", touches="src/big.py", status="ready")
     _open_trio(repo, "src/small.py", feature="another-problem")
     for n in range(3):
-        _write(repo, f"PL-S{n:03d}", touches="elsewhere.py", status="ready", body="about PL-AAAA")
+        _write(repo, f"PL-S{n:03d}", touches="elsewhere.py", status="ready", body="about PL-8888")
     _commit(repo, "PL-S000, PL-S001, PL-S002: capture three findings")
 
     found = generator_check.clusters(repo)
 
     assert [c.path for c in found] == ["src/small.py", "src/big.py"]
-    assert found[0].cited == ["PL-AAAA"]
+    assert found[0].cited == ["PL-8888"]
 
 
 def test_items_already_inside_a_recorded_root_cause_are_marked(repo: Path) -> None:
     """Marked rather than dropped: a recorded claim can be wrong."""
-    _write(repo, "PL-AAAA", touches="src/thing.py", status="ready", feature="one-problem")
+    _write(repo, "PL-8888", touches="src/thing.py", status="ready", feature="one-problem")
     _write(repo, "PL-BBBB", touches="src/thing.py", status="ready", feature="one-problem")
     _write(
         repo,
@@ -238,14 +240,14 @@ def test_items_already_inside_a_recorded_root_cause_are_marked(repo: Path) -> No
         touches="src/thing.py",
         status="needs-decision",
         feature="one-problem",
-        root_cause_of="PL-AAAA, PL-BBBB, PL-DDDD",
+        root_cause_of="PL-8888, PL-BBBB, PL-DDDD",
     )
     _write(repo, "PL-DDDD", touches="elsewhere.py", status="ready")
-    _commit(repo, "PL-AAAA, PL-BBBB, PL-CCCC, PL-DDDD: capture")
+    _commit(repo, "PL-8888, PL-BBBB, PL-CCCC, PL-DDDD: capture")
 
     found = next(c for c in generator_check.clusters(repo) if c.path == "src/thing.py")
 
-    assert found.recorded == ["PL-AAAA", "PL-BBBB", "PL-CCCC"]
+    assert found.recorded == ["PL-8888", "PL-BBBB", "PL-CCCC"]
     assert "3 already inside a recorded root cause" in generator_check._line(found)
 
 
@@ -257,23 +259,23 @@ def test_only_open_items_cite(repo: Path) -> None:
             f"PL-S{n:03d}",
             touches="elsewhere.py",
             status=status,
-            body="this is about PL-AAAA",
+            body="this is about PL-8888",
         )
     _open_trio(repo, "src/thing.py")
 
-    counts = generator_check.citations(repo, {"PL-AAAA", "PL-BBBB", "PL-CCCC", "PL-S003"})
+    counts = generator_check.citations(repo, {"PL-8888", "PL-BBBB", "PL-CCCC", "PL-S003"})
 
-    assert counts["PL-AAAA"] == 1
+    assert counts["PL-8888"] == 1
 
 
 def test_a_capture_commit_spawns_nothing(repo: Path) -> None:
     """A commit leading with the ids it creates is a capture with no parent."""
-    _write(repo, "PL-AAAA", touches="src/thing.py", status="done")
+    _write(repo, "PL-8888", touches="src/thing.py", status="done")
     _write(repo, "PL-BBBB", touches="src/thing.py", status="ready")
-    _commit(repo, "PL-AAAA, PL-BBBB: capture two findings")
+    _commit(repo, "PL-8888, PL-BBBB: capture two findings")
 
     parents = generator_check.creation_parents(repo)
-    assert parents["PL-AAAA"] == set()
+    assert parents["PL-8888"] == set()
     assert parents["PL-BBBB"] == set()
 
 
@@ -290,3 +292,47 @@ def test_no_output_calls_anything_a_generator(
     assert "None of these is a generator" in out
     assert "evidence, not causation" in out
     assert "root-cause-of:" in out
+
+
+#: Anything shaped like an item id in the script's own output. Deliberately
+#: looser than `ID_RE`, because what is under test is whether a printed id
+#: *matches* that pattern - a candidate regex that could only match a valid id
+#: would have nothing to report.
+_PRINTED_ID_RE = re.compile(r"PL-[A-Za-z0-9]+")
+
+
+def test_every_id_the_advisory_prints_is_one_the_store_could_mint(
+    repo: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An example is copied, so an example outside the alphabet teaches a false grammar.
+
+    `store.ID_ALPHABET` is Crockford base32 *minus the vowels*, so `PL-AAAA` is
+    an id `new_id` can never produce and `ID_PATTERN` never matches. This script
+    printed exactly that literal in the `root-cause-of:` line it offers a
+    session to copy, while `docket set --root-cause-of` a directory away printed
+    `PL-XXXX,PL-YYYY,PL-ZZZZ` for the same field - two placeholder sets for one
+    interface, one of them ungrammatical (`PL-DPY6`).
+
+    It is worth pinning because the failure is silent in both directions. A
+    session copying the shape into a fixture reproduces what `PL-GXPP` spent 261
+    substitutions removing from the test tree, where an id outside the alphabet
+    makes any assertion resting on it pass vacuously; and `generator_check`'s
+    own `ID_RE` is looser than the store's, so nothing here would have objected.
+
+    Asserted against `store.ID_RE` rather than a fourth copy of the grammar.
+    Restating it is the defect this is next to, not a shortcut around it.
+    """
+    _closers(repo, "src/thing.py", 3, kids_touch="src/thing.py")
+    _open_trio(repo, "src/thing.py", feature="one-problem")
+
+    assert generator_check.main(["--repo", str(repo)]) == 0
+
+    out = capsys.readouterr().out
+    printed = sorted(set(_PRINTED_ID_RE.findall(out)))
+    assert printed, "no ids in the output at all, so this asserts nothing"
+
+    outside = [i for i in printed if not ID_RE.match(i)]
+    assert not outside, (
+        "these ids in the advisory's output are outside the alphabet the store mints, "
+        "so a session copying one writes an id `ID_PATTERN` can never match: " + ", ".join(outside)
+    )
