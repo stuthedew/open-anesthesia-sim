@@ -8,7 +8,9 @@ whole store into a person's attention when a summary would do.
 from __future__ import annotations
 
 import argparse
-from collections.abc import Collection, Mapping, Sequence
+import shlex
+import subprocess
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import replace as with_fields
 from datetime import date
 from pathlib import Path
@@ -126,6 +128,7 @@ from .vcs import (
     records_on_base,
     ref_walk,
     released_on_base,
+    settled_branches,
     stranded,
     tags,
     working_paths,
@@ -2594,16 +2597,75 @@ def cmd_branch(args: argparse.Namespace) -> int:
     return 0
 
 
+#: How long `open_pull_requests_command` is given. Short, because this sits in
+#: front of an answer the command already has without it: the pull-request half
+#: sharpens the report and is never what the report is for, so a slow forge
+#: costs a reader seconds and then gets the unasked reading.
+OPEN_LOOKUP_TIMEOUT = 8.0
+
+
+def _open_pull_requests(
+    args: argparse.Namespace, root: Path, config: Config
+) -> Callable[[], Collection[str] | None] | None:
+    """A way to ask which branches have a pull request open, or None if there is none.
+
+    A callable rather than an answer, because `settled_branches` asks only
+    where the cheap half found a branch worth asking about - which on a normal
+    day is none of them, and the command then reaches nothing at all.
+
+    **Every way this can fail is a skip, never a failure**, which is the
+    contract `tools/pr_title_check.py --discover` already holds to: no command
+    configured, no token, no network, a forge that refused, a timeout, a
+    command that is not there. `flight` has to answer from a bare or offline
+    checkout, and a report that failed when it could not look would be worse
+    than the gap it closes. What must never happen is a skip reading as
+    "asked, and nothing is open" - it cannot here, because `None` reaches
+    `SettledReport.asked` and the wording changes with it.
+    """
+    command = config.open_pull_requests_command
+    if args.no_remote or not command:
+        return None
+
+    def ask() -> Collection[str] | None:
+        try:
+            done = subprocess.run(
+                shlex.split(command),
+                cwd=root,
+                capture_output=True,
+                text=True,
+                timeout=OPEN_LOOKUP_TIMEOUT,
+                check=False,
+            )
+        except (OSError, ValueError, subprocess.SubprocessError):
+            return None
+        if done.returncode != 0:
+            return None
+        return [line.strip() for line in done.stdout.splitlines() if line.strip()]
+
+    return ask
+
+
 def cmd_flight(args: argparse.Namespace) -> int:
     """Which items are being worked on a branch, and how long since each moved.
 
     Exits zero whether or not it finds any, for the reason `stranded` does:
     an unmerged branch is a live session or abandoned work, the command cannot
     tell which, and reporting is the whole job.
+
+    **Except for the branches that have answered it themselves** (`PL-Q664`).
+    `settled_branches` names the refs whose every claimed item is closed in
+    their own copy and which no pull request is open on, and those move out of
+    the list the age is meant to separate. It is asked here rather than inside
+    `branches_in_flight` because that read is on the hot path of `next`,
+    `show`, `list`, `triage` and the digest, and this one is wanted by the
+    command whose whole question it is.
     """
     root, items_dir = _tracked(args)
     report = branches_in_flight(root, items_dir=items_dir)
-    print(render.format_flight(report, args.today or date.today()))
+    settled = settled_branches(
+        root, report, opened=_open_pull_requests(args, root, load_config(root)), items_dir=items_dir
+    )
+    print(render.format_flight(report, args.today or date.today(), settled))
     return 0
 
 
@@ -2924,7 +2986,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="also report the git calls this digest made and the ref set it walked",
     )
     digest_cmd.set_defaults(func=cmd_digest)
-    add("flight", "branches carrying item work").set_defaults(func=cmd_flight)
+    flight_cmd = add("flight", "branches carrying item work")
+    flight_cmd.add_argument(
+        "--no-remote",
+        action="store_true",
+        default=False,
+        help="do not ask the forge which branches have a pull request open; "
+        "for an offline checkout, and for a caller wanting a reading of the tree alone",
+    )
+    flight_cmd.set_defaults(func=cmd_flight)
     branch_cmd = add("branch", "where this branch stands against the default branch")
     branch_cmd.add_argument(
         "--no-fetch",

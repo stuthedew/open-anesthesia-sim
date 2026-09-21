@@ -26,6 +26,8 @@ from docket.vcs import (
     OrphanedBranch,
     OrphanedReport,
     RewriteReport,
+    SettledBranch,
+    SettledReport,
     StrandedItem,
     StrandedReport,
     _pathspec_chunks,
@@ -47,6 +49,7 @@ from docket.vcs import (
     precedence,
     records_on_base,
     released_on_base,
+    settled_branches,
     stranded,
     tags,
 )
@@ -5356,3 +5359,242 @@ def test_flight_marks_a_claim_whose_item_the_base_does_not_hold() -> None:
     assert "filed there" in next(line for line in lines if "PL-3CTW" in line)
     assert "filed there" not in next(line for line in lines if "PL-K7QX" in line)
     assert any("bin/docket stranded" in line for line in lines)
+
+
+#: The items directory these tests speak of, spelled once. `settled_branches`
+#: takes it as an argument and the fake answers `ls-tree` for it.
+ITEMS = "docs/items"
+
+
+def _held(refs: Mapping[str, Mapping[str, str]], remotes: tuple[str, ...] = ("origin",)):
+    """A git holding, per ref, a mapping of item id to the status its copy records.
+
+    `settled_branches` asks three things and nothing else: which remotes exist,
+    what item files a ref's tree holds, and what one of those files says. A
+    fake answering exactly those is what keeps these tests about the rule -
+    every item closed *on the branch itself* - rather than about git.
+
+    The distinction the shared `_runner` cannot make is the one under test
+    here: it answers `show` from the base's copy whatever ref is asked, and
+    the whole question is what the *ref's* copy says.
+    """
+
+    def run(args: list[str], root: Path) -> str:
+        if args[0] == "remote":
+            return "\n".join(remotes)
+        if args[0] == "ls-tree":
+            ref = args[2]
+            return _tree_lines(
+                {f"{ITEMS}/{identifier}-work.md": identifier for identifier in refs.get(ref, {})}
+            )
+        if args[0] == "show":
+            ref, _, path = args[-1].partition(":")
+            identifier = "-".join(path.rsplit("/", 1)[-1].split("-")[:2])
+            status = refs.get(ref, {}).get(identifier)
+            if status is None:
+                return ""
+            return f"---\nid: {identifier}\ntitle: work\nstatus: {status}\n---\n\nBody.\n"
+        return ""
+
+    return run
+
+
+def _carrying(*branches: Branch, unreadable: tuple[str, ...] = ()) -> FlightReport:
+    return FlightReport(branches=branches, unreadable=unreadable, base=BASE)
+
+
+def test_a_branch_whose_items_are_all_closed_is_not_live_work() -> None:
+    report = _carrying(Branch("origin/claude/finished", "PL-NB35", date(2026, 9, 13)))
+    settled = settled_branches(
+        ROOT,
+        report,
+        opened=lambda: (),
+        items_dir=ITEMS,
+        runner=_held({"origin/claude/finished": {"PL-NB35": "done"}}),
+    )
+    assert [entry.name for entry in settled.branches] == ["origin/claude/finished"]
+    assert settled.branches[0].item_ids == ("PL-NB35",)
+    assert settled.branches[0].last_commit == date(2026, 9, 13)
+    assert settled.asked
+    # The item stays in flight: the work exists on a branch, and offering it
+    # again would have a second session redo what is already written.
+    assert report.ids == frozenset({"PL-NB35"})
+
+
+def test_a_dropped_item_finishes_a_branch_as_a_done_one_does() -> None:
+    settled = settled_branches(
+        ROOT,
+        _carrying(Branch("origin/claude/finished", "PL-NB35")),
+        opened=lambda: (),
+        items_dir=ITEMS,
+        runner=_held({"origin/claude/finished": {"PL-NB35": "dropped"}}),
+    )
+    assert [entry.name for entry in settled.branches] == ["origin/claude/finished"]
+
+
+def test_one_item_still_open_leaves_the_whole_branch_live() -> None:
+    settled = settled_branches(
+        ROOT,
+        _carrying(Branch("origin/claude/mixed", "PL-NB35"), Branch("origin/claude/mixed", "PL-VV16")),
+        opened=lambda: (),
+        items_dir=ITEMS,
+        runner=_held({"origin/claude/mixed": {"PL-NB35": "done", "PL-VV16": "ready"}}),
+    )
+    assert settled.branches == ()
+
+
+def test_an_item_the_branch_holds_no_copy_of_leaves_it_live() -> None:
+    """A branch *named* for an item carries the id without holding its file.
+
+    The claim is then unproven rather than false, and an unproven claim keeps
+    the branch in the ordinary list - a live session wrongly called finished is
+    the expensive mistake here.
+    """
+    settled = settled_branches(
+        ROOT,
+        _carrying(Branch("claude/pl-nb35-thing", "PL-NB35")),
+        opened=lambda: (),
+        items_dir=ITEMS,
+        runner=_held({"claude/pl-nb35-thing": {}}),
+    )
+    assert settled.branches == ()
+
+
+def test_a_finished_branch_with_a_pull_request_open_is_not_reported() -> None:
+    """Every item closed and a pull request open is a branch waiting on review."""
+    settled = settled_branches(
+        ROOT,
+        _carrying(Branch("origin/claude/reviewing", "PL-NB35")),
+        opened=lambda: ["claude/reviewing"],
+        items_dir=ITEMS,
+        runner=_held({"origin/claude/reviewing": {"PL-NB35": "done"}}),
+    )
+    assert settled.branches == ()
+    assert settled.asked
+
+
+def test_the_remote_prefix_is_stripped_against_the_remotes_git_lists() -> None:
+    """A pull request names `claude/x`; the ref may be `origin/claude/x`.
+
+    Stripped against the remotes git actually lists rather than against the
+    first path segment, so a branch whose first segment merely looks like one
+    keeps its whole name and is compared as the forge would know it.
+    """
+    settled = settled_branches(
+        ROOT,
+        _carrying(Branch("feature/reviewing", "PL-NB35")),
+        opened=lambda: ["reviewing"],
+        items_dir=ITEMS,
+        runner=_held({"feature/reviewing": {"PL-NB35": "done"}}),
+    )
+    assert [entry.name for entry in settled.branches] == ["feature/reviewing"]
+
+
+def test_the_forge_is_not_asked_when_no_branch_has_finished() -> None:
+    """The cheap half decides whether the expensive one runs at all."""
+    asked: list[bool] = []
+
+    def opened() -> tuple[str, ...]:
+        asked.append(True)
+        return ()
+
+    settled = settled_branches(
+        ROOT,
+        _carrying(Branch("origin/claude/working", "PL-NB35")),
+        opened=opened,
+        items_dir=ITEMS,
+        runner=_held({"origin/claude/working": {"PL-NB35": "ready"}}),
+    )
+    assert settled.branches == ()
+    assert asked == []
+
+
+def test_a_forge_that_could_not_be_asked_reports_the_half_it_read() -> None:
+    """Half the test proved is reported as half, never as the whole of it."""
+    settled = settled_branches(
+        ROOT,
+        _carrying(Branch("origin/claude/finished", "PL-NB35")),
+        opened=lambda: None,
+        items_dir=ITEMS,
+        runner=_held({"origin/claude/finished": {"PL-NB35": "done"}}),
+    )
+    assert [entry.name for entry in settled.branches] == ["origin/claude/finished"]
+    assert not settled.asked
+    assert not settled.known
+
+
+def test_no_way_to_ask_the_forge_is_the_same_as_a_forge_that_refused() -> None:
+    settled = settled_branches(
+        ROOT,
+        _carrying(Branch("origin/claude/finished", "PL-NB35")),
+        items_dir=ITEMS,
+        runner=_held({"origin/claude/finished": {"PL-NB35": "done"}}),
+    )
+    assert [entry.name for entry in settled.branches] == ["origin/claude/finished"]
+    assert not settled.asked
+
+
+def test_a_ref_whose_commits_went_unread_is_not_called_finished() -> None:
+    """Its claim came from its name alone, so what else it carries is unknown."""
+    settled = settled_branches(
+        ROOT,
+        _carrying(Branch("claude/pl-nb35-thing", "PL-NB35"), unreadable=("claude/pl-nb35-thing",)),
+        opened=lambda: (),
+        items_dir=ITEMS,
+        runner=_held({"claude/pl-nb35-thing": {"PL-NB35": "done"}}),
+    )
+    assert settled.branches == ()
+
+
+def test_a_settled_branch_is_named_apart_from_the_live_ones() -> None:
+    """The row leaves the list the age is meant to separate, and says why."""
+    from docket.render import format_flight
+
+    report = _carrying(
+        Branch("origin/claude/finished", "PL-NB35", date(2026, 9, 13)),
+        Branch("origin/claude/working", "PL-VV16", date(2026, 9, 21)),
+    )
+    settled = SettledReport(
+        branches=(SettledBranch("origin/claude/finished", ("PL-NB35",), date(2026, 9, 13)),)
+    )
+    printed = format_flight(report, date(2026, 9, 21), settled)
+    live, _, finished = printed.partition("On 1 branch every item it carries is already closed")
+    assert "origin/claude/working" in live
+    assert "origin/claude/finished" not in live
+    assert "origin/claude/finished" in finished
+    assert "no pull request is open for it" in finished
+    assert "Nothing here is being worked" in finished
+    # The one reading it must never invite, however the rest is worded.
+    assert "safe to merge" not in printed
+    assert "ready to merge" not in printed
+
+
+def test_an_unasked_reading_says_a_pull_request_may_be_open() -> None:
+    from docket.render import format_flight
+
+    printed = format_flight(
+        _carrying(Branch("origin/claude/finished", "PL-NB35", date(2026, 9, 13))),
+        date(2026, 9, 21),
+        SettledReport(
+            branches=(SettledBranch("origin/claude/finished", ("PL-NB35",), date(2026, 9, 13)),),
+            asked=False,
+        ),
+    )
+    assert "no pull request is open" not in printed
+    assert "could not be read here" in printed
+    assert "Nothing here is being worked" in printed
+
+
+def test_a_report_whose_every_branch_has_finished_says_so_rather_than_nothing() -> None:
+    """`No branch claims an item` would be false: one does, and it is finished."""
+    from docket.render import format_flight
+
+    printed = format_flight(
+        _carrying(Branch("origin/claude/finished", "PL-NB35", date(2026, 9, 13))),
+        date(2026, 9, 21),
+        SettledReport(
+            branches=(SettledBranch("origin/claude/finished", ("PL-NB35",), date(2026, 9, 13)),)
+        ),
+    )
+    assert "No branch claims an item" not in printed
+    assert "No branch is carrying an item anybody is still working." in printed

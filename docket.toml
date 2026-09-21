@@ -361,6 +361,23 @@ workflow_paths = [
   "tools",
 ]
 
+# How `bin/docket flight` asks which branches have a pull request open, which
+# is the half of "is anybody still on this branch" that git cannot answer
+# (`PL-Q664`). A branch whose every item is closed *and* which nobody has
+# opened a pull request for is finished work that has stalled; either fact
+# alone is ordinary.
+#
+# Not a package default - it is empty there, and nothing in
+# `subprojects/docket/` knows GitHub exists. That is the same boundary
+# `.claude/hooks/docket-digest.sh` keeps for `tools/main_ci_status.py`: the
+# package answers from a bare checkout with no network, so the forge-specific
+# half lives in this repository's own `tools/` and the setting points at it.
+#
+# The script exits non-zero and prints nothing when it could not look, which is
+# what lets `flight` say "every item closed" alone rather than claiming nothing
+# is open. `flight --no-remote` skips it outright.
+open_pull_requests_command = "python3 tools/open_pull_requests.py"
+
 version_file = "pyproject.toml"
 
 # ROADMAP.md: "The next release number is chosen for the capability boundary it
