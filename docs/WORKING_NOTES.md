@@ -561,16 +561,17 @@ whether this work is worth doing at all is met: "be aware of any time you feel
 discouraged from doing a small refactoring... Any such barrier is a smell that
 should prompt a conversation."
 
-## Mostly settled: the project's one-line self-description (PL-4MHK, PL-N092, PL-XF89)
+## Settled: the project's one-line self-description (PL-4MHK, PL-N092, PL-XF89)
 
-**Superseded by events on 2026-09-06.** All three statements now exist and the
-deferral is over; what is left is narrower than what this thread was opened
-for, and it is `PL-XF89`.
+**Superseded by events on 2026-09-06, and closed out by `PL-XF89` in
+v0.4.18.** All three statements exist, the deferral is over, and the one word
+they still disagreed on has been decided. Nothing here is open; what follows
+is the record of how the wording got here.
 
 - **The GitHub "About" field is set** (project owner, on or before
-  2026-09-06): "PRE-RELEASE Open-source deterministic simulator of
-  volatile-anaesthetic uptake and distribution, for education. Not a clinical
-  prediction, dosing, or monitoring tool."
+  2026-09-06, and amended by `PL-XF89`): "PRE-RELEASE Open-source
+  deterministic simulator of inhaled-anesthetic uptake and distribution, for
+  education. Not a clinical prediction, dosing, or monitoring tool."
 - **`README.md` opens with its own** (`PL-N092`, `#391`): "A deterministic
   simulator of inhaled-anesthetic uptake and distribution, built for
   teaching."
@@ -578,12 +579,13 @@ for, and it is `PL-XF89`.
   from those two rather than composed fresh, precisely so that this thread was
   not reopened.
 
-**What remains open is one word, not the register.** The first two disagree on
-"volatile" against "inhaled", and the summary had to pick one - it took
-"volatile", because a package summary describes the artifact carrying it and
-0.4.4 models three volatile agents only. `PL-XF89` carries that decision, and
-the US/British spelling split in the "About" field with it. Everything below
-is the record of how the wording got here.
+**The one word left over was settled by `PL-XF89` in v0.4.18.** The three
+statements had disagreed on "volatile" against "inhaled", and they are now
+deliberately not identical: the reader-facing two say **inhaled**, which is
+what the curriculum heading calls the topic, while `pyproject.toml`'s
+`description` keeps **volatile**, because a package summary describes the
+artifact carrying it and, as of v0.4.18, the shipped set was three volatile
+agents. The US/British spelling split in the "About" field went the same way.
 
 The original problem: the "About" description was empty and the project had no
 settled one-line statement of what it is. Three rounds of drafts were reviewed
@@ -612,9 +614,9 @@ draft was rejected, so they are floors rather than the unsolved part:
 - The educational-only limit belongs in the description itself, not one click
   away in a longer document. That field is often the only sentence read before
   an impression forms, which puts it inside `CLAUDE.md`'s presentation-
-  correctness standard. `PL-WB5K` deleted the README, so the click it used to
-  be one away from now lands on nothing; `CITATION.cff`'s abstract is the only
-  root-level statement of the limit until `PL-N092` writes the new one.
+  correctness standard. `README.md` and `CITATION.cff`'s abstract both state
+  the limit at the repository root, so the click lands on it either way; the
+  description still has to carry it, because that field is read first.
 - Anything claimed as planned must match `ROADMAP.md`. Intravenous agents are
   planned-milestone item 13, sequenced after simulation forking and therefore
   after the MVP, so "planned" is accurate and "soon" is not.
@@ -630,61 +632,6 @@ derive from a finished long document than to invent alongside one.
 
 Repository topics were proposed in the same discussion and are still not
 applied; they are independent of the wording and can be set whenever.
-
-## Open: the repository has no README - PL-WB5K, PL-N092, PL-XYRN, PL-4MHK
-
-The root `README.md` was deleted on 2026-09-05 by the project owner's
-direction, under `PL-WB5K`. It is not a gap to be patched; it is the state the
-repository holds until `PL-N092` (rewrite README as a human-readable
-introduction) writes a deliberate one, sequenced behind `PL-XYRN` (decide when
-the repository goes public).
-
-**Why deletion rather than a further freeze.** `PL-QTN6` froze the file in
-place on the same day, after successive sessions each improved a paragraph in
-isolation and made the whole worse. The freeze stopped the edits and did
-nothing about the two harms that remained: the document was still the first
-thing a session found, and its "Development" section was an unenforced second
-copy of the Makefile, `make check`'s composition and the CI job layout - so a
-session read it as instruction and could be wrong without any check
-disagreeing. For a human reader it was 241 lines of accreted paragraphs with
-no shape. A frozen document is still a read document. Deleting it removes both
-harms at once and loses nothing recoverable, since git history holds the text.
-
-**What now stands in for it, and what does not.** `CITATION.cff` carries the
-project abstract and the educational-only limit at the repository root, which
-is why the deletion does not leave that limit unstated - and the repository is
-private, so no outside reader is meeting the project through its absence.
-`CLAUDE.md` and `docs/ARCHITECTURE.md` carry what a session needs; the Makefile
-is the authority on the commands the README used to restate, and always was.
-Nothing carries the newcomer's orientation, and nothing is meant to until
-`PL-N092`.
-
-**What the deletion touched.** `pyproject.toml`'s `readme` key had to go, or
-the `uv_build` backend fails on the missing file. `PL-N092` restored it in the
-same commit as the new README, rather than leaving it to `PL-4MHK` (package
-metadata) as this note first expected; `PL-4MHK` set the `description` and
-`classifiers` beside it on 2026-09-06. The freeze rule under
-`.claude/rules/` went in the same commit, per its own closing instruction, and
-`PL-3V4N` - which would have built a check enforcing that freeze - is dropped
-with it.
-
-**Closed 2026-09-06 by `PL-N092`**, which wrote the deliberate README and
-retired the guard in the same commit, as the guard's own docstring said it
-would. The hold did its job: what it was protecting against was a stub or a
-recreation landing before anyone had decided what the document was for, and
-`PL-RM83` answered that in between - two audiences, a `docs/MODEL.md` boundary
-rule (version-coupled statements are that document's), and status stated as
-capability rather than as a version number. So `PL-N092` was a first draft
-rather than a revision, which is what the deletion was for.
-
-**What the guard was, kept because the shape is reusable.** A standing rule -
-do not recreate the README, do not add a placeholder - routed to a check rather
-than to prose, running in `make check` and in the bare-interpreter section of
-CI's `checks` job (where `PL-D551` folded the former `floor` job). The freeze it
-replaced was a path-scoped rule under `.claude/rules/`, which loads on a *read*
-and so was missed by the first session that edited the file without opening it
-(`PL-3V4N`). A rule that must fire before a first write cannot be path-scoped,
-because no read precedes one.
 
 ## Settled: `.claude/rules/` path globs are unanchored - PL-ZQ35, PL-H588, PL-LLWN
 

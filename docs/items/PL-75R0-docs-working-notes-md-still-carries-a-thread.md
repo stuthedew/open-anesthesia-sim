@@ -3,11 +3,12 @@ id: PL-75R0
 title: docs/WORKING_NOTES.md still carries a thread headed "Open: the repository has no README" though PL-N092 shipped one a week ago and all four items it cites are done
 priority: P3
 effort: S
-status: ready
+status: done
 classes: docs
 feature: project-introduction
 touches: docs/WORKING_NOTES.md
 added: 2026-09-13
+closed: 2026-09-21
 verify: python3 tools/doc_check.py check && ! grep -q 'the repository has no README' docs/WORKING_NOTES.md
 ---
 
