@@ -49,7 +49,26 @@ membership.
 answered, no Gate 2 entry is re-labelled: the sweep records its Question 2
 verdicts and stops short of writing them.
 
-## Recommended: a second field, not a re-label
+## Decided (project owner, 2026-09-21, ratified)
+
+**A second field, `cleared-by:`, read alongside the feature test** - chosen
+over overwriting `feature: interface-areas` on each re-decided entry, which was
+the instrument the 2026-09-21 gate decision named and which would have
+destroyed the existing feature membership on 147 of the 170 clearable entries.
+
+Ratified rather than specified: this was a session's recommendation the project
+owner agreed with on one read ("Agree with recs"), so `CLAUDE.md` puts it back
+to them on ordinary evidence - a measurement, a cost this case did not carry, a
+constraint that appears later. It is not defended by "the owner decided it".
+
+**`PL-WZVZ` is excluded by the same decision, ratified the same way** - chosen
+over labelling it with the rest once the mechanism was safe. It is
+`safety`-classed, inherited from Gate 1, carries `feature:
+anesthesia-machine`, and `ROADMAP.md`'s gate section writes out by name where
+it sits and why. The Question 2 mechanism answers yes for it; the entry is left
+alone regardless.
+
+## The case that was recommended: a second field, not a re-label
 
 Record the claim where it can be read without displacing anything:
 `cleared-by: v0.6.0` on the entry, and `gate()` puts an item `inside` when it

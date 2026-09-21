@@ -3,11 +3,12 @@ id: PL-C4W8
 title: Sweep Gate 2's 168 clearable entries against the tree before any of them is worked: beat 3 of the cadence, unrun on a list frozen 2026-09-21 that the 2026-09-19 precedent says is 13-32 percent dead or overstated
 priority: P2
 effort: M
-status: ready
+status: done
 classes: housekeeping, infra
 feature: gate-staleness-sweep
 touches: docs/items, docs/WORKING_NOTES.md
 added: 2026-09-21
+closed: 2026-09-21
 payoff: the 168 swept entries can be worked on evidence rather than on a brief that may describe a tree from two weeks ago, and the three dead ones stop being ranked and offered
 verify: python3 tools/doc_check.py check && grep -q '^status: dropped' docs/items/PL-3JP0-*.md docs/items/PL-SY1J-*.md docs/items/PL-Z9K5-*.md
 ---
@@ -88,7 +89,7 @@ Dropped: `PL-3JP0`, `PL-Z9K5`, `PL-SY1J`. Corrected and still open on a
 narrower question: `PL-SQJ1`, `PL-Y4YX`, `PL-JQY1`, `PL-RWBV`, `PL-TKFD`,
 `PL-LBW5`, `PL-MSFB`, `PL-087W`.
 
-**Question 2 is blocked on `PL-YVP7`, and this is the finding of the pass.**
+**Question 2's verdicts are recorded here and written to no entry, which is the finding of the pass.** Writing them is `PL-YVP7`'s work rather than a prerequisite of this one.
 The verdicts exist and were reached per entry against the tree; none has been
 written to any entry, because the instrument the decision names would damage
 what it is written over. `plan.py`'s `gate()` puts an entry inside the
