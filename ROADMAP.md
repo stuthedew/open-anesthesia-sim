@@ -3337,7 +3337,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 228 entries
+### Declined to Gate 2 on the refilling-queue ground — 230 entries
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a
@@ -4866,6 +4866,23 @@ above is unchanged. `PL-G8TR` is already on this list against the same file and
 the same message, so whoever takes either should take both.
 
 - PL-J3TV (S) `.claude/hooks/no-prune-guard.sh` still prints the pre-`PL-K2C8` three-command restart recipe, so the incomplete version survives in the louder of the two places
+
+**And two from the stranded-branch and triage pass** (2026-09-21). `PL-NGBM`
+and `PL-T441` are the two halves of `count-input-addressing` that reach the git
+reads sitting behind a printed count: `--no-git` stops `_flight`, `_stranded`
+and `_orphaned` but not `merged_pull_requests`, `closures_on_base`,
+`records_on_base`, `lost` or `cut_window`, and those same reads resolve the
+store from `config.items_dir` rather than through `cli._tracked`, so `docket
+check --items` pointed at a store the loaded config does not name reports a
+clean provenance record for a store it never read. Both are `defect`, both are
+wholly in the workflow lane - a `docket` flag no reader of the simulator ever
+meets - and both were captured fifteen days after this gate froze. The
+refilling-queue arithmetic above is unchanged. `PL-T441` is the one worth
+taking first: it is the silent-wrong-answer half, where `PL-NGBM` is a flag
+whose help text overstates what it does.
+
+- PL-NGBM (S) --no-git does not stop the git reads behind a printed count, so docket digest --no-git shells out to git despite the flag saying branch detection is off
+- PL-T441 (S) the git reads behind a printed count resolve the store from config.items_dir rather than the tracked directory, so docket check --items pointed at a store elsewhere silently finds no closures
 
 
 ### Required scope

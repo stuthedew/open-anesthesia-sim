@@ -1,10 +1,15 @@
 ---
 id: PL-NGBM
 title: --no-git does not stop the git reads behind a printed count, so docket digest --no-git shells out to git despite the flag saying branch detection is off
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: defect
 feature: count-input-addressing
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-20
+payoff: --no-git either means what its help says or says what it means, so a session reading a digest count under the flag can tell which reads were skipped
+verify: grep -q 'def test_no_git_stops_every_git_read' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** `_flight`, `_stranded` and `_orphaned` each return an empty
