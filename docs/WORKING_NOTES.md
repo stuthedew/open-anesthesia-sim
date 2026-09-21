@@ -60,6 +60,20 @@ When a thread here is fully resolved (implemented, tested, and merged), its
 outcome belongs in `ROADMAP.md`/`docs/MODEL.md`/commit history as
 appropriate, and its entry here should be deleted rather than left stale.
 
+**`bin/docket check` now names candidates for that deletion, and only
+candidates.** One grooming advisory lists each `##` section whose heading says
+the thread is open and whose every cited `PL-` id has closed - three of the
+four it named when it was built had already been filed as separate items, one
+at a time, by six different sessions (`PL-DG84`). Two things follow for
+whoever writes here. **Head an open thread `Open thread:` or `Open:`, and a
+resolved one with what it resolved to** - `Settled:`, `Decided:`, `Measured`,
+`Built`, `Shelved` - because the heading is the half a check can read, and a
+live thread headed anything else is one the advisory will never name. And
+**the judgment stays with the reader**: whether the outcome is now recorded
+somewhere that maintains itself is what decides deletion, and no check will
+decide it. A section citing no id is never named at all, direction with no
+item being the third thing this file is for.
+
 ## Repository state as of this writing
 
 - `build/v0.1.0-sevo-patient` was fast-forward merged into `main` and the
