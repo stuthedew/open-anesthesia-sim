@@ -3032,7 +3032,7 @@ names the agent.
   than held on the instance, so naming the run there needs the plumbing
   `set_run_name` has.
 
-### Declined to Gate 2, because this milestone's own work created them — 2 entries
+### Declined to Gate 2, because this milestone's own work created them
 
 **Recorded rather than silent**, which is what "The gate is a snapshot, not a
 moving target" requires of either disposition. Both were found by the same
@@ -3061,7 +3061,7 @@ this gate protects, which is the case the rule names in terms.
   arithmetic that rule asks for does not carry here: it makes no other gate
   entry cheaper, and the capability it fails to cover is this milestone's own.
 
-### Deferred to v0.4.26, because the port dissolves the defect — 1 entry
+### Deferred to v0.4.26, because the port dissolves the defect
 
 **Recorded here because this list is frozen** and "The gate is a snapshot, not
 a moving target" allows a deferral only if it says so and says why. `PL-NGF7`
@@ -3089,7 +3089,7 @@ for `tools/contrast_check.py` to be pointed *at*. The expectation is left as
 written above rather than edited, because what it was wrong about is the useful
 part of the record.
 
-### Sequenced past v0.5.0, so not clearable before it begins — 13 entries
+### Sequenced past v0.5.0, so not clearable before it begins
 
 **`PL-Z34C` makes a thirteenth, on a different ground, 2026-09-20** (project
 owner, ratified, over keeping it on the frozen list). It is not sequenced behind
@@ -3337,7 +3337,7 @@ Two independent readings of one fact is the point rather than duplication: if
 the prose and the count disagree, one of them is wrong and the disagreement is
 visible on the next run.
 
-### Declined to Gate 2 on the refilling-queue ground — 228 entries
+### Declined to Gate 2 on the refilling-queue ground
 
 **Recorded rather than silent, which is what the rule actually requires**
 (project owner, 2026-09-08). "The gate is a snapshot" lets a session defer a

@@ -2685,6 +2685,67 @@ def test_a_gate_count_written_in_digits_is_read(tmp_path: Path) -> None:
     assert any("says 4 entries, but 3 follow it" in error for error in errors)
 
 
+def test_a_count_in_a_gate_subsection_heading_is_refused(tmp_path: Path) -> None:
+    """A heading sits outside the only range `_gate_groups` reads.
+
+    The frozen list stops at the first `###`, so a number written into a
+    subsection heading below the gate is checked by nothing while reading
+    exactly like the ones that are. `ROADMAP.md`'s declined subsection
+    carried one through twenty hand edits to 228 against 128 entries listed
+    and validated identically at 174, 191 and 999 (`PL-4RHP`).
+    """
+    roadmap = GATE_ROADMAP.replace(
+        "### Definition of done",
+        "### Declined to Gate 1 on the refilling-queue ground — 7 entries\n\n"
+        "Deferred because pulling it in would refill the gate.\n\n"
+        "- PL-ZZZZ (S) The deferred thing\n\n### Definition of done",
+        1,
+    )
+
+    errors = _gate_errors(tmp_path, roadmap)
+
+    assert any("states 7 entries, and nothing checks it" in error for error in errors)
+
+
+def test_a_gate_subsection_heading_counting_one_entry_is_refused_too(tmp_path: Path) -> None:
+    """The singular is the obvious way round, so it is read as a count.
+
+    `ENTRY_COUNT_RE` is plural-only on purpose - it scans prose, where "the
+    one entry a user cannot set" is a sentence. A heading holds no sentences,
+    so the two regexes part company here and this pins which one applies.
+    """
+    roadmap = GATE_ROADMAP.replace(
+        "### Definition of done",
+        "### Declined to Gate 1 on the refilling-queue ground — 1 entry\n\n"
+        "Deferred because pulling it in would refill the gate.\n\n"
+        "- PL-ZZZZ (S) The deferred thing\n\n### Definition of done",
+        1,
+    )
+
+    errors = _gate_errors(tmp_path, roadmap)
+
+    assert any("states 1 entry, and nothing checks it" in error for error in errors)
+
+
+def test_a_gate_subsection_stating_its_count_in_prose_is_left_alone(tmp_path: Path) -> None:
+    """Prose keeps the reader's exemption; only the heading loses it.
+
+    A heading carries no date and counts what is below it, so it goes stale on
+    the next addition. A sentence can be a dated fact that must never change,
+    which is why `check_gate_counts` refuses to guess at prose - and a check
+    firing on a correct document every run is the failure this one would have.
+    """
+    roadmap = GATE_ROADMAP.replace(
+        "### Definition of done",
+        "### Declined to Gate 1 on the refilling-queue ground\n\n"
+        "Deferred 2026-08-25, when this gate held three entries.\n\n"
+        "- PL-ZZZZ (S) The deferred thing\n\n### Definition of done",
+        1,
+    )
+
+    assert _gate_errors(tmp_path, roadmap) == []
+
+
 # --- gate re-entries, the queue read against the frozen list -----------------
 #
 # `check_gate_counts` above holds a frozen list's arithmetic to itself. These
@@ -2777,7 +2838,7 @@ def test_a_deferred_safety_item_still_re_enters_the_gate(tmp_path: Path) -> None
     """
     roadmap = VERSIONED_GATE_ROADMAP.replace(
         "### Definition of done",
-        "### Declined to Gate 2 on the refilling-queue ground — 1 entry\n\n"
+        "### Declined to Gate 2 on the refilling-queue ground\n\n"
         "Deferred because the milestone creates the display it is about.\n\n"
         "- PL-ZZZZ (S) The deferred thing\n\n### Definition of done",
         1,
@@ -2974,7 +3035,7 @@ def test_an_item_deferred_with_a_recorded_reason_is_not_reported(tmp_path: Path)
     """
     roadmap = VERSIONED_GATE_ROADMAP.replace(
         "### Definition of done",
-        "### Declined to Gate 2 on the refilling-queue ground — 1 entry\n\n"
+        "### Declined to Gate 2 on the refilling-queue ground\n\n"
         "Deferred because pulling it in would refill the gate.\n\n"
         "- PL-ZZZZ (S) The deferred thing\n\n### Definition of done",
         1,
@@ -2997,10 +3058,10 @@ def test_a_second_declined_subsection_is_read(tmp_path: Path) -> None:
     """
     roadmap = VERSIONED_GATE_ROADMAP.replace(
         "### Definition of done",
-        "### Declined to Gate 2 on the refilling-queue ground — 1 entry\n\n"
+        "### Declined to Gate 2 on the refilling-queue ground\n\n"
         "Deferred because pulling it in would refill the gate.\n\n"
         "- PL-ZZZZ (S) The deferred thing\n\n"
-        "### Declined to Gate 2 on the predates-the-freeze ground — 1 entry\n\n"
+        "### Declined to Gate 2 on the predates-the-freeze ground\n\n"
         "Deferred because the problem postdates the freeze.\n\n"
         "- PL-YYYY (S) The other deferred thing\n\n### Definition of done",
         1,
