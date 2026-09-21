@@ -1,7 +1,11 @@
 ---
 id: PL-Y949
 title: v0.5.0's Definition of done admits only done or dropped for a frozen-list entry outside Required scope, so PL-S5Q9's recorded deferral of PL-WZVZ leaves the cut unable to satisfy the milestone's own bullet
-status: untriaged
+verify: python3 tools/doc_check.py check && grep -qF 'deferred to a later gate' ROADMAP.md
+payoff: stops the v0.5.0 cut having to choose between dropping a safety-classed entry and holding the release, which is what a bullet admitting only done or dropped leaves a session meeting a deferred one
+effort: S
+priority: P2
+status: ready
 feature: wzvz-deferral-integrity
 touches: ROADMAP.md
 added: 2026-09-21
@@ -57,3 +61,36 @@ legitimate, so a session running the cut can satisfy the bullet against
 `PL-WZVZ` by reading it rather than by interpreting it; and the same statement
 is either made once where all four gate-clearing bullets can cite it, or
 repeated in each.
+
+## Ratified, 2026-09-21
+
+**The rider lands before the v0.5.0 cut** (project owner, 2026-09-21, ratified,
+over leaving the bullet to be interpreted at the cut by whoever runs it). The
+case put was the one above: `PL-F0L8` shows the bullet has already been read as
+exhaustive once, so a session meeting `PL-WZVZ` at the cut has to choose between
+dropping a `safety`-classed entry whose hazard is real but not yet live and
+holding the release.
+
+**Where the rider goes, on the narrowest-rule test.** § "The cadence" beat 3
+(`ROADMAP.md:5855`) is the canonical statement — "**Clear** it — every item
+`done`, or `dropped` with its reason — before implementation of the milestone
+begins" — and the three milestone bullets (`:952`, `:1021`, `:5139`) restate it.
+So the rider belongs on the cadence, with the milestone bullets citing it rather
+than each carrying its own copy.
+
+**What would falsify it being a rule rather than an instance.** That no later
+gate ever defers an entry. Gate 2 freezes when v0.5.0 ships and inherits
+`PL-WZVZ` plus whatever v0.5.0's implementation turns up, so recurrence is
+near-certain rather than speculative — it is a rule, and pitched at the cadence
+it survives a milestone being renumbered.
+
+**The rider's own condition, not a blanket third disposition.** Deferral is
+legitimate only where § "The gate is a snapshot, not a moving target" already
+requires: the deferral is recorded in the gate's section, with its ground, and
+names the later gate it lands in. An entry deferred to nowhere still holds the
+release — that is `PL-S5Q9`'s finding and the rider must not weaken it.
+
+**The phrase `verify:` pins.** The rider must contain the literal string
+`deferred to a later gate`, which appears nowhere in `ROADMAP.md` today. That is
+the only wording constraint — everything around it is the implementing session's
+to write.
