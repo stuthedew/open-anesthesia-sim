@@ -1552,6 +1552,17 @@ Its second question - record the permitted ref operations - is now
 symptom and whose the operation is and **naming no cause**, because `PL-3V6C`'s
 two measurements are mutually exclusive and neither is established.
 
+**That last clause was falsified on 2026-09-21 by `PL-ZM48`, and the thread is
+closed.** The two measurements are not mutually exclusive: one 2026-09-20
+`git push origin --delete` returned `HTTP 403`, then `send-pack: unexpected
+disconnect`, then `Everything up-to-date`, at exit status 1 - so `PL-TFWR` and
+`PL-XQRK` were reading different lines of one output, and the contradiction
+`PL-3V6C` was filed on never existed. The section now gives that sequence as the
+deletion row, and separates what the error's shape rules out from what it
+establishes; who returns the 403 is still unmeasured, so no mechanism is
+asserted. The wider lesson survives unchanged and is arguably sharper: the head
+was right that nothing was established, and wrong about why.
+
 **The generalisable part, for the three heads still open.** A `root-cause-of:`
 field is a *hypothesis* that one mechanism explains its members, and working
 the head is what tests it. This one failed the test, and the failure was worth
