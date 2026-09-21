@@ -3,12 +3,14 @@ id: PL-LN69
 title: Instruction-set growth is measured but never tested for effect, so a rule can be added on an argument and can never be retired on evidence
 priority: P2
 effort: L
-status: needs-decision
+status: dropped
 classes: docs, session-cost
 touches: CLAUDE.md, .claude/rules/, .claude/hooks/, tools/, docs/resident-instructions.md
+added: 2026-09-21
+closed: 2026-09-21
+reason: Answered rather than built: the project owner ratified no retirement mechanism on 2026-09-21. The three shapes this item proposed were declined, and an independent re-measurement found its own successor's counter-proposal already refused in docs/resident-instructions.md. Four of its derived claims are corrected in the resolution section; the stock figures stand. The real gap was staleness rather than bloat, filed as feature instruction-staleness-audit.
 root-cause-of: PL-H7XN, PL-NJTZ, PL-034, PL-JQY5, PL-JQVB, PL-QV1F, PL-BKQW
 generator: live - the mechanism is untouched and the store is still being handed members; PL-0GMC added 2348 resident characters on 2026-09-21 on an argument alone, and the 1550/day rate since the 2026-09-01 trough is unchanged by any of the seven items below having closed
-added: 2026-09-21
 ---
 
 **Problem.** Every rule in the resident set is there on an *argument* about the
@@ -125,3 +127,67 @@ recorded in `docs/resident-instructions.md` beside the existing test, and the
 first candidate list has been produced and ruled on by the project owner — so
 that at least one rule has been either defended on evidence or retired on it.
 Producing a list nobody acts on does not close this.
+
+## Resolved 2026-09-21: no retirement mechanism (project owner, ratified)
+
+**Decision (project owner, 2026-09-21, ratified, over adding a subsumption
+retirement test and a rule-count tripwire, both of which this item's own
+successor session proposed and then withdrew).** Rule retirement gets no second
+test and no new signal. Citation frequency, the read-log extension and evals are
+all declined. The instruction set is left as it is.
+
+**Why the recommendation was withdrawn.** An independent re-measurement session
+proposed a subsumption test, an enforceable pay-for-it check, and a 150-rule
+tripwire — then found all three already in `docs/resident-instructions.md`:
+
+- The "second test" is the existing one reworded. § "When a resident rule is
+  retired" already admits "a check, a hook, **or a command that prints the rule
+  at the moment it fires**" — which *is* a carrier firing at the same moment.
+  This item's claim that the section "admits exactly one test" is true as a
+  count and misleading as a description.
+- The enforceable pay-for-it check is the fourth bullet of § "Reductions
+  considered and refused", refused because it keys on prose and so "would fire
+  without changing a decision".
+- The rule-count tripwire is the refused ceiling in a different unit.
+
+**Measurement corrections, from walking all 244 commits rather than every
+ninth.** This item's stock figures are right; four of its derived claims are
+not.
+
+| Claim | Filed | Re-measured |
+| --- | --- | --- |
+| Resident / total characters | 66,773 / 258,640 | **Confirmed** on `origin/main` (was measured on an unmerged branch) |
+| Total instruction text "never fell" | never | **Fell at 17 commits**, sum −35,106 — but every one is a relocation to files outside the denominator, so the conclusion survives its evidence |
+| The 2026-09-01 illustration | −13,997 resident while total rose 81,063 → 86,035 | The commit is **2026-08-31**, and total **fell 5,820** at it; the filed span brackets ~20 unrelated commits |
+| Stripping justification buys | ~9,029 chars, 14% | Regex proxy reproduces at 16.9%; **paragraph-level classification gives 71.3%**, of which only 2.0% is bare provenance |
+| "Never retired a rule" | never | **19 rules left residence at once on 2026-08-31** (64 → 45). False in the rule unit |
+
+**Generator attribution was overstated.** Of the seven items named in
+`root-cause-of:`, three (`PL-JQVB`, `PL-QV1F`, `PL-BKQW`) are measurement
+defects, which this brief concedes in its own words — they are caused by the
+absence of a good gauge, not by the retirement test. `PL-JQY5` was dropped as a
+duplicate. Four members, not seven.
+
+**What survives, and it is not nothing.** Since 2026-09-05: 92 consecutive
+commits with zero reduction under every denominator tried. The asymmetry is real
+as a *description* — addition has a moment, retirement has none. But no measured
+adherence failure attributable to resident size exists anywhere in this
+repository, and 65 rules sits an order of magnitude below where any published
+benchmark shows degradation (IFScale, https://arxiv.org/pdf/2507.11538, puts
+2024-era models at 200–300 simultaneous instructions). `PL-6SBB` looks like such
+a failure and is not: it was a co-location problem and co-location fixed it.
+
+**The urgency did not survive either.** 0.95 rules/day came from 21 days with
+sd 1.29 against a mean of 1.11, seven of eighteen observations at zero, and two
+single commits supplying 8 of the 20 rules — remove those two and it is
+0.57/day. Extrapolating that 3–8 months is not defensible.
+
+**What would reopen this**, on ordinary evidence since the decision is ratified:
+a measured adherence failure traceable to resident size, or rule count past ~150
+with the rate still positive over a 60-day window rather than a 21-day one.
+
+**The real gap was elsewhere, and is now filed.** Every mechanism here fires on
+an *edit*; nothing fires with the passage of *time*. The failure that outlives a
+size problem is staleness, not bloat — a rule true in 2026 and false in 2029
+gets obeyed. That is `feature: instruction-staleness-audit` (`PL-T5K1`,
+`PL-PHK4`, `PL-44DG`), approved the same day.

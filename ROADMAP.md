@@ -5423,7 +5423,7 @@ named here, for the reason beat 3 gives.
 - PL-Y4YX (S) PL-L9RD's verify: demands PySide6 in app/theme.py, which that file's own documented invariant forbids, and the invariant's stated reason does not hold either - both tools ast.parse it and neither imports it
 - PL-Z4K6 (S) Decide whether seven readout columns on a 1366 px laptop is wanted, now that dashboard_frame.readout_columns is font-measured and that screen misses the seven-column width by nine pixels
 
-**Cleared before v0.6.0 begins, the workflow lane - 114 entries**
+**Cleared before v0.6.0 begins, the workflow lane - 115 entries**
 
 - PL-LN69 (L) Instruction-set growth is measured but never tested for effect, so a rule can be added on an argument and can never be retired on evidence
 - PL-087W (M) bin/docket verify unions removed assertions per commit and never nets them against a later restore, so a line a session puts back on the check's own advice keeps refusing the branch
@@ -5472,6 +5472,7 @@ named here, for the reason beat 3 gives.
 - PL-3BYK (S) docket digest --profile's ref set block counts item-file edits per ref and sums across refs, while the walk holds one entry per identifier, so anyone predicting a diff count from it over-predicts by about 2x on a clone with overlapping long-lived branches
 - PL-3DN1 (S) bin/docket release accepts a VERSION below the current one, so a typo silently downgrades pyproject.toml's version field
 - PL-3QM9 (S) bin/docket flight reports a branch's age by calendar-date subtraction, so a branch committed 55 minutes ago reads 'last commit 1 day ago' across midnight and a running session looks abandoned
+- PL-44DG (S) measure_resident undercounts the true per-session resident payload by 4,794 characters: the SessionStart digest and the docket skill description are resent every turn and counted by nothing
 - PL-4HKS (S) docs/WORKING_NOTES.md's playback-speed open thread reasons from pre-Qt-port numbers - a 0.011 ms step and 15 ms of chart-point construction - and names PL-010 as unspent headroom, but PL-009 is dropped, PL-010 is done, and the step now costs 0.025 ms
 - PL-4ZK8 (S) bin/docket concurrent offers a batch containing needs-decision and in-flight items, so a fan-out cannot hand it out as-is
 - PL-5B88 (S) verify's suppression check misses @pytest.mark.skip and @pytest.mark.skipif, the two commonest ways a pytest test is disabled: @skip needs its @ against the name and pytest.skip needs its halves adjacent, so the check reports none while a disabled test sits in the diff
