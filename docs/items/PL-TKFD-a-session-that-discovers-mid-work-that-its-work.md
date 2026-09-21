@@ -88,3 +88,21 @@ discovers the falsification mid-work and for an item filed and closed on one
 branch, with a test under `subprojects/docket/tests/test_verify.py` driving it,
 or the reasoning for leaving the `REJECT` to carry the conversation is written
 where the next session meeting one will read it.
+
+## Narrowed by PL-C4W8's Gate 2 staleness sweep, 2026-09-21
+
+**One of the three cases now has a route.** `PL-ZMGR` (commit `21da2f7a`, #798)
+taught `self_declared_falsification` to honour a branch's own `falsifies:` when
+the commission is at `needs-decision` and the branch closes it - which lands
+after this brief was written and is not mentioned in it. So a session deciding a
+`needs-decision` item and discovering mid-work what its answer falsifies is no
+longer unrouted.
+
+**Two cases remain, and they are what is left of this item.** The exemption
+gates strictly on `commission.status == "needs-decision"`, so a **`ready`
+item's** mid-work discovery - this brief's primary framing - still has no
+route. And an item **captured and closed on one branch** is still refused, which
+`PL-ZMGR`'s own brief records as deliberate rather than as an oversight.
+
+Re-scope to those two before working it; the `needs-decision` case above is
+done and should not be rebuilt.

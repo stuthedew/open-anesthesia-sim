@@ -1926,3 +1926,49 @@ schedule risk in this milestone. Gate 1's precedent: 185 entries frozen
 `ROADMAP.md` edit for entry 20 has not been made, and the reclassification has
 been applied to no entry. The session stopped at 158k of spend, not for the
 work.
+
+## Gate 2's staleness sweep answered question 1 and was stopped from writing question 2, 2026-09-21
+
+`PL-C4W8` ran beat 3 against the 168 clearable entries of the list frozen
+2026-09-21. `PL-D8KW` landed in the same branch. What spans them, and what the
+next session needs:
+
+**Question 1's answer is nothing like the precedent predicted, and the
+difference is explainable.** The 2026-09-19 pass put 13% of a verified sweep
+and 32% of an unverified map dead or overstated, so `PL-C4W8` expected roughly
+22 to 54 of 168. The measured rate is far lower: 2 dead and 5 overstated across
+the entries swept, around 5%. The reason is visible in the two drops - both
+were killed by a *single large event*, the 2026-09-15 PySide6 port (`PL-3JP0`)
+and one queue-tool fix (`PL-Z9K5`). Gate 1's entries had a Flet-to-Qt rewrite
+sitting in the middle of their lifetime; Gate 2's were filed almost entirely
+after it, against a tree that has since only been added to. A staleness rate is
+a fact about how much upheaval a window contained, not a constant of the store,
+and the next gate should re-derive it rather than inherit either number.
+
+**Question 2 was answered and deliberately not written.** `PL-YVP7` carries it.
+`plan.py`'s `gate()` puts an entry inside the milestone only when
+`item.feature == feature`; `feature:` holds one string; and 147 of the 170
+clearable entries already carry one. So "the entry carries `feature:
+interface-areas`" is not a label added beside what an entry has - it is written
+over it, destroying the membership `bin/docket feature` reports completion
+against. Every confirmed candidate is in that 147: `PL-CNCF` and `PL-PGZF`
+carry `chart-readout`, `PL-WZVZ` carries `anesthesia-machine`. The sweep
+recorded its verdicts and stopped rather than spend a ratified decision's
+mechanism on entries it would damage.
+
+**The verdicts themselves are sound and should not be re-derived.** Two entries
+turn on the mechanism the milestone names outright - `simulation_view.py`'s
+`plot_width_px=max(concentration, wash_in)`, the column budget read across
+sibling plots that stop being siblings - and that was checked directly against
+the tree rather than taken from a report. `PL-WZVZ` is the one to leave alone
+whatever is decided: it is `safety`-classed, inherited from Gate 1, and
+`ROADMAP.md`'s gate section writes out by name where it sits and why.
+
+**The counter-precedent held up.** The Qt port was argued to redecide the
+visuals and did not (10 insertions, 29 deletions in `theme.py`). Sweeping for
+question 2 found the same discipline pays: three of the design round's six
+named candidates - `PL-V67Q`, `PL-QYBW`, `PL-Z4K6` - came back NOT on
+inspection. `PL-Z4K6` is the sharpest case, since `ROADMAP.md` already reasons
+that two of its three levers wait on planned-milestone item 33 in `v0.7.x`
+rather than on this milestone. Titles read in a design round are not evidence,
+which is what this pass existed to demonstrate.

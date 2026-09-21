@@ -75,3 +75,25 @@ has a running dashboard, not before.
 **Done when.** The delivered rate is re-measured on the owner's machine against
 the ported interface, and the label is either left alone with the reasoning
 recorded, qualified, or joined by a delivered-rate readout.
+
+## Narrowed by PL-C4W8's Gate 2 staleness sweep, 2026-09-21
+
+**The measurement is dead; the question may not be.** The 73-91% figure and
+the 26-45 ms `page.update()` term were both taken against Flet's asyncio timer
+dispatch, and the 2026-09-15 PySide6 port (`ae8fc7bc`) removed that mechanism
+entirely. `SimulationView._run_simulation_timer`, which this brief reasons
+about throughout, no longer exists: `simulation_view.py` now builds a
+`QTimer(self)` with `Qt.TimerType.PreciseTimer` and starts it from
+`start_simulation_timer`. So nothing above this section may be cited as a
+current measurement of anything.
+
+What survives is the *concern*, unverified: does the QTimer path deliver the
+labelled multiplier? That is exactly what this brief itself said to settle
+"after the port has a running dashboard, not before", and the port has one.
+Re-measure against the QTimer plumbing before doing anything else here; do not
+carry the old percentages forward.
+
+**Found alongside it:** `src/anesthesia_sim/app/playback.py:54` still cites
+`SimulationView._run_simulation_timer` in live prose. That is drift in a live
+document rather than in a closed brief, and it is filed rather than repaired
+here because it is outside this item's `touches`.

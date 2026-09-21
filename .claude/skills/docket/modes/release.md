@@ -40,9 +40,12 @@ run found 12 of 134 items dead and 31 more overtaken, 32% of the lane, and a
 churn advisory was built, measured against its verdicts and rejected, so there
 is no mechanical substitute (`PL-LKGL`). Read each frozen entry against the
 tree, drop what no longer reproduces with its `reason`, and correct the briefs
-that overstate what is left. `PL-6ZQY` is the standing item for the pass, and
-its own brief carries a 134-item map whose verification phase never finished —
-nothing in it may be acted on without re-checking against the tree.
+that overstate what is left. **File the pass as its own item under `feature:
+gate-staleness-sweep`, and do not look for a standing one** — an item named as
+the instrument can close, and the next gate's session then reads `done`
+(`PL-D8KW`). `PL-6ZQY`, the one pass that has run, carries a 134-item map whose
+verification phase never finished; nothing in it may be acted on without
+re-checking against the tree.
 
 **Recorded debt is cleared before a new milestone begins.** `ROADMAP.md`'s
 "The debt gate" is the rule: open items classed `defect`, `safety`, `science`,
