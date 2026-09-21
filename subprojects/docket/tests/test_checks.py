@@ -1385,6 +1385,81 @@ def test_reading_the_store_for_the_words_is_not_running_the_command() -> None:
     assert not _has(analyze([item], TODAY).errors, "runs `docket verify`")
 
 
+# The two halves of "this command proves nothing" that are decidable from the
+# store, so they are refused by a bare `docket check` - the gate a session runs
+# before it pushes - rather than by the replay behind `--verify`, which is CI
+# only. Three items carried `verify: true` on one branch on 2026-09-20 and
+# learned it from a red CI run after review had started (`PL-J3WK`).
+
+
+def test_a_no_op_verify_command_is_an_error() -> None:
+    report = analyze([_item(verify="true")], TODAY)
+    assert _has(report.errors, "exits 0 against every tree")
+    assert _has(report.errors, "ACCEPT")
+
+
+def test_every_spelling_of_a_command_that_cannot_fail_is_rejected() -> None:
+    """Including the ones a placeholder is actually written as."""
+    for command in ("true", "  true  ", ":", "exit 0", "/bin/true", "true;", "true  # for now"):
+        report = analyze([_item(verify=command)], TODAY)
+        assert _has(report.errors, "exits 0 against every tree"), command
+
+
+def test_a_command_that_merely_contains_the_word_true_is_accepted() -> None:
+    """The rule is exact-match, so a real command naming the program is not it."""
+    for command in ("grep -q 'true' a.py", "test -f true.py", "python3 -c 'assert True'"):
+        report = analyze([_item(verify=command)], TODAY)
+        assert not _has(report.errors, "exits 0 against every tree"), command
+
+
+def test_a_command_whose_effect_is_a_no_op_is_left_to_the_replay() -> None:
+    """The judgment half, and it stays where running it is the only way to know.
+
+    `PL-J3TV` recorded `! grep -q '<phrase>' <file>` for a phrase the file
+    splits across two source lines, so the `grep` could never match and the
+    negation always passed. Nothing in the field says so - only the file it
+    reads does - and a rule that guessed would be scripting the judgment half.
+    """
+    item = _item(verify="! grep -q 'delete just that one ref' .claude/hooks/no-prune-guard.sh")
+    assert not _has(analyze([item], TODAY).errors, "exits 0 against every tree")
+
+
+def test_two_open_items_recording_one_command_are_rejected() -> None:
+    items = [
+        _item(identifier="PL-K7QX", verify="grep -q needle a.py"),
+        _item(identifier="PL-B1C2", verify="grep -q needle a.py"),
+    ]
+    report = analyze(items, TODAY)
+    assert _has(report.errors, "record the same `verify:` command")
+    assert _has(report.errors, "PL-B1C2, PL-K7QX")
+
+
+def test_a_closed_item_does_not_make_an_open_one_share_a_command() -> None:
+    """A settled item is making no claim on the command any more."""
+    items = [
+        _item(identifier="PL-K7QX", verify="grep -q needle a.py"),
+        _item(identifier="PL-D0N3", status="done", closed=TODAY, verify="grep -q needle a.py"),
+    ]
+    assert not _has(analyze(items, TODAY).errors, "record the same `verify:` command")
+
+
+def test_commands_differing_inside_a_quoted_argument_are_not_one_command() -> None:
+    """Exactness, and the case that buys it: the two `grep`s read different files."""
+    items = [
+        _item(identifier="PL-K7QX", verify="grep -q 'a  b' a.py"),
+        _item(identifier="PL-B1C2", verify="grep -q 'a b' a.py"),
+    ]
+    assert not _has(analyze(items, TODAY).errors, "record the same `verify:` command")
+
+
+def test_items_sharing_a_command_that_cannot_fail_are_told_once() -> None:
+    """Each is already being told to write a command; the sharing adds nothing."""
+    items = [_item(identifier="PL-K7QX", verify="true"), _item(identifier="PL-B1C2", verify="true")]
+    report = analyze(items, TODAY)
+    assert _has(report.errors, "exits 0 against every tree")
+    assert not _has(report.errors, "record the same `verify:` command")
+
+
 def test_piping_docket_checks_output_raises_an_advisory() -> None:
     """The one shape that can pass vacuously, and it is a judgment, so it warns.
 
@@ -1608,7 +1683,6 @@ def _landed(**overrides: object) -> LandedReport:
     base: dict[str, object] = dict(
         passing=("PL-K7QX",),
         blocked=(),
-        shared=(),
         vacuous=(),
         timed_out=(),
         unavailable=(),
@@ -1663,14 +1737,6 @@ def test_a_landed_item_names_the_delegation_gate_it_leaves_open() -> None:
     assert _has(_landed_errors(_landed()), "ACCEPT")
 
 
-def test_a_landed_item_sharing_a_command_is_named_as_proving_nothing() -> None:
-    messages = _landed_errors(
-        _landed(passing=("PL-K7QX", "PL-B1C2"), shared=("PL-K7QX", "PL-B1C2"))
-    )
-    assert _has(messages, "share a command with another open item")
-    assert _has(messages, "give each its own")
-
-
 def test_a_blocked_item_is_told_the_one_reading_that_is_left() -> None:
     """`PL-RC0M`: "close it" is the one repair that is certainly wrong here.
 
@@ -1694,18 +1760,9 @@ def test_a_blocked_item_is_not_also_counted_in_the_two_reading_finding() -> None
     assert _has(messages, "1 of 4 checked")
 
 
-def test_a_blocked_item_sharing_a_command_is_not_told_twice() -> None:
-    # `shared` says the command proves nothing, which the blocked sentence has
-    # already said outright, so it is not appended a second time.
-    messages = _landed_errors(
-        _landed(passing=("PL-K7QX",), blocked=("PL-K7QX",), shared=("PL-K7QX",))
-    )
-    assert not _has(messages, "share a command with another open item")
-
-
 def test_nothing_is_said_when_no_open_item_has_landed() -> None:
-    assert _advisories(_landed(passing=(), shared=())) == []
-    assert not _has(_landed_errors(_landed(passing=(), shared=())), "already passes")
+    assert _advisories(_landed(passing=())) == []
+    assert not _has(_landed_errors(_landed(passing=())), "already passes")
 
 
 def test_a_landed_check_that_could_not_run_is_reported_as_not_checked() -> None:
@@ -3183,7 +3240,7 @@ def test_a_passing_command_that_reads_the_remote_is_an_advisory_not_an_error() -
     default-branch run for that is the mirror of the window `ROADMAP.md`
     already made an advisory at the other end.
     """
-    landed = _landed(passing=("PL-K7QX",), external=("PL-K7QX",), shared=())
+    landed = _landed(passing=("PL-K7QX",), external=("PL-K7QX",))
 
     assert not _has(_landed_errors(landed), "already passes")
     assert _has(_advisories(landed), "reads past the tree")
@@ -3198,7 +3255,7 @@ def test_a_passing_command_that_only_reads_the_tree_is_still_an_error() -> None:
     merged. Softening it would have thrown away the finding the check exists
     for in order to fix a case it never covered.
     """
-    landed = _landed(passing=("PL-K7QX",), external=(), shared=())
+    landed = _landed(passing=("PL-K7QX",), external=())
 
     assert _has(_landed_errors(landed), "already passes")
     assert not _has(_advisories(landed), "reads past the tree")
@@ -3210,7 +3267,7 @@ def test_reaching_outside_the_tree_also_softens_the_blocked_wording() -> None:
     It rests on the work not having landed, which a command reading the remote
     can no longer establish - the world may simply have moved.
     """
-    landed = _landed(passing=("PL-K7QX",), blocked=(), external=("PL-K7QX",), shared=())
+    landed = _landed(passing=("PL-K7QX",), blocked=(), external=("PL-K7QX",))
 
     assert not _has(_landed_errors(landed), "is blocked but")
     assert _has(_advisories(landed), "reads past the tree")

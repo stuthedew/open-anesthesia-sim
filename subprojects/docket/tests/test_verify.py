@@ -1007,23 +1007,15 @@ def test_a_closed_item_is_not_asked_whether_it_landed(tmp_path: Path) -> None:
     assert already_passing(root, items).passing == ()
 
 
-def test_a_landed_command_shared_by_two_open_items_proves_neither(tmp_path: Path) -> None:
+# The shared-command finding this module used to compute lives in `checks.py`
+# now, where it is read off the store rather than off a run: a command recorded
+# against two open items proves neither, whatever executing it returns, and
+# `test_checks.py` pins it. What stays here is that the replay still reports
+# both of them as passing - the finding it *can* only reach by running them.
+def test_two_open_items_sharing_a_command_both_report_as_passing(tmp_path: Path) -> None:
     root = _repo(tmp_path)
     items = [_item(identifier="PL-K7QX", verify="true"), _item(identifier="PL-41B2", verify="true")]
-    report = already_passing(root, items)
-    assert report.passing == ("PL-K7QX", "PL-41B2")
-    assert report.shared == ("PL-K7QX", "PL-41B2")
-
-
-def test_a_command_unique_to_one_landed_item_is_not_called_shared(tmp_path: Path) -> None:
-    root = _repo(tmp_path)
-    items = [
-        _item(identifier="PL-K7QX", verify="true"),
-        _item(identifier="PL-41B2", verify="false"),
-    ]
-    report = already_passing(root, items)
-    assert report.passing == ("PL-K7QX",)
-    assert report.shared == ()
+    assert already_passing(root, items).passing == ("PL-K7QX", "PL-41B2")
 
 
 def test_the_landed_check_declines_rather_than_re_entering_docket_check(

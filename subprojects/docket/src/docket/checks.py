@@ -53,7 +53,7 @@ from .vcs import (
     PullRequestHistory,
     RecordReport,
 )
-from .verify import LandedReport, reads_check_output, reenters_verify
+from .verify import LandedReport, never_fails, reads_check_output, reenters_verify
 
 REQUIRED_BRIEF = ("**Problem.**", "**Why it matters.**")
 DONE_WHEN = "**Done when.**"
@@ -642,6 +642,21 @@ def _check_item(item: Item, report: Report, config: Config) -> None:
             f"{config.items_dir}), or pair a command that passes today with a "
             "`grep` for what the work adds."
         )
+    # Beside the refusal above and for the same reason: the question is
+    # decidable from the field, so the tier that runs the command has nothing to
+    # add. `--verify` found this one on `PL-4W2L`'s branch, where three items
+    # carried `verify: true` - but only after the push, and only in CI, because
+    # `make check` runs `docket check` bare. Both halves of what CI printed that
+    # day are answered here now: this one, and the shared command below
+    # (`PL-J3WK`).
+    if item.verify and never_fails(item.verify):
+        report.errors.append(
+            f"{where}: its `verify:` command is `{item.verify.strip()}`, which exits 0 "
+            "against every tree there has ever been, so it specifies nothing and "
+            "`docket verify` would ACCEPT a branch that did none of the work. Name "
+            "something only the work creates, and run the command and see it fail "
+            "before recording it"
+        )
     # An advisory rather than an error, unlike the refusal above: whether a
     # shell line reads a command's output is a judgment, and the exit-status
     # form beside it is bounded at one level; since `PL-6TP8` the `grep` is
@@ -1174,9 +1189,15 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
     Both readings do close, which is what keeps this from becoming an advisory
     that fires forever and is skimmed past: the first is discharged by setting
     `status: done`, the second by giving the item a command that fails until
-    its work exists. A command shared with another open item is the second
-    with certainty, so it is named separately - closing anything on that
-    evidence would be acting on a command that proves nothing.
+    its work exists.
+
+    The two cases where the second reading is certain *before* anything runs are
+    no longer reported from here. A command shared with another open item, and
+    one that cannot fail at all, are both decidable by reading the store, so
+    `_check_shared_verify` and `_check_item` refuse them on a bare `docket
+    check` - the gate a session runs before it pushes. Reported here as well
+    they would be a second sentence about a defect the run had already refused,
+    and only for the subset that happened to pass (`PL-J3WK`).
 
     A blocked item is the case where only one of the two readings survives, and
     it is worded separately for that reason (`PL-RC0M`). Work nobody can start
@@ -1303,12 +1324,6 @@ def _check_landed(report: Report, landed: LandedReport | None) -> None:
         "branch that did none of the work: rewrite it to name something only the work "
         "creates, and run it and see it fail before recording it"
     )
-    shared = tuple(identifier for identifier in landed.shared if identifier not in named)
-    if shared:
-        message += (
-            f". {', '.join(shared)} share a command with another open item, "
-            "which cannot prove any one of them done - give each its own"
-        )
     report.errors.append(message)
 
 
@@ -2686,6 +2701,52 @@ def _check_lost(report: Report, lost: LostReport | None) -> None:
         )
 
 
+def _check_shared_verify(report: Report) -> None:
+    """One `verify:` command recorded against two or more open items.
+
+    A command proves an item done by failing until that item's work exists. Two
+    open items recording the same command cannot both be in that relation to it:
+    whichever is worked first makes it pass, and from then on the command
+    accepts a branch that did none of the other's work. So this is the
+    non-discriminating reading of a passing command arrived at *with certainty*,
+    and it is reached by counting the store rather than by running anything.
+
+    It used to be reached only by running something. `already_passing` computed
+    the same count, but over the subset that had just passed, so the finding
+    needed the replay to produce it - which is CI only, since `make check` runs
+    `docket check` bare. Three items triaged with one command on 2026-09-20
+    passed every local gate and turned CI red after review had started, and the
+    two sentences CI printed that day are the two rules that now run here
+    (`PL-J3WK`, `PL-4W2L`).
+
+    Exact string equality, and deliberately no normalization. Collapsing runs of
+    whitespace would be right for the words of a shell line and wrong inside a
+    quoted argument, where `grep -q 'a  b'` and `grep -q 'a b'` read different
+    files - so a rule that normalized would report two different commands as one
+    and do it as a hard failure. Exactness costs the case nobody writes and
+    keeps the rule decidable.
+
+    Items whose command cannot fail at all are left out: `_check_item` has
+    already told each of them to write a command that discriminates, and the
+    sharing is a consequence of the placeholder rather than a second defect.
+    The subtraction is the one `_check_landed` makes between its own findings,
+    applied across two checks.
+    """
+    commands: dict[str, list[str]] = {}
+    for item in report.items:
+        if item.status in OPEN_STATUSES and item.verify and not never_fails(item.verify):
+            commands.setdefault(item.verify, []).append(item.identifier)
+    for command, identifiers in commands.items():
+        if len(identifiers) > 1:
+            report.errors.append(
+                f"{', '.join(sorted(identifiers))} are open and record the same "
+                f"`verify:` command, `{command}` - whichever is worked first makes it "
+                "pass, so it cannot prove any one of them done and `docket verify` "
+                "would ACCEPT a branch that did none of the others' work. Give each "
+                "one a command naming something only its own work creates"
+            )
+
+
 def _normalized_feature(name: str) -> str:
     """A feature name with the differences that are never meaningful removed."""
     return name.strip().lower().replace("_", "-").replace(" ", "-")
@@ -2791,6 +2852,7 @@ def analyze(
     _check_references(report, milestones)
     _check_generator_defects(report, settings)
     _check_feature_spellings(report)
+    _check_shared_verify(report)
     _check_touched_items(report, settings)
     _check_filenames(report, settings)
     _check_milestones(report, version)

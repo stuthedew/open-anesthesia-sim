@@ -3,10 +3,11 @@ id: PL-J3WK
 title: make check runs bin/docket check without --verify while CI runs it with, so a verify: command that proves nothing - a literal true, or one shared by three items - passes every local gate and fails CI; both halves of that are decidable statically, without running the 17 commands the flag runs
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, subprojects/docket/src/docket/verify.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-20
+closed: 2026-09-21
 payoff: closes the gap that let three non-discriminating verify: commands pass every local gate and turn CI red after review had started
 verify: grep -q 'def test_a_no_op_verify_command_is_an_error' subprojects/docket/tests/test_checks.py
 ---
@@ -84,3 +85,32 @@ honestly when the string is mistyped or split; one that greps for what the fix
 `push origin --delete` or `modes/capture.md`, and was run and seen to fail
 before being recorded.
 
+**Built 2026-09-21, and `touches` widened to `verify.py` and `test_verify.py`
+for a reason the brief did not foresee.** The shared-command half already
+existed there, as `LandedReport.shared` - a subset of `passing`, so it was
+computed only for the items that had just passed and only on a run that had
+executed them. Adding the static rule beside it would have left two checks
+reporting one defect, the second reachable only when the first had already
+refused the store, which is the "fires every run without changing a decision"
+shape `CLAUDE.md` asks checks to be retired for. So the field is gone and the
+rule has one home: `_check_shared_verify` in `checks.py`, reading every open
+item rather than the passing subset. `never_fails` is in `verify.py` beside
+`reenters_verify` and `reads_check_output`, which is where this project keeps
+its pure predicates over a `verify:` line.
+
+**The count the brief asked for, taken 2026-09-21 against the whole store:
+zero and zero.** No open item's command is a literal no-op, and no command is
+recorded against two open items - 220 open items carry one, and 893 closed
+ones do. The brief named two readings of a large count and neither applies, so
+the third is what this is: the store is clean today, the rule costs a dict and
+a regex, and it exists to catch the regression rather than a backlog. The
+regression is not hypothetical - `PL-4W2L`'s branch put three items in exactly
+this state four weeks after the store was last clean of it, and `PL-L9JS` had
+repaired seven before that.
+
+**And the rate it is worth against, measured the same day.** Over the most
+recent 100 completed `pull_request` runs of `quality.yml` - 2026-09-21
+01:06Z to 20:57Z, 74 green, 15 cancelled by the workflow's own concurrency,
+11 red - **6 of the 11 failures were the `--verify` replay**, more than any
+other step. That is the largest single source of red CI on this project in
+that window, and it is the one gate `make check` cannot run.

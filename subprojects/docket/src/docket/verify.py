@@ -591,6 +591,47 @@ def _outside_quotes(command: str) -> str:
     )
 
 
+#: The shell lines that exit 0 against every tree there has ever been. Exact
+#: spellings rather than a parse, because that is the half of "does this command
+#: discriminate" a script may answer: whether `true` can fail is a fact about
+#: the shell, while whether `grep -q 'delete just that one ref' <file>` can is a
+#: fact about the file it reads, and guessing at the second is the judgment half
+#: `CLAUDE.md` reserves for a person. The path spellings are here because they
+#: are the same program under another name, and `:` because it is the shell
+#: built-in whose whole purpose is to succeed.
+NEVER_FAILS = frozenset({"true", "/bin/true", "/usr/bin/true", ":", "exit 0"})
+
+#: A trailing `#` comment, outside quotes. Stripped before the comparison so
+#: that `true  # placeholder, PL-K7QX` is read as the `true` it is.
+TRAILING_COMMENT_RE = re.compile(r"#.*$")
+
+
+def never_fails(command: str) -> bool:
+    """Whether this `verify:` command exits 0 whatever tree it is run against.
+
+    A `verify:` command is a specification of what would prove the item done,
+    so one that cannot fail specifies nothing: `docket verify` would ACCEPT a
+    branch that did none of the work, and the landed replay would report the
+    item as a candidate for closing forever. It is also the placeholder a
+    session reaches for while triaging in bulk - three items were given
+    `verify: true` on one branch on 2026-09-20, and the store had no way to say
+    so until CI ran the commands.
+
+    Decidable from the field alone, which is why it is here rather than behind
+    `--verify`: nothing about the tree can make `true` return anything else, so
+    the expensive tier has nothing to add. The rule is exact-match against
+    `NEVER_FAILS` and deliberately nothing cleverer - a command whose *effect*
+    is a no-op, like a `grep` for a string that is not in the file it reads, is
+    only answerable by running it, and that question stays where it is
+    (`PL-J3WK`).
+
+    One normalization each side: a trailing comment is stripped, and a trailing
+    `;` is, because neither changes what the line does.
+    """
+    stripped = TRAILING_COMMENT_RE.sub("", _outside_quotes(command))
+    return " ".join(stripped.strip().rstrip(";").split()) in NEVER_FAILS
+
+
 def reenters_verify(command: str) -> bool:
     """Whether this `verify:` command runs the command that would be running it.
 
@@ -2058,11 +2099,14 @@ class LandedReport:
     status can separate them. So this reports candidates and never a verdict,
     which is why nothing here sets a status or raises an error.
 
-    `shared` is the part that *is* decidable. A command recorded against more
-    than one open item cannot be proving any single one of them done, whatever
-    it returns, so those candidates are the second reading with certainty
-    rather than a maybe - and their fix is to give each item a command of its
-    own, not to close anything.
+    The decidable parts of the same question are not here at all, and that is
+    the point of where they live. A command recorded against more than one open
+    item cannot be proving any single one of them done, and one that exits 0
+    against every tree proves nothing about any - both are answered by reading
+    the store, so `checks.py` refuses them on a bare `docket check` and nothing
+    that reaches here can still be in either state (`PL-J3WK`). This field once
+    carried the shared half as a subset of `passing`, which meant the finding
+    arrived only in CI and only for the items that happened to pass.
 
     `blocked` is the other decidable part, and for the mirror reason. It is the
     subset of `passing` whose items nobody can start, so the first reading -
@@ -2106,7 +2150,6 @@ class LandedReport:
     #: does not discriminate" certainty does not survive a command that could
     #: simply have been answered by a changed world.
     external: tuple[str, ...] = ()
-    shared: tuple[str, ...] = ()
     #: Open items whose command matched no test, so it asserted nothing. Unlike
     #: `passing` this is a verdict rather than a candidate: `selects_no_test`
     #: only says so where pytest's own exit code says so.
@@ -2428,18 +2471,10 @@ def already_passing(
         if identifier in scoped_only and identifier not in outside
     )
 
-    counts = Counter(item.verify for item in candidates)
-    named = set(passing)
-    shared = tuple(
-        item.identifier
-        for item in candidates
-        if item.identifier in named and counts[item.verify] > 1
-    )
     return LandedReport(
         passing=tuple(passing),
         blocked=blocked,
         external=external,
-        shared=shared,
         vacuous=tuple(vacuous),
         timed_out=tuple(timed_out),
         unavailable=tuple(unavailable),
