@@ -197,14 +197,20 @@ before finishing.
 
 - Keep a session short and scoped to one topic; start a fresh one for an
   unrelated topic rather than continuing or compacting a long one. **Hand off
-  at about 150,000 tokens — and check that budget before starting an item,
-  not on reaching it** (project owner, 2026-09-16): a session cannot feel its
-  own length, so read it — one call to `get_session`, field
-  `external_metadata.context_usage.used_tokens` — as you pick up the next
-  item, and if it will not fit, hand off instead of starting. Checked before
-  the spend the budget cannot be overshot, and work never started cannot be
-  cut off half-done; as a stopping rule it was open to both, and the session
-  that wrote it read 176,689 before it looked (`PL-NW76`). Past the budget
+  at 150,000 tokens of spend — and check that budget before starting an item,
+  not on reaching it** (project owner, 2026-09-16; re-anchored from the
+  absolute reading to spend 2026-09-21, ratified, over a budget that is mostly
+  a budget on the apparatus and moves whenever the resident set does).
+  *Spend* is what this session added over the context it started with;
+  `python3 tools/context_reading.py` prints it from the session's own
+  transcript. Read it as you pick up the next item, and if the item will not
+  fit in what is left, hand off instead of starting. **Not `get_session`:**
+  `context_usage.used_tokens` is written at turn boundaries, so it never moves
+  inside a turn and reads 0 before the first (`PL-W80S`, `PL-BZVY`). Checked
+  before the spend the budget cannot be overshot, and work never started cannot
+  be cut off half-done; as a stopping rule it was open to both, and the session
+  that wrote it was already at 176,689 of context, an absolute reading, when
+  it first looked (`PL-NW76`). Past the budget
   anyway — an item that ran long, or a design round holding its reasoning in
   the conversation — **externalize before handing off**: the item,
   `docs/WORKING_NOTES.md`, a pushed commit. The handoff keeps only what is on

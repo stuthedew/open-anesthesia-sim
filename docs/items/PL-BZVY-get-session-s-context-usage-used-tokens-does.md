@@ -3,12 +3,14 @@ id: PL-BZVY
 title: get_session's context_usage.used_tokens does not refresh within a turn, so the prescribed budget check reads a start-of-turn value for the whole of an item worked in one turn
 priority: P3
 effort: S
-status: blocked
+status: done
 classes: session-cost, infra
 feature: context-budget-reading
 touches: CLAUDE.md
 blocked-by: PL-W80S
 added: 2026-09-20
+closed: 2026-09-21
+verify: grep -qF 'tools/context_reading.py' CLAUDE.md && grep -qF 'never moves inside a turn' CLAUDE.md
 ---
 
 **Problem.** get_session's context_usage.used_tokens does not refresh within a turn, so the prescribed budget check reads a start-of-turn value for the whole of an item worked in one turn
@@ -74,3 +76,10 @@ the budget names - the observable itself is no longer the open question, and
 `tools/context_reading.py` prints `baseline`, `context` and `spend` so it is
 correct under either answer.
 
+## Closed 2026-09-21 by the decision this was blocked on
+
+`PL-W80S` took spend-since-baseline, read live from the session's transcript by
+`tools/context_reading.py`, so the budget no longer reads `used_tokens` at all
+and this item's defect is out of the path rather than worked around. `CLAUDE.md`
+now records the finding in one clause - the field never moves inside a turn,
+and reads 0 before the first - so a session does not rediscover it.

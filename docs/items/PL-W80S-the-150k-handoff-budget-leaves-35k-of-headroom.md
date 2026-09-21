@@ -3,12 +3,13 @@ id: PL-W80S
 title: The 150k handoff budget leaves ~35k of headroom over a ~115k session-start baseline, so read literally it refuses to start almost any M item
 priority: P2
 effort: M
-status: needs-decision
+status: done
 classes: session-cost
 feature: context-budget-reading
-touches: CLAUDE.md, tools/context_reading.py, tests/unit/test_context_reading.py, docs/ARCHITECTURE.md, docket.toml, docs/items/PL-BZVY-get-session-s-context-usage-used-tokens-does.md
-verify: grep -q 'def test_a_missing_reading_exits_non_zero_rather_than_reporting_zero' tests/unit/test_context_reading.py && grep -q context_reading.py docs/ARCHITECTURE.md
+touches: CLAUDE.md, tools/context_reading.py, tests/unit/test_context_reading.py, docs/ARCHITECTURE.md, docs/maintainer.md, docket.toml, docs/items/PL-BZVY-get-session-s-context-usage-used-tokens-does.md
 added: 2026-09-20
+closed: 2026-09-21
+verify: grep -q 'def test_a_missing_reading_exits_non_zero_rather_than_reporting_zero' tests/unit/test_context_reading.py && grep -q context_reading.py docs/ARCHITECTURE.md
 ---
 
 **Problem.** The 150k handoff budget leaves ~35k of headroom over a ~115k session-start baseline, so read literally it refuses to start almost any M item
@@ -140,3 +141,19 @@ therefore ignored instead.
 decision (2026-09-16) reopens on ordinary evidence and goes back to them: the
 quantity, and whether 150,000 carries over to it.
 
+## Decided and landed 2026-09-21
+
+**Both recommendations ratified** (project owner, 2026-09-21, ratified, over
+keeping the budget on the absolute reading and accepting one that is mostly a
+budget on the apparatus and moves whenever the resident set does). The budget
+measures **spend since the session's own baseline**, and **150,000** carries
+over to it - the same figure ratified on 2026-09-16, re-anchored to the
+quantity it was always about rather than a new number chosen to fit.
+
+`CLAUDE.md` § "Session and tool-use efficiency" now states it, names
+`python3 tools/context_reading.py` as the instrument, and says in one clause
+why not `get_session`. The resident set grew 442 characters; nothing was cut
+to offset it, because `tools/doc_check.py`'s own advisory forbids trimming
+other resident text for that purpose, and the addition is text the decision
+required - the new quantity, the new instrument, and the attribution clause
+the ratified-decision rule mandates.
