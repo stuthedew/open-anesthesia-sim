@@ -1,13 +1,13 @@
 ---
 id: PL-WZVZ
-title: 'Make an inter-machine difference attributable: which parameter differs, and what it does to the result'
+title: Make an inter-machine difference attributable: which parameter differs, and what it does to the result
 priority: P3
 effort: M
 status: blocked
 classes: safety, anticipated, ux
 feature: anesthesia-machine
 touches: docs/MODEL.md
-blocked-by: PL-TH35, PL-R1WQ
+blocked-by: PL-TH35, PL-R1WQ, PL-TBMK, PL-4TWW
 added: 2026-09-02
 payoff: stops a learner reading a numerical difference between two machines as a fact about the brand, when it was produced by one named parameter the interface never showed them
 ---
@@ -132,3 +132,35 @@ one, so it is held here only by condition 1.
 One machine, no trade name shown, nothing being misattributed - so this stays
 `P3` behind its blockers rather than returning to the debt gate. The band is
 owed the moment either condition lifts.
+
+## Re-pointed again, 2026-09-21 (`PL-0H5D`): the condition that actually holds this is now in a field
+
+`blocked-by` recorded only the display-surface half — `PL-TH35` (the View
+contract) and `PL-R1WQ` (the view registry) — while the other half of the
+re-point above, *there is nothing to select between*, lived in this brief and in
+`ROADMAP.md`'s Gate 1 deferral and in no field any command reads. The
+consequence was dated: closing those two inside v0.6.0 would have emptied
+`blocked-by`, and every reader of it — `bin/docket check`'s promote advisory,
+`wave`'s gate count, `next`'s ranking — would have reported this item startable.
+Promoting it ends the `anticipated` exemption, so it would have arrived at `P1`,
+`safety`-classed, at the front of `bin/docket next`, unbuildable. That exact
+false-ready happened once already, on 2026-09-20 (`PL-8G48`), and was caught
+only because a session read the item against the tree.
+
+**Two items now carry the condition**, filed rather than inferred:
+`PL-TBMK` (write a second machine profile) and `PL-4TWW` (build the surface that
+selects between profiles). Neither is scheduled by any milestone section, which
+is the point: the unscheduled state is now visible in the queue instead of
+readable only in prose. `PL-4TWW` carries this item's attribution requirement
+into its own `Done when.`, so the chooser and the explanation are built
+together.
+
+**Chosen over a `blocked-on:` field taking a predicate over the tree** (project
+owner, 2026-09-21, ratified), which would have added a store field every command
+reads for a population of one known case.
+
+**Nothing about the deferral changed.** This entry still clears in Gate 2 and
+v0.5.0 still ships without it (`PL-S5Q9`), re-examined against the tree on
+2026-09-21 and confirmed over pulling `PL-1FT6`, `PL-R1WQ` and `PL-TH35` forward
+— which would not have unblocked it, since `src/anesthesia_sim/data/machines/`
+holds one profile whatever happens to those three.
