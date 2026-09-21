@@ -3,11 +3,12 @@ id: PL-L609
 title: tools/fixture_id_check.py cannot see an id spelled with underscores as a keyword argument, which is how PL-AAAA-open.md reached the doc_check fixtures
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: one-id-grammar
-touches: tools/fixture_id_check.py, tests/unit/test_fixture_id_check.py, tests/unit/test_doc_check.py
+touches: tools/fixture_id_check.py, tests/unit/test_fixture_id_check.py, tests/unit/test_doc_check.py, docs/ARCHITECTURE.md
 added: 2026-09-21
+closed: 2026-09-21
 payoff: an id spelled as a keyword argument is judged by the same grammar as one spelled as a literal, so the form that kept four fixture ids out of the scan cannot hide a malformed one
 verify: grep -q 'def test_an_id_spelled_as_a_keyword_argument_is_judged' tests/unit/test_fixture_id_check.py
 ---
