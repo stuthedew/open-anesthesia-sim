@@ -5423,8 +5423,9 @@ named here, for the reason beat 3 gives.
 - PL-Y4YX (S) PL-L9RD's verify: demands PySide6 in app/theme.py, which that file's own documented invariant forbids, and the invariant's stated reason does not hold either - both tools ast.parse it and neither imports it
 - PL-Z4K6 (S) Decide whether seven readout columns on a 1366 px laptop is wanted, now that dashboard_frame.readout_columns is font-measured and that screen misses the seven-column width by nine pixels
 
-**Cleared before v0.6.0 begins, the workflow lane - 113 entries**
+**Cleared before v0.6.0 begins, the workflow lane - 114 entries**
 
+- PL-LN69 (L) Instruction-set growth is measured but never tested for effect, so a rule can be added on an argument and can never be retired on evidence
 - PL-087W (M) bin/docket verify unions removed assertions per commit and never nets them against a later restore, so a line a session puts back on the check's own advice keeps refusing the branch
 - PL-2DTK (M) docket verify --self cancels an added line against its removal only within the commits it selects per id, so an item is charged with removing an assertion a commit that does not name it had added on the same branch
 - PL-3LLZ (M) Four fakes in test_vcs.py each answer the same commit-paths question, and each new git read has to be taught to all of them
