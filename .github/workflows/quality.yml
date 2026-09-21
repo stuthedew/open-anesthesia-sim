@@ -192,8 +192,22 @@ jobs:
           python-version: '3.11'
 
       - run: python3 tools/doc_check.py check
+      # Beside `doc_check` because it imports it and asks the notation half of
+      # its question, which is the order the Makefile runs them in too. Here
+      # rather than below because it reads Markdown with the standard library
+      # and nothing else: measured 1.6 s against this tree, under this
+      # section's own 3.11 interpreter.
+      - run: python3 tools/possessive_section_check.py
       - run: python3 tools/branch_id_check.py
       - run: python3 tools/rules_paths_check.py
+      # 0.07 s, and it reads two files. It was `make check`-only from
+      # 2026-09-13, which meant the cap on the always-loaded session-start
+      # context - paid by every session, forever, once an entry is added
+      # without a thought for it - was enforced only where somebody remembered
+      # to run the local gate. `tools/doc_check.py`'s `check_gate_parity`
+      # refuses that asymmetry now rather than leaving it to be noticed
+      # (`PL-PBP5`).
+      - run: python3 tools/dead_ends.py check
       # Bare, unlike the `--verify` line further down: nothing has installed
       # `uv` at this point in the job, so every `verify:` command would be "not
       # found" and the replay would decline rather than answer. What is being
@@ -218,6 +232,15 @@ jobs:
       # No paths: `[tool.mypy] files` in pyproject.toml names what the gate
       # covers, and says why `tests/` is not in it.
       - run: uv run mypy
+      # The other half of that answer, and it has to run *after* the line above
+      # rather than in the floor section, for two separate reasons. It shells
+      # out to mypy, so it needs the virtualenv the floor section exists to
+      # prove is unnecessary; and it analyses the trees `[tool.mypy] files`
+      # excludes, so the run above has already put everything they import into
+      # `.mypy_cache`. Measured on this tree, four cores: 27.3 s from a cold
+      # cache against 9.2 s straight after `uv run mypy`. Reversing the two
+      # lines would triple its bill and prove nothing extra (`PL-PBP5`).
+      - run: uv run python tools/ignore_check.py
       # The same invocation as `make check`'s pytest line, and it has to stay
       # the same: `core/` is at 100% of statements and branches, and this is
       # what keeps it there. See the comment in the Makefile for why the
