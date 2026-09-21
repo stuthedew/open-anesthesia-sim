@@ -8,6 +8,7 @@ classes: defect, infra
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/store.py, subprojects/docket/src/docket/duplicates.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/verify.py, subprojects/docket/README.md, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_duplicates.py, subprojects/docket/tests/test_verify.py, docs/items/PL-SHTR-docket-verify-does-not-set-landed-guard-so-an.md
 added: 2026-09-20
 closed: 2026-09-21
+pr: 820
 payoff: gives the one queue field a session cannot correct a correction path, and clears two entries now measured false
 verify: grep -q 'def test_a_recurrence_entry_can_be_withdrawn' subprojects/docket/tests/test_cli.py
 ---
