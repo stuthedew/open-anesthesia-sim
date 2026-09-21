@@ -454,12 +454,26 @@ is a property of the display rather than of the model:
   `BranchedCase.fork_points_s` and takes the branch through `fork_at`;
   `dashboard_frame.fork_offer` decides what it shows and
   `qt_widgets.ForkPanel` draws it. A learner marks the decision point and
-  then forks there, which is the order the two panels are read in — **but the
-  mark itself is not yet one of the instants the panel offers.** `PL-B8MK`
-  made a bookmark halt forkable through `fork_at_halt`, which records no
-  keyframe and so adds nothing to `fork_points_s`; wiring the panel to it is
-  `PL-TYWQ`. Until then a learner may mark a decision point, be stopped at
-  it, and still have to fork at the nearest control event.
+  then forks there, which is the order the two panels are read in.
+- **Two controls, because the two doors to a fork have different lifetimes**
+  (`PL-TYWQ`). The selector offers `BranchedCase.fork_points_s` and takes the
+  branch through `fork_at`. Below it, a second button takes the branch at the
+  bookmark crossing the trunk is standing on, through `fork_at_halt`, and is
+  on the panel only while it is standing on one — labelled with the instant
+  the branch will open at and that the trunk stopped there on a mark. A
+  bookmark records no keyframe, so the halt adds nothing to `fork_points_s`
+  and the selector's membership never changes as the run moves. Shape chosen
+  by the project owner (2026-09-21, ratified, over one list that grows a row
+  while the run is halted): a vanishing list row is detectable only against a
+  remembered list, which is the stale-state case
+  `.claude/rules/expert-review.md` names, where a vanishing control is
+  detectable on sight. The button names no instant to `fork_at_halt`, which
+  takes none — so the hazard that method exists to prevent, a fork asked for
+  at the instant a learner *marked* rather than the step the run stopped on,
+  is not expressible through the interface either. `fork_offer` reads the
+  halt from the **trunk** rather than from the displayed runs, because
+  `fork_at_halt` forks the trunk and refuses a branch: a panel drawn from a
+  branch's halt would offer a fork the case cannot take.
 - **`SimulationView.add_run` is how a run reaches the dashboard after
   construction.** Its run set was fixed at construction until `PL-VKJW` —
   "the count cannot change while a dashboard is alive" — so a branch taken
