@@ -8,6 +8,7 @@ classes: housekeeping
 touches: docs/items
 added: 2026-09-20
 closed: 2026-09-21
+pr: 828
 payoff: an open ready item that can never pass its verify stops being offered by bin/docket next, so no session spends its length rediscovering that #793 already shipped the work
 verify: grep -q '^status: dropped' docs/items/PL-TH7P-docket-new-should-print-the-items-a-capture.md
 ---

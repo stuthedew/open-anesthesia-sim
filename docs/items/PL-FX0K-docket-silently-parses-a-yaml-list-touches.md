@@ -9,6 +9,7 @@ feature: docket-store
 touches: subprojects/docket
 added: 2026-09-13
 closed: 2026-09-21
+pr: 826
 payoff: an ambiguous list field is named by docket check instead of arriving empty at the safety pin, so a safety-classed item cannot sit in the bottom band because of how its classes line was spelled
 verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_block_list_field_is_refused' subprojects/docket/tests/test_checks.py
 ---

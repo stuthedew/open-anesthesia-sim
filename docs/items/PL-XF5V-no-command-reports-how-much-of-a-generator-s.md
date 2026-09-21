@@ -9,6 +9,7 @@ feature: convergence-visibility
 touches: subprojects/docket/src/docket/cli.py, subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/plan.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-20
 closed: 2026-09-21
+pr: 829
 payoff: 'are the generators dealt with' is answered by a command reporting each cluster's drain, instead of a script written over the whole store
 verify: grep -q 'def test_a_generator_head_reports_how_much_of_its_cluster_is_open' subprojects/docket/tests/test_cli.py
 ---

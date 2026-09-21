@@ -9,6 +9,7 @@ feature: generator-identification
 touches: CLAUDE.md
 added: 2026-09-21
 closed: 2026-09-21
+pr: 827
 payoff: what enters the one tier that outranks a safety-classed P1 stops depending on which session reads the cluster
 verify: grep -q 'The count decides the record; expected recurrence decides the rank' CLAUDE.md
 ---
