@@ -9,6 +9,7 @@ feature: context-budget-reading
 touches: CLAUDE.md, tools/context_reading.py, tests/unit/test_context_reading.py, docs/ARCHITECTURE.md, docs/maintainer.md, docket.toml, docs/items/PL-BZVY-get-session-s-context-usage-used-tokens-does.md
 added: 2026-09-20
 closed: 2026-09-21
+pr: 835
 verify: grep -q 'def test_a_missing_reading_exits_non_zero_rather_than_reporting_zero' tests/unit/test_context_reading.py && grep -q context_reading.py docs/ARCHITECTURE.md
 ---
 

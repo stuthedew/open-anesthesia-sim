@@ -10,6 +10,7 @@ touches: CLAUDE.md
 blocked-by: PL-W80S
 added: 2026-09-20
 closed: 2026-09-21
+pr: 835
 verify: grep -qF 'tools/context_reading.py' CLAUDE.md && tr '\n' ' ' < CLAUDE.md | tr -s ' ' | grep -qF 'never moves inside a turn'
 ---
 
