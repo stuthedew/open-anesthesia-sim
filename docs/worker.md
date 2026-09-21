@@ -196,19 +196,33 @@ file under `src/anesthesia_sim/data/`, neither of which you may edit.
 
 ## Ref operations a session cannot perform
 
-Two git operations fail from a session in this environment, and they fail in
-the worst available shape: exit status 0, with a last line that reads as
-success. This section records **what happens**, not why - see the last
-paragraph.
+Two git operations fail from a session in this environment, and both end on
+`Everything up-to-date` - a last line that reads as success. **What differs is
+the exit status, and only one of the two is established.** The branch deletion
+exits **1**, with an `HTTP 403` three lines above it (`PL-ZM48`, measured
+2026-09-20). The tag push has never had its exit status recorded: `PL-N936`'s
+transcript does not carry one, and the `0` this section claimed for both rows
+until 2026-09-21 came from `PL-TFWR`'s *branch* deletion - the one operation now
+measured at 1. So read the table's `Exit` column as what it says, and check
+`$?` yourself rather than inheriting a number from the row next door.
 
-| Operation | What a session sees | Whose it is |
-| --- | --- | --- |
-| Push a tag | `send-pack: unexpected disconnect`, then `Everything up-to-date` - and `git push --dry-run` reports `[new tag]` beforehand, so the obvious way to test the capability returns a false green | the project owner (`PL-N936`) |
-| Delete a remote branch | `Everything up-to-date` after a disconnect, or `HTTP 403` | the project owner (`PL-TFWR`, `PL-XQRK`) |
+| Operation | What a session sees | Exit | Whose it is |
+| --- | --- | --- | --- |
+| Push a tag | `send-pack: unexpected disconnect`, then `Everything up-to-date` - and `git push --dry-run` reports `[new tag]` beforehand, so the obvious way to test the capability returns a false green | not established | the project owner (`PL-N936`) |
+| Delete a remote branch | `error: RPC failed; HTTP 403 curl 22`, then `send-pack: unexpected disconnect`, then `fatal: the remote end hung up unexpectedly`, then `Everything up-to-date` | 1 | the project owner (`PL-ZM48`) |
 
 So a session **cannot delete a remote branch**, and cannot push a tag. There is
 no second route: the GitHub MCP server offers `create_branch` and
 `list_branches` and no deletion tool.
+
+**The 403 and the disconnect are one failure, not two.** `PL-TFWR` recorded a
+silent drop and `PL-XQRK` an `HTTP 403` for the same operation on the same day,
+and `PL-3V6C` reasoned from that pair that at most one of them could be the
+failure this project actually meets, since a push cannot both be swallowed and
+be refused with a status code. The 2026-09-20 transcript carries all of it from
+one command, in the order the table gives: the two items read different lines of
+one output. That premise is falsified, and the deletion row is the whole of what
+a session should expect to see.
 
 **The local halves do work, and the half that matters is still yours.**
 `git branch -dr origin/<branch>` clears this clone's remote-tracking ref
@@ -217,24 +231,42 @@ what a branch uniquely carries and landing it on `main` - is a session's job,
 because a tracking ref can be the only surviving copy of a captured item
 (`bin/docket stranded` is what reads it). Only the deletion is withheld.
 
-**Never report one of these done without re-reading the remote.**
-`git ls-remote` is what answers; exit status 0 and `Everything up-to-date` are
-exactly what a session gets when nothing happened. Hand the owner the exact
-commands rather than the intent - a cleanup pass ends by handing over a list,
-not by reporting a job finished.
+**Never report one of these done without re-reading the remote - and read
+`git ls-remote`'s output, never its exit status.** It exits **0** whether the
+branch is there or not; only the presence of a printed ref says which
+(`PL-X9WZ`, re-confirmed 2026-09-21). So the check a careful session reaches
+for to avoid reporting a phantom deletion cannot answer if it is read the
+obvious way. Hand the owner the exact commands rather than the intent - a
+cleanup pass ends by handing over a list, not by reporting a job finished.
 
-**Why they fail is deliberately not stated here.** Two sessions measured the
-same branch deletion on 2026-09-04 and recorded mutually exclusive causes - a
-deletion ref dropped in transit, and an HTTP 403 from GitHub - and both offered
-an empty `recentRelayFailures` as proof the proxy was uninvolved. It is not
-proof: a request declined on policy is not a relay failure, and the container's
-own agent-proxy README lists 403 among the proxy's own outcomes. Settling it
-needs a live deletion attempt read against the proxy's diagnostics at the moment
-it fails, which is destructive and outward-facing, so no session has run it
-(`PL-3V6C`). A wrong cause here would be worse than none, because a session told
-"the proxy drops ref deletions" will generalise it and a session told "the token
-lacks the permission" will not think to retry anything. The table says what
-happens and stops.
+**A third shape, and it is not a refusal at all.** Where GitHub already deleted
+the branch on merge, a `git push --force-with-lease` to it fails with
+`! [rejected] ... (stale info)` rather than a 403, because the lease is compared
+against a remote-tracking ref naming a commit the remote no longer has
+(`PL-X9WZ`, 2026-09-21). Nothing was refused: the branch is simply gone. `git
+branch -dr origin/<branch>` and then a plain `git push -u` is the recipe, and
+`.claude/hooks/no-prune-guard.sh` already prints its first half. Read `stale
+info` as a stale local ref rather than as a permission problem - `PL-483K`
+records a second route to the same message, a `--depth 1` clone whose upstream
+ref was never created, whose dangerous variant is reaching for a bare `--force`.
+
+**Who refuses is narrowed, not settled, and no mechanism is asserted here.**
+Three things are established. The failure is an HTTP status returned by the far
+end rather than a ref dropped in transit - `curl 22` is curl's code for an HTTP
+error response, not for a cut transfer. An empty `recentRelayFailures` is
+worthless as evidence, exactly as `PL-3V6C` argued before anyone had measured
+it: the field read `[]` while that 403 was being returned, and the container's
+own `/root/.ccr/README.md` scopes it to relay-level aborts. And the proxy's own
+403 does not take this shape - the README documents it as a host-level egress
+denial surfacing as `CONNECT tunnel failed, response 403` before a tunnel
+exists, which is the form recorded above for publisher egress, and says that
+once a tunnel is up the proxy aborts rather than answering; `github.com` is
+plainly an allowed host, since branch pushes over the same proxy succeed.
+**That last point is an argument from the container's documentation rather than
+a measurement, so it is recorded as what the error's shape rules out and not as
+the cause.** Settling who refuses still needs one authorized deletion read
+against the proxy's diagnostics as it fails, and nothing operational turns on
+the answer: a session cannot delete a remote branch either way.
 
 ## When something errors
 
