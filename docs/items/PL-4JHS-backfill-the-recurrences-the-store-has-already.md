@@ -10,6 +10,7 @@ touches: docs/items
 blocked-by: PL-X5JR
 added: 2026-09-20
 closed: 2026-09-20
+pr: 809
 payoff: starts the counter from what the store has already paid for, so the first promotion candidates appear at once rather than after three more defects have each been re-found
 verify: grep -c 'recurrences:' docs/items/PL-STC4-docket-verify-s-suppression-check-reads-prose.md
 ---
