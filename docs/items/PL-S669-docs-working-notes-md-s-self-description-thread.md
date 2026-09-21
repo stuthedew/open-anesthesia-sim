@@ -1,8 +1,15 @@
 ---
 id: PL-S669
 title: docs/WORKING_NOTES.md's self-description thread has no open item left after PL-XF89 closed, so the file's own deletion policy applies and nothing has decided whether its rejected-drafts record earns its place
-status: untriaged
+priority: P3
+effort: S
+status: done
+classes: docs
+feature: project-introduction
+touches: docs/WORKING_NOTES.md
 added: 2026-09-21
+closed: 2026-09-21
+verify: python3 tools/doc_check.py check && ! grep -q 'one-line self-description' docs/WORKING_NOTES.md
 ---
 
 **Problem.** docs/WORKING_NOTES.md's self-description thread has no open item left after PL-XF89 closed, so the file's own deletion policy applies and nothing has decided whether its rejected-drafts record earns its place
@@ -78,3 +85,64 @@ it.
 adjacent and share `PL-N092`; repairing the drift in this one was inside
 `.claude/rules/citation-drift.md`'s repair-in-place clause, and deleting it
 was not.
+
+**Why it matters.** `docs/WORKING_NOTES.md` is read through `bin/docket show
+<id>`, which splits the file at its `##` headings and points a session only at
+threads naming its item's id. A resolved thread left in place is therefore not
+merely untidy: it is 72 lines of the 95 KB every reader of the file pays for,
+recording repository state the preamble explicitly excludes ("The repository's
+own current state is not a thread here"), with no mechanism that will ever
+correct it when `README.md` or `pyproject.toml` moves underneath it. The file's
+deletion policy exists because a stale thread here is read as current.
+
+**Decision needed.** Delete the thread, or keep it with a sentence saying why
+the rejected-drafts block still earns its space.
+
+## Answered 2026-09-21: deleted, because every part of the record has a better carrier and the thread is unreachable
+
+**The fact the brief above did not have: the thread cannot be discovered.** All
+three ids it cites — `PL-4MHK`, `PL-N092`, `PL-XF89` — are `done`, and `show`
+keys on ids. No open item cites them, so no session will ever be pointed at
+this section again. That settles the case *for* keeping it, which was that the
+rejected-drafts block is "recorded so the next attempt starts past these rather
+than at them": a record the project's own discovery path cannot surface is not
+available to the next attempt, whatever it says.
+
+**Where each part of the record went, checked against the tree rather than
+assumed.** This is the line `Done when` asks for:
+
+1. **The three statements and their wording** — `README.md`'s opening sentence,
+   `pyproject.toml`'s `description`, and the GitHub "About" field each carry
+   their own sentence. Those are
+   the artifacts, so they maintain themselves; the notes copy was a snapshot of
+   them with nothing keeping it true.
+2. **The deliberate `inhaled`/`volatile` split, and why** — carried three times,
+   each at the moment a session needs it. `pyproject.toml` carries a comment
+   directly above its `description` key, which `PL-XF89` put there
+   because it is "the line a maintainer would otherwise 'fix' into agreement
+   with README". `README.md` § "What it does not simulate" states the split,
+   the reason, and the falsifier ("nitrous oxide is a planned substance") for
+   the reader-facing side. `PL-XF89`'s brief holds the full reasoning.
+3. **Rejected drafting directions 1-3** — direction 2's substance, that the
+   volatile set "is the current build rather than the goal", is carried by
+   `README.md`'s paragraph above and by `ROADMAP.md`'s "Beyond" row sequencing
+   intravenous agents at items 13-15. Directions 1 and 3 are records of drafts
+   of a sentence now written three times over, with no next attempt pending.
+4. **"Constraints any future draft has to meet"** — the block says itself that
+   none of the three was why a draft was rejected. The educational-only limit is
+   `CLAUDE.md`'s presentation-correctness standard and is carried by all three
+   statements; "anything claimed as planned must match `ROADMAP.md`" is
+   `CLAUDE.md`'s rule that `ROADMAP.md` is authoritative; the 350-character
+   field limit "has never been the binding constraint".
+5. **The transferable lesson** — that a one-liner is easier to derive from a
+   finished long document than to invent alongside one, which is why `PL-4MHK`
+   needed no design round. It is one case's observation rather than a rule, and
+   this brief is now its carrier.
+
+**The repository-topics claim is verified, not assumed, and it was the one live
+thing in the thread.** `GET /repos/stuthedew/open-anesthesia-sim/topics`
+returned `{"names": []}` and the repository object's `topics` key returned `[]`
+on 2026-09-21 — two endpoints that do report topics, against the search API's
+omission that left this unresolved before. Topics are genuinely unset, so the
+sentence was true. Setting them is a repository setting no session can reach,
+so it is rehomed as `PL-VCJ2` rather than deleted with the thread.

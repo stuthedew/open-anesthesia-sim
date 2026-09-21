@@ -6,6 +6,7 @@ feature: one-id-grammar
 touches: .claude/rules/citation-drift.md, .claude/skills/docket/modes/ideas.md
 added: 2026-09-21
 closed: 2026-09-21
+pr: 865
 reason: closed with PL-7922: citation-drift.md and modes/ideas.md now name PL-B1C2, and tools/fixture_id_check.py refuses an unmintable literal anywhere under .claude/ so the hand-fix cannot regress
 verify: uv run python tools/fixture_id_check.py
 ---

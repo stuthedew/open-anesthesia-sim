@@ -10,6 +10,7 @@ touches: docs/worker.md, docs/items
 blocked-by: PL-ZM48
 added: 2026-09-21
 closed: 2026-09-21
+pr: 863
 payoff: the third observed shape of a deleted-branch push is attached to the item that decides the documented cause, so PL-ZM48 resolves against three data points rather than two
 verify: grep -qF 'PL-X9WZ' docs/worker.md && grep -qF 'stale info' docs/worker.md
 ---
