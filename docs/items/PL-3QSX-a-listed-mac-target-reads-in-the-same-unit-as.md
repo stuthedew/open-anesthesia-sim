@@ -3,12 +3,13 @@ id: PL-3QSX
 title: A listed MAC target reads in the same unit as the readout beside it, and no hazard-table row covers mistaking one for a current reading
 priority: P2
 effort: S
-status: untriaged
+status: ready
 classes: docs, ux
 feature: scenario-branching
 touches: docs/MODEL.md, tests/unit
 added: 2026-09-20
 payoff: keeps a height the learner asked for from being read as a height the model computed, which is the same compartment in the same unit two panels apart
+verify: grep -rq 'def test_a_requested_mac_target_is_not_read_as_a_measurement' tests/unit
 ---
 
 **Problem.** A listed MAC target reads in the same unit as the readout beside it, and no hazard-table row covers mistaking one for a current reading

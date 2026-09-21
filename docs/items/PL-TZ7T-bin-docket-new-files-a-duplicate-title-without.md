@@ -13,6 +13,7 @@ pr: 793
 payoff: stops one defect being diagnosed three times - it has happened five times now, and each duplicate costs a full brief written by a session that could not know the first existed
 verify: grep -q 'def test_new_names_an_existing_item_with_a_near_identical_title' subprojects/docket/tests/test_cli.py
 root-cause-of: PL-BHBZ, PL-4FD2, PL-5QLP, PL-QMC0
+recurrences: 2026-08-30 PL-TH7P
 ---
 
 **Problem.** bin/docket new files a duplicate title without noticing: PL-LBR6 sat ready for six days with the record rename diagnosed and a verify command written while PL-5QLP and PL-QMC0 were filed as fresh discoveries of the same mechanism

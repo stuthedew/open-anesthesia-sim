@@ -1,8 +1,15 @@
 ---
 id: PL-D42Z
 title: docs/machine-abstraction.md's (b11) row calls delivery unchanged under a shut surplus gas valve, where the fresh gas flow stops being a free input and becomes an output
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: docs
+feature: circuit-boundary-docs
+touches: docs/machine-abstraction.md
 added: 2026-09-20
+payoff: an implementer pairing a closed_circuit removal with fresh_gas_bypass is told the flow becomes an output, instead of reading a table row that calls delivery unchanged
+verify: grep -qE '^\| \(b11\).*uptake' docs/machine-abstraction.md
 ---
 
 **Problem.** docs/machine-abstraction.md's (b11) row calls delivery unchanged under a shut surplus gas valve, where the fresh gas flow stops being a free input and becomes an output

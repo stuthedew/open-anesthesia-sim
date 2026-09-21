@@ -3645,6 +3645,139 @@ def test_record_refuses_a_merge_without_the_number_it_is(
     assert _work_pr(work) == ""
 
 
+def _owed_project(tmp_path: Path) -> Path:
+    """A clone whose `origin/main` holds a closure recording no `pr`, plus work.
+
+    The store sits at the default `items_dir` rather than `_owed_clone`'s
+    `items/`, because the git reads behind the closure advisory resolve their
+    paths from the repository root: a store anywhere else is invisible to them
+    and every count under test agrees at zero for the wrong reason. The open
+    item is what gives `next` a pick, which is the only state in which it
+    prints a count at all.
+    """
+    origin = tmp_path / "origin"
+    items = origin / "docs" / "items"
+    items.mkdir(parents=True)
+    closed = "PL-K7QX-a-closed-item.md"
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=origin, check=True, capture_output=True)
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(origin)],
+        check=True,
+        capture_output=True,
+    )
+    for key, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", key, value)
+    (items / "PL-B1B1-a-ready-item.md").write_text(READY, encoding="utf-8")
+    (items / closed).write_text(
+        RECORD_ITEM.format(id="PL-K7QX", status="ready", extra=""), encoding="utf-8"
+    )
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: capture it")
+    (items / closed).write_text(
+        RECORD_ITEM.format(id="PL-K7QX", status="done", extra="closed: 2026-08-10\n"),
+        encoding="utf-8",
+    )
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: close it (#148)")
+
+    work = tmp_path / "work"
+    subprocess.run(["git", "clone", "-q", str(origin), str(work)], check=True, capture_output=True)
+    return work / "docs" / "items"
+
+
+def _grooming_counts(store: Path, capsys: pytest.CaptureFixture[str]) -> dict[str, int]:
+    """What each command that prints a grooming count printed, on one store."""
+
+    def count(pattern: str, text: str) -> int:
+        found = re.search(pattern, text)
+        return int(found.group(1)) if found else 0
+
+    main(["check", "--items", str(store), "--today", "2026-08-24"])
+    check = capsys.readouterr().out
+    main(["digest", "--items", str(store), "--today", "2026-08-24"])
+    digest = capsys.readouterr().out
+    main(["next", "--items", str(store), "--today", "2026-08-24"])
+    following = capsys.readouterr().out
+    return {
+        "check": count(r"(\d+) advisor(?:y|ies)", check),
+        "digest": count(r"Grooming due: (\d+) advisor", digest),
+        "next": count(r"(\d+) grooming advisor", following),
+    }
+
+
+def test_the_digest_and_next_count_the_grooming_debt_check_counts(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """One store, one commit, three commands that print a count of it.
+
+    The digest reported 10 advisories where `check` reported 19, because
+    `cmd_digest` never passed `closures` and `checks.py` reads a caller that
+    did not ask as a caller with nothing to report - so the `pr`-backfill
+    advisories were structurally invisible to the one line a session reads
+    before anything else (`PL-VKGJ`). `next` under-reported for a second
+    reason, having omitted `milestones` as well.
+
+    Pinned as an equality rather than as a number so it keeps holding when the
+    advisories themselves change: what must not come back is one command
+    printing a total another command would contradict.
+    """
+    counts = _grooming_counts(_owed_project(tmp_path), capsys)
+
+    assert counts["check"] >= 1, counts
+    assert counts["digest"] == counts["check"]
+    assert counts["next"] == counts["check"]
+
+
+def test_every_command_that_prints_a_count_asks_the_same_questions(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The equality above, held one level up from the store it was measured on.
+
+    A count is only as complete as the inputs behind it, and `analyze` skips
+    the check behind any input it was not handed. So the test that survives a
+    new input being added is not "these totals match on this fixture" but
+    "these commands asked the same questions" - which fails the moment one
+    call site gains an input the others do not, whether or not the fixture
+    happens to exercise it.
+
+    The name is what is compared, not the answer: a roadmap this checkout
+    cannot read makes `milestones` `None` for all three alike, which is the
+    question asked and declined rather than the question skipped. `landed` is
+    the one input a command may differ on and it is passed either way - here
+    as `None`, because `--verify` is off and `make docket`, the command the
+    digest's line names, does not pass it either.
+    """
+    asked: dict[str, set[str]] = {}
+    real = cli.analyze
+
+    def spy(*args: object, **kwargs: object) -> object:
+        asked[current] = set(kwargs)
+        return real(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(cli, "analyze", spy)
+    store = _owed_project(tmp_path)
+    for current in ("check", "digest", "next"):
+        main([current, "--items", str(store), "--today", "2026-08-24"])
+        capsys.readouterr()
+
+    assert {
+        "closures",
+        "history",
+        "lost",
+        "milestones",
+        "notes",
+        "offered",
+        "records",
+        "version",
+        "window",
+    } <= asked["check"]
+    assert asked["digest"] == asked["check"]
+    assert asked["next"] == asked["check"]
+
+
 def _laned_store(tmp_path: Path) -> Path:
     """A store split across the boundary, with one item on each side of it."""
     items = tmp_path / "docs" / "items"

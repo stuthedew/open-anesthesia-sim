@@ -1,8 +1,15 @@
 ---
 id: PL-H6VQ
 title: doc_check's _declined_ids counts every PL- id in a Declined-to-Gate subsection, including ids the deferral's prose only cites, so an item mentioned in another item's reasoning reads as disposed and check_gate_dispositions goes silent on it
-status: untriaged
+priority: P2
+effort: S
+status: ready
+classes: defect, infra
+feature: gate-list-integrity
+touches: tools/doc_check.py, tests/unit/test_doc_check.py
 added: 2026-09-20
+payoff: an open debt item cited in another item's reasoning stops reading as disposed, so the gate check goes quiet only for items that actually have a disposition
+verify: grep -q 'def test_a_declined_subsection_disposes_only_its_own_entry_lines' tests/unit/test_doc_check.py
 ---
 
 **Problem.** doc_check's _declined_ids counts every PL- id in a Declined-to-Gate subsection, including ids the deferral's prose only cites, so an item mentioned in another item's reasoning reads as disposed and check_gate_dispositions goes silent on it

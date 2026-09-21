@@ -1,8 +1,14 @@
 ---
 id: PL-GL95
 title: Nine owner-attribution markers carry no date, so CLAUDE.md's pre-2026-09-16 reading rule cannot classify them at all
-status: untriaged
+priority: P3
+effort: S
+status: ready
+classes: docs
+touches: ROADMAP.md, docs/WORKING_NOTES.md, docs/items
 added: 2026-09-20
+payoff: CLAUDE.md's pre-2026-09-16 reading rule has a date to read on every owner attribution in the tree, so no session has to guess whether a decision was ratified or specified
+verify: grep -qE '\(project owner, 20[0-9]{2}-[0-9]{2}-[0-9]{2}[^)]*PL-KQHN' ROADMAP.md
 ---
 
 **Problem.** Nine owner-attribution markers carry no date, so CLAUDE.md's pre-2026-09-16 reading rule cannot classify them at all

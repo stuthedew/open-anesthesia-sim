@@ -3,12 +3,13 @@ id: PL-VKGJ
 title: The session-start digest reports 10 grooming advisories where bin/docket check reports 19, so a session is told the grooming debt is half its actual size
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: queue-hygiene
-touches: subprojects/docket/src/docket/render.py, subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_cli.py
+touches: subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py, subprojects/docket/README.md
 added: 2026-09-19
-verify: grep -q 'def test_the_digest_grooming_count_matches_check' subprojects/docket/tests/test_cli.py
+closed: 2026-09-20
+verify: grep -q 'def test_the_digest_and_next_count_the_grooming_debt_check_counts' subprojects/docket/tests/test_cli.py
 ---
 
 **Problem.** The session-start digest and `bin/docket check` disagree on the

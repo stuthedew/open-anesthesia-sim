@@ -1,8 +1,12 @@
 ---
 id: PL-162Y
 title: docket next names a blocked item whose item blockers have all closed, but not one whose blocked-by milestone is now scoped, which docket check reports as equally promotable
-status: untriaged
+priority: P3
+effort: S
+status: needs-decision
+classes: defect, infra
 feature: stale-blocked-routing
+touches: subprojects/docket/src/docket/plan.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-20
 ---
 
@@ -37,3 +41,26 @@ is now scoped, in wording that distinguishes them from the item-blocker case, or
 this item is dropped with the reason why the two should not be reported
 together - and a test under `subprojects/docket/tests/` drives whichever way it
 settles.
+
+**Decision needed.** Whether `bin/docket next` should name an item whose
+`blocked-by` milestone has since been scoped, alongside the item-blocker case
+`plan.promotable` already reports - or whether the two shapes are different
+enough work that naming them together misleads more than the reach buys.
+
+**Recommended:** report it, under wording of its own. `PL-B9PY`'s lesson is
+about *status*, not about reach: what it cost was a milestone-blocked item
+parked at `needs-decision` and then hidden from `next` for two days, and the
+repair for that is exactly the reader being told. The two are different work -
+an item blocker clears when an item closes, a milestone blocker when a scoping
+round happens - so the line should say so rather than folding them into one
+count: "`PL-XXXX` - v0.5.0 is scoped and every other blocker has closed" reads
+differently from "every blocker has closed" and cannot be mistaken for it. On
+shape, prefer the caller composing the two readings over `plan.promotable`
+growing a roadmap argument: the helper is deliberately store-only, `cmd_next`
+already holds a plan, and `checks.py` already narrows the milestone case
+correctly for an item the milestone's own `Required scope` names (`PL-L09X`).
+
+**What would change the answer.** A count of how many open items are in the
+milestone-blocked-and-now-scoped state at any one time. If it is routinely
+zero or one, the reach is not worth a second sentence in `next`'s output and
+dropping this with that reason is the better answer.

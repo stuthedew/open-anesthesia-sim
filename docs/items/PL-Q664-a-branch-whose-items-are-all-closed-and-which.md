@@ -9,6 +9,7 @@ feature: parallel-sessions
 touches: subprojects/docket, tools
 added: 2026-09-13
 verify: uv run pytest subprojects/docket/tests/test_vcs.py && grep -q 'def test_a_branch_whose_items_are_all_closed_is_not_in_flight' subprojects/docket/tests/test_vcs.py
+recurrences: 2026-09-20 PL-8JQQ
 ---
 
 **Problem.** `bin/docket flight` reports an item as in flight from a commit

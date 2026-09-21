@@ -1006,6 +1006,20 @@ gate, and left the reader to work out which of them knew about the plan.
 Deriving it from the plan the digest already carries is what makes that
 disagreement unrepresentable rather than merely fixed.
 
+The same holds one line further down, where the counts are. `check`, `digest`
+and `next` each print how many grooming advisories the store has, and `analyze`
+skips the check behind any input it was not handed - so a command that
+assembled its own inputs printed a smaller number with nothing on the line
+saying which question it had skipped. The digest never asked for `closures`,
+and reported 10 advisories against `check`'s 19 (`PL-VKGJ`). All three now
+build their report through `cli._complete_report`, which gathers every input in
+one place, so a new one reaches every count-printing command in the commit that
+adds it. `landed` is the single exception and stays the caller's argument: the
+`verify:` replay is behind `--verify`, and `make docket` - the command the
+digest's own line names - does not pass it either. The digest pays 279 ms of
+git reads for the agreement, on a 947 ms command, none of them over the
+network.
+
 ### What a milestone places, and what it only mentions
 
 The scope above is read from two structures of a milestone's own section and
