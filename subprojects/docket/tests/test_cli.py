@@ -2062,16 +2062,19 @@ def test_gate_writes_nothing_and_reaches_no_verdict(
     assert "not decided here" in capsys.readouterr().out
 
 
-def _branched_repo(tmp_path: Path) -> Path:
+def _branched_repo(tmp_path: Path, store: str = "items") -> Path:
     """A repository whose second branch carries an item `main` has never seen.
 
     Real git, for the same reason `_release_repo` uses it: the injected-runner
     tests assert the filtering, and only a real checkout proves the commands
     are spelled in a way git accepts.
+
+    `store` places the queue under the root, one level down by default and two
+    for `PL-P757`, whose symptom only appears where the two differ.
     """
     root = tmp_path / "repo"
-    (root / "items").mkdir(parents=True)
-    (root / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+    (root / store).mkdir(parents=True)
+    (root / store / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
     subprocess.run(
         ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
         check=True,
@@ -2084,7 +2087,7 @@ def _branched_repo(tmp_path: Path) -> Path:
     subprocess.run(
         ["git", "checkout", "-qb", "abandoned"], cwd=root, check=True, capture_output=True
     )
-    (root / "items" / "PL-K7QX-lost.md").write_text(
+    (root / store / "PL-K7QX-lost.md").write_text(
         READY.replace("PL-B1B1", "PL-K7QX").replace("A ready item", "A lost thought")
     )
     subprocess.run(["git", "add", "-A"], cwd=root, check=True, capture_output=True)
@@ -2104,6 +2107,28 @@ def test_stranded_finds_an_item_that_exists_only_on_a_branch(
     assert "PL-K7QX  A lost thought" in out
     assert "only on: abandoned" in out
     assert "git checkout abandoned -- items/PL-K7QX-lost.md" in out
+
+
+def test_stranded_reads_a_store_two_levels_down(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """PL-P757's second symptom, from the same wrong root.
+
+    `git ls-tree` run from a subdirectory prints paths relative to *that*
+    directory, while `<rev>:<path>` is always resolved from the repository
+    root. With the root taken as `docs/`, the listing said
+    `items/PL-K7QX-lost.md` and the `show` for it found nothing - so every
+    finding printed as `(title unreadable)`, and the recovery line handed over
+    a path that checks out nothing from the root it would be pasted at.
+    """
+    root = _branched_repo(tmp_path, store="docs/items")
+
+    assert main(["--items", str(root / "docs" / "items"), "stranded"]) == 0
+
+    out = capsys.readouterr().out
+    assert "PL-K7QX  A lost thought" in out
+    assert "(title unreadable)" not in out
+    assert "git checkout abandoned -- docs/items/PL-K7QX-lost.md" in out
 
 
 def test_stranded_reports_nothing_when_every_branch_has_landed(
@@ -2412,7 +2437,9 @@ def test_stranded_says_so_when_it_was_told_not_to_ask_git(
 BRANCH = "roadmap-release-write-failure-nhsjwo"
 
 
-def _flight_repo(tmp_path: Path, subject: str, wrote: str = "src/scratch.txt") -> Path:
+def _flight_repo(
+    tmp_path: Path, subject: str, wrote: str = "src/scratch.txt", store: str = "items"
+) -> Path:
     """A repository whose one live branch is named the way the harness names one.
 
     Real git, for the reason `_branched_repo` uses it: the injected-runner
@@ -2425,10 +2452,14 @@ def _flight_repo(tmp_path: Path, subject: str, wrote: str = "src/scratch.txt") -
     recording something into the queue. It defaults outside the store, because
     a commit that reaches past the queue is what every test here but one means
     by a branch mid-item.
+
+    `store` is where the queue sits under the root, and defaults to the one
+    level down every other test here happened to use - which is why `PL-P757`
+    went unseen for as long as it did. The nested form is this project's own.
     """
     root = tmp_path / "repo"
-    (root / "items").mkdir(parents=True)
-    (root / "items" / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
+    (root / store).mkdir(parents=True)
+    (root / store / "PL-0001-on-main.md").write_text(READY.replace("PL-B1B1", "PL-0001"))
     dated = os.environ | {
         "GIT_AUTHOR_DATE": "2026-08-20T12:00:00+00:00",
         "GIT_COMMITTER_DATE": "2026-08-20T12:00:00+00:00",
@@ -2484,6 +2515,39 @@ def test_flight_ignores_a_branch_that_only_wrote_to_the_queue(
     assert main(["--items", str(root / "items"), "--today", "2026-08-23", "flight"]) == 0
 
     assert "PL-K7QX" not in capsys.readouterr().out
+
+
+def test_flight_reads_a_store_two_levels_down_exactly_as_it_reads_one(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """PL-P757: `--items docs/items` is this project's own layout, and it read wrong.
+
+    The root was derived as the store's *parent*, which is the root only where
+    the store sits one level below it - the layout every other test in this
+    file happens to use. Two levels down it resolved to `docs/`, so the queue
+    prefix became `items/` where git prints `docs/items/...`, nothing matched,
+    and a commit whose whole diff is inside the queue came back as work. Exit
+    zero, and the mark is indistinguishable from a real one.
+
+    The two invocations below differ in nothing but how the root is found: the
+    default `items_dir` is already `docs/items`, so they are asking about the
+    same store and their answers have to be the same string.
+    """
+    root = _flight_repo(
+        tmp_path,
+        "PL-K7QX Do the thing",
+        wrote="docs/items/PL-K7QX-a-note.md",
+        store="docs/items",
+    )
+
+    assert main(["--items", str(root / "docs" / "items"), "--today", "2026-08-23", "flight"]) == 0
+    pointed = capsys.readouterr().out
+    monkeypatch.chdir(root)
+    assert main(["--today", "2026-08-23", "flight"]) == 0
+    found = capsys.readouterr().out
+
+    assert "PL-K7QX" not in found, "the reading that was already right, pinned"
+    assert pointed == found
 
 
 def test_show_marks_an_item_a_branch_has_in_flight(
