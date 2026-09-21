@@ -1,4 +1,13 @@
-"""Tests for the command line, exercised end to end against a temporary store."""
+"""Tests for the command line, exercised end to end against a temporary store.
+
+The helpers below build scratch repositories with real git, one per test. That
+is affordable only because the repository root's `conftest.py` keeps the
+developer's global git configuration out of them: with it reaching in, a
+single `commit.gpgsign = true` made every commit here cost about fifteen times
+as much, and the bill looked
+like it belonged to these helpers rather than to a setting none of them names
+(`PL-YRYR`, measured 2026-09-21).
+"""
 
 from __future__ import annotations
 
