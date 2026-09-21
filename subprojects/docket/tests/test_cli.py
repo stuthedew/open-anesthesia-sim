@@ -700,7 +700,10 @@ def test_check_names_the_config_file_it_loaded(
     Named on the run that found its config as well as on the run that did not,
     so that the two are distinguishable: silence would read the same as a
     version of the command that reports nothing, and it is the difference
-    between the two lines that identifies the defect below.
+    between the two lines that carries the diagnosis. Pinning the found case to
+    the exact path is what makes a regression of `PL-P757` - root resolution
+    moving again, so a different `docket.toml` is read - fail here rather than
+    pass quietly.
     """
     store = _store(tmp_path, READY)
     (tmp_path / "docket.toml").write_text("[docket]\n", encoding="utf-8")
@@ -713,19 +716,19 @@ def test_check_names_the_config_file_it_loaded(
 def test_check_says_when_it_found_no_config_beside_the_store(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """The half that was the defect (`PL-K5PW`, filed twice).
+    """The half that carries the diagnosis (`PL-K5PW`, filed twice).
 
-    `--items` resolves settings from beside the store rather than from the
-    repository root, which is deliberate - another project's queue must not be
-    read under this project's policy. Pointed at this project's own store,
-    though, it finds no `docs/docket.toml`, applies library defaults, and
-    reports a clean store as hundreds of vocabulary errors. Nothing on the
-    output said which had happened, so the alarming reading - that the session's
-    own edits had corrupted the queue - was the only one available.
+    A store whose repository holds no `docket.toml` runs on package defaults,
+    which is a supported way to use this tool and not a fault. What was missing
+    was any way to tell that from the output: `PL-P757` put the whole of this
+    project's store on defaults by resolving the root from the store's parent,
+    and that was the quietest of the three failures it caused - found only
+    incidentally, because no run said which policy it had been read under.
 
-    The store here is clean, so the line stands alone rather than beside the
-    errors it explains: what is under test is that the reading is named, not
-    that a wrong policy produced findings.
+    So this pins the text a reader needs to reach that conclusion, not merely
+    that some line appears. The store here is clean, so the line stands alone
+    rather than beside findings it would explain: what is under test is that
+    the reading is named, not that a wrong policy produced errors.
     """
     store = _store(tmp_path, READY)
     assert not (tmp_path / "docket.toml").exists()

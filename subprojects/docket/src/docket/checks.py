@@ -1383,29 +1383,32 @@ def _check_selects_nothing(
 def _note_settings(report: Report, source: SettingsSource | None) -> None:
     """Name the settings this run was governed by, every run, as a fact.
 
-    `_note_cost`'s argument below, applied to policy rather than to runtime,
-    and for once the *change* it exists to expose is the whole defect. `_load`
-    resolves settings from beside the store rather than from the repository
-    root, deliberately: pointing `--items` at another project's queue must not
-    silently apply this project's policy to it. Pointed at this project's own
-    store - `docket check --items docs/items`, which is the documented way to
-    name a store and the place this one lives - it finds no `docs/docket.toml`,
-    applies library defaults, and reports a clean store as hundreds of
-    vocabulary errors, because the classes this project declares are not the
-    library's.
+    `_note_cost`'s argument below, applied to policy rather than to runtime: not
+    a finding, nobody is asked to act on it, and it earns its line because a
+    *change* in it is the signal.
 
-    A session meeting that mid-task reads it as the store having been corrupted
-    by its own edits, which is the most expensive available misreading
-    (`PL-K5PW`, filed twice). Refusing the run would be wrong - the behaviour is
-    correct and another project's store is a real use - so what was missing was
-    never a guard but the one fact about a run nobody could see.
+    Here that change is a class of bug this project has already had. `_load`
+    resolves settings from the root of the repository holding the store, so
+    that `--items` pointed at another project's queue is not answered under
+    this project's policy. Resolving it from the store's *parent* instead put
+    the whole store on package defaults - no `known_classes`, no
+    `workflow_paths`, `top_band_limit` at 5 rather than 12 - and `PL-P757`
+    fixed that. What makes it worth a permanent line is how it was found: it
+    was the quietest of the three failures that one derivation caused, noticed
+    only incidentally while the two louder ones were being repaired, because
+    nothing a run printed said which policy it had been read under
+    (`PL-K5PW`, filed twice).
+
+    Refusing such a run would be wrong - reading another project's store under
+    its own defaults is correct and a real use - so what was missing was never
+    a guard but the one fact about a run nobody could see.
 
     Named on the run that found its config as well as on the run that did not,
     because silence is ambiguous: a reader who sees no line cannot tell a
     config that was found from a version of this command that does not report
-    one, and it is the *difference* between two runs' lines that identifies the
-    defect. One short line, scanned rather than acted on, in the category the
-    open-item counts beside it are in.
+    one, and it is the *difference* between two runs' lines that carries the
+    diagnosis. One short line, scanned rather than acted on, in the category
+    the open-item counts beside it are in.
     """
     if source is None:
         return

@@ -220,11 +220,13 @@ def _load(args: argparse.Namespace) -> tuple[Path, list[Item], Config]:
 def _settings_source(root: Path) -> SettingsSource:
     """Which `docket.toml` governed this run, named the way its reader would type it.
 
-    `_load` above is the whole of the resolution and this repeats one line of
-    it, deliberately: `load_config` returns a `Config` and not where it came
-    from, and a `Config` holding library defaults is indistinguishable from a
-    project that wrote those values down. `checks._note_settings` says what
-    the answer is for.
+    The `root` is the caller's, so this follows `_root` wherever it goes
+    rather than deriving the answer a second time - which is the property that
+    matters, since the bug worth catching here is root resolution moving
+    (`PL-P757`). What it adds is the half `load_config` cannot report:
+    it returns a `Config` and not where it came from, and a `Config` holding
+    library defaults is indistinguishable from a project that wrote those
+    values down. `checks._note_settings` says what the answer is for.
 
     Made relative to the working directory where it can be, because the reader
     is being shown a path to go and look at and an absolute one from a
