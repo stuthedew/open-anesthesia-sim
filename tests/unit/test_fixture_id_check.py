@@ -177,6 +177,22 @@ ITEM = "PL-STUV"
 DOCS_BRIEF = "It renamed `PL-STUV` and `PL-AAAA`.\n"  # not-an-id
 ROADMAP_LINE = "`PL-M01` is the literal that was quoted.\n"  # not-an-id
 
+#: Second spellings of the grammar, in the three shapes the repository actually
+#: had: a bare class with a fixed count, one with a range, and the store's own
+#: two-branch form written out. Marked for the same reason as the literals
+#: above - this file is inside the tool's own scan.
+RESTATEMENTS = (
+    r"\bPL-[A-Z0-9]{4}\b",  # not-an-id
+    r"PL-[A-Z0-9]{3,4}",  # not-an-id
+    r"PL-(?:[0-9BCDFGHJK]{4}|\d{3})",  # not-an-id
+)
+
+#: Patterns that mention `PL-` and claim nothing about its grammar. The rule has
+#: to stay quiet on every one of these or a deliberately loose match becomes
+#: impossible - `CANDIDATE_RE` in the tool itself is the first of them, and the
+#: `^id: (PL-...)` form is how three tests read back an id `docket` just minted.
+OPEN_ENDED = (r"(?<![A-Za-z0-9])PL-[A-Za-z0-9]+", r"^id: (PL-\S+)", r"PL-\d+")
+
 
 def _write(root: Path, relative: str, body: str) -> Path:
     path = root / relative
@@ -479,3 +495,81 @@ def test_the_failure_names_the_file_the_line_and_the_remedy(tmp_path: Path) -> N
     assert result.returncode == 1
     assert f"pkg/thing.py:1 {UNMINTABLE[1]}" in result.stderr
     assert "not-an-id" in result.stderr
+
+
+# --- the grammar is spelled once --------------------------------------------
+
+
+def test_a_restated_grammar_is_refused(tmp_path: Path) -> None:
+    """The defect the second rule exists for, in all three shapes it had.
+
+    Five tools spelled the grammar themselves and every one drifted: all of
+    them admitted the vowels `store.ID_ALPHABET` excludes, and the four
+    written `{4}` could not see a historical three-digit id at all, which cost
+    `generator_check` 219 citation edges and one wrong printed signal
+    (`PL-KYW3`).
+    """
+    for index, pattern in enumerate(RESTATEMENTS):
+        _write(tmp_path, f"pkg/rule{index}.py", f"import re\n\nRE = re.compile({pattern!r})\n")
+
+    offenders = fixture_id_check.collect(tmp_path)
+
+    assert [offender.rule for offender in offenders] == [fixture_id_check.GRAMMAR] * 3
+    assert all(offender.token.startswith("PL-") for offender in offenders)
+
+
+def test_an_open_ended_pattern_is_left_alone(tmp_path: Path) -> None:
+    """The exactness the hard failure rests on, and the tool's own escape route.
+
+    Drawing the rule at *any* regex after `PL-` rather than at the counted
+    quantifier would fire on `CANDIDATE_RE` itself and on every test that reads
+    an id back out of a file it just wrote. A check that has to be exempted
+    wherever it fires is one nobody leaves switched on.
+    """
+    for index, pattern in enumerate(OPEN_ENDED):
+        _write(tmp_path, f"pkg/loose{index}.py", f"import re\n\nRE = re.compile({pattern!r})\n")
+
+    assert fixture_id_check.collect(tmp_path) == []
+
+
+def test_a_restated_grammar_in_a_docstring_is_not_scanned(tmp_path: Path) -> None:
+    """Prose explaining the pattern is discussion; this file's own header is that."""
+    _write(tmp_path, "pkg/thing.py", f'"""The old spelling was {RESTATEMENTS[1]}."""\n')
+
+    assert fixture_id_check.collect(tmp_path) == []
+
+
+def test_the_marker_exempts_a_deliberate_restatement(tmp_path: Path) -> None:
+    """One escape hatch for both rules, because it says the same thing about both."""
+    _write(
+        tmp_path,
+        "pkg/thing.py",
+        f"import re\n\nRE = re.compile({RESTATEMENTS[0]!r})  # not-an-id\n",
+    )
+
+    assert fixture_id_check.collect(tmp_path) == []
+
+
+def test_each_rule_is_reported_with_its_own_remedy(tmp_path: Path) -> None:
+    """Renaming a pattern to a mintable id is wrong advice, so it must not appear.
+
+    The apparatus floor is that what this prints has to be true. One combined
+    message would hand a reader the literal rule's remedy for a finding it
+    cannot repair.
+    """
+    _write(tmp_path, "pkg/lit.py", f'ITEM = "{UNMINTABLE[1]}"\n')
+    _write(tmp_path, "pkg/pat.py", f"import re\n\nRE = re.compile({RESTATEMENTS[1]!r})\n")
+
+    result = subprocess.run(
+        [sys.executable, str(REPO_ROOT / "tools" / "fixture_id_check.py"), "--root", str(tmp_path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    literal, _, grammar = result.stderr.partition("second spelling")
+    assert "Rename it to an id the store could mint" in literal
+    assert "Rename it to an id the store could mint" not in grammar
+    assert "from docket.store import ID_PATTERN" in grammar
+    assert f"pkg/pat.py:3 {RESTATEMENTS[1]}" in grammar

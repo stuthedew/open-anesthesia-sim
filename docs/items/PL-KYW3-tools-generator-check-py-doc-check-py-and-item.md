@@ -3,11 +3,12 @@ id: PL-KYW3
 title: tools/generator_check.py, doc_check.py and item_reads.py each restate the item-id grammar, all three more loosely than store.ID_PATTERN, so a tool and docket check disagree about what is an id
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, infra
 feature: one-id-grammar
-touches: tools/generator_check.py, tools/doc_check.py, tools/item_reads.py, tools/dead_ends.py, tools/pr_body_check.py, tools/fixture_id_check.py, tests/unit/test_generator_check.py, tests/unit/test_doc_check.py, tests/unit/test_dead_ends.py, tests/unit/test_pr_body_check.py, tests/unit/test_fixture_id_check.py, tests/unit/test_item_reads.py
+touches: tools/generator_check.py, tools/doc_check.py, tools/item_reads.py, tools/dead_ends.py, tools/pr_body_check.py, tools/fixture_id_check.py, tests/unit/test_generator_check.py, tests/unit/test_doc_check.py, tests/unit/test_dead_ends.py, tests/unit/test_pr_body_check.py, tests/unit/test_fixture_id_check.py
 added: 2026-09-21
+closed: 2026-09-21
 payoff: every tool judges an id by the grammar `bin/docket check` enforces, so a session cannot be told an item is cited 6 times when 7 is the answer, and a sixth tool cannot restate the grammar without the build saying so
 verify: uv run python tools/fixture_id_check.py && grep -q 'def test_a_restated_grammar_is_refused' tests/unit/test_fixture_id_check.py
 ---
@@ -59,3 +60,30 @@ pre-fix sites, and reports nothing on the repaired tree.
 **Done when.** The six sites import the grammar; `fixture_id_check.py` refuses a
 seventh; each tool's own test pins the historical three-digit id it could not
 previously read.
+
+## Closed 2026-09-21
+
+**Six sites, five files, one grammar.** Each tool inserts
+`subprojects/docket/src` on `sys.path` and imports `ID_PATTERN`; the three
+comments left behind say what stood there and what it cost, because the
+replaced pattern is the only thing a later reader could mistake for a
+deliberate choice.
+
+**`tools/item_reads.py` gets no test file of its own.** It had none, its two
+readers are `citations` and the per-session id sequence, and both are now
+guarded against re-loosening by `fixture_id_check`'s second rule. Writing a
+first test file for a reporting tool to pin a regex that a build failure
+already pins is the polish the apparatus standard names as the common way a
+session is wasted. Said here rather than left as a gap in `touches`.
+
+**One test was written and then deleted**: that `dead_ends` resolves a
+three-digit id. `PL-[A-Z0-9]{3,4}` already did, so it passed before the change
+as well as after, and a test that cannot fail on the defect it names pins
+nothing. The five that remain each fail against the pre-fix tools - verified by
+restoring `158ca0e5`'s copies and rerunning.
+
+**The guard was mutation-tested both ways.** Narrowed to match nothing,
+`test_a_restated_grammar_is_refused` and the remedy test fail; widened to any
+regex after `PL-`, `test_an_open_ended_pattern_is_left_alone` and the
+repository-wide test fail. The rule needs no exemption anywhere in the tree as
+it stands.
