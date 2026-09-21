@@ -73,3 +73,23 @@ verbatim in a later one clears `no existing assertion removed`, the net diff
 against the base is what the count is taken from, and a test under
 `subprojects/docket/tests/test_verify.py` drives a two-commit remove-then-restore
 against a branch whose final tree holds the line.
+
+## Narrowed by PL-C4W8's Gate 2 staleness sweep, 2026-09-21
+
+**"Never nets them" is wrong, and the correction matters because it moves the
+defect to another item.** `_net_line_changes` keys `per_file` on the `diff
+--git` header line itself, so an added line and an identical removed line for
+the same file fold to nothing across every commit the walk selects, in any
+order. A scratch-repo reproduction confirms it: where commit A removes two
+assertion lines and commit B restores one with a subject naming the same id,
+the netting reports exactly one removed assertion, matching `git diff
+main...feature`.
+
+**What actually produced the observed 6-versus-5 discrepancy** is the
+*selection* feeding the fold, not the fold. `item_commits` takes only commits
+whose subject carries the id, so a restoring commit whose subject names a
+different item is never in the diff being netted. That is `PL-2DTK`, which this
+sweep confirmed still reproduces.
+
+So this item is either a duplicate of `PL-2DTK` or a thin wrapper on it. Decide
+which before working it; do not rebuild the netting, which is correct.

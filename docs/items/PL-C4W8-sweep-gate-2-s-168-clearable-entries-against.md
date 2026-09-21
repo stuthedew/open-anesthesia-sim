@@ -8,8 +8,8 @@ classes: housekeeping, infra
 feature: gate-staleness-sweep
 touches: docs/items, docs/WORKING_NOTES.md
 added: 2026-09-21
-payoff: the 154 swept entries can be worked on evidence rather than on a brief that may describe a tree from two weeks ago, and the three dead ones stop being ranked and offered
-verify: python3 tools/doc_check.py check && ! grep -qF 'still unswept are the' docs/items/PL-C4W8-sweep-gate-2-s-168-clearable-entries-against.md
+payoff: the 168 swept entries can be worked on evidence rather than on a brief that may describe a tree from two weeks ago, and the three dead ones stop being ranked and offered
+verify: python3 tools/doc_check.py check && grep -q '^status: dropped' docs/items/PL-3JP0-*.md docs/items/PL-SY1J-*.md docs/items/PL-Z9K5-*.md
 ---
 
 **Problem.** Sweep Gate 2's 168 clearable entries against the tree before any of them is worked: beat 3 of the cadence, unrun on a list frozen 2026-09-21 that the 2026-09-19 precedent says is 13-32 percent dead or overstated
@@ -74,14 +74,10 @@ a reason to check, not a reason to conclude.
 
 ## Run 2026-09-21: question 1 answered, question 2 recorded and not written
 
-**Coverage: 154 of the 168 clearable entries.** The 14 still unswept are the
-W1 batch - `PL-087W`, `PL-2DTK`, `PL-3LLZ`, `PL-4V6B`, `PL-4W2L`, `PL-6YYR`,
-`PL-73P0`, `PL-7RTN`, `PL-7TVT`, `PL-99YZ`, `PL-9LXK`, `PL-B78T`, `PL-BGMK`,
-`PL-BYMX`, all workflow lane. The session ran past its context budget before
-that batch returned; nothing about them is known either way and they must be
-swept before the gate is worked.
+**Coverage: all 168 clearable entries.** Every entry on the frozen list that
+is still open was read against the tree.
 
-**Question 1 outcome: 3 dead, 7 overstated, 144 still reproducing.** About 6%,
+**Question 1 outcome: 3 dead, 8 overstated, 157 still reproducing.** About 6.5%,
 against the 13-32% the precedent predicted and the 22-54 entries this brief
 expected. The reason is in `docs/WORKING_NOTES.md`: both product-lane drops
 trace to one event, the 2026-09-15 Qt port, and Gate 2's entries were filed
@@ -90,7 +86,7 @@ contained rather than anything constant about the store.
 
 Dropped: `PL-3JP0`, `PL-Z9K5`, `PL-SY1J`. Corrected and still open on a
 narrower question: `PL-SQJ1`, `PL-Y4YX`, `PL-JQY1`, `PL-RWBV`, `PL-TKFD`,
-`PL-LBW5`, `PL-MSFB`.
+`PL-LBW5`, `PL-MSFB`, `PL-087W`.
 
 **Question 2 is blocked on `PL-YVP7`, and this is the finding of the pass.**
 The verdicts exist and were reached per entry against the tree; none has been
@@ -132,9 +128,8 @@ spends a sitting rediscovering that there is nothing to fix, and the gate's own
 count overstates what is left. The three entries dropped here were each being
 offered as work.
 
-**Done when.** All 168 clearable entries have been read against the tree, not
-just the 154 done here: the W1 batch above is swept, whatever it finds is
-dropped with a `reason` or corrected in place, and the coverage paragraph no
-longer names any entry as unswept. Question 2's verdicts stay recorded rather
-than written until `PL-YVP7` settles how they are recorded; that is `PL-YVP7`'s
-to close, not this item's.
+**Done when.** All 168 clearable entries have been read against the tree, with
+whatever they turn up dropped with a `reason` or corrected in place - done, and
+recorded above. Question 2's verdicts stay recorded rather than written until
+`PL-YVP7` settles how they are recorded; that is `PL-YVP7`'s to close, not this
+item's, so this item is done when question 1 is.
