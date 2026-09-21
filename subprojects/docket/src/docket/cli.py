@@ -8,7 +8,7 @@ whole store into a person's attention when a summary would do.
 from __future__ import annotations
 
 import argparse
-from collections.abc import Collection, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import replace as with_fields
 from datetime import date
 from pathlib import Path
@@ -60,6 +60,7 @@ from .plan import (
 )
 from .release import (
     NOTES_DIR,
+    SEMVER_RE,
     Readiness,
     already_released,
     is_untagged,
@@ -71,8 +72,10 @@ from .release import (
     read_version,
     readiness,
     release_notes,
+    restate_references,
     stamp,
     unrecorded_milestones,
+    unreferenced_by_version,
 )
 from .roadmap import MilestoneStates, Wave, milestone_states, wave
 from .store import find_item, insert_field, new_id, read_items, rewrite_item, write_item
@@ -405,6 +408,11 @@ def _complete_report(
         # interrupted one made them disagree silently (`PL-1MKQ`). One
         # directory read of about 36 small files.
         notes=notes_by_version(root),
+        # The third thing those two files can disagree about, and the one that
+        # nothing compared until it had been filed four separate times: a
+        # bullet naming an item and no pull request, while the item records
+        # one. The same directory read as above (`PL-W7WL`).
+        unreferenced=unreferenced_by_version(root),
         # The seam between those two halves. The notes are written at the cut
         # and the tag goes on the merge, so anything landing in between is
         # inside the tag's span and named in no notes - measured at 12 closing
@@ -1677,6 +1685,78 @@ def cmd_milestone(args: argparse.Namespace) -> int:
     return 0
 
 
+def _numbers_before_notes(
+    directory: Path, ready: Readiness, root: Path, args: argparse.Namespace
+) -> Readiness:
+    """Write the `pr` each shipping closure is owed, while the notes can still use it.
+
+    Exactly `_record_owed`'s reading, narrowed to the items about to ship:
+    `closures_on_base` is the same call, so the cut and `docket record` cannot
+    disagree about which number an item merged as. What differs is the moment.
+    `record` runs after the cut and repairs the store alone; this runs before
+    the render, which is the only point at which a bullet can be written
+    correctly rather than repaired.
+
+    The item files are written too, not only the objects the notes are built
+    from. A cut that put the number in the notes and left the store owing it
+    would trade one half of the same disagreement for the other, and `docket
+    check`'s missing-`pr` advisory would still be counting these items.
+
+    Never a refusal. A number the base cannot supply - a shallow clone whose
+    history stops short of the merge, a closure that has not landed because it
+    is closing on the release branch itself - leaves the bullet as it was, and
+    `docket record` repairs it afterwards through `restate_references`. Holding
+    the release for it would stop a cut over provenance that is one `git fetch`
+    from recoverable, which is the wrong side to err on for the one command
+    whose output is permanent.
+
+    Measured before it was built: 128 of 853 bullets across 22 of this
+    project's releases name no pull request, among them nine of `v0.4.22`'s
+    fifteen and twelve of `v0.4.35`'s sixteen (`PL-W7WL`, filed four times from
+    four separate cuts).
+    """
+    owed = {i.identifier: i.path for i in ready.shippable if not i.pr and i.path}
+    if not owed:
+        return ready
+    try:
+        tracked = directory.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:  # a store consulted from outside the repository
+        return ready
+    report = closures_on_base(root, owed, items_dir=tracked)
+    if not report.known:
+        print(f"Declined to read which pull request each closure merged as: {report.declined}\n")
+        return ready
+
+    numbers = report.numbers
+    verb = "would record" if args.dry_run else "recorded"
+    shippable: list[Item] = []
+    written = 0
+    for item in ready.shippable:
+        number = numbers.get(item.identifier)
+        if item.pr or number is None:
+            shippable.append(item)
+            continue
+        _write_pr(directory, item, str(number), args.dry_run)
+        print(f"{item.identifier}: {verb} `pr: {number}`, so these notes can cite it")
+        shippable.append(with_fields(item, pr=str(number)))
+        written += 1
+
+    # Said whether or not anything was written, for `PL-KX9N`'s reason: a
+    # partially deepened clone answers for its newest closures and not for the
+    # rest, so a run that recorded some numbers proves nothing about the others.
+    unnamed = sorted(i for i in report.landed if i not in numbers)
+    if unnamed and report.shallow:
+        print(
+            f"{len(unnamed)} shipping closure(s) record no `pr` and this checkout is a "
+            f"shallow clone, so the merge that names the number can lie outside it. Their "
+            f"bullets will cite the commit or nothing; `git fetch --unshallow origin` "
+            f"before the cut is what lets them cite the pull request: {', '.join(unnamed)}"
+        )
+    if written or unnamed:
+        print()
+    return with_fields(ready, shippable=shippable)
+
+
 def cmd_release(args: argparse.Namespace) -> int:
     """Cut a release from whatever is finished and has not shipped yet.
 
@@ -1798,6 +1878,24 @@ def cmd_release(args: argparse.Namespace) -> int:
                 if not args.dry_run:
                     return 1
                 print()
+
+    # **The numbers the base already knows, written on before the notes quote
+    # them rather than after.** A closure lands with an empty `pr` by design -
+    # the number does not exist when the commit that closes the item is made
+    # (`PL-QS72`) - and the only thing that writes it is `docket record`, which
+    # the documented cut runs *after* `make release`. So an item that merged
+    # between the previous cut and this one shipped a bullet naming no pull
+    # request, and no supported command could put one there afterwards: this
+    # command answers `Nothing to release` once the version is cut, correctly,
+    # because re-cutting a shipped release is what leaves two sets of notes
+    # disagreeing about the same items (`PL-1MKQ`).
+    #
+    # Swapping the documented order was the other candidate and is weaker: it
+    # removes nothing, it only asks every future cut to remember. This runs the
+    # same reading `record` does, off the fetch the guards above have paid for
+    # already, so it costs one history read and cannot be forgotten.
+    if not getattr(args, "no_git", False):
+        ready = _numbers_before_notes(directory, ready, root, args)
 
     milestone = milestones(stamp(ready.shippable, name))[name]
     notes = release_notes(milestone, args.today or date.today())
@@ -2371,9 +2469,11 @@ def _record_owed(
     because a partially deepened clone answers for its newest closures and not
     for the rest (`PL-KX9N`).
     """
+    known = {item.identifier: item for item in items}
     owed = {i.identifier: i.path for i in items if i.status == "done" and not i.pr and i.path}
     if not owed:
         print("record: every closure already records its pull request")
+        _restate_notes(root, known, args.dry_run)
         return 0
     report = closures_on_base(root, owed, items_dir=tracked)
     if not report.known:
@@ -2381,7 +2481,6 @@ def _record_owed(
         return 2
 
     numbers = report.numbers
-    known = {item.identifier: item for item in items}
     verb = "would record" if args.dry_run else "recorded"
     written = 0
     for identifier in sorted(report.landed):
@@ -2391,6 +2490,11 @@ def _record_owed(
             continue
         _write_pr(directory, item, str(number), args.dry_run)
         print(f"{identifier}: {verb} `pr: {number}`")
+        # The notes pass below reads this map, so the number has to be on it:
+        # an item that is owed a `pr` *and* has already shipped is the case
+        # where one run of this command repairs both halves, and it is exactly
+        # the case a cut interrupted by a missing number leaves behind.
+        known[identifier] = with_fields(item, pr=str(number))
         written += 1
     unnamed = sorted(identifier for identifier in report.landed if identifier not in numbers)
     if unnamed and report.shallow:
@@ -2399,6 +2503,7 @@ def _record_owed(
             f"or the parent that would prove it is one - can lie outside it. `git fetch "
             f"--unshallow origin` is what lets the remaining {len(unnamed)} be read"
         )
+    _restate_notes(root, known, args.dry_run)
     if written:
         return 0
     if not report.landed:
@@ -2417,6 +2522,54 @@ def _record_owed(
             f"whether that is provenance lost or a history this checkout cannot see"
         )
     return 0
+
+
+def _restate_notes(root: Path, by_id: Mapping[str, Item], dry_run: bool) -> int:
+    """Put the number on the released bullets that shipped before it existed.
+
+    The other record owed the same fact. `pr` exists so a reader can get from
+    a released item back to the change that made it, and a release's notes are
+    where that reader is looking - so a number written onto the item and not
+    onto the bullet has been recorded in the half nobody reads.
+
+    It belongs to this command rather than to `release` because repair and
+    prevention are different jobs. `_numbers_before_notes` stops the next cut
+    producing one; nothing in a cut can reach a bullet that shipped two
+    releases ago, and re-cutting that version to regenerate it is refused,
+    correctly (`PL-1MKQ`). This is the only supported route to those lines, and
+    `make fix` runs it, so the repair costs no commit of its own - the same
+    property that made `record` the right home for the field itself.
+
+    Not in the `--number` path above, and the boundary is a fact rather than a
+    convenience: that path writes the number of a merge that has just
+    happened, and an item cannot appear in a release's notes before it has
+    merged. There is no bullet for it to repair.
+
+    Only an append is ever made, so a run that finds nothing to add writes
+    nothing at all - which is what lets this sit in `make fix` without
+    producing a diff on a healthy tree. `restate_references` carries why the
+    title is left alone.
+    """
+    directory = root / NOTES_DIR
+    if not directory.is_dir():
+        return 0
+    verb = "would restate" if dry_run else "restated"
+    total = 0
+    for path in sorted(directory.glob("v*.md")):
+        if not SEMVER_RE.match(path.stem):
+            continue
+        text = path.read_text(encoding="utf-8")
+        restated, repaired = restate_references(text, by_id)
+        if not repaired:
+            continue
+        if not dry_run:
+            path.write_text(restated, encoding="utf-8")
+        total += len(repaired)
+        print(
+            f"{NOTES_DIR}/{path.name}: {verb} {len(repaired)} bullet(s) that shipped "
+            f"with no route back to the change: {', '.join(repaired)}"
+        )
+    return total
 
 
 def _write_pr(directory: Path, item: Item, number: str, dry_run: bool) -> None:

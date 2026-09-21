@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 
@@ -16,8 +17,12 @@ from docket.release import (
     outstanding_roadmap_edits,
     prepare_bump,
     read_version,
+    reference,
     release_notes,
+    restate_references,
     suggest_version,
+    unreferenced,
+    unreferenced_by_version,
     version_key,
 )
 from docket.roadmap import CLEAR, IMPLEMENT, RELEASE, SCOPE, Wave, wave
@@ -339,6 +344,124 @@ def test_notes_fall_back_to_the_commit_for_an_item_closed_before_the_field() -> 
     milestone = milestones([_item("PL-1111", pr="")])["v0.3.0"]
 
     assert " — `abc1234`" in release_notes(milestone, TODAY)
+
+
+# --- bullets that shipped before their number existed ------------------------
+#
+# `PL-W7WL`: the cut renders the notes and `docket record` writes `pr`
+# afterwards, so an item that merged just before a cut shipped a bullet naming
+# no pull request, and re-cutting a shipped version to regenerate it is refused.
+# 128 of 853 bullets across 22 of this project's releases were in that state
+# when this was written, every one recoverable from a number the store by then
+# held.
+
+#: One release's notes as the cut wrote them, with `PL-2222` missing the
+#: reference its siblings carry. The shape is `release_notes`' own output.
+SHIPPED = """## v0.3.0 - 2026-08-24
+
+### defect
+
+- PL-1111 Item PL-1111 — #48
+- PL-2222 Item PL-2222
+- PL-3333 Item PL-3333 — `abc1234`
+"""
+
+
+def _unreferenced_item(identifier: str) -> Item:
+    """A closure carrying neither number nor commit, which is how one lands."""
+    return replace(_item(identifier), pr="", commit="")
+
+
+def test_unreferenced_names_only_the_bullets_with_no_route_back() -> None:
+    assert unreferenced(SHIPPED) == ("PL-2222",)
+
+
+def test_a_title_quoting_another_id_is_not_read_as_that_item_s_bullet() -> None:
+    """Same anchoring as `NOTES_ENTRY_RE`, and for the same reason it exists."""
+    text = "- PL-1111 Why PL-9999's claim fails\n"
+
+    assert unreferenced(text) == ("PL-1111",)
+
+
+def test_restating_appends_the_number_the_store_now_records() -> None:
+    restated, repaired = restate_references(SHIPPED, {"PL-2222": _item("PL-2222")})
+
+    assert repaired == ("PL-2222",)
+    assert "- PL-2222 Item PL-2222 — #48" in restated
+
+
+def test_a_restated_bullet_is_byte_for_byte_what_the_cut_would_have_written() -> None:
+    """The property the repair rests on, and why `reference` is one function.
+
+    A line appended afterwards and a line generated at the cut have to be
+    indistinguishable, or the notes carry two spellings of one fact and the
+    next reader cannot tell a repaired release from a clean one.
+    """
+    item = _item("PL-1111")
+    as_cut = release_notes(milestones([item])["v0.3.0"], TODAY)
+    without = release_notes(milestones([_unreferenced_item("PL-1111")])["v0.3.0"], TODAY)
+
+    assert restate_references(without, {"PL-1111": item})[0] == as_cut
+
+
+def test_restating_leaves_a_bullet_that_already_cites_its_pull_request() -> None:
+    """Idempotent, which is what lets this sit in `make fix` without a diff."""
+    restated, repaired = restate_references(SHIPPED, {"PL-1111": _item("PL-1111")})
+
+    assert repaired == ()
+    assert restated == SHIPPED
+
+
+def test_restating_leaves_the_title_exactly_as_it_shipped() -> None:
+    """A bullet records the title of the day it went out; retitling is not a defect.
+
+    So the repair is matched on the reference's shape rather than against the
+    item's current title. An equality test would refuse the append here and go
+    on refusing it forever, which is an advisory that fires every run and
+    changes no decision.
+    """
+    text = "- PL-2222 The title this shipped under\n"
+    renamed = replace(_item("PL-2222"), title="What it is called now")
+
+    restated, repaired = restate_references(text, {"PL-2222": renamed})
+
+    assert repaired == ("PL-2222",)
+    assert restated == "- PL-2222 The title this shipped under — #48\n"
+
+
+def test_a_bullet_whose_item_records_nothing_is_left_alone() -> None:
+    """This supplies a fact or it does nothing; there is no third thing to write."""
+    restated, repaired = restate_references(SHIPPED, {"PL-2222": _unreferenced_item("PL-2222")})
+
+    assert repaired == ()
+    assert restated == SHIPPED
+
+
+def test_a_bullet_naming_an_item_the_store_has_dropped_is_left_alone() -> None:
+    restated, repaired = restate_references(SHIPPED, {})
+
+    assert repaired == ()
+    assert restated == SHIPPED
+
+
+def test_reference_prefers_the_pull_request_and_falls_back_to_the_commit() -> None:
+    assert reference(_item("PL-1111")) == " — #48"
+    assert reference(_item("PL-1111", pr="")) == " — `abc1234`"
+    assert reference(_unreferenced_item("PL-1111")) == ""
+
+
+def test_unreferenced_by_version_reports_only_the_releases_with_a_gap(tmp_path: Path) -> None:
+    (tmp_path / "docs" / "releases").mkdir(parents=True)
+    (tmp_path / "docs" / "releases" / "v0.3.0.md").write_text(SHIPPED, encoding="utf-8")
+    (tmp_path / "docs" / "releases" / "v0.2.9.md").write_text(
+        "- PL-4444 Item PL-4444 — #12\n", encoding="utf-8"
+    )
+
+    assert unreferenced_by_version(tmp_path) == {"v0.3.0": ("PL-2222",)}
+
+
+def test_a_project_that_writes_no_notes_reports_nothing_rather_than_raising(tmp_path: Path) -> None:
+    assert unreferenced_by_version(tmp_path) == {}
 
 
 # --- what a release leaves the roadmap owing ---------------------------------

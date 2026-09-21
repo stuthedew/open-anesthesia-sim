@@ -2911,6 +2911,72 @@ def _unevenly_truncated_pair(tmp_path: Path) -> Path:
     return work
 
 
+def test_flight_still_reports_a_branch_pushed_to_after_its_pull_request_squashed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The shape every long-lived branch here ends up in, against real git.
+
+    A session runs a design round on an item, that pull request squash-merges,
+    and the session goes on to push the implementation to the same branch. The
+    merge carries the item file to `main` and its subject leads with the id, so
+    both facts `_taken_on_base` judges a claim by are true of the branch from
+    the moment it merged - and they say nothing about the commit that came
+    after. Measured 2026-09-20 on `origin/claude/lucid-dijkstra-i1qy6x`, where
+    `PL-3K9B`'s whole implementation went unreported and a second session was
+    told three times to start it (`PL-8JQQ`).
+
+    Real git rather than an injected runner, for the reason `_branched_repo`
+    uses it: the walk that dates the base's take is a `git log --format` this
+    fixture is the only thing proving git accepts.
+    """
+    root = tmp_path / "repo"
+    (root / "items").mkdir(parents=True)
+    item = root / "items" / "PL-K7QX-the-item.md"
+    item.write_text(READY.replace("PL-B1B1", "PL-K7QX"))
+    (root / "a.py").write_text("first\n")
+    clock = {"now": "2026-09-20T10:00:00+00:00"}
+
+    def git(*args: str) -> None:
+        env = os.environ | {"GIT_AUTHOR_DATE": clock["now"], "GIT_COMMITTER_DATE": clock["now"]}
+        subprocess.run(["git", *args], cwd=root, check=True, capture_output=True, env=env)
+
+    subprocess.run(
+        ["git", "-c", "init.defaultBranch=main", "init", "-q", str(root)],
+        check=True,
+        capture_output=True,
+    )
+    for name, value in (("user.email", "t@example.com"), ("user.name", "T")):
+        git("config", name, value)
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: capture the item")
+
+    # The design round: a queue-only commit, which is what the pull request took.
+    git("checkout", "-qb", "work")
+    clock["now"] = "2026-09-20T15:00:00+00:00"
+    item.write_text(item.read_text() + "\nThe decision.\n")
+    git("commit", "-qam", "PL-K7QX: ratify the rule and seat the implementation")
+    git("checkout", "-q", "main")
+    git("merge", "-q", "--squash", "work")
+    clock["now"] = "2026-09-20T15:30:00+00:00"
+    git("commit", "-qm", "PL-K7QX: ratify the rule and seat the implementation (#801)")
+
+    # And the work itself, pushed to the same branch afterwards. It leaves the
+    # item file alone, because the round that merged is what wrote it.
+    git("checkout", "-q", "work")
+    clock["now"] = "2026-09-20T16:00:00+00:00"
+    (root / "a.py").write_text("fixed\n")
+    (root / "test_a.py").write_text("def test_a() -> None:\n    pass\n")
+    git("add", "-A")
+    git("commit", "-qm", "PL-K7QX: the whole implementation")
+    git("checkout", "-q", "main")
+
+    assert main(["--items", str(root / "items"), "flight"]) == 0
+
+    out = capsys.readouterr().out
+    assert "PL-K7QX" in out
+    assert "work" in out
+
+
 def test_flight_reports_below_an_uneven_horizon_which_is_the_accepted_limit(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -3369,12 +3435,19 @@ def test_record_declines_where_the_parent_is_out_of_reach(
     assert _pr_field(root) == ""
 
 
-def _owed_clone(tmp_path: Path, *, subject: str = "PL-K7QX: close it (#148)") -> Path:
+def _owed_clone(
+    tmp_path: Path, *, subject: str = "PL-K7QX: close it (#148)", version: str = ""
+) -> Path:
     """A checkout whose `origin/main` holds a closure recording no `pr`.
 
     The state every merge leaves behind, built with real git and a real remote
     because `closures_on_base` resolves the default base through one. `subject`
     is what the squash merge wrote, which is where the number comes from.
+
+    `version` puts a version file on the base as well, which is what the
+    release guards read to answer whether a number has already shipped. Off by
+    default: a checkout that only has to answer `record` needs no version, and
+    the guards decline on a base they cannot read rather than guessing.
     """
     origin = tmp_path / "origin"
     items = origin / "items"
@@ -3394,6 +3467,10 @@ def _owed_clone(tmp_path: Path, *, subject: str = "PL-K7QX: close it (#148)") ->
     (items / name).write_text(
         RECORD_ITEM.format(id="PL-K7QX", status="ready", extra=""), encoding="utf-8"
     )
+    if version:
+        (origin / "pyproject.toml").write_text(
+            f'[project]\nversion = "{version}"\n', encoding="utf-8"
+        )
     git("add", "-A")
     git("commit", "-qm", "PL-K7QX: capture it")
     (items / name).write_text(
@@ -3439,6 +3516,144 @@ def test_bare_record_says_so_when_nothing_is_owed(
     assert main(["record", "--items", str(work / "items")]) == 0
 
     assert "every closure already records its pull request" in capsys.readouterr().out
+
+
+# --- the number reaching the notes, not only the item ------------------------
+#
+# `PL-W7WL`, filed four times from four separate cuts. The documented order is
+# `make release` and then `docket record`, so an item that merged between the
+# previous cut and this one had no `pr` when the notes were rendered and its
+# bullet shipped naming no pull request - and `release` answers `Nothing to
+# release` once the version is cut, correctly, so nothing could put one there
+# afterwards. Nine of `v0.4.22`'s fifteen bullets and twelve of `v0.4.35`'s
+# sixteen were in that state.
+
+
+def _releasable_owed_clone(tmp_path: Path, *, subject: str = "PL-K7QX: close it (#148)") -> Path:
+    """An `_owed_clone` that a release can also be cut from.
+
+    The two halves of the observed case in one checkout: the base names the
+    number, and the item about to ship does not record it yet.
+    """
+    work = _owed_clone(tmp_path, subject=subject, version="0.2.5")
+    subprocess.run(["git", "tag", "v0.2.5"], cwd=work, check=True, capture_output=True)
+    return work
+
+
+def _shipped_notes(work: Path, version: str = "0.2.6") -> str:
+    return (work / "docs" / "releases" / f"v{version}.md").read_text(encoding="utf-8")
+
+
+def test_a_cut_backfills_a_pull_request_number_the_base_already_names(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The observed defect, driven end to end: the bullet cites the merge.
+
+    The number is in the base's history at the moment the notes are rendered.
+    Nothing had read it there, because the only reader ran after the cut.
+    """
+    work = _releasable_owed_clone(tmp_path)
+
+    assert main(["release", "0.2.6", "--no-fetch", "--items", str(work / "items")]) == 0
+
+    assert "- PL-K7QX A closed item — #148" in _shipped_notes(work)
+    assert "PL-K7QX: recorded `pr: 148`, so these notes can cite it" in capsys.readouterr().out
+
+
+def test_a_cut_backfill_writes_the_number_onto_the_item_as_well(tmp_path: Path) -> None:
+    """Both records or neither; one repaired half is the same disagreement.
+
+    A cut that cited the number and left the store owing it would keep
+    `docket check`'s missing-`pr` advisory counting the item forever.
+    """
+    work = _releasable_owed_clone(tmp_path)
+
+    main(["release", "0.2.6", "--no-fetch", "--items", str(work / "items")])
+
+    assert _work_pr(work) == "pr: 148"
+
+
+def test_a_dry_run_cut_shows_the_number_it_would_record_and_writes_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The dry run exists to review the notes, so it has to render the real ones."""
+    work = _releasable_owed_clone(tmp_path)
+
+    assert (
+        main(["release", "0.2.6", "--dry-run", "--no-fetch", "--items", str(work / "items")]) == 0
+    )
+
+    out = capsys.readouterr().out
+    assert "PL-K7QX: would record `pr: 148`" in out
+    assert "- PL-K7QX A closed item — #148" in out
+    assert _work_pr(work) == ""
+    assert not (work / "docs" / "releases").exists()
+
+
+def test_a_cut_ships_the_bullet_as_it_stands_when_no_commit_names_a_number(tmp_path: Path) -> None:
+    """Never a refusal: provenance one `git fetch` away must not stop a release.
+
+    The bullet goes out as it would have before, and `docket record` repairs it
+    afterwards - which is the half of this that a cut can never do.
+    """
+    work = _releasable_owed_clone(tmp_path, subject="PL-K7QX: close it")
+
+    assert main(["release", "0.2.6", "--no-fetch", "--items", str(work / "items")]) == 0
+
+    assert "- PL-K7QX A closed item\n" in _shipped_notes(work)
+
+
+def test_record_restates_a_released_bullet_that_shipped_without_a_number(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The repair half: the only supported route to a bullet already shipped.
+
+    Re-cutting the version would regenerate it and is refused, correctly
+    (`PL-1MKQ`), so without this the line can only be corrected by hand - which
+    is what happened to `v0.4.32` and did not happen to the other twenty-one.
+    """
+    work = _releasable_owed_clone(tmp_path)
+    releases = work / "docs" / "releases"
+    releases.mkdir(parents=True)
+    (releases / "v0.2.5.md").write_text(
+        "## v0.2.5 - 2026-08-20\n\n### infra\n\n- PL-K7QX A closed item\n", encoding="utf-8"
+    )
+
+    assert main(["record", "--items", str(work / "items")]) == 0
+
+    assert "- PL-K7QX A closed item — #148" in (releases / "v0.2.5.md").read_text(encoding="utf-8")
+    assert "restated 1 bullet(s)" in capsys.readouterr().out
+
+
+def test_record_leaves_a_notes_file_whose_bullets_all_cite_their_merge(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """No diff on a healthy tree, which is what `make fix` running it requires."""
+    work = _releasable_owed_clone(tmp_path)
+    releases = work / "docs" / "releases"
+    releases.mkdir(parents=True)
+    healthy = "## v0.2.5 - 2026-08-20\n\n### infra\n\n- PL-K7QX A closed item — #148\n"
+    (releases / "v0.2.5.md").write_text(healthy, encoding="utf-8")
+
+    assert main(["record", "--items", str(work / "items")]) == 0
+
+    assert (releases / "v0.2.5.md").read_text(encoding="utf-8") == healthy
+    assert "restated" not in capsys.readouterr().out
+
+
+def test_a_dry_run_record_says_what_it_would_restate_without_writing_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    work = _releasable_owed_clone(tmp_path)
+    releases = work / "docs" / "releases"
+    releases.mkdir(parents=True)
+    shipped = "- PL-K7QX A closed item\n"
+    (releases / "v0.2.5.md").write_text(shipped, encoding="utf-8")
+
+    assert main(["record", "--dry-run", "--items", str(work / "items")]) == 0
+
+    assert (releases / "v0.2.5.md").read_text(encoding="utf-8") == shipped
+    assert "would restate 1 bullet(s)" in capsys.readouterr().out
 
 
 def test_bare_record_writes_nothing_where_the_base_names_no_number(

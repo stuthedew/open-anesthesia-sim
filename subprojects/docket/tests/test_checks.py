@@ -2599,6 +2599,69 @@ def test_a_store_with_nothing_untriaged_still_names_the_zero() -> None:
     assert "1 open (0 P0, 1 P1, 0 P2, 0 P3, 0 untriaged)" in format_check(report)
 
 
+# --- released bullets with no route back to the change -----------------------
+#
+# `PL-W7WL`. `release` renders the notes and `docket record` writes `pr`
+# afterwards, so an item merging just before a cut shipped a bullet naming no
+# pull request - and nothing compared the two files on this axis, which is why
+# it was filed four times from four separate cuts. 128 of 853 bullets across 22
+# of this project's releases were in that state, all 128 recoverable.
+
+
+def _reference_advisories(unreferenced: dict[str, tuple[str, ...]], *items: Item) -> list[str]:
+    report = analyze(list(items), TODAY, unreferenced=unreferenced)
+    return [line for line in report.advisories if "without saying where the change landed" in line]
+
+
+def test_a_bullet_the_store_can_supply_a_number_for_is_reported() -> None:
+    advisories = _reference_advisories(
+        {"v0.3.8": ("PL-K7QX",)}, _item(status="done", closed=TODAY, pr="311")
+    )
+
+    assert len(advisories) == 1
+    assert "PL-K7QX" in advisories[0]
+    assert "docket record" in advisories[0]
+
+
+def test_it_is_an_advisory_rather_than_an_error() -> None:
+    """The repair is one command, and a cut from a shallow clone can produce one.
+
+    An error would go red on a tree whose repair nobody has run yet, and on a
+    cut made where the number was genuinely unreachable.
+    """
+    report = analyze(
+        [_item(status="done", closed=TODAY, pr="311")], TODAY, unreferenced={"v0.3.8": ("PL-K7QX",)}
+    )
+
+    assert report.errors == []
+
+
+def test_a_bullet_whose_item_records_nothing_is_not_a_repair_anyone_declined() -> None:
+    """Provenance that does not exist is `_check_closures`' finding, not this one.
+
+    Counting it here would make the advisory fire on every run without naming
+    anything a reader could act on, which is what retires a check.
+    """
+    assert _reference_advisories({"v0.3.8": ("PL-K7QX",)}, _item(status="done", closed=TODAY)) == []
+
+
+def test_a_bullet_naming_an_item_the_store_has_dropped_is_not_reported() -> None:
+    assert _reference_advisories({"v0.3.8": ("PL-2222",)}, _item(status="done", pr="311")) == []
+
+
+def test_the_commit_counts_where_an_item_closed_before_the_field_existed() -> None:
+    advisories = _reference_advisories(
+        {"v0.3.8": ("PL-K7QX",)}, _item(status="done", closed=TODAY, commit="abc1234")
+    )
+
+    assert len(advisories) == 1
+
+
+def test_a_caller_that_does_not_ask_leaves_the_comparison_unmade() -> None:
+    """Every command but `check`, which is the pattern the rest of `analyze` follows."""
+    assert _reference_advisories({}, _item(status="done", closed=TODAY, pr="311")) == []
+
+
 # --- the seam between a release's notes and its tag --------------------------
 #
 # `PL-028F`. `bin/docket release` writes the notes at the cut and the tag goes

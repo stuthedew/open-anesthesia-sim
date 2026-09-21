@@ -71,6 +71,7 @@ from anesthesia_sim.app.dashboard_frame import (
     WASH_IN_DENOMINATOR_TEXT,
     WASH_IN_HEADING,
     WASH_IN_MODELLED_TEXT,
+    RunMarks,
     bookmark_panel,
     compartment_cap_notice,
     fork_offer,
@@ -904,27 +905,68 @@ class SimulationView(QWidget):
         for index, (run, snapshot) in enumerate(zip(self._runs, snapshots, strict=True)):
             run.refresh(snapshot, frame, index)
 
-        self._refresh_bookmarks(snapshots[0])
+        self._refresh_bookmarks(snapshots)
         self._refresh_fork_panel()
         self._frame = frame
         self.presented_frames += 1
 
     # -------------------------------------------------------------- bookmarks
 
-    def _refresh_bookmarks(self, snapshot: SimulationSnapshot) -> None:
-        """Redraw both collections, and rebound the height control to this agent.
+    def _refresh_bookmarks(self, snapshots: Sequence[SimulationSnapshot]) -> None:
+        """Redraw both collections from every run, and rebound the height control.
 
-        Read from the reference run, which is the run every other reading on
-        this panel is taken from. Reading one run is correct rather than a
-        simplification: `_apply_to_every_run` is the only thing that writes a
-        mark, so every displayed run carries the same set, and
-        `test_every_displayed_run_carries_the_same_marks` is what holds that.
+        The *set* of marks is the reference run's, and reading one run for it
+        is correct rather than a simplification: `_apply_to_every_run` is the
+        only thing that writes a mark, so every displayed run carries the same
+        set, and `test_every_displayed_run_carries_the_same_marks` is what
+        holds that.
+
+        **Their standings are not, and are read from every run** (`PL-LHBY`,
+        `PL-4KZD`). A standing is computed from the run's own clock, its own
+        opening instant and its own halts, so the runs answer one mark
+        differently as soon as a branch is drawn. Passing the whole tick's
+        snapshots rather than a chosen one is what keeps the choice from
+        being made here at all: there is no reference run to pick.
+
+        The height control keeps reading the reference run, and that read is
+        sound where the rows' was not: it is bounded by the *agent's*
+        published maximum delivered concentration over the agent's MAC, both
+        settled at construction, and two displayed runs are locked to one
+        agent (`COMPARING_AGENT_LOCK_TEXT`, `BRANCH_AGENT_LOCK_TEXT`, and
+        `assemble_chart_frame` refusing a frame whose runs disagree). A run's
+        own delivered setting moves what it will reach, not what it may be
+        asked to reach. `PL-GHMB` is the item that assumed otherwise, and it
+        was dropped on the measurement.
 
         Args:
-            snapshot: The reference run's snapshot for this tick.
+            snapshots: Every displayed run's snapshot for this tick, in
+                drawing order - the same reads the frame was assembled from.
+
+        Raises:
+            ValueError: If no run is given, which `bookmark_panel` refuses
+                rather than drawing the case's marks under standings nobody
+                answered. Unreachable from here - the constructor refuses an
+                empty run set and `_handle_case_restarted` truncates to the
+                trunk - so it is the contract rather than a live path.
+            SimulationConfigurationError: If a displayed run's standings were
+                computed for a mark set that does not hold one of the
+                reference run's marks. `_apply_to_every_run` writes a mark to
+                every displayed run and `_branch_from` copies the trunk's set
+                at the fork, so the sets agree by construction; reading every
+                run makes that invariant load-bearing, and a divergence now
+                halts the dashboard through `present` rather than quietly
+                drawing the reference run's answer, which is the direction
+                `CLAUDE.md`'s safety-critical standard asks for.
         """
 
-        panel = bookmark_panel(snapshot.bookmarks, snapshot.bookmark_standings)
+        reference = snapshots[0]
+        panel = bookmark_panel(
+            reference.bookmarks,
+            tuple(
+                RunMarks(run_label(index), snapshot.bookmark_standings)
+                for index, snapshot in enumerate(snapshots)
+            ),
+        )
         self._bookmarks_panel.set_panel(panel)
 
         if self._bookmark_dialog is None:
@@ -933,8 +975,8 @@ class SimulationView(QWidget):
         self._bookmark_dialog.set_panel(panel)
         self._bookmark_dialog.set_reachable_height(
             mac_multiple(
-                fraction_from_percent(snapshot.max_delivered_concentration_percent),
-                snapshot.agent_mac_percent,
+                fraction_from_percent(reference.max_delivered_concentration_percent),
+                reference.agent_mac_percent,
             )
         )
 

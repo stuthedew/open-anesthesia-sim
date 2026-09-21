@@ -44,6 +44,7 @@ from PySide6.QtWidgets import (
 from anesthesia_sim.app import control_timeline as control_timeline_module
 from anesthesia_sim.app import run_view as run_view_module
 from anesthesia_sim.app import theme
+from anesthesia_sim.app.bookmarks import MacTarget, MarkStanding, TimeBookmark
 from anesthesia_sim.app.chart_frame import (
     COMPARED_COMPARTMENT_CAP,
     HOVER_INSTANT_RESOLUTION_S,
@@ -64,6 +65,9 @@ from anesthesia_sim.app.dashboard_frame import (
     FORK_NOTHING_SELECTED_TEXT,
     INTERPRETATION_DISCLAIMER_TEXT,
     KEEP_CURRENT_CASE_TEMPLATE,
+    MARK_STANDING_COMPARED_TEXT,
+    MARK_STANDING_TEXT,
+    MARK_STILL_RUNNING_TEXT,
     MAX_DISPLAYED_RUNS,
     NEW_CASE_CARRYOVER_TEMPLATE,
     NEW_CASE_IS_NOT_A_VIEW_TEXT,
@@ -115,7 +119,7 @@ from anesthesia_sim.app.theme import (
 )
 from anesthesia_sim.app.wash_in import read_wash_in
 from anesthesia_sim.app_metadata import APP_DISPLAY_NAME
-from anesthesia_sim.core.concentration import Fraction, fraction_from_percent
+from anesthesia_sim.core.concentration import Fraction, MacMultiple, fraction_from_percent
 from anesthesia_sim.core.exceptions import (
     SimulationConfigurationError,
     SimulationDomainLimitError,
@@ -3162,6 +3166,55 @@ def test_marking_one_instant_twice_is_refused_and_says_why(application: QApplica
     assert len(controller.snapshot().bookmarks.time_bookmarks) == 1
 
 
+def test_a_mark_edited_after_a_fork_reaches_the_branch_too(application: QApplication) -> None:
+    """The invariant the marks panel now rests on, in the one shape `main` produces.
+
+    `bookmark_panel` reads the reference run's mark *set* and every run's
+    standings against it, so a branch whose set had drifted from the trunk's
+    no longer draws the trunk's answer quietly - `BookmarkStandings` refuses
+    the lookup, `present` catches it and the whole dashboard halts. That is
+    the right direction under `CLAUDE.md`'s safety-critical standard, and it
+    makes the invariant load-bearing in a way it was not.
+
+    The three tests that hold it build two loose trunks, which is a
+    configuration `main()` cannot produce: it opens one trunk and a
+    `BranchedCase`. This walks the real one - fork, then add and remove from
+    the dashboard - because `_branch_from` copies the set at the fork and
+    `_apply_to_every_run` is what has to keep the two in step afterwards.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    _take_fork(view, 60.0)
+    trunk, branch = (run.controller for run in view.runs)
+
+    dialog = _opened_bookmark_dialog(view)
+    dialog.instant_spin.setValue(600.0)
+    dialog.add_time_button.click()
+
+    assert trunk.snapshot().bookmarks == branch.snapshot().bookmarks
+    assert len(branch.snapshot().bookmarks.time_bookmarks) == 1
+
+    dialog.compartment_combo.setCurrentIndex(
+        dialog.compartment_combo.findData(RecordedQuantity.VESSEL_RICH.value)
+    )
+    dialog.height_spin.setValue(0.8)
+    dialog.add_target_button.click()
+
+    assert trunk.snapshot().bookmarks == branch.snapshot().bookmarks
+
+    dialog.time_list.setCurrentRow(0)
+    dialog.remove_time_button.click()
+
+    assert trunk.snapshot().bookmarks == branch.snapshot().bookmarks
+    assert branch.snapshot().bookmarks.time_bookmarks == ()
+
+    # And the panel still draws, which is what the refusal above would stop.
+    view.present(False)
+
+    assert view._bookmarks_panel.targets.rows_label.text().startswith("Vessel-rich")
+
+
 def test_a_refusal_leaves_every_run_carrying_the_same_marks(application: QApplication) -> None:
     # The refusal fires on the second run rather than the first only if the
     # two have drifted; this asserts they have not, which is the invariant
@@ -3204,6 +3257,126 @@ def test_the_dialog_and_the_panel_list_one_set_of_rows(application: QApplication
     listed = [dialog.time_list.item(row).text() for row in range(dialog.time_list.count())]
 
     assert view._bookmarks_panel.times.rows_label.text() == "\n".join(listed)
+
+
+# The branch crosses 0.50 xMAC at 114.7 s, 547 steps after it opens at 60 s.
+# A budget rather than "step until it stops": a test that fails by hanging
+# reports nothing and costs a whole run to find out.
+_BRANCH_STEP_BUDGET = 2000
+
+
+def _halted_branch_view(application: QApplication) -> SimulationView:
+    """A trunk paused below a marked height, and a branch that ran up through it.
+
+    The trunk is paused at 60 s at 0.17 xMAC alveolar and never advances, so
+    it is still running for a target at 0.50 xMAC. The branch is opened at
+    that instant, its delivered concentration raised to the agent's ceiling,
+    and stepped until the crossing halts it - at 114.7 s, which is where the
+    offscreen reproduction on `PL-LHBY` put it.
+
+    The time bookmark rides along for the second half of the same defect: at
+    30 s it is behind the trunk's clock and before the branch's own opening
+    instant, so the two runs answer it in opposite words.
+    """
+
+    case = _branched_case()
+    view = _case_view(application, case)
+    case.trunk.add_mac_target(MacTarget(RecordedQuantity.ALVEOLAR, MacMultiple(0.5)))
+    case.trunk.add_time_bookmark(TimeBookmark(30.0, "check"))
+
+    _take_fork(view, 60.0)
+
+    branch = view.runs[1].controller
+    branch.set_delivered_partial_pressure_fraction(
+        fraction_from_percent(branch.snapshot().max_delivered_concentration_percent)
+    )
+    branch.start()
+
+    for _ in range(_BRANCH_STEP_BUDGET):
+        if not branch.snapshot().is_running:
+            break
+
+        branch.advance(SIMULATION_STEP_S)
+    else:
+        raise AssertionError(
+            f"the branch ran {_BRANCH_STEP_BUDGET} steps without halting on the target; "
+            f"it stands at {branch.snapshot().elapsed_s} s"
+        )
+
+    view.present(False)
+
+    return view
+
+
+def test_a_branch_halted_on_a_mark_says_so(application: QApplication) -> None:
+    """`PL-LHBY`, the silent negative, end to end from the marks to the drawn row.
+
+    The branch stops itself on a height the learner marked. Drawn from the
+    reference run the row said nothing at all - the trunk was still running
+    for that target - so the one on-screen indication that a run stopped
+    where it was asked to existed for a lone run and vanished as soon as a
+    second was drawn, leaving the halt indistinguishable from a Pause.
+
+    Asserted on the run that halted *and* on the run that did not: naming
+    only the branch would leave the trunk's silence to be read as the
+    trunk having no answer rather than as its answer being "not yet".
+    """
+
+    view = _halted_branch_view(application)
+
+    assert view.runs[1].snapshot().elapsed_s == pytest.approx(114.7)
+    assert view.runs[1].is_running is False
+
+    listed = view._bookmarks_panel.targets.rows_label.text()
+
+    assert f"{run_label(1)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.REACHED]}" in listed
+    assert f"{run_label(0)} {MARK_STILL_RUNNING_TEXT}" in listed
+
+
+def test_a_mark_the_branch_cannot_reach_is_not_drawn_as_the_trunk_left_it(
+    application: QApplication,
+) -> None:
+    """`PL-LHBY`, the false positive, and the worse half of the pair.
+
+    An instant the branch inherited but opened after read as the trunk's
+    `passed`, so the screen asserted of the displayed branch something the
+    model decides is false from `ResumePoint.elapsed_s` alone.
+    `MarkStanding.BEFORE_THIS_BRANCH` exists so that is not said, and no
+    screen could reach it: the reference run is the trunk, and no instant
+    stands before a trunk.
+    """
+
+    view = _halted_branch_view(application)
+
+    listed = view._bookmarks_panel.times.rows_label.text()
+
+    assert listed.endswith(
+        f"{run_label(1)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.BEFORE_THIS_BRANCH]}"
+    )
+    assert f"{run_label(0)} {MARK_STANDING_COMPARED_TEXT[MarkStanding.PASSED]}" in listed
+
+
+def test_a_lone_run_states_a_mark_s_standing_without_naming_a_run(
+    application: QApplication,
+) -> None:
+    # The other side of the same rule: an unattributed clause is a claim
+    # about the case, and on one run it is one. A run name on every row of a
+    # single-run panel would be the standing chrome
+    # `.claude/rules/ui-reader.md` rules out, and it is what the dashboard
+    # already refuses for the legend and the run headings.
+    controller = SimulationController()
+    view = _shown_view(application, controller)
+    controller.start()
+    _advance_to(controller, 60.0)
+    # Marked behind the clock, so the run passes it without halting on it:
+    # this test is about how the standing is attributed, not about the halt.
+    controller.add_time_bookmark(TimeBookmark(30.0, "check"))
+    view.present(False)
+
+    listed = view._bookmarks_panel.times.rows_label.text()
+
+    assert listed.endswith(MARK_STANDING_TEXT[MarkStanding.PASSED])
+    assert run_label(0) not in listed
 
 
 def test_the_bookmark_panel_sits_outside_the_region_between_the_two_plots(

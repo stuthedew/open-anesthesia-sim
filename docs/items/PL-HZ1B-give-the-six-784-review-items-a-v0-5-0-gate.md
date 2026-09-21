@@ -1,9 +1,15 @@
 ---
 id: PL-HZ1B
 title: Give the six #784 review items a v0.5.0 gate disposition, the half of their recovery #806 left: untriaged today, each becomes a make check failure the moment triage gives it classes
-status: untriaged
+priority: P2
+effort: S
+status: done
+classes: housekeeping, docs
 feature: two-run-attribution
 added: 2026-09-20
+closed: 2026-09-21
+payoff: stops a later triage pass re-deriving a gate disposition that #812 already recorded, and takes the six items off the prerequisite list PL-NQKP's pass was routed around
+verify: grep -q '^### Declined to Gate 2, because this milestone' ROADMAP.md
 ---
 
 **Problem.** Recover the seven items stranded on claude/vigilant-albattani-3lkcb3 and give each a v0.5.0 gate disposition, since a triaged safety item with none fails make check
@@ -107,3 +113,26 @@ at all - which is a narrower and more testable claim than "goes blind after a
 squash-merge", and it points at how the commit range `flight` parses is
 chosen rather than at ref staleness. Offered as a lead; `PL-8JQQ` is the item
 and its session is live on it.
+
+**Closed 2026-09-21 by `#812`, which did both halves in one commit.** The
+sequencing worry above did not materialise, and the reason is worth recording:
+`#812` triaged the six *and* wrote their gate dispositions in the same commit,
+so `main` was never red between the two. `PL-NQKP`'s pass merged as `#810`
+minutes earlier, having correctly left the six alone.
+
+What `#812` recorded, against the `**Done when.**` above:
+
+- `PL-25DD` is `defect, safety, ux`, so it re-enters unconditionally and is on
+  the frozen list under "Added 2026-09-21 under the unconditional safety/science
+  exception - 1 entry". The list moved 181 to 182 and the timeline row with it.
+- `PL-WG73` (`defect, ux`) and `PL-624C` (`defect, test`) are debt but not
+  `safety`, so the presence test applies and answers no - `git log -S` dates
+  both symbols to `d048aca`, the pull request that built the fork control.
+  Both are in a new `### Declined to Gate 2, because this milestone's own work
+  created them - 2 entries`.
+- `PL-FKN7`, `PL-R17Y` and `PL-RS3Z` are classed `test` alone. `test` is not in
+  `docket.toml`'s `debt_classes`, so the gate is owed no disposition for them,
+  which is why only three of the six appear above. `doc_check` reporting 0
+  errors on the merged tree is what says so rather than this sentence.
+
+`make check` green on `5bdd1a8e`.

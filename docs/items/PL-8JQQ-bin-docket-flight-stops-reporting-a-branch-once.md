@@ -3,10 +3,11 @@ id: PL-8JQQ
 title: bin/docket flight stops reporting a branch once an earlier pull request from it squash-merged, so commits pushed to it afterwards are invisible: PL-3K9B's whole implementation, pushed with the id leading its subject, does not appear
 priority: P2
 effort: M
-status: ready
+status: done
 classes: defect
-touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py
+touches: subprojects/docket/src/docket/vcs.py, subprojects/docket/tests/test_vcs.py, subprojects/docket/tests/test_cli.py
 added: 2026-09-20
+closed: 2026-09-21
 payoff: restores the one guard against two sessions on one item for the branch shape every harness-named branch here ends up in
 verify: grep -q 'def test_a_branch_pushed_to_after_its_pull_request_squash_merged_is_still_in_flight' subprojects/docket/tests/test_vcs.py
 ---
