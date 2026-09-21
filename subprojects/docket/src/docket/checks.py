@@ -25,6 +25,7 @@ from collections import Counter
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from datetime import date
+from pathlib import Path
 
 from .config import Config
 from .model import (
@@ -318,6 +319,24 @@ PR_RE = re.compile(r"^[1-9][0-9]*$")
 FALSIFIES_MIN_LENGTH = 12
 
 
+@dataclass(frozen=True)
+class SettingsSource:
+    """Which `docket.toml` a run resolved its settings from, and whether it was there.
+
+    Two fields rather than one because both halves have to travel: a run that
+    found no config needs to name the path it looked for, which is the whole
+    of the diagnosis, and a `None` path would carry the fact and lose it.
+
+    The path arrives already formatted for a reader - resolved, and made
+    relative to the working directory where it can be. That is the caller's
+    job rather than this module's, which reads no filesystem and knows no
+    working directory.
+    """
+
+    path: Path
+    found: bool
+
+
 @dataclass
 class Report:
     """Findings, split by whether a machine or a person has to resolve them.
@@ -337,6 +356,10 @@ class Report:
     #: kept out of the three lists above for that reason: nothing here asks to
     #: be resolved. `_note_cost` says why it is reported at all.
     cost: str = ""
+    #: Which settings governed this run. Not a finding either, and kept out of
+    #: the three lists for the same reason `cost` is. `_note_settings` says why
+    #: it is reported at all.
+    settings: str = ""
 
     @property
     def open_items(self) -> list[Item]:
@@ -1354,6 +1377,48 @@ def _check_selects_nothing(
         "which is not 0, so the command reads as one that correctly fails and will read "
         "that way after the work too - check that the name each selector matches is one "
         "the work will create, and replace the selectors where it is not"
+    )
+
+
+def _note_settings(report: Report, source: SettingsSource | None) -> None:
+    """Name the settings this run was governed by, every run, as a fact.
+
+    `_note_cost`'s argument below, applied to policy rather than to runtime: not
+    a finding, nobody is asked to act on it, and it earns its line because a
+    *change* in it is the signal.
+
+    Here that change is a class of bug this project has already had. `_load`
+    resolves settings from the root of the repository holding the store, so
+    that `--items` pointed at another project's queue is not answered under
+    this project's policy. Resolving it from the store's *parent* instead put
+    the whole store on package defaults - no `known_classes`, no
+    `workflow_paths`, `top_band_limit` at 5 rather than 12 - and `PL-P757`
+    fixed that. What makes it worth a permanent line is how it was found: it
+    was the quietest of the three failures that one derivation caused, noticed
+    only incidentally while the two louder ones were being repaired, because
+    nothing a run printed said which policy it had been read under
+    (`PL-K5PW`, filed twice).
+
+    Refusing such a run would be wrong - reading another project's store under
+    its own defaults is correct and a real use - so what was missing was never
+    a guard but the one fact about a run nobody could see.
+
+    Named on the run that found its config as well as on the run that did not,
+    because silence is ambiguous: a reader who sees no line cannot tell a
+    config that was found from a version of this command that does not report
+    one, and it is the *difference* between two runs' lines that carries the
+    diagnosis. One short line, scanned rather than acted on, in the category
+    the open-item counts beside it are in.
+    """
+    if source is None:
+        return
+    if source.found:
+        report.settings = f"settings: {source.path}"
+        return
+    report.settings = (
+        f"settings: no {source.path}, so library defaults govern this run rather than "
+        "this project's - a finding below may be this store read under the wrong "
+        "policy rather than a store that is wrong"
     )
 
 
@@ -2584,6 +2649,7 @@ def analyze(
     notes: dict[str, frozenset[str]] | None = None,
     window: CutWindow | None = None,
     unreferenced: dict[str, tuple[str, ...]] | None = None,
+    settings_source: SettingsSource | None = None,
 ) -> Report:
     """Validate and groom in one pass.
 
@@ -2618,6 +2684,13 @@ def analyze(
     read from the same files as `notes` and passed separately rather than
     folded into it, because the two answer different questions about them and
     a caller that wants one does not always want the other.
+
+    `settings_source` is which `docket.toml` the caller resolved `config` from,
+    and whether it was there. It is the one input that says nothing about the
+    store and everything about the reading of it, which is why it cannot be
+    derived here: `config` arrives already applied, and a `Config` holding
+    library defaults is indistinguishable from a project that wrote those
+    values down. A caller that does not supply it leaves the reading unnamed.
     """
     settings = config or Config()
     ids = offered.ids if offered is not None else None
@@ -2636,6 +2709,7 @@ def analyze(
     _check_provenance(report, history)
     _check_landed(report, landed)
     _check_selects_nothing(report, landed, ids)
+    _note_settings(report, settings_source)
     _note_cost(report, landed)
     _check_closures(report, closures)
     _check_records(report, records)

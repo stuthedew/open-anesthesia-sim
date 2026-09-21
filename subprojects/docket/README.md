@@ -3025,6 +3025,58 @@ version_file = "pyproject.toml"
 roadmap_file = "ROADMAP.md"
 ```
 
+### Where the settings are resolved from, and why the run says so
+
+From the root of the repository the store belongs to, walked up from the store
+itself — `_root` in `cli.py`, which `_load` and fifteen other derivations call.
+Not from wherever the command was run, and not from the store's parent: with no
+`--items` those three are the same place, and with `--items docs/items` they are
+three different ones. A store in no checkout at all keeps the parent, there
+being no repository to walk up to.
+
+Resolving from the store's *project* rather than from the caller's is the part
+that is deliberate: pointing `--items` at another project's queue must not
+answer it under this project's policy. Resolving from the store's *parent* was
+a bug, and one that hid two louder ones with it — `PL-P757` has the full
+account. Its settings half is the one this section is about: `--items
+docs/items` looked for `docs/docket.toml`, found none, and ran the whole store
+on package defaults, with no `known_classes`, no `workflow_paths` and
+`top_band_limit` at 5 rather than 12.
+
+That failure is fixed. What it cost to find is the reason for the line below:
+it was the quietest of the three, spotted only incidentally while the other two
+were being repaired, and nothing about a run said which policy had governed it.
+So `docket check` now names its settings on its own second line, whether or not
+it found a file:
+
+```
+docket: 346 open (0 P0, 1 P1, 197 P2, 130 P3, 18 untriaged), 0 errors, 4 advisories
+  settings: docket.toml
+```
+
+```
+docket: 21 open (0 P0, 0 P1, 14 P2, 7 P3, 0 untriaged), 0 errors, 1 advisory
+  settings: no /srv/other-project/docket.toml, so library defaults govern this
+  run rather than this project's - a finding below may be this store read under
+  the wrong policy rather than a store that is wrong
+```
+
+The second form is what a project running on the defaults sees, which is a
+supported way to use this tool rather than a fault. It is also what a
+regression of `PL-P757` would look like: root resolution moving again makes the
+line change, and a changed line is the signal. That is the whole of why it is
+printed on the run that *found* its config too — silence is ambiguous, a reader
+who sees no line cannot tell a config that was found from a version of the
+command that reports nothing, and it is the difference between two runs' lines
+that carries the diagnosis.
+
+It is a fact about the run rather than a finding — the category the `verify:`
+cost line beside it is in, and the open-item counts above it — so nobody is
+asked to act on it.
+
+Refusing such a run instead was considered and is wrong: reading another
+project's store under its own defaults is correct behaviour and a real use.
+
 ### `notes_file`: making a threads file reachable
 
 A project that keeps a running cross-session log beside its queue - threads

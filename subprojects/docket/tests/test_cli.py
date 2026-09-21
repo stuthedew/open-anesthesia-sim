@@ -692,6 +692,53 @@ def test_check_exits_zero_on_a_clean_store(tmp_path: Path) -> None:
     assert _run("check", "--items", str(_store(tmp_path, READY))) == 0
 
 
+def test_check_names_the_config_file_it_loaded(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Which policy a store was read under is a fact about the run (`PL-K5PW`).
+
+    Named on the run that found its config as well as on the run that did not,
+    so that the two are distinguishable: silence would read the same as a
+    version of the command that reports nothing, and it is the difference
+    between the two lines that carries the diagnosis. Pinning the found case to
+    the exact path is what makes a regression of `PL-P757` - root resolution
+    moving again, so a different `docket.toml` is read - fail here rather than
+    pass quietly.
+    """
+    store = _store(tmp_path, READY)
+    (tmp_path / "docket.toml").write_text("[docket]\n", encoding="utf-8")
+
+    assert _run("check", "--items", str(store)) == 0
+    line = capsys.readouterr().out.splitlines()[1]
+    assert line.strip() == f"settings: {tmp_path / 'docket.toml'}"
+
+
+def test_check_says_when_it_found_no_config_beside_the_store(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The half that carries the diagnosis (`PL-K5PW`, filed twice).
+
+    A store whose repository holds no `docket.toml` runs on package defaults,
+    which is a supported way to use this tool and not a fault. What was missing
+    was any way to tell that from the output: `PL-P757` put the whole of this
+    project's store on defaults by resolving the root from the store's parent,
+    and that was the quietest of the three failures it caused - found only
+    incidentally, because no run said which policy it had been read under.
+
+    So this pins the text a reader needs to reach that conclusion, not merely
+    that some line appears. The store here is clean, so the line stands alone
+    rather than beside findings it would explain: what is under test is that
+    the reading is named, not that a wrong policy produced errors.
+    """
+    store = _store(tmp_path, READY)
+    assert not (tmp_path / "docket.toml").exists()
+
+    assert _run("check", "--items", str(store)) == 0
+    line = capsys.readouterr().out.splitlines()[1]
+    assert line.strip().startswith(f"settings: no {tmp_path / 'docket.toml'},")
+    assert "library defaults govern this run" in line
+
+
 #: A `ready` item - one of `LANDED_STATUSES` - whose `verify:` command leaves a
 #: file behind. Whether that file exists after a run is the only direct evidence
 #: that the command was executed, which is what the two tests below turn on.
