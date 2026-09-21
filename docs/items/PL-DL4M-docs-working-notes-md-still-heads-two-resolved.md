@@ -9,6 +9,7 @@ feature: dev-tooling
 touches: docs/WORKING_NOTES.md
 added: 2026-09-14
 closed: 2026-09-21
+pr: 858
 verify: python3 tools/doc_check.py check && ! grep -qF 'Open thread: which moment a rule has to reach' docs/WORKING_NOTES.md
 ---
 

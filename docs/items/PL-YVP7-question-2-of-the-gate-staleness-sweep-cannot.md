@@ -5,6 +5,7 @@ status: done
 feature: gate-staleness-sweep
 added: 2026-09-21
 closed: 2026-09-21
+pr: 862
 verify: bin/docket wave --no-git 2>/dev/null | grep -q 'cleared by the milestone itself:.*PL-CNCF'
 ---
 

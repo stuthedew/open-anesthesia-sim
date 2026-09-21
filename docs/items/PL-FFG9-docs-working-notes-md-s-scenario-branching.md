@@ -9,6 +9,7 @@ feature: doc-consistency-checks
 touches: docs/WORKING_NOTES.md
 added: 2026-09-21
 closed: 2026-09-21
+pr: 858
 payoff: a session reading the working notes for branching context stops finding a live design thread on something v0.5.0 shipped
 verify: ! grep -q '^## Open thread: scenario branching, bookmarks' docs/WORKING_NOTES.md
 ---

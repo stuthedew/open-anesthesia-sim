@@ -9,6 +9,7 @@ feature: one-id-grammar
 touches: tools/generator_check.py, tests/unit/test_generator_check.py
 added: 2026-09-21
 closed: 2026-09-21
+pr: 859
 payoff: a session copying the root-cause-of example writes an id the store can actually mint, and the advisory agrees with docket set about what the field's placeholders are
 verify: uv run pytest tests/unit/test_generator_check.py -q -k test_every_id_the_advisory_prints_is_one_the_store_could_mint
 ---

@@ -9,6 +9,7 @@ feature: gate-staleness-sweep
 touches: ROADMAP.md, .claude/skills/docket/modes/release.md
 added: 2026-09-21
 closed: 2026-09-21
+pr: 860
 verify: ! grep -qE "PL-6ZQY. is the standing item" ROADMAP.md .claude/skills/docket/modes/release.md
 ---
 
