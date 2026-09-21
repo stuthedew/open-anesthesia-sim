@@ -3,11 +3,12 @@ id: PL-YRYR
 title: test_cli.py and test_verify.py spend ~50s of the suite's 272s serial cost on per-test git fixtures - 304 tests, no test above 1.3s, a git init plus config plus add plus commit in each
 priority: P3
 effort: M
-status: ready
+status: done
 classes: perf, test
 feature: verify-replay-cost
 touches: subprojects/docket/tests/conftest.py, subprojects/docket/tests/test_git_isolation.py, subprojects/docket/tests/test_cli.py, subprojects/docket/tests/test_verify.py, subprojects/docket/README.md
 added: 2026-09-19
+closed: 2026-09-21
 verify: uv run pytest subprojects/docket/tests/test_git_isolation.py -q
 root-cause-of: PL-W6NY, PL-KCQ7, PL-8T83, PL-FZ58
 generator: spent - the ambient commit.gpgsign this item isolates the suite from can no longer reach a test repository, so no further measurement can be inflated by it
