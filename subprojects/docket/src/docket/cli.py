@@ -778,8 +778,15 @@ def _record_recurrence(
         return items
 
     count = recurrence_count(updated)
+    # The condition is carried rather than resolved: `new` reads no refs, and
+    # buying an accurate sentence with a git call would put that cost on the
+    # capture path, which `CLAUDE.md` keeps cheap because it runs when usage is
+    # nearly spent. Stating the floor is a fact about the count and always
+    # true; the bare "`next` now names it" was a prediction about another
+    # command, and `PL-CJ5R` made it false for an item already on a branch.
     reached = (
-        " - `bin/docket next` now names it as a generator-tier promotion candidate"
+        " - the generator floor; `bin/docket next` offers it as a promotion "
+        "candidate unless it is already in flight"
         if count == MIN_RECURRENCES
         else ""
     )

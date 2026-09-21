@@ -82,6 +82,17 @@ sit at or above the floor, 2 of them open and named, and neither is untriaged
 or blocked - so the carve-out costs nothing today and the suppression is what
 had to be argued for.
 
+**A third surface said so out loud, and the filter made it false.**
+`_record_recurrence` printed "`bin/docket next` now names it as a
+generator-tier promotion candidate" on the filing that crossed the floor - a
+prediction about another command, and wrong from the moment the matched item
+was on a branch. It states the floor instead, with the condition carried, and
+does not buy an accurate sentence with a git call: `docket new` reads no refs,
+and the capture path is the one `CLAUDE.md` keeps cheap because it runs when
+usage is nearly spent. `docket show` was left alone deliberately - its "That
+is the generator threshold" is a fact about the count, and it prints the
+`IN FLIGHT` mark two lines above.
+
 **What it cannot catch, stated rather than implied.** An unpushed branch is in
 no ref, so `flight` cannot see it - which is the state `PL-W7WL` was actually
 in when this was found. The filter catches every pushed in-flight branch and
