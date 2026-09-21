@@ -3,12 +3,15 @@ id: PL-X9WZ
 title: git ls-remote --heads for a branch deleted on merge exits 0 with empty output, and a force-with-lease push to it fails 'stale info' rather than 403 - a third shape PL-ZM48's two candidate causes do not cover
 priority: P3
 effort: S
-status: blocked
+status: done
 classes: docs
+feature: remote-ref-deletion
 touches: docs/worker.md, docs/items
 blocked-by: PL-ZM48
 added: 2026-09-21
+closed: 2026-09-21
 payoff: the third observed shape of a deleted-branch push is attached to the item that decides the documented cause, so PL-ZM48 resolves against three data points rather than two
+verify: grep -qF 'PL-X9WZ' docs/worker.md && grep -qF 'stale info' docs/worker.md
 ---
 
 **Problem.** git ls-remote --heads for a branch deleted on merge exits 0 with empty output, and a force-with-lease push to it fails 'stale info' rather than 403 - a third shape PL-ZM48's two candidate causes do not cover
@@ -54,3 +57,22 @@ silent-wrong-answer shape `CLAUDE.md` asks to be caught. The cost is bounded
 observing session), which is why this is a data point for `PL-ZM48` rather than
 its own fix: the question of what the documented cause actually is lives there,
 and answering it twice in two items is how the two drift apart.
+
+**Done 2026-09-21 under `PL-ZM48`** (the branch-deletion record in
+`docs/worker.md`), by the first of the two endings this item allows: both
+shapes are accounted for in the section rather than dropped as already covered.
+
+Both were re-confirmed in that session rather than carried over on this brief's
+word. `git ls-remote --heads origin <absent>` and `... origin main` were run
+back to back and **both exited 0**, the absent one printing nothing - so the
+section now says to read the command's output and never its exit status, in the
+same paragraph that tells a session to re-read the remote before reporting a
+deletion done. The `stale info` shape is recorded beside it as what it is: a
+remote-tracking ref naming a commit the remote no longer has, rather than a
+refusal of any kind, with `git branch -dr origin/<branch>` then a plain `git
+push -u` as the recipe. `PL-483K`'s `--depth 1` route to the same message is
+cross-referenced there, so a session meeting `stale info` has both causes.
+
+One correction to this brief: the recipe's first half is printed by
+`.claude/hooks/no-prune-guard.sh`, a `PreToolUse` guard, not by a pre-push
+hook - this repository has no git hooks installed.

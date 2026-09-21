@@ -5,6 +5,7 @@ priority: P2
 effort: S
 status: done
 classes: housekeeping
+milestone: v0.5.1
 touches: docs/items, ROADMAP.md
 added: 2026-09-21
 closed: 2026-09-21

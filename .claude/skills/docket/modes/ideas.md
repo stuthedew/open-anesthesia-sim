@@ -16,7 +16,7 @@ a direction. **They describe the outcome; decomposing it is yours.**
 idea arrives half-formed by nature, and the first exchange is where it changes
 shape most. Items written then get rewritten, re-scoped and deleted across the
 next three replies, which fills the queue's history with churn and buries the
-one version that mattered. Worse, "I created PL-A1B2, PL-C3D4" as a first
+one version that mattered. Worse, "I created PL-B1C2, PL-C3D4" as a first
 response reads as a decision already taken, when what the owner wanted was to
 think it through.
 

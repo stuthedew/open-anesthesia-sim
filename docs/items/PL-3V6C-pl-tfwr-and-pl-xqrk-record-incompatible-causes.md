@@ -72,3 +72,22 @@ read at the moment it fails, distinguishes the two: a policy denial is recorded
 there as a declined request rather than in `recentRelayFailures`, and a dropped
 transfer appears as a relay failure naming the host. It is destructive and
 outward-facing, so no session has run it unasked.
+
+**Premise falsified 2026-09-21 under `PL-ZM48`** (`docs/worker.md` recorded the
+branch deletion as exit status 0 and this item as two incompatible causes).
+This item's central move - "a push cannot both be silently swallowed and be
+refused with a status code, so at most one of these is the failure this project
+actually meets" - does not hold. A single `git push origin --delete` measured
+2026-09-20 returned `error: RPC failed; HTTP 403 curl 22`, then `send-pack:
+unexpected disconnect`, then `Everything up-to-date`, at exit status 1.
+`PL-TFWR` and `PL-XQRK` did not measure two different failures; they recorded
+different lines of one output, so the pair was never the contradiction read
+here.
+
+**The conclusion this item was closed on survives it, and the evidential
+argument was confirmed outright.** No mechanism is established even now,
+because the 403's origin is still unmeasured; and `recentRelayFailures` read
+`[]` while that 403 was being returned, which is exactly what this item said
+the field could not rule out. `docs/worker.md` now carries the measured
+sequence and states what the error's shape rules out separately from what it
+establishes.

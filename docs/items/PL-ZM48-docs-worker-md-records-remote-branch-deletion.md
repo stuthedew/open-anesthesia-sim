@@ -3,11 +3,12 @@ id: PL-ZM48
 title: docs/worker.md records remote-branch deletion as exit status 0, and PL-3V6C as two incompatible causes, but one 2026-09-20 transcript carries the 403 and the Everything up-to-date line together at exit 1
 priority: P2
 effort: S
-status: ready
+status: done
 classes: defect, docs
 feature: remote-ref-deletion
-touches: docs/worker.md, docs/items
+touches: docs/worker.md, docs/items, docs/WORKING_NOTES.md
 added: 2026-09-20
+closed: 2026-09-21
 payoff: a session composing a branch cleanup reads one established cause instead of two candidates, and stops being told the push exits 0 when it exits 1
 verify: grep -qF 'PL-ZM48' docs/worker.md
 ---
