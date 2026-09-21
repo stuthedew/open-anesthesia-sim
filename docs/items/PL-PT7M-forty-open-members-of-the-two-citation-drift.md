@@ -9,6 +9,7 @@ feature: citation-drift-drain
 touches: docs/items, docs/WORKING_NOTES.md
 added: 2026-09-21
 closed: 2026-09-21
+pr: 830
 payoff: 40 items the project has already decided about stop being offered as work, and the open count stops carrying non-findings
 verify: test "$(grep -cE '^\| PL-[A-Z0-9]{3,4} \|' docs/items/PL-PT7M-forty-open-members-of-the-two-citation-drift.md)" -eq 40
 ---

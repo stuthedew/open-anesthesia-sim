@@ -8,6 +8,7 @@ classes: defect, infra
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/cli.py, subprojects/docket/tests/test_model.py, subprojects/docket/tests/test_checks.py, subprojects/docket/README.md
 added: 2026-09-21
 closed: 2026-09-21
+pr: 826
 payoff: a hand-typed front-matter value - wrapped over lines, quoted for a colon, or written as a block list - is read whole or refused by name, instead of being truncated, mis-read, or deleted by the next field write with nothing reporting it
 verify: uv run pytest subprojects/docket/tests/test_model.py subprojects/docket/tests/test_checks.py -q -k "block_list or multi_line or quote or verbatim or continues_nothing"
 root-cause-of: PL-5B39, PL-FX0K, PL-V6CR

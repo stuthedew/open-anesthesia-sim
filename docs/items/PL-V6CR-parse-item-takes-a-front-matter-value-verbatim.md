@@ -8,6 +8,7 @@ classes: defect
 touches: subprojects/docket/src/docket/model.py, subprojects/docket/tests/test_model.py
 added: 2026-09-21
 closed: 2026-09-21
+pr: 826
 payoff: a front-matter value quoted the way YAML requires reads as the string the author meant, so 56 titles stop printing their quotes and 3 verify: commands become runnable instead of exiting 127
 verify: uv run pytest subprojects/docket/tests/test_model.py -q -k "quote or verbatim"
 ---

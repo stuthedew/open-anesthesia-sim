@@ -9,6 +9,7 @@ feature: closed-item-claims
 touches: docs/items
 added: 2026-09-20
 closed: 2026-09-21
+pr: 830
 payoff: PL-38PN stops being offered as startable work whose whole deliverable a ratified rule already refuses
 verify: grep -qF 'citation-drift' docs/items/PL-38PN-stale-source-line-citations-in-pl-vm40-and-pl.md
 ---

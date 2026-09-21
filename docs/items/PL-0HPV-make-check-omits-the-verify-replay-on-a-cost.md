@@ -117,3 +117,36 @@ which it needs to be.
 on precisely the class this replay catches and `make check` cannot - see
 `PL-J3WK`, which carries it.
 
+**Recommended (a session's, 2026-09-21, not the project owner's), over leaving
+`make docket` bare: add the narrowed replay, degrading to a silent skip when
+`origin/main` cannot be resolved.** The measurement above is half the case; the
+other half is that the `Makefile` comment's argument does not reach the form
+being proposed.
+
+That comment refuses the replay because it "finds work that *merged* without
+its item being closed, and a pre-commit gate on a feature branch cannot have
+changed that". That is correct, and it is an argument about the **whole-store**
+sweep - which should stay where it is, on pushes to `main`, where its answer is
+a fact about `main`. `--verify-base origin/main` asks a different question:
+does *this branch's own* store edit hold up. A session can certainly change
+that answer, because it just wrote the thing being checked. So the two forms
+are not the same gate run at different prices, and the recorded reason retires
+only one of them.
+
+**The design constraint is offline, not cost, and the repository already
+solves it.** `make check` has to pass in a bare checkout and with no network,
+which is why `tools/pr_title_check.py --discover` states "Every way that can
+fail is a silent skip, never a failure" and runs its lookup before the
+expensive half. The same rule fits here: where `git rev-parse origin/main`
+fails, run `bin/docket check` bare and print one line saying the replay was
+skipped for want of a base. A gate that fails when it cannot look would be
+worse than the gap it closes - `pr_title_check`'s own words.
+
+**What would make this wrong**, stated so it can be checked rather than argued:
+if a representative branch's scope is much larger than the 26 items measured
+above, the cost stops being 5.9 s. The number to take before building it is the
+replay's elapsed on the widest realistic scope - a branch editing a file many
+open `verify:` commands read, `CLAUDE.md` or `ROADMAP.md` - not on this one. If
+that comes back above roughly 20 s, the skip-by-default-with-an-opt-in-target
+answer is better than putting it in `make check` unconditionally.
+
