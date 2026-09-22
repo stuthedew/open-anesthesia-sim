@@ -51,3 +51,22 @@ is the test that records the behavior as intended.
 **Not classed `safety`.** Nothing here displays a wrong or misattributed
 clinical value; what is lost is simulated work. It is the same human-factors
 band as `PL-WG73`.
+
+**Recommendation** (session, 2026-09-22): confirm, and say so in
+`docs/MODEL.md`. The exemption's own reasoning is what decides it - "pressing
+Reset *is* the learner asking for that run to be discarded" is true of the run
+the button sits on and false of every other run on screen, so the exemption
+stops where the press stops. The existing `format_case_discard_warning` path
+already states what is lost in the terms the display uses for it, which is the
+second bullet of the requirement, and a branch has exactly the two quantities
+that bullet is about: elapsed simulated time and recorded control changes. The
+cheaper half is the specification either way - one sentence in § "Agent-change
+behavior" saying whether the exemption is the *button's run* or *any run the
+press takes with it* - and it is worth writing even if the confirmation is
+declined, because the silence is what let this ship.
+
+The cost of confirming is a dialog on a gesture learners make often. That is
+answered by the same exemption the section already grants: a run holding
+nothing is exempt, so the trunk's Reset would confirm only when a branch is
+drawn *and* that branch holds something - which is precisely the case where
+something is lost, and is never the ordinary start-over.
