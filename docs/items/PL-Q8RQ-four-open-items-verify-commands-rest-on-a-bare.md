@@ -6,9 +6,10 @@ effort: M
 status: ready
 classes: defect, infra
 feature: delegation
-touches: subprojects/docket/src/docket/checks.py, subprojects/docket/tests/test_checks.py, docket.toml
+touches: subprojects/docket/src/docket/checks.py, subprojects/docket/src/docket/config.py, subprojects/docket/tests/test_checks.py, subprojects/docket/tests/test_config.py, subprojects/docket/README.md, .claude/skills/docket/modes/triage.md, docket.toml
 added: 2026-09-15
-verify: uv run pytest subprojects/docket/tests/test_checks.py && grep -q 'def test_a_bare_k_selector_is_refused' subprojects/docket/tests/test_checks.py
+payoff: a new verify: command can no longer rest on a pytest -k name, so an open item's check cannot start passing because an unrelated test happens to share the name - the way PL-S5YM turned main red
+verify: grep -q 'def test_a_bare_k_selector_is_refused' subprojects/docket/tests/test_checks.py
 ---
 
 **Problem.** Four open items' verify commands rest on a bare 'pytest -k SUBSTRING', which any unrelated test name can satisfy: PL-S5YM turned main red exactly this way, and whether a command can discriminate at all is decidable enough for docket check to refuse it
