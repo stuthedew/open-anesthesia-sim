@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: docs
-feature: answered-decision-record
+feature: brief-state-agreement
 touches: docs/items/PL-SYG4-the-digest-s-reserved-verdict-suppresses-the.md
 added: 2026-09-22
 payoff: PL-SYG4's brief stops telling a session it waits on a decision that its own front matter and later paragraphs say was taken
@@ -39,3 +39,13 @@ count.** One live instance across the store is not a recurring failure, and
 telling current prose from dated history is the judgment half that a check
 would have to guess at. Reopen that call if a second undated instance turns
 up.
+
+**Reopened 2026-09-22 (`PL-8YXJ`).** The call above - no check owed on one
+live instance - is reopened on its own condition: a second undated instance
+exists. `PL-Z34C` says "It is left `needs-decision`" under an undated heading
+while its status is `blocked`, and `PL-Z3V5` says "deliberately left at
+`blocked`" while it is `ready`; the search for the literal "Left at
+`needs-decision`" found neither, and `PL-7G5M` (closed 2026-09-15) was the
+identical failure a week earlier. `PL-8YXJ` holds the mechanism and the check.
+This item's own Done-when is unchanged, and is cheapest done in that session,
+with the superseded marker it settles.

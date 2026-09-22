@@ -5,7 +5,7 @@ priority: P3
 effort: S
 status: ready
 classes: docs
-feature: answered-decision-record
+feature: brief-state-agreement
 touches: .claude/skills/docket/modes/triage.md
 added: 2026-09-22
 payoff: a session recording an owner's answer keeps the question and dates the answer because its own mode says to, not because it happened to read docs/worker.md
