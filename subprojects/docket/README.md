@@ -3030,6 +3030,10 @@ process_classes = ["session-cost", "docs", "infra"]
 debt_classes = ["defect", "safety", "science", "refactor", "perf"]
 top_band_limit = 5
 untriaged_stale_days = 14
+instruction_stale_days = 90        # a dated assertion goes this long
+                                   # unchecked before it is named
+instruction_paths = []             # the instruction files it reads;
+                                   # empty = the audit is off
 verify_required_from = 2026-08-30   # omit to leave the `verify:` rule off
 verify_prerequisite_refused_from = 2026-09-20   # when a command may no longer
                                    # re-run a tree `check_command` collects
@@ -3177,6 +3181,49 @@ Whether a thread's outcome is recorded somewhere that maintains itself is the
 judgment, and it stays with the reader.
 
 The advisory is skipped where the project configures no `notes_file`.
+
+### The instruction set's dated assertions
+
+Instructions assert facts about a world that changes - a network policy, what a
+tool does, what a check catches - and nothing expires any of them. A rule that
+is long costs attention; a rule that was true when it was written and is false
+two years later gets *obeyed*. Every size gauge a project keeps is blind to
+that, because it measures how much text there is rather than how old what the
+text claims has become.
+
+`instruction_paths` names the files: a markdown file, or a directory every
+`.md` beneath it is read from. Each line carrying an ISO date is one assertion,
+dated by the **newest** date on it, and one more than `instruction_stale_days`
+old puts it in a grooming advisory - oldest first, the five oldest named and
+the rest counted.
+
+Only the decidable half is here. *Which* assertions are due is arithmetic on
+dates; whether an aged one is still true is left to whoever reads the line.
+
+**It can reach zero, which is what shaped it.** A raw age list cannot, since
+every assertion ages and the report would name more of them every day - and
+the cost of an advisory that cannot reach zero is not the entries it names but
+the next advisory, which gets read the same way. The threshold bounds the set;
+re-verifying a line and writing today onto it empties it. Reading the newest
+date is what makes that work for both kinds of dated text: a measured fact is
+re-measured and re-dated, and a record - what was decided, and when - keeps its
+own date and gains a re-verification one, so neither has to be falsified to be
+cleared.
+
+A date inside a code fence is skipped: a dated example command is a template
+rather than a claim, and an entry a reader cannot honestly clear is the one
+thing that stops the report reaching zero.
+
+**Age is a proxy for staleness, not staleness.** A dated record does not go
+stale; a measured environmental fact does, and this cannot tell them apart.
+Early precision is mediocre by design, and the narrowing that fixes it is
+meant to be learned from the first firing rather than guessed beforehand -
+which is also why `instruction_stale_days` defaults to 90 rather than to a
+half-year: a threshold that first fires in about ten weeks is validated by its
+own first firing, while a threshold nothing reaches for five months is a
+mechanism discovered to be broken at exactly the moment it was built to help.
+
+The advisory is skipped where the project names no `instruction_paths`.
 
 ## Requirements
 
